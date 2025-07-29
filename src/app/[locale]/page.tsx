@@ -1,6 +1,7 @@
 import {BarChart2, ShieldCheck, Zap} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import ButtonConnexionDashboard from '@/components/features/auth/button-connexion-dashboard'
@@ -21,7 +22,7 @@ export async function generateMetadata({
   params,
 }: {
   params: Promise<{locale: string}>
-}) {
+}): Promise<Metadata> {
   const {locale} = await params
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'HomePage'})

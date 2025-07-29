@@ -206,6 +206,9 @@ export const env = createEnv({
 
     // Pages optionnelles activées
     NEXT_PUBLIC_ENABLED_PAGES: EnabledPagesSchema,
+
+    // Google Analytics
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: z.string().optional(),
   },
 
   /*
@@ -260,6 +263,8 @@ export const env = createEnv({
     NEXT_PUBLIC_BILLING_MODE: process.env.NEXT_PUBLIC_BILLING_MODE,
     NEXT_PUBLIC_AUTH_METHODS: process.env.NEXT_PUBLIC_AUTH_METHODS,
     NEXT_PUBLIC_ENABLED_PAGES: process.env.NEXT_PUBLIC_ENABLED_PAGES,
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_ID:
+      process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID,
   },
 
   /*

@@ -35,7 +35,7 @@ export const checkSubscriptionLimitDal = cache(
   }
 )
 
-export const getPlanByPriceId = (priceId: string) =>
+export const getPlanByPriceId = cache((priceId: string) =>
   nextCache(
     async (): Promise<PlanDTO | undefined> => {
       return getPlanByPriceIdPublicService(priceId)
@@ -46,6 +46,7 @@ export const getPlanByPriceId = (priceId: string) =>
       revalidate: 3600, // 1 heure
     }
   )()
+)
 
 export const isYearlyPrice = cache(async (priceId?: string | null) => {
   if (!priceId) {
@@ -54,7 +55,7 @@ export const isYearlyPrice = cache(async (priceId?: string | null) => {
   return isYearlyPriceService(priceId)
 })
 
-export const getPlanByCodeDal = (code: string) =>
+export const getPlanByCodeDal = cache((code: string) =>
   nextCache(
     async (): Promise<PlanDTO | undefined> => {
       return getPlanByCodePublicService(code)
@@ -65,6 +66,7 @@ export const getPlanByCodeDal = (code: string) =>
       revalidate: 3600, // 1 heure
     }
   )()
+)
 
 // ========================================
 // SERVICES HELPER POUR LES PLANS SPÉCIFIQUES

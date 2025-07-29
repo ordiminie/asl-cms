@@ -66,7 +66,7 @@ export default async function BlogLayout({
   ]
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background mx-auto min-h-screen max-w-7xl">
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           {/* Contenu principal */}

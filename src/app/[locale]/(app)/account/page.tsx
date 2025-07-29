@@ -1,18 +1,20 @@
 import {notFound} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 
+import withAuth from '@/components/features/auth/with-auth'
 import {EditUserProfileForm} from '@/components/features/user/edit-user-profile'
 import {UserSecurityFactorSection} from '@/components/features/user/security-section'
 import {PagesConst} from '@/env'
 import {isPageEnabled} from '@/lib/utils'
 import {getAuthUser} from '@/services/authentication/auth-service'
 
-export default async function Page() {
+async function Page() {
   if (!isPageEnabled(PagesConst.ACCOUNT)) {
     return notFound()
   }
 
   const t = await getTranslations('AccountPage')
+
   const user = await getAuthUser()
 
   if (!user) {
@@ -40,3 +42,4 @@ export default async function Page() {
     </div>
   )
 }
+export default withAuth(Page)

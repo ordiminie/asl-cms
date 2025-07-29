@@ -1,4 +1,5 @@
 import {GalleryVerticalEnd} from 'lucide-react'
+import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import React from 'react'
 
@@ -9,7 +10,7 @@ export async function generateMetadata({
   params,
 }: {
   params: Promise<{locale: string}>
-}) {
+}): Promise<Metadata> {
   const {locale} = await params
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'Auth.RegisterPage'})

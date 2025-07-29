@@ -1,5 +1,6 @@
 import {GalleryVerticalEnd} from 'lucide-react'
 import {redirect} from 'next/navigation'
+import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {LoginForm} from '@/components/features/auth/forms/login'
@@ -10,7 +11,7 @@ export async function generateMetadata({
   params,
 }: {
   params: Promise<{locale: string}>
-}) {
+}): Promise<Metadata> {
   const {locale} = await params
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'Auth.LoginPage'})
