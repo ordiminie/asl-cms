@@ -254,7 +254,18 @@ describe('[UserSettings] CRUD', () => {
       await updateUserSettingsService(updatedSettings)
       expect(userRepository.upsertUserSettingsDao).toHaveBeenCalledWith(
         userId,
-        updatedSettings
+        {
+          ...updatedSettings,
+          // Zod v4 ajoute automatiquement les valeurs par défaut même avec .partial()
+          timezone: 'Europe/Paris',
+          enableTwoFactor: false,
+          enableEmailNotifications: true,
+          enablePushNotifications: true,
+          notificationChannel: 'both',
+          emailDigest: true,
+          marketingEmails: false,
+          twoFactorType: 'totp',
+        }
       )
     })
 

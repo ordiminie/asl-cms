@@ -72,6 +72,7 @@ interface Notification {
 Le système supporte plusieurs catégories de notifications :
 
 ### Authentification
+
 - `reset_password` : Réinitialisation de mot de passe
 - `email_verification` : Vérification d'email
 - `magic_link` : Lien magique de connexion
@@ -79,6 +80,7 @@ Le système supporte plusieurs catégories de notifications :
 - `change_email_verification` : Changement d'email
 
 ### Abonnements et Paiements
+
 - `subscription_created` : Nouvel abonnement
 - `subscription_updated` : Abonnement modifié
 - `subscription_canceled` : Abonnement annulé
@@ -87,17 +89,21 @@ Le système supporte plusieurs catégories de notifications :
 - `payment_succeeded` : Paiement réussi
 
 ### Organisation
+
 - `organization_invitation` : Invitation à rejoindre une organisation
 
 ### Sécurité
+
 - `security_alert` : Alerte de sécurité
 - `password_changed` : Mot de passe modifié
 
 ### Système
+
 - `system_maintenance` : Maintenance système
 - `user_banned` / `user_unbanned` : Utilisateur banni/débanni
 
 ### Projets
+
 - `project_created` : Nouveau projet
 - `project_updated` : Projet mis à jour
 
@@ -112,8 +118,8 @@ await createTypedNotificationService({
   userId: 'user-id',
   type: NotificationTypeConst.subscription_created,
   metadata: {
-    subscription: subscriptionData
-  }
+    subscription: subscriptionData,
+  },
 })
 ```
 
@@ -147,6 +153,7 @@ const message = t(messageKey, metadata)
 Les notifications sont classées en deux catégories :
 
 #### Notifications Critiques (Email Toujours Envoyé)
+
 - Authentification et sécurité
 - Réinitialisation de mot de passe
 - Vérification d'email
@@ -154,6 +161,7 @@ Les notifications sont classées en deux catégories :
 - Magic links
 
 #### Notifications Standard (Selon Préférences Utilisateur)
+
 - Abonnements et paiements
 - Invitations d'organisation
 - Mises à jour de projets
@@ -161,7 +169,9 @@ Les notifications sont classées en deux catégories :
 ### Templates d'Email
 
 #### Templates Spécialisés
+
 Chaque type critique a son propre template optimisé :
+
 - `sendResetPasswordLinkEmailService`
 - `sendVerificationEmailService`
 - `sendMagicLinkEmailService`
@@ -169,7 +179,9 @@ Chaque type critique a son propre template optimisé :
 - `sendOrganizationInvitationService`
 
 #### Template Générique
+
 Pour les autres notifications, un template générique avec styles par type :
+
 - `sendNotificationEmailService` avec classification info/warning/success/error
 
 ## Intégration Better Auth
@@ -183,7 +195,7 @@ emailAndPassword: {
     await createTypedNotificationService({
       userId: user.id,
       type: NotificationTypeConst.reset_password,
-      metadata: { url }
+      metadata: {url},
     })
   }
 }
@@ -193,7 +205,7 @@ onSubscriptionComplete: async ({subscription}) => {
   await createTypedNotificationService({
     userId: user.id,
     type: NotificationTypeConst.subscription_created,
-    metadata: { subscription }
+    metadata: {subscription},
   })
 }
 ```
@@ -203,12 +215,14 @@ onSubscriptionComplete: async ({subscription}) => {
 Le système utilise CASL pour les autorisations :
 
 ### Règles de Base
+
 - **Lecture** : Utilisateur peut lire ses propres notifications
 - **Modification** : Utilisateur peut modifier ses propres notifications
 - **Création** : Admins ou utilisateur pour lui-même
 - **Suppression** : Utilisateur peut supprimer ses notifications
 
 ### Implémentation
+
 ```typescript
 // Vérification d'autorisation
 const canRead = await canReadNotification(user, notification)
@@ -222,11 +236,13 @@ if (!canRead) {
 ### Page Notifications : `/notifications`
 
 #### Composants Principaux
+
 - **NotificationsManagement** : Composant racine avec état global
 - **NotificationItem** : Affichage d'une notification individuelle
 - **NotificationsToolbar** : Filtres et actions globales
 
 #### Fonctionnalités
+
 - **Filtrage** : "Toutes" / "Non lues" uniquement
 - **Actions** : Marquer comme lu/non lu, supprimer
 - **Action globale** : "Marquer tout comme lu"
@@ -249,17 +265,19 @@ getNotificationsByFilterAction
 
 ```typescript
 // Hook pour le compteur de notifications non lues
-const { unreadCount } = useUnreadNotifications()
+const {unreadCount} = useUnreadNotifications()
 ```
 
 ## Gestion des Erreurs
 
 ### Stratégie de Résilience
+
 - Les erreurs d'envoi d'email n'interrompent pas la création de notification
 - Logging détaillé pour le debugging
 - Validation stricte avec messages d'erreur localisés
 
 ### Types d'Erreurs
+
 - `ValidationError` : Données invalides
 - `AuthorizationError` : Permissions insuffisantes
 - `NotFoundError` : Notification inexistante
@@ -267,10 +285,12 @@ const { unreadCount } = useUnreadNotifications()
 ## Performance et Cache
 
 ### Cache React-Cache
+
 - Cache au niveau DAL pour optimiser les lectures
 - Invalidation automatique lors des mutations
 
 ### Optimisations
+
 - Pagination des notifications (structure prête)
 - Index de base de données sur `userId` et `read`
 - Requêtes optimisées avec Drizzle ORM
@@ -285,6 +305,7 @@ const { unreadCount } = useUnreadNotifications()
 4. **Utiliser** `createTypedNotificationService`
 
 Exemple :
+
 ```typescript
 // 1. Nouveau type
 export const NotificationTypeConst = {
@@ -315,24 +336,29 @@ await createTypedNotificationService({
 ## Bonnes Pratiques
 
 ### Métadonnées
+
 - Toujours typer les métadonnées selon le type de notification
 - Inclure toutes les données nécessaires pour l'affichage et l'email
 
 ### Traductions
+
 - Utiliser les clés de traduction conventionnelles
 - Passer les variables via les métadonnées
 
 ### Performance
+
 - Éviter les notifications en masse sans pagination
 - Utiliser les index de base de données appropriés
 
 ### Sécurité
+
 - Toujours vérifier les autorisations
 - Ne pas exposer d'informations sensibles dans les métadonnées
 
 ## Configuration
 
 ### Variables d'Environnement
+
 ```env
 # Email (via Resend)
 RESEND_API_KEY=your_resend_api_key
@@ -345,7 +371,9 @@ NEXT_PUBLIC_APP_URL=https://your-app.com
 ```
 
 ### Paramètres Utilisateur
+
 Les utilisateurs peuvent configurer :
+
 - `enableEmailNotifications` : Activer/désactiver les emails
 - `notificationChannel` : Canal préféré (email, in-app, both)
 

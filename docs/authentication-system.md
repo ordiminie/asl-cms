@@ -5,6 +5,7 @@ Ce boilerplate Next.js SaaS utilise **Better Auth** pour fournir un système d'a
 ## Vue d'ensemble
 
 Le système d'authentification prend en charge :
+
 - **Authentification par credentials** (email/mot de passe)
 - **Magic Links** (liens de connexion par email)
 - **OAuth Social** (Google, Apple, GitHub)
@@ -66,22 +67,24 @@ NEXT_PUBLIC_BILLING_MODE="user" # ou "organization"
 **Configuration** : Ajoutez `credential` dans `NEXT_PUBLIC_AUTH_METHODS`
 
 **Fonctionnalités** :
+
 - Inscription avec email/mot de passe
 - Connexion sécurisée
 - Réinitialisation de mot de passe
 - Vérification d'email obligatoire (configurable)
 
 **Exemple d'utilisation** :
+
 ```typescript
 // Dans un composant client
-import { authClient } from '@/lib/better-auth/auth-client'
+import {authClient} from '@/lib/better-auth/auth-client'
 
 const handleLogin = async (email: string, password: string) => {
   const result = await authClient.signIn.email({
     email,
     password,
   })
-  
+
   if (result.error) {
     console.error('Erreur de connexion:', result.error.message)
   }
@@ -93,11 +96,13 @@ const handleLogin = async (email: string, password: string) => {
 **Configuration** : Ajoutez `magiclink` dans `NEXT_PUBLIC_AUTH_METHODS`
 
 **Fonctionnalités** :
+
 - Connexion sans mot de passe
 - Création automatique de compte si inexistant
 - Liens sécurisés avec expiration
 
 **Flow** :
+
 1. L'utilisateur saisit son email
 2. Un lien magique est envoyé par email
 3. L'utilisateur clique sur le lien
@@ -106,22 +111,26 @@ const handleLogin = async (email: string, password: string) => {
 ### 3. OAuth Social
 
 **Providers supportés** :
+
 - **Google** : `google`
-- **Apple** : `apple` 
+- **Apple** : `apple`
 - **GitHub** : `github`
 
 **Configuration Google** :
+
 1. Créez un projet dans [Google Cloud Console](https://console.cloud.google.com/)
-2. Activez l'API Google+ 
+2. Activez l'API Google+
 3. Configurez l'écran de consentement OAuth
 4. Créez des identifiants OAuth 2.0
 5. Ajoutez les variables d'environnement :
+
 ```env
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
 ```
 
 **Configuration dans l'interface** :
+
 ```env
 NEXT_PUBLIC_AUTH_METHODS="credential,google"
 ```
@@ -131,6 +140,7 @@ NEXT_PUBLIC_AUTH_METHODS="credential,google"
 ### Configuration
 
 Activez le 2FA via la variable d'environnement :
+
 ```env
 NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE="true"
 ```
@@ -138,16 +148,19 @@ NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE="true"
 ### Types de 2FA Supportés
 
 #### 1. OTP (One-Time Password)
+
 - Codes à 6 chiffres envoyés par email
 - Durée de validité : 5 minutes
 - Lien direct pour faciliter la saisie
 
 #### 2. TOTP (Time-based OTP)
+
 - Compatible avec Google Authenticator, Authy, etc.
 - QR Code pour configuration
 - Codes à 6 chiffres renouvelés toutes les 30 secondes
 
 #### 3. Codes de Récupération
+
 - 10 codes de sauvegarde générés
 - Utilisables une seule fois
 - Pour récupérer l'accès en cas de perte du device
@@ -158,12 +171,12 @@ NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE="true"
 // Activation TOTP
 const result = await authClient.twoFactor.enable({
   type: 'totp',
-  password: 'user-password'
+  password: 'user-password',
 })
 
 // Activation OTP
 const result = await authClient.twoFactor.enable({
-  type: 'otp'
+  type: 'otp',
 })
 ```
 
@@ -188,14 +201,14 @@ NEXT_PUBLIC_BILLING_MODE="organization"
 // Créer une organisation
 const org = await authClient.organization.create({
   name: 'Mon Organisation',
-  slug: 'mon-org'
+  slug: 'mon-org',
 })
 
 // Inviter un membre
 await authClient.organization.inviteMember({
   email: 'user@example.com',
   role: 'member',
-  organizationId: org.id
+  organizationId: org.id,
 })
 ```
 
@@ -246,14 +259,14 @@ src/
 // src/lib/better-auth/auth.ts
 export const auth = betterAuth({
   appName: APP_ISSUER,
-  database: drizzleAdapter(db, { provider: 'pg' }),
-  
+  database: drizzleAdapter(db, {provider: 'pg'}),
+
   // Configuration email/password
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
   },
-  
+
   // Providers OAuth
   socialProviders: {
     google: {
@@ -261,13 +274,13 @@ export const auth = betterAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
-  
+
   // Plugins
   plugins: [
-    twoFactor({ issuer: APP_ISSUER }),
+    twoFactor({issuer: APP_ISSUER}),
     magicLink(),
     organization(),
-    stripe({ stripeClient, createCustomerOnSignUp: true }),
+    stripe({stripeClient, createCustomerOnSignUp: true}),
   ],
 })
 ```
@@ -282,7 +295,7 @@ export const authClient = createAuthClient({
     organizationClient(),
     magicLinkClient(),
     twoFactorClient(),
-    stripeClient({ subscription: true }),
+    stripeClient({subscription: true}),
   ],
 })
 ```
@@ -298,7 +311,7 @@ export async function loginCredentialAction(
   formData: FormData
 ): Promise<LoginFormState>
 
-// Connexion par magic link  
+// Connexion par magic link
 export async function loginMagicLinkAction(
   prevState: MagicLinkFormState,
   formData: FormData
@@ -328,10 +341,10 @@ import { useAuth } from '@/lib/better-auth/auth-client'
 
 function MyComponent() {
   const { data: session, isPending } = useAuth()
-  
+
   if (isPending) return <div>Chargement...</div>
   if (!session?.user) return <div>Non connecté</div>
-  
+
   return <div>Bonjour {session.user.name}</div>
 }
 ```
@@ -345,7 +358,7 @@ export default async function ProtectedPage() {
   if (!user) {
     redirect('/login')
   }
-  
+
   return <div>Contenu protégé</div>
 }
 ```
@@ -374,8 +387,9 @@ const hasGoogle = authMethods.includes('google')
 ### Traductions
 
 Le système est entièrement traduit avec `next-intl`. Messages disponibles dans :
+
 - `messages/fr.json`
-- `messages/en.json` 
+- `messages/en.json`
 - `messages/es.json`
 
 ## Sécurité
@@ -402,7 +416,7 @@ Le système est entièrement traduit avec `next-intl`. Messages disponibles dans
 ```typescript
 // Notifications automatiques pour :
 - Vérification d'email
-- Réinitialisation mot de passe  
+- Réinitialisation mot de passe
 - Codes 2FA (OTP)
 - Magic links
 - Invitations organisations
@@ -457,13 +471,13 @@ export function LoginButton() {
       email: 'user@example.com',
       password: 'password123',
     })
-    
+
     if (result.data) {
       // Connexion réussie
       window.location.href = '/dashboard'
     }
   }
-  
+
   return <button onClick={handleLogin}>Se connecter</button>
 }
 ```
@@ -484,11 +498,11 @@ import { getAuthUser } from '@/services/authentication/auth-service'
 
 export async function AdminOnlyComponent() {
   const user = await getAuthUser()
-  
+
   if (user?.role !== 'admin') {
     return <div>Accès refusé</div>
   }
-  
+
   return <div>Contenu admin</div>
 }
 ```
@@ -505,6 +519,7 @@ export async function AdminOnlyComponent() {
 ### Logs de Débogage
 
 Activez les logs de développement :
+
 ```env
 LOG_LEVEL="debug"
 ```
@@ -512,6 +527,7 @@ LOG_LEVEL="debug"
 ### Support
 
 Pour plus d'informations, consultez :
+
 - [Documentation Better Auth](https://www.better-auth.com/docs)
 - [Next.js App Router](https://nextjs.org/docs/app)
 - [Stripe Documentation](https://stripe.com/docs)

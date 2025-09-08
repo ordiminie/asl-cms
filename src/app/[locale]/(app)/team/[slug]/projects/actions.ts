@@ -199,13 +199,13 @@ export async function createTaskAction(
 
     if (!validationResult.success) {
       // Récupérer les messages d'erreur à plat
-      const errorMessages = validationResult.error.errors
+      const errorMessages = validationResult.error.issues
         .map((err) => `${err.path.join('.')}: ${err.message}`)
         .join(', ')
 
       // Récupérer les messages d'erreur pour chaque champ
       const validationErrors: TaskValidationError[] =
-        validationResult.error.errors.map((err) => ({
+        validationResult.error.issues.map((err) => ({
           field: err.path[0] as keyof typeof taskData,
           message: err.message,
         }))

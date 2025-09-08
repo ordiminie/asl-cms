@@ -16,7 +16,7 @@ export class ValidationParsedZodError extends Error {
   zodErrorFields: ZodError | undefined
 
   constructor(err?: ZodError) {
-    const errorDetails = err?.errors
+    const errorDetails = err?.issues
       .map(
         (issue) => `Path: ${issue.path.join('.')} | Message: ${issue.message}`
       )

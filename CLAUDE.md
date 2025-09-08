@@ -144,4 +144,4 @@ Read the .cursor/rules folder for the rules to follow.
 ## Coding Guidelines
 
 - Ne pas utiliser de commentaires pour expliquer le code, seulement pour le code complexe
-- Ne lance pas de pnpm build a la fin 
+- Ne lance pas de pnpm build a la fin

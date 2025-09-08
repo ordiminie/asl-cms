@@ -37,7 +37,7 @@ export type ChangeEmailFormSchemaType = z.infer<typeof changeEmailFormSchema>
 // Schéma pour l'authentification à deux facteurs
 export const twoFactorFormSchema = z.object({
   action: z.enum(['enable', 'disable'], {
-    required_error: 'Veuillez sélectionner une action',
+    message: 'Veuillez sélectionner une action',
   }),
   password: z.string().min(1, 'Le mot de passe est requis'),
 })

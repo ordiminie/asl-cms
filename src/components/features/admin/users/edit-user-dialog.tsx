@@ -39,7 +39,7 @@ const formSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
   email: z.string().email('Email invalide'),
   visibility: z.enum(['public', 'private'], {
-    required_error: 'La visibilité est requise',
+    message: 'La visibilité est requise',
   }),
 })
 

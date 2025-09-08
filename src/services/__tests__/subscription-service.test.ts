@@ -118,7 +118,10 @@ describe('[ADMIN] CRUD : Subscription Service', () => {
     const result = await createSubscriptionService(createData)
 
     expect(result).toEqual(subscriptionData)
-    expect(createSubscriptionDao).toHaveBeenCalledWith(createData)
+    expect(createSubscriptionDao).toHaveBeenCalledWith({
+      ...createData,
+      quantity: 1, // Zod v4 ajoute automatiquement les valeurs par défaut
+    })
   })
 
   it('should get a subscription by id', async () => {
@@ -187,7 +190,10 @@ describe('[USER] CRUD : Subscription Service', () => {
     const result = await createSubscriptionService(createData)
 
     expect(result).toEqual(subscriptionData)
-    expect(createSubscriptionDao).toHaveBeenCalledWith(createData)
+    expect(createSubscriptionDao).toHaveBeenCalledWith({
+      ...createData,
+      quantity: 1, // Zod v4 ajoute automatiquement les valeurs par défaut
+    })
   })
 
   it("should NOT read another user's subscription", async () => {

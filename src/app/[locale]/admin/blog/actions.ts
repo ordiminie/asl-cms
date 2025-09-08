@@ -153,7 +153,7 @@ export async function createPostAction(data: PostFormData): Promise<FormState> {
       return {
         success: false,
         message: `Erreur de validation: ${error.message}`,
-        errors: error.zodErrorFields?.errors.map((err) => ({
+        errors: error.zodErrorFields?.issues.map((err) => ({
           field: err.path.join('.') as keyof PostFormData, // Garder le chemin complet
           message: err.message,
         })),
@@ -162,7 +162,7 @@ export async function createPostAction(data: PostFormData): Promise<FormState> {
 
     if (error instanceof z.ZodError) {
       const fieldErrors: Record<string, string[]> = {}
-      error.errors.forEach((err) => {
+      error.issues.forEach((err) => {
         const path = err.path.join('.')
         if (!fieldErrors[path]) {
           fieldErrors[path] = []
@@ -267,7 +267,7 @@ export async function updatePostCompleteAction(
       return {
         success: false,
         message: `Erreur de validation: ${error.message}`,
-        errors: error.zodErrorFields?.errors.map((err) => ({
+        errors: error.zodErrorFields?.issues.map((err) => ({
           field: err.path.join('.') as keyof PostFormData, // Garder le chemin complet
           message: err.message,
         })),
@@ -276,7 +276,7 @@ export async function updatePostCompleteAction(
 
     if (error instanceof z.ZodError) {
       const fieldErrors: Record<string, string[]> = {}
-      error.errors.forEach((err) => {
+      error.issues.forEach((err) => {
         const path = err.path.join('.')
         if (!fieldErrors[path]) {
           fieldErrors[path] = []

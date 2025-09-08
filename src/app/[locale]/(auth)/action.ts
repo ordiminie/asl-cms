@@ -4,6 +4,7 @@ import {isRedirectError} from 'next/dist/client/components/redirect-error'
 import {headers} from 'next/headers'
 import {redirect} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
+import {z} from 'zod'
 
 import {
   authLoginFormSchema,
@@ -19,17 +20,17 @@ import {
 //import {APIError} from 'better-auth'
 
 type LoginValidationError = {
-  field: keyof typeof authLoginFormSchema._type
+  field: keyof z.infer<typeof authLoginFormSchema>
   message: string
 }
 
 type RegisterValidationError = {
-  field: keyof typeof authRegisterFormSchema._type
+  field: keyof z.infer<typeof authRegisterFormSchema>
   message: string
 }
 
 type MagicLinkValidationError = {
-  field: keyof typeof authMagicLinkFormSchema._type
+  field: keyof z.infer<typeof authMagicLinkFormSchema>
   message: string
 }
 
@@ -91,8 +92,8 @@ export async function loginCredentialAction(
 
     if (!validationResult.success) {
       const validationErrors: LoginValidationError[] =
-        validationResult.error.errors.map((err) => ({
-          field: err.path[0] as keyof typeof authLoginFormSchema._type,
+        validationResult.error.issues.map((err) => ({
+          field: err.path[0] as keyof z.infer<typeof authLoginFormSchema>,
           message: err.message,
         }))
       return {
@@ -216,8 +217,8 @@ export async function loginMagicLinkAction(
 
     if (!validationResult.success) {
       const validationErrors: MagicLinkValidationError[] =
-        validationResult.error.errors.map((err) => ({
-          field: err.path[0] as keyof typeof authMagicLinkFormSchema._type,
+        validationResult.error.issues.map((err) => ({
+          field: err.path[0] as keyof z.infer<typeof authMagicLinkFormSchema>,
           message: err.message,
         }))
       return {
@@ -294,8 +295,8 @@ export async function registerCredentialAction(
 
   if (!validationResult.success) {
     const validationErrors: RegisterValidationError[] =
-      validationResult.error.errors.map((err) => ({
-        field: err.path[0] as keyof typeof authRegisterFormSchema._type,
+      validationResult.error.issues.map((err) => ({
+        field: err.path[0] as keyof z.infer<typeof authRegisterFormSchema>,
         message: err.message,
       }))
     return {
@@ -454,8 +455,8 @@ export async function registerMagicLinkAction(
 
   if (!validationResult.success) {
     const validationErrors: MagicLinkValidationError[] =
-      validationResult.error.errors.map((err) => ({
-        field: err.path[0] as keyof typeof authMagicLinkFormSchema._type,
+      validationResult.error.issues.map((err) => ({
+        field: err.path[0] as keyof z.infer<typeof authMagicLinkFormSchema>,
         message: err.message,
       }))
     return {

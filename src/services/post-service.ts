@@ -1144,7 +1144,7 @@ export const createPostWithTranslationsService = async (
         createPostTranslationServiceSchema.safeParse(translationData)
       if (!parsedTranslation.success) {
         // Créer une nouvelle ZodError avec les chemins modifiés
-        const modifiedErrors = parsedTranslation.error.errors.map((err) => ({
+        const modifiedErrors = parsedTranslation.error.issues.map((err) => ({
           ...err,
           path: [index.toString(), ...err.path],
         }))
@@ -1216,7 +1216,7 @@ export const updatePostWithTranslationsService = async (
       createPostTranslationServiceSchema.safeParse(translationData)
     if (!parsedTranslation.success) {
       // Créer une nouvelle ZodError avec les chemins modifiés
-      const modifiedErrors = parsedTranslation.error.errors.map((err) => ({
+      const modifiedErrors = parsedTranslation.error.issues.map((err) => ({
         ...err,
         path: [index.toString(), ...err.path],
       }))

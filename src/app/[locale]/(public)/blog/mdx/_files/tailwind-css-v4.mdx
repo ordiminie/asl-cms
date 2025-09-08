@@ -8,10 +8,10 @@ Tailwind CSS v4 apporte une révolution dans la façon de styler nos application
 
 ```css
 /* Configuration v4 */
-@import "tailwindcss/theme" layer(theme);
-@import "tailwindcss/base" layer(base);
-@import "tailwindcss/components" layer(components);
-@import "tailwindcss/utilities" layer(utilities);
+@import 'tailwindcss/theme' layer(theme);
+@import 'tailwindcss/base' layer(base);
+@import 'tailwindcss/components' layer(components);
+@import 'tailwindcss/utilities' layer(utilities);
 ```
 
 ### Configuration simplifiée
@@ -23,20 +23,20 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: 'oklch(0.7 0.15 200)'
-      }
-    }
-  }
+        primary: 'oklch(0.7 0.15 200)',
+      },
+    },
+  },
 }
 ```
 
 ## Performance
 
-| Métrique | v3 | v4 |
-|----------|----|----|
-| Build time | 2.5s | 0.8s |
-| CSS size | 3.8MB | 1.2MB |
-| Tree shaking | ✅ | ✅ Amélioré |
+| Métrique     | v3    | v4          |
+| ------------ | ----- | ----------- |
+| Build time   | 2.5s  | 0.8s        |
+| CSS size     | 3.8MB | 1.2MB       |
+| Tree shaking | ✅    | ✅ Amélioré |
 
 ## Nouvelles utilities
 
@@ -44,16 +44,12 @@ export default {
 
 ```html
 <div class="@container">
-  <div class="@sm:text-lg @md:text-xl">
-    Responsive basé sur le conteneur !
-  </div>
+  <div class="@sm:text-lg @md:text-xl">Responsive basé sur le conteneur !</div>
 </div>
 ```
 
 ### Couleurs modernes
 
 ```html
-<div class="bg-red-500/20 text-blue-600/80">
-  Support natif de l'opacity
-</div>
+<div class="bg-red-500/20 text-blue-600/80">Support natif de l'opacity</div>
 ```

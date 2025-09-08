@@ -39,7 +39,7 @@ export const baseNotificationServiceSchema = z.object({
 // Schema pour créer une notification
 export const createNotificationServiceSchema = baseNotificationServiceSchema
   .extend({
-    metadata: z.record(z.any()).optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
     read: z.boolean().optional().default(false),
   })
   .strict() satisfies z.Schema<CreateNotification>
@@ -51,7 +51,7 @@ export const updateNotificationServiceSchema = z
       message: "L'ID de la notification doit être un UUID valide.",
     }),
     read: z.boolean().optional(),
-    metadata: z.record(z.any()).optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
   })
   .strict() satisfies z.Schema<UpdateNotification>
 
@@ -125,7 +125,7 @@ export function getNotificationValidationSchemas() {
             message: t('id.invalid'),
           }),
           read: z.boolean().optional(),
-          metadata: z.record(z.any()).optional(),
+          metadata: z.record(z.string(), z.any()).optional(),
         })
         .strict()
     },

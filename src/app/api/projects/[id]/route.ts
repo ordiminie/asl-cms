@@ -59,7 +59,7 @@ export const PUT = withDynamicUserAuth(
         return NextResponse.json(
           {
             error: 'Données invalides',
-            details: validation.error.errors,
+            details: validation.error.issues,
           },
           {status: 400}
         )

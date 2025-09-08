@@ -12,8 +12,7 @@ export const taskFormSchema = z.object({
     .trim()
     .optional(),
   status: z.enum(['todo', 'in_progress', 'done'] as const, {
-    required_error: 'Le statut est requis',
-    invalid_type_error: 'Statut invalide',
+    message: 'Le statut est requis',
   }),
   assignedTo: z.string().optional().or(z.literal('unassigned')),
   organizationId: z.string().min(1, "L'organisation est requise"),

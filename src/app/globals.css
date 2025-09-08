@@ -255,12 +255,12 @@
 
 /* Styles pour les tableaux GFM */
 .milkdown-wrapper .ProseMirror table {
-  @apply border-collapse border border-border my-4 w-full;
+  @apply border-border my-4 w-full border-collapse border;
 }
 
 .milkdown-wrapper .ProseMirror th,
 .milkdown-wrapper .ProseMirror td {
-  @apply border border-border px-3 py-2 text-left;
+  @apply border-border border px-3 py-2 text-left;
 }
 
 .milkdown-wrapper .ProseMirror th {
@@ -280,7 +280,7 @@
   @apply list-none;
 }
 
-.milkdown-wrapper .ProseMirror .task-list-item input[type="checkbox"] {
+.milkdown-wrapper .ProseMirror .task-list-item input[type='checkbox'] {
   @apply mr-2;
 }
 

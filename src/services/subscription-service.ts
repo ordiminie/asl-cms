@@ -1233,7 +1233,10 @@ export const getAdminStripeSubscriptionMRRService =
       totalActiveSubscriptions: validSubscriptions.length,
       newSubscriptionsThisMonth: newSubsCount,
       subscriptionGrowthPercent,
-      subscriptionGrowth,
+      subscriptionGrowth: subscriptionGrowth as {
+        month: string
+        count: number
+      }[],
       planBreakdowns: planBreakdownsArray,
       monthlyMRR,
       yearlyMRR,

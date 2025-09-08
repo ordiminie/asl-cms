@@ -92,9 +92,9 @@ await inngest.send({
     user: {
       id: '123',
       email: 'user@example.com',
-      name: 'John Doe'
-    }
-  }
+      name: 'John Doe',
+    },
+  },
 })
 ```
 
@@ -103,11 +103,13 @@ await inngest.send({
 ### Démarrer les serveurs
 
 1. **Serveur Next.js** :
+
 ```bash
 pnpm dev
 ```
 
 2. **Serveur de développement Inngest** :
+
 ```bash
 pnpm dlx inngest-cli@latest dev
 ```
@@ -117,6 +119,7 @@ Le serveur Inngest démarre sur `http://localhost:8288` et se connecte automatiq
 ### Interface de développement
 
 L'interface Inngest permet de :
+
 - Visualiser toutes les fonctions enregistrées
 - Voir l'historique des exécutions
 - Tester les fonctions manuellement
@@ -140,7 +143,7 @@ await step.sleep('wait', '5m')
 // Envoyer un événement
 await step.sendEvent('trigger-next', {
   name: 'next/event',
-  data: {id: 123}
+  data: {id: 123},
 })
 ```
 
@@ -182,7 +185,7 @@ export const processSubscription = inngest.createFunction(
     const organization = await step.run('create-organization', async () => {
       return await createOrganizationService({
         name: subscription.customer_name,
-        stripeSubscriptionId: subscription.id
+        stripeSubscriptionId: subscription.id,
       })
     })
 
@@ -191,7 +194,7 @@ export const processSubscription = inngest.createFunction(
       return await sendEmail({
         to: subscription.customer_email,
         template: 'subscription-created',
-        data: {organization}
+        data: {organization},
       })
     })
 
@@ -199,7 +202,7 @@ export const processSubscription = inngest.createFunction(
     await step.sendEvent('schedule-reminder', {
       name: 'trial/reminder',
       data: {organizationId: organization.id},
-      ts: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Dans 7 jours
+      ts: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Dans 7 jours
     })
 
     return {organizationId: organization.id}
@@ -232,7 +235,9 @@ export const dailyCleanup = inngest.createFunction(
 ## Bonnes pratiques
 
 ### Nommage des événements
+
 Utilisez la convention `category/action` :
+
 - ✅ `user/created`
 - ✅ `payment/succeeded`
 - ✅ `organization/updated`
@@ -240,6 +245,7 @@ Utilisez la convention `category/action` :
 - ❌ `payment-success`
 
 ### Types TypeScript
+
 Définissez des types pour vos événements :
 
 ```typescript
@@ -265,12 +271,14 @@ type PaymentSucceededEvent = {
 ```
 
 ### Utilisation des steps
+
 - Divisez la logique complexe en étapes distinctes
 - Nommez clairement chaque step
 - Utilisez `step.run()` pour les opérations qui peuvent échouer
 - Utilisez `step.sleep()` pour les délais
 
 ### Gestion des données sensibles
+
 ```typescript
 export const processPayment = inngest.createFunction(
   {id: 'process-payment'},
@@ -290,6 +298,7 @@ export const processPayment = inngest.createFunction(
 ## Debugging
 
 ### Logs
+
 Utilisez `console.log` dans vos fonctions pour le debugging :
 
 ```typescript
@@ -298,14 +307,14 @@ export const debugFunction = inngest.createFunction(
   {event: 'debug/test'},
   async ({event, step}) => {
     console.log('Function started with data:', event.data)
-    
+
     const result = await step.run('process', async () => {
       console.log('Processing step started')
       // Logique ici
       console.log('Processing step completed')
       return 'done'
     })
-    
+
     console.log('Function completed:', result)
     return result
   }
@@ -313,6 +322,7 @@ export const debugFunction = inngest.createFunction(
 ```
 
 ### Interface de développement
+
 - Utilisez `http://localhost:8288` pour voir l'état des fonctions
 - Consultez les logs d'exécution
 - Testez manuellement les fonctions avec des données fictives
@@ -320,6 +330,7 @@ export const debugFunction = inngest.createFunction(
 ## Déploiement
 
 En production, assurez-vous que :
+
 1. Les variables d'environnement Inngest sont configurées
 2. L'endpoint `/api/inngest` est accessible
 3. Les fonctions sont correctement enregistrées
@@ -340,6 +351,7 @@ Lors de l'inscription d'un utilisateur (via `registerCredentialAction`), un év�
 #### 2. Fonction Inngest
 
 La fonction `sendWelcomeFollowUpEmail` :
+
 - Attend 24 heures (`step.sleep('wait-24-hours', '24h')`)
 - Utilise le service d'email dédié
 - Envoie l'email via Resend avec le template React
@@ -347,6 +359,7 @@ La fonction `sendWelcomeFollowUpEmail` :
 #### 3. Template d'email
 
 Le template `WelcomeFollowUpEmail` :
+
 - Email responsive avec Tailwind CSS
 - Support multilingue (fr, en, es)
 - CTA vers le dashboard
@@ -414,7 +427,7 @@ export const sendWelcomeFollowUpEmail = inngest.createFunction(
     // Envoyer l'email de suivi
     await step.run('send-follow-up-email', async () => {
       const appUrl = env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      
+
       return await sendWelcomeFollowUpEmailService({
         email: userData.email,
         userName: userData.name,
@@ -481,7 +494,7 @@ export async function registerCredentialAction() {
       })
     }
   } catch (error) {
-    console.error('Erreur lors du déclenchement de l\'email de suivi:', error)
+    console.error("Erreur lors du déclenchement de l'email de suivi:", error)
   }
 }
 ```
@@ -552,6 +565,7 @@ Ajouter dans `messages/fr.json` :
 ### Monitoring
 
 L'interface Inngest (`http://localhost:8288`) permet de :
+
 - Voir toutes les exécutions
 - Rejouer une fonction en cas d'échec
 - Tester avec des données personnalisées
@@ -560,6 +574,7 @@ L'interface Inngest (`http://localhost:8288`) permet de :
 ### Fonctionnalités futures
 
 Idées d'amélioration :
+
 - Email de rappel si l'utilisateur n'a pas activé son compte
 - Série d'emails d'onboarding (J+1, J+3, J+7)
 - Email personnalisé selon le plan d'abonnement

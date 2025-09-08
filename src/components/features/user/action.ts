@@ -3,6 +3,7 @@
 import {revalidatePath} from 'next/cache'
 import {headers} from 'next/headers'
 import {getTranslations} from 'next-intl/server'
+import z from 'zod'
 
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {auth} from '@/lib/better-auth/auth'
@@ -112,12 +113,12 @@ export async function updateUserAction(
 
   if (!validationResult.success) {
     // Récupérer les messages d'erreur traduits
-    const errorMessages = validationResult.error.errors
+    const errorMessages = validationResult.error.issues
       .map((err) => `${err.path.join('.')}: ${err.message}`)
       .join(', ')
     console.log('errorMessages', errorMessages)
     const validationErrors: ValidationError[] =
-      validationResult.error.errors.map((err) => ({
+      validationResult.error.issues.map((err) => ({
         field: err.path[0] as keyof UserFormSchemaType,
         message: err.message, // Message déjà traduit par errorMap
       }))
@@ -158,8 +159,8 @@ export async function updateUserAction(
       return {
         success: false,
         message: `${t('form.validationFailed')}: ${error.message}`,
-        errors: error.zodErrorFields?.errors.map((err) => ({
-          field: err.path[0] as keyof typeof userFormSchema._type,
+        errors: error.zodErrorFields?.issues.map((err) => ({
+          field: err.path[0] as keyof z.infer<typeof userFormSchema>,
           message: err.message,
         })),
       }
@@ -271,7 +272,7 @@ export async function updateUserSettingsAction(
   const validationResult = settingsFormSchema.safeParse(settingsData)
 
   if (!validationResult.success) {
-    const validationErrors = validationResult.error.errors.map((err) => ({
+    const validationErrors = validationResult.error.issues.map((err) => ({
       field: err.path[0] as keyof SettingsFormSchemaType,
       message: err.message,
     }))
@@ -314,7 +315,7 @@ export async function update2FAAction(
   const validationResult = twoFactorFormSchema.safeParse(twoFactorData)
 
   if (!validationResult.success) {
-    const validationErrors = validationResult.error.errors.map((err) => ({
+    const validationErrors = validationResult.error.issues.map((err) => ({
       field: err.path[0] as keyof TwoFactorFormSchemaType,
       message: err.message,
     }))
@@ -488,7 +489,7 @@ export async function changePasswordAction(
   const validationResult = changePasswordFormSchema.safeParse(passwordData)
 
   if (!validationResult.success) {
-    const validationErrors = validationResult.error.errors.map((err) => ({
+    const validationErrors = validationResult.error.issues.map((err) => ({
       field: err.path[0] as keyof ChangePasswordFormSchemaType,
       message: err.message,
     }))
@@ -580,7 +581,7 @@ export async function changeEmailAction(
   const validationResult = changeEmailFormSchema.safeParse(emailData)
 
   if (!validationResult.success) {
-    const validationErrors = validationResult.error.errors.map((err) => ({
+    const validationErrors = validationResult.error.issues.map((err) => ({
       field: err.path[0] as keyof ChangeEmailFormSchemaType,
       message: err.message,
     }))

@@ -157,7 +157,7 @@ Compte principal → Connect Account SaaS1
 ```typescript
 // saas1.com - Configuration
 const stripeClient1 = new Stripe(process.env.STRIPE_SECRET_KEY_SAAS1!, {
-  apiVersion: '2025-06-30.basil',
+  apiVersion: '2025-07-30.basil',
 })
 
 export const auth = betterAuth({
@@ -178,7 +178,7 @@ export const auth = betterAuth({
 ```typescript
 // saas2.com - Configuration
 const stripeClient2 = new Stripe(process.env.STRIPE_SECRET_KEY_SAAS2!, {
-  apiVersion: '2025-06-30.basil',
+  apiVersion: '2025-07-30.basil',
 })
 
 export const auth = betterAuth({

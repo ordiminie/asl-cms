@@ -91,8 +91,8 @@ export const basePlanServiceSchema = z.object({
 
 export const createPlanServiceSchema = basePlanServiceSchema.extend({
   annualDiscountPriceId: z.string().optional(),
-  limits: z.record(z.unknown()).optional(), // JSON flexible pour les limites
-  freeTrial: z.record(z.unknown()).optional(), // JSON flexible pour le trial
+  limits: z.record(z.string(), z.unknown()).optional(), // JSON flexible pour les limites
+  freeTrial: z.record(z.string(), z.unknown()).optional(), // JSON flexible pour le trial
   features: z.array(z.unknown()).optional(), // Array JSON flexible
   description: z
     .string()
@@ -163,8 +163,8 @@ export const updatePlanServiceSchema = z.object({
     })
     .optional(),
   annualDiscountPriceId: z.string().optional(),
-  limits: z.record(z.unknown()).optional(),
-  freeTrial: z.record(z.unknown()).optional(),
+  limits: z.record(z.string(), z.unknown()).optional(),
+  freeTrial: z.record(z.string(), z.unknown()).optional(),
   features: z.array(z.unknown()).optional(),
   description: z
     .string()

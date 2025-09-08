@@ -4,6 +4,7 @@ import {useTranslations} from 'next-intl'
 import React from 'react'
 import {useActionState} from 'react'
 import {useFormStatus} from 'react-dom'
+import {z} from 'zod'
 
 import {loginCredentialAction} from '@/app/[locale]/(auth)/action'
 import {authLoginFormSchema} from '@/components/features/auth/auth-form-validation'
@@ -13,7 +14,7 @@ import {Label} from '@/components/ui/label'
 import {env} from '@/env'
 
 type LoginValidationError = {
-  field: keyof typeof authLoginFormSchema._type
+  field: keyof z.infer<typeof authLoginFormSchema>
   message: string
 }
 

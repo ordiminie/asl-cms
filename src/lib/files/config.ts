@@ -8,7 +8,7 @@ const fileConfigSchema = z.object({
   allowedMimeTypes: z
     .array(z.string())
     .default(['image/jpeg', 'image/png', 'image/gif', 'application/pdf']),
-  basePath: z.record(z.string()).default({
+  basePath: z.record(z.string(), z.string()).default({
     development: 'dev',
     production: 'prod',
   }),

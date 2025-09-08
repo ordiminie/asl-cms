@@ -13,24 +13,28 @@ Le projet utilise **Drizzle ORM** avec **PostgreSQL** pour une architecture robu
 Le projet supporte plusieurs providers PostgreSQL :
 
 #### Vercel Postgres (Recommandé pour Vercel)
+
 ```bash
 # Dashboard Vercel → Storage → Create Database
 DATABASE_URL="postgres://default:password@host-pooler.vercel-storage.vercel.app:5432/verceldb?sslmode=require"
 ```
 
 #### Neon (Gratuit avec plan généreux)
+
 ```bash
 # Console Neon → Create Project
 DATABASE_URL="postgresql://user:password@host.neon.tech/database?sslmode=require"
 ```
 
 #### Supabase (Full-stack alternative)
+
 ```bash
 # Dashboard Supabase → SQL Editor
 DATABASE_URL="postgresql://postgres:password@host.supabase.co:5432/postgres?sslmode=require"
 ```
 
 #### Railway (Simple et rapide)
+
 ```bash
 # Railway → New Project → PostgreSQL
 DATABASE_URL="postgresql://postgres:password@host.railway.app:5432/railway"
@@ -78,6 +82,7 @@ src/db/
 ### Conventions de Modélisation
 
 #### Utilisation des Enums PostgreSQL
+
 ```typescript
 // Définir des enums stricts
 export const themeEnum = pgEnum('theme_type', ['light', 'dark', 'system'])
@@ -85,7 +90,9 @@ export const roleEnum = pgEnum('role_type', ['public', 'user', 'admin'])
 
 // Utiliser dans les tables
 export const user = pgTable('user', {
-  id: uuid('id').default(sql`uuid_generate_v4()`).primaryKey(),
+  id: uuid('id')
+    .default(sql`uuid_generate_v4()`)
+    .primaryKey(),
   role: roleEnum('role').notNull().default('user'),
   theme: themeEnum('theme').default('system'),
   // ...
@@ -93,6 +100,7 @@ export const user = pgTable('user', {
 ```
 
 #### Relations Explicites
+
 ```typescript
 // Définir les relations
 export const userRelations = relations(user, ({one, many}) => ({
@@ -106,6 +114,7 @@ export const userRelations = relations(user, ({one, many}) => ({
 ```
 
 #### Types TypeScript Automatiques
+
 ```typescript
 // Types générés automatiquement par Drizzle
 export type User = typeof user.$inferSelect
@@ -137,6 +146,7 @@ pnpm db:reset-seed     # Clear + Push + Seed
 ### Détail des Commandes
 
 #### `db:generate` - Génération des Migrations
+
 ```bash
 # Génère les fichiers de migration dans drizzle/migrations/
 pnpm db:generate
@@ -149,6 +159,7 @@ pnpm db:generate
 ⚠️ **Quand utiliser** : Après modification des modèles, quand le schéma est stable (avant livraison en production).
 
 #### `db:migrate` - Application des Migrations
+
 ```bash
 # Applique toutes les migrations non appliquées
 pnpm db:migrate
@@ -158,6 +169,7 @@ pnpm db:migrate
 ```
 
 #### `db:reset-seed` - Reset Complet
+
 ```bash
 # Détruit tout, reconstruit le schéma et insère les données
 pnpm db:reset-seed
@@ -173,6 +185,7 @@ pnpm db:clear && pnpm db:push && pnpm db:seed
 ### Développement Local
 
 #### Étape 1 : Initialisation
+
 ```bash
 # 1. Créer la base de données sur votre provider
 # 2. Configurer DATABASE_URL dans .env.development
@@ -188,6 +201,7 @@ pnpm db:seed
 ```
 
 #### Étape 2 : Modification des Modèles
+
 ```bash
 # 1. Modifier les fichiers dans src/db/models/
 # Exemple : Ajouter une nouvelle colonne
@@ -204,6 +218,7 @@ pnpm db:reset-seed
 ```
 
 #### Étape 3 : Cas d'Urgence (État Instable)
+
 ```bash
 # Si la base est dans un état incohérent
 pnpm db:reset-seed
@@ -217,12 +232,14 @@ pnpm db:reset-seed
 ### Bonnes Pratiques de Développement
 
 #### Quand Générer des Migrations
+
 - ✅ **Avant chaque livraison** en production
 - ✅ **Après finalisation** d'une fonctionnalité
 - ✅ **Quand le modèle est stable** et testé
 - ❌ **Pas à chaque petit changement** en développement
 
 #### Workflow Recommandé
+
 ```bash
 # Développement itératif rapide
 pnpm db:push           # Synchronisation directe sans migration
@@ -247,6 +264,7 @@ pnpm db:migrate        # Appliquer proprement
 ```
 
 #### Configuration des Secrets GitHub
+
 ```bash
 # Repository Settings → Secrets → Actions
 DATABASE_URL=postgresql://user:pass@preview-host/db
@@ -269,6 +287,7 @@ STRIPE_SECRET_KEY=sk_test_...
 ### Variables d'Environnement Requises
 
 #### Développement
+
 ```bash
 DATABASE_URL="postgresql://localhost:5432/myapp_dev"
 BETTER_AUTH_SECRET="dev-secret-key"
@@ -276,6 +295,7 @@ STRIPE_SECRET_KEY="sk_test_..."
 ```
 
 #### Production
+
 ```bash
 DATABASE_URL="postgresql://prod-host/db?sslmode=require"
 BETTER_AUTH_SECRET="prod-secret-key"
@@ -290,6 +310,7 @@ STRIPE_WEBHOOK_SECRET="whsec_..."
 Le script `seed.ts` insère des données complètes pour le développement :
 
 #### Données Générées
+
 - **4 plans d'abonnement** : Free, Pro, Enterprise, Lifetime
 - **14 utilisateurs** avec rôles variés (user, admin, etc.)
 - **4 organisations** avec structures de membres
@@ -298,6 +319,7 @@ Le script `seed.ts` insère des données complètes pour le développement :
 - **22 notifications** avec métadonnées typées
 
 #### Protection Production
+
 ```typescript
 // Le seed refuse de s'exécuter en production
 if (process.env.NODE_ENV === 'production') {
@@ -318,6 +340,7 @@ const envFile = `.env.${process.env.NODE_ENV || 'development'}`
 ## 7. Monitoring et Diagnostic
 
 ### Vérification de Santé
+
 ```bash
 # Test de connexion avec métriques
 pnpm db:check
@@ -329,6 +352,7 @@ pnpm db:check
 ```
 
 ### Interface Graphique
+
 ```bash
 # Lancer Drizzle Studio
 pnpm db:studio
@@ -338,19 +362,21 @@ pnpm db:studio
 ```
 
 ### Configuration du Pool de Connexions
+
 ```typescript
 // src/db/models/db.ts
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20,                        // Maximum 20 connexions
-  idleTimeoutMillis: 30_000,      // 30s timeout
-  connectionTimeoutMillis: 10_000  // 10s connection timeout
+  max: 20, // Maximum 20 connexions
+  idleTimeoutMillis: 30_000, // 30s timeout
+  connectionTimeoutMillis: 10_000, // 10s connection timeout
 })
 ```
 
 ## 8. Sécurité et Bonnes Pratiques
 
 ### Protection des Environnements
+
 ```typescript
 // Protection contre l'exécution en test
 if (process.env.NODE_ENV === 'test') {
@@ -359,9 +385,10 @@ if (process.env.NODE_ENV === 'test') {
 ```
 
 ### Validation des Variables
+
 ```typescript
 // Utilisation de Zod pour valider les variables d'environnement
-import { z } from 'zod'
+import {z} from 'zod'
 
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
@@ -372,7 +399,9 @@ const env = envSchema.parse(process.env)
 ```
 
 ### Migrations Irréversibles
+
 ⚠️ **Attention** : Les migrations Drizzle sont unidirectionnelles. Toujours :
+
 - Tester les migrations sur un environnement de preview
 - Faire un backup avant les migrations critiques
 - Avoir un plan de rollback manuel si nécessaire
@@ -380,6 +409,7 @@ const env = envSchema.parse(process.env)
 ## 9. Dépannage Courant
 
 ### Erreurs de Connexion
+
 ```bash
 # Vérifier la connexion
 pnpm db:check
@@ -392,6 +422,7 @@ pnpm db:check
 ```
 
 ### État Incohérent de la Base
+
 ```bash
 # Solution rapide (développement)
 pnpm db:reset-seed
@@ -403,6 +434,7 @@ pnpm db:migrate       # Appliquer les corrections
 ```
 
 ### Migrations Bloquées
+
 ```bash
 # Vérifier l'état des migrations
 SELECT * FROM __drizzle_migrations;
@@ -417,9 +449,12 @@ pnpm db:push
 ### Ajouter un Nouveau Modèle
 
 1. **Créer le fichier** : `src/db/models/mon-model.ts`
+
 ```typescript
 export const monModel = pgTable('mon_model', {
-  id: uuid('id').default(sql`uuid_generate_v4()`).primaryKey(),
+  id: uuid('id')
+    .default(sql`uuid_generate_v4()`)
+    .primaryKey(),
   name: text('name').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
 })
@@ -430,24 +465,24 @@ export const monModelRelations = relations(monModel, ({one}) => ({
 ```
 
 2. **Exporter dans db.ts**
+
 ```typescript
-export { monModel } from './mon-model'
+export {monModel} from './mon-model'
 ```
 
 3. **Générer et migrer**
+
 ```bash
 pnpm db:generate
 pnpm db:migrate
 ```
 
 ### Personnaliser le Seed
+
 ```typescript
 // src/db/scripts/seed.ts
 // Ajouter vos propres données de test
-await db.insert(monModel).values([
-  { name: 'Test 1' },
-  { name: 'Test 2' },
-])
+await db.insert(monModel).values([{name: 'Test 1'}, {name: 'Test 2'}])
 ```
 
 Ce workflow Drizzle offre une expérience de développement moderne et type-safe, avec une intégration fluide entre développement local, preview et production.

@@ -1,11 +1,10 @@
 import {GoogleAnalytics} from '@next/third-parties/google'
 import {NextIntlClientProvider} from 'next-intl'
-import {getTranslations, setRequestLocale} from 'next-intl/server'
+import {setRequestLocale} from 'next-intl/server'
 import React, {ReactNode} from 'react'
 
 import {AppProviders} from '@/components/context/app-providers'
 import {env} from '@/env'
-import {routing} from '@/i18n/routing'
 
 type Props = {
   children: ReactNode
@@ -28,27 +27,4 @@ export default async function BaseLayout({children, locale}: Props) {
       )}
     </html>
   )
-}
-
-// Déplacer generateMetadata après le composant principal
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{locale: string}>
-}) {
-  const paramsStore = await params
-  const locale = paramsStore.locale
-
-  // Configurer la locale avant getTranslations
-  setRequestLocale(locale)
-  const t = await getTranslations({locale, namespace: 'LocaleLayout'})
-
-  return {
-    title: t('title'),
-    description: t('description'),
-  }
-}
-
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({locale}))
 }

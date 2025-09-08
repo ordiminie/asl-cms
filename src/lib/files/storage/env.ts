@@ -8,7 +8,7 @@ const envSchema = z.object({
     .default('development'),
   STORAGE_TYPE: z.enum(['supabase', 's3']).default('supabase'),
   SUPABASE_BUCKET: z.string().min(1),
-  NEXT_PUBLIC_MAX_FILE_SIZE: z.number().transform(Number).default(5242880), // 5MB
+  NEXT_PUBLIC_MAX_FILE_SIZE: z.number().default(5242880), // 5MB
   ALLOWED_MIME_TYPES: z
     .string()
     .default('image/jpeg,image/png,image/gif,application/pdf'),
