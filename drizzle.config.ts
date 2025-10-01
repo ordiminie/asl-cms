@@ -5,8 +5,6 @@ import initDotEnv from './src/db/scripts/env'
 
 initDotEnv()
 
-console.log('drizzle.config.ts env DATABASE_URL', process.env.DATABASE_URL)
-
 export default defineConfig({
   schema: './src/db/models/*',
   out: './drizzle/migrations',

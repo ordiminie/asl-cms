@@ -1,6 +1,6 @@
 import {NotAutorized} from '@/components/not-autorized'
 
-export default function Home() {
+export default function Forbidden() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <NotAutorized />

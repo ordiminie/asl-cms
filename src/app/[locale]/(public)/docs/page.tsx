@@ -2,7 +2,7 @@ import type {Metadata} from 'next'
 import Link from 'next/link'
 import {notFound} from 'next/navigation'
 
-import {PagesConst} from '@/env'
+import {env, PagesConst} from '@/env'
 import {getRulesByCategory} from '@/lib/helper/docs.server'
 import {isPageEnabled} from '@/lib/utils'
 
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function DocsPage() {
-  if (!isPageEnabled(PagesConst.DOCS)) {
+  if (!isPageEnabled(PagesConst.DOCS) || env.NODE_ENV !== 'development') {
     return notFound()
   }
 

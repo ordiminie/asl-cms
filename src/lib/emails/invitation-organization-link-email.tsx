@@ -49,10 +49,7 @@ export default async function InvitationOrganizationLinkMail({
                 </Text>
                 <Text className="text-base">{t('acceptInvitation')}</Text>
                 <Text className="text-base">
-                  <Link
-                    className="text-sky-500 hover:cursor-pointer hover:underline"
-                    href={inviteLink}
-                  >
+                  <Link className="text-sky-500 underline" href={inviteLink}>
                     {t('clickToAccept')}
                   </Link>
                 </Text>

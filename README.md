@@ -5,9 +5,13 @@ Un boilerplate moderne pour les applications SaaS utilisant Next.js 15, React 19
 ## Todo
 
 - homepage
+- se connecter link sur register
 - admin - Affilites
 - admin - Analytics
+- role assigment : http://localhost:3000/en/docs/authorization/roles
+- better withauth : http://localhost:3000/en/docs/authorization/route-protection
 - MCP
+- upfetch
 
 ## Technologies
 

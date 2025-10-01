@@ -1,0 +1,64 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "src/app/**/page.{tsx,ts}",
+    "src/app/**/layout.{tsx,ts}",
+    "src/app/**/route.{ts,tsx}",
+    "src/app/**/error.{tsx,ts}",
+    "src/app/**/loading.{tsx,ts}",
+    "src/app/**/not-found.{tsx,ts}",
+    "src/app/**/forbidden.{tsx,ts}",
+    "src/middleware.ts",
+    "next.config.{js,ts}",
+    "src/env.{js,ts}",
+    "src/db/scripts/*.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx,js,jsx}",
+    "!src/**/*.{test,spec}.{ts,tsx,js,jsx}",
+    "!src/**/*.stories.{ts,tsx,js,jsx}",
+    "!src/**/__tests__/**",
+    "!**/*.d.ts"
+  ],
+  "ignore": [
+    "src/app/**/page.{tsx,ts}",
+    "src/app/**/layout.{tsx,ts}",
+    "src/app/**/route.{ts,tsx}",
+    "src/app/**/error.{tsx,ts}",
+    "src/app/**/loading.{tsx,ts}",
+    "src/app/**/not-found.{tsx,ts}",
+    "src/app/**/forbidden.{tsx,ts}",
+    "src/middleware.ts",
+    "src/app/favicon.ico",
+    "src/app/robots.txt",
+    "src/app/sitemap.xml",
+    "src/app/manifest.json",
+    "**/*.config.{js,ts,mjs}",
+    "**/*.d.ts",
+    "src/env.ts",
+    "src/db/scripts/*.ts",
+    "scripts/**/*",
+    ".claude/**/*"
+  ],
+  "ignoreDependencies": ["@next/eslint-plugin-next", "@tailwindcss/typography"],
+  "ignoreBinaries": ["stripe"],
+  "ignoreExportsUsedInFile": true,
+  "includeEntryExports": false,
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/app/**/page.{tsx,ts}",
+        "src/app/**/layout.{tsx,ts}",
+        "src/app/**/route.{ts,tsx}",
+        "src/app/**/error.{tsx,ts}",
+        "src/app/**/loading.{tsx,ts}",
+        "src/app/**/not-found.{tsx,ts}",
+        "src/app/**/forbidden.{tsx,ts}",
+        "src/middleware.ts",
+        "next.config.{js,ts}",
+        "src/env.{js,ts}",
+        "src/db/scripts/*.ts"
+      ]
+    }
+  }
+}

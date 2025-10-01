@@ -37,10 +37,7 @@ export default async function VerificationEmail({url}: VerificationMailProps) {
               <Section className="my-4">
                 <Text className="text-base">{t('welcomeMessage')}</Text>
                 <Text className="text-base">
-                  <Link
-                    className="text-sky-500 hover:cursor-pointer hover:underline"
-                    href={url}
-                  >
+                  <Link className="text-sky-500 underline" href={url}>
                     {t('clickToVerify')}
                   </Link>
                 </Text>

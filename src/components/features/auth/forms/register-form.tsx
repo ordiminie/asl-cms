@@ -333,19 +333,18 @@ export function RegisterForm({
                   >
                     {isSubmitting ? t('form.submitting') : t('form.submit')}
                   </Button>
-
-                  <div className="text-center text-sm">
-                    {t('alreadyAccount')}{' '}
-                    <Link
-                      href="/login"
-                      className="underline underline-offset-4"
-                    >
-                      {t('loginLink')}
-                    </Link>
-                  </div>
                 </form>
               </Form>
             ) : null}
+
+            {!isMagicLink && (
+              <div className="text-center text-sm">
+                {t('alreadyAccount')}{' '}
+                <Link href="/login" className="underline underline-offset-4">
+                  {t('loginLink')}
+                </Link>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

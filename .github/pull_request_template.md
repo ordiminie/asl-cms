@@ -83,12 +83,15 @@ Cochez les domaines concernés :
 <!-- Si la PR affecte l'interface utilisateur, ajoutez des captures d'écran -->
 
 ### Avant
+
 <!-- Capture d'écran ou description de l'état précédent -->
 
 ### Après
+
 <!-- Capture d'écran ou description du nouvel état -->
 
 ### Version mobile (si applicable)
+
 <!-- Capture d'écran mobile si l'UI est affectée -->
 
 ## Notes supplémentaires
@@ -98,6 +101,7 @@ Cochez les domaines concernés :
 ## Checklist pour la revue
 
 ### Pour l'auteur
+
 - [ ] J'ai testé ces changements localement
 - [ ] J'ai vérifié que tous les tests passent
 - [ ] J'ai mis à jour la documentation si nécessaire
@@ -105,6 +109,7 @@ Cochez les domaines concernés :
 - [ ] Les messages de commit suivent les conventions du projet
 
 ### Pour les reviewers
+
 - [ ] Le code est clair et compréhensible
 - [ ] Les changements respectent l'architecture en couches
 - [ ] La logique métier est correctement implémentée
@@ -120,7 +125,7 @@ Cochez les domaines concernés :
 
 ---
 
-<!-- 
+<!--
 Instructions pour remplir ce template :
 1. Remplissez toutes les sections applicables
 2. Cochez toutes les cases pertinentes

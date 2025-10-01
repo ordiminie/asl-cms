@@ -2,7 +2,7 @@ import {createSupabaseStorage} from './supabase-storage'
 import {StorageConfig, StorageOperations} from './types'
 
 export type StorageType = 'supabase' | 's3'
-
+//todo adapter
 export const createStorage = (
   type: StorageType,
   config: StorageConfig
