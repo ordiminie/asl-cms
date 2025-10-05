@@ -1,6 +1,7 @@
 import {Suspense} from 'react'
 
 import {PostsSkeleton} from '@/components/features/admin/blog/posts-skeleton'
+import {withAuthAdmin} from '@/components/features/auth/with-auth'
 
 import PostsContent from './posts-content'
 
@@ -12,11 +13,7 @@ type SearchParamsType = Promise<{
   categoryId?: string
 }>
 
-export default async function AdminBlogPage({
-  searchParams,
-}: {
-  searchParams: SearchParamsType
-}) {
+async function AdminBlogPage({searchParams}: {searchParams: SearchParamsType}) {
   const params = await searchParams
   const suspenseKey = `page=${params.page || '1'}-limit=${params.limit || '10'}-search=${params.search || ''}-status=${params.status || ''}-categoryId=${params.categoryId || ''}`
 
@@ -28,3 +25,5 @@ export default async function AdminBlogPage({
     </div>
   )
 }
+
+export default withAuthAdmin(AdminBlogPage)

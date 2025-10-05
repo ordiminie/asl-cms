@@ -3,6 +3,7 @@ import {notFound} from 'next/navigation'
 import {getPostFilesDal} from '@/app/dal/file-dal'
 import {getAllCategoriesDal, getAllHashtagsDal} from '@/app/dal/post-dal'
 import {PostForm} from '@/components/features/admin/blog/post-form'
+import {withAuthAdmin} from '@/components/features/auth/with-auth'
 import {canUpdatePost} from '@/services/authorization/post-authorization'
 import {getPostByIdWithRelationsService} from '@/services/facades/post-service-facade'
 
@@ -10,7 +11,7 @@ type PageProps = {
   params: Promise<{id: string}>
 }
 
-export default async function EditPostPage({params}: PageProps) {
+async function EditPostPage({params}: PageProps) {
   const {id} = await params
 
   // Récupération du post avec ses relations
@@ -57,3 +58,5 @@ export default async function EditPostPage({params}: PageProps) {
     </div>
   )
 }
+
+export default withAuthAdmin(EditPostPage)

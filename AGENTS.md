@@ -1,5 +1,29 @@
 # Repository Guidelines
 
+## Code Generation Prerequisites
+
+Before generating ANY new code, you **MUST** complete these two verification steps:
+
+1. **Check Existing Codebase Patterns**
+   Find and analyze **at least three existing examples** of similar functionality in the codebase. Look for:
+   - Similar components, functions, or modules
+   - Existing patterns that solve comparable problems
+   - Code structure and conventions already in use
+
+   If no such examples exist, explicitly state that fact before proceeding.
+
+2. **Check .cursor/rules Directory**
+   Review the `.cursor/rules/` folder to verify if a predefined rule exists for the task at hand:
+   - Check `00-generals/` for general technical guidelines
+   - Check `01-presentation/` for UI/frontend patterns
+   - Check `02-services/` for business logic patterns
+   - Check `03-persistance/` for database patterns
+
+   If a rule exists, you **MUST** follow it exactly. If no rule exists, mention this before proposing a solution.
+
+**Until both verifications are complete, do NOT proceed with implementation.**
+Every new feature must be analyzed against existing rules and codebase patterns before any code is written. Always propose an implementation plan and wait for approval before coding.
+
 ## Project Structure & Module Organization
 
 Application code lives in `src`; Next.js routes sit under `src/app` and shared UI components in `src/components`. Utilities and cross-cutting helpers belong in `src/lib`, while database schemas and migrations live in `drizzle` with supporting scripts in `src/db/scripts`. End-to-end Playwright scenarios are under `e2e`, docs for subsystems (auth, Stripe, Inngest) reside in `docs`, shared assets in `public`, and automation helpers in `scripts`.

@@ -4,8 +4,9 @@ import {
   getPostPermissionsDal,
 } from '@/app/dal/post-dal'
 import {PostForm} from '@/components/features/admin/blog/post-form'
+import {withAuthAdmin} from '@/components/features/auth/with-auth'
 
-export default async function NewPostPage() {
+async function NewPostPage() {
   // Vérifications des permissions
   const permissions = await getPostPermissionsDal()
 
@@ -44,3 +45,5 @@ export default async function NewPostPage() {
     </div>
   )
 }
+
+export default withAuthAdmin(NewPostPage)

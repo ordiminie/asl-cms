@@ -138,10 +138,6 @@ const seed = async () => {
   await client.query(`
     INSERT INTO "user" (email, name, email_verified, image, visibility, role)
     VALUES
-      -- Cas spéciaux Mike Codeur
-      ('admin@mikecodeur.com', 'Mike Codeur', true, 'https://www.gravatar.com/avatar/ed8d664fa6324576c806b9ee59c302c6', 'private', 'admin'),
-      ('ons@mikecodeur.com', 'Ons', true, 'https://randomuser.me/api/portraits/med/women/8.jpg', 'public', 'admin'),
-      
       -- Rôles globaux purs (sans organisations)
       ('superadmin@gmail.com', 'Frank', true, 'https://randomuser.me/api/portraits/med/men/9.jpg', 'public', 'super_admin'),
       ('admin@gmail.com', 'Admin', true, 'https://randomuser.me/api/portraits/med/men/4.jpg', 'public', 'admin'),
@@ -185,8 +181,6 @@ const seed = async () => {
       NOW() as "updated_at"
     FROM "user" u
     WHERE u.email IN (
-      'admin@mikecodeur.com',
-      'ons@mikecodeur.com',
       'superadmin@gmail.com',
       'admin@gmail.com',
       'moderator@gmail.com',
@@ -222,45 +216,33 @@ const seed = async () => {
     SELECT 
       u.id as "user_id",
       CASE 
-        WHEN u.email = 'admin@mikecodeur.com' THEN 'dark'
-        WHEN u.email = 'ons@mikecodeur.com' THEN 'light'
         WHEN u.email = 'superadmin@gmail.com' THEN 'system'
-        WHEN u.email = 'admin@gmail.com' THEN 'dark'
+        ELSE 'dark'
       END::theme_type as "theme",
       CASE 
-        WHEN u.email = 'admin@mikecodeur.com' THEN 'fr'
-        WHEN u.email = 'ons@mikecodeur.com' THEN 'fr'
         WHEN u.email = 'superadmin@gmail.com' THEN 'en'
-        WHEN u.email = 'admin@gmail.com' THEN 'fr'
+        ELSE 'fr'
       END::language_type as "language",
       'Europe/Paris' as "timezone",
       CASE 
-        WHEN u.email = 'admin@mikecodeur.com' THEN 'totp'
-        WHEN u.email = 'ons@mikecodeur.com' THEN 'otp'
         WHEN u.email = 'superadmin@gmail.com' THEN 'totp'
-        WHEN u.email = 'admin@gmail.com' THEN 'otp'
+        ELSE 'otp'
       END::two_factor_type as "two_factor_type",
       true as "enable_email_notifications",
       true as "enable_push_notifications",
       CASE 
-        WHEN u.email = 'admin@mikecodeur.com' THEN 'both'
-        WHEN u.email = 'ons@mikecodeur.com' THEN 'email'
         WHEN u.email = 'superadmin@gmail.com' THEN 'both'
-        WHEN u.email = 'admin@gmail.com' THEN 'push'
+        ELSE 'push'
       END::notification_channel as "notification_channel",
       true as "email_digest",
       CASE 
-        WHEN u.email = 'admin@mikecodeur.com' THEN true
-        WHEN u.email = 'ons@mikecodeur.com' THEN false
         WHEN u.email = 'superadmin@gmail.com' THEN true
-        WHEN u.email = 'admin@gmail.com' THEN false
+        ELSE false
       END as "marketing_emails",
       NOW() as "created_at",
       NOW() as "updated_at"
     FROM "user" u
     WHERE u.email IN (
-      'admin@mikecodeur.com',
-      'ons@mikecodeur.com',
       'superadmin@gmail.com',
       'admin@gmail.com'
     )
@@ -285,10 +267,6 @@ const seed = async () => {
       o.id as "organization_id",
       u.id as "user_id",
       CASE 
-        -- Cas spéciaux Mike Codeur
-        WHEN u.email = 'admin@mikecodeur.com' AND o.slug = 'techcorp-solutions' THEN 'owner'
-        WHEN u.email = 'ons@mikecodeur.com' AND o.slug = 'techcorp-solutions' THEN 'admin'
-        
         -- admin@gmail.com dans 3 organisations avec rôles différents
         WHEN u.email = 'admin@gmail.com' AND o.slug = 'techcorp-solutions' THEN 'member'
         WHEN u.email = 'admin@gmail.com' AND o.slug = 'marketing-pro' THEN 'admin'
@@ -314,10 +292,6 @@ const seed = async () => {
       NOW()
     FROM "user" u, "organization" o
     WHERE 
-      -- Cas spéciaux Mike Codeur
-      (u.email = 'admin@mikecodeur.com' AND o.slug = 'techcorp-solutions') OR
-      (u.email = 'ons@mikecodeur.com' AND o.slug = 'techcorp-solutions') OR
-      
       -- admin@gmail.com dans 3 organisations
       (u.email = 'admin@gmail.com' AND o.slug = 'techcorp-solutions') OR
       (u.email = 'admin@gmail.com' AND o.slug = 'marketing-pro') OR
@@ -352,7 +326,7 @@ const seed = async () => {
     FROM (
       VALUES 
         -- 1 projet pour TechCorp Solutions
-        ('Plateforme E-commerce', 'Développement d''une plateforme de vente en ligne moderne avec Next.js', 'techcorp-solutions', 'admin@mikecodeur.com'),
+        ('Plateforme E-commerce', 'Développement d''une plateforme de vente en ligne moderne avec Next.js', 'techcorp-solutions', 'user-owner@gmail.com'),
         
         -- 2 projets pour Marketing Pro
         ('Campagne Digitale 2024', 'Stratégie marketing complète pour les réseaux sociaux', 'marketing-pro', 'user-admin@gmail.com'),
@@ -382,8 +356,8 @@ const seed = async () => {
     FROM (
       VALUES 
         -- 2 tâches pour TechCorp - Plateforme E-commerce
-        ('Configuration Next.js', 'Mise en place de l''architecture Next.js avec TypeScript', 'done', '2024-09-15', 'Plateforme E-commerce', 'admin@mikecodeur.com'),
-        ('Intégration Stripe', 'Implémentation du système de paiement avec Stripe', 'in_progress', '2024-12-01', 'Plateforme E-commerce', 'ons@mikecodeur.com'),
+        ('Configuration Next.js', 'Mise en place de l''architecture Next.js avec TypeScript', 'done', '2024-09-15', 'Plateforme E-commerce', 'user-owner@gmail.com'),
+        ('Intégration Stripe', 'Implémentation du système de paiement avec Stripe', 'in_progress', '2024-12-01', 'Plateforme E-commerce', 'user@gmail.com'),
         
         -- 1 tâche pour Marketing Pro - Campagne Digitale
         ('Création des visuels', 'Design des bannières pour les réseaux sociaux', 'todo', '2024-11-15', 'Campagne Digitale 2024', 'user-admin@gmail.com'),
@@ -519,15 +493,6 @@ const seed = async () => {
       (NOW() - (notif_data.days_ago || ' days')::interval)::timestamp as "created_at"
     FROM (
       VALUES 
-        -- Notifications pour admin@mikecodeur.com (Mike Codeur)
-        ('admin@mikecodeur.com', 'system', 'Bienvenue sur la plateforme !', 'Votre compte administrateur a été configuré avec succès.', '{"source": "system_setup"}', 'false', '0'),
-        ('admin@mikecodeur.com', 'project_created', 'Nouveau projet créé', 'Le projet Plateforme E-commerce a été créé dans TechCorp Solutions.', '{"project_id": "uuid", "organization": "techcorp-solutions"}', 'true', '2'),
-        ('admin@mikecodeur.com', 'subscription_created', 'Abonnement activé', 'Votre abonnement Enterprise a été activé avec succès.', '{"plan": "enterprise", "amount": 99}', 'true', '5'),
-        
-        -- Notifications pour ons@mikecodeur.com (Ons)
-        ('ons@mikecodeur.com', 'organization_invitation', 'Invitation acceptée', 'Vous avez rejoint organisation TechCorp Solutions en tant administrateur.', '{"organization": "techcorp-solutions", "role": "admin"}', 'false', '1'),
-        ('ons@mikecodeur.com', 'project_updated', 'Tâche assignée', 'Une nouvelle tâche vous a été assignée dans le projet Plateforme E-commerce.', '{"task": "Intégration Stripe", "project": "Plateforme E-commerce"}', 'false', '0'),
-        
         -- Notifications pour user@gmail.com (utilisateur multi-organisations)
         ('user@gmail.com', 'organization_invitation', 'Nouvelle invitation', 'Vous avez été invité à rejoindre Evil Corp en tant que propriétaire.', '{"organization": "evil-corp", "role": "owner"}', 'true', '7'),
         ('user@gmail.com', 'project_created', 'Projet Audit Sécurité', 'Votre projet Audit Sécurité a été créé dans Evil Corp.', '{"project_id": "uuid", "organization": "evil-corp"}', 'false', '3'),
@@ -558,7 +523,7 @@ const seed = async () => {
         
         -- Notifications anciennes (lues) pour tester l'historique
         ('user@gmail.com', 'project_updated', 'Tâche terminée', 'La tâche Configuration Next.js a été marquée comme terminée.', '{"task": "Configuration Next.js", "project": "Plateforme E-commerce"}', 'true', '20'),
-        ('admin@mikecodeur.com', 'user_unbanned', 'Utilisateur réactivé', 'Utilisateur previously-banned@test.com a été réactivé.', '{"unbanned_user": "previously-banned@test.com"}', 'true', '30')
+        ('admin@gmail.com', 'user_unbanned', 'Utilisateur réactivé', 'Utilisateur previously-banned@test.com a été réactivé.', '{"unbanned_user": "previously-banned@test.com"}', 'true', '30')
     ) AS notif_data(user_email, type, title, message, metadata, read, days_ago)
     JOIN "user" u ON u.email = notif_data.user_email
     ON CONFLICT DO NOTHING;

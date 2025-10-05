@@ -149,14 +149,38 @@ Always use `pnpm` over `npm` for this project.
 
 ## RULES
 
-Never propose or generate new code unless you have first verified that there is already at least one existing rule, pattern, or piece of code that does the same thing.
+### Code Generation Prerequisites
 
-Before suggesting or writing any solution, you must check **at least three existing examples** (rules, configurations, or code snippets) that solve a similar problem.  
-If no such examples exist, explicitly state that fact and stop, instead of inventing something from scratch.
+Before generating ANY new code, you **MUST** complete these two verification steps:
 
-you can check in .cursor/rules
+1. **Check Existing Codebase Patterns**
+   Find and analyze **at least three existing examples** of similar functionality in the codebase. Look for:
+   - Similar components, functions, or modules
+   - Existing patterns that solve comparable problems
+   - Code structure and conventions already in use
 
-Read the .cursor/rules folder for the rules to follow.
+   If no such examples exist, explicitly state that fact before proceeding.
+
+2. **Check .cursor/rules Directory**
+   Review the `.cursor/rules/` folder to verify if a predefined rule exists for the task at hand:
+   - Check `00-generals/` for general technical guidelines
+   - Check `01-presentation/` for UI/frontend patterns
+   - Check `02-services/` for business logic patterns
+   - Check `03-persistance/` for database patterns
+
+   If a rule exists, you **MUST** follow it exactly. If no rule exists, mention this before proposing a solution.
+
+**Until both verifications are complete, do NOT proceed with implementation.**
+Every new feature must be analyzed against existing rules and codebase patterns before any code is written.
+
+### Implementation Workflow
+
+1. Analyze the requested feature or change
+2. Search for 3+ existing examples in the codebase
+3. Check `.cursor/rules/` for applicable rules
+4. Present findings and propose an implementation plan
+5. Wait for approval before implementing
+6. Follow existing patterns and rules strictly
 
 ## Coding Guidelines
 

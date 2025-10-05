@@ -1,17 +1,10 @@
-# Next.js SaaS Boilerplate
+# ShipSaaS a Next.js SaaS Boilerplate
 
 Un boilerplate moderne pour les applications SaaS utilisant Next.js 15, React 19, et ShadCN UI.
 
-## Todo
+> **Documentation complète:** [https://ship-saas.now/fr/docs](https://ship-saas.now/fr/docs)
 
-- homepage
-- se connecter link sur register
-- admin - Affilites
-- admin - Analytics
-- role assigment : http://localhost:3000/en/docs/authorization/roles
-- better withauth : http://localhost:3000/en/docs/authorization/route-protection
-- MCP
-- upfetch
+> **Feuille de route:** Pour consulter les fonctionnalités planifiées, voir [ROADMAP.md](ROADMAP.md)
 
 ## Technologies
 

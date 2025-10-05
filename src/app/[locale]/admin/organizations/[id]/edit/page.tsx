@@ -2,15 +2,12 @@ import {notFound} from 'next/navigation'
 import {Suspense} from 'react'
 
 import {getOrganizationPermissions} from '@/app/dal/organization-dal'
+import {withAuthAdmin} from '@/components/features/auth/with-auth'
 import {EditOrganizationForm} from '@/components/features/organization/edit-organization-form'
 import OrganizationMembersTable from '@/components/features/organization/organization-members-table'
 import {getOrganizationByIdService} from '@/services/facades/organization-service-facade'
 
-export default async function EditOrganizationPage({
-  params,
-}: {
-  params: Promise<{id: string}>
-}) {
+async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
   const {id} = await params
   const organization = await getOrganizationByIdService(id)
   const {canReadMembers, canManageMembers, canEdit} =
@@ -50,3 +47,5 @@ export default async function EditOrganizationPage({
     </div>
   )
 }
+
+export default withAuthAdmin(EditOrganizationPage)

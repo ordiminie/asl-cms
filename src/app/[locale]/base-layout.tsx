@@ -1,6 +1,7 @@
 import {GoogleAnalytics} from '@next/third-parties/google'
 import {NextIntlClientProvider} from 'next-intl'
 import {setRequestLocale} from 'next-intl/server'
+import NextTopLoader from 'nextjs-toploader'
 import React, {ReactNode} from 'react'
 
 import {AppProviders} from '@/components/context/app-providers'
@@ -18,6 +19,7 @@ export default async function BaseLayout({children, locale}: Props) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <body>
+        <NextTopLoader showSpinner={false} color="#2563eb" height={3} />
         <NextIntlClientProvider>
           <AppProviders>{children}</AppProviders>
         </NextIntlClientProvider>
