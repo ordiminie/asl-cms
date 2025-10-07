@@ -67,30 +67,32 @@ src/
 
 MIT
 
-## Getting Started
+## Quick Start
 
-## Initialisation de Drizzle
+- Installer les dépendances
+
+```bash
+   pnpm install
+```
+
+- Initialisation de la base de données
 
 Pour configurer et initialiser Drizzle dans ce projet, suivez ces étapes :
 
-1. Récupérez une variable `DATABASE_URL` et placez-la dans votre fichier `.env`
+1. Récupérez une variable `DATABASE_URL` (une base de données Postgres - NeonDB ou autre) et placez-la dans votre fichier `.env` ou executer `pnpm init:env`
 
-2. Exécutez la commande suivante pour générer les schémas de base de données :
+2. Exécutez la commande suivante initialiser la database avec des données :
 
-   ```bash
-   pnpm db:generate
-   ```
+```bash
+ pnpm db:reset-seed
+```
 
-3. Migrez votre base de données :
+Note : L'extention uuid doit etre activée : `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; `
 
-   ```bash
-   pnpm db:migrate
-   ```
-
-   Pour effectuer un reset complet avec des données initiales :
+3. Lancer le server :
 
    ```bash
-   pnpm db:reset-seed
+   pnpm dev
    ```
 
 ## BDD mode développement
