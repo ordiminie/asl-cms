@@ -160,7 +160,7 @@ function getVariableExample(varName: string): string {
     NEXT_PUBLIC_ENABLED_PAGES: 'blog,docs,apikey,organization',
     NEXT_PUBLIC_AUTH_METHODS: 'credential,magiclink,google',
     NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: 'GA_EXAMPLE_ID',
-    NEXT_PUBLIC_API_URL: 'https://api.example.com',
+    NEXT_PUBLIC_API_URL: 'https://localhost:3000',
     OPENAI_API_KEY: 'sk-example_openai_key_replace_with_real',
     ANTHROPIC_API_KEY: 'sk-ant-example_anthropic_key_replace_with_real',
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
