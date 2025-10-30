@@ -1,59 +1,54 @@
-import {FlatCompat} from '@eslint/eslintrc'
-import js from '@eslint/js'
 import typescriptEslint from '@typescript-eslint/eslint-plugin'
+import {defineConfig, globalIgnores} from 'eslint/config'
+import nextVitals from 'eslint-config-next/core-web-vitals'
+import nextTs from 'eslint-config-next/typescript'
 import drizzle from 'eslint-plugin-drizzle'
-import github from 'eslint-plugin-github'
-import jsonFormat from 'eslint-plugin-json-format'
-import prettier from 'eslint-plugin-prettier'
 import promise from 'eslint-plugin-promise'
 import react from 'eslint-plugin-react'
 import simpleImportSort from 'eslint-plugin-simple-import-sort'
 import unicorn from 'eslint-plugin-unicorn'
-import {dirname} from 'path'
-import {fileURLToPath} from 'url'
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-  allConfig: js.configs.all,
-})
-
-const eslintConfig = [
-  {
-    ignores: ['src/components/ui/*', '**/dist/**'],
-  },
-  ...compat.extends(
-    'next/core-web-vitals',
-    'next/typescript',
-    'eslint:recommended',
-    'plugin:react/recommended'
-  ),
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+    // Additional ignores:
+    'node_modules/**',
+    'dist/**',
+    'src/components/ui/*',
+    'playwright-report/**',
+    '.claude/**',
+    'drizzle/**',
+  ]),
+  // Custom rules
   {
     plugins: {
       '@typescript-eslint': typescriptEslint,
-      react,
-      github,
-      'json-format': jsonFormat,
-      unicorn,
-      promise,
       drizzle,
-      prettier,
+      promise,
+      react,
       'simple-import-sort': simpleImportSort,
+      unicorn,
     },
     rules: {
-      'prettier/prettier': 'error',
+      // React rules
+      'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
-      'import/no-commonjs': 'off',
-      'import/no-namespace': 'off',
-      'import/named': 'off',
+      // TypeScript rules
+      '@typescript-eslint/ban-ts-comment': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      // Unicorn rules
       'unicorn/prevent-abbreviations': 'off',
       'unicorn/prefer-module': 'off',
       'unicorn/filename-case': 'off',
-      'no-console': 'off',
-      'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': 'warn',
+      // Promise rules
       'promise/always-return': 'error',
       'promise/no-return-wrap': 'error',
       'promise/param-names': 'error',
@@ -66,30 +61,26 @@ const eslintConfig = [
       'promise/no-return-in-finally': 'warn',
       'promise/valid-params': 'warn',
       'promise/avoid-new': 'off',
-      'react/prop-types': 'off',
-      'i18n-text/no-en': 'off',
-      '@typescript-eslint/ban-ts-comment': 'warn',
-      '@typescript-eslint/no-non-null-assertion': 'warn',
-
-      // ✅ Ajout des règles pour les template strings
+      // Import sorting
+      'simple-import-sort/imports': 'error',
+      'simple-import-sort/exports': 'error',
+      // General rules
+      'no-console': 'off',
       'prefer-template': 'error',
       'no-useless-concat': 'error',
       'no-template-curly-in-string': 'error',
-
-      'github/no-implicit-buggy-globals': 'off',
-      'simple-import-sort/imports': 'error',
-      'simple-import-sort/exports': 'error',
       'no-restricted-properties': [
         'warn',
         {
           object: 'process',
           property: 'env',
           message:
-            'N’utilise pas process.env directement. Utilise le fichier env.ts typé. (import {env} from "@/env")',
+            'N\'utilise pas process.env directement. Utilise le fichier env.ts typé. (import {env} from "@/env")',
         },
       ],
     },
   },
+  // Restricted imports for app layer
   {
     files: ['src/app/**/*.{ts,tsx}'],
     rules: {
@@ -107,6 +98,6 @@ const eslintConfig = [
       ],
     },
   },
-]
+])
 
 export default eslintConfig

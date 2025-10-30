@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-properties */
 import {defineConfig, devices} from '@playwright/test'
 
 /**

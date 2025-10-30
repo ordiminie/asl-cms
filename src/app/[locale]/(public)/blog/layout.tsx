@@ -115,7 +115,7 @@ export default async function BlogLayout({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {categories.map((category) => (
+                  {categories.map((category, index) => (
                     <Link
                       key={category.id}
                       href={`/blog?categoryId=${category.id}`}
@@ -124,11 +124,11 @@ export default async function BlogLayout({
                       <span className="flex items-center gap-2">
                         <FolderOpen className="h-4 w-4" />
                         <span className="group-hover:underline">
-                          {category.name}
+                          {category.name}‡
                         </span>
                       </span>
                       <Badge variant="secondary" className="text-xs">
-                        {Math.floor(Math.random() * 10) + 1}
+                        {index + 1}
                       </Badge>
                     </Link>
                   ))}
