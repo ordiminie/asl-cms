@@ -166,7 +166,7 @@ const options = {
       membershipLimit: 10,
       allowUserToCreateOrganization: false,
       async sendInvitationEmail(data) {
-        const inviteLink = `${env.NEXT_PUBLIC_APP_URL}/invitations/${data.id}`
+        const inviteLink = `${env.NEXT_PUBLIC_APP_URL}/account/invitations/${data.id}`
         // Find user by email to get userId for notification
         const invitedUser = await getUserByEmailDao(data.email)
         if (invitedUser) {
