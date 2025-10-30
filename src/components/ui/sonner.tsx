@@ -1,9 +1,10 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import {useTheme} from 'next-themes'
 import {Toaster as Sonner, ToasterProps} from 'sonner'
 
-const Toaster = ({...props}: ToasterProps) => {
+const SonnerToaster = ({...props}: ToasterProps) => {
   const {theme = 'system'} = useTheme()
 
   return (
@@ -21,5 +22,10 @@ const Toaster = ({...props}: ToasterProps) => {
     />
   )
 }
+
+// Lazy load to avoid context issues during prerendering
+const Toaster = dynamic(() => Promise.resolve(SonnerToaster), {
+  ssr: false,
+})
 
 export {Toaster}

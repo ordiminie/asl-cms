@@ -70,14 +70,20 @@ export async function createInstallmentSubscriptionSchedule(
   // Phase 1: Premier paiement (commence immédiatement)
   phases.push({
     items: [{price: installmentPrice.id, quantity: seats}],
-    iterations: 1,
+    duration: {
+      interval: 'month',
+      interval_count: 1,
+    },
   })
 
   // Phases intermédiaires (si il y en a)
   if (numberOfPayments > 2) {
     phases.push({
       items: [{price: installmentPrice.id, quantity: seats}],
-      iterations: numberOfPayments - 2,
+      duration: {
+        interval: 'month',
+        interval_count: numberOfPayments - 2,
+      },
     })
   }
 
@@ -89,7 +95,10 @@ export async function createInstallmentSubscriptionSchedule(
         : installmentPrice
     phases.push({
       items: [{price: finalPrice.id, quantity: seats}],
-      iterations: 1,
+      duration: {
+        interval: 'month',
+        interval_count: 1,
+      },
     })
   }
 

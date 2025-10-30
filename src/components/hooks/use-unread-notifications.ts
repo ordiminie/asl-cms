@@ -1,6 +1,6 @@
 'use client'
 
-import {useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
 
 import {useAuth} from '@/components/context/auth-provider'
 
@@ -11,19 +11,25 @@ export function useUnreadNotifications() {
   const {user} = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading] = useState(false)
+  const notificationsRef = useRef(user?.notifications)
+
+  useEffect(() => {
+    notificationsRef.current = user?.notifications
+  }, [user?.notifications])
 
   useEffect(() => {
     // Si on a les notifications dans l'user, compter celles non lues
-    if (user?.notifications) {
-      const unreadNotifications = user.notifications.filter(
+    if (notificationsRef.current) {
+      const unreadNotifications = notificationsRef.current.filter(
         (notification) => !notification.read
       )
-      setUnreadCount(unreadNotifications.length)
+      const newCount = unreadNotifications.length
+      setUnreadCount((prev) => (prev !== newCount ? newCount : prev))
       return
     }
 
     // Sinon, on garde 0
-    setUnreadCount(0)
+    setUnreadCount((prev) => (prev !== 0 ? 0 : prev))
   }, [user?.notifications])
 
   // Fonction pour mettre à jour le count manuellement
