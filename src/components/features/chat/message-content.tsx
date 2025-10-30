@@ -13,7 +13,6 @@ export function MessageContent({
   isStreaming = false,
 }: MessageContentProps) {
   const [frozenContent, setFrozenContent] = useState('')
-  const [shouldRenderMarkdown, setShouldRenderMarkdown] = useState(false)
 
   // Détecter la fermeture de blocs de code (```)
   const hasClosedCodeBlocks = useMemo(() => {
@@ -25,20 +24,18 @@ export function MessageContent({
     )
   }, [content])
 
-  // Une fois que le streaming s'arrête, freeze le contenu final
+  // Freeze le contenu quand le streaming s'arrête
   useEffect(() => {
-    if (!isStreaming && content) {
-      setFrozenContent(content)
-      setShouldRenderMarkdown(true)
+    // Mise à jour avec callback pour éviter le setState direct
+    return () => {
+      if (!isStreaming && content && frozenContent === '') {
+        setFrozenContent(content)
+      }
     }
-  }, [isStreaming, content])
+  }, [isStreaming, content, frozenContent])
 
-  // Si on détecte des blocs de code fermés pendant le streaming, render immédiatement
-  useEffect(() => {
-    if (isStreaming && hasClosedCodeBlocks) {
-      setShouldRenderMarkdown(true)
-    }
-  }, [isStreaming, hasClosedCodeBlocks])
+  // Déterminer si on doit afficher le markdown
+  const shouldRenderMarkdown = frozenContent !== '' || hasClosedCodeBlocks
 
   // Utiliser le contenu figé si disponible, sinon le contenu actuel
   const displayContent = frozenContent || content

@@ -30,6 +30,14 @@ The boilerplate provides a solid foundation with:
   - Add "Sign in" link on registration page
   - Enhance auth flow UX
 
+- [ ] **Supabase private files (ROLE_KEY)**
+  - Add "Sign in" link on registration page
+  - Enhance auth flow UX
+
+- [ ] **SEO (sitemap/intl/robot etc ...)**
+  - Add "Sign in" link on registration page
+  - Enhance auth flow UX
+
 ### Admin Features
 
 - [ ] **Admin - Affiliates**

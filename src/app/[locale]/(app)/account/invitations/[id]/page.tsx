@@ -11,19 +11,15 @@ interface PageProps {
 export default async function AcceptInvitationPage({params}: PageProps) {
   const {id} = await params
 
+  let invitation
   try {
-    const invitation = await auth.api.getInvitation({
+    invitation = await auth.api.getInvitation({
       headers: await headers(),
       query: {
         id,
       },
       // asResponse: true,
     })
-    return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <AcceptInvitationForm invitation={invitation} />
-      </div>
-    )
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(error.message)
@@ -32,4 +28,10 @@ export default async function AcceptInvitationPage({params}: PageProps) {
       "Une erreur est survenue lors de la récupération de l'invitation"
     )
   }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <AcceptInvitationForm invitation={invitation} />
+    </div>
+  )
 }
