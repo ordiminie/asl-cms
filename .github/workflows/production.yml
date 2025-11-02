@@ -49,7 +49,7 @@ jobs:
           LOG_LEVEL: info
 
           # Supabase
-          SUPABASE_URL: https://xxx.supabase.co
+          NEXT_PUBLIC_SUPABASE_URL: https://xxx.supabase.co
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_BUCKET: BUCKET-NAME
 
@@ -94,7 +94,7 @@ jobs:
           LOG_LEVEL: info
 
           # Supabase
-          SUPABASE_URL: https://xxx.supabase.co
+          NEXT_PUBLIC_SUPABASE_URL: https://xxx.supabase.co
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_BUCKET: BUCKET-NAME
 

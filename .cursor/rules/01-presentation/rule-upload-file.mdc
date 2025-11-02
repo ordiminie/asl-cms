@@ -3,6 +3,7 @@ description:
 globs:
 alwaysApply: false
 ---
+
 # Système d'Upload de Fichiers et Images
 
 Guide complet pour l'upload de fichiers et d'images dans l'architecture Next.js 15 / React 19.
@@ -10,9 +11,11 @@ Guide complet pour l'upload de fichiers et d'images dans l'architecture Next.js 
 ## Architecture d'Upload
 
 ### Flux de données pour l'upload
+
 **Client Components** → **Server Actions** → **Service Facades** → **Services** → **Repository**
 
 ### Technologies utilisées
+
 - **Supabase Storage** pour le stockage des fichiers
 - **React Dropzone** pour l'interface de glisser-déposer
 - **Framer Motion** pour les animations
@@ -51,15 +54,16 @@ import {FileUpload} from '@/components/ui/file-upload'
 - `isUploading?: boolean` - État de chargement pour désactiver l'interface
 
 ### Types d'images supportés
+
 **Référence : [file-types.ts](mdc:src/services/types/domain/file-types.ts)**
 
 ```tsx
 // Types MIME autorisés pour les images
 export const ALLOWED_IMAGE_MIME_TYPES = [
   'image/webp',
-  'image/jpeg', 
+  'image/jpeg',
   'image/jpg',
-  'image/png'
+  'image/png',
 ] as const
 ```
 
@@ -176,7 +180,7 @@ export async function uploadEntityImageAction(
   if (!user) {
     return {success: false, message: 'Utilisateur non trouvé'}
   }
-  
+
   // 2. VALIDATION FORMDATA
   if (!formData) {
     return {success: false, message: 'Données invalides'}
@@ -246,7 +250,7 @@ export const uploadImageForEntityService = async (
 /**
  * Upload un fichier avec génération automatique du chemin pour une entité
  *
- * Génère automatiquement un chemin de la forme : 
+ * Génère automatiquement un chemin de la forme :
  * `{entityType}s/{entityId}/{category}-{timestamp}.{extension}`
  */
 export const uploadFileForEntityService = async (
@@ -297,7 +301,7 @@ export type FileResponse = {
 ### Variables d'environnement requises
 
 ```env
-SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_URL=your_NEXT_PUBLIC_SUPABASE_URL
 SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
@@ -390,35 +394,41 @@ if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
 const [isUploading, setIsUploading] = useState(false)
 
 // Feedback visuel
-{isUploading && (
-  <p className="text-muted-foreground text-sm">Upload en cours...</p>
-)}
+{
+  isUploading && (
+    <p className="text-muted-foreground text-sm">Upload en cours...</p>
+  )
+}
 
 // Désactivation des interactions
-<FileUpload isUploading={isUploading} />
+;<FileUpload isUploading={isUploading} />
 ```
 
 ## Bonnes Pratiques
 
 ### 1. Sécurité
+
 - ✅ Toujours vérifier l'authentification dans les Server Actions
 - ✅ Valider les types de fichiers côté client ET serveur
 - ✅ Limiter la taille des fichiers
 - ✅ Utiliser des chemins prédictibles et sécurisés
 
 ### 2. UX/UI
+
 - ✅ Feedback visuel pendant l'upload (états de chargement)
 - ✅ Messages d'erreur explicites en français
 - ✅ Drag & drop intuitif avec animations
 - ✅ Prévisualisation des images après upload
 
 ### 3. Architecture
+
 - ✅ Respecter le flux des couches (Client → Server Action → Facade → Service)
 - ✅ Utiliser les types TypeScript stricts
 - ✅ Centraliser la logique d'upload dans les services
 - ✅ Génération automatique des chemins de fichiers
 
 ### 4. Performance
+
 - ✅ Upload en arrière-plan sans bloquer l'interface
 - ✅ Validation immédiate côté client
 - ✅ Optimisation des images (WebP préféré)
@@ -430,7 +440,7 @@ const [isUploading, setIsUploading] = useState(false)
 - [ ] **Server Action** avec validation auth + fichier
 - [ ] **Service d'upload** via les façades
 - [ ] **Types appropriés** (EntityType, FileCategory)
-- [ ] **Gestion d'erreurs** côté client et serveur  
+- [ ] **Gestion d'erreurs** côté client et serveur
 - [ ] **États de chargement** avec feedback visuel
 - [ ] **Validation MIME types** pour les images
 - [ ] **Toast notifications** pour le succès/erreur

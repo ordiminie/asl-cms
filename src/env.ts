@@ -59,7 +59,6 @@ export const env = createEnv({
     EMAIL_FROM: process.env.EMAIL_FROM,
     EMAIL_TO: process.env.EMAIL_TO,
     LOG_LEVEL: process.env.LOG_LEVEL,
-    SUPABASE_URL: process.env.SUPABASE_URL,
     SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
     SUPABASE_BUCKET: process.env.SUPABASE_BUCKET,
     ALLOWED_MIME_TYPES: process.env.ALLOWED_MIME_TYPES,
@@ -99,6 +98,7 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLED_PAGES: process.env.NEXT_PUBLIC_ENABLED_PAGES,
     NEXT_PUBLIC_GOOGLE_ANALYTICS_ID:
       process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   },
 
   /*

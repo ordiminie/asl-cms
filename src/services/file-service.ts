@@ -47,14 +47,16 @@ const generateFilePath = (
 }
 
 const getFileUrl = (path: string) => {
-  const baseUrl = env.SUPABASE_URL
+  const baseUrl = env.NEXT_PUBLIC_SUPABASE_URL
   const bucket = config.bucket
 
   if (!baseUrl) {
     console.error(
-      "SUPABASE_URL n'est pas définie dans les variables d'environnement"
+      "NEXT_PUBLIC_SUPABASE_URL n'est pas définie dans les variables d'environnement"
     )
-    throw new Error('Configuration manquante : SUPABASE_URL est requise')
+    throw new Error(
+      'Configuration manquante : NEXT_PUBLIC_SUPABASE_URL est requise'
+    )
   }
 
   // Ajouter le basePath pour l'URL publique

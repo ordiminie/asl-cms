@@ -71,7 +71,7 @@ export const serverSchema = {
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
   // Supabase (serveur)
-  SUPABASE_URL: z.string().url(),
+
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_BUCKET: z.string().min(1),
 
@@ -109,6 +109,8 @@ export const clientSchema = {
     .string()
     .default('5242880')
     .transform((val) => Number(val)),
+
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
 
   // Stripe (client)
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),

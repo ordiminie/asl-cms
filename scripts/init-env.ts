@@ -68,7 +68,7 @@ function getVariableDescription(varName: string): string {
     EMAIL_TO: 'Adresse email destinataire par défaut',
     STRIPE_SECRET_KEY: 'Clé secrète Stripe',
     STRIPE_WEBHOOK_SECRET: 'Secret webhook Stripe',
-    SUPABASE_URL: 'URL du projet Supabase',
+    NEXT_PUBLIC_SUPABASE_URL: 'URL du projet Supabase',
     SUPABASE_ANON_KEY: 'Clé publique Supabase',
     SUPABASE_BUCKET: 'Nom du bucket Supabase',
     GOOGLE_CLIENT_ID: 'ID client Google OAuth',
@@ -151,7 +151,7 @@ function getVariableExample(varName: string): string {
     EMAIL_TO: 'admin@example.com',
     STRIPE_SECRET_KEY: 'sk_test_example_replace_with_real_stripe_key',
     STRIPE_WEBHOOK_SECRET: 'whsec_example_replace_with_real_webhook_secret',
-    SUPABASE_URL: 'https://example-project.supabase.co',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://example-project.supabase.co',
     SUPABASE_ANON_KEY:
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example_anon_key_replace_with_real',
     SUPABASE_BUCKET: 'example-bucket',
