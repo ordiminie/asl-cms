@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
 
+import {pathToFileURL} from 'node:url'
+
 import * as p from '@clack/prompts'
 import {randomBytes} from 'crypto'
 import {existsSync} from 'fs'
@@ -670,7 +672,7 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     p.log.error(`Erreur: ${err.message}`)
     process.exit(1)
