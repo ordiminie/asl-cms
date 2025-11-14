@@ -15,7 +15,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function DocsPage() {
-  if (!isPageEnabled(PagesConst.DOCS) || env.NODE_ENV !== 'development') {
+  if (
+    !isPageEnabled(PagesConst.DOCS) ||
+    env.NEXT_PUBLIC_NODE_ENV !== 'development'
+  ) {
     return notFound()
   }
 
