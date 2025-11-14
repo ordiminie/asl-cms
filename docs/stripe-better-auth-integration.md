@@ -533,7 +533,7 @@ export async function onStripeEvent(event: Stripe.Event) {
 NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE=EmbededForm
 
 # Logs de debug activés
-NODE_ENV=development
+NEXT_PUBLIC_NODE_ENV=development
 ```
 
 **✅ Avantages Dev :**

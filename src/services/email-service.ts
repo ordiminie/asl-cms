@@ -50,7 +50,7 @@ export const sendEmailService = async (
   payload: CreateEmailOptions,
   options?: CreateEmailRequestOptions
 ) => {
-  if (env.NODE_ENV === 'development') {
+  if (env.NEXT_PUBLIC_NODE_ENV === 'development') {
     payload.subject = `[DEV] ${payload.subject}`
   }
 

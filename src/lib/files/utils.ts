@@ -11,7 +11,7 @@ export const emptyPaginationReturn = {
 }
 
 export const getEnvBase = () => {
-  return env.NODE_ENV === 'production' ? 'prod' : 'dev'
+  return env.NEXT_PUBLIC_NODE_ENV === 'production' ? 'prod' : 'dev'
 }
 
 export const fileServerEntityUsers = 'users'

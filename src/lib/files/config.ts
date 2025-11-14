@@ -15,9 +15,9 @@ const fileConfigSchema = z.object({
 })
 
 export const fileConfig = fileConfigSchema.parse({
-  bucket: env.SUPABASE_BUCKET || 'default-bucket',
+  bucket: env.NEXT_PUBLIC_SUPABASE_BUCKET || 'default-bucket',
   maxFileSize: Number(env.NEXT_PUBLIC_MAX_FILE_SIZE) || 5 * 1024 * 1024,
-  allowedMimeTypes: env.ALLOWED_MIME_TYPES?.split(',') || [
+  allowedMimeTypes: env.NEXT_PUBLIC_ALLOWED_MIME_TYPES?.split(',') || [
     'image/jpeg',
     'image/png',
     'image/gif',
@@ -30,6 +30,6 @@ export const fileConfig = fileConfigSchema.parse({
 })
 
 export const getBasePath = () => {
-  const _env = env.NODE_ENV || 'development'
+  const _env = env.NEXT_PUBLIC_NODE_ENV || 'development'
   return fileConfig.basePath[_env as keyof typeof fileConfig.basePath]
 }

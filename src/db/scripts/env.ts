@@ -5,7 +5,7 @@ import dotenv from 'dotenv'
 async function initDotEnv(
   environment: string = process.env.NODE_ENV || 'development'
 ) {
-  // const environment = process.env.NODE_ENV || 'development'
+  // const environment = process.env.NEXT_PUBLIC_NODE_ENV || 'development'
   console.log('initDotEnv environment', environment)
   let envFilePath
 

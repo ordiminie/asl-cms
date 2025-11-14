@@ -1,8 +1,9 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: false
 ---
+
 # Variables d'Environnement avec @t3-oss/env-nextjs
 
 ## Principe Général
@@ -12,34 +13,36 @@ Le projet utilise `@t3-oss/env-nextjs` pour la gestion des variables d'environne
 ## Structure du Fichier env.ts
 
 ### Variables Serveur (Non Exposées au Client)
+
 ```typescript
 server: {
   // Base de données
   DATABASE_URL: z.string().url(),
-  
+
   // Authentification
   AUTH_SECRET: z.string().min(1),
   BETTER_AUTH_SECRET: z.string().min(1),
-  
+
   // Email
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().email(),
-  
+
   // Stripe (serveur)
   STRIPE_SECRET_KEY: z.string().min(1),
-  
+
   // Environnement
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  NEXT_PUBLIC_NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 }
 ```
 
 ### Variables Client (Exposées au Client)
+
 ```typescript
 client: {
   // Doivent commencer par NEXT_PUBLIC_
   NEXT_PUBLIC_APP_URL: z.string().url(),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
-  
+
   // Variables booléennes avec transformation
   NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: z
     .string()
@@ -51,17 +54,20 @@ client: {
 ## Règles de Validation
 
 ### Types de Base
+
 - **URLs** : `z.string().url()`
 - **Emails** : `z.string().email()`
 - **Chaînes obligatoires** : `z.string().min(1)`
 - **Chaînes optionnelles** : `z.string().optional()`
 
 ### Transformations
+
 - **Booléens** : `z.string().transform((val) => val === 'true')`
 - **Nombres** : `z.string().transform((val) => Number(val))`
 - **Énumérations** : `z.enum(['value1', 'value2'])`
 
 ### Valeurs par Défaut
+
 ```typescript
 LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 NEXT_PUBLIC_FEATURE_FLAG: z.string().transform((val) => val === 'true').default('false'),
@@ -70,11 +76,13 @@ NEXT_PUBLIC_FEATURE_FLAG: z.string().transform((val) => val === 'true').default(
 ## Utilisation dans le Code
 
 ### Import
+
 ```typescript
-import { env } from '@/env'
+import {env} from '@/env'
 ```
 
 ### Variables Serveur (Côté Serveur Uniquement)
+
 ```typescript
 // ✅ Correct - Dans un Server Component, API Route, ou Server Action
 const dbUrl = env.DATABASE_URL
@@ -82,6 +90,7 @@ const stripeSecret = env.STRIPE_SECRET_KEY
 ```
 
 ### Variables Client (Accessible Partout)
+
 ```typescript
 // ✅ Correct - Dans n'importe quel composant
 const appUrl = env.NEXT_PUBLIC_APP_URL
@@ -91,9 +100,11 @@ const stripePublic = env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ## Exemples Pratiques
 
 ### Configuration Better Auth
+
 Voir [auth.ts](mdc:src/lib/better-auth/auth.ts) et [auth-client.ts](mdc:src/lib/better-auth/auth-client.ts) pour des exemples d'utilisation avec Better Auth.
 
 ### Configuration Stripe
+
 ```typescript
 // Variables serveur pour les webhooks
 const stripe = new Stripe(env.STRIPE_SECRET_KEY)
@@ -103,6 +114,7 @@ const stripePromise = loadStripe(env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
 ```
 
 ### Configuration Base de Données
+
 ```typescript
 // Configuration Drizzle
 export const db = drizzle(env.DATABASE_URL)
@@ -111,6 +123,7 @@ export const db = drizzle(env.DATABASE_URL)
 ## Bonnes Pratiques
 
 ### ✅ À Faire
+
 - Déclarer toutes les variables dans [env.ts](mdc:env.ts)
 - Utiliser des validations Zod appropriées
 - Préfixer les variables client avec `NEXT_PUBLIC_`
@@ -118,6 +131,7 @@ export const db = drizzle(env.DATABASE_URL)
 - Définir des valeurs par défaut quand approprié
 
 ### ❌ À Éviter
+
 - Utiliser `process.env` directement dans le code
 - Oublier de déclarer les variables dans `runtimeEnv`
 - Exposer des secrets côté client
@@ -126,6 +140,7 @@ export const db = drizzle(env.DATABASE_URL)
 ## Configuration pour les Tests
 
 ### Fichier d'Environnement de Test
+
 Pour les tests, utiliser un fichier `.env.test` séparé contenant les variables d'environnement spécifiques aux tests :
 
 ```bash
@@ -137,6 +152,7 @@ BETTER_AUTH_SECRET="test-better-auth-secret"
 ```
 
 ### Configuration Vitest
+
 Le fichier `vitest.config.ts` charge automatiquement le fichier `.env.test` :
 
 ```typescript
@@ -147,6 +163,7 @@ dotenv.config({path: path.resolve(__dirname, '.env.test')})
 ```
 
 ### Bonnes Pratiques pour les Tests
+
 - ✅ Utiliser des bases de données de test dédiées
 - ✅ Utiliser des clés d'API de test ou des mocks
 - ✅ Définir des valeurs par défaut appropriées pour les tests
@@ -155,11 +172,13 @@ dotenv.config({path: path.resolve(__dirname, '.env.test')})
 ## Configuration Avancée
 
 ### Skip Validation (Docker)
+
 ```typescript
 skipValidation: !!process.env.SKIP_ENV_VALIDATION,
 ```
 
 ### Empty String Handling
+
 ```typescript
 emptyStringAsUndefined: true,
 ```
@@ -171,11 +190,13 @@ Voir [env.ts](mdc:env.ts) pour la configuration complète du projet avec toutes 
 ## Debugging
 
 En cas d'erreur de validation, le message d'erreur indiquera :
+
 - Quelle variable pose problème
 - Quel type était attendu
 - Quelle valeur a été reçue
 
 Exemple d'erreur :
+
 ```
 ❌ Invalid environment variables:
 {

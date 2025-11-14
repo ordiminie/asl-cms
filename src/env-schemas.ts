@@ -73,10 +73,7 @@ export const serverSchema = {
   // Supabase (serveur)
 
   SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_BUCKET: z.string().min(1),
 
-  // Upload de fichiers
-  ALLOWED_MIME_TYPES: z.string().min(1),
   STORAGE_TYPE: z.string().optional(),
 
   // Stripe (serveur)
@@ -92,11 +89,6 @@ export const serverSchema = {
   OLLAMA_BASE_URL: z.string().url().default('http://localhost:11434'),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
-
-  // Environnement
-  NODE_ENV: z
-    .enum(['development', 'test', 'production'])
-    .default('development'),
 }
 
 // Schémas des variables client (exposées au client)
@@ -110,7 +102,10 @@ export const clientSchema = {
     .default('5242880')
     .transform((val) => Number(val)),
 
+  // Upload de fichiers
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_BUCKET: z.string().min(1),
+  NEXT_PUBLIC_ALLOWED_MIME_TYPES: z.string().min(1),
 
   // Stripe (client)
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
@@ -163,4 +158,8 @@ export const clientSchema = {
 
   // Google Analytics
   NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: z.string().optional(),
+  // Environnement
+  NEXT_PUBLIC_NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
 }
