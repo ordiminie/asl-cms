@@ -9,6 +9,7 @@ import {
 import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
 import {env} from '@/env'
 import EmailChangeEmailVerification from '@/lib/emails/email-change-email-verification'
+import InternalEmail from '@/lib/emails/internal-email'
 import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization-link-email'
 import MagicLinkMail from '@/lib/emails/magic-link-email'
 import NotificationEmail from '@/lib/emails/notification-email'
@@ -512,6 +513,29 @@ export const sendWelcomeFollowUpEmailService = async ({
       userEmail: email,
       appUrl,
       language,
+    }),
+  })
+}
+
+export const sendInternalEmailService = async ({
+  title,
+  data,
+}: {
+  title: string
+  data: string
+}) => {
+  const t = await getTranslations('email.internal')
+  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const toEmail = env.EMAIL_TO ?? env.EMAIL_FROM ?? 'onboarding@resend.dev'
+
+  await sendEmailService({
+    to: toEmail,
+    subject: `${t('subject')} - ${title}`,
+    from: fromEmail,
+    text: t('preview'),
+    react: InternalEmail({
+      preview: t('preview'),
+      content: data,
     }),
   })
 }
