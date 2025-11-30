@@ -43,7 +43,7 @@ export function LoginForm({className, ...props}: React.ComponentProps<'div'>) {
     try {
       const result = await loginProviderAction(provider)
 
-      if (result && result?.success) {
+      if (result?.success) {
         toast(tMessages('success'), {
           description: result?.message,
         })
