@@ -1,22 +1,29 @@
 import type {Metadata} from 'next'
 import Link from 'next/link'
 import {notFound} from 'next/navigation'
-import {getTranslations} from 'next-intl/server'
+import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {getPublishedPostsWithTranslationsAndPaginationDal} from '@/app/dal/post-dal'
 import {Badge} from '@/components/ui/badge'
-import {Button} from '@/components/ui/button'
 import {PagesConst} from '@/env'
+import {routing} from '@/i18n/routing'
 import {isPageEnabled} from '@/lib/utils'
 import {SupportedLanguage} from '@/services/types/domain/post-types'
 
-// Génération des métadonnées
+export const dynamic = 'force-static'
+export const dynamicParams = false
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({locale}))
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{locale: string}>
 }): Promise<Metadata> {
   const {locale} = await params
+  setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'BlogListPage'})
 
   return {
@@ -25,32 +32,21 @@ export async function generateMetadata({
   }
 }
 
-type SearchParamsType = Promise<{
-  page?: string
-}>
-
 export default async function BlogListPage({
   params,
-  searchParams,
 }: {
   params: Promise<{locale: string}>
-  searchParams: SearchParamsType
 }) {
   if (!isPageEnabled(PagesConst.BLOG)) {
     return notFound()
   }
 
   const {locale} = await params
-  const searchStore = await searchParams
+  setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'BlogListPage'})
 
-  const page = searchStore.page ? Number.parseInt(searchStore.page) : 1
-  const limit = 10
-  const offset = (page - 1) * limit
-
-  // Récupérer les posts publiés avec leurs traductions
   const postsResult = await getPublishedPostsWithTranslationsAndPaginationDal(
-    {limit, offset},
+    {limit: 50, offset: 0},
     locale as SupportedLanguage
   )
 
@@ -65,7 +61,6 @@ export default async function BlogListPage({
 
   return (
     <div>
-      {/* En-tête de la page */}
       <header className="mb-12 text-center">
         <h1 className="text-foreground mb-4 text-4xl font-bold">
           {t('title')}
@@ -75,10 +70,8 @@ export default async function BlogListPage({
         </p>
       </header>
 
-      {/* Liste des articles */}
       <div className="grid gap-8">
         {postsResult.data.map((post) => {
-          // Trouver la traduction pour la langue actuelle
           const translation = post.postTranslations?.find(
             (t) => t.language === locale
           )
@@ -91,7 +84,7 @@ export default async function BlogListPage({
             >
               <div className="mb-3 flex items-center gap-3">
                 <Badge variant="outline">
-                  {post.category?.name || 'Sans catégorie'}
+                  {post.category?.name || t('noCategory')}
                 </Badge>
                 {post.postHashtags && post.postHashtags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
@@ -129,15 +122,19 @@ export default async function BlogListPage({
               <div className="text-muted-foreground flex items-center gap-4 text-sm">
                 <time>{formatDate(post.createdAt)}</time>
                 <span>•</span>
-                <span>{post.nbView || 0} vues</span>
+                <span>
+                  {post.nbView || 0} {t('views')}
+                </span>
                 <span>•</span>
-                <span>{post.nbLike || 0} likes</span>
+                <span>
+                  {post.nbLike || 0} {t('likes')}
+                </span>
                 <span>•</span>
                 <Link
                   href={`/blog/${translation.slug}`}
                   className="hover:text-foreground font-medium transition-colors"
                 >
-                  Lire la suite →
+                  {t('readMore')} →
                 </Link>
               </div>
             </article>
@@ -145,63 +142,9 @@ export default async function BlogListPage({
         })}
       </div>
 
-      {/* Message si aucun article */}
       {postsResult.data.length === 0 && (
         <div className="py-12 text-center">
           <p className="text-muted-foreground text-lg">{t('noArticles')}</p>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {postsResult.pagination.totalPages > 1 && (
-        <div className="mt-12 flex justify-center gap-2">
-          {page > 1 && (
-            <Link href={`/blog?page=${page - 1}`}>
-              <Button variant="outline">{t('pagination.previous')}</Button>
-            </Link>
-          )}
-
-          <div className="flex items-center gap-2">
-            {Array.from({length: postsResult.pagination.totalPages}, (_, i) => {
-              const pageNum = i + 1
-              const isCurrentPage = pageNum === page
-
-              // Afficher seulement quelques pages autour de la page actuelle
-              if (
-                pageNum === 1 ||
-                pageNum === postsResult.pagination.totalPages ||
-                (pageNum >= page - 1 && pageNum <= page + 1)
-              ) {
-                return (
-                  <Link key={pageNum} href={`/blog?page=${pageNum}`}>
-                    <Button
-                      variant={isCurrentPage ? 'default' : 'outline'}
-                      size="sm"
-                    >
-                      {pageNum}
-                    </Button>
-                  </Link>
-                )
-              }
-
-              // Afficher des points de suspension
-              if (pageNum === page - 2 || pageNum === page + 2) {
-                return (
-                  <span key={pageNum} className="px-2">
-                    ...
-                  </span>
-                )
-              }
-
-              return null
-            })}
-          </div>
-
-          {page < postsResult.pagination.totalPages && (
-            <Link href={`/blog?page=${page + 1}`}>
-              <Button variant="outline">{t('pagination.next')}</Button>
-            </Link>
-          )}
         </div>
       )}
     </div>

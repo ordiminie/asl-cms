@@ -1,7 +1,7 @@
 import rehypeShiki from '@shikijs/rehype'
 import type {Metadata} from 'next'
 import {notFound} from 'next/navigation'
-import {getTranslations} from 'next-intl/server'
+import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {MDXRemote} from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
 
@@ -16,7 +16,9 @@ import {Badge} from '@/components/ui/badge'
 import {PagesConst} from '@/env'
 import {isPageEnabled} from '@/lib/utils'
 
-// Génération des paramètres statiques pour SSG
+export const dynamic = 'force-static'
+export const dynamicParams = false
+
 export async function generateStaticParams() {
   if (!isPageEnabled(PagesConst.BLOG)) {
     return []
@@ -33,13 +35,13 @@ export async function generateStaticParams() {
   }
 }
 
-// Génération des métadonnées
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{locale: string; slug: string}>
 }): Promise<Metadata> {
   const {locale, slug} = await params
+  setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'BlogPostPage'})
 
   try {
@@ -92,6 +94,7 @@ export default async function BlogPostPage({
     return notFound()
   }
   const {locale, slug} = await params
+  setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'BlogPostPage'})
 
   try {

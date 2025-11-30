@@ -123,8 +123,9 @@ export async function createPostAction(data: PostFormData): Promise<FormState> {
       newHashtagsToCreate
     )
 
-    // Revalidation du cache
+    // Revalidation du cache admin et public
     revalidatePath('/admin/blog')
+    revalidatePath('/blog')
 
     return {
       success: true,
@@ -236,9 +237,10 @@ export async function updatePostCompleteAction(
       newHashtagsToCreate
     )
 
-    // Revalidation du cache
+    // Revalidation du cache admin et public
     revalidatePath('/admin/blog')
     revalidatePath(`/admin/blog/${postId}/edit`)
+    revalidatePath('/blog')
 
     return {
       success: true,
@@ -330,6 +332,7 @@ export async function updatePostAction(
     })
 
     revalidatePath('/admin/blog')
+    revalidatePath('/blog')
     return {
       success: true,
       message: 'Post mis à jour avec succès',
@@ -352,6 +355,7 @@ export async function deletePostAction(id: string): Promise<FormState> {
     await deletePostService(id)
 
     revalidatePath('/admin/blog')
+    revalidatePath('/blog')
     return {
       success: true,
       message: 'Post supprimé avec succès',
