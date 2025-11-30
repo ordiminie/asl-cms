@@ -43,14 +43,16 @@ export function LoginForm({className, ...props}: React.ComponentProps<'div'>) {
     try {
       const result = await loginProviderAction(provider)
 
-      if (result.success) {
+      if (result && result?.success) {
         toast(tMessages('success'), {
-          description: result.message,
+          description: result?.message,
+        })
+      } else if (result) {
+        toast(tMessages('error'), {
+          description: result?.message || tMessages('loginError'),
         })
       } else {
-        toast(tMessages('error'), {
-          description: result.message || tMessages('loginError'),
-        })
+        console.warn('redirection')
       }
     } catch (error) {
       console.error(`Erreur lors de la connexion ${provider}:`, error)
