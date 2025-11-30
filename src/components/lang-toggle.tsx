@@ -23,7 +23,11 @@ export function LangToggle() {
   const currentLocale = params.locale as string
 
   const handleLanguageChange = (newLocale: string) => {
-    router.replace(pathname, {locale: newLocale})
+    // Strip locale prefix if present (next-intl bug with static pages)
+    const cleanPathname = pathname.startsWith(`/${currentLocale}`)
+      ? pathname.slice(currentLocale.length + 1) || '/'
+      : pathname
+    router.replace(cleanPathname, {locale: newLocale})
   }
 
   return (
