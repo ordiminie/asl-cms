@@ -1,315 +1,83 @@
 ---
-description: 
-globs: 
+description: Convention de nommage des helpers client/serveur/isomorphique
+globs: src/lib/helper/**
 alwaysApply: false
 ---
-# Architecture des Helpers - Séparation Client/Serveur
+# Architecture des Helpers - Convention de Nommage
 
-## Principe Général
+## Convention de Nommage
 
-L'architecture des helpers suit une **séparation stricte** entre le code client et serveur selon l'emplacement des fichiers.
+Les helpers dans `src/lib/helper/` suivent une convention de nommage stricte :
 
----
-
-## Répartition par Dossiers
-
-### 📂 **`src/lib/helper/` - EXCLUSIVEMENT CLIENT**
-
-- **Contrainte** : Code exécutable **uniquement côté navigateur**
-- **Usage** : Fonctions utilitaires pour les composants React et logique UI
-- **Interdiction** : Aucun accès aux ressources serveur (env, DB, API externes)
-
-### 📂 **`src/services/` - HELPERS SERVEUR AUTORISÉS**
-
-- **Contrainte** : Code exécutable **côté serveur uniquement**  
-- **Usage** : Logique métier, validation, transformation de données serveur
-- **Autorisation** : Accès complet aux ressources serveur
-
-### 📂 **`src/db/` - HELPERS BASE DE DONNÉES**
-
-- **Contrainte** : Code d'accès aux données
-- **Usage** : Helpers pour requêtes, transformations de modèles
-- **Autorisation** : Accès ORM, repositories, migrations
+| Suffixe | Type | Environnement |
+|---------|------|---------------|
+| `helper-name.ts` | Isomorphique | Client + Serveur |
+| `helper-name.client.ts` | Client-only | Navigateur uniquement |
+| `helper-name.server.ts` | Server-only | Node.js uniquement |
 
 ---
 
-## Règles par Emplacement
+## Exemples (pattern blog)
 
-### ✅ **`/lib/helper/` - Code Client Pur**
+### `blog.ts` - Isomorphique
 
 ```typescript
-// ✅ AUTORISÉ dans /lib/helper/
-export function formatPrice(amount: number, currency = 'EUR'): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency
-  }).format(amount)
+// Types et fonctions pures - fonctionnent partout
+export interface BlogPost {
+  slug: string
+  title: string
 }
 
-export function validateEmail(email: string): boolean {
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return regex.test(email)
-}
-
-export function getReferenceIdByBillingMode(
-  billingMode: BillingModes,
-  userId: string,
-  organizationId?: string
-): string {
-  return billingMode === BillingModes.ORGANIZATION 
-    ? organizationId || userId 
-    : userId
+export const generateSlug = (title: string): string => {
+  return title.toLowerCase().replace(/\s+/g, '-')
 }
 ```
 
-### ✅ **`/services/` - Helpers Serveur Métier**
+### `blog.client.ts` - Client-only
 
 ```typescript
-// ✅ AUTORISÉ dans /services/helpers/
-import { env } from '@/env'
-import { getReferenceIdByBillingMode } from '@/lib/helper/subscription-helper'
+import {BlogPost} from './blog'
 
-export function getCurrentBillingMode(): BillingModes {
-  return env.NEXT_PUBLIC_BILLING_MODE
-}
-
-export function getCurrentReferenceId(
-  userId: string, 
-  organizationId?: string
-): string {
-  return getReferenceIdByBillingMode(
-    getCurrentBillingMode(),
-    userId,
-    organizationId
-  )
-}
-
-export async function processSubscriptionWebhook(
-  event: StripeEvent
-): Promise<void> {
-  // Logique complexe serveur avec accès DB
+// APIs navigateur uniquement (localStorage, window, etc.)
+export const blogStorage = {
+  savePost: (post: BlogPost): void => {
+    localStorage.setItem(`blog-post-${post.slug}`, JSON.stringify(post))
+  },
 }
 ```
 
-### ✅ **`/db/` - Helpers Base de Données**
+### `blog.server.ts` - Server-only
 
 ```typescript
-// ✅ AUTORISÉ dans /db/helpers/
-import { eq } from 'drizzle-orm'
-import db from '@/db/models/db'
-import { users, subscriptions } from '@/db/models/schema'
+import 'server-only' // OBLIGATOIRE
 
-export async function findUserWithActiveSubscription(userId: string) {
-  return await db
-    .select()
-    .from(users)
-    .leftJoin(subscriptions, eq(users.id, subscriptions.referenceId))
-    .where(eq(users.id, userId))
-}
+import fs from 'fs'
+import path from 'path'
+import {BlogPost} from './blog'
 
-export function transformUserModelToDTO(userModel: UserModel): UserDTO {
-  // Transformation modèle -> DTO
+// APIs Node.js uniquement (fs, path, env, etc.)
+export function getAllBlogPosts(): BlogPost[] {
+  const files = fs.readdirSync(CONTENT_DIR)
+  // ...
 }
 ```
 
 ---
 
-## Architecture Recommandée
+## Règles
 
-### **Structure des Dossiers**
+### ✅ Fichiers isomorphiques (`.ts`)
+- Types et interfaces
+- Fonctions pures sans effets de bord
+- Pas d'accès aux APIs spécifiques (navigateur ou Node.js)
 
-```
-src/
-├── lib/helper/              # 🔵 CLIENT UNIQUEMENT
-│   ├── date-helper.ts       # Formatage dates côté client
-│   ├── format-helper.ts     # Formatage données UI
-│   ├── validation-helper.ts # Validation formulaires
-│   └── subscription-helper.ts # Logique référence client
-│
-├── services/               # 🟠 SERVEUR + LOGIQUE MÉTIER
-│   ├── helpers/            # Helpers logique métier
-│   │   ├── billing-helper.ts
-│   │   └── email-helper.ts
-│   ├── user-service.ts
-│   └── subscription-service.ts
-│
-└── db/                     # 🟢 ACCÈS DONNÉES
-    ├── helpers/            # Helpers base de données
-    │   ├── query-helper.ts
-    │   └── transform-helper.ts
-    ├── models/
-    └── repositories/
-```
+### ✅ Fichiers client (`.client.ts`)
+- `localStorage`, `sessionStorage`
+- `window`, `document`
+- APIs Web (Intersection Observer, etc.)
 
----
-
-## Flux de Données Recommandé
-
-### **Client → Serveur → Base de Données**
-
-```typescript
-// 1️⃣ COMPOSANT CLIENT utilise helper client
-import { getReferenceIdByBillingMode } from '@/lib/helper/subscription-helper'
-import { getCurrentBillingMode } from '@/services/helpers/billing-helper'
-
-function SubscriptionComponent() {
-  const referenceId = getReferenceIdByBillingMode(
-    getCurrentBillingMode(), // Récupéré côté serveur
-    user.id,
-    organization?.id
-  )
-}
-
-// 2️⃣ SERVICE utilise helper serveur + client
-import { getReferenceIdByBillingMode } from '@/lib/helper/subscription-helper'
-
-export async function createSubscriptionService(
-  userId: string,
-  organizationId?: string
-) {
-  const referenceId = getReferenceIdByBillingMode(
-    env.NEXT_PUBLIC_BILLING_MODE,
-    userId,
-    organizationId
-  )
-  
-  // Logique métier serveur...
-}
-
-// 3️⃣ REPOSITORY utilise helper DB
-import { transformUserModelToDTO } from '@/db/helpers/transform-helper'
-
-export async function getUserByIdDao(id: string): Promise<UserDTO> {
-  const userModel = await db.query.users.findFirst({
-    where: eq(users.id, id)
-  })
-  
-  return transformUserModelToDTO(userModel)
-}
-```
-
----
-
-## Contraintes Strictes
-
-### ❌ **INTERDIT dans `/lib/helper/`**
-
-```typescript
-// ❌ Variables d'environnement
-import { env } from '@/env'
-export const BILLING_MODE = env.NEXT_PUBLIC_BILLING_MODE
-
-// ❌ Accès base de données
-import db from '@/db/models/db'
-export async function getUser(id: string) {
-  return await db.query.users.findFirst()
-}
-
-// ❌ Appels API externes
-export async function fetchStripeCustomer(id: string) {
-  return await stripe.customers.retrieve(id)
-}
-```
-
-### ✅ **AUTORISÉ partout ailleurs**
-
-- **`/services/helpers/`** : Toute logique serveur, env, API
-- **`/db/helpers/`** : Accès DB, ORM, transformations modèles
-- **`/app/`** : Server Actions avec accès complet serveur
-
----
-
-## Migration des Helpers Existants
-
-### **Étapes de Migration**
-
-1. **Identifier l'usage** : Client ou serveur ?
-2. **Déplacer si nécessaire** :
-   - Client → garder dans `/lib/helper/`
-   - Serveur → déplacer vers `/services/helpers/` ou `/db/helpers/`
-3. **Refactoriser les dépendances** : Passer paramètres au lieu d'importer
-4. **Tester** : Valider côté client ET serveur
-
-### **Exemple Concret : subscription-helper.ts**
-
-**Avant (Violation)** :
-```typescript
-// ❌ /lib/helper/subscription-helper.ts
-import { env } from '@/env'
-
-export const BILLING_MODE = env.NEXT_PUBLIC_BILLING_MODE // SERVEUR dans CLIENT !
-
-export function getReferenceIdByBillingMode(
-  userId?: string,
-  organizationId?: string
-): string | undefined {
-  // Logique client valide
-}
-```
-
-**Après (Conforme)** :
-```typescript
-// ✅ /lib/helper/subscription-helper.ts - CLIENT PUR
-export function getReferenceIdByBillingMode(
-  billingMode: BillingModes,
-  userId: string,
-  organizationId?: string
-): string {
-  return billingMode === BillingModes.ORGANIZATION 
-    ? organizationId || userId 
-    : userId
-}
-
-// ✅ /services/helpers/billing-helper.ts - SERVEUR
-import { env } from '@/env'
-import { getReferenceIdByBillingMode } from '@/lib/helper/subscription-helper'
-
-export function getCurrentBillingMode(): BillingModes {
-  return env.NEXT_PUBLIC_BILLING_MODE
-}
-
-export function getCurrentReferenceId(
-  userId: string,
-  organizationId?: string
-): string {
-  return getReferenceIdByBillingMode(
-    getCurrentBillingMode(),
-    userId,
-    organizationId
-  )
-}
-```
-
----
-
-## Tests et Validation
-
-### **Tests par Emplacement**
-
-- **`/lib/helper/`** : Tests unitaires exécutables côté client
-- **`/services/helpers/`** : Tests avec mocks des ressources serveur
-- **`/db/helpers/`** : Tests d'intégration avec base de données
-
-### **Critères de Validation**
-
-- [ ] `/lib/helper/` → Aucune dépendance serveur
-- [ ] `/services/helpers/` → Logique métier validée
-- [ ] `/db/helpers/` → Accès données optimisé
-- [ ] Tests complets pour chaque emplacement
-- [ ] Documentation claire de l'usage
-
----
-
-## Résumé
-
-### 🎯 **Règle d'Or**
-
-- **`/lib/helper/`** = Client pur (navigateur uniquement)
-- **`/services/helpers/`** = Serveur + logique métier
-- **`/db/helpers/`** = Accès base de données
-
-### 🔄 **Flux Optimal**
-
-**Client** → utilise helpers client → appelle services → utilisent helpers serveur → appellent DB → utilisent helpers DB
-
-Cette architecture garantit une **séparation claire**, une **maintenabilité optimale** et des **tests ciblés** selon le contexte d'exécution.
+### ✅ Fichiers serveur (`.server.ts`)
+- **Toujours commencer par `import 'server-only'`**
+- `fs`, `path`, `process`
+- Variables d'environnement sensibles
+- Accès base de données
