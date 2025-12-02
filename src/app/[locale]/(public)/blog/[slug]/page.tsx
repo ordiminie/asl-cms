@@ -17,7 +17,6 @@ import {PagesConst} from '@/env'
 import {isPageEnabled} from '@/lib/utils'
 
 export const dynamic = 'force-static'
-export const dynamicParams = false
 
 export async function generateStaticParams() {
   if (!isPageEnabled(PagesConst.BLOG)) {

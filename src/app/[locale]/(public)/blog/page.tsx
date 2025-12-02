@@ -11,7 +11,6 @@ import {isPageEnabled} from '@/lib/utils'
 import {SupportedLanguage} from '@/services/types/domain/post-types'
 
 export const dynamic = 'force-static'
-export const dynamicParams = false
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
