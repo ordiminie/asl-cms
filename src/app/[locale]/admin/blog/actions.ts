@@ -9,6 +9,7 @@ import {
   PostFormData,
   postFormSchema,
 } from '@/components/features/admin/blog/post-form-validation'
+import {routing} from '@/i18n/routing'
 import {getAuthUser} from '@/services/authentication/auth-service'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {
@@ -45,6 +46,16 @@ type TranslationInput = {
   metaTitle: string
   metaDescription: string
   metaKeywords: string
+}
+
+function revalidateBlogPaths(slug?: string) {
+  for (const locale of routing.locales) {
+    revalidatePath(`/${locale}/blog`)
+    if (slug) {
+      revalidatePath(`/${locale}/blog/${slug}`)
+    }
+  }
+  revalidatePath('/admin/blog')
 }
 
 /**
@@ -123,9 +134,7 @@ export async function createPostAction(data: PostFormData): Promise<FormState> {
       newHashtagsToCreate
     )
 
-    // Revalidation du cache admin et public
-    revalidatePath('/admin/blog')
-    revalidatePath('/blog')
+    revalidateBlogPaths()
 
     return {
       success: true,
@@ -237,10 +246,8 @@ export async function updatePostCompleteAction(
       newHashtagsToCreate
     )
 
-    // Revalidation du cache admin et public
-    revalidatePath('/admin/blog')
+    revalidateBlogPaths()
     revalidatePath(`/admin/blog/${postId}/edit`)
-    revalidatePath('/blog')
 
     return {
       success: true,
@@ -331,8 +338,7 @@ export async function updatePostAction(
       categoryId: categoryId || null,
     })
 
-    revalidatePath('/admin/blog')
-    revalidatePath('/blog')
+    revalidateBlogPaths()
     return {
       success: true,
       message: 'Post mis à jour avec succès',
@@ -354,8 +360,7 @@ export async function deletePostAction(id: string): Promise<FormState> {
   try {
     await deletePostService(id)
 
-    revalidatePath('/admin/blog')
-    revalidatePath('/blog')
+    revalidateBlogPaths()
     return {
       success: true,
       message: 'Post supprimé avec succès',
