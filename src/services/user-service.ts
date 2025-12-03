@@ -210,10 +210,20 @@ export const initializeRegisterUserDataService = async (
     throw new ValidationError('Failed to retrieve user')
   }
 
+  const locale = await getLocale()
+
+  // Créer les settings par défaut si ils n'existent pas
+  const existingSettings = await getUserSettingsByUserIdDao(user.id)
+  if (!existingSettings) {
+    await upsertUserSettingsDao(user.id, {
+      userId: user.id,
+      language: (locale as 'fr' | 'en' | 'es') || 'fr',
+    })
+  }
+
   // Déclencher l'email de suivi 24h après inscription si userId fourni
   if (user.id) {
     try {
-      const locale = await getLocale()
       await triggerInngestWelcomeFollowUpEmail({
         userId: user.id,
         userName: user.name || user.email.split('@')[0],

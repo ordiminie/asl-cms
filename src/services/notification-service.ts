@@ -184,11 +184,12 @@ export const createNotificationService = async (
     })
 
     // Vérifier si l'utilisateur a activé les notifications email OU si c'est forcé
+    // Si userSettings n'existe pas, utiliser les valeurs par défaut (true et 'both')
+    const enableEmail = userSettings?.enableEmailNotifications ?? true
+    const channel = userSettings?.notificationChannel ?? 'both'
     const shouldSendEmail =
       options.forceEmail ||
-      (userSettings?.enableEmailNotifications &&
-        (userSettings?.notificationChannel === 'email' ||
-          userSettings?.notificationChannel === 'both'))
+      (enableEmail && (channel === 'email' || channel === 'both'))
 
     if (shouldSendEmail) {
       logger.debug("📧 Envoi d'email autorisé pour:", parsed.data.type)
