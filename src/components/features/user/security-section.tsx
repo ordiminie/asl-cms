@@ -1,6 +1,11 @@
 import {useTranslations} from 'next-intl'
 
 import {AuthClientAppConfig} from '@/lib/better-auth/auth-client'
+import {
+  shouldShow2FA,
+  shouldShowChangeEmail,
+  shouldShowChangePassword,
+} from '@/lib/helper/auth-helper'
 import {User} from '@/services/types/domain/user-types'
 
 import {ChangeEmailForm} from './change-email-form'
@@ -21,7 +26,7 @@ export function UserSecurityFactorSection({user}: {user: User}) {
       </div>
 
       {/* Section changement d'email */}
-      {AuthClientAppConfig.changeEmail && (
+      {AuthClientAppConfig.changeEmail && shouldShowChangeEmail() && (
         <div className="rounded-lg border">
           <div className="p-6">
             <ChangeEmailForm user={user} />
@@ -30,7 +35,7 @@ export function UserSecurityFactorSection({user}: {user: User}) {
       )}
 
       {/* Section changement de mot de passe */}
-      {AuthClientAppConfig.changePassword && (
+      {AuthClientAppConfig.changePassword && shouldShowChangePassword() && (
         <div className="rounded-lg border">
           <div className="p-6">
             <ChangePasswordForm />
@@ -39,7 +44,7 @@ export function UserSecurityFactorSection({user}: {user: User}) {
       )}
 
       {/* Section authentification à deux facteurs */}
-      {AuthClientAppConfig.enable2FA && (
+      {AuthClientAppConfig.enable2FA && shouldShow2FA() && (
         <div className="rounded-lg border">
           <div className="p-6">
             <TwoFactorForm user={user} />
