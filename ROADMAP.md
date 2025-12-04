@@ -6,7 +6,7 @@ This document tracks the planned features and improvements for the Next.js SaaS 
 
 The boilerplate provides a solid foundation with:
 
-- ✅ Next.js 15 with App Router
+- ✅ Next.js 16 with App Router
 - ✅ React 19
 - ✅ Authentication with Better Auth
 - ✅ Database with Drizzle ORM
