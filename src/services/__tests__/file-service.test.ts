@@ -1,9 +1,9 @@
 /* eslint-disable no-restricted-properties */
 // Mock global de l'environnement AVANT les imports
-process.env.SUPABASE_URL = 'https://test.supabase.co'
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.SUPABASE_ANON_KEY = 'test-anon-key'
 process.env.STORAGE_TYPE = 'supabase'
-process.env.SUPABASE_BUCKET = 'test-bucket'
+process.env.NEXT_PUBLIC_SUPABASE_BUCKET = 'test-bucket'
 
 // Mock du client Supabase
 vi.mock('@/lib/files/supabaseClient', () => ({

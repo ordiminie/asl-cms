@@ -35,8 +35,10 @@ The boilerplate provides a solid foundation with:
   - Enhance auth flow UX
 
 - [ ] **SEO (sitemap/intl/robot etc ...)**
-  - Add "Sign in" link on registration page
-  - Enhance auth flow UX
+  - seo setting
+
+- [ ] **Checkout Better auth (simple loading cache)**
+  - better-auth.tsx
 
 ### Admin Features
 

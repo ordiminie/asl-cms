@@ -1235,6 +1235,10 @@
       "description": "Discover our articles on Next.js, React, TypeScript and the latest web development technologies."
     },
     "noArticles": "No articles available yet.",
+    "noCategory": "Uncategorized",
+    "views": "views",
+    "likes": "likes",
+    "readMore": "Read more",
     "pagination": {
       "previous": "Previous",
       "next": "Next"

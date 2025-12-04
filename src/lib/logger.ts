@@ -1,7 +1,7 @@
 import winston from 'winston'
 
 import {env} from '@/env'
-const isConsole = env.NODE_ENV === 'development' ? false : false
+const isConsole = env.NEXT_PUBLIC_NODE_ENV === 'development' ? false : false
 
 // Logger Winston pour la production
 const winstonLogger = winston.createLogger({

@@ -1,5 +1,7 @@
 #!/usr/bin/env tsx
 
+import {pathToFileURL} from 'node:url'
+
 import * as p from '@clack/prompts'
 import {randomBytes} from 'crypto'
 import {existsSync} from 'fs'
@@ -68,18 +70,19 @@ function getVariableDescription(varName: string): string {
     EMAIL_TO: 'Adresse email destinataire par défaut',
     STRIPE_SECRET_KEY: 'Clé secrète Stripe',
     STRIPE_WEBHOOK_SECRET: 'Secret webhook Stripe',
-    SUPABASE_URL: 'URL du projet Supabase',
+    NEXT_PUBLIC_SUPABASE_URL: 'URL du projet Supabase',
     SUPABASE_ANON_KEY: 'Clé publique Supabase',
-    SUPABASE_BUCKET: 'Nom du bucket Supabase',
+    NEXT_PUBLIC_SUPABASE_BUCKET: 'Nom du bucket Supabase',
     GOOGLE_CLIENT_ID: 'ID client Google OAuth',
     GOOGLE_CLIENT_SECRET: 'Secret client Google OAuth',
     NEXT_PUBLIC_ENABLED_PAGES: 'Pages activées (séparées par des virgules)',
     NEXT_PUBLIC_AUTH_METHODS: "Méthodes d'authentification disponibles",
     NEXT_PUBLIC_MAX_FILE_SIZE: 'Taille maximale des fichiers (bytes)',
     NEXT_PUBLIC_BILLING_MODE: 'Mode de facturation (organization/user)',
-    NODE_ENV: 'Environnement Node.js (development/production/test)',
+    NEXT_PUBLIC_NODE_ENV: 'Environnement Node.js (development/production/test)',
     LOG_LEVEL: 'Niveau de logging (debug/info/warn/error)',
-    ALLOWED_MIME_TYPES: 'Types MIME autorisés (séparés par virgules)',
+    NEXT_PUBLIC_ALLOWED_MIME_TYPES:
+      'Types MIME autorisés (séparés par virgules)',
     STORAGE_TYPE: 'Type de stockage utilisé',
     CHAT_PROVIDER: 'Fournisseur de chat IA',
     OLLAMA_BASE_URL: 'URL de base pour Ollama',
@@ -151,10 +154,10 @@ function getVariableExample(varName: string): string {
     EMAIL_TO: 'admin@example.com',
     STRIPE_SECRET_KEY: 'sk_test_example_replace_with_real_stripe_key',
     STRIPE_WEBHOOK_SECRET: 'whsec_example_replace_with_real_webhook_secret',
-    SUPABASE_URL: 'https://example-project.supabase.co',
+    NEXT_PUBLIC_SUPABASE_URL: 'https://example-project.supabase.co',
     SUPABASE_ANON_KEY:
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example_anon_key_replace_with_real',
-    SUPABASE_BUCKET: 'example-bucket',
+    NEXT_PUBLIC_SUPABASE_BUCKET: 'example-bucket',
     GOOGLE_CLIENT_ID: 'example-client-id.apps.googleusercontent.com',
     GOOGLE_CLIENT_SECRET: 'GOCSPX-example_client_secret_replace',
     NEXT_PUBLIC_ENABLED_PAGES: 'blog,docs,apikey,organization',
@@ -170,13 +173,14 @@ function getVariableExample(varName: string): string {
     BETTER_AUTH_URL: 'http://localhost:3000',
     BETTER_AUTH_TRUSTED_ORIGINS: 'http://localhost:3000',
     NEXT_PUBLIC_BILLING_MODE: 'organization',
-    NODE_ENV: 'development',
+    NEXT_PUBLIC_NODE_ENV: 'development',
     LOG_LEVEL: 'info',
     STORAGE_TYPE: 'supabase',
     CHAT_PROVIDER: 'ollama',
     OLLAMA_BASE_URL: 'http://localhost:11434',
     NEXT_PUBLIC_MAX_FILE_SIZE: '5242880',
-    ALLOWED_MIME_TYPES: 'image/jpeg,image/png,image/gif,application/pdf',
+    NEXT_PUBLIC_ALLOWED_MIME_TYPES:
+      'image/jpeg,image/png,image/gif,application/pdf',
     NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: 'true',
     NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE: 'true',
     NEXT_PUBLIC_BETTER_AUTH_2FA_SKIP_VERIFICATION_ON_ENABLE: 'true',
@@ -221,7 +225,7 @@ function generateDefaultValue(varName: string): string {
   }
 
   // Configuration technique
-  if (varName === 'NODE_ENV') return 'development'
+  if (varName === 'NEXT_PUBLIC_NODE_ENV') return 'development'
   if (varName === 'LOG_LEVEL') return 'info'
   if (varName === 'STORAGE_TYPE') return 'supabase'
   if (varName === 'CHAT_PROVIDER') return 'ollama'
@@ -670,7 +674,7 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     p.log.error(`Erreur: ${err.message}`)
     process.exit(1)

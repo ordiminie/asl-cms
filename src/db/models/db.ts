@@ -30,7 +30,7 @@ const db = drizzle(pool, {
   },
 })
 
-if (env.NODE_ENV === 'test') {
+if (env.NEXT_PUBLIC_NODE_ENV === 'test') {
   throw new Error('Database connections are not allowed during tests.')
 }
 

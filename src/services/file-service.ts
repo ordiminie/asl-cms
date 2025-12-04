@@ -18,6 +18,8 @@ import {
   ALLOWED_IMAGE_MIME_TYPES,
   DeleteFile,
   EntityType,
+  EntityTypeConst,
+  FileCategoryConst,
   FileListResponse,
   FileResponse,
   GetFile,
@@ -40,21 +42,27 @@ const {config} = getStorageConfig()
 const generateFilePath = (
   entityType: EntityType,
   entityId: string,
-  file: File
+  file: File,
+  category?: string
 ): string => {
   const timestamp = `${Date.now()}`.slice(5, 10)
+  if (category) {
+    return `${entityType}s/${entityId}/${category}/${timestamp}-${file.name}`
+  }
   return `${entityType}s/${entityId}/${timestamp}-${file.name}`
 }
 
 const getFileUrl = (path: string) => {
-  const baseUrl = env.SUPABASE_URL
+  const baseUrl = env.NEXT_PUBLIC_SUPABASE_URL
   const bucket = config.bucket
 
   if (!baseUrl) {
     console.error(
-      "SUPABASE_URL n'est pas définie dans les variables d'environnement"
+      "NEXT_PUBLIC_SUPABASE_URL n'est pas définie dans les variables d'environnement"
     )
-    throw new Error('Configuration manquante : SUPABASE_URL est requise')
+    throw new Error(
+      'Configuration manquante : NEXT_PUBLIC_SUPABASE_URL est requise'
+    )
   }
 
   // Ajouter le basePath pour l'URL publique
@@ -85,7 +93,7 @@ export const uploadFileForEntityService = async (
     throw new ValidationError(parsed.error.message)
   }
 
-  const {file, entityType, entityId} = params
+  const {file, entityType, entityId, category} = params
 
   // Vérification des autorisations
   const granted = await canUploadFile(entityType, entityId)
@@ -104,7 +112,7 @@ export const uploadFileForEntityService = async (
   }
 
   // Générer le chemin automatiquement
-  const path = generateFilePath(entityType, entityId, file)
+  const path = generateFilePath(entityType, entityId, file, category)
 
   await uploadFile(file, path)
   return {
@@ -139,7 +147,7 @@ export const uploadImageForEntityService = async (
     throw new ValidationError(parsed.error.message)
   }
 
-  const {file, entityType, entityId} = params
+  const {file, entityType, entityId, category} = params
 
   // Vérification des autorisations
   const granted = await canUploadFile(entityType, entityId)
@@ -164,7 +172,7 @@ export const uploadImageForEntityService = async (
   }
 
   // Générer le chemin automatiquement
-  const path = generateFilePath(entityType, entityId, file)
+  const path = generateFilePath(entityType, entityId, file, category)
 
   await uploadFile(file, path)
   return {
@@ -298,10 +306,10 @@ export const uploadFilePostService = async (
   file: File
 ): Promise<FileResponse> => {
   return await uploadImageForEntityService({
-    entityType: 'post',
+    entityType: EntityTypeConst.POST,
     entityId: postId,
     file,
-    category: 'image',
+    category: FileCategoryConst.IMAGE,
   })
 }
 

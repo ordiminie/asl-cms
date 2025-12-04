@@ -25,7 +25,10 @@ import {APP_ISSUER} from '@/lib/constants'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
 import {stripeClient} from '@/lib/stripe/stripe-client'
 import {onStripeEvent} from '@/lib/stripe/stripe-events'
-import {sendOrganizationInvitationService} from '@/services/facades/email-service-facade'
+import {
+  sendInternalEmailService,
+  sendOrganizationInvitationService,
+} from '@/services/facades/email-service-facade'
 import {createTypedNotificationService} from '@/services/facades/notification-service-facade'
 import {getOrganizationMembersService} from '@/services/facades/organization-service-facade'
 import {getActivePlansForBetterAuthService} from '@/services/facades/subscription-service-facade'
@@ -145,7 +148,7 @@ const options = {
         let user = await getUserByEmailDao(email)
         if (!user) {
           // Regsiter with magic Link
-          await initializeRegisterUserDataService(email, true)
+          //await initializeRegisterUserDataService(email, true)
           user = await getUserByEmailDao(email)
         }
         if (user) {
@@ -166,7 +169,7 @@ const options = {
       membershipLimit: 10,
       allowUserToCreateOrganization: false,
       async sendInvitationEmail(data) {
-        const inviteLink = `${env.NEXT_PUBLIC_APP_URL}/invitations/${data.id}`
+        const inviteLink = `${env.NEXT_PUBLIC_APP_URL}/account/invitations/${data.id}`
         // Find user by email to get userId for notification
         const invitedUser = await getUserByEmailDao(data.email)
         if (invitedUser) {
@@ -314,6 +317,10 @@ function createDatabaseHooks() {
         },
         after: async (user: User) => {
           await initializeRegisterUserDataService(user.email)
+          await sendInternalEmailService({
+            title: 'Nouvel utilisateur enregistré',
+            data: `Un nouvel utilisateur s'est inscrit:\n\nEmail: ${user.email}\nNom: ${user.name}\nID: ${user.id}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+          })
         },
       },
     },
