@@ -5,7 +5,7 @@ import * as React from 'react'
 
 import {AdminMenuHeader} from '@/components/features/layouts/sidebar/admin-menu-header'
 import {NavMain} from '@/components/features/layouts/sidebar/nav-main'
-import {NavUser} from '@/components/features/layouts/sidebar/nav-user'
+import {NavUserAdmin} from '@/components/features/layouts/sidebar/nav-user-admin'
 import {
   Sidebar,
   SidebarContent,
@@ -100,7 +100,7 @@ export function AdminSidebar({
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user || undefined} />
+        <NavUserAdmin user={user || undefined} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
