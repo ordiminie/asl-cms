@@ -137,8 +137,13 @@ export const checkSubscriptionLimit = async (
   }
 
   // 2. Appeler le service pour la logique métier
+  const sub = subscription[0]
   return checkSubscriptionLimitService(
-    subscription[0],
+    {
+      limits: sub.limits as Record<string, number> | undefined,
+      seats: sub.seats,
+      plan: sub.plan,
+    },
     limitType,
     currentUsage,
     requestedAmount
