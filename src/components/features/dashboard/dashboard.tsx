@@ -396,10 +396,12 @@ export default function DashboardPage() {
                       <ChartTooltip
                         content={
                           <ChartTooltipContent
-                            formatter={(value) => [
-                              `${value.toLocaleString()} €`,
-                              'Revenu',
-                            ]}
+                            formatter={(value) =>
+                              [
+                                `${Number(value).toLocaleString()} €`,
+                                'Revenu',
+                              ] as [string, string]
+                            }
                           />
                         }
                       />
@@ -442,7 +444,9 @@ export default function DashboardPage() {
                       <ChartTooltip
                         content={
                           <ChartTooltipContent
-                            formatter={(value) => [`${value}`, 'Ventes']}
+                            formatter={(value) =>
+                              [`${value}`, 'Ventes'] as [string, string]
+                            }
                           />
                         }
                       />

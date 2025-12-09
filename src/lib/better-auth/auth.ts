@@ -100,7 +100,7 @@ const options = {
   user: {
     changeEmail: {
       enabled: AuthAppConfig.changeEmail,
-      sendChangeEmailVerification: async ({user, newEmail, url}) => {
+      sendChangeEmailConfirmation: async ({user, newEmail, url}) => {
         await createTypedNotificationService({
           userId: user.id,
           type: NotificationTypeConst.change_email_verification,

@@ -178,6 +178,7 @@
   },
   "NavUser": {
     "upgradeToPro": "Passer à Pro",
+    "subscription": "Abonnement",
     "darkMode": "Mode sombre",
     "lightMode": "Mode clair",
     "account": "Compte",
