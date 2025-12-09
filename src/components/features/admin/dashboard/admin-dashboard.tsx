@@ -498,9 +498,15 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
                       <ChartTooltipContent
                         formatter={(value, name) => {
                           if (name === 'totalMRR') {
-                            return [`${Number(value).toFixed(2)}€`, 'MRR']
+                            return [`${Number(value).toFixed(2)}€`, 'MRR'] as [
+                              string,
+                              string,
+                            ]
                           }
-                          return [value, 'Abonnements']
+                          return [String(value), 'Abonnements'] as [
+                            string,
+                            string,
+                          ]
                         }}
                       />
                     }
@@ -548,10 +554,12 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        formatter={(value) => [
-                          `${value.toLocaleString()}`,
-                          'Nouveaux abonnements',
-                        ]}
+                        formatter={(value) =>
+                          [
+                            `${Number(value).toLocaleString()}`,
+                            'Nouveaux abonnements',
+                          ] as [string, string]
+                        }
                       />
                     }
                   />
@@ -602,10 +610,12 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        formatter={(value) => [
-                          `${value.toLocaleString()}`,
-                          'Utilisateurs',
-                        ]}
+                        formatter={(value) =>
+                          [
+                            `${Number(value).toLocaleString()}`,
+                            'Utilisateurs',
+                          ] as [string, string]
+                        }
                       />
                     }
                   />
@@ -652,7 +662,9 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
                   <ChartTooltip
                     content={
                       <ChartTooltipContent
-                        formatter={(value) => [`${value}`, 'Organisations']}
+                        formatter={(value) =>
+                          [`${value}`, 'Organisations'] as [string, string]
+                        }
                       />
                     }
                   />
