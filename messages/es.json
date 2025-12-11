@@ -1276,6 +1276,9 @@
       "description": "Mantente al día con nuestros últimos artículos y noticias de desarrollo web.",
       "placeholder": "tu.email@ejemplo.com",
       "subscribe": "Suscribirse",
+      "subscribing": "Suscribiendo...",
+      "success": "¡Suscripción exitosa!",
+      "error": "Ocurrió un error. Por favor, inténtalo de nuevo.",
       "privacy": "Sin spam, cancela en cualquier momento"
     },
     "stats": {

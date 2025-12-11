@@ -1,10 +1,11 @@
-import {Eye, FileText, FolderOpen, PenTool, Shield, User} from 'lucide-react'
+import {Eye, FileText, FolderOpen, PenTool, User} from 'lucide-react'
 import Link from 'next/link'
 import {notFound} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 import React from 'react'
 
 import {getAllCategoriesDal} from '@/app/dal/post-dal'
+import {NewsletterForm} from '@/components/features/blog/newsletter-form'
 import {Badge} from '@/components/ui/badge'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Separator} from '@/components/ui/separator'
@@ -194,33 +195,8 @@ export default async function BlogLayout({
               </CardContent>
             </Card>
 
-            {/* Newsletter (fictive) */}
-            <Card className="from-primary/5 to-primary/10 border-primary/20 bg-gradient-to-br">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {t('newsletter.title')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-muted-foreground text-sm">
-                  {t('newsletter.description')}
-                </p>
-                <div className="flex flex-col gap-2">
-                  <input
-                    type="email"
-                    placeholder={t('newsletter.placeholder')}
-                    className="bg-background/50 rounded-md border px-3 py-2 text-sm backdrop-blur"
-                  />
-                  <button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-3 py-2 text-sm transition-colors">
-                    {t('newsletter.subscribe')}
-                  </button>
-                </div>
-                <p className="text-muted-foreground flex items-center gap-1 text-xs">
-                  <Shield className="h-3 w-3" />
-                  {t('newsletter.privacy')}
-                </p>
-              </CardContent>
-            </Card>
+            {/* Newsletter */}
+            <NewsletterForm />
 
             {/* Statistiques (fictives) */}
             <Card>
