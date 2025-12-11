@@ -1,0 +1,10 @@
+import newsletterServiceInterceptor from './interceptors/newsletter-service-logger-interceptor'
+
+export const subscribeToNewsletterService =
+  newsletterServiceInterceptor.subscribeToNewsletterService
+export const addTagToSubscriberService =
+  newsletterServiceInterceptor.addTagToSubscriberService
+export const removeTagFromSubscriberService =
+  newsletterServiceInterceptor.removeTagFromSubscriberService
+export const unsubscribeFromNewsletterService =
+  newsletterServiceInterceptor.unsubscribeFromNewsletterService

@@ -89,6 +89,11 @@ export const serverSchema = {
   OLLAMA_BASE_URL: z.string().url().default('http://localhost:11434'),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
+
+  // Mailchimp Newsletter
+  MAILCHIMP_API_KEY: z.string().optional(),
+  MAILCHIMP_SERVER_PREFIX: z.string().optional(),
+  MAILCHIMP_AUDIENCE_ID: z.string().optional(),
 }
 
 // Schémas des variables client (exposées au client)

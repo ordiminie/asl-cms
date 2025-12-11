@@ -29,10 +29,12 @@ import {
   sendInternalEmailService,
   sendOrganizationInvitationService,
 } from '@/services/facades/email-service-facade'
+import {subscribeToNewsletterService} from '@/services/facades/newsletter-service-facade'
 import {createTypedNotificationService} from '@/services/facades/notification-service-facade'
 import {getOrganizationMembersService} from '@/services/facades/organization-service-facade'
 import {getActivePlansForBetterAuthService} from '@/services/facades/subscription-service-facade'
 import {initializeRegisterUserDataService} from '@/services/facades/user-service-facade'
+import {NewsletterEmailTag} from '@/services/types/domain/newsletter-email-types'
 import {NotificationTypeConst} from '@/services/types/domain/notification-types'
 import {BillingModes} from '@/services/types/domain/subscription-types'
 
@@ -321,6 +323,9 @@ function createDatabaseHooks() {
             title: 'Nouvel utilisateur enregistré',
             data: `Un nouvel utilisateur s'est inscrit:\n\nEmail: ${user.email}\nNom: ${user.name}\nID: ${user.id}\nDate: ${new Date().toLocaleString('fr-FR')}`,
           })
+          await subscribeToNewsletterService(user.email, [
+            NewsletterEmailTag.Newsletter,
+          ])
         },
       },
     },
