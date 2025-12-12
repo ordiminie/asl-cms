@@ -92,3 +92,15 @@ export const getUsersByOrganizationDal = cache(
 export const getUserByIdDal = cache(async (userId: string) => {
   return await getUserByIdService(userId)
 })
+
+// ========================================
+// ADMIN USAGE FUNCTIONS
+// ========================================
+
+import {getAdminUserOrganizationsWithUsageService} from '@/services/facades/organization-service-facade'
+
+export const getAdminUserOrganizationsWithUsageDal = cache(
+  async (userId: string) => {
+    return await getAdminUserOrganizationsWithUsageService(userId)
+  }
+)

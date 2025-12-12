@@ -14,7 +14,9 @@ import {
   getOrganizationByIdService,
   getOrganizationBySlugService,
   getOrganizationMembersService,
+  getOrganizationUsageService,
   getUserInvitationsService,
+  getUserOrganizationsWithUsageService,
 } from '@/services/facades/organization-service-facade'
 import {Pagination} from '@/services/types/common-type'
 import {MemberOrInvitationDTO} from '@/services/types/domain/organization-types'
@@ -128,4 +130,16 @@ export const getOrganizationAdminPermissionsDal = cache(async () => {
 export const getUserInvitationsServiceDal = cache(async () => {
   const invitations = await getUserInvitationsService()
   return invitations
+})
+
+// ========================================
+// USAGE FUNCTIONS
+// ========================================
+
+export const getOrganizationUsageDal = cache(async (organizationId: string) => {
+  return await getOrganizationUsageService(organizationId)
+})
+
+export const getUserOrganizationsWithUsageDal = cache(async () => {
+  return await getUserOrganizationsWithUsageService()
 })

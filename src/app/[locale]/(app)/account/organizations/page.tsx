@@ -1,22 +1,23 @@
+import {Zap} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {notFound} from 'next/navigation'
 
+import {getUserOrganizationsWithUsageDal} from '@/app/dal/organization-dal'
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {Progress} from '@/components/ui/progress'
 import {PagesConst} from '@/env'
 import {sortOrganizationsByRole} from '@/lib/helper/organization-helper'
 import {isPageEnabled} from '@/lib/utils'
 import {canUpdateOrganization} from '@/services/authorization/organization-authorization'
-import {getOrganizationsByUserIdService} from '@/services/facades/organization-service-facade'
 import {UserOrganizationRoleConst} from '@/services/types/domain/auth-types'
 
 export default async function OrganizationsPage() {
@@ -24,10 +25,10 @@ export default async function OrganizationsPage() {
     return notFound()
   }
 
-  const organizations = await getOrganizationsByUserIdService()
+  const organizationsWithUsage = await getUserOrganizationsWithUsageDal()
 
   // Trier les organisations par rôle : OWNER en premier, puis ADMIN, puis les autres
-  const sortedOrganizations = sortOrganizationsByRole(organizations)
+  const sortedOrganizations = sortOrganizationsByRole(organizationsWithUsage)
 
   const permissions = Object.fromEntries(
     await Promise.all(
@@ -37,6 +38,26 @@ export default async function OrganizationsPage() {
       ])
     )
   )
+
+  const formatUsage = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1) {
+      return `${used} / ∞`
+    }
+    return `${used} / ${limit}`
+  }
+
+  const getUsagePercent = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1 || limit === 0) return 0
+    return Math.min((used / limit) * 100, 100)
+  }
+
+  const getProgressColor = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1) return 'bg-green-500'
+    const ratio = used / limit
+    if (ratio >= 1) return 'bg-red-500'
+    if (ratio >= 0.8) return 'bg-orange-500'
+    return 'bg-green-500'
+  }
 
   return (
     <div className="flex-1 space-y-8 p-4 pt-6 sm:p-8">
@@ -74,15 +95,18 @@ export default async function OrganizationsPage() {
                     <CardTitle className="flex-1">
                       {organization.name}
                     </CardTitle>
-                    {organization.role === UserOrganizationRoleConst.OWNER && (
-                      <Badge variant="default" className="ml-2">
-                        Propriétaire
+                    <div className="flex gap-2">
+                      <Badge variant="outline" className="uppercase">
+                        {organization.usage.plan}
                       </Badge>
-                    )}
+                      {organization.role ===
+                        UserOrganizationRoleConst.OWNER && (
+                        <Badge variant="default">Propriétaire</Badge>
+                      )}
+                    </div>
                   </div>
-                  <CardDescription>{organization.description}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   {organization.logo && (
                     <div className="relative mb-4 h-32 w-full">
                       <Image
@@ -93,10 +117,62 @@ export default async function OrganizationsPage() {
                       />
                     </div>
                   )}
+
+                  {/* Usage Stats */}
+                  <div className="rounded-lg border p-3">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-medium">
+                      <Zap className="h-4 w-4" />
+                      Utilisation
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="mb-1 flex justify-between text-xs">
+                          <span className="text-muted-foreground">Projets</span>
+                          <span>
+                            {formatUsage(
+                              organization.usage.projects,
+                              organization.usage.limits.projects
+                            )}
+                          </span>
+                        </div>
+                        <Progress
+                          value={getUsagePercent(
+                            organization.usage.projects,
+                            organization.usage.limits.projects
+                          )}
+                          className="h-1.5"
+                          indicatorClassName={getProgressColor(
+                            organization.usage.projects,
+                            organization.usage.limits.projects
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1 flex justify-between text-xs">
+                          <span className="text-muted-foreground">Membres</span>
+                          <span>
+                            {formatUsage(
+                              organization.usage.users,
+                              organization.usage.limits.users
+                            )}
+                          </span>
+                        </div>
+                        <Progress
+                          value={getUsagePercent(
+                            organization.usage.users,
+                            organization.usage.limits.users
+                          )}
+                          className="h-1.5"
+                          indicatorClassName={getProgressColor(
+                            organization.usage.users,
+                            organization.usage.limits.users
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <p className="text-muted-foreground text-sm">
-                      Slug: {organization.slug}
-                    </p>
                     <p className="text-muted-foreground text-sm">
                       Rôle:{' '}
                       {organization.role === UserOrganizationRoleConst.OWNER

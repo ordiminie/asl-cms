@@ -460,3 +460,103 @@ export const deleteInvitationByIdService = async (invitationId: string) => {
 
   await deleteInvitationByIdDao(invitationIdSanitized)
 }
+
+// ========================================
+// USAGE FUNCTIONS
+// ========================================
+
+import {
+  AdminUsageStats,
+  getAdminUsageStatsDao,
+  PlanLimits,
+} from '@/db/repositories/subscription-repository'
+
+import {canManageUsers} from './authorization/user-authorization'
+
+export interface AdminUserOrganizationWithUsage {
+  id: string
+  name: string
+  slug: string | null
+  logo: string | null
+  role: string
+  usage: AdminUsageStats
+}
+
+export const getOrganizationUsageService = async (
+  organizationId: string
+): Promise<AdminUsageStats> => {
+  const parsed = organizationUuidSchema.safeParse(organizationId)
+  if (!parsed.success) {
+    throw new ValidationError(parsed.error.message)
+  }
+  const parsedUuid = parsed.data
+
+  const granted = await canReadOrganization(parsedUuid)
+  if (!granted) {
+    throw new AuthorizationError()
+  }
+
+  return await getAdminUsageStatsDao(parsedUuid)
+}
+
+export const getUserOrganizationsWithUsageService = async (): Promise<
+  AdminUserOrganizationWithUsage[]
+> => {
+  const authUser = await getAuthUser()
+  if (!authUser?.id) {
+    throw new AuthorizationError()
+  }
+
+  const organizations = await getOrganizationsByUserIdDao(authUser.id)
+
+  const orgsWithUsage = await Promise.all(
+    organizations.map(async (org) => {
+      const usage = await getAdminUsageStatsDao(org.id)
+      return {
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        logo: org.logo,
+        role: org.role,
+        usage,
+      }
+    })
+  )
+
+  return orgsWithUsage
+}
+
+export const getAdminUserOrganizationsWithUsageService = async (
+  userId: string
+): Promise<AdminUserOrganizationWithUsage[]> => {
+  const canManage = await canManageUsers()
+  if (!canManage) {
+    throw new AuthorizationError()
+  }
+
+  const parsed = userUuidSchema.safeParse(userId)
+  if (!parsed.success) {
+    throw new ValidationError(parsed.error.message)
+  }
+  const userIdSanitized = parsed.data
+
+  const organizations = await getOrganizationsByUserIdDao(userIdSanitized)
+
+  const orgsWithUsage = await Promise.all(
+    organizations.map(async (org) => {
+      const usage = await getAdminUsageStatsDao(org.id)
+      return {
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        logo: org.logo,
+        role: org.role,
+        usage,
+      }
+    })
+  )
+
+  return orgsWithUsage
+}
+
+export type {AdminUsageStats, PlanLimits}

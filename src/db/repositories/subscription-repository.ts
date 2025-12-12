@@ -2,7 +2,9 @@ import {and, desc, eq, not, or, sql} from 'drizzle-orm'
 
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 
+import {member} from '../models/auth-model'
 import db from '../models/db'
+import {projects} from '../models/project-model'
 import type {
   SubscriptionAddModel,
   SubscriptionModel,
@@ -485,5 +487,126 @@ export const getSubscriptionsWithPaginationDao = async (
       limit: pagination.limit,
       totalPages: totalPages,
     },
+  }
+}
+
+// ========================================
+// USAGE STATS FUNCTIONS
+// ========================================
+
+export interface PlanLimits {
+  projects: number | null
+  storage: number | null
+  users: number | null
+}
+
+export interface AdminUsageStats {
+  projects: number
+  users: number
+  plan: string
+  limits: PlanLimits
+  periodStart: Date | null
+  periodEnd: Date | null
+}
+
+export const getActiveSubscriptionsOrFreePlanDao = async (
+  referenceId: string
+) => {
+  const subscriptions = await db
+    .select()
+    .from(subscription)
+    .where(
+      and(
+        eq(subscription.referenceId, referenceId),
+        or(
+          eq(subscription.status, 'active'),
+          eq(subscription.status, 'trialing')
+        )
+      )
+    )
+    .orderBy(desc(subscription.createdAt))
+
+  if (subscriptions.length === 0) {
+    const freePlan = await db.query.subscriptionPlan.findFirst({
+      where: (plan, {eq}) => eq(plan.code, 'free'),
+    })
+
+    const limits = freePlan?.limits as Record<string, number> | null
+
+    return [
+      {
+        id: 'free',
+        referenceId,
+        plan: 'free',
+        status: 'active' as const,
+        limits: freePlan?.limits as Record<string, number> | null,
+        periodStart: null,
+        periodEnd: null,
+        seats: limits?.users ?? 1,
+      },
+    ]
+  }
+
+  const subsWithLimits = await Promise.all(
+    subscriptions.map(async (sub) => {
+      const plan = await db.query.subscriptionPlan.findFirst({
+        where: (p, {eq}) => eq(p.code, sub.plan),
+      })
+      return {
+        ...sub,
+        limits: plan?.limits as Record<string, number> | null,
+      }
+    })
+  )
+
+  return subsWithLimits
+}
+
+export const getCurrentProjectsUsageDao = async (
+  organizationId: string
+): Promise<number> => {
+  const [{count}] = await db
+    .select({count: sql<number>`count(*)`})
+    .from(projects)
+    .where(eq(projects.organizationId, organizationId))
+
+  return count
+}
+
+export const getCurrentMembersUsageDao = async (
+  organizationId: string
+): Promise<number> => {
+  const [{count}] = await db
+    .select({count: sql<number>`count(*)`})
+    .from(member)
+    .where(eq(member.organizationId, organizationId))
+
+  return count
+}
+
+export const getAdminUsageStatsDao = async (
+  organizationId: string
+): Promise<AdminUsageStats> => {
+  const [projectsCount, membersCount] = await Promise.all([
+    getCurrentProjectsUsageDao(organizationId),
+    getCurrentMembersUsageDao(organizationId),
+  ])
+
+  const subscriptions =
+    await getActiveSubscriptionsOrFreePlanDao(organizationId)
+  const activeSubscription = subscriptions[0]
+  const planLimits = activeSubscription?.limits as Record<string, number> | null
+
+  return {
+    projects: projectsCount,
+    users: membersCount,
+    plan: activeSubscription?.plan || 'free',
+    limits: {
+      projects: planLimits?.projects ?? null,
+      storage: planLimits?.storage ?? null,
+      users: planLimits?.users ?? null,
+    },
+    periodStart: activeSubscription?.periodStart || null,
+    periodEnd: activeSubscription?.periodEnd || null,
   }
 }

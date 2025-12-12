@@ -1,6 +1,10 @@
 import {notFound} from 'next/navigation'
 
-import {getUserByIdDal, getUserPermissionsDal} from '@/app/dal/user-dal'
+import {
+  getAdminUserOrganizationsWithUsageDal,
+  getUserByIdDal,
+  getUserPermissionsDal,
+} from '@/app/dal/user-dal'
 import UserDetailForm from '@/components/features/admin/users/user-detail-form'
 
 interface UserDetailContentProps {
@@ -10,9 +14,10 @@ interface UserDetailContentProps {
 export default async function UserDetailContent({
   userId,
 }: UserDetailContentProps) {
-  const [user, permissions] = await Promise.all([
+  const [user, permissions, organizationsWithUsage] = await Promise.all([
     getUserByIdDal(userId),
     getUserPermissionsDal(),
+    getAdminUserOrganizationsWithUsageDal(userId),
   ])
 
   if (!user) {
@@ -31,7 +36,11 @@ export default async function UserDetailContent({
         </p>
       </div>
 
-      <UserDetailForm user={user} permissions={permissions} />
+      <UserDetailForm
+        user={user}
+        permissions={permissions}
+        organizationsWithUsage={organizationsWithUsage}
+      />
     </div>
   )
 }

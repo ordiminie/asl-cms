@@ -41,3 +41,13 @@ export const deleteUserInvitationsService =
   organizationServiceInterceptor.deleteUserInvitationsService
 export const deleteInvitationByIdService =
   organizationServiceInterceptor.deleteInvitationByIdService
+
+// USAGE FUNCTIONS
+export const getOrganizationUsageService =
+  organizationServiceInterceptor.getOrganizationUsageService
+export const getUserOrganizationsWithUsageService =
+  organizationServiceInterceptor.getUserOrganizationsWithUsageService
+
+// ADMIN FUNCTIONS
+export const getAdminUserOrganizationsWithUsageService =
+  organizationServiceInterceptor.getAdminUserOrganizationsWithUsageService
