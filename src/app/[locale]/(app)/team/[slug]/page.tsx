@@ -3,6 +3,7 @@ import {forbidden, notFound} from 'next/navigation'
 import {
   getOrganizationBySlugDal,
   getOrganizationMembersDal,
+  getOrganizationUsageDal,
   OrganizationMemberDTO,
 } from '@/app/dal/organization-dal'
 import {TeamPageContent} from '@/components/features/team/team-page-content'
@@ -31,10 +32,21 @@ export default async function TeamPage({params}: TeamPageProps) {
   if (!canReadMembers) {
     forbidden()
   }
-  // Récupérer les membres de l'organisation
-  const members: OrganizationMemberDTO[] = await getOrganizationMembersDal(
-    organization.id
-  )
 
-  return <TeamPageContent organization={organization} members={members} />
+  // Récupérer les membres et l'usage de l'organisation en parallèle
+  const [members, usage]: [
+    OrganizationMemberDTO[],
+    Awaited<ReturnType<typeof getOrganizationUsageDal>>,
+  ] = await Promise.all([
+    getOrganizationMembersDal(organization.id),
+    getOrganizationUsageDal(organization.id),
+  ])
+
+  return (
+    <TeamPageContent
+      organization={organization}
+      members={members}
+      usage={usage}
+    />
+  )
 }

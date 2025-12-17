@@ -1,8 +1,7 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
-import {ArrowLeft, Calendar, Shield, User} from 'lucide-react'
-import Image from 'next/image'
+import {ArrowLeft, Building2, Calendar, Shield, User, Zap} from 'lucide-react'
 import Link from 'next/link'
 import {useState} from 'react'
 import {useForm} from 'react-hook-form'
@@ -10,6 +9,7 @@ import {toast} from 'sonner'
 import {z} from 'zod'
 
 import {updateUserDetailAction} from '@/app/[locale]/admin/users/actions'
+import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {
@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import {Input} from '@/components/ui/input'
+import {Progress} from '@/components/ui/progress'
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import {Switch} from '@/components/ui/switch'
 import {Textarea} from '@/components/ui/textarea'
+import {AdminUserOrganizationWithUsage} from '@/services/organization-service'
 import {User as UserType} from '@/services/types/domain/user-types'
 
 const userDetailSchema = z.object({
@@ -62,11 +64,13 @@ interface UserDetailFormProps {
     canDelete: boolean
     canManage: boolean
   }
+  organizationsWithUsage: AdminUserOrganizationWithUsage[]
 }
 
 export default function UserDetailForm({
   user,
   permissions,
+  organizationsWithUsage,
 }: UserDetailFormProps) {
   const [isLoading, setIsLoading] = useState(false)
 
@@ -140,6 +144,26 @@ export default function UserDetailForm({
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const formatUsage = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1) {
+      return `${used} / ∞`
+    }
+    return `${used} / ${limit}`
+  }
+
+  const getUsagePercent = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1 || limit === 0) return 0
+    return Math.min((used / limit) * 100, 100)
+  }
+
+  const getProgressColor = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1) return 'bg-green-500'
+    const ratio = used / limit
+    if (ratio >= 1) return 'bg-red-500'
+    if (ratio >= 0.8) return 'bg-orange-500'
+    return 'bg-green-500'
   }
 
   return (
@@ -471,7 +495,7 @@ export default function UserDetailForm({
                   <p className="text-muted-foreground text-sm font-medium">
                     Photo de profil
                   </p>
-                  <Image
+                  <img
                     src={user.image}
                     alt="Photo de profil"
                     className="mt-2 h-16 w-16 rounded-full object-cover"
@@ -533,6 +557,79 @@ export default function UserDetailForm({
           )}
         </div>
       </div>
+
+      {/* Organisations et utilisation */}
+      {organizationsWithUsage.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Organisations et utilisation
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {organizationsWithUsage.map((org) => (
+                <div key={org.id} className="rounded-lg border p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h4 className="font-medium">{org.name}</h4>
+                    <Badge variant="outline" className="uppercase">
+                      {org.usage.plan}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <div className="mb-1 flex items-center gap-2 text-sm">
+                        <Zap className="h-3 w-3" />
+                        <span className="text-muted-foreground">Projets</span>
+                        <span className="ml-auto">
+                          {formatUsage(
+                            org.usage.projects,
+                            org.usage.limits.projects
+                          )}
+                        </span>
+                      </div>
+                      <Progress
+                        value={getUsagePercent(
+                          org.usage.projects,
+                          org.usage.limits.projects
+                        )}
+                        className="h-1.5"
+                        indicatorClassName={getProgressColor(
+                          org.usage.projects,
+                          org.usage.limits.projects
+                        )}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-1 flex items-center gap-2 text-sm">
+                        <User className="h-3 w-3" />
+                        <span className="text-muted-foreground">Membres</span>
+                        <span className="ml-auto">
+                          {formatUsage(org.usage.users, org.usage.limits.users)}
+                        </span>
+                      </div>
+                      <Progress
+                        value={getUsagePercent(
+                          org.usage.users,
+                          org.usage.limits.users
+                        )}
+                        className="h-1.5"
+                        indicatorClassName={getProgressColor(
+                          org.usage.users,
+                          org.usage.limits.users
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -27,6 +27,10 @@
   ::file-selector-button {
     border-color: var(--color-gray-200, currentColor);
   }
+
+  html {
+    font-size: 18px;
+  }
 }
 /*
   ---break---
@@ -56,7 +60,7 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.985 0.001 106.423);
   --sidebar-foreground: oklch(0.147 0.004 49.25);
   --sidebar-primary: oklch(0.216 0.006 56.043);
@@ -153,6 +157,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    line-height: 1.6;
   }
 }
 

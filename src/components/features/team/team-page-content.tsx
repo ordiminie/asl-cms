@@ -1,6 +1,6 @@
 'use client'
 
-import {CalendarDays, Users} from 'lucide-react'
+import {CalendarDays, FolderKanban, Users, Zap} from 'lucide-react'
 import {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -21,14 +21,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {Progress} from '@/components/ui/progress'
+import {AdminUsageStats} from '@/db/repositories/subscription-repository'
 import {authClient} from '@/lib/better-auth/auth-client'
 
 interface TeamPageContentProps {
   organization: OrganizationDTO
   members: OrganizationMemberDTO[]
+  usage: AdminUsageStats
 }
 
-export function TeamPageContent({organization, members}: TeamPageContentProps) {
+export function TeamPageContent({
+  organization,
+  members,
+  usage,
+}: TeamPageContentProps) {
   const {
     currentOrganization,
     setCurrentOrganizationWithoutRedirect,
@@ -36,6 +43,26 @@ export function TeamPageContent({organization, members}: TeamPageContentProps) {
   } = useOrganization()
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
+
+  const formatUsage = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1) {
+      return `${used} / ∞`
+    }
+    return `${used} / ${limit}`
+  }
+
+  const getUsagePercent = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1 || limit === 0) return 0
+    return Math.min((used / limit) * 100, 100)
+  }
+
+  const getProgressColor = (used: number, limit: number | null) => {
+    if (limit === null || limit === -1) return 'bg-green-500'
+    const ratio = used / limit
+    if (ratio >= 1) return 'bg-red-500'
+    if (ratio >= 0.8) return 'bg-orange-500'
+    return 'bg-green-500'
+  }
 
   // Mettre à jour l'organisation courante si elle ne correspond pas au slug
   useEffect(() => {
@@ -183,6 +210,69 @@ export function TeamPageContent({organization, members}: TeamPageContentProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Usage Stats */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center space-x-2">
+              <Zap className="h-5 w-5" />
+              <span>Utilisation</span>
+            </CardTitle>
+            <Badge variant="outline" className="uppercase">
+              {usage.plan}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-2">
+                  <FolderKanban className="h-4 w-4" />
+                  Projets
+                </span>
+                <span className="font-medium">
+                  {formatUsage(usage.projects, usage.limits.projects)}
+                </span>
+              </div>
+              <Progress
+                value={getUsagePercent(usage.projects, usage.limits.projects)}
+                className="h-2"
+                indicatorClassName={getProgressColor(
+                  usage.projects,
+                  usage.limits.projects
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Membres
+                </span>
+                <span className="font-medium">
+                  {formatUsage(usage.users, usage.limits.users)}
+                </span>
+              </div>
+              <Progress
+                value={getUsagePercent(usage.users, usage.limits.users)}
+                className="h-2"
+                indicatorClassName={getProgressColor(
+                  usage.users,
+                  usage.limits.users
+                )}
+              />
+            </div>
+          </div>
+          {usage.periodStart && usage.periodEnd && (
+            <p className="text-muted-foreground mt-4 text-xs">
+              Période: {formatDate(usage.periodStart)} -{' '}
+              {formatDate(usage.periodEnd)}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Informations détaillées */}
       <Card>

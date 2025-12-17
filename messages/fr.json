@@ -1276,6 +1276,9 @@
       "description": "Restez informé de nos derniers articles et actualités du développement web.",
       "placeholder": "votre.email@exemple.com",
       "subscribe": "S'abonner",
+      "subscribing": "Inscription...",
+      "success": "Inscription réussie !",
+      "error": "Une erreur est survenue. Veuillez réessayer.",
       "privacy": "Pas de spam, désabonnement à tout moment"
     },
     "stats": {
