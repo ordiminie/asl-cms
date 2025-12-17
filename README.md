@@ -1,6 +1,6 @@
 # ShipSaaS a Next.js SaaS Boilerplate
 
-Un boilerplate moderne pour les applications SaaS utilisant Next.js 15, React 19, et ShadCN UI.
+Un boilerplate moderne pour les applications SaaS utilisant Next.js 16, React 19, et ShadCN UI.
 
 > **Documentation complète:** [https://ship-saas.now/fr/docs](https://ship-saas.now/fr/docs)
 
