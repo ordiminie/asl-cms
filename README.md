@@ -8,7 +8,7 @@ Un boilerplate moderne pour les applications SaaS utilisant Next.js 15, React 19
 
 ## Technologies
 
-- **Next.js 15** avec App Router
+- **Next.js 16** avec App Router
 - **React 19**
 - **TypeScript**
 - **Tailwind CSS v4**
