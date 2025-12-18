@@ -47,10 +47,14 @@ export function OrganizationAddMemberForm({
 
   const {setCurrentOrganizationWithoutRedirect} = useOrganization()
 
-  // Debounce la recherche pour éviter les appels trop fréquents
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email.trim())
+  }
+
   useDebounce(
     () => {
-      if (searchValue.length >= 2) {
+      if (isValidEmail(searchValue)) {
         startTransition(async () => {
           const users = await searchUsersForOrganizationAction(
             organizationId,
@@ -64,7 +68,7 @@ export function OrganizationAddMemberForm({
         setResults([])
       }
     },
-    300, // 300ms de délai
+    300,
     [searchValue]
   )
 
@@ -175,12 +179,12 @@ export function OrganizationAddMemberForm({
               </div>
             )}
 
-            {email.length >= 2 &&
+            {isValidEmail(email) &&
               results.length === 0 &&
               !isPending &&
               !selectedUser && (
                 <p className="text-muted-foreground mt-2 py-2 text-center text-sm">
-                  Aucun utilisateur trouvé
+                  Aucun utilisateur trouvé avec cet email
                 </p>
               )}
           </div>

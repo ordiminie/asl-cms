@@ -24,8 +24,8 @@ import {
   OrganizationRoleConst,
   UpdateOrganization,
 } from '@/services/types/domain/organization-types'
-import {User, UserDTO} from '@/services/types/domain/user-types'
-import {searchUsersService} from '@/services/user-service'
+import {UserDTO} from '@/services/types/domain/user-types'
+import {getUserByEmailService} from '@/services/user-service'
 
 import {
   organizationFormSchema,
@@ -194,21 +194,27 @@ export async function cancelMemberInvitationAction(
 
 export async function searchUsersForOrganizationAction(
   organizationId: string,
-  query: string
+  email: string
 ): Promise<UserDTO[]> {
   await requireActionAuth()
-  console.log('organizationId', organizationId)
-  console.log('query', query)
-  if (!query || query.length < 2) return []
-  const users = await searchUsersService(query, organizationId)
-  // On retourne seulement les infos nécessaires pour l'autocomplete
 
-  return users.map((u: User) => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    image: u.image ?? undefined,
-  }))
+  if (!email || email.trim().length === 0) return []
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email.trim())) return []
+
+  const user = await getUserByEmailService(email.trim().toLowerCase())
+
+  if (!user) return []
+
+  return [
+    {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image ?? undefined,
+    },
+  ]
 }
 
 export async function removeUserFromOrganizationAction(
