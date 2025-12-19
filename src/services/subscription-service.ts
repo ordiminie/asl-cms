@@ -515,7 +515,9 @@ export const checkSubscriptionLimitService = async (
 
   if (limitType === LimitTypeConst.USERS) {
     // Pour les utilisateurs : utiliser le nombre de sièges
-    effectiveLimit = subscription.seats || 0
+    effectiveLimit =
+      (subscription.limits?.organizationMembers ?? 1) *
+      (subscription.seats || 1)
   } else {
     // Pour les autres ressources : utiliser la limite fixe du plan
     if (perSeatMultiplier) {
