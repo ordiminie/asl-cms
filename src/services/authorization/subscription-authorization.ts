@@ -6,7 +6,6 @@ import {getPlanByIdDao} from '@/db/repositories/subscription-repository'
 import {
   getActiveSubscriptions,
   getAuthUser,
-  getSessionReferenceId,
 } from '../authentication/auth-service'
 import {getMembersAndInvitationsService} from '../organization-service'
 import {getProjectsByOrganizationService} from '../project-service'
@@ -83,15 +82,15 @@ export const canUpdateSubscription = async (
 
 /**
  * 🎯 Vérification des limites d'abonnement (DAL → Service)
+ * @param limitType - Type de limite à vérifier (USERS, PROJECTS, STORAGE)
+ * @param referenceId - ID de référence (userId ou organizationId selon BILLING_MODE)
+ * @param requestedAmount - Nombre d'éléments demandés (défaut: 1)
  */
 export const checkSubscriptionLimit = async (
   limitType: LimitType,
+  referenceId: string,
   requestedAmount: number = 1
 ) => {
-  const referenceId = await getSessionReferenceId()
-  if (!referenceId) {
-    throw new Error('No referenceId found')
-  }
   // 1. Récupérer l'abonnement via Better Auth API
   const subscription = await getActiveSubscriptions(referenceId)
 

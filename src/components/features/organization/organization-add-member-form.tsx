@@ -1,10 +1,9 @@
 'use client'
 import {Plus} from 'lucide-react'
-import {useEffect, useState, useTransition} from 'react'
+import {useState, useTransition} from 'react'
 import {useDebounce} from 'react-use'
 import {toast} from 'sonner'
 
-import {useOrganization} from '@/components/context/organization-provider'
 import {Button} from '@/components/ui/button'
 import {
   Dialog,
@@ -45,8 +44,6 @@ export function OrganizationAddMemberForm({
     OrganizationRoleConst.member as OrganizationRole
   )
 
-  const {setCurrentOrganizationWithoutRedirect} = useOrganization()
-
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return emailRegex.test(email.trim())
@@ -71,11 +68,6 @@ export function OrganizationAddMemberForm({
     300,
     [searchValue]
   )
-
-  // We need set current organization to add member
-  useEffect(() => {
-    setCurrentOrganizationWithoutRedirect(organizationId)
-  }, [organizationId, setCurrentOrganizationWithoutRedirect])
 
   function handleSearch(value: string) {
     setEmail(value)

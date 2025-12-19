@@ -7,6 +7,7 @@ vi.mock('@/db/models/db', () => ({
 
 vi.mock('../authentication/auth-service', () => ({
   getAuthUser: vi.fn(),
+  getAuthUserId: vi.fn(),
   getSessionAuth: vi.fn(),
   getSessionReferenceId: vi.fn(),
   getActiveSubscriptions: vi.fn(),

@@ -5,6 +5,7 @@ import {headers} from 'next/headers'
 
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {auth} from '@/lib/better-auth/auth'
+import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
 import {
   canInviteToOrganization,
   checkMembersLimit,
@@ -113,10 +114,17 @@ export async function addUserToOrganizationAction(
   role: OrganizationRole = OrganizationRoleConst.member as OrganizationRole,
   sendInvitationEmail?: boolean
 ): Promise<MemberActionResult> {
-  await requireActionAuth()
+  const user = await requireActionAuth()
 
   try {
-    const limits = await checkMembersLimit(1)
+    const referenceId = getReferenceIdByBillingMode(user.id, organizationId)
+    if (!referenceId) {
+      return {
+        success: false,
+        message: 'Impossible de déterminer la référence de facturation',
+      }
+    }
+    const limits = await checkMembersLimit(referenceId, 1)
     if (!limits.allowed) {
       return {
         success: false,
