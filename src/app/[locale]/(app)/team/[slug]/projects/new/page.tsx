@@ -4,6 +4,8 @@ import {forbidden, notFound} from 'next/navigation'
 import {getOrganizationBySlugDal} from '@/app/dal/organization-dal'
 import {CreateProjectForm} from '@/components/features/projects/create-project-form'
 import {LimitReached} from '@/components/features/subscription/limit-reached'
+import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
+import {getAuthUserId} from '@/services/authentication/auth-service'
 import {
   canCreateProject,
   checkProjectCreationLimit,
@@ -23,19 +25,22 @@ interface NewProjectPageProps {
 export default async function NewProjectPage({params}: NewProjectPageProps) {
   const {slug} = await params
 
-  const limits = await checkProjectCreationLimit()
-  if (!limits.allowed) {
-    return <LimitReached limits={limits} />
-  }
-
-  if (!limits) {
-    notFound()
-  }
-
   // Récupérer l'organisation par slug
   const organization = await getOrganizationBySlugDal(slug)
   if (!organization) {
     notFound()
+  }
+
+  // Vérifier les limites d'abonnement
+  const userId = await getAuthUserId()
+  const referenceId = getReferenceIdByBillingMode(userId, organization.id)
+  if (!referenceId) {
+    forbidden()
+  }
+
+  const limits = await checkProjectCreationLimit(referenceId)
+  if (!limits.allowed) {
+    return <LimitReached limits={limits} />
   }
 
   // Vérifier les permissions pour créer un projet dans cette organisation
