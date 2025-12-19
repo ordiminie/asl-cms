@@ -30,8 +30,12 @@ export const getActiveSubscriptionsDal = cache(async () => {
 })
 
 export const checkSubscriptionLimitDal = cache(
-  async (limitType: LimitType, requestedAmount: number = 1) => {
-    return checkSubscriptionLimit(limitType, requestedAmount)
+  async (
+    limitType: LimitType,
+    referenceId: string,
+    requestedAmount: number = 1
+  ) => {
+    return checkSubscriptionLimit(limitType, referenceId, requestedAmount)
   }
 )
 

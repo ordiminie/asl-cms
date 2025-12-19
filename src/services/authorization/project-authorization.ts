@@ -2,7 +2,11 @@ import {
   getProjectByIdDao,
   getTaskByIdDao,
 } from '@/db/repositories/project-repository'
-import {getAuthUser} from '@/services/authentication/auth-service'
+import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
+import {
+  getAuthUser,
+  getAuthUserId,
+} from '@/services/authentication/auth-service'
 import {OrganizationContext} from '@/services/types/domain/auth-types'
 
 import {LimitTypeConst} from '../types/domain/subscription-types'
@@ -48,15 +52,31 @@ export const canCreateProject = async (
   )
   if (!hasPermission) return false
 
-  const limitCheck = await checkProjectCreationLimit(requestedAmount)
+  // 2️⃣ Vérification des limites d'abonnement
+  const userId = await getAuthUserId()
+  const referenceId = getReferenceIdByBillingMode(userId, organizationId)
+  if (!referenceId) return false
+
+  const limitCheck = await checkProjectCreationLimit(
+    referenceId,
+    requestedAmount
+  )
   return limitCheck.allowed
 }
 
+/**
+ * Vérifie les limites de création de projets
+ * @param referenceId - ID de référence (organizationId en mode ORGANIZATION, userId en mode USER)
+ * @param requestedAmount - Nombre de projets à créer (défaut: 1)
+ * @returns Résultat de la vérification des limites
+ */
 export const checkProjectCreationLimit = async (
+  referenceId: string,
   requestedAmount: number = 1
 ) => {
   const limitCheck = await checkSubscriptionLimit(
     LimitTypeConst.PROJECTS,
+    referenceId,
     requestedAmount
   )
   return limitCheck

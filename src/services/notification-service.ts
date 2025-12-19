@@ -238,7 +238,7 @@ export const createNotificationService = async (
         parsed.data.type === 'organization_invitation' &&
         parsed.data.metadata?.organizationName
       ) {
-        const inviteLink = `${env.NEXT_PUBLIC_APP_URL}/invitations`
+        const inviteLink = `${env.NEXT_PUBLIC_APP_URL}/account/invitations`
         await sendOrganizationInvitationService({
           email: targetUser.email,
           invitedByUsername: parsed.data.metadata.invitedBy,

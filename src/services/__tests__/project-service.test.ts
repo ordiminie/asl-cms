@@ -24,6 +24,7 @@ import {getUserByIdDao} from '@/db/repositories/user-repository'
 
 import {
   getActiveSubscriptions,
+  getAuthUserId,
   getSessionReferenceId,
 } from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
@@ -120,6 +121,7 @@ describe('[ADMIN] CRUD : Project Service', () => {
       createdBy: userTestAdmin.id,
     }
     vi.mocked(getSessionReferenceId).mockResolvedValue(organizationId)
+    vi.mocked(getAuthUserId).mockResolvedValue(userTestAdmin.id)
     vi.mocked(getActiveSubscriptions).mockResolvedValue([
       {
         id: faker.string.uuid(),
@@ -295,6 +297,7 @@ describe('[ORGANIZATION OWNER] CRUD : Project Service', () => {
       createdBy: userTest.id,
     }
     vi.mocked(getSessionReferenceId).mockResolvedValue(organizationId)
+    vi.mocked(getAuthUserId).mockResolvedValue(userTest.id)
     vi.mocked(getActiveSubscriptions).mockResolvedValue([
       {
         id: faker.string.uuid(),
@@ -437,6 +440,7 @@ describe('[ORGANIZATION ADMIN] CRUD : Project Service', () => {
       createdBy: userTest.id,
     }
     vi.mocked(getSessionReferenceId).mockResolvedValue(organizationId)
+    vi.mocked(getAuthUserId).mockResolvedValue(userTest.id)
     vi.mocked(getActiveSubscriptions).mockResolvedValue([
       {
         id: faker.string.uuid(),

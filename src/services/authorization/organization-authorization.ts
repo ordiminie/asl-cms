@@ -1,5 +1,9 @@
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
-import {getAuthUser} from '@/services/authentication/auth-service'
+import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
+import {
+  getAuthUser,
+  getAuthUserId,
+} from '@/services/authentication/auth-service'
 import {
   OrganizationContext,
   UserOrganizationRoleConst,
@@ -212,24 +216,28 @@ export const canManageOrganizationMembers = async (
 /**
  * Vérifie si l'utilisateur connecté peut inviter des membres dans une organisation
  * Vérifie à la fois les permissions ET les limites d'abonnement
- * @param resourceId - ID de l'organisation
+ * @param organizationId - ID de l'organisation
  * @param requestedAmount - Nombre de membres à inviter (défaut: 1)
  * @returns true si l'accès est autorisé
  */
 export const canInviteToOrganization = async (
-  resourceId: string,
+  organizationId: string,
   requestedAmount: number = 1
 ): Promise<boolean> => {
   const isAdmin = await isAuthAdmin()
   if (isAdmin) return true
 
   // 1️⃣ Vérification des permissions (rôle dans l'organisation)
-  const hasPermission = await canManageOrganizationMembers(resourceId)
+  const hasPermission = await canManageOrganizationMembers(organizationId)
 
   if (!hasPermission) return false
 
   // 2️⃣ Vérification des limites d'abonnement
-  const limitCheck = await checkMembersLimit(requestedAmount)
+  const userId = await getAuthUserId()
+  const referenceId = getReferenceIdByBillingMode(userId, organizationId)
+  if (!referenceId) return false
+
+  const limitCheck = await checkMembersLimit(referenceId, requestedAmount)
   return limitCheck.allowed
 }
 
@@ -408,13 +416,18 @@ export const canManageOrganizationSubscriptions = async (
   )
 }
 /**
- * Vérifie si l'utilisateur connecté peut inviter des membres dans une organisation (basé sur ReferenceId)
+ * Vérifie les limites de membres pour une organisation
+ * @param referenceId - ID de référence (organizationId en mode ORGANIZATION, userId en mode USER)
  * @param requestedAmount - Nombre de membres à inviter (défaut: 1)
- * @returns true si l'accès est autorisé
+ * @returns Résultat de la vérification des limites
  */
-export const checkMembersLimit = async (requestedAmount: number = 1) => {
+export const checkMembersLimit = async (
+  referenceId: string,
+  requestedAmount: number = 1
+) => {
   const limitCheck = await checkSubscriptionLimit(
     LimitTypeConst.USERS,
+    referenceId,
     requestedAmount
   )
   return limitCheck

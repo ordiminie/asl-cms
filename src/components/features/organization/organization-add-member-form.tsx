@@ -1,10 +1,9 @@
 'use client'
 import {Plus} from 'lucide-react'
-import {useEffect, useState, useTransition} from 'react'
+import {useState, useTransition} from 'react'
 import {useDebounce} from 'react-use'
 import {toast} from 'sonner'
 
-import {useOrganization} from '@/components/context/organization-provider'
 import {Button} from '@/components/ui/button'
 import {
   Dialog,
@@ -45,12 +44,14 @@ export function OrganizationAddMemberForm({
     OrganizationRoleConst.member as OrganizationRole
   )
 
-  const {setCurrentOrganizationWithoutRedirect} = useOrganization()
+  const isValidEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email.trim())
+  }
 
-  // Debounce la recherche pour éviter les appels trop fréquents
   useDebounce(
     () => {
-      if (searchValue.length >= 2) {
+      if (isValidEmail(searchValue)) {
         startTransition(async () => {
           const users = await searchUsersForOrganizationAction(
             organizationId,
@@ -64,14 +65,9 @@ export function OrganizationAddMemberForm({
         setResults([])
       }
     },
-    300, // 300ms de délai
+    300,
     [searchValue]
   )
-
-  // We need set current organization to add member
-  useEffect(() => {
-    setCurrentOrganizationWithoutRedirect(organizationId)
-  }, [organizationId, setCurrentOrganizationWithoutRedirect])
 
   function handleSearch(value: string) {
     setEmail(value)
@@ -175,12 +171,12 @@ export function OrganizationAddMemberForm({
               </div>
             )}
 
-            {email.length >= 2 &&
+            {isValidEmail(email) &&
               results.length === 0 &&
               !isPending &&
               !selectedUser && (
                 <p className="text-muted-foreground mt-2 py-2 text-center text-sm">
-                  Aucun utilisateur trouvé
+                  Aucun utilisateur trouvé avec cet email
                 </p>
               )}
           </div>
