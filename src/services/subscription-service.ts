@@ -1,5 +1,6 @@
 import {StripePlan} from '@better-auth/stripe'
 
+import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {
   // Plans repositories
   createPlanDao,
@@ -76,7 +77,10 @@ import {
   updateSubscriptionServiceSchema,
 } from '@/services/validation/subscription-validation'
 
-import {getAuthUser} from './authentication/auth-service'
+import {
+  getActiveSubscriptions,
+  getAuthUser,
+} from './authentication/auth-service'
 import {isAuthAdmin} from './authorization/user-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationError} from './errors/validation-error'
@@ -494,7 +498,8 @@ export const checkSubscriptionLimitService = async (
   } | null,
   limitType: LimitType,
   currentUsage: number,
-  requestedAmount: number = 1
+  requestedAmount: number = 1,
+  organizationLimitOverrides?: Record<string, number>
 ): Promise<SubscriptionLimit> => {
   if (!subscription) {
     logger.warn('[checkSubscriptionLimitService] no subscription')
@@ -529,6 +534,11 @@ export const checkSubscriptionLimitService = async (
     }
   }
 
+  // Appliquer les overrides de l'organisation (additif)
+  if (organizationLimitOverrides?.[limitType]) {
+    effectiveLimit += organizationLimitOverrides[limitType]
+  }
+
   const remaining = Math.max(0, effectiveLimit - currentUsage)
 
   if (remaining === 0) {
@@ -556,6 +566,63 @@ export const checkSubscriptionLimitService = async (
     limitType,
     plan: subscription.plan || '',
   }
+}
+
+// ========================================
+// EFFECTIVE LIMITS WITH OVERRIDES
+// ========================================
+
+export interface EffectiveLimits {
+  projects: number | null
+  storage: number | null
+  users: number | null
+}
+
+export interface SubscriptionWithLimits {
+  id: string
+  plan: string
+  status: string
+  limits: Record<string, number> | null
+  periodStart: Date | null
+  periodEnd: Date | null
+  seats: number
+}
+
+export const getEffectiveLimitsService = async (
+  organizationId: string
+): Promise<EffectiveLimits> => {
+  const [organization, subscriptions] = await Promise.all([
+    getOrganizationByIdDao(organizationId),
+    getActiveSubscriptions(organizationId),
+  ])
+
+  const activeSubscription = subscriptions[0]
+  const planLimits = activeSubscription?.limits as Record<string, number> | null
+  const limitOverrides = organization?.limitOverrides as
+    | Record<string, number>
+    | undefined
+
+  const getEffectiveLimit = (
+    planLimit: number | undefined,
+    override: number | undefined
+  ): number | null => {
+    if (planLimit === undefined && override === undefined) return null
+    return (planLimit ?? 0) + (override ?? 0)
+  }
+
+  return {
+    projects: getEffectiveLimit(planLimits?.projects, limitOverrides?.projects),
+    storage: getEffectiveLimit(planLimits?.storage, limitOverrides?.storage),
+    users: getEffectiveLimit(planLimits?.users, limitOverrides?.users),
+  }
+}
+
+export const getEffectiveLimitForType = async (
+  organizationId: string,
+  limitType: LimitType
+): Promise<number | null> => {
+  const effectiveLimits = await getEffectiveLimitsService(organizationId)
+  return effectiveLimits[limitType as keyof EffectiveLimits] ?? null
 }
 
 // ========================================

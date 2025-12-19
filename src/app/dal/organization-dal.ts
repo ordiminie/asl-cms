@@ -39,6 +39,7 @@ export type OrganizationDTO = {
   createdAt: Date | null
   updatedAt: Date | null
   metadata: string | null
+  limitOverrides: Record<string, number> | null
 }
 
 /**

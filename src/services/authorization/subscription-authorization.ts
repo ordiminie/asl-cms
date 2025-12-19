@@ -1,5 +1,6 @@
 import {logger} from 'better-auth'
 
+import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {getSubscriptionByIdDao} from '@/db/repositories/subscription-repository'
 import {getPlanByIdDao} from '@/db/repositories/subscription-repository'
 
@@ -135,7 +136,13 @@ export const checkSubscriptionLimit = async (
       throw new Error('Invalid limit type')
   }
 
-  // 2. Appeler le service pour la logique métier
+  // 2. Récupérer les overrides de l'organisation
+  const organization = await getOrganizationByIdDao(referenceId)
+  const limitOverrides = organization?.limitOverrides as
+    | Record<string, number>
+    | undefined
+
+  // 3. Appeler le service pour la logique métier
   const sub = subscription[0]
   return checkSubscriptionLimitService(
     {
@@ -145,7 +152,8 @@ export const checkSubscriptionLimit = async (
     },
     limitType,
     currentUsage,
-    requestedAmount
+    requestedAmount,
+    limitOverrides
   )
 }
 

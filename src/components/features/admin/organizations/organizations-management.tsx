@@ -173,6 +173,12 @@ export default function OrganizationsManagement({
                           if (data.description) {
                             formData.append('description', data.description)
                           }
+                          if (data.limitOverrides) {
+                            formData.append(
+                              'limitOverrides',
+                              JSON.stringify(data.limitOverrides)
+                            )
+                          }
 
                           const result = await updateOrganizationAction(
                             id,

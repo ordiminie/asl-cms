@@ -444,3 +444,13 @@ export const canDeleteInvitation = async (): Promise<boolean> => {
   // Seuls les admins système peuvent hard delete les invitations
   return userCan(authUser, ActionsConst.MANAGE, SubjectsConst.ORGANIZATION)
 }
+
+/**
+ * Vérifie si l'utilisateur connecté peut modifier les limitOverrides d'une organisation
+ * Seuls les admins système peuvent modifier les limitOverrides
+ * @returns true si l'accès est autorisé
+ */
+export const canUpdateOrganizationLimitOverrides =
+  async (): Promise<boolean> => {
+    return isAuthAdmin()
+  }

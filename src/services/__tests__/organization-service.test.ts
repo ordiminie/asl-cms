@@ -97,6 +97,7 @@ describe('[ADMIN] CRUD : OrganizationService', () => {
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    limitOverrides: null,
   }
 
   const createData: CreateOrganization = {
@@ -190,6 +191,7 @@ describe('[ORGANIZATION OWNER] CRUD : OrganizationService', () => {
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    limitOverrides: null,
   }
 
   const updateData: UpdateOrganization = {
@@ -255,6 +257,7 @@ describe('[ORGANIZATION ADMIN] CRUD : OrganizationService', () => {
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    limitOverrides: null,
   }
 
   const updateData: UpdateOrganization = {
@@ -321,6 +324,7 @@ describe('[ORGANIZATION MEMBER] CRUD : OrganizationService', () => {
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    limitOverrides: null,
   }
 
   const updateData: UpdateOrganization = {
@@ -396,6 +400,7 @@ describe('[USER NOT IN ORGANIZATION] CRUD : OrganizationService', () => {
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    limitOverrides: null,
   }
 
   const createData: CreateOrganization = {
@@ -485,6 +490,7 @@ describe('[PUBLIC] OrganizationService', () => {
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    limitOverrides: null,
   }
 
   const createData: CreateOrganization = {
@@ -526,6 +532,7 @@ describe('[ORGANIZATION MEMBER READ ACCESS] getOrganizationMembersService', () =
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    limitOverrides: null,
   }
 
   beforeEach(() => {
