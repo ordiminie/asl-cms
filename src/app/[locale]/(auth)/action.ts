@@ -12,7 +12,8 @@ import {
   authRegisterFormSchema,
 } from '@/components/features/auth/auth-form-validation'
 import {AuthMethod, env} from '@/env'
-import {auth, AuthAppConfig} from '@/lib/better-auth/auth' // path to your Better Auth server instance
+import {auth, AuthAppConfig} from '@/lib/better-auth/auth'
+import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {
   getUserByEmailService,
   isEmailAvailableService,
@@ -115,33 +116,15 @@ export async function loginCredentialAction(
       }
     }
 
-    if (user.banned) {
-      let bannedMessage = t('userBanned.base')
-
-      // Ajouter la raison si elle existe
-      if (user.banReason) {
-        bannedMessage += ` ${t('userBanned.reason', {reason: user.banReason})}`
-      }
-
-      // Ajouter la date d'expiration si elle existe
-      if (user.banExpires) {
-        const expiryDate = new Date(user.banExpires)
-        const now = new Date()
-
-        if (expiryDate > now) {
-          bannedMessage += ` ${t('userBanned.expires', {
-            date: expiryDate.toLocaleDateString(),
-            time: expiryDate.toLocaleTimeString(),
-          })}`
-        }
-      } else {
-        // Ban permanent
-        bannedMessage += ` ${t('userBanned.permanent')}`
-      }
-
+    if (isUserBanned(user)) {
       return {
         success: false,
-        message: bannedMessage,
+        message: buildBannedMessage(user, {
+          base: t('userBanned.base'),
+          reason: ({reason}) => t('userBanned.reason', {reason}),
+          expires: ({date, time}) => t('userBanned.expires', {date, time}),
+          permanent: t('userBanned.permanent'),
+        }),
       }
     }
 

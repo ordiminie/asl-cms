@@ -1,7 +1,7 @@
 import {stripe} from '@better-auth/stripe'
 import {betterAuth, BetterAuthOptions, User} from 'better-auth'
 import {drizzleAdapter} from 'better-auth/adapters/drizzle'
-import {createAuthMiddleware} from 'better-auth/api'
+import {APIError, createAuthMiddleware} from 'better-auth/api'
 import {nextCookies} from 'better-auth/next-js'
 import {
   admin,
@@ -22,6 +22,7 @@ import {
 } from '@/db/repositories/user-repository'
 import {env} from '@/env'
 import {APP_ISSUER} from '@/lib/constants'
+import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
 import {stripeClient} from '@/lib/stripe/stripe-client'
 import {onStripeEvent} from '@/lib/stripe/stripe-events'
@@ -326,6 +327,22 @@ function createDatabaseHooks() {
           await subscribeToNewsletterService(user.email, [
             NewsletterEmailTag.SubscriptionFree,
           ])
+        },
+      },
+    },
+    session: {
+      create: {
+        before: async (session: {userId: string}) => {
+          const user = await getUserByIdDao(session.userId)
+          if (user && isUserBanned(user)) {
+            const message = encodeURIComponent(buildBannedMessage(user))
+            throw new APIError('FORBIDDEN', {
+              message: buildBannedMessage(user),
+              code: 'USER_BANNED',
+              redirectTo: `/login?error=banned&message=${message}`,
+            })
+          }
+          return {data: session}
         },
       },
     },
