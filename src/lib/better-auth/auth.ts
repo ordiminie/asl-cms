@@ -335,11 +335,8 @@ function createDatabaseHooks() {
         before: async (session: {userId: string}) => {
           const user = await getUserByIdDao(session.userId)
           if (user && isUserBanned(user)) {
-            const message = encodeURIComponent(buildBannedMessage(user))
             throw new APIError('FORBIDDEN', {
               message: buildBannedMessage(user),
-              code: 'USER_BANNED',
-              redirectTo: `/login?error=banned&message=${message}`,
             })
           }
           return {data: session}
