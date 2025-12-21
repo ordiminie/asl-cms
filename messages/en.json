@@ -19,6 +19,14 @@
     "title": "Authentication",
     "description": "Authentication"
   },
+  "AuthErrorPage": {
+    "title": "Authentication Error",
+    "backToLogin": "Back to login",
+    "errors": {
+      "banned": "Your account has been suspended.",
+      "unknown": "An authentication error occurred."
+    }
+  },
   "HomePage": {
     "title": "Modern SaaS platform to boost your business",
     "description": "Manage, analyze and grow your business with powerful tools and an intuitive interface.",

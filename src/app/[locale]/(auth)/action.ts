@@ -117,15 +117,15 @@ export async function loginCredentialAction(
     }
 
     if (isUserBanned(user)) {
-      return {
-        success: false,
-        message: buildBannedMessage(user, {
-          base: t('userBanned.base'),
-          reason: ({reason}) => t('userBanned.reason', {reason}),
-          expires: ({date, time}) => t('userBanned.expires', {date, time}),
-          permanent: t('userBanned.permanent'),
-        }),
-      }
+      const message = buildBannedMessage(user, {
+        base: t('userBanned.base'),
+        reason: ({reason}) => t('userBanned.reason', {reason}),
+        expires: ({date, time}) => t('userBanned.expires', {date, time}),
+        permanent: t('userBanned.permanent'),
+      })
+      redirect(
+        `/auth-error?error=banned&message=${encodeURIComponent(message)}`
+      )
     }
 
     const twoFactorType = user.settings?.twoFactorType

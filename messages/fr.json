@@ -19,6 +19,14 @@
     "title": "Authentification",
     "description": "Authentification"
   },
+  "AuthErrorPage": {
+    "title": "Erreur d'authentification",
+    "backToLogin": "Retour à la connexion",
+    "errors": {
+      "banned": "Votre compte a été suspendu.",
+      "unknown": "Une erreur d'authentification s'est produite."
+    }
+  },
   "HomePage": {
     "title": "La plateforme SaaS moderne pour booster votre business",
     "description": "Gérez, analysez et développez votre activité avec des outils puissants et une interface intuitive.",
