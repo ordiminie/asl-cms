@@ -2,6 +2,57 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type {ReactNode} from 'react'
 import React from 'react'
+import {Tweet as ReactTweet} from 'react-tweet'
+
+type TweetEmbedProps = {
+  url?: string
+  id?: string
+  native?: boolean
+}
+
+const extractTweetId = (url: string): string | null => {
+  const patterns = [
+    /x\.com\/\w+\/status\/(\d+)/,
+    /twitter\.com\/\w+\/status\/(\d+)/,
+    /x\.com\/i\/status\/(\d+)/,
+  ]
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+    if (match) return match[1]
+  }
+  return null
+}
+
+const TweetEmbed = ({url, id, native = false}: TweetEmbedProps) => {
+  const tweetId = id || (url ? extractTweetId(url) : null)
+
+  if (!tweetId) {
+    return (
+      <div className="my-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+        Tweet invalide: impossible d&apos;extraire l&apos;ID du tweet
+      </div>
+    )
+  }
+
+  if (native) {
+    return (
+      <div className="my-4 flex justify-center">
+        <blockquote className="twitter-tweet" data-theme="dark">
+          <a href={`https://twitter.com/i/status/${tweetId}`}>
+            Loading tweet...
+          </a>
+        </blockquote>
+        <script async src="https://platform.twitter.com/widgets.js" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="my-4 flex justify-center [&>div]:!my-0">
+      <ReactTweet id={tweetId} />
+    </div>
+  )
+}
 
 type VideoProps = {
   src: string
@@ -429,4 +480,6 @@ export const mdxComponents = {
   Video,
   // Ajouter le composant Excalidraw aux composants MDX
   Excalidraw,
+  // Ajouter le composant Tweet pour intégrer des tweets X/Twitter
+  Tweet: TweetEmbed,
 }
