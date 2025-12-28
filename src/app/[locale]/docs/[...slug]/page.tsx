@@ -13,8 +13,8 @@ import {
   getDocFilePath,
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
-
-export const dynamic = 'force-static'
+//disable because shiki theme
+//export const dynamic = 'force-static'
 
 interface DocsPageProps {
   params: Promise<{
