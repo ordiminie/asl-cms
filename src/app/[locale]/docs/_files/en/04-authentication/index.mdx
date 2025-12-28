@@ -1,0 +1,323 @@
+---
+title: 'Authentication Methods'
+description: 'Complete guide to all authentication methods available in the boilerplate'
+keywords: 'ShipSaaS, authentication, Better Auth, login system, user authentication, auth providers, session management'
+---
+
+The boilerplate includes a comprehensive Better Auth system with multiple authentication methods that can be enabled/disabled via environment variables.
+
+## Available Authentication Methods
+
+### Core Authentication Methods
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="border rounded-lg p-4">
+    <h4 className="font-semibold text-green-600">✅ Credentials (Email/Password)</h4>
+    <p className="text-sm text-muted-foreground mt-1">Always available - classic email/password login</p>
+    <p className="text-xs mt-2 font-mono">emailAndPassword: enabled</p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h4 className="font-semibold text-blue-600">🔗 Magic Link</h4>
+    <p className="text-sm text-muted-foreground mt-1">Passwordless authentication via email</p>
+    <p className="text-xs mt-2 font-mono">magicLink plugin</p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h4 className="font-semibold text-orange-600">🔐 Two-Factor Authentication</h4>
+    <p className="text-sm text-muted-foreground mt-1">TOTP (apps) + OTP (SMS/email) support</p>
+    <p className="text-xs mt-2 font-mono">twoFactor plugin</p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h4 className="font-semibold text-purple-600">🌐 Social Authentication</h4>
+    <p className="text-sm text-muted-foreground mt-1">Google, GitHub, Facebook, Apple login</p>
+    <p className="text-xs mt-2 font-mono">socialProviders (OAuth)</p>
+  </div>
+</div>
+
+### Advanced Authentication Features
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+  <div className="border rounded-lg p-4">
+    <h4 className="font-semibold text-indigo-600">🔑 API Keys</h4>
+    <p className="text-sm text-muted-foreground mt-1">Generate API keys for programmatic access</p>
+    <p className="text-xs mt-2 font-mono">apiKey plugin</p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h4 className="font-semibold text-teal-600">🎫 Bearer Tokens</h4>
+    <p className="text-sm text-muted-foreground mt-1">JWT tokens for API authentication</p>
+    <p className="text-xs mt-2 font-mono">bearer plugin</p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h4 className="font-semibold text-pink-600">🏢 Organizations</h4>
+    <p className="text-sm text-muted-foreground mt-1">Multi-tenant workspaces with roles</p>
+    <p className="text-xs mt-2 font-mono">organization plugin</p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h4 className="font-semibold text-gray-600">👑 Admin Functions</h4>
+    <p className="text-sm text-muted-foreground mt-1">Administrative user management</p>
+    <p className="text-xs mt-2 font-mono">admin plugin</p>
+  </div>
+</div>
+
+## Environment Variables Configuration
+
+<Callout type="warning">
+  **Core Requirements:** At minimum, you need `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` to get authentication working.
+</Callout>
+
+### Core Authentication Controls
+
+```bash
+# Better Auth Core
+BETTER_AUTH_SECRET="your-secret-key"
+BETTER_AUTH_URL="http://localhost:3000"
+BETTER_AUTH_TRUSTED_ORIGINS="http://localhost:3000"
+
+# Email Features (required for magic link, verification, password reset)
+RESEND_API_KEY="re_your_api_key"
+EMAIL_FROM="noreply@yourdomain.com"
+```
+
+### Feature Toggle Variables
+
+<Tabs defaultValue="auth-methods">
+  <Tab value="auth-methods" label="Authentication Methods">
+    ```bash
+    # Control which auth methods are available
+    NEXT_PUBLIC_AUTH_METHODS="credential,magiclink,google,github"
+    # Options: credential, magiclink, google, github, facebook, apple
+    ```
+  </Tab>
+
+  <Tab value="user-features" label="User Features">
+    ```bash
+    # Email verification
+    NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION=true
+
+    # Password management
+    NEXT_PUBLIC_BETTER_AUTH_CHANGE_PASSWORD=true
+    NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL=true
+
+    # Two-Factor Authentication
+    NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE=true
+    NEXT_PUBLIC_BETTER_AUTH_2FA_SKIP_VERIFICATION_ON_ENABLE=true
+
+    # API Key management
+    NEXT_PUBLIC_BETTER_AUTH_TOKEN_MANAGEMENT=true
+    ```
+  </Tab>
+
+  <Tab value="oauth-providers" label="Social Providers">
+    ```bash
+    # Google OAuth
+    GOOGLE_CLIENT_ID="your-google-client-id"
+    GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+    # GitHub OAuth
+    GITHUB_CLIENT_ID="your-github-client-id"
+    GITHUB_CLIENT_SECRET="your-github-client-secret"
+
+    # Facebook OAuth
+    FACEBOOK_CLIENT_ID="your-facebook-app-id"
+    FACEBOOK_CLIENT_SECRET="your-facebook-app-secret"
+
+    # Apple OAuth
+    APPLE_CLIENT_ID="your-apple-service-id"
+    APPLE_CLIENT_SECRET="your-apple-private-key"
+    ```
+  </Tab>
+</Tabs>
+
+### Organization & Billing
+
+<Callout type="info">
+  **Billing Mode:** Choose between individual user billing or organization-based billing.
+</Callout>
+
+```bash
+# Multi-tenant mode
+NEXT_PUBLIC_BILLING_MODE="organization" # or "user"
+
+# Available pages/features
+NEXT_PUBLIC_ENABLED_PAGES="organization,invitation,account,settings,subscription,notifications,admin"
+```
+
+## Quick Configuration Examples
+
+<Steps>
+<Step title="Minimal Setup (Email/Password only)">
+  ```bash
+  BETTER_AUTH_SECRET="your-secret"
+  BETTER_AUTH_URL="http://localhost:3000"
+  NEXT_PUBLIC_AUTH_METHODS="credential"
+  NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION=false
+  ```
+</Step>
+
+<Step title="Full Features Setup">
+  ```bash
+  # Core
+  BETTER_AUTH_SECRET="your-secret"
+  BETTER_AUTH_URL="http://localhost:3000"
+
+  # Email service
+  RESEND_API_KEY="re_your_key"
+  EMAIL_FROM="noreply@yourdomain.com"
+
+  # All auth methods
+  NEXT_PUBLIC_AUTH_METHODS="credential,magiclink,google,github"
+
+  # All user features
+  NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION=true
+  NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE=true
+  NEXT_PUBLIC_BETTER_AUTH_TOKEN_MANAGEMENT=true
+
+  # Social providers
+  GOOGLE_CLIENT_ID="your-google-id"
+  GOOGLE_CLIENT_SECRET="your-google-secret"
+  GITHUB_CLIENT_ID="your-github-id"
+  GITHUB_CLIENT_SECRET="your-github-secret"
+  ```
+</Step>
+</Steps>
+
+## File Structure & User Pages
+
+<Callout type="info">
+  All authentication features are organized in dedicated route groups and component folders for easy navigation and maintenance.
+</Callout>
+
+### 📁 Authentication Routes
+
+<Callout type="success">
+  **Location:** `src/app/[locale]/(auth)/`
+
+  All public authentication pages grouped under a dedicated layout.
+</Callout>
+
+```
+src/app/[locale]/(auth)/
+├── login/                        # Login page with all methods
+├── register/                     # User registration
+├── logout/                       # Logout confirmation
+├── reset-password/               # Password reset form
+└── verify-request/               # Email & 2FA verification
+    ├── totp/                     # TOTP verification
+    ├── otp/                      # OTP verification
+    └── recovery/                 # Recovery codes verification
+```
+
+### 🧩 Authentication Components
+
+<Callout type="info">
+  **Location:** `src/components/features/auth/`
+
+  Reusable authentication form components used across all auth pages.
+</Callout>
+
+```
+src/components/features/auth/
+└── forms/                        # All authentication forms
+    ├── login.tsx                 # Main login form
+    ├── credential-form.tsx       # Email/password form
+    ├── magic-link-form.tsx       # Magic link form
+    ├── register-form.tsx         # Registration forms
+    └── recovery-code-form.tsx    # 2FA recovery form
+```
+
+### 👤 User Account Management
+
+<Callout type="warning">
+  **Location:** `src/app/[locale]/(app)/account/`
+
+  Protected pages requiring user authentication. Access controlled by auth middleware.
+</Callout>
+
+```
+src/app/[locale]/(app)/account/
+├── settings/                     # Profile & security settings
+├── api-keys/                     # API key management
+├── subscription/                 # Subscription management
+├── notifications/                # Notification preferences
+├── organizations/                # Organization management
+│   └── [id]/                     # Organization details & settings
+└── invitations/                  # Organization invitations
+    └── [id]/                     # Accept/decline invitations
+```
+
+## Method-Specific Documentation
+
+<Callout type="success">
+  **Ready to dive deeper?** Each authentication method has its own detailed guide with configuration examples and troubleshooting tips.
+</Callout>
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <a href="./authentication/credentials" className="block p-4 border rounded-lg hover:bg-muted transition-colors no-underline">
+    <div className="flex items-start gap-3">
+      <span className="text-2xl">📧</span>
+      <div>
+        <h4 className="font-semibold mb-1 text-foreground">Credentials Authentication</h4>
+        <p className="text-sm text-muted-foreground">Email/password setup and configuration</p>
+      </div>
+    </div>
+  </a>
+
+  <a href="./authentication/magic-link" className="block p-4 border rounded-lg hover:bg-muted transition-colors no-underline">
+    <div className="flex items-start gap-3">
+      <span className="text-2xl">🔗</span>
+      <div>
+        <h4 className="font-semibold mb-1 text-foreground">Magic Link</h4>
+        <p className="text-sm text-muted-foreground">Passwordless authentication via email</p>
+      </div>
+    </div>
+  </a>
+
+  <a href="./authentication/two-factor-auth" className="block p-4 border rounded-lg hover:bg-muted transition-colors no-underline">
+    <div className="flex items-start gap-3">
+      <span className="text-2xl">🔐</span>
+      <div>
+        <h4 className="font-semibold mb-1 text-foreground">Two-Factor Authentication</h4>
+        <p className="text-sm text-muted-foreground">TOTP and OTP setup and usage</p>
+      </div>
+    </div>
+  </a>
+
+  <a href="./authentication/social-auth" className="block p-4 border rounded-lg hover:bg-muted transition-colors no-underline">
+    <div className="flex items-start gap-3">
+      <span className="text-2xl">🌐</span>
+      <div>
+        <h4 className="font-semibold mb-1 text-foreground">Social Authentication</h4>
+        <p className="text-sm text-muted-foreground">Google, GitHub, Facebook, Apple configuration</p>
+      </div>
+    </div>
+  </a>
+
+  <a href="./authentication/api-keys" className="block p-4 border rounded-lg hover:bg-muted transition-colors no-underline">
+    <div className="flex items-start gap-3">
+      <span className="text-2xl">🔑</span>
+      <div>
+        <h4 className="font-semibold mb-1 text-foreground">API Keys & Tokens</h4>
+        <p className="text-sm text-muted-foreground">Programmatic access management</p>
+      </div>
+    </div>
+  </a>
+
+  <a href="./authentication/organizations" className="block p-4 border rounded-lg hover:bg-muted transition-colors no-underline">
+    <div className="flex items-start gap-3">
+      <span className="text-2xl">🏢</span>
+      <div>
+        <h4 className="font-semibold mb-1 text-foreground">Organizations</h4>
+        <p className="text-sm text-muted-foreground">Multi-tenant workspace management</p>
+      </div>
+    </div>
+  </a>
+</div>
+
+<Callout type="info">
+  **Security First:** All authentication methods include built-in rate limiting, CSRF protection, secure session management, and XSS prevention.
+</Callout>

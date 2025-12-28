@@ -1,0 +1,317 @@
+---
+title: 'React Email Templates'
+description: 'Professional email templates built with React Email, Tailwind CSS, and multi-language support'
+keywords: 'ShipSaaS, React Email, email templates, JSX emails, template design, responsive emails'
+---
+
+The boilerplate includes 13 professionally designed email templates built with React Email, featuring responsive design, Tailwind CSS styling, and full internationalization support.
+
+<Callout type="success">
+  **Perfect for:** Professional-looking transactional emails with consistent branding and multi-language support.
+</Callout>
+
+## Template Overview
+
+All email templates are located in `src/lib/emails/` and follow a consistent structure:
+
+```
+src/lib/emails/
+├── email-change-email-verification.tsx
+├── internal-email.tsx
+├── invitation-organization-link-email.tsx
+├── magic-link-email.tsx
+├── notification-email.tsx
+├── otp-email.tsx
+├── reset-password-email.tsx
+├── subscription-canceled-email.tsx
+├── subscription-completed-email.tsx
+├── subscription-deleted-email.tsx
+├── subscription-updated-email.tsx
+├── verification-email.tsx
+└── welcome-follow-up-email.tsx
+```
+
+## Template Categories
+
+<Tabs defaultValue="authentication">
+  <Tab value="authentication" label="🔐 Authentication">
+    **Authentication-related templates:**
+
+    - `magic-link-email.tsx` - Passwordless authentication links
+    - `verification-email.tsx` - Email address verification
+    - `reset-password-email.tsx` - Password reset links
+    - `otp-email.tsx` - Two-factor authentication codes
+    - `email-change-email-verification.tsx` - Email change confirmation
+
+    **Usage:** Automatically sent by Better Auth during authentication flows
+  </Tab>
+
+  <Tab value="subscriptions" label="💳 Subscriptions">
+    **Subscription lifecycle templates:**
+
+    - `subscription-completed-email.tsx` - New subscription confirmation
+    - `subscription-updated-email.tsx` - Subscription changes
+    - `subscription-canceled-email.tsx` - Cancellation confirmation
+    - `subscription-deleted-email.tsx` - Subscription deletion
+
+    **Usage:** Triggered by Stripe webhook events through subscription service
+  </Tab>
+
+  <Tab value="organizations" label="🏢 Organizations">
+    **Team collaboration templates:**
+
+    - `invitation-organization-link-email.tsx` - Team invitations
+
+    **Usage:** Sent when users are invited to join organizations
+  </Tab>
+
+  <Tab value="notifications" label="🔔 General">
+    **Generic communication templates:**
+
+    - `notification-email.tsx` - Generic notifications with type styling
+    - `welcome-follow-up-email.tsx` - Post-registration follow-up
+    - `internal-email.tsx` - Internal system communications
+
+    **Usage:** Flexible templates for custom notifications and communications
+  </Tab>
+</Tabs>
+
+## Template Structure
+
+Here's the structure of a typical template using `magic-link-email.tsx` as an example:
+
+```typescript
+// From src/lib/emails/magic-link-email.tsx
+import {
+  Body,
+  Container,
+  Head,
+  Html,
+  Link,
+  Preview,
+  Section,
+  Tailwind,
+  Text,
+} from '@react-email/components'
+import { getTranslations } from 'next-intl/server'
+import { Fragment } from 'react'
+
+type MagicLinkMailProps = {
+  url: string
+}
+
+export default async function MagicLinkMail({ url }: MagicLinkMailProps) {
+  // Server-side translations with next-intl
+  const t = await getTranslations('email.user.verify')
+
+  return (
+    <Html>
+      <Head />
+      <Tailwind>
+        <Fragment>
+          <Preview>{t('preview')}</Preview>
+          <Body className="mx-auto my-auto bg-white px-2 font-sans">
+            <Container className="mx-auto my-[40px] max-w-[465px] rounded border border-solid border-[#eaeaea] p-8">
+              <Text className="text-2xl font-bold text-black">
+                {t('title')}
+              </Text>
+              <Section className="my-4">
+                <Text className="text-base">
+                  <Link
+                    className="text-sky-500 hover:cursor-pointer hover:underline"
+                    href={url}
+                  >
+                    {t('clickToConnect')}
+                  </Link>
+                </Text>
+                <Text className="text-base text-gray-500">
+                  {t('ignoreMessage')}
+                </Text>
+              </Section>
+              {/* More content... */}
+            </Container>
+          </Body>
+        </Fragment>
+      </Tailwind>
+    </Html>
+  )
+}
+```
+
+## Key Features
+
+### 🎨 Tailwind CSS Styling
+
+All templates use Tailwind CSS for consistent styling:
+
+```typescript
+// Responsive container
+<Container className="mx-auto my-[40px] max-w-[465px] rounded border border-solid border-[#eaeaea] p-8">
+
+// Typography classes
+<Text className="text-2xl font-bold text-black">
+
+// Interactive elements
+<Link className="text-sky-500 hover:cursor-pointer hover:underline">
+```
+
+### 🌍 Multi-language Support
+
+Templates automatically load translations using next-intl:
+
+```typescript
+// Server-side translation loading
+const t = await getTranslations('email.user.verify')
+
+// Usage in template
+<Text className="text-2xl font-bold text-black">
+  {t('title')}
+</Text>
+```
+
+### 📱 Responsive Design
+
+Templates are designed to work across all email clients:
+
+- Maximum width containers for desktop
+- Responsive padding and margins
+- Email-safe CSS properties
+- Tested across major email clients
+
+## Template Props
+
+Each template accepts specific props based on its purpose:
+
+<Tabs defaultValue="auth-props">
+  <Tab value="auth-props" label="🔐 Authentication Props">
+    ```typescript
+    // Magic Link
+    type MagicLinkMailProps = {
+      url: string
+    }
+
+    // OTP Email
+    type OtpEmailProps = {
+      otp: string
+      otpLink?: string
+    }
+
+    // Verification/Reset
+    type VerificationMailProps = {
+      url: string
+    }
+    ```
+  </Tab>
+
+  <Tab value="subscription-props" label="💳 Subscription Props">
+    ```typescript
+    // Subscription emails receive subscription data
+    type SubscriptionMailProps = {
+      planName: string
+      status: string
+      seats: string
+      price: string
+      limits: string
+      nextBilling?: string
+      periodEnd?: string
+      canceledAt?: string
+      deletedAt?: string
+    }
+    ```
+  </Tab>
+
+  <Tab value="organization-props" label="🏢 Organization Props">
+    ```typescript
+    // Organization invitation
+    type InvitationMailProps = {
+      invitedByUsername: string
+      invitedByEmail: string
+      teamName: string
+      inviteLink: string
+    }
+    ```
+  </Tab>
+
+  <Tab value="notification-props" label="🔔 Notification Props">
+    ```typescript
+    // Generic notifications
+    type NotificationMailProps = {
+      title: string
+      message: string
+      type: 'info' | 'warning' | 'success' | 'error'
+      preview: string
+      language: 'fr' | 'en' | 'es'
+    }
+
+    // Welcome follow-up
+    type WelcomeMailProps = {
+      userName: string
+      userEmail: string
+      appUrl: string
+      language: 'fr' | 'en' | 'es'
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Preview Props
+
+Each template includes preview props for development:
+
+```typescript
+// From magic-link-email.tsx
+MagicLinkMail.PreviewProps = {
+  url: 'test 2',
+} as MagicLinkMailProps
+```
+
+This allows you to preview templates during development with sample data.
+
+## Template Integration
+
+Templates are automatically integrated with the email service:
+
+```typescript
+// From src/services/email-service.ts
+export const sendMagicLinkEmailService = async ({
+  email,
+  url,
+}: {
+  email: string
+  url: string
+}) => {
+  const t = await getTranslations('email.user.magicLink')
+
+  await sendEmailService({
+    to: email,
+    subject: t('subject'),
+    from: fromEmail,
+    text: t('preview'),
+    react: MagicLinkMail({ url }), // Template integration
+  })
+}
+```
+
+## Best Practices
+
+<Steps>
+<Step title="Consistent Styling">
+  Use the established Tailwind classes for consistency across templates
+</Step>
+
+<Step title="Translation Keys">
+  Follow the existing translation namespace pattern: `email.user.templateName`
+</Step>
+
+<Step title="Preview Text">
+  Always include a meaningful preview text for email clients
+</Step>
+
+<Step title="Responsive Design">
+  Test templates across different email clients and screen sizes
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Professional templates ready!** Your application has beautiful, responsive email templates with multi-language support and consistent branding.
+</Callout>

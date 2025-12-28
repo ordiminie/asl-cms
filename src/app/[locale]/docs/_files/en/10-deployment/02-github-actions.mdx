@@ -1,0 +1,571 @@
+---
+title: GitHub Actions CI/CD
+description: Complete GitHub Actions workflows for automated testing, building, and deployment with quality gates and database migrations
+keywords: 'ShipSaaS, GitHub Actions, CI/CD pipeline, automation, continuous integration, deployment automation, workflows'
+---
+
+Comprehensive guide to the GitHub Actions CI/CD pipeline that ensures quality deployments and prevents broken code from reaching production.
+
+<Callout type="info">
+  Why GitHub Actions? The CI/CD pipeline acts as your deployment guardian, running automated tests, validating builds, and executing database migrations before any code reaches production.
+</Callout>
+
+## Workflow Overview
+
+The SaaS boilerplate uses **two main GitHub Actions workflows** that control all deployments:
+
+<Tabs defaultValue="production">
+  <Tab value="production" label="Production Workflow">
+    **File**: `production.yml`
+
+    - **Trigger**: Push to `main` branch
+    - **Environment**: Production
+    - **Purpose**: Deploy to live production environment
+    - **Quality Gates**: All steps must pass before deployment
+  </Tab>
+
+  <Tab value="preview" label="Preview Workflow">
+    **File**: `preview.yml`
+
+    - **Trigger**: Push to `dev` branch or PR to `dev`
+    - **Environment**: Preview/Staging
+    - **Purpose**: Test changes before production
+    - **Testing**: Includes verbose test reporting
+  </Tab>
+</Tabs>
+
+## Production Workflow Analysis
+
+<Callout type="warning">
+  Production Safety First! This workflow only runs on the `main` branch and uses strict quality gates to prevent broken deployments.
+</Callout>
+
+**File**: `.github/workflows/production.yml`
+
+### Trigger Configuration
+
+```yaml title=".github/workflows/production.yml"
+name: Production Deployment
+
+on:
+  push:
+    branches: [main]  # Only triggers on main branch pushes
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    environment: Production  # Uses Production environment secrets
+```
+
+<Callout type="info">
+  The workflow uses GitHub's `Production` environment, which can be configured with protection rules like required reviewers and deployment delays.
+</Callout>
+
+### Step-by-Step Pipeline
+
+The production pipeline follows a **fail-fast approach** - if any step fails, the entire deployment stops immediately.
+
+<Steps>
+<Step title="Environment Setup">
+  ```yaml
+  - name: Checkout code
+    uses: actions/checkout@v4
+
+  - name: Setup pnpm
+    uses: pnpm/action-setup@v3
+    with:
+      version: latest
+
+  - name: Setup Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '23'  # Latest Node.js version
+      cache: 'pnpm'       # Cache pnpm dependencies for speed
+  ```
+
+  <Callout type="info">
+    Node.js and pnpm caching dramatically speeds up builds by reusing dependencies from previous runs.
+  </Callout>
+</Step>
+
+<Step title="Dependency Installation">
+  ```yaml
+  - name: Install dependencies
+    run: pnpm install --frozen-lockfile  # Ensures exact dependency versions
+  ```
+
+  <Callout type="success">
+    The `--frozen-lockfile` flag ensures production uses the exact same dependency versions as your local development.
+  </Callout>
+</Step>
+
+<Step title="Code Quality Check">
+  ```yaml
+  - name: Lint
+    run: pnpm lint  # Must pass or deployment blocks
+  ```
+
+  <Callout type="info">
+    ESLint catches code style issues, unused imports, and potential bugs before they reach production.
+  </Callout>
+</Step>
+
+<Step title="Build Validation (Critical Step)">
+  ```yaml
+  - name: Build
+    run: pnpm build
+    env:
+      # Complete production environment variables
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+      BETTER_AUTH_URL: https://prod.example.com
+      # ... all required variables
+      NODE_ENV: production
+  ```
+
+  <Callout type="error">
+    Critical Quality Gate: This step validates that your app can build successfully with production environment variables. If the build fails here, deployment is immediately blocked.
+  </Callout>
+
+  **Build Requirements:**
+  - All production environment variables must be set
+  - Database connection must be valid
+  - External service API keys must work
+  - TypeScript must compile without errors
+</Step>
+
+<Step title="Test Execution">
+  ```yaml
+  - name: Test
+    run: pnpm test
+    env:
+      # Same environment variables as build
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # ... all variables repeated for tests
+  ```
+
+  <Callout type="info">
+    All unit tests, integration tests, and service tests must pass to ensure code reliability.
+  </Callout>
+</Step>
+
+<Step title="Database Migration">
+  ```yaml
+  - name: Install Drizzle Kit
+    run: npm install -g drizzle-kit
+
+  - name: Run database migrations
+    run: pnpm db:migrate
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  ```
+
+  <Callout type="success">
+    Database migrations run automatically to keep your production schema in sync with code changes.
+  </Callout>
+</Step>
+</Steps>
+
+**Critical Migration Point:**
+- Runs `pnpm db:migrate` with production database
+- Must complete successfully before Vercel deployment
+- Schema changes applied automatically
+- If migration fails, entire deployment is blocked
+
+## Preview Workflow Analysis
+
+**File**: `.github/workflows/preview.yml`
+
+### Differences from Production
+
+**Trigger:**
+```yaml
+on:
+  push:
+    branches: [dev]     # Dev branch pushes
+  pull_request:
+    branches: [dev]     # PRs to dev branch
+```
+
+**Environment Configuration:**
+```yaml
+environment: Preview    # Uses Preview environment secrets
+
+# Different URLs in environment variables:
+BETTER_AUTH_URL: https://preview.example.com
+NEXT_PUBLIC_APP_URL: https://preview.example.com
+```
+
+**Enhanced Testing:**
+```yaml
+- name: Test
+  run: pnpm test --reporter=verbose  # More detailed test output
+```
+
+**Same Quality Gates:**
+- Lint must pass
+- Build must succeed
+- All tests must pass
+- Database migrations must complete
+
+## Environment Variables in Workflows
+
+**Required GitHub Secrets** (accessed via `${{ secrets.SECRET_NAME }}`):
+
+### Database Configuration
+```yaml
+DATABASE_URL: ${{ secrets.DATABASE_URL }}
+# Example: "postgres://user:pass@host:5432/db?sslmode=require"
+```
+
+### Authentication (Better Auth)
+```yaml
+BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+# Must be 32+ character secure random string
+```
+
+### Email Service (Resend)
+```yaml
+RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+# Format: "re_xxxxxxxxxxxx"
+```
+
+### File Storage (Supabase)
+```yaml
+SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+# Supabase anonymous/public key for storage access
+```
+
+### Payment Processing (Stripe)
+```yaml
+STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+```
+
+### Hardcoded Configuration Values
+
+**URLs and Domains:**
+```yaml
+# Production
+BETTER_AUTH_URL: https://prod.example.com
+NEXT_PUBLIC_APP_URL: https://prod.example.com
+
+# Preview
+BETTER_AUTH_URL: https://preview.example.com
+NEXT_PUBLIC_APP_URL: https://preview.example.com
+```
+
+**Service Configuration:**
+```yaml
+# Email settings
+EMAIL_FROM: noreply@example.com
+EMAIL_TO: admin@example.com
+
+# File storage
+SUPABASE_URL: https://xxx.supabase.co
+SUPABASE_BUCKET: BUCKET-NAME
+NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
+ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
+STORAGE_TYPE: supabase
+
+# Application settings
+NODE_ENV: production
+NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE: EmbededForm
+NEXT_PUBLIC_BILLING_MODE: organization
+LOG_LEVEL: info
+```
+
+## Quality Gates and Blocking Conditions
+
+**Each step must pass or deployment is blocked:**
+
+### 1. Linting Gate
+```yaml
+- name: Lint
+  run: pnpm lint
+```
+
+**Blocks deployment if:**
+- ESLint errors found
+- Code style violations
+- Import/export issues
+- TypeScript type errors
+
+### 2. Build Gate
+```yaml
+- name: Build
+  run: pnpm build
+```
+
+**Blocks deployment if:**
+- Missing environment variables
+- Database connection fails
+- API key validation fails
+- TypeScript compilation errors
+- Next.js build errors
+
+### 3. Testing Gate
+```yaml
+- name: Test
+  run: pnpm test
+```
+
+**Blocks deployment if:**
+- Unit tests fail
+- Integration tests fail
+- Service tests fail
+- Test environment setup fails
+
+### 4. Database Migration Gate
+```yaml
+- name: Run database migrations
+  run: pnpm db:migrate
+```
+
+**Blocks deployment if:**
+- Database connection fails
+- Migration scripts have errors
+- Schema conflicts occur
+- Drizzle Kit installation fails
+
+## Setting Up GitHub Secrets
+
+**Repository Configuration:**
+
+### 1. Access Repository Secrets
+1. Go to your GitHub repository
+2. Settings → Secrets and variables → Actions
+3. Click "New repository secret"
+
+### 2. Add Required Secrets
+
+**Database:**
+```
+Name: DATABASE_URL
+Value: postgres://user:pass@host:5432/db?sslmode=require
+```
+
+**Authentication:**
+```
+Name: BETTER_AUTH_SECRET
+Value: [32+ character random string]
+```
+
+**Email Service:**
+```
+Name: RESEND_API_KEY
+Value: re_xxxxxxxxxxxx
+```
+
+**File Storage:**
+```
+Name: SUPABASE_ANON_KEY
+Value: [Supabase anonymous key]
+```
+
+**Payment Processing:**
+```
+Name: STRIPE_SECRET_KEY
+Value: sk_live_xxxxxxxxxxxx (production) or sk_test_xxxxxxxxxxxx (testing)
+
+Name: STRIPE_WEBHOOK_SECRET
+Value: whsec_xxxxxxxxxxxx
+
+Name: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+Value: pk_live_xxxxxxxxxxxx (production) or pk_test_xxxxxxxxxxxx (testing)
+```
+
+### 3. Environment-Specific Secrets
+
+**Production Environment:**
+- Repository Settings → Environments
+- Create "Production" environment
+- Add production-specific secrets
+- Configure deployment protection rules
+
+**Preview Environment:**
+- Create "Preview" environment
+- Use same secrets (can be test keys)
+- Less restrictive protection rules
+
+## Branch Protection Setup
+
+**Enforce CI/CD pipeline with branch protection:**
+
+### 1. Protect Main Branch
+
+**Repository Settings → Branches → Add rule:**
+
+```
+Branch name pattern: main
+
+✓ Require a pull request before merging
+  ✓ Require approvals: 1
+  ✓ Dismiss stale PR approvals when new commits are pushed
+  ✓ Require review from code owners
+
+✓ Require status checks to pass before merging
+  ✓ Require branches to be up to date before merging
+  ✓ Status checks that are required:
+    - Production Deployment (your workflow name)
+
+✓ Restrict pushes that create new commits
+  ✓ Restrict pushes to matching branches
+
+✓ Do not allow bypassing the above settings
+```
+
+### 2. Protect Dev Branch (Optional)
+
+```
+Branch name pattern: dev
+
+✓ Require status checks to pass before merging
+  ✓ Status checks that are required:
+    - Preview Deployment
+```
+
+**Benefits:**
+- Prevents direct commits to protected branches
+- Ensures all changes go through CI/CD pipeline
+- Maintains code quality and deployment safety
+- Provides audit trail of all changes
+
+## Workflow Customization
+
+**Modify workflows for your specific needs:**
+
+### 1. Update Environment URLs
+
+**In workflow files, change:**
+```yaml
+# From:
+BETTER_AUTH_URL: https://prod.example.com
+NEXT_PUBLIC_APP_URL: https://prod.example.com
+
+# To:
+BETTER_AUTH_URL: https://yourdomain.com
+NEXT_PUBLIC_APP_URL: https://yourdomain.com
+```
+
+### 2. Add Additional Steps
+
+**Example: Add E2E tests:**
+```yaml
+- name: Install Playwright
+  run: npx playwright install
+
+- name: Run E2E tests
+  run: pnpm test:e2e
+  env:
+    # Same environment variables as other steps
+```
+
+### 3. Customize Build Process
+
+**Add build optimizations:**
+```yaml
+- name: Build with optimizations
+  run: pnpm build
+  env:
+    ANALYZE: true  # Bundle analyzer
+    OPTIMIZE: true # Custom optimizations
+    # ... other environment variables
+```
+
+### 4. Add Deployment Notifications
+
+**Slack notifications:**
+```yaml
+- name: Notify deployment success
+  if: success()
+  run: |
+    curl -X POST -H 'Content-type: application/json' \
+    --data '{"text":"✅ Production deployment successful!"}' \
+    ${{ secrets.SLACK_WEBHOOK_URL }}
+
+- name: Notify deployment failure
+  if: failure()
+  run: |
+    curl -X POST -H 'Content-type: application/json' \
+    --data '{"text":"❌ Production deployment failed!"}' \
+    ${{ secrets.SLACK_WEBHOOK_URL }}
+```
+
+## Monitoring Workflow Execution
+
+**Track your deployments:**
+
+### 1. GitHub Actions Dashboard
+
+**Repository → Actions tab:**
+- View workflow runs
+- Check step-by-step execution
+- Download logs for debugging
+- Monitor execution time
+
+**GitHub Actions Workflow Interface:**
+<Image src="/docs/10/github-action.png" alt="GitHub Actions CI/CD workflow execution and monitoring dashboard"  />
+
+### 2. Status Badges
+
+**Add to README.md:**
+```markdown
+![Production Deployment](https://github.com/username/repo/actions/workflows/production.yml/badge.svg?branch=main)
+![Preview Deployment](https://github.com/username/repo/actions/workflows/preview.yml/badge.svg?branch=dev)
+```
+
+### 3. Workflow Insights
+
+**Repository → Insights → Actions:**
+- Workflow run statistics
+- Success/failure rates
+- Average execution times
+- Resource usage metrics
+
+## Common Workflow Issues
+
+**Troubleshooting GitHub Actions failures:**
+
+### Secret-Related Issues
+```bash
+# Problem: Secret not found
+# Error: "Warning: Unexpected input(s) 'secret', valid inputs are..."
+# Solution: Check secret name spelling in repository settings
+
+# Problem: Secret value incorrect
+# Error: Database connection failed, Invalid API key
+# Solution: Verify secret values are correct in GitHub settings
+```
+
+### Build Failures
+```bash
+# Problem: Missing environment variables
+# Error: "Environment variable X is not defined"
+# Solution: Add missing variables to workflow file or secrets
+
+# Problem: TypeScript errors
+# Error: "Type 'string | undefined' is not assignable to type 'string'"
+# Solution: Fix type issues or add proper environment validation
+```
+
+### Test Failures
+```bash
+# Problem: Tests pass locally but fail in CI
+# Solution: Check environment variables match local setup
+# Ensure test database is properly configured
+
+# Problem: Tests timeout in CI
+# Solution: Increase timeout values or optimize test performance
+```
+
+### Migration Failures
+```bash
+# Problem: Migration fails in production
+# Error: "relation already exists" or "column does not exist"
+# Solution: Review migration files for conflicts
+# Ensure migration order is correct
+```
+
+Your GitHub Actions CI/CD pipeline is now configured to ensure quality deployments. Next, set up **[Vercel Integration](/docs/deployment/vercel-integration)** to complete the automated deployment process.

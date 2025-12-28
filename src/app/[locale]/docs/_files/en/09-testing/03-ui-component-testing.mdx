@@ -1,0 +1,1467 @@
+---
+title: UI Component Testing
+description: React component testing with Testing Library in jsdom environment for user interactions and visual behavior
+keywords: 'ShipSaaS, component testing, UI testing, React Testing Library, component tests, frontend testing'
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+
+
+Test React components, user interactions, and visual behavior using Testing Library in a jsdom environment.
+
+## Table of Contents
+
+- [Component Testing Principles](#component-testing-principles)
+- [Testing React Components](#testing-react-components)
+- [User Interaction Testing](#user-interaction-testing)
+- [Context and Provider Testing](#context-and-provider-testing)
+
+## Component Testing Principles
+
+UI component tests focus on behavior from the user's perspective:
+
+<Callout type="info">
+**Testing Library Philosophy:** Test components as users would interact with them - through visible elements, not implementation details.
+</Callout>
+
+<Tabs items={['Testing Approach', 'Component Structure', 'Best Practices']}>
+
+<Tab value="Testing Approach">
+**User-Centric Testing:**
+```typescript
+// ✅ Good: Test what users see and do
+import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect } from 'vitest'
+import { Button } from '@/components/ui/button'
+
+describe('Button Component', () => {
+  it('should render button text', () => {
+    render(<Button>Click me</Button>)
+
+    expect(screen.getByRole('button')).toHaveTextContent('Click me')
+  })
+
+  it('should handle click events', () => {
+    const handleClick = vi.fn()
+    render(<Button onClick={handleClick}>Click me</Button>)
+
+    fireEvent.click(screen.getByRole('button'))
+    expect(handleClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('should be disabled when loading', () => {
+    render(<Button loading>Loading...</Button>)
+
+    expect(screen.getByRole('button')).toBeDisabled()
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
+  })
+})
+```
+
+**Key Principles:**
+- **Query by Role/Label**: Use accessible queries that match user behavior
+- **Test Behavior**: Focus on what the component does, not how it works
+- **User Interactions**: Test clicking, typing, hovering as users would
+- **Visual States**: Test loading, disabled, error states that users see
+</Tab>
+
+<Tab value="Component Structure">
+**Real Component Test Example:**
+```typescript
+// src/app/__tests__/home.test.tsx
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import HomePage from '../page'
+
+// Mock Next.js navigation
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => '/en',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
+describe('HomePage', () => {
+  it('should render welcome message', () => {
+    render(<HomePage />)
+
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(screen.getByText(/welcome/i)).toBeInTheDocument()
+  })
+
+  it('should display navigation links', () => {
+    render(<HomePage />)
+
+    expect(screen.getByRole('link', { name: /login/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /register/i })).toBeInTheDocument()
+  })
+
+  it('should have accessible structure', () => {
+    render(<HomePage />)
+
+    // Check for landmark elements
+    expect(screen.getByRole('main')).toBeInTheDocument()
+    expect(screen.getByRole('navigation')).toBeInTheDocument()
+  })
+})
+```
+
+**Test Organization:**
+- **Describe Block per Component**: Group related tests
+- **Clear Test Names**: Describe user scenarios
+- **Setup/Teardown**: Use beforeEach for common setup
+- **Mock Dependencies**: Mock Next.js, external services
+</Tab>
+
+<Tab value="Best Practices">
+**Query Priority (Testing Library):**
+```typescript
+// ✅ Best: Accessible to all users
+screen.getByRole('button', { name: /submit/i })
+screen.getByLabelText(/email address/i)
+screen.getByPlaceholderText(/enter email/i)
+screen.getByText(/welcome back/i)
+
+// ✅ Good: Semantic queries
+screen.getByAltText(/user profile/i)
+screen.getByTitle(/close dialog/i)
+
+// ⚠️ Use sparingly: Implementation details
+screen.getByTestId('submit-button') // Only when semantic queries fail
+
+// ❌ Avoid: Brittle queries
+screen.getByClassName('btn-primary')
+```
+
+**Async Testing Patterns:**
+```typescript
+import { waitFor, waitForElementToBeRemoved } from '@testing-library/react'
+
+describe('Async Component', () => {
+  it('should handle loading states', async () => {
+    render(<UserProfile userId="123" />)
+
+    // Initially shows loading
+    expect(screen.getByText(/loading/i)).toBeInTheDocument()
+
+    // Wait for content to load
+    await waitFor(() => {
+      expect(screen.getByText(/john doe/i)).toBeInTheDocument()
+    })
+
+    // Loading indicator should be gone
+    expect(screen.queryByText(/loading/i)).not.toBeInTheDocument()
+  })
+
+  it('should handle error states', async () => {
+    // Mock API failure
+    vi.mocked(fetchUser).mockRejectedValue(new Error('User not found'))
+
+    render(<UserProfile userId="invalid" />)
+
+    await waitFor(() => {
+      expect(screen.getByText(/error loading user/i)).toBeInTheDocument()
+    })
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Testing React Components
+
+Test different types of React components commonly used in the SaaS application:
+
+<Tabs items={['Form Components', 'Display Components', 'Interactive Components', 'Layout Components']}>
+
+<Tab value="Form Components">
+**Form Input and Validation Testing:**
+```typescript
+// src/components/__tests__/LoginForm.test.tsx
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
+import { LoginForm } from '@/components/auth/LoginForm'
+
+describe('LoginForm', () => {
+  const mockOnSubmit = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should render form fields', () => {
+    render(<LoginForm onSubmit={mockOnSubmit} />)
+
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
+  })
+
+  it('should validate required fields', async () => {
+    const user = userEvent.setup()
+    render(<LoginForm onSubmit={mockOnSubmit} />)
+
+    // Submit without filling fields
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/email is required/i)).toBeInTheDocument()
+      expect(screen.getByText(/password is required/i)).toBeInTheDocument()
+    })
+
+    expect(mockOnSubmit).not.toHaveBeenCalled()
+  })
+
+  it('should validate email format', async () => {
+    const user = userEvent.setup()
+    render(<LoginForm onSubmit={mockOnSubmit} />)
+
+    await user.type(screen.getByLabelText(/email/i), 'invalid-email')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/invalid email format/i)).toBeInTheDocument()
+    })
+  })
+
+  it('should submit valid form', async () => {
+    const user = userEvent.setup()
+    render(<LoginForm onSubmit={mockOnSubmit} />)
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com')
+    await user.type(screen.getByLabelText(/password/i), 'password123')
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+      })
+    })
+  })
+
+  it('should show loading state during submission', async () => {
+    const user = userEvent.setup()
+    render(<LoginForm onSubmit={mockOnSubmit} loading />)
+
+    expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled()
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument()
+  })
+
+  it('should display submission errors', async () => {
+    render(<LoginForm onSubmit={mockOnSubmit} error="Invalid credentials" />)
+
+    expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument() // Error should be in alert
+  })
+})
+
+// Complex form with multiple steps
+describe('RegistrationForm', () => {
+  it('should handle multi-step flow', async () => {
+    const user = userEvent.setup()
+    render(<RegistrationForm />)
+
+    // Step 1: Basic info
+    await user.type(screen.getByLabelText(/name/i), 'John Doe')
+    await user.type(screen.getByLabelText(/email/i), 'john@example.com')
+    await user.click(screen.getByRole('button', { name: /next/i }))
+
+    // Step 2: Password
+    await waitFor(() => {
+      expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByLabelText(/password/i), 'SecurePass123!')
+    await user.type(screen.getByLabelText(/confirm password/i), 'SecurePass123!')
+    await user.click(screen.getByRole('button', { name: /create account/i }))
+
+    // Verify submission
+    await waitFor(() => {
+      expect(screen.getByText(/account created successfully/i)).toBeInTheDocument()
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Display Components">
+**Data Display and Formatting Components:**
+```typescript
+// src/components/__tests__/UserProfile.test.tsx
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect } from 'vitest'
+import { UserProfile } from '@/components/user/UserProfile'
+import { createTestUser } from '@/test/factories/user-factory'
+
+describe('UserProfile', () => {
+  const mockUser = createTestUser({
+    name: 'John Doe',
+    email: 'john@example.com',
+    role: 'admin',
+    createdAt: new Date('2024-01-01'),
+  })
+
+  it('should display user information', () => {
+    render(<UserProfile user={mockUser} />)
+
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+    expect(screen.getByText('john@example.com')).toBeInTheDocument()
+    expect(screen.getByText(/admin/i)).toBeInTheDocument()
+  })
+
+  it('should format creation date', () => {
+    render(<UserProfile user={mockUser} />)
+
+    expect(screen.getByText(/joined january 1, 2024/i)).toBeInTheDocument()
+  })
+
+  it('should show avatar with fallback', () => {
+    const userWithAvatar = { ...mockUser, image: 'https://example.com/avatar.jpg' }
+    render(<UserProfile user={userWithAvatar} />)
+
+    const avatar = screen.getByAltText(/john doe avatar/i)
+    expect(avatar).toHaveAttribute('src', 'https://example.com/avatar.jpg')
+  })
+
+  it('should show initials when no avatar', () => {
+    render(<UserProfile user={mockUser} />)
+
+    expect(screen.getByText('JD')).toBeInTheDocument() // Initials fallback
+  })
+
+  it('should handle missing user data gracefully', () => {
+    const incompleteUser = { ...mockUser, name: undefined }
+    render(<UserProfile user={incompleteUser} />)
+
+    expect(screen.getByText(/unnamed user/i)).toBeInTheDocument()
+  })
+})
+
+// List component testing
+describe('UserList', () => {
+  const mockUsers = [
+    createTestUser({ name: 'Alice', role: 'admin' }),
+    createTestUser({ name: 'Bob', role: 'user' }),
+    createTestUser({ name: 'Charlie', role: 'moderator' }),
+  ]
+
+  it('should render list of users', () => {
+    render(<UserList users={mockUsers} />)
+
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+    expect(screen.getByText('Bob')).toBeInTheDocument()
+    expect(screen.getByText('Charlie')).toBeInTheDocument()
+  })
+
+  it('should show empty state', () => {
+    render(<UserList users={[]} />)
+
+    expect(screen.getByText(/no users found/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /invite users/i })).toBeInTheDocument()
+  })
+
+  it('should handle loading state', () => {
+    render(<UserList users={[]} loading />)
+
+    expect(screen.getByText(/loading users/i)).toBeInTheDocument()
+    expect(screen.getByTestId('skeleton-loader')).toBeInTheDocument()
+  })
+})
+```
+</Tab>
+
+<Tab value="Interactive Components">
+**Interactive Elements and State Management:**
+```typescript
+// src/components/__tests__/SubscriptionPlanSelector.test.tsx
+import { render, screen, fireEvent } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi } from 'vitest'
+import { SubscriptionPlanSelector } from '@/components/billing/SubscriptionPlanSelector'
+
+describe('SubscriptionPlanSelector', () => {
+  const mockPlans = [
+    { id: 'basic', name: 'Basic', price: 1000, features: ['5 users', '10 GB storage'] },
+    { id: 'pro', name: 'Pro', price: 5000, features: ['25 users', '100 GB storage'] },
+    { id: 'enterprise', name: 'Enterprise', price: 20000, features: ['Unlimited users', '1 TB storage'] },
+  ]
+
+  const mockOnPlanSelect = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should render all plans', () => {
+    render(<SubscriptionPlanSelector plans={mockPlans} onPlanSelect={mockOnPlanSelect} />)
+
+    expect(screen.getByText('Basic')).toBeInTheDocument()
+    expect(screen.getByText('Pro')).toBeInTheDocument()
+    expect(screen.getByText('Enterprise')).toBeInTheDocument()
+  })
+
+  it('should display plan features', () => {
+    render(<SubscriptionPlanSelector plans={mockPlans} onPlanSelect={mockOnPlanSelect} />)
+
+    expect(screen.getByText('5 users')).toBeInTheDocument()
+    expect(screen.getByText('100 GB storage')).toBeInTheDocument()
+  })
+
+  it('should format prices correctly', () => {
+    render(<SubscriptionPlanSelector plans={mockPlans} onPlanSelect={mockOnPlanSelect} />)
+
+    expect(screen.getByText('$10/month')).toBeInTheDocument()
+    expect(screen.getByText('$50/month')).toBeInTheDocument()
+    expect(screen.getByText('$200/month')).toBeInTheDocument()
+  })
+
+  it('should handle plan selection', async () => {
+    const user = userEvent.setup()
+    render(<SubscriptionPlanSelector plans={mockPlans} onPlanSelect={mockOnPlanSelect} />)
+
+    await user.click(screen.getByRole('button', { name: /select pro plan/i }))
+
+    expect(mockOnPlanSelect).toHaveBeenCalledWith(mockPlans[1])
+  })
+
+  it('should highlight current plan', () => {
+    render(
+      <SubscriptionPlanSelector
+        plans={mockPlans}
+        currentPlan="pro"
+        onPlanSelect={mockOnPlanSelect}
+      />
+    )
+
+    const proPlan = screen.getByTestId('plan-pro')
+    expect(proPlan).toHaveClass('selected') // or whatever the selected class is
+  })
+
+  it('should show billing interval toggle', async () => {
+    const user = userEvent.setup()
+    render(<SubscriptionPlanSelector plans={mockPlans} onPlanSelect={mockOnPlanSelect} />)
+
+    // Should show monthly by default
+    expect(screen.getByText('$10/month')).toBeInTheDocument()
+
+    // Toggle to annual
+    await user.click(screen.getByRole('button', { name: /annual/i }))
+
+    // Should show annual prices (with discount)
+    expect(screen.getByText('$96/year')).toBeInTheDocument() // 20% discount
+  })
+})
+
+// Modal/Dialog component testing
+describe('ConfirmationDialog', () => {
+  it('should handle confirmation flow', async () => {
+    const user = userEvent.setup()
+    const mockOnConfirm = vi.fn()
+    const mockOnCancel = vi.fn()
+
+    render(
+      <ConfirmationDialog
+        isOpen={true}
+        title="Delete User"
+        message="Are you sure you want to delete this user?"
+        onConfirm={mockOnConfirm}
+        onCancel={mockOnCancel}
+      />
+    )
+
+    expect(screen.getByText('Delete User')).toBeInTheDocument()
+    expect(screen.getByText(/are you sure/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /confirm/i }))
+    expect(mockOnConfirm).toHaveBeenCalled()
+  })
+
+  it('should handle keyboard navigation', async () => {
+    const user = userEvent.setup()
+    const mockOnCancel = vi.fn()
+
+    render(
+      <ConfirmationDialog
+        isOpen={true}
+        title="Delete User"
+        message="Are you sure?"
+        onConfirm={vi.fn()}
+        onCancel={mockOnCancel}
+      />
+    )
+
+    // Should close on Escape
+    await user.keyboard('{Escape}')
+    expect(mockOnCancel).toHaveBeenCalled()
+  })
+})
+```
+</Tab>
+
+<Tab value="Layout Components">
+**Layout and Navigation Components:**
+```typescript
+// src/components/__tests__/Layout.test.tsx
+import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi } from 'vitest'
+import { Layout } from '@/components/layout/Layout'
+
+// Mock Next.js components
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/dashboard',
+}))
+
+describe('Layout', () => {
+  const mockUser = createTestUser({ name: 'John Doe', role: 'admin' })
+
+  it('should render main layout structure', () => {
+    render(
+      <Layout user={mockUser}>
+        <div>Main content</div>
+      </Layout>
+    )
+
+    expect(screen.getByRole('banner')).toBeInTheDocument() // Header
+    expect(screen.getByRole('navigation')).toBeInTheDocument() // Sidebar
+    expect(screen.getByRole('main')).toBeInTheDocument() // Main content
+    expect(screen.getByText('Main content')).toBeInTheDocument()
+  })
+
+  it('should show user menu in header', () => {
+    render(<Layout user={mockUser}><div>Content</div></Layout>)
+
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /user menu/i })).toBeInTheDocument()
+  })
+
+  it('should render navigation links', () => {
+    render(<Layout user={mockUser}><div>Content</div></Layout>)
+
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /projects/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument()
+  })
+
+  it('should highlight active navigation item', () => {
+    render(<Layout user={mockUser}><div>Content</div></Layout>)
+
+    const dashboardLink = screen.getByRole('link', { name: /dashboard/i })
+    expect(dashboardLink).toHaveClass('active') // Current path is /dashboard
+  })
+
+  it('should show admin-only navigation for admin users', () => {
+    render(<Layout user={mockUser}><div>Content</div></Layout>)
+
+    expect(screen.getByRole('link', { name: /admin panel/i })).toBeInTheDocument()
+  })
+
+  it('should hide admin navigation for regular users', () => {
+    const regularUser = createTestUser({ role: 'user' })
+    render(<Layout user={regularUser}><div>Content</div></Layout>)
+
+    expect(screen.queryByRole('link', { name: /admin panel/i })).not.toBeInTheDocument()
+  })
+})
+
+// Mobile responsive navigation
+describe('MobileNavigation', () => {
+  it('should toggle mobile menu', async () => {
+    const user = userEvent.setup()
+    render(<MobileNavigation />)
+
+    // Menu should be closed initially
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    // Open menu
+    await user.click(screen.getByRole('button', { name: /open menu/i }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    // Close menu
+    await user.click(screen.getByRole('button', { name: /close menu/i }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## User Interaction Testing
+
+Test complex user interactions and workflows:
+
+<Tabs items={['Keyboard Navigation', 'Mouse Interactions', 'Touch Events', 'Drag and Drop']}>
+
+<Tab value="Keyboard Navigation">
+**Accessibility and Keyboard Navigation:**
+```typescript
+// src/components/__tests__/AccessibleModal.test.tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect } from 'vitest'
+import { Modal } from '@/components/ui/Modal'
+
+describe('Modal Keyboard Navigation', () => {
+  it('should trap focus within modal', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <Modal isOpen={true} onClose={vi.fn()}>
+        <input aria-label="First input" />
+        <button>Action</button>
+        <input aria-label="Last input" />
+      </Modal>
+    )
+
+    const firstInput = screen.getByLabelText('First input')
+    const button = screen.getByRole('button', { name: 'Action' })
+    const lastInput = screen.getByLabelText('Last input')
+
+    // Focus should start on first focusable element
+    expect(firstInput).toHaveFocus()
+
+    // Tab to next element
+    await user.tab()
+    expect(button).toHaveFocus()
+
+    // Tab to last element
+    await user.tab()
+    expect(lastInput).toHaveFocus()
+
+    // Tab should wrap to first element
+    await user.tab()
+    expect(firstInput).toHaveFocus()
+
+    // Shift+Tab should go backward
+    await user.tab({ shift: true })
+    expect(lastInput).toHaveFocus()
+  })
+
+  it('should close on Escape key', async () => {
+    const user = userEvent.setup()
+    const mockOnClose = vi.fn()
+
+    render(
+      <Modal isOpen={true} onClose={mockOnClose}>
+        <div>Modal content</div>
+      </Modal>
+    )
+
+    await user.keyboard('{Escape}')
+    expect(mockOnClose).toHaveBeenCalled()
+  })
+
+  it('should handle Enter key on buttons', async () => {
+    const user = userEvent.setup()
+    const mockAction = vi.fn()
+
+    render(
+      <Modal isOpen={true} onClose={vi.fn()}>
+        <button onClick={mockAction}>Submit</button>
+      </Modal>
+    )
+
+    screen.getByRole('button', { name: 'Submit' }).focus()
+    await user.keyboard('{Enter}')
+    expect(mockAction).toHaveBeenCalled()
+  })
+})
+
+// Form keyboard navigation
+describe('Form Keyboard Navigation', () => {
+  it('should navigate between form fields', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <form>
+        <input aria-label="Name" />
+        <input aria-label="Email" />
+        <select aria-label="Country">
+          <option value="us">United States</option>
+          <option value="ca">Canada</option>
+        </select>
+        <button type="submit">Submit</button>
+      </form>
+    )
+
+    const nameInput = screen.getByLabelText('Name')
+    const emailInput = screen.getByLabelText('Email')
+    const countrySelect = screen.getByLabelText('Country')
+    const submitButton = screen.getByRole('button', { name: 'Submit' })
+
+    // Tab through form fields
+    await user.tab()
+    expect(nameInput).toHaveFocus()
+
+    await user.tab()
+    expect(emailInput).toHaveFocus()
+
+    await user.tab()
+    expect(countrySelect).toHaveFocus()
+
+    await user.tab()
+    expect(submitButton).toHaveFocus()
+  })
+})
+```
+</Tab>
+
+<Tab value="Mouse Interactions">
+**Click, Hover, and Mouse Events:**
+```typescript
+// src/components/__tests__/Tooltip.test.tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect } from 'vitest'
+import { Tooltip } from '@/components/ui/Tooltip'
+
+describe('Tooltip Interactions', () => {
+  it('should show tooltip on hover', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <Tooltip content="This is a tooltip">
+        <button>Hover me</button>
+      </Tooltip>
+    )
+
+    const button = screen.getByRole('button', { name: 'Hover me' })
+
+    // Tooltip should not be visible initially
+    expect(screen.queryByText('This is a tooltip')).not.toBeInTheDocument()
+
+    // Hover over button
+    await user.hover(button)
+    expect(screen.getByText('This is a tooltip')).toBeInTheDocument()
+
+    // Unhover
+    await user.unhover(button)
+    expect(screen.queryByText('This is a tooltip')).not.toBeInTheDocument()
+  })
+
+  it('should handle click outside to close', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <div>
+        <Tooltip content="Click tooltip" trigger="click">
+          <button>Click me</button>
+        </Tooltip>
+        <div>Outside element</div>
+      </div>
+    )
+
+    const button = screen.getByRole('button', { name: 'Click me' })
+    const outside = screen.getByText('Outside element')
+
+    // Click to open tooltip
+    await user.click(button)
+    expect(screen.getByText('Click tooltip')).toBeInTheDocument()
+
+    // Click outside to close
+    await user.click(outside)
+    expect(screen.queryByText('Click tooltip')).not.toBeInTheDocument()
+  })
+})
+
+// Dropdown menu interactions
+describe('DropdownMenu', () => {
+  it('should handle complex mouse interactions', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <DropdownMenu>
+        <DropdownMenu.Trigger>Menu</DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.Item onSelect={vi.fn()}>Item 1</DropdownMenu.Item>
+          <DropdownMenu.Item onSelect={vi.fn()}>Item 2</DropdownMenu.Item>
+          <DropdownMenu.SubMenu>
+            <DropdownMenu.SubTrigger>More</DropdownMenu.SubTrigger>
+            <DropdownMenu.SubContent>
+              <DropdownMenu.Item onSelect={vi.fn()}>Sub Item</DropdownMenu.Item>
+            </DropdownMenu.SubContent>
+          </DropdownMenu.SubMenu>
+        </DropdownMenu.Content>
+      </DropdownMenu>
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Menu' })
+
+    // Click to open menu
+    await user.click(trigger)
+    expect(screen.getByText('Item 1')).toBeVisible()
+
+    // Hover over submenu trigger
+    await user.hover(screen.getByText('More'))
+    expect(screen.getByText('Sub Item')).toBeVisible()
+
+    // Click on sub item
+    const subItem = screen.getByText('Sub Item')
+    await user.click(subItem)
+    // Menu should close after selection
+    expect(screen.queryByText('Item 1')).not.toBeInTheDocument()
+  })
+})
+```
+</Tab>
+
+<Tab value="Touch Events">
+**Mobile Touch Interactions:**
+```typescript
+// src/components/__tests__/SwipeableCard.test.tsx
+import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect } from 'vitest'
+import { SwipeableCard } from '@/components/ui/SwipeableCard'
+
+describe('SwipeableCard Touch Events', () => {
+  it('should handle swipe gestures', () => {
+    const mockOnSwipeLeft = vi.fn()
+    const mockOnSwipeRight = vi.fn()
+
+    render(
+      <SwipeableCard
+        onSwipeLeft={mockOnSwipeLeft}
+        onSwipeRight={mockOnSwipeRight}
+      >
+        Card content
+      </SwipeableCard>
+    )
+
+    const card = screen.getByText('Card content').parentElement
+
+    // Simulate touch start
+    fireEvent.touchStart(card!, {
+      touches: [{ clientX: 100, clientY: 100 }]
+    })
+
+    // Simulate swipe left
+    fireEvent.touchMove(card!, {
+      touches: [{ clientX: 50, clientY: 100 }]
+    })
+
+    fireEvent.touchEnd(card!, {
+      changedTouches: [{ clientX: 50, clientY: 100 }]
+    })
+
+    expect(mockOnSwipeLeft).toHaveBeenCalled()
+  })
+
+  it('should handle pinch to zoom', () => {
+    const mockOnZoom = vi.fn()
+
+    render(
+      <SwipeableCard onZoom={mockOnZoom}>
+        Zoomable content
+      </SwipeableCard>
+    )
+
+    const card = screen.getByText('Zoomable content').parentElement
+
+    // Simulate pinch gesture
+    fireEvent.touchStart(card!, {
+      touches: [
+        { clientX: 100, clientY: 100 },
+        { clientX: 200, clientY: 200 }
+      ]
+    })
+
+    fireEvent.touchMove(card!, {
+      touches: [
+        { clientX: 90, clientY: 90 },
+        { clientX: 210, clientY: 210 }
+      ]
+    })
+
+    expect(mockOnZoom).toHaveBeenCalledWith(expect.objectContaining({
+      scale: expect.any(Number)
+    }))
+  })
+})
+
+// Pull to refresh
+describe('PullToRefresh', () => {
+  it('should handle pull to refresh gesture', async () => {
+    const mockOnRefresh = vi.fn()
+
+    render(
+      <PullToRefresh onRefresh={mockOnRefresh}>
+        <div>Content</div>
+      </PullToRefresh>
+    )
+
+    const container = screen.getByText('Content').parentElement
+
+    // Simulate pull down
+    fireEvent.touchStart(container!, {
+      touches: [{ clientX: 100, clientY: 50 }]
+    })
+
+    fireEvent.touchMove(container!, {
+      touches: [{ clientX: 100, clientY: 150 }]
+    })
+
+    fireEvent.touchEnd(container!, {
+      changedTouches: [{ clientX: 100, clientY: 150 }]
+    })
+
+    expect(mockOnRefresh).toHaveBeenCalled()
+  })
+})
+```
+</Tab>
+
+<Tab value="Drag and Drop">
+**Drag and Drop Interactions:**
+```typescript
+// src/components/__tests__/DragDropList.test.tsx
+import { render, screen } from '@testing-library/react'
+import { DndProvider } from 'react-dnd'
+import { HTML5Backend } from 'react-dnd-html5-backend'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect } from 'vitest'
+import { DragDropList } from '@/components/ui/DragDropList'
+
+// Mock HTML5 drag and drop
+const mockDataTransfer = {
+  setData: vi.fn(),
+  getData: vi.fn(),
+  effectAllowed: 'move',
+  dropEffect: 'move',
+}
+
+describe('DragDropList', () => {
+  const mockItems = [
+    { id: '1', title: 'Task 1' },
+    { id: '2', title: 'Task 2' },
+    { id: '3', title: 'Task 3' },
+  ]
+
+  const renderWithDnd = (component: React.ReactElement) => {
+    return render(
+      <DndProvider backend={HTML5Backend}>
+        {component}
+      </DndProvider>
+    )
+  }
+
+  it('should render draggable items', () => {
+    renderWithDnd(<DragDropList items={mockItems} onReorder={vi.fn()} />)
+
+    expect(screen.getByText('Task 1')).toBeInTheDocument()
+    expect(screen.getByText('Task 2')).toBeInTheDocument()
+    expect(screen.getByText('Task 3')).toBeInTheDocument()
+  })
+
+  it('should handle drag start', async () => {
+    const user = userEvent.setup()
+    renderWithDnd(<DragDropList items={mockItems} onReorder={vi.fn()} />)
+
+    const task1 = screen.getByText('Task 1')
+
+    // Simulate drag start
+    const dragEvent = createEvent.dragStart(task1)
+    Object.defineProperty(dragEvent, 'dataTransfer', {
+      value: mockDataTransfer,
+    })
+
+    fireEvent(task1, dragEvent)
+
+    expect(mockDataTransfer.setData).toHaveBeenCalledWith('text/plain', '1')
+  })
+
+  it('should handle reorder on drop', async () => {
+    const mockOnReorder = vi.fn()
+    renderWithDnd(<DragDropList items={mockItems} onReorder={mockOnReorder} />)
+
+    const task1 = screen.getByText('Task 1')
+    const task3 = screen.getByText('Task 3')
+
+    // Simulate drag and drop
+    const dragStartEvent = createEvent.dragStart(task1)
+    Object.defineProperty(dragStartEvent, 'dataTransfer', {
+      value: { ...mockDataTransfer, getData: () => '1' },
+    })
+    fireEvent(task1, dragStartEvent)
+
+    const dropEvent = createEvent.drop(task3)
+    Object.defineProperty(dropEvent, 'dataTransfer', {
+      value: { ...mockDataTransfer, getData: () => '1' },
+    })
+    fireEvent(task3, dropEvent)
+
+    expect(mockOnReorder).toHaveBeenCalledWith([
+      { id: '2', title: 'Task 2' },
+      { id: '3', title: 'Task 3' },
+      { id: '1', title: 'Task 1' },
+    ])
+  })
+
+  it('should show drop indicator during drag', async () => {
+    renderWithDnd(<DragDropList items={mockItems} onReorder={vi.fn()} />)
+
+    const task1 = screen.getByText('Task 1')
+    const task2 = screen.getByText('Task 2')
+
+    // Start drag
+    const dragEvent = createEvent.dragStart(task1)
+    fireEvent(task1, dragEvent)
+
+    // Drag over another item
+    const dragOverEvent = createEvent.dragOver(task2)
+    fireEvent(task2, dragOverEvent)
+
+    // Should show drop indicator
+    expect(screen.getByTestId('drop-indicator')).toBeInTheDocument()
+  })
+})
+
+// File upload drag and drop
+describe('FileUploadDropzone', () => {
+  it('should handle file drop', async () => {
+    const mockOnFileUpload = vi.fn()
+
+    render(<FileUploadDropzone onFileUpload={mockOnFileUpload} />)
+
+    const dropzone = screen.getByText(/drag files here/i).parentElement
+
+    const file = new File(['file content'], 'test.txt', { type: 'text/plain' })
+
+    const dropEvent = createEvent.drop(dropzone!)
+    Object.defineProperty(dropEvent, 'dataTransfer', {
+      value: { files: [file] },
+    })
+
+    fireEvent(dropzone!, dropEvent)
+
+    expect(mockOnFileUpload).toHaveBeenCalledWith([file])
+  })
+
+  it('should show drag over state', () => {
+    render(<FileUploadDropzone onFileUpload={vi.fn()} />)
+
+    const dropzone = screen.getByText(/drag files here/i).parentElement
+
+    fireEvent.dragEnter(dropzone!)
+    expect(dropzone).toHaveClass('drag-over')
+
+    fireEvent.dragLeave(dropzone!)
+    expect(dropzone).not.toHaveClass('drag-over')
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Context and Provider Testing
+
+Test React Context providers and complex component trees:
+
+<Tabs items={['Context Providers', 'Theme Context', 'Auth Context', 'Complex Providers']}>
+
+<Tab value="Context Providers">
+**Testing Components with Context:**
+```typescript
+// src/app/__tests__/theme.test.tsx
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect } from 'vitest'
+import { ThemeProvider, useTheme } from '@/components/theme-provider'
+
+// Test component that uses theme context
+const ThemeConsumer = () => {
+  const { theme, setTheme } = useTheme()
+  return (
+    <div>
+      <span>Current theme: {theme}</span>
+      <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+        Toggle theme
+      </button>
+    </div>
+  )
+}
+
+describe('ThemeProvider', () => {
+  it('should provide default theme', () => {
+    render(
+      <ThemeProvider defaultTheme="light">
+        <ThemeConsumer />
+      </ThemeProvider>
+    )
+
+    expect(screen.getByText('Current theme: light')).toBeInTheDocument()
+  })
+
+  it('should allow theme changes', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <ThemeProvider defaultTheme="light">
+        <ThemeConsumer />
+      </ThemeProvider>
+    )
+
+    expect(screen.getByText('Current theme: light')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /toggle theme/i }))
+
+    expect(screen.getByText('Current theme: dark')).toBeInTheDocument()
+  })
+
+  it('should apply theme class to document', () => {
+    render(
+      <ThemeProvider defaultTheme="dark">
+        <ThemeConsumer />
+      </ThemeProvider>
+    )
+
+    expect(document.documentElement).toHaveClass('dark')
+  })
+
+  it('should persist theme preference', async () => {
+    const user = userEvent.setup()
+
+    // Mock localStorage
+    const mockSetItem = vi.fn()
+    const mockGetItem = vi.fn(() => 'dark')
+    Object.defineProperty(window, 'localStorage', {
+      value: { getItem: mockGetItem, setItem: mockSetItem },
+    })
+
+    render(
+      <ThemeProvider>
+        <ThemeConsumer />
+      </ThemeProvider>
+    )
+
+    // Should load from localStorage
+    expect(screen.getByText('Current theme: dark')).toBeInTheDocument()
+
+    // Should save to localStorage on change
+    await user.click(screen.getByRole('button', { name: /toggle theme/i }))
+    expect(mockSetItem).toHaveBeenCalledWith('theme', 'light')
+  })
+})
+
+// Custom render helper for theme testing
+const renderWithTheme = (
+  component: React.ReactElement,
+  { theme = 'light' } = {}
+) => {
+  return render(
+    <ThemeProvider defaultTheme={theme}>
+      {component}
+    </ThemeProvider>
+  )
+}
+
+describe('Components with Theme', () => {
+  it('should render with light theme styles', () => {
+    renderWithTheme(<Button variant="primary">Click me</Button>)
+
+    const button = screen.getByRole('button')
+    expect(button).toHaveClass('bg-white', 'text-black')
+  })
+
+  it('should render with dark theme styles', () => {
+    renderWithTheme(
+      <Button variant="primary">Click me</Button>,
+      { theme: 'dark' }
+    )
+
+    const button = screen.getByRole('button')
+    expect(button).toHaveClass('bg-gray-900', 'text-white')
+  })
+})
+```
+</Tab>
+
+<Tab value="Auth Context">
+**Authentication Context Testing:**
+```typescript
+// src/components/__tests__/AuthProvider.test.tsx
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { AuthProvider, useAuth } from '@/components/auth/AuthProvider'
+import { createTestUser } from '@/test/factories/user-factory'
+
+// Mock auth service
+vi.mock('@/services/auth-service', () => ({
+  getCurrentUser: vi.fn(),
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+}))
+
+const AuthConsumer = () => {
+  const { user, isLoading, signIn, signOut } = useAuth()
+
+  if (isLoading) return <div>Loading...</div>
+
+  return (
+    <div>
+      {user ? (
+        <div>
+          <span>Welcome, {user.name}!</span>
+          <button onClick={signOut}>Sign out</button>
+        </div>
+      ) : (
+        <div>
+          <span>Not authenticated</span>
+          <button onClick={() => signIn('test@example.com', 'password')}>
+            Sign in
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+describe('AuthProvider', () => {
+  const mockUser = createTestUser({ name: 'John Doe' })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should show loading state initially', () => {
+    vi.mocked(getCurrentUser).mockImplementation(() => new Promise(() => {})) // Never resolves
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    )
+
+    expect(screen.getByText('Loading...')).toBeInTheDocument()
+  })
+
+  it('should show user when authenticated', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(mockUser)
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Welcome, John Doe!')).toBeInTheDocument()
+    })
+  })
+
+  it('should show unauthenticated state', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(null)
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Not authenticated')).toBeInTheDocument()
+    })
+  })
+
+  it('should handle sign in', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getCurrentUser).mockResolvedValue(null)
+    vi.mocked(signIn).mockResolvedValue({ user: mockUser, session: {} })
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Not authenticated')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    expect(signIn).toHaveBeenCalledWith('test@example.com', 'password')
+
+    await waitFor(() => {
+      expect(screen.getByText('Welcome, John Doe!')).toBeInTheDocument()
+    })
+  })
+
+  it('should handle sign out', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getCurrentUser).mockResolvedValue(mockUser)
+    vi.mocked(signOut).mockResolvedValue(undefined)
+
+    render(
+      <AuthProvider>
+        <AuthConsumer />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Welcome, John Doe!')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: /sign out/i }))
+
+    expect(signOut).toHaveBeenCalled()
+
+    await waitFor(() => {
+      expect(screen.getByText('Not authenticated')).toBeInTheDocument()
+    })
+  })
+})
+
+// Test helper for auth provider
+export const renderWithAuth = (
+  component: React.ReactElement,
+  { user = null, isLoading = false } = {}
+) => {
+  const mockAuthContext = {
+    user,
+    isLoading,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+    updateProfile: vi.fn(),
+  }
+
+  return render(
+    <AuthContext.Provider value={mockAuthContext}>
+      {component}
+    </AuthContext.Provider>
+  )
+}
+```
+</Tab>
+
+<Tab value="Complex Providers">
+**Multiple Providers and Complex State:**
+```typescript
+// src/test/utils/test-providers.tsx
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider } from '@/components/auth/AuthProvider'
+import { ThemeProvider } from '@/components/theme-provider'
+import { NotificationProvider } from '@/components/notifications/NotificationProvider'
+
+// Test wrapper with all providers
+export const AllProviders = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  })
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider defaultTheme="light">
+          <NotificationProvider>
+            {children}
+          </NotificationProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  )
+}
+
+// Custom render with all providers
+export const renderWithProviders = (component: React.ReactElement) => {
+  return render(component, { wrapper: AllProviders })
+}
+
+// Usage in tests
+describe('ComplexComponent', () => {
+  it('should work with all providers', () => {
+    renderWithProviders(<ComplexComponent />)
+
+    expect(screen.getByText('Complex content')).toBeInTheDocument()
+  })
+})
+
+// Provider integration test
+describe('Provider Integration', () => {
+  it('should handle auth and theme together', async () => {
+    const user = userEvent.setup()
+    const mockUser = createTestUser({ name: 'John Doe' })
+
+    vi.mocked(getCurrentUser).mockResolvedValue(mockUser)
+
+    renderWithProviders(
+      <div>
+        <AuthStatus />
+        <ThemeToggle />
+      </div>
+    )
+
+    // Wait for auth to load
+    await waitFor(() => {
+      expect(screen.getByText('Welcome, John Doe!')).toBeInTheDocument()
+    })
+
+    // Test theme toggle
+    await user.click(screen.getByRole('button', { name: /toggle theme/i }))
+    expect(document.documentElement).toHaveClass('dark')
+  })
+
+  it('should handle notification system', async () => {
+    renderWithProviders(<NotificationTest />)
+
+    const button = screen.getByRole('button', { name: /show notification/i })
+    await userEvent.click(button)
+
+    await waitFor(() => {
+      expect(screen.getByText('Test notification')).toBeInTheDocument()
+    })
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Best Practices Summary
+
+<Callout type="success">
+**Component Testing Excellence:**
+- **User-Centric**: Test components as users would interact with them
+- **Accessible Queries**: Use semantic queries that match accessibility patterns
+- **Realistic Scenarios**: Test real user workflows and edge cases
+- **Provider Testing**: Test components within their context providers
+</Callout>
+
+### **Key Principles:**
+
+1. **Query Priority**: Role > Label > Text > TestId (use semantic queries first)
+2. **User Events**: Use `@testing-library/user-event` for realistic interactions
+3. **Async Testing**: Properly wait for async operations with `waitFor`
+4. **Mock External Dependencies**: Mock Next.js, APIs, and browser APIs
+5. **Test Accessibility**: Ensure components work with keyboard navigation
+
+### **Common Patterns:**
+
+```typescript
+// ✅ Good component test structure
+describe('ComponentName', () => {
+  it('should handle user interaction', async () => {
+    const user = userEvent.setup()
+    const mockHandler = vi.fn()
+
+    render(<Component onAction={mockHandler} />)
+
+    await user.click(screen.getByRole('button', { name: /action/i }))
+
+    expect(mockHandler).toHaveBeenCalled()
+  })
+})
+```
+
+Ready to test your database layer? Continue with **[Repository Testing](/docs/testing/repository-testing)** to learn about testing database operations and data integrity.

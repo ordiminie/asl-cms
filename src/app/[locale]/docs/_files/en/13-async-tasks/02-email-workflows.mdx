@@ -1,0 +1,376 @@
+---
+title: Email Workflows
+description: Automated email sequences and follow-ups using Inngest
+keywords: 'ShipSaaS, email workflows, async emails, background email, email queue, delayed emails, email jobs'
+---
+
+Implement automated email workflows using Inngest for welcome sequences, follow-ups, and user onboarding.
+
+<Callout type="info">
+  **Existing Implementation:** The boilerplate includes a welcome follow-up email that sends 24 hours after user registration.
+</Callout>
+
+## Welcome Follow-Up Email
+
+The existing implementation sends a follow-up email 24 hours after user registration.
+
+### Function Definition
+
+Located in `src/lib/inngest/functions.ts`:
+
+```typescript
+const sendWelcomeFollowUpEmail = inngest.createFunction(
+  {id: 'send-welcome-follow-up-email'},
+  {event: 'user/registered'},
+  async ({event, step}) => {
+    // Wait 24 hours after registration
+    await step.sleep('wait-24-hours', '24h')
+
+    // Get user data
+    const userData = await step.run('get-user-data', async () => {
+      return {
+        id: event.data.userId,
+        name: event.data.userName,
+        email: event.data.userEmail,
+        language: event.data.language || 'fr',
+      }
+    })
+
+    // Send follow-up email
+    await step.run('send-follow-up-email', async () => {
+      const appUrl = env.NEXT_PUBLIC_APP_URL
+
+      return await sendWelcomeFollowUpEmailService({
+        email: userData.email,
+        userName: userData.name,
+        appUrl,
+        language: userData.language as SupportedLanguage,
+      })
+    })
+
+    return {
+      success: true,
+      userId: userData.id,
+      emailSent: true,
+      sentAt: new Date().toISOString(),
+    }
+  }
+)
+```
+
+### Triggering the Workflow
+
+The event is triggered from the user service during registration:
+
+```typescript
+// In src/services/user-service.ts
+await triggerInngestWelcomeFollowUpEmail({
+  userId: newUser.id,
+  userName: newUser.name,
+  userEmail: newUser.email,
+  language: locale as SupportedLanguage,
+})
+```
+
+## Creating Custom Email Workflows
+
+### 1. Multi-Step Onboarding Sequence
+
+```typescript
+export const onboardingSequence = inngest.createFunction(
+  {id: 'onboarding-sequence'},
+  {event: 'user/registered'},
+  async ({event, step}) => {
+    const {userId, userName, userEmail, language} = event.data
+
+    // Day 1: Welcome email (immediate)
+    await step.run('send-welcome-email', async () => {
+      return await sendWelcomeEmailService({
+        email: userEmail,
+        userName,
+        language,
+      })
+    })
+
+    // Day 3: Getting started tips
+    await step.sleep('wait-3-days', '3d')
+    await step.run('send-getting-started-tips', async () => {
+      return await sendGettingStartedEmailService({
+        email: userEmail,
+        userName,
+        language,
+      })
+    })
+
+    // Day 7: Feature highlights
+    await step.sleep('wait-4-more-days', '4d')
+    await step.run('send-feature-highlights', async () => {
+      return await sendFeatureHighlightsEmailService({
+        email: userEmail,
+        userName,
+        language,
+      })
+    })
+
+    return {success: true, sequence: 'completed'}
+  }
+)
+```
+
+### 2. Abandoned Cart Recovery
+
+```typescript
+export const cartRecoverySequence = inngest.createFunction(
+  {id: 'cart-recovery-sequence'},
+  {event: 'cart/abandoned'},
+  async ({event, step}) => {
+    const {userId, cartId, userEmail, items} = event.data
+
+    // Wait 1 hour
+    await step.sleep('wait-1-hour', '1h')
+
+    // Check if cart is still abandoned
+    const cartStatus = await step.run('check-cart-status', async () => {
+      return await getCartStatusService(cartId)
+    })
+
+    if (cartStatus.purchased) {
+      return {abandoned: false, message: 'Cart was completed'}
+    }
+
+    // Send first reminder
+    await step.run('send-first-reminder', async () => {
+      return await sendCartReminderEmailService({
+        email: userEmail,
+        cartId,
+        items,
+        reminderNumber: 1,
+      })
+    })
+
+    // Wait 24 hours
+    await step.sleep('wait-24-hours', '24h')
+
+    // Check again
+    const finalCartStatus = await step.run('check-final-cart-status', async () => {
+      return await getCartStatusService(cartId)
+    })
+
+    if (!finalCartStatus.purchased) {
+      // Send final reminder with discount
+      await step.run('send-discount-reminder', async () => {
+        return await sendCartDiscountEmailService({
+          email: userEmail,
+          cartId,
+          discountCode: 'SAVE15',
+        })
+      })
+    }
+
+    return {success: true, finalStatus: finalCartStatus}
+  }
+)
+```
+
+### 3. Trial Expiration Workflow
+
+```typescript
+export const trialExpirationWorkflow = inngest.createFunction(
+  {id: 'trial-expiration-workflow'},
+  {event: 'trial/started'},
+  async ({event, step}) => {
+    const {userId, trialEndsAt, userEmail, userName} = event.data
+
+    // Send trial started confirmation
+    await step.run('send-trial-started', async () => {
+      return await sendTrialStartedEmailService({
+        email: userEmail,
+        userName,
+        trialEndsAt,
+      })
+    })
+
+    // Calculate days until expiration
+    const trialDuration = new Date(trialEndsAt).getTime() - Date.now()
+    const daysUntilExpiry = Math.floor(trialDuration / (1000 * 60 * 60 * 24))
+
+    // Send 7-day warning (if trial is longer than 7 days)
+    if (daysUntilExpiry > 7) {
+      await step.sleep('wait-until-7-days-left', `${daysUntilExpiry - 7}d`)
+      await step.run('send-7-day-warning', async () => {
+        return await sendTrialWarningEmailService({
+          email: userEmail,
+          userName,
+          daysLeft: 7,
+        })
+      })
+    }
+
+    // Send 3-day warning
+    await step.sleep('wait-until-3-days-left', '4d') // 7-3=4 days to wait
+    await step.run('send-3-day-warning', async () => {
+      return await sendTrialWarningEmailService({
+        email: userEmail,
+        userName,
+        daysLeft: 3,
+      })
+    })
+
+    // Send final day warning
+    await step.sleep('wait-until-final-day', '2d')
+    await step.run('send-final-day-warning', async () => {
+      return await sendTrialFinalWarningEmailService({
+        email: userEmail,
+        userName,
+      })
+    })
+
+    return {success: true, workflow: 'completed'}
+  }
+)
+```
+
+## Email Workflow Patterns
+
+### Conditional Logic
+
+```typescript
+export const conditionalEmailWorkflow = inngest.createFunction(
+  {id: 'conditional-email-workflow'},
+  {event: 'user/action'},
+  async ({event, step}) => {
+    const userActivity = await step.run('check-user-activity', async () => {
+      return await getUserActivityService(event.data.userId)
+    })
+
+    if (userActivity.isActive) {
+      // Send engagement email
+      await step.run('send-engagement-email', async () => {
+        return await sendEngagementEmailService({
+          email: event.data.userEmail,
+          activityData: userActivity,
+        })
+      })
+    } else {
+      // Send reactivation sequence
+      await step.run('send-reactivation-email', async () => {
+        return await sendReactivationEmailService({
+          email: event.data.userEmail,
+          lastActive: userActivity.lastActiveAt,
+        })
+      })
+
+      // Follow up in 7 days if still inactive
+      await step.sleep('wait-7-days', '7d')
+      await step.run('send-final-reactivation', async () => {
+        return await sendFinalReactivationEmailService({
+          email: event.data.userEmail,
+        })
+      })
+    }
+
+    return {workflow: 'completed'}
+  }
+)
+```
+
+### Error Handling
+
+```typescript
+export const robustEmailWorkflow = inngest.createFunction(
+  {
+    id: 'robust-email-workflow',
+    retries: 3,
+  },
+  {event: 'email/sequence'},
+  async ({event, step}) => {
+    try {
+      await step.run('send-email-with-retry', async () => {
+        // This step will retry on failure
+        return await sendEmailService(event.data)
+      })
+    } catch (error) {
+      // Log error and continue with alternative action
+      await step.run('handle-email-failure', async () => {
+        await logEmailFailure(event.data.userEmail, error)
+        // Maybe add to a manual review queue
+        return await addToManualEmailQueue(event.data)
+      })
+    }
+
+    return {processed: true}
+  }
+)
+```
+
+## Testing Email Workflows
+
+### Development Testing
+
+1. **Start Inngest Dev Server**:
+   ```bash
+   pnpm dlx inngest-cli@latest dev
+   ```
+
+2. **Manual Trigger**: Use the dashboard at `http://localhost:8288` to test functions with sample data:
+
+   ```json
+   {
+     "name": "user/registered",
+     "data": {
+       "userId": "test_123",
+       "userName": "Test User",
+       "userEmail": "test@example.com",
+       "language": "en"
+     }
+   }
+   ```
+
+### Workflow Monitoring
+
+The Inngest dashboard shows:
+- **Step Progress**: See which steps completed successfully
+- **Sleep States**: Monitor delayed executions
+- **Error Details**: Debug failed steps
+- **Retry Attempts**: Track automatic retries
+
+## Best Practices
+
+<Steps>
+<Step title="Use Descriptive Step Names">
+  Name each step clearly for debugging:
+
+  ```typescript
+  await step.run('send-welcome-email-with-onboarding-tips', async () => {
+    return await sendWelcomeEmail(userData)
+  })
+  ```
+</Step>
+
+<Step title="Handle Failures Gracefully">
+  Plan for email service outages:
+
+  ```typescript
+  await step.run('send-email-with-fallback', async () => {
+    try {
+      return await primaryEmailService.send(emailData)
+    } catch (error) {
+      return await fallbackEmailService.send(emailData)
+    }
+  })
+  ```
+</Step>
+
+<Step title="Use Environment-Specific Delays">
+  Shorter delays in development:
+
+  ```typescript
+  const delay = process.env.NODE_ENV === 'development' ? '30s' : '24h'
+  await step.sleep('wait-for-follow-up', delay)
+  ```
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Email workflows are now configured!** Your automated email sequences will handle user engagement, onboarding, and retention automatically.
+</Callout>

@@ -1,0 +1,223 @@
+---
+title: 'Roles & Hierarchy'
+description: 'User roles from GUEST to SUPER_ADMIN with hierarchical permission inheritance system'
+keywords: 'ShipSaaS, roles, user roles, RBAC, role hierarchy, permission system, role management'
+---
+
+The boilerplate includes a hierarchical role system where higher roles inherit permissions from lower roles, providing flexible and scalable access control.
+
+<Callout type="success">
+  **Perfect for:** Team management, progressive access levels, and enterprise role structures.
+</Callout>
+
+## Role Hierarchy
+
+The boilerplate includes a hierarchical role system where higher roles inherit permissions from lower roles:
+
+```
+SUPER_ADMIN  ← Highest level (all permissions)
+    ↑
+  ADMIN      ← Admin panel access
+    ↑
+REDACTOR     ← Content management
+    ↑
+MODERATOR    ← Community management
+    ↑
+  USER       ← Basic authenticated user
+    ↑
+ GUEST       ← Unauthenticated user
+```
+
+<Callout type="warning">
+  **Role inheritance:** A `MODERATOR` automatically has all `USER` permissions, an `ADMIN` has all `MODERATOR` + `USER` permissions, etc.
+</Callout>
+
+## Role Descriptions
+
+<Tabs defaultValue="guest">
+  <Tab value="guest" label="👻 GUEST">
+    **Unauthenticated users**
+
+    **Permissions:**
+    - View public content
+    - Access landing pages
+    - Use login/register forms
+    - Read documentation
+
+    **Cannot:** Access any protected features
+  </Tab>
+
+  <Tab value="user" label="👤 USER">
+    **Basic authenticated users**
+
+    **Permissions:**
+    - Access dashboard
+    - Update own profile
+    - Create own content
+    - View own data
+
+    **Cannot:** Access admin features or modify other users' data
+  </Tab>
+
+  <Tab value="moderator" label="👮 MODERATOR">
+    **Community management**
+
+    **Permissions:**
+    - All USER permissions +
+    - Moderate content
+    - Manage comments
+    - Handle user reports
+    - Basic content management
+
+    **Cannot:** Access admin panel or user management
+  </Tab>
+
+  <Tab value="redactor" label="✍️ REDACTOR">
+    **Content management**
+
+    **Permissions:**
+    - All MODERATOR permissions +
+    - Create/edit articles
+    - Manage content categories
+    - Publish content
+    - Content workflow management
+
+    **Cannot:** Access admin panel or user management
+  </Tab>
+
+  <Tab value="admin" label="🔧 ADMIN">
+    **Administrative access**
+
+    **Permissions:**
+    - All REDACTOR permissions +
+    - User management
+    - System settings
+    - Analytics access
+    - Billing management
+
+    **Cannot:** Delete organization or access super admin features
+  </Tab>
+
+  <Tab value="super-admin" label="👑 SUPER_ADMIN">
+    **Complete system access**
+
+    **Permissions:**
+    - All ADMIN permissions +
+    - System configuration
+    - Delete organizations
+    - Manage other admins
+    - Access all features
+
+    **Can do everything in the system**
+  </Tab>
+</Tabs>
+
+## Role Management
+
+### Assigning Roles
+
+```typescript
+// Admin function to assign roles
+export async function assignRole(userId: string, newRole: Role) {
+  // Verify current user has permission to assign roles
+  const currentUser = await getCurrentUser()
+  const ability = await definePermissions(currentUser)
+
+  if (!ability.can('manage', 'User')) {
+    throw new Error('Insufficient permissions to assign roles')
+  }
+
+  // Update user role
+  await updateUserRole(userId, newRole)
+
+  // Log role change for audit
+  await logRoleChange({
+    userId,
+    oldRole: user.role,
+    newRole,
+    assignedBy: currentUser.id
+  })
+}
+```
+
+### Role Hierarchy Validation
+
+```typescript
+// Ensure role hierarchy is respected
+export function canAssignRole(assignerRole: Role, targetRole: Role): boolean {
+  const roleHierarchy = {
+    'GUEST': 0,
+    'USER': 1,
+    'MODERATOR': 2,
+    'REDACTOR': 3,
+    'ADMIN': 4,
+    'SUPER_ADMIN': 5
+  }
+
+  const assignerLevel = roleHierarchy[assignerRole]
+  const targetLevel = roleHierarchy[targetRole]
+
+  // Can only assign roles lower than or equal to your own
+  return assignerLevel >= targetLevel
+}
+```
+
+## Common Role Scenarios
+
+<Callout type="info">
+  **Typical use cases for each role:**
+</Callout>
+
+**GUEST (Public Users):**
+- Marketing website visitors
+- Potential customers browsing features
+- Users reading documentation
+
+**USER (Customers):**
+- Paying subscribers
+- Individual users of SaaS features
+- Personal account management
+
+**MODERATOR (Community Managers):**
+- Forum moderators
+- Content reviewers
+- Customer support agents
+
+**REDACTOR (Content Creators):**
+- Blog writers
+- Content managers
+- Marketing team members
+
+**ADMIN (System Administrators):**
+- IT administrators
+- Business managers
+- Billing administrators
+
+**SUPER_ADMIN (System Owners):**
+- Company founders
+- Technical leads
+- System architects
+
+## Best Practices
+
+<Steps>
+<Step title="Start with minimal roles">
+  Begin with USER and ADMIN, add others as needed.
+</Step>
+
+<Step title="Document role permissions">
+  Keep clear documentation of what each role can do.
+</Step>
+
+<Step title="Regular role audits">
+  Review and update user roles periodically.
+</Step>
+
+<Step title="Principle of least privilege">
+  Give users the minimum role needed for their tasks.
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Role system ready!** Your application now has a clear, hierarchical role structure that scales with your business needs.
+</Callout>

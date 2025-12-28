@@ -4,6 +4,44 @@ import type {ReactNode} from 'react'
 import React from 'react'
 import {Tweet as ReactTweet} from 'react-tweet'
 
+import {Callout} from './features/docs/callout'
+import {CodeBlock} from './features/docs/code-block'
+import {Step, Steps} from './features/docs/steps'
+import {Tab, Tabs} from './features/docs/tabs'
+
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '')
+}
+
+// Helper function to extract text content from React children
+function getTextContent(children: ReactNode): string {
+  if (typeof children === 'string') {
+    return children
+  }
+
+  if (typeof children === 'number') {
+    return children.toString()
+  }
+
+  if (React.isValidElement(children)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return getTextContent((children.props as any).children)
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(getTextContent).join('')
+  }
+
+  return ''
+}
 type TweetEmbedProps = {
   url?: string
   id?: string
@@ -326,102 +364,177 @@ export const Excalidraw = ({
   )
 }
 export const mdxComponents = {
-  h1: ({children}: {children: ReactNode}) => (
-    <h1 className="mb-6 border-b border-gray-200 pb-2 text-4xl font-bold text-gray-900 dark:border-gray-700 dark:text-gray-100">
-      {children}
-    </h1>
-  ),
-  h2: ({children}: {children: ReactNode}) => (
-    <h2 className="mt-8 mb-4 text-3xl font-semibold text-gray-800 dark:text-gray-200">
-      {children}
-    </h2>
-  ),
-  h3: ({children}: {children: ReactNode}) => (
-    <h3 className="mt-6 mb-3 text-2xl font-medium text-gray-700 dark:text-gray-300">
-      {children}
-    </h3>
-  ),
-  h4: ({children}: {children: ReactNode}) => (
-    <h4 className="mt-4 mb-2 text-xl font-medium text-gray-700 dark:text-gray-300">
-      {children}
-    </h4>
-  ),
+  //NEW ONE
+  h1: ({children}: {children: ReactNode}) => {
+    const textContent = getTextContent(children)
+    const id = slugify(textContent)
+    return (
+      <h1
+        id={id}
+        className="border-border mb-6 scroll-mt-20 border-b pb-2 text-4xl font-bold"
+      >
+        {children}
+      </h1>
+    )
+  },
+  h2: ({children}: {children: ReactNode}) => {
+    const textContent = getTextContent(children)
+    const id = slugify(textContent)
+    return (
+      <h2 id={id} className="mt-8 mb-4 scroll-mt-20 text-3xl font-semibold">
+        {children}
+      </h2>
+    )
+  },
+  h3: ({children}: {children: ReactNode}) => {
+    const textContent = getTextContent(children)
+    const id = slugify(textContent)
+    return (
+      <h3 id={id} className="mt-6 mb-3 scroll-mt-20 text-2xl font-medium">
+        {children}
+      </h3>
+    )
+  },
+  h4: ({children}: {children: ReactNode}) => {
+    const textContent = getTextContent(children)
+    const id = slugify(textContent)
+    return (
+      <h4 id={id} className="mt-4 mb-2 scroll-mt-20 text-xl font-medium">
+        {children}
+      </h4>
+    )
+  },
   p: ({children}: {children: ReactNode}) => (
-    <p className="mb-4 text-base leading-7 text-gray-600 dark:text-gray-400">
-      {children}
-    </p>
+    <span className="mb-4 block text-base leading-7">{children}</span>
   ),
   ul: ({children}: {children: ReactNode}) => (
-    <ul className="mb-4 list-inside list-disc space-y-2 text-gray-600 dark:text-gray-400">
-      {children}
-    </ul>
+    <ul className="mb-4 list-inside list-disc space-y-2">{children}</ul>
   ),
   ol: ({children}: {children: ReactNode}) => (
-    <ol className="mb-4 list-inside list-decimal space-y-2 text-gray-600 dark:text-gray-400">
-      {children}
-    </ol>
+    <ol className="mb-4 list-inside list-decimal space-y-2">{children}</ol>
   ),
-  li: ({children}: {children: ReactNode}) => (
-    <li className="text-gray-600 dark:text-gray-400">{children}</li>
-  ),
+  li: ({children}: {children: ReactNode}) => <li>{children}</li>,
   blockquote: ({children}: {children: ReactNode}) => (
-    <blockquote className="mb-4 rounded-r-lg border-l-4 border-blue-500 bg-gray-50 py-2 pl-4 text-gray-700 italic dark:bg-gray-800 dark:text-gray-300">
+    <blockquote className="border-primary bg-muted mb-4 rounded-r-lg border-l-4 py-2 pl-4 italic">
       {children}
     </blockquote>
   ),
-  // code: ({children, className}: {children: ReactNode; className?: string}) => {
-  //   // Si c'est un bloc de code (avec className), laisser Shiki s'en occuper
-  //   if (className) {
-  //     return <code className={className}>{children}</code>
-  //   }
-  //   // Sinon, c'est du code inline
-  //   return (
-  //     <code className="rounded bg-gray-100 px-2 py-1 font-mono text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-  //       {children}
-  //     </code>
-  //   )
-  // },
-  // pre: ({children, className}: {children: ReactNode; className?: string}) => (
-  //   <pre
-  //     className={`mb-4 overflow-x-auto rounded-lg ${className || 'bg-gray-900 p-4 text-sm text-gray-100'}`}
-  //   >
-  //     {children}
-  //   </pre>
-  // ),
+  code: ({
+    children,
+    className,
+    ...props
+  }: {
+    children: ReactNode
+    className?: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any
+  }) => {
+    // Détecter le vrai code inline : court, sans saut de ligne, et pas dans un contexte de bloc
+    const textContent = getTextContent(children)
+    const isRealInline =
+      textContent.length < 15 && !textContent.includes('\n') && !className
+
+    if (isRealInline) {
+      // C'est du vrai code inline dans une phrase
+      return (
+        <code className="bg-muted border-border rounded border px-2 py-1 font-mono text-sm before:content-none after:content-none">
+          {children}
+        </code>
+      )
+    }
+
+    // Sinon, laisser Shiki s'en occuper (blocs avec/sans language)
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    )
+  },
+  pre: ({
+    children,
+    className,
+    filename,
+    rawCode,
+    title,
+    ...props
+  }: {
+    children: ReactNode
+    className?: string
+    filename?: string
+    rawCode?: string
+    title?: string
+    'data-language'?: string
+  }) => {
+    // Extract language from data-language attribute first (set by Shiki transformer)
+    // or fallback to className parsing
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dataLanguage = (props as any)['data-language']
+    const language =
+      dataLanguage ||
+      (className
+        ? (() => {
+            // First try to extract standard language- prefix
+            const langMatch = className.match(/language-(\w+)/)
+            if (langMatch) return langMatch[1]
+
+            // Then try lang- prefix
+            const langMatch2 = className.match(/lang-(\w+)/)
+            if (langMatch2) return langMatch2[1]
+
+            // If it's a Shiki class with multiple themes, return empty
+            if (className.includes('shiki') || className.includes('github-'))
+              return ''
+
+            // Fallback: clean up the className
+            return className.replace(/^(language-|lang-)/, '').split(' ')[0]
+          })()
+        : '')
+
+    // Utiliser title comme filename si filename n'est pas défini
+    const displayFilename = filename || title
+
+    return (
+      <CodeBlock
+        filename={displayFilename}
+        language={language}
+        className={className}
+        rawCode={rawCode}
+        {...props}
+      >
+        <pre className="overflow-x-auto p-4 text-sm">{children}</pre>
+      </CodeBlock>
+    )
+  },
   table: ({children}: {children: ReactNode}) => (
-    <div className="mb-4 overflow-x-auto">
-      <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+    <div className="mb-4 w-full overflow-x-auto">
+      <table className="border-border w-full border-collapse border">
         {children}
       </table>
     </div>
   ),
   thead: ({children}: {children: ReactNode}) => (
-    <thead className="bg-gray-100 dark:bg-gray-800">{children}</thead>
+    <thead className="bg-muted">{children}</thead>
   ),
   tbody: ({children}: {children: ReactNode}) => (
-    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-      {children}
-    </tbody>
+    <tbody className="divide-border divide-y">{children}</tbody>
   ),
   tr: ({children}: {children: ReactNode}) => (
-    <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">{children}</tr>
+    <tr className="hover:bg-muted/50">{children}</tr>
   ),
   th: ({children}: {children: ReactNode}) => (
-    <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-100">
+    <th className="border-border border px-4 py-2 text-left font-semibold">
       {children}
     </th>
   ),
   td: ({children}: {children: ReactNode}) => (
-    <td className="border border-gray-300 px-4 py-2 text-gray-600 dark:border-gray-600 dark:text-gray-400">
-      {children}
-    </td>
+    <td className="border-border border px-4 py-2">{children}</td>
   ),
   a: ({href, children}: {href?: string; children: ReactNode}) => {
     if (href && href.startsWith('/')) {
       return (
         <Link
           href={href}
-          className="text-blue-600 underline transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+          className="text-primary hover:text-primary/80 underline transition-colors"
         >
           {children}
         </Link>
@@ -432,19 +545,19 @@ export const mdxComponents = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-blue-600 underline transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+        className="text-primary hover:text-primary/80 underline transition-colors"
       >
         {children}
       </a>
     )
   },
-  hr: () => <hr className="my-8 border-gray-200 dark:border-gray-700" />,
+  hr: () => <hr className="border-border my-8" />,
   img: (props: React.ComponentProps<typeof Image>) => {
     const imageUrl = props.src as string
-    const isGif = imageUrl.includes('.gif')
+    const isGif = imageUrl?.includes('.gif')
 
     // Support des paramètres d'URL: image.jpg?width=300&height=200
-    const queryParams = new URLSearchParams(imageUrl.split('?')[1] || '')
+    const queryParams = new URLSearchParams(imageUrl?.split('?')[1] || '')
     const widthFromUrl = queryParams.get('width')
     const heightFromUrl = queryParams.get('height')
 
@@ -468,14 +581,240 @@ export const mdxComponents = {
       <Image
         width={width}
         height={height}
-        //@ts-expect-error next-image always have alt, only compliance with jsx-a11y/alt-text rules
-        alt="default alt image"
         {...props}
+        alt={props.alt || 'Image'}
         unoptimized={isGif}
         className="h-auto max-w-full rounded-lg"
       />
     )
   },
+  Callout: ({
+    children,
+    type,
+  }: {
+    children: ReactNode
+    type?: 'warning' | 'info' | 'success' | 'error'
+  }) => <Callout type={type}>{children}</Callout>,
+  Link: ({href, children}: {href?: string; children: ReactNode}) => {
+    if (href && href.startsWith('/')) {
+      return (
+        <Link
+          href={href}
+          className="text-primary hover:text-primary/80 underline transition-colors"
+        >
+          {children}
+        </Link>
+      )
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-primary hover:text-primary/80 underline transition-colors"
+      >
+        {children}
+      </a>
+    )
+  },
+  Steps: ({children}: {children: ReactNode}) => <Steps>{children}</Steps>,
+  Step: ({children, title}: {children: ReactNode; title: string}) => (
+    <Step title={title}>{children}</Step>
+  ),
+  Tabs: ({
+    children,
+    defaultValue,
+  }: {
+    children: ReactNode
+    defaultValue?: string
+  }) => <Tabs defaultValue={defaultValue}>{children}</Tabs>,
+  Tab: ({
+    children,
+    value,
+    label,
+  }: {
+    children: ReactNode
+    value: string
+    label: string
+  }) => (
+    <Tab value={value} label={label}>
+      {children}
+    </Tab>
+  ),
+  Image: ({
+    src,
+    alt,
+    width,
+    height,
+    ...props
+  }: {
+    src: string
+    alt: string
+    width?: number
+    height?: number
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any
+  }) => (
+    <Image
+      src={src}
+      alt={alt}
+      width={width || 800}
+      height={height || 600}
+      className="my-6 rounded-lg border shadow-sm"
+      {...props}
+    />
+  ),
+  //PREVIEW
+  // h1: ({children}: {children: ReactNode}) => (
+  //   <h1 className="mb-6 border-b border-gray-200 pb-2 text-4xl font-bold text-gray-900 dark:border-gray-700 dark:text-gray-100">
+  //     {children}
+  //   </h1>
+  // ),
+  // h2: ({children}: {children: ReactNode}) => (
+  //   <h2 className="mt-8 mb-4 text-3xl font-semibold text-gray-800 dark:text-gray-200">
+  //     {children}
+  //   </h2>
+  // ),
+  // h3: ({children}: {children: ReactNode}) => (
+  //   <h3 className="mt-6 mb-3 text-2xl font-medium text-gray-700 dark:text-gray-300">
+  //     {children}
+  //   </h3>
+  // ),
+  // h4: ({children}: {children: ReactNode}) => (
+  //   <h4 className="mt-4 mb-2 text-xl font-medium text-gray-700 dark:text-gray-300">
+  //     {children}
+  //   </h4>
+  // ),
+  // p: ({children}: {children: ReactNode}) => (
+  //   <p className="mb-4 text-base leading-7 text-gray-600 dark:text-gray-400">
+  //     {children}
+  //   </p>
+  // ),
+  // ul: ({children}: {children: ReactNode}) => (
+  //   <ul className="mb-4 list-inside list-disc space-y-2 text-gray-600 dark:text-gray-400">
+  //     {children}
+  //   </ul>
+  // ),
+  // ol: ({children}: {children: ReactNode}) => (
+  //   <ol className="mb-4 list-inside list-decimal space-y-2 text-gray-600 dark:text-gray-400">
+  //     {children}
+  //   </ol>
+  // ),
+  // li: ({children}: {children: ReactNode}) => (
+  //   <li className="text-gray-600 dark:text-gray-400">{children}</li>
+  // ),
+  // blockquote: ({children}: {children: ReactNode}) => (
+  //   <blockquote className="mb-4 rounded-r-lg border-l-4 border-blue-500 bg-gray-50 py-2 pl-4 text-gray-700 italic dark:bg-gray-800 dark:text-gray-300">
+  //     {children}
+  //   </blockquote>
+  // ),
+  // code: ({children, className}: {children: ReactNode; className?: string}) => {
+  //   // Si c'est un bloc de code (avec className), laisser Shiki s'en occuper
+  //   if (className) {
+  //     return <code className={className}>{children}</code>
+  //   }
+  //   // Sinon, c'est du code inline
+  //   return (
+  //     <code className="rounded bg-gray-100 px-2 py-1 font-mono text-sm text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+  //       {children}
+  //     </code>
+  //   )
+  // },
+  // pre: ({children, className}: {children: ReactNode; className?: string}) => (
+  //   <pre
+  //     className={`mb-4 overflow-x-auto rounded-lg ${className || 'bg-gray-900 p-4 text-sm text-gray-100'}`}
+  //   >
+  //     {children}
+  //   </pre>
+  // ),
+  // table: ({children}: {children: ReactNode}) => (
+  //   <div className="mb-4 overflow-x-auto">
+  //     <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+  //       {children}
+  //     </table>
+  //   </div>
+  // ),
+  // thead: ({children}: {children: ReactNode}) => (
+  //   <thead className="bg-gray-100 dark:bg-gray-800">{children}</thead>
+  // ),
+  // tbody: ({children}: {children: ReactNode}) => (
+  //   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+  //     {children}
+  //   </tbody>
+  // ),
+  // tr: ({children}: {children: ReactNode}) => (
+  //   <tr className="hover:bg-gray-50 dark:hover:bg-gray-700">{children}</tr>
+  // ),
+  // th: ({children}: {children: ReactNode}) => (
+  //   <th className="border border-gray-300 px-4 py-2 text-left font-semibold text-gray-900 dark:border-gray-600 dark:text-gray-100">
+  //     {children}
+  //   </th>
+  // ),
+  // td: ({children}: {children: ReactNode}) => (
+  //   <td className="border border-gray-300 px-4 py-2 text-gray-600 dark:border-gray-600 dark:text-gray-400">
+  //     {children}
+  //   </td>
+  // ),
+  // a: ({href, children}: {href?: string; children: ReactNode}) => {
+  //   if (href && href.startsWith('/')) {
+  //     return (
+  //       <Link
+  //         href={href}
+  //         className="text-blue-600 underline transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+  //       >
+  //         {children}
+  //       </Link>
+  //     )
+  //   }
+  //   return (
+  //     <a
+  //       href={href}
+  //       target="_blank"
+  //       rel="noopener noreferrer"
+  //       className="text-blue-600 underline transition-colors hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+  //     >
+  //       {children}
+  //     </a>
+  //   )
+  // },
+  // hr: () => <hr className="my-8 border-gray-200 dark:border-gray-700" />,
+  // img: (props: React.ComponentProps<typeof Image>) => {
+  //   const imageUrl = props.src as string
+  //   const isGif = imageUrl.includes('.gif')
+
+  //   // Support des paramètres d'URL: image.jpg?width=300&height=200
+  //   const queryParams = new URLSearchParams(imageUrl.split('?')[1] || '')
+  //   const widthFromUrl = queryParams.get('width')
+  //   const heightFromUrl = queryParams.get('height')
+
+  //   // Support des attributs HTML: <img width="300" height="200" />
+  //   const widthFromProps = props.width
+  //   const heightFromProps = props.height
+
+  //   // Priorité: attributs HTML > paramètres URL > valeurs par défaut
+  //   const width = widthFromProps
+  //     ? Number(widthFromProps)
+  //     : widthFromUrl
+  //       ? Number(widthFromUrl)
+  //       : 800
+  //   const height = heightFromProps
+  //     ? Number(heightFromProps)
+  //     : heightFromUrl
+  //       ? Number(heightFromUrl)
+  //       : 600
+
+  //   return (
+  //     <Image
+  //       width={width}
+  //       height={height}
+  //       //@ts-expect-error next-image always have alt, only compliance with jsx-a11y/alt-text rules
+  //       alt="default alt image"
+  //       {...props}
+  //       unoptimized={isGif}
+  //       className="h-auto max-w-full rounded-lg"
+  //     />
+  //   )
+  // },
   // Ajouter le composant Video aux composants MDX
   Video,
   // Ajouter le composant Excalidraw aux composants MDX

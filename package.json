@@ -96,6 +96,7 @@
     "drizzle-orm": "^0.45.0",
     "drizzle-zod": "^0.8.3",
     "framer-motion": "^12.23.25",
+    "gray-matter": "^4.0.3",
     "inngest": "^3.47.0",
     "jiti": "^2.6.1",
     "jsdom": "^27.3.0",

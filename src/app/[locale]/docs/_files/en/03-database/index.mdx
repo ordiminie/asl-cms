@@ -1,0 +1,811 @@
+---
+title: Database
+description: PostgreSQL with UUID primary keys, Drizzle ORM, and repository pattern for type-safe database operations
+keywords: "ShipSaaS, database, PostgreSQL, Drizzle ORM, UUID primary keys, repository pattern, database architecture, type-safe queries"
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+# Database
+
+Complete guide to working with PostgreSQL, Drizzle ORM, and UUID-based data architecture in your SaaS application.
+
+## Table of Contents
+
+- [UUID-First Architecture](#uuid-first-architecture)
+- [Database Stack](#database-stack)
+- [Schema Organization](#schema-organization)
+- [Common Operations](#common-operations)
+- [Development Workflow](#development-workflow)
+- [Quick Reference](#quick-reference)
+
+## UUID-First Architecture
+
+<Callout type="warning">
+**Critical Setup Required:** This application uses UUID primary keys throughout the database schema. You must enable the UUID extension before running any migrations:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+</Callout>
+
+The entire application is built around UUID primary keys for enhanced security, scalability, and distributed system compatibility:
+
+<Tabs items={['Why UUIDs', 'Benefits', 'Implementation']}>
+
+<Tab value="Why UUIDs">
+**Security & Privacy:**
+- No sequential IDs that reveal business metrics
+- Difficult to guess or enumerate resources
+- Better for public-facing APIs
+
+**Scalability:**
+- Works across distributed databases
+- No ID conflicts in multi-server environments
+- Easier database merging and replication
+
+**Developer Experience:**
+- Consistent ID format across all tables
+- Type-safe with TypeScript
+- No auto-increment race conditions
+</Tab>
+
+<Tab value="Benefits">
+```typescript
+// All entities use consistent UUID format
+interface User {
+  id: string          // UUID: "550e8400-e29b-41d4-a716-446655440000"
+  email: string
+  organizationId: string  // Also UUID
+}
+
+interface Organization {
+  id: string          // UUID: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+  name: string
+  ownerId: string     // References User.id (UUID)
+}
+```
+
+**Security Example:**
+```bash
+# Instead of predictable IDs:
+GET /api/users/1, /api/users/2, /api/users/3
+
+# We use UUIDs:
+GET /api/users/550e8400-e29b-41d4-a716-446655440000
+```
+</Tab>
+
+<Tab value="Implementation">
+```typescript
+// Schema definition with UUID primary keys
+export const users = pgTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: varchar('email', { length: 255 }).unique().notNull(),
+  name: varchar('name', { length: 255 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const organizations = pgTable('organizations', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar('name', { length: 255 }).notNull(),
+  ownerId: text('owner_id').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+```
+</Tab>
+
+</Tabs>
+
+## Database Stack
+
+Modern, type-safe database infrastructure designed for scalability:
+
+### Core Technologies
+
+<Tabs items={['PostgreSQL', 'Drizzle ORM', 'Connection Management']}>
+
+<Tab value="PostgreSQL">
+**Database Features:**
+- PostgreSQL 15+ with full ACID compliance
+- UUID extension for primary key generation
+- JSON/JSONB support for flexible data
+- Full-text search capabilities
+- Advanced indexing strategies
+
+**Extensions Used:**
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";    -- UUID generation
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";      -- Text similarity
+CREATE EXTENSION IF NOT EXISTS "btree_gin";    -- Advanced indexing
+```
+</Tab>
+
+<Tab value="Drizzle ORM">
+**Key Benefits:**
+- 100% TypeScript with full type inference
+- SQL-like query builder
+- Zero runtime overhead
+- Excellent developer experience
+- Migration system with rollbacks
+
+**Type Safety Example:**
+```typescript
+// Fully typed queries with autocomplete
+const user = await db.query.users.findFirst({
+  where: eq(users.id, userId),
+  with: {
+    organizations: {
+      with: {
+        members: true
+      }
+    }
+  }
+})
+// user is fully typed with nested relations
+```
+</Tab>
+
+<Tab value="Connection Management">
+**Connection Strategy:**
+- Connection pooling with configurable limits
+- Automatic reconnection handling
+- Environment-specific configurations
+- Performance monitoring built-in
+
+**Configuration:**
+```typescript
+// Database connection with pooling
+import { drizzle } from 'drizzle-orm/neon-http'
+import { neon, neonConfig } from '@neondatabase/serverless'
+
+neonConfig.fetchConnectionCache = true
+
+export const db = drizzle(neon(DATABASE_URL), {
+  schema: schema,
+  logger: process.env.NODE_ENV === 'development'
+})
+```
+</Tab>
+
+</Tabs>
+
+### Project Structure
+
+```
+src/
+├── db/
+│   ├── models/               # UUID-based schema definitions
+│   │   ├── auth-model.ts     # Users, sessions, accounts
+│   │   ├── user-model.ts     # User profiles, settings
+│   │   ├── organization-model.ts  # Organizations, memberships
+│   │   ├── project-model.ts  # Projects, tasks
+│   │   ├── post-model.ts     # Blog posts, translations
+│   │   └── subscription-model.ts  # Stripe subscriptions
+│   ├── repositories/         # Type-safe data access layer
+│   │   ├── user-repository.ts
+│   │   ├── organization-repository.ts
+│   │   ├── project-repository.ts
+│   │   └── ...
+│   ├── index.ts             # Database connection & schema export
+│   └── migrate.ts           # Migration runner
+├── drizzle.config.ts        # Drizzle configuration
+└── drizzle/                 # Generated migrations
+    └── migrations/
+        ├── 0001_*.sql
+        └── meta/
+```
+
+## Schema Organization
+
+All tables use UUID primary keys with logical grouping by domain:
+
+<Tabs items={['Authentication', 'Business Logic', 'Content Management', 'Billing & Notifications']}>
+
+<Tab value="Authentication">
+```typescript
+// src/db/models/auth-model.ts
+export const users = pgTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: varchar('email', { length: 255 }).unique().notNull(),
+  name: varchar('name', { length: 255 }),
+  image: text('image'),
+  emailVerified: boolean('email_verified').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => users.id).notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  token: text('token').unique().notNull(),
+})
+
+export const accounts = pgTable('accounts', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => users.id).notNull(),
+  provider: varchar('provider', { length: 50 }).notNull(),
+  providerAccountId: varchar('provider_account_id', { length: 255 }).notNull(),
+})
+```
+</Tab>
+
+<Tab value="Business Logic">
+```typescript
+// src/db/models/organization-model.ts
+export const organizations = pgTable('organizations', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar('name', { length: 255 }).notNull(),
+  slug: varchar('slug', { length: 255 }).unique(),
+  ownerId: text('owner_id').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const members = pgTable('members', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => users.id).notNull(),
+  organizationId: text('organization_id').references(() => organizations.id).notNull(),
+  role: memberRoleEnum('role').default('member').notNull(),
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+})
+
+// src/db/models/project-model.ts
+export const projects = pgTable('projects', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar('name', { length: 255 }).notNull(),
+  organizationId: text('organization_id').references(() => organizations.id).notNull(),
+  ownerId: text('owner_id').references(() => users.id).notNull(),
+  status: projectStatusEnum('status').default('active').notNull(),
+})
+```
+</Tab>
+
+<Tab value="Content Management">
+```typescript
+// src/db/models/post-model.ts
+export const posts = pgTable('posts', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  slug: varchar('slug', { length: 255 }).unique().notNull(),
+  published: boolean('published').default(false),
+  authorId: text('author_id').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  publishedAt: timestamp('published_at'),
+})
+
+export const postTranslations = pgTable('post_translations', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  postId: text('post_id').references(() => posts.id).notNull(),
+  locale: varchar('locale', { length: 10 }).notNull(),
+  title: varchar('title', { length: 500 }).notNull(),
+  content: text('content').notNull(),
+  description: text('description'),
+})
+
+export const hashtags = pgTable('hashtags', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  name: varchar('name', { length: 100 }).unique().notNull(),
+  color: varchar('color', { length: 7 }).default('#3B82F6'),
+})
+```
+</Tab>
+
+<Tab value="Billing & Notifications">
+```typescript
+// src/db/models/subscription-model.ts
+export const subscriptions = pgTable('subscriptions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => users.id).notNull(),
+  stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }).unique(),
+  stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+  status: subscriptionStatusEnum('status').notNull(),
+  currentPeriodStart: timestamp('current_period_start'),
+  currentPeriodEnd: timestamp('current_period_end'),
+  planId: varchar('plan_id', { length: 100 }),
+})
+
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => users.id).notNull(),
+  type: notificationTypeEnum('type').notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: text('message'),
+  read: boolean('read').default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const userSettings = pgTable('user_settings', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => users.id).unique().notNull(),
+  emailNotifications: boolean('email_notifications').default(true),
+  marketingEmails: boolean('marketing_emails').default(false),
+  theme: themeEnum('theme').default('system'),
+})
+```
+</Tab>
+
+</Tabs>
+
+## Common Operations
+
+Essential database operations for daily development and production management:
+
+<Tabs items={['Setup & Development', 'Schema Management', 'Data Operations', 'Troubleshooting']}>
+
+<Tab value="Setup & Development">
+**Initial Setup:**
+```bash
+# Enable UUID extension (run once per database)
+psql $DATABASE_URL -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+
+# Install dependencies and setup
+pnpm install
+pnpm db:push        # Push schema to development database
+pnpm db:seed        # Add demo data with UUIDs
+```
+
+**Daily Development:**
+```bash
+# Open database management interface
+pnpm db:studio      # Launch Drizzle Studio at localhost:4983
+
+# Test database connection
+pnpm db:check       # Verify connectivity and permissions
+
+# Quick development reset
+pnpm db:reset-seed  # Drop all data and reseed (development only)
+```
+
+**Development Workflow:**
+```bash
+# 1. Make schema changes in src/db/models/
+# 2. Push changes to dev database
+pnpm db:push
+
+# 3. Test changes in Drizzle Studio
+pnpm db:studio
+
+# 4. Generate production migration when ready
+pnpm db:generate
+```
+</Tab>
+
+<Tab value="Schema Management">
+**Migration Workflow:**
+```bash
+# Generate migration from schema changes
+pnpm db:generate    # Creates migration files in drizzle/migrations/
+
+# Apply migrations to database
+pnpm db:migrate     # Runs pending migrations
+
+# Check migration status
+pnpm db:status      # Shows applied vs pending migrations
+```
+
+**Schema Validation:**
+```bash
+# Validate current schema matches codebase
+pnpm db:check
+
+# Push schema changes (development only)
+pnpm db:push        # Directly applies schema changes without migrations
+
+# Introspect existing database
+pnpm db:introspect  # Generate schema from existing database
+```
+
+**Production Deployment:**
+```bash
+# 1. Generate migrations locally
+pnpm db:generate
+
+# 2. Commit migration files to version control
+git add drizzle/migrations/
+git commit -m "feat: add user profile fields"
+
+# 3. Deploy and run migrations
+pnpm db:migrate     # Run in production environment
+```
+</Tab>
+
+<Tab value="Data Operations">
+**Data Management:**
+```bash
+# Seed development data
+pnpm db:seed        # Adds demo users, orgs, projects with UUIDs
+
+# Export database data
+pg_dump $DATABASE_URL > backup.sql
+
+# Import data from backup
+psql $DATABASE_URL < backup.sql
+
+# Reset development environment
+pnpm db:reset-seed  # WARNING: Deletes all data!
+```
+
+**Query Database Directly:**
+```bash
+# Connect to database
+psql $DATABASE_URL
+
+# Common UUID queries
+SELECT id, email, created_at FROM users LIMIT 5;
+SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '1 day';
+```
+
+**Data Validation:**
+```sql
+-- Verify UUID format consistency
+SELECT
+  table_name,
+  COUNT(*) as total_records,
+  COUNT(CASE WHEN id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN 1 END) as valid_uuids
+FROM (
+  SELECT 'users' as table_name, id FROM users
+  UNION ALL
+  SELECT 'organizations', id FROM organizations
+) t
+GROUP BY table_name;
+```
+</Tab>
+
+<Tab value="Troubleshooting">
+**Common Issues:**
+
+**UUID Extension Not Enabled:**
+```bash
+# Error: function uuid_generate_v4() does not exist
+psql $DATABASE_URL -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+```
+
+**Migration Conflicts:**
+```bash
+# Reset migration state (development only)
+rm -rf drizzle/migrations/
+pnpm db:generate    # Regenerate from current schema
+```
+
+**Connection Issues:**
+```bash
+# Test connection
+pnpm db:check
+
+# Check environment variables
+echo $DATABASE_URL
+echo $NEON_DATABASE_URL
+```
+
+**Performance Issues:**
+```sql
+-- Check slow queries
+SELECT query, mean_time, calls
+FROM pg_stat_statements
+WHERE query LIKE '%users%'
+ORDER BY mean_time DESC
+LIMIT 5;
+
+-- Add indexes for UUID lookups
+CREATE INDEX CONCURRENTLY idx_users_organization_id ON users(organization_id);
+CREATE INDEX CONCURRENTLY idx_projects_owner_id ON projects(owner_id);
+```
+
+**Data Integrity:**
+```sql
+-- Check for orphaned records
+SELECT u.id, u.email
+FROM users u
+LEFT JOIN organizations o ON u.organization_id = o.id
+WHERE u.organization_id IS NOT NULL AND o.id IS NULL;
+
+-- Verify foreign key constraints
+SELECT conname, conrelid::regclass, confrelid::regclass
+FROM pg_constraint
+WHERE contype = 'f'
+AND conrelid::regclass::text LIKE '%users%';
+```
+</Tab>
+
+</Tabs>
+
+## Development Workflow
+
+Step-by-step process for working with the UUID-based database:
+
+<Tabs items={['Feature Development', 'Schema Changes', 'Testing Data']}>
+
+<Tab value="Feature Development">
+**1. Plan Your Changes:**
+```typescript
+// Example: Adding user preferences
+export const userPreferences = pgTable('user_preferences', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').references(() => users.id).notNull(),
+  theme: themeEnum('theme').default('system'),
+  language: varchar('language', { length: 10 }).default('en'),
+  timezone: varchar('timezone', { length: 50 }).default('UTC'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+```
+
+**2. Implement Repository Functions:**
+```typescript
+// src/db/repositories/user-repository.ts
+export async function getUserPreferences(userId: string) {
+  return await db.query.userPreferences.findFirst({
+    where: eq(userPreferences.userId, userId),
+  })
+}
+
+export async function updateUserPreferences(
+  userId: string,
+  prefs: Partial<InferInsertModel<typeof userPreferences>>
+) {
+  return await db
+    .update(userPreferences)
+    .set({ ...prefs, updatedAt: new Date() })
+    .where(eq(userPreferences.userId, userId))
+    .returning()
+}
+```
+
+**3. Test with Development Data:**
+```bash
+# Push schema changes
+pnpm db:push
+
+# Open Drizzle Studio to verify
+pnpm db:studio
+
+# Test with real UUID data
+pnpm db:seed
+```
+</Tab>
+
+<Tab value="Schema Changes">
+**Safe Schema Evolution:**
+
+```typescript
+// Step 1: Add new optional columns first
+export const users = pgTable('users', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  email: varchar('email', { length: 255 }).unique().notNull(),
+  name: varchar('name', { length: 255 }),
+  // New optional field
+  profileCompletedAt: timestamp('profile_completed_at'), // nullable initially
+})
+
+// Step 2: Migrate data if needed
+// Step 3: Make required if necessary in future migration
+```
+
+**Breaking Changes Safely:**
+```typescript
+// Instead of changing column types directly:
+// 1. Add new column with new type
+  newFieldName: text('new_field_name'), // UUID format
+
+// 2. Migrate data in application code
+// 3. Switch application to use new field
+// 4. Remove old field in future migration
+  // oldFieldName: integer('old_field_name'), // Remove later
+```
+</Tab>
+
+<Tab value="Testing Data">
+**Seeding with Realistic UUIDs:**
+```typescript
+// src/db/seed.ts
+const demoUsers = await db.insert(users).values([
+  {
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    email: 'admin@example.com',
+    name: 'Admin User',
+  },
+  {
+    id: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+    email: 'user@example.com',
+    name: 'Regular User',
+  },
+]).returning()
+
+// Create related data with proper UUID references
+await db.insert(organizations).values([
+  {
+    id: '123e4567-e89b-12d3-a456-426614174000',
+    name: 'Acme Corporation',
+    ownerId: demoUsers[0].id, // Reference UUID
+  },
+])
+```
+
+**Testing Queries:**
+```typescript
+// Test UUID-based queries
+describe('User Repository', () => {
+  const testUserId = '550e8400-e29b-41d4-a716-446655440000'
+
+  beforeEach(async () => {
+    await db.insert(users).values({
+      id: testUserId,
+      email: 'test@example.com',
+      name: 'Test User',
+    })
+  })
+
+  it('should find user by UUID', async () => {
+    const user = await getUserById(testUserId)
+    expect(user?.id).toBe(testUserId)
+    expect(user?.email).toBe('test@example.com')
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Quick Reference
+
+Common patterns and operations for UUID-based database work:
+
+<Tabs items={['Repository Functions', 'Query Patterns', 'UUID Operations']}>
+
+<Tab value="Repository Functions">
+```typescript
+// User operations with UUIDs
+export async function getUserById(userId: string) {
+  return await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    with: {
+      organizations: { with: { members: true } },
+      settings: true,
+    },
+  })
+}
+
+export async function createUser(userData: CreateUserType) {
+  const [newUser] = await db.insert(users)
+    .values({
+      ...userData,
+      id: crypto.randomUUID(), // Explicit UUID generation
+    })
+    .returning()
+  return newUser
+}
+
+// Organization operations
+export async function getOrganizationWithMembers(orgId: string) {
+  return await db.query.organizations.findFirst({
+    where: eq(organizations.id, orgId),
+    with: {
+      members: { with: { user: true } },
+      projects: true,
+    },
+  })
+}
+
+export async function addMemberToOrganization(userId: string, orgId: string, role: MemberRole) {
+  return await db.insert(members).values({
+    id: crypto.randomUUID(),
+    userId,
+    organizationId: orgId,
+    role,
+  }).returning()
+}
+```
+</Tab>
+
+<Tab value="Query Patterns">
+```typescript
+// Simple UUID lookup
+const user = await db.query.users.findFirst({
+  where: eq(users.id, '550e8400-e29b-41d4-a716-446655440000')
+})
+
+// Multi-table joins with UUIDs
+const userWithOrganization = await db
+  .select({
+    userId: users.id,
+    userName: users.name,
+    orgId: organizations.id,
+    orgName: organizations.name,
+  })
+  .from(users)
+  .innerJoin(members, eq(members.userId, users.id))
+  .innerJoin(organizations, eq(organizations.id, members.organizationId))
+  .where(eq(users.id, userId))
+
+// Complex filtering with UUID arrays
+const projectMembers = await db.query.users.findMany({
+  where: inArray(users.id, [
+    '550e8400-e29b-41d4-a716-446655440000',
+    '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
+  ]),
+  with: { projects: true },
+})
+
+// Pagination with UUIDs
+const paginatedUsers = await db.query.users.findMany({
+  where: gt(users.id, lastSeenUserId), // Cursor-based pagination
+  orderBy: asc(users.id),
+  limit: 20,
+})
+```
+</Tab>
+
+<Tab value="UUID Operations">
+```typescript
+// Generate UUID for new records
+import { randomUUID } from 'crypto'
+
+const newUserId = randomUUID() // '123e4567-e89b-12d3-a456-426614174000'
+
+// Validate UUID format
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(str)
+}
+
+// UUID-based URL patterns
+// /api/users/[userId] where userId is always UUID
+export async function GET(request: Request, { params }: { params: { userId: string } }) {
+  if (!isValidUUID(params.userId)) {
+    return new Response('Invalid user ID', { status: 400 })
+  }
+
+  const user = await getUserById(params.userId)
+  return Response.json(user)
+}
+
+// Batch operations with UUIDs
+async function bulkCreateUsers(usersData: CreateUserType[]) {
+  const usersWithIds = usersData.map(userData => ({
+    ...userData,
+    id: randomUUID(),
+  }))
+
+  return await db.insert(users).values(usersWithIds).returning()
+}
+
+// UUID relationships in forms
+interface CreateProjectForm {
+  name: string
+  description: string
+  organizationId: string // UUID from dropdown/selection
+  memberIds: string[]    // Array of member UUIDs
+}
+```
+</Tab>
+
+</Tabs>
+
+## Next Steps
+
+Explore the complete database documentation:
+
+<Callout type="info">
+**Learning Path:** Start with Repository Pattern → Drizzle Queries → Migration Workflow → Production Best Practices
+</Callout>
+
+### **Detailed Guides**
+
+- **[Repository Pattern](/docs/database/repository-pattern)** - UUID-based data access patterns and repository creation
+- **[Drizzle Queries](/docs/database/drizzle-queries)** - Advanced querying, relationships, and performance optimization
+- **[Migration Workflow](/docs/database/migrations-workflow)** - Schema evolution and production deployment
+- **[Drizzle Studio](/docs/database/drizzle-studio)** - Database management GUI and debugging tools
+- **[Best Practices](/docs/database/best-practices)** - Performance tuning, security, and troubleshooting
+
+### **Quick Access**
+
+```bash
+# Essential commands for daily work
+pnpm db:studio      # Open database GUI
+pnpm db:push        # Apply schema changes (dev)
+pnpm db:seed        # Load demo data with UUIDs
+pnpm db:generate    # Create production migrations
+```
+
+<Callout type="success">
+**UUID Benefits:** Enhanced security, better scalability, and consistent developer experience across the entire application stack.
+</Callout>

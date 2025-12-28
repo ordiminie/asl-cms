@@ -1,0 +1,383 @@
+---
+title: 'Better Auth Integration'
+description: 'Better Auth Stripe plugin with external checkout only - automatic customer management and zero configuration'
+keywords: 'ShipSaaS, Stripe Better Auth, payment authentication, user billing, auth integration, customer management'
+---
+
+The Better Auth Stripe plugin provides a **simple, zero-configuration payment system** using external Stripe checkout pages only. This is separate from the Custom Boilerplate's advanced checkout system.
+
+<Callout type="warning">
+  **External checkout only:** Better Auth uses Stripe-hosted external checkout pages. For embedded forms, guest checkout, or installments, use the Custom Boilerplate System.
+</Callout>
+
+<Callout type="success">
+  **Perfect for:** Simple SaaS subscriptions where users create accounts before purchasing and you prefer zero configuration over advanced features.
+</Callout>
+
+## Better Auth Stripe Plugin
+
+The Stripe plugin is configured in `src/lib/better-auth/auth.ts` and provides automatic integration:
+
+```typescript
+// From src/lib/better-auth/auth.ts
+import { stripe } from '@better-auth/stripe'
+import { stripeClient } from '@/lib/stripe/stripe-client'
+import { onStripeEvent } from '@/lib/stripe/stripe-events'
+
+plugins: [
+  // ... other plugins
+  stripe({
+    stripeClient,
+    stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    createCustomerOnSignUp: true,
+    subscription: {
+      enabled: true,
+      plans: () => getActivePlansForBetterAuthService(),
+      authorizeReference: createAuthorizeReference(),
+      // Subscription lifecycle hooks...
+    },
+    onEvent: onStripeEvent,
+  }),
+]
+```
+
+**Better Auth Stripe Checkout Interface:**
+<Image src="/docs/07/stripe-checkout-better-auth.png" alt="Better Auth Stripe integration checkout"  />
+
+## Core Plugin Features
+
+<Tabs defaultValue="customer-management">
+  <Tab value="customer-management" label="👤 Customer Management">
+    **Automatic Customer Creation**
+    ```typescript
+    // From src/lib/better-auth/auth.ts
+    stripe({
+      createCustomerOnSignUp: true, // Automatically create Stripe customer
+      stripeClient,
+      stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    })
+    ```
+
+    **What happens automatically:**
+    - User registers → Stripe customer created
+    - Customer ID stored in user profile
+    - Email synchronization between systems
+    - Customer metadata management
+
+    <Callout type="info">
+      **Seamless integration:** Users don't need to know about Stripe customers - it's all handled automatically during registration.
+    </Callout>
+  </Tab>
+
+  <Tab value="subscription-config" label="📋 Subscription Configuration">
+    **Dynamic Plan Loading**
+    ```typescript
+    // From src/lib/better-auth/auth.ts
+    subscription: {
+      enabled: true,
+      plans: () => getActivePlansForBetterAuthService(), // Load plans dynamically
+      authorizeReference: createAuthorizeReference(),
+    }
+    ```
+
+    **Features:**
+    - Plans loaded from your database
+    - Dynamic plan updates without code changes
+    - Authorization reference for secure access
+    - Real-time plan availability
+  </Tab>
+
+  <Tab value="webhook-processing" label="🔄 Webhook Processing">
+    **Automatic Event Handling**
+    ```typescript
+    // From src/lib/better-auth/auth.ts
+    stripe({
+      onEvent: onStripeEvent, // Custom event handler
+      stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    })
+    ```
+
+    **Processed automatically:**
+    - Subscription creation/updates
+    - Payment confirmations
+    - Invoice status changes
+    - Customer updates
+  </Tab>
+</Tabs>
+
+## Subscription Lifecycle Hooks
+
+The plugin provides hooks for all subscription events with automatic notification integration:
+
+### Subscription Creation
+
+```typescript
+// From src/lib/better-auth/auth.ts
+onSubscriptionComplete: async ({ subscription }) => {
+  if (!subscription.stripeCustomerId) {
+    return
+  }
+
+  const user = await getUserByStripeCustomerIdDao(
+    subscription.stripeCustomerId as string
+  )
+
+  if (user) {
+    await createTypedNotificationService({
+      userId: user.id,
+      type: NotificationTypeConst.subscription_created,
+      metadata: { subscription },
+    })
+  }
+}
+```
+
+**What happens:**
+1. User completes payment
+2. Stripe webhook triggers completion
+3. User receives confirmation email
+4. Database updated with subscription details
+
+### Subscription Updates
+
+```typescript
+// From src/lib/better-auth/auth.ts
+onSubscriptionUpdate: async ({ subscription }) => {
+  if (!subscription.stripeCustomerId) {
+    return
+  }
+
+  const user = await getUserByStripeCustomerIdDao(
+    subscription.stripeCustomerId as string
+  )
+
+  if (user) {
+    await createTypedNotificationService({
+      userId: user.id,
+      type: NotificationTypeConst.subscription_updated,
+      metadata: { subscription },
+    })
+  }
+}
+```
+
+**Triggers on:**
+- Plan upgrades/downgrades
+- Billing cycle changes
+- Seat count modifications
+- Price adjustments
+
+### Subscription Cancellation
+
+```typescript
+// From src/lib/better-auth/auth.ts
+onSubscriptionCancel: async ({ subscription }) => {
+  if (!subscription.stripeCustomerId) {
+    return
+  }
+
+  const user = await getUserByStripeCustomerIdDao(
+    subscription.stripeCustomerId as string
+  )
+
+  if (user) {
+    await createTypedNotificationService({
+      userId: user.id,
+      type: NotificationTypeConst.subscription_canceled,
+      metadata: { subscription },
+    })
+  }
+}
+```
+
+**Cancellation handling:**
+- Immediate cancellation support
+- End-of-period cancellation
+- Reactivation options
+- Access period management
+
+### Subscription Deletion
+
+```typescript
+// From src/lib/better-auth/auth.ts
+onSubscriptionDeleted: async ({ subscription }) => {
+  if (!subscription.stripeCustomerId) {
+    return
+  }
+
+  const user = await getUserByStripeCustomerIdDao(
+    subscription.stripeCustomerId as string
+  )
+
+  if (user) {
+    await createTypedNotificationService({
+      userId: user.id,
+      type: NotificationTypeConst.subscription_deleted,
+      metadata: { subscription },
+    })
+  }
+}
+```
+
+## Database Integration
+
+The plugin automatically manages subscription data with your database:
+
+### User-Customer Relationship
+
+```typescript
+// From src/db/repositories/user-repository.ts
+getUserByStripeCustomerIdDao(stripeCustomerId: string)
+```
+
+**Maintains:**
+- User ↔ Stripe Customer ID mapping
+- Subscription status synchronization
+- Payment method information
+- Billing address details
+
+### Plan Management
+
+```typescript
+// From src/services/facades/subscription-service-facade.ts
+getActivePlansForBetterAuthService()
+```
+
+**Provides:**
+- Active subscription plans
+- Pricing information
+- Feature limitations
+- Plan availability rules
+
+## Custom Event Processing
+
+The plugin delegates custom events to your handler:
+
+```typescript
+// From src/lib/stripe/stripe-events.ts
+export const onStripeEvent = async (event: Stripe.Event) => {
+  // Custom business logic for Stripe events
+  // Handle events not covered by the plugin
+  console.log(`Processing Stripe event: ${event.type}`)
+
+  // Add your custom event handling here
+  switch (event.type) {
+    case 'invoice.payment_failed':
+      // Handle failed payments
+      break
+    case 'customer.subscription.trial_will_end':
+      // Send trial ending notifications
+      break
+    // Add more custom events...
+  }
+}
+```
+
+## Security Features
+
+<Tabs defaultValue="webhook-security">
+  <Tab value="webhook-security" label="🔒 Webhook Security">
+    **Automatic Verification**
+    ```typescript
+    // Plugin automatically verifies webhook signatures
+    stripe({
+      stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+    })
+    ```
+
+    **Security measures:**
+    - Webhook signature verification
+    - Request timestamp validation
+    - Duplicate event prevention
+    - Secure endpoint protection
+  </Tab>
+
+  <Tab value="authorization" label="🛡️ Authorization">
+    **Reference Authorization**
+    ```typescript
+    // From the plugin configuration
+    subscription: {
+      authorizeReference: createAuthorizeReference(),
+    }
+    ```
+
+    **Controls access to:**
+    - Subscription management
+    - Plan changes
+    - Billing information
+    - Payment methods
+  </Tab>
+</Tabs>
+
+## Plugin Benefits
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="text-green-500">✅</div>
+      <h4 className="font-semibold">Zero Configuration</h4>
+    </div>
+    <p className="text-sm text-muted-foreground">
+      Automatic customer creation, webhook processing, and database synchronization
+    </p>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="text-blue-500">✅</div>
+      <h4 className="font-semibold">Real-time Updates</h4>
+    </div>
+    <p className="text-sm text-muted-foreground">
+      Webhooks automatically update subscription status and user access
+    </p>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="text-purple-500">✅</div>
+      <h4 className="font-semibold">Email Integration</h4>
+    </div>
+    <p className="text-sm text-muted-foreground">
+      Automatic email notifications for all subscription lifecycle events
+    </p>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="text-orange-500">✅</div>
+      <h4 className="font-semibold">Security Built-in</h4>
+    </div>
+    <p className="text-sm text-muted-foreground">
+      Webhook verification, authorization checks, and secure data handling
+    </p>
+  </div>
+</div>
+
+## Testing the Integration
+
+<Steps>
+<Step title="Verify Plugin Loading">
+  Check your application logs for successful plugin initialization:
+  ```
+  [Better Auth] Stripe plugin loaded successfully
+  [Better Auth] Webhook endpoint: /api/auth/stripe/webhook
+  ```
+</Step>
+
+<Step title="Test Customer Creation">
+  1. Register a new user account
+  2. Check your Stripe dashboard for the new customer
+  3. Verify the customer ID is stored in your database
+</Step>
+
+<Step title="Test Subscription Flow">
+  1. Complete a test subscription purchase
+  2. Check webhook logs for event processing
+  3. Verify subscription data in your database
+  4. Confirm user received email notification
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Better Auth Stripe integration complete!** Your authentication system now seamlessly manages Stripe customers and subscriptions with zero additional configuration.
+</Callout>

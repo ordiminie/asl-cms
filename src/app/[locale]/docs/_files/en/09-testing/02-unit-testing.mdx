@@ -1,0 +1,1637 @@
+---
+title: Unit Testing
+description: Pure function testing with Vitest and TypeScript for utilities, helpers, and business logic validation
+keywords: 'ShipSaaS, unit testing, Vitest, component tests, function tests, isolated testing, test coverage'
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+
+Test individual functions, utilities, and pure business logic with Vitest in a Node.js environment.
+
+## Table of Contents
+
+- [Unit Testing Principles](#unit-testing-principles)
+- [Testing Utilities & Helpers](#testing-utilities--helpers)
+- [Business Logic Testing](#business-logic-testing)
+- [Error Handling & Validation](#error-handling--validation)
+
+## Unit Testing Principles
+
+Unit tests focus on testing individual functions in isolation:
+
+<Callout type="info">
+**Unit Test Scope:** Test pure functions, utilities, and business logic without external dependencies like databases, APIs, or UI components.
+</Callout>
+
+<Tabs items={['Test Structure', 'Best Practices', 'Performance Tips']}>
+
+<Tab value="Test Structure">
+**Organize Tests by Function:**
+```typescript
+// src/lib/__tests__/crypto.test.ts
+import { describe, it, expect } from 'vitest'
+import { hashPassword, verifyPassword, generateApiKey } from '../crypto'
+
+describe('Crypto Utilities', () => {
+  describe('hashPassword', () => {
+    it('should hash password with bcrypt format', async () => {
+      const password = 'TestPassword123!'
+      const hash = await hashPassword(password)
+
+      expect(hash).not.toBe(password)
+      expect(hash).toMatch(/^\$2[aby]?\$/) // bcrypt format
+      expect(hash.length).toBeGreaterThan(50)
+    })
+
+    it('should generate different hashes for same password', async () => {
+      const password = 'TestPassword123!'
+      const hash1 = await hashPassword(password)
+      const hash2 = await hashPassword(password)
+
+      expect(hash1).not.toBe(hash2) // Salt should make them different
+    })
+  })
+
+  describe('verifyPassword', () => {
+    it('should verify correct password', async () => {
+      const password = 'TestPassword123!'
+      const hash = await hashPassword(password)
+
+      const isValid = await verifyPassword(password, hash)
+      expect(isValid).toBe(true)
+    })
+
+    it('should reject incorrect password', async () => {
+      const password = 'TestPassword123!'
+      const wrongPassword = 'WrongPassword123!'
+      const hash = await hashPassword(password)
+
+      const isValid = await verifyPassword(wrongPassword, hash)
+      expect(isValid).toBe(false)
+    })
+  })
+})
+```
+
+**Key Principles:**
+- **One Function Per Describe Block**: Group related tests
+- **Descriptive Test Names**: Clearly state what is being tested
+- **Arrange-Act-Assert**: Setup, execute, verify pattern
+- **Test Edge Cases**: Include boundary conditions and error cases
+</Tab>
+
+<Tab value="Best Practices">
+**Testing Best Practices:**
+```typescript
+// ✅ Good: Clear, focused test
+describe('calculateTax', () => {
+  it('should calculate correct tax for standard rate', () => {
+    const result = calculateTax(100, 0.2)
+    expect(result).toBe(20)
+  })
+
+  it('should handle zero amount', () => {
+    const result = calculateTax(0, 0.2)
+    expect(result).toBe(0)
+  })
+
+  it('should handle zero rate', () => {
+    const result = calculateTax(100, 0)
+    expect(result).toBe(0)
+  })
+})
+
+// ❌ Bad: Vague, multiple concerns
+describe('tax stuff', () => {
+  it('should work', () => {
+    expect(calculateTax(100, 0.2)).toBeTruthy()
+    expect(validateTaxRate(0.5)).toBe(true)
+    expect(formatTaxAmount(20)).toContain('$')
+  })
+})
+```
+
+**Test Isolation:**
+```typescript
+// ✅ Good: Each test is independent
+describe('UserValidator', () => {
+  it('should validate email format', () => {
+    expect(validateEmail('test@example.com')).toBe(true)
+    expect(validateEmail('invalid-email')).toBe(false)
+  })
+
+  it('should validate password strength', () => {
+    expect(validatePassword('weak')).toBe(false)
+    expect(validatePassword('StrongPass123!')).toBe(true)
+  })
+})
+
+// Each test can run independently in any order
+```
+
+**Error Testing:**
+```typescript
+describe('Error Handling', () => {
+  it('should throw error for invalid input', () => {
+    expect(() => {
+      parseDate('invalid-date')
+    }).toThrow('Invalid date format')
+  })
+
+  it('should throw specific error type', () => {
+    expect(() => {
+      validateAge(-5)
+    }).toThrow(ValidationError)
+  })
+})
+```
+</Tab>
+
+<Tab value="Performance Tips">
+**Optimizing Unit Tests:**
+```typescript
+// ✅ Good: Use test.each for multiple similar tests
+describe('formatCurrency', () => {
+  test.each([
+    [1999, '$19.99'],
+    [0, '$0.00'],
+    [12345, '$123.45'],
+    [5, '$0.05'],
+  ])('should format %i cents as %s', (cents, expected) => {
+    expect(formatCurrency(cents)).toBe(expected)
+  })
+})
+
+// ✅ Good: Expensive setup in beforeAll (not beforeEach)
+describe('ComplexCalculation', () => {
+  let calculator: Calculator
+
+  beforeAll(() => {
+    // Expensive setup only once
+    calculator = new Calculator(complexConfiguration)
+  })
+
+  it('should calculate result A', () => {
+    expect(calculator.calculate('A')).toBe(expectedA)
+  })
+
+  it('should calculate result B', () => {
+    expect(calculator.calculate('B')).toBe(expectedB)
+  })
+})
+
+// ✅ Good: Avoid unnecessary async/await
+describe('SyncFunction', () => {
+  it('should return result immediately', () => {
+    // No need for async/await if function is sync
+    const result = syncFunction(input)
+    expect(result).toBe(expected)
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Testing Utilities & Helpers
+
+Test utility functions and helper modules used throughout the application:
+
+<Tabs items={['Validation Utilities', 'Formatting Utilities', 'String Utilities', 'Date Utilities']}>
+
+<Tab value="Validation Utilities">
+**Email and Input Validation:**
+```typescript
+// src/lib/__tests__/validation.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  validateEmail,
+  validatePassword,
+  validateUrl,
+  sanitizeInput,
+  isValidUUID,
+} from '../validation'
+
+describe('Email Validation', () => {
+  it('should accept valid email formats', () => {
+    const validEmails = [
+      'test@example.com',
+      'user.name@domain.co.uk',
+      'test+tag@gmail.com',
+      'a@b.co',
+    ]
+
+    validEmails.forEach(email => {
+      expect(validateEmail(email)).toBe(true)
+    })
+  })
+
+  it('should reject invalid email formats', () => {
+    const invalidEmails = [
+      'invalid-email',
+      '@domain.com',
+      'test@',
+      'test.domain.com',
+      '',
+      null,
+      undefined,
+    ]
+
+    invalidEmails.forEach(email => {
+      expect(validateEmail(email as string)).toBe(false)
+    })
+  })
+})
+
+describe('Password Validation', () => {
+  it('should enforce minimum requirements', () => {
+    expect(validatePassword('weak')).toBe(false) // Too short
+    expect(validatePassword('12345678')).toBe(false) // No letters
+    expect(validatePassword('password')).toBe(false) // No numbers
+    expect(validatePassword('Password123')).toBe(true) // Valid
+    expect(validatePassword('SuperStrong123!')).toBe(true) // Very strong
+  })
+
+  it('should return validation details', () => {
+    const result = validatePassword('weak')
+
+    expect(result).toMatchObject({
+      isValid: false,
+      requirements: {
+        minLength: false,
+        hasLetter: true,
+        hasNumber: false,
+        hasSpecialChar: false,
+      },
+    })
+  })
+})
+
+describe('URL Validation', () => {
+  it('should validate different URL formats', () => {
+    expect(validateUrl('https://example.com')).toBe(true)
+    expect(validateUrl('http://localhost:3000')).toBe(true)
+    expect(validateUrl('ftp://files.example.com')).toBe(true)
+    expect(validateUrl('not-a-url')).toBe(false)
+    expect(validateUrl('')).toBe(false)
+  })
+})
+
+describe('Input Sanitization', () => {
+  it('should remove dangerous content', () => {
+    expect(sanitizeInput('<script>alert("xss")</script>')).toBe('alert("xss")')
+    expect(sanitizeInput('Hello <b>world</b>')).toBe('Hello world')
+    expect(sanitizeInput('Safe text')).toBe('Safe text')
+  })
+
+  it('should preserve safe formatting', () => {
+    const safeHtml = '<p>Hello <em>world</em></p>'
+    expect(sanitizeInput(safeHtml, { allowedTags: ['p', 'em'] })).toBe(safeHtml)
+  })
+})
+
+describe('UUID Validation', () => {
+  it('should validate UUID format', () => {
+    expect(isValidUUID('123e4567-e89b-12d3-a456-426614174000')).toBe(true)
+    expect(isValidUUID('550e8400-e29b-41d4-a716-446655440000')).toBe(true)
+    expect(isValidUUID('invalid-uuid')).toBe(false)
+    expect(isValidUUID('123')).toBe(false)
+  })
+})
+```
+</Tab>
+
+<Tab value="Formatting Utilities">
+**Currency, Date, and Number Formatting:**
+```typescript
+// src/lib/__tests__/formatters.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  formatCurrency,
+  formatNumber,
+  formatPercentage,
+  formatFileSize,
+  formatRelativeTime,
+} from '../formatters'
+
+describe('Currency Formatting', () => {
+  it('should format cents to dollars', () => {
+    expect(formatCurrency(1999)).toBe('$19.99')
+    expect(formatCurrency(0)).toBe('$0.00')
+    expect(formatCurrency(12345)).toBe('$123.45')
+    expect(formatCurrency(5)).toBe('$0.05')
+  })
+
+  it('should handle different currencies', () => {
+    expect(formatCurrency(1999, 'EUR')).toBe('€19.99')
+    expect(formatCurrency(1999, 'GBP')).toBe('£19.99')
+    expect(formatCurrency(1999, 'JPY')).toBe('¥20') // No decimals for JPY
+  })
+
+  it('should handle negative amounts', () => {
+    expect(formatCurrency(-1999)).toBe('-$19.99')
+  })
+})
+
+describe('Number Formatting', () => {
+  it('should format large numbers with commas', () => {
+    expect(formatNumber(1000)).toBe('1,000')
+    expect(formatNumber(1234567)).toBe('1,234,567')
+    expect(formatNumber(1000.50)).toBe('1,000.5')
+  })
+
+  it('should format with abbreviated notation', () => {
+    expect(formatNumber(1000, { notation: 'compact' })).toBe('1K')
+    expect(formatNumber(1000000, { notation: 'compact' })).toBe('1M')
+    expect(formatNumber(1500000, { notation: 'compact' })).toBe('1.5M')
+  })
+})
+
+describe('Percentage Formatting', () => {
+  it('should format decimal to percentage', () => {
+    expect(formatPercentage(0.15)).toBe('15%')
+    expect(formatPercentage(0.1234)).toBe('12.34%')
+    expect(formatPercentage(1.5)).toBe('150%')
+  })
+
+  it('should handle precision', () => {
+    expect(formatPercentage(0.123456, 1)).toBe('12.3%')
+    expect(formatPercentage(0.123456, 3)).toBe('12.346%')
+  })
+})
+
+describe('File Size Formatting', () => {
+  it('should format bytes to human readable', () => {
+    expect(formatFileSize(0)).toBe('0 B')
+    expect(formatFileSize(1024)).toBe('1 KB')
+    expect(formatFileSize(1048576)).toBe('1 MB')
+    expect(formatFileSize(1073741824)).toBe('1 GB')
+    expect(formatFileSize(1536)).toBe('1.5 KB')
+  })
+})
+
+describe('Relative Time Formatting', () => {
+  const now = new Date('2024-01-01T12:00:00Z')
+
+  it('should format relative time', () => {
+    const oneHourAgo = new Date('2024-01-01T11:00:00Z')
+    const oneDayAgo = new Date('2023-12-31T12:00:00Z')
+    const oneWeekAgo = new Date('2023-12-25T12:00:00Z')
+
+    expect(formatRelativeTime(oneHourAgo, now)).toBe('1 hour ago')
+    expect(formatRelativeTime(oneDayAgo, now)).toBe('1 day ago')
+    expect(formatRelativeTime(oneWeekAgo, now)).toBe('1 week ago')
+  })
+
+  it('should format future dates', () => {
+    const oneHourFromNow = new Date('2024-01-01T13:00:00Z')
+
+    expect(formatRelativeTime(oneHourFromNow, now)).toBe('in 1 hour')
+  })
+})
+```
+</Tab>
+
+<Tab value="String Utilities">
+**String Manipulation and Processing:**
+```typescript
+// src/lib/__tests__/string-utils.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  slugify,
+  capitalize,
+  truncate,
+  stripHtml,
+  generateRandomString,
+  pluralize,
+  camelToKebab,
+  kebabToCamel,
+} from '../string-utils'
+
+describe('Slugify', () => {
+  it('should convert text to URL-friendly slug', () => {
+    expect(slugify('Hello World')).toBe('hello-world')
+    expect(slugify('My Awesome Project!')).toBe('my-awesome-project')
+    expect(slugify('Special Characters: @#$%')).toBe('special-characters')
+    expect(slugify('  Multiple   Spaces  ')).toBe('multiple-spaces')
+  })
+
+  it('should handle unicode characters', () => {
+    expect(slugify('Café & Résumé')).toBe('cafe-resume')
+    expect(slugify('Naïve ñoño')).toBe('naive-nono')
+  })
+
+  it('should handle edge cases', () => {
+    expect(slugify('')).toBe('')
+    expect(slugify('123')).toBe('123')
+    expect(slugify('---')).toBe('')
+  })
+})
+
+describe('Capitalize', () => {
+  it('should capitalize first letter', () => {
+    expect(capitalize('hello')).toBe('Hello')
+    expect(capitalize('WORLD')).toBe('World')
+    expect(capitalize('hELLO wORLD')).toBe('Hello world')
+  })
+
+  it('should handle edge cases', () => {
+    expect(capitalize('')).toBe('')
+    expect(capitalize('a')).toBe('A')
+    expect(capitalize('123abc')).toBe('123abc')
+  })
+})
+
+describe('Truncate', () => {
+  const longText = 'This is a very long text that needs to be truncated'
+
+  it('should truncate to specified length', () => {
+    expect(truncate(longText, 20)).toBe('This is a very long...')
+    expect(truncate(longText, 10)).toBe('This is a...')
+  })
+
+  it('should not truncate short text', () => {
+    expect(truncate('Short text', 20)).toBe('Short text')
+  })
+
+  it('should handle custom suffix', () => {
+    expect(truncate(longText, 20, ' [more]')).toBe('This is a very long [more]')
+  })
+})
+
+describe('HTML Stripping', () => {
+  it('should remove HTML tags', () => {
+    expect(stripHtml('<p>Hello <b>world</b></p>')).toBe('Hello world')
+    expect(stripHtml('<div>Content</div>')).toBe('Content')
+    expect(stripHtml('No HTML here')).toBe('No HTML here')
+  })
+
+  it('should handle malformed HTML', () => {
+    expect(stripHtml('<p>Unclosed tag')).toBe('Unclosed tag')
+    expect(stripHtml('<>Empty tags<>')).toBe('Empty tags')
+  })
+})
+
+describe('Random String Generation', () => {
+  it('should generate string of specified length', () => {
+    const result = generateRandomString(10)
+    expect(result).toHaveLength(10)
+  })
+
+  it('should generate different strings', () => {
+    const str1 = generateRandomString(16)
+    const str2 = generateRandomString(16)
+    expect(str1).not.toBe(str2)
+  })
+
+  it('should use only allowed characters', () => {
+    const result = generateRandomString(100)
+    expect(result).toMatch(/^[a-zA-Z0-9]+$/)
+  })
+})
+
+describe('Pluralization', () => {
+  it('should handle regular plural forms', () => {
+    expect(pluralize('cat', 1)).toBe('cat')
+    expect(pluralize('cat', 2)).toBe('cats')
+    expect(pluralize('dog', 0)).toBe('dogs')
+  })
+
+  it('should handle custom plural forms', () => {
+    expect(pluralize('person', 1, 'people')).toBe('person')
+    expect(pluralize('person', 2, 'people')).toBe('people')
+  })
+})
+
+describe('Case Conversion', () => {
+  it('should convert camelCase to kebab-case', () => {
+    expect(camelToKebab('camelCase')).toBe('camel-case')
+    expect(camelToKebab('myVariableName')).toBe('my-variable-name')
+    expect(camelToKebab('HTML')).toBe('h-t-m-l')
+  })
+
+  it('should convert kebab-case to camelCase', () => {
+    expect(kebabToCamel('kebab-case')).toBe('kebabCase')
+    expect(kebabToCamel('my-variable-name')).toBe('myVariableName')
+    expect(kebabToCamel('single')).toBe('single')
+  })
+})
+```
+</Tab>
+
+<Tab value="Date Utilities">
+**Date Manipulation and Calculations:**
+```typescript
+// src/lib/__tests__/date-utils.test.ts
+import { describe, it, expect, beforeEach } from 'vitest'
+import {
+  addDays,
+  subtractDays,
+  formatDate,
+  isWeekend,
+  getBusinessDays,
+  parseDate,
+  isValidDate,
+  getRelativeDate,
+} from '../date-utils'
+
+describe('Date Arithmetic', () => {
+  const baseDate = new Date('2024-01-15') // Monday
+
+  it('should add days correctly', () => {
+    expect(addDays(baseDate, 5)).toEqual(new Date('2024-01-20'))
+    expect(addDays(baseDate, 0)).toEqual(baseDate)
+    expect(addDays(baseDate, -5)).toEqual(new Date('2024-01-10'))
+  })
+
+  it('should subtract days correctly', () => {
+    expect(subtractDays(baseDate, 5)).toEqual(new Date('2024-01-10'))
+    expect(subtractDays(baseDate, 0)).toEqual(baseDate)
+    expect(subtractDays(baseDate, -5)).toEqual(new Date('2024-01-20'))
+  })
+
+  it('should handle month boundaries', () => {
+    const endOfMonth = new Date('2024-01-31')
+    expect(addDays(endOfMonth, 1)).toEqual(new Date('2024-02-01'))
+
+    const startOfMonth = new Date('2024-02-01')
+    expect(subtractDays(startOfMonth, 1)).toEqual(new Date('2024-01-31'))
+  })
+})
+
+describe('Date Formatting', () => {
+  const testDate = new Date('2024-01-15T14:30:00Z')
+
+  it('should format dates in different formats', () => {
+    expect(formatDate(testDate, 'YYYY-MM-DD')).toBe('2024-01-15')
+    expect(formatDate(testDate, 'MM/DD/YYYY')).toBe('01/15/2024')
+    expect(formatDate(testDate, 'DD MMM YYYY')).toBe('15 Jan 2024')
+  })
+
+  it('should handle time formatting', () => {
+    expect(formatDate(testDate, 'YYYY-MM-DD HH:mm')).toBe('2024-01-15 14:30')
+    expect(formatDate(testDate, 'HH:mm:ss')).toBe('14:30:00')
+  })
+
+  it('should handle locale-specific formatting', () => {
+    expect(formatDate(testDate, 'long', 'en-US')).toBe('January 15, 2024')
+    expect(formatDate(testDate, 'short', 'en-US')).toBe('1/15/24')
+  })
+})
+
+describe('Business Days', () => {
+  it('should identify weekends', () => {
+    expect(isWeekend(new Date('2024-01-13'))).toBe(true) // Saturday
+    expect(isWeekend(new Date('2024-01-14'))).toBe(true) // Sunday
+    expect(isWeekend(new Date('2024-01-15'))).toBe(false) // Monday
+  })
+
+  it('should calculate business days between dates', () => {
+    const monday = new Date('2024-01-15')
+    const friday = new Date('2024-01-19')
+    const nextMonday = new Date('2024-01-22')
+
+    expect(getBusinessDays(monday, friday)).toBe(4) // Mon, Tue, Wed, Thu
+    expect(getBusinessDays(monday, nextMonday)).toBe(5) // Excludes weekend
+  })
+
+  it('should handle same day', () => {
+    const date = new Date('2024-01-15')
+    expect(getBusinessDays(date, date)).toBe(0)
+  })
+})
+
+describe('Date Parsing', () => {
+  it('should parse various date formats', () => {
+    expect(parseDate('2024-01-15')).toEqual(new Date('2024-01-15'))
+    expect(parseDate('01/15/2024')).toEqual(new Date('2024-01-15'))
+    expect(parseDate('Jan 15, 2024')).toEqual(new Date('2024-01-15'))
+  })
+
+  it('should handle invalid dates', () => {
+    expect(parseDate('invalid-date')).toBeNull()
+    expect(parseDate('')).toBeNull()
+    expect(parseDate(null as any)).toBeNull()
+  })
+})
+
+describe('Date Validation', () => {
+  it('should validate dates correctly', () => {
+    expect(isValidDate(new Date('2024-01-15'))).toBe(true)
+    expect(isValidDate(new Date('invalid'))).toBe(false)
+    expect(isValidDate('2024-01-15')).toBe(true)
+    expect(isValidDate('invalid-date')).toBe(false)
+  })
+})
+
+describe('Relative Dates', () => {
+  const baseDate = new Date('2024-01-15T12:00:00Z')
+
+  it('should get relative dates', () => {
+    expect(getRelativeDate('tomorrow', baseDate)).toEqual(new Date('2024-01-16T12:00:00Z'))
+    expect(getRelativeDate('yesterday', baseDate)).toEqual(new Date('2024-01-14T12:00:00Z'))
+    expect(getRelativeDate('next week', baseDate)).toEqual(new Date('2024-01-22T12:00:00Z'))
+    expect(getRelativeDate('last month', baseDate)).toEqual(new Date('2023-12-15T12:00:00Z'))
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Business Logic Testing
+
+Test core business logic and calculation functions:
+
+<Tabs items={['Calculation Functions', 'Validation Logic', 'Transformation Functions', 'Algorithm Testing']}>
+
+<Tab value="Calculation Functions">
+**Financial and Mathematical Calculations:**
+```typescript
+// src/lib/__tests__/calculations.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  calculateTax,
+  calculateDiscount,
+  calculateSubscriptionPrice,
+  calculateProration,
+  compoundInterest,
+} from '../calculations'
+
+describe('Tax Calculations', () => {
+  it('should calculate tax correctly', () => {
+    expect(calculateTax(100, 0.2)).toBe(20)
+    expect(calculateTax(1000, 0.15)).toBe(150)
+    expect(calculateTax(0, 0.2)).toBe(0)
+  })
+
+  it('should handle edge cases', () => {
+    expect(calculateTax(100, 0)).toBe(0)
+    expect(calculateTax(-100, 0.2)).toBe(-20) // Negative amounts
+  })
+
+  it('should round to correct decimal places', () => {
+    expect(calculateTax(33.33, 0.333)).toBe(11.11) // Rounded to 2 decimals
+  })
+})
+
+describe('Discount Calculations', () => {
+  it('should calculate percentage discount', () => {
+    expect(calculateDiscount(100, 0.2)).toBe(80) // 20% off
+    expect(calculateDiscount(50, 0.5)).toBe(25) // 50% off
+  })
+
+  it('should calculate fixed amount discount', () => {
+    expect(calculateDiscount(100, 10, 'fixed')).toBe(90)
+    expect(calculateDiscount(50, 60, 'fixed')).toBe(0) // Can't go below 0
+  })
+
+  it('should handle multiple discounts', () => {
+    const discounts = [
+      { type: 'percentage', value: 0.1 }, // 10% off
+      { type: 'fixed', value: 5 }, // $5 off
+    ]
+    expect(calculateDiscount(100, discounts)).toBe(85) // $100 -> $90 -> $85
+  })
+})
+
+describe('Subscription Pricing', () => {
+  it('should calculate monthly pricing', () => {
+    const plan = { basePrice: 1000, features: { seats: 5 }, interval: 'month' }
+    expect(calculateSubscriptionPrice(plan)).toBe(1000)
+  })
+
+  it('should apply annual discount', () => {
+    const plan = { basePrice: 1000, interval: 'year', annualDiscount: 0.2 }
+    expect(calculateSubscriptionPrice(plan)).toBe(9600) // 12 * 1000 * 0.8
+  })
+
+  it('should calculate per-seat pricing', () => {
+    const plan = { basePrice: 1000, perSeat: 200 }
+    expect(calculateSubscriptionPrice(plan, { seats: 5 })).toBe(2000) // 1000 + (5 * 200)
+  })
+})
+
+describe('Proration Calculations', () => {
+  it('should calculate prorated amount for partial period', () => {
+    const startDate = new Date('2024-01-15')
+    const endDate = new Date('2024-02-01')
+    const monthlyPrice = 1000
+
+    const prorated = calculateProration(monthlyPrice, startDate, endDate)
+    expect(prorated).toBe(548) // ~17 days of 31-day month
+  })
+
+  it('should handle full month', () => {
+    const startDate = new Date('2024-01-01')
+    const endDate = new Date('2024-02-01')
+    const monthlyPrice = 1000
+
+    const prorated = calculateProration(monthlyPrice, startDate, endDate)
+    expect(prorated).toBe(1000)
+  })
+})
+```
+</Tab>
+
+<Tab value="Validation Logic">
+**Business Rule Validation:**
+```typescript
+// src/lib/__tests__/business-validation.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  validateSubscriptionLimits,
+  validatePlanChange,
+  validateUserPermissions,
+  validateOrganizationSettings,
+} from '../business-validation'
+
+describe('Subscription Limit Validation', () => {
+  const basicPlan = { name: 'basic', limits: { users: 5, storage: 1024, projects: 10 } }
+  const proPlan = { name: 'pro', limits: { users: 50, storage: 10240, projects: 100 } }
+
+  it('should validate within limits', () => {
+    const usage = { users: 3, storage: 500, projects: 5 }
+    expect(validateSubscriptionLimits(basicPlan, usage)).toEqual({
+      isValid: true,
+      violations: [],
+    })
+  })
+
+  it('should detect limit violations', () => {
+    const usage = { users: 6, storage: 2000, projects: 5 }
+    const result = validateSubscriptionLimits(basicPlan, usage)
+
+    expect(result.isValid).toBe(false)
+    expect(result.violations).toContain('users')
+    expect(result.violations).toContain('storage')
+    expect(result.violations).not.toContain('projects')
+  })
+
+  it('should provide upgrade suggestions', () => {
+    const usage = { users: 6, storage: 500, projects: 5 }
+    const result = validateSubscriptionLimits(basicPlan, usage, [proPlan])
+
+    expect(result.suggestedPlans).toContain('pro')
+  })
+})
+
+describe('Plan Change Validation', () => {
+  it('should allow upgrade', () => {
+    const result = validatePlanChange('basic', 'pro', { users: 3, storage: 500 })
+    expect(result.isAllowed).toBe(true)
+    expect(result.reason).toBeUndefined()
+  })
+
+  it('should prevent downgrade with violations', () => {
+    const result = validatePlanChange('pro', 'basic', { users: 10, storage: 500 })
+    expect(result.isAllowed).toBe(false)
+    expect(result.reason).toContain('users')
+  })
+
+  it('should calculate cost difference', () => {
+    const result = validatePlanChange('basic', 'pro', { users: 3 })
+    expect(result.costDifference).toBeGreaterThan(0)
+  })
+})
+
+describe('Permission Validation', () => {
+  const adminUser = { id: 'admin', role: 'admin', organizationId: 'org1' }
+  const memberUser = { id: 'member', role: 'member', organizationId: 'org1' }
+
+  it('should validate admin permissions', () => {
+    expect(validateUserPermissions(adminUser, 'delete', 'project')).toBe(true)
+    expect(validateUserPermissions(adminUser, 'invite', 'member')).toBe(true)
+  })
+
+  it('should restrict member permissions', () => {
+    expect(validateUserPermissions(memberUser, 'delete', 'project')).toBe(false)
+    expect(validateUserPermissions(memberUser, 'invite', 'member')).toBe(false)
+    expect(validateUserPermissions(memberUser, 'read', 'project')).toBe(true)
+  })
+
+  it('should handle resource ownership', () => {
+    const resource = { ownerId: 'member', organizationId: 'org1' }
+    expect(validateUserPermissions(memberUser, 'update', 'project', resource)).toBe(true)
+  })
+})
+```
+</Tab>
+
+<Tab value="Transformation Functions">
+**Data Transformation and Processing:**
+```typescript
+// src/lib/__tests__/transformers.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  transformUserData,
+  transformSubscriptionData,
+  aggregateAnalytics,
+  normalizeApiResponse,
+} from '../transformers'
+
+describe('User Data Transformation', () => {
+  it('should transform raw user data', () => {
+    const rawUser = {
+      id: 'user-123',
+      first_name: 'John',
+      last_name: 'Doe',
+      email_address: 'john@example.com',
+      created_timestamp: 1640995200000, // 2022-01-01
+      is_active: true,
+    }
+
+    const transformed = transformUserData(rawUser)
+
+    expect(transformed).toEqual({
+      id: 'user-123',
+      name: 'John Doe',
+      email: 'john@example.com',
+      createdAt: new Date(1640995200000),
+      isActive: true,
+    })
+  })
+
+  it('should handle missing optional fields', () => {
+    const minimalUser = {
+      id: 'user-123',
+      email_address: 'john@example.com',
+      created_timestamp: 1640995200000,
+    }
+
+    const transformed = transformUserData(minimalUser)
+
+    expect(transformed.name).toBeUndefined()
+    expect(transformed.isActive).toBe(false) // Default value
+  })
+})
+
+describe('Subscription Data Transformation', () => {
+  it('should transform Stripe subscription data', () => {
+    const stripeSubscription = {
+      id: 'sub_123',
+      customer: 'cus_123',
+      status: 'active',
+      current_period_start: 1640995200,
+      current_period_end: 1643673600,
+      items: {
+        data: [{
+          price: { id: 'price_123', nickname: 'Pro Plan' },
+          quantity: 1,
+        }],
+      },
+    }
+
+    const transformed = transformSubscriptionData(stripeSubscription)
+
+    expect(transformed).toEqual({
+      id: 'sub_123',
+      customerId: 'cus_123',
+      status: 'active',
+      currentPeriodStart: new Date(1640995200000),
+      currentPeriodEnd: new Date(1643673600000),
+      planName: 'Pro Plan',
+      quantity: 1,
+    })
+  })
+})
+
+describe('Analytics Aggregation', () => {
+  const rawEvents = [
+    { type: 'page_view', timestamp: '2024-01-01', userId: 'user1' },
+    { type: 'page_view', timestamp: '2024-01-01', userId: 'user2' },
+    { type: 'signup', timestamp: '2024-01-01', userId: 'user2' },
+    { type: 'page_view', timestamp: '2024-01-02', userId: 'user1' },
+  ]
+
+  it('should aggregate events by date', () => {
+    const aggregated = aggregateAnalytics(rawEvents, 'daily')
+
+    expect(aggregated).toEqual({
+      '2024-01-01': {
+        page_view: 2,
+        signup: 1,
+        uniqueUsers: 2,
+      },
+      '2024-01-02': {
+        page_view: 1,
+        uniqueUsers: 1,
+      },
+    })
+  })
+
+  it('should aggregate events by type', () => {
+    const aggregated = aggregateAnalytics(rawEvents, 'type')
+
+    expect(aggregated).toEqual({
+      page_view: { count: 3, uniqueUsers: 2 },
+      signup: { count: 1, uniqueUsers: 1 },
+    })
+  })
+})
+
+describe('API Response Normalization', () => {
+  it('should normalize paginated responses', () => {
+    const apiResponse = {
+      data: [{ id: 1, name: 'Item 1' }, { id: 2, name: 'Item 2' }],
+      pagination: {
+        current_page: 1,
+        per_page: 10,
+        total: 50,
+      },
+    }
+
+    const normalized = normalizeApiResponse(apiResponse)
+
+    expect(normalized).toEqual({
+      items: [{ id: 1, name: 'Item 1' }, { id: 2, name: 'Item 2' }],
+      pagination: {
+        currentPage: 1,
+        perPage: 10,
+        total: 50,
+        totalPages: 5,
+      },
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Algorithm Testing">
+**Complex Algorithm and Logic Testing:**
+```typescript
+// src/lib/__tests__/algorithms.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  sortByPriority,
+  findOptimalPlan,
+  calculateRecommendations,
+  searchAlgorithm,
+} from '../algorithms'
+
+describe('Priority Sorting Algorithm', () => {
+  const items = [
+    { id: 'a', priority: 2, urgency: 3, importance: 1 },
+    { id: 'b', priority: 1, urgency: 1, importance: 3 },
+    { id: 'c', priority: 3, urgency: 2, importance: 2 },
+  ]
+
+  it('should sort by priority score', () => {
+    const sorted = sortByPriority(items)
+    expect(sorted.map(item => item.id)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('should handle custom weight factors', () => {
+    const weights = { urgency: 2, importance: 1, priority: 1 }
+    const sorted = sortByPriority(items, weights)
+
+    // Item 'a' has highest urgency (3), should be first
+    expect(sorted[0].id).toBe('a')
+  })
+
+  it('should handle empty array', () => {
+    expect(sortByPriority([])).toEqual([])
+  })
+})
+
+describe('Plan Optimization Algorithm', () => {
+  const plans = [
+    { id: 'basic', price: 10, features: { users: 5, storage: 1024 } },
+    { id: 'pro', price: 50, features: { users: 25, storage: 5120 } },
+    { id: 'enterprise', price: 200, features: { users: 100, storage: 20480 } },
+  ]
+
+  it('should find optimal plan for requirements', () => {
+    const requirements = { users: 10, storage: 2048, budget: 100 }
+    const optimal = findOptimalPlan(plans, requirements)
+
+    expect(optimal.id).toBe('pro') // Meets requirements within budget
+  })
+
+  it('should return null if no plan meets requirements', () => {
+    const requirements = { users: 10, storage: 2048, budget: 25 }
+    const optimal = findOptimalPlan(plans, requirements)
+
+    expect(optimal).toBeNull() // Pro plan needed but exceeds budget
+  })
+
+  it('should optimize for cost when multiple plans work', () => {
+    const requirements = { users: 3, storage: 512, budget: 1000 }
+    const optimal = findOptimalPlan(plans, requirements)
+
+    expect(optimal.id).toBe('basic') // Cheapest option that works
+  })
+})
+
+describe('Recommendation Algorithm', () => {
+  const users = [
+    { id: 'user1', preferences: ['tech', 'business'], behavior: { clicks: 50 } },
+    { id: 'user2', preferences: ['design', 'tech'], behavior: { clicks: 30 } },
+    { id: 'user3', preferences: ['business'], behavior: { clicks: 40 } },
+  ]
+
+  const content = [
+    { id: 'content1', tags: ['tech'], score: 0.8 },
+    { id: 'content2', tags: ['business'], score: 0.9 },
+    { id: 'content3', tags: ['design'], score: 0.7 },
+  ]
+
+  it('should calculate personalized recommendations', () => {
+    const recommendations = calculateRecommendations('user1', users, content)
+
+    expect(recommendations).toHaveLength(3)
+    expect(recommendations[0].id).toBe('content2') // business has higher score
+    expect(recommendations[1].id).toBe('content1') // tech matches preference
+  })
+
+  it('should handle user not found', () => {
+    const recommendations = calculateRecommendations('unknown', users, content)
+    expect(recommendations).toEqual([]) // or default recommendations
+  })
+})
+
+describe('Search Algorithm', () => {
+  const documents = [
+    { id: '1', title: 'JavaScript Tutorial', content: 'Learn JS basics', tags: ['javascript', 'tutorial'] },
+    { id: '2', title: 'React Guide', content: 'Advanced React patterns', tags: ['react', 'javascript'] },
+    { id: '3', title: 'Python Basics', content: 'Introduction to Python', tags: ['python', 'tutorial'] },
+  ]
+
+  it('should search by title', () => {
+    const results = searchAlgorithm(documents, 'JavaScript')
+
+    expect(results).toHaveLength(2) // Both docs contain "javascript"
+    expect(results[0].id).toBe('1') // Exact title match should rank higher
+  })
+
+  it('should search by content', () => {
+    const results = searchAlgorithm(documents, 'React patterns')
+
+    expect(results).toHaveLength(1)
+    expect(results[0].id).toBe('2')
+  })
+
+  it('should handle fuzzy matching', () => {
+    const results = searchAlgorithm(documents, 'tutorail') // Misspelled
+
+    expect(results.length).toBeGreaterThan(0)
+    expect(results.some(r => r.id === '1' || r.id === '3')).toBe(true)
+  })
+
+  it('should return empty array for no matches', () => {
+    const results = searchAlgorithm(documents, 'xyz nonexistent')
+    expect(results).toEqual([])
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Error Handling & Validation
+
+Test error conditions and validation logic:
+
+<Tabs items={['Input Validation', 'Error Boundaries', 'Exception Handling', 'Data Integrity']}>
+
+<Tab value="Input Validation">
+**Input Validation and Sanitization:**
+```typescript
+// src/lib/__tests__/input-validation.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  validateUserInput,
+  sanitizeUserInput,
+  ValidationError,
+  validateSchema,
+} from '../input-validation'
+
+describe('User Input Validation', () => {
+  it('should validate required fields', () => {
+    const input = { name: '', email: 'test@example.com' }
+    const result = validateUserInput(input)
+
+    expect(result.isValid).toBe(false)
+    expect(result.errors).toContain('name is required')
+  })
+
+  it('should validate field formats', () => {
+    const input = { name: 'John Doe', email: 'invalid-email' }
+    const result = validateUserInput(input)
+
+    expect(result.isValid).toBe(false)
+    expect(result.errors).toContain('email format is invalid')
+  })
+
+  it('should validate field lengths', () => {
+    const input = {
+      name: 'J', // Too short
+      email: 'test@example.com',
+      password: '1234567890123456789012345678901234567890123456789012345678901234567890' // Too long
+    }
+    const result = validateUserInput(input)
+
+    expect(result.isValid).toBe(false)
+    expect(result.errors).toContain('name must be at least 2 characters')
+    expect(result.errors).toContain('password must be less than 50 characters')
+  })
+
+  it('should accept valid input', () => {
+    const input = {
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'SecurePassword123!'
+    }
+    const result = validateUserInput(input)
+
+    expect(result.isValid).toBe(true)
+    expect(result.errors).toHaveLength(0)
+  })
+})
+
+describe('Input Sanitization', () => {
+  it('should remove dangerous scripts', () => {
+    const input = '<script>alert("xss")</script>Hello World'
+    const sanitized = sanitizeUserInput(input)
+
+    expect(sanitized).toBe('Hello World')
+    expect(sanitized).not.toContain('<script>')
+  })
+
+  it('should preserve safe content', () => {
+    const input = 'Hello <em>world</em> with <strong>formatting</strong>'
+    const sanitized = sanitizeUserInput(input, { allowedTags: ['em', 'strong'] })
+
+    expect(sanitized).toBe(input)
+  })
+
+  it('should trim whitespace', () => {
+    const input = '  Hello World  '
+    const sanitized = sanitizeUserInput(input)
+
+    expect(sanitized).toBe('Hello World')
+  })
+})
+
+describe('Schema Validation', () => {
+  const userSchema = {
+    name: { type: 'string', required: true, minLength: 2 },
+    email: { type: 'email', required: true },
+    age: { type: 'number', min: 0, max: 150 },
+    role: { type: 'enum', values: ['user', 'admin', 'moderator'] },
+  }
+
+  it('should validate against schema', () => {
+    const validData = {
+      name: 'John Doe',
+      email: 'john@example.com',
+      age: 30,
+      role: 'user',
+    }
+
+    const result = validateSchema(validData, userSchema)
+    expect(result.isValid).toBe(true)
+  })
+
+  it('should detect schema violations', () => {
+    const invalidData = {
+      name: 'J', // Too short
+      email: 'invalid-email',
+      age: -5, // Below minimum
+      role: 'invalid-role',
+    }
+
+    const result = validateSchema(invalidData, userSchema)
+    expect(result.isValid).toBe(false)
+    expect(result.errors).toHaveLength(4)
+  })
+
+  it('should handle missing required fields', () => {
+    const incompleteData = { name: 'John Doe' }
+
+    const result = validateSchema(incompleteData, userSchema)
+    expect(result.isValid).toBe(false)
+    expect(result.errors).toContain('email is required')
+  })
+})
+```
+</Tab>
+
+<Tab value="Error Boundaries">
+**Error Boundary and Recovery Testing:**
+```typescript
+// src/lib/__tests__/error-handling.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  withErrorBoundary,
+  handleError,
+  recoverFromError,
+  ErrorLogger,
+  RetryableError,
+} from '../error-handling'
+
+describe('Error Boundary Wrapper', () => {
+  it('should catch and handle errors', async () => {
+    const faultyFunction = () => {
+      throw new Error('Something went wrong')
+    }
+
+    const safeFunction = withErrorBoundary(faultyFunction, {
+      fallback: () => 'Error handled',
+      onError: (error) => console.log('Logged:', error.message),
+    })
+
+    const result = await safeFunction()
+    expect(result).toBe('Error handled')
+  })
+
+  it('should return result when no error occurs', async () => {
+    const workingFunction = () => 'Success'
+
+    const safeFunction = withErrorBoundary(workingFunction)
+    const result = await safeFunction()
+
+    expect(result).toBe('Success')
+  })
+})
+
+describe('Error Handler', () => {
+  it('should categorize different error types', () => {
+    const validationError = new Error('Validation failed')
+    validationError.name = 'ValidationError'
+
+    const networkError = new Error('Network timeout')
+    networkError.name = 'NetworkError'
+
+    expect(handleError(validationError).category).toBe('validation')
+    expect(handleError(networkError).category).toBe('network')
+  })
+
+  it('should determine if error is recoverable', () => {
+    const retryableError = new RetryableError('Temporary failure')
+    const fatalError = new Error('Fatal system error')
+
+    expect(handleError(retryableError).recoverable).toBe(true)
+    expect(handleError(fatalError).recoverable).toBe(false)
+  })
+
+  it('should suggest recovery strategies', () => {
+    const networkError = new Error('Connection failed')
+    const result = handleError(networkError)
+
+    expect(result.suggestions).toContain('retry')
+    expect(result.suggestions).toContain('check_connection')
+  })
+})
+
+describe('Error Recovery', () => {
+  it('should retry failed operations', async () => {
+    let attempts = 0
+    const flakyOperation = () => {
+      attempts++
+      if (attempts < 3) throw new Error('Temporary failure')
+      return 'Success'
+    }
+
+    const result = await recoverFromError(flakyOperation, { maxRetries: 3 })
+
+    expect(result).toBe('Success')
+    expect(attempts).toBe(3)
+  })
+
+  it('should give up after max retries', async () => {
+    const alwaysFailingOperation = () => {
+      throw new Error('Permanent failure')
+    }
+
+    await expect(
+      recoverFromError(alwaysFailingOperation, { maxRetries: 2 })
+    ).rejects.toThrow('Permanent failure')
+  })
+})
+
+describe('Error Logger', () => {
+  it('should log errors with context', () => {
+    const logger = new ErrorLogger()
+    const logSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const error = new Error('Test error')
+    const context = { userId: 'user-123', operation: 'user-update' }
+
+    logger.log(error, context)
+
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Test error',
+        context,
+        timestamp: expect.any(String),
+      })
+    )
+
+    logSpy.mockRestore()
+  })
+})
+```
+</Tab>
+
+<Tab value="Exception Handling">
+**Exception Types and Handling:**
+```typescript
+// src/lib/__tests__/exceptions.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  ValidationException,
+  NetworkException,
+  AuthorizationException,
+  BusinessLogicException,
+  handleException,
+} from '../exceptions'
+
+describe('Custom Exception Types', () => {
+  it('should create validation exceptions', () => {
+    const error = new ValidationException('Invalid email format', {
+      field: 'email',
+      value: 'invalid-email',
+    })
+
+    expect(error.name).toBe('ValidationException')
+    expect(error.message).toBe('Invalid email format')
+    expect(error.details.field).toBe('email')
+  })
+
+  it('should create network exceptions', () => {
+    const error = new NetworkException('Connection timeout', {
+      url: 'https://api.example.com',
+      timeout: 5000,
+    })
+
+    expect(error.name).toBe('NetworkException')
+    expect(error.details.url).toBe('https://api.example.com')
+  })
+
+  it('should create authorization exceptions', () => {
+    const error = new AuthorizationException('Insufficient permissions', {
+      userId: 'user-123',
+      requiredRole: 'admin',
+      currentRole: 'user',
+    })
+
+    expect(error.name).toBe('AuthorizationException')
+    expect(error.details.requiredRole).toBe('admin')
+  })
+})
+
+describe('Exception Handling', () => {
+  it('should handle validation exceptions', () => {
+    const error = new ValidationException('Invalid input')
+    const result = handleException(error)
+
+    expect(result.statusCode).toBe(400)
+    expect(result.userMessage).toBe('Please check your input and try again')
+    expect(result.shouldRetry).toBe(false)
+  })
+
+  it('should handle network exceptions', () => {
+    const error = new NetworkException('Service unavailable')
+    const result = handleException(error)
+
+    expect(result.statusCode).toBe(503)
+    expect(result.userMessage).toBe('Service temporarily unavailable')
+    expect(result.shouldRetry).toBe(true)
+  })
+
+  it('should handle authorization exceptions', () => {
+    const error = new AuthorizationException('Access denied')
+    const result = handleException(error)
+
+    expect(result.statusCode).toBe(403)
+    expect(result.userMessage).toBe('You do not have permission to perform this action')
+    expect(result.shouldRetry).toBe(false)
+  })
+
+  it('should handle unknown exceptions', () => {
+    const error = new Error('Unknown error')
+    const result = handleException(error)
+
+    expect(result.statusCode).toBe(500)
+    expect(result.userMessage).toBe('An unexpected error occurred')
+    expect(result.shouldRetry).toBe(false)
+  })
+})
+```
+</Tab>
+
+<Tab value="Data Integrity">
+**Data Integrity and Consistency Testing:**
+```typescript
+// src/lib/__tests__/data-integrity.test.ts
+import { describe, it, expect } from 'vitest'
+import {
+  validateDataIntegrity,
+  checkConsistency,
+  repairData,
+  DataIntegrityError,
+} from '../data-integrity'
+
+describe('Data Integrity Validation', () => {
+  it('should validate required relationships', () => {
+    const users = [
+      { id: 'user1', organizationId: 'org1' },
+      { id: 'user2', organizationId: 'org2' },
+    ]
+
+    const organizations = [
+      { id: 'org1', name: 'Org 1' },
+      // org2 is missing - should be detected
+    ]
+
+    const result = validateDataIntegrity({ users, organizations })
+
+    expect(result.isValid).toBe(false)
+    expect(result.violations).toContainEqual({
+      type: 'missing_reference',
+      entity: 'user',
+      id: 'user2',
+      missingReference: { field: 'organizationId', value: 'org2' },
+    })
+  })
+
+  it('should validate unique constraints', () => {
+    const users = [
+      { id: 'user1', email: 'test@example.com' },
+      { id: 'user2', email: 'test@example.com' }, // Duplicate email
+    ]
+
+    const result = validateDataIntegrity({ users }, {
+      uniqueConstraints: [{ entity: 'users', field: 'email' }]
+    })
+
+    expect(result.isValid).toBe(false)
+    expect(result.violations).toContainEqual({
+      type: 'duplicate_value',
+      entity: 'users',
+      field: 'email',
+      value: 'test@example.com',
+      duplicateIds: ['user1', 'user2'],
+    })
+  })
+
+  it('should validate data types', () => {
+    const users = [
+      { id: 'user1', createdAt: '2024-01-01' }, // Should be Date object
+      { id: 'user2', createdAt: new Date() },
+    ]
+
+    const result = validateDataIntegrity({ users }, {
+      typeConstraints: [{ entity: 'users', field: 'createdAt', type: 'date' }]
+    })
+
+    expect(result.isValid).toBe(false)
+    expect(result.violations).toContainEqual({
+      type: 'invalid_type',
+      entity: 'users',
+      id: 'user1',
+      field: 'createdAt',
+      expectedType: 'date',
+      actualType: 'string',
+    })
+  })
+})
+
+describe('Consistency Checking', () => {
+  it('should check aggregate consistency', () => {
+    const organization = { id: 'org1', memberCount: 5 }
+    const members = [
+      { id: 'm1', organizationId: 'org1' },
+      { id: 'm2', organizationId: 'org1' },
+      { id: 'm3', organizationId: 'org1' },
+    ]
+
+    const result = checkConsistency({ organization, members })
+
+    expect(result.isConsistent).toBe(false)
+    expect(result.inconsistencies).toContainEqual({
+      type: 'count_mismatch',
+      entity: 'organization',
+      id: 'org1',
+      field: 'memberCount',
+      expected: 3,
+      actual: 5,
+    })
+  })
+
+  it('should check bidirectional relationships', () => {
+    const users = [
+      { id: 'user1', organizationId: 'org1' },
+      { id: 'user2', organizationId: 'org1' },
+    ]
+
+    const organizations = [
+      { id: 'org1', memberIds: ['user1'] }, // Missing user2
+    ]
+
+    const result = checkConsistency({ users, organizations }, {
+      bidirectionalRefs: [
+        { entity1: 'users', field1: 'organizationId', entity2: 'organizations', field2: 'memberIds' }
+      ]
+    })
+
+    expect(result.isConsistent).toBe(false)
+    expect(result.inconsistencies).toHaveLength(1)
+  })
+})
+
+describe('Data Repair', () => {
+  it('should repair missing references', async () => {
+    const corruptData = {
+      users: [{ id: 'user1', organizationId: 'missing-org' }],
+      organizations: [{ id: 'org1', name: 'Valid Org' }],
+    }
+
+    const repaired = await repairData(corruptData, {
+      strategy: 'assign_default',
+      defaultOrganization: 'org1',
+    })
+
+    expect(repaired.users[0].organizationId).toBe('org1')
+  })
+
+  it('should remove orphaned records', async () => {
+    const corruptData = {
+      users: [
+        { id: 'user1', organizationId: 'org1' },
+        { id: 'user2', organizationId: 'missing-org' },
+      ],
+      organizations: [{ id: 'org1', name: 'Valid Org' }],
+    }
+
+    const repaired = await repairData(corruptData, {
+      strategy: 'remove_orphans',
+    })
+
+    expect(repaired.users).toHaveLength(1)
+    expect(repaired.users[0].id).toBe('user1')
+  })
+
+  it('should fix aggregate counts', async () => {
+    const corruptData = {
+      organizations: [{ id: 'org1', memberCount: 10 }],
+      members: [
+        { id: 'm1', organizationId: 'org1' },
+        { id: 'm2', organizationId: 'org1' },
+      ],
+    }
+
+    const repaired = await repairData(corruptData, {
+      strategy: 'recalculate_aggregates',
+    })
+
+    expect(repaired.organizations[0].memberCount).toBe(2)
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Best Practices Summary
+
+<Callout type="success">
+**Unit Testing Excellence:**
+- **Test Pure Functions**: Focus on functions without side effects
+- **Clear Test Names**: Describe exactly what is being tested
+- **Fast Execution**: Unit tests should run quickly in isolation
+- **Edge Cases**: Test boundary conditions and error scenarios
+</Callout>
+
+### **Key Principles:**
+
+1. **Isolation**: Each test should be independent and not rely on external state
+2. **Deterministic**: Tests should produce the same result every time
+3. **Fast**: Unit tests should execute quickly (< 10ms per test)
+4. **Focused**: One assertion per test, testing one specific behavior
+5. **Readable**: Tests should serve as documentation of the function's behavior
+
+### **Common Patterns:**
+
+```typescript
+// ✅ Good unit test structure
+describe('FunctionName', () => {
+  describe('when input is valid', () => {
+    it('should return expected result', () => {
+      const result = functionName(validInput)
+      expect(result).toBe(expectedOutput)
+    })
+  })
+
+  describe('when input is invalid', () => {
+    it('should throw ValidationError', () => {
+      expect(() => functionName(invalidInput)).toThrow(ValidationError)
+    })
+  })
+})
+```
+
+Ready to test your UI components? Continue with **[UI Component Testing](/docs/testing/ui-component-testing)** to learn about testing React components with Testing Library.

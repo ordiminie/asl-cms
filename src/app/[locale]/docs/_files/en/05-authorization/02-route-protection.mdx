@@ -1,0 +1,274 @@
+---
+title: 'Route Protection'
+description: 'Protect pages and routes using withAuth HOC, middleware, and role-based access control'
+keywords: 'ShipSaaS, route protection, protected routes, middleware, access control, route guards, Next.js middleware'
+---
+
+Route protection ensures only authorized users can access specific pages in your application. The boilerplate provides multiple layers of protection for different scenarios.
+
+<Callout type="success">
+  **Perfect for:** Protecting dashboards, admin panels, subscription features, and role-specific content.
+</Callout>
+
+## Types of Route Protection
+
+### 🌍 Public Routes
+**Accessible by everyone (including unauthenticated users)**
+
+```typescript
+// No protection needed
+export default function PublicPage() {
+  return <div>Anyone can see this</div>
+}
+```
+
+**Examples:** Landing page, login, register, documentation
+
+### 🔒 Private Routes
+**Requires authentication (any logged-in user)**
+
+```typescript
+// Using withAuth HOC
+import { withAuth } from '@/components/features/auth/with-auth'
+
+function DashboardPage() {
+  return <div>Only logged-in users see this</div>
+}
+
+export default withAuth(DashboardPage)
+```
+
+**Examples:** Dashboard, account settings, user profile
+
+### 👤 Role-Based Routes
+**Requires specific role or permission**
+
+```typescript
+import { withAuth } from '@/components/features/auth/with-auth'
+
+function ModeratorPanel() {
+  return <div>Only moderators and above</div>
+}
+
+export default withAuth(ModeratorPanel, {
+  requiredRole: 'MODERATOR'
+})
+```
+
+**Examples:** Content moderation, user management, analytics
+
+### 👑 Admin Routes
+**Admin/backoffice access only**
+
+```typescript
+import { withAuth } from '@/components/features/auth/with-auth'
+
+function AdminDashboard() {
+  return <div>Admin backoffice</div>
+}
+
+export default withAuth(AdminDashboard, {
+  requiredRole: 'ADMIN',
+  redirectTo: '/unauthorized'
+})
+```
+
+<Callout type="info">
+  **Shortcut available:** The boilerplate also includes `withAuthAdmin()` as a convenient shortcut for admin-only pages. It automatically requires ADMIN role and redirects unauthorized users.
+</Callout>
+
+**Examples:** User management, system settings, analytics dashboard
+
+## withAuth Usage
+
+The `withAuth` HOC has a simple signature based on the actual boilerplate code:
+
+```typescript
+withAuth<P>(WrappedComponent: ComponentType<P & WithAuthProps>, requiredRole?: Roles)
+```
+
+<Tabs defaultValue="basic-usage">
+  <Tab value="basic-usage" label="Basic Usage">
+    ```typescript
+    // Default protection (USER role)
+    export default withAuth(MyPage)
+
+    // The component receives user props
+    function MyPage({ user }: WithAuthProps) {
+      return <div>Hello {user.name}</div>
+    }
+    ```
+  </Tab>
+
+  <Tab value="role-usage" label="Role-Based Usage">
+    ```typescript
+    import { RoleConst } from '@/services/types/domain/auth-types'
+
+    // Require ADMIN role
+    export default withAuth(MyPage, RoleConst.ADMIN)
+
+    // Require MODERATOR role
+    export default withAuth(MyPage, RoleConst.MODERATOR)
+
+    // Available roles: USER, MODERATOR, REDACTOR, ADMIN, SUPER_ADMIN
+    ```
+  </Tab>
+
+  <Tab value="shortcut-usage" label="Admin Shortcut">
+    ```typescript
+    import { withAuthAdmin } from '@/components/features/auth/with-auth'
+
+    // Convenient shortcut for admin-only pages
+    export default withAuthAdmin(MyPage)
+
+    // Equivalent to: withAuth(MyPage, RoleConst.ADMIN)
+    ```
+  </Tab>
+</Tabs>
+
+## Route-Level Middleware
+
+For advanced protection, use Next.js middleware:
+
+```typescript
+// src/middleware.ts
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Admin routes protection
+  if (pathname.startsWith('/admin')) {
+    const userRole = getUserRoleFromSession(request)
+
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+      return NextResponse.redirect(new URL('/unauthorized', request.url))
+    }
+  }
+
+  // Organization routes protection
+  if (pathname.startsWith('/organization')) {
+    const hasOrgAccess = checkOrganizationAccess(request)
+
+    if (!hasOrgAccess) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/admin/:path*', '/organization/:path*']
+}
+```
+
+## Error Pages
+
+### Forbidden Page (403)
+
+The boilerplate includes a forbidden page for users who don't have sufficient permissions:
+
+```typescript
+// src/app/forbidden.tsx
+export default function ForbiddenPage() {
+  return (
+    <div className="container mx-auto py-16 text-center">
+      <h1 className="text-4xl font-bold mb-4">403 - Forbidden</h1>
+      <p className="text-lg mb-8">You don't have permission to access this resource.</p>
+      <Link href="/dashboard" className="btn btn-primary">
+        Go to Dashboard
+      </Link>
+    </div>
+  )
+}
+```
+
+## Practical Examples
+
+### Basic Page Protection
+
+```typescript
+// src/app/dashboard/page.tsx
+import withAuth, { WithAuthProps } from '@/components/features/auth/with-auth'
+import { RoleConst } from '@/services/types/domain/auth-types'
+
+function DashboardPage({ user }: WithAuthProps) {
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <p>Welcome {user.name}!</p>
+    </div>
+  )
+}
+
+// Requires USER role (default)
+export default withAuth(DashboardPage)
+```
+
+### Admin Page Protection
+
+```typescript
+// src/app/admin/page.tsx
+import withAuth, { WithAuthProps } from '@/components/features/auth/with-auth'
+import { RoleConst } from '@/services/types/domain/auth-types'
+
+function AdminPage({ user }: WithAuthProps) {
+  return (
+    <div>
+      <h1>Admin Panel</h1>
+      <p>Admin user: {user.name}</p>
+    </div>
+  )
+}
+
+// Requires ADMIN role
+export default withAuth(AdminPage, RoleConst.ADMIN)
+```
+
+### Using withAuthAdmin Shortcut
+
+```typescript
+// src/app/admin/users/page.tsx
+import { withAuthAdmin, WithAuthProps } from '@/components/features/auth/with-auth'
+
+function UserManagementPage({ user }: WithAuthProps) {
+  return (
+    <div>
+      <h1>User Management</h1>
+      <p>Admin: {user.name}</p>
+    </div>
+  )
+}
+
+// Shortcut for ADMIN role requirement
+export default withAuthAdmin(UserManagementPage)
+```
+
+## Testing Route Protection
+
+<Steps>
+<Step title="Test unauthenticated access">
+  1. Try accessing protected routes without login
+  2. Verify correct redirect to login page
+  3. Check unauthorized error messages
+</Step>
+
+<Step title="Test role-based access">
+  1. Create users with different roles
+  2. Try accessing protected pages with each role
+  3. Verify correct redirections and permissions
+  4. Test role inheritance works correctly
+</Step>
+
+<Step title="Test middleware protection">
+  1. Test route-level middleware rules
+  2. Verify correct redirects for unauthorized access
+  3. Check performance impact of middleware
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Pages secured!** Your application routes are now protected with flexible, role-based access control that scales with your needs.
+</Callout>

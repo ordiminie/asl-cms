@@ -1,4 +1,6 @@
 node_modules
 dist
 build
-.next 
+.next
+/src/app/\[locale\]/(public)/docs/_files/**/*.mdx
+/src/app/*/docs/_files/**/*.mdx

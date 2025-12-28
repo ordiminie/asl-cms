@@ -1,0 +1,707 @@
+---
+title: 'Server Actions'
+description: 'Complete guide to server-side upload handling with validation, authentication, and error handling'
+keywords: "ShipSaaS, server actions, file upload server, Next.js server actions, upload validation, authentication, FormData handling"
+order: 2
+---
+
+Server Actions provide the bridge between client-side file selection and server-side upload processing, handling authentication, validation, and service integration.
+
+## Server Action Pattern
+
+### **Standard Upload Action Structure**
+
+```tsx
+'use server'
+
+import { getAuthUser } from '@/services/authentication/auth-utils'
+import { uploadImageForEntityService } from '@/services/facades/file-service-facade'
+import { EntityTypeConst, FileCategoryConst } from '@/services/types/domain/file-types'
+
+export type UploadImageState = {
+  success: boolean
+  message?: string
+  imageUrl?: string
+}
+
+export async function uploadEntityImageAction(
+  prevState?: UploadImageState,
+  formData?: FormData
+): Promise<UploadImageState> {
+  // 1. AUTHENTICATION CHECK
+  const user = await getAuthUser()
+  if (!user) {
+    return { success: false, message: 'User not found' }
+  }
+
+  // 2. FORMDATA VALIDATION
+  if (!formData) {
+    return { success: false, message: 'Invalid data' }
+  }
+
+  const file = formData.get('file') as File
+  const entityId = formData.get('entityId') as string
+
+  // 3. FILE VALIDATION
+  if (!file || file.size === 0) {
+    return { success: false, message: 'No file provided' }
+  }
+
+  if (!entityId) {
+    return { success: false, message: 'Entity ID missing' }
+  }
+
+  try {
+    // 4. UPLOAD VIA SERVICE FACADE
+    const result = await uploadImageForEntityService({
+      file,
+      entityType: EntityTypeConst.ORGANIZATION,
+      entityId,
+      category: FileCategoryConst.LOGO,
+    })
+
+    return {
+      success: true,
+      message: 'Image uploaded successfully',
+      imageUrl: result.url,
+    }
+  } catch (error) {
+    console.error('Upload error:', error)
+    return {
+      success: false,
+      message: 'Failed to upload image. Please try again.',
+    }
+  }
+}
+```
+
+## Action Types & Patterns
+
+### **Image Upload Action**
+
+Specialized for image files with MIME type validation:
+
+```tsx
+export async function uploadUserAvatarAction(
+  prevState?: UploadImageState,
+  formData?: FormData
+): Promise<UploadImageState> {
+  const user = await getAuthUser()
+  if (!user) return { success: false, message: 'Not authenticated' }
+
+  const file = formData?.get('file') as File
+  if (!file) return { success: false, message: 'No file provided' }
+
+  // Image-specific validation
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    return {
+      success: false,
+      message: 'Invalid image type. Use JPEG, PNG, or WebP.'
+    }
+  }
+
+  if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    return {
+      success: false,
+      message: 'Image too large. Maximum size is 5MB.'
+    }
+  }
+
+  try {
+    const result = await uploadImageForEntityService({
+      file,
+      entityType: EntityTypeConst.USER,
+      entityId: user.id,
+      category: FileCategoryConst.PROFILE,
+    })
+
+    return {
+      success: true,
+      message: 'Avatar updated successfully',
+      imageUrl: result.url,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Failed to update avatar'
+    }
+  }
+}
+```
+
+### **Document Upload Action**
+
+For general file uploads with flexible validation:
+
+```tsx
+export type UploadDocumentState = {
+  success: boolean
+  message?: string
+  fileUrl?: string
+  fileName?: string
+}
+
+export async function uploadDocumentAction(
+  prevState?: UploadDocumentState,
+  formData?: FormData
+): Promise<UploadDocumentState> {
+  const user = await getAuthUser()
+  if (!user) return { success: false, message: 'Not authenticated' }
+
+  const file = formData?.get('file') as File
+  const projectId = formData?.get('projectId') as string
+
+  if (!file || !projectId) {
+    return { success: false, message: 'File and project ID required' }
+  }
+
+  // Document validation
+  const allowedTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain'
+  ]
+
+  if (!allowedTypes.includes(file.type)) {
+    return {
+      success: false,
+      message: 'Invalid document type. Use PDF, DOC, DOCX, or TXT.'
+    }
+  }
+
+  try {
+    const result = await uploadFileForEntityService({
+      file,
+      entityType: EntityTypeConst.PROJECT,
+      entityId: projectId,
+      category: FileCategoryConst.DOCUMENT,
+    })
+
+    return {
+      success: true,
+      message: 'Document uploaded successfully',
+      fileUrl: result.url,
+      fileName: result.name,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Failed to upload document'
+    }
+  }
+}
+```
+
+### **Multiple File Upload Action**
+
+Handle multiple files in a single action:
+
+```tsx
+export type UploadMultipleState = {
+  success: boolean
+  message?: string
+  uploadedFiles?: Array<{ url: string; name: string }>
+  failedFiles?: string[]
+}
+
+export async function uploadMultipleFilesAction(
+  prevState?: UploadMultipleState,
+  formData?: FormData
+): Promise<UploadMultipleState> {
+  const user = await getAuthUser()
+  if (!user) return { success: false, message: 'Not authenticated' }
+
+  const files = formData?.getAll('files') as File[]
+  const entityId = formData?.get('entityId') as string
+  const entityType = formData?.get('entityType') as string
+
+  if (!files || files.length === 0) {
+    return { success: false, message: 'No files provided' }
+  }
+
+  const uploadedFiles: Array<{ url: string; name: string }> = []
+  const failedFiles: string[] = []
+
+  // Process files sequentially to avoid overwhelming the service
+  for (const file of files) {
+    try {
+      const result = await uploadFileForEntityService({
+        file,
+        entityType: entityType as any,
+        entityId,
+        category: FileCategoryConst.IMAGE,
+      })
+
+      uploadedFiles.push({
+        url: result.url,
+        name: result.name
+      })
+    } catch (error) {
+      failedFiles.push(file.name)
+    }
+  }
+
+  if (uploadedFiles.length === 0) {
+    return {
+      success: false,
+      message: 'All uploads failed',
+      failedFiles
+    }
+  }
+
+  return {
+    success: true,
+    message: `${uploadedFiles.length}/${files.length} files uploaded successfully`,
+    uploadedFiles,
+    failedFiles: failedFiles.length > 0 ? failedFiles : undefined
+  }
+}
+```
+
+## Client Integration
+
+### **Basic Form Integration**
+
+```tsx
+'use client'
+
+import { useActionState } from 'react'
+import { uploadEntityImageAction, UploadImageState } from './actions'
+import { FileUpload } from '@/components/ui/file-upload'
+import { Button } from '@/components/ui/button'
+
+export function ImageUploadForm({ entityId }: { entityId: string }) {
+  const [state, formAction] = useActionState<UploadImageState>(
+    uploadEntityImageAction,
+    { success: false }
+  )
+
+  async function handleFileUpload(files: File[]) {
+    if (files.length === 0) return
+
+    const formData = new FormData()
+    formData.append('file', files[0])
+    formData.append('entityId', entityId)
+
+    formAction(formData)
+  }
+
+  return (
+    <div className="space-y-4">
+      <FileUpload
+        onChange={handleFileUpload}
+        onlyimage={true}
+        multi={false}
+      />
+
+      {/* Status Display */}
+      {state.message && (
+        <div className={`text-sm ${
+          state.success ? 'text-green-600' : 'text-red-600'
+        }`}>
+          {state.message}
+        </div>
+      )}
+
+      {/* Display uploaded image */}
+      {state.success && state.imageUrl && (
+        <img
+          src={state.imageUrl}
+          alt="Uploaded"
+          className="max-w-xs rounded border"
+        />
+      )}
+    </div>
+  )
+}
+```
+
+### **Advanced Form with Progress**
+
+```tsx
+'use client'
+
+import { useState, useTransition } from 'react'
+import { toast } from 'sonner'
+
+export function AdvancedUploadForm({ projectId }: { projectId: string }) {
+  const [isPending, startTransition] = useTransition()
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({})
+
+  async function handleMultipleUpload(files: File[]) {
+    if (files.length === 0) return
+
+    startTransition(async () => {
+      // Initialize progress tracking
+      const progress: Record<string, number> = {}
+      files.forEach(file => {
+        progress[file.name] = 0
+      })
+      setUploadProgress(progress)
+
+      const formData = new FormData()
+      files.forEach(file => formData.append('files', file))
+      formData.append('entityId', projectId)
+      formData.append('entityType', 'project')
+
+      try {
+        const result = await uploadMultipleFilesAction(undefined, formData)
+
+        if (result.success) {
+          toast('Success', {
+            description: result.message
+          })
+
+          // Complete progress for successful uploads
+          files.forEach(file => {
+            if (!result.failedFiles?.includes(file.name)) {
+              progress[file.name] = 100
+            }
+          })
+          setUploadProgress(progress)
+        } else {
+          toast('Error', {
+            description: result.message
+          })
+        }
+      } catch (error) {
+        toast('Error', {
+          description: 'Upload failed unexpectedly'
+        })
+      }
+    })
+  }
+
+  return (
+    <div className="space-y-4">
+      <FileUpload
+        onChange={handleMultipleUpload}
+        multi={true}
+        isUploading={isPending}
+      />
+
+      {/* Progress Display */}
+      {Object.keys(uploadProgress).length > 0 && (
+        <div className="space-y-2">
+          {Object.entries(uploadProgress).map(([filename, progress]) => (
+            <div key={filename} className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="truncate">{filename}</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+## Error Handling & Validation
+
+### **Comprehensive Validation**
+
+```tsx
+export async function validateUploadRequest(
+  file: File,
+  entityType: string,
+  entityId: string
+): Promise<{ valid: boolean; error?: string }> {
+  // File existence
+  if (!file || file.size === 0) {
+    return { valid: false, error: 'No file provided' }
+  }
+
+  // File size validation
+  const maxSize = 10 * 1024 * 1024 // 10MB
+  if (file.size > maxSize) {
+    return {
+      valid: false,
+      error: `File too large. Maximum size is ${formatFileSize(maxSize)}`
+    }
+  }
+
+  // Entity validation
+  if (!entityId || !isValidUUID(entityId)) {
+    return { valid: false, error: 'Invalid entity ID' }
+  }
+
+  // Type-specific validation
+  if (entityType === 'user' && !file.type.startsWith('image/')) {
+    return { valid: false, error: 'User uploads must be images' }
+  }
+
+  return { valid: true }
+}
+
+// Enhanced upload action with validation
+export async function validatedUploadAction(
+  prevState?: UploadState,
+  formData?: FormData
+): Promise<UploadState> {
+  const user = await getAuthUser()
+  if (!user) return { success: false, message: 'Not authenticated' }
+
+  const file = formData?.get('file') as File
+  const entityType = formData?.get('entityType') as string
+  const entityId = formData?.get('entityId') as string
+
+  // Comprehensive validation
+  const validation = await validateUploadRequest(file, entityType, entityId)
+  if (!validation.valid) {
+    return { success: false, message: validation.error }
+  }
+
+  try {
+    const result = await uploadFileForEntityService({
+      file,
+      entityType: entityType as any,
+      entityId,
+    })
+
+    return {
+      success: true,
+      message: 'File uploaded successfully',
+      fileUrl: result.url,
+    }
+  } catch (error) {
+    // Log detailed error for debugging
+    console.error('Upload service error:', {
+      error: error.message,
+      entityType,
+      entityId,
+      fileType: file.type,
+      fileSize: file.size,
+      userId: user.id
+    })
+
+    return {
+      success: false,
+      message: 'Upload failed. Please try again.'
+    }
+  }
+}
+```
+
+### **Error Recovery**
+
+```tsx
+export async function retryUploadAction(
+  file: File,
+  entityType: string,
+  entityId: string,
+  maxRetries = 3
+): Promise<UploadState> {
+  let lastError: Error | null = null
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await uploadFileForEntityService({
+        file,
+        entityType: entityType as any,
+        entityId,
+      })
+
+      return {
+        success: true,
+        message: `File uploaded successfully${attempt > 1 ? ` (attempt ${attempt})` : ''}`,
+        fileUrl: result.url,
+      }
+    } catch (error) {
+      lastError = error as Error
+
+      // Wait before retry (exponential backoff)
+      if (attempt < maxRetries) {
+        await new Promise(resolve =>
+          setTimeout(resolve, Math.pow(2, attempt) * 1000)
+        )
+      }
+    }
+  }
+
+  return {
+    success: false,
+    message: `Upload failed after ${maxRetries} attempts: ${lastError?.message}`
+  }
+}
+```
+
+## Specialized Actions
+
+### **Organization Logo Upload**
+
+```tsx
+export async function uploadOrganizationLogoAction(
+  prevState?: UploadImageState,
+  formData?: FormData
+): Promise<UploadImageState> {
+  const user = await getAuthUser()
+  if (!user) return { success: false, message: 'Not authenticated' }
+
+  const file = formData?.get('file') as File
+  const organizationId = formData?.get('organizationId') as string
+
+  // Organization-specific validation
+  const organization = await getOrganizationById(organizationId)
+  if (!organization) {
+    return { success: false, message: 'Organization not found' }
+  }
+
+  // Check if user can modify organization
+  const canModify = await canModifyOrganization(user.id, organizationId)
+  if (!canModify) {
+    return { success: false, message: 'Not authorized to modify organization' }
+  }
+
+  try {
+    const result = await uploadImageForEntityService({
+      file,
+      entityType: EntityTypeConst.ORGANIZATION,
+      entityId: organizationId,
+      category: FileCategoryConst.LOGO,
+    })
+
+    // Update organization record with new logo URL
+    await updateOrganization(organizationId, { image: result.url })
+
+    return {
+      success: true,
+      message: 'Organization logo updated successfully',
+      imageUrl: result.url,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Failed to update organization logo'
+    }
+  }
+}
+```
+
+### **Temporary Upload Action**
+
+For temporary files that may be used in forms before final submission:
+
+```tsx
+export type TempUploadState = {
+  success: boolean
+  message?: string
+  tempUrl?: string
+  uploadId?: string
+}
+
+export async function uploadTempFileAction(
+  prevState?: TempUploadState,
+  formData?: FormData
+): Promise<TempUploadState> {
+  const user = await getAuthUser()
+  if (!user) return { success: false, message: 'Not authenticated' }
+
+  const file = formData?.get('file') as File
+
+  try {
+    // Upload to temporary location
+    const uploadId = generateUploadId()
+    const result = await uploadFileForEntityService({
+      file,
+      entityType: EntityTypeConst.USER,
+      entityId: user.id,
+      category: 'temp' as any,
+    })
+
+    // Store temporary reference (expires in 24 hours)
+    await storeTempUpload(uploadId, result.path, user.id)
+
+    return {
+      success: true,
+      message: 'File uploaded temporarily',
+      tempUrl: result.url,
+      uploadId,
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: 'Temporary upload failed'
+    }
+  }
+}
+```
+
+## Testing Server Actions
+
+### **Action Testing Utilities**
+
+```typescript
+// Test helper for server actions
+export async function testUploadAction(
+  action: Function,
+  file: File,
+  additionalData: Record<string, string> = {}
+) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  Object.entries(additionalData).forEach(([key, value]) => {
+    formData.append(key, value)
+  })
+
+  const result = await action(undefined, formData)
+  return result
+}
+
+// Mock file creation for testing
+export function createMockFile(
+  name: string,
+  type: string,
+  size: number
+): File {
+  const content = 'a'.repeat(size)
+  return new File([content], name, { type })
+}
+```
+
+### **Example Tests**
+
+```typescript
+import { describe, it, expect, vi } from 'vitest'
+import { uploadEntityImageAction } from './actions'
+
+describe('uploadEntityImageAction', () => {
+  it('should upload image successfully', async () => {
+    const mockFile = createMockFile('test.jpg', 'image/jpeg', 1024)
+
+    const result = await testUploadAction(
+      uploadEntityImageAction,
+      mockFile,
+      { entityId: 'test-uuid' }
+    )
+
+    expect(result.success).toBe(true)
+    expect(result.imageUrl).toBeDefined()
+  })
+
+  it('should reject non-image files', async () => {
+    const mockFile = createMockFile('test.pdf', 'application/pdf', 1024)
+
+    const result = await testUploadAction(
+      uploadEntityImageAction,
+      mockFile,
+      { entityId: 'test-uuid' }
+    )
+
+    expect(result.success).toBe(false)
+    expect(result.message).toContain('Invalid image type')
+  })
+})
+```
+
+Server Actions provide robust, secure, and validated file upload handling while maintaining clean separation of concerns in the application architecture.

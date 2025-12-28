@@ -1,0 +1,492 @@
+---
+title: Deployment
+description: Production deployment with GitHub Actions CI/CD pipeline, automated testing, and database migrations
+keywords: 'ShipSaaS, deployment, production deployment, Vercel, hosting, CI/CD, deployment guide, production setup'
+---
+
+Production deployment guide using GitHub Actions for continuous integration and automated deployment to Vercel.
+
+## Table of Contents
+
+- [Deployment Architecture](#deployment-architecture)
+- [GitHub Actions CI/CD Overview](#github-actions-cicd-overview)
+- [Build Process](#build-process)
+- [Vercel Integration](#vercel-integration)
+- [Deployment Workflow](#deployment-workflow)
+- [Emergency Procedures](#emergency-procedures)
+
+## Deployment Architecture
+
+The SaaS boilerplate uses **GitHub Actions for CI/CD** with automatic deployment to Vercel:
+
+**CI/CD Pipeline**
+- **Source Control**: GitHub repository with branch protection
+- **Continuous Integration**: GitHub Actions workflows
+- **Deployment Platform**: Vercel with auto-deployment
+- **Database**: PostgreSQL with automated migrations
+- **Quality Gates**: Lint, build, tests, and database migrations must pass
+
+**Branch Strategy**
+- **`main`** - Production branch (protected)
+- **`dev`** - Preview/staging branch
+- **Feature branches** - Development work
+
+**Key Features**
+- **Protected Main Branch** - No direct commits to production
+- **Automated Testing** - Unit tests and E2E tests in CI
+- **Database Migrations** - Automatic schema updates
+- **Build Validation** - Ensures production build works
+- **Quality Checks** - Linting and code formatting
+
+## GitHub Actions CI/CD Overview
+
+The deployment process is controlled by GitHub Actions workflows that prevent broken code from reaching production.
+
+### Production Workflow
+
+**Trigger**: Push to `main` branch
+**File**: `.github/workflows/production.yml`
+
+**Pipeline Steps:**
+1. **Environment Setup**
+   - Checkout code
+   - Setup Node.js 23 with pnpm
+   - Install dependencies with `--frozen-lockfile`
+
+2. **Code Quality**
+   - Run `pnpm lint` to check code style
+   - Must pass before build
+
+3. **Build Validation**
+   - Run `pnpm build` with production environment variables
+   - Validates the app can build successfully
+
+4. **Testing**
+   - Run `pnpm test` with all unit tests
+   - All tests must pass
+
+5. **Database Migration**
+   - Install Drizzle Kit globally
+   - Run `pnpm db:migrate` to update schema
+   - Ensures database is ready for deployment
+
+**If any step fails, deployment is blocked.**
+
+### Preview Workflow
+
+**Trigger**: Push to `dev` branch or Pull Request to `dev`
+**File**: `.github/workflows/preview.yml`
+
+**Same pipeline as production but:**
+- Uses preview environment configuration
+- Runs tests with verbose reporting
+- Deploys to preview environment
+
+## Build Process
+
+The build process is **critical** and depends on proper environment configuration.
+
+### Build Requirements
+
+**Environment Variables Required for Build:**
+```bash
+# The build REQUIRES these environment variables to succeed
+NODE_ENV=production
+DATABASE_URL="postgres://..."
+BETTER_AUTH_SECRET="your-secret"
+BETTER_AUTH_URL="https://yourdomain.com"
+NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+
+# These variables are validated at build time
+RESEND_API_KEY="re_..."
+SUPABASE_URL="https://..."
+SUPABASE_ANON_KEY="..."
+STRIPE_SECRET_KEY="sk_..."
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_..."
+```
+
+### Build Validation Process
+
+**1. Local Build Testing**
+```bash
+# Test build locally before pushing
+pnpm build
+
+# If build fails, fix issues before committing
+# Common issues: missing env vars, type errors, import problems
+```
+
+**2. Production Environment File**
+```bash
+# Create .env.production with all required variables
+cp .env.development .env.production
+# Update with production values
+```
+
+**3. Build Dependencies**
+- All environment variables must be set
+- Database connection must be valid
+- External service API keys must be valid
+- TypeScript compilation must pass
+
+### Build Troubleshooting
+
+**Common Build Failures:**
+
+**Missing Environment Variables**
+```bash
+# Error: Environment variable X is not defined
+# Solution: Add missing variables to GitHub Secrets
+```
+
+**Database Connection Issues**
+```bash
+# Error: connect ECONNREFUSED
+# Solution: Verify DATABASE_URL in GitHub Secrets
+```
+
+**API Key Validation**
+```bash
+# Error: Invalid Stripe/Resend API key
+# Solution: Check API keys are production keys, not test keys
+```
+
+### GitHub Secrets Configuration
+
+**All environment variables must be added as GitHub Secrets** for the CI/CD pipeline to work:
+
+**Required Secrets (based on workflows):**
+```bash
+# Repository Settings → Secrets and variables → Actions → New repository secret
+
+DATABASE_URL                    # Production database connection
+BETTER_AUTH_SECRET             # Authentication secret key
+RESEND_API_KEY                 # Email service API key
+SUPABASE_ANON_KEY             # Supabase anonymous key for file storage
+STRIPE_SECRET_KEY             # Stripe secret key for payments
+STRIPE_WEBHOOK_SECRET         # Stripe webhook verification
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY  # Stripe public key (client-side)
+```
+
+**Additional Configuration in Workflows:**
+- **BETTER_AUTH_URL**: Set to your production domain in workflow files
+- **NEXT_PUBLIC_APP_URL**: Your application's public URL
+- **Email settings**: EMAIL_FROM and EMAIL_TO configured in workflow
+- **File storage**: SUPABASE_URL and SUPABASE_BUCKET in workflow
+- **OAuth**: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET if needed
+
+## Vercel Integration
+
+<Callout type="info">
+  Vercel works with GitHub Actions to provide zero-downtime deployments with automatic rollbacks when CI/CD passes.
+</Callout>
+
+**Deployment Flow:**
+1. Code pushed to GitHub
+2. GitHub Actions runs (lint, build, test, migrate)
+3. If CI/CD passes, Vercel automatically deploys
+4. If CI/CD fails, deployment is blocked
+
+### Connect Repository to Vercel
+
+<Steps>
+<Step title="Import Project to Vercel">
+  1. Visit [vercel.com/dashboard](https://vercel.com/dashboard)
+  2. Click "New Project" or "Import Project"
+  3. Select "GitHub" and authorize Vercel to access your repositories
+  4. Select your SaaS boilerplate repository
+</Step>
+
+<Step title="Configure Project Settings">
+  ```
+  Framework Preset: Next.js
+  Root Directory: ./  (leave empty for root)
+  Build Command: pnpm build
+  Output Directory: .next (automatically detected)
+  Install Command: pnpm install --frozen-lockfile
+  Development Command: pnpm dev
+  Node.js Version: 23.x (match GitHub Actions)
+  Package Manager: pnpm
+  ```
+</Step>
+
+<Step title="Configure Branch Deployment">
+  **Project Settings → Git:**
+
+  - **Production Branch**: `main`
+    - Deploys to: yourproject.vercel.app
+    - Triggers: Push to main branch (after GitHub Actions pass)
+
+  - **Preview Branches**: `dev`, `feature/*`
+    - Deploys to: yourproject-git-branch-team.vercel.app
+    - Triggers: Push to non-main branches
+
+  **Important Settings:**
+  - ✅ Enable "Automatically deploy with GitHub integration"
+  - ✅ Enable "Cancel in-progress deployments"
+  - ✅ Enable "Deploy only when CI passes" (crucial setting)
+</Step>
+
+<Step title="Environment Variables">
+  Set the same variables as GitHub Secrets in Vercel Dashboard:
+
+  **Project Settings → Environment Variables**
+
+  Add all secrets from GitHub Actions and configure for Production, Preview, and Development environments.
+
+  <Callout type="warning">
+    Ensure Vercel environment variables match GitHub secrets exactly.
+  </Callout>
+</Step>
+</Steps>
+
+### Branch Protection Rules
+
+<Callout type="warning">
+  Protect the main branch to enforce CI/CD pipeline and prevent direct commits to production.
+</Callout>
+
+**Repository Settings → Branches → Add rule for `main` branch:**
+
+```
+✓ Require status checks to pass before merging
+✓ Require branches to be up to date before merging
+✓ Status checks: Production Deployment (or your workflow name)
+✓ Restrict pushes that create new commits
+```
+
+**This ensures:**
+- No direct commits to main
+- GitHub Actions must pass before merge
+- All deployments go through CI/CD pipeline
+
+## Deployment Workflow
+
+**Complete deployment process from development to production:**
+
+### 1. Development Workflow
+
+```bash
+# Create feature branch
+git checkout -b feature/new-payment-integration
+
+# Develop and test locally
+pnpm dev
+pnpm test
+pnpm build
+
+# Commit and push
+git add .
+git commit -m "Add new payment integration"
+git push origin feature/new-payment-integration
+```
+
+### 2. Preview Deployment
+
+```bash
+# Create PR to dev branch
+# GitHub Actions runs preview workflow:
+# 1. Lint code
+# 2. Build with preview config
+# 3. Run tests
+# 4. Run database migrations
+# 5. Deploy to preview environment if all pass
+
+# Merge to dev triggers preview deployment
+git checkout dev
+git merge feature/new-payment-integration
+git push origin dev
+```
+
+### 3. Production Deployment
+
+```bash
+# Create PR from dev to main
+# After review and approval:
+git checkout main
+git merge dev
+git push origin main
+
+# GitHub Actions runs production workflow:
+# 1. Lint code (blocks if fails)
+# 2. Build with production config (blocks if fails)
+# 3. Run all tests (blocks if fails)
+# 4. Run database migrations (blocks if fails)
+# 5. Vercel auto-deploys if all pass
+```
+
+## Critical Deployment Steps
+
+**Essential steps that must be completed for successful deployment:**
+
+### 1. Build Dependencies
+
+**The build MUST pass with production environment variables:**
+```bash
+# Test locally with production config
+NODE_ENV=production pnpm build
+
+# Common failures:
+# - Missing environment variables
+# - Database connection issues
+# - Invalid API keys
+# - TypeScript errors
+```
+
+### 2. Database Migrations
+
+**Automatic migration in CI/CD:**
+- GitHub Actions runs `pnpm db:migrate`
+- Uses production DATABASE_URL
+- Must complete successfully before deployment
+- Schema changes are applied automatically
+
+### 3. Quality Gates
+
+**All checks must pass:**
+- ✅ Linting (`pnpm lint`)
+- ✅ Build validation (`pnpm build`)
+- ✅ Unit tests (`pnpm test`)
+- ✅ Database migrations (`pnpm db:migrate`)
+
+**If any fail, deployment is blocked.**
+
+## Troubleshooting Deployments
+
+**Common issues and solutions:**
+
+### GitHub Actions Failures
+
+**Build Failures:**
+```bash
+# Check GitHub Actions logs
+# Common issues:
+# - Missing secrets in repository
+# - Invalid environment variable format
+# - Database connection timeout
+# - API key validation failures
+```
+
+**Test Failures:**
+```bash
+# All tests must pass in CI environment
+# Check if tests work with production config
+# Ensure test database is properly configured
+```
+
+**Migration Failures:**
+```bash
+# Database migration errors block deployment
+# Verify DATABASE_URL is correct
+# Check for schema conflicts
+# Ensure database is accessible from GitHub Actions
+```
+
+### Vercel Deployment Issues
+
+**Environment Variables:**
+```bash
+# Ensure Vercel env vars match GitHub secrets
+# Check NEXT_PUBLIC_ variables are available client-side
+# Verify API endpoints are accessible
+```
+
+**Build Timeouts:**
+```bash
+# Vercel build timeout on complex builds
+# Optimize dependencies and build process
+# Consider splitting large applications
+```
+
+## Emergency Procedures
+
+<Callout type="error">
+  If production is broken, use these emergency procedures for immediate rollback.
+</Callout>
+
+### Instant Rollbacks
+
+**Via Vercel Dashboard:**
+1. Go to Project → Deployments
+2. Find previous working deployment
+3. Click "Promote to Production"
+4. Changes take effect immediately (< 30 seconds)
+
+**Via Vercel CLI:**
+```bash
+# Install and login
+npm i -g vercel
+vercel login
+
+# List deployments and rollback
+vercel ls
+vercel promote [previous-deployment-url] --scope=team
+```
+
+### Health Check
+
+After rollback, verify everything works:
+
+```bash
+# Check application health
+curl https://yourdomain.com/api/health
+
+# Check database connectivity
+psql $DATABASE_URL -c "SELECT 1"
+```
+
+## Deployment Guides
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <a href="./deployment/github-actions" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🚀</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">GitHub Actions CI/CD</h3>
+        <span className="text-sm text-muted-foreground">
+          Complete analysis of workflows, quality gates, and deployment pipeline
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./deployment/database-migrations" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🗄️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Database Migrations</h3>
+        <span className="text-sm text-muted-foreground">
+          Drizzle ORM migration execution in CI/CD and schema management
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./deployment/database-backup" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">💾</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Database Backup & Restore</h3>
+        <span className="text-sm text-muted-foreground">
+          Point-in-time recovery using included backup and restore scripts
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./deployment/troubleshooting" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🔧</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Troubleshooting</h3>
+        <span className="text-sm text-muted-foreground">
+          Debugging deployment issues and emergency rollback procedures
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+
+<Callout type="success">
+  **Deployment ready!** The GitHub Actions CI/CD pipeline will automatically handle all future deployments when you push to the main branch.
+</Callout>

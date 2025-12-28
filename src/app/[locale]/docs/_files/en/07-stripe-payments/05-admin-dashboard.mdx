@@ -1,0 +1,432 @@
+---
+title: 'Admin Dashboard'
+description: 'Complete admin tools for plan management, subscription monitoring, and payment analytics (both systems)'
+keywords: 'ShipSaaS, admin dashboard, payment dashboard, revenue tracking, subscription analytics, payment management'
+---
+
+The boilerplate includes a comprehensive admin dashboard for managing subscription plans, monitoring customer subscriptions, and analyzing payment data.
+
+<Callout type="info">
+  **Universal Feature:** This admin dashboard works with both Better Auth and Custom Boilerplate payment systems. You can manage all subscriptions and customers from the same interface regardless of how they were created.
+</Callout>
+
+<Callout type="success">
+  **Perfect for:** Complete business management with plan configuration, customer oversight, revenue tracking, and operational analytics.
+</Callout>
+
+## Admin Dashboard Overview
+
+The admin dashboard is accessible at `/admin/` (requires ADMIN role) and includes specialized sections for payment management:
+
+<Tabs defaultValue="plans-management">
+  <Tab value="plans-management" label="📋 Plans Management">
+    **Location:** `/admin/plans/`
+
+    **Features:**
+    - Create and edit subscription plans
+    - Configure pricing and billing cycles
+    - Set feature limits and restrictions
+    - Manage plan availability
+    - Sync with Stripe products/prices
+
+    **Plan Configuration:**
+    - Monthly/yearly pricing options
+    - Feature toggles and limits
+    - User seat management
+    - Trial period settings
+
+    **Admin Plans Management Interface:**
+    <Image src="/docs/07/stripe-admin-plan.png" alt="Admin plans management interface" />
+
+    **Plan Limits Configuration:**
+    <Image src="/docs/07/stripe-admin-plan-limites.png" alt="Plan limits configuration interface" />
+  </Tab>
+
+  <Tab value="subscriptions-monitor" label="📊 Subscriptions Monitor">
+    **Location:** `/admin/subscriptions/`
+
+    **Features:**
+    - View all customer subscriptions
+    - Subscription status monitoring
+    - Payment issue resolution
+    - Customer subscription history
+    - Bulk subscription operations
+
+    **Monitoring Capabilities:**
+    - Active/canceled subscription counts
+    - Payment failure alerts
+
+    **Subscription Monitoring Interface:**
+    <Image src="/docs/07/stripe-admin-subscription-list.png" alt="Admin subscription monitoring interface"  />
+    - Churn analysis
+    - Revenue tracking
+  </Tab>
+
+  <Tab value="customer-management" label="👥 Customer Management">
+    **Customer Overview:**
+    - Customer payment history
+    - Subscription lifecycle tracking
+    - Payment method management
+    - Support ticket integration
+    - Account status management
+
+    **Customer Actions:**
+    - Manual subscription changes
+    - Refund processing
+    - Account suspension/reactivation
+    - Payment retry initiation
+
+    **User Subscription Management:**
+    <Image src="/docs/07/strip-bo-user-subscription-list.png" alt="User subscription management back-office" width={400} />
+  </Tab>
+
+  <Tab value="analytics-dashboard" label="📈 Analytics Dashboard">
+    **Revenue Analytics:**
+    - Monthly Recurring Revenue (MRR)
+    - Customer acquisition metrics
+    - Churn analysis
+    - Revenue growth tracking
+    - Plan performance insights
+
+    **Business Intelligence:**
+    - Subscription conversion funnels
+    - Payment success rates
+    - Customer lifetime value
+    - Revenue forecasting
+
+    **MRR Analytics Dashboard:**
+    <Image src="/docs/07/stripe-admin-dashboard-MRR.png" alt="Stripe MRR analytics dashboard" width={400} />
+  </Tab>
+</Tabs>
+
+## Plan Management Interface
+
+### Creating Subscription Plans
+
+**Plan Creation Process:**
+
+<Steps>
+<Step title="Basic Plan Information">
+  Configure core plan details:
+  ```typescript
+  // Plan structure (conceptual)
+  interface PlanConfiguration {
+    name: string              // "Professional Plan"
+    code: string             // "pro-monthly"
+    description: string      // Plan description
+    isActive: boolean       // Plan availability
+    isRecurring: boolean    // One-time vs recurring
+  }
+  ```
+</Step>
+
+<Step title="Pricing Configuration">
+  Set up pricing structure:
+  ```typescript
+  interface PricingConfiguration {
+    monthlyPrice: number     // Monthly subscription price
+    yearlyPrice: number      // Annual subscription price
+    currency: string         // "USD", "EUR", etc.
+    trialDays: number       // Free trial period
+    setupFee?: number       // One-time setup cost
+  }
+  ```
+</Step>
+
+<Step title="Feature Limits">
+  Define plan limitations:
+  ```typescript
+  interface PlanLimits {
+    maxUsers: number         // User seat limit
+    maxProjects: number      // Project limit
+    maxStorage: number       // Storage in GB
+    apiCalls: number        // Monthly API call limit
+    features: string[]      // Available features
+  }
+  ```
+</Step>
+
+<Step title="Stripe Integration">
+  Connect with Stripe products:
+  - Link to Stripe Product ID
+  - Associate with Price IDs (monthly/yearly)
+  - Configure billing intervals
+  - Set up metered billing (if applicable)
+</Step>
+</Steps>
+
+### Plan Management Features
+
+**Plan Operations:**
+
+<Tabs defaultValue="plan-editing">
+  <Tab value="plan-editing" label="✏️ Plan Editing">
+    **Editable Properties:**
+    - Plan name and description
+    - Feature availability toggles
+    - Usage limits and quotas
+    - Plan visibility (public/private)
+    - Marketing copy and benefits
+
+    **Change Management:**
+    - Version control for plan changes
+    - Grandfathering existing customers
+    - Migration tools for plan updates
+    - A/B testing different plan configurations
+  </Tab>
+
+  <Tab value="pricing-management" label="💰 Pricing Management">
+    **Pricing Controls:**
+    - Dynamic pricing updates
+    - Regional pricing variants
+    - Promotional pricing periods
+    - Volume discount configuration
+    - Currency-specific pricing
+
+    **Price Change Handling:**
+    - Immediate vs. renewal pricing
+    - Customer notification workflows
+    - Grandfathering options
+    - Price change approval workflows
+  </Tab>
+
+  <Tab value="feature-management" label="🎯 Feature Management">
+    **Feature Configuration:**
+    - Feature flag management
+    - Conditional feature access
+    - Usage-based feature limits
+    - Feature deprecation schedules
+    - Beta feature rollouts
+
+    **Limit Management:**
+    - Soft vs. hard limits
+    - Overage handling
+    - Grace period configuration
+    - Limit increase workflows
+  </Tab>
+</Tabs>
+
+## Subscription Analytics
+
+### Revenue Dashboard
+
+**Key Metrics:**
+- Monthly Recurring Revenue (MRR)
+- Annual Recurring Revenue (ARR)
+- Customer Lifetime Value (CLV)
+- Churn rate and retention
+- Revenue by plan type
+
+**Visual Analytics:**
+- Revenue trend charts
+- Plan popularity metrics
+- Geographic revenue distribution
+- Cohort analysis
+- Subscription growth rates
+
+### Customer Analytics
+
+**Subscription Metrics:**
+- New subscriptions per period
+- Subscription upgrades/downgrades
+- Cancellation reasons
+- Trial conversion rates
+- Payment success rates
+
+**Customer Insights:**
+- Customer acquisition cost
+- Time to first payment
+- Feature usage by plan
+- Support ticket correlation
+- User engagement scores
+
+## Payment Management Tools
+
+### Failed Payment Resolution
+
+**Payment Failure Handling:**
+
+<Steps>
+<Step title="Failure Detection">
+  Automatic identification of:
+  - Declined credit cards
+  - Insufficient funds
+  - Expired payment methods
+  - Bank authentication failures
+  - Fraud prevention blocks
+</Step>
+
+<Step title="Customer Communication">
+  Automated notification workflows:
+  - Email payment failure alerts
+  - In-app payment reminders
+  - SMS notifications (if configured)
+  - Grace period notifications
+  - Final warning messages
+</Step>
+
+<Step title="Recovery Actions">
+  Admin tools for recovery:
+  - Manual payment retry
+  - Payment method updates
+  - Subscription pause options
+  - Customer outreach tools
+  - Dunning management
+</Step>
+
+<Step title="Account Management">
+  Flexible account handling:
+  - Graceful service degradation
+  - Feature restriction scheduling
+  - Account suspension workflows
+  - Data retention policies
+  - Reactivation procedures
+</Step>
+</Steps>
+
+### Refund Processing
+
+**Refund Management:**
+- Partial and full refunds
+- Refund reason tracking
+- Automatic credit applications
+- Stripe refund integration
+- Customer refund history
+
+**Refund Workflows:**
+- Admin-initiated refunds
+- Customer self-service refunds
+- Automatic refund rules
+- Refund approval processes
+- Financial reporting integration
+
+## Customer Support Integration
+
+### Subscription Support Tools
+
+**Customer Account Access:**
+- Complete subscription history
+- Payment method information
+- Usage and billing details
+- Feature access levels
+- Support ticket correlation
+
+**Support Actions:**
+- Subscription modifications
+- Payment issue resolution
+- Plan change assistance
+- Billing inquiry handling
+- Account troubleshooting
+
+### Communication Tools
+
+**Customer Outreach:**
+- Targeted email campaigns
+- Subscription health notifications
+- Renewal reminders
+- Upgrade suggestions
+- Win-back campaigns
+
+## Operational Management
+
+### Plan Performance Monitoring
+
+**Plan Analytics:**
+- Plan conversion rates
+- Revenue per plan
+- Customer satisfaction by plan
+- Feature utilization rates
+- Support ticket volume by plan
+
+### Business Intelligence
+
+**Strategic Insights:**
+- Market segmentation analysis
+- Pricing optimization recommendations
+- Feature development priorities
+- Customer success metrics
+- Competitive positioning data
+
+## Security & Compliance
+
+### Data Protection
+
+**Security Measures:**
+- PCI DSS compliance
+- Data encryption at rest
+- Secure API communications
+- Access control and logging
+- Regular security audits
+
+### Compliance Management
+
+**Regulatory Compliance:**
+- GDPR data protection
+- SOX financial controls
+- PCI DSS requirements
+- Regional tax compliance
+- Audit trail maintenance
+
+## Admin Access Control
+
+### Role-Based Access
+
+**Admin Role Requirements:**
+```typescript
+// Admin dashboard access control
+interface AdminAccess {
+  role: 'ADMIN' | 'SUPER_ADMIN'
+  permissions: {
+    viewPlans: boolean
+    editPlans: boolean
+    viewSubscriptions: boolean
+    manageCustomers: boolean
+    processRefunds: boolean
+    viewAnalytics: boolean
+  }
+}
+```
+
+### Audit Logging
+
+**Activity Tracking:**
+- All admin actions logged
+- Plan change history
+- Customer account modifications
+- Payment processing actions
+- System configuration changes
+
+## Testing Admin Features
+
+<Steps>
+<Step title="Access Admin Dashboard">
+  1. Ensure user has ADMIN or SUPER_ADMIN role
+  2. Navigate to `/admin/`
+  3. Verify access to payment sections
+</Step>
+
+<Step title="Test Plan Management">
+  1. Create a test subscription plan
+  2. Configure pricing and features
+  3. Sync with Stripe products
+  4. Test plan visibility on frontend
+</Step>
+
+<Step title="Monitor Test Subscriptions">
+  1. Create test subscriptions
+  2. View in admin subscription monitor
+  3. Test manual subscription modifications
+  4. Verify webhook data synchronization
+</Step>
+
+<Step title="Test Analytics and Reporting">
+  1. Generate test transaction data
+  2. Verify analytics calculations
+  3. Test export and reporting features
+  4. Check data accuracy and completeness
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Complete admin dashboard ready!** You have full control over subscription plans, customer management, and payment operations with comprehensive analytics and monitoring tools.
+</Callout>

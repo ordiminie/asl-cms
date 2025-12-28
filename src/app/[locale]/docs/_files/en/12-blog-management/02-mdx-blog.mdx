@@ -1,0 +1,393 @@
+---
+title: MDX Blog
+description: Static content with React components and file-based workflow for developer-friendly blogging
+keywords: 'ShipSaaS, MDX blog, MDX content, markdown blog, file-based blog, static blog, MDX posts'
+---
+
+Create and manage static blog content using MDX files with React components.
+
+<Callout type="info">
+  **Developer-Friendly:** The MDX blog system is perfect for technical documentation, tutorials, and content that benefits from interactive React components.
+</Callout>
+
+## File Structure
+
+The MDX blog uses a simple file-based structure:
+
+```
+src/app/[locale]/(public)/blog/mdx/
+├── _files/
+│   ├── introduction-next-js.mdx
+│   ├── tailwind-css-v4.mdx
+│   ├── guide-react-19.mdc
+│   └── sample.mdx
+├── [slug]/
+│   └── page.tsx
+└── page.tsx
+```
+
+**Key Locations:**
+- **Content Files**: `_files/` directory contains all MDX content
+- **Routing**: Dynamic `[slug]` route renders individual posts
+- **Index**: `page.tsx` displays list of all MDX posts
+
+## Creating MDX Content
+
+<Steps>
+<Step title="Create MDX File">
+  Create a new `.mdx` or `.mdc` file in the `_files/` directory:
+
+  ```bash
+  # Navigate to the MDX files directory
+  cd src/app/[locale]/(public)/blog/mdx/_files/
+
+  # Create a new blog post
+  touch my-awesome-post.mdx
+  ```
+</Step>
+
+<Step title="Add Frontmatter">
+  Start your MDX file with YAML frontmatter at the top of the file.
+
+  **Frontmatter Fields:**
+  - `title` - Post title (required)
+  - `description` - Meta description for SEO
+  - `publishedAt` - Publication date
+  - `readTime` - Estimated reading time
+  - `category` - Content category
+  - `tags` - Array of tags
+  - `author` - Content author
+</Step>
+
+<Step title="Write Content">
+  Add your content using Markdown and React components. You can use:
+
+  - **Headings** with # ## ###
+  - **Callout components** for important information
+  - **Tabs and Tab components** for organized content
+  - **Code blocks** with syntax highlighting
+  - **Interactive buttons** and other React components
+  - **Lists, tables, and standard markdown**
+</Step>
+</Steps>
+
+## Available Components
+
+The MDX blog supports all documentation components:
+
+<Tabs defaultValue="callouts">
+  <Tab value="callouts" label="Callouts">
+    ```markdown
+    <Callout type="info">
+      Information callout with blue styling
+    </Callout>
+
+    <Callout type="warning">
+      Warning callout with yellow styling
+    </Callout>
+
+    <Callout type="error">
+      Error callout with red styling
+    </Callout>
+
+    <Callout type="success">
+      Success callout with green styling
+    </Callout>
+    ```
+  </Tab>
+
+  <Tab value="tabs" label="Tabs">
+    ```markdown
+    <Tabs defaultValue="option1">
+      <Tab value="option1" label="Option 1">
+        Content for the first tab
+      </Tab>
+      <Tab value="option2" label="Option 2">
+        Content for the second tab
+      </Tab>
+    </Tabs>
+    ```
+  </Tab>
+
+  <Tab value="steps" label="Steps">
+    ```markdown
+    <Steps>
+    <Step title="First Step">
+      Instructions for the first step
+    </Step>
+    <Step title="Second Step">
+      Instructions for the second step
+    </Step>
+    </Steps>
+    ```
+  </Tab>
+
+  <Tab value="code" label="Code">
+    ````mdx
+    ```typescript title="example.ts"
+    interface User {
+      id: string
+      name: string
+      email: string
+    }
+
+    const createUser = (data: User) => {
+      // Implementation here
+    }
+    ```
+    ````
+  </Tab>
+</Tabs>
+
+## Content Management
+
+### File Naming
+
+Use descriptive, URL-friendly filenames:
+
+```bash
+# Good examples
+introduction-to-react.mdx
+nextjs-performance-tips.mdx
+typescript-best-practices.mdx
+
+# Avoid
+My Post!.mdx
+post-1.mdx
+untitled.mdx
+```
+
+### Content Organization
+
+Organize content logically:
+
+<Steps>
+<Step title="Categories">
+  Use consistent categories in frontmatter:
+  - `"Development"` - Technical content
+  - `"Tutorial"` - Step-by-step guides
+  - `"News"` - Updates and announcements
+  - `"Tips"` - Quick tips and tricks
+</Step>
+
+<Step title="Tags">
+  Use specific, searchable tags like:
+  `["nextjs", "react", "typescript", "performance"]`
+</Step>
+
+<Step title="Publishing Dates">
+  Use consistent date format: `"2024-01-15"` (YYYY-MM-DD format)
+</Step>
+</Steps>
+
+## Development Workflow
+
+<Steps>
+<Step title="Create Content">
+  ```bash
+  # Create new MDX file
+  cd src/app/[locale]/(public)/blog/mdx/_files/
+  touch new-post.mdx
+
+  # Add frontmatter and content
+  # Save the file
+  ```
+</Step>
+
+<Step title="Preview Content">
+  ```bash
+  # Start development server
+  pnpm dev
+
+  # Navigate to MDX blog
+  open http://localhost:3000/blog/mdx
+
+  # Click on your new post to preview
+  ```
+</Step>
+
+<Step title="Test Components">
+  Ensure your React components work correctly:
+
+  ```mdx
+  # Test interactive components
+  <Button onClick={() => console.log('Clicked!')}>
+    Test Button
+  </Button>
+
+  # Test data display
+  <Tabs defaultValue="test">
+    <Tab value="test" label="Test">
+      This is a test tab
+    </Tab>
+  </Tabs>
+  ```
+</Step>
+
+<Step title="Commit Changes">
+  ```bash
+  # Add to git
+  git add .
+  git commit -m "Add new blog post: Getting Started with Next.js"
+  git push origin main
+
+  # Deploy automatically triggers
+  ```
+</Step>
+</Steps>
+
+## SEO Optimization
+
+MDX posts automatically generate SEO metadata:
+
+<Steps>
+<Step title="Meta Tags">
+  Generated from frontmatter:
+
+  ```typescript
+  // Automatic generation
+  <meta name="title" content="Getting Started with Next.js 15" />
+  <meta name="description" content="Complete guide to the latest Next.js features" />
+  <meta property="og:title" content="Getting Started with Next.js 15" />
+  <meta property="og:description" content="Complete guide to..." />
+  <meta name="twitter:title" content="Getting Started with Next.js 15" />
+  ```
+</Step>
+
+<Step title="Structured Data">
+  JSON-LD structured data for articles:
+
+  ```json
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Getting Started with Next.js 15",
+    "description": "Complete guide to the latest Next.js features",
+    "datePublished": "2024-01-15",
+    "author": {
+      "@type": "Person",
+      "name": "Tech Team"
+    }
+  }
+  ```
+</Step>
+</Steps>
+
+## Performance Features
+
+The MDX blog is optimized for performance:
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="space-y-2">
+    <h4 className="font-semibold">Build Time</h4>
+    <ul className="text-sm space-y-1">
+      <li>• Static generation at build time</li>
+      <li>• Automatic code splitting</li>
+      <li>• Optimized bundle sizes</li>
+      <li>• Component tree shaking</li>
+    </ul>
+  </div>
+
+  <div className="space-y-2">
+    <h4 className="font-semibold">Runtime</h4>
+    <ul className="text-sm space-y-1">
+      <li>• Fast page loads</li>
+      <li>• CDN-friendly static assets</li>
+      <li>• Minimal JavaScript</li>
+      <li>• Progressive enhancement</li>
+    </ul>
+  </div>
+</div>
+
+## Advanced Features
+
+### Custom Components
+
+Create custom components for your MDX content:
+
+<Steps>
+<Step title="Create Component">
+  ```tsx
+  // components/mdx/demo-component.tsx
+  interface DemoProps {
+    title: string
+    children: React.ReactNode
+  }
+
+  export function Demo({ title, children }: DemoProps) {
+    return (
+      <div className="p-4 border rounded-lg bg-muted">
+        <h3 className="font-semibold mb-2">{title}</h3>
+        {children}
+      </div>
+    )
+  }
+  ```
+</Step>
+
+<Step title="Import in MDX">
+  ```mdx
+  import { Demo } from '@/components/mdx/demo-component'
+
+  # My Blog Post
+
+  <Demo title="Interactive Demo">
+    This is a custom component with interactive content.
+  </Demo>
+  ```
+</Step>
+</Steps>
+
+### Code Highlighting
+
+Syntax highlighting is built-in:
+
+````mdx
+```typescript title="user-service.ts" {2,5-7}
+export interface User {
+  id: string          // highlighted line
+  name: string
+  email: string
+  createdAt: Date     // highlighted lines
+  updatedAt: Date     // highlighted lines
+  isActive: boolean   // highlighted lines
+}
+```
+````
+
+## Content Migration
+
+### Export from Database Blog
+
+Convert database posts to MDX:
+
+```typescript
+// Export database post to MDX
+export async function exportToMDX(postId: string) {
+  const post = await getPostById(postId)
+
+  const frontmatter = {
+    title: post.title,
+    description: post.description,
+    publishedAt: post.publishedAt.toISOString().split('T')[0],
+    category: post.category?.name,
+    tags: post.hashtags.map(h => h.name)
+  }
+
+  const mdxContent = `---
+${yaml.stringify(frontmatter)}---
+
+${post.content}
+`
+
+  fs.writeFileSync(`_files/${post.slug}.mdx`, mdxContent)
+}
+```
+
+### Import to Database Blog
+
+Convert MDX files to database posts (see Database Blog documentation).
+
+<Callout type="success">
+  **MDX Blog Ready!** Your static blog system is now set up. Create `.mdx` files in the `_files/` directory and they'll automatically appear on your blog at `/blog/mdx`.
+</Callout>

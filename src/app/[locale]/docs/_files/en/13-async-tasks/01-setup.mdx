@@ -1,0 +1,165 @@
+---
+title: Setup
+description: Configure Inngest for background task processing
+keywords: 'ShipSaaS, async setup, task queue setup, background job setup, worker configuration, queue system'
+---
+
+Configure Inngest in your SaaS application for reliable background task processing.
+
+## Installation
+
+Inngest is already included in the boilerplate dependencies:
+
+```json
+{
+  "dependencies": {
+    "inngest": "^3.x.x"
+  }
+}
+```
+
+## Configuration
+
+### Inngest Client
+
+The client is configured in `src/lib/inngest/inngest.ts`:
+
+```typescript
+import {Inngest} from 'inngest'
+import {APP_NAME} from '../constants'
+
+export const inngest = new Inngest({id: APP_NAME})
+```
+
+### API Route
+
+The Inngest API endpoint is set up in `src/app/api/inngest/route.ts`:
+
+```typescript
+import {serve} from 'inngest/next'
+import {helloWorld, sendWelcomeFollowUpEmail} from '@/lib/inngest/functions'
+import {inngest} from '@/lib/inngest/inngest'
+
+export const {GET, POST, PUT} = serve({
+  client: inngest,
+  functions: [
+    helloWorld,
+    sendWelcomeFollowUpEmail,
+    // Add your functions here
+  ],
+})
+```
+
+## Development Setup
+
+<Steps>
+<Step title="Start Next.js Server">
+  Start your development server:
+
+  ```bash
+  pnpm dev
+  ```
+</Step>
+
+<Step title="Start Inngest Dev Server">
+  In a separate terminal, start the Inngest development server:
+
+  ```bash
+  pnpm dlx inngest-cli@latest dev
+  ```
+
+  This starts the Inngest dashboard at `http://localhost:8288`
+</Step>
+
+<Step title="Verify Connection">
+  Check that Inngest detects your functions:
+  - Open `http://localhost:8288`
+  - Verify your functions are listed
+  - Test trigger a function manually
+
+  **Inngest Dashboard Interface:**
+  <Image src="/docs/13/inngest-function.png" alt="Inngest dashboard for function management and monitoring"  />
+</Step>
+</Steps>
+
+## Project Structure
+
+```
+src/
+├── lib/inngest/
+│   ├── inngest.ts        # Inngest client configuration
+│   ├── events.ts         # Event constants and helpers
+│   └── functions.ts      # Function definitions
+└── app/api/inngest/
+    └── route.ts          # API endpoint for Inngest
+```
+
+## Event System
+
+### Event Constants
+
+Events are centralized in `src/lib/inngest/events.ts`:
+
+```typescript
+export const INNGEST_EVENTS = {
+  USER_REGISTERED: 'user/registered',
+  TEST_HELLO_WORLD: 'test/hello.world',
+} as const
+
+export type InngestEventName =
+  (typeof INNGEST_EVENTS)[keyof typeof INNGEST_EVENTS]
+```
+
+### Event Helpers
+
+Helper functions for triggering events:
+
+```typescript
+export const triggerInngestWelcomeFollowUpEmail = async ({
+  userId,
+  userName,
+  userEmail,
+  language = 'fr',
+}: {
+  userId: string
+  userName: string
+  userEmail: string
+  language?: 'fr' | 'en' | 'es'
+}) => {
+  return await inngest.send({
+    name: INNGEST_EVENTS.USER_REGISTERED,
+    data: {
+      userId,
+      userName,
+      userEmail,
+      language,
+    },
+  })
+}
+```
+
+## Environment Variables
+
+No additional environment variables are required for local development. Inngest uses your API endpoint for communication.
+
+## Dashboard Access
+
+The Inngest development dashboard provides:
+
+- **Function Overview**: See all registered functions
+- **Execution History**: View past runs and their status
+- **Manual Testing**: Trigger functions with custom data
+- **Debug Logs**: Inspect step-by-step execution
+- **Error Details**: Analyze failed runs
+
+Access at: `http://localhost:8288`
+
+## Next Steps
+
+1. Review the [Email Workflows](./email-workflows) guide for practical examples
+2. Learn about [Payment Processing](./payment-processing) with async tasks
+3. Set up [Maintenance Jobs](./maintenance-jobs) for data cleanup
+
+<Callout type="info">
+  The development server automatically detects function changes and updates the dashboard without restart.
+</Callout>

@@ -1,0 +1,519 @@
+---
+title: 'CASL Permissions'
+description: 'Fine-grained permissions with CASL for granular access control and organization-based resource management'
+keywords: 'ShipSaaS, permissions, access control, permission system, CASL, authorization rules, resource permissions'
+---
+
+CASL (Code Access Security Layer) provides sophisticated permission management in the boilerplate, with support for both global roles and organization-specific permissions.
+
+<Callout type="success">
+  **Perfect for:** Complex permission logic, organization-based access, and resource-specific authorization.
+</Callout>
+
+## Actions and Subjects
+
+The boilerplate defines specific actions and subjects (resources) for CASL:
+
+### Available Actions
+
+```typescript
+// From src/services/authorization/casl-abilities.ts
+export type Actions = 'create' | 'read' | 'update' | 'delete' | 'manage'
+
+export const ActionsConst = {
+  CREATE: 'create' as Actions,
+  READ: 'read' as Actions,
+  UPDATE: 'update' as Actions,
+  DELETE: 'delete' as Actions,
+  MANAGE: 'manage' as Actions, // All CRUD operations
+} as const
+```
+
+### Available Subjects (Resources)
+
+```typescript
+export type Subjects =
+  | 'User'           // User management
+  | 'Subscription'   // Billing subscriptions
+  | 'Organization'   // Organizations
+  | 'Project'        // Projects
+  | 'Task'          // Tasks within projects
+  | 'File'          // File management
+  | 'Technical'     // Technical operations
+  | 'Log'           // System logs
+  | 'Notification'  // Notifications
+  | 'Post'          // Content posts
+  | 'Category'      // Content categories
+  | 'Hashtag'       // Content hashtags
+  | 'all'           // All resources
+```
+
+## Creating User Abilities
+
+The boilerplate provides a main service to create user abilities:
+
+```typescript
+// From src/services/authorization/authorization-service.ts
+import { defineAbilitiesFor, createUserAbility } from '@/services/authorization/authorization-service'
+
+// Create abilities for a user (with optional organization context)
+const ability = defineAbilitiesFor(user, orgContext)
+
+// Shortcut function
+const ability = createUserAbility(user)
+
+// Check if user can perform action
+if (ability.can('read', 'Project')) {
+  // User can read projects
+}
+```
+
+## Permission Levels by Role
+
+<Tabs defaultValue="guest">
+  <Tab value="guest" label="👻 Guest (Unauthenticated)">
+    ```typescript
+    // From buildGuestAbilities()
+    export function buildGuestAbilities(builder: AppAbilityBuilder) {
+      const { can } = builder
+
+      // Can read public content
+      can('read', 'User', { visibility: 'public' })
+      can('read', 'Post', { status: 'published' })
+      can('read', 'Category')
+      can('read', 'Hashtag')
+      can('read', 'Log', ['id', 'name']) // Limited fields
+    }
+    ```
+  </Tab>
+
+  <Tab value="user" label="👤 USER">
+    ```typescript
+    // From buildBaseUserAbilities()
+    export function buildBaseUserAbilities(builder: AppAbilityBuilder, user: User) {
+      const { can, cannot } = builder
+
+      // Own profile management
+      can('read', 'User', { id: user.id })
+      can('update', 'User', { id: user.id })
+
+      // Content permissions
+      can('create', 'Post')
+      can('manage', 'Post', { authorId: user.id })
+      can('read', 'Post', { status: 'published' })
+
+      // Own resources
+      can('manage', 'File', { userId: user.id })
+      can('read', 'Subscription', { userId: user.id })
+      can('manage', 'Notification', { userId: user.id })
+
+      // Organizations
+      can('read', 'Organization')
+      can('create', 'Organization')
+
+      // Restrictions
+      cannot('read', 'User', ['role', 'permissions', 'internalNotes'])
+      cannot('update', 'User', ['role', 'permissions', 'createdAt', 'updatedAt'])
+      cannot('delete', 'User')
+    }
+    ```
+  </Tab>
+
+  <Tab value="admin" label="🔧 ADMIN">
+    ```typescript
+    // From buildAdminAbilities()
+    export function buildAdminAbilities(builder: AppAbilityBuilder) {
+      const { can } = builder
+
+      // Full management of all resources
+      can('manage', 'User')
+      can('manage', 'Subscription')
+      can('manage', 'Organization')
+      can('manage', 'Project')
+      can('manage', 'Task')
+      can('manage', 'File')
+      can('manage', 'Technical')
+      can('manage', 'Log')
+      can('manage', 'Notification')
+      can('manage', 'Post')
+      can('manage', 'Category')
+      can('manage', 'Hashtag')
+    }
+    ```
+  </Tab>
+
+  <Tab value="super-admin" label="👑 SUPER_ADMIN">
+    ```typescript
+    // From buildSuperAdminAbilities()
+    export function buildSuperAdminAbilities(builder: AppAbilityBuilder) {
+      const { can } = builder
+
+      // Complete access to everything
+      can('manage', 'all')
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Organization-Based Permissions
+
+The boilerplate supports organization-specific roles with different permission levels:
+
+<Tabs defaultValue="owner">
+  <Tab value="owner" label="👑 Organization OWNER">
+    ```typescript
+    // From buildOrganizationalAbilities()
+    case UserOrganizationRoleConst.OWNER:
+      // Full organization management
+      can('manage', 'Organization', { id: orgContext.organizationId })
+      can('manage', 'User', { organizationId: orgContext.organizationId })
+      can('manage', 'Subscription', { organizationId: orgContext.organizationId })
+      can('manage', 'Project', { organizationId: orgContext.organizationId })
+      can('manage', 'Task', { organizationId: orgContext.organizationId })
+      can('manage', 'File', { organizationId: orgContext.organizationId })
+    ```
+  </Tab>
+
+  <Tab value="admin" label="🔧 Organization ADMIN">
+    ```typescript
+    case UserOrganizationRoleConst.ADMIN:
+      // Organization management (except deletion)
+      can('read', 'Organization', { id: orgContext.organizationId })
+      can('update', 'Organization', { id: orgContext.organizationId })
+
+      // User management (except owner)
+      can('read', 'User', { organizationId: orgContext.organizationId })
+      can('update', 'User', { organizationId: orgContext.organizationId })
+
+      // Full resource management
+      can('manage', 'Subscription', { organizationId: orgContext.organizationId })
+      can('manage', 'Project', { organizationId: orgContext.organizationId })
+      can('manage', 'Task', { organizationId: orgContext.organizationId })
+      can('manage', 'File', { organizationId: orgContext.organizationId })
+    ```
+  </Tab>
+
+  <Tab value="member" label="👤 Organization MEMBER">
+    ```typescript
+    case UserOrganizationRoleConst.MEMBER:
+      // Limited organization access
+      can('read', 'Organization', { id: orgContext.organizationId })
+      can('read', 'User', { organizationId: orgContext.organizationId })
+      can('read', 'Subscription', { organizationId: orgContext.organizationId })
+      can('read', 'Project', { organizationId: orgContext.organizationId })
+
+      // Can manage own tasks
+      can('read', 'Task', { organizationId: orgContext.organizationId })
+      can('create', 'Task', { organizationId: orgContext.organizationId })
+      can('update', 'Task', { organizationId: orgContext.organizationId })
+
+      // Can read files
+      can('read', 'File', { organizationId: orgContext.organizationId })
+    ```
+  </Tab>
+</Tabs>
+
+## Helper Functions
+
+The boilerplate provides utility functions for common permission checks:
+
+### Basic Permission Checks
+
+```typescript
+import {
+  userCan,
+  userCannot,
+  userCanOnResource,
+  isUserAdmin
+} from '@/services/authorization/authorization-service'
+
+// Check if user can perform action on subject type
+const canCreateProject = userCan(user, 'create', 'Project', orgContext)
+
+// Check if user cannot perform action
+const cannotDeleteUser = userCannot(user, 'delete', 'User')
+
+// Check admin status
+const isAdmin = isUserAdmin(user)
+```
+
+### Entity-Specific Authorization Helpers
+
+The boilerplate includes dedicated authorization services for each entity type:
+
+```
+src/services/authorization/
+├── authorization-service.ts           # Main CASL service
+├── casl-abilities.ts                 # Permission definitions
+├── admin-dashboard-authorization.ts   # Admin dashboard permissions
+├── file-authorization.ts             # File permissions
+├── notification-authorization.ts     # Notification permissions
+├── organization-authorization.ts     # Organization permissions
+├── post-authorization.ts            # Post/content permissions
+├── project-authorization.ts         # Project permissions
+├── subscription-authorization.ts    # Subscription permissions
+├── user-authorization.ts            # User management permissions
+└── __tests__/                       # Authorization tests
+    ├── build-organizational-abilities.test.ts
+    └── casl-authorization-service.test.ts
+```
+
+<Callout type="info">
+  **Entity Helpers:** Each authorization service provides specific business logic and validation rules for its respective entity, making permission checks more semantic and maintainable.
+</Callout>
+
+### Resource-Specific Permission Checks
+
+```typescript
+// Check permission on specific resource with conditions
+const canEditThisProject = userCanOnResource(
+  user,
+  'update',
+  'Project',
+  { id: projectId, organizationId: orgId },
+  orgContext
+)
+
+// Check if user owns specific resource
+const canDeleteThisPost = userCanOnResource(
+  user,
+  'delete',
+  'Post',
+  { authorId: user.id },
+  orgContext
+)
+```
+
+### Organization Permission Checks
+
+```typescript
+import {
+  getUserRoleInOrganization,
+  hasOrganizationRole,
+  isOrganizationOwner,
+  isOrganizationAdmin
+} from '@/services/authorization/authorization-service'
+
+// Get user's role in organization
+const userRole = getUserRoleInOrganization(user, organizationId)
+
+// Check specific organization role
+const isOwner = isOrganizationOwner(user, organizationId)
+const isOrgAdmin = isOrganizationAdmin(user, organizationId)
+const isMember = hasOrganizationRole(user, organizationId, 'MEMBER')
+```
+
+## Using CASL in React Server Components
+
+The boilerplate follows a DAL (Data Access Layer) pattern where permissions are fetched server-side and passed to components.
+
+### Step 1: DAL Permission Functions
+
+```typescript
+// From src/app/dal/project-dal.ts
+import {
+  canCreateProject,
+  canReadProject,
+  canUpdateProject,
+  canDeleteProject,
+} from '@/services/authorization/project-authorization'
+
+/**
+ * Get permissions for a specific project
+ */
+export async function getProjectPermissions(projectId?: string) {
+  if (!projectId) {
+    return {
+      canCreate: false,
+      canRead: false,
+      canUpdate: false,
+      canDelete: false,
+    }
+  }
+
+  // Use entity-specific authorization functions in parallel
+  const [canCreate, canRead, canUpdate, canDelete] = await Promise.all([
+    canCreateProject(projectId),
+    canReadProject(projectId),
+    canUpdateProject(projectId),
+    canDeleteProject(projectId),
+  ])
+
+  return {
+    canCreate,
+    canRead,
+    canUpdate,
+    canDelete,
+  }
+}
+```
+
+### Step 2: Using Permissions in RSC Pages
+
+```typescript
+// From src/app/[locale]/(app)/team/[slug]/projects/[id]/edit/page.tsx
+import { notFound } from 'next/navigation'
+import { getProjectPermissions } from '@/app/dal/project-dal'
+import { ProjectActions } from '@/components/features/projects/project-actions'
+import { getProjectByIdService } from '@/services/facades/project-service-facade'
+
+export default async function ProjectPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+
+  // Fetch data and permissions in parallel
+  const [project, permissions] = await Promise.all([
+    getProjectByIdService(id),
+    getProjectPermissions(id)
+  ])
+
+  if (!project) {
+    notFound()
+  }
+
+  // Extract all permission flags
+  const { canCreate, canRead, canUpdate, canDelete } = permissions
+
+  // Check read permission first
+  if (!canRead) {
+    return (
+      <div className="text-center py-8">
+        <p>You don't have permission to view this project.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto space-y-8 py-8">
+      <div>
+        <h1 className="mb-8 text-2xl font-bold">{project.name}</h1>
+        {/* Pass all permissions to component */}
+        <ProjectActions
+          project={project}
+          canCreate={canCreate}
+          canUpdate={canUpdate}
+          canDelete={canDelete}
+        />
+      </div>
+    </div>
+  )
+}
+```
+
+### Step 3: Permission-Based UI in Components
+
+```typescript
+// In ProjectActions component
+interface ProjectActionsProps {
+  project: Project
+  canCreate: boolean
+  canUpdate: boolean
+  canDelete: boolean
+}
+
+export function ProjectActions({
+  project,
+  canCreate,
+  canUpdate,
+  canDelete
+}: ProjectActionsProps) {
+  return (
+    <div className="flex gap-2">
+      {/* Create new project button */}
+      {canCreate && (
+        <Button onClick={() => createNewProject()}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Project
+        </Button>
+      )}
+
+      {/* Edit project button */}
+      {canUpdate && (
+        <Button variant="outline" onClick={() => editProject(project.id)}>
+          <Edit className="h-4 w-4 mr-2" />
+          Edit
+        </Button>
+      )}
+
+      {/* Delete project button */}
+      {canDelete && (
+        <Button
+          variant="destructive"
+          onClick={() => deleteProject(project.id)}
+        >
+          <Trash className="h-4 w-4 mr-2" />
+          Delete
+        </Button>
+      )}
+    </div>
+  )
+}
+```
+
+## Field-Level Filtering
+
+The boilerplate includes field-level permission filtering:
+
+```typescript
+import { filterFields } from '@/services/authorization/authorization-service'
+
+// Filter sensitive fields based on user permissions
+const filteredUserData = filterFields(
+  user,
+  'read',
+  'User',
+  userData,
+  orgContext
+)
+
+// This respects the `cannot` rules defined in abilities
+// For example, regular users cannot see 'role', 'permissions', 'internalNotes'
+```
+
+## Organization Context
+
+Many permission checks require organization context:
+
+```typescript
+// Create organization context
+const orgContext: OrganizationContext = {
+  organizationId: 'org-123'
+}
+
+// Use context in permission checks
+const ability = defineAbilitiesFor(user, orgContext)
+const canManageProjects = ability.can('manage', 'Project')
+
+// Or use utility functions
+const canCreateProject = userCan(user, 'create', 'Project', orgContext)
+```
+
+## Key Features
+
+<Callout type="info">
+  **Real CASL Implementation:** The boilerplate provides a complete, production-ready CASL system with both global roles and organization-specific permissions.
+</Callout>
+
+### What Makes This System Powerful
+
+- **Hierarchical Roles** - Global roles (GUEST → USER → ADMIN → SUPER_ADMIN) with inheritance
+- **Organization Roles** - Separate role system within organizations (MEMBER → ADMIN → OWNER)
+- **Resource Conditions** - Permissions tied to specific resource properties (`{ userId: user.id }`)
+- **Field-Level Security** - Control which fields users can read/write
+- **Context Awareness** - Organization context affects permissions dynamically
+
+### Practical Usage
+
+The system is designed to handle complex real-world scenarios:
+
+- **Multi-tenant SaaS** - Users can have different roles in different organizations
+- **Resource Ownership** - Users can only modify their own content
+- **Progressive Access** - Higher roles inherit lower role permissions
+- **Field Protection** - Sensitive fields are hidden from unauthorized users
+
+<Callout type="success">
+  **Enterprise-Ready!** Your application now has a sophisticated, flexible permission system that scales with complex business requirements and multi-tenant architecture.
+</Callout>

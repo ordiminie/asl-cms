@@ -1,0 +1,742 @@
+---
+title: 'Webhook Events'
+description: 'Automatic webhook processing for both payment systems with custom event handling for advanced features'
+keywords: 'ShipSaaS, webhooks, Stripe webhooks, webhook handling, payment events, webhook verification, event processing'
+---
+
+The boilerplate provides comprehensive webhook event processing that works with both payment systems: Better Auth handles standard events automatically, while custom processing handles advanced features like guest checkout.
+
+<Callout type="info">
+  **Hybrid System:** Better Auth processes standard subscription events automatically, while custom event handlers manage advanced features like guest checkout and installments from the Custom Boilerplate System.
+</Callout>
+
+<Callout type="success">
+  **Perfect for:** Real-time payment processing, automatic subscription updates, and reliable event-driven business logic with robust error handling.
+</Callout>
+
+## Webhook Architecture
+
+The webhook system uses a unified approach that serves both payment systems:
+
+<Callout type="warning">
+  **Important:** Both Better Auth and Custom Boilerplate systems use the same webhook endpoint (`/api/auth/stripe/webhook`) but events are processed differently based on their source and metadata.
+</Callout>
+
+<Tabs defaultValue="better-auth-webhooks">
+  <Tab value="better-auth-webhooks" label="🔌 Better Auth Processing">
+    **Automatic Handling:**
+    - Customer creation and updates
+    - Subscription lifecycle events
+    - Payment confirmations
+    - Database synchronization
+    - User notification triggers
+
+    **Endpoint:** `/api/auth/stripe/webhook`
+  </Tab>
+
+  <Tab value="custom-processing" label="⚙️ Custom Processing">
+    **Custom Event Handler:**
+    - Additional business logic
+    - Third-party integrations
+    - Custom notification workflows
+    - Analytics event tracking
+    - Compliance logging
+
+    **Handler:** `src/lib/stripe/stripe-events.ts`
+  </Tab>
+
+  <Tab value="security" label="🔒 Security">
+    **Webhook Security:**
+    - Signature verification
+    - Timestamp validation
+    - Duplicate prevention
+    - Rate limiting protection
+    - Error logging and monitoring
+  </Tab>
+</Tabs>
+
+## Webhook Configuration
+
+### Better Auth Plugin Setup
+
+The webhook endpoint is automatically configured through the Better Auth Stripe plugin:
+
+```typescript
+// From src/lib/better-auth/auth.ts
+stripe({
+  stripeClient,
+  stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+  createCustomerOnSignUp: true,
+  subscription: {
+    enabled: true,
+    // Automatic event handlers...
+    onSubscriptionComplete: async ({ subscription }) => { /* ... */ },
+    onSubscriptionUpdate: async ({ subscription }) => { /* ... */ },
+    onSubscriptionCancel: async ({ subscription }) => { /* ... */ },
+    onSubscriptionDeleted: async ({ subscription }) => { /* ... */ },
+  },
+  onEvent: onStripeEvent, // Custom event handler
+})
+```
+
+### Custom Event Handler
+
+Additional business logic is processed in the custom event handler:
+
+```typescript
+// From src/lib/stripe/stripe-events.ts
+export const onStripeEvent = async (event: Stripe.Event) => {
+  console.log(`Processing Stripe event: ${event.type}`)
+
+  // Custom business logic for events not handled by Better Auth
+  switch (event.type) {
+    case 'invoice.payment_failed':
+      // Handle failed payments
+      break
+    case 'customer.subscription.trial_will_end':
+      // Send trial ending notifications
+      break
+    default:
+      // Log unhandled events
+      console.log(`Unhandled event type: ${event.type}`)
+  }
+}
+```
+
+## Processed Events
+
+### Automatically Handled by Better Auth
+
+<Tabs defaultValue="subscription-events">
+  <Tab value="subscription-events" label="📋 Subscription Events">
+    **Events Processed:**
+    - `customer.subscription.created`
+    - `customer.subscription.updated`
+    - `customer.subscription.deleted`
+    - `customer.subscription.paused`
+    - `customer.subscription.resumed`
+
+    **Automatic Actions:**
+    - Database subscription updates
+    - User access level changes
+    - Email notifications sent
+    - Usage limits updated
+    - Billing status synchronized
+  </Tab>
+
+  <Tab value="payment-events" label="💳 Payment Events">
+    **Events Processed:**
+    - `invoice.payment_succeeded`
+    - `invoice.payment_failed`
+    - `invoice.created`
+    - `invoice.finalized`
+    - `payment_method.attached`
+
+    **Automatic Actions:**
+    - Payment status updates
+    - Invoice record creation
+    - Payment failure notifications
+    - Retry logic initiation
+    - Account status updates
+  </Tab>
+
+  <Tab value="customer-events" label="👤 Customer Events">
+    **Events Processed:**
+    - `customer.created`
+    - `customer.updated`
+    - `customer.deleted`
+    - `customer.source.created`
+    - `customer.source.updated`
+
+    **Automatic Actions:**
+    - Customer profile synchronization
+    - Payment method updates
+    - Account information sync
+    - Customer notifications
+    - CRM integration updates
+  </Tab>
+</Tabs>
+
+### Custom Event Processing (Custom System Features)
+
+<Callout type="info">
+  **Custom Boilerplate System Only:** The following advanced event processing is specific to the Custom Boilerplate System's features like guest checkout and installments. Better Auth handles its events automatically.
+</Callout>
+
+The boilerplate includes sophisticated custom event processing for advanced checkout scenarios that Better Auth doesn't handle automatically.
+
+#### Guest Checkout Processing (Custom System)
+
+**Advanced Guest Checkout with Account Creation:**
+```typescript
+// From src/lib/stripe/stripe-events.ts
+case 'checkout.session.completed': {
+  const session = event.data.object as Stripe.Checkout.Session
+  const isCustomCheckout = session.metadata?.source === 'custom_checkout'
+
+  // Handle guest checkout with automatic user creation
+  if (isCustomCheckout) {
+    await handleGuestCheckoutSessionCompleted(session)
+  }
+
+  // Handle installment checkout
+  const isInstallmentCheckout = session.metadata?.source === 'installment_checkout'
+  if (isInstallmentCheckout) {
+    await handleInstallmentCheckoutSessionCompleted(session)
+  }
+  break
+}
+```
+
+**Guest Checkout Workflow:**
+1. **Detection:** Identifies guest checkout by metadata (`referenceId: 'guest'` or `guest_checkout: 'true'`)
+2. **Validation:** Extracts customer data from Stripe session
+3. **User Creation:** Creates user account automatically from checkout data
+4. **Subscription Linking:** Links new user to their paid subscription
+
+#### Installment Checkout Processing (Custom System)
+
+**Payment Installments Support:**
+```typescript
+// From src/lib/stripe/stripe-events.ts
+async function handleInstallmentCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  // 1. Validate installment data (schedule_id, number_of_payments)
+  const installmentData = validateInstallmentCheckoutData(session, metadata)
+
+  // 2. Handle user creation (guest or authenticated)
+  const finalUser = isGuestCheckout
+    ? await createGuestUser(customerData)
+    : await getAuthenticatedUser(customerEmail)
+
+  // 3. Create subscription with installment periods
+  await createInstallmentSubscription(installmentData, finalUser)
+}
+```
+
+Additional events can also be handled in your custom event handler:
+
+### Payment Failure Handling
+
+```typescript
+// Custom handling for payment failures
+case 'invoice.payment_failed':
+  const invoice = event.data.object as Stripe.Invoice
+
+  // Custom business logic
+  await handlePaymentFailure({
+    customerId: invoice.customer as string,
+    invoiceId: invoice.id,
+    amountDue: invoice.amount_due,
+    attemptCount: invoice.attempt_count,
+  })
+  break
+```
+
+### Trial Expiration Notifications
+
+```typescript
+// Custom trial ending notifications
+case 'customer.subscription.trial_will_end':
+  const subscription = event.data.object as Stripe.Subscription
+
+  await sendTrialExpirationNotification({
+    customerId: subscription.customer as string,
+    subscriptionId: subscription.id,
+    trialEnd: new Date(subscription.trial_end! * 1000),
+  })
+  break
+```
+
+### Usage-Based Billing Events
+
+```typescript
+// Handle metered billing events
+case 'invoice.upcoming':
+  const upcomingInvoice = event.data.object as Stripe.Invoice
+
+  // Calculate usage charges before invoice finalization
+  await calculateUsageCharges({
+    customerId: upcomingInvoice.customer as string,
+    periodStart: new Date(upcomingInvoice.period_start * 1000),
+    periodEnd: new Date(upcomingInvoice.period_end * 1000),
+  })
+  break
+```
+
+## Event-Driven Business Logic
+
+### Subscription Lifecycle Management
+
+**Subscription Created:**
+```typescript
+onSubscriptionComplete: async ({ subscription }) => {
+  // Automatic Better Auth processing:
+  // 1. Update user's subscription status in database
+  // 2. Send welcome email notification
+  // 3. Grant access to premium features
+  // 4. Update usage limits
+  // 5. Log subscription event for analytics
+}
+```
+
+**Subscription Updated:**
+```typescript
+onSubscriptionUpdate: async ({ subscription }) => {
+  // Automatic Better Auth processing:
+  // 1. Update subscription details in database
+  // 2. Adjust user access levels
+  // 3. Send plan change confirmation email
+  // 4. Update feature limitations
+  // 5. Prorate billing if necessary
+}
+```
+
+**Subscription Canceled:**
+```typescript
+onSubscriptionCancel: async ({ subscription }) => {
+  // Automatic Better Auth processing:
+  // 1. Mark subscription as canceled
+  // 2. Send cancellation confirmation
+  // 3. Schedule access removal (if immediate)
+  // 4. Trigger win-back campaign
+  // 5. Update customer success metrics
+}
+```
+
+### Payment Processing Workflows
+
+**Successful Payments:**
+- Update payment status
+- Send receipt email
+- Renew service access
+- Update billing history
+- Trigger analytics events
+
+**Failed Payments:**
+- Initiate retry logic
+- Send payment failure notifications
+- Apply grace period policies
+- Schedule account restrictions
+- Log failure reasons for analysis
+
+## Webhook Security
+
+### Signature Verification
+
+The Better Auth plugin automatically verifies webhook signatures:
+
+```typescript
+// Automatic signature verification by Better Auth
+stripe({
+  stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET, // Used for verification
+})
+```
+
+**Security Features:**
+- HMAC-SHA256 signature validation
+- Timestamp tolerance checking
+- Replay attack prevention
+- Invalid signature rejection
+- Secure secret management
+
+### Error Handling
+
+**Webhook Reliability:**
+- Automatic retry logic for failed webhooks
+- Error logging and monitoring
+- Dead letter queue for persistent failures
+- Alert system for webhook issues
+- Performance monitoring and optimization
+
+## Event Monitoring & Logging
+
+### Event Processing Logs
+
+**Log Information:**
+- Event type and ID
+- Processing timestamp
+- Success/failure status
+- Processing duration
+- Error details (if any)
+
+**Log Example:**
+```typescript
+export const onStripeEvent = async (event: Stripe.Event) => {
+  console.log(`Processing Stripe event: ${event.type}`)
+  console.log(`Event ID: ${event.id}`)
+  console.log(`Created: ${new Date(event.created * 1000).toISOString()}`)
+
+  try {
+    // Process event
+    await processCustomEvent(event)
+    console.log(`✅ Successfully processed ${event.type}`)
+  } catch (error) {
+    console.error(`❌ Error processing ${event.type}:`, error)
+    throw error // Let Better Auth handle retry logic
+  }
+}
+```
+
+### Performance Monitoring
+
+**Metrics Tracking:**
+- Webhook processing times
+- Success/failure rates
+- Event volume trends
+- Error frequency analysis
+- Performance bottlenecks
+
+## Testing Webhooks
+
+### Local Development Testing
+
+<Steps>
+<Step title="Set Up Stripe CLI">
+  Install and configure Stripe CLI for local webhook forwarding:
+  ```bash
+  # Install Stripe CLI
+  # Forward webhooks to local development server
+  stripe listen --forward-to localhost:3000/api/auth/stripe/webhook
+  ```
+</Step>
+
+<Step title="Trigger Test Events">
+  Use Stripe CLI to trigger test events:
+  ```bash
+  # Test subscription creation
+  stripe trigger customer.subscription.created
+
+  # Test payment success
+  stripe trigger invoice.payment_succeeded
+
+  # Test payment failure
+  stripe trigger invoice.payment_failed
+  ```
+</Step>
+
+<Step title="Verify Event Processing">
+  1. Check application logs for event processing
+  2. Verify database updates occurred
+  3. Confirm email notifications sent
+  4. Test custom business logic execution
+</Step>
+</Steps>
+
+### Production Webhook Testing
+
+<Steps>
+<Step title="Webhook Endpoint Verification">
+  1. Verify webhook endpoint is accessible
+  2. Test signature verification works
+  3. Confirm SSL certificate validity
+  4. Check response times and reliability
+</Step>
+
+<Step title="Event Processing Validation">
+  1. Process real Stripe events
+  2. Monitor webhook delivery success rates
+  3. Verify all events are being handled
+  4. Test error handling and recovery
+</Step>
+
+<Step title="Business Logic Verification">
+  1. Create test subscriptions and payments
+  2. Verify all business workflows execute correctly
+  3. Test edge cases and error scenarios
+  4. Validate notification delivery
+</Step>
+</Steps>
+
+## Webhook Best Practices
+
+### Reliability
+
+**Ensure webhook reliability:**
+- Implement idempotency for event processing
+- Handle duplicate events gracefully
+- Use database transactions for consistency
+- Implement proper error handling and logging
+- Monitor webhook performance and success rates
+
+### Security
+
+**Maintain webhook security:**
+- Always verify webhook signatures
+- Use HTTPS endpoints only
+- Implement proper authentication
+- Log security events and anomalies
+- Regularly rotate webhook secrets
+
+### Performance
+
+**Optimize webhook performance:**
+- Process events asynchronously when possible
+- Implement proper timeout handling
+- Use connection pooling for database operations
+- Monitor and optimize processing times
+- Scale webhook processing as needed
+
+## Webhook Testing & Development
+
+<Callout type="info">
+  **Local Development:** The boilerplate includes comprehensive webhook testing tools for local development, allowing you to test subscription flows without real payments.
+</Callout>
+
+### Stripe CLI Setup
+
+The boilerplate uses **Stripe CLI** for local webhook development:
+
+<Steps>
+<Step title="Install Stripe CLI">
+  Install the Stripe CLI for your platform:
+
+  ```bash
+  # macOS
+  brew install stripe/stripe-cli/stripe
+
+  # Windows
+  scoop install stripe
+
+  # Linux - download from GitHub releases
+  # https://github.com/stripe/stripe-cli/releases
+  ```
+
+  Login to your Stripe account:
+  ```bash
+  stripe login
+  ```
+</Step>
+
+<Step title="Start Webhook Listener">
+  The boilerplate includes a pre-configured command to forward webhooks to your local development server:
+
+  ```bash
+  pnpm stripe:listen
+  ```
+
+  This runs: `stripe listen --forward-to localhost:3000/api/auth/stripe/webhook`
+
+  **What it does:**
+  - Listens for events in your Stripe account
+  - Forwards them to your local webhook endpoint
+  - Provides webhook signing secrets for testing
+  - Shows real-time event logs in your terminal
+</Step>
+
+<Step title="Update Environment Variables">
+  When you start the listener, Stripe CLI provides a webhook signing secret:
+
+  ```bash
+  # Output example:
+  > Ready! Your webhook signing secret is whsec_1a2b3c...
+  ```
+
+  Add this to your `.env.local`:
+  ```bash
+  STRIPE_WEBHOOK_SECRET=whsec_1a2b3c...
+  ```
+</Step>
+</Steps>
+
+### Testing Script
+
+The boilerplate includes a comprehensive webhook testing script at `/test-stripe-webhooks.sh`:
+
+<Callout type="warning">
+  **Important:** Start the webhook listener (`pnpm stripe:listen`) before running tests to receive the events.
+</Callout>
+
+**Script Features:**
+- Tests 3 essential subscription workflows
+- Uses your actual Stripe Price IDs
+- Provides interactive menu for selective testing
+- Includes debug options for troubleshooting
+
+<Tabs defaultValue="usage">
+  <Tab value="usage" label="Basic Usage">
+    ```bash
+    # Make the script executable
+    chmod +x test-stripe-webhooks.sh
+
+    # Run the interactive testing script
+    ./test-stripe-webhooks.sh
+    ```
+
+    **Menu Options:**
+    1. **Subscription Created** - `checkout.session.completed`
+    2. **Subscription Renewed** - `customer.subscription.updated`
+    3. **Subscription Canceled** - `customer.subscription.deleted`
+    4. **Run All Tests** - Execute all tests in sequence
+    5. **Debug** - Check existing subscriptions
+  </Tab>
+
+  <Tab value="configuration" label="Configuration">
+    **Edit the script variables:**
+
+    ```bash
+    # Your actual Stripe Price IDs
+    PRICE_ID_PRO_MONTHLY="price_1QoOy0CkPpvUnhXxNTbD2tMZ"
+    PRICE_ID_PRO_YEARLY="price_1QoOyhCkPpvUnhXxalJdCi9G"
+    PRICE_ID_LIFETIME="price_1QoOzLCkPpvUnhXxTNRAOlEe"
+
+    # Test Customer ID (optional)
+    CUSTOMER_ID="cus_SZP5LdW7k5DYUo"
+
+    # Subscription UUID from your database
+    SUBSCRIPTION_UUID="9b7bec41-f597-4814-a03a-20638cbbb686"
+    ```
+
+    **Update with your values:**
+    1. Get Price IDs from your Stripe Dashboard
+    2. Use existing customer ID or leave empty for auto-generation
+    3. Create a test subscription to get a valid UUID
+  </Tab>
+
+  <Tab value="troubleshooting" label="Troubleshooting">
+    **Common Issues:**
+
+    **"Subscription not found" Error:**
+    ```bash
+    # Problem: Stripe CLI generates random subscription IDs
+    # Solution: Update your database with the Stripe-generated ID
+
+    # 1. Run the test and note the subscription ID in logs
+    # 2. Update your database:
+    UPDATE subscription
+    SET stripe_subscription_id = 'sub_1ReFZZCkPpvUnhXx...'
+    WHERE id = 'your-subscription-uuid';
+    ```
+
+    **Webhook Not Receiving Events:**
+    ```bash
+    # Ensure webhook listener is running
+    pnpm stripe:listen
+
+    # Check the forwarding URL is correct
+    # Should be: localhost:3000/api/auth/stripe/webhook
+    ```
+
+    **Better Auth Webhook Errors:**
+    ```bash
+    # Check your webhook endpoint logs
+    # Verify STRIPE_WEBHOOK_SECRET is correctly set
+    # Ensure database connection is working
+    ```
+  </Tab>
+</Tabs>
+
+### Development Workflow
+
+**Efficient webhook testing workflow:**
+
+<Steps>
+<Step title="Setup Development Environment">
+  1. Start your Next.js development server: `pnpm dev`
+  2. Start the Stripe webhook listener: `pnpm stripe:listen`
+  3. Update your webhook secret in `.env.local`
+</Step>
+
+<Step title="Create Test Data">
+  1. Complete a checkout flow in your application
+  2. Note the subscription UUID created in your database
+  3. Update the testing script with this UUID
+</Step>
+
+<Step title="Test Webhook Events">
+  ```bash
+  # Run the interactive testing script
+  ./test-stripe-webhooks.sh
+
+  # Or trigger individual events:
+  stripe trigger checkout.session.completed
+  stripe trigger customer.subscription.updated
+  stripe trigger customer.subscription.deleted
+  ```
+
+  **Monitor the results:**
+  - Check your application logs
+  - Verify database changes
+  - Test user notifications
+  - Confirm UI updates
+</Step>
+
+<Step title="Debug Issues">
+  **Use the script's debug features:**
+  - Option 5: Check existing subscriptions
+  - Monitor webhook endpoint logs
+  - Verify event processing in Better Auth
+  - Check database updates after each event
+</Step>
+</Steps>
+
+### Manual Testing Commands
+
+For quick manual testing without the script:
+
+<Tabs defaultValue="basic-events">
+  <Tab value="basic-events" label="Basic Events">
+    ```bash
+    # Test subscription creation
+    stripe trigger checkout.session.completed
+
+    # Test subscription update (renewal)
+    stripe trigger customer.subscription.updated
+
+    # Test subscription cancellation
+    stripe trigger customer.subscription.deleted
+    ```
+  </Tab>
+
+  <Tab value="custom-events" label="Custom Events">
+    ```bash
+    # Test with specific price ID
+    stripe trigger checkout.session.completed \
+      --override "session:items[0][price]=price_1QoOy0CkPpvUnhXxNTbD2tMZ"
+
+    # Test with custom metadata
+    stripe trigger customer.subscription.updated \
+      --override "subscription:metadata[subscriptionId]=your-uuid"
+
+    # Test payment failure
+    stripe trigger invoice.payment_failed
+    ```
+  </Tab>
+
+  <Tab value="event-monitoring" label="Event Monitoring">
+    ```bash
+    # Listen with verbose logging
+    stripe listen --forward-to localhost:3000/api/auth/stripe/webhook --verbose
+
+    # Filter specific events only
+    stripe listen \
+      --forward-to localhost:3000/api/auth/stripe/webhook \
+      --events checkout.session.completed,customer.subscription.updated
+
+    # Forward to different port
+    stripe listen --forward-to localhost:3001/api/webhooks/stripe
+    ```
+  </Tab>
+</Tabs>
+
+### Testing Checklist
+
+**Verify webhook functionality:**
+
+- [ ] Webhook listener is running (`pnpm stripe:listen`)
+- [ ] Webhook secret is correctly configured
+- [ ] Test subscription creation updates database
+- [ ] Test subscription renewal extends period
+- [ ] Test subscription cancellation updates status
+- [ ] User notifications are sent correctly
+- [ ] UI reflects subscription status changes
+- [ ] Error handling works for invalid events
+- [ ] Webhook signature verification is working
+- [ ] Database transactions are atomic
+
+<Callout type="success">
+  **Local Testing Ready!** You can now test complete subscription workflows locally without processing real payments, ensuring your webhook handling works perfectly before going live.
+</Callout>
+
+<Callout type="success">
+  **Webhook system ready!** Your application now processes Stripe events in real-time with reliable business logic execution and comprehensive error handling.
+</Callout>

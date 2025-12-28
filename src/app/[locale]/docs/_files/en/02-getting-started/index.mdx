@@ -1,0 +1,167 @@
+---
+title: 'Getting Started'
+description: 'Complete guide to set up your development environment and get your SaaS application running in minutes'
+keywords: "ShipSaaS, getting started, setup guide, installation, development environment, Next.js setup, PostgreSQL setup, Stripe setup"
+order: 2
+---
+
+Get your SaaS application up and running in minutes with this comprehensive setup guide. We'll walk you through everything from installation to your first user signup.
+
+## Prerequisites
+
+Before you begin, make sure you have the following installed on your system:
+
+<Steps>
+<Step title="Node.js 18+ and pnpm">
+  This project uses **pnpm** as the package manager and requires **Node.js 18 or higher**.
+
+  ```bash
+  # Check your Node.js version
+  node --version
+
+  # Install pnpm if you don't have it
+  npm install -g pnpm
+  ```
+</Step>
+
+<Step title="PostgreSQL Database">
+  You'll need a PostgreSQL database. We recommend using **Neon DB** for its simplicity and performance.
+
+  - Create a free account at [neon.tech](https://neon.tech)
+  - Create a new project
+  - Copy your database URL from the connection details
+  - Alternative: Supabase, Railway, or other PostgreSQL providers
+</Step>
+
+<Step title="Stripe Account">
+  For payment processing, you'll need a **Stripe** account:
+
+  - Create an account at [stripe.com](https://stripe.com)
+  - Get your test API keys from the dashboard
+  - Install Stripe CLI for webhook testing (optional but recommended)
+</Step>
+</Steps>
+
+## Quick Start (5 minutes)
+
+<Callout type="info">
+  💡 **First time?** Follow the detailed guides below for step-by-step
+  instructions. This quick start assumes you have all prerequisites ready.
+</Callout>
+
+<Steps>
+<Step title="Clone and Install">
+  ```bash
+  git clone <your-repository-url>
+  cd next-saas-boilerplate
+  pnpm install
+  ```
+</Step>
+
+<Step title="Environment Setup">
+  ```bash
+  # Option 1: Use the interactive CLI tool (recommended)
+  pnpm init:env
+
+  # Option 2: Manual configuration
+  cp .env.example .env.local
+
+  # Edit .env.local with your actual values
+  ```
+</Step>
+
+<Step title="Database Setup">
+  ```bash
+  pnpm db:push
+  pnpm db:seed
+  ```
+
+  <Callout type="warning">
+    ⚠️ **Database must be properly configured first!** If you encounter UUID errors, see [Database Setup Guide](/docs/getting-started/database-setup) for required PostgreSQL extensions.
+  </Callout>
+</Step>
+
+<Step title="Start Development">
+  ```bash
+  pnpm dev
+  ```
+
+  Your app will be available at `http://localhost:3000`
+</Step>
+</Steps>
+
+## What You'll Have After Setup
+
+Once setup is complete, your application will include:
+
+### **Ready-to-Use Features**
+
+- **User registration and login** with email verification
+- **Multiple authentication providers** (Google, GitHub, etc.)
+- **Subscription plans** with Stripe checkout
+- **Organization creation** and team management
+- **Admin panel** for managing users and content
+- **Email notifications** working out of the box
+
+### **Demo Users & Data**
+
+The seed script creates demo data you can use immediately:
+
+<Tabs defaultValue="users">
+  <Tab value="users" label="Demo Users">
+    ```
+    Super Admin: admin@example.com / password123
+    Regular User: user@example.com / password123
+    Demo Organization: "Acme Corp" with sample projects
+    ```
+  </Tab>
+  <Tab value="plans" label="Subscription Plans">
+    ```
+    Free Plan: $0/month - Basic features
+    Pro Plan: $29/month - Advanced features
+    Enterprise: $99/month - All features
+    ```
+  </Tab>
+  <Tab value="features" label="Available Features">
+    ```
+    - Project creation (5 for Free, unlimited for Pro+)
+    - Task management with drag-and-drop
+    - Team invitations and roles
+    - File uploads and storage
+    - Email notifications
+    ```
+  </Tab>
+</Tabs>
+
+## Essential Commands
+
+```bash
+pnpm dev           # Start development server
+pnpm db:studio     # Open database GUI
+pnpm db:reset-seed # Reset demo data
+```
+
+## Next Steps
+
+<Callout type="success">
+  🎉 **Congratulations!** Your SaaS application is now running. Here's what to
+  explore next:
+</Callout>
+
+### **Detailed Guides**
+
+- **[Installation Guide](/docs/getting-started/installation)** - Detailed setup with troubleshooting
+- **[Environment Setup](/docs/getting-started/environment-setup)** - CLI tool and manual configuration
+- **[Database Setup](/docs/getting-started/database-setup)** - PostgreSQL and Neon DB setup
+
+### **Try the App**
+
+1. **Register** a new user account
+2. **Create** an organization
+3. **Test** subscription plans
+4. **Access** admin panel (`admin@example.com`)
+5. **Explore** features and functionality
+
+<Callout type="info">
+  🚀 **Problems?** Check logs in terminal or review the detailed installation guide for troubleshooting.
+</Callout>

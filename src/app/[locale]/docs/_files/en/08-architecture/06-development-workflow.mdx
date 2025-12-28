@@ -1,0 +1,524 @@
+---
+title: Development Workflow
+description: Feature development process, testing strategies, and performance optimization workflows for the SaaS boilerplate
+keywords: 'ShipSaaS, development workflow, dev process, workflow best practices, development guide, coding workflow'
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+# Development Workflow
+
+A structured approach to developing features in the SaaS boilerplate, covering development lifecycle, testing strategies, and optimization practices.
+
+## Table of Contents
+
+- [Feature Development Process](#feature-development-process)
+- [Testing Strategy](#testing-strategy)
+- [Code Quality Standards](#code-quality-standards)
+- [Performance Optimization](#performance-optimization)
+- [Deployment Workflow](#deployment-workflow)
+- [Monitoring & Debugging](#monitoring-debugging)
+
+## Feature Development Process
+
+### Development Environment Setup
+
+<Tabs items={['Initial Setup', 'Database Setup', 'Environment Variables']}>
+
+<Tab value="Initial Setup">
+```bash
+# Clone and install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Build packages first for dependencies
+pnpm build:packages
+```
+</Tab>
+
+<Tab value="Database Setup">
+```bash
+# Generate database types and migrations
+pnpm db:generate
+
+# Push schema changes to database
+pnpm db:push
+
+# Open Drizzle Studio for database management
+pnpm db:studio
+
+# Reset and seed database (development only)
+pnpm db:reset-seed
+```
+</Tab>
+
+<Tab value="Environment Variables">
+Essential environment variables for development:
+
+```env
+# Database
+DATABASE_URL="postgresql://..."
+NEON_DATABASE_URL="postgresql://..."
+
+# Authentication
+BETTER_AUTH_SECRET="your-secret-key"
+BETTER_AUTH_URL="http://localhost:3000"
+
+# Email
+RESEND_API_KEY="re_..."
+
+# Stripe
+STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_PUBLISHABLE_KEY="pk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
+```
+</Tab>
+
+</Tabs>
+
+### Feature Development Lifecycle
+
+1. **Planning Phase**
+   - Define feature requirements and acceptance criteria
+   - Design database schema changes if needed
+   - Plan service layer integration points
+
+2. **Implementation Phase**
+   - Create/modify database models in `src/db/schema`
+   - Implement repository layer in `src/db/repositories`
+   - Add business logic in `src/services`
+   - Create UI components and pages
+   - Add Server Actions for data mutations
+
+3. **Integration Phase**
+   - Connect frontend to backend services
+   - Implement proper error handling
+   - Add loading states and optimistic updates
+   - Test authentication and authorization
+
+## Testing Strategy
+
+### Testing Layers
+
+<Tabs items={['Unit Testing', 'Integration Testing', 'E2E Testing']}>
+
+<Tab value="Unit Testing">
+Test individual functions and components:
+
+```bash
+# Run unit tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests with coverage
+pnpm test:coverage
+```
+
+**Testing Patterns:**
+- Mock authentication context for protected components
+- Test service layer logic independently
+- Use React Testing Library for component tests
+</Tab>
+
+<Tab value="Integration Testing">
+Test feature workflows and API endpoints:
+
+```bash
+# Run integration tests
+pnpm test:integration
+
+# Test database operations
+pnpm test:db
+```
+
+**Key Areas:**
+- Authentication flows
+- Payment processing
+- Email notifications
+- Organization management
+</Tab>
+
+<Tab value="E2E Testing">
+Test complete user workflows:
+
+```bash
+# Run E2E tests (if configured)
+pnpm test:e2e
+```
+
+**Critical Workflows:**
+- User registration and login
+- Subscription checkout
+- Organization creation
+- Feature access control
+</Tab>
+
+</Tabs>
+
+### Test Data Management
+
+```typescript
+// Example test utilities
+import { createTestUser, createTestOrganization } from '@/lib/test-utils'
+
+describe('User Management', () => {
+  beforeEach(async () => {
+    // Clean test database
+    await cleanTestDatabase()
+  })
+
+  it('should create user with organization', async () => {
+    const user = await createTestUser({
+      email: 'test@example.com',
+      role: 'admin'
+    })
+
+    const org = await createTestOrganization({
+      ownerId: user.id,
+      name: 'Test Organization'
+    })
+
+    expect(org.members).toContain(user.id)
+  })
+})
+```
+
+## Code Quality Standards
+
+### Linting and Formatting
+
+<Tabs items={['ESLint', 'Prettier', 'TypeScript']}>
+
+<Tab value="ESLint">
+```bash
+# Run linting
+pnpm lint
+
+# Fix linting issues automatically
+pnpm lint:fix
+
+# Lint specific directories
+pnpm lint src/components
+```
+
+**Key Rules:**
+- Use React Server Components by default
+- Minimize 'use client' directive usage
+- Follow consistent import ordering
+- Use TypeScript interfaces over types
+</Tab>
+
+<Tab value="Prettier">
+```bash
+# Check formatting
+pnpm format
+
+# Fix formatting issues
+pnpm format:fix
+```
+
+**Configuration:**
+- 2-space indentation
+- Single quotes for strings
+- Trailing commas
+- Print width: 80 characters
+</Tab>
+
+<Tab value="TypeScript">
+```bash
+# Type checking
+pnpm type-check
+
+# Build with type checking
+pnpm build
+```
+
+**Standards:**
+- Strict mode enabled
+- No `any` types without justification
+- Use Drizzle inferred types
+- Proper error type definitions
+</Tab>
+
+</Tabs>
+
+### Git Workflow
+
+<Callout type="info">
+**Branch Strategy:** Use feature branches with descriptive names like `feature/user-authentication` or `fix/payment-webhook-handling`.
+</Callout>
+
+```bash
+# Create feature branch
+git checkout -b feature/new-feature-name
+
+# Regular commits with descriptive messages
+git add .
+git commit -m "feat: add user role management system"
+
+# Push and create pull request
+git push origin feature/new-feature-name
+```
+
+## Performance Optimization
+
+### React Server Components
+
+```typescript
+// Prefer Server Components for data fetching
+export default async function UserDashboard() {
+  const user = await getCurrentUser()
+  const subscription = await getUserSubscription(user.id)
+
+  return (
+    <div>
+      <UserProfile user={user} />
+      <SubscriptionStatus subscription={subscription} />
+    </div>
+  )
+}
+
+// Use Client Components only when needed
+'use client'
+export function InteractiveChart({ data }: { data: ChartData }) {
+  const [selectedPeriod, setSelectedPeriod] = useState('month')
+
+  return (
+    <Chart
+      data={data}
+      period={selectedPeriod}
+      onPeriodChange={setSelectedPeriod}
+    />
+  )
+}
+```
+
+### Database Optimization
+
+<Tabs items={['Query Optimization', 'Caching', 'Connection Pooling']}>
+
+<Tab value="Query Optimization">
+```typescript
+// Use select for specific fields
+const users = await db
+  .select({
+    id: usersTable.id,
+    email: usersTable.email,
+    name: usersTable.name,
+  })
+  .from(usersTable)
+  .where(eq(usersTable.organizationId, orgId))
+
+// Use joins instead of multiple queries
+const usersWithSubscriptions = await db
+  .select()
+  .from(usersTable)
+  .leftJoin(subscriptionsTable, eq(usersTable.id, subscriptionsTable.userId))
+  .where(eq(usersTable.organizationId, orgId))
+```
+</Tab>
+
+<Tab value="Caching">
+```typescript
+// Use React cache for data access layer
+import { cache } from 'react'
+
+export const getUser = cache(async (userId: string) => {
+  return await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  })
+})
+
+// Redis caching for expensive operations
+export async function getCachedAnalytics(orgId: string) {
+  const cached = await redis.get(`analytics:${orgId}`)
+  if (cached) return JSON.parse(cached)
+
+  const analytics = await calculateAnalytics(orgId)
+  await redis.setex(`analytics:${orgId}`, 300, JSON.stringify(analytics))
+
+  return analytics
+}
+```
+</Tab>
+
+<Tab value="Connection Pooling">
+```typescript
+// Database configuration with connection pooling
+import { drizzle } from 'drizzle-orm/neon-http'
+import { neon, neonConfig } from '@neondatabase/serverless'
+
+neonConfig.fetchConnectionCache = true
+
+const sql = neon(process.env.DATABASE_URL!, {
+  arrayMode: false,
+  fullResults: true,
+})
+
+export const db = drizzle(sql, {
+  schema,
+  logger: process.env.NODE_ENV === 'development'
+})
+```
+</Tab>
+
+</Tabs>
+
+## Deployment Workflow
+
+### Pre-deployment Checklist
+
+<Callout type="warning">
+**Always verify these items before deploying:**
+</Callout>
+
+- [ ] All tests passing (`pnpm test`)
+- [ ] No linting errors (`pnpm lint`)
+- [ ] Type checking passes (`pnpm type-check`)
+- [ ] Database migrations ready (`pnpm db:generate`)
+- [ ] Environment variables configured
+- [ ] Stripe webhooks endpoints updated
+
+### Build and Deploy
+
+```bash
+# Production build
+pnpm build
+
+# Verify build output
+ls -la .next/
+
+# Run database migrations (production)
+pnpm db:migrate
+
+# Deploy to hosting platform
+pnpm deploy
+```
+
+### Environment-specific Configurations
+
+<Tabs items={['Development', 'Staging', 'Production']}>
+
+<Tab value="Development">
+```env
+NODE_ENV=development
+BETTER_AUTH_URL=http://localhost:3000
+DATABASE_URL=postgresql://localhost:5432/saas_dev
+STRIPE_SECRET_KEY=sk_test_...
+```
+</Tab>
+
+<Tab value="Staging">
+```env
+NODE_ENV=staging
+BETTER_AUTH_URL=https://staging.yourdomain.com
+DATABASE_URL=postgresql://staging-db-url
+STRIPE_SECRET_KEY=sk_test_...
+```
+</Tab>
+
+<Tab value="Production">
+```env
+NODE_ENV=production
+BETTER_AUTH_URL=https://yourdomain.com
+DATABASE_URL=postgresql://production-db-url
+STRIPE_SECRET_KEY=sk_live_...
+```
+</Tab>
+
+</Tabs>
+
+## Monitoring & Debugging
+
+### Error Tracking
+
+```typescript
+// Error boundary for React components
+import { ErrorBoundary } from 'next/dist/client/components/error-boundary'
+
+export function FeatureErrorBoundary({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary
+      errorComponent={({ error, reset }) => (
+        <div className="p-4 border border-red-200 rounded">
+          <h3>Something went wrong!</h3>
+          <p>{error.message}</p>
+          <button onClick={reset}>Try again</button>
+        </div>
+      )}
+    >
+      {children}
+    </ErrorBoundary>
+  )
+}
+
+// Server-side error logging
+export function logError(error: Error, context: string) {
+  console.error(`[${context}] ${error.message}`, {
+    stack: error.stack,
+    timestamp: new Date().toISOString(),
+  })
+
+  // Send to monitoring service in production
+  if (process.env.NODE_ENV === 'production') {
+    // sendToMonitoring(error, context)
+  }
+}
+```
+
+### Performance Monitoring
+
+```typescript
+// Monitor API response times
+export async function withTiming<T>(
+  operation: () => Promise<T>,
+  label: string
+): Promise<T> {
+  const start = Date.now()
+  try {
+    const result = await operation()
+    const duration = Date.now() - start
+    console.log(`${label} completed in ${duration}ms`)
+    return result
+  } catch (error) {
+    const duration = Date.now() - start
+    console.error(`${label} failed after ${duration}ms:`, error)
+    throw error
+  }
+}
+
+// Usage in API routes
+export async function GET() {
+  return withTiming(async () => {
+    const users = await getAllUsers()
+    return NextResponse.json(users)
+  }, 'GET /api/users')
+}
+```
+
+### Database Monitoring
+
+```bash
+# Monitor database performance
+pnpm db:studio
+
+# Check slow queries
+# Access your database directly and run:
+SELECT query, mean_time, calls
+FROM pg_stat_statements
+ORDER BY mean_time DESC
+LIMIT 10;
+```
+
+<Callout type="tip">
+**Development Tips:**
+- Use React DevTools for component debugging
+- Enable database query logging in development
+- Set up proper logging levels for different environments
+- Monitor memory usage during development for optimization opportunities
+</Callout>

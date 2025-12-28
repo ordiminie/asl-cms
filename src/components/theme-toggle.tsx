@@ -2,6 +2,7 @@
 
 import {Moon, Sun} from 'lucide-react'
 import {useTheme} from 'next-themes'
+import * as React from 'react'
 
 import {Button} from '@/components/ui/button'
 import {
@@ -12,7 +13,14 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 export function ModeToggle() {
-  const {setTheme} = useTheme()
+  const {theme, setTheme} = useTheme()
+
+  // Écrire le cookie theme pour que le proxy puisse le lire (SSR Shiki)
+  React.useEffect(() => {
+    if (theme) {
+      document.cookie = `theme=${theme}; path=/; max-age=31536000; SameSite=Strict;`
+    }
+  }, [theme])
 
   return (
     <DropdownMenu>

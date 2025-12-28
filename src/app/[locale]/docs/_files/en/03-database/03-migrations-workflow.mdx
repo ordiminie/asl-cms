@@ -1,0 +1,576 @@
+---
+title: 'Migration Workflow'
+description: 'Learn how to manage schema changes, generate migrations, and deploy database updates safely'
+keywords: "ShipSaaS, database migrations, schema changes, Drizzle migrations, database deployment, migration workflow, zero-downtime migrations"
+order: 3
+---
+
+Database migrations allow you to evolve your schema over time while preserving data. This guide covers the complete migration workflow from development to production.
+
+## Migration Basics
+
+Migrations are version-controlled SQL scripts that modify your database schema. Drizzle generates these automatically by comparing your TypeScript schema with the current database state.
+
+### Migration Configuration
+
+The migration setup is defined in `drizzle.config.ts`:
+
+```typescript
+// drizzle.config.ts
+import { defineConfig } from 'drizzle-kit'
+
+export default defineConfig({
+  schema: './src/db/models/*',      // Where your schema files are
+  out: './drizzle/migrations',     // Where migrations are generated
+  dialect: 'postgresql',           // Database dialect
+  dbCredentials: {
+    url: process.env.DATABASE_URL!
+  }
+})
+```
+
+### Migration Files Structure
+
+```
+drizzle/
+├── migrations/
+│   ├── 0001_init_schema.sql
+│   ├── 0002_add_user_avatar.sql
+│   ├── 0003_create_projects_table.sql
+│   └── meta/
+│       ├── _journal.json
+│       ├── 0001_snapshot.json
+│       └── 0002_snapshot.json
+└── schema.ts
+```
+
+## Migration Development Workflow
+
+### Option 1: Push for Rapid Development
+
+**Use `db:push` for quick schema changes during development:**
+
+<Steps>
+<Step title="Modify Schema">
+  Edit your schema files in `/src/db/models/`:
+
+  ```typescript
+  // /src/db/models/user-model.ts
+  export const user = pgTable('user', {
+    id: uuid('id').default(sql`uuid_generate_v4()`).primaryKey(),
+    name: text('name').notNull(),
+    email: text('email').notNull().unique(),
+    // Add new field
+    avatar: text('avatar'),
+    bio: text('bio'),
+  })
+  ```
+</Step>
+
+<Step title="Push Changes">
+  Apply changes directly to database:
+
+  ```bash
+  pnpm db:push
+  ```
+
+  This will:
+  - Compare your schema with database
+  - Apply changes immediately
+  - Skip migration generation
+</Step>
+
+<Step title="Verify Changes">
+  Check that changes were applied:
+
+  ```bash
+  pnpm db:studio
+  # Or check connection
+  pnpm db:check
+  ```
+</Step>
+</Steps>
+
+<Callout type="warning">
+  **Development Only**: Use `db:push` only in development. Always use proper migrations for staging and production.
+</Callout>
+
+### Option 2: Generate Migrations
+
+**Use migrations for tracked, reversible changes:**
+
+<Steps>
+<Step title="Modify Schema">
+  Make your schema changes as above.
+</Step>
+
+<Step title="Generate Migration">
+  Create migration files:
+
+  ```bash
+  pnpm db:generate
+  ```
+
+  This creates files like:
+  ```sql
+  -- drizzle/migrations/0004_add_user_avatar.sql
+  ALTER TABLE "user" ADD COLUMN "avatar" text;
+  ALTER TABLE "user" ADD COLUMN "bio" text;
+  ```
+</Step>
+
+<Step title="Review Migration">
+  **Always review generated SQL** before applying:
+
+  ```sql
+  -- Check the generated migration file
+  cat drizzle/migrations/0004_add_user_avatar.sql
+  ```
+</Step>
+
+<Step title="Apply Migration">
+  Run the migration:
+
+  ```bash
+  pnpm db:migrate
+  ```
+</Step>
+</Steps>
+
+## Production Workflow
+
+### Safe Production Deployment
+
+<Steps>
+<Step title="Test in Staging">
+  Always test migrations in a staging environment first:
+
+  ```bash
+  # Staging environment
+  NODE_ENV=staging pnpm db:migrate
+  ```
+</Step>
+
+<Step title="Backup Production">
+  Create a backup before applying migrations:
+
+  ```bash
+  # PostgreSQL backup
+  pg_dump $DATABASE_URL > backup_$(date +%Y%m%d_%H%M%S).sql
+  ```
+</Step>
+
+<Step title="Apply to Production">
+  Run migrations in production:
+
+  ```bash
+  NODE_ENV=production pnpm db:migrate
+  ```
+</Step>
+
+<Step title="Verify Deployment">
+  Check that the migration succeeded:
+
+  ```bash
+  NODE_ENV=production pnpm db:check
+  ```
+</Step>
+</Steps>
+
+## Common Migration Scenarios
+
+### Adding Columns
+
+<Tabs defaultValue="optional">
+  <Tab value="optional" label="Optional Column">
+    ```typescript
+    // Schema change
+    export const user = pgTable('user', {
+      id: uuid('id').primaryKey(),
+      name: text('name').notNull(),
+      email: text('email').notNull(),
+      // Add optional field
+      phone: text('phone'), // nullable by default
+    })
+    ```
+
+    Generated migration:
+    ```sql
+    ALTER TABLE "user" ADD COLUMN "phone" text;
+    ```
+  </Tab>
+  <Tab value="required" label="Required Column">
+    ```typescript
+    // Add required column with default
+    export const user = pgTable('user', {
+      id: uuid('id').primaryKey(),
+      name: text('name').notNull(),
+      email: text('email').notNull(),
+      // Required field with default
+      status: text('status').notNull().default('active'),
+    })
+    ```
+
+    Generated migration:
+    ```sql
+    ALTER TABLE "user" ADD COLUMN "status" text DEFAULT 'active' NOT NULL;
+    ```
+  </Tab>
+  <Tab value="data-migration" label="With Data Migration">
+    ```typescript
+    // For complex defaults, you might need custom SQL
+    ```
+
+    Generated migration (manual editing needed):
+    ```sql
+    ALTER TABLE "user" ADD COLUMN "full_name" text;
+
+    -- Custom data migration
+    UPDATE "user" SET "full_name" = CONCAT("first_name", ' ', "last_name")
+    WHERE "first_name" IS NOT NULL AND "last_name" IS NOT NULL;
+
+    -- Make it required after data migration
+    ALTER TABLE "user" ALTER COLUMN "full_name" SET NOT NULL;
+    ```
+  </Tab>
+</Tabs>
+
+### Dropping Columns
+
+**Safe column removal with staging:**
+
+```typescript
+// Step 1: Remove from schema
+export const user = pgTable('user', {
+  id: uuid('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  // Remove: deprecated_field: text('deprecated_field'),
+})
+```
+
+```sql
+-- Generated migration
+ALTER TABLE "user" DROP COLUMN "deprecated_field";
+```
+
+<Callout type="error">
+  **Destructive Operation**: Dropping columns permanently deletes data. Always backup first and consider a multi-step process for critical data.
+</Callout>
+
+### Creating New Tables
+
+```typescript
+// Add new table to schema
+export const notifications = pgTable('notifications', {
+  id: uuid('id').default(sql`uuid_generate_v4()`).primaryKey(),
+  userId: uuid('user_id').references(() => user.id).notNull(),
+  type: text('type').notNull(),
+  message: text('message').notNull(),
+  read: boolean('read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Add relations
+export const notificationRelations = relations(notifications, ({ one }) => ({
+  user: one(user, {
+    fields: [notifications.userId],
+    references: [user.id],
+  }),
+}))
+```
+
+Generated migration:
+```sql
+CREATE TABLE "notifications" (
+  "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  "user_id" uuid NOT NULL,
+  "type" text NOT NULL,
+  "message" text NOT NULL,
+  "read" boolean DEFAULT false NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_user_id_fk"
+FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE no action ON UPDATE no action;
+```
+
+### Modifying Existing Columns
+
+```typescript
+// Change column type or constraints
+export const user = pgTable('user', {
+  id: uuid('id').primaryKey(),
+  name: text('name').notNull(),
+  // Change: varchar(255) -> text, add unique constraint
+  email: text('email').notNull().unique(),
+})
+```
+
+Generated migration:
+```sql
+ALTER TABLE "user" ALTER COLUMN "email" SET DATA TYPE text;
+ALTER TABLE "user" ADD CONSTRAINT "user_email_unique" UNIQUE("email");
+```
+
+## Advanced Migration Patterns
+
+### Complex Data Migrations
+
+Sometimes you need custom logic in migrations:
+
+<Steps>
+<Step title="Generate Base Migration">
+  ```bash
+  pnpm db:generate
+  ```
+</Step>
+
+<Step title="Edit Migration File">
+  Add custom logic to the generated SQL:
+
+  ```sql
+  -- drizzle/migrations/0005_complex_data_migration.sql
+
+  -- Generated schema changes
+  ALTER TABLE "projects" ADD COLUMN "slug" text;
+
+  -- Custom data migration
+  UPDATE "projects"
+  SET "slug" = LOWER(REPLACE("name", ' ', '-'))
+  WHERE "slug" IS NULL;
+
+  -- Add constraints after data migration
+  ALTER TABLE "projects" ALTER COLUMN "slug" SET NOT NULL;
+  ALTER TABLE "projects" ADD CONSTRAINT "projects_slug_unique" UNIQUE("slug");
+  ```
+</Step>
+
+<Step title="Test Migration">
+  Test on a copy of production data:
+
+  ```bash
+  # Restore backup to test database
+  psql $TEST_DATABASE_URL < production_backup.sql
+
+  # Test migration
+  NODE_ENV=test pnpm db:migrate
+  ```
+</Step>
+</Steps>
+
+### Migration Rollbacks
+
+Drizzle doesn't automatically generate rollback scripts, but you can create them manually:
+
+```sql
+-- Migration: 0005_add_user_avatar.sql
+ALTER TABLE "user" ADD COLUMN "avatar" text;
+
+-- Rollback: 0005_rollback_add_user_avatar.sql (manual)
+ALTER TABLE "user" DROP COLUMN "avatar";
+```
+
+### Zero-Downtime Migrations
+
+For large tables, use techniques to avoid locking:
+
+<Tabs defaultValue="column">
+  <Tab value="column" label="Adding Columns">
+    ```sql
+    -- Step 1: Add nullable column
+    ALTER TABLE "large_table" ADD COLUMN "new_field" text;
+
+    -- Step 2: Populate in batches (separate deployment)
+    UPDATE "large_table" SET "new_field" = 'default_value'
+    WHERE "new_field" IS NULL AND "id" BETWEEN 1 AND 1000;
+
+    -- Step 3: Make NOT NULL (separate deployment)
+    ALTER TABLE "large_table" ALTER COLUMN "new_field" SET NOT NULL;
+    ```
+  </Tab>
+  <Tab value="index" label="Creating Indexes">
+    ```sql
+    -- Create index concurrently (doesn't lock table)
+    CREATE INDEX CONCURRENTLY "idx_user_email" ON "user"("email");
+    ```
+  </Tab>
+  <Tab value="rename" label="Renaming Columns">
+    ```sql
+    -- Step 1: Add new column
+    ALTER TABLE "user" ADD COLUMN "full_name" text;
+
+    -- Step 2: Populate new column
+    UPDATE "user" SET "full_name" = "name";
+
+    -- Step 3: Update application to use new column
+    -- (separate deployment)
+
+    -- Step 4: Drop old column
+    ALTER TABLE "user" DROP COLUMN "name";
+    ```
+  </Tab>
+</Tabs>
+
+## Migration Best Practices
+
+### Version Control
+
+**Always commit migration files:**
+
+```bash
+git add drizzle/migrations/
+git commit -m "Add user avatar field migration"
+```
+
+### Testing Migrations
+
+**Create a migration testing script:**
+
+```typescript
+// scripts/test-migration.ts
+import { drizzle } from 'drizzle-orm/postgres-js'
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import postgres from 'postgres'
+
+const testMigration = async () => {
+  const client = postgres(process.env.TEST_DATABASE_URL!)
+  const db = drizzle(client)
+
+  try {
+    await migrate(db, { migrationsFolder: './drizzle/migrations' })
+    console.log('✅ Migration test successful')
+  } catch (error) {
+    console.error('❌ Migration test failed:', error)
+    process.exit(1)
+  } finally {
+    await client.end()
+  }
+}
+
+testMigration()
+```
+
+### Migration Naming
+
+**Use descriptive names:**
+
+```bash
+# ✅ Good names
+0001_initial_schema.sql
+0002_add_user_avatar.sql
+0003_create_projects_table.sql
+0004_add_project_status_index.sql
+
+# ❌ Avoid generic names
+0001_migration.sql
+0002_update.sql
+0003_changes.sql
+```
+
+### Documentation
+
+**Document complex migrations:**
+
+```sql
+-- Migration: Add user avatar support
+-- Date: 2024-01-15
+-- Author: developer@example.com
+-- Description: Adds avatar URL field to users table for profile pictures
+--              Includes data migration to set default avatar for existing users
+
+ALTER TABLE "user" ADD COLUMN "avatar" text;
+
+-- Set default avatar for existing users
+UPDATE "user"
+SET "avatar" = 'https://api.dicebear.com/7.x/avataaars/svg?seed=' || "email"
+WHERE "avatar" IS NULL;
+```
+
+## Troubleshooting Migrations
+
+### Common Issues
+
+**Migration fails with constraint error:**
+
+```bash
+# Error: column "email" of relation "user" already exists
+```
+
+Solutions:
+```sql
+-- Add IF NOT EXISTS (PostgreSQL 9.6+)
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "email" text;
+
+-- Or check in migration script
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'user' AND column_name = 'email'
+  ) THEN
+    ALTER TABLE "user" ADD COLUMN "email" text;
+  END IF;
+END $$;
+```
+
+**Migration state mismatch:**
+
+```bash
+# Reset migration state (development only)
+rm -rf drizzle/migrations
+pnpm db:generate
+pnpm db:push
+```
+
+**Production migration failure:**
+
+```bash
+# Check migration status
+SELECT * FROM __drizzle_migrations ORDER BY id;
+
+# Manual rollback (if safe)
+# Restore from backup and replay successful migrations
+```
+
+### Migration Recovery
+
+**If a migration fails in production:**
+
+<Steps>
+<Step title="Assess Damage">
+  ```bash
+  # Check database state
+  psql $DATABASE_URL -c "\d+ user"
+
+  # Check migration status
+  psql $DATABASE_URL -c "SELECT * FROM __drizzle_migrations;"
+  ```
+</Step>
+
+<Step title="Fix Forward">
+  ```sql
+  -- Create a fix migration instead of rolling back
+  -- Fix the issue that caused the failure
+  ALTER TABLE "user" DROP CONSTRAINT IF EXISTS "invalid_constraint";
+  ```
+</Step>
+
+<Step title="Mark as Complete">
+  ```sql
+  -- If migration partially succeeded, mark as complete
+  UPDATE __drizzle_migrations
+  SET applied_at = NOW()
+  WHERE id = 'failed_migration_id';
+  ```
+</Step>
+</Steps>
+
+<Callout type="success">
+  A solid migration workflow is crucial for maintaining database integrity across environments. Always test migrations thoroughly before production deployment.
+</Callout>
+
+## Next Steps
+
+- **[Drizzle Studio](/docs/database/drizzle-studio)** - Use the database management GUI for development
+- **[Best Practices](/docs/database/best-practices)** - Learn performance and security best practices

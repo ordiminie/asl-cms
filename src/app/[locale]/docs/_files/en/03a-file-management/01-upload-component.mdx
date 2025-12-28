@@ -1,0 +1,554 @@
+---
+title: 'File Upload Component'
+description: 'Complete guide to the FileUpload component with drag & drop, validation, and React integration'
+keywords: "ShipSaaS, file upload component, drag and drop, React Dropzone, file validation, upload UI, ShadCN UI, file preview"
+order: 1
+---
+
+The FileUpload component provides a modern drag & drop interface for file selection with built-in validation and visual feedback.
+
+## Component Overview
+
+### **Core Features**
+
+- **Drag & Drop Interface** with visual feedback
+- **File Type Validation** (images only or all files)
+- **Multiple File Selection** support
+- **Loading States** with upload progress
+- **ShadCN UI Integration** with consistent styling
+- **Framer Motion Animations** for smooth interactions
+
+### **Component Props**
+
+```typescript
+interface FileUploadProps {
+  onChange: (files: File[]) => void    // File selection callback
+  multi?: boolean                      // Multiple file selection
+  onlyimage?: boolean                  // Restrict to images only
+  isUploading?: boolean               // Loading state
+}
+```
+
+## Basic Usage
+
+### **Single Image Upload**
+
+```tsx
+import { FileUpload } from '@/components/ui/file-upload'
+import { useState } from 'react'
+
+export function SingleImageUpload() {
+  const [isUploading, setIsUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+
+  function handleFileSelect(files: File[]) {
+    if (files.length > 0) {
+      setSelectedFile(files[0])
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <FileUpload
+        onChange={handleFileSelect}
+        onlyimage={true}
+        multi={false}
+        isUploading={isUploading}
+      />
+
+      {selectedFile && (
+        <div className="text-sm text-muted-foreground">
+          Selected: {selectedFile.name}
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+### **Multiple File Upload**
+
+```tsx
+export function MultipleFileUpload() {
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+
+  function handleFileSelect(files: File[]) {
+    setSelectedFiles(files)
+  }
+
+  return (
+    <div className="space-y-4">
+      <FileUpload
+        onChange={handleFileSelect}
+        multi={true}
+        isUploading={false}
+      />
+
+      {selectedFiles.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">
+            {selectedFiles.length} file(s) selected:
+          </p>
+          {selectedFiles.map((file, index) => (
+            <div key={index} className="text-sm text-muted-foreground">
+              {file.name} ({formatFileSize(file.size)})
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+## Advanced Implementation
+
+### **Complete Upload Form**
+
+```tsx
+'use client'
+
+import { FileUpload } from '@/components/ui/file-upload'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
+import { useState } from 'react'
+
+export function CompleteUploadForm({ entityId }: { entityId: string }) {
+  const [isUploading, setIsUploading] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([])
+
+  async function handleFileSelect(files: File[]) {
+    setSelectedFiles(files)
+  }
+
+  async function handleUpload() {
+    if (selectedFiles.length === 0) return
+
+    setIsUploading(true)
+
+    try {
+      const uploadPromises = selectedFiles.map(async (file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('entityId', entityId)
+
+        const result = await uploadEntityFileAction(undefined, formData)
+        return result.success ? result.fileUrl : null
+      })
+
+      const results = await Promise.all(uploadPromises)
+      const successfulUploads = results.filter(Boolean) as string[]
+
+      setUploadedUrls(prev => [...prev, ...successfulUploads])
+      setSelectedFiles([])
+
+      toast('Success', {
+        description: `${successfulUploads.length} file(s) uploaded successfully`
+      })
+    } catch (error) {
+      toast('Error', {
+        description: 'Upload failed. Please try again.'
+      })
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* File Selection */}
+      <div className="space-y-4">
+        <FileUpload
+          onChange={handleFileSelect}
+          multi={true}
+          isUploading={isUploading}
+        />
+
+        {selectedFiles.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">
+                {selectedFiles.length} file(s) ready to upload
+              </p>
+              <Button
+                onClick={handleUpload}
+                disabled={isUploading}
+                size="sm"
+              >
+                {isUploading ? 'Uploading...' : 'Upload Files'}
+              </Button>
+            </div>
+
+            {/* File List */}
+            <div className="space-y-2">
+              {selectedFiles.map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-2 border rounded"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(file.size)} • {file.type}
+                    </p>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedFiles(files =>
+                        files.filter((_, i) => i !== index)
+                      )
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Uploaded Files */}
+      {uploadedUrls.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium">Uploaded Files</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {uploadedUrls.map((url, index) => (
+              <div key={index} className="relative">
+                <img
+                  src={url}
+                  alt={`Upload ${index + 1}`}
+                  className="w-full h-32 object-cover rounded border"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+## Visual Features
+
+### **Drag & Drop States**
+
+The component provides visual feedback for different drag states:
+
+<Tabs defaultValue="idle">
+  <Tab value="idle" label="Idle State">
+    ```tsx
+    // Default appearance
+    <div className="border-2 border-dashed border-muted-foreground/25">
+      <div className="text-center p-6">
+        <Upload className="mx-auto h-12 w-12 text-muted-foreground/50" />
+        <p className="mt-2 text-sm text-muted-foreground">
+          Click to upload or drag and drop
+        </p>
+      </div>
+    </div>
+    ```
+  </Tab>
+
+  <Tab value="hover" label="Drag Hover">
+    ```tsx
+    // Active drag over appearance
+    <div className="border-2 border-dashed border-primary">
+      <div className="text-center p-6 bg-primary/5">
+        <Upload className="mx-auto h-12 w-12 text-primary" />
+        <p className="mt-2 text-sm text-primary">
+          Drop files here to upload
+        </p>
+      </div>
+    </div>
+    ```
+  </Tab>
+
+  <Tab value="loading" label="Uploading">
+    ```tsx
+    // Loading state appearance
+    <div className="border-2 border-dashed border-muted-foreground/25 opacity-50">
+      <div className="text-center p-6">
+        <Loader2 className="mx-auto h-12 w-12 animate-spin text-muted-foreground" />
+        <p className="mt-2 text-sm text-muted-foreground">
+          Uploading...
+        </p>
+      </div>
+    </div>
+    ```
+  </Tab>
+</Tabs>
+
+### **File Preview**
+
+```tsx
+function FilePreview({ file }: { file: File }) {
+  const [preview, setPreview] = useState<string>('')
+
+  useEffect(() => {
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file)
+      setPreview(url)
+      return () => URL.revokeObjectURL(url)
+    }
+  }, [file])
+
+  return (
+    <div className="relative w-32 h-32">
+      {preview ? (
+        <img
+          src={preview}
+          alt="Preview"
+          className="w-full h-full object-cover rounded border"
+        />
+      ) : (
+        <div className="w-full h-full border rounded flex items-center justify-center">
+          <File className="h-8 w-8 text-muted-foreground" />
+        </div>
+      )}
+
+      <div className="absolute inset-x-0 bottom-0 bg-black/75 text-white text-xs p-1 rounded-b">
+        {file.name}
+      </div>
+    </div>
+  )
+}
+```
+
+## Validation & Error Handling
+
+### **Client-Side Validation**
+
+```tsx
+export function ValidatedFileUpload() {
+  const [errors, setErrors] = useState<string[]>([])
+
+  function validateFiles(files: File[]): { valid: File[]; invalid: string[] } {
+    const valid: File[] = []
+    const invalid: string[] = []
+
+    files.forEach(file => {
+      // Size validation (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        invalid.push(`${file.name}: File too large (max 5MB)`)
+        return
+      }
+
+      // Type validation for images
+      if (onlyimage && !ALLOWED_IMAGE_MIME_TYPES.includes(file.type as any)) {
+        invalid.push(`${file.name}: Invalid image type`)
+        return
+      }
+
+      valid.push(file)
+    })
+
+    return { valid, invalid }
+  }
+
+  function handleFileSelect(files: File[]) {
+    const { valid, invalid } = validateFiles(files)
+
+    setErrors(invalid)
+
+    if (valid.length > 0) {
+      onValidFiles(valid)
+    }
+
+    if (invalid.length > 0) {
+      toast('Validation Error', {
+        description: `${invalid.length} file(s) rejected`
+      })
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <FileUpload
+        onChange={handleFileSelect}
+        onlyimage={true}
+        multi={true}
+        isUploading={isUploading}
+      />
+
+      {errors.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-destructive">
+            Validation Errors:
+          </p>
+          {errors.map((error, index) => (
+            <p key={index} className="text-xs text-destructive">
+              {error}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+### **Supported File Types**
+
+```typescript
+// Image types (when onlyimage={true})
+export const ALLOWED_IMAGE_MIME_TYPES = [
+  'image/webp',
+  'image/jpeg',
+  'image/jpg',
+  'image/png'
+] as const
+
+// Document types (general uploads)
+export const COMMON_DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'text/csv'
+] as const
+```
+
+## Styling & Customization
+
+### **Custom Styling**
+
+```tsx
+// Custom styled file upload
+export function StyledFileUpload({ className, ...props }) {
+  return (
+    <FileUpload
+      {...props}
+      className={cn(
+        // Custom border and background
+        "border-2 border-dashed border-blue-300",
+        "bg-gradient-to-br from-blue-50 to-indigo-50",
+        "hover:from-blue-100 hover:to-indigo-100",
+        "transition-colors duration-200",
+        className
+      )}
+    />
+  )
+}
+```
+
+### **Size Variants**
+
+```tsx
+// Small variant
+<FileUpload
+  onChange={handleFileSelect}
+  className="h-24"
+  // Compact size for tight layouts
+/>
+
+// Large variant
+<FileUpload
+  onChange={handleFileSelect}
+  className="h-64"
+  // Spacious for prominent upload areas
+/>
+```
+
+## Integration Examples
+
+### **Form Integration**
+
+```tsx
+import { useForm } from 'react-hook-form'
+import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form'
+
+export function FormWithFileUpload() {
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([])
+  const form = useForm()
+
+  return (
+    <Form {...form}>
+      <FormField
+        control={form.control}
+        name="attachments"
+        render={() => (
+          <FormItem>
+            <FormLabel>File Attachments</FormLabel>
+            <FormControl>
+              <FileUpload
+                onChange={async (files) => {
+                  // Upload files and get URLs
+                  const urls = await uploadFiles(files)
+                  setUploadedFiles(urls)
+                  form.setValue('attachments', urls)
+                }}
+                multi={true}
+                isUploading={isUploading}
+              />
+            </FormControl>
+          </FormItem>
+        )}
+      />
+    </Form>
+  )
+}
+```
+
+### **Modal Integration**
+
+```tsx
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+
+export function FileUploadModal({ open, onOpenChange }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Upload Files</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <FileUpload
+            onChange={handleFileSelect}
+            multi={true}
+          />
+
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpload}>
+              Upload
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+## Utility Functions
+
+```typescript
+// File size formatting
+export function formatFileSize(bytes: number): string {
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  if (bytes === 0) return '0 Bytes'
+
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
+}
+
+// File type checking
+export function isImageFile(file: File): boolean {
+  return file.type.startsWith('image/')
+}
+
+export function getFileExtension(filename: string): string {
+  return filename.split('.').pop()?.toLowerCase() || ''
+}
+```
+
+The FileUpload component provides a complete, accessible, and customizable file upload experience with modern UX patterns and comprehensive validation.

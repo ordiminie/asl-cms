@@ -1,0 +1,126 @@
+---
+title: Blog Management
+description: Dual blog system supporting both MDX files and database-stored content with full admin dashboard
+keywords: 'ShipSaaS, blog, blog management, content management, blog system, CMS, blog features'
+---
+
+The SaaS boilerplate includes a **comprehensive blog system** with dual content sources for maximum flexibility.
+
+<Callout type="info">
+  **Dual System:** The boilerplate supports both static MDX files and database-stored markdown with a full admin interface for content management.
+</Callout>
+
+## Blog System Overview
+
+The blog system provides **two complementary approaches**:
+
+<Tabs defaultValue="database-blog">
+  <Tab value="database-blog" label="Database Blog">
+    **Dynamic Content Management**
+    - Full CRUD operations through admin dashboard
+    - Multi-language support with translations
+    - Categories and hashtag taxonomy
+    - Publishing workflow with draft/published states
+    - Analytics tracking (views, likes)
+    - User role-based content creation
+
+    **Route:** `/blog`
+    **Admin:** `/admin/blog`
+
+    **Admin Blog Management Interface:**
+    <Image src="/docs/12/blog-admin-listpost.png" alt="Blog admin management interface with post list"  />
+  </Tab>
+
+  <Tab value="mdx-blog" label="MDX Blog">
+    **File-based Content**
+    - MDX files with React components
+    - Git-based workflow
+    - Developer-friendly editing
+    - Static generation for performance
+    - Type-safe frontmatter
+
+    **Route:** `/blog/mdx`
+    **Content:** `_files/` directory
+
+    **Frontend Blog Interface:**
+    <Image src="/docs/12/blog-frontend-list.png" alt="Frontend blog list interface"  />
+  </Tab>
+</Tabs>
+
+## Content Strategy
+
+### When to Use Each System
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div className="p-4 border rounded-lg">
+    <h3 className="font-semibold text-lg mb-2">📝 Database Blog</h3>
+    <p className="text-sm text-muted-foreground mb-3">
+      Perfect for dynamic content with multiple authors and frequent updates
+    </p>
+    <ul className="text-sm space-y-1">
+      <li>• Marketing and business content</li>
+      <li>• Multiple content creators</li>
+      <li>• Multi-language content</li>
+      <li>• Content approval workflows</li>
+      <li>• Analytics and tracking</li>
+    </ul>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <h3 className="font-semibold text-lg mb-2">📄 MDX Blog</h3>
+    <p className="text-sm text-muted-foreground mb-3">
+      Ideal for technical content with interactive components
+    </p>
+    <ul className="text-sm space-y-1">
+      <li>• Technical documentation</li>
+      <li>• Developer content</li>
+      <li>• Interactive demos</li>
+      <li>• Version-controlled content</li>
+      <li>• Rich React components</li>
+    </ul>
+  </div>
+</div>
+
+## Blog Guides
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <a href="./blog-management/setup" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">⚙️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Blog Setup</h3>
+        <span className="text-sm text-muted-foreground">
+          Enable blog features, configuration, and environment setup
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./blog-management/mdx-blog" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">📄</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">MDX Blog</h3>
+        <span className="text-sm text-muted-foreground">
+          Static content with React components and file-based workflow
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./blog-management/database-blog" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🗄️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Database Blog</h3>
+        <span className="text-sm text-muted-foreground">
+          Admin dashboard with multi-language support and dynamic content
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+
+<Callout type="success">
+  **Flexible Architecture:** Use both systems to cover all your content needs - database for dynamic content and MDX for technical documentation.
+</Callout>

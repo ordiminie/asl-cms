@@ -1,0 +1,335 @@
+---
+title: 'Social Authentication'
+description: 'Login with Google, GitHub, Facebook, and Apple - one-click authentication for better user experience'
+keywords: 'ShipSaaS, social auth, OAuth, Google login, GitHub login, social providers, third-party auth'
+---
+
+Social authentication allows users to login with their existing accounts from Google, GitHub, Facebook, or Apple. No new passwords to remember!
+
+<Callout type="success">
+  **Perfect for:** Reducing friction, increasing conversion rates, and providing trusted authentication.
+</Callout>
+
+## How to Activate
+
+<Steps>
+<Step title="Add to auth methods">
+  ```bash
+  # Add social providers to available methods
+  NEXT_PUBLIC_AUTH_METHODS="credential,magiclink,google,github"
+
+  # Configure each provider (see sections below)
+  GOOGLE_CLIENT_ID="your-google-client-id"
+  GOOGLE_CLIENT_SECRET="your-google-secret"
+  ```
+</Step>
+
+<Step title="Configure providers">
+  Set up OAuth apps with each provider (detailed below).
+</Step>
+
+<Step title="That's it!">
+  Social login buttons automatically appear on `/[locale]/login` and `/[locale]/register`.
+</Step>
+</Steps>
+
+## Available Providers
+
+<Tabs defaultValue="google">
+  <Tab value="google" label="🌐 Google">
+    **Most popular choice** - works for all Gmail users
+
+    **Setup location:** [Google Cloud Console](https://console.cloud.google.com/)
+
+    **Required scopes:** email, profile
+  </Tab>
+
+  <Tab value="github" label="🐱 GitHub">
+    **Perfect for developer tools** - all GitHub users
+
+    **Setup location:** [GitHub Developer Settings](https://github.com/settings/developers)
+
+    **Required scopes:** user:email
+  </Tab>
+
+  <Tab value="facebook" label="👥 Facebook">
+    **Wide audience reach** - Facebook/Meta users
+
+    **Setup location:** [Facebook Developers](https://developers.facebook.com/)
+
+    **Required permissions:** email, public_profile
+  </Tab>
+
+  <Tab value="apple" label="🍎 Apple">
+    **iOS/Mac users** - privacy-focused
+
+    **Setup location:** [Apple Developer](https://developer.apple.com/)
+
+    **Required capabilities:** Sign In with Apple
+  </Tab>
+</Tabs>
+
+## Google OAuth Setup
+
+<Steps>
+<Step title="Create Google Cloud Project">
+  1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+  2. Create new project or select existing one
+  3. Enable "Google+ API" in API Library
+</Step>
+
+<Step title="Create OAuth Credentials">
+  1. Go to "Credentials" section
+  2. Click "Create Credentials" → "OAuth 2.0 Client IDs"
+  3. Choose "Web application"
+  4. Add authorized redirect URIs:
+     - Development: `http://localhost:3000/api/auth/callback/google`
+     - Production: `https://yourdomain.com/api/auth/callback/google`
+</Step>
+
+<Step title="Get credentials">
+  ```bash
+  GOOGLE_CLIENT_ID="123456789.googleusercontent.com"
+  GOOGLE_CLIENT_SECRET="your-google-client-secret"
+  ```
+</Step>
+</Steps>
+
+<Callout type="info">
+  **Google setup docs:** [OAuth 2.0 Setup Guide](https://developers.google.com/identity/protocols/oauth2/web-server)
+</Callout>
+
+## GitHub OAuth Setup
+
+<Steps>
+<Step title="Go to GitHub Settings">
+  1. Visit [GitHub Developer Settings](https://github.com/settings/developers)
+  2. Click "OAuth Apps" → "New OAuth App"
+</Step>
+
+<Step title="Configure OAuth App">
+  - **Application name:** Your App Name
+  - **Homepage URL:** `http://localhost:3000` (development)
+  - **Authorization callback URL:** `http://localhost:3000/api/auth/callback/github`
+  - **Application description:** Optional description
+</Step>
+
+<Step title="Get credentials">
+  ```bash
+  GITHUB_CLIENT_ID="your-github-client-id"
+  GITHUB_CLIENT_SECRET="your-github-client-secret"
+  ```
+</Step>
+</Steps>
+
+<Callout type="info">
+  **GitHub setup docs:** [Creating an OAuth App](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app)
+</Callout>
+
+## Facebook OAuth Setup
+
+<Steps>
+<Step title="Create Facebook App">
+  1. Go to [Facebook Developers](https://developers.facebook.com/)
+  2. Click "My Apps" → "Create App"
+  3. Choose "Consumer" app type
+</Step>
+
+<Step title="Add Facebook Login">
+  1. In app dashboard, click "Add Product"
+  2. Find "Facebook Login" and click "Set Up"
+  3. Choose "Web" platform
+</Step>
+
+<Step title="Configure Valid OAuth URIs">
+  Add redirect URIs in Facebook Login settings:
+  - Development: `http://localhost:3000/api/auth/callback/facebook`
+  - Production: `https://yourdomain.com/api/auth/callback/facebook`
+</Step>
+
+<Step title="Get credentials">
+  ```bash
+  FACEBOOK_CLIENT_ID="your-facebook-app-id"
+  FACEBOOK_CLIENT_SECRET="your-facebook-app-secret"
+  ```
+</Step>
+</Steps>
+
+<Callout type="info">
+  **Facebook setup docs:** [Facebook Login for Web](https://developers.facebook.com/docs/facebook-login/web)
+</Callout>
+
+## Apple Sign In Setup
+
+<Steps>
+<Step title="Apple Developer Account">
+  1. Go to [Apple Developer Portal](https://developer.apple.com/account/)
+  2. Sign in with Apple Developer account (requires membership)
+</Step>
+
+<Step title="Create Service ID">
+  1. Go to "Certificates, Identifiers & Profiles"
+  2. Click "Identifiers" → "+"
+  3. Choose "Services IDs"
+  4. Configure your service identifier
+</Step>
+
+<Step title="Configure Sign In with Apple">
+  1. Enable "Sign In with Apple" for your Service ID
+  2. Add domains and redirect URLs:
+     - Domain: `yourdomain.com`
+     - Redirect URL: `https://yourdomain.com/api/auth/callback/apple`
+</Step>
+
+<Step title="Get credentials">
+  ```bash
+  APPLE_CLIENT_ID="your-apple-service-id"
+  APPLE_CLIENT_SECRET="your-apple-private-key"
+  ```
+</Step>
+</Steps>
+
+<Callout type="warning">
+  **Apple requires HTTPS:** Apple Sign In only works with HTTPS domains, not localhost. Test in production or use ngrok for development.
+</Callout>
+
+<Callout type="info">
+  **Apple setup docs:** [Sign In with Apple JS](https://developer.apple.com/documentation/sign_in_with_apple/sign_in_with_apple_js)
+</Callout>
+
+## How Social Login Works
+
+### User Experience Flow
+
+<Steps>
+<Step title="User clicks social button">
+  On login/register page, user clicks "Sign in with Google" (or other provider).
+</Step>
+
+<Step title="Redirect to provider">
+  User is redirected to provider's authorization page (Google, GitHub, etc.).
+</Step>
+
+<Step title="User authorizes">
+  User logs into their provider account and grants permissions.
+</Step>
+
+<Step title="Return with data">
+  Provider redirects back with user info (email, name, avatar).
+</Step>
+
+<Step title="Account created/linked">
+  - **New user:** Account created automatically
+  - **Existing user:** Provider linked to existing account
+  - User is logged in and redirected to dashboard
+</Step>
+</Steps>
+
+### Account Linking
+
+<Callout type="success">
+  **Smart account linking:** If a user signs up with Google using `john@gmail.com`, then later tries to login with GitHub using the same email, the accounts are automatically linked.
+</Callout>
+
+**Account linking features:**
+- Same email = automatic account linking
+- Users can have multiple providers on one account
+- Can unlink providers in account settings
+- Primary email remains consistent
+
+## Better Auth Configuration
+
+The social providers use Better Auth's `socialProviders` configuration:
+
+```typescript
+// In src/lib/better-auth/auth.ts
+socialProviders: {
+  google: {
+    prompt: 'select_account',
+    clientId: env.GOOGLE_CLIENT_ID as string,
+    clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+  },
+  // Add other providers as needed
+}
+```
+
+**Account linking is enabled:**
+```typescript
+account: {
+  accountLinking: {
+    enabled: true,
+  },
+}
+```
+
+## Common Issues & Solutions
+
+<Callout type="error">
+  **"Redirect URI mismatch" error?**
+
+  - Check callback URLs in provider settings match exactly
+  - Include both development and production URLs
+  - Verify HTTPS vs HTTP (Apple requires HTTPS)
+  - Check for trailing slashes in URLs
+</Callout>
+
+<Callout type="warning">
+  **"Invalid client" or "App not configured" error?**
+
+  - Verify `CLIENT_ID` and `CLIENT_SECRET` are correct
+  - Check provider app is published/approved (not in development mode)
+  - Ensure required scopes/permissions are configured
+  - Confirm environment variables are loaded correctly
+</Callout>
+
+<Callout type="info">
+  **Social buttons not appearing?**
+
+  - Check `NEXT_PUBLIC_AUTH_METHODS` includes provider name
+  - Verify environment variables are set with `NEXT_PUBLIC_` prefix where needed
+  - Restart development server after adding new variables
+  - Check provider is properly configured in Better Auth config
+</Callout>
+
+## Testing Checklist
+
+<Steps>
+<Step title="Test each provider">
+  1. Try logging in with each configured provider
+  2. Verify user info is collected correctly (name, email, avatar)
+  3. Check account creation works for new users
+  4. Test account linking with existing email
+</Step>
+
+<Step title="Test error scenarios">
+  1. Try with invalid/expired credentials
+  2. Test redirect URI mismatches
+  3. Verify error messages are user-friendly
+</Step>
+
+<Step title="Test account management">
+  1. Link multiple providers to same account
+  2. Unlink providers in settings
+  3. Verify primary email handling
+</Step>
+</Steps>
+
+## Security Considerations
+
+<Callout type="info">
+  **Built-in security features:**
+  - OAuth 2.0 standard compliance
+  - Secure token exchange
+  - No passwords stored for social accounts
+  - Account linking prevents duplicate accounts
+</Callout>
+
+**Best practices:**
+- Keep client secrets secure and private
+- Use HTTPS in production (required for Apple)
+- Regularly rotate client secrets
+- Monitor for suspicious login patterns
+
+<Callout type="success">
+  **All working?** Your users can now login with their favorite social accounts in just one click!
+</Callout>

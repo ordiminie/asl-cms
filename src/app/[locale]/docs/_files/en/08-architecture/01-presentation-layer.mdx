@@ -1,0 +1,597 @@
+---
+title: 'Presentation Layer'
+description: 'React Server Components, Client Components, Server Actions, DAL, and Forms for optimal user experience'
+keywords: 'ShipSaaS, presentation layer, UI layer, React components, Next.js pages, frontend architecture, component design'
+---
+
+The Presentation Layer handles all user interface concerns using Next.js App Router patterns. It follows React Server Components by default, uses Client Components only when necessary, and handles mutations through Server Actions.
+
+<Callout type="info">
+  **Layer Responsibility:** The Presentation Layer manages UI rendering, user interactions, and data presentation. It **never** contains business logic or direct database access.
+</Callout>
+
+<Callout type="success">
+  **Perfect for:** Building fast, interactive UIs with optimal server/client rendering balance and efficient data fetching.
+</Callout>
+
+## Presentation Layer Architecture
+
+The layer is organized with clear separation between server and client code:
+
+<Tabs defaultValue="layer-structure">
+  <Tab value="layer-structure" label="🏗️ Layer Structure">
+    **Presentation Layer Components:**
+    ```
+    src/app/                        # 📁 Next.js App Router
+    ├── (public)/                   # Public routes
+    ├── (auth)/                     # Authentication routes
+    ├── (app)/                      # Protected user routes
+    ├── (admin)/                    # Admin routes
+    ├── dal/                        # 📊 Data Access Layer (DAL)
+    │   ├── user-dal.ts            # Cached data access
+    │   └── subscription-dal.ts
+    └── api/                        # API routes (if needed)
+
+    src/components/                 # 🎨 UI Components
+    ├── ui/                         # Base UI components
+    ├── features/                   # Feature-specific components
+    │   ├── auth/
+    │   └── subscription/
+    └── forms/                      # Form components
+    ```
+
+    **Key Patterns:**
+    - **RSC First** - Server Components by default
+    - **Selective Client** - "use client" only when needed
+    - **Server Actions** - All mutations through server
+    - **DAL Caching** - React cache for performance
+  </Tab>
+
+  <Tab value="component-types" label="⚛️ Component Types">
+    **React Server Components (Default):**
+    ```typescript
+    // ✅ Server Component (No "use client")
+    export default async function UserProfile({ userId }: { userId: string }) {
+      const user = await getUserByIdDal(userId) // Direct server data access
+
+      return (
+        <div className="profile">
+          <h1>{user.name}</h1>
+          <UserActions userId={user.id} /> {/* Can include client components */}
+        </div>
+      )
+    }
+    ```
+
+    **Client Components (When Needed):**
+    ```typescript
+    "use client" // Only when needed for interactivity
+
+    import { useState } from 'react'
+
+    export function UserActions({ userId }: { userId: string }) {
+      const [isLoading, setIsLoading] = useState(false)
+
+      // Interactive functionality that needs browser APIs
+      return (
+        <button onClick={() => setIsLoading(true)}>
+          {isLoading ? 'Loading...' : 'Update Profile'}
+        </button>
+      )
+    }
+    ```
+
+    **When to Use "use client":**
+    - State management (`useState`, `useReducer`)
+    - Event handlers (`onClick`, `onChange`)
+    - Browser APIs (`localStorage`, `navigator`)
+    - Third-party libraries requiring client-side execution
+  </Tab>
+
+  <Tab value="data-access" label="📊 Data Access">
+    **DAL (Data Access Layer):**
+    ```typescript
+    // src/app/dal/user-dal.ts
+    import { cache } from 'react'
+    import { getUserByIdService } from '@/services/facades/user-service-facade'
+
+    // ✅ Cached data access with react-cache
+    export const getUserByIdDal = cache(async (id: string) => {
+      const userModel = await getUserByIdService(id)
+      return transformToUserDTO(userModel) // Transform to domain type
+    })
+
+    export const getUserSubscriptionsDal = cache(async (userId: string) => {
+      const subscriptions = await getSubscriptionsByUserIdService(userId)
+      return transformToSubscriptionDTOs(subscriptions)
+    })
+    ```
+
+    **Benefits:**
+    - **Caching:** `react-cache` prevents duplicate requests
+    - **Type Safety:** Transforms DB models to domain types
+    - **Performance:** Server-side data fetching
+    - **Reusability:** Shared across multiple components
+  </Tab>
+</Tabs>
+
+## Server Actions for Mutations
+
+All data mutations go through Server Actions, providing security and consistency:
+
+<Tabs defaultValue="server-actions">
+  <Tab value="server-actions" label="🔄 Server Actions">
+    **Server Action Pattern:**
+    ```typescript
+    // src/app/(app)/account/actions.ts
+    "use server"
+
+    import { revalidatePath } from 'next/cache'
+    import { updateUserService } from '@/services/facades/user-service-facade'
+
+    export async function updateUserAction(formData: FormData) {
+      // Extract form data
+      const userData = {
+        id: formData.get('id') as string,
+        name: formData.get('name') as string,
+        email: formData.get('email') as string
+      }
+
+      try {
+        // Call service layer (handles validation + authorization)
+        const result = await updateUserService(userData)
+
+        // Revalidate cached data
+        revalidatePath('/account')
+        revalidatePath(`/users/${userData.id}`)
+
+        return { success: true, data: result }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    }
+    ```
+
+    **Key Features:**
+    - **"use server"** directive for server execution
+    - **Service layer integration** for business logic
+    - **Cache invalidation** with `revalidatePath`
+    - **Error handling** with proper error types
+  </Tab>
+
+  <Tab value="action-usage" label="📝 Using Actions">
+    **In Forms:**
+    ```typescript
+    // Client Component Form
+    "use client"
+
+    import { useActionState } from 'react'
+    import { updateUserAction } from './actions'
+
+    export function UserForm({ user }: { user: User }) {
+      const [state, formAction] = useActionState(updateUserAction, null)
+
+      return (
+        <form action={formAction}>
+          <input name="id" type="hidden" value={user.id} />
+          <input name="name" defaultValue={user.name} required />
+          <input name="email" defaultValue={user.email} type="email" required />
+
+          <button type="submit">
+            {state?.success ? 'Updated!' : 'Update Profile'}
+          </button>
+
+          {state?.error && (
+            <p className="text-red-500">{state.error}</p>
+          )}
+        </form>
+      )
+    }
+    ```
+
+    **Benefits:**
+    - **Progressive Enhancement:** Works without JavaScript
+    - **Real-time Feedback:** Loading and error states
+    - **Type Safety:** TypeScript validation
+    - **Server Validation:** Double validation (client + server)
+  </Tab>
+</Tabs>
+
+## Forms and Validation
+
+The boilerplate uses a dual validation strategy for optimal user experience:
+
+<Tabs defaultValue="form-validation">
+  <Tab value="form-validation" label="✅ Validation Strategy">
+    **Client-Side Validation (UX):**
+    ```typescript
+    // components/features/auth/auth-form-validation.ts
+    import { z } from 'zod'
+
+    export const updateUserSchema = z.object({
+      name: z.string().min(2, "Name must be at least 2 characters"),
+      email: z.string().email("Invalid email format"),
+      bio: z.string().max(500, "Bio must be under 500 characters").optional()
+    })
+
+    export type UpdateUserInput = z.infer<typeof updateUserSchema>
+    ```
+
+    **React Hook Form Integration:**
+    ```typescript
+    "use client"
+
+    import { useForm } from 'react-hook-form'
+    import { zodResolver } from '@hookform/resolvers/zod'
+    import { updateUserSchema, type UpdateUserInput } from './auth-form-validation'
+
+    export function UserForm() {
+      const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting }
+      } = useForm<UpdateUserInput>({
+        resolver: zodResolver(updateUserSchema)
+      })
+
+      const onSubmit = async (data: UpdateUserInput) => {
+        // Submit to server action
+        const result = await updateUserAction(data)
+        if (!result.success) {
+          // Handle server errors
+        }
+      }
+
+      return (
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <input {...register("name")} />
+          {errors.name && <span>{errors.name.message}</span>}
+
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Updating...' : 'Update'}
+          </button>
+        </form>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab value="server-validation" label="🛡️ Server Validation">
+    **Server-Side Validation (Security):**
+    ```typescript
+    // Service layer validation (different schema for server rules)
+    import { z } from 'zod'
+
+    export const updateUserServiceSchema = z.object({
+      name: z.string().min(2).max(100),
+      email: z.string().email().refine(async (email) => {
+        // Check if email is already taken
+        const existingUser = await getUserByEmailDao(email)
+        return !existingUser
+      }, "Email already exists"),
+      bio: z.string().max(500).optional()
+    })
+    ```
+
+    **Complete Validation Flow:**
+    ```
+    1. 📝 User types in form
+    2. ✅ Client validation (React Hook Form + Zod)
+    3. 📤 Form submitted to Server Action
+    4. 🛡️ Server validation (Service layer + Zod)
+    5. 🔐 Authorization check (CASL permissions)
+    6. 💾 Database operation
+    7. 🔄 Cache revalidation
+    8. ✨ UI update
+    ```
+  </Tab>
+
+  <Tab value="form-patterns" label="📋 Form Patterns">
+    **Route-based Actions:**
+    ```
+    app/
+    ├── (auth)/
+    │   ├── actions.ts          # Shared auth actions
+    │   ├── signin/
+    │   │   └── page.tsx
+    │   └── signup/
+    │       └── page.tsx
+    ├── (app)/
+    │   ├── account/
+    │   │   ├── actions.ts      # Account-specific actions
+    │   │   └── page.tsx
+    │   └── dashboard/
+    │       ├── actions.ts      # Dashboard actions
+    │       └── page.tsx
+    ```
+
+    **Action Organization:**
+    - **Route-level:** `actions.ts` per route/feature
+    - **Shared:** Common actions in parent directories
+    - **Naming:** Descriptive action names (`updateUserAction`)
+    - **Error Handling:** Consistent error response format
+  </Tab>
+</Tabs>
+
+## Route Organization
+
+Next.js App Router provides powerful routing with route groups:
+
+<Tabs defaultValue="route-structure">
+  <Tab value="route-structure" label="📁 Route Structure">
+    **Route Groups:**
+    ```
+    app/
+    ├── (public)/               # 🌐 Public routes (no auth)
+    │   ├── page.tsx           # Homepage
+    │   ├── about/
+    │   └── contact/
+    ├── (auth)/                # 🔐 Authentication routes
+    │   ├── layout.tsx         # Auth-specific layout
+    │   ├── actions.ts         # Auth actions
+    │   ├── signin/
+    │   └── signup/
+    ├── (app)/                 # 👤 Protected user routes
+    │   ├── middleware.ts      # Route protection
+    │   ├── layout.tsx         # App layout with navigation
+    │   ├── account/
+    │   │   ├── actions.ts
+    │   │   ├── page.tsx
+    │   │   └── subscription/
+    │   └── dashboard/
+    ├── (admin)/               # 👑 Admin routes
+    │   ├── layout.tsx         # Admin layout
+    │   ├── middleware.ts      # Admin protection
+    │   ├── users/
+    │   └── analytics/
+    └── api/                   # 🔌 API routes (when needed)
+        └── webhooks/
+    ```
+
+    **Benefits:**
+    - **Layout Sharing:** Each group has its own layout
+    - **Middleware:** Different protection per group
+    - **Organization:** Clear separation by user type
+    - **SEO:** Clean URLs without group names
+  </Tab>
+
+  <Tab value="layout-hierarchy" label="🎨 Layout Hierarchy">
+    **Layout Composition:**
+    ```typescript
+    // app/layout.tsx - Root layout
+    export default function RootLayout({ children }: { children: ReactNode }) {
+      return (
+        <html>
+          <body>
+            <AuthProvider>
+              {children} {/* Route group layouts render here */}
+            </AuthProvider>
+          </body>
+        </html>
+      )
+    }
+
+    // app/(app)/layout.tsx - Protected app layout
+    export default function AppLayout({ children }: { children: ReactNode }) {
+      return (
+        <div className="app-layout">
+          <Navigation />
+          <main>{children}</main> {/* Page content */}
+          <Footer />
+        </div>
+      )
+    }
+
+    // app/(admin)/layout.tsx - Admin layout
+    export default function AdminLayout({ children }: { children: ReactNode }) {
+      return (
+        <div className="admin-layout">
+          <AdminSidebar />
+          <div className="admin-content">
+            {children} {/* Admin pages */}
+          </div>
+        </div>
+      )
+    }
+    ```
+  </Tab>
+
+  <Tab value="middleware" label="🛡️ Route Protection">
+    **Middleware Protection:**
+    ```typescript
+    // middleware.ts - Route protection
+    import { NextRequest, NextResponse } from 'next/server'
+    import { getSession } from '@/lib/auth'
+
+    export async function middleware(request: NextRequest) {
+      const { pathname } = request.nextUrl
+
+      // Protected app routes
+      if (pathname.startsWith('/app')) {
+        const session = await getSession()
+        if (!session) {
+          return NextResponse.redirect(new URL('/signin', request.url))
+        }
+      }
+
+      // Admin routes
+      if (pathname.startsWith('/admin')) {
+        const session = await getSession()
+        if (!session || !session.user.isAdmin) {
+          return NextResponse.redirect(new URL('/unauthorized', request.url))
+        }
+      }
+
+      return NextResponse.next()
+    }
+
+    export const config = {
+      matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Performance Optimizations
+
+The Presentation Layer implements several performance optimizations:
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">⚡</div>
+      <h4 className="font-semibold">Server-First Rendering</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **RSC by default** for faster initial loads</div>
+      <div>• **Selective hydration** only where needed</div>
+      <div>• **Server-side data fetching** reduces client requests</div>
+      <div>• **Streaming** for progressive page loading</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">💾</div>
+      <h4 className="font-semibold">Caching Strategy</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **React cache** in DAL layer</div>
+      <div>• **Request deduplication** automatic</div>
+      <div>• **Route revalidation** with Server Actions</div>
+      <div>• **Static generation** where possible</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🎯</div>
+      <h4 className="font-semibold">Code Splitting</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Route-based splitting** automatic</div>
+      <div>• **Component lazy loading** with `dynamic()`</div>
+      <div>• **Client components** loaded only when needed</div>
+      <div>• **Feature-based organization** for better splitting</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🔄</div>
+      <h4 className="font-semibold">Data Loading</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Parallel data fetching** in RSC</div>
+      <div>• **Waterfall elimination** with proper async/await</div>
+      <div>• **Error boundaries** for graceful failures</div>
+      <div>• **Loading UI** with Suspense boundaries</div>
+    </div>
+  </div>
+</div>
+
+## Best Practices
+
+<Tabs defaultValue="component-patterns">
+  <Tab value="component-patterns" label="⚛️ Component Patterns">
+    **Component Organization:**
+    ```typescript
+    // ✅ Server Component (Default)
+    // No "use client" directive needed
+    export default async function UserDashboard() {
+      const user = await getUserByIdDal(userId) // Server data access
+
+      return (
+        <div>
+          <UserProfile user={user} />
+          <UserActions userId={user.id} /> {/* Client component */}
+        </div>
+      )
+    }
+
+    // ✅ Client Component (When Needed)
+    "use client"
+
+    export function UserActions({ userId }: { userId: string }) {
+      const [isLoading, setIsLoading] = useState(false)
+
+      return (
+        <button onClick={() => handleAction(userId)}>
+          Action
+        </button>
+      )
+    }
+    ```
+
+    **Composition Pattern:**
+    - **Server components** handle data fetching
+    - **Client components** handle interactivity
+    - **Compose together** for optimal performance
+    - **Pass data down** from server to client components
+  </Tab>
+
+  <Tab value="data-patterns" label="📊 Data Patterns">
+    **DAL Usage:**
+    ```typescript
+    // ✅ Good: Use DAL for all data access
+    export default async function UserPage({ userId }: { userId: string }) {
+      const user = await getUserByIdDal(userId)
+      const subscriptions = await getUserSubscriptionsDal(userId)
+
+      return <UserDisplay user={user} subscriptions={subscriptions} />
+    }
+
+    // ❌ Bad: Direct service calls from components
+    export default async function UserPage({ userId }: { userId: string }) {
+      const user = await getUserByIdService(userId) // Skip DAL
+      return <UserDisplay user={user} />
+    }
+
+    // ❌ Bad: Direct database access
+    export default async function UserPage({ userId }: { userId: string }) {
+      const user = await db.query.users.findFirst() // Skip layers
+      return <UserDisplay user={user} />
+    }
+    ```
+  </Tab>
+
+  <Tab value="error-handling" label="🚨 Error Handling">
+    **Error Boundaries:**
+    ```typescript
+    // app/error.tsx - Route-level error boundary
+    "use client"
+
+    export default function Error({
+      error,
+      reset,
+    }: {
+      error: Error & { digest?: string }
+      reset: () => void
+    }) {
+      return (
+        <div>
+          <h2>Something went wrong!</h2>
+          <button onClick={reset}>Try again</button>
+        </div>
+      )
+    }
+
+    // app/loading.tsx - Loading UI
+    export default function Loading() {
+      return <div>Loading...</div>
+    }
+
+    // app/not-found.tsx - 404 handling
+    export default function NotFound() {
+      return <div>Page not found</div>
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Callout type="success">
+  **Presentation layer ready!** Your UI follows React Server Components best practices with optimal performance, clear data flow, and proper separation of concerns.
+</Callout>

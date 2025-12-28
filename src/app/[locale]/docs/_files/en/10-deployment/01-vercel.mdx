@@ -1,0 +1,524 @@
+---
+title: Vercel Deployment
+description: Step-by-step guide to deploy your SaaS application on Vercel with zero configuration and optimal performance
+keywords: 'ShipSaaS, Vercel deployment, Vercel hosting, Next.js deployment, serverless deployment, production hosting'
+---
+
+The fastest and most reliable way to deploy your Next.js SaaS application to production.
+
+## Why Vercel for SaaS Applications
+
+**Optimal for Next.js Apps:**
+- **Zero Configuration** - Deploy with a single command
+- **Built-in Performance** - Edge CDN, automatic image optimization
+- **Serverless Functions** - Handle API routes with automatic scaling
+- **Preview Deployments** - Test changes before production
+
+**SaaS-Specific Benefits:**
+- **Global Edge Network** - Fast response times worldwide
+- **Automatic Scaling** - Handle traffic spikes during promotions
+- **Instant Rollbacks** - Quick recovery from deployment issues
+- **Environment Management** - Secure handling of secrets and API keys
+
+## Deployment Methods
+
+Choose the deployment method that fits your workflow:
+
+### Method 1: Git Integration (Recommended)
+
+**Automatic deployments from your repository:**
+
+1. **Connect Repository**
+   ```bash
+   # Push your code to GitHub, GitLab, or Bitbucket
+   git push origin main
+   ```
+
+2. **Import Project to Vercel**
+   - Visit [vercel.com](https://vercel.com)
+   - Click "Import Project"
+   - Connect your Git provider
+   - Select your SaaS repository
+
+3. **Configure Build Settings**
+   ```
+   Framework Preset: Next.js
+   Build Command: pnpm build
+   Output Directory: .next (automatic)
+   Install Command: pnpm install
+   ```
+
+4. **Set Environment Variables**
+   - Go to Project Settings → Environment Variables
+   - Add all production environment variables
+   - Configure for Production, Preview, and Development
+
+**Benefits:**
+- Automatic deployments on every push
+- Preview deployments for pull requests
+- Easy collaboration with team members
+- Branch-based deployments for staging
+
+### Method 2: Vercel CLI
+
+**Manual deployments via command line:**
+
+1. **Install Vercel CLI**
+   ```bash
+   npm i -g vercel
+   # or
+   pnpm add -g vercel
+   ```
+
+2. **Login to Vercel**
+   ```bash
+   vercel login
+   ```
+
+3. **Deploy to Production**
+   ```bash
+   # First deployment
+   vercel --prod
+
+   # Subsequent deployments
+   vercel --prod
+   ```
+
+4. **Configure Project Settings**
+   ```bash
+   # Set up project configuration
+   vercel env add DATABASE_URL production
+   vercel env add AUTH_SECRET production
+   # ... add all environment variables
+   ```
+
+**Benefits:**
+- Direct control over deployments
+- Useful for CI/CD pipelines
+- Can deploy from any environment
+- Good for automated deployment scripts
+
+## Environment Variable Configuration
+
+**Critical Variables for Production:**
+
+### Required for All Deployments
+```bash
+# Core Application
+DATABASE_URL="postgres://..."
+AUTH_SECRET="your-auth-secret"
+BETTER_AUTH_SECRET="same-as-auth-secret"
+BETTER_AUTH_URL="https://yourdomain.com"
+NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+
+# Email Service
+RESEND_API_KEY="re_your_api_key"
+EMAIL_FROM="noreply@yourdomain.com"
+
+# File Storage
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_BUCKET="your-bucket-name"
+
+# Stripe Payment
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_live_..."
+STRIPE_SECRET_KEY="sk_live_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
+```
+
+### Setting Variables in Vercel Dashboard
+
+1. **Navigate to Project Settings**
+   - Select your project
+   - Go to Settings → Environment Variables
+
+2. **Add Variables by Environment**
+   ```
+   Variable Name: DATABASE_URL
+   Value: postgres://user:pass@host:5432/db
+   Environments: ✓ Production ✓ Preview ✓ Development
+   ```
+
+3. **Sensitive Variables**
+   - Use Vercel's encrypted storage
+   - Never expose in client-side code
+   - Prefix with `NEXT_PUBLIC_` only for public variables
+
+### Setting Variables via CLI
+
+```bash
+# Add single variable
+vercel env add DATABASE_URL production
+
+# Add from file
+vercel env pull .env.vercel.local
+
+# List all variables
+vercel env ls
+```
+
+## Custom Domain Configuration
+
+**Set up your custom domain for professional branding:**
+
+### 1. Purchase and Configure Domain
+
+**Domain Providers:**
+- Namecheap, GoDaddy, Cloudflare, etc.
+- Configure DNS to point to Vercel
+
+### 2. Add Domain in Vercel
+
+1. **Project Settings → Domains**
+   ```
+   Domain: yourdomain.com
+   Redirect: www.yourdomain.com → yourdomain.com (recommended)
+   ```
+
+2. **DNS Configuration**
+   ```
+   Type: A Record
+   Name: @
+   Value: 76.76.19.61 (Vercel's IP)
+
+   Type: CNAME
+   Name: www
+   Value: cname.vercel-dns.com
+   ```
+
+### 3. SSL Certificate Setup
+
+Vercel automatically provisions SSL certificates:
+- **Let's Encrypt** certificates for custom domains
+- **Automatic renewal** before expiration
+- **HTTP to HTTPS redirect** enabled by default
+
+**Verify SSL:**
+```bash
+# Check certificate
+curl -I https://yourdomain.com
+
+# Response should include:
+# HTTP/2 200
+# strict-transport-security: max-age=63072000
+```
+
+## Build Configuration
+
+**Optimize your build for production performance:**
+
+### Next.js Configuration
+
+```typescript
+// next.config.ts
+import type { NextConfig } from 'next'
+
+const nextConfig: NextConfig = {
+  // Image optimization for global CDN
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'iyatdxbvlmszswgoevtc.supabase.co', // Your Supabase domain
+      },
+    ],
+  },
+
+  // Performance optimizations
+  experimental: {
+    authInterrupts: true,
+    taint: true,
+    useCache: true,
+    staleTimes: {
+      dynamic: 30,    // 30 seconds for dynamic content
+      static: 180,    // 3 minutes for static content
+    },
+  },
+}
+
+export default nextConfig
+```
+
+### Vercel Project Configuration
+
+```json
+// vercel.json
+{
+  "buildCommand": "pnpm build",
+  "devCommand": "pnpm dev",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://yourdomain.com"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Build Optimization Settings
+
+**Package.json Scripts:**
+```json
+{
+  "scripts": {
+    "build": "next build --turbopack",
+    "start": "next start",
+    "verify-build": "next build && next export"
+  }
+}
+```
+
+**Environment-Specific Builds:**
+```bash
+# Production build with optimizations
+NODE_ENV=production pnpm build
+
+# Analyze bundle size
+ANALYZE=true pnpm build
+```
+
+## Monitoring and Analytics
+
+**Track your deployment performance:**
+
+### Vercel Analytics
+
+**Enable Built-in Analytics:**
+1. Go to Project Settings → Analytics
+2. Enable Web Analytics
+3. View performance metrics in dashboard
+
+**Key Metrics:**
+- **Page Load Time** - Track user experience
+- **Core Web Vitals** - Google ranking factors
+- **Unique Visitors** - Growth tracking
+- **Geographic Distribution** - Global reach analysis
+
+### Real User Monitoring
+
+```typescript
+// lib/analytics.ts
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
+
+export function AnalyticsProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      {children}
+      <Analytics />
+      <SpeedInsights />
+    </>
+  )
+}
+```
+
+### Performance Monitoring
+
+**Track API Performance:**
+```typescript
+// app/api/health/route.ts
+export async function GET() {
+  const start = Date.now()
+
+  try {
+    // Check database connection
+    await db.select().from(users).limit(1)
+
+    const duration = Date.now() - start
+
+    return Response.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: 'connected',
+      responseTime: `${duration}ms`
+    })
+  } catch (error) {
+    return Response.json({
+      status: 'unhealthy',
+      error: 'Database connection failed'
+    }, { status: 500 })
+  }
+}
+```
+
+## Deployment Best Practices
+
+**Ensure reliable and secure deployments:**
+
+### Pre-Deployment Checklist
+
+```bash
+# 1. Run all tests
+pnpm test
+pnpm test:e2e
+
+# 2. Check build locally
+pnpm build
+
+# 3. Verify environment variables
+pnpm env:check
+
+# 4. Database migrations
+pnpm db:generate
+pnpm db:migrate
+
+# 5. Security scan
+pnpm audit
+```
+
+### Staged Deployment Strategy
+
+**1. Preview Deployments**
+```bash
+# Deploy feature branch for testing
+git checkout feature/new-payment-flow
+git push origin feature/new-payment-flow
+
+# Vercel automatically creates preview URL
+# https://yourapp-git-feature-new-payment-flow-team.vercel.app
+```
+
+**2. Production Deployment**
+```bash
+# After testing in preview
+git checkout main
+git merge feature/new-payment-flow
+git push origin main
+
+# Automatic production deployment
+```
+
+### Rollback Strategy
+
+**Instant Rollback via Dashboard:**
+1. Go to Project → Deployments
+2. Find previous working deployment
+3. Click "Promote to Production"
+4. Changes take effect immediately
+
+**Rollback via CLI:**
+```bash
+# List recent deployments
+vercel ls
+
+# Rollback to specific deployment
+vercel rollback [deployment-url]
+```
+
+### Security Considerations
+
+**Environment Security:**
+- Use different secrets for preview/production
+- Regularly rotate API keys and secrets
+- Never commit secrets to version control
+- Enable Vercel's security headers
+
+**Access Control:**
+```javascript
+// middleware.ts
+export function middleware(request: NextRequest) {
+  // Block access to admin routes in preview deployments
+  if (request.nextUrl.hostname.includes('vercel.app') &&
+      request.nextUrl.pathname.startsWith('/admin')) {
+    return new Response('Access denied', { status: 403 })
+  }
+}
+```
+
+## Troubleshooting Common Issues
+
+**Solutions to frequent Vercel deployment problems:**
+
+### Build Failures
+
+**Problem: Build timeout**
+```bash
+# Solution: Optimize dependencies and build process
+npm prune
+pnpm store prune
+
+# Use build cache
+vercel build --prod
+```
+
+**Problem: Memory issues during build**
+```json
+// vercel.json
+{
+  "functions": {
+    "app/api/**/*.ts": {
+      "memory": 1024
+    }
+  }
+}
+```
+
+### Environment Variable Issues
+
+**Problem: Variables not accessible**
+```typescript
+// Debug environment variables
+console.log('Environment check:', {
+  NODE_ENV: process.env.NODE_ENV,
+  DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Missing',
+  STRIPE_SECRET: process.env.STRIPE_SECRET_KEY ? 'Set' : 'Missing'
+})
+```
+
+### Domain and SSL Issues
+
+**Problem: SSL certificate not provisioning**
+1. Verify DNS records are correct
+2. Check domain ownership verification
+3. Wait up to 24 hours for propagation
+4. Contact Vercel support if persistent
+
+**Problem: Custom domain not working**
+```bash
+# Check DNS propagation
+dig yourdomain.com
+nslookup yourdomain.com
+```
+
+### API Route Issues
+
+**Problem: API routes timing out**
+```typescript
+// Increase timeout in vercel.json
+{
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 60
+    }
+  }
+}
+```
+
+**Problem: CORS errors**
+```typescript
+// app/api/auth/[...better-auth]/route.ts
+export async function OPTIONS(request: Request) {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_APP_URL || '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  })
+}
+```
+
+Your SaaS application is now deployed on Vercel with enterprise-grade performance and reliability. Next, configure your **[Environment Variables](/docs/deployment/environment)** for optimal security and functionality.
