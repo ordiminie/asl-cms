@@ -1,0 +1,408 @@
+---
+title: Development Guide
+description: Complete development workflow with all available scripts, tools, and best practices for building with the SaaS boilerplate
+keywords: "ShipSaaS, development guide, development workflow, pnpm scripts, Drizzle Studio, testing, code quality, development tools, TypeScript"
+---
+
+Comprehensive guide to developing with the SaaS boilerplate. This section covers all available commands, development tools, and workflow best practices.
+
+## Available Scripts
+
+Master all the development commands organized by category for efficient development workflow.
+
+<Tabs defaultValue="dev">
+  <Tab value="dev" label="Development">
+    ```bash
+    # Development server
+    pnpm dev          # Start development server with Turbopack
+    pnpm build        # Build for production with Turbopack
+    pnpm start        # Start production server
+
+    # Code quality
+    pnpm lint         # Run ESLint for code linting
+    pnpm lint:fix     # Fix ESLint errors automatically
+    pnpm format       # Check code formatting with Prettier
+    pnpm format:fix   # Fix code formatting with Prettier
+
+    # Environment setup
+    pnpm init:env     # Interactive environment configuration
+    ```
+  </Tab>
+
+  <Tab value="db" label="Database">
+    ```bash
+    # Database management
+    pnpm db:studio    # Open Drizzle Studio (database GUI)
+    pnpm db:push      # Push schema changes to database (--force)
+    pnpm db:generate  # Generate migrations from schema
+    pnpm db:migrate   # Run pending migrations
+    pnpm db:pull      # Pull schema from database
+    pnpm db:drop      # Drop database tables
+
+    # Data management
+    pnpm db:seed      # Seed database with demo data
+    pnpm db:clear     # Clear all data from database
+    pnpm db:reset-seed # Clear, push schema, and seed database
+
+    # Connection testing
+    pnpm db:check     # Test database connection
+    ```
+  </Tab>
+
+  <Tab value="test" label="Testing">
+    ```bash
+    # Unit testing with Vitest
+    pnpm test         # Run unit tests with Vitest (--pool=forks)
+
+    # End-to-End testing with Playwright
+    pnpm test:e2e     # Run E2E tests with Playwright
+    pnpm test:e2e:ui  # Run E2E tests with Playwright UI
+    pnpm test:e2e:headed # Run E2E tests with visible browser
+    ```
+  </Tab>
+
+  <Tab value="stripe" label="Stripe & Tools">
+    ```bash
+    # Stripe development
+    pnpm stripe:listen # Listen for webhooks (forward to localhost:3000)
+    pnpm stripe:logs  # View Stripe logs in real-time
+
+    # Code analysis
+    pnpm knip         # Find unused dependencies and exports
+
+    # Git hooks
+    pnpm prepare      # Setup Husky git hooks
+    pnpm lint-staged  # Run linting on staged files
+    ```
+  </Tab>
+</Tabs>
+
+## Development Tools
+
+Essential tools and interfaces for efficient development workflow.
+
+### **Database Management**
+
+**Drizzle Studio** - Visual database interface
+```bash
+pnpm db:studio
+# Opens at: http://localhost:4983
+```
+
+**Features:**
+- Visual table editor with inline editing
+- Query builder and SQL console
+- Relationship visualization
+- Data import/export capabilities
+- Migration history tracking
+
+### **Email Development**
+
+**Email Preview System**
+- All emails logged in development console
+- Real email templates with React Email
+- Multi-language template testing
+- Resend integration for production
+
+**Testing emails:**
+```bash
+# Trigger test emails in development
+# Check terminal output for email content
+# All emails are intercepted and logged
+```
+
+### **Payment Testing**
+
+**Stripe Integration Tools**
+```bash
+# Webhook testing (in separate terminal)
+pnpm stripe:listen    # Listen for local webhooks
+pnpm stripe:forward   # Forward webhooks to local server
+```
+
+**Stripe CLI Features:**
+- Real-time webhook testing
+- Event simulation
+- Payment flow debugging
+- Subscription lifecycle testing
+
+### **Code Quality Tools**
+
+**TypeScript Strict Mode**
+- Complete type safety across the codebase
+- Strict null checks enabled
+- No implicit any types
+- Path mapping configured
+
+**ESLint Configuration**
+- Next.js recommended rules
+- TypeScript-specific linting
+- Import order enforcement
+- Unused variable detection
+
+**Prettier Integration**
+- Consistent code formatting
+- Auto-format on save (if configured)
+- Integration with ESLint
+- Custom formatting rules
+
+## Development Workflow
+
+### **Daily Development Flow**
+
+<Steps>
+<Step title="Start Development">
+  ```bash
+  # Start the development server
+  pnpm dev
+
+  # Open database GUI (optional)
+  pnpm db:studio
+  ```
+</Step>
+
+<Step title="Make Changes">
+  - Edit code with full TypeScript support
+  - Hot reload automatically applies changes
+  - Database changes auto-sync with schema
+</Step>
+
+<Step title="Test Changes">
+  ```bash
+  # Run relevant tests
+  pnpm test [pattern]
+
+  # Run E2E tests for user flows
+  pnpm test:e2e
+  ```
+</Step>
+
+<Step title="Quality Check">
+  ```bash
+  # Check code quality before commit
+  pnpm lint
+  pnpm type-check
+  pnpm format
+  ```
+</Step>
+</Steps>
+
+### **Feature Development Process**
+
+<Steps>
+<Step title="Database Changes">
+  ```bash
+  # 1. Update schema in src/db/models/
+  # 2. Generate migration
+  pnpm db:generate
+
+  # 3. Apply to development database
+  pnpm db:migrate
+  ```
+</Step>
+
+<Step title="Service Layer">
+  ```bash
+  # 1. Add service functions in packages/services/
+  # 2. Write unit tests
+  pnpm test services
+
+  # 3. Update facades if needed
+  ```
+</Step>
+
+<Step title="UI Implementation">
+  ```bash
+  # 1. Create/update components
+  # 2. Add to pages with proper data access layer
+  # 3. Test UI components
+  pnpm test components
+  ```
+</Step>
+
+<Step title="Integration Testing">
+  ```bash
+  # 1. Write E2E tests for complete user flows
+  # 2. Test with real data and services
+  pnpm test:e2e
+  ```
+</Step>
+</Steps>
+
+### **Debugging Strategies**
+
+**Database Issues:**
+```bash
+# Check database connection
+pnpm db:check
+
+# View data visually
+pnpm db:studio
+
+# Reset data if corrupted
+pnpm db:reset-seed
+```
+
+**Build Issues:**
+```bash
+# Clean build artifacts
+pnpm clean
+
+# Rebuild packages
+pnpm build:packages
+
+# Check TypeScript errors
+pnpm type-check
+```
+
+**Test Failures:**
+```bash
+# Run specific test file
+pnpm test path/to/file.test.ts
+
+# Run with detailed output
+pnpm test --reporter=verbose
+
+# Generate coverage to find untested code
+pnpm test:coverage
+```
+
+## Environment-Specific Development
+
+### **Local Development**
+
+**Configuration:**
+- Hot reload enabled
+- Debug logging active
+- Test database connection
+- Mock external services
+
+**Files:**
+```bash
+.env.development    # Development environment variables
+.env.local          # Local overrides (not committed)
+```
+
+### **Testing Environment**
+
+**Setup:**
+```bash
+# Use test environment
+NODE_ENV=test pnpm test
+
+# Test database setup
+pnpm db:migrate  # With test DATABASE_URL
+```
+
+**Features:**
+- Isolated test database
+- Mocked external services
+- Faster execution
+- Deterministic data
+
+### **Production Preparation**
+
+**Build Testing:**
+```bash
+# Test production build locally
+pnpm build
+pnpm start
+
+# Verify all features work in production mode
+```
+
+**Performance Checks:**
+```bash
+# Analyze bundle size
+pnpm build --analyze
+
+# Test with production data structure
+# Run full E2E test suite
+pnpm test:e2e
+```
+
+## Advanced Development Features
+
+### **Monorepo Architecture**
+
+**Package Structure:**
+```
+packages/
+├── services/     # Business logic and API calls
+├── ui/          # Shared UI components
+├── shared/      # Common utilities
+└── persistence/ # Database models and queries
+```
+
+**Development Benefits:**
+- Code sharing between apps
+- Consistent type definitions
+- Centralized business logic
+- Independent package testing
+
+### **Code Generation**
+
+**Automatic Features:**
+- TypeScript types from database schema
+- API route types from service definitions
+- Component props from schema validation
+- Test fixtures from database models
+
+### **Performance Monitoring**
+
+**Development Metrics:**
+- Build time optimization
+- Hot reload performance
+- Bundle size analysis
+- Database query performance
+
+**Tools:**
+```bash
+# Bundle analyzer
+pnpm build --analyze
+
+# Performance profiling
+NODE_ENV=development pnpm dev --profile
+```
+
+## Best Practices
+
+### **Code Organization**
+
+<Callout type="success">
+  **Layered Architecture**: Follow the 5-layer pattern for consistent, maintainable code structure.
+</Callout>
+
+1. **Presentation Layer** - React components and pages
+2. **DAL (Data Access Layer)** - Cached data access with React
+3. **Facade Layer** - Interface between presentation and business logic
+4. **Service Layer** - Business logic, validation, and authorization
+5. **Persistence Layer** - Database models and repositories
+
+### **Development Habits**
+
+**Before Each Commit:**
+```bash
+# Run the quality trio
+pnpm lint          # Code quality
+pnpm type-check    # Type safety
+pnpm test          # Functionality
+```
+
+**Database Best Practices:**
+- Always generate migrations for schema changes
+- Test migrations on copy of production data
+- Use transactions for multi-step operations
+- Keep database seeds up to date
+
+**Testing Strategy:**
+- Write tests for business logic first
+- Add integration tests for complex flows
+- Use E2E tests for critical user journeys
+- Mock external services in unit tests
+
+<Callout type="info">
+  **Performance Tip**: Use `pnpm dev` with Turbopack for the fastest development experience. Hot reload is optimized for large codebases.
+</Callout>
+
+Ready to build? This development guide provides everything you need to work efficiently with the SaaS boilerplate architecture and tools.

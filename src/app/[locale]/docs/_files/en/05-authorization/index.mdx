@@ -1,0 +1,95 @@
+---
+title: 'Authorization & Permissions'
+description: 'Role-based access control, route protection, and fine-grained permissions to secure your SaaS application'
+keywords: 'ShipSaaS, authorization, RBAC, permissions, access control, role-based security, user permissions'
+---
+
+Authorization controls what authenticated users can access in your application. The boilerplate includes a comprehensive role-based access control (RBAC) system with hierarchical permissions.
+
+<Callout type="success">
+  **Perfect for:** Multi-role applications, admin panels, permission-based features, and enterprise security requirements.
+</Callout>
+
+## Authentication vs Authorization
+
+<Tabs defaultValue="authentication">
+  <Tab value="authentication" label="🔐 Authentication">
+    **"Who are you?"**
+    - Login with email/password
+    - Verify user identity
+    - Create secure session
+    - Handled by Better Auth
+
+    **Result:** User is logged in or not
+  </Tab>
+
+  <Tab value="authorization" label="🛡️ Authorization">
+    **"What can you do?"**
+    - Check user permissions
+    - Validate role-based access
+    - Control feature visibility
+    - Handled by CASL + custom logic
+
+    **Result:** User can or cannot access specific resources
+  </Tab>
+</Tabs>
+
+<Callout type="info">
+  **Key concept:** Authentication gets you in the door. Authorization decides which rooms you can enter.
+</Callout>
+
+## Authorization Topics
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+  <a href="./authorization/roles" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">👑</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Roles & Hierarchy</h3>
+        <p className="text-sm text-muted-foreground">
+          User roles from GUEST to SUPER_ADMIN with inheritance system
+        </p>
+      </div>
+    </div>
+  </a>
+
+  <a href="./authorization/route-protection" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🛡️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Route Protection</h3>
+        <p className="text-sm text-muted-foreground">
+          Protect pages with withAuth HOC and middleware
+        </p>
+      </div>
+    </div>
+  </a>
+
+  <a href="./authorization/api-protection" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🔒</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">API Protection</h3>
+        <p className="text-sm text-muted-foreground">
+          Secure API routes with role and permission checks
+        </p>
+      </div>
+    </div>
+  </a>
+
+  <a href="./authorization/permissions" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">⚖️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">CASL Permissions</h3>
+        <p className="text-sm text-muted-foreground">
+          Fine-grained permissions with CASL integration
+        </p>
+      </div>
+    </div>
+  </a>
+</div>
+
+<Callout type="success">
+  **Complete security system!** Your SaaS application has enterprise-grade authorization protecting every resource based on user roles and permissions.
+</Callout>

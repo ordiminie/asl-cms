@@ -1,0 +1,404 @@
+---
+title: 'Database Setup'
+description: 'Configure your PostgreSQL database with Neon DB or other compatible providers for optimal performance'
+keywords: "ShipSaaS, database setup, PostgreSQL, Neon DB, Supabase, database configuration, Drizzle ORM, UUID extension, database migrations"
+order: 4
+---
+
+This guide will help you set up a PostgreSQL database for your SaaS application. We recommend **Neon DB** as the primary choice for its simplicity, performance, and developer experience.
+
+## Database Provider Options
+
+### **Neon DB (Recommended)**
+
+- **Serverless PostgreSQL** with automatic scaling
+- **Generous free tier** (512MB storage, 10GB data transfer)
+- **Instant database creation** with endpoint URL
+- **Branch-based development** for testing
+- **Built-in connection pooling**
+- **Excellent performance** and reliability
+
+### **Alternative PostgreSQL Providers**
+
+- **Supabase** - PostgreSQL + additional services (auth, storage, real-time)
+- **Railway** - Simple deployment platform with PostgreSQL
+- **PlanetScale** - MySQL alternative (requires schema changes)
+- **Local PostgreSQL** - For development only
+
+<Callout type="info">
+  This guide focuses on **Neon DB** as the primary option, with notes for other
+  PostgreSQL-compatible providers.
+</Callout>
+
+## Quick Setup with Neon DB
+
+<Steps>
+<Step title="Create Neon DB Account">
+  1. Visit [neon.tech](https://neon.tech) and sign up for a free account
+  2. Click **"Create a project"**
+  3. Choose your region (closest to your users for best performance)
+  4. Give your project a meaningful name (e.g., "my-saas-app")
+</Step>
+
+<Step title="Get Database URL">
+  After project creation, you'll see the connection details:
+
+  ```bash
+  # Example Neon DB connection string
+  postgresql://username:password@endpoint.neon.tech/dbname?sslmode=require
+  ```
+
+  Copy the **Database URL** - you'll need it for environment configuration.
+</Step>
+
+<Step title="Configure Environment Variables">
+  Using the CLI tool (recommended):
+
+  ```bash
+  pnpm init:env
+  ```
+
+  Or manually add to your `.env.local`:
+
+  ```bash
+  DATABASE_URL="postgresql://username:password@endpoint.neon.tech/dbname?sslmode=require"
+  ```
+
+  <Callout type="info">
+    Only `DATABASE_URL` is required. The application uses this for all database connections.
+  </Callout>
+</Step>
+
+<Step title="Test Connection">
+  Verify your database connection:
+
+  ```bash
+  pnpm db:check
+  ```
+
+  You should see: "✅ Database connection successful"
+
+</Step>
+</Steps>
+
+## Initialize Database Schema
+
+<Callout type="warning">
+**Critical Setup Required:** This application uses UUID primary keys throughout the database schema. You must enable the UUID extension before running any migrations:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+</Callout>
+
+<Steps>
+<Step title="Enable UUID Extension">
+  **REQUIRED FIRST STEP**: Connect to your database and enable UUID support:
+
+  **Option 1: Using Neon DB Console**
+  1. Go to your Neon project dashboard
+  2. Open **SQL Editor**
+  3. Run this command:
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+  ```
+
+  **Option 2: Using any PostgreSQL client**
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+  ```
+
+  <Callout type="warning">
+    Without this extension, all database operations will fail as the schema uses UUID primary keys throughout.
+  </Callout>
+</Step>
+
+<Step title="Push Initial Schema">
+  After enabling UUID, create the database tables:
+
+  ```bash
+  # Push schema to database (creates tables)
+  pnpm db:push
+  ```
+
+  This creates all necessary tables for:
+
+  - User authentication and profiles (UUID IDs)
+  - Organizations and memberships (UUID IDs)
+  - Subscriptions and billing (UUID IDs)
+  - Blog posts and content (UUID IDs)
+  - Blog posts and content
+</Step>
+
+<Step title="Seed Demo Data">
+  Populate your database with demo data for development:
+
+  ```bash
+  # Add demo users, organizations, and sample data
+  pnpm db:seed
+  ```
+
+  This creates:
+
+  - Demo admin user (`admin@example.com`)
+  - Demo regular user (`user@example.com`)
+  - Sample organization with projects
+  - Test subscription plans
+</Step>
+
+<Step title="Open Database Studio">
+  Explore your data with Drizzle Studio:
+
+  ```bash
+  # Opens database management interface
+  pnpm db:studio
+  ```
+
+  Access the studio at `http://localhost:4983` to view and edit your data.
+
+</Step>
+</Steps>
+
+## Neon DB Features
+
+### **Database Branching**
+
+Neon DB supports branching for safe development:
+
+<Tabs defaultValue="main">
+  <Tab value="main" label="Main Branch">
+    ```bash
+    # Your production database
+    postgresql://username:password@main-endpoint.neon.tech/dbname
+    ```
+  </Tab>
+  <Tab value="dev" label="Development Branch">
+    ```bash
+    # Create a branch for development
+    # Use Neon DB console to create "dev" branch
+    postgresql://username:password@dev-endpoint.neon.tech/dbname
+    ```
+  </Tab>
+  <Tab value="preview" label="Preview Branch">
+    ```bash
+    # Create preview branches for feature testing
+    postgresql://username:password@preview-endpoint.neon.tech/dbname
+    ```
+  </Tab>
+</Tabs>
+
+### **Connection Pooling**
+
+Neon DB includes automatic connection pooling:
+
+```bash
+# Pooled connection (default)
+DATABASE_URL="postgresql://username:password@endpoint.neon.tech/dbname?sslmode=require"
+
+# Direct connection (if needed)
+DIRECT_URL="postgresql://username:password@endpoint.neon.tech/dbname?sslmode=require&pgbouncer=true"
+```
+
+### **Monitoring and Analytics**
+
+- **Query performance** insights in Neon console
+- **Connection monitoring** and usage statistics
+- **Automatic backups** and point-in-time recovery
+- **Usage alerts** for free tier limits
+
+## Alternative Provider Setup
+
+### **Supabase PostgreSQL**
+
+If you prefer Supabase for additional services:
+
+<Steps>
+<Step title="Create Supabase Project">
+  1. Visit [supabase.com](https://supabase.com) and create account
+  2. Create new project with PostgreSQL
+  3. Get connection string from Settings → Database
+</Step>
+
+<Step title="Configure URLs">
+  ```bash
+  # Supabase provides both pooled and direct connections
+  DATABASE_URL="postgresql://postgres.pooler:password@host:6543/postgres"
+  DIRECT_URL="postgresql://postgres:password@host:5432/postgres"
+  ```
+</Step>
+</Steps>
+
+### **Railway PostgreSQL**
+
+For Railway deployments:
+
+<Steps>
+<Step title="Add PostgreSQL Service">
+  1. Create Railway project
+  2. Add PostgreSQL service from templates
+  3. Get connection URL from service variables
+</Step>
+
+<Step title="Configure Environment">
+  ```bash
+  DATABASE_URL="postgresql://postgres:password@host:port/railway"
+  DIRECT_URL="postgresql://postgres:password@host:port/railway"
+  ```
+</Step>
+</Steps>
+
+### **Local PostgreSQL**
+
+For local development only:
+
+<Steps>
+<Step title="Install PostgreSQL">
+  ```bash
+  # macOS with Homebrew
+  brew install postgresql
+  brew services start postgresql
+
+  # Ubuntu/Debian
+  sudo apt install postgresql postgresql-contrib
+  sudo systemctl start postgresql
+  ```
+</Step>
+
+<Step title="Create Database">
+  ```bash
+  # Create database and user
+  createdb my_saas_app
+  createuser -s my_user
+
+  # Set password
+  psql -c "ALTER USER my_user PASSWORD 'my_password';"
+  ```
+</Step>
+
+<Step title="Configure Local URL">
+  ```bash
+  DATABASE_URL="postgresql://my_user:my_password@localhost:5432/my_saas_app"
+  DIRECT_URL="postgresql://my_user:my_password@localhost:5432/my_saas_app"
+  ```
+</Step>
+</Steps>
+
+## Database Management Commands
+
+### **Schema Management**
+
+```bash
+# Generate migration files
+pnpm db:generate
+
+# Apply migrations to database
+pnpm db:migrate
+
+# Push schema changes directly (development)
+pnpm db:push
+
+# Reset database (destructive)
+pnpm db:clear
+```
+
+### **Data Management**
+
+```bash
+# Seed database with demo data
+pnpm db:seed
+
+# Reset and re-seed (fresh start)
+pnpm db:reset-seed
+
+# Open database studio
+pnpm db:studio
+```
+
+### **Production Commands**
+
+```bash
+# Run migrations in production
+NODE_ENV=production pnpm db:migrate
+
+# Check database health
+pnpm db:check
+```
+
+## Troubleshooting
+
+### **Connection Issues**
+
+```bash
+# Test database connection
+pnpm db:check
+
+# Common issues:
+# 1. Incorrect DATABASE_URL format
+# 2. Network/firewall blocking connection
+# 3. Database not accepting connections
+# 4. SSL mode configuration
+```
+
+### **Migration Errors**
+
+```bash
+# Reset migrations (development only)
+rm -rf drizzle/
+
+# Generate fresh migrations
+pnpm db:generate
+
+# Apply to database
+pnpm db:push
+```
+
+### **SSL Certificate Issues**
+
+```bash
+# For providers requiring SSL
+DATABASE_URL="postgresql://user:pass@host:port/db?sslmode=require"
+
+# Disable SSL for local development
+DATABASE_URL="postgresql://user:pass@localhost:5432/db?sslmode=disable"
+```
+
+## Security Best Practices
+
+### **Connection Security**
+
+- **Always use SSL** in production (`sslmode=require`)
+- **Restrict database access** to application servers only
+- **Use connection pooling** to manage connections efficiently
+- **Monitor connection usage** to detect anomalies
+
+### **Credentials Management**
+
+- **Never commit database URLs** to version control
+- **Use environment variables** for all database configuration
+- **Rotate database passwords** regularly
+- **Use read-only users** for reporting queries
+
+### **Backup Strategy**
+
+- **Enable automatic backups** (Neon DB includes this)
+- **Test restore procedures** regularly
+- **Keep backups encrypted** and secure
+- **Document recovery procedures**
+
+<Callout type="success">
+  Your database is now configured! Continue with the [First
+  Run](/docs/getting-started/first-run) guide to test your complete setup.
+</Callout>
+
+## Next Steps
+
+After database setup:
+
+1. **[First Run](/docs/getting-started/first-run)** - Test your complete configuration
+2. **[Authentication](/docs/authentication)** - Configure authentication providers
+3. **[Deployment](/docs/development/deployment)** - Deploy to production
+
+<Callout type="info">
+  **Pro tip**: Use Neon DB branching to create separate databases for
+  development, staging, and production environments safely.
+</Callout>

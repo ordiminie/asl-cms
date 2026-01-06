@@ -71,3 +71,11 @@ export const reactivateSubscriptionAdminService =
 // ========================================
 export const getAdminStripeSubscriptionMRRService =
   subscriptionServiceInterceptor.getAdminStripeSubscriptionMRRService
+
+// ========================================
+// SERVICES DE LIMITES EFFECTIVES
+// ========================================
+export const getEffectiveLimitsService =
+  subscriptionServiceInterceptor.getEffectiveLimitsService
+export const getEffectiveLimitForType =
+  subscriptionServiceInterceptor.getEffectiveLimitForType

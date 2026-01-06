@@ -39,6 +39,20 @@ export async function updateOrganizationAction(
     const name = formData.get('name') as string
     const slug = formData.get('slug') as string
     const description = formData.get('description') as string
+    const limitOverridesStr = formData.get('limitOverrides') as string
+
+    // Parse limitOverrides si présent
+    let limitOverrides: Record<string, number> | undefined
+    if (limitOverridesStr) {
+      try {
+        limitOverrides = JSON.parse(limitOverridesStr)
+      } catch {
+        return {
+          success: false,
+          message: 'Format des limites invalide',
+        }
+      }
+    }
 
     // Validation optionnelle des données
     if (!name || !slug) {
@@ -53,6 +67,7 @@ export async function updateOrganizationAction(
       name,
       slug,
       description: description || undefined,
+      limitOverrides,
     })
 
     revalidatePath('/admin/organizations')

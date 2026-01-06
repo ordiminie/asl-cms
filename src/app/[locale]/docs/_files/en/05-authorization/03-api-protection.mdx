@@ -1,0 +1,290 @@
+---
+title: 'API Protection'
+description: 'Secure API routes with Better Auth native methods or custom withAuth helpers'
+keywords: 'ShipSaaS, API protection, API security, endpoint security, authenticated APIs, API authorization'
+---
+
+The boilerplate provides two approaches for protecting API routes: native Better Auth integration and custom `withAuth` helpers for cleaner code.
+
+<Callout type="success">
+  **Perfect for:** Protecting sensitive data, user management APIs, payment endpoints, and admin functions.
+</Callout>
+
+## Method 1: Native Better Auth Protection
+
+### Basic Authentication Check
+
+```typescript
+// Direct Better Auth usage
+import { auth } from '@/lib/better-auth/auth'
+import { NextRequest } from 'next/server'
+import { headers } from 'next/headers'
+
+export async function GET(request: NextRequest) {
+  // Check if user is authenticated
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.session?.userId) {
+    return Response.json({ error: 'Non authentifié' }, { status: 401 })
+  }
+
+  // User is authenticated
+  return Response.json({
+    message: 'This is protected data',
+    userId: session.session.userId
+  })
+}
+```
+
+### Role-Based Check with Better Auth
+
+```typescript
+// With manual role checking
+import { auth } from '@/lib/better-auth/auth'
+import { getAuthUser } from '@/services/authentication/auth-service'
+import { hasRequiredRole } from '@/services/authentication/auth-util'
+import { RoleConst } from '@/services/types/domain/auth-types'
+
+export async function GET(request: NextRequest) {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session?.session?.userId) {
+    return Response.json({ error: 'Non authentifié' }, { status: 401 })
+  }
+
+  // Get full user with role
+  const authUser = await getAuthUser()
+  if (!authUser) {
+    return Response.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
+  }
+
+  // Check role
+  const hasRole = hasRequiredRole(authUser, RoleConst.ADMIN)
+  if (!hasRole) {
+    return Response.json({ error: 'Non autorisé' }, { status: 403 })
+  }
+
+  // Admin logic here
+  return Response.json({ data: 'Admin data' })
+}
+```
+
+## Method 2: withAuth Helpers (Recommended)
+
+The boilerplate provides clean helper functions that handle authentication and role checking automatically.
+
+### Static Routes Protection
+
+```typescript
+// src/app/api/projects/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { withAuth, withUserAuth } from '@/lib/api-auth'
+import { RoleConst } from '@/services/types/domain/auth-types'
+
+// Basic protection with custom role
+export const GET = withAuth(async (request: NextRequest, authUser) => {
+  // User is authenticated and has USER role (or higher)
+  // authUser contains full user data including role
+
+  const result = await getProjectsService(authUser.id)
+  return NextResponse.json({ success: true, data: result })
+}, RoleConst.USER)
+
+// Shortcut for USER role
+export const POST = withUserAuth(async (request: NextRequest, authUser) => {
+  const body = await request.json()
+
+  const newProject = await createProjectService({
+    ...body,
+    createdBy: authUser.id
+  })
+
+  return NextResponse.json({ success: true, data: newProject }, { status: 201 })
+})
+```
+
+### Dynamic Routes Protection
+
+```typescript
+// src/app/api/projects/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { withDynamicUserAuth } from '@/lib/api-auth'
+
+// For routes with dynamic parameters
+export const GET = withDynamicUserAuth(
+  async (request: NextRequest, authUser, context) => {
+    const params = await context.params
+    const projectId = params.id
+
+    const project = await getProjectByIdService(projectId)
+    return NextResponse.json({ success: true, data: project })
+  }
+)
+
+export const PUT = withDynamicUserAuth(
+  async (request: NextRequest, authUser, context) => {
+    const params = await context.params
+    const projectId = params.id
+    const body = await request.json()
+
+    const updatedProject = await updateProjectService({
+      id: projectId,
+      ...body
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Projet mis à jour avec succès',
+      data: updatedProject
+    })
+  }
+)
+```
+
+## Available Helper Functions
+
+<Tabs defaultValue="static-helpers">
+  <Tab value="static-helpers" label="Static Routes">
+    ```typescript
+    import {
+      withAuth,           // Custom role
+      withUserAuth,       // USER role shortcut
+      withAdminAuth,      // ADMIN role shortcut
+      withRedactorAuth    // REDACTOR role shortcut
+    } from '@/lib/api-auth'
+
+    // Usage examples
+    export const GET = withAuth(async (request, authUser) => {
+      // Logic here
+      return NextResponse.json({ data: 'moderator data' })
+    }, RoleConst.MODERATOR)
+
+    export const POST = withUserAuth(async (request, authUser) => {
+      // Logic here
+      return NextResponse.json({ success: true })
+    })
+
+    export const DELETE = withAdminAuth(async (request, authUser) => {
+      // Logic here
+      return NextResponse.json({ success: true })
+    })
+
+    export const PUT = withRedactorAuth(async (request, authUser) => {
+      // Logic here
+      return NextResponse.json({ success: true })
+    })
+    ```
+  </Tab>
+
+  <Tab value="dynamic-helpers" label="Dynamic Routes">
+    ```typescript
+    import {
+      withDynamicAuth,           // Custom role
+      withDynamicUserAuth,       // USER role shortcut
+      withDynamicAdminAuth,      // ADMIN role shortcut
+      withDynamicRedactorAuth    // REDACTOR role shortcut
+    } from '@/lib/api-auth'
+
+    // Usage examples
+    export const GET = withDynamicAuth(async (request, authUser, context) => {
+      const params = await context.params
+      return NextResponse.json({ data: params.id })
+    }, RoleConst.MODERATOR)
+
+    export const POST = withDynamicUserAuth(async (request, authUser, context) => {
+      const params = await context.params
+      return NextResponse.json({ success: true })
+    })
+
+    export const DELETE = withDynamicAdminAuth(async (request, authUser, context) => {
+      const params = await context.params
+      return NextResponse.json({ success: true })
+    })
+
+    export const PUT = withDynamicRedactorAuth(async (request, authUser, context) => {
+      const params = await context.params
+      return NextResponse.json({ success: true })
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Comparison: Which Method to Choose?
+
+<Tabs defaultValue="withauth-pros">
+  <Tab value="withauth-pros" label="✅ withAuth Helpers">
+    **Advantages:**
+    - **Cleaner code** - No boilerplate auth logic
+    - **Consistent handling** - Standardized error responses
+    - **Type safety** - `authUser` parameter is fully typed
+    - **Role shortcuts** - `withUserAuth`, `withAdminAuth`, etc.
+    - **Less repetition** - DRY principle
+
+    **Best for:** Most API routes in your application
+  </Tab>
+
+  <Tab value="native-pros" label="⚙️ Native Better Auth">
+    **Advantages:**
+    - **Full control** - Custom logic and error handling
+    - **Flexibility** - Access to raw session data
+    - **Debugging** - Easier to trace auth flow
+    - **Custom requirements** - Special auth logic
+
+    **Best for:** Special cases, debugging, or custom auth flows
+  </Tab>
+</Tabs>
+
+<Callout type="info">
+  **Recommendation:** Use `withAuth` helpers for 95% of your API routes. Only use native Better Auth when you need custom authentication logic or debugging.
+</Callout>
+
+## Error Responses
+
+Both methods return standardized JSON error responses:
+
+```json
+// 401 Unauthorized
+{
+  "error": "Non authentifié"
+}
+
+// 403 Forbidden
+{
+  "error": "Non autorisé"
+}
+
+// 404 User Not Found
+{
+  "error": "Utilisateur non trouvé"
+}
+```
+
+## Testing API Protection
+
+<Steps>
+<Step title="Test unauthenticated access">
+  1. Make API requests without session cookies
+  2. Verify 401 "Non authentifié" responses
+  3. Check error message formatting
+</Step>
+
+<Step title="Test role-based endpoints">
+  1. Test with users of different roles (USER, ADMIN, etc.)
+  2. Verify role hierarchy works correctly
+  3. Check 403 "Non autorisé" for insufficient roles
+</Step>
+
+<Step title="Test dynamic routes">
+  1. Test routes with `[id]` parameters
+  2. Verify `context.params` access works
+  3. Test parameter validation
+</Step>
+</Steps>
+
+<Callout type="success">
+  **APIs secured!** Your backend endpoints are now protected with both native Better Auth and convenient helper functions.
+</Callout>

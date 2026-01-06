@@ -38,5 +38,7 @@ export function organizationDTO(
     createdAt: organization.createdAt ?? null,
     updatedAt: organization.updatedAt ?? null,
     metadata: organization.metadata ?? null,
+    limitOverrides:
+      (organization.limitOverrides as Record<string, number>) ?? null,
   }
 }

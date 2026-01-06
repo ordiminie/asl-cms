@@ -12,6 +12,7 @@ import type {
   SubscriptionPlanModel,
 } from '../models/subscription-model'
 import {subscription, subscriptionPlan} from '../models/subscription-model'
+import {getOrganizationByIdDao} from './organization-repository'
 
 export const createSubscriptionDao = async (values: SubscriptionAddModel) => {
   const [row] = await db.insert(subscription).values(values).returning()
@@ -587,24 +588,40 @@ export const getCurrentMembersUsageDao = async (
 export const getAdminUsageStatsDao = async (
   organizationId: string
 ): Promise<AdminUsageStats> => {
-  const [projectsCount, membersCount] = await Promise.all([
+  const [projectsCount, membersCount, organization] = await Promise.all([
     getCurrentProjectsUsageDao(organizationId),
     getCurrentMembersUsageDao(organizationId),
+    getOrganizationByIdDao(organizationId),
   ])
 
   const subscriptions =
     await getActiveSubscriptionsOrFreePlanDao(organizationId)
   const activeSubscription = subscriptions[0]
+
   const planLimits = activeSubscription?.limits as Record<string, number> | null
+  const limitOverrides = organization?.limitOverrides as
+    | Record<string, number>
+    | undefined
+
+  const getEffectiveLimit = (
+    planLimit: number | undefined,
+    override: number | undefined
+  ): number | null => {
+    if (planLimit === undefined && override === undefined) return null
+    return (planLimit ?? 0) + (override ?? 0)
+  }
 
   return {
     projects: projectsCount,
     users: membersCount,
     plan: activeSubscription?.plan || 'free',
     limits: {
-      projects: planLimits?.projects ?? null,
-      storage: planLimits?.storage ?? null,
-      users: planLimits?.users ?? null,
+      projects: getEffectiveLimit(
+        planLimits?.projects,
+        limitOverrides?.projects
+      ),
+      storage: getEffectiveLimit(planLimits?.storage, limitOverrides?.storage),
+      users: getEffectiveLimit(planLimits?.users, limitOverrides?.users),
     },
     periodStart: activeSubscription?.periodStart || null,
     periodEnd: activeSubscription?.periodEnd || null,

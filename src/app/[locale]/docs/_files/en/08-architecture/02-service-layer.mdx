@@ -1,0 +1,1024 @@
+---
+title: 'Service Layer'
+description: 'Business logic, validation, authorization, facades, and interceptors for secure and maintainable applications'
+keywords: 'ShipSaaS, service layer, business logic, service pattern, application services, domain logic, service architecture'
+---
+
+The Service Layer is the heart of business logic in the application. It handles validation, authorization, business rules, and coordinates between the presentation and persistence layers through well-defined interfaces.
+
+<Callout type="info">
+  **Layer Responsibility:** The Service Layer contains all business logic, validation rules, authorization checks, and coordinates data operations. It **never** handles UI concerns or direct database queries.
+</Callout>
+
+<Callout type="success">
+  **Perfect for:** Centralizing business rules, ensuring data integrity, implementing security policies, and maintaining clean separation between UI and data layers.
+</Callout>
+
+## Service Layer Architecture
+
+The Service Layer is organized into specialized modules for different concerns:
+
+<Tabs defaultValue="layer-structure">
+  <Tab value="layer-structure" label="🏗️ Service Structure">
+    **Service Layer Organization:**
+    ```
+    src/services/                   # 📁 Service Layer Root
+    ├── facades/                    # 🎭 Interface Layer
+    │   ├── user-service-facade.ts
+    │   ├── subscription-service-facade.ts
+    │   └── organization-service-facade.ts
+    ├── validation/                 # ✅ Input Validation
+    │   ├── user-validation.ts
+    │   ├── subscription-validation.ts
+    │   └── common-validation.ts
+    ├── authorization/              # 🔐 Access Control
+    │   ├── user-authorization.ts
+    │   ├── subscription-authorization.ts
+    │   └── rbac-permissions.ts
+    ├── errors/                     # 🚨 Custom Errors
+    │   ├── validation-error.ts
+    │   ├── authorization-error.ts
+    │   └── business-error.ts
+    ├── interceptors/               # 🔄 Cross-cutting Concerns
+    │   ├── logging-interceptor.ts
+    │   ├── audit-interceptor.ts
+    │   └── performance-interceptor.ts
+    ├── helpers/                    # 🛠️ Server-side Utilities
+    │   ├── billing-helper.ts
+    │   └── email-helper.ts
+    ├── types/                      # 📋 Type Definitions
+    │   ├── domain/                 # Domain types
+    │   └── common-types.ts
+    ├── __tests__/                  # 🧪 Service Tests
+    └── [feature]-service.ts        # Core service files
+    ```
+
+    **Key Principles:**
+    - **Single Responsibility** - Each service handles one domain
+    - **Dependency Injection** - Services depend on abstractions
+    - **Layered Validation** - Input validation before business logic
+    - **Authorization First** - Permission checks before operations
+  </Tab>
+
+  <Tab value="service-flow" label="🔄 Service Flow">
+    **Service Operation Flow:**
+    ```
+    1. 📝 Input Received (from facade/DAL)
+           ⬇️
+    2. ✅ Input Validation (Zod schemas)
+           ⬇️
+    3. 🔐 Authorization Check (CASL permissions)
+           ⬇️
+    4. 💼 Business Logic Execution
+           ⬇️
+    5. 💾 Repository Call (if needed)
+           ⬇️
+    6. 📧 Side Effects (emails, notifications)
+           ⬇️
+    7. 📊 Logging/Audit (interceptors)
+           ⬇️
+    8. ✨ Return Result
+    ```
+
+    **Example Service:**
+    ```typescript
+    export const updateUserService = async (data: UpdateUserInput) => {
+      // 1. Validation
+      const parsed = updateUserSchema.safeParse(data)
+      if (!parsed.success) {
+        throw new ValidationError(parsed.error.message)
+      }
+
+      // 2. Authorization
+      const granted = await canUpdateUser(parsed.data.id)
+      if (!granted) {
+        throw new AuthorizationError()
+      }
+
+      // 3. Business Logic
+      const updatedUser = await updateUserDao(parsed.data)
+
+      // 4. Side Effects
+      await sendUserUpdatedNotification(updatedUser)
+
+      return updatedUser
+    }
+    ```
+  </Tab>
+
+  <Tab value="facade-pattern" label="🎭 Facade Pattern">
+    **Facade Layer Purpose:**
+    ```typescript
+    // Facade acts as interface between presentation and services
+    // src/services/facades/user-service-facade.ts
+
+    // Import services
+    import {
+      getUserByIdService,
+      updateUserService,
+      deleteUserService
+    } from '../user-service'
+
+    // Re-export with same names (1:1 mapping)
+    export {
+      getUserByIdService,
+      updateUserService,
+      deleteUserService
+    }
+
+    // Facade can add interceptors
+    export const getUserByIdServiceWithLogging = async (id: string) => {
+      console.log(`Getting user ${id}`)
+      const result = await getUserByIdService(id)
+      console.log(`Found user: ${result.name}`)
+      return result
+    }
+    ```
+
+    **Benefits:**
+    - **Stable Interface** - Presentation layer depends on facades
+    - **Interceptor Integration** - Add logging, caching, etc.
+    - **Service Composition** - Combine multiple services
+    - **Version Management** - Evolve services without breaking UI
+  </Tab>
+</Tabs>
+
+## Validation Layer
+
+The validation layer ensures data integrity with Zod schemas and custom validation rules:
+
+<Tabs defaultValue="validation-schemas">
+  <Tab value="validation-schemas" label="✅ Validation Schemas">
+    **Zod Validation Schemas:**
+    ```typescript
+    // src/services/validation/user-validation.ts
+    import { z } from 'zod'
+
+    // Base schemas
+    export const userUuidSchema = z.string().uuid("Invalid user ID format")
+
+    export const createUserSchema = z.object({
+      name: z.string()
+        .min(2, "Name must be at least 2 characters")
+        .max(100, "Name must be under 100 characters")
+        .regex(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces"),
+
+      email: z.string()
+        .email("Invalid email format")
+        .toLowerCase()
+        .refine(async (email) => {
+          // Custom async validation
+          const existing = await getUserByEmailDao(email)
+          return !existing
+        }, "Email already exists"),
+
+      password: z.string()
+        .min(8, "Password must be at least 8 characters")
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+               "Password must contain uppercase, lowercase, and number"),
+
+      organizationId: z.string().uuid().optional(),
+
+      metadata: z.record(z.string()).optional()
+    })
+
+    export const updateUserSchema = createUserSchema.partial().extend({
+      id: userUuidSchema
+    })
+
+    // Type inference
+    export type CreateUserInput = z.infer<typeof createUserSchema>
+    export type UpdateUserInput = z.infer<typeof updateUserSchema>
+    ```
+
+    **Validation Features:**
+    - **Type Safety** - Automatic TypeScript types
+    - **Custom Rules** - Business-specific validation
+    - **Async Validation** - Database checks, API calls
+    - **Internationalization** - Localized error messages
+  </Tab>
+
+  <Tab value="validation-usage" label="🔧 Validation Usage">
+    **Service Validation Implementation:**
+    ```typescript
+    // src/services/user-service.ts
+    import {
+      createUserSchema,
+      updateUserSchema,
+      type CreateUserInput
+    } from './validation/user-validation'
+
+    export const createUserService = async (data: CreateUserInput) => {
+      // 1. Validate input
+      const validationResult = await createUserSchema.safeParseAsync(data)
+
+      if (!validationResult.success) {
+        // Transform Zod errors to service errors
+        const errors = validationResult.error.issues.map(issue => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+          code: issue.code
+        }))
+
+        throw new ValidationError("Invalid user data", errors)
+      }
+
+      const validatedData = validationResult.data
+
+      // 2. Business logic with validated data
+      const user = await createUserDao({
+        ...validatedData,
+        createdAt: new Date(),
+        emailVerified: false
+      })
+
+      // 3. Side effects
+      await sendWelcomeEmail(user.email)
+
+      return user
+    }
+    ```
+
+    **Error Handling:**
+    ```typescript
+    // src/services/errors/validation-error.ts
+    export class ValidationError extends Error {
+      constructor(
+        message: string,
+        public errors: ValidationErrorDetail[] = []
+      ) {
+        super(message)
+        this.name = 'ValidationError'
+      }
+    }
+
+    export interface ValidationErrorDetail {
+      field: string
+      message: string
+      code: string
+    }
+    ```
+  </Tab>
+
+  <Tab value="internationalization" label="🌍 Internationalization">
+    **Localized Validation:**
+    ```typescript
+    // src/services/validation/localized-schemas.ts
+    import { z } from 'zod'
+
+    // Create localized error messages
+    export const createLocalizedUserSchema = (locale: string = 'en') => {
+      const messages = {
+        en: {
+          nameRequired: "Name is required",
+          nameMin: "Name must be at least 2 characters",
+          emailInvalid: "Invalid email format",
+          emailExists: "Email already exists"
+        },
+        fr: {
+          nameRequired: "Le nom est requis",
+          nameMin: "Le nom doit contenir au moins 2 caractères",
+          emailInvalid: "Format d'email invalide",
+          emailExists: "Cet email existe déjà"
+        }
+      }
+
+      const msg = messages[locale] || messages.en
+
+      return z.object({
+        name: z.string()
+          .min(1, msg.nameRequired)
+          .min(2, msg.nameMin),
+        email: z.string()
+          .email(msg.emailInvalid)
+          .refine(async (email) => {
+            const existing = await getUserByEmailDao(email)
+            return !existing
+          }, msg.emailExists)
+      })
+    }
+    ```
+
+    **Service Usage:**
+    ```typescript
+    export const createUserService = async (
+      data: CreateUserInput,
+      locale?: string
+    ) => {
+      const schema = createLocalizedUserSchema(locale)
+      const result = await schema.safeParseAsync(data)
+
+      // Validation with localized messages
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Authorization Layer
+
+The authorization layer implements Role-Based Access Control (RBAC) using CASL:
+
+<Tabs defaultValue="casl-permissions">
+  <Tab value="casl-permissions" label="🔐 CASL Permissions">
+    **Permission Definitions:**
+    ```typescript
+    // src/services/authorization/permissions.ts
+    import { AbilityBuilder, createMongoAbility } from '@casl/ability'
+
+    export type Actions =
+      | 'create' | 'read' | 'update' | 'delete'
+      | 'manage' // Special action that represents all actions
+
+    export type Subjects =
+      | 'User' | 'Subscription' | 'Organization'
+      | 'all' // Special subject that represents all subjects
+
+    export const defineAbilityFor = (user: User) => {
+      const { can, cannot, build } = new AbilityBuilder(createMongoAbility)
+
+      // Super Admin - can do everything
+      if (user.role === 'SUPER_ADMIN') {
+        can('manage', 'all')
+        return build()
+      }
+
+      // Admin - can manage users and organizations
+      if (user.role === 'ADMIN') {
+        can('manage', 'User')
+        can('manage', 'Organization')
+        can('read', 'Subscription')
+        return build()
+      }
+
+      // User - can manage own data
+      if (user.role === 'USER') {
+        can('read', 'User', { id: user.id })
+        can('update', 'User', { id: user.id })
+        can('read', 'Subscription', { userId: user.id })
+        can('update', 'Subscription', { userId: user.id })
+
+        // Organization permissions
+        if (user.organizationId) {
+          can('read', 'Organization', { id: user.organizationId })
+          can('update', 'Organization', { id: user.organizationId })
+        }
+
+        return build()
+      }
+
+      // Guest - read only
+      can('read', 'User', { id: user.id })
+      return build()
+    }
+    ```
+
+    **Authorization Functions:**
+    ```typescript
+    // src/services/authorization/user-authorization.ts
+    import { getCurrentUser } from '@/lib/auth'
+    import { defineAbilityFor } from './permissions'
+
+    export async function canReadUser(userId: string): Promise<boolean> {
+      const currentUser = await getCurrentUser()
+      if (!currentUser) return false
+
+      const ability = defineAbilityFor(currentUser)
+      return ability.can('read', 'User', { id: userId })
+    }
+
+    export async function canUpdateUser(userId: string): Promise<boolean> {
+      const currentUser = await getCurrentUser()
+      if (!currentUser) return false
+
+      const ability = defineAbilityFor(currentUser)
+      return ability.can('update', 'User', { id: userId })
+    }
+
+    export async function canDeleteUser(userId: string): Promise<boolean> {
+      const currentUser = await getCurrentUser()
+      if (!currentUser) return false
+
+      const ability = defineAbilityFor(currentUser)
+      return ability.can('delete', 'User', { id: userId })
+    }
+    ```
+  </Tab>
+
+  <Tab value="rbac-hierarchy" label="👑 Role Hierarchy">
+    **Role Hierarchy:**
+    ```typescript
+    // src/services/authorization/rbac-permissions.ts
+    export enum Role {
+      GUEST = 'GUEST',
+      USER = 'USER',
+      MODERATOR = 'MODERATOR',
+      REDACTOR = 'REDACTOR',
+      ADMIN = 'ADMIN',
+      SUPER_ADMIN = 'SUPER_ADMIN'
+    }
+
+    // Role hierarchy (higher roles inherit lower role permissions)
+    const ROLE_HIERARCHY = {
+      [Role.GUEST]: 0,
+      [Role.USER]: 1,
+      [Role.MODERATOR]: 2,
+      [Role.REDACTOR]: 3,
+      [Role.ADMIN]: 4,
+      [Role.SUPER_ADMIN]: 5
+    }
+
+    export function hasRoleLevel(userRole: Role, requiredRole: Role): boolean {
+      return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole]
+    }
+
+    // Organization roles (separate from global roles)
+    export enum OrganizationRole {
+      MEMBER = 'MEMBER',
+      ADMIN = 'ADMIN',
+      OWNER = 'OWNER'
+    }
+    ```
+
+    **Advanced Permission Checks:**
+    ```typescript
+    export async function canManageOrganization(
+      organizationId: string,
+      action: 'read' | 'update' | 'delete'
+    ): Promise<boolean> {
+      const currentUser = await getCurrentUser()
+      if (!currentUser) return false
+
+      // Super admin can do anything
+      if (currentUser.role === Role.SUPER_ADMIN) {
+        return true
+      }
+
+      // Check organization membership
+      const membership = await getOrganizationMembership(
+        currentUser.id,
+        organizationId
+      )
+
+      if (!membership) return false
+
+      // Role-based permissions within organization
+      switch (action) {
+        case 'read':
+          return true // All members can read
+        case 'update':
+          return membership.role === OrganizationRole.ADMIN ||
+                 membership.role === OrganizationRole.OWNER
+        case 'delete':
+          return membership.role === OrganizationRole.OWNER
+        default:
+          return false
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="authorization-service" label="🛡️ Authorization Service">
+    **Service Integration:**
+    ```typescript
+    // src/services/user-service.ts
+    import {
+      canReadUser,
+      canUpdateUser,
+      canDeleteUser
+    } from './authorization/user-authorization'
+
+    export const getUserByIdService = async (id: string) => {
+      // 1. Validation
+      const parsed = userUuidSchema.safeParse(id)
+      if (!parsed.success) {
+        throw new ValidationError(parsed.error.message)
+      }
+
+      // 2. Authorization
+      const canRead = await canReadUser(parsed.data)
+      if (!canRead) {
+        throw new AuthorizationError(`Cannot read user ${id}`)
+      }
+
+      // 3. Business logic
+      const user = await getUserByIdDao(parsed.data)
+      if (!user) {
+        throw new NotFoundError(`User ${id} not found`)
+      }
+
+      return user
+    }
+
+    export const updateUserService = async (data: UpdateUserInput) => {
+      // Validation first
+      const parsed = updateUserSchema.safeParse(data)
+      if (!parsed.success) {
+        throw new ValidationError(parsed.error.message)
+      }
+
+      // Authorization check
+      const canUpdate = await canUpdateUser(parsed.data.id)
+      if (!canUpdate) {
+        throw new AuthorizationError(`Cannot update user ${parsed.data.id}`)
+      }
+
+      // Business logic
+      return await updateUserDao(parsed.data)
+    }
+    ```
+
+    **Error Types:**
+    ```typescript
+    // src/services/errors/authorization-error.ts
+    export class AuthorizationError extends Error {
+      constructor(message: string = "Access denied") {
+        super(message)
+        this.name = 'AuthorizationError'
+      }
+    }
+
+    export class NotFoundError extends Error {
+      constructor(message: string) {
+        super(message)
+        this.name = 'NotFoundError'
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Interceptors and Cross-Cutting Concerns
+
+Interceptors handle cross-cutting concerns like logging, auditing, and performance monitoring:
+
+<Tabs defaultValue="logging-interceptor">
+  <Tab value="logging-interceptor" label="📝 Logging Interceptor">
+    **Logging Implementation:**
+    ```typescript
+    // src/services/interceptors/logging-interceptor.ts
+    type ServiceFunction = (...args: any[]) => Promise<any>
+
+    export function withLogging<T extends ServiceFunction>(
+      serviceFn: T,
+      context: string
+    ): T {
+      return (async (...args: any[]) => {
+        const startTime = Date.now()
+        const requestId = generateRequestId()
+
+        console.log(`[${context}] Starting operation`, {
+          requestId,
+          args: sanitizeArgs(args),
+          timestamp: new Date().toISOString()
+        })
+
+        try {
+          const result = await serviceFn(...args)
+
+          console.log(`[${context}] Operation completed`, {
+            requestId,
+            duration: Date.now() - startTime,
+            success: true
+          })
+
+          return result
+        } catch (error) {
+          console.error(`[${context}] Operation failed`, {
+            requestId,
+            duration: Date.now() - startTime,
+            error: error.message,
+            stack: error.stack
+          })
+
+          throw error
+        }
+      }) as T
+    }
+
+    // Usage
+    export const getUserByIdService = withLogging(
+      async (id: string) => {
+        // Service implementation
+      },
+      'getUserByIdService'
+    )
+    ```
+
+    **Structured Logging:**
+    ```typescript
+    interface LogEntry {
+      timestamp: string
+      level: 'info' | 'warn' | 'error'
+      service: string
+      operation: string
+      requestId: string
+      userId?: string
+      duration?: number
+      error?: string
+      metadata?: Record<string, any>
+    }
+
+    export class Logger {
+      static info(message: string, metadata: Partial<LogEntry>) {
+        const entry: LogEntry = {
+          timestamp: new Date().toISOString(),
+          level: 'info',
+          service: metadata.service || 'unknown',
+          operation: metadata.operation || 'unknown',
+          requestId: metadata.requestId || generateRequestId(),
+          ...metadata
+        }
+
+        console.log(JSON.stringify(entry))
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="audit-interceptor" label="🔍 Audit Interceptor">
+    **Audit Trail:**
+    ```typescript
+    // src/services/interceptors/audit-interceptor.ts
+    import { getCurrentUser } from '@/lib/auth'
+
+    interface AuditEvent {
+      id: string
+      userId: string
+      action: string
+      resource: string
+      resourceId: string
+      changes?: Record<string, { from: any; to: any }>
+      timestamp: Date
+      ipAddress?: string
+      userAgent?: string
+    }
+
+    export function withAudit<T extends ServiceFunction>(
+      serviceFn: T,
+      action: string,
+      resource: string
+    ): T {
+      return (async (...args: any[]) => {
+        const user = await getCurrentUser()
+        const resourceId = extractResourceId(args)
+
+        // Capture before state for update operations
+        let beforeState: any = null
+        if (action === 'update' && resourceId) {
+          beforeState = await getResourceState(resource, resourceId)
+        }
+
+        try {
+          const result = await serviceFn(...args)
+
+          // Create audit event
+          const auditEvent: AuditEvent = {
+            id: generateUUID(),
+            userId: user?.id || 'anonymous',
+            action,
+            resource,
+            resourceId: resourceId || result?.id,
+            timestamp: new Date(),
+            changes: action === 'update' ?
+              calculateChanges(beforeState, result) : undefined
+          }
+
+          // Store audit event
+          await createAuditEventDao(auditEvent)
+
+          return result
+        } catch (error) {
+          // Audit failed operations too
+          await createAuditEventDao({
+            id: generateUUID(),
+            userId: user?.id || 'anonymous',
+            action: `${action}_failed`,
+            resource,
+            resourceId: resourceId || 'unknown',
+            timestamp: new Date(),
+            metadata: { error: error.message }
+          })
+
+          throw error
+        }
+      }) as T
+    }
+    ```
+
+    **Usage Example:**
+    ```typescript
+    export const updateUserService = withAudit(
+      withLogging(
+        async (data: UpdateUserInput) => {
+          // Core service implementation
+        },
+        'updateUserService'
+      ),
+      'update',
+      'User'
+    )
+    ```
+  </Tab>
+
+  <Tab value="performance-interceptor" label="⚡ Performance Interceptor">
+    **Performance Monitoring:**
+    ```typescript
+    // src/services/interceptors/performance-interceptor.ts
+    interface PerformanceMetrics {
+      operation: string
+      duration: number
+      timestamp: Date
+      memoryUsage?: NodeJS.MemoryUsage
+      queryCount?: number
+      cacheHits?: number
+      cacheMisses?: number
+    }
+
+    export function withPerformanceMonitoring<T extends ServiceFunction>(
+      serviceFn: T,
+      operationName: string,
+      thresholds: {
+        warning?: number // milliseconds
+        error?: number   // milliseconds
+      } = {}
+    ): T {
+      return (async (...args: any[]) => {
+        const startTime = performance.now()
+        const startMemory = process.memoryUsage()
+
+        try {
+          const result = await serviceFn(...args)
+
+          const duration = performance.now() - startTime
+          const endMemory = process.memoryUsage()
+
+          const metrics: PerformanceMetrics = {
+            operation: operationName,
+            duration,
+            timestamp: new Date(),
+            memoryUsage: {
+              rss: endMemory.rss - startMemory.rss,
+              heapUsed: endMemory.heapUsed - startMemory.heapUsed,
+              heapTotal: endMemory.heapTotal - startMemory.heapTotal,
+              external: endMemory.external - startMemory.external,
+              arrayBuffers: endMemory.arrayBuffers - startMemory.arrayBuffers
+            }
+          }
+
+          // Performance alerts
+          if (thresholds.error && duration > thresholds.error) {
+            console.error(`Performance: ${operationName} took ${duration}ms (threshold: ${thresholds.error}ms)`)
+          } else if (thresholds.warning && duration > thresholds.warning) {
+            console.warn(`Performance: ${operationName} took ${duration}ms (threshold: ${thresholds.warning}ms)`)
+          }
+
+          // Store metrics
+          await storePerformanceMetrics(metrics)
+
+          return result
+        } catch (error) {
+          const duration = performance.now() - startTime
+          console.error(`Performance: ${operationName} failed after ${duration}ms`)
+          throw error
+        }
+      }) as T
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Testing Services
+
+Service testing focuses on business logic, validation, and authorization:
+
+<Tabs defaultValue="service-tests">
+  <Tab value="service-tests" label="🧪 Service Testing">
+    **Test Structure:**
+    ```typescript
+    // src/services/__tests__/user-service.test.ts
+    import { describe, it, expect, beforeEach, vi } from 'vitest'
+    import { getUserByIdService, updateUserService } from '../user-service'
+
+    // Mock dependencies
+    vi.mock('../authorization/user-authorization', () => ({
+      canReadUser: vi.fn(),
+      canUpdateUser: vi.fn()
+    }))
+
+    vi.mock('../../db/repositories/user-repository', () => ({
+      getUserByIdDao: vi.fn(),
+      updateUserDao: vi.fn()
+    }))
+
+    describe('User Service', () => {
+      beforeEach(() => {
+        vi.clearAllMocks()
+      })
+
+      describe('getUserByIdService', () => {
+        it('should return user when authorized', async () => {
+          // Arrange
+          const userId = 'test-user-id'
+          const mockUser = { id: userId, name: 'Test User' }
+
+          vi.mocked(canReadUser).mockResolvedValue(true)
+          vi.mocked(getUserByIdDao).mockResolvedValue(mockUser)
+
+          // Act
+          const result = await getUserByIdService(userId)
+
+          // Assert
+          expect(canReadUser).toHaveBeenCalledWith(userId)
+          expect(getUserByIdDao).toHaveBeenCalledWith(userId)
+          expect(result).toEqual(mockUser)
+        })
+
+        it('should throw AuthorizationError when not authorized', async () => {
+          // Arrange
+          vi.mocked(canReadUser).mockResolvedValue(false)
+
+          // Act & Assert
+          await expect(getUserByIdService('test-id'))
+            .rejects
+            .toThrow('AuthorizationError')
+
+          expect(getUserByIdDao).not.toHaveBeenCalled()
+        })
+
+        it('should throw ValidationError for invalid ID', async () => {
+          // Act & Assert
+          await expect(getUserByIdService('invalid-id'))
+            .rejects
+            .toThrow('ValidationError')
+        })
+      })
+    })
+    ```
+
+    **Test Coverage Areas:**
+    - **Validation** - Test all validation scenarios
+    - **Authorization** - Test permitted and denied access
+    - **Business Logic** - Test core functionality
+    - **Error Handling** - Test error cases
+    - **Side Effects** - Test notifications, emails, etc.
+  </Tab>
+
+  <Tab value="integration-tests" label="🔄 Integration Testing">
+    **Integration Test Example:**
+    ```typescript
+    // src/services/__tests__/integration/user-service.integration.test.ts
+    import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+    import { setupTestDb, cleanupTestDb } from '../../test-utils/db-setup'
+    import { createTestUser, mockAuthUser } from '../../test-utils/test-helpers'
+    import { updateUserService } from '../user-service'
+
+    describe('User Service Integration', () => {
+      beforeAll(async () => {
+        await setupTestDb()
+      })
+
+      afterAll(async () => {
+        await cleanupTestDb()
+      })
+
+      it('should update user with complete flow', async () => {
+        // Arrange
+        const testUser = await createTestUser({
+          name: 'Original Name',
+          email: 'original@example.com'
+        })
+
+        // Mock authentication
+        mockAuthUser(testUser)
+
+        const updateData = {
+          id: testUser.id,
+          name: 'Updated Name',
+          email: 'updated@example.com'
+        }
+
+        // Act
+        const result = await updateUserService(updateData)
+
+        // Assert
+        expect(result.name).toBe('Updated Name')
+        expect(result.email).toBe('updated@example.com')
+
+        // Verify database state
+        const dbUser = await getUserByIdDao(testUser.id)
+        expect(dbUser.name).toBe('Updated Name')
+
+        // Verify audit trail
+        const auditEvents = await getAuditEventsByResourceId(testUser.id)
+        expect(auditEvents).toHaveLength(1)
+        expect(auditEvents[0].action).toBe('update')
+      })
+    })
+    ```
+  </Tab>
+
+  <Tab value="test-utilities" label="🛠️ Test Utilities">
+    **Test Helper Functions:**
+    ```typescript
+    // src/services/test-utils/test-helpers.ts
+    import { vi } from 'vitest'
+
+    export function mockAuthUser(user: Partial<User>) {
+      vi.mock('@/lib/auth', () => ({
+        getCurrentUser: vi.fn().mockResolvedValue({
+          id: 'test-user-id',
+          role: 'USER',
+          ...user
+        })
+      }))
+    }
+
+    export function createTestUser(overrides: Partial<User> = {}): User {
+      return {
+        id: 'test-user-id',
+        name: 'Test User',
+        email: 'test@example.com',
+        role: 'USER',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides
+      }
+    }
+
+    export function expectValidationError(error: any, field?: string) {
+      expect(error).toBeInstanceOf(ValidationError)
+      if (field) {
+        expect(error.errors.some(e => e.field === field)).toBe(true)
+      }
+    }
+
+    export function expectAuthorizationError(error: any) {
+      expect(error).toBeInstanceOf(AuthorizationError)
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">✅</div>
+      <h4 className="font-semibold">Validation Best Practices</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Validate early** - At service boundary</div>
+      <div>• **Use Zod schemas** - Type-safe validation</div>
+      <div>• **Async validation** - Database constraints</div>
+      <div>• **Localized messages** - User-friendly errors</div>
+      <div>• **Sanitize inputs** - Transform data consistently</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🔐</div>
+      <h4 className="font-semibold">Authorization Best Practices</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Check permissions first** - Before business logic</div>
+      <div>• **Use CASL abilities** - Declarative permissions</div>
+      <div>• **Resource-level checks** - Fine-grained access</div>
+      <div>• **Fail secure** - Deny by default</div>
+      <div>• **Audit access** - Log permission checks</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🏗️</div>
+      <h4 className="font-semibold">Service Design</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Single responsibility** - One concern per service</div>
+      <div>• **Pure functions** - Predictable, testable</div>
+      <div>• **Dependency injection** - Mock-friendly</div>
+      <div>• **Error handling** - Custom error types</div>
+      <div>• **Transaction support** - Data consistency</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🧪</div>
+      <h4 className="font-semibold">Testing Strategy</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Unit tests** - Service logic isolation</div>
+      <div>• **Integration tests** - End-to-end flows</div>
+      <div>• **Mock dependencies** - Repository and external services</div>
+      <div>• **Test authorization** - Both success and failure cases</div>
+      <div>• **Performance tests** - Response time validation</div>
+    </div>
+  </div>
+</div>
+
+<Callout type="success">
+  **Service layer ready!** Your business logic is secure, validated, authorized, and thoroughly tested with clean separation of concerns and enterprise-grade patterns.
+</Callout>

@@ -1,0 +1,373 @@
+---
+title: 'Subscription Management'
+description: 'User subscription interface for plan management, upgrades, cancellations, and billing history (both systems)'
+keywords: 'ShipSaaS, subscriptions, subscription management, recurring billing, plan management, subscription lifecycle'
+---
+
+The boilerplate provides a comprehensive subscription management interface for users to handle their subscriptions, change plans, manage billing, and view usage limits.
+
+<Callout type="info">
+  **Universal Feature:** This subscription management interface works with both Better Auth and Custom Boilerplate payment systems. Users get the same management experience regardless of how they initially signed up.
+</Callout>
+
+<Callout type="success">
+  **Perfect for:** Self-service subscription management that reduces support tickets and empowers users to control their billing and plan features.
+</Callout>
+
+## User Subscription Interface
+
+The subscription management is located at `/account/subscription/` and provides a complete self-service experience:
+
+### Subscription Overview
+
+Users can view their current subscription status with:
+
+<Tabs defaultValue="current-plan">
+  <Tab value="current-plan" label="📋 Current Plan">
+    **Plan Information Display:**
+    - Plan name and pricing
+    - Billing cycle (monthly/yearly)
+    - Next billing date
+    - Current usage vs. limits
+    - Active features and restrictions
+
+    **Visual indicators:**
+    - Plan status (active/canceled/past_due)
+    - Usage progress bars
+    - Feature availability badges
+    - Renewal status alerts
+
+    **User Subscription Dashboard:**
+    <Image src="/docs/07/stripe-subscription-myplan.png" alt="User subscription management interface"  />
+  </Tab>
+
+  <Tab value="billing-info" label="💳 Billing Details">
+    **Payment Information:**
+    - Current payment method
+    - Billing address
+    - Invoice history
+    - Next payment amount
+    - Payment status
+
+    **Security features:**
+    - Masked card information
+    - Secure payment method updates
+    - Billing address management
+    - Invoice download capability
+  </Tab>
+
+  <Tab value="usage-limits" label="📊 Usage & Limits">
+    **Resource Monitoring:**
+    - Current usage statistics
+    - Plan limits and quotas
+    - Usage history trends
+    - Overage warnings
+    - Feature utilization
+
+    **Limit types:**
+    - API calls/requests
+    - Storage capacity
+    - User seats/members
+    - Feature access levels
+
+    **Plan Limits Configuration:**
+    <Image src="/docs/07/stripe-admin-plan-limites.png" alt="Plan limits and usage configuration interface"  />
+  </Tab>
+</Tabs>
+
+## Plan Management Features
+
+### Plan Upgrades & Downgrades
+
+**Upgrade Process:**
+1. User selects new plan from available options
+2. System calculates prorated pricing
+3. Immediate upgrade with feature activation
+4. Payment method charged for difference
+5. Confirmation email with new plan details
+
+**Downgrade Process:**
+1. User selects lower-tier plan
+2. System shows feature comparison
+3. Downgrade effective at next billing cycle
+4. Grace period for current features
+5. Email confirmation of change
+
+```typescript
+// Plan change flow (conceptual structure)
+interface PlanChangeOptions {
+  newPlanId: string
+  immediate: boolean // true for upgrades, false for downgrades
+  prorationBehavior: 'create_prorations' | 'none'
+  billingCycleAnchor?: 'now' | 'unchanged'
+}
+```
+
+### Subscription Cancellation
+
+**Cancellation Options:**
+
+<Tabs defaultValue="immediate">
+  <Tab value="immediate" label="⚡ Immediate Cancellation">
+    **Immediate Effect:**
+    - Subscription canceled right away
+    - Access removed immediately
+    - Refund processed (if applicable)
+    - Data retention period begins
+
+    **Use cases:**
+    - User wants immediate cessation
+    - Service not meeting needs
+    - Account security concerns
+  </Tab>
+
+  <Tab value="end-of-period" label="📅 End of Period">
+    **Grace Period:**
+    - Subscription continues until period end
+    - Full access maintained
+    - No additional charges
+    - Natural expiration
+
+    **Use cases:**
+    - User has paid for full period
+    - Wants to finish current projects
+    - Standard cancellation preference
+  </Tab>
+</Tabs>
+
+### Reactivation Options
+
+**Reactivation Flow:**
+1. User visits subscription page
+2. "Reactivate Subscription" option available
+3. Confirms reactivation with same or new plan
+4. Payment method verification
+5. Immediate service restoration
+
+**Reactivation Benefits:**
+- Data restoration (within retention period)
+- Previous settings preserved
+- Historical data maintained
+- Seamless user experience
+
+## Multi-Seat Management
+
+For team/organization subscriptions:
+
+### Seat Allocation
+
+**Seat Management Features:**
+- Current seat usage vs. purchased seats
+- Add or remove seats dynamically
+- Prorated billing for seat changes
+- User assignment to seats
+- Seat utilization tracking
+
+### Team Member Access
+
+**Member Management:**
+- Invite team members to subscription
+- Assign roles and permissions per seat
+- Remove members and reclaim seats
+- Transfer ownership between members
+- Usage tracking per member
+
+### Billing Responsibility
+
+**Team Billing Options:**
+- Owner pays for all seats
+- Distributed billing per member
+- Department-based allocation
+- Usage-based seat pricing
+
+## Payment Method Management
+
+### Saved Payment Methods
+
+**Payment Method Features:**
+- Multiple payment methods supported
+- Default payment method selection
+- Automatic retry on failed payments
+- Payment method expiration alerts
+- Secure tokenization
+
+### Payment Method Types
+
+<Tabs defaultValue="cards">
+  <Tab value="cards" label="💳 Credit/Debit Cards">
+    **Supported Cards:**
+    - Visa, Mastercard, American Express
+    - Automatic card updates
+    - Expiration date management
+    - CVV verification for changes
+    - 3D Secure authentication
+
+    **Security Features:**
+    - PCI DSS compliance
+    - Tokenized storage
+    - Fraud detection
+    - Secure transmission
+  </Tab>
+
+  <Tab value="bank-transfer" label="🏦 Bank Transfers">
+    **ACH/SEPA Support:**
+    - Direct bank account debits
+    - Lower processing fees
+    - Longer processing times
+    - Bank account verification
+    - Failed payment handling
+
+    **Regional Support:**
+    - US ACH transfers
+    - European SEPA
+    - Local bank methods
+    - Currency considerations
+  </Tab>
+
+  <Tab value="digital-wallets" label="📱 Digital Wallets">
+    **Wallet Options:**
+    - Apple Pay integration
+    - Google Pay support
+    - PayPal connectivity
+    - Regional wallet support
+    - One-click payments
+
+    **Benefits:**
+    - Faster checkout
+    - Enhanced security
+    - Mobile optimization
+    - User convenience
+  </Tab>
+</Tabs>
+
+## Billing History & Invoices
+
+### Invoice Management
+
+**Invoice Features:**
+- Complete billing history
+- Downloadable PDF invoices
+- Payment status tracking
+- Tax information included
+- Dispute resolution links
+
+### Usage-Based Billing
+
+**Metered Billing Support:**
+- Real-time usage tracking
+- Usage-based invoice line items
+- Overage charge calculations
+- Usage alerts and notifications
+- Historical usage reports
+
+## Subscription Notifications
+
+### Email Notifications
+
+**Automatic Emails for:**
+- Subscription activated
+- Payment successful
+- Payment failed
+- Plan changed
+- Subscription canceled
+- Renewal reminders
+
+### In-App Notifications
+
+**Dashboard Alerts:**
+- Payment due reminders
+- Usage limit warnings
+- Feature restriction notices
+- Subscription status changes
+- Account action required
+
+## Self-Service Features
+
+### Subscription Pause/Resume
+
+**Temporary Suspension:**
+- Pause subscription for travel/break
+- Maintain data during pause
+- Resume with same settings
+- Prorated billing for partial periods
+
+### Subscription Gifting
+
+**Gift Subscriptions:**
+- Purchase subscriptions for others
+- Gift redemption process
+- Transfer ownership options
+- Gift certificate generation
+
+### Plan Recommendations
+
+**Smart Suggestions:**
+- Usage-based plan recommendations
+- Cost optimization suggestions
+- Feature upgrade prompts
+- Downgrade warnings for unused features
+
+## Developer Integration
+
+### Subscription Status API
+
+**Check Subscription Status:**
+```typescript
+// Example API structure for subscription status
+interface SubscriptionStatus {
+  active: boolean
+  planId: string
+  currentPeriodEnd: Date
+  cancelAtPeriodEnd: boolean
+  usage: {
+    [feature: string]: {
+      current: number
+      limit: number
+      percentage: number
+    }
+  }
+}
+```
+
+### Webhook Integration
+
+**Subscription Events:**
+- Listen for subscription changes
+- Update user access immediately
+- Sync with internal systems
+- Trigger business logic
+
+## Testing Subscription Management
+
+<Steps>
+<Step title="Create Test Subscription">
+  1. Use Stripe test cards to create subscriptions
+  2. Navigate to `/account/subscription/`
+  3. Verify all subscription details display correctly
+</Step>
+
+<Step title="Test Plan Changes">
+  1. Attempt plan upgrade with test payment
+  2. Try plan downgrade (check end-of-period)
+  3. Verify prorated billing calculations
+  4. Check email notifications
+</Step>
+
+<Step title="Test Cancellation Flow">
+  1. Cancel subscription (immediate and end-of-period)
+  2. Verify access changes appropriately
+  3. Test reactivation process
+  4. Check data retention/restoration
+</Step>
+
+<Step title="Verify Usage Tracking">
+  1. Check usage limits display correctly
+  2. Test usage warnings (if applicable)
+  3. Verify feature restrictions work
+  4. Test overage handling
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Self-service subscription management ready!** Users can now fully manage their subscriptions, reducing support burden and increasing user satisfaction.
+</Callout>

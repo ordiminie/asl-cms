@@ -45,6 +45,7 @@ export const updateOrganizationServiceSchema =
     logo: z.string().optional(),
     createdAt: z.date().optional(),
     updatedAt: z.date().optional(),
+    limitOverrides: z.record(z.string(), z.number()).optional(),
   }) satisfies z.Schema<UpdateOrganization>
 
 export const organizationRoleSchema = z.enum([

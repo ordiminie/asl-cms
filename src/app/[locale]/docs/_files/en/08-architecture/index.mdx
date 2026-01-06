@@ -1,0 +1,363 @@
+---
+title: 'Architecture & Development'
+description: 'Layered architecture with Presentation, Service, and Persistence layers for maintainable and scalable applications'
+keywords: 'ShipSaaS, architecture, layered architecture, clean architecture, software design, architecture patterns, application structure'
+---
+
+The boilerplate implements a **strict 3-layer architecture** that ensures separation of concerns, maintainability, and scalability. Each layer has specific responsibilities and communicates through well-defined interfaces.
+
+<Callout type="success">
+  **Perfect for:** Building maintainable, testable, and scalable SaaS applications with clear separation between UI, business logic, and data access.
+</Callout>
+
+## Architecture Overview
+
+The system follows a **unidirectional data flow** through three main layers:
+
+<Tabs defaultValue="architecture-diagram">
+  <Tab value="architecture-diagram" label="🏗️ Layer Architecture">
+    **3-Layer Architecture:**
+    ```
+    🖥️  PRESENTATION LAYER
+    ├── React Server Components (RSC)
+    ├── Client Components ("use client")
+    ├── Server Actions (mutations)
+    └── DAL (Data Access Layer with cache)
+                    ⬇️
+    ⚙️  SERVICE LAYER
+    ├── Business Logic
+    ├── Validation (Zod schemas)
+    ├── Authorization (CASL RBAC)
+    ├── Facades (interfaces)
+    └── Interceptors (logging, audit)
+                    ⬇️
+    🗄️  PERSISTENCE LAYER
+    ├── Drizzle ORM
+    ├── Database Models
+    ├── Repositories (DAO pattern)
+    └── Type Transformations
+    ```
+  </Tab>
+
+  <Tab value="data-flow" label="🔄 Data Flow">
+    **Read Operations (Queries):**
+    ```
+    Component → DAL (with cache) → Facade → Service → Repository → Database
+    ```
+
+    **Write Operations (Mutations):**
+    ```
+    Server Action → Facade → Service (validation + auth) → Repository → Database
+    ```
+
+    **Key Benefits:**
+    - Cached reads with `react-cache`
+    - Validated writes with business rules
+    - Authorized access at service level
+    - Clean separation of concerns
+  </Tab>
+
+  <Tab value="layer-rules" label="📋 Layer Rules">
+    **Strict Layer Communication:**
+
+    - **Presentation** → Only calls DAL (reads) or Server Actions (writes)
+    - **DAL** → Transforms DB models to domain types
+    - **Service** → Contains business logic + validation + authorization
+    - **Repository** → Handles database operations only
+    - **No layer bypassing** - Each layer can only call the next one
+
+    **Type Separation:**
+    - Presentation uses **Domain Types**
+    - Services use **Domain Types**
+    - Persistence uses **Drizzle Types**
+  </Tab>
+</Tabs>
+
+## Core Architecture Principles
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+  <div className="p-6 border rounded-lg">
+    <div className="flex items-center space-x-3 mb-4">
+      <div className="text-3xl">🏗️</div>
+      <div>
+        <h3 className="font-bold text-lg">Layered Architecture</h3>
+        <p className="text-sm text-muted-foreground">Strict 3-layer separation</p>
+      </div>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Presentation:** RSC, Client Components, Server Actions</div>
+      <div>• **Service:** Business logic, validation, authorization</div>
+      <div>• **Persistence:** Drizzle ORM, repositories, models</div>
+      <div>• **No layer bypassing:** Each layer calls only the next</div>
+    </div>
+  </div>
+
+  <div className="p-6 border rounded-lg">
+    <div className="flex items-center space-x-3 mb-4">
+      <div className="text-3xl">🔄</div>
+      <div>
+        <h3 className="font-bold text-lg">Unidirectional Flow</h3>
+        <p className="text-sm text-muted-foreground">Clear data movement</p>
+      </div>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Reads:** Component → DAL → Service → Repository</div>
+      <div>• **Writes:** Server Action → Service → Repository</div>
+      <div>• **Caching:** DAL layer with `react-cache`</div>
+      <div>• **Validation:** Service layer with Zod schemas</div>
+    </div>
+  </div>
+
+  <div className="p-6 border rounded-lg">
+    <div className="flex items-center space-x-3 mb-4">
+      <div className="text-3xl">🔐</div>
+      <div>
+        <h3 className="font-bold text-lg">Security & Authorization</h3>
+        <p className="text-sm text-muted-foreground">RBAC with CASL</p>
+      </div>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Authorization:** Every service operation checked</div>
+      <div>• **Validation:** Input validation at service boundary</div>
+      <div>• **Type Safety:** Domain types prevent data leaks</div>
+      <div>• **Audit Trail:** Interceptors log all operations</div>
+    </div>
+  </div>
+
+  <div className="p-6 border rounded-lg">
+    <div className="flex items-center space-x-3 mb-4">
+      <div className="text-3xl">⚡</div>
+      <div>
+        <h3 className="font-bold text-lg">Performance</h3>
+        <p className="text-sm text-muted-foreground">Optimized at every layer</p>
+      </div>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Server-first:** RSC by default</div>
+      <div>• **Caching:** DAL layer with React cache</div>
+      <div>• **Database:** Connection pooling with Drizzle</div>
+      <div>• **Client:** Minimal client-side JavaScript</div>
+    </div>
+  </div>
+</div>
+
+## Example: Complete Data Flow
+
+Here's how a typical user operation flows through all layers:
+
+<Tabs defaultValue="read-example">
+  <Tab value="read-example" label="📖 Read Operation">
+    **Get User Profile:**
+    ```typescript
+    // 🖥️ PRESENTATION (RSC Component)
+    import { getUserByIdDal } from '@/app/dal/user-dal'
+
+    export default async function UserProfile({ userId }: { userId: string }) {
+      const user = await getUserByIdDal(userId) // Cached read
+      return <div>{user.name}</div>
+    }
+
+    // 📊 DAL (Data Access Layer)
+    import { cache } from 'react'
+    import { getUserByIdService } from '@/services/facades/user-service-facade'
+
+    export const getUserByIdDal = cache(async (id: string) => {
+      const userModel = await getUserByIdService(id)
+      return transformToUserDTO(userModel) // Transform to domain type
+    })
+
+    // ⚙️ SERVICE (Business Logic)
+    export const getUserByIdService = async (id: string) => {
+      const parsed = userUuidSchema.safeParse(id) // Validation
+      if (!parsed.success) throw new ValidationError()
+
+      const granted = await canReadUser(parsed.data) // Authorization
+      if (!granted) throw new AuthorizationError()
+
+      return await getUserByIdDao(parsed.data) // Call repository
+    }
+
+    // 🗄️ REPOSITORY (Data Access)
+    export async function getUserByIdDao(id: string): Promise<UserModel> {
+      return await db.query.users.findFirst({
+        where: eq(users.id, id)
+      })
+    }
+    ```
+  </Tab>
+
+  <Tab value="write-example" label="✏️ Write Operation">
+    **Update User Profile:**
+    ```typescript
+    // 🖥️ PRESENTATION (Server Action)
+    import { updateUserService } from '@/services/facades/user-service-facade'
+
+    export async function updateUserAction(formData: FormData) {
+      "use server"
+
+      const result = await updateUserService({
+        id: formData.get('id') as string,
+        name: formData.get('name') as string,
+        email: formData.get('email') as string
+      })
+
+      revalidatePath('/account')
+      return result
+    }
+
+    // ⚙️ SERVICE (Business Logic)
+    export const updateUserService = async (data: UpdateUserInput) => {
+      // 1. Validation
+      const parsed = updateUserSchema.safeParse(data)
+      if (!parsed.success) throw new ValidationError()
+
+      // 2. Authorization
+      const granted = await canUpdateUser(parsed.data.id)
+      if (!granted) throw new AuthorizationError()
+
+      // 3. Business Logic
+      const updatedUser = await updateUserDao(parsed.data)
+
+      // 4. Side Effects (optional)
+      await sendUserUpdatedEmail(updatedUser)
+
+      return updatedUser
+    }
+
+    // 🗄️ REPOSITORY (Data Access)
+    export async function updateUserDao(data: UpdateUserData) {
+      return await db.update(users)
+        .set({
+          name: data.name,
+          email: data.email,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, data.id))
+        .returning()
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Key Benefits
+
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="text-green-500">✅</div>
+      <h4 className="font-semibold">Maintainability</h4>
+    </div>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li>• Clear separation of concerns</li>
+      <li>• Easy to locate and fix issues</li>
+      <li>• Consistent patterns across features</li>
+      <li>• Self-documenting code structure</li>
+    </ul>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="text-blue-500">✅</div>
+      <h4 className="font-semibold">Testability</h4>
+    </div>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li>• Each layer can be tested independently</li>
+      <li>• Easy mocking of dependencies</li>
+      <li>• Business logic isolated in services</li>
+      <li>• Database operations isolated in repositories</li>
+    </ul>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="text-purple-500">✅</div>
+      <h4 className="font-semibold">Scalability</h4>
+    </div>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li>• Layers can scale independently</li>
+      <li>• Easy to add new features</li>
+      <li>• Caching at appropriate layers</li>
+      <li>• Performance optimizations per layer</li>
+    </ul>
+  </div>
+</div>
+
+## Architecture Documentation
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+  <a href="./architecture/presentation-layer" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🖥️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Presentation Layer</h3>
+        <span className="text-sm text-muted-foreground">
+          RSC, Client Components, Server Actions, DAL, and Forms
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./architecture/service-layer" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">⚙️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Service Layer</h3>
+        <span className="text-sm text-muted-foreground">
+          Business logic, validation, authorization, facades, and interceptors
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./architecture/persistence-layer" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🗄️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Persistence Layer</h3>
+        <span className="text-sm text-muted-foreground">
+          Drizzle ORM, models, repositories, and type transformations
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./architecture/helpers-architecture" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🔧</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Helpers Architecture</h3>
+        <span className="text-sm text-muted-foreground">
+          Client/server separation and utility organization
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./architecture/project-structure" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">📁</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Project Structure</h3>
+        <span className="text-sm text-muted-foreground">
+          File organization, naming conventions, and import rules
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./architecture/development-workflow" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🧪</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Development Workflow</h3>
+        <span className="text-sm text-muted-foreground">
+          Feature development process and testing strategies
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+
+<Callout type="success">
+  **Architecture ready!** Your application follows enterprise-grade patterns that ensure maintainability, testability, and scalability as your SaaS grows.
+</Callout>

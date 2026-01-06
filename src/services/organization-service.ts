@@ -31,6 +31,7 @@ import {
   canReadOrganizationMember,
   canRemoveFromOrganization,
   canUpdateOrganization,
+  canUpdateOrganizationLimitOverrides,
 } from './authorization/organization-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {
@@ -134,6 +135,13 @@ export const updateOrganizationService = async (
   const granted = await canUpdateOrganization(resourceId)
   if (!granted) {
     throw new AuthorizationError()
+  }
+
+  if (organizationParams.limitOverrides !== undefined) {
+    const canUpdateLimits = await canUpdateOrganizationLimitOverrides()
+    if (!canUpdateLimits) {
+      throw new AuthorizationError('Only admins can update limit overrides')
+    }
   }
 
   organizationParams.updatedAt = new Date()

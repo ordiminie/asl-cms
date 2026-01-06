@@ -1,0 +1,575 @@
+---
+title: 'Storage Configuration'
+description: 'Complete guide to Supabase storage setup, factory pattern, and provider configuration'
+keywords: "ShipSaaS, storage configuration, Supabase setup, storage factory pattern, file storage, S3 adapter, storage providers, cloud storage"
+order: 3
+---
+
+Configure your storage backend with the flexible factory pattern supporting multiple providers. Supabase is implemented by default with S3 adapter ready for production scaling.
+
+## Supabase Storage Setup
+
+### **Create Storage Bucket**
+
+<Steps>
+<Step title="Navigate to Supabase Storage">
+  1. Go to your [Supabase Dashboard](https://app.supabase.com)
+  2. Select your project
+  3. Navigate to **Storage** → **Buckets**
+</Step>
+
+<Step title="Create Files Bucket">
+  1. Click **"Create a new bucket"**
+  2. Name it `files` (or your preferred name)
+  3. Set bucket to **Public** for public file access
+  4. Click **"Create bucket"**
+</Step>
+
+<Step title="Configure Bucket Policies (Optional)">
+  For fine-grained access control:
+
+  ```sql
+  -- Allow authenticated users to upload
+  CREATE POLICY "Authenticated users can upload" ON storage.objects
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+  -- Allow public read access
+  CREATE POLICY "Public read access" ON storage.objects
+  FOR SELECT USING (true);
+
+  -- Allow users to delete their own files
+  CREATE POLICY "Users can delete own files" ON storage.objects
+  FOR DELETE USING (auth.uid()::text = (storage.foldername(name))[1]);
+  ```
+</Step>
+</Steps>
+
+### **Environment Configuration**
+
+```bash
+# .env.local
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Optional: Custom bucket name
+SUPABASE_STORAGE_BUCKET=files
+
+# Environment-based path separation
+NODE_ENV=development  # or production
+```
+
+### **Environment Validation**
+
+```typescript
+// src/lib/files/storage/env.ts
+import { z } from 'zod'
+
+const storageEnvSchema = z.object({
+  SUPABASE_URL: z.string().url('Invalid Supabase URL'),
+  SUPABASE_ANON_KEY: z.string().min(1, 'Supabase Anon Key required'),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'Supabase Service Role Key required'),
+  SUPABASE_STORAGE_BUCKET: z.string().default('files'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+})
+
+export const storageEnv = storageEnvSchema.parse(process.env)
+
+// Type-safe environment access
+export const getStorageConfig = () => ({
+  bucket: storageEnv.SUPABASE_STORAGE_BUCKET,
+  basePath: storageEnv.NODE_ENV === 'production' ? 'prod' : 'dev',
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  allowedMimeTypes: [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'application/pdf',
+    'text/plain'
+  ]
+})
+```
+
+## Storage Factory Pattern
+
+### **Factory Implementation**
+
+The boilerplate uses a clean factory pattern for provider flexibility:
+
+```typescript
+// src/lib/files/storage/storage-factory.ts
+export type StorageType = 'supabase' | 's3'
+
+export const createStorage = (
+  type: StorageType,
+  config: StorageConfig
+): StorageOperations => {
+  switch (type) {
+    case 'supabase':
+      return createSupabaseStorage(config)
+    case 's3':
+      throw new Error('S3 provider not implemented yet')
+    default:
+      throw new Error(`Unknown storage provider: ${type}`)
+  }
+}
+
+// Type definitions
+export type StorageConfig = {
+  bucket: string
+  basePath: string
+  maxFileSize: number
+  allowedMimeTypes: string[]
+}
+
+export type StorageOperations = {
+  upload: (file: File, path: string) => Promise<{path: string}>
+  download: (path: string) => Promise<Blob>
+  delete: (path: string) => Promise<void>
+  list: (path: string) => Promise<FileObject[]>
+}
+```
+
+### **Supabase Storage Adapter**
+
+```typescript
+// src/lib/files/storage/supabase-storage.ts
+import { FileObject } from '@supabase/storage-js'
+import { FileErrors } from '@/lib/files/errors'
+import { supabase } from '@/lib/files/supabaseClient'
+import { logger } from '@/lib/logger'
+import { StorageConfig, StorageOperations } from './types'
+
+const getFullPath = (config: StorageConfig, path: string): string => {
+  return `${config.basePath}/${path}`
+}
+
+export const createSupabaseStorage = (
+  config: StorageConfig
+): StorageOperations => {
+  const upload = async (file: File, path: string): Promise<{path: string}> => {
+    const fullPath = getFullPath(config, path)
+
+    const { data, error } = await supabase.storage
+      .from(config.bucket)
+      .upload(fullPath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      })
+
+    if (error) {
+      logger.error('Upload error:', error.message)
+      throw FileErrors.UPLOAD_FAILED(error.message)
+    }
+
+    return { path: data.path }
+  }
+
+  const download = async (path: string): Promise<Blob> => {
+    const fullPath = getFullPath(config, path)
+
+    const { data, error } = await supabase.storage
+      .from(config.bucket)
+      .download(fullPath)
+
+    if (error) {
+      logger.error('Download error:', error.message)
+      throw FileErrors.DOWNLOAD_FAILED(error.message)
+    }
+
+    return data
+  }
+
+  const deleteFile = async (path: string): Promise<void> => {
+    const fullPath = getFullPath(config, path)
+
+    const { error } = await supabase.storage
+      .from(config.bucket)
+      .remove([fullPath])
+
+    if (error) {
+      logger.error('Delete error:', error.message)
+      throw FileErrors.DELETE_FAILED(error.message)
+    }
+  }
+
+  const list = async (path: string): Promise<FileObject[]> => {
+    const fullPath = getFullPath(config, path)
+
+    const { data, error } = await supabase.storage
+      .from(config.bucket)
+      .list(fullPath)
+
+    if (error) {
+      logger.error('List error:', error.message)
+      throw FileErrors.LIST_FAILED(error.message)
+    }
+
+    return data || []
+  }
+
+  return {
+    upload,
+    download,
+    delete: deleteFile,
+    list,
+  }
+}
+```
+
+## Storage Usage
+
+### **Initialize Storage**
+
+```typescript
+// src/lib/files/storage/index.ts
+import { createStorage } from './storage-factory'
+import { getStorageConfig } from './env'
+
+// Initialize storage with environment config
+const storageConfig = getStorageConfig()
+
+export const storage = createStorage('supabase', storageConfig)
+
+// Type-safe storage operations
+export const uploadFile = storage.upload
+export const downloadFile = storage.download
+export const deleteFile = storage.delete
+export const listFiles = storage.list
+```
+
+### **Service Integration**
+
+```typescript
+// src/services/file-service.ts
+import { storage } from '@/lib/files/storage'
+import { generateFilePath } from '@/lib/files/path-utils'
+
+export const uploadFileForEntityService = async (
+  params: UploadFileForEntity
+): Promise<FileResponse> => {
+  // Generate organized path
+  const filePath = generateFilePath(
+    params.entityType,
+    params.entityId,
+    params.file,
+    params.category
+  )
+
+  // Upload using storage adapter
+  const result = await storage.upload(params.file, filePath)
+
+  // Generate public URL
+  const publicUrl = generatePublicUrl(result.path)
+
+  return {
+    path: result.path,
+    url: publicUrl,
+    size: params.file.size,
+    type: params.file.type,
+    name: params.file.name,
+  }
+}
+```
+
+## File Path Management
+
+### **Path Generation Strategy**
+
+```typescript
+// src/lib/files/path-utils.ts
+import { EntityType, FileCategory } from '@/services/types/domain/file-types'
+
+export const generateFilePath = (
+  entityType: EntityType,
+  entityId: string,
+  file: File,
+  category: FileCategory = 'image'
+): string => {
+  const timestamp = Date.now()
+  const fileExtension = file.name.split('.').pop()
+
+  // Format: {entityType}s/{entityId}/{category}-{timestamp}.{extension}
+  return `${entityType}s/${entityId}/${category}-${timestamp}.${fileExtension}`
+}
+
+// Examples of generated paths:
+// users/123e4567-e89b-12d3-a456-426614174000/profile-1703123456789.webp
+// organizations/456e7890-e89b-12d3-a456-426614174000/logo-1703123456789.png
+// products/789e0123-e89b-12d3-a456-426614174000/image-1703123456789.jpg
+
+export const parseFilePath = (path: string) => {
+  const parts = path.split('/')
+  const [entityTypePlural, entityId, filename] = parts
+
+  const entityType = entityTypePlural.slice(0, -1) // Remove 's'
+  const [categoryPart] = filename.split('-')
+
+  return {
+    entityType,
+    entityId,
+    category: categoryPart,
+    filename
+  }
+}
+```
+
+### **URL Generation**
+
+```typescript
+// src/lib/files/url-utils.ts
+import { storageEnv } from './storage/env'
+
+export const generatePublicUrl = (path: string): string => {
+  const { SUPABASE_URL, SUPABASE_STORAGE_BUCKET } = storageEnv
+
+  return `${SUPABASE_URL}/storage/v1/object/public/${SUPABASE_STORAGE_BUCKET}/${path}`
+}
+
+export const generateSignedUrl = async (
+  path: string,
+  expiresIn: number = 3600
+): Promise<string> => {
+  const { data } = await supabase.storage
+    .from(storageEnv.SUPABASE_STORAGE_BUCKET)
+    .createSignedUrl(path, expiresIn)
+
+  return data?.signedUrl || ''
+}
+
+// Utility for different URL types
+export const getFileUrl = (path: string, type: 'public' | 'signed' = 'public') => {
+  return type === 'public'
+    ? generatePublicUrl(path)
+    : generateSignedUrl(path)
+}
+```
+
+## Environment-Specific Configuration
+
+### **Development Configuration**
+
+```typescript
+// Development: Local file serving with shorter paths
+const devConfig: StorageConfig = {
+  bucket: 'files',
+  basePath: 'dev',
+  maxFileSize: 5 * 1024 * 1024, // 5MB for faster testing
+  allowedMimeTypes: [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'application/pdf',
+  ]
+}
+```
+
+### **Production Configuration**
+
+```typescript
+// Production: Optimized for performance and security
+const prodConfig: StorageConfig = {
+  bucket: 'files',
+  basePath: 'prod',
+  maxFileSize: 10 * 1024 * 1024, // 10MB
+  allowedMimeTypes: [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'application/pdf',
+    'text/plain',
+    'text/csv',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ]
+}
+```
+
+### **Dynamic Configuration**
+
+```typescript
+// src/lib/files/config.ts
+export const getStorageConfigForEnvironment = (): StorageConfig => {
+  const baseConfig = {
+    bucket: process.env.SUPABASE_STORAGE_BUCKET || 'files',
+    basePath: process.env.NODE_ENV === 'production' ? 'prod' : 'dev',
+  }
+
+  switch (process.env.NODE_ENV) {
+    case 'production':
+      return {
+        ...baseConfig,
+        maxFileSize: 10 * 1024 * 1024,
+        allowedMimeTypes: PRODUCTION_MIME_TYPES,
+      }
+
+    case 'test':
+      return {
+        ...baseConfig,
+        basePath: 'test',
+        maxFileSize: 1 * 1024 * 1024, // 1MB for tests
+        allowedMimeTypes: TEST_MIME_TYPES,
+      }
+
+    default: // development
+      return {
+        ...baseConfig,
+        maxFileSize: 5 * 1024 * 1024,
+        allowedMimeTypes: DEVELOPMENT_MIME_TYPES,
+      }
+  }
+}
+```
+
+## Future Provider Implementation
+
+### **S3 Adapter Structure**
+
+Ready-to-implement structure for S3 provider:
+
+```typescript
+// src/lib/files/storage/s3-storage.ts (future)
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { StorageConfig, StorageOperations } from './types'
+
+export const createS3Storage = (
+  config: StorageConfig & S3Config
+): StorageOperations => {
+  const s3Client = new S3Client({
+    region: config.region,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+  })
+
+  const upload = async (file: File, path: string) => {
+    const fullPath = `${config.basePath}/${path}`
+
+    const command = new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: fullPath,
+      Body: file,
+      ContentType: file.type,
+    })
+
+    await s3Client.send(command)
+
+    return { path: fullPath }
+  }
+
+  // ... other operations
+
+  return { upload, download, delete: deleteFile, list }
+}
+
+// Usage: createStorage('s3', s3Config)
+```
+
+### **Provider Switching**
+
+```typescript
+// Easy provider switching based on environment
+const getStorageProvider = (): StorageType => {
+  if (process.env.STORAGE_PROVIDER === 's3') return 's3'
+  return 'supabase' // default
+}
+
+export const storage = createStorage(
+  getStorageProvider(),
+  getStorageConfigForEnvironment()
+)
+```
+
+## Performance Optimization
+
+### **Caching Strategy**
+
+```typescript
+// src/lib/files/cache.ts
+const fileUrlCache = new Map<string, { url: string; expires: number }>()
+
+export const getCachedFileUrl = (path: string): string | null => {
+  const cached = fileUrlCache.get(path)
+
+  if (cached && cached.expires > Date.now()) {
+    return cached.url
+  }
+
+  fileUrlCache.delete(path)
+  return null
+}
+
+export const setCachedFileUrl = (path: string, url: string, ttl = 3600000) => {
+  fileUrlCache.set(path, {
+    url,
+    expires: Date.now() + ttl
+  })
+}
+```
+
+### **Batch Operations**
+
+```typescript
+// Efficient batch uploads
+export const uploadMultipleFiles = async (
+  files: File[],
+  pathGenerator: (file: File, index: number) => string
+): Promise<Array<{ path: string; url: string }>> => {
+  const uploadPromises = files.map(async (file, index) => {
+    const path = pathGenerator(file, index)
+    const result = await storage.upload(file, path)
+
+    return {
+      path: result.path,
+      url: generatePublicUrl(result.path)
+    }
+  })
+
+  return Promise.all(uploadPromises)
+}
+```
+
+## Testing Configuration
+
+### **Test Storage Setup**
+
+```typescript
+// src/lib/files/storage/test-storage.ts
+export const createTestStorage = (): StorageOperations => {
+  const files = new Map<string, Blob>()
+
+  return {
+    upload: async (file: File, path: string) => {
+      files.set(path, file)
+      return { path }
+    },
+
+    download: async (path: string) => {
+      const file = files.get(path)
+      if (!file) throw new Error('File not found')
+      return file
+    },
+
+    delete: async (path: string) => {
+      files.delete(path)
+    },
+
+    list: async (path: string) => {
+      const matchingFiles = Array.from(files.keys())
+        .filter(key => key.startsWith(path))
+        .map(name => ({ name })) as FileObject[]
+
+      return matchingFiles
+    }
+  }
+}
+
+// Use in tests
+process.env.NODE_ENV = 'test'
+export const storage = createTestStorage()
+```
+
+The storage configuration system provides flexible, performant, and secure file management with easy provider switching and environment-specific optimizations.

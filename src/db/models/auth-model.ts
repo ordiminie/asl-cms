@@ -2,6 +2,7 @@ import {relations, sql} from 'drizzle-orm'
 import {
   boolean,
   integer,
+  json,
   pgEnum,
   pgTable,
   text,
@@ -149,6 +150,7 @@ export const organization = pgTable('organization', {
   updatedAt: timestamp('updated_at', {mode: 'date'}).defaultNow(),
   logo: text('logo'),
   metadata: text('metadata'),
+  limitOverrides: json('limit_overrides').$type<Record<string, number>>(),
 })
 
 export const organizationRoleEnum = pgEnum('organization_role', [

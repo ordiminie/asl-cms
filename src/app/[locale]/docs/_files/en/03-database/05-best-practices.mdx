@@ -1,0 +1,685 @@
+---
+title: 'Best Practices'
+description: 'Performance optimization, security guidelines, and troubleshooting for database operations'
+keywords: "ShipSaaS, database best practices, query optimization, database security, performance tuning, indexing, connection pooling, error handling"
+order: 5
+---
+
+Follow these best practices to ensure your database operations are secure, performant, and maintainable. This guide covers optimization techniques, security measures, and common troubleshooting scenarios.
+
+## Performance Optimization
+
+### Query Optimization
+
+**Use selective queries:**
+
+<Tabs defaultValue="efficient">
+  <Tab value="efficient" label="Efficient Queries">
+    ```typescript
+    // ✅ Select only needed columns
+    const users = await db.select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    }).from(users)
+
+    // ✅ Use proper WHERE conditions
+    const activeAdmins = await db.query.users.findMany({
+      where: (users, { eq, and }) => and(
+        eq(users.active, true),
+        eq(users.role, 'admin')
+      ),
+      columns: {
+        id: true,
+        name: true,
+        email: true,
+      }
+    })
+    ```
+  </Tab>
+  <Tab value="inefficient" label="Avoid These">
+    ```typescript
+    // ❌ Don't select all columns when you need few
+    const users = await db.select().from(users)
+
+    // ❌ Don't load unnecessary relations
+    const user = await db.query.users.findFirst({
+      with: {
+        members: {
+          with: {
+            organization: {
+              with: {
+                projects: {
+                  with: {
+                    tasks: true // Could be thousands of records!
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    // ❌ Avoid N+1 queries
+    for (const user of users) {
+      const projects = await getUserProjects(user.id) // Multiple queries!
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Indexing Strategy
+
+**Essential indexes for the SaaS application:**
+
+```sql
+-- User table indexes
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_active ON users(active);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_created_at ON users(created_at);
+
+-- Organization indexes
+CREATE INDEX idx_organizations_owner_id ON organizations(owner_id);
+CREATE INDEX idx_organizations_active ON organizations(active);
+
+-- Membership indexes
+CREATE INDEX idx_members_user_id ON members(user_id);
+CREATE INDEX idx_members_organization_id ON members(organization_id);
+CREATE INDEX idx_members_role ON members(role);
+CREATE UNIQUE INDEX idx_members_user_org_unique ON members(user_id, organization_id);
+
+-- Project and task indexes
+CREATE INDEX idx_projects_organization_id ON projects(organization_id);
+CREATE INDEX idx_tasks_project_id ON tasks(project_id);
+CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
+```
+
+**Composite indexes for common query patterns:**
+
+```sql
+-- For user activity queries
+CREATE INDEX idx_users_active_role ON users(active, role);
+
+-- For task filtering
+CREATE INDEX idx_tasks_status_project ON tasks(status, project_id);
+
+-- For notification queries
+CREATE INDEX idx_notifications_user_read ON notifications(user_id, read);
+```
+
+### Connection Pool Optimization
+
+**Current configuration:**
+
+```typescript
+// /src/db/models/db.ts
+const pool = new Pool({
+  connectionString: env.DATABASE_URL,
+  max: 20,                    // Maximum connections
+  idleTimeoutMillis: 30_000,  // Close idle connections after 30s
+  connectionTimeoutMillis: 10_000, // Connection timeout
+})
+```
+
+**Optimization tips:**
+
+<Steps>
+<Step title="Monitor Connection Usage">
+  ```sql
+  -- Check active connections
+  SELECT
+    state,
+    COUNT(*) as connection_count
+  FROM pg_stat_activity
+  WHERE datname = 'your_database_name'
+  GROUP BY state;
+  ```
+</Step>
+
+<Step title="Adjust Pool Size">
+  ```typescript
+  // For high-traffic applications
+  const pool = new Pool({
+    connectionString: env.DATABASE_URL,
+    max: 50,                    // Increase max connections
+    min: 5,                     // Maintain minimum connections
+    idleTimeoutMillis: 60_000,  // Keep connections longer
+  })
+  ```
+</Step>
+
+<Step title="Use Transactions Efficiently">
+  ```typescript
+  // ✅ Keep transactions short
+  await db.transaction(async (tx) => {
+    const user = await tx.insert(users).values(userData).returning()
+    await tx.insert(userSettings).values({ userId: user.id })
+    // Keep transaction scope minimal
+  })
+
+  // ❌ Avoid long-running transactions
+  await db.transaction(async (tx) => {
+    // Don't perform external API calls or long computations
+    const response = await fetch('external-api') // BAD
+    // ... more operations
+  })
+  ```
+</Step>
+</Steps>
+
+### Pagination Best Practices
+
+**Offset-based pagination (simple but slower for large offsets):**
+
+```typescript
+const getPaginatedUsers = async (page: number, limit: number = 20) => {
+  const offset = (page - 1) * limit
+
+  // ✅ Get total count only when needed
+  const [data, totalResult] = await Promise.all([
+    db.query.users.findMany({
+      limit,
+      offset,
+      orderBy: (users, { desc }) => desc(users.createdAt)
+    }),
+    page === 1 ? db.select({ count: count() }).from(users) : null
+  ])
+
+  return {
+    data,
+    total: totalResult?.[0]?.count,
+    page,
+    limit,
+    hasMore: data.length === limit
+  }
+}
+```
+
+**Cursor-based pagination (better performance):**
+
+```typescript
+const getCursorPaginatedUsers = async (cursor?: string, limit = 20) => {
+  const users = await db.query.users.findMany({
+    where: cursor
+      ? (users, { lt }) => lt(users.createdAt, new Date(cursor))
+      : undefined,
+    limit: limit + 1, // Get one extra to check hasMore
+    orderBy: (users, { desc }) => desc(users.createdAt)
+  })
+
+  const hasMore = users.length > limit
+  if (hasMore) users.pop()
+
+  return {
+    data: users,
+    hasMore,
+    nextCursor: users.length > 0
+      ? users[users.length - 1].createdAt.toISOString()
+      : null
+  }
+}
+```
+
+## Security Best Practices
+
+### Database Security
+
+**Connection security:**
+
+```typescript
+// ✅ Always use SSL in production
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false
+})
+
+// ✅ Use environment variables for credentials
+const dbConfig = {
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT!),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+}
+```
+
+**SQL injection prevention:**
+
+```typescript
+// ✅ Drizzle ORM prevents SQL injection by default
+const user = await db.query.users.findFirst({
+  where: (users, { eq }) => eq(users.email, userEmail) // Safe
+})
+
+// ✅ Use parameterized queries for raw SQL
+const result = await db.execute(sql`
+  SELECT * FROM users
+  WHERE email = ${userEmail}
+  AND created_at > ${startDate}
+`)
+
+// ❌ Never use string concatenation
+const result = await db.execute(sql`
+  SELECT * FROM users
+  WHERE email = '${userEmail}' -- DANGEROUS!
+`)
+```
+
+### Data Validation
+
+**Validate at repository level:**
+
+```typescript
+import { z } from 'zod'
+
+const createUserSchema = z.object({
+  name: z.string().min(1).max(100),
+  email: z.string().email(),
+  role: z.enum(['user', 'admin', 'moderator']),
+})
+
+export const createUserDao = async (userData: unknown) => {
+  // ✅ Validate input data
+  const validatedData = createUserSchema.parse(userData)
+
+  try {
+    const [user] = await db.insert(users)
+      .values(validatedData)
+      .returning()
+    return user
+  } catch (error: any) {
+    // ✅ Handle constraint violations gracefully
+    if (error.code === '23505') {
+      throw new Error('User with this email already exists')
+    }
+    throw error
+  }
+}
+```
+
+### Sensitive Data Handling
+
+**Don't expose sensitive information:**
+
+```typescript
+// ✅ Exclude sensitive fields in queries
+export const getUserPublicProfile = async (userId: string) => {
+  return await db.query.users.findFirst({
+    where: (users, { eq }) => eq(users.id, userId),
+    columns: {
+      id: true,
+      name: true,
+      email: true,
+      avatar: true,
+      createdAt: true,
+      // Exclude: password, stripeCustomerId, etc.
+    }
+  })
+}
+
+// ✅ Use separate functions for admin data
+export const getUserAdminProfile = async (userId: string) => {
+  return await db.query.users.findFirst({
+    where: (users, { eq }) => eq(users.id, userId),
+    // Admin can see all fields
+  })
+}
+```
+
+## Error Handling
+
+### Repository Error Patterns
+
+**Standardized error handling:**
+
+```typescript
+export class DatabaseError extends Error {
+  constructor(
+    message: string,
+    public code?: string,
+    public constraint?: string
+  ) {
+    super(message)
+    this.name = 'DatabaseError'
+  }
+}
+
+export const createUserDao = async (userData: CreateUserType) => {
+  try {
+    const [user] = await db.insert(users)
+      .values(userData)
+      .returning()
+    return user
+  } catch (error: any) {
+    // PostgreSQL error codes
+    switch (error.code) {
+      case '23505': // Unique violation
+        if (error.constraint?.includes('email')) {
+          throw new DatabaseError('Email already exists', error.code, error.constraint)
+        }
+        throw new DatabaseError('Duplicate value', error.code, error.constraint)
+
+      case '23503': // Foreign key violation
+        throw new DatabaseError('Referenced record not found', error.code, error.constraint)
+
+      case '23514': // Check violation
+        throw new DatabaseError('Data validation failed', error.code, error.constraint)
+
+      default:
+        console.error('Database error:', error)
+        throw new DatabaseError('Database operation failed')
+    }
+  }
+}
+```
+
+### Transaction Error Handling
+
+```typescript
+export const createUserWithOrganizationDao = async (
+  userData: CreateUserType,
+  orgData: CreateOrganizationType
+) => {
+  try {
+    return await db.transaction(async (tx) => {
+      const [user] = await tx.insert(users).values(userData).returning()
+
+      const [organization] = await tx.insert(organizations)
+        .values({
+          ...orgData,
+          ownerId: user.id
+        })
+        .returning()
+
+      await tx.insert(members).values({
+        userId: user.id,
+        organizationId: organization.id,
+        role: 'admin'
+      })
+
+      return { user, organization }
+    })
+  } catch (error) {
+    // Transaction is automatically rolled back
+    console.error('Transaction failed:', error)
+    throw new DatabaseError('Failed to create user and organization')
+  }
+}
+```
+
+## Database Maintenance
+
+### Regular Maintenance Tasks
+
+**Automated maintenance script:**
+
+```typescript
+// scripts/db-maintenance.ts
+import { db } from '@/db/models/db'
+import { sql } from 'drizzle-orm'
+
+export const performMaintenance = async () => {
+  console.log('Starting database maintenance...')
+
+  // Update table statistics
+  await db.execute(sql`ANALYZE`)
+
+  // Vacuum to reclaim space
+  await db.execute(sql`VACUUM`)
+
+  // Clean up old sessions (older than 30 days)
+  await db.execute(sql`
+    DELETE FROM sessions
+    WHERE expires_at < NOW() - INTERVAL '30 days'
+  `)
+
+  // Clean up old notifications (older than 90 days)
+  await db.execute(sql`
+    DELETE FROM notifications
+    WHERE created_at < NOW() - INTERVAL '90 days'
+      AND read = true
+  `)
+
+  console.log('Database maintenance completed')
+}
+```
+
+### Performance Monitoring
+
+**Query performance tracking:**
+
+```sql
+-- Enable query logging in PostgreSQL
+ALTER SYSTEM SET log_statement = 'all';
+ALTER SYSTEM SET log_min_duration_statement = 1000; -- Log queries > 1s
+
+-- Check slow queries
+SELECT
+  query,
+  calls,
+  total_time,
+  mean_time,
+  rows
+FROM pg_stat_statements
+ORDER BY mean_time DESC
+LIMIT 10;
+
+-- Check table sizes
+SELECT
+  tablename,
+  pg_size_pretty(pg_total_relation_size(tablename::regclass)) as size,
+  pg_total_relation_size(tablename::regclass) as size_bytes
+FROM pg_tables
+WHERE schemaname = 'public'
+ORDER BY size_bytes DESC;
+```
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+<Tabs defaultValue="connection">
+  <Tab value="connection" label="Connection Issues">
+    **Problem**: Database connection failures
+
+    ```bash
+    # Test connection
+    pnpm db:check
+
+    # Common solutions:
+    ```
+
+    ```typescript
+    // 1. Check environment variables
+    console.log('DB URL:', process.env.DATABASE_URL?.substring(0, 30) + '...')
+
+    // 2. Verify SSL configuration
+    const pool = new Pool({
+      connectionString: env.DATABASE_URL,
+      ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false
+    })
+
+    // 3. Check connection limits
+    const result = await db.execute(sql`
+      SELECT * FROM pg_stat_activity WHERE datname = current_database()
+    `)
+    console.log('Active connections:', result.rows.length)
+    ```
+  </Tab>
+  <Tab value="migrations" label="Migration Issues">
+    **Problem**: Migration failures or inconsistencies
+
+    ```bash
+    # Check migration status
+    pnpm db:check
+
+    # Reset migrations (development only)
+    rm -rf drizzle/migrations
+    pnpm db:generate
+    pnpm db:push
+
+    # For production issues
+    ```
+
+    ```sql
+    -- Check migration table
+    SELECT * FROM __drizzle_migrations ORDER BY id;
+
+    -- Manual migration status update (if needed)
+    UPDATE __drizzle_migrations
+    SET applied_at = NOW()
+    WHERE id = 'migration_id_here';
+    ```
+  </Tab>
+  <Tab value="performance" label="Performance Issues">
+    **Problem**: Slow queries or high resource usage
+
+    ```sql
+    -- Find missing indexes
+    SELECT
+      schemaname,
+      tablename,
+      attname,
+      n_distinct,
+      correlation
+    FROM pg_stats
+    WHERE schemaname = 'public'
+      AND n_distinct > 100
+      AND correlation < 0.1;
+
+    -- Check for sequential scans
+    SELECT
+      schemaname,
+      tablename,
+      seq_scan,
+      seq_tup_read,
+      idx_scan,
+      idx_tup_fetch
+    FROM pg_stat_user_tables
+    WHERE seq_scan > idx_scan
+    ORDER BY seq_tup_read DESC;
+    ```
+
+    **Solutions**:
+    - Add missing indexes
+    - Optimize query patterns
+    - Implement proper pagination
+    - Use connection pooling
+  </Tab>
+</Tabs>
+
+### Development vs Production
+
+**Development settings:**
+
+```typescript
+// Development: More verbose logging, relaxed timeouts
+const devPool = new Pool({
+  connectionString: env.DATABASE_URL,
+  max: 10,
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 5_000,
+})
+```
+
+**Production settings:**
+
+```typescript
+// Production: Optimized for performance and reliability
+const prodPool = new Pool({
+  connectionString: env.DATABASE_URL,
+  max: 50,
+  min: 10,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
+  ssl: { rejectUnauthorized: true },
+})
+```
+
+### Monitoring and Alerting
+
+**Health check endpoint:**
+
+```typescript
+// /src/app/api/health/db/route.ts
+import { db } from '@/db/models/db'
+import { sql } from 'drizzle-orm'
+
+export async function GET() {
+  try {
+    const start = Date.now()
+    await db.execute(sql`SELECT 1`)
+    const duration = Date.now() - start
+
+    return Response.json({
+      status: 'healthy',
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString()
+    })
+  } catch (error) {
+    return Response.json(
+      {
+        status: 'unhealthy',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      },
+      { status: 500 }
+    )
+  }
+}
+```
+
+## Backup and Recovery
+
+### Automated Backups
+
+```bash
+#!/bin/bash
+# scripts/backup-db.sh
+
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_FILE="backup_${DATE}.sql"
+DATABASE_URL="your_database_url"
+
+# Create backup
+pg_dump $DATABASE_URL > $BACKUP_FILE
+
+# Compress backup
+gzip $BACKUP_FILE
+
+# Upload to cloud storage (optional)
+# aws s3 cp "${BACKUP_FILE}.gz" s3://your-backup-bucket/
+
+echo "Backup created: ${BACKUP_FILE}.gz"
+```
+
+### Recovery Procedures
+
+```bash
+# Restore from backup
+pg_restore -d $DATABASE_URL backup_file.sql
+
+# Or for plain SQL dumps
+psql $DATABASE_URL < backup_file.sql
+
+# Verify restoration
+pnpm db:check
+```
+
+<Callout type="success">
+  Following these best practices ensures your database operations are secure, performant, and maintainable. Regular monitoring and maintenance prevent issues before they impact your application.
+</Callout>
+
+## Summary
+
+**Key takeaways for database best practices:**
+
+- **Performance**: Use selective queries, proper indexing, and efficient pagination
+- **Security**: Validate inputs, handle errors gracefully, protect sensitive data
+- **Maintenance**: Regular cleanup, monitoring, and performance optimization
+- **Reliability**: Implement proper backups, health checks, and recovery procedures
+
+These practices will help you build a robust, scalable database layer for your SaaS application.

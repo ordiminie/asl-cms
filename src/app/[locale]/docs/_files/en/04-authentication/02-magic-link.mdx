@@ -1,0 +1,184 @@
+---
+title: 'Magic Link Authentication'
+description: 'Passwordless login via email - no password required, just click a link'
+keywords: 'ShipSaaS, magic link, passwordless auth, email authentication, one-time login, secure access'
+---
+
+Magic Link allows users to login without passwords. They enter their email, receive a link, click it, and they're logged in automatically.
+
+<Callout type="success">
+  **Perfect for:** Improving user experience, reducing password fatigue, and increasing conversion rates.
+</Callout>
+
+## How to Activate
+
+<Steps>
+<Step title="Enable in environment">
+  ```bash
+  # Add magic link to available auth methods
+  NEXT_PUBLIC_AUTH_METHODS="credential,magiclink"
+
+  # Email service required
+  RESEND_API_KEY="re_your_resend_api_key"
+  EMAIL_FROM="noreply@yourdomain.com"
+  ```
+</Step>
+
+<Step title="That's it!">
+  Magic link button automatically appears on your login page at `/[locale]/login`.
+</Step>
+</Steps>
+
+## How It Works
+
+### For Users
+
+<Steps>
+<Step title="User clicks magic link button">
+  On the login page, user clicks "Se connecter avec un lien magique" instead of entering password.
+</Step>
+
+<Step title="Enter email address">
+  User enters their email in the magic link form.
+</Step>
+
+<Step title="Receive email">
+  User receives an email with a secure login link (expires in 15 minutes).
+</Step>
+
+<Step title="Click & login">
+  User clicks the link → automatically logged in and redirected to dashboard.
+</Step>
+</Steps>
+
+<Callout type="info">
+  **For new users:** If the email doesn't exist, a new account is automatically created during the magic link process.
+</Callout>
+
+### Security Features
+
+**Built-in protections:**
+- **15-minute expiration** - Links automatically expire
+- **One-time use** - Each link can only be used once
+- **Secure tokens** - Cryptographically secure link generation
+- **Rate limiting** - Prevents spam requests
+
+## Email Template
+
+The boilerplate includes a pre-built magic link email:
+
+**Email content:**
+- Clean, professional design
+- Clear "Login to [App Name]" button
+- Expiration time clearly stated
+- Security warning about not sharing links
+
+**Customization:**
+- Email template can be modified in the notification service
+- Branding and styling can be updated
+- Custom messages and instructions
+
+## User Experience Flow
+
+<Tabs defaultValue="returning-user">
+  <Tab value="returning-user" label="Returning User">
+    1. User visits login page
+    2. Clicks magic link button
+    3. Enters email
+    4. Checks email and clicks link
+    5. Automatically logged in
+  </Tab>
+
+  <Tab value="new-user" label="New User">
+    1. User visits login page
+    2. Clicks magic link button
+    3. Enters email (doesn't exist yet)
+    4. Account created automatically
+    5. Checks email and clicks link
+    6. Logged in with new account
+  </Tab>
+</Tabs>
+
+## Configuration in Better Auth
+
+The magic link feature uses Better Auth's `magicLink` plugin:
+
+```typescript
+// In src/lib/better-auth/auth.ts
+magicLink({
+  sendMagicLink: async ({email, url}) => {
+    // Finds or creates user
+    let user = await getUserByEmailDao(email)
+    if (!user) {
+      await initializeRegisterUserDataService(email, true)
+      user = await getUserByEmailDao(email)
+    }
+
+    // Sends email via notification service
+    await createTypedNotificationService({
+      userId: user.id,
+      type: NotificationTypeConst.magic_link,
+      metadata: { url, email }
+    })
+  },
+})
+```
+
+<Callout type="warning">
+  The magic link system automatically creates accounts for new email addresses. Make sure this behavior fits your application's requirements.
+</Callout>
+
+## Common Issues & Solutions
+
+<Callout type="error">
+  **Magic link emails not arriving?**
+
+  - Verify `RESEND_API_KEY` is correctly set
+  - Check `EMAIL_FROM` domain is verified in Resend
+  - Look in spam/junk folders
+  - Test with different email providers
+</Callout>
+
+<Callout type="warning">
+  **"Link expired" error?**
+
+  - Magic links expire after 15 minutes for security
+  - User needs to request a new magic link
+  - Check system time is synchronized
+</Callout>
+
+<Callout type="info">
+  **Button not showing on login page?**
+
+  - Verify `NEXT_PUBLIC_AUTH_METHODS` includes "magiclink"
+  - Check that `RESEND_API_KEY` is configured
+  - Restart development server after env changes
+</Callout>
+
+## Testing Checklist
+
+<Steps>
+<Step title="Test with existing user">
+  1. Use email of existing user account
+  2. Click magic link button
+  3. Check email arrives quickly
+  4. Click link and verify login
+</Step>
+
+<Step title="Test with new email">
+  1. Use email that doesn't exist in system
+  2. Verify new account is created
+  3. Check email arrives and works
+  4. Confirm user is logged in
+</Step>
+
+<Step title="Test security features">
+  1. Try using same link twice (should fail)
+  2. Wait 16+ minutes and try old link (should expire)
+  3. Request multiple links quickly (rate limiting)
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Working perfectly?** Users can now login without passwords, improving security and user experience!
+</Callout>

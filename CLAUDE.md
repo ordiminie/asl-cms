@@ -149,11 +149,34 @@ Always use `pnpm` over `npm` for this project.
 
 ## RULES
 
+### Rules Index
+
+**IMPORTANT:** Before implementing ANY feature, consult the **Rules Index** at:
+📋 [`.cursor/rules/RULES-INDEX.md`](.cursor/rules/RULES-INDEX.md)
+
+This index is a table of contents for all project implementation rules. It helps you quickly find the relevant rule(s) for your task.
+
 ### Code Generation Prerequisites
 
-Before generating ANY new code, you **MUST** complete these two verification steps:
+Before generating ANY new code, you **MUST** complete these verification steps:
 
-1. **Check Existing Codebase Patterns**
+1. **Consult the Rules Index**
+   Open [`.cursor/rules/RULES-INDEX.md`](.cursor/rules/RULES-INDEX.md) and:
+   - Use the **Quick Decision Matrix** to identify relevant rules for your task
+   - Read the **Description** column to find matching rules
+   - **Read the full rule file(s)** before writing any code
+
+   Common rule mappings:
+   | Task | Rules to Read |
+   |------|---------------|
+   | New page/component | `rule-presentation`, `rule-safe-route` |
+   | Form implementation | `rule-form-front-and-back`, `rule-zod-client-server-internationalization` |
+   | Server Action | `rule-safe-server-action`, `rule-server-actions-imports` |
+   | Business service | `rule-service`, `rule-authorization-service` |
+   | Database model | `rule-persistence` |
+   | API Route | `rule-api-routes` |
+
+2. **Check Existing Codebase Patterns**
    Find and analyze **at least three existing examples** of similar functionality in the codebase. Look for:
    - Similar components, functions, or modules
    - Existing patterns that solve comparable problems
@@ -161,26 +184,25 @@ Before generating ANY new code, you **MUST** complete these two verification ste
 
    If no such examples exist, explicitly state that fact before proceeding.
 
-2. **Check .cursor/rules Directory**
-   Review the `.cursor/rules/` folder to verify if a predefined rule exists for the task at hand:
-   - Check `00-generals/` for general technical guidelines
-   - Check `01-presentation/` for UI/frontend patterns
-   - Check `02-services/` for business logic patterns
-   - Check `03-persistance/` for database patterns
+3. **Follow the Rules Exactly**
+   If a rule exists for your task, you **MUST** follow it exactly. The rules contain:
+   - Required patterns and code structure
+   - Security requirements (auth, validation)
+   - File naming and organization conventions
+   - Integration patterns with other layers
 
-   If a rule exists, you **MUST** follow it exactly. If no rule exists, mention this before proposing a solution.
-
-**Until both verifications are complete, do NOT proceed with implementation.**
+**Until all verifications are complete, do NOT proceed with implementation.**
 Every new feature must be analyzed against existing rules and codebase patterns before any code is written.
 
 ### Implementation Workflow
 
 1. Analyze the requested feature or change
-2. Search for 3+ existing examples in the codebase
-3. Check `.cursor/rules/` for applicable rules
-4. Present findings and propose an implementation plan
-5. Wait for approval before implementing
-6. Follow existing patterns and rules strictly
+2. **Consult [RULES-INDEX.md](.cursor/rules/RULES-INDEX.md)** to find applicable rules
+3. **Read the full content** of each relevant rule file
+4. Search for 3+ existing examples in the codebase
+5. Present findings and propose an implementation plan
+6. Wait for approval before implementing
+7. Follow existing patterns and rules strictly
 
 ## Coding Guidelines
 

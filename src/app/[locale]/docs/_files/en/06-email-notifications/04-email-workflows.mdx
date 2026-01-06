@@ -1,0 +1,373 @@
+---
+title: 'Email Workflows'
+description: 'Complete email automation workflows for authentication, subscriptions, organizations, and security alerts'
+keywords: 'ShipSaaS, email workflows, automated emails, email automation, workflow triggers, email sequences'
+---
+
+The boilerplate includes comprehensive email workflows that automatically handle user communications across authentication, billing, team management, and security scenarios.
+
+<Callout type="success">
+  **Perfect for:** Automated user journeys, transactional communications, and professional email sequences that enhance user experience.
+</Callout>
+
+## Workflow Categories
+
+The system handles four main categories of email workflows:
+
+<Tabs defaultValue="authentication">
+  <Tab value="authentication" label="🔐 Authentication">
+    **Automatic workflows triggered by Better Auth:**
+    - Account registration and verification
+    - Password reset process
+    - Magic link authentication
+    - Two-factor authentication
+    - Email address changes
+    - Account security alerts
+  </Tab>
+
+  <Tab value="subscriptions" label="💳 Subscriptions">
+    **Billing workflows triggered by Stripe webhooks:**
+    - Subscription creation confirmation
+    - Plan updates and changes
+    - Subscription cancellation
+    - Account deletion
+    - Payment success/failure notifications
+  </Tab>
+
+  <Tab value="organizations" label="🏢 Organizations">
+    **Team collaboration workflows:**
+    - Organization invitations
+    - Member role changes
+    - Team notifications
+    - Organization updates
+  </Tab>
+
+  <Tab value="security" label="🛡️ Security">
+    **Security-related workflows:**
+    - Suspicious activity alerts
+    - Password change confirmations
+    - Account security notifications
+    - Critical system alerts
+  </Tab>
+</Tabs>
+
+## Authentication Workflows
+
+### Password Reset Flow
+
+<Steps>
+<Step title="User Request">
+  1. User clicks "Forgot Password"
+  2. Enters email address
+  3. Submits reset request
+</Step>
+
+<Step title="Better Auth Processing">
+  ```typescript
+  // From src/lib/better-auth/auth.ts
+  sendResetPassword: async ({ user, url }) => {
+    await createTypedNotificationService({
+      userId: user.id,
+      type: NotificationTypeConst.reset_password,
+      metadata: { url },
+    })
+  }
+  ```
+</Step>
+
+<Step title="Email Delivery">
+  - **Template:** `reset-password-email.tsx`
+  - **Type:** Critical (always sent)
+  - **Content:** Secure reset link with expiration
+  - **Languages:** User's preferred language
+</Step>
+
+<Step title="User Action">
+  1. User receives email
+  2. Clicks reset link
+  3. Sets new password
+  4. Gets confirmation notification
+</Step>
+</Steps>
+
+### Email Verification Flow
+
+<Steps>
+<Step title="Registration Trigger">
+  - New user registration
+  - Email change request
+  - Manual verification request
+</Step>
+
+<Step title="Automatic Processing">
+  ```typescript
+  // From src/lib/better-auth/auth.ts
+  sendVerificationEmail: async ({ user, url }) => {
+    await createTypedNotificationService({
+      userId: user.id,
+      type: NotificationTypeConst.email_verification,
+      metadata: { url },
+    })
+  }
+  ```
+</Step>
+
+<Step title="Email Details">
+  - **Template:** `verification-email.tsx`
+  - **Expiration:** 1 hour
+  - **Auto-login:** After verification
+  - **Resend:** Available if needed
+</Step>
+</Steps>
+
+### Magic Link Flow
+
+<Steps>
+<Step title="Passwordless Request">
+  1. User enters email for magic link
+  2. System generates secure link
+  3. Better Auth triggers notification
+</Step>
+
+<Step title="Email Generation">
+  - **Template:** `magic-link-email.tsx`
+  - **Security:** Single-use link
+  - **Expiration:** Time-limited
+  - **Fallback:** Option to use password instead
+</Step>
+
+<Step title="Authentication">
+  1. User clicks magic link
+  2. Automatic sign-in
+  3. Redirect to dashboard
+</Step>
+</Steps>
+
+## Subscription Workflows
+
+### New Subscription Flow
+
+<Steps>
+<Step title="Stripe Webhook">
+  1. User completes payment in Stripe
+  2. Stripe sends webhook to application
+  3. System processes subscription data
+</Step>
+
+<Step title="Email Trigger">
+  ```typescript
+  // From src/services/email-service.ts
+  export const sendSubscriptionCompletedEmailService = async (
+    subscription: Subscription
+  ) => {
+    // Process subscription details
+    const planName = subscription.plan || plan?.planName || 'Plan inconnu'
+    const price = getFormattedPriceFromSubscription(stripeSubscription)
+
+    // Send comprehensive subscription email
+  }
+  ```
+</Step>
+
+<Step title="Email Content">
+  - **Template:** `subscription-completed-email.tsx`
+  - **Details:** Plan name, price, billing cycle
+  - **Features:** Plan limits and seat count
+  - **Next steps:** Account setup guidance
+</Step>
+</Steps>
+
+### Subscription Update Flow
+
+<Steps>
+<Step title="Plan Change">
+  - User upgrades/downgrades plan
+  - Billing cycle changes
+  - Seat count modifications
+</Step>
+
+<Step title="Automatic Notification">
+  ```typescript
+  // From src/services/email-service.ts
+  export const sendSubscriptionUpdatedEmailService = async (
+    subscription: Subscription
+  ) => {
+    // Calculate changes and send update email
+  }
+  ```
+</Step>
+
+<Step title="Update Details">
+  - **Template:** `subscription-updated-email.tsx`
+  - **Changes:** What changed in the subscription
+  - **Billing:** New pricing and billing date
+  - **Features:** Updated plan limits
+</Step>
+</Steps>
+
+### Subscription Cancellation Flow
+
+<Steps>
+<Step title="Cancellation Event">
+  - User cancels subscription
+  - System processes cancellation
+  - Stripe confirms cancellation
+</Step>
+
+<Step title="Email Confirmation">
+  - **Template:** `subscription-canceled-email.tsx`
+  - **Details:** Cancellation date and reason
+  - **Access:** Remaining access period
+  - **Reactivation:** How to reactivate if desired
+</Step>
+</Steps>
+
+## Organization Workflows
+
+### Team Invitation Flow
+
+<Steps>
+<Step title="Invitation Creation">
+  1. Admin invites new team member
+  2. System creates invitation record
+  3. Invitation email is triggered
+</Step>
+
+<Step title="Email Process">
+  ```typescript
+  // From src/services/email-service.ts
+  export const sendOrganizationInvitation = async ({
+    email,
+    invitedByUsername,
+    invitedByEmail,
+    teamName,
+    inviteLink,
+  }: SendOrganizationInvitationParams) => {
+    // Send invitation with team context
+  }
+  ```
+</Step>
+
+<Step title="Invitation Email">
+  - **Template:** `invitation-organization-link-email.tsx`
+  - **Context:** Who invited them and to which organization
+  - **Action:** Secure invitation link
+  - **Expiration:** Time-limited invitation
+</Step>
+
+<Step title="Dual Notification">
+  - **Invitee:** Receives invitation email
+  - **Inviter:** Gets confirmation that invitation was sent
+  - **Organization:** Team activity log updated
+</Step>
+</Steps>
+
+## Security Workflows
+
+### Security Alert Flow
+
+<Steps>
+<Step title="Security Event">
+  - Suspicious login detected
+  - Password change from new device
+  - Multiple failed login attempts
+  - Account access from new location
+</Step>
+
+<Step title="Alert Generation">
+  ```typescript
+  // Security alerts are critical notifications
+  await createTypedNotificationService({
+    userId: user.id,
+    type: NotificationTypeConst.security_alert,
+    title: 'Suspicious login detected',
+    message: 'We detected a login from a new device',
+    metadata: {
+      ipAddress: '192.168.1.1',
+      location: 'Paris, France'
+    }
+  })
+  ```
+</Step>
+
+<Step title="Immediate Email">
+  - **Priority:** Critical (bypasses user preferences)
+  - **Template:** `notification-email.tsx` with warning styling
+  - **Action:** Security recommendations
+  - **Response:** How to secure account
+</Step>
+</Steps>
+
+## Email Type Classification
+
+The system automatically handles email priority based on content type:
+
+### Critical Emails (Always Sent)
+
+```typescript
+// From src/services/notification-service.ts
+const criticalTypes: NotificationType[] = [
+  'reset_password',
+  'email_verification',
+  'change_email_verification',
+  'magic_link',
+  'otp_code',
+  'security_alert',
+  'password_changed',
+  'organization_invitation',
+  'subscription_created',
+  'subscription_updated',
+  'subscription_canceled',
+  'subscription_deleted',
+]
+```
+
+**These emails are sent regardless of user notification preferences.**
+
+### Standard Emails (Respect User Preferences)
+
+- Generic notifications
+- Feature updates
+- Marketing communications
+- Non-critical system updates
+
+**These emails respect the user's notification channel settings.**
+
+## Error Handling and Reliability
+
+### Graceful Degradation
+
+```typescript
+// From src/services/notification-service.ts
+try {
+  // Email sending logic...
+} catch (emailError) {
+  // Don't fail notification creation if email fails
+  console.error("Erreur lors de l'envoi de l'email de notification:", emailError)
+}
+```
+
+### Reliability Features
+
+- **Notification Creation:** Always succeeds even if email fails
+- **Error Logging:** Comprehensive error tracking
+- **Retry Logic:** Built into Resend service
+- **Monitoring:** Dashboard visibility into email delivery
+
+## Multi-Language Support
+
+All workflows automatically adapt to user language preferences:
+
+```typescript
+// From src/services/email-service.ts
+const t = await getTranslations({
+  locale: userLanguage,
+  namespace: 'email.user.notification',
+})
+```
+
+**Supported languages:** French, English, Spanish
+
+<Callout type="success">
+  **Complete email automation!** Your application handles all user communication workflows automatically with professional templates and reliable delivery.
+</Callout>

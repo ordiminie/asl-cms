@@ -1,0 +1,1094 @@
+---
+title: General Testing
+description: Testing utilities, mocking patterns, and common setup patterns used across the SaaS boilerplate
+keywords: 'ShipSaaS, testing fundamentals, test basics, testing setup, test configuration, testing tools, test environment'
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+
+Foundation testing patterns, utilities, and setup configurations used throughout the SaaS boilerplate testing suite.
+
+## Table of Contents
+
+- [Test Setup and Configuration](#test-setup-and-configuration)
+- [Mocking Patterns](#mocking-patterns)
+- [Test Data Factories](#test-data-factories)
+- [Common Utilities](#common-utilities)
+
+## Test Setup and Configuration
+
+Essential setup files and configuration patterns:
+
+<Tabs items={['Client Setup', 'Server Setup', 'Environment Configuration']}>
+
+<Tab value="Client Setup">
+**Client-Side Test Setup:**
+```typescript
+// src/__tests__/setup-test.ts
+import { beforeAll, afterEach } from 'vitest'
+import { cleanup } from '@testing-library/react'
+import '@testing-library/jest-dom'
+
+// Configure jsdom environment
+beforeAll(() => {
+  // Mock window objects
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  })
+
+  // Mock localStorage
+  Object.defineProperty(window, 'localStorage', {
+    value: {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    },
+  })
+
+  // Mock ResizeObserver
+  global.ResizeObserver = vi.fn().mockImplementation(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  }))
+})
+
+// Cleanup after each test
+afterEach(() => {
+  cleanup()
+  vi.clearAllMocks()
+})
+```
+
+**Key Features:**
+- **jsdom Environment**: DOM testing for React components
+- **Mock Browser APIs**: localStorage, matchMedia, ResizeObserver
+- **Automatic Cleanup**: Prevents test pollution
+- **Jest DOM Matchers**: Enhanced assertion capabilities
+</Tab>
+
+<Tab value="Server Setup">
+**Server-Side Test Setup:**
+```typescript
+// src/services/__tests__/setup-mocks.ts
+import { vi } from 'vitest'
+
+// Mock authentication service
+vi.mock('@/services/authentication/auth-service', () => ({
+  getAuthUser: vi.fn(),
+  getCurrentUser: vi.fn(),
+}))
+
+// Mock database repositories
+vi.mock('@/db/repositories/user-repository', () => ({
+  getUserByIdDao: vi.fn(),
+  createUserDao: vi.fn(),
+  updateUserDao: vi.fn(),
+  deleteUserDao: vi.fn(),
+  searchUsersDao: vi.fn(),
+}))
+
+// Mock external services
+vi.mock('@/services/email-service', () => ({
+  sendEmail: vi.fn(),
+  sendWelcomeEmail: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
+}))
+
+vi.mock('@/lib/stripe/stripe-client', () => ({
+  stripe: {
+    customers: {
+      create: vi.fn(),
+      retrieve: vi.fn(),
+    },
+    subscriptions: {
+      create: vi.fn(),
+      cancel: vi.fn(),
+    },
+  },
+}))
+
+// Environment setup
+process.env.NODE_ENV = 'test'
+process.env.BETTER_AUTH_SECRET = 'test-secret'
+process.env.DATABASE_URL = 'postgresql://localhost:5432/test_db'
+```
+
+**Key Features:**
+- **Node Environment**: Server-side testing without browser APIs
+- **Service Mocking**: Mock external dependencies
+- **Repository Mocking**: Mock database operations
+- **Environment Variables**: Test-specific configuration
+</Tab>
+
+<Tab value="Environment Configuration">
+**Test Environment Files:**
+```bash
+# .env.test
+NODE_ENV=test
+DATABASE_URL=postgresql://localhost:5432/test_db
+BETTER_AUTH_SECRET=test-secret-key-for-testing
+BETTER_AUTH_URL=http://localhost:3000
+RESEND_API_KEY=re_test_key_placeholder
+STRIPE_SECRET_KEY=sk_test_placeholder
+STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
+STRIPE_WEBHOOK_SECRET=whsec_test_placeholder
+```
+
+**Vitest Project Configuration:**
+```typescript
+// vitest.config.ts
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+import tsconfigPaths from 'vite-tsconfig-paths'
+import dotenv from 'dotenv'
+import path from 'path'
+
+// Load test environment
+dotenv.config({ path: path.resolve(__dirname, '.env.test') })
+
+export default defineConfig({
+  plugins: [react(), tsconfigPaths()],
+  test: {
+    projects: [
+      {
+        name: 'client',
+        environment: 'jsdom',
+        include: ['src/**/*.test.{ts,tsx}'],
+        exclude: ['src/services/**/*.test.{ts,tsx}'],
+        setupFiles: ['./src/__tests__/setup-test.ts'],
+        globals: true,
+      },
+      {
+        name: 'server',
+        environment: 'node',
+        include: ['src/services/**/*.test.{ts,tsx}'],
+        setupFiles: ['./src/services/__tests__/setup-mocks.ts'],
+        globals: true,
+      },
+    ],
+  },
+})
+```
+</Tab>
+
+</Tabs>
+
+## Mocking Patterns
+
+Comprehensive mocking strategies for different types of dependencies:
+
+<Tabs items={['Authentication Mocking', 'Database Mocking', 'External Service Mocking', 'Next.js Mocking']}>
+
+<Tab value="Authentication Mocking">
+**Authentication Service Mocking:**
+```typescript
+// src/services/__tests__/helper-service-test.ts
+import { vi } from 'vitest'
+import { getAuthUser } from '@/services/authentication/auth-service'
+import { User } from '@/services/types/domain/user-types'
+
+export const setupAuthUserMocked = async (user?: User | undefined) => {
+  return vi.mocked(getAuthUser).mockImplementation(async () => {
+    if (!user) return undefined
+    return user
+  })
+}
+
+// Usage patterns in tests
+describe('Service with Authentication', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should allow access for authenticated user', async () => {
+    const testUser = createTestUser({ role: 'admin' })
+    setupAuthUserMocked(testUser)
+
+    const result = await protectedService()
+    expect(result).toBeDefined()
+  })
+
+  it('should deny access for unauthenticated user', async () => {
+    setupAuthUserMocked() // No user (undefined)
+
+    await expect(protectedService()).rejects.toThrow('Unauthorized')
+  })
+})
+```
+
+**Better Auth Session Mocking:**
+```typescript
+// Mock Better Auth context
+vi.mock('@/lib/auth/auth-client', () => ({
+  authClient: {
+    getSession: vi.fn(),
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+  },
+}))
+
+// Mock session data
+const mockSession = {
+  user: {
+    id: 'user-123',
+    email: 'test@example.com',
+    name: 'Test User',
+  },
+  session: {
+    id: 'session-123',
+    expiresAt: new Date(Date.now() + 86400000), // 24 hours
+  },
+}
+
+vi.mocked(authClient.getSession).mockResolvedValue(mockSession)
+```
+</Tab>
+
+<Tab value="Database Mocking">
+**Repository Pattern Mocking:**
+```typescript
+// Complete repository mock
+vi.mock('@/db/repositories/user-repository', () => ({
+  getUserByIdDao: vi.fn(),
+  getUserByEmailDao: vi.fn(),
+  createUserDao: vi.fn(),
+  updateUserDao: vi.fn(),
+  deleteUserDao: vi.fn(),
+  searchUsersDao: vi.fn(),
+  getUserSettingsByUserIdDao: vi.fn(),
+  upsertUserSettingsDao: vi.fn(),
+}))
+
+// Mock with realistic return values
+beforeEach(() => {
+  vi.mocked(userRepository.getUserByIdDao).mockImplementation(async (id) => {
+    if (id === 'user-123') {
+      return createTestUser({ id: 'user-123' })
+    }
+    return null
+  })
+
+  vi.mocked(userRepository.createUserDao).mockImplementation(async (userData) => {
+    return {
+      ...userData,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+  })
+})
+```
+
+**Database Transaction Mocking:**
+```typescript
+// Mock database transaction
+vi.mock('@/db', () => ({
+  db: {
+    transaction: vi.fn(),
+    insert: vi.fn(),
+    select: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+}))
+
+// Mock transaction behavior
+vi.mocked(db.transaction).mockImplementation(async (callback) => {
+  const txMock = {
+    insert: vi.fn().mockReturnValue({ returning: vi.fn() }),
+    select: vi.fn(),
+    update: vi.fn().mockReturnValue({ returning: vi.fn() }),
+  }
+  return await callback(txMock)
+})
+```
+</Tab>
+
+<Tab value="External Service Mocking">
+**Stripe Service Mocking:**
+```typescript
+// Mock Stripe SDK
+vi.mock('@/lib/stripe/stripe-client', () => ({
+  stripe: {
+    customers: {
+      create: vi.fn(),
+      retrieve: vi.fn(),
+      update: vi.fn(),
+    },
+    subscriptions: {
+      create: vi.fn(),
+      retrieve: vi.fn(),
+      update: vi.fn(),
+      cancel: vi.fn(),
+    },
+    paymentIntents: {
+      create: vi.fn(),
+      confirm: vi.fn(),
+    },
+  },
+}))
+
+// Mock successful responses
+beforeEach(() => {
+  vi.mocked(stripe.customers.create).mockResolvedValue({
+    id: 'cus_test123',
+    email: 'test@example.com',
+    created: Math.floor(Date.now() / 1000),
+  })
+
+  vi.mocked(stripe.subscriptions.create).mockResolvedValue({
+    id: 'sub_test123',
+    customer: 'cus_test123',
+    status: 'active',
+    current_period_start: Math.floor(Date.now() / 1000),
+    current_period_end: Math.floor((Date.now() + 30 * 24 * 60 * 60 * 1000) / 1000),
+  })
+})
+```
+
+**Email Service Mocking:**
+```typescript
+// Mock Resend email service
+vi.mock('@/lib/email/resend-client', () => ({
+  resend: {
+    emails: {
+      send: vi.fn(),
+    },
+  },
+}))
+
+// Mock email templates
+vi.mock('@/components/emails/welcome-email', () => ({
+  WelcomeEmail: vi.fn(() => '<html>Welcome Email</html>'),
+}))
+
+// Track email sending
+beforeEach(() => {
+  vi.mocked(resend.emails.send).mockResolvedValue({
+    id: 'email-123',
+    from: 'noreply@example.com',
+    to: ['test@example.com'],
+    created_at: new Date().toISOString(),
+  })
+})
+
+// Verify email was sent
+expect(resend.emails.send).toHaveBeenCalledWith({
+  from: 'noreply@example.com',
+  to: 'user@example.com',
+  subject: 'Welcome to our platform!',
+  react: expect.any(Function),
+})
+```
+</Tab>
+
+<Tab value="Next.js Mocking">
+**Next.js API Mocking:**
+```typescript
+// Mock Next.js router
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+  }),
+  usePathname: () => '/test-path',
+  useSearchParams: () => new URLSearchParams(),
+  redirect: vi.fn(),
+}))
+
+// Mock Next.js headers
+vi.mock('next/headers', () => ({
+  headers: () => new Map([
+    ['user-agent', 'test-agent'],
+    ['authorization', 'Bearer test-token'],
+  ]),
+  cookies: () => ({
+    get: vi.fn(),
+    set: vi.fn(),
+    delete: vi.fn(),
+  }),
+}))
+
+// Mock dynamic imports
+vi.mock('next/dynamic', () => ({
+  default: (importFn: () => Promise<any>) => {
+    return (props: any) => {
+      // Return a mock component for testing
+      return createElement('div', { 'data-testid': 'mocked-dynamic-component' })
+    }
+  },
+}))
+```
+
+**Server Actions Mocking:**
+```typescript
+// Mock server actions
+vi.mock('@/app/actions/user-actions', () => ({
+  updateUserProfile: vi.fn(),
+  deleteUserAccount: vi.fn(),
+  changeUserPassword: vi.fn(),
+}))
+
+// Mock form data
+const createMockFormData = (data: Record<string, string>) => {
+  const formData = new FormData()
+  Object.entries(data).forEach(([key, value]) => {
+    formData.append(key, value)
+  })
+  return formData
+}
+
+// Test server action
+it('should update user profile', async () => {
+  const formData = createMockFormData({
+    name: 'Updated Name',
+    email: 'updated@example.com',
+  })
+
+  vi.mocked(updateUserProfile).mockResolvedValue({ success: true })
+
+  const result = await updateUserProfile(formData)
+  expect(result.success).toBe(true)
+})
+```
+</Tab>
+
+</Tabs>
+
+## Test Data Factories
+
+Reusable test data generation patterns:
+
+<Tabs items={['User Factory', 'Organization Factory', 'Subscription Factory', 'Complex Factories']}>
+
+<Tab value="User Factory">
+**User Data Factory:**
+```typescript
+// src/__tests__/factories/user-factory.ts
+import { User } from '@/services/types/domain/user-types'
+import { RoleConst } from '@/services/types/domain/auth-types'
+
+export const createTestUser = (overrides: Partial<User> = {}): User => {
+  return {
+    id: crypto.randomUUID(),
+    name: 'Test User',
+    email: 'test@example.com',
+    emailVerified: true,
+    image: null,
+    role: RoleConst.USER,
+    visibility: 'private',
+    banned: null,
+    banReason: null,
+    banExpires: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    stripeCustomerId: null,
+    twoFactorEnabled: false,
+    ...overrides,
+  }
+}
+
+// Specialized user factories
+export const createAdminUser = (overrides: Partial<User> = {}): User => {
+  return createTestUser({
+    role: RoleConst.ADMIN,
+    name: 'Admin User',
+    email: 'admin@example.com',
+    ...overrides,
+  })
+}
+
+export const createPublicUser = (overrides: Partial<User> = {}): User => {
+  return createTestUser({
+    visibility: 'public',
+    name: 'Public User',
+    email: 'public@example.com',
+    ...overrides,
+  })
+}
+
+// Usage in tests
+describe('User Service', () => {
+  it('should handle admin users', () => {
+    const adminUser = createAdminUser()
+    expect(adminUser.role).toBe(RoleConst.ADMIN)
+  })
+})
+```
+</Tab>
+
+<Tab value="Organization Factory">
+**Organization Data Factory:**
+```typescript
+// src/__tests__/factories/organization-factory.ts
+import { Organization, Member } from '@/services/types/domain/organization-types'
+
+export const createTestOrganization = (overrides: Partial<Organization> = {}): Organization => {
+  const ownerId = overrides.ownerId || crypto.randomUUID()
+
+  return {
+    id: crypto.randomUUID(),
+    name: 'Test Organization',
+    slug: 'test-organization',
+    ownerId,
+    description: null,
+    logo: null,
+    website: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  }
+}
+
+export const createTestMember = (overrides: Partial<Member> = {}): Member => {
+  return {
+    id: crypto.randomUUID(),
+    userId: crypto.randomUUID(),
+    organizationId: crypto.randomUUID(),
+    role: 'member',
+    joinedAt: new Date(),
+    invitedBy: null,
+    invitedAt: null,
+    ...overrides,
+  }
+}
+
+// Create organization with members
+export const createOrganizationWithMembers = (memberCount = 3) => {
+  const owner = createTestUser()
+  const organization = createTestOrganization({ ownerId: owner.id })
+
+  const members = [
+    createTestMember({
+      userId: owner.id,
+      organizationId: organization.id,
+      role: 'owner',
+    }),
+    ...Array.from({ length: memberCount - 1 }, () =>
+      createTestMember({
+        organizationId: organization.id,
+        role: 'member',
+      })
+    ),
+  ]
+
+  return {
+    organization,
+    owner,
+    members,
+  }
+}
+```
+</Tab>
+
+<Tab value="Subscription Factory">
+**Subscription Data Factory:**
+```typescript
+// src/__tests__/factories/subscription-factory.ts
+import { Subscription } from '@/services/types/domain/subscription-types'
+
+export const createTestSubscription = (overrides: Partial<Subscription> = {}): Subscription => {
+  const now = new Date()
+  const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+  return {
+    id: crypto.randomUUID(),
+    userId: crypto.randomUUID(),
+    stripeSubscriptionId: `sub_${Math.random().toString(36).substr(2, 9)}`,
+    stripeCustomerId: `cus_${Math.random().toString(36).substr(2, 9)}`,
+    status: 'active',
+    planId: 'plan_monthly_pro',
+    currentPeriodStart: now,
+    currentPeriodEnd: periodEnd,
+    cancelAtPeriodEnd: false,
+    canceledAt: null,
+    trialStart: null,
+    trialEnd: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  }
+}
+
+// Specialized subscription factories
+export const createActiveSubscription = (userId: string) => {
+  return createTestSubscription({
+    userId,
+    status: 'active',
+  })
+}
+
+export const createCanceledSubscription = (userId: string) => {
+  const canceledAt = new Date()
+  return createTestSubscription({
+    userId,
+    status: 'canceled',
+    canceledAt,
+    cancelAtPeriodEnd: true,
+  })
+}
+
+export const createTrialSubscription = (userId: string) => {
+  const now = new Date()
+  const trialEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000) // 14 days
+
+  return createTestSubscription({
+    userId,
+    status: 'trialing',
+    trialStart: now,
+    trialEnd,
+  })
+}
+```
+</Tab>
+
+<Tab value="Complex Factories">
+**Complex Scenario Factories:**
+```typescript
+// src/__tests__/factories/scenario-factory.ts
+
+// Complete user onboarding scenario
+export const createUserOnboardingScenario = () => {
+  const user = createTestUser({
+    emailVerified: false, // Starts unverified
+  })
+
+  const organization = createTestOrganization({
+    ownerId: user.id,
+  })
+
+  const subscription = createTrialSubscription(user.id)
+
+  return {
+    user,
+    organization,
+    subscription,
+    // Helper methods
+    verifyUser: () => ({ ...user, emailVerified: true }),
+    activateSubscription: () => ({ ...subscription, status: 'active' as const }),
+  }
+}
+
+// Multi-tenant organization scenario
+export const createMultiTenantScenario = () => {
+  // Create multiple organizations
+  const org1 = createOrganizationWithMembers(5)
+  const org2 = createOrganizationWithMembers(3)
+
+  // Create a user who belongs to both orgs
+  const sharedUser = createTestUser()
+
+  const sharedMemberships = [
+    createTestMember({
+      userId: sharedUser.id,
+      organizationId: org1.organization.id,
+      role: 'admin',
+    }),
+    createTestMember({
+      userId: sharedUser.id,
+      organizationId: org2.organization.id,
+      role: 'member',
+    }),
+  ]
+
+  return {
+    organizations: [org1.organization, org2.organization],
+    sharedUser,
+    sharedMemberships,
+    allMembers: [...org1.members, ...org2.members, ...sharedMemberships],
+  }
+}
+
+// Payment scenario factory
+export const createPaymentScenario = () => {
+  const user = createTestUser()
+  const organization = createTestOrganization({ ownerId: user.id })
+
+  // Different subscription states
+  const scenarios = {
+    newUser: {
+      user,
+      organization,
+      subscription: null,
+    },
+    trialUser: {
+      user,
+      organization,
+      subscription: createTrialSubscription(user.id),
+    },
+    paidUser: {
+      user,
+      organization,
+      subscription: createActiveSubscription(user.id),
+    },
+    canceledUser: {
+      user,
+      organization,
+      subscription: createCanceledSubscription(user.id),
+    },
+  }
+
+  return scenarios
+}
+
+// Usage example
+describe('Payment Scenarios', () => {
+  it('should handle trial to paid conversion', () => {
+    const scenarios = createPaymentScenario()
+
+    // Test trial scenario
+    expect(scenarios.trialUser.subscription?.status).toBe('trialing')
+
+    // Test paid conversion
+    const convertedUser = {
+      ...scenarios.trialUser,
+      subscription: createActiveSubscription(scenarios.trialUser.user.id),
+    }
+
+    expect(convertedUser.subscription.status).toBe('active')
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Common Utilities
+
+Shared testing utilities and helper functions:
+
+<Tabs items={['Assertion Helpers', 'Async Helpers', 'Mock Helpers', 'Database Helpers']}>
+
+<Tab value="Assertion Helpers">
+**Custom Assertion Utilities:**
+```typescript
+// src/__tests__/utils/assertions.ts
+import { expect } from 'vitest'
+
+// UUID validation
+export const expectValidUUID = (value: string) => {
+  expect(value).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+}
+
+// Date assertions
+export const expectRecentDate = (date: Date | string, withinMs = 5000) => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date
+  const now = new Date()
+  const diff = Math.abs(now.getTime() - dateObj.getTime())
+  expect(diff).toBeLessThan(withinMs)
+}
+
+// Email format validation
+export const expectValidEmail = (email: string) => {
+  expect(email).toMatch(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+}
+
+// Authorization error assertion
+export const expectAuthorizationError = async (promise: Promise<any>) => {
+  await expect(promise).rejects.toThrowError('Accès non autorisé')
+}
+
+// Object structure validation
+export const expectUserStructure = (user: any) => {
+  expect(user).toEqual(expect.objectContaining({
+    id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+    email: expect.stringMatching(/^[^\s@]+@[^\s@]+\.[^\s@]+$/),
+    name: expect.any(String),
+    role: expect.stringMatching(/^(guest|user|moderator|admin|super_admin)$/),
+    createdAt: expect.any(Date),
+  }))
+}
+
+// Usage in tests
+describe('User Service', () => {
+  it('should create user with valid structure', async () => {
+    const user = await createUserService(userData)
+
+    expectUserStructure(user)
+    expectValidUUID(user.id)
+    expectValidEmail(user.email)
+    expectRecentDate(user.createdAt)
+  })
+})
+```
+</Tab>
+
+<Tab value="Async Helpers">
+**Async Testing Utilities:**
+```typescript
+// src/__tests__/utils/async-helpers.ts
+
+// Wait for condition with timeout
+export const waitForCondition = async (
+  condition: () => boolean | Promise<boolean>,
+  timeout = 5000,
+  interval = 100
+): Promise<void> => {
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < timeout) {
+    if (await condition()) {
+      return
+    }
+    await new Promise(resolve => setTimeout(resolve, interval))
+  }
+
+  throw new Error(`Condition not met within ${timeout}ms`)
+}
+
+// Wait for mock to be called
+export const waitForMockCall = async (
+  mockFn: any,
+  callCount = 1,
+  timeout = 5000
+) => {
+  await waitForCondition(
+    () => mockFn.mock.calls.length >= callCount,
+    timeout
+  )
+}
+
+// Retry with backoff
+export const retryWithBackoff = async <T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelay = 100
+): Promise<T> => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn()
+    } catch (error) {
+      if (i === maxRetries - 1) throw error
+
+      const delay = baseDelay * Math.pow(2, i)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+  throw new Error('Max retries exceeded')
+}
+
+// Usage examples
+describe('Async Operations', () => {
+  it('should process async task', async () => {
+    const processTask = vi.fn()
+
+    // Start async process
+    someAsyncService.process()
+
+    // Wait for processing to complete
+    await waitForMockCall(processTask)
+
+    expect(processTask).toHaveBeenCalled()
+  })
+
+  it('should handle flaky operations', async () => {
+    const flakyOperation = vi.fn()
+      .mockRejectedValueOnce(new Error('Temporary failure'))
+      .mockResolvedValue({ success: true })
+
+    const result = await retryWithBackoff(() => flakyOperation())
+
+    expect(result.success).toBe(true)
+    expect(flakyOperation).toHaveBeenCalledTimes(2)
+  })
+})
+```
+</Tab>
+
+<Tab value="Mock Helpers">
+**Mock Management Utilities:**
+```typescript
+// src/__tests__/utils/mock-helpers.ts
+import { vi } from 'vitest'
+
+// Create typed mock
+export const createMockFunction = <T extends (...args: any[]) => any>(
+  implementation?: T
+) => {
+  const mock = vi.fn(implementation)
+  return mock as vi.MockedFunction<T>
+}
+
+// Mock implementation builder
+export class MockBuilder<T> {
+  private mocks: Partial<T> = {}
+
+  method<K extends keyof T>(key: K, implementation: T[K]): MockBuilder<T> {
+    this.mocks[key] = vi.fn(implementation) as T[K]
+    return this
+  }
+
+  property<K extends keyof T>(key: K, value: T[K]): MockBuilder<T> {
+    this.mocks[key] = value
+    return this
+  }
+
+  build(): T {
+    return this.mocks as T
+  }
+}
+
+// Repository mock factory
+export const createRepositoryMock = <T>(defaultReturns: Partial<Record<keyof T, any>> = {}) => {
+  const mock: any = {}
+
+  // Common repository methods
+  const methods = ['findById', 'create', 'update', 'delete', 'findMany'] as const
+
+  methods.forEach(method => {
+    mock[method] = vi.fn().mockResolvedValue(defaultReturns[method] || null)
+  })
+
+  return mock as T
+}
+
+// Service mock with common patterns
+export const createServiceMock = () => {
+  return new MockBuilder()
+    .method('create', async () => ({ id: 'test-id', success: true }))
+    .method('update', async () => ({ success: true }))
+    .method('delete', async () => ({ success: true }))
+    .method('findById', async () => null)
+    .build()
+}
+
+// Usage examples
+describe('Mock Helpers', () => {
+  it('should use repository mock', () => {
+    const userRepo = createRepositoryMock({
+      findById: createTestUser(),
+      create: createTestUser({ id: 'new-id' }),
+    })
+
+    expect(userRepo.findById).toBeDefined()
+    expect(userRepo.create).toBeDefined()
+  })
+
+  it('should use service mock', () => {
+    const service = createServiceMock()
+
+    expect(service.create).toBeDefined()
+    expect(service.update).toBeDefined()
+  })
+})
+```
+</Tab>
+
+<Tab value="Database Helpers">
+**Database Testing Utilities:**
+```typescript
+// src/__tests__/utils/database-helpers.ts
+
+// Clean test data
+export const cleanTestDatabase = async () => {
+  // Delete in reverse dependency order
+  await db.delete(members).where(eq(members.userId, 'test-user'))
+  await db.delete(subscriptions).where(like(subscriptions.id, 'test-%'))
+  await db.delete(organizations).where(like(organizations.name, 'Test%'))
+  await db.delete(users).where(like(users.email, '%@test.example'))
+}
+
+// Seed test data
+export const seedTestData = async () => {
+  const users = await db.insert(usersTable).values([
+    createTestUser({ email: 'user1@test.example' }),
+    createTestUser({ email: 'user2@test.example' }),
+    createTestUser({ email: 'admin@test.example', role: 'admin' }),
+  ]).returning()
+
+  const organizations = await db.insert(organizationsTable).values([
+    createTestOrganization({ ownerId: users[0].id, name: 'Test Org 1' }),
+    createTestOrganization({ ownerId: users[1].id, name: 'Test Org 2' }),
+  ]).returning()
+
+  return { users, organizations }
+}
+
+// Transaction helper
+export const withTransaction = async <T>(
+  callback: (tx: any) => Promise<T>
+): Promise<T> => {
+  return await db.transaction(callback)
+}
+
+// Database state verification
+export const expectDatabaseState = async (expectations: {
+  users?: number
+  organizations?: number
+  subscriptions?: number
+}) => {
+  if (expectations.users !== undefined) {
+    const userCount = await db.select({ count: count() }).from(users)
+    expect(userCount[0].count).toBe(expectations.users)
+  }
+
+  if (expectations.organizations !== undefined) {
+    const orgCount = await db.select({ count: count() }).from(organizations)
+    expect(orgCount[0].count).toBe(expectations.organizations)
+  }
+
+  if (expectations.subscriptions !== undefined) {
+    const subCount = await db.select({ count: count() }).from(subscriptions)
+    expect(subCount[0].count).toBe(expectations.subscriptions)
+  }
+}
+
+// Usage in tests
+describe('Database Operations', () => {
+  beforeEach(async () => {
+    await cleanTestDatabase()
+  })
+
+  afterEach(async () => {
+    await cleanTestDatabase()
+  })
+
+  it('should maintain database integrity', async () => {
+    await seedTestData()
+
+    await expectDatabaseState({
+      users: 3,
+      organizations: 2,
+    })
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Best Practices
+
+<Callout type="success">
+**General Testing Principles:**
+- **Consistency**: Use factories and utilities for consistent test data
+- **Isolation**: Each test should be independent and repeatable
+- **Clarity**: Test names and structure should be self-documenting
+- **Performance**: Mock external dependencies to keep tests fast
+</Callout>
+
+### **Key Recommendations:**
+
+1. **Use Factories**: Create reusable data factories for consistent test data
+2. **Mock External Services**: Keep tests focused on your code, not third-party services
+3. **Clean Up**: Always clean up after tests to prevent pollution
+4. **Type Safety**: Leverage TypeScript for better test reliability
+5. **Shared Utilities**: Create helper functions for common testing patterns
+
+Ready to dive deeper into specific testing layers? Continue with **[Unit Testing](/docs/testing/unit-testing)** to learn about testing pure functions and business logic.

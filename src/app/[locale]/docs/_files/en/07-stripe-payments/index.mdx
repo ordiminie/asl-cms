@@ -1,0 +1,399 @@
+---
+title: 'Stripe & Payments'
+description: 'Complete payment system with Better Auth Stripe plugin, multiple checkout methods, and subscription management'
+keywords: 'ShipSaaS, Stripe, payments, subscriptions, billing, payment processing, Stripe integration, checkout'
+---
+
+The boilerplate provides **TWO DISTINCT PAYMENT SYSTEMS** to handle different business needs: Better Auth's external checkout for simplicity, and a comprehensive custom checkout system for advanced scenarios.
+
+<Callout type="warning">
+  **Important:** These are two separate systems with different capabilities. Choose the one that best fits your business requirements.
+</Callout>
+
+## Two Payment Systems Overview
+
+<Tabs defaultValue="better-auth-system">
+  <Tab value="better-auth-system" label="🔌 Better Auth System">
+    **External Checkout Only**
+    - Stripe-hosted checkout pages (external redirect)
+    - Customer portal for subscription management
+    - Authenticated users only
+    - Automatic customer & subscription management
+    - Zero configuration required
+
+    **Best for:** Simple SaaS with standard subscription needs
+  </Tab>
+
+  <Tab value="custom-system" label="🎯 Custom Boilerplate System">
+    **Complete Checkout Suite**
+    - 4 checkout methods (Embedded, External, React Stripe, Payment Links)
+    - Guest checkout with auto-account creation
+    - Payment installments (split payments)
+    - Coupon support
+    - One-time payments or subscriptions
+    - Multi-seat subscriptions
+
+    **Best for:** Advanced checkout flows and conversion optimization
+  </Tab>
+</Tabs>
+
+<Callout type="success">
+  **Perfect for:** Choose Better Auth for simplicity or Custom System for advanced features like guest checkout, installments, coupons, and multiple checkout methods.
+</Callout>
+
+## System Architecture Comparison
+
+<Tabs defaultValue="better-auth-architecture">
+  <Tab value="better-auth-architecture" label="🔌 Better Auth Architecture">
+    **Simple External Flow:**
+    ```
+    User Login → Better Auth Plugin → Stripe External Checkout → Customer Portal
+    ```
+
+    **Features:**
+    - External Stripe checkout only
+    - Stripe customer portal for management
+    - Authenticated users required
+    - Automatic webhook processing
+    - Zero custom checkout code
+
+    **Limitations:**
+    - No guest checkout
+    - No custom checkout UI
+    - No installment payments
+    - No coupon integration
+  </Tab>
+
+  <Tab value="custom-architecture" label="🎯 Custom Boilerplate Architecture">
+    **Advanced Multi-Method Flow:**
+    ```
+    Any User → Custom Checkout Components → 4 Checkout Methods → Custom Webhooks
+    ```
+
+    **Features:**
+    - 4 checkout methods (Embedded/External/React/Links)
+    - Guest checkout with auto-account creation
+    - Payment installments (split payments)
+    - Coupon code support
+    - One-time or subscription payments
+    - Multi-seat subscriptions
+
+    **Advanced capabilities:**
+    - Custom webhook processing
+    - Flexible user flows
+    - Conversion optimization
+  </Tab>
+</Tabs>
+
+<Callout type="info">
+  **System Selection:** Better Auth uses external Stripe checkout exclusively, while the Custom System detects checkout type via metadata (`source: 'custom_checkout'`, `guest_checkout: 'true'`) for intelligent routing.
+</Callout>
+
+## System Components Breakdown
+
+<Tabs defaultValue="better-auth-components">
+  <Tab value="better-auth-components" label="🔌 Better Auth Components">
+    **Automatic Integration**
+    - Better Auth Stripe plugin (`src/lib/better-auth/auth.ts`)
+    - External Stripe checkout (redirect only)
+    - Customer portal integration
+    - Automatic webhook processing
+
+    **User Flow:**
+    1. User must be authenticated
+    2. Redirects to Stripe checkout
+    3. Returns to success page
+    4. Manages subscription via Stripe portal
+  </Tab>
+
+  <Tab value="custom-components" label="🎯 Custom System Components">
+    **Advanced Components**
+    - Custom checkout components (`src/components/features/checkout-stripe/`)
+    - 4 checkout methods (Embedded/External/React/Links)
+    - Guest checkout processing
+    - Installment payment handling
+    - Coupon code integration
+
+    **User Flow:**
+    1. User can be guest or authenticated
+    2. Chooses from 4 checkout methods
+    3. Custom webhook processing
+    4. Auto-account creation for guests
+  </Tab>
+
+  <Tab value="admin-tools" label="⚙️ Admin Tools (Both Systems)">
+    **Complete Management**
+    - Plan creation and editing
+    - Subscription monitoring
+    - Customer management
+    - Analytics dashboard
+
+    **Admin panels:** `src/app/[locale]/admin/`
+  </Tab>
+</Tabs>
+
+## Quick Setup Guide
+
+<Steps>
+<Step title="Configure Stripe Keys">
+  Set up your Stripe environment variables in `.env.local`:
+
+  ```bash
+  # Stripe Configuration
+  STRIPE_SECRET_KEY="sk_test_your_stripe_secret_key"
+  STRIPE_WEBHOOK_SECRET="whsec_your_webhook_secret"
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_your_publishable_key"
+
+  # Checkout Method
+  NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE="EmbededForm"
+  ```
+</Step>
+
+<Step title="Choose Checkout Method">
+  Select your preferred checkout experience:
+  - `EmbededForm` - Integrated forms (recommended)
+  - `ExternalForm` - Stripe-hosted pages
+  - `ReactStripeForm` - Custom React integration
+  - `PaymentLink` - Simple payment links
+</Step>
+
+<Step title="Configure Plans">
+  Create your subscription plans in the admin panel at `/admin/plans`
+
+  **Subscription Plans Interface:**
+  <Image src="/docs/07/stripe-plan.png" alt="Stripe subscription plans selection interface"  />
+</Step>
+
+<Step title="Test Payments">
+  Use Stripe test cards to verify your payment flow
+</Step>
+</Steps>
+
+## Environment Variables
+
+<Callout type="info">
+  **Required Stripe configuration for the payment system:**
+</Callout>
+
+```bash
+# Server-side (Required)
+STRIPE_SECRET_KEY="sk_test_..." # or sk_live_... for production
+STRIPE_WEBHOOK_SECRET="whsec_..." # From Stripe Dashboard
+
+# Client-side (Required)
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_..." # or pk_live_...
+NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE="EmbededForm" # See checkout methods
+
+# Optional
+NEXT_PUBLIC_BILLING_MODE="subscription" # or "oneTime"
+```
+
+## System Feature Comparison
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+  <div className="p-6 border rounded-lg">
+    <div className="flex items-center space-x-3 mb-4">
+      <div className="text-3xl">🔌</div>
+      <div>
+        <h3 className="font-bold text-lg">Better Auth System</h3>
+        <p className="text-sm text-muted-foreground">External checkout only</p>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="flex items-center space-x-2">
+        <div className="text-green-500 text-sm">✅</div>
+        <span className="text-sm">Zero configuration setup</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-green-500 text-sm">✅</div>
+        <span className="text-sm">Automatic customer creation</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-green-500 text-sm">✅</div>
+        <span className="text-sm">Stripe customer portal</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-green-500 text-sm">✅</div>
+        <span className="text-sm">Real-time webhook sync</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-red-500 text-sm">❌</div>
+        <span className="text-sm">Guest checkout support</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-red-500 text-sm">❌</div>
+        <span className="text-sm">Custom checkout UI</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-red-500 text-sm">❌</div>
+        <span className="text-sm">Payment installments</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-red-500 text-sm">❌</div>
+        <span className="text-sm">Coupon integration</span>
+      </div>
+    </div>
+  </div>
+
+  <div className="p-6 border rounded-lg">
+    <div className="flex items-center space-x-3 mb-4">
+      <div className="text-3xl">🎯</div>
+      <div>
+        <h3 className="font-bold text-lg">Custom Boilerplate System</h3>
+        <p className="text-sm text-muted-foreground">Complete checkout suite</p>
+      </div>
+    </div>
+    <div className="space-y-3">
+      <div className="flex items-center space-x-2">
+        <div className="text-blue-500 text-sm">✅</div>
+        <span className="text-sm">4 checkout methods</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-blue-500 text-sm">✅</div>
+        <span className="text-sm">Guest checkout + auto-account</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-blue-500 text-sm">✅</div>
+        <span className="text-sm">Payment installments (split)</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-blue-500 text-sm">✅</div>
+        <span className="text-sm">Coupon code support</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-blue-500 text-sm">✅</div>
+        <span className="text-sm">One-time or subscriptions</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-blue-500 text-sm">✅</div>
+        <span className="text-sm">Multi-seat subscriptions</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-blue-500 text-sm">✅</div>
+        <span className="text-sm">Custom webhook processing</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <div className="text-blue-500 text-sm">✅</div>
+        <span className="text-sm">Conversion optimization</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+## Which System Should You Choose?
+
+<Tabs defaultValue="decision-guide">
+  <Tab value="decision-guide" label="🤔 Decision Guide">
+    **Choose Better Auth System if:**
+    - You want zero configuration
+    - Simple subscription model is sufficient
+    - Users can create accounts before purchasing
+    - You prefer Stripe-hosted checkout pages
+    - You don't need custom checkout flows
+
+    **Choose Custom Boilerplate System if:**
+    - You need guest checkout (no account required)
+    - You want to optimize conversion rates
+    - You need payment installments (BNPL)
+    - You want coupon/discount support
+    - You need multiple checkout methods
+    - You require custom checkout UI/UX
+  </Tab>
+
+  <Tab value="shared-features" label="🔄 Shared Features">
+    **Both systems include:**
+    - Stripe integration and security
+    - Webhook processing
+    - Subscription management
+    - Plan upgrades/downgrades
+    - Admin dashboard
+    - Email notifications
+    - Revenue analytics
+    - Customer management
+    - PCI DSS compliance
+  </Tab>
+</Tabs>
+
+<Callout type="info">
+  **Pro Tip:** You can start with Better Auth for simplicity and migrate to the Custom System later if you need advanced features like guest checkout or installments.
+</Callout>
+
+## Stripe & Payments Topics
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+  <a href="./stripe-payments/stripe-setup" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">⚙️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Stripe Setup</h3>
+        <span className="text-sm text-muted-foreground">
+          Configure Stripe account, API keys, and webhook endpoints
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./stripe-payments/better-auth-integration" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🔌</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Better Auth Integration</h3>
+        <span className="text-sm text-muted-foreground">
+          Stripe plugin configuration with automatic customer management
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./stripe-payments/checkout-methods" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">💳</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Checkout Methods</h3>
+        <span className="text-sm text-muted-foreground">
+          4 flexible checkout options for different use cases
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./stripe-payments/subscription-management" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">📊</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Subscription Management</h3>
+        <span className="text-sm text-muted-foreground">
+          User subscription interface and plan management
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./stripe-payments/admin-dashboard" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">👑</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Admin Dashboard</h3>
+        <span className="text-sm text-muted-foreground">
+          Complete admin tools for plan and subscription management
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./stripe-payments/webhook-events" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🔄</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Webhook Events</h3>
+        <span className="text-sm text-muted-foreground">
+          Automatic webhook processing and event handling
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+
+<Callout type="success">
+  **Payment system ready!** Your application has enterprise-grade payment processing with flexible checkout options and comprehensive subscription management.
+</Callout>

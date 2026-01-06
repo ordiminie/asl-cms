@@ -1,0 +1,427 @@
+---
+title: 'Customization & Extension'
+description: 'Extend the email and notification system with custom templates, notification types, and multi-language support'
+keywords: 'ShipSaaS, email customization, custom templates, email branding, template modification, email styling'
+---
+
+The email and notification system is designed to be easily extensible. You can create custom templates, add new notification types, and enhance the system to meet your specific needs.
+
+<Callout type="success">
+  **Perfect for:** Custom business logic, brand-specific emails, new notification types, and extending the system functionality.
+</Callout>
+
+## Creating Custom Email Templates
+
+### Template Structure
+
+Follow the existing pattern when creating new templates in `src/lib/emails/`:
+
+```typescript
+// Example: custom-welcome-email.tsx
+import {
+  Body,
+  Container,
+  Head,
+  Html,
+  Link,
+  Preview,
+  Section,
+  Tailwind,
+  Text,
+} from '@react-email/components'
+import { getTranslations } from 'next-intl/server'
+import { Fragment } from 'react'
+
+// Define props interface
+type CustomWelcomeEmailProps = {
+  userName: string
+  companyName: string
+  dashboardUrl: string
+}
+
+// Preview props for development
+CustomWelcomeEmail.PreviewProps = {
+  userName: 'John Doe',
+  companyName: 'Acme Corp',
+  dashboardUrl: 'https://app.example.com/dashboard',
+} as CustomWelcomeEmailProps
+
+export default async function CustomWelcomeEmail({
+  userName,
+  companyName,
+  dashboardUrl,
+}: CustomWelcomeEmailProps) {
+  // Load translations
+  const t = await getTranslations('email.custom.welcome')
+
+  return (
+    <Html>
+      <Head />
+      <Tailwind>
+        <Fragment>
+          <Preview>{t('preview')}</Preview>
+          <Body className="mx-auto my-auto bg-white px-2 font-sans">
+            <Container className="mx-auto my-[40px] max-w-[465px] rounded border border-solid border-[#eaeaea] p-8">
+              <Text className="text-2xl font-bold text-black">
+                {t('title', { companyName })}
+              </Text>
+              <Section className="my-4">
+                <Text className="text-base">
+                  {t('greeting', { userName })}
+                </Text>
+                <Text className="text-base">
+                  {t('content')}
+                </Text>
+                <Link
+                  className="text-sky-500 hover:cursor-pointer hover:underline"
+                  href={dashboardUrl}
+                >
+                  {t('ctaButton')}
+                </Link>
+              </Section>
+              <Text className="text-sm leading-6 text-gray-500">
+                {t('footer')}
+              </Text>
+            </Container>
+          </Body>
+        </Fragment>
+      </Tailwind>
+    </Html>
+  )
+}
+```
+
+### Template Best Practices
+
+<Steps>
+<Step title="Consistent Styling">
+  Use the established Tailwind classes from existing templates:
+  ```typescript
+  // Container
+  <Container className="mx-auto my-[40px] max-w-[465px] rounded border border-solid border-[#eaeaea] p-8">
+
+  // Typography
+  <Text className="text-2xl font-bold text-black">
+  <Text className="text-base">
+  <Text className="text-sm leading-6 text-gray-500">
+
+  // Links
+  <Link className="text-sky-500 hover:cursor-pointer hover:underline">
+  ```
+</Step>
+
+<Step title="Translation Integration">
+  Set up translation keys following the namespace pattern:
+  ```json
+  // In your translation files
+  {
+    "email": {
+      "custom": {
+        "welcome": {
+          "preview": "Welcome to our platform!",
+          "title": "Welcome to {companyName}",
+          "greeting": "Hello {userName},",
+          "content": "We're excited to have you on board...",
+          "ctaButton": "Get Started",
+          "footer": "Thanks for joining us!"
+        }
+      }
+    }
+  }
+  ```
+</Step>
+
+<Step title="Preview Props">
+  Always include preview props for development testing:
+  ```typescript
+  CustomTemplate.PreviewProps = {
+    // Sample data for preview
+  } as CustomTemplateProps
+  ```
+</Step>
+</Steps>
+
+## Adding New Notification Types
+
+### Define New Notification Types
+
+Extend the notification types in your service types:
+
+```typescript
+// In your notification types file
+export const CustomNotificationTypes = {
+  CUSTOM_WELCOME: 'custom_welcome',
+  FEATURE_ANNOUNCEMENT: 'feature_announcement',
+  MAINTENANCE_ALERT: 'maintenance_alert',
+  USAGE_LIMIT_WARNING: 'usage_limit_warning',
+} as const
+
+// Add to existing NotificationType union
+export type ExtendedNotificationType =
+  | NotificationType
+  | typeof CustomNotificationTypes[keyof typeof CustomNotificationTypes]
+```
+
+### Create Email Service Function
+
+Add a new email service function following the existing pattern:
+
+```typescript
+// In src/services/email-service.ts
+export const sendCustomWelcomeEmailService = async ({
+  email,
+  userName,
+  companyName,
+  dashboardUrl,
+}: {
+  email: string
+  userName: string
+  companyName: string
+  dashboardUrl: string
+}) => {
+  const t = await getTranslations('email.custom.welcome')
+  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+
+  await sendEmailService({
+    to: email,
+    subject: t('subject', { companyName }),
+    from: fromEmail,
+    text: t('preview'),
+    react: CustomWelcomeEmail({
+      userName,
+      companyName,
+      dashboardUrl,
+    }),
+  })
+}
+```
+
+### Integrate with Notification Service
+
+Extend the notification service to handle your new types:
+
+```typescript
+// Add to the notification service email handling
+if (parsed.data.type === 'custom_welcome' && parsed.data.metadata) {
+  await sendCustomWelcomeEmailService({
+    email: targetUser.email,
+    userName: parsed.data.metadata.userName,
+    companyName: parsed.data.metadata.companyName,
+    dashboardUrl: parsed.data.metadata.dashboardUrl,
+  })
+}
+```
+
+## Extending Critical Notifications
+
+### Update Critical Types List
+
+If your new notification type should always send emails:
+
+```typescript
+// Update the critical types array
+const criticalTypes: NotificationType[] = [
+  // Existing critical types...
+  'maintenance_alert',
+  'security_breach_alert',
+  // Add your critical types here
+]
+```
+
+### Custom Critical Logic
+
+For more complex critical notification logic:
+
+```typescript
+const isCriticalNotification = (type: NotificationType): boolean => {
+  const criticalTypes: NotificationType[] = [
+    // Standard critical types...
+  ]
+
+  // Add custom logic
+  if (type === 'usage_limit_warning') {
+    // Could check user plan or usage level
+    return true // Or conditional logic
+  }
+
+  return criticalTypes.includes(type)
+}
+```
+
+## Styling Customization
+
+### Brand Colors and Fonts
+
+Customize the Tailwind classes in your templates:
+
+```typescript
+// Custom brand colors
+<Text className="text-2xl font-bold text-brand-primary">
+<Link className="text-brand-secondary hover:text-brand-secondary-dark">
+
+// Custom fonts
+<Body className="mx-auto my-auto bg-white px-2 font-brand">
+
+// Custom spacing and layout
+<Container className="mx-auto my-[60px] max-w-[600px] rounded-lg border border-brand-border p-12">
+```
+
+### Template Variants
+
+Create template variants for different use cases:
+
+```typescript
+// notification-email-variants.tsx
+export function NotificationEmailInfo(props: NotificationProps) {
+  // Info variant with blue theme
+}
+
+export function NotificationEmailWarning(props: NotificationProps) {
+  // Warning variant with orange theme
+}
+
+export function NotificationEmailError(props: NotificationProps) {
+  // Error variant with red theme
+}
+```
+
+## Multi-Language Support
+
+### Adding New Languages
+
+<Steps>
+<Step title="Add Translation Files">
+  Create translation files for your new language:
+  ```
+  messages/
+  ├── en.json
+  ├── fr.json
+  ├── es.json
+  └── de.json  # New language
+  ```
+</Step>
+
+<Step title="Update Language Types">
+  Extend the language type definitions:
+  ```typescript
+  export type SupportedLanguage = 'fr' | 'en' | 'es' | 'de'
+  ```
+</Step>
+
+<Step title="Configure Next.js i18n">
+  Update your Next.js i18n configuration to include the new language
+</Step>
+</Steps>
+
+### Language-Specific Templates
+
+For templates requiring different layouts per language:
+
+```typescript
+export default async function MultiLanguageTemplate({
+  content,
+  language,
+}: {
+  content: string
+  language: 'fr' | 'en' | 'es' | 'de'
+}) {
+  const t = await getTranslations({
+    locale: language,
+    namespace: 'email.multilingual'
+  })
+
+  // Language-specific layouts
+  if (language === 'ar') {
+    return <RightToLeftLayout content={content} translations={t} />
+  }
+
+  return <LeftToRightLayout content={content} translations={t} />
+}
+```
+
+## Testing and Development
+
+### Email Preview Development
+
+Use the React Email CLI for template development:
+
+```bash
+# Install React Email CLI
+npm install -g react-email
+
+# Preview templates during development
+cd src/lib/emails
+react-email dev
+```
+
+### Testing Custom Templates
+
+Create test functions for your custom templates:
+
+```typescript
+// test-custom-templates.ts
+export async function testCustomWelcomeEmail() {
+  try {
+    await sendCustomWelcomeEmailService({
+      email: 'test@example.com',
+      userName: 'Test User',
+      companyName: 'Test Company',
+      dashboardUrl: 'https://test.example.com/dashboard',
+    })
+    console.log('✅ Custom welcome email sent successfully')
+  } catch (error) {
+    console.error('❌ Error sending custom welcome email:', error)
+  }
+}
+```
+
+## Integration Examples
+
+### Custom Business Logic
+
+```typescript
+// Custom notification with business logic
+export const sendUsageLimitWarningService = async (userId: string) => {
+  const user = await getUserByIdDao(userId)
+  const usage = await getUserUsageStats(userId)
+  const plan = await getUserPlan(userId)
+
+  if (usage.percentage > 80) {
+    await createTypedNotificationService({
+      userId,
+      type: CustomNotificationTypes.USAGE_LIMIT_WARNING,
+      metadata: {
+        currentUsage: usage.current,
+        limit: usage.limit,
+        percentage: usage.percentage,
+        planName: plan.name,
+        upgradeUrl: `${env.NEXT_PUBLIC_APP_URL}/billing/upgrade`,
+      },
+    })
+  }
+}
+```
+
+### Integration with External Services
+
+```typescript
+// Integrate with external services
+export const sendSlackNotificationIntegration = async (
+  notificationData: CreateNotification
+) => {
+  // Send email through existing system
+  await createTypedNotificationService(notificationData)
+
+  // Also send to Slack
+  if (notificationData.type === 'security_alert') {
+    await sendSlackAlert({
+      channel: '#security-alerts',
+      message: notificationData.message,
+    })
+  }
+}
+```
+
+<Callout type="success">
+  **System extended!** You can now create custom email templates, add new notification types, and extend the system to match your specific business requirements.
+</Callout>

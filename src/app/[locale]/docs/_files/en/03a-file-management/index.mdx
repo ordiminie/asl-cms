@@ -1,0 +1,209 @@
+---
+title: 'File Management'
+description: 'Complete guide to file uploads and storage management with Supabase integration and entity-based organization'
+keywords: "ShipSaaS, file management, file uploads, Supabase Storage, React Dropzone, file upload component, storage management, entity-based storage"
+order: 3.5
+---
+
+Complete file management system built with Supabase Storage, featuring entity-based organization, authorization controls, and specialized services for different file types.
+
+## Architecture Overview
+
+### **Data Flow Pattern**
+**Client Components** → **Server Actions** → **Service Facades** → **Services** → **Repository**
+
+### **Core Technologies**
+- **Supabase Storage** for file hosting and management
+- **React Dropzone** with drag & drop interface
+- **FileUpload Component** with ShadCN UI integration
+- **Framer Motion** for upload animations
+- **Zod Validation** for file type and size constraints
+
+<Callout type="info">
+The boilerplate implements a **storage factory pattern** supporting multiple providers. Supabase is implemented by default, with S3 adapter ready for production scaling.
+</Callout>
+
+## Quick Start
+
+<Steps>
+<Step title="Configure Supabase Storage">
+  ```bash
+  # Required environment variables
+  SUPABASE_URL=your_supabase_url
+  SUPABASE_ANON_KEY=your_anon_key
+  SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+  ```
+</Step>
+
+<Step title="Basic File Upload">
+  ```tsx
+  import { FileUpload } from '@/components/ui/file-upload'
+
+  <FileUpload
+    onChange={handleFileUpload}
+    onlyimage={true}
+    multi={false}
+    isUploading={isUploading}
+  />
+  ```
+</Step>
+
+<Step title="Upload via Server Action">
+  ```tsx
+  const result = await uploadImageForEntityService({
+    file,
+    entityType: EntityTypeConst.USER,
+    entityId: user.id,
+    category: FileCategoryConst.PROFILE,
+  })
+  ```
+</Step>
+</Steps>
+
+## File Organization
+
+### **Entity-Based Structure**
+
+Files are automatically organized by entity type with timestamp-based naming:
+
+<Tabs defaultValue="users">
+  <Tab value="users" label="Users">
+    ```
+    users/{userId}/profile-1703123456789.webp
+    users/{userId}/document-1703123456789.pdf
+    ```
+  </Tab>
+  <Tab value="organizations" label="Organizations">
+    ```
+    organizations/{orgId}/logo-1703123456789.png
+    organizations/{orgId}/banner-1703123456789.jpg
+    ```
+  </Tab>
+  <Tab value="products" label="Products">
+    ```
+    products/{productId}/image-1703123456789.webp
+    products/{productId}/thumbnail-1703123456789.png
+    ```
+  </Tab>
+</Tabs>
+
+### **File Categories**
+
+```typescript
+export enum FileCategoryConst {
+  PROFILE = 'profile',     // User avatars
+  LOGO = 'logo',          // Organization logos
+  IMAGE = 'image',        // General images
+  DOCUMENT = 'document',  // PDF, docs
+  BANNER = 'banner',      // Hero images
+}
+```
+
+### **Environment Separation**
+
+```bash
+# Development files
+dev/users/123/profile-1703123456789.webp
+
+# Production files
+prod/users/123/profile-1703123456789.webp
+```
+
+## Core Services
+
+### **Image Upload Service**
+
+Specialized for images with strict validation:
+
+```typescript
+export const uploadImageForEntityService = async (
+  params: UploadFileForEntity
+): Promise<FileResponse>
+
+// Supported types: WebP, JPEG, JPG, PNG
+const ALLOWED_IMAGE_MIME_TYPES = [
+  'image/webp',
+  'image/jpeg',
+  'image/jpg',
+  'image/png'
+] as const
+```
+
+**Usage Example:**
+```typescript
+const result = await uploadImageForEntityService({
+  file,
+  entityType: EntityTypeConst.ORGANIZATION,
+  entityId: organization.id,
+  category: FileCategoryConst.LOGO,
+})
+
+// Generated path: "organizations/123/logo-1703123456789.png"
+// Returns: { path, url, size, type, name }
+```
+
+### **General File Upload Service**
+
+For all file types with configurable validation:
+
+```typescript
+export const uploadFileForEntityService = async (
+  params: UploadFileForEntity
+): Promise<FileResponse>
+
+// Supports documents, images, and other file types
+// Automatic path generation with timestamp
+```
+
+### **Specialized Entity Services**
+
+```typescript
+// User profile image upload
+export const uploadUserProfileService = async (
+  userId: string,
+  file: File
+): Promise<FileResponse>
+
+// Organization logo upload
+export const uploadOrganizationLogoService = async (
+  orgId: string,
+  file: File
+): Promise<FileResponse>
+```
+
+## Essential Commands
+
+```bash
+# Development
+pnpm dev                    # Start with file upload testing
+
+# Testing file uploads
+pnpm test src/services/file-service.test.ts
+
+# Database operations
+pnpm db:studio             # View file records in database
+```
+
+<Callout type="success">
+Your file management system is now configured! Continue with the detailed guides for implementation specifics.
+</Callout>
+
+## Detailed Guides
+
+Explore specific aspects of the file management system:
+
+### **Implementation**
+
+- **[File Upload Component](/docs/file-management/upload-component)** - FileUpload component usage and customization
+- **[Server Actions](/docs/file-management/server-actions)** - Server-side upload handling and validation
+
+### **Configuration**
+
+- **[Storage Configuration](/docs/file-management/storage-config)** - Supabase setup and storage factory pattern
+- **[Authorization & Security](/docs/file-management/authorization)** - Access control and validation schemas
+
+### **Examples**
+
+- **[Usage Examples](/docs/file-management/examples)** - Complete implementation examples for common use cases
+
+This modular approach provides a comprehensive file management system with enterprise-grade security, performance, and developer experience.

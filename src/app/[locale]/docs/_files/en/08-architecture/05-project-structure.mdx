@@ -1,0 +1,1225 @@
+---
+title: 'Project Structure'
+description: 'File organization, naming conventions, import rules, and monorepo structure for maintainable code'
+keywords: 'ShipSaaS, project structure, folder structure, file organization, monorepo structure, code organization'
+---
+
+The boilerplate follows a carefully designed project structure that promotes maintainability, scalability, and developer productivity. The structure enforces clear boundaries between different concerns and provides consistent patterns across the entire codebase.
+
+<Callout type="success">
+  **Perfect for:** Understanding the codebase organization, following established patterns, and maintaining consistency as your application grows.
+</Callout>
+
+## Project Overview
+
+ShipSaaS is a **monolithic Next.js SaaS boilerplate** with a well-organized layered architecture. It emphasizes clear separation of concerns with dedicated layers for routing, components, services, and database access.
+
+<Tabs defaultValue="root-structure">
+  <Tab value="root-structure" label="🏗️ Root Structure">
+    **Project Root Organization:**
+    ```
+    shipsaas-ai-boilerplate/
+    ├── src/                            # 📁 Application source code
+    ├── public/                         # 📁 Static assets (images, fonts)
+    ├── docs/                           # 📚 Documentation
+    ├── messages/                       # 🌐 i18n translation files
+    ├── scripts/                        # 🔧 Build/database scripts
+    ├── drizzle/                        # 🗄️ Database migrations
+    ├── e2e/                           # 🧪 End-to-end tests
+    ├── .github/                       # 📋 GitHub workflows
+    ├── .claude/                       # 🤖 Claude Code configuration
+    ├── .cursor/                       # 📋 Cursor IDE rules
+    ├── package.json                   # Dependencies configuration
+    ├── next.config.ts                 # Next.js configuration
+    ├── tsconfig.json                  # TypeScript configuration
+    ├── drizzle.config.ts              # Drizzle ORM configuration
+    └── playwright.config.ts           # E2E testing configuration
+    ```
+
+    **Key Principles:**
+    - **Single application** - All code in one cohesive Next.js project
+    - **Layered architecture** - Clear separation: routes → components → services → database
+    - **Feature-based organization** - Components grouped by feature
+    - **Service layer pattern** - Business logic isolated in services
+    - **Type safety** - Full TypeScript coverage with Drizzle ORM
+  </Tab>
+
+  <Tab value="app-structure" label="📱 Application Structure">
+    **Next.js App Router Structure (src/app/):**
+    ```
+    src/app/
+    ├── [locale]/                      # 🌐 Internationalization (i18n) wrapper
+    │   ├── (public)/                  # Public routes
+    │   │   ├── page.tsx               # Home page
+    │   ���   ├── blog/                  # Blog pages
+    │   │   ├── docs/                  # Documentation pages
+    │   │   ├── checkout/              # Stripe checkout
+    │   │   ├── privacy/               # Privacy policy
+    │   │   ├── terms/                 # Terms of service
+    │   │   └── [slug]/               # Dynamic public routes
+    │   ├── (app)/                     # Protected user routes (auth required)
+    │   │   ├── dashboard/             # User dashboard
+    │   │   ├── account/               # Account settings
+    │   │   │   ├── organizations/     # Organization management
+    │   │   │   ├── settings/          # User settings
+    │   │   │   ├── subscription/      # Subscription management
+    │   │   │   ├── api-keys/          # API key management
+    │   │   │   ├── invitations/       # Team invitations
+    │   │   │   └── notifications/     # Notification settings
+    │   │   ├── team/                  # Team/organization view
+    │   │   │   └── [slug]/            # Team details
+    │   │   │       ├── projects/      # Team projects
+    │   │   │       ├── react-query/   # React Query example
+    │   │   │       └── [id]/          # Project detail
+    │   │   └── chat/                  # Chat interface (AI features)
+    │   ├── admin/                     # Admin-only routes
+    │   │   ├── organizations/         # Organization management
+    │   │   ├── users/                 # User management
+    │   │   ├── plans/                 # Pricing plans management
+    │   │   ├── subscriptions/         # Subscription management
+    │   │   ├── tasks/                 # Task management
+    │   │   └── blog/                  # Blog management
+    │   └── [...rest]/                 # Catch-all for 404
+    ├── api/                           # 🔌 API routes
+    │   ├── auth/                      # Authentication endpoints
+    │   ├── webhooks/                  # Stripe/external webhooks
+    │   └── [feature]/                 # Feature-specific endpoints
+    ├── layout.tsx                     # Root layout
+    ├── globals.css                    # Global styles
+    └── middleware.ts                  # Middleware (auth, i18n)
+    ```
+
+    **Route Organization:**
+    - **(public)** - Landing pages, blog, documentation, checkout, public legal pages
+    - **(app)** - Authenticated user dashboard and account management
+    - **admin/** - Administrative panels for managing the platform
+    - **api/** - API endpoints for backend operations
+    - **[locale]** - Multi-language support wrapper
+  </Tab>
+
+  <Tab value="src-structure" label="📂 Source Code Structure">
+    **Complete src/ Directory Organization:**
+    ```
+    src/
+    ├── app/                           # 🎯 Next.js App Router (routes & API)
+    ├── components/                    # 🎨 React Components
+    │   ├── ui/                        # Base UI components (Button, Card, etc.)
+    │   ├── features/                  # Feature-specific components
+    │   │   ├── admin/                # Admin feature components
+    │   │   ├── api-key/              # API key management UI
+    │   │   ├── auth/                 # Authentication components
+    │   │   ├── blog/                 # Blog-related components
+    │   │   ├── chat/                 # AI chat interface
+    │   │   ├── checkout-stripe/      # Stripe checkout flow
+    │   │   ├── dashboard/            # Dashboard components
+    │   │   ├── layouts/              # Layout wrappers
+    │   │   ├── notifications/        # Notification components
+    │   │   ├── organization/         # Organization management UI
+    │   │   ├── payment/              # Payment-related UI
+    │   │   ├── projects/             # Project management UI
+    │   │   ├── subscription/         # Subscription UI
+    │   │   ├── team/                 # Team management UI
+    │   │   └── user/                 # User profile components
+    │   ├── context/                   # React Context providers
+    │   ├── hooks/                     # Custom React hooks
+    │   └── mdx-components.tsx         # MDX rendering components
+    ├── services/                      # ⚙️ Business Logic Layer
+    │   ├── authentication/            # Auth service & logic
+    │   ├── authorization/             # Access control & permissions
+    │   ├── facades/                   # Service interfaces/facades
+    │   │   ├── interceptors/         # Service interceptors (logging, error handling)
+    │   │   └── [domain]-service-facade.ts
+    │   ├── validation/                # Input validation schemas (Zod)
+    │   ├── errors/                    # Custom error classes
+    │   ├── types/                     # Service types & domain models
+    │   ├── [domain]-service.ts        # Core service implementations
+    │   └── __tests__/                 # Service unit tests
+    ├── db/                            # 🗄️ Database Layer
+    │   ├── models/                    # Drizzle schema definitions
+    │   ├── repositories/              # Data access objects (DAOs)
+    │   └── scripts/                   # Database utility scripts
+    ├── lib/                           # 🔧 Utilities & Helpers
+    │   ├── api/                       # API client utilities
+    │   ├── better-auth/               # Better Auth configuration
+    │   ├── helper/                    # Helper functions
+    │   │   ├── blog.server.ts        # Blog-related helpers
+    │   │   ├── blog.client.ts        # Client-side blog helpers
+    │   │   ├── docs.server.ts        # Documentation helpers
+    │   │   ├── date-helper.ts        # Date formatting/parsing
+    │   │   ├── menu-helper.ts        # Menu structure helpers
+    │   │   └── [feature]-helper.ts   # Feature-specific helpers
+    │   ├── stripe/                    # Stripe integration
+    │   ├── emails/                    # Email templates & sending
+    │   ├── files/                     # File handling utilities
+    │   ├── inngest/                   # Inngest job queue setup
+    │   ├── auth.ts                    # Auth configuration
+    │   ├── logger.ts                  # Logging utility
+    │   ├── constants.ts               # Application constants
+    │   ├── crypto.ts                  # Cryptography utilities
+    │   └── utils.ts                   # General utilities
+    ├── i18n/                          # 🌐 Internationalization
+    │   ├── request.ts                 # i18n request handling
+    │   ├── config.ts                  # i18n configuration
+    │   └── routing.ts                 # i18n routing setup
+    ├── styles/                        # 🎨 Global styles
+    ├── __tests__/                     # 🧪 Global tests
+    ├── middleware.ts                  # Request middleware
+    ├── env.ts                         # Environment variables (runtime)
+    ├── env-schemas.ts                 # Environment schemas (validation)
+    └── types/                         # 📝 Global TypeScript types
+    ```
+  </Tab>
+
+  <Tab value="service-structure" label="⚙️ Service Architecture">
+    **Service Layer Organization:**
+    ```
+    src/services/
+    ├── authentication/                # Authentication service
+    │   ├─�� strategies/               # Auth strategies (OAuth, etc.)
+    │   └── session-management.ts     # Session handling
+    ├── authorization/                 # Authorization & permissions
+    │   ├── rbac/                     # Role-based access control
+    │   ├── permissions/              # Permission checks
+    │   └── policies/                 # Authorization policies
+    ├── facades/                       # Service Facade Pattern
+    │   ├── interceptors/             # Logging, error handling
+    │   ├── user-service-facade.ts    # User service interface
+    │   ├── organization-service-facade.ts
+    │   ├── subscription-service-facade.ts
+    │   ├── email-service-facade.ts
+    │   ├── notification-service-facade.ts
+    │   ├── file-service-facade.ts
+    │   ├── post-service-facade.ts
+    │   └── [domain]-service-facade.ts
+    ├── validation/                    # Input validation (Zod)
+    │   ├── user-validation.ts
+    │   ├── subscription-validation.ts
+    │   └── [domain]-validation.ts
+    ├── errors/                        # Custom error classes
+    │   ├── AppError.ts               # Base error class
+    │   ├── ValidationError.ts        # Validation errors
+    │   └── AuthorizationError.ts     # Permission errors
+    ├── types/                         # Domain types & interfaces
+    │   ├── domain/                   # Domain-specific types
+    │   └── common.ts                 # Common types
+    ├── user-service.ts                # User management service
+    ├── organization-service.ts        # Organization service
+    ├── subscription-service.ts        # Subscription & billing
+    ├── email-service.ts               # Email sending service
+    ├── notification-service.ts        # Notification service
+    ├── file-service.ts                # File upload/management
+    ├── chat-service.ts                # AI chat service
+    ├── post-service.ts                # Post/content service
+    ├── project-service.ts             # Project management
+    ├── admin-dashboard-service.ts     # Admin dashboard
+    └── __tests__/                     # Service tests
+    ```
+
+    **Service Pattern:**
+    1. **Input Validation** - Using Zod schemas in validation/
+    2. **Authorization** - Checking permissions in authorization/
+    3. **Business Logic** - Core logic in [domain]-service.ts
+    4. **Data Access** - Using repositories from db/repositories
+    5. **Response** - Returning typed results
+    6. **Error Handling** - Using custom error classes
+    7. **Facade** - Public interface in facades/[domain]-service-facade.ts
+  </Tab>
+
+  <Tab value="db-structure" label="🗄️ Database Structure">
+    **Database Layer Organization:**
+    ```
+    src/db/
+    ├── models/                        # Drizzle schema definitions
+    │   ├── user.ts                   # User schema
+    │   ├── organization.ts           # Organization schema
+    │   ├── subscription.ts           # Subscription schema
+    │   ├── post.ts                   # Post/content schema
+    │   └── [entity].ts               # Entity schemas
+    ├── repositories/                  # Data Access Objects (DAOs)
+    │   ├── user-repository.ts        # User data access
+    │   ├── organization-repository.ts
+    │   ├── subscription-repository.ts
+    │   ├── post-repository.ts
+    │   └── [entity]-repository.ts
+    └── scripts/                       # Database scripts
+        ├── seed.ts                   # Database seeding
+        └── migrate.ts                # Migration utilities
+    ```
+
+    **Database Operations:**
+    - **Models** define table schemas using Drizzle ORM
+    - **Repositories** provide type-safe data access methods
+    - **Services** use repositories for business logic
+    - **Scripts** handle migrations and seeding
+  </Tab>
+</Tabs>
+
+## Naming Conventions
+
+Consistent naming patterns across the codebase improve readability and maintainability:
+
+<Tabs defaultValue="file-naming">
+  <Tab value="file-naming" label="📄 File Naming">
+    **File Naming Patterns (ShipSaaS Standard):**
+    ```
+    ✅ GOOD FILE NAMES:
+
+    # Components (PascalCase - React convention)
+    UserProfile.tsx
+    SubscriptionCard.tsx
+    PaymentForm.tsx
+    UserAvatar.tsx
+    NotificationBell.tsx
+
+    # Pages & Layouts (Next.js conventions)
+    page.tsx
+    layout.tsx
+    loading.tsx
+    error.tsx
+    not-found.tsx
+
+    # Services (kebab-case with suffix)
+    user-service.ts
+    subscription-service.ts
+    email-service.ts
+    organization-service.ts
+
+    # Service Facades (kebab-case with suffix)
+    user-service-facade.ts
+    subscription-service-facade.ts
+    email-service-facade.ts
+
+    # Database Models (kebab-case)
+    user.ts                           # Schema definition
+    organization.ts
+    subscription.ts
+
+    # Repositories (kebab-case with suffix)
+    user-repository.ts
+    organization-repository.ts
+    subscription-repository.ts
+
+    # Utilities & Helpers (kebab-case)
+    user-helper.ts
+    date-helper.ts
+    api-client.ts
+    common-helper.ts
+
+    # Validation Schemas (kebab-case with suffix)
+    user-validation.ts
+    subscription-validation.ts
+
+    # Context & Hooks (camelCase for hooks, PascalCase for Context)
+    useUserData.ts
+    useSubscription.ts
+    UserContext.tsx
+    ThemeContext.tsx
+    ```
+
+    **Directory Naming:**
+    ```
+    ✅ GOOD DIRECTORY NAMES:
+
+    # Feature directories (kebab-case)
+    /user/
+    /organization/
+    /subscription/
+    /payment/
+    /api-key/
+
+    # Component feature directories (kebab-case)
+    /checkout-stripe/
+    /user-profile/
+    /admin-dashboard/
+    /project-management/
+
+    # Service subdirectories (kebab-case)
+    /authentication/
+    /authorization/
+    /validation/
+    /errors/
+
+    # Next.js special directories (exact names)
+    /(public)/
+    /(auth)/
+    /(app)/
+    /admin/
+    /api/
+    ```
+
+    **File Organization Rules:**
+    - **PascalCase**: React components (.tsx files)
+    - **kebab-case**: Services, utilities, hooks, repositories, models
+    - **camelCase**: React hooks (useMyHook.ts)
+    - **lowercase**: Next.js special files (page.tsx, layout.tsx, etc.)
+    - **SCREAMING_SNAKE_CASE**: Constants only
+  </Tab>
+
+  <Tab value="variable-naming" label="🏷️ Variable Naming">
+    **Variable and Function Naming:**
+    ```typescript
+    // ✅ GOOD: camelCase for variables and functions
+    const userName = 'john'
+    const userSubscription = await getSubscription()
+    const isUserActive = true
+    const userEmail = user?.email
+
+    function getUserById(id: string): User | null {
+      return users.find(user => user.id === id) || null
+    }
+
+    // ✅ GOOD: PascalCase for types and interfaces
+    interface UserSubscription {
+      id: string
+      userId: string
+      status: SubscriptionStatus
+    }
+
+    type PaymentMethod = 'card' | 'bank' | 'crypto'
+
+    // ✅ GOOD: SCREAMING_SNAKE_CASE for constants
+    const MAX_RETRY_ATTEMPTS = 3
+    const DEFAULT_PAGE_SIZE = 20
+    const API_BASE_URL = 'https://api.example.com'
+    const DATABASE_POOL_SIZE = 10
+
+    // ✅ GOOD: Descriptive boolean names (with is/has/can prefix)
+    const isAuthenticated = checkAuth()
+    const hasPermission = checkPermission()
+    const canEditProfile = hasPermission && isOwner
+    const isLoading = await fetchData()
+
+    // ❌ BAD: Unclear or abbreviated names
+    const u = getUser() // What is 'u'?
+    const chkPerm = () => {} // Unclear abbreviation
+    const flag = true // What does this flag represent?
+    ```
+
+    **Service and Repository Function Naming:**
+    ```typescript
+    // ✅ GOOD: Service function naming pattern (kebab-case files)
+    // user-service.ts
+    export const getUserByIdService = async (id: string): Promise<User> => { }
+    export const createUserService = async (data: CreateUserInput): Promise<User> => { }
+    export const updateUserService = async (id: string, data: UserUpdate): Promise<User> => { }
+    export const deleteUserService = async (id: string): Promise<void> => { }
+
+    // ✅ GOOD: Repository function naming pattern (kebab-case files)
+    // user-repository.ts
+    export const getUserByIdRepository = async (id: string): Promise<UserModel | null> => { }
+    export const createUserRepository = async (data: NewUserModel): Promise<UserModel> => { }
+    export const updateUserRepository = async (id: string, data: UserUpdate): Promise<UserModel> => { }
+    export const deleteUserRepository = async (id: string): Promise<void> => { }
+
+    // ✅ GOOD: Validation schema naming
+    // user-validation.ts
+    export const createUserValidationSchema = z.object({
+      email: z.string().email(),
+      name: z.string().min(2),
+      password: z.string().min(8)
+    })
+
+    // ✅ GOOD: Helper function naming
+    // date-helper.ts
+    export function formatDate(date: Date): string { }
+    export function parseDate(dateString: string): Date { }
+    export function isDateInPast(date: Date): boolean { }
+    ```
+
+    **File-Specific Naming Patterns:**
+    ```typescript
+    // Service files (kebab-case)
+    // user-service.ts - Main business logic
+    export const getUserByIdService = async (id: string) => { }
+
+    // Service Facade files (kebab-case with -facade suffix)
+    // user-service-facade.ts - Public interface
+    export { getUserByIdService, createUserService } from '../user-service'
+
+    // Validation files (kebab-case with -validation suffix)
+    // user-validation.ts - Zod schemas
+    export const createUserSchema = z.object({ /* ... */ })
+
+    // Authorization files (kebab-case with -authorization suffix)
+    // user-authorization.ts - Permission checks
+    export const canEditUser = (userId: string, targetUserId: string) => { }
+
+    // Helper files (kebab-case with -helper suffix)
+    // date-helper.ts - Utility functions
+    export const formatDate = (date: Date) => { }
+    ```
+  </Tab>
+
+  <Tab value="component-naming" label="⚛️ Component Naming">
+    **React Component Naming (PascalCase - Files):**
+    ```typescript
+    // ✅ GOOD: PascalCase component names and filenames
+    // UserProfile.tsx
+    export function UserProfile({ userId }: { userId: string }) {
+      return <div>Profile for {userId}</div>
+    }
+
+    // SubscriptionDashboard.tsx
+    export default function SubscriptionDashboard() {
+      return <div>Subscription Dashboard</div>
+    }
+
+    // ✅ GOOD: Descriptive component names
+    export function PaymentMethodSelector() { }
+    export function SubscriptionPlanCard() { }
+    export function UserAccountSettings() { }
+    export function NotificationBell() { }
+    export function TeamSwitcher() { }
+
+    // ✅ GOOD: Feature component organization
+    // components/features/user/UserProfile.tsx
+    export function UserProfile({ userId }: { userId: string }) {
+      // Implementation
+    }
+
+    // ✅ GOOD: Hook naming (must start with 'use')
+    // hooks/useUserSubscription.ts
+    export function useUserSubscription(userId: string) {
+      // Hook implementation
+    }
+
+    export function useLocalStorage<T>(key: string, defaultValue: T) {
+      // Hook implementation
+    }
+
+    // ✅ GOOD: Context naming (PascalCase with Context suffix)
+    // context/UserContext.tsx
+    export const UserContext = createContext<User | null>(null)
+    export const UserProvider = ({ children }) => { }
+    ```
+
+    **Component File Organization (ShipSaaS Structure):**
+    ```
+    components/
+    ├── ui/                               # Base reusable UI components
+    │   ├── Button.tsx
+    │   ├── Input.tsx
+    │   ├── Card.tsx
+    │   ├── Dialog.tsx
+    │   └── ...more base components
+    ├── features/                         # Feature-specific components
+    │   ├── user/
+    │   │   ├── UserProfile.tsx          # Main component
+    │   │   ├── UserAvatar.tsx           # Sub-component
+    │   │   ├── UserSettings.tsx
+    │   │   └── hooks/
+    │   │       └── useUserData.ts       # Feature-specific hook
+    │   ├── organization/
+    │   │   ├── OrganizationSelector.tsx
+    │   │   ├── OrganizationForm.tsx
+    │   │   └── hooks/
+    │   ├── subscription/
+    │   │   ├── SubscriptionCard.tsx
+    │   │   ├── PlanSelector.tsx
+    │   │   └── PricingTable.tsx
+    │   ├── admin/
+    │   │   ├── UserManagement.tsx
+    │   │   ├── AnalyticsDashboard.tsx
+    │   │   └── settings/
+    │   ├── auth/
+    │   │   ├── LoginForm.tsx
+    │   │   ├── SignupForm.tsx
+    │   │   └── PasswordResetForm.tsx
+    │   ├── checkout-stripe/
+    │   │   ├── CheckoutForm.tsx
+    │   │   ├── PaymentElement.tsx
+    │   │   └── OrderSummary.tsx
+    │   └── layouts/
+    │       ├── MainLayout.tsx
+    │       ├── AuthLayout.tsx
+    │       └── AdminLayout.tsx
+    ├── context/                         # React Context providers
+    │   ├── UserContext.tsx
+    │   ├── ThemeContext.tsx
+    │   └── OrganizationContext.tsx
+    └── hooks/                           # Global custom hooks
+        ├── useUser.ts
+        ├── useOrganization.ts
+        └── useTheme.ts
+    ```
+
+    **Component Naming Conventions Summary:**
+    - **File names**: PascalCase (e.g., UserProfile.tsx, SubscriptionCard.tsx)
+    - **Function names**: PascalCase (e.g., function UserProfile() {})
+    - **Hook file names**: camelCase with 'use' prefix (e.g., useUserData.ts)
+    - **Hook function names**: camelCase (e.g., function useUserData() {})
+    - **Context file names**: PascalCase (e.g., UserContext.tsx)
+    - **Context variable names**: PascalCase (e.g., UserContext)
+    - **Directories**: kebab-case (e.g., /user-profile/, /checkout-stripe/)
+  </Tab>
+</Tabs>
+
+## Import Organization
+
+Consistent import patterns improve code readability and dependency tracking:
+
+<Tabs defaultValue="import-rules">
+  <Tab value="import-rules" label="📥 Import Rules">
+    **Import Order and Grouping (ShipSaaS Standard):**
+    ```typescript
+    // ✅ GOOD: Organized import groups
+    // 1. Node.js built-ins
+    import fs from 'fs'
+    import path from 'path'
+
+    // 2. External libraries
+    import React from 'react'
+    import { z } from 'zod'
+    import { eq } from 'drizzle-orm'
+
+    // 3. Internal services and business logic
+    import { getUserByIdService } from '@/services/facades/user-service-facade'
+    import { getUserByIdRepository } from '@/db/repositories/user-repository'
+
+    // 4. UI components and utilities
+    import { Button, Card } from '@/components/ui'
+    import { UserProfile } from '@/components/features/user'
+    import { formatDate } from '@/lib/helper/date-helper'
+
+    // 5. Types and constants
+    import type { User } from '@/services/types/domain'
+    import { MAX_RETRY_ATTEMPTS } from '@/lib/constants'
+
+    // 6. Relative imports (local to current file)
+    import { localHelper } from './local-helper'
+    import './styles.css'
+
+    export function MyComponent() {
+      // Component implementation
+    }
+    ```
+
+    **Path Aliases Configuration:**
+    ```typescript
+    // tsconfig.json
+    {
+      "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"],                        // Root src alias
+          "@/components/*": ["./src/components/*"],  // Components
+          "@/services/*": ["./src/services/*"],      // Services
+          "@/db/*": ["./src/db/*"],                  // Database
+          "@/lib/*": ["./src/lib/*"],                // Utilities
+          "@/app/*": ["./src/app/*"],                // App routes
+          "@/i18n/*": ["./src/i18n/*"]               // i18n
+        }
+      }
+    }
+    ```
+  </Tab>
+
+  <Tab value="import-patterns" label="🎯 Import Patterns">
+    **Service Layer Imports (Facade Pattern):**
+    ```typescript
+    // ✅ GOOD: Import from service facades
+    // user-service-facade.ts - Public interface
+    import {
+      getUserByIdService,
+      updateUserService,
+      createUserService
+    } from '@/services/facades/user-service-facade'
+
+    // ✅ GOOD: Type imports from services
+    import type { User, CreateUserInput } from '@/services/types/domain'
+
+    // ❌ BAD: Direct imports from service implementation
+    import { getUserByIdService } from '@/services/user-service'
+
+    // ❌ BAD: Importing repository directly in components
+    import { getUserByIdRepository } from '@/db/repositories/user-repository'
+    ```
+
+    **Component Imports (Feature-Based Organization):**
+    ```typescript
+    // ✅ GOOD: UI component imports
+    import { Button, Card, Input, Dialog } from '@/components/ui'
+
+    // ✅ GOOD: Feature component imports
+    import { UserProfile } from '@/components/features/user'
+    import { SubscriptionCard } from '@/components/features/subscription'
+    import { CheckoutForm } from '@/components/features/checkout-stripe'
+
+    // ✅ GOOD: Custom hooks from features
+    import { useUserData } from '@/components/features/user/hooks'
+
+    // ✅ GOOD: Relative imports for local components
+    import { UserAvatar } from './UserAvatar'
+    import { UserActions } from './UserActions'
+
+    // ❌ BAD: Importing deeply nested components
+    import { UserAvatar } from '@/components/features/user/UserAvatar'
+    // Use relative imports instead: './UserAvatar'
+    ```
+
+    **Database and Repository Imports (Server-Side Only):**
+    ```typescript
+    // ✅ GOOD: Import from repositories (in services only)
+    // user-service.ts
+    import {
+      getUserByIdRepository,
+      createUserRepository
+    } from '@/db/repositories/user-repository'
+
+    import type { UserModel, NewUserModel } from '@/db/models/user'
+
+    // ✅ GOOD: Type imports from models
+    import type { Organization } from '@/db/models/organization'
+
+    // ❌ BAD: Repository imports in components
+    // Components should use service facades, not repositories
+
+    // ❌ BAD: Direct database imports anywhere
+    import db from '@/db'
+    ```
+
+    **Validation and Helper Imports:**
+    ```typescript
+    // ✅ GOOD: Validation schema imports
+    import { createUserValidationSchema } from '@/services/validation/user-validation'
+
+    // ✅ GOOD: Helper function imports
+    import { formatDate } from '@/lib/helper/date-helper'
+    import { calculateTotal } from '@/lib/helper/common-helper'
+
+    // ✅ GOOD: Authorization helper imports (server-side)
+    import { canEditUser } from '@/services/authorization/user-authorization'
+    ```
+
+    **Circular Dependency Prevention:**
+    ```typescript
+    // ✅ GOOD: Layered imports prevent cycles
+    // Components → Services (via facades)
+    // Services → Database (via repositories)
+    // Database → Types (never upward)
+
+    // types/domain.ts
+    export interface User {
+      id: string
+      name: string
+    }
+
+    // db/models/user.ts - Defines schema
+    import type { User } from '@/services/types/domain'
+
+    // services/user-service.ts - Business logic
+    import { getUserByIdRepository } from '@/db/repositories/user-repository'
+    import type { User } from '@/services/types/domain'
+
+    // services/facades/user-service-facade.ts - Public API
+    export { getUserByIdService } from '../user-service'
+
+    // components/features/user/UserProfile.tsx - UI
+    import { getUserByIdService } from '@/services/facades/user-service-facade'
+
+    // ❌ BAD: Circular imports
+    // user-service.ts imports from user-repository.ts
+    // user-repository.ts imports from user-service.ts ← Never!
+    ```
+  </Tab>
+
+  <Tab value="export-patterns" label="📤 Export Patterns">
+    **Export Consistency (ShipSaaS Patterns):**
+    ```typescript
+    // ✅ GOOD: Named exports for utility functions
+    // lib/helper/date-helper.ts
+    export function formatDate(date: Date): string { }
+    export function parseDate(dateString: string): Date { }
+    export function isDateInPast(date: Date): boolean { }
+
+    // ✅ GOOD: Default export for main React component
+    // components/features/user/UserProfile.tsx
+    export default function UserProfile() { }
+
+    // ✅ GOOD: Named exports for sub-components
+    export function UserCard() { }
+    export function UserList() { }
+
+    // ✅ GOOD: Service function exports
+    // services/user-service.ts
+    export const getUserByIdService = async (id: string): Promise<User | null> => { }
+    export const createUserService = async (data: CreateUserInput): Promise<User> => { }
+    export const updateUserService = async (id: string, data: UserUpdate): Promise<User> => { }
+
+    // ✅ GOOD: Facade re-exports for public API
+    // services/facades/user-service-facade.ts
+    export {
+      getUserByIdService,
+      createUserService,
+      updateUserService,
+      deleteUserService
+    } from '../user-service'
+
+    // ✅ GOOD: Type exports
+    export type { User, CreateUserInput, UserUpdate } from '../types/domain'
+
+    // ✅ GOOD: Barrel exports for feature components
+    // components/features/user/index.ts
+    export { default as UserProfile } from './UserProfile'
+    export { UserCard } from './UserCard'
+    export { UserList } from './UserList'
+    export { useUserData } from './hooks'
+
+    // ✅ GOOD: Validation schema exports
+    // services/validation/user-validation.ts
+    export const createUserValidationSchema = z.object({ /* ... */ })
+    export const updateUserValidationSchema = z.object({ /* ... */ })
+    ```
+
+    **Facade Pattern (Service Public API):**
+    ```typescript
+    // services/facades/user-service-facade.ts
+    // This is the ONLY way external code accesses user service functions
+
+    export {
+      getUserByIdService,
+      createUserService,
+      updateUserService,
+      deleteUserService,
+      listUsersService
+    } from '../user-service'
+
+    export type { User, CreateUserInput, UserUpdate } from '../types/domain'
+
+    // ❌ BAD: Direct imports from service
+    // Instead of: import { getUserByIdService } from '@/services/user-service'
+    // Use: import { getUserByIdService } from '@/services/facades/user-service-facade'
+    ```
+
+    **Component & Feature Exports:**
+    ```typescript
+    // components/ui/Button.tsx - Single component
+    export function Button({ children, ...props }: ButtonProps) { }
+    // Use: import { Button } from '@/components/ui'
+
+    // components/features/user/index.ts - Feature barrel export
+    export { default as UserProfile } from './UserProfile'
+    export { UserCard } from './UserCard'
+    export { UserList } from './UserList'
+    export * from './types'
+    export * from './hooks'
+    // Use: import { UserProfile, UserCard } from '@/components/features/user'
+
+    // components/features/user/UserProfile.tsx - Main feature component
+    export default function UserProfile({ userId }: UserProfileProps) { }
+    ```
+  </Tab>
+</Tabs>
+
+## Code Organization Patterns
+
+Consistent patterns for organizing code within files and directories:
+
+<Tabs defaultValue="file-structure">
+  <Tab value="file-structure" label="📄 File Structure">
+    **Service File Organization (ShipSaaS Pattern):**
+    ```typescript
+    // src/services/user-service.ts
+
+    // 1. Imports (organized by groups)
+    import { eq } from 'drizzle-orm'
+    import type { User, CreateUserInput, UserUpdate } from './types/domain'
+    import { createUserValidationSchema } from './validation/user-validation'
+    import { canEditUser, canDeleteUser } from './authorization/user-authorization'
+    import { getUserByIdRepository, createUserRepository } from '@/db/repositories/user-repository'
+
+    // 2. Main service functions (public)
+    export const getUserByIdService = async (id: string): Promise<User | null> => {
+      const user = await getUserByIdRepository(id)
+      return user ?? null
+    }
+
+    export const createUserService = async (data: CreateUserInput): Promise<User> => {
+      const validated = createUserValidationSchema.parse(data)
+      return await createUserRepository(validated)
+    }
+
+    export const updateUserService = async (
+      id: string,
+      data: UserUpdate,
+      userId: string
+    ): Promise<User> => {
+      // Authorization check
+      if (!canEditUser(userId, id)) {
+        throw new AuthorizationError('Cannot edit this user')
+      }
+
+      // Validation and update
+      return await updateUserRepository(id, data)
+    }
+
+    export const deleteUserService = async (id: string, userId: string): Promise<void> => {
+      if (!canDeleteUser(userId, id)) {
+        throw new AuthorizationError('Cannot delete this user')
+      }
+      await deleteUserRepository(id)
+    }
+    ```
+
+    **Service Facade Organization:**
+    ```typescript
+    // src/services/facades/user-service-facade.ts
+    // Public API - only exports from this file should be imported externally
+
+    export {
+      getUserByIdService,
+      createUserService,
+      updateUserService,
+      deleteUserService,
+      listUsersService
+    } from '../user-service'
+
+    export type { User, CreateUserInput, UserUpdate } from '../types/domain'
+    ```
+
+    **Component File Organization (ShipSaaS Pattern):**
+    ```typescript
+    // src/components/features/user/UserProfile.tsx
+
+    'use client'
+
+    // 1. Imports (organized)
+    import { useState } from 'react'
+    import { Button, Card } from '@/components/ui'
+    import { useUserData } from './hooks'
+    import type { User } from '@/services/types/domain'
+
+    // 2. Types and interfaces (local to component)
+    interface UserProfileProps {
+      userId: string
+      onEdit?: () => void
+    }
+
+    // 3. Component implementation
+    export default function UserProfile({ userId, onEdit }: UserProfileProps) {
+      const [isLoading, setIsLoading] = useState(false)
+      const { user, error } = useUserData(userId)
+
+      if (isLoading) return <div>Loading...</div>
+      if (error) return <div>Error loading user</div>
+      if (!user) return <div>User not found</div>
+
+      return (
+        <Card>
+          <h1>{user.name}</h1>
+          <p>Email: {user.email}</p>
+          {onEdit && <Button onClick={onEdit}>Edit Profile</Button>}
+        </Card>
+      )
+    }
+    ```
+
+    **Repository File Organization:**
+    ```typescript
+    // src/db/repositories/user-repository.ts
+
+    import { eq } from 'drizzle-orm'
+    import db from '../client'
+    import { usersTable } from '../models/user'
+    import type { User, NewUser } from '../models/user'
+
+    // Query functions
+    export const getUserByIdRepository = async (id: string): Promise<User | null> => {
+      const result = await db.query.usersTable.findFirst({
+        where: eq(usersTable.id, id)
+      })
+      return result ?? null
+    }
+
+    export const createUserRepository = async (data: NewUser): Promise<User> => {
+      const [user] = await db.insert(usersTable).values(data).returning()
+      return user
+    }
+
+    export const updateUserRepository = async (
+      id: string,
+      data: Partial<User>
+    ): Promise<User> => {
+      const [user] = await db
+        .update(usersTable)
+        .set(data)
+        .where(eq(usersTable.id, id))
+        .returning()
+      return user
+    }
+
+    export const deleteUserRepository = async (id: string): Promise<void> => {
+      await db.delete(usersTable).where(eq(usersTable.id, id))
+    }
+    ```
+  </Tab>
+
+  <Tab value="directory-patterns" label="📁 Directory Patterns">
+    **Feature Component Organization (ShipSaaS):**
+    ```
+    components/features/
+    ├── user/                              # User feature domain
+    │   ├── index.ts                       # Barrel export
+    │   ├── UserProfile.tsx                # Main component
+    │   ├── UserCard.tsx                   # Sub-component
+    │   ├── UserList.tsx                   # Sub-component
+    │   ├── UserAvatar.tsx                 # Sub-component
+    │   ├── hooks/
+    │   │   ├── index.ts                  # Barrel export
+    │   │   ├── useUserData.ts            # Feature-specific hook
+    │   │   └── useUserActions.ts         # Feature-specific hook
+    │   ├── types/
+    │   │   └── user-component-types.ts   # Component-specific types
+    │   └── __tests__/
+    │       ├── UserProfile.test.tsx
+    │       └── useUserData.test.ts
+    ├── organization/
+    │   ├── index.ts
+    │   ├── OrganizationSelector.tsx
+    │   ├── OrganizationForm.tsx
+    │   └── hooks/
+    ├── subscription/
+    │   ├── index.ts
+    │   ├── SubscriptionCard.tsx
+    │   ├── PlanSelector.tsx
+    │   └── hooks/
+    └── checkout-stripe/
+        ├── index.ts
+        ├── CheckoutForm.tsx
+        ├── PaymentElement.tsx
+        └── hooks/
+    ```
+
+    **Service Organization (ShipSaaS Monolith):**
+    ```
+    services/
+    ├── authentication/                    # Auth domain
+    │   ├── strategies/                   # Auth strategies
+    │   └── session-management.ts
+    ├── authorization/                     # Access control
+    │   ├── rbac/                         # Role-based control
+    │   ├── user-authorization.ts         # User permissions
+    │   ├── organization-authorization.ts
+    │   └── [domain]-authorization.ts
+    ├── validation/                        # Input validation
+    │   ├── user-validation.ts
+    │   ├── subscription-validation.ts
+    │   └── [domain]-validation.ts
+    ├── facades/                           # Public service APIs
+    │   ├── interceptors/                 # Middleware (logging, errors)
+    │   ├── user-service-facade.ts
+    │   ├── organization-service-facade.ts
+    │   └── [domain]-service-facade.ts
+    ├── errors/                            # Custom errors
+    │   ├── AppError.ts
+    │   ├── ValidationError.ts
+    │   ├── AuthorizationError.ts
+    │   └── NotFoundError.ts
+    ├── types/                             # Domain types
+    │   ├── domain/
+    │   │   ├── user-types.ts
+    │   │   ├── organization-types.ts
+    │   │   └── [domain].ts
+    │   └── common.ts
+    ├── user-service.ts                    # User domain service
+    ├── organization-service.ts
+    ├── subscription-service.ts
+    ├── email-service.ts
+    ├── notification-service.ts
+    ├── file-service.ts
+    └── __tests__/
+        ├── user-service.test.ts
+        └── [domain]-service.test.ts
+    ```
+
+    **Database Organization (Drizzle ORM):**
+    ```
+    db/
+    ├── models/                            # Schema definitions
+    │   ├── user.ts                       # User schema
+    │   ├── organization.ts               # Org schema
+    │   ├── subscription.ts
+    │   └── [entity].ts
+    ├── repositories/                      # Data access
+    │   ├── user-repository.ts            # User queries
+    │   ├── organization-repository.ts
+    │   ├── subscription-repository.ts
+    │   └── [entity]-repository.ts
+    └── scripts/
+        ├── seed.ts                       # Database seeding
+        └── migrate.ts                    # Migration utilities
+    ```
+  </Tab>
+
+  <Tab value="testing-structure" label="🧪 Testing Structure">
+    **Test File Organization:**
+    ```
+    src/
+    ├── services/
+    │   ├── user-service.ts
+    │   └── __tests__/               # Tests alongside source
+    │       ├── user-service.test.ts
+    │       └── user-service.integration.test.ts
+    ├── components/
+    │   ├── UserProfile.tsx
+    │   └── __tests__/
+    │       ├── UserProfile.test.tsx
+    │       └── UserProfile.stories.tsx  # Storybook stories
+    └── __tests__/                   # Global test utilities
+        ├── setup.ts                 # Test setup
+        ├── mocks/                   # Mock implementations
+        └── fixtures/                # Test data
+    ```
+
+    **Test Naming Conventions:**
+    ```
+    ✅ GOOD TEST FILE NAMES:
+
+    # Unit tests
+    user-service.test.ts
+    UserProfile.test.tsx
+    date-helper.test.ts
+
+    # Integration tests
+    user-service.integration.test.ts
+    checkout-flow.integration.test.ts
+
+    # End-to-end tests
+    login-flow.e2e.test.ts
+    subscription-purchase.e2e.test.ts
+
+    # Test utilities
+    test-utils.ts
+    mock-data.ts
+    test-setup.ts
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">📁</div>
+      <h4 className="font-semibold">File Organization</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Feature-based organization** in components</div>
+      <div>• **Barrel exports** (index.ts) for clean paths</div>
+      <div>• **Consistent kebab-case** for files/directories</div>
+      <div>• **Single responsibility** per file</div>
+      <div>• **Co-locate related code** (components + hooks + types)</div>
+      <div>• **Tests alongside source** code (__tests__/)</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">⚙️</div>
+      <h4 className="font-semibold">Service Layer Pattern</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Validate input** with Zod schemas</div>
+      <div>• **Check authorization** before operations</div>
+      <div>• **Use repositories** for data access</div>
+      <div>• **Expose via facades** (public API only)</div>
+      <div>• **Handle errors** with custom classes</div>
+      <div>• **Return typed** results</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">📥</div>
+      <h4 className="font-semibold">Import Management</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Grouped imports** by type (libs, services, components)</div>
+      <div>• **Use path aliases** (@/, @/services, etc.)</div>
+      <div>• **Import from facades** (never direct services)</div>
+      <div>• **Type-only imports** for types (import type {})</div>
+      <div>• **Relative imports** for local components</div>
+      <div>• **Prevent cycles** with layered imports</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🏷️</div>
+      <h4 className="font-semibold">Naming Consistency</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **PascalCase**: Components & Context (UserProfile.tsx)</div>
+      <div>• **kebab-case**: Services & utilities (user-service.ts)</div>
+      <div>• **camelCase**: Hooks & functions (useUserData, getData)</div>
+      <div>• **SCREAMING_SNAKE_CASE**: Constants only</div>
+      <div>• **Suffixes**: -service, -facade, -validation, -helper</div>
+      <div>• **Prefixes**: use (hooks), can/has/is (booleans)</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🗄️</div>
+      <h4 className="font-semibold">Database Layer</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Define schemas** in models/ (Drizzle)</div>
+      <div>• **Create repositories** for data access</div>
+      <div>• **Use in services** (never in components)</div>
+      <div>• **Export types** from models for services</div>
+      <div>• **Handle migrations** via drizzle-kit</div>
+      <div>• **Type-safe queries** with Drizzle ORM</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🧪</div>
+      <h4 className="font-semibold">Testing Strategy</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Unit tests** for services and utilities</div>
+      <div>• **Component tests** with Testing Library</div>
+      <div>• **Integration tests** for service workflows</div>
+      <div>• **E2E tests** with Playwright</div>
+      <div>• **Mock external services** (Stripe, email)</div>
+      <div>• **Test both** authorized & unauthorized access</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🔒</div>
+      <h4 className="font-semibold">Security & Authorization</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Check auth** at service layer entry</div>
+      <div>• **Validate permissions** before operations</div>
+      <div>• **Use authorization modules** (RBAC)</div>
+      <div>• **Protect API routes** with middleware</div>
+      <div>• **Validate input** with Zod schemas</div>
+      <div>• **Handle errors** gracefully and securely</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">📦</div>
+      <h4 className="font-semibold">Monolithic Structure</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Single Next.js app** (not monorepo)</div>
+      <div>• **Clear layer separation**: Routes → Components → Services → DB</div>
+      <div>• **Feature-based grouping** in components</div>
+      <div>• **Domain-based organization** in services</div>
+      <div>• **Shared lib/** for utilities</div>
+      <div>• **Scalable for growth** with clear patterns</div>
+    </div>
+  </div>
+</div>
+
+<Callout type="success">
+  **ShipSaaS structure mastered!** Your codebase follows clean, layered patterns that make development fast and maintainable. The monolithic structure with clear separation of concerns allows you to scale features efficiently while keeping the code organized and type-safe.
+</Callout>

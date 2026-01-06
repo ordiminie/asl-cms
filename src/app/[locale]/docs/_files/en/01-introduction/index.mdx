@@ -1,0 +1,200 @@
+---
+title: 'Introduction'
+description: "Complete overview of the Next.js SaaS Boilerplate - features, architecture, and why it's the perfect foundation for your SaaS project"
+keywords: "ShipSaaS, Next.js SaaS boilerplate, SaaS starter kit, authentication, Stripe payments, multi-tenancy, Better Auth, Drizzle ORM"
+order: 1
+---
+
+Welcome to the most comprehensive, production-ready SaaS boilerplate built with Next.js 15. This boilerplate provides everything you need to launch a scalable SaaS application with modern technologies and enterprise-grade features.
+
+## What is this boilerplate?
+
+This is a **complete SaaS foundation** that includes authentication, payments, team management, multi-tenancy, and a robust architecture designed for scale. Built by developers, for developers who want to focus on their business logic rather than reinventing the wheel.
+
+![SaaS Subscription Management](/docs/01/saas-sub.png)
+
+<Callout type="success">
+  ✅ **Production Ready**: This boilerplate is actively used in production SaaS
+  applications and follows industry best practices.
+</Callout>
+
+## Key Features
+
+### **Complete Authentication System**
+
+- **Multi-provider authentication**: Email/password, Magic links, Google, Apple, GitHub
+- **Two-factor authentication (2FA)** with TOTP and backup codes
+- **Role-based access control (RBAC)** with 6 permission levels
+- **API key management** with rate limiting
+- **Email verification** and password reset flows
+
+### **Multi-tenant Organization Management**
+
+- **Organization-based multi-tenancy** for team collaboration
+- **Role-based team membership**: owner, admin, member
+- **Team invitations** with email notifications
+- **Organization switching** in a beautiful UI
+- **Separate billing** per organization
+
+### **Advanced Payment System**
+
+- **Complete Stripe integration** with Better Auth plugin
+- **Multiple subscription plans** with feature limits
+- **Multiple checkout methods**: embedded, external, React forms, payment links
+- **Subscription lifecycle management**: create, update, cancel, restore
+- **Webhook handling** for real-time payment updates
+- **Free trial support** and annual discounts
+
+### **Advanced Notification System**
+
+- **Typed notification service** for all communication needs
+- **Email templates** built with React Email and Resend
+- **Multi-language support** for notifications
+- **Real-time in-app notifications**
+
+### **Developer Experience**
+
+- **Strict TypeScript** with complete type safety
+- **5-layer architecture** for maintainable code
+- **Comprehensive testing** with Vitest and Playwright
+- **Database management** with Drizzle ORM and PostgreSQL
+- **Internationalization** ready with next-intl
+
+## Why Choose This Boilerplate?
+
+### **Speed to Market**
+
+Instead of spending months building authentication, payments, and team management, start with a proven foundation and focus on your unique value proposition.
+
+### **Enterprise Architecture**
+
+Built with a strict 5-layer architecture that separates concerns and makes your codebase maintainable as it grows:
+
+- **Presentation Layer**: UI components and pages
+- **DAL (Data Access Layer)**: Cached data access with React
+- **Facade Layer**: Interface between presentation and business logic
+- **Service Layer**: Business logic, validation, and authorization
+- **Persistence Layer**: Database models and repositories
+
+### **Modern Tech Stack**
+
+Built with the latest and most reliable technologies:
+
+- **Next.js 15** with App Router and Turbopack
+- **React 19** with the latest features
+- **Better Auth** for authentication (more modern than NextAuth)
+- **Drizzle ORM** for type-safe database operations
+- **Stripe** for payments with complete webhook handling
+- **Tailwind CSS v4** with ShadCN UI components
+- **TypeScript** for complete type safety
+
+### **Security First**
+
+- **RBAC with CASL** for fine-grained permissions
+- **Rate limiting** on API endpoints
+- **Secure file upload** with validation
+- **Environment variable validation** with type safety
+- **SQL injection protection** with Drizzle ORM
+
+### **Production Features**
+
+- **Admin panel** for user and organization management
+- **Analytics integration** ready
+- **File storage** with Supabase
+- **Email delivery** with Resend
+- **Error tracking** and logging
+- **Database migrations** and seeding
+
+## What You Get
+
+<Steps>
+<Step title="Complete Authentication">
+Users can sign up, verify email, login with multiple providers, enable 2FA, and manage their accounts with a beautiful UI.
+</Step>
+
+<Step title="Team Collaboration">
+  Organizations with role-based access, team invitations, member management, and
+  organization-scoped resources.
+</Step>
+
+<Step title="Payment Processing">
+  Stripe integration with subscription management, multiple checkout flows,
+  webhook handling, and billing portal.
+</Step>
+
+<Step title="Admin Dashboard">
+  Complete admin panel to manage users, organizations, subscriptions, and
+  content with proper authorization.
+</Step>
+
+<Step title="Developer Tools">
+Testing setup, database management, deployment configuration, and development scripts ready to use.
+</Step>
+</Steps>
+
+## Who This Is For
+
+### **SaaS Founders**
+
+Skip the months of building authentication and payments. Start with a production-ready foundation and focus on your unique features.
+
+### **Development Teams**
+
+Get your team started with a proven architecture and coding standards that scale with your business.
+
+### **MVPs & Prototypes**
+
+Quickly validate your SaaS idea with a complete, working application that can handle real users and payments.
+
+### **Learning Projects**
+
+Study a real-world, production-grade codebase to learn modern React, Next.js, and SaaS development patterns.
+
+## Quick Start Preview
+
+<Callout type="info">
+  Ready to see it in action? The next section will walk you through the complete
+  setup process, from installation to your first user signup.
+</Callout>
+
+```bash
+# Clone and install
+git clone <repository-url>
+cd next-saas-boilerplate
+pnpm install
+
+# Setup environment
+cp .env.example .env.local
+# Edit .env.local with your keys
+
+# Setup database
+pnpm db:push
+pnpm db:seed
+
+# Start development
+pnpm dev
+```
+
+In just a few commands, you'll have a complete SaaS application running locally with:
+
+- User authentication and registration
+- Subscription plans and Stripe checkout
+- Team creation and management
+- Admin panel access
+- Email notifications working
+
+## What's Next?
+
+This documentation will guide you through:
+
+1. **Getting Started** - Complete setup and installation
+2. **Authentication** - Understanding the auth system and customization
+3. **Organizations** - Multi-tenancy and team management
+4. **Payments** - Stripe integration and subscription handling
+5. **Development** - Architecture, testing, and deployment
+
+<Callout type="warning">
+  🔥 **Ready to build?** Continue to the [Getting
+  Started](/docs/getting-started) section to set up your development
+  environment.
+</Callout>

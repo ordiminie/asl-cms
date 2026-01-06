@@ -1,0 +1,391 @@
+---
+title: 'Organizations (Multi-tenant)'
+description: 'Multi-tenant workspaces with team management, role-based permissions, and collaborative features'
+keywords: 'ShipSaaS, organizations, multi-tenancy, team management, workspace management, organization roles'
+---
+
+Organizations enable multi-tenant functionality where users can create workspaces, invite team members, and collaborate with role-based permissions.
+
+<Callout type="success">
+  **Perfect for:** SaaS applications, team collaboration tools, B2B platforms, and enterprise applications.
+</Callout>
+
+## How to Activate
+
+<Steps>
+<Step title="Enable organization mode">
+  ```bash
+  # Set billing mode to organization-based
+  NEXT_PUBLIC_BILLING_MODE="organization"
+
+  # Enable organization pages
+  NEXT_PUBLIC_ENABLED_PAGES="organization,invitation,account,settings,subscription"
+
+  # Email service required for invitations
+  RESEND_API_KEY="re_your_resend_api_key"
+  EMAIL_FROM="noreply@yourdomain.com"
+  ```
+</Step>
+
+<Step title="That's it!">
+  Organization features automatically appear in user account at `/[locale]/account/organizations`.
+
+  <Image src="/docs/04/organization-list.png" alt="Organizations list interface"  />
+</Step>
+</Steps>
+
+## How Organizations Work
+
+### Multi-tenant Concept
+
+<Callout type="info">
+  **Key concept:** One user can belong to multiple organizations with different roles in each organization.
+</Callout>
+
+**Organization structure:**
+- **Owner** - Full control, billing, can delete organization
+- **Admin** - Manage members, settings, but cannot delete
+- **Member** - Basic access, use organization features
+
+**User experience:**
+- Users switch between organizations
+- Each organization has its own data and settings
+- Invitations allow users to join multiple organizations
+
+**Organization Selection Interface:**
+<Image src="/docs/04/orga-selection.png" alt="Organization selection dropdown interface" width={600} />
+
+## Organization Management
+
+### Creating Organizations
+
+<Steps>
+<Step title="Go to organizations page">
+  User visits `/[locale]/account/organizations` to see all their organizations.
+</Step>
+
+<Step title="Create new organization">
+  Click "Create Organization" button (if user has permission).
+</Step>
+
+<Step title="Set organization details">
+  - **Name:** Organization display name
+  - **Description:** Optional description
+  - **Settings:** Initial configuration
+</Step>
+
+<Step title="User becomes owner">
+  Creator automatically becomes the organization owner with full permissions.
+</Step>
+</Steps>
+
+<Callout type="warning">
+  **Creation limits:** By default, users cannot create organizations (`allowUserToCreateOrganization: false`). Only admins can create organizations, or this setting can be changed.
+</Callout>
+
+### Organization Settings
+
+**Location:** `/[locale]/account/organizations/[id]/edit`
+
+**Available settings:**
+- **Basic info** - Name, description, avatar
+- **Member management** - Invite, remove, change roles
+- **Billing settings** - Subscription management (if enabled)
+- **Danger zone** - Delete organization (owner only)
+
+**Organization Members Management:**
+<Image src="/docs/04/orga-setting-members.png" alt="Organization members management interface"  />
+
+**Member Roles Management:**
+<Image src="/docs/04/orga-change-role.png" alt="Change member roles interface"  />
+
+## Member Management
+
+### Inviting Members
+
+<Steps>
+<Step title="Go to organization settings">
+  Organization owner/admin visits `/[locale]/account/organizations/[id]` and clicks "Invite Members".
+</Step>
+
+<Step title="Send invitation">
+  - Enter email address of person to invite
+  - Select role (Admin or Member)
+  - Add optional invitation message
+
+  <Image src="/docs/04/orga-invitation.png" alt="Organization member invitation interface" width={500} />
+</Step>
+
+<Step title="Invitation email sent">
+  Invitee receives email with invitation link and organization details.
+</Step>
+
+<Step title="Accept invitation">
+  Invitee clicks link, goes to `/[locale]/account/invitations/[id]`, and can accept or decline.
+
+  <Image src="/docs/04/orga-invitation-panel.png" alt="Organization invitation acceptance interface" />
+</Step>
+</Steps>
+
+### Member Roles & Permissions
+
+<Tabs defaultValue="owner">
+  <Tab value="owner" label="👑 Owner">
+    **Full organization control:**
+    - Manage all settings and members
+    - Handle billing and subscriptions
+    - Delete organization
+    - Transfer ownership
+    - Cannot be removed by others
+
+    **Limitations:** Only one owner per organization
+  </Tab>
+
+  <Tab value="admin" label="🔧 Admin">
+    **Management permissions:**
+    - Invite and remove members
+    - Change member roles (except owner)
+    - Modify organization settings
+    - Access admin features
+
+    **Cannot:** Delete organization or change billing
+  </Tab>
+
+  <Tab value="member" label="👤 Member">
+    **Basic access:**
+    - Use organization features
+    - View organization content
+    - Collaborate with team
+    - View member list
+
+    **Cannot:** Invite members or change settings
+  </Tab>
+</Tabs>
+
+### Invitation Management
+
+**Invitation limits:** 10 pending invitations per organization (configurable)
+
+**Invitation features:**
+- **Pending invitations** - Track sent invitations
+- **Expiration** - Invitations expire after set time
+- **Resend** - Can resend invitations if needed
+- **Cancel** - Can cancel pending invitations
+
+**User invitation page:** `/[locale]/account/invitations`
+- View all pending invitations
+- Accept or decline each invitation
+- See organization details before joining
+
+**Detailed Members Management Interface:**
+<Image src="/docs/04/orga-setting-member2.png" alt="Detailed organization members interface"  />
+
+## Billing Mode Impact
+
+### Organization Billing vs User Billing
+
+<Tabs defaultValue="org-billing">
+  <Tab value="org-billing" label="🏢 Organization Billing">
+    ```bash
+    NEXT_PUBLIC_BILLING_MODE="organization"
+    ```
+
+    **How it works:**
+    - **Organization pays** for subscriptions
+    - **Owner/Admin** manages billing
+    - **All members** benefit from organization's subscription
+    - **Per-organization** pricing model
+
+    **Best for:** Team subscriptions, B2B SaaS, collaborative tools
+  </Tab>
+
+  <Tab value="user-billing" label="👤 User Billing">
+    ```bash
+    NEXT_PUBLIC_BILLING_MODE="user"
+    ```
+
+    **How it works:**
+    - **Individual users** pay for their own subscriptions
+    - **Personal accounts** with individual billing
+    - **No shared** organization subscriptions
+    - **Per-user** pricing model
+
+    **Best for:** Individual tools, personal productivity, B2C apps
+  </Tab>
+</Tabs>
+
+### Subscription Management
+
+**With organization billing:**
+- Subscriptions are attached to organizations
+- Only owners can manage billing
+- Members benefit from organization subscription
+- Usage/limits are per-organization
+
+**Subscription pages:**
+- `/[locale]/account/subscription` - Current organization's subscription
+- Organization switching affects which subscription is shown
+
+## Better Auth Configuration
+
+The organization system uses Better Auth's `organization` plugin:
+
+```typescript
+// In src/lib/better-auth/auth.ts
+organization({
+  invitationLimit: 10,              // Max pending invitations
+  membershipLimit: 10,              // Max members per organization
+  allowUserToCreateOrganization: false,  // Only admins can create
+
+  async sendInvitationEmail(data) {
+    const inviteLink = `${env.NEXT_PUBLIC_APP_URL}/invitations/${data.id}`
+
+    // Send via notification service
+    await createTypedNotificationService({
+      userId: invitedUser.id,
+      type: NotificationTypeConst.organization_invitation,
+      metadata: {
+        organizationId: data.organization.id,
+        organizationName: data.organization.name,
+        invitedBy: data.inviter.user.name,
+        role: data.role,
+      }
+    })
+  }
+})
+```
+
+**Key configuration:**
+- **Invitation limit:** 10 pending invitations per organization
+- **Member limit:** 10 members per organization
+- **User creation:** Disabled by default (admin-only)
+- **Email notifications:** Automatic via notification service
+
+## Organization Pages Structure
+
+```
+src/app/[locale]/(app)/account/
+├── organizations/
+│   ├── page.tsx                    # List all user's organizations
+│   └── [id]/
+│       ├── page.tsx                # Organization details & members
+│       └── edit/
+│           └── page.tsx            # Organization settings
+└── invitations/
+    ├── page.tsx                    # List pending invitations
+    └── [id]/
+        └── page.tsx                # Accept/decline specific invitation
+```
+
+## User Experience Flows
+
+### Creating and Managing Organization
+
+<Steps>
+<Step title="Create organization">
+  Admin creates organization from `/[locale]/account/organizations`.
+</Step>
+
+<Step title="Invite team members">
+  Owner goes to organization settings and invites members by email.
+</Step>
+
+<Step title="Members join">
+  Invited users receive emails, visit invitation page, and accept to join.
+</Step>
+
+<Step title="Collaborate">
+  All organization members can now access shared organization features and data.
+</Step>
+</Steps>
+
+### Switching Organizations
+
+**User can:**
+- View all organizations they belong to
+- Switch active organization context
+- See different data/settings per organization
+- Have different roles in different organizations
+
+## Common Issues & Solutions
+
+<Callout type="error">
+  **"Cannot create organization" error?**
+
+  - Check `allowUserToCreateOrganization` setting
+  - Verify user has admin permissions
+  - Ensure organization limits not exceeded
+  - Check if feature is enabled in pages config
+</Callout>
+
+<Callout type="warning">
+  **Invitation emails not arriving?**
+
+  - Verify `RESEND_API_KEY` is configured
+  - Check `EMAIL_FROM` domain is verified
+  - Look in spam/junk folders
+  - Ensure notification service is working
+</Callout>
+
+<Callout type="info">
+  **Organization features not visible?**
+
+  - Check `NEXT_PUBLIC_BILLING_MODE="organization"`
+  - Verify `NEXT_PUBLIC_ENABLED_PAGES` includes "organization,invitation"
+  - Restart server after environment changes
+  - Ensure user is logged in and verified
+</Callout>
+
+## Security & Permissions
+
+<Callout type="info">
+  **Built-in security features:**
+  - Role-based access control (RBAC)
+  - Invitation token validation
+  - Member limits prevent abuse
+  - Owner-only sensitive operations
+</Callout>
+
+**Permission validation:**
+- All organization operations check user roles
+- API endpoints validate organization membership
+- UI shows/hides features based on permissions
+- Database queries filter by organization access
+
+**Administration Interface:**
+<Image src="/docs/04/orga-administration-bo.png" alt="Organization administration back-office interface"  />
+
+## Testing Checklist
+
+<Steps>
+<Step title="Test organization creation">
+  1. Create new organization (if permitted)
+  2. Verify user becomes owner
+  3. Test organization settings page
+  4. Update organization details
+</Step>
+
+<Step title="Test member invitations">
+  1. Invite member by email
+  2. Check invitation email is sent
+  3. Accept invitation with different user
+  4. Verify member appears in organization
+</Step>
+
+<Step title="Test role management">
+  1. Change member roles
+  2. Test permission differences
+  3. Try removing members
+  4. Test owner-only operations
+</Step>
+
+<Step title="Test billing integration">
+  1. Check subscription shows for organization
+  2. Test billing management (owner only)
+  3. Verify member benefits from org subscription
+</Step>
+</Steps>
+
+<Callout type="success">
+  **All working?** Your application now supports full multi-tenant organizations with team management and role-based permissions!
+</Callout>

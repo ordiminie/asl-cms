@@ -6,6 +6,7 @@ import {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import * as z from 'zod'
 
+import {LimitsManager} from '@/components/features/admin/plans/limits-manager'
 import {Button} from '@/components/ui/button'
 import {
   Dialog,
@@ -39,6 +40,7 @@ const formSchema = z.object({
     .min(1, 'Le slug est requis')
     .max(50, 'Le slug ne peut pas dépasser 50 caractères'),
   description: z.string().optional(),
+  limitOverrides: z.record(z.string(), z.number()).optional(),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -47,7 +49,12 @@ interface EditOrganizationDialogProps {
   organization: Organization
   onSave: (
     id: string,
-    data: {name: string; slug: string; description?: string}
+    data: {
+      name: string
+      slug: string
+      description?: string
+      limitOverrides?: Record<string, number>
+    }
   ) => Promise<void>
 }
 
@@ -64,6 +71,8 @@ export function EditOrganizationDialog({
       name: organization.name,
       slug: organization.slug ?? '',
       description: organization.description || '',
+      limitOverrides:
+        (organization.limitOverrides as Record<string, number>) || {},
     },
   })
 
@@ -131,6 +140,26 @@ export function EditOrganizationDialog({
                     <Textarea {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="limitOverrides"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>Limites supplémentaires</FormLabel>
+                  <FormControl>
+                    <LimitsManager
+                      limits={field.value || {}}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <p className="text-muted-foreground text-xs">
+                    Ces limites s&apos;ajoutent aux limites du plan
+                    d&apos;abonnement
+                  </p>
                 </FormItem>
               )}
             />

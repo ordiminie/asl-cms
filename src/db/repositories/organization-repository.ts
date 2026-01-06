@@ -249,6 +249,7 @@ export const getOrganizationsByUserIdDao = async (
       metadata: organizations.metadata,
       createdAt: organizations.createdAt,
       updatedAt: organizations.updatedAt,
+      limitOverrides: organizations.limitOverrides,
       role: member.role,
     })
     .from(organizations)

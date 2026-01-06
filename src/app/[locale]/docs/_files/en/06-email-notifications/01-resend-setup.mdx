@@ -1,0 +1,238 @@
+---
+title: 'Resend Setup'
+description: 'Configure Resend API for professional transactional emails with development and production modes'
+keywords: 'ShipSaaS, Resend setup, email configuration, SMTP setup, email provider, transactional email setup'
+---
+
+The boilerplate uses Resend as the email service provider, offering reliable transactional email delivery with excellent developer experience.
+
+<Callout type="success">
+  **Perfect for:** Transactional emails, authentication flows, notifications, and professional email delivery.
+</Callout>
+
+## Resend Account Setup
+
+<Steps>
+<Step title="Create Resend Account">
+  1. Go to [resend.com](https://resend.com) and create an account
+  2. Verify your email address
+  3. Add your domain for production use
+</Step>
+
+<Step title="Get API Key">
+  1. Navigate to the API Keys section
+  2. Create a new API key
+  3. Copy the API key for environment configuration
+</Step>
+
+<Step title="Configure Environment">
+  Add the required environment variables to your `.env.local`:
+
+  ```bash
+  # Resend Configuration
+  RESEND_API_KEY="re_your_api_key_here"
+  EMAIL_FROM="noreply@yourdomain.com"
+
+  # For development, you can use the default
+  EMAIL_FROM="onboarding@resend.dev"
+  ```
+</Step>
+</Steps>
+
+## Email Service Configuration
+
+The boilerplate provides a configured email service in `src/services/email-service.ts`:
+
+### Core Email Service
+
+```typescript
+// From src/services/email-service.ts
+import { Resend } from 'resend'
+import { env } from '@/env'
+
+const resend = new Resend(env.RESEND_API_KEY)
+
+export const sendEmailService = async (
+  payload: CreateEmailOptions,
+  options?: CreateEmailRequestOptions
+) => {
+  if (env.NODE_ENV === 'development') {
+    payload.subject = `[DEV] ${payload.subject}`
+  }
+
+  const { error } = await resend.emails.send(
+    {
+      ...payload,
+      from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
+    },
+    options
+  )
+
+  if (error) {
+    console.error(error)
+    throw error
+  }
+}
+```
+
+<Callout type="info">
+  **Development Mode:** In development, all email subjects are automatically prefixed with `[DEV]` to distinguish them from production emails.
+</Callout>
+
+### Simple Email Function
+
+For basic text emails, use the `sendSimpleEmailService`:
+
+```typescript
+// From src/services/email-service.ts
+export const sendSimpleEmailService = async ({
+  to,
+  subject,
+  text,
+}: {
+  to: string
+  subject: string
+  text: string
+}) => {
+  await sendEmailService({
+    to,
+    subject,
+    text,
+    from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
+  })
+}
+```
+
+## Available Email Functions
+
+The boilerplate includes 13 specialized email functions:
+
+<Tabs defaultValue="authentication">
+  <Tab value="authentication" label="🔐 Authentication">
+    ```typescript
+    // Magic link authentication
+    sendMagicLinkEmailService({ email, url })
+
+    // Email verification
+    sendVerificationEmailService({ email, url })
+
+    // Password reset
+    sendResetPasswordLinkEmailService({ email, url })
+
+    // OTP codes
+    sendOTPEmailService({ email, otp, otpLink })
+
+    // Email change verification
+    sendEmailChangeEmailVerificationService({ email, url })
+    ```
+  </Tab>
+
+  <Tab value="subscriptions" label="💳 Subscriptions">
+    ```typescript
+    // Subscription completed
+    sendSubscriptionCompletedEmailService(subscription)
+
+    // Subscription updated
+    sendSubscriptionUpdatedEmailService(subscription)
+
+    // Subscription canceled
+    sendSubscriptionCanceledEmailService(subscription)
+
+    // Subscription deleted
+    sendSubscriptionDeletedEmailService(subscription)
+    ```
+  </Tab>
+
+  <Tab value="organizations" label="🏢 Organizations">
+    ```typescript
+    // Organization invitation
+    sendOrganizationInvitation({
+      email,
+      invitedByUsername,
+      invitedByEmail,
+      teamName,
+      inviteLink,
+    })
+    ```
+  </Tab>
+
+  <Tab value="notifications" label="🔔 Notifications">
+    ```typescript
+    // Generic notifications
+    sendNotificationEmailService({
+      email,
+      title,
+      message,
+      type: 'info' | 'warning' | 'success' | 'error',
+      language: 'fr' | 'en' | 'es',
+    })
+
+    // Welcome follow-up
+    sendWelcomeFollowUpEmailService({
+      email,
+      userName,
+      appUrl,
+      language,
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Environment Variables
+
+<Callout type="warning">
+  **Required:** Make sure these environment variables are set in your deployment environment.
+</Callout>
+
+```bash
+# Required
+RESEND_API_KEY="your-resend-api-key"
+
+# Recommended (defaults to onboarding@resend.dev)
+EMAIL_FROM="noreply@yourdomain.com"
+
+# Used in email templates
+NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+```
+
+## Error Handling
+
+The email service includes built-in error handling:
+
+```typescript
+// From src/services/email-service.ts
+const { error } = await resend.emails.send(emailData)
+
+if (error) {
+  console.error(error)
+  throw error
+}
+```
+
+Errors are logged and thrown, allowing the calling code to handle them appropriately.
+
+## Testing Email Delivery
+
+<Steps>
+<Step title="Development Testing">
+  - All emails in development are prefixed with `[DEV]`
+  - Check your console for email sending logs
+  - Use Resend dashboard to monitor delivery
+</Step>
+
+<Step title="Domain Verification">
+  - For production, verify your domain in Resend
+  - Update `EMAIL_FROM` to use your verified domain
+  - Test with your production domain
+</Step>
+
+<Step title="Monitor Delivery">
+  - Use Resend dashboard for delivery analytics
+  - Monitor bounce rates and delivery success
+  - Check spam folder if emails aren't received
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Resend configured!** Your application can now send professional transactional emails with reliable delivery and excellent analytics.
+</Callout>

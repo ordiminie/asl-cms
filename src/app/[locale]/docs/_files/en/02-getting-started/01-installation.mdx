@@ -1,0 +1,287 @@
+---
+title: 'Installation'
+description: 'Detailed step-by-step installation guide for the Next.js SaaS Boilerplate'
+keywords: "ShipSaaS, installation guide, Next.js installation, pnpm setup, Node.js setup, SaaS boilerplate setup, project installation"
+order: 1
+---
+
+This guide will walk you through the complete installation process for the Next.js SaaS Boilerplate. Follow these steps carefully to ensure a smooth setup.
+
+## System Requirements
+
+<Callout type="info">
+  📋 **Before you start**: Make sure your system meets these minimum
+  requirements for optimal performance.
+</Callout>
+
+### **Minimum Requirements**
+
+- **Node.js**: 18.17.0 or higher
+- **pnpm**: 8.0.0 or higher (recommended package manager)
+- **Git**: For cloning the repository
+- **PostgreSQL**: 14+ (or Supabase account)
+
+### **Recommended Setup**
+
+- **Node.js**: 20.x LTS for best compatibility
+- **RAM**: 8GB minimum, 16GB recommended
+- **Storage**: 2GB free space for dependencies and development
+
+## Step 1: Install Node.js and pnpm
+
+<Steps>
+<Step title="Install Node.js">
+Download and install Node.js from the official website:
+
+```bash
+# Check if Node.js is installed
+node --version
+
+# Should return v18.17.0 or higher
+```
+
+If you need to install or update Node.js:
+
+- Visit [nodejs.org](https://nodejs.org) and download the LTS version
+- Or use a version manager like [nvm](https://github.com/nvm-sh/nvm)
+
+```bash
+# Using nvm (recommended)
+nvm install --lts
+nvm use --lts
+```
+
+</Step>
+
+<Step title="Install pnpm">
+This project uses **pnpm** for faster and more efficient package management:
+
+```bash
+# Install pnpm globally
+npm install -g pnpm
+
+# Verify installation
+pnpm --version
+```
+
+<Callout type="success">
+✅ **Why pnpm?** It's faster than npm/yarn, uses less disk space, and has better dependency resolution.
+</Callout>
+</Step>
+</Steps>
+
+## Step 2: Clone the Repository
+
+<Steps>
+<Step title="Clone the project">
+```bash
+# Clone the repository
+git clone <your-repository-url>
+cd next-saas-boilerplate
+
+# Verify the project structure
+
+ls -la
+
+````
+
+You should see the main project files including:
+- `package.json`
+- `src/` directory
+- `.env.example`
+- `drizzle.config.ts`
+</Step>
+
+<Step title="Install dependencies">
+Install all required packages using pnpm:
+
+```bash
+# Install dependencies (this may take a few minutes)
+pnpm install
+
+# Verify installation
+pnpm list --depth=0
+````
+
+<Callout type="warning">
+⚠️ **Troubleshooting**: If you encounter permission errors, make sure you have write access to the project directory and npm registry.
+</Callout>
+</Step>
+</Steps>
+
+## Step 3: Verify Installation
+
+<Steps>
+<Step title="Check TypeScript compilation">
+Verify that TypeScript can compile the project:
+
+```bash
+# Check for TypeScript errors
+pnpm build
+
+# This should complete without errors
+```
+
+</Step>
+
+<Step title="Run development server">
+Start the development server to ensure everything is working:
+
+```bash
+# Start development server
+pnpm dev
+```
+
+You should see output similar to:
+
+```
+▲ Next.js 15.0.0
+- Local:        http://localhost:3000
+- Environments: .env.local
+
+✓ Ready in 2.3s
+```
+
+</Step>
+
+<Step title="Access the application">
+Open your browser and navigate to `http://localhost:3000`
+
+You should see:
+
+- The landing page loads without errors
+- No console errors in browser developer tools
+- The page shows "Please configure your environment variables" message
+
+<Callout type="info">
+💡 **Expected behavior**: The app will show environment variable warnings until you complete the configuration in the next section.
+</Callout>
+</Step>
+</Steps>
+
+## Troubleshooting Common Issues
+
+### **Node.js Version Issues**
+
+```bash
+# Error: Node.js version too old
+# Solution: Update Node.js to 18.17.0+
+
+nvm install 18
+nvm use 18
+```
+
+### **pnpm Installation Issues**
+
+```bash
+# If pnpm command not found after installation
+# Add to your shell profile (.bashrc, .zshrc, etc.)
+export PATH="$HOME/.local/share/pnpm:$PATH"
+
+# Then reload your shell
+source ~/.zshrc  # or ~/.bashrc
+```
+
+### **Permission Errors**
+
+```bash
+# If you get EACCES errors
+# Fix npm permissions or use a Node version manager
+
+# Option 1: Fix npm permissions (Linux/Mac)
+sudo chown -R $(whoami) $(npm config get prefix)/{lib/node_modules,bin,share}
+
+# Option 2: Use nvm (recommended)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+```
+
+### **Port Already in Use**
+
+```bash
+# If port 3000 is busy
+# Kill the process using port 3000
+lsof -ti:3000 | xargs kill -9
+
+# Or use a different port
+pnpm dev -- --port 3001
+```
+
+### **Build Errors**
+
+```bash
+# If build fails with TypeScript errors
+# Clear cache and reinstall
+rm -rf node_modules .next
+pnpm install
+pnpm build
+```
+
+## Project Structure Overview
+
+After successful installation, your project structure should look like this:
+
+```
+next-saas-boilerplate/
+├── src/
+│   ├── app/                 # Next.js App Router pages
+│   ├── components/          # React components
+│   ├── db/                  # Database models and scripts
+│   ├── lib/                 # Utility functions
+│   └── services/            # Business logic layer
+├── public/                  # Static assets
+├── .env.example            # Environment variables template
+├── package.json            # Dependencies and scripts
+├── tailwind.config.ts      # Tailwind CSS configuration
+├── drizzle.config.ts       # Database configuration
+└── next.config.ts          # Next.js configuration
+```
+
+## Available Scripts
+
+After installation, you have access to these development scripts :
+
+<Tabs defaultValue="essential">
+  <Tab value="essential" label="Essential">
+    ```bash
+    pnpm dev          # Start development server
+    pnpm build        # Build for production
+    pnpm start        # Start production server
+    pnpm lint         # Run code linting
+    pnpm format:fix   # Fix code formatting
+    ```
+  </Tab>
+  <Tab value="database" label="Database">
+    ```bash
+    pnpm db:studio    # Open database management UI
+    pnpm db:push      # Push schema to database
+    pnpm db:generate  # Generate migrations
+    pnpm db:migrate   # Run migrations
+    pnpm db:seed      # Seed database with demo data
+    ```
+  </Tab>
+  <Tab value="testing" label="Testing">
+    ```bash
+    pnpm test         # Run unit tests
+    pnpm test:e2e     # Run end-to-end tests
+    pnpm test:watch   # Run tests in watch mode
+    ```
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<Callout type="success">
+  🎉 **Installation Complete!** Your development environment is now ready.
+</Callout>
+
+Now that you have successfully installed the boilerplate, continue with:
+
+1. **[Environment Variables](/docs/getting-started/environment)** - Configure your API keys and database connection
+2. **[Database Setup](/docs/getting-started/database-setup)** - Set up and configure your database
+3. **[First Run](/docs/getting-started/first-run)** - Test your complete setup
+
+<Callout type="info">
+  💡 **Pro tip**: Keep the development server running while you configure
+  environment variables. The app will automatically restart when you save
+  changes to `.env.local`.
+</Callout>

@@ -14,6 +14,8 @@ import {Component} from '@/components/ui/vapour-text-effect'
 import {routing} from '@/i18n/routing'
 import {APP_NAME} from '@/lib/constants'
 
+export const dynamic = 'force-static'
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
 }

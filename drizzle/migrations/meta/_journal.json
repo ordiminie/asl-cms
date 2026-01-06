@@ -8,6 +8,13 @@
       "when": 1753687541898,
       "tag": "0000_awesome_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1766127576614,
+      "tag": "0001_conscious_emma_frost",
+      "breakpoints": true
     }
   ]
 }

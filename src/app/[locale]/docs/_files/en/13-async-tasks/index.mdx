@@ -1,0 +1,99 @@
+---
+title: Async Tasks
+description: Background job processing with Inngest for reliable task execution
+keywords: 'ShipSaaS, async tasks, background jobs, task queue, job processing, asynchronous processing, worker tasks'
+---
+
+The SaaS boilerplate includes **Inngest integration** for handling background tasks, scheduled jobs, and async workflows.
+
+<Callout type="info">
+  **Reliable Background Processing:** Inngest provides automatic retries, step-by-step execution, and a development dashboard for monitoring async tasks.
+</Callout>
+
+## Background Tasks Overview
+
+The async task system provides **reliable job processing** with built-in features:
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div className="p-4 border rounded-lg">
+    <h3 className="font-semibold text-lg mb-2">🔄 Retry Logic</h3>
+    <p className="text-sm text-muted-foreground mb-3">
+      Automatic retry handling with exponential backoff
+    </p>
+    <ul className="text-sm space-y-1">
+      <li>• Configurable retry counts</li>
+      <li>• Error recovery strategies</li>
+      <li>• Dead letter queues</li>
+      <li>• Step-by-step execution</li>
+    </ul>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <h3 className="font-semibold text-lg mb-2">⏰ Scheduling</h3>
+    <p className="text-sm text-muted-foreground mb-3">
+      Delayed execution and cron-based jobs
+    </p>
+    <ul className="text-sm space-y-1">
+      <li>• Sleep/delay functions</li>
+      <li>• Cron job scheduling</li>
+      <li>• Event-driven triggers</li>
+      <li>• Multi-step workflows</li>
+    </ul>
+  </div>
+</div>
+
+## Task Guides
+
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <a href="./async-tasks/setup" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">⚙️</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Setup</h3>
+        <span className="text-sm text-muted-foreground">
+          Configure Inngest for background task processing
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./async-tasks/email-workflows" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">📧</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Email Workflows</h3>
+        <span className="text-sm text-muted-foreground">
+          Automated email sequences and follow-ups
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./async-tasks/payment-processing" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">💳</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Payment Processing</h3>
+        <span className="text-sm text-muted-foreground">
+          Async Stripe webhook and subscription handling
+        </span>
+      </div>
+    </div>
+  </a>
+
+  <a href="./async-tasks/maintenance-jobs" className="block p-6 border rounded-lg hover:shadow-md transition-shadow no-underline text-foreground">
+    <div className="flex items-start space-x-3">
+      <div className="text-2xl">🔧</div>
+      <div>
+        <h3 className="font-semibold text-lg mb-2">Maintenance Jobs</h3>
+        <span className="text-sm text-muted-foreground">
+          Scheduled cleanup and data maintenance tasks
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+
+<Callout type="success">
+  **Production Ready:** Inngest handles deployment, scaling, and monitoring automatically while providing a great local development experience.
+</Callout>

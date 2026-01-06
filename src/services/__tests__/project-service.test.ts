@@ -5,9 +5,11 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 vi.mock('@/db/repositories/project-repository')
 vi.mock('@/db/repositories/user-repository')
 vi.mock('@/db/repositories/notification-repository')
+vi.mock('@/db/repositories/organization-repository')
 
 import {NotificationModel} from '@/db/models/notification-model'
 import {createNotificationDao} from '@/db/repositories/notification-repository'
+import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {
   createProjectDao,
   createTaskDao,
@@ -111,6 +113,19 @@ describe('[ADMIN] CRUD : Project Service', () => {
 
     // Mock pour les notifications
     vi.mocked(getUserByIdDao).mockResolvedValue(userTestAdmin)
+
+    // Mock pour les organisations
+    vi.mocked(getOrganizationByIdDao).mockResolvedValue({
+      id: organizationId,
+      name: 'Test Organization',
+      slug: 'test-organization',
+      description: null,
+      logo: null,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      limitOverrides: null,
+    })
   })
 
   it('should create a new project', async () => {
@@ -287,6 +302,19 @@ describe('[ORGANIZATION OWNER] CRUD : Project Service', () => {
 
     // Mock pour les notifications
     vi.mocked(getUserByIdDao).mockResolvedValue(userTest)
+
+    // Mock pour les organisations
+    vi.mocked(getOrganizationByIdDao).mockResolvedValue({
+      id: organizationId,
+      name: 'Test Organization',
+      slug: 'test-organization',
+      description: null,
+      logo: null,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      limitOverrides: null,
+    })
   })
 
   it('should create a project as owner', async () => {
@@ -430,6 +458,19 @@ describe('[ORGANIZATION ADMIN] CRUD : Project Service', () => {
 
     // Mock pour les notifications
     vi.mocked(getUserByIdDao).mockResolvedValue(userTest)
+
+    // Mock pour les organisations
+    vi.mocked(getOrganizationByIdDao).mockResolvedValue({
+      id: organizationId,
+      name: 'Test Organization',
+      slug: 'test-organization',
+      description: null,
+      logo: null,
+      metadata: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      limitOverrides: null,
+    })
   })
 
   it('should create a project as admin', async () => {
