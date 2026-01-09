@@ -2,15 +2,18 @@
 
 import {formatDistanceToNow} from 'date-fns'
 import {fr} from 'date-fns/locale'
-import {Edit, Folder, Plus} from 'lucide-react'
+import {Edit, Folder, Loader2, Plus} from 'lucide-react'
 import Link from 'next/link'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useCallback, useEffect} from 'react'
 import {toast} from 'sonner'
 
 import {
   deleteProjectAction,
+  fetchProjectsAction,
   updateProjectAction,
 } from '@/app/[locale]/(app)/team/[slug]/projects/actions'
+import {useInfiniteScroll} from '@/components/hooks/use-infinite-scroll'
 import {Avatar, AvatarFallback} from '@/components/ui/avatar'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
@@ -28,6 +31,9 @@ import {DeleteProjectDialog} from './delete-project-dialog'
 import {EditProjectDialog} from './edit-project-dialog'
 import {ProjectsPagination} from './projects-pagination'
 import {ProjectsToolbar} from './projects-toolbar'
+
+const IS_INFINITE_SCROLL = true
+const PAGE_SIZE = 2
 
 interface Props {
   organizationId: string
@@ -78,6 +84,48 @@ export default function ProjectsManagement({
     router.push(`?${params.toString()}`)
   }
 
+  // Infinite scroll logic
+  const fetchMoreProjects = useCallback(
+    async (offset: number) => {
+      const result = await fetchProjectsAction({
+        organizationId,
+        limit: PAGE_SIZE,
+        offset,
+        search: searchQuery || undefined,
+      })
+      if (result.success && result.pagination) {
+        return {
+          data: result.data,
+          hasMore: result.pagination.hasMore,
+        }
+      }
+      return {data: [], hasMore: false}
+    },
+    [organizationId, searchQuery]
+  )
+
+  const {
+    items: infiniteProjects,
+    isLoading: isLoadingMore,
+    hasMore,
+    sentinelRef,
+    reset,
+  } = useInfiniteScroll({
+    initialData: IS_INFINITE_SCROLL
+      ? initialProjects.slice(0, PAGE_SIZE)
+      : initialProjects,
+    initialHasMore: IS_INFINITE_SCROLL ? totalProjects > PAGE_SIZE : false,
+    fetchMore: fetchMoreProjects,
+    pageSize: PAGE_SIZE,
+    enabled: IS_INFINITE_SCROLL,
+  })
+
+  useEffect(() => {
+    reset(initialProjects.slice(0, PAGE_SIZE), totalProjects > PAGE_SIZE)
+  }, [initialProjects, totalProjects, reset])
+
+  const projects = IS_INFINITE_SCROLL ? infiniteProjects : initialProjects
+
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
@@ -100,6 +148,7 @@ export default function ProjectsManagement({
           totalProjects={totalProjects}
           onPerPageChange={handlePerPageChange}
           perPage={pageSize.toString()}
+          showPerPageSelector={!IS_INFINITE_SCROLL}
         />
 
         <Table>
@@ -114,7 +163,7 @@ export default function ProjectsManagement({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {initialProjects.map((project) => (
+            {projects.map((project) => (
               <TableRow key={project.id}>
                 <TableCell className="flex items-center gap-2">
                   <Avatar className="size-8">
@@ -202,11 +251,23 @@ export default function ProjectsManagement({
           </TableBody>
         </Table>
 
-        <ProjectsPagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(totalProjects / pageSize)}
-          onPageChange={handlePageChange}
-        />
+        {/* Infinite Scroll Sentinel */}
+        {IS_INFINITE_SCROLL && (hasMore || isLoadingMore) && (
+          <div ref={sentinelRef} className="flex justify-center py-6">
+            {isLoadingMore && (
+              <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+            )}
+          </div>
+        )}
+
+        {/* Traditional Pagination */}
+        {!IS_INFINITE_SCROLL && (
+          <ProjectsPagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(totalProjects / pageSize)}
+            onPageChange={handlePageChange}
+          />
+        )}
       </CardContent>
     </Card>
   )

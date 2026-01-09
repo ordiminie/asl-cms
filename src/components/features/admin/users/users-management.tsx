@@ -2,15 +2,18 @@
 
 import {formatDistanceToNow} from 'date-fns'
 import {fr} from 'date-fns/locale'
-import {Eye} from 'lucide-react'
+import {Eye, Loader2} from 'lucide-react'
 import Link from 'next/link'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useCallback, useEffect} from 'react'
 import {toast} from 'sonner'
 
 import {
   deleteUserAction,
+  fetchUsersAction,
   updateUserAction,
 } from '@/app/[locale]/admin/users/actions'
+import {useInfiniteScroll} from '@/components/hooks/use-infinite-scroll'
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
@@ -35,6 +38,9 @@ import {DeleteUserDialog} from './delete-user-dialog'
 import {EditUserDialog} from './edit-user-dialog'
 import {UsersPagination} from './users-pagination'
 import {UsersToolbar} from './users-toolbar'
+
+const IS_INFINITE_SCROLL = true
+const PAGE_SIZE = 5
 
 interface Props {
   initialUsers: User[]
@@ -81,6 +87,47 @@ export default function UsersManagement({
     router.push(`?${params.toString()}`)
   }
 
+  // Infinite scroll logic
+  const fetchMoreUsers = useCallback(
+    async (offset: number) => {
+      const result = await fetchUsersAction({
+        limit: PAGE_SIZE,
+        offset,
+        search: searchQuery || undefined,
+      })
+      if (result.success && result.pagination) {
+        return {
+          data: result.data,
+          hasMore: result.pagination.hasMore,
+        }
+      }
+      return {data: [], hasMore: false}
+    },
+    [searchQuery]
+  )
+
+  const {
+    items: infiniteUsers,
+    isLoading: isLoadingMore,
+    hasMore,
+    sentinelRef,
+    reset,
+  } = useInfiniteScroll({
+    initialData: IS_INFINITE_SCROLL
+      ? initialUsers.slice(0, PAGE_SIZE)
+      : initialUsers,
+    initialHasMore: IS_INFINITE_SCROLL ? totalUsers > PAGE_SIZE : false,
+    fetchMore: fetchMoreUsers,
+    pageSize: PAGE_SIZE,
+    enabled: IS_INFINITE_SCROLL,
+  })
+
+  useEffect(() => {
+    reset(initialUsers.slice(0, PAGE_SIZE), totalUsers > PAGE_SIZE)
+  }, [initialUsers, totalUsers, reset])
+
+  const users = IS_INFINITE_SCROLL ? infiniteUsers : initialUsers
+
   const getUserRoleDisplay = (role?: string) => {
     if (!role) return 'Public'
     switch (role) {
@@ -116,6 +163,7 @@ export default function UsersManagement({
           totalUsers={totalUsers}
           onPerPageChange={handlePerPageChange}
           perPage={pageSize.toString()}
+          showPerPageSelector={!IS_INFINITE_SCROLL}
         />
 
         <Table>
@@ -130,7 +178,7 @@ export default function UsersManagement({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {initialUsers.map((user) => (
+            {users.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="flex w-auto min-w-0 items-center gap-2">
                   <Avatar className="size-8">
@@ -235,11 +283,23 @@ export default function UsersManagement({
           </TableBody>
         </Table>
 
-        <UsersPagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(totalUsers / pageSize)}
-          onPageChange={handlePageChange}
-        />
+        {/* Infinite Scroll Sentinel */}
+        {IS_INFINITE_SCROLL && (hasMore || isLoadingMore) && (
+          <div ref={sentinelRef} className="flex justify-center py-6">
+            {isLoadingMore && (
+              <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
+            )}
+          </div>
+        )}
+
+        {/* Traditional Pagination */}
+        {!IS_INFINITE_SCROLL && (
+          <UsersPagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(totalUsers / pageSize)}
+            onPageChange={handlePageChange}
+          />
+        )}
       </CardContent>
     </Card>
   )

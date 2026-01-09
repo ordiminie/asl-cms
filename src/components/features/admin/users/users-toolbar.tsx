@@ -20,6 +20,7 @@ interface UsersToolbarProps {
   totalUsers: number
   onPerPageChange?: (perPage: string) => void
   perPage: string
+  showPerPageSelector?: boolean
 }
 
 export function UsersToolbar({
@@ -28,6 +29,7 @@ export function UsersToolbar({
   totalUsers,
   onPerPageChange,
   perPage,
+  showPerPageSelector = true,
 }: UsersToolbarProps) {
   const [searchValue, setSearchValue] = useState(initialSearch)
   const isUserTyping = useRef(false)
@@ -100,21 +102,23 @@ export function UsersToolbar({
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-sm">Afficher</span>
-        <Select value={perPage} onValueChange={onPerPageChange}>
-          <SelectTrigger className="w-[70px]">
-            <SelectValue placeholder="20" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="10">10</SelectItem>
-            <SelectItem value="20">20</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="text-muted-foreground text-sm">par page</span>
-      </div>
+      {showPerPageSelector && (
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">Afficher</span>
+          <Select value={perPage} onValueChange={onPerPageChange}>
+            <SelectTrigger className="w-[70px]">
+              <SelectValue placeholder="20" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-muted-foreground text-sm">par page</span>
+        </div>
+      )}
     </div>
   )
 }

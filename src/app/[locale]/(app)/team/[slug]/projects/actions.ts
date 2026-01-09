@@ -12,12 +12,13 @@ import {
   createTaskService,
   deleteProjectService,
   deleteTaskService,
+  getProjectsWithPaginationService,
   updateProjectService,
   updateTaskOrderService,
   updateTaskService,
   updateTasksOrderService,
 } from '@/services/facades/project-service-facade'
-import {TaskStatus} from '@/services/types/domain/project-types'
+import {Project, TaskStatus} from '@/services/types/domain/project-types'
 
 export type FormState = {
   success: boolean
@@ -379,5 +380,42 @@ export async function updateTasksOrderAction(
       message:
         error instanceof Error ? error.message : 'Une erreur est survenue',
     }
+  }
+}
+
+// ===== ACTION POUR L'INFINITE SCROLL =====
+
+export async function fetchProjectsAction(params: {
+  organizationId: string
+  limit: number
+  offset: number
+  search?: string
+}): Promise<{
+  success: boolean
+  data: Project[]
+  pagination: {total: number; hasMore: boolean} | null
+}> {
+  try {
+    await requireActionAuth()
+
+    const result = await getProjectsWithPaginationService(
+      {limit: params.limit, offset: params.offset},
+      {
+        organizationId: params.organizationId,
+        ...(params.search && {name: params.search}),
+      }
+    )
+
+    return {
+      success: true,
+      data: result.data,
+      pagination: {
+        total: result.pagination.total,
+        hasMore: params.offset + result.data.length < result.pagination.total,
+      },
+    }
+  } catch (error) {
+    console.error('Error fetching projects:', error)
+    return {success: false, data: [], pagination: null}
   }
 }
