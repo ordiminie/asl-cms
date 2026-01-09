@@ -21,6 +21,9 @@ The boilerplate provides a solid foundation with:
 
 ### High Priority
 
+- [ ] **Credit ledger**
+  - docs/Modèles de gestion de crédits.md
+
 - [ ] **Homepage**
   - Landing page with features showcase
   - Pricing section
