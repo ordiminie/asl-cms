@@ -9,6 +9,7 @@ import {canReadCredits} from '@/services/authorization/credit-authorization'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {ValidationError} from '@/services/errors/validation-error'
 import {
+  ensureCreditsAllocatedService,
   getCreditBalanceService,
   getCreditPacksService,
   getRecentActivityService,
@@ -257,6 +258,31 @@ export async function getCreditPacksAction(): Promise<
         error instanceof Error
           ? error.message
           : 'Erreur lors de la récupération des packs',
+    }
+  }
+}
+
+/**
+ * Lazy allocation - filet de sécurité pour plans annuels
+ * Appelé une seule fois au chargement de la page credit
+ */
+export async function ensureCreditsAllocatedAction(
+  organizationId: string
+): Promise<ActionResponse<void>> {
+  try {
+    await ensureCreditsAllocatedService(organizationId)
+
+    return {
+      success: true,
+      message: 'Vérification effectuée',
+    }
+  } catch (error) {
+    // Non-blocking - on log mais on ne fait pas échouer
+    console.error('Error ensuring credits allocated:', error)
+
+    return {
+      success: true, // Toujours success pour ne pas bloquer l'UI
+      message: 'Vérification effectuée',
     }
   }
 }

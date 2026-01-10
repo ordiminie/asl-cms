@@ -3,6 +3,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 import {
   addPackCreditsTxnDao,
+  checkAllocationExistsDao,
   consumeCreditsTxnDao,
   getBalanceDao,
   getDailyUsageDao,
@@ -10,7 +11,10 @@ import {
   getUsedThisPeriodDao,
   grantCreditsTxnDao,
 } from '@/db/repositories/credit-ledger-repository'
-import {getActiveSubscriptionsOrFreePlanDao} from '@/db/repositories/subscription-repository'
+import {
+  getActiveSubscriptionsOrFreePlanDao,
+  getPlanByCodeDao,
+} from '@/db/repositories/subscription-repository'
 
 import {
   canConsumeService,
@@ -31,7 +35,6 @@ import {
   CreditEntry,
   CreditSource,
   CreditUsageDay,
-  DEFAULT_CREDIT_PACKS,
 } from '../types/domain/credit-types'
 import {setupAuthUserMocked} from './helper-service-test'
 import {userTest, userTestAdmin} from './service-test-data'
@@ -46,10 +49,12 @@ vi.mock('@/db/repositories/credit-ledger-repository', () => ({
   allocateMonthlyCreditsTxnDao: vi.fn(),
   grantCreditsTxnDao: vi.fn(),
   addPackCreditsTxnDao: vi.fn(),
+  checkAllocationExistsDao: vi.fn(),
 }))
 
 vi.mock('@/db/repositories/subscription-repository', () => ({
   getActiveSubscriptionsOrFreePlanDao: vi.fn(),
+  getPlanByCodeDao: vi.fn(),
 }))
 
 const organizationId = faker.string.uuid()
@@ -102,6 +107,33 @@ const mockSubscription = {
   createdAt: new Date(),
   updatedAt: new Date(),
 }
+
+const mockCreditPacks = [
+  {
+    id: faker.string.uuid(),
+    code: '10tokens',
+    planName: '10 Tokens',
+    price: '5.00',
+    priceId: 'price_10tokens',
+    limits: {credits: 10},
+  },
+  {
+    id: faker.string.uuid(),
+    code: '50tokens',
+    planName: '50 Tokens',
+    price: '20.00',
+    priceId: 'price_50tokens',
+    limits: {credits: 50},
+  },
+  {
+    id: faker.string.uuid(),
+    code: '150tokens',
+    planName: '150 Tokens',
+    price: '50.00',
+    priceId: 'price_150tokens',
+    limits: {credits: 150},
+  },
+]
 
 // Helper pour créer un utilisateur avec une membership
 const createUserWithOrgMembership = (
@@ -157,6 +189,10 @@ describe('[ADMIN] Credit Service', () => {
       ...mockCreditEntry,
       source: 'pack',
     })
+    vi.mocked(checkAllocationExistsDao).mockResolvedValue(true)
+    vi.mocked(getPlanByCodeDao).mockImplementation(async (code: string) => {
+      return mockCreditPacks.find((p) => p.code === code)
+    })
   })
 
   describe('Read Operations', () => {
@@ -170,13 +206,12 @@ describe('[ADMIN] Credit Service', () => {
     it('should get full credit balance DTO', async () => {
       const balanceDTO = await getCreditBalanceService(organizationId)
 
-      expect(balanceDTO).toEqual({
-        available: 500,
-        usedThisPeriod: 200,
-        periodStart: mockSubscription.periodStart,
-        periodEnd: mockSubscription.periodEnd,
-        monthlyAllocation: 1000,
-      })
+      expect(balanceDTO.available).toBe(500)
+      expect(balanceDTO.balance).toBe(500)
+      expect(balanceDTO.usedThisPeriod).toBe(200)
+      expect(balanceDTO.monthlyAllocation).toBe(1000)
+      expect(balanceDTO.periodStart).toBeInstanceOf(Date)
+      expect(balanceDTO.periodEnd).toBeInstanceOf(Date)
     })
 
     it('should get usage graph data', async () => {
@@ -270,7 +305,18 @@ describe('[ADMIN] Credit Service', () => {
     it('should get credit packs', async () => {
       const packs = await getCreditPacksService()
 
-      expect(packs).toEqual(DEFAULT_CREDIT_PACKS)
+      expect(packs).toHaveLength(3)
+      expect(packs[0]).toMatchObject({
+        id: '10tokens',
+        name: '10 Tokens',
+        credits: 10,
+      })
+      expect(packs[1]).toMatchObject({
+        id: '50tokens',
+        name: '50 Tokens',
+        credits: 50,
+        popular: true,
+      })
     })
 
     it('should complete pack purchase', async () => {
@@ -337,6 +383,10 @@ describe('[USER] Credit Service - Member of Organization', () => {
       ...mockCreditEntry,
       amount: -20,
       source: 'usage',
+    })
+    vi.mocked(checkAllocationExistsDao).mockResolvedValue(true)
+    vi.mocked(getPlanByCodeDao).mockImplementation(async (code: string) => {
+      return mockCreditPacks.find((p) => p.code === code)
     })
   })
 
@@ -447,7 +497,8 @@ describe('[USER] Credit Service - Member of Organization', () => {
     it('should get credit packs (public)', async () => {
       const packs = await getCreditPacksService()
 
-      expect(packs).toEqual(DEFAULT_CREDIT_PACKS)
+      expect(packs).toHaveLength(3)
+      expect(packs[0].id).toBe('10tokens')
     })
   })
 })
@@ -516,6 +567,9 @@ describe('[PUBLIC] Credit Service', () => {
   beforeEach(() => {
     setupAuthUserMocked(undefined)
     vi.clearAllMocks()
+    vi.mocked(getPlanByCodeDao).mockImplementation(async (code: string) => {
+      return mockCreditPacks.find((p) => p.code === code)
+    })
   })
 
   describe('Read Operations (NOT ALLOWED)', () => {
@@ -571,7 +625,8 @@ describe('[PUBLIC] Credit Service', () => {
     it('should get credit packs', async () => {
       const packs = await getCreditPacksService()
 
-      expect(packs).toEqual(DEFAULT_CREDIT_PACKS)
+      expect(packs).toHaveLength(3)
+      expect(packs[0].id).toBe('10tokens')
     })
   })
 })

@@ -13,7 +13,11 @@ import {
   CreditPackConfig,
 } from '@/services/types/domain/credit-types'
 
-import {getCreditBalanceAction, getRecentCreditActivityAction} from './actions'
+import {
+  ensureCreditsAllocatedAction,
+  getCreditBalanceAction,
+  getRecentCreditActivityAction,
+} from './actions'
 
 interface CreditPageContentProps {
   packs: CreditPackConfig[]
@@ -47,6 +51,10 @@ export function CreditPageContent({packs}: CreditPageContentProps) {
 
       try {
         setLoading(true)
+
+        // Lazy allocation (filet de sécurité pour plans annuels)
+        // Non-blocking, appelé avant de récupérer le solde
+        await ensureCreditsAllocatedAction(referenceId)
 
         const [balanceResult, activitiesResult] = await Promise.all([
           getCreditBalanceAction(referenceId),

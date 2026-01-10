@@ -83,30 +83,6 @@ export const getCreditBalanceService = async (
     await getActiveSubscriptionsOrFreePlanDao(organizationId)
   const activeSub = subscriptions[0]
 
-  // Lazy allocation (filet de sécurité pour plans annuels)
-  // Le mode principal reste event-based via webhook invoice.paid
-  // Ceci ne s'active que si aucune allocation n'existe pour la période courante
-  if (
-    activeSub?.id &&
-    activeSub?.plan &&
-    activeSub.plan !== 'free' &&
-    'stripeSubscriptionId' in activeSub &&
-    activeSub.stripeSubscriptionId
-  ) {
-    try {
-      await allocateCreditsOnSubscriptionService({
-        id: activeSub.id,
-        plan: activeSub.plan,
-        referenceId: organizationId,
-        stripeSubscriptionId: activeSub.stripeSubscriptionId,
-        stripeCustomerId:
-          'stripeCustomerId' in activeSub ? activeSub.stripeCustomerId : null,
-      })
-    } catch (error) {
-      logger.warn('Lazy allocation check failed (non-blocking):', error)
-    }
-  }
-
   logger.debug('📊 getCreditBalanceService - subscription data:', {
     organizationId,
     hasSub: !!activeSub,
@@ -162,6 +138,45 @@ export const getCreditBalanceService = async (
     periodStart,
     periodEnd,
     monthlyAllocation,
+  }
+}
+
+/**
+ * Lazy allocation de crédits - filet de sécurité pour plans annuels
+ * Appelé uniquement depuis la page credit (pas à chaque affichage de balance)
+ * Le mode principal reste event-based via webhook invoice.paid
+ */
+export const ensureCreditsAllocatedService = async (
+  organizationId: string
+): Promise<void> => {
+  const canRead = await canReadCredits(organizationId)
+  if (!canRead) {
+    return // Silently skip if no access
+  }
+
+  const subscriptions =
+    await getActiveSubscriptionsOrFreePlanDao(organizationId)
+  const activeSub = subscriptions[0]
+
+  if (
+    activeSub?.id &&
+    activeSub?.plan &&
+    activeSub.plan !== 'free' &&
+    'stripeSubscriptionId' in activeSub &&
+    activeSub.stripeSubscriptionId
+  ) {
+    try {
+      await allocateCreditsOnSubscriptionService({
+        id: activeSub.id,
+        plan: activeSub.plan,
+        referenceId: organizationId,
+        stripeSubscriptionId: activeSub.stripeSubscriptionId,
+        stripeCustomerId:
+          'stripeCustomerId' in activeSub ? activeSub.stripeCustomerId : null,
+      })
+    } catch (error) {
+      logger.warn('Lazy allocation check failed (non-blocking):', error)
+    }
   }
 }
 

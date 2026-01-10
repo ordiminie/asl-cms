@@ -11,6 +11,8 @@ export const getUsageGraphDataService =
   creditServiceInterceptor.getUsageGraphDataService
 export const getRecentActivityService =
   creditServiceInterceptor.getRecentActivityService
+export const ensureCreditsAllocatedService =
+  creditServiceInterceptor.ensureCreditsAllocatedService
 
 // ========================================
 // CONSUME OPERATIONS
