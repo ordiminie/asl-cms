@@ -35,6 +35,7 @@ import {
   GrantCreditsOptions,
   SubscriptionAllocationData,
 } from './types/domain/credit-types'
+import {PlanConst} from './types/domain/subscription-types'
 import {
   consumeCreditsServiceSchema,
   getBalanceServiceSchema,
@@ -142,9 +143,9 @@ export const getCreditBalanceService = async (
 }
 
 /**
- * Lazy allocation de crédits - filet de sécurité pour plans annuels
+ * Lazy allocation de crédits - filet de sécurité pour plans annuels ET plan FREE
  * Appelé uniquement depuis la page credit (pas à chaque affichage de balance)
- * Le mode principal reste event-based via webhook invoice.paid
+ * Le mode principal reste event-based via webhook invoice.paid pour les plans payants
  */
 export const ensureCreditsAllocatedService = async (
   organizationId: string
@@ -158,10 +159,23 @@ export const ensureCreditsAllocatedService = async (
     await getActiveSubscriptionsOrFreePlanDao(organizationId)
   const activeSub = subscriptions[0]
 
+  if (!activeSub?.plan) {
+    return
+  }
+
+  // Plan FREE: allocation avec période synthétique (premier du mois)
+  if (activeSub.plan === PlanConst.FREE) {
+    try {
+      await allocateFreePlanCreditsService(organizationId, activeSub)
+    } catch (error) {
+      logger.warn('Free plan allocation failed (non-blocking):', error)
+    }
+    return
+  }
+
+  // Plans payants: allocation via Stripe
   if (
-    activeSub?.id &&
-    activeSub?.plan &&
-    activeSub.plan !== 'free' &&
+    activeSub.id &&
     'stripeSubscriptionId' in activeSub &&
     activeSub.stripeSubscriptionId
   ) {
@@ -178,6 +192,42 @@ export const ensureCreditsAllocatedService = async (
       logger.warn('Lazy allocation check failed (non-blocking):', error)
     }
   }
+}
+
+/**
+ * Alloue les crédits du plan FREE avec période mensuelle synthétique
+ */
+const allocateFreePlanCreditsService = async (
+  organizationId: string,
+  freePlan: {limits: Record<string, number> | null}
+): Promise<void> => {
+  const monthlyCredits = freePlan.limits?.credits ?? 0
+
+  if (monthlyCredits === 0) {
+    logger.debug('Free plan has no credits configured - skip')
+    return
+  }
+
+  // Période synthétique: premier du mois courant au premier du mois suivant
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
+  logger.debug('📋 Checking free plan credit allocation', {
+    organizationId,
+    monthlyCredits,
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+  })
+
+  // Utilise la même fonction d'allocation avec idempotence
+  await allocateMonthlyCreditsTxnDao({
+    organizationId,
+    monthlyCredits,
+    periodStart,
+    periodEnd,
+    sourceId: 'free-plan',
+  })
 }
 
 /**
