@@ -14,6 +14,10 @@ const STRIPE_PRICE_IDS = {
   ENTREPRISE_MONTHLY: 'price_1SnvcGEHimv7LwBYGVsTWzYx',
   ENTREPRISE_YEARLY: 'price_1SnvclEHimv7LwBYHHa8wpTd',
   LIFETIME: 'price_1Snvh3EHimv7LwBYb8ph8vrH',
+  // Credit Packs (one-time payments)
+  CREDIT_PACK_10: 'price_1SnxbyEHimv7LwBYznUE0U3p',
+  CREDIT_PACK_50: 'price_1SnxJQEHimv7LwBY9mndKqmY',
+  CREDIT_PACK_150: 'price_1Snxd6EHimv7LwBYS3dX77xT',
 } as const
 
 const seed = async () => {
@@ -62,7 +66,7 @@ const seed = async () => {
         NULL,
         'Free',
         'Idéal pour débuter',
-        '{"projects": 1, "storage": 1, "organizationMembers": 2, "credits": 50}',
+        '{"projects": 1, "storage": 1, "organizationMembers": 2, "credits": 5}',
         NULL,
         '["1 utilisateur", "1 projet", "1 GB stockage", "50 crédits/mois", "Support communautaire"]',
         0,
@@ -128,6 +132,63 @@ const seed = async () => {
         false,
         'active',
         4,
+        NOW(),
+        NOW()
+      ),
+      -- Credit Pack 10 tokens
+      (
+        '10tokens',
+        '${STRIPE_PRICE_IDS.CREDIT_PACK_10}',
+        NULL,
+        '10 crédits',
+        'Pack de 10 crédits',
+        '{"credits": 10}',
+        NULL,
+        '["10 crédits", "Pas d''expiration", "Usage immédiat"]',
+        2.99,
+        NULL,
+        'USD',
+        false,
+        'active',
+        10,
+        NOW(),
+        NOW()
+      ),
+      -- Credit Pack 50 tokens
+      (
+        '50tokens',
+        '${STRIPE_PRICE_IDS.CREDIT_PACK_50}',
+        NULL,
+        '50 crédits',
+        'Pack de 50 crédits - Populaire',
+        '{"credits": 50}',
+        NULL,
+        '["50 crédits", "Pas d''expiration", "Usage immédiat", "Économisez 13%"]',
+        12.99,
+        NULL,
+        'USD',
+        false,
+        'active',
+        11,
+        NOW(),
+        NOW()
+      ),
+      -- Credit Pack 150 tokens
+      (
+        '150tokens',
+        '${STRIPE_PRICE_IDS.CREDIT_PACK_150}',
+        NULL,
+        '150 crédits',
+        'Pack de 150 crédits - Meilleure valeur',
+        '{"credits": 150}',
+        NULL,
+        '["150 crédits", "Pas d''expiration", "Usage immédiat", "Économisez 22%"]',
+        34.99,
+        NULL,
+        'USD',
+        false,
+        'active',
+        12,
         NOW(),
         NOW()
       )

@@ -18,7 +18,6 @@ import {
   updateSubscriptionForWebhookService,
 } from '@/services/facades/subscription-service-facade'
 import {createUserFromStripeService} from '@/services/facades/user-service-facade'
-import {DEFAULT_CREDIT_PACKS} from '@/services/types/domain/credit-types'
 import {SubscriptionPlan} from '@/services/types/domain/subscription-types'
 
 import {stripeClient} from './stripe-client'
@@ -39,13 +38,7 @@ export async function onStripeEvent(event: Stripe.Event) {
           '🔧 Traitement customer.subscription.created subscription.id',
           subscription.id
         )
-
-        // Allouer les crédits initiaux pour la nouvelle subscription
-        try {
-          await handleSubscriptionCreditAllocation(subscription)
-        } catch (error) {
-          logger.error('❌ Erreur allocation crédits initiaux:', error)
-        }
+        // Note: L'allocation des crédits est gérée par Better Auth onSubscriptionComplete
         break
       }
       case 'checkout.session.completed': {
@@ -77,15 +70,19 @@ export async function onStripeEvent(event: Stripe.Event) {
           await handleInstallmentCheckoutSessionCompleted(session)
         }
 
-        // CAS : Achat de pack de crédits
+        // CAS : Achat de pack de crédits (one-time payment, pas de subscription)
+        // EARLY RETURN pour éviter que Better Auth essaie de traiter comme subscription
         const isCreditPackCheckout = session.metadata?.type === 'credit_pack'
         if (isCreditPackCheckout) {
           logger.info('💳 Traitement achat pack de crédits')
           try {
             await handleCreditPackPurchase(session)
+            logger.info('✅ Credit pack traité - skip Better Auth processing')
           } catch (error) {
             logger.error('❌ Erreur achat pack de crédits:', error)
           }
+          // Early return: pas de subscription à traiter pour les credit packs
+          return
         }
 
         // En cas de besoin de traiter le workflow complet
@@ -99,27 +96,7 @@ export async function onStripeEvent(event: Stripe.Event) {
         //https://github.com/better-auth/better-auth/issues/2087
         //https://github.com/better-auth/better-auth/blob/main/packages/stripe/src/hooks.ts#L42-L43
         logger.info('🔄 Traitement customer.subscription.updated')
-        const subscription = event.data.object as Stripe.Subscription
-
-        // Allouer les crédits si c'est un renouvellement (changement de période)
-        // On vérifie si la période a changé via previous_attributes
-        const previousAttributes = (
-          event.data as unknown as {
-            previous_attributes?: {current_period_start?: number}
-          }
-        ).previous_attributes
-
-        if (previousAttributes?.current_period_start) {
-          logger.info(
-            '🔄 Renouvellement détecté - allocation des crédits mensuels'
-          )
-          try {
-            await handleSubscriptionCreditAllocation(subscription)
-          } catch (error) {
-            logger.error('❌ Erreur allocation crédits renouvellement:', error)
-          }
-        }
-
+        // Note: L'allocation des crédits est gérée par Better Auth onSubscriptionUpdate
         logger.info('✅ customer.subscription.updated traité')
         break
       }
@@ -798,88 +775,12 @@ async function createInstallmentSubscription(
 // ===================================
 // 🎯 CREDIT SYSTEM : FONCTIONS SPÉCIALISÉES
 // ===================================
-
-/**
- * 🎯 Allocation des crédits lors de la création ou renouvellement de subscription
- * Utilisé par customer.subscription.created et customer.subscription.updated
- */
-async function handleSubscriptionCreditAllocation(
-  stripeSubscription: Stripe.Subscription
-): Promise<void> {
-  logger.info('💳 Traitement allocation crédits depuis subscription...')
-
-  const subscriptionId = stripeSubscription.id
-
-  try {
-    // Récupérer le referenceId (organizationId en mode ORGANIZATION)
-    const referenceId = stripeSubscription.metadata?.referenceId
-    if (!referenceId) {
-      logger.warn('⚠️ Pas de referenceId dans subscription metadata - skip')
-      return
-    }
-
-    // Récupérer le plan pour obtenir les crédits mensuels
-    const planCode = stripeSubscription.metadata?.plan
-    if (!planCode) {
-      logger.warn('⚠️ Pas de plan dans subscription metadata - skip')
-      return
-    }
-
-    const plan = await getPlanByCodeService(planCode)
-    if (!plan) {
-      logger.warn(`⚠️ Plan ${planCode} non trouvé - skip`)
-      return
-    }
-
-    const planLimits = plan.limits as Record<string, number> | undefined
-    const monthlyCredits = planLimits?.credits ?? 0
-
-    if (monthlyCredits === 0) {
-      logger.info(`📋 Plan ${planCode} n'a pas de crédits mensuels - skip`)
-      return
-    }
-
-    // Récupérer les overrides de l'organisation
-    const organization = await getOrganizationByIdDao(referenceId)
-    const limitOverrides = organization?.limitOverrides as
-      | Record<string, number>
-      | undefined
-    const overrideCredits = limitOverrides?.credits ?? 0
-
-    // Calculer les dates de période (API version 2025-11-17)
-    const subData = stripeSubscription as unknown as {
-      current_period_start: number
-      current_period_end: number
-    }
-    const periodStart = new Date(subData.current_period_start * 1000)
-    const periodEnd = new Date(subData.current_period_end * 1000)
-
-    // Allouer les crédits
-    await allocateMonthlyCreditsService({
-      stripeSubscriptionId: subscriptionId,
-      organizationId: referenceId,
-      periodStart,
-      periodEnd,
-      monthlyCredits,
-      overrideCredits: overrideCredits > 0 ? overrideCredits : undefined,
-    })
-
-    logger.info('✅ Crédits alloués avec succès depuis subscription:', {
-      organizationId: referenceId,
-      monthlyCredits,
-      overrideCredits,
-      periodStart: periodStart.toISOString(),
-      periodEnd: periodEnd.toISOString(),
-    })
-  } catch (error) {
-    logger.error('❌ Erreur allocation crédits depuis subscription:', error)
-    throw error
-  }
-}
+// Note: L'allocation des crédits est maintenant gérée par Better Auth callbacks
+// (onSubscriptionComplete et onSubscriptionUpdate dans auth.ts)
 
 /**
  * 🎯 Allocation des crédits mensuels lors du paiement invoice
- * @deprecated Utiliser handleSubscriptionCreditAllocation avec les events subscription.*
+ * @deprecated Utiliser les callbacks Better Auth (onSubscriptionComplete/onSubscriptionUpdate)
  */
 async function handleInvoicePaidCreditAllocation(
   invoice: Stripe.Invoice
@@ -976,6 +877,9 @@ async function handleCreditPackPurchase(
   const metadata = session.metadata || {}
   const organizationId = metadata.organizationId
   const packId = metadata.packId
+  const creditsFromMetadata = metadata.credits
+    ? parseInt(metadata.credits)
+    : null
 
   if (!organizationId) {
     logger.error('❌ organizationId manquant dans metadata')
@@ -987,26 +891,30 @@ async function handleCreditPackPurchase(
     throw new Error('packId manquant pour achat pack')
   }
 
-  // Trouver le pack pour obtenir le nombre de crédits
-  const pack = DEFAULT_CREDIT_PACKS.find((p) => p.id === packId)
-  if (!pack) {
+  // Récupérer le plan depuis la DB
+  const plan = await getPlanByCodeService(packId)
+  if (!plan) {
     logger.error(`❌ Pack ${packId} non trouvé`)
     throw new Error(`Pack ${packId} non trouvé`)
   }
+
+  // Extraire les crédits du plan ou utiliser ceux de metadata
+  const planLimits = plan.limits as {credits?: number} | null
+  const credits = creditsFromMetadata ?? planLimits?.credits ?? 0
 
   // Compléter l'achat
   await completeCreditPackPurchaseService({
     organizationId,
     packId,
-    credits: pack.credits,
+    credits,
     stripeSessionId: session.id,
-    expiresInDays: pack.expiresInDays,
+    expiresInDays: undefined,
   })
 
   logger.info('✅ Pack de crédits acheté avec succès:', {
     organizationId,
     packId,
-    credits: pack.credits,
+    credits,
     sessionId: session.id,
   })
 }

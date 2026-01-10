@@ -19,8 +19,8 @@ import {RoleConst} from '@/services/types/domain/auth-types'
 import {
   CreditActivityItem,
   CreditBalanceDetails,
+  CreditPackConfig,
   CreditUsageDay,
-  DEFAULT_CREDIT_PACKS,
 } from '@/services/types/domain/credit-types'
 
 /**
@@ -107,8 +107,8 @@ export async function getRecentCreditActivityAction(
  */
 export async function getCreditUsageGraphAction(
   organizationId: string,
-  periodStart: Date,
-  periodEnd: Date
+  periodStart: Date | string,
+  periodEnd: Date | string
 ): Promise<ActionResponse<CreditUsageDay[]>> {
   try {
     const canRead = await canReadCredits(organizationId)
@@ -116,10 +116,16 @@ export async function getCreditUsageGraphAction(
       throw new AuthorizationError('Non autorisé à lire les crédits')
     }
 
+    // Convertir les strings en Date si nécessaire (sérialisation Server Actions)
+    const startDate =
+      typeof periodStart === 'string' ? new Date(periodStart) : periodStart
+    const endDate =
+      typeof periodEnd === 'string' ? new Date(periodEnd) : periodEnd
+
     const usageData = await getUsageGraphDataService(
       organizationId,
-      periodStart,
-      periodEnd
+      startDate,
+      endDate
     )
 
     return {
@@ -164,7 +170,9 @@ export async function purchaseCreditPackAction(
       throw new AuthorizationError('Utilisateur non connecté')
     }
 
-    const pack = DEFAULT_CREDIT_PACKS.find((p) => p.id === packId)
+    // Récupérer les packs depuis la DB
+    const packs = await getCreditPacksService()
+    const pack = packs.find((p) => p.id === packId)
     if (!pack) {
       throw new ValidationError('Pack non trouvé')
     }
@@ -230,7 +238,7 @@ export async function purchaseCreditPackAction(
  * Action pour récupérer les packs de crédits disponibles
  */
 export async function getCreditPacksAction(): Promise<
-  ActionResponse<typeof DEFAULT_CREDIT_PACKS>
+  ActionResponse<CreditPackConfig[]>
 > {
   try {
     const packs = await getCreditPacksService()

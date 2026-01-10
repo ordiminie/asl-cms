@@ -1,10 +1,7 @@
 import Stripe from 'stripe'
 
+import {getPlanByCodeDao} from '@/db/repositories/subscription-repository'
 import {logger} from '@/lib/logger'
-import {
-  CreditPackConfig,
-  DEFAULT_CREDIT_PACKS,
-} from '@/services/types/domain/credit-types'
 
 import {stripeClient} from './stripe-client'
 
@@ -37,9 +34,9 @@ export async function createCreditPackCheckoutSession(
   })
 
   try {
-    // Trouver le pack
-    const pack = DEFAULT_CREDIT_PACKS.find((p) => p.id === packId)
-    if (!pack) {
+    // Trouver le pack dans la DB
+    const plan = await getPlanByCodeDao(packId)
+    if (!plan) {
       logger.error(`[CREDIT-PACK-CHECKOUT] Pack ${packId} non trouvé`)
       return {
         success: false,
@@ -47,9 +44,9 @@ export async function createCreditPackCheckoutSession(
       }
     }
 
-    if (!pack.stripePriceId) {
+    if (!plan.priceId) {
       logger.error(
-        `[CREDIT-PACK-CHECKOUT] Pack ${packId} n'a pas de stripePriceId configuré`
+        `[CREDIT-PACK-CHECKOUT] Pack ${packId} n'a pas de priceId configuré`
       )
       return {
         success: false,
@@ -57,13 +54,17 @@ export async function createCreditPackCheckoutSession(
       }
     }
 
+    // Extraire les crédits du plan
+    const planLimits = plan.limits as {credits?: number} | null
+    const credits = planLimits?.credits ?? 0
+
     // Préparer les options de la session
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       mode: 'payment', // One-time payment pour les packs
       payment_method_types: ['card'],
       line_items: [
         {
-          price: pack.stripePriceId,
+          price: plan.priceId,
           quantity: 1,
         },
       ],
@@ -73,7 +74,7 @@ export async function createCreditPackCheckoutSession(
         type: 'credit_pack',
         organizationId,
         packId,
-        credits: String(pack.credits),
+        credits: String(credits),
         source: 'credit_pack_checkout',
       },
     }
@@ -91,7 +92,7 @@ export async function createCreditPackCheckoutSession(
     logger.info('[CREDIT-PACK-CHECKOUT] Session créée avec succès:', {
       sessionId: session.id,
       packId,
-      credits: pack.credits,
+      credits,
     })
 
     return {
@@ -109,16 +110,9 @@ export async function createCreditPackCheckoutSession(
 }
 
 /**
- * Récupère les packs de crédits disponibles avec leurs prix Stripe
- */
-export function getCreditPacks(): CreditPackConfig[] {
-  return DEFAULT_CREDIT_PACKS
-}
-
-/**
  * Vérifie si un pack est valide et configuré
  */
-export function isPackConfigured(packId: string): boolean {
-  const pack = DEFAULT_CREDIT_PACKS.find((p) => p.id === packId)
-  return Boolean(pack?.stripePriceId)
+export async function isPackConfigured(packId: string): Promise<boolean> {
+  const plan = await getPlanByCodeDao(packId)
+  return Boolean(plan?.priceId)
 }

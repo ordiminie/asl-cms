@@ -5,6 +5,7 @@ import {
   ArrowUpIcon,
   CoinsIcon,
   GiftIcon,
+  RefreshCwIcon,
   ShoppingCartIcon,
 } from 'lucide-react'
 
@@ -42,6 +43,11 @@ const sourceConfig: Record<
     icon: ShoppingCartIcon,
     label: 'Achat pack',
     color: 'text-blue-500',
+  },
+  refund: {
+    icon: RefreshCwIcon,
+    label: 'Remboursement',
+    color: 'text-orange-500',
   },
 }
 

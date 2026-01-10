@@ -15,10 +15,7 @@ function LoadingSkeleton() {
         <Skeleton className="h-[120px]" />
         <Skeleton className="h-[120px]" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-[280px]" />
-        <Skeleton className="h-[280px]" />
-      </div>
+      <Skeleton className="h-[350px]" />
       <Skeleton className="h-[300px]" />
     </div>
   )

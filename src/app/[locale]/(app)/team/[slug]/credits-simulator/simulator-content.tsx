@@ -86,7 +86,7 @@ export function SimulatorContent({
     }
 
     startTransition(async () => {
-      addLog('info', `Génération en cours: "${prompt.slice(0, 40)}..."`, -5)
+      addLog('info', `Génération en cours: "${prompt.slice(0, 40)}..."`)
 
       const result = await simulateAiGenerationAction(organizationId, prompt)
 
@@ -101,10 +101,10 @@ export function SimulatorContent({
       setBalance(data.newBalance)
 
       if (data.success) {
-        addLog('success', 'Génération réussie', -5)
+        addLog('success', 'Génération réussie', -1)
         toast.success('Génération terminée!')
       } else if (data.refunded) {
-        addLog('refund', `Erreur API - Remboursement effectué`, +5)
+        addLog('refund', `Erreur API - Remboursement effectué`, +1)
         toast.warning('Erreur du service IA - Crédits remboursés')
       } else {
         addLog('error', data.error || 'Erreur inconnue')
@@ -147,7 +147,7 @@ export function SimulatorContent({
         <div>
           <h1 className="text-2xl font-bold">Simulateur de Crédits IA</h1>
           <p className="text-muted-foreground">
-            Testez la consommation de crédits avec une fausse API IA (5 crédits
+            Testez la consommation de crédits avec une fausse API IA (1 crédit
             par génération)
           </p>
         </div>
@@ -186,7 +186,7 @@ export function SimulatorContent({
             />
             <div className="flex items-center justify-between">
               <p className="text-muted-foreground text-sm">
-                Coût: <strong>5 crédits</strong> par génération
+                Coût: <strong>1 crédit</strong> par génération
               </p>
               <Button
                 onClick={handleGenerate}
@@ -200,7 +200,7 @@ export function SimulatorContent({
                 ) : (
                   <>
                     <Zap className="mr-2 h-4 w-4" />
-                    Générer (-5 crédits)
+                    Générer (-1 crédit)
                   </>
                 )}
               </Button>
@@ -298,7 +298,7 @@ export function SimulatorContent({
                 Comment ça marche
               </h3>
               <p className="text-muted-foreground text-sm">
-                Chaque génération consomme 5 crédits. Les crédits sont déduits
+                Chaque génération consomme 1 crédit. Les crédits sont déduits
                 avant l&apos;appel API.
               </p>
             </div>

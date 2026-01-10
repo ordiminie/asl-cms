@@ -6,20 +6,14 @@ import {useOrganization} from '@/components/context/organization-provider'
 import {BuyCreditsSection} from '@/components/features/credits/buy-credits-section'
 import {CreditActivityTimeline} from '@/components/features/credits/credit-activity-timeline'
 import {CreditBalanceCard} from '@/components/features/credits/credit-balance-card'
-import {CreditUsageGraph} from '@/components/features/credits/credit-usage-graph'
 import {Skeleton} from '@/components/ui/skeleton'
 import {
   CreditActivityItem,
   CreditBalanceDetails,
   CreditPackConfig,
-  CreditUsageDay,
 } from '@/services/types/domain/credit-types'
 
-import {
-  getCreditBalanceAction,
-  getCreditUsageGraphAction,
-  getRecentCreditActivityAction,
-} from './actions'
+import {getCreditBalanceAction, getRecentCreditActivityAction} from './actions'
 
 interface CreditPageContentProps {
   packs: CreditPackConfig[]
@@ -33,10 +27,7 @@ function LoadingSkeleton() {
         <Skeleton className="h-[120px]" />
         <Skeleton className="h-[120px]" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Skeleton className="h-[280px]" />
-        <Skeleton className="h-[280px]" />
-      </div>
+      <Skeleton className="h-[350px]" />
     </div>
   )
 }
@@ -46,7 +37,6 @@ export function CreditPageContent({packs}: CreditPageContentProps) {
   const [loading, setLoading] = useState(true)
   const [balance, setBalance] = useState<CreditBalanceDetails | null>(null)
   const [activities, setActivities] = useState<CreditActivityItem[]>([])
-  const [usageData, setUsageData] = useState<CreditUsageDay[]>([])
 
   useEffect(() => {
     const loadData = async () => {
@@ -65,17 +55,6 @@ export function CreditPageContent({packs}: CreditPageContentProps) {
 
         if (balanceResult.success && balanceResult.data) {
           setBalance(balanceResult.data)
-
-          if (balanceResult.data.periodStart && balanceResult.data.periodEnd) {
-            const usageResult = await getCreditUsageGraphAction(
-              referenceId,
-              balanceResult.data.periodStart,
-              balanceResult.data.periodEnd
-            )
-            if (usageResult.success && usageResult.data) {
-              setUsageData(usageResult.data)
-            }
-          }
         }
 
         if (activitiesResult.success && activitiesResult.data) {
@@ -113,10 +92,7 @@ export function CreditPageContent({packs}: CreditPageContentProps) {
     <div className="space-y-6">
       <CreditBalanceCard balance={balance} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <CreditUsageGraph data={usageData} />
-        <CreditActivityTimeline activities={activities} />
-      </div>
+      <CreditActivityTimeline activities={activities} />
 
       <BuyCreditsSection packs={packs} organizationId={referenceId} />
     </div>

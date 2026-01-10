@@ -16,6 +16,7 @@ export const creditSourceEnum = pgEnum('credit_source', [
   'admin_grant',
   'usage',
   'pack',
+  'refund',
 ])
 
 export const creditLedger = pgTable(
@@ -29,7 +30,7 @@ export const creditLedger = pgTable(
       .references(() => organization.id, {onDelete: 'cascade'}),
     amount: decimal('amount', {precision: 10, scale: 2}).notNull(),
     source: creditSourceEnum('source').notNull(),
-    sourceId: uuid('source_id'),
+    sourceId: text('source_id'),
     reason: text('reason'),
     periodStart: timestamp('period_start'),
     periodEnd: timestamp('period_end'),

@@ -26,6 +26,7 @@ import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
 import {stripeClient} from '@/lib/stripe/stripe-client'
 import {onStripeEvent} from '@/lib/stripe/stripe-events'
+import {allocateCreditsOnSubscriptionService} from '@/services/facades/credit-service-facade'
 import {
   sendInternalEmailService,
   sendOrganizationInvitationService,
@@ -208,6 +209,17 @@ const options = {
         plans: () => getActivePlansForBetterAuthService(),
         authorizeReference: createAuthorizeReference(),
         onSubscriptionComplete: async ({subscription}) => {
+          // Allouer les crédits mensuels
+          if (subscription.referenceId && subscription.plan) {
+            await allocateCreditsOnSubscriptionService({
+              id: subscription.id,
+              plan: subscription.plan,
+              referenceId: subscription.referenceId,
+              stripeSubscriptionId: subscription.stripeSubscriptionId,
+              stripeCustomerId: subscription.stripeCustomerId,
+            })
+          }
+
           if (!subscription.stripeCustomerId) {
             return
           }
@@ -225,6 +237,18 @@ const options = {
           }
         },
         onSubscriptionUpdate: async ({subscription}) => {
+          // Allouer les crédits mensuels lors du renouvellement
+          // L'idempotence est gérée dans le DAO (pas de double allocation pour la même période)
+          if (subscription.referenceId && subscription.plan) {
+            await allocateCreditsOnSubscriptionService({
+              id: subscription.id,
+              plan: subscription.plan,
+              referenceId: subscription.referenceId,
+              stripeSubscriptionId: subscription.stripeSubscriptionId,
+              stripeCustomerId: subscription.stripeCustomerId,
+            })
+          }
+
           if (!subscription.stripeCustomerId) {
             return
           }

@@ -107,6 +107,7 @@ export default function PlansManagement({
               <TableHead>Code</TableHead>
               <TableHead className="hidden lg:table-cell">Prix</TableHead>
               <TableHead className="hidden lg:table-cell">Statut</TableHead>
+              <TableHead className="hidden lg:table-cell">Type</TableHead>
               <TableHead className="hidden md:table-cell">Créé</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -151,6 +152,17 @@ export default function PlansManagement({
                     }
                   >
                     {getPlanStatusDisplay(plan)}
+                  </Badge>
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  <Badge
+                    className={
+                      plan.isRecurring
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                        : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
+                    }
+                  >
+                    {plan.isRecurring ? 'Récurrent' : 'One-time'}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden text-sm md:table-cell">

@@ -7,9 +7,15 @@ import {
   getRecentActivityDao,
   getUsedThisPeriodDao,
   grantCreditsTxnDao,
+  refundCreditsTxnDao,
 } from '@/db/repositories/credit-ledger-repository'
-import {getActiveSubscriptionsOrFreePlanDao} from '@/db/repositories/subscription-repository'
+import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
+import {
+  getActiveSubscriptionsOrFreePlanDao,
+  getPlanByCodeDao,
+} from '@/db/repositories/subscription-repository'
 import {logger} from '@/lib/logger'
+import {stripeClient} from '@/lib/stripe/stripe-client'
 
 import {
   canConsumeCredits,
@@ -24,8 +30,8 @@ import {
   CreditActivityItem,
   CreditBalanceDetails,
   CreditEntry,
+  CreditPackConfig,
   CreditUsageDay,
-  DEFAULT_CREDIT_PACKS,
   GrantCreditsOptions,
   SubscriptionAllocationData,
 } from './types/domain/credit-types'
@@ -77,15 +83,63 @@ export const getCreditBalanceService = async (
     await getActiveSubscriptionsOrFreePlanDao(organizationId)
   const activeSub = subscriptions[0]
 
-  // Pour les utilisateurs FREE sans subscription, utiliser 30 jours glissants
-  let periodStart = activeSub?.periodStart ?? null
-  let periodEnd = activeSub?.periodEnd ?? null
-
-  if (!periodStart || !periodEnd) {
-    const now = new Date()
-    periodEnd = now
-    periodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  // Lazy allocation (filet de sécurité pour plans annuels)
+  // Le mode principal reste event-based via webhook invoice.paid
+  // Ceci ne s'active que si aucune allocation n'existe pour la période courante
+  if (
+    activeSub?.id &&
+    activeSub?.plan &&
+    activeSub.plan !== 'free' &&
+    'stripeSubscriptionId' in activeSub &&
+    activeSub.stripeSubscriptionId
+  ) {
+    try {
+      await allocateCreditsOnSubscriptionService({
+        id: activeSub.id,
+        plan: activeSub.plan,
+        referenceId: organizationId,
+        stripeSubscriptionId: activeSub.stripeSubscriptionId,
+        stripeCustomerId:
+          'stripeCustomerId' in activeSub ? activeSub.stripeCustomerId : null,
+      })
+    } catch (error) {
+      logger.warn('Lazy allocation check failed (non-blocking):', error)
+    }
   }
+
+  logger.debug('📊 getCreditBalanceService - subscription data:', {
+    organizationId,
+    hasSub: !!activeSub,
+    subPeriodStart: activeSub?.periodStart,
+    subPeriodEnd: activeSub?.periodEnd,
+    plan: activeSub?.plan,
+  })
+
+  // Déterminer les dates de période
+  // Toujours utiliser "maintenant" comme fin pour avoir la dernière consommation à droite
+  const now = new Date()
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+  let periodStart: Date
+  const periodEnd: Date = now // Toujours finir à maintenant
+
+  if (activeSub?.periodStart) {
+    // Utiliser le plus ancien entre periodStart Stripe et 30 jours ago
+    periodStart =
+      activeSub.periodStart < thirtyDaysAgo
+        ? activeSub.periodStart
+        : thirtyDaysAgo
+  } else {
+    // Fallback: 30 jours glissants
+    periodStart = thirtyDaysAgo
+  }
+
+  logger.debug('📊 Period dates calculated:', {
+    subPeriodStart: activeSub?.periodStart?.toISOString(),
+    subPeriodEnd: activeSub?.periodEnd?.toISOString(),
+    effectivePeriodStart: periodStart.toISOString(),
+    effectivePeriodEnd: periodEnd.toISOString(),
+  })
 
   // Calculer le solde disponible
   const available = await getBalanceDao(organizationId)
@@ -144,7 +198,20 @@ export const getUsageGraphDataService = async (
     throw new AuthorizationError('Accès non autorisé aux crédits')
   }
 
-  return getDailyUsageDao(organizationId, periodStart, periodEnd)
+  logger.debug('📊 getUsageGraphDataService - querying:', {
+    organizationId,
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString(),
+  })
+
+  const data = await getDailyUsageDao(organizationId, periodStart, periodEnd)
+
+  logger.debug('📊 getUsageGraphDataService - result:', {
+    rowCount: data.length,
+    data,
+  })
+
+  return data
 }
 
 /**
@@ -234,7 +301,7 @@ export const refundCreditsService = async (
     reason,
   })
 
-  return grantCreditsTxnDao({
+  return refundCreditsTxnDao({
     organizationId,
     amount,
     reason: `Refund: ${reason}`,
@@ -316,12 +383,34 @@ export const grantCreditsService = async (
 // PACK PURCHASE OPERATIONS
 // ========================================
 
+// Codes des packs de crédits dans la DB
+const CREDIT_PACK_CODES = ['10tokens', '50tokens', '150tokens'] as const
+
 /**
- * Récupère les packs de crédits disponibles
+ * Récupère les packs de crédits disponibles depuis la DB
  */
-export const getCreditPacksService = async () => {
-  // Les packs sont disponibles publiquement
-  return DEFAULT_CREDIT_PACKS
+export const getCreditPacksService = async (): Promise<CreditPackConfig[]> => {
+  const packs = await Promise.all(
+    CREDIT_PACK_CODES.map((code) => getPlanByCodeDao(code))
+  )
+
+  return packs
+    .filter((plan) => plan !== undefined)
+    .map((plan) => {
+      const limits = plan.limits as {credits?: number} | null
+      const credits = limits?.credits ?? 0
+      const priceInCents = Math.round(Number(plan.price) * 100)
+
+      return {
+        id: plan.code,
+        name: plan.planName,
+        credits,
+        price: priceInCents,
+        pricePerCredit: credits > 0 ? Math.round(priceInCents / credits) : 0,
+        stripePriceId: plan.priceId,
+        popular: plan.code === '50tokens',
+      }
+    })
 }
 
 /**
@@ -342,19 +431,19 @@ export const purchaseCreditPackService = async (
     throw new AuthorizationError('Accès non autorisé pour acheter des packs')
   }
 
-  const pack = DEFAULT_CREDIT_PACKS.find((p) => p.id === packId)
-  if (!pack) {
+  // Récupérer le pack depuis la DB
+  const plan = await getPlanByCodeDao(packId)
+  if (!plan) {
     throw new ValidationError('Pack non trouvé')
   }
 
-  if (!pack.stripePriceId) {
+  if (!plan.priceId) {
     throw new ValidationError("Ce pack n'est pas encore configuré dans Stripe")
   }
 
-  // TODO: Intégrer avec credit-pack-checkout.ts pour créer la session Stripe
-  // Pour le moment, on retourne une erreur indiquant que ce n'est pas encore implémenté
+  // TODO: Intégrer avec Better Auth pour créer la session Stripe
   throw new Error(
-    'Credit pack purchase not yet implemented - configure Stripe price IDs'
+    'Credit pack purchase not yet implemented - use Better Auth checkout'
   )
 }
 
@@ -394,4 +483,117 @@ export const completeCreditPackPurchaseService = async (params: {
  */
 export const canViewAdminCreditsStatsService = async (): Promise<boolean> => {
   return canReadAllCreditsStats()
+}
+
+// ========================================
+// SUBSCRIPTION CREDIT ALLOCATION (Better Auth callbacks)
+// ========================================
+
+/**
+ * Alloue les crédits lors de la création ou renouvellement d'une subscription
+ * Appelé depuis les callbacks Better Auth (onSubscriptionComplete, onSubscriptionUpdate)
+ */
+export const allocateCreditsOnSubscriptionService = async (subscription: {
+  id: string
+  plan: string
+  referenceId: string
+  stripeSubscriptionId?: string | null
+  stripeCustomerId?: string | null
+}): Promise<void> => {
+  logger.info('💳 Allocation crédits depuis Better Auth callback...', {
+    subscriptionId: subscription.id,
+    plan: subscription.plan,
+    referenceId: subscription.referenceId,
+  })
+
+  try {
+    // Récupérer le plan pour obtenir les crédits mensuels
+    const plan = await getPlanByCodeDao(subscription.plan)
+    if (!plan) {
+      logger.warn(`⚠️ Plan ${subscription.plan} non trouvé - skip`)
+      return
+    }
+
+    const planLimits = plan.limits as Record<string, number> | undefined
+    const monthlyCredits = planLimits?.credits ?? 0
+
+    if (monthlyCredits === 0) {
+      logger.info(
+        `📋 Plan ${subscription.plan} n'a pas de crédits mensuels - skip`
+      )
+      return
+    }
+
+    // Récupérer les dates de période depuis Stripe
+    let periodStart: Date
+    let periodEnd: Date
+
+    if (subscription.stripeSubscriptionId) {
+      const stripeSubscription = await stripeClient.subscriptions.retrieve(
+        subscription.stripeSubscriptionId
+      )
+
+      // Stripe API 2025-11-17 : les dates peuvent être dans items.data ou à la racine
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawSub = stripeSubscription as any
+      const periodStartTimestamp =
+        rawSub.current_period_start ||
+        rawSub.items?.data?.[0]?.current_period_start
+      const periodEndTimestamp =
+        rawSub.current_period_end || rawSub.items?.data?.[0]?.current_period_end
+
+      logger.debug('📅 Stripe subscription period data:', {
+        current_period_start: periodStartTimestamp,
+        current_period_end: periodEndTimestamp,
+        rawKeys: Object.keys(rawSub),
+      })
+
+      if (periodStartTimestamp && periodEndTimestamp) {
+        periodStart = new Date(periodStartTimestamp * 1000)
+        periodEnd = new Date(periodEndTimestamp * 1000)
+      } else {
+        // Fallback si les dates ne sont pas trouvées
+        logger.warn(
+          '⚠️ Dates de période non trouvées dans Stripe, utilisation du fallback'
+        )
+        periodStart = new Date()
+        periodEnd = new Date()
+        periodEnd.setMonth(periodEnd.getMonth() + 1)
+      }
+    } else {
+      // Fallback si pas de subscription Stripe (cas rare)
+      periodStart = new Date()
+      periodEnd = new Date()
+      periodEnd.setMonth(periodEnd.getMonth() + 1)
+    }
+
+    // Récupérer les overrides de l'organisation
+    const organization = await getOrganizationByIdDao(subscription.referenceId)
+    const limitOverrides = organization?.limitOverrides as
+      | Record<string, number>
+      | undefined
+    const overrideCredits = limitOverrides?.credits ?? 0
+
+    // Allouer les crédits
+    // Note: sourceId doit être un UUID - utiliser l'ID Better Auth, pas l'ID Stripe
+    await allocateMonthlyCreditsTxnDao({
+      organizationId: subscription.referenceId,
+      monthlyCredits,
+      overrideCredits: overrideCredits > 0 ? overrideCredits : undefined,
+      periodStart,
+      periodEnd,
+      sourceId: subscription.id, // UUID de la subscription Better Auth
+    })
+
+    logger.info('✅ Crédits alloués avec succès depuis Better Auth:', {
+      organizationId: subscription.referenceId,
+      monthlyCredits,
+      overrideCredits,
+      periodStart: periodStart.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+    })
+  } catch (error) {
+    logger.error('❌ Erreur allocation crédits depuis Better Auth:', error)
+    // Ne pas throw pour ne pas bloquer le callback Better Auth
+  }
 }

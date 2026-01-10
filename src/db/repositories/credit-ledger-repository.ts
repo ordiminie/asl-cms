@@ -41,21 +41,24 @@ export const getUsedThisPeriodDao = async (
   periodStart: Date,
   periodEnd: Date
 ): Promise<number> => {
+  // Calculate: consumed (negative usage) - refunded (positive refund)
   const result = await db
     .select({
-      used: sql<string>`COALESCE(SUM(ABS(${creditLedger.amount})), 0)`,
+      consumed: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} = 'usage' AND ${creditLedger.amount} < 0 THEN ABS(${creditLedger.amount}) ELSE 0 END), 0)`,
+      refunded: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} = 'refund' THEN ${creditLedger.amount} ELSE 0 END), 0)`,
     })
     .from(creditLedger)
     .where(
       and(
         eq(creditLedger.organizationId, organizationId),
-        sql`${creditLedger.amount} < 0`,
         sql`${creditLedger.createdAt} >= ${periodStart}`,
         sql`${creditLedger.createdAt} <= ${periodEnd}`
       )
     )
 
-  return Number(result[0]?.used ?? 0)
+  const consumed = Number(result[0]?.consumed ?? 0)
+  const refunded = Number(result[0]?.refunded ?? 0)
+  return Math.max(0, consumed - refunded)
 }
 
 // ========================================
@@ -119,16 +122,18 @@ export const getDailyUsageDao = async (
   periodStart: Date,
   periodEnd: Date
 ): Promise<CreditUsageDay[]> => {
+  // Calculate net usage per day: consumed - refunded
   const result = await db
     .select({
       day: sql<string>`TO_CHAR(${creditLedger.createdAt}, 'YYYY-MM-DD')`,
-      creditsUsed: sql<string>`COALESCE(SUM(ABS(${creditLedger.amount})), 0)`,
+      consumed: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} = 'usage' AND ${creditLedger.amount} < 0 THEN ABS(${creditLedger.amount}) ELSE 0 END), 0)`,
+      refunded: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} = 'refund' THEN ${creditLedger.amount} ELSE 0 END), 0)`,
     })
     .from(creditLedger)
     .where(
       and(
         eq(creditLedger.organizationId, organizationId),
-        sql`${creditLedger.amount} < 0`,
+        sql`(${creditLedger.source} = 'usage' OR ${creditLedger.source} = 'refund')`,
         sql`${creditLedger.createdAt} >= ${periodStart}`,
         sql`${creditLedger.createdAt} <= ${periodEnd}`
       )
@@ -138,7 +143,7 @@ export const getDailyUsageDao = async (
 
   return result.map((row) => ({
     day: row.day,
-    creditsUsed: Number(row.creditsUsed),
+    creditsUsed: Math.max(0, Number(row.consumed) - Number(row.refunded)),
   }))
 }
 
@@ -229,6 +234,24 @@ export const allocateMonthlyCreditsTxnDao = async (params: {
   return await db.transaction(async (tx) => {
     const entries: CreditLedgerModel[] = []
 
+    // Vérifier si une allocation existe déjà pour cette période (idempotence)
+    const existingAllocation = await tx
+      .select()
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.organizationId, params.organizationId),
+          eq(creditLedger.source, 'plan'),
+          eq(creditLedger.periodStart, params.periodStart)
+        )
+      )
+      .limit(1)
+
+    if (existingAllocation.length > 0) {
+      // Allocation déjà effectuée pour cette période
+      return existingAllocation
+    }
+
     // Allocate plan credits
     if (params.monthlyCredits > 0) {
       const [planEntry] = await tx
@@ -303,6 +326,24 @@ export const addPackCreditsTxnDao = async (params: {
       sourceId: params.sourceId,
       reason: `Credit pack purchase (${params.amount} credits)`,
       expiresAt: params.expiresAt ?? undefined,
+    })
+    .returning()
+
+  return entry
+}
+
+export const refundCreditsTxnDao = async (params: {
+  organizationId: string
+  amount: number
+  reason: string
+}): Promise<CreditEntry> => {
+  const [entry] = await db
+    .insert(creditLedger)
+    .values({
+      organizationId: params.organizationId,
+      amount: String(params.amount),
+      source: 'refund',
+      reason: params.reason,
     })
     .returning()
 

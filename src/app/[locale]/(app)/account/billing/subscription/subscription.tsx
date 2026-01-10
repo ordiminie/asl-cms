@@ -184,11 +184,17 @@ export default function SubscriptionPage({
       const {error} = await authClient.subscription.upgrade(upgradeParams)
 
       if (error) {
-        toast.error(error.statusText || 'Erreur lors de la mise à jour', {
-          description: !isOwner
-            ? "Vous n'etes pas proprietaire de l'organisation"
-            : '',
-        })
+        console.error('Erreur upgrade détails:', error)
+        toast.error(
+          error.message || error.statusText || 'Erreur lors de la mise à jour',
+          {
+            description: !isOwner
+              ? "Vous n'êtes pas propriétaire de l'organisation"
+              : error.message
+                ? ''
+                : JSON.stringify(error),
+          }
+        )
       } else {
         toast.success('Redirection vers le paiement...')
       }

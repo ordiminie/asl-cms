@@ -45,3 +45,9 @@ export const completeCreditPackPurchaseService =
 // ========================================
 export const canViewAdminCreditsStatsService =
   creditServiceInterceptor.canViewAdminCreditsStatsService
+
+// ========================================
+// SUBSCRIPTION CREDIT ALLOCATION (Better Auth callbacks)
+// ========================================
+export const allocateCreditsOnSubscriptionService =
+  creditServiceInterceptor.allocateCreditsOnSubscriptionService

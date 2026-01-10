@@ -21,6 +21,7 @@ export const creditSourceSchema = z.enum([
   'admin_grant',
   'usage',
   'pack',
+  'refund',
 ]) satisfies z.Schema<CreditSource>
 
 // Create credit entry schema
@@ -69,11 +70,16 @@ export const getBalanceServiceSchema = z.object({
   organizationId: organizationIdSchema,
 })
 
+// Date schema that accepts both Date objects and ISO date strings
+const dateOrStringSchema = z
+  .union([z.date(), z.string()])
+  .transform((val) => (typeof val === 'string' ? new Date(val) : val))
+
 // Get usage graph schema
 export const getUsageGraphServiceSchema = z.object({
   organizationId: organizationIdSchema,
-  periodStart: z.date(),
-  periodEnd: z.date(),
+  periodStart: dateOrStringSchema,
+  periodEnd: dateOrStringSchema,
 })
 
 // Get recent activity schema

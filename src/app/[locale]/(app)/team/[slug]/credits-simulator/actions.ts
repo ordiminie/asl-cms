@@ -11,7 +11,7 @@ import {
 import {ActionResponse} from '@/services/types/common-type'
 import {RoleConst} from '@/services/types/domain/auth-types'
 
-const AI_GENERATION_COST = 5
+const AI_GENERATION_COST = 1
 
 export interface SimulatorResult {
   success: boolean
