@@ -50,6 +50,10 @@ const data = {
           title: 'Blog',
           url: '/admin/blog',
         },
+        {
+          title: 'Crédits',
+          url: '/admin/credits',
+        },
       ],
     },
 

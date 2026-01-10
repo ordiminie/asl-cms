@@ -1,6 +1,7 @@
 CREATE TYPE "public"."organization_role" AS ENUM('admin', 'member', 'owner');--> statement-breakpoint
 CREATE TYPE "public"."role_type" AS ENUM('public', 'user', 'redactor', 'moderator', 'admin', 'super_admin');--> statement-breakpoint
 CREATE TYPE "public"."user_visibility" AS ENUM('public', 'private');--> statement-breakpoint
+CREATE TYPE "public"."credit_source" AS ENUM('plan', 'admin_grant', 'usage', 'pack');--> statement-breakpoint
 CREATE TYPE "public"."post_status" AS ENUM('draft', 'published', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."task_status" AS ENUM('todo', 'in_progress', 'done');--> statement-breakpoint
 CREATE TYPE "public"."plan_status" AS ENUM('active', 'inactive', 'deprecated');--> statement-breakpoint
@@ -55,6 +56,7 @@ CREATE TABLE "invitation" (
 	"email" text NOT NULL,
 	"role" text,
 	"status" text DEFAULT 'pending' NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
 	"expires_at" timestamp NOT NULL,
 	"inviter_id" uuid NOT NULL
 );
@@ -77,6 +79,7 @@ CREATE TABLE "organization" (
 	"updated_at" timestamp DEFAULT now(),
 	"logo" text,
 	"metadata" text,
+	"limit_overrides" json,
 	CONSTRAINT "organization_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
@@ -126,6 +129,19 @@ CREATE TABLE "verification" (
 	"expires_at" timestamp NOT NULL,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE "credit_ledger" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"amount" numeric(10, 2) NOT NULL,
+	"source" "credit_source" NOT NULL,
+	"source_id" uuid,
+	"reason" text,
+	"period_start" timestamp,
+	"period_end" timestamp,
+	"expires_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "notifications" (
@@ -279,6 +295,7 @@ ALTER TABLE "member" ADD CONSTRAINT "member_organization_id_organization_id_fk" 
 ALTER TABLE "member" ADD CONSTRAINT "member_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "two_factor" ADD CONSTRAINT "two_factor_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "credit_ledger" ADD CONSTRAINT "credit_ledger_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "post_hashtags" ADD CONSTRAINT "post_hashtags_postid_posts_id_fk" FOREIGN KEY ("postid") REFERENCES "public"."posts"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "post_hashtags" ADD CONSTRAINT "post_hashtags_hashtagid_hashtags_id_fk" FOREIGN KEY ("hashtagid") REFERENCES "public"."hashtags"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -292,4 +309,7 @@ ALTER TABLE "task" ADD CONSTRAINT "task_organization_id_organization_id_fk" FORE
 ALTER TABLE "task" ADD CONSTRAINT "task_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "task" ADD CONSTRAINT "task_assigned_to_user_id_fk" FOREIGN KEY ("assigned_to") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "credit_ledger_organization_id_idx" ON "credit_ledger" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "credit_ledger_created_at_idx" ON "credit_ledger" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "credit_ledger_expires_at_idx" ON "credit_ledger" USING btree ("expires_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "post_language_unique" ON "posts_translation" USING btree ("postid","language");

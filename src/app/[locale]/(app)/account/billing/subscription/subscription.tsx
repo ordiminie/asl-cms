@@ -2,6 +2,7 @@
 
 import {Subscription} from '@better-auth/stripe'
 import {Calendar, CheckCircle} from 'lucide-react'
+import Link from 'next/link'
 import React, {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -28,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {Switch} from '@/components/ui/switch'
+import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs'
 import {authClient} from '@/lib/better-auth/auth-client'
 import {AvailablePlan} from '@/lib/stripe/stripe-types'
 
@@ -165,8 +167,8 @@ export default function SubscriptionPage({
         referenceId?: string
       } = {
         plan: planId,
-        successUrl: '/account/subscription',
-        cancelUrl: '/account/subscription',
+        successUrl: '/account/billing/subscription',
+        cancelUrl: '/account/billing/subscription',
         annual,
         seats,
       }
@@ -206,7 +208,7 @@ export default function SubscriptionPage({
     try {
       setActionLoading('cancel')
       const {data, error} = await authClient.subscription.cancel({
-        returnUrl: '/account/subscription',
+        returnUrl: '/account/billing/subscription',
         referenceId,
       })
 
@@ -449,6 +451,19 @@ export default function SubscriptionPage({
 
   return (
     <div className="container mx-auto max-w-6xl space-y-8 p-6">
+      {/* Tabs Navigation */}
+      <Tabs defaultValue="plans" className="w-fit">
+        <TabsList>
+          <TabsTrigger value="credits" asChild>
+            <Link href="/account/billing/credit">Credits</Link>
+          </TabsTrigger>
+          <TabsTrigger value="usage" asChild>
+            <Link href="/account/billing/usage">Usage</Link>
+          </TabsTrigger>
+          <TabsTrigger value="plans">Plans</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Header */}
       <div className="flex flex-col space-y-2 text-center">
         <h1 className="text-3xl font-bold">Choisissez votre plan</h1>

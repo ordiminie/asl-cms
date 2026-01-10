@@ -24,7 +24,8 @@
     "backToLogin": "Back to login",
     "errors": {
       "banned": "Your account has been suspended.",
-      "unknown": "An authentication error occurred."
+      "unknown": "An authentication error occurred.",
+      "unable_to_create_user": "Unable to create your account. Please try again."
     }
   },
   "HomePage": {
@@ -149,7 +150,8 @@
       "users": "Users",
       "organizations": "Organizations",
       "plans": "Plans",
-      "blog": "Blog"
+      "blog": "Blog",
+      "credits": "Credits"
     },
     "account": {
       "title": "Account",
@@ -164,6 +166,13 @@
       "title": "Projects",
       "dashboard": "Dashboard",
       "projects": "Projects"
+    },
+    "billing": {
+      "title": "Billing",
+      "subscription": "Subscription",
+      "credits": "Credits",
+      "usage": "Usage",
+      "creditsSimulator": "AI Simulator"
     },
     "models": {
       "title": "Models",
@@ -1311,5 +1320,78 @@
     },
     "support": "If you have any questions or need help, our support team is here to assist you. Just reply to this email!",
     "footer": "You are receiving this email because you signed up on our platform with the address {email}."
+  },
+  "Credits": {
+    "page": {
+      "title": "Credits",
+      "description": "Manage your credits and track your usage"
+    },
+    "balance": {
+      "title": "Credit Balance",
+      "available": "Available Credits",
+      "usedThisPeriod": "Used This Month",
+      "monthlyAllocation": "Monthly Allocation",
+      "periodInfo": "Period from {start} to {end}",
+      "noSubscription": "No active subscription"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "noActivity": "No recent activity",
+      "justNow": "Just now",
+      "minutesAgo": "{count} min ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count} day(s) ago"
+    },
+    "graph": {
+      "title": "Daily Usage",
+      "noData": "No usage data for this period",
+      "credits": "{count} credits"
+    },
+    "sources": {
+      "plan": "Monthly Allocation",
+      "admin_grant": "Admin Bonus",
+      "usage": "Usage",
+      "pack": "Pack Purchase"
+    },
+    "packs": {
+      "title": "Buy Credits",
+      "description": "Top up your credits with our packs",
+      "credits": "{count} credits",
+      "popular": "Popular",
+      "bestValue": "Best Value",
+      "buy": "Buy",
+      "neverExpire": "Credits never expire",
+      "expiresIn": "Expires in {days} days"
+    },
+    "admin": {
+      "title": "Credit Management",
+      "description": "Grant credits to organizations",
+      "grant": {
+        "title": "Grant Credits",
+        "description": "Grant bonus credits to an organization",
+        "organizationId": "Organization ID",
+        "organizationIdPlaceholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "organizationIdDescription": "UUID of the organization to credit",
+        "amount": "Number of Credits",
+        "amountMax": "Maximum 10000 credits",
+        "reason": "Reason (optional)",
+        "reasonPlaceholder": "Welcome bonus, goodwill gesture...",
+        "expiration": "Expiration Date",
+        "expirationDescription": "Credits will expire after this date",
+        "submit": "Grant Credits",
+        "submitting": "Granting..."
+      }
+    },
+    "errors": {
+      "insufficientCredits": "Insufficient credits",
+      "packNotFound": "Pack not found",
+      "packNotConfigured": "This pack is not yet configured",
+      "purchaseFailed": "Error purchasing pack",
+      "unauthorized": "You are not authorized to perform this action"
+    },
+    "success": {
+      "creditsGranted": "Credits granted successfully",
+      "purchaseComplete": "Purchase completed successfully"
+    }
   }
 }

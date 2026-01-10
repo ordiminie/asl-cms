@@ -524,7 +524,7 @@ export const sendInternalEmailService = async ({
   title: string
   data: string
 }) => {
-  const t = await getTranslations('email.internal')
+  const t = await getTranslations('email.admin.internal')
   const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
   const toEmail = env.EMAIL_TO ?? env.EMAIL_FROM ?? 'onboarding@resend.dev'
 

@@ -94,14 +94,14 @@ export function NavUser({user}: {user?: User}) {
                 (isFree ? (
                   <DropdownMenuItem>
                     <Sparkles />
-                    <Link href="/account/subscription">
+                    <Link href="/account/billing/subscription">
                       {t('upgradeToPro')}
                     </Link>
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem>
                     <CreditCard />
-                    <Link href="/account/subscription">
+                    <Link href="/account/billing/subscription">
                       {t('subscription')}
                     </Link>
                   </DropdownMenuItem>
@@ -152,7 +152,9 @@ export function NavUser({user}: {user?: User}) {
               {isPageEnabled(PagesConst.SUBSCRIPTION) && (
                 <DropdownMenuItem>
                   <CreditCard />
-                  <Link href="/account/subscription">{t('billing')}</Link>
+                  <Link href="/account/billing/subscription">
+                    {t('billing')}
+                  </Link>
                 </DropdownMenuItem>
               )}
               {isPageEnabled(PagesConst.NOTIFICATIONS) && (

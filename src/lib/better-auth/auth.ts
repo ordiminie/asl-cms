@@ -324,9 +324,13 @@ function createDatabaseHooks() {
             title: 'Nouvel utilisateur enregistré',
             data: `Un nouvel utilisateur s'est inscrit:\n\nEmail: ${user.email}\nNom: ${user.name}\nID: ${user.id}\nDate: ${new Date().toLocaleString('fr-FR')}`,
           })
-          await subscribeToNewsletterService(user.email, [
-            NewsletterEmailTag.SubscriptionFree,
-          ])
+          try {
+            await subscribeToNewsletterService(user.email, [
+              NewsletterEmailTag.SubscriptionFree,
+            ])
+          } catch (error) {
+            console.error('Error subscribing to newsletter:', error)
+          }
         },
       },
     },

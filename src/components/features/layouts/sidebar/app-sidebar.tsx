@@ -8,6 +8,7 @@ import {
   PieChart,
   Settings2,
   SquareTerminal,
+  Wallet,
 } from 'lucide-react'
 import {useTranslations} from 'next-intl'
 import * as React from 'react'
@@ -85,14 +86,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   },
                 ]
               : []),
-            ...(isPageEnabled(PagesConst.SUBSCRIPTION)
-              ? [
-                  {
-                    title: t('account.subscriptions'),
-                    url: '/account/subscription',
-                  },
-                ]
-              : []),
             ...(isPageEnabled(PagesConst.ORGANIZATION)
               ? [
                   {
@@ -124,6 +117,33 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             {
               title: t('projects.projects'),
               url: '/team/{{orgSlug}}/projects',
+            },
+          ],
+        },
+        {
+          title: t('billing.title'),
+          url: '#',
+          icon: Wallet,
+          items: [
+            {
+              title: t('billing.credits'),
+              url: '/account/billing/credit',
+            },
+            {
+              title: t('billing.usage'),
+              url: '/account/billing/usage',
+            },
+            ...(isPageEnabled(PagesConst.SUBSCRIPTION)
+              ? [
+                  {
+                    title: t('billing.subscription'),
+                    url: '/account/billing/subscription',
+                  },
+                ]
+              : []),
+            {
+              title: t('billing.creditsSimulator'),
+              url: '/team/{{orgSlug}}/credits-simulator',
             },
           ],
         },

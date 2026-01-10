@@ -12,6 +12,7 @@ import type {
   SubscriptionPlanModel,
 } from '../models/subscription-model'
 import {subscription, subscriptionPlan} from '../models/subscription-model'
+import {getBalanceDao} from './credit-ledger-repository'
 import {getOrganizationByIdDao} from './organization-repository'
 
 export const createSubscriptionDao = async (values: SubscriptionAddModel) => {
@@ -499,11 +500,13 @@ export interface PlanLimits {
   projects: number | null
   storage: number | null
   users: number | null
+  credits: number | null
 }
 
 export interface AdminUsageStats {
   projects: number
   users: number
+  credits: number
   plan: string
   limits: PlanLimits
   periodStart: Date | null
@@ -588,11 +591,13 @@ export const getCurrentMembersUsageDao = async (
 export const getAdminUsageStatsDao = async (
   organizationId: string
 ): Promise<AdminUsageStats> => {
-  const [projectsCount, membersCount, organization] = await Promise.all([
-    getCurrentProjectsUsageDao(organizationId),
-    getCurrentMembersUsageDao(organizationId),
-    getOrganizationByIdDao(organizationId),
-  ])
+  const [projectsCount, membersCount, creditsBalance, organization] =
+    await Promise.all([
+      getCurrentProjectsUsageDao(organizationId),
+      getCurrentMembersUsageDao(organizationId),
+      getBalanceDao(organizationId),
+      getOrganizationByIdDao(organizationId),
+    ])
 
   const subscriptions =
     await getActiveSubscriptionsOrFreePlanDao(organizationId)
@@ -614,6 +619,7 @@ export const getAdminUsageStatsDao = async (
   return {
     projects: projectsCount,
     users: membersCount,
+    credits: creditsBalance,
     plan: activeSubscription?.plan || 'free',
     limits: {
       projects: getEffectiveLimit(
@@ -622,6 +628,7 @@ export const getAdminUsageStatsDao = async (
       ),
       storage: getEffectiveLimit(planLimits?.storage, limitOverrides?.storage),
       users: getEffectiveLimit(planLimits?.users, limitOverrides?.users),
+      credits: getEffectiveLimit(planLimits?.credits, limitOverrides?.credits),
     },
     periodStart: activeSubscription?.periodStart || null,
     periodEnd: activeSubscription?.periodEnd || null,

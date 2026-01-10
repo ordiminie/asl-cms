@@ -26,6 +26,7 @@ export type Subjects =
   | 'Post'
   | 'Category'
   | 'Hashtag'
+  | 'Credit'
   | 'all'
 
 // Constantes pour les actions et subjects
@@ -50,6 +51,7 @@ export const SubjectsConst = {
   POST: 'Post' as Subjects,
   CATEGORY: 'Category' as Subjects,
   HASHTAG: 'Hashtag' as Subjects,
+  CREDIT: 'Credit' as Subjects,
   ALL: 'all' as Subjects,
 } as const
 /**
@@ -113,6 +115,9 @@ export function buildAdminAbilities(builder: AppAbilityBuilder) {
   can(ActionsConst.MANAGE, SubjectsConst.POST)
   can(ActionsConst.MANAGE, SubjectsConst.CATEGORY)
   can(ActionsConst.MANAGE, SubjectsConst.HASHTAG)
+
+  // Peut gérer tous les crédits (grant, read, etc.)
+  can(ActionsConst.MANAGE, SubjectsConst.CREDIT)
 }
 
 /**
@@ -198,6 +203,9 @@ export function buildBaseUserAbilities(builder: AppAbilityBuilder, user: User) {
 
   // Ne peut pas supprimer d'autres utilisateurs
   cannot(ActionsConst.DELETE, SubjectsConst.USER)
+
+  // Crédits - permissions de base (lecture via organisation)
+  // Les permissions de consommation et achat sont gérées au niveau organisationnel
 }
 
 /**
@@ -236,6 +244,10 @@ export function buildOrganizationalAbilities(
       can(ActionsConst.MANAGE, SubjectsConst.FILE, {
         organizationId: orgContext.organizationId,
       })
+      // Peut gérer les crédits de l'organisation (lire, consommer, acheter des packs)
+      can(ActionsConst.MANAGE, SubjectsConst.CREDIT, {
+        organizationId: orgContext.organizationId,
+      })
       break
 
     case UserOrganizationRoleConst.ADMIN:
@@ -268,6 +280,10 @@ export function buildOrganizationalAbilities(
       can(ActionsConst.MANAGE, SubjectsConst.FILE, {
         organizationId: orgContext.organizationId,
       })
+      // Peut gérer les crédits de l'organisation (lire, consommer, acheter des packs)
+      can(ActionsConst.MANAGE, SubjectsConst.CREDIT, {
+        organizationId: orgContext.organizationId,
+      })
       break
 
     case UserOrganizationRoleConst.MEMBER:
@@ -298,6 +314,13 @@ export function buildOrganizationalAbilities(
       })
       // Peut lire les fichiers de l'organisation
       can(ActionsConst.READ, SubjectsConst.FILE, {
+        organizationId: orgContext.organizationId,
+      })
+      // Peut lire et consommer les crédits de l'organisation (pas d'achat)
+      can(ActionsConst.READ, SubjectsConst.CREDIT, {
+        organizationId: orgContext.organizationId,
+      })
+      can(ActionsConst.UPDATE, SubjectsConst.CREDIT, {
         organizationId: orgContext.organizationId,
       })
       break
