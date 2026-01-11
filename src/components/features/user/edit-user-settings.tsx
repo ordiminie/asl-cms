@@ -9,6 +9,13 @@ import {z} from 'zod'
 
 import {Button} from '@/components/ui/button'
 import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
   Form,
   FormControl,
   FormDescription,
@@ -94,222 +101,235 @@ export function EditUserSettingsForm({user}: {user: User}) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Apparence */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium">{t('appearance.title')}</h4>
-          <FormField
-            control={form.control}
-            name="theme"
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>{t('appearance.theme.label')}</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={t('appearance.theme.placeholder')}
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="light">
-                      {t('appearance.theme.light')}
-                    </SelectItem>
-                    <SelectItem value="dark">
-                      {t('appearance.theme.dark')}
-                    </SelectItem>
-                    <SelectItem value="system">
-                      {t('appearance.theme.system')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('appearance.title')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="theme"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>{t('appearance.theme.label')}</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={t('appearance.theme.placeholder')}
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="light">
+                        {t('appearance.theme.light')}
+                      </SelectItem>
+                      <SelectItem value="dark">
+                        {t('appearance.theme.dark')}
+                      </SelectItem>
+                      <SelectItem value="system">
+                        {t('appearance.theme.system')}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="language"
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>{t('appearance.language.label')}</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={t('appearance.language.placeholder')}
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="fr">
-                      {t('appearance.language.fr')}
-                    </SelectItem>
-                    <SelectItem value="en">
-                      {t('appearance.language.en')}
-                    </SelectItem>
-                    <SelectItem value="es">
-                      {t('appearance.language.es')}
-                    </SelectItem>
-                    <SelectItem value="de">
-                      {t('appearance.language.de')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+            <FormField
+              control={form.control}
+              name="language"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>{t('appearance.language.label')}</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={t('appearance.language.placeholder')}
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="fr">
+                        {t('appearance.language.fr')}
+                      </SelectItem>
+                      <SelectItem value="en">
+                        {t('appearance.language.en')}
+                      </SelectItem>
+                      <SelectItem value="es">
+                        {t('appearance.language.es')}
+                      </SelectItem>
+                      <SelectItem value="de">
+                        {t('appearance.language.de')}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
 
         {/* Notifications */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium">{t('notifications.title')}</h4>
-          <FormField
-            control={form.control}
-            name="notificationChannel"
-            render={({field}) => (
-              <FormItem>
-                <FormLabel>{t('notifications.channel.label')}</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('notifications.title')}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="notificationChannel"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>{t('notifications.channel.label')}</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={t('notifications.channel.placeholder')}
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="email">
+                        {t('notifications.channel.email')}
+                      </SelectItem>
+                      <SelectItem value="push">
+                        {t('notifications.channel.push')}
+                      </SelectItem>
+                      <SelectItem value="both">
+                        {t('notifications.channel.both')}
+                      </SelectItem>
+                      <SelectItem value="none">
+                        {t('notifications.channel.none')}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="enableEmailNotifications"
+              render={({field}) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      {t('notifications.emailNotifications.title')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t('notifications.emailNotifications.description')}
+                    </FormDescription>
+                  </div>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={t('notifications.channel.placeholder')}
-                      />
-                    </SelectTrigger>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="email">
-                      {t('notifications.channel.email')}
-                    </SelectItem>
-                    <SelectItem value="push">
-                      {t('notifications.channel.push')}
-                    </SelectItem>
-                    <SelectItem value="both">
-                      {t('notifications.channel.both')}
-                    </SelectItem>
-                    <SelectItem value="none">
-                      {t('notifications.channel.none')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="enableEmailNotifications"
-            render={({field}) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">
-                    {t('notifications.emailNotifications.title')}
-                  </FormLabel>
-                  <FormDescription>
-                    {t('notifications.emailNotifications.description')}
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+            <FormField
+              control={form.control}
+              name="enablePushNotifications"
+              render={({field}) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      {t('notifications.pushNotifications.title')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t('notifications.pushNotifications.description')}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-          <FormField
-            control={form.control}
-            name="enablePushNotifications"
-            render={({field}) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">
-                    {t('notifications.pushNotifications.title')}
-                  </FormLabel>
-                  <FormDescription>
-                    {t('notifications.pushNotifications.description')}
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="emailDigest"
-            render={({field}) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">
-                    {t('notifications.emailDigest.title')}
-                  </FormLabel>
-                  <FormDescription>
-                    {t('notifications.emailDigest.description')}
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        </div>
+            <FormField
+              control={form.control}
+              name="emailDigest"
+              render={({field}) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      {t('notifications.emailDigest.title')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t('notifications.emailDigest.description')}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
 
         {/* Marketing */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium">{t('marketing.title')}</h4>
-          <FormField
-            control={form.control}
-            name="marketingEmails"
-            render={({field}) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">
-                    {t('marketing.marketingEmails.title')}
-                  </FormLabel>
-                  <FormDescription>
-                    {t('marketing.marketingEmails.description')}
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? t('form.updating') : t('form.updateSettings')}
-        </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('marketing.title')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FormField
+              control={form.control}
+              name="marketingEmails"
+              render={({field}) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">
+                      {t('marketing.marketingEmails.title')}
+                    </FormLabel>
+                    <FormDescription>
+                      {t('marketing.marketingEmails.description')}
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? t('form.updating') : t('form.updateSettings')}
+            </Button>
+          </CardFooter>
+        </Card>
       </form>
     </Form>
   )

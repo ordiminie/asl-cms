@@ -207,6 +207,7 @@
   },
   "AccountPage": {
     "title": "My Account",
+    "description": "Manage your profile and security settings",
     "profile": {
       "title": "Profile",
       "description": "Manage your personal information"
@@ -456,6 +457,7 @@
   },
   "AccountSettingsPage": {
     "title": "Settings",
+    "description": "Configure your application preferences",
     "settings": {
       "title": "Settings",
       "description": "Configure your application preferences"

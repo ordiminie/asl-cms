@@ -32,10 +32,11 @@ Rules for pages, components, forms, and Server Actions.
 
 ### Pages and Layouts
 
-| Rule                  | Link                                                                           | Description                                                         | When to Consult                  |
-| --------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------- | -------------------------------- |
-| **Presentation**      | [rule-presentation.mdc](01-presentation/rule-presentation.mdc)                 | RSC vs Client Components, route organization, import patterns       | Creating a new page or component |
-| **Responsive Layout** | [rule-layout-page-breaking.mdc](01-presentation/rule-layout-page-breaking.mdc) | Tailwind breakpoints, responsive tables, avoiding horizontal scroll | Responsive UI, tables, cards     |
+| Rule                  | Link                                                                           | Description                                                            | When to Consult                       |
+| --------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | ------------------------------------- |
+| **Presentation**      | [rule-presentation.mdc](01-presentation/rule-presentation.mdc)                 | RSC vs Client Components, route organization, import patterns          | Creating a new page or component      |
+| **UX Page Layout**    | [rules-ux-pagelayout.mdc](01-presentation/rules-ux-pagelayout.mdc)             | Page composition, visual hierarchy, Card sections, form multi-sections | Structuring page content and sections |
+| **Responsive Layout** | [rule-layout-page-breaking.mdc](01-presentation/rule-layout-page-breaking.mdc) | Tailwind breakpoints, responsive tables, avoiding horizontal scroll    | Responsive UI, tables, cards          |
 
 ### Forms
 
@@ -135,17 +136,17 @@ Rules for database and repositories.
 
 ### I want to create...
 
-| Task                    | Rules to Consult                                                          |
-| ----------------------- | ------------------------------------------------------------------------- |
-| A new page              | `rule-presentation`, `rule-safe-route`                                    |
-| A complete form         | `rule-form-front-and-back`, `rule-zod-client-server-internationalization` |
-| A Server Action         | `rule-safe-server-action`, `rule-server-actions-imports`                  |
-| A table with pagination | `rule-table-pagination`, `rule-table-ui-ux`                               |
-| A new business service  | `rule-service`, `rule-authorization-service`                              |
-| A new DB model          | `rule-persistence`                                                        |
-| An API Route            | `rule-api-routes`                                                         |
-| Translations            | `rule-translation`                                                        |
-| Service tests           | `rule-services-tests`, `rule-seed-usersroles-and-organization`            |
+| Task                    | Rules to Consult                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------ |
+| A new page              | `rule-presentation`, `rules-ux-pagelayout`, `rule-safe-route`                                    |
+| A complete form         | `rule-form-front-and-back`, `rules-ux-pagelayout`, `rule-zod-client-server-internationalization` |
+| A Server Action         | `rule-safe-server-action`, `rule-server-actions-imports`                                         |
+| A table with pagination | `rule-table-pagination`, `rule-table-ui-ux`                                                      |
+| A new business service  | `rule-service`, `rule-authorization-service`                                                     |
+| A new DB model          | `rule-persistence`                                                                               |
+| An API Route            | `rule-api-routes`                                                                                |
+| Translations            | `rule-translation`                                                                               |
+| Service tests           | `rule-services-tests`, `rule-seed-usersroles-and-organization`                                   |
 
 ### I have a problem with...
 

@@ -207,6 +207,7 @@
   },
   "AccountPage": {
     "title": "Mi Cuenta",
+    "description": "Gestiona tu perfil y configuración de seguridad",
     "profile": {
       "title": "Perfil",
       "description": "Gestiona tu información personal"
@@ -456,6 +457,7 @@
   },
   "AccountSettingsPage": {
     "title": "Configuración",
+    "description": "Configura tus preferencias de aplicación",
     "settings": {
       "title": "Configuración",
       "description": "Configura tus preferencias de aplicación"
