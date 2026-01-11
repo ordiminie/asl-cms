@@ -418,7 +418,7 @@ export default function SubscriptionPage({
 
   if (loading) {
     return (
-      <div className="container mx-auto space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex flex-col space-y-2">
           <h1 className="text-3xl font-bold">Abonnements</h1>
           <p className="text-muted-foreground">
@@ -456,7 +456,7 @@ export default function SubscriptionPage({
   //   : false
 
   return (
-    <div className="container mx-auto max-w-6xl space-y-8 p-6">
+    <div className="space-y-6">
       {/* Tabs Navigation */}
       <Tabs defaultValue="plans" className="w-fit">
         <TabsList>

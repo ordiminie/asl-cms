@@ -38,8 +38,8 @@ async function EditPostPage({params}: PageProps) {
   ])
 
   return (
-    <div className="container mx-auto px-2 py-8 md:px-4">
-      <div className="mx-auto max-w-4xl space-y-8">
+    <div className="space-y-6">
+      <div className="max-w-4xl space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
             Modifier le post

@@ -18,7 +18,7 @@ export default async function EditProjectPage({
   }
 
   return (
-    <div className="container mx-auto space-y-8 py-8">
+    <div className="space-y-6">
       <div>
         <h1 className="mb-8 text-2xl font-bold">Modifier le projet</h1>
         <EditProjectForm project={project} canEdit={canEdit} />

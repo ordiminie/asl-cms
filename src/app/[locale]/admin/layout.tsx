@@ -5,7 +5,6 @@ import AuthProvider from '@/components/context/auth-provider'
 import {AppBreadcrumb} from '@/components/features/app-breadcrumb'
 import {withAuthAdmin} from '@/components/features/auth/with-auth'
 import {AdminSidebar} from '@/components/features/layouts/sidebar/admin-sidebar'
-import {Separator} from '@/components/ui/separator'
 import {
   SidebarInset,
   SidebarProvider,
@@ -31,16 +30,13 @@ async function AppLayout({children}: {children: React.ReactNode}) {
         <AdminSidebar user={user} />
         <SidebarInset>
           <div className="flex min-h-screen flex-col">
-            <header className="flex h-16 shrink-0 items-center gap-2">
-              <div className="flex items-center gap-2 px-4">
-                <SidebarTrigger className="-ml-1" />
-                <Separator orientation="vertical" className="mr-2 h-4" />
-                <AppBreadcrumb />
-              </div>
-            </header>
             <main className="flex-1">
-              <div className="mx-auto w-full max-w-7xl px-2 py-4 md:px-4">
-                {children}
+              <div className="mx-auto w-full max-w-7xl px-4">
+                <div className="flex h-14 items-center gap-2">
+                  <SidebarTrigger />
+                  <AppBreadcrumb />
+                </div>
+                <div className="pt-4 pb-6">{children}</div>
               </div>
             </main>
           </div>

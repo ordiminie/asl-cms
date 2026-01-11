@@ -48,8 +48,8 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
   }
 
   return (
-    <div className="container mx-auto px-2 py-8 md:px-4">
-      <div className="mx-auto">
+    <div className="space-y-6">
+      <div>
         <h1 className="mb-8 text-2xl font-bold">
           Modifier l&apos;organisation
         </h1>

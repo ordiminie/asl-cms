@@ -14,8 +14,8 @@ async function AdminPage() {
   }
 
   return (
-    <div className="container mx-auto px-2 py-8 md:px-4">
-      <div className="mx-auto space-y-6">
+    <div className="space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">
             Dashboard Administration

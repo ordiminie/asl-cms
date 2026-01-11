@@ -25,7 +25,7 @@ export default async function CreditPage() {
   const packs = await getCreditPacksDal()
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Crédits</h1>
         <p className="text-muted-foreground">

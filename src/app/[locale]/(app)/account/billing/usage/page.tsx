@@ -42,7 +42,7 @@ const chartConfig = {
 
 function LoadingSkeleton() {
   return (
-    <div className="flex-1 space-y-6 p-4 pt-6 sm:p-8">
+    <div className="space-y-6">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-[500px]" />
     </div>
@@ -122,7 +122,7 @@ export default function UsagePage() {
 
   if (!referenceId) {
     return (
-      <div className="flex-1 p-4 pt-6 sm:p-8">
+      <div>
         <div className="text-muted-foreground">
           Veuillez sélectionner une organisation
         </div>
@@ -135,7 +135,7 @@ export default function UsagePage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 pt-6 sm:p-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">

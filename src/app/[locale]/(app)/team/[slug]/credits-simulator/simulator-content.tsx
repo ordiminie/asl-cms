@@ -142,11 +142,13 @@ export function SimulatorContent({
   }
 
   return (
-    <div className="container mx-auto space-y-6 py-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Simulateur de Crédits IA</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight">
+            Simulateur de Crédits IA
+          </h1>
+          <p className="text-muted-foreground text-sm">
             Testez la consommation de crédits avec une fausse API IA (1 crédit
             par génération)
           </p>
@@ -166,7 +168,7 @@ export function SimulatorContent({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Zone de prompt */}
         <Card>
           <CardHeader>

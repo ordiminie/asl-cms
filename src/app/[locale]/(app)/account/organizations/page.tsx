@@ -60,7 +60,7 @@ export default async function OrganizationsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-8 p-4 pt-6 sm:p-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Mes Organisations

@@ -21,7 +21,7 @@ interface UserDetailPageProps {
 
 function UserDetailSkeleton() {
   return (
-    <div className="container mx-auto space-y-6 p-6">
+    <div className="space-y-6">
       <div className="mb-6">
         <Skeleton className="mb-2 h-8 w-64" />
         <Skeleton className="h-4 w-96" />

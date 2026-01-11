@@ -100,7 +100,7 @@ export default function InvitationsOrganization() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6">
+      <div>
         <Card>
           <CardHeader>
             <CardTitle>Chargement des invitations</CardTitle>

@@ -251,7 +251,7 @@ export default function DashboardPage() {
   ] as const
 
   return (
-    <div className="space-y-6 p-4 pt-6 md:p-8">
+    <div className="space-y-6">
       <Card className="relative overflow-hidden border-none bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 text-white shadow-xl">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
