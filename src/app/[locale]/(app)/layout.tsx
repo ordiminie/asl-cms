@@ -39,12 +39,12 @@ async function AppLayout({children}: {children: React.ReactNode}) {
           <SidebarInset>
             <div className="flex min-h-screen flex-col">
               <main className="flex-1">
-                <div className="mx-auto w-full max-w-7xl px-4">
+                <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                   <div className="flex h-14 items-center gap-2">
                     <SidebarTrigger />
                     <AppBreadcrumb />
                   </div>
-                  <div className="pt-4 pb-6">{children}</div>
+                  <div className="pt-6 pb-8">{children}</div>
                 </div>
               </main>
             </div>
