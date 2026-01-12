@@ -24,7 +24,8 @@
     "backToLogin": "Volver al inicio de sesión",
     "errors": {
       "banned": "Tu cuenta ha sido suspendida.",
-      "unknown": "Se produjo un error de autenticación."
+      "unknown": "Se produjo un error de autenticación.",
+      "unable_to_create_user": "No se pudo crear tu cuenta. Por favor, inténtalo de nuevo."
     }
   },
   "HomePage": {
@@ -149,7 +150,8 @@
       "users": "Usuarios",
       "organizations": "Organizaciones",
       "plans": "Planes",
-      "blog": "Blog"
+      "blog": "Blog",
+      "credits": "Créditos"
     },
     "account": {
       "title": "Cuenta",
@@ -164,6 +166,13 @@
       "title": "Proyectos",
       "dashboard": "Panel de Control",
       "projects": "Proyectos"
+    },
+    "billing": {
+      "title": "Facturación",
+      "subscription": "Suscripción",
+      "credits": "Créditos",
+      "usage": "Uso",
+      "creditsSimulator": "Simulador IA"
     },
     "models": {
       "title": "Modelos",
@@ -198,6 +207,7 @@
   },
   "AccountPage": {
     "title": "Mi Cuenta",
+    "description": "Gestiona tu perfil y configuración de seguridad",
     "profile": {
       "title": "Perfil",
       "description": "Gestiona tu información personal"
@@ -447,6 +457,7 @@
   },
   "AccountSettingsPage": {
     "title": "Configuración",
+    "description": "Configura tus preferencias de aplicación",
     "settings": {
       "title": "Configuración",
       "description": "Configura tus preferencias de aplicación"
@@ -1311,5 +1322,78 @@
     },
     "support": "Si tienes alguna pregunta o necesitas ayuda, nuestro equipo de soporte está aquí para ayudarte. ¡Solo responde a este email!",
     "footer": "Recibes este email porque te registraste en nuestra plataforma con la dirección {email}."
+  },
+  "Credits": {
+    "page": {
+      "title": "Créditos",
+      "description": "Gestiona tus créditos y controla tu consumo"
+    },
+    "balance": {
+      "title": "Saldo de Créditos",
+      "available": "Créditos Disponibles",
+      "usedThisPeriod": "Usados Este Mes",
+      "monthlyAllocation": "Asignación Mensual",
+      "periodInfo": "Período del {start} al {end}",
+      "noSubscription": "Sin suscripción activa"
+    },
+    "activity": {
+      "title": "Actividad Reciente",
+      "noActivity": "Sin actividad reciente",
+      "justNow": "Ahora mismo",
+      "minutesAgo": "Hace {count} min",
+      "hoursAgo": "Hace {count}h",
+      "daysAgo": "Hace {count} día(s)"
+    },
+    "graph": {
+      "title": "Uso Diario",
+      "noData": "Sin datos de uso para este período",
+      "credits": "{count} créditos"
+    },
+    "sources": {
+      "plan": "Asignación Mensual",
+      "admin_grant": "Bonus Admin",
+      "usage": "Uso",
+      "pack": "Compra de Pack"
+    },
+    "packs": {
+      "title": "Comprar Créditos",
+      "description": "Recarga tus créditos con nuestros packs",
+      "credits": "{count} créditos",
+      "popular": "Popular",
+      "bestValue": "Mejor Valor",
+      "buy": "Comprar",
+      "neverExpire": "Los créditos nunca expiran",
+      "expiresIn": "Expira en {days} días"
+    },
+    "admin": {
+      "title": "Gestión de Créditos",
+      "description": "Otorga créditos a las organizaciones",
+      "grant": {
+        "title": "Otorgar Créditos",
+        "description": "Otorga créditos bonus a una organización",
+        "organizationId": "ID de Organización",
+        "organizationIdPlaceholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "organizationIdDescription": "UUID de la organización a acreditar",
+        "amount": "Cantidad de Créditos",
+        "amountMax": "Máximo 10000 créditos",
+        "reason": "Razón (opcional)",
+        "reasonPlaceholder": "Bonus de bienvenida, gesto comercial...",
+        "expiration": "Fecha de Expiración",
+        "expirationDescription": "Los créditos expirarán después de esta fecha",
+        "submit": "Otorgar Créditos",
+        "submitting": "Otorgando..."
+      }
+    },
+    "errors": {
+      "insufficientCredits": "Créditos insuficientes",
+      "packNotFound": "Pack no encontrado",
+      "packNotConfigured": "Este pack aún no está configurado",
+      "purchaseFailed": "Error al comprar el pack",
+      "unauthorized": "No estás autorizado para realizar esta acción"
+    },
+    "success": {
+      "creditsGranted": "Créditos otorgados con éxito",
+      "purchaseComplete": "Compra completada con éxito"
+    }
   }
 }

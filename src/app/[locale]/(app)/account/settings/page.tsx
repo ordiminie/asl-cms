@@ -19,19 +19,15 @@ export default async function Page() {
   }
 
   return (
-    <div className="flex-1 space-y-8 p-4 pt-6 sm:p-8">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
           {t('title')}
-        </h2>
+        </h1>
+        <p className="text-muted-foreground">{t('description')}</p>
       </div>
 
-      <div className="space-y-8">
-        <div className="rounded-lg border p-4 sm:p-6">
-          <h3 className="mb-4 text-lg font-medium">{t('settings.title')}</h3>
-          <EditUserSettingsForm user={user} />
-        </div>
-      </div>
+      <EditUserSettingsForm user={user} />
     </div>
   )
 }

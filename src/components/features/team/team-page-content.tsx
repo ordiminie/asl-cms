@@ -1,6 +1,6 @@
 'use client'
 
-import {CalendarDays, FolderKanban, Users, Zap} from 'lucide-react'
+import {CalendarDays, Coins, FolderKanban, Users, Zap} from 'lucide-react'
 import {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -121,7 +121,7 @@ export function TeamPageContent({
   }
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
+    <div className="space-y-6">
       {/* En-tête de l'organisation */}
       <Card>
         <CardHeader>
@@ -225,7 +225,7 @@ export function TeamPageContent({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-2">
@@ -261,6 +261,23 @@ export function TeamPageContent({
                 indicatorClassName={getProgressColor(
                   usage.users,
                   usage.limits.users
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-2">
+                  <Coins className="h-4 w-4" />
+                  Crédits
+                </span>
+                <span className="font-medium">{usage.credits}</span>
+              </div>
+              <Progress
+                value={getUsagePercent(usage.credits, usage.limits.credits)}
+                className="h-2"
+                indicatorClassName={getProgressColor(
+                  usage.credits,
+                  usage.limits.credits
                 )}
               />
             </div>

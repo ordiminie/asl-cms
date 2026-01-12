@@ -3,6 +3,7 @@
 import {
   BookOpen,
   Building2,
+  Coins,
   CreditCard,
   type LucideIcon,
   MoreHorizontal,
@@ -59,6 +60,11 @@ export function NavAdmin({
       title: t('admin.blog'),
       url: '/admin/blog',
       icon: BookOpen,
+    },
+    {
+      title: t('admin.credits'),
+      url: '/admin/credits',
+      icon: Coins,
     },
   ]
 

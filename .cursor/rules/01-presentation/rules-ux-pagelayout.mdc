@@ -1,0 +1,311 @@
+---
+description: UX Page Layout - Composition et hiérarchie visuelle des pages
+globs: src/app/**/*.tsx,src/components/features/**/*.tsx
+alwaysApply: false
+---
+
+# Règle UX Page Layout
+
+Cette règle définit les patterns de composition des pages pour assurer une hiérarchie visuelle cohérente et une bonne séparation des sections.
+
+## Principes Clés
+
+- Utilisez les composants **ShadCN Card** pour créer des sections visuellement distinctes
+- Chaque section logique doit avoir son propre `Card` avec un fond `bg-card` distinct
+- Les formulaires multi-sections doivent être découpés en plusieurs Cards
+- Maintenez une hiérarchie claire : Page Header → Section Headers → Card Content
+
+## Structure d'une Page
+
+```tsx
+<div className="space-y-6">
+  {/* En-tête de page */}
+  <div className="space-y-1">
+    <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+      {t('title')}
+    </h1>
+    <p className="text-muted-foreground">{t('description')}</p>
+  </div>
+
+  {/* Sections avec Cards */}
+  <Card>
+    <CardHeader>
+      <CardTitle>{t('section.title')}</CardTitle>
+      <CardDescription>{t('section.description')}</CardDescription>
+    </CardHeader>
+    <CardContent>
+      {/* Contenu de la section */}
+    </CardContent>
+  </Card>
+</div>
+```
+
+## Pattern En-tête de Page
+
+Toutes les pages doivent avoir un en-tête consistant :
+
+```tsx
+<div className="space-y-1">
+  <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+    {t('title')}
+  </h1>
+  <p className="text-muted-foreground">{t('description')}</p>
+</div>
+```
+
+## Pattern En-tête de Section
+
+Pour introduire un groupe de Cards (ex: section Sécurité) :
+
+```tsx
+<div className="space-y-1">
+  <h2 className="text-lg font-semibold">{t('section.title')}</h2>
+  <p className="text-muted-foreground text-sm">
+    {t('section.description')}
+  </p>
+</div>
+```
+
+## Pattern Card avec Formulaire
+
+Pour un formulaire dans une Card complète :
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle>{t('profile.title')}</CardTitle>
+    <CardDescription>{t('profile.description')}</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <EditUserProfileForm user={user} />
+  </CardContent>
+</Card>
+```
+
+## Pattern Formulaire Multi-Sections
+
+Les formulaires avec plusieurs sections logiques doivent être découpés en plusieurs Cards :
+
+```tsx
+// edit-user-settings.tsx
+<Form {...form}>
+  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    {/* Section Apparence */}
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('appearance.title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Champs theme, language */}
+      </CardContent>
+    </Card>
+
+    {/* Section Notifications */}
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('notifications.title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Champs notifications */}
+      </CardContent>
+    </Card>
+
+    {/* Section Marketing (avec bouton submit) */}
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('marketing.title')}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Champs marketing */}
+      </CardContent>
+      <CardFooter>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? t('form.updating') : t('form.updateSettings')}
+        </Button>
+      </CardFooter>
+    </Card>
+  </form>
+</Form>
+```
+
+## Pattern Section Sécurité
+
+Pour une liste de sous-composants (change email, password, 2FA), chaque composant est wrappé dans sa propre Card :
+
+```tsx
+// security-section.tsx
+export function UserSecurityFactorSection({user}: {user: User}) {
+  return (
+    <div className="space-y-6">
+      {shouldShowChangeEmail() && (
+        <Card>
+          <CardContent className="pt-6">
+            <ChangeEmailForm user={user} />
+          </CardContent>
+        </Card>
+      )}
+
+      {shouldShowChangePassword() && (
+        <Card>
+          <CardContent className="pt-6">
+            <ChangePasswordForm />
+          </CardContent>
+        </Card>
+      )}
+
+      {shouldShow2FA() && (
+        <Card>
+          <CardContent className="pt-6">
+            <TwoFactorForm user={user} />
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+```
+
+Note: `CardContent className="pt-6"` est utilisé car les sous-composants gèrent leur propre titre interne.
+
+## Exemple Page Compte (Account)
+
+```tsx
+// app/[locale]/(app)/account/page.tsx
+export default async function Page() {
+  const t = await getTranslations('AccountPage')
+  const user = await getAuthUser()
+
+  return (
+    <div className="space-y-6">
+      {/* En-tête de page */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          {t('title')}
+        </h1>
+        <p className="text-muted-foreground">{t('description')}</p>
+      </div>
+
+      {/* Section Profil */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('profile.title')}</CardTitle>
+          <CardDescription>{t('profile.description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EditUserProfileForm user={user} />
+        </CardContent>
+      </Card>
+
+      {/* En-tête Section Sécurité */}
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">{t('security.title')}</h2>
+        <p className="text-muted-foreground text-sm">
+          {t('security.description')}
+        </p>
+      </div>
+
+      {/* Composants Sécurité (chacun dans sa Card) */}
+      <UserSecurityFactorSection user={user} />
+    </div>
+  )
+}
+```
+
+## Exemple Page Paramètres (Settings)
+
+```tsx
+// app/[locale]/(app)/account/settings/page.tsx
+export default async function Page() {
+  const t = await getTranslations('AccountSettingsPage')
+  const user = await getAuthUser()
+
+  return (
+    <div className="space-y-6">
+      {/* En-tête de page */}
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          {t('title')}
+        </h1>
+        <p className="text-muted-foreground">{t('description')}</p>
+      </div>
+
+      {/* Le formulaire gère ses propres Cards internes */}
+      <EditUserSettingsForm user={user} />
+    </div>
+  )
+}
+```
+
+## Composants Card ShadCN à Utiliser
+
+```tsx
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+```
+
+## Règles de Spacing
+
+- Container principal : `className="space-y-6"`
+- En-tête (title + description) : `className="space-y-1"`
+- CardContent multi-champs : `className="space-y-4"`
+
+## Anti-Patterns à Éviter
+
+```tsx
+// ❌ Incorrect : Un seul Card pour tout le formulaire
+<Card>
+  <CardContent>
+    <FormField name="theme" />
+    <FormField name="language" />
+    <FormField name="notifications" />
+    <FormField name="marketing" />
+  </CardContent>
+</Card>
+
+// ✅ Correct : Plusieurs Cards pour chaque section logique
+<Card>
+  <CardHeader><CardTitle>Apparence</CardTitle></CardHeader>
+  <CardContent>
+    <FormField name="theme" />
+    <FormField name="language" />
+  </CardContent>
+</Card>
+<Card>
+  <CardHeader><CardTitle>Notifications</CardTitle></CardHeader>
+  <CardContent>
+    <FormField name="notifications" />
+  </CardContent>
+</Card>
+```
+
+## Types de Pages et Patterns
+
+| Type de Page | Pattern |
+|--------------|---------|
+| Liste | Header + Action Button + Search/Filters + Data Table/Grid |
+| Détail/Edit | Header + Cards par section |
+| Formulaire | Header + Multi-Cards (une par section logique) |
+| Dashboard | Stats Cards + Sections avec "View All" links |
+
+## Hiérarchie Visuelle
+
+1. **Page Header** (`h1` + `p.text-muted-foreground`)
+2. **Section Header** (`h2` + `p.text-muted-foreground.text-sm`) - optionnel
+3. **Card** (`bg-card` distinct du fond de page)
+4. **Card Header** (`CardTitle` + `CardDescription`)
+5. **Card Content** (formulaires, données, etc.)
+6. **Card Footer** (actions, boutons submit)
+
+## Bonnes Pratiques
+
+- Toujours utiliser les composants ShadCN Card
+- Le bouton submit d'un formulaire va dans le `CardFooter` de la dernière Card
+- Utiliser `pt-6` sur CardContent quand il n'y a pas de CardHeader
+- Maintenir un espacement cohérent avec `space-y-6` entre les Cards
+- Les sous-composants (ChangeEmailForm, etc.) peuvent avoir leur propre structure interne

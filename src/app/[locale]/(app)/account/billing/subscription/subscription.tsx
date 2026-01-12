@@ -2,6 +2,7 @@
 
 import {Subscription} from '@better-auth/stripe'
 import {Calendar, CheckCircle} from 'lucide-react'
+import Link from 'next/link'
 import React, {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -28,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {Switch} from '@/components/ui/switch'
+import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs'
 import {authClient} from '@/lib/better-auth/auth-client'
 import {AvailablePlan} from '@/lib/stripe/stripe-types'
 
@@ -165,8 +167,8 @@ export default function SubscriptionPage({
         referenceId?: string
       } = {
         plan: planId,
-        successUrl: '/account/subscription',
-        cancelUrl: '/account/subscription',
+        successUrl: '/account/billing/subscription',
+        cancelUrl: '/account/billing/subscription',
         annual,
         seats,
       }
@@ -182,11 +184,17 @@ export default function SubscriptionPage({
       const {error} = await authClient.subscription.upgrade(upgradeParams)
 
       if (error) {
-        toast.error(error.statusText || 'Erreur lors de la mise à jour', {
-          description: !isOwner
-            ? "Vous n'etes pas proprietaire de l'organisation"
-            : '',
-        })
+        console.error('Erreur upgrade détails:', error)
+        toast.error(
+          error.message || error.statusText || 'Erreur lors de la mise à jour',
+          {
+            description: !isOwner
+              ? "Vous n'êtes pas propriétaire de l'organisation"
+              : error.message
+                ? ''
+                : JSON.stringify(error),
+          }
+        )
       } else {
         toast.success('Redirection vers le paiement...')
       }
@@ -206,7 +214,7 @@ export default function SubscriptionPage({
     try {
       setActionLoading('cancel')
       const {data, error} = await authClient.subscription.cancel({
-        returnUrl: '/account/subscription',
+        returnUrl: '/account/billing/subscription',
         referenceId,
       })
 
@@ -410,7 +418,7 @@ export default function SubscriptionPage({
 
   if (loading) {
     return (
-      <div className="container mx-auto space-y-6 p-6">
+      <div className="space-y-6">
         <div className="flex flex-col space-y-2">
           <h1 className="text-3xl font-bold">Abonnements</h1>
           <p className="text-muted-foreground">
@@ -448,7 +456,20 @@ export default function SubscriptionPage({
   //   : false
 
   return (
-    <div className="container mx-auto max-w-6xl space-y-8 p-6">
+    <div className="space-y-6">
+      {/* Tabs Navigation */}
+      <Tabs defaultValue="plans" className="w-fit">
+        <TabsList>
+          <TabsTrigger value="credits" asChild>
+            <Link href="/account/billing/credit">Credits</Link>
+          </TabsTrigger>
+          <TabsTrigger value="usage" asChild>
+            <Link href="/account/billing/usage">Usage</Link>
+          </TabsTrigger>
+          <TabsTrigger value="plans">Plans</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Header */}
       <div className="flex flex-col space-y-2 text-center">
         <h1 className="text-3xl font-bold">Choisissez votre plan</h1>

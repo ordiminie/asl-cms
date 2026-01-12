@@ -18,7 +18,7 @@ export default async function InternalEmail({
   preview,
   content,
 }: InternalEmailProps) {
-  const t = await getTranslations('email.internal')
+  const t = await getTranslations('email.admin.internal')
 
   return (
     <Html>

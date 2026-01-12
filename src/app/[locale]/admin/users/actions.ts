@@ -5,9 +5,12 @@ import {headers} from 'next/headers'
 
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {auth} from '@/lib/auth'
-import {updateUserService} from '@/services/facades/user-service-facade'
+import {
+  getAllUsersWithPaginationService,
+  updateUserService,
+} from '@/services/facades/user-service-facade'
 import {RoleConst} from '@/services/types/domain/auth-types'
-import {Roles, UpdateUser} from '@/services/types/domain/user-types'
+import {Roles, UpdateUser, User} from '@/services/types/domain/user-types'
 
 export type FormState = {
   success: boolean
@@ -192,5 +195,38 @@ export async function deleteUserAction(userId: string): Promise<FormState> {
           ? error.message
           : 'Une erreur est survenue lors de la suppression',
     }
+  }
+}
+
+export async function fetchUsersAction(params: {
+  limit: number
+  offset: number
+  search?: string
+}): Promise<{
+  success: boolean
+  data: User[]
+  pagination: {total: number; hasMore: boolean} | null
+}> {
+  try {
+    await requireActionAuth({
+      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    })
+
+    const result = await getAllUsersWithPaginationService(
+      {limit: params.limit, offset: params.offset},
+      params.search
+    )
+
+    return {
+      success: true,
+      data: result.data,
+      pagination: {
+        total: result.pagination.total,
+        hasMore: params.offset + result.data.length < result.pagination.total,
+      },
+    }
+  } catch (error) {
+    console.error('Error fetching users:', error)
+    return {success: false, data: [], pagination: null}
   }
 }

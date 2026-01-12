@@ -1,4 +1,4 @@
-import {Zap} from 'lucide-react'
+import {Coins, Zap} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {notFound} from 'next/navigation'
@@ -60,7 +60,7 @@ export default async function OrganizationsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-8 p-4 pt-6 sm:p-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
           Mes Organisations
@@ -166,6 +166,26 @@ export default async function OrganizationsPage() {
                           indicatorClassName={getProgressColor(
                             organization.usage.users,
                             organization.usage.limits.users
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <div className="mb-1 flex justify-between text-xs">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            <Coins className="h-3 w-3" />
+                            Crédits
+                          </span>
+                          <span>{organization.usage.credits}</span>
+                        </div>
+                        <Progress
+                          value={getUsagePercent(
+                            organization.usage.credits,
+                            organization.usage.limits.credits
+                          )}
+                          className="h-1.5"
+                          indicatorClassName={getProgressColor(
+                            organization.usage.credits,
+                            organization.usage.limits.credits
                           )}
                         />
                       </div>

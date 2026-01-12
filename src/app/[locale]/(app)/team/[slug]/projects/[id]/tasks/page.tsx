@@ -49,7 +49,7 @@ export default async function TasksPage({
   const users = await getUsersByOrganizationDal(project.organizationId)
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="space-y-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{project.name}</h1>

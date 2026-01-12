@@ -20,6 +20,7 @@ interface ProjectsToolbarProps {
   totalProjects: number
   onPerPageChange?: (perPage: string) => void
   perPage: string
+  showPerPageSelector?: boolean
 }
 
 export function ProjectsToolbar({
@@ -28,6 +29,7 @@ export function ProjectsToolbar({
   totalProjects,
   onPerPageChange,
   perPage,
+  showPerPageSelector = true,
 }: ProjectsToolbarProps) {
   const [searchValue, setSearchValue] = useState(initialSearch)
 
@@ -86,22 +88,24 @@ export function ProjectsToolbar({
           {totalProjects > 1 ? 's' : ''}
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-sm">Afficher</span>
-        <Select value={perPage} onValueChange={onPerPageChange}>
-          <SelectTrigger className="w-[70px]">
-            <SelectValue placeholder="20" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2">2</SelectItem>
-            <SelectItem value="10">10</SelectItem>
-            <SelectItem value="20">20</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
-          </SelectContent>
-        </Select>
-        <span className="text-muted-foreground text-sm">par page</span>
-      </div>
+      {showPerPageSelector && (
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm">Afficher</span>
+          <Select value={perPage} onValueChange={onPerPageChange}>
+            <SelectTrigger className="w-[70px]">
+              <SelectValue placeholder="20" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2">2</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-muted-foreground text-sm">par page</span>
+        </div>
+      )}
     </div>
   )
 }

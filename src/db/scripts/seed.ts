@@ -9,11 +9,15 @@ initDotEnv()
 
 // Stripe Price IDs constants
 const STRIPE_PRICE_IDS = {
-  PRO_MONTHLY: 'price_1Rfz5wCkPpvUnhXxvh6yJOOM',
-  PRO_YEARLY: 'price_1Rfz6ZCkPpvUnhXxc6ky9bl2',
-  ENTREPRISE_MONTHLY: 'price_1RedsMCkPpvUnhXxu3Z0g2mE',
-  ENTREPRISE_YEARLY: 'price_1RedsnCkPpvUnhXx6PfNSaHW',
-  LIFETIME: 'price_1QoOzLCkPpvUnhXxTNRAOlEe',
+  PRO_MONTHLY: 'price_1SnvdpEHimv7LwBY6Ur2FGfP',
+  PRO_YEARLY: 'price_1SnveLEHimv7LwBYRmnBtFIc',
+  ENTREPRISE_MONTHLY: 'price_1SnvcGEHimv7LwBYGVsTWzYx',
+  ENTREPRISE_YEARLY: 'price_1SnvclEHimv7LwBYHHa8wpTd',
+  LIFETIME: 'price_1Snvh3EHimv7LwBYb8ph8vrH',
+  // Credit Packs (one-time payments)
+  CREDIT_PACK_10: 'price_1SnxbyEHimv7LwBYznUE0U3p',
+  CREDIT_PACK_50: 'price_1SnxJQEHimv7LwBY9mndKqmY',
+  CREDIT_PACK_150: 'price_1Snxd6EHimv7LwBYS3dX77xT',
 } as const
 
 const seed = async () => {
@@ -62,9 +66,9 @@ const seed = async () => {
         NULL,
         'Free',
         'Idéal pour débuter',
-        '{"projects": 1, "storage": 1, "organizationMembers": 2}',
+        '{"projects": 1, "storage": 1, "organizationMembers": 2, "credits": 5}',
         NULL,
-        '["1 utilisateur", "1 projet", "1 GB stockage", "Support communautaire"]',
+        '["1 utilisateur", "1 projet", "1 GB stockage", "50 crédits/mois", "Support communautaire"]',
         0,
         0,
         'EUR',
@@ -81,9 +85,9 @@ const seed = async () => {
         '${STRIPE_PRICE_IDS.PRO_YEARLY}',
         'Pro',
         'Parfait pour les équipes en croissance',
-        '{"projects": 2, "storage": 10, "organizationMembers": 3}',
+        '{"projects": 2, "storage": 10, "organizationMembers": 3, "credits": 500}',
         NULL,
-        '["Jusqu''à 5 utilisateurs", "2 projets", "10 GB stockage", "Support prioritaire", "Intégrations avancées"]',
+        '["Jusqu''à 5 utilisateurs", "2 projets", "10 GB stockage", "500 crédits/mois", "Support prioritaire", "Intégrations avancées"]',
         29,
         249,
         'EUR',
@@ -100,9 +104,9 @@ const seed = async () => {
         '${STRIPE_PRICE_IDS.ENTREPRISE_YEARLY}',
         'Enterprise',
         'Pour les grandes organisations',
-        '{"projects": 3, "storage": 50, "organizationMembers": 5}',
+        '{"projects": 3, "storage": 50, "organizationMembers": 5, "credits": 2000}',
         NULL,
-        '["Utilisateurs illimités", "3 projets", "50 GB stockage", "Support 24/7", "SSO & sécurité avancée"]',
+        '["Utilisateurs illimités", "3 projets", "50 GB stockage", "2000 crédits/mois", "Support 24/7", "SSO & sécurité avancée"]',
         99,
         990,
         'EUR',
@@ -119,15 +123,72 @@ const seed = async () => {
         NULL,
         'Lifetime',
         'Pour les longues durées',
-        '{"projects": 20, "storage": 50}',
+        '{"projects": 20, "storage": 50, "credits": 5000}',
         '{"days": 14}',
-        '["Introduction Course / Components", "PRO: Complete Email Integration Guide", "PRO: All Features Access", "PRO: Code Review Sessions", "PRO: 100% Money Back Guarantee", "20 projets", "50 GB stockage"]',
+        '["Introduction Course / Components", "PRO: Complete Email Integration Guide", "PRO: All Features Access", "PRO: Code Review Sessions", "PRO: 100% Money Back Guarantee", "20 projets", "50 GB stockage", "5000 crédits/mois"]',
         70,
         NULL,
         'EUR',
         false,
         'active',
         4,
+        NOW(),
+        NOW()
+      ),
+      -- Credit Pack 10 tokens
+      (
+        '10tokens',
+        '${STRIPE_PRICE_IDS.CREDIT_PACK_10}',
+        NULL,
+        '10 crédits',
+        'Pack de 10 crédits',
+        '{"credits": 10}',
+        NULL,
+        '["10 crédits", "Pas d''expiration", "Usage immédiat"]',
+        2.99,
+        NULL,
+        'USD',
+        false,
+        'active',
+        10,
+        NOW(),
+        NOW()
+      ),
+      -- Credit Pack 50 tokens
+      (
+        '50tokens',
+        '${STRIPE_PRICE_IDS.CREDIT_PACK_50}',
+        NULL,
+        '50 crédits',
+        'Pack de 50 crédits - Populaire',
+        '{"credits": 50}',
+        NULL,
+        '["50 crédits", "Pas d''expiration", "Usage immédiat", "Économisez 13%"]',
+        12.99,
+        NULL,
+        'USD',
+        false,
+        'active',
+        11,
+        NOW(),
+        NOW()
+      ),
+      -- Credit Pack 150 tokens
+      (
+        '150tokens',
+        '${STRIPE_PRICE_IDS.CREDIT_PACK_150}',
+        NULL,
+        '150 crédits',
+        'Pack de 150 crédits - Meilleure valeur',
+        '{"credits": 150}',
+        NULL,
+        '["150 crédits", "Pas d''expiration", "Usage immédiat", "Économisez 22%"]',
+        34.99,
+        NULL,
+        'USD',
+        false,
+        'active',
+        12,
         NOW(),
         NOW()
       )
@@ -534,11 +595,15 @@ const seed = async () => {
   console.log('✅ Seed inserted in', end - start, 'ms')
   console.log('')
   console.log('💎 Plans de subscription créés :')
-  console.log('🔹 FREE : 1 projet, 1 GB stockage (€0)')
-  console.log('🔹 PRO : 2 projets, 10 GB stockage (€29/mois, €249/an)')
-  console.log('🔹 ENTERPRISE : 3 projets, 50 GB stockage (€99/mois, €990/an)')
+  console.log('🔹 FREE : 1 projet, 1 GB stockage, 50 crédits/mois (€0)')
   console.log(
-    '🔹 LIFETIME : 20 projets, 50 GB stockage (€70 unique, 14j trial)'
+    '🔹 PRO : 2 projets, 10 GB stockage, 500 crédits/mois (€29/mois, €249/an)'
+  )
+  console.log(
+    '🔹 ENTERPRISE : 3 projets, 50 GB stockage, 2000 crédits/mois (€99/mois, €990/an)'
+  )
+  console.log(
+    '🔹 LIFETIME : 20 projets, 50 GB stockage, 5000 crédits/mois (€70 unique, 14j trial)'
   )
   console.log('')
   console.log('📊 Jeu de test créé avec succès :')

@@ -23,8 +23,8 @@ async function NewPostPage() {
   ])
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mx-auto max-w-4xl space-y-8">
+    <div className="space-y-6">
+      <div className="max-w-4xl space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
             Créer un nouveau post

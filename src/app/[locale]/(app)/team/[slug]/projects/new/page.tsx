@@ -50,8 +50,8 @@ export default async function NewProjectPage({params}: NewProjectPageProps) {
   }
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="mx-auto max-w-2xl">
+    <div className="space-y-6">
+      <div className="max-w-2xl">
         <h1 className="mb-8 text-2xl font-bold">Créer un nouveau projet</h1>
         <CreateProjectForm
           organization={organization}

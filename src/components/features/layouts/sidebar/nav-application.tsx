@@ -59,7 +59,7 @@ export function NavApplication({
     },
     {
       title: t('account.subscriptions'),
-      url: '/account/subscription',
+      url: '/account/billing/subscription',
       icon: CreditCard,
     },
     {

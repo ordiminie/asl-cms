@@ -118,7 +118,7 @@ export function LimitReached({limits}: LimitReachedProps) {
             <div className="flex flex-col gap-3 pt-2 sm:flex-row">
               <Button asChild className="flex-1">
                 <Link
-                  href="/account/subscription"
+                  href="/account/billing/subscription"
                   className="flex items-center gap-2"
                 >
                   <Zap className="h-4 w-4" />
