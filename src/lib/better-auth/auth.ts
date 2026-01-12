@@ -371,19 +371,6 @@ function createDatabaseHooks() {
         },
       },
     },
-    session: {
-      create: {
-        before: async (session: {userId: string}) => {
-          const user = await getUserByIdDao(session.userId)
-          if (user && isUserBanned(user)) {
-            throw new APIError('FORBIDDEN', {
-              message: buildBannedMessage(user),
-            })
-          }
-          return {data: session}
-        },
-      },
-    },
   }
 }
 /**
