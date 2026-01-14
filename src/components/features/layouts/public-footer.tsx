@@ -101,7 +101,7 @@ export default function PublicFooter() {
               </Link>
             </li>
             <li>
-              <Link href="#" className="hover:text-primary transition">
+              <Link href="/contact" className="hover:text-primary transition">
                 {t('footer.legal.contact')}
               </Link>
             </li>
