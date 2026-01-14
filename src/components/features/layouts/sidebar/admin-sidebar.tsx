@@ -51,6 +51,10 @@ const data = {
           url: '/admin/blog',
         },
         {
+          title: 'Soumissions',
+          url: '/admin/submissions',
+        },
+        {
           title: 'Crédits',
           url: '/admin/credits',
         },

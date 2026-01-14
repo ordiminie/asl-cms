@@ -6,6 +6,7 @@ import {OrganizationProvider} from '@/components/context/organization-provider'
 import {AppBreadcrumb} from '@/components/features/app-breadcrumb'
 import withAuth from '@/components/features/auth/with-auth'
 import {AppSidebar} from '@/components/features/layouts/sidebar/app-sidebar'
+import {QuickFeedbackButton} from '@/components/features/quick-feedback-button'
 import {
   SidebarInset,
   SidebarProvider,
@@ -43,6 +44,9 @@ async function AppLayout({children}: {children: React.ReactNode}) {
                   <div className="flex h-14 items-center gap-2">
                     <SidebarTrigger />
                     <AppBreadcrumb />
+                    <div className="ml-auto">
+                      <QuickFeedbackButton />
+                    </div>
                   </div>
                   <div className="pt-6 pb-8">{children}</div>
                 </div>

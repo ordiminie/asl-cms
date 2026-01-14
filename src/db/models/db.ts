@@ -11,6 +11,7 @@ import * as post from './post-model'
 import * as project from './project-model'
 import * as subscription from './subscription-model'
 import * as user from './user-model'
+import * as userSubmission from './user-submission-model'
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
@@ -29,6 +30,7 @@ const db = drizzle(pool, {
     ...subscription,
     ...notification,
     ...post,
+    ...userSubmission,
   },
 })
 
