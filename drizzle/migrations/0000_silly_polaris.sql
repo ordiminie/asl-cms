@@ -1,7 +1,7 @@
 CREATE TYPE "public"."organization_role" AS ENUM('admin', 'member', 'owner');--> statement-breakpoint
 CREATE TYPE "public"."role_type" AS ENUM('public', 'user', 'redactor', 'moderator', 'admin', 'super_admin');--> statement-breakpoint
 CREATE TYPE "public"."user_visibility" AS ENUM('public', 'private');--> statement-breakpoint
-CREATE TYPE "public"."credit_source" AS ENUM('plan', 'admin_grant', 'usage', 'pack');--> statement-breakpoint
+CREATE TYPE "public"."credit_source" AS ENUM('plan', 'admin_grant', 'usage', 'pack', 'refund');--> statement-breakpoint
 CREATE TYPE "public"."post_status" AS ENUM('draft', 'published', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."task_status" AS ENUM('todo', 'in_progress', 'done');--> statement-breakpoint
 CREATE TYPE "public"."plan_status" AS ENUM('active', 'inactive', 'deprecated');--> statement-breakpoint
@@ -9,6 +9,7 @@ CREATE TYPE "public"."language_type" AS ENUM('fr', 'en', 'es');--> statement-bre
 CREATE TYPE "public"."notification_channel" AS ENUM('email', 'push', 'both', 'none');--> statement-breakpoint
 CREATE TYPE "public"."theme_type" AS ENUM('light', 'dark', 'system');--> statement-breakpoint
 CREATE TYPE "public"."two_factor_type" AS ENUM('otp', 'totp');--> statement-breakpoint
+CREATE TYPE "public"."submission_type" AS ENUM('contact', 'feedback', 'support');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
 	"account_id" text NOT NULL,
@@ -136,7 +137,7 @@ CREATE TABLE "credit_ledger" (
 	"organization_id" uuid NOT NULL,
 	"amount" numeric(10, 2) NOT NULL,
 	"source" "credit_source" NOT NULL,
-	"source_id" uuid,
+	"source_id" text,
 	"reason" text,
 	"period_start" timestamp,
 	"period_end" timestamp,
@@ -287,6 +288,21 @@ CREATE TABLE "user_settings" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "user_submissions" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+	"user_id" uuid,
+	"organization_id" uuid,
+	"email" text,
+	"type" "submission_type" NOT NULL,
+	"subject" text NOT NULL,
+	"message" text NOT NULL,
+	"metadata" jsonb DEFAULT '{}'::jsonb,
+	"read" boolean DEFAULT false NOT NULL,
+	"archived" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "apikey" ADD CONSTRAINT "apikey_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitation" ADD CONSTRAINT "invitation_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -309,6 +325,8 @@ ALTER TABLE "task" ADD CONSTRAINT "task_organization_id_organization_id_fk" FORE
 ALTER TABLE "task" ADD CONSTRAINT "task_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "task" ADD CONSTRAINT "task_assigned_to_user_id_fk" FOREIGN KEY ("assigned_to") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_submissions" ADD CONSTRAINT "user_submissions_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_submissions" ADD CONSTRAINT "user_submissions_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "credit_ledger_organization_id_idx" ON "credit_ledger" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "credit_ledger_created_at_idx" ON "credit_ledger" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "credit_ledger_expires_at_idx" ON "credit_ledger" USING btree ("expires_at");--> statement-breakpoint

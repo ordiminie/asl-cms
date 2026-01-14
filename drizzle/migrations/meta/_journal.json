@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1768026706994,
-      "tag": "0000_left_joystick",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1768193606474,
-      "tag": "0001_amusing_joystick",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1768371631570,
-      "tag": "0002_useful_trauma",
+      "when": 1768380038812,
+      "tag": "0000_silly_polaris",
       "breakpoints": true
     }
   ]
