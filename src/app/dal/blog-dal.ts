@@ -7,6 +7,8 @@ import {
   getAllMdxBlogPosts,
   getAllMdxSlugsWithLocales,
   getMdxBlogPost,
+  getPostIdBySlug,
+  getPostLanguageVariants,
 } from '@/lib/helper/blog.server'
 import {
   dbPostToUnified,
@@ -219,12 +221,15 @@ export const getUnifiedBlogPostBySlugDal = cache(
       return dbPost
     }
 
-    const mdxPost = getMdxBlogPost(slug, locale)
-    if (mdxPost) {
-      if (!isMdxPublished(mdxPost)) {
-        return null
+    const postId = getPostIdBySlug(slug, locale)
+    if (postId) {
+      const mdxPost = getMdxBlogPost(postId, locale)
+      if (mdxPost) {
+        if (!isMdxPublished(mdxPost)) {
+          return null
+        }
+        return mdxPostToUnified(mdxPost, locale)
       }
-      return mdxPostToUnified(mdxPost, locale)
     }
 
     return null
@@ -239,10 +244,19 @@ export const getPostAlternatesDal = cache(
   ): Promise<BlogAlternates> => {
     const languages: Record<string, string> = {}
 
-    for (const locale of routing.locales) {
-      const post = await getUnifiedBlogPostBySlugDal(slug, locale)
-      if (post) {
-        languages[locale] = `${baseUrl}/${locale}/blog/${post.slug}`
+    const postId = getPostIdBySlug(slug, currentLocale)
+    if (postId) {
+      const variants = getPostLanguageVariants(postId)
+      for (const variant of variants) {
+        languages[variant.locale] =
+          `${baseUrl}/${variant.locale}/blog/${variant.slug}`
+      }
+    } else {
+      for (const locale of routing.locales) {
+        const post = await getUnifiedBlogPostBySlugDal(slug, locale)
+        if (post) {
+          languages[locale] = `${baseUrl}/${locale}/blog/${post.slug}`
+        }
       }
     }
 
@@ -259,8 +273,8 @@ export const getPostAlternatesDal = cache(
 )
 
 export const getAllUnifiedBlogSlugsDal = cache(
-  async (): Promise<{slug: string; locale: string}[]> => {
-    const results: {slug: string; locale: string}[] = []
+  async (): Promise<{postId: string; slug: string; locale: string}[]> => {
+    const results: {postId: string; slug: string; locale: string}[] = []
     const seenKeys = new Set<string>()
 
     try {
@@ -268,7 +282,11 @@ export const getAllUnifiedBlogSlugsDal = cache(
       for (const item of dbSlugs) {
         const key = `${item.slug}-${item.language}`
         if (!seenKeys.has(key)) {
-          results.push({slug: item.slug, locale: item.language})
+          results.push({
+            postId: item.slug,
+            slug: item.slug,
+            locale: item.language,
+          })
           seenKeys.add(key)
         }
       }
@@ -368,6 +386,15 @@ export function getCategoryAlternates(
   }
 }
 
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 export const getRelatedPostsDal = cache(
   async (
     locale: string,
@@ -379,48 +406,45 @@ export const getRelatedPostsDal = cache(
 
     const otherPosts = allPosts.filter((post) => post.slug !== currentSlug)
 
-    if (otherPosts.length === 0) {
+    if (otherPosts.length === 0) return []
+
+    const sameCategoryPosts = categoryName
+      ? otherPosts.filter((post) => post.category?.name === categoryName)
+      : []
+
+    const differentCategoryPosts = categoryName
+      ? otherPosts.filter((post) => post.category?.name !== categoryName)
+      : otherPosts
+
+    const shuffledSameCategory = shuffleArray(sameCategoryPosts)
+    const shuffledDifferent = shuffleArray(differentCategoryPosts)
+
+    const result: UnifiedBlogPost[] = []
+
+    for (const post of shuffledSameCategory) {
+      if (result.length >= limit) break
+      result.push(post)
+    }
+
+    for (const post of shuffledDifferent) {
+      if (result.length >= limit) break
+      result.push(post)
+    }
+
+    return result
+  }
+)
+
+export const getPostLanguageVariantsDal = cache(
+  async (
+    slug: string,
+    currentLocale: string
+  ): Promise<{locale: string; slug: string}[]> => {
+    const postId = getPostIdBySlug(slug, currentLocale)
+    if (!postId) {
       return []
     }
 
-    let sameCategoryPosts: UnifiedBlogPost[] = []
-    let differentCategoryPosts: UnifiedBlogPost[] = []
-
-    if (categoryName) {
-      sameCategoryPosts = otherPosts.filter(
-        (post) => post.category?.name === categoryName
-      )
-      differentCategoryPosts = otherPosts.filter(
-        (post) => post.category?.name !== categoryName
-      )
-    } else {
-      differentCategoryPosts = otherPosts
-    }
-
-    const shuffleArray = <T>(array: T[]): T[] => {
-      const shuffled = [...array]
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1))
-        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-      }
-      return shuffled
-    }
-
-    const shuffledSameCategory = shuffleArray(sameCategoryPosts)
-    const shuffledDifferentCategory = shuffleArray(differentCategoryPosts)
-
-    const relatedPosts: UnifiedBlogPost[] = []
-
-    for (const post of shuffledSameCategory) {
-      if (relatedPosts.length >= limit) break
-      relatedPosts.push(post)
-    }
-
-    for (const post of shuffledDifferentCategory) {
-      if (relatedPosts.length >= limit) break
-      relatedPosts.push(post)
-    }
-
-    return relatedPosts
+    return getPostLanguageVariants(postId)
   }
 )

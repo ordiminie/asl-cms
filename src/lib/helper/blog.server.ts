@@ -7,70 +7,59 @@ import path from 'path'
 import {MdxBlogPost, MdxFrontmatter} from '@/services/types/domain/blog-types'
 
 const SUPPORTED_EXTENSIONS = ['.mdx', '.mdc']
+const SUPPORTED_LOCALES = ['en', 'fr', 'es']
 
-function getContentDir(locale?: string): string {
-  const baseDir = path.join(
-    process.cwd(),
-    'src/app/[locale]/(public)/blog/mdx/_files'
-  )
-  if (locale) {
-    const localeDir = path.join(baseDir, locale)
-    if (fs.existsSync(localeDir)) {
-      return localeDir
-    }
-  }
-  return baseDir
+function getContentDir(): string {
+  return path.join(process.cwd(), 'content/blog')
 }
 
-export function getContentSlugs(locale?: string): string[] {
-  const contentDir = getContentDir(locale)
+export function getPostIds(): string[] {
+  const contentDir = getContentDir()
   if (!fs.existsSync(contentDir)) {
     return []
   }
 
-  const files = fs.readdirSync(contentDir)
-  return files
-    .filter((file) => SUPPORTED_EXTENSIONS.some((ext) => file.endsWith(ext)))
-    .map((file) => file.replace(/\.(mdx|mdc)$/, ''))
+  const entries = fs.readdirSync(contentDir, {withFileTypes: true})
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort()
 }
 
-export const getMDXSlugs = getContentSlugs
+function findLocaleFile(
+  postId: string,
+  locale: string
+): {filePath: string; extension: string} | null {
+  const contentDir = getContentDir()
+  const postDir = path.join(contentDir, postId)
 
-export function getContentBySlug(
-  slug: string,
-  locale?: string
-): {content: string; extension: string} | null {
-  const contentDir = getContentDir(locale)
-
-  for (const ext of SUPPORTED_EXTENSIONS) {
-    const filePath = path.join(contentDir, `${slug}${ext}`)
-    if (fs.existsSync(filePath)) {
-      return {
-        content: fs.readFileSync(filePath, 'utf8'),
-        extension: ext,
-      }
-    }
+  if (!fs.existsSync(postDir)) {
+    return null
   }
 
-  if (locale) {
-    const fallbackDir = getContentDir()
-    for (const ext of SUPPORTED_EXTENSIONS) {
-      const filePath = path.join(fallbackDir, `${slug}${ext}`)
-      if (fs.existsSync(filePath)) {
-        return {
-          content: fs.readFileSync(filePath, 'utf8'),
-          extension: ext,
-        }
-      }
+  for (const ext of SUPPORTED_EXTENSIONS) {
+    const filePath = path.join(postDir, `${locale}${ext}`)
+    if (fs.existsSync(filePath)) {
+      return {filePath, extension: ext}
     }
   }
 
   return null
 }
 
-export function getMDXContent(slug: string, locale?: string): string | null {
-  const result = getContentBySlug(slug, locale)
-  return result?.content ?? null
+export function getContentByPostId(
+  postId: string,
+  locale: string
+): {content: string; extension: string} | null {
+  const fileInfo = findLocaleFile(postId, locale)
+  if (!fileInfo) {
+    return null
+  }
+
+  return {
+    content: fs.readFileSync(fileInfo.filePath, 'utf8'),
+    extension: fileInfo.extension,
+  }
 }
 
 export function parseFrontmatter(content: string): {
@@ -93,7 +82,7 @@ function extractDescriptionFromContent(content: string): string {
   const paragraphMatch = content.match(/^(?!#|---)(.+)/m)
   return paragraphMatch
     ? `${paragraphMatch[1].slice(0, 150)}...`
-    : 'Aucune description disponible.'
+    : 'No description available.'
 }
 
 function calculateReadTime(content: string): string {
@@ -104,15 +93,18 @@ function calculateReadTime(content: string): string {
 }
 
 export function getMdxBlogPost(
-  slug: string,
-  locale?: string
+  postId: string,
+  locale: string
 ): MdxBlogPost | null {
-  const result = getContentBySlug(slug, locale)
+  const result = getContentByPostId(postId, locale)
   if (!result) return null
 
   const {frontmatter, body} = parseFrontmatter(result.content)
 
+  const slug = frontmatter.slug || postId
+
   return {
+    postId,
     slug,
     content: body,
     frontmatter,
@@ -120,12 +112,12 @@ export function getMdxBlogPost(
   }
 }
 
-export function getAllMdxBlogPosts(locale?: string): MdxBlogPost[] {
-  const slugs = getContentSlugs(locale)
+export function getAllMdxBlogPosts(locale: string): MdxBlogPost[] {
+  const postIds = getPostIds()
   const posts: MdxBlogPost[] = []
 
-  for (const slug of slugs) {
-    const post = getMdxBlogPost(slug, locale)
+  for (const postId of postIds) {
+    const post = getMdxBlogPost(postId, locale)
     if (post) {
       posts.push(post)
     }
@@ -136,7 +128,8 @@ export function getAllMdxBlogPosts(locale?: string): MdxBlogPost[] {
 
 export function extractPostMetadata(
   content: string,
-  slug: string
+  slug: string,
+  _extension?: string
 ): {
   slug: string
   title: string
@@ -158,22 +151,27 @@ export function extractPostMetadata(
   }
 }
 
-export function getAllBlogPosts(locale?: string): Array<{
+export function getAllBlogPosts(locale: string): Array<{
   slug: string
   title: string
   description: string
   readTime: string
   content: string
 }> {
-  const slugs = getContentSlugs(locale)
+  const postIds = getPostIds()
 
-  return slugs
-    .map((slug) => {
-      const result = getContentBySlug(slug, locale)
+  return postIds
+    .map((postId) => {
+      const result = getContentByPostId(postId, locale)
       if (!result) return null
 
-      const metadata = extractPostMetadata(result.content, slug)
-      const {body} = parseFrontmatter(result.content)
+      const {frontmatter, body} = parseFrontmatter(result.content)
+      const slug = frontmatter.slug || postId
+      const metadata = extractPostMetadata(
+        result.content,
+        slug,
+        result.extension
+      )
 
       return {
         ...metadata,
@@ -190,8 +188,8 @@ export function getAllBlogPosts(locale?: string): Array<{
 }
 
 export function getBlogPost(
-  slug: string,
-  locale?: string
+  postId: string,
+  locale: string
 ): {
   slug: string
   title: string
@@ -199,11 +197,12 @@ export function getBlogPost(
   readTime: string
   content: string
 } | null {
-  const result = getContentBySlug(slug, locale)
+  const result = getContentByPostId(postId, locale)
   if (!result) return null
 
-  const metadata = extractPostMetadata(result.content, slug)
-  const {body} = parseFrontmatter(result.content)
+  const {frontmatter, body} = parseFrontmatter(result.content)
+  const slug = frontmatter.slug || postId
+  const metadata = extractPostMetadata(result.content, slug, result.extension)
 
   return {
     ...metadata,
@@ -211,35 +210,37 @@ export function getBlogPost(
   }
 }
 
-export function blogPostExists(slug: string, locale?: string): boolean {
-  return getContentSlugs(locale).includes(slug)
+export function blogPostExists(postId: string, locale: string): boolean {
+  return getContentByPostId(postId, locale) !== null
 }
 
-export function getAllMdxSlugsWithLocales(): {slug: string; locale: string}[] {
-  const baseDir = path.join(
-    process.cwd(),
-    'src/app/[locale]/(public)/blog/mdx/_files'
-  )
+export function getAllMdxSlugsWithLocales(): {
+  postId: string
+  slug: string
+  locale: string
+}[] {
+  const contentDir = getContentDir()
+  const results: {postId: string; slug: string; locale: string}[] = []
 
-  const results: {slug: string; locale: string}[] = []
-
-  if (!fs.existsSync(baseDir)) {
+  if (!fs.existsSync(contentDir)) {
     return results
   }
 
-  const defaultSlugs = getContentSlugs()
-  for (const slug of defaultSlugs) {
-    results.push({slug, locale: 'en'})
-  }
+  const postIds = getPostIds()
 
-  const entries = fs.readdirSync(baseDir, {withFileTypes: true})
-  for (const entry of entries) {
-    if (entry.isDirectory()) {
-      const locale = entry.name
-      const localeSlugs = getContentSlugs(locale)
-      for (const slug of localeSlugs) {
-        if (!results.some((r) => r.slug === slug && r.locale === locale)) {
-          results.push({slug, locale})
+  for (const postId of postIds) {
+    const postDir = path.join(contentDir, postId)
+
+    for (const locale of SUPPORTED_LOCALES) {
+      for (const ext of SUPPORTED_EXTENSIONS) {
+        const filePath = path.join(postDir, `${locale}${ext}`)
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath, 'utf8')
+          const {frontmatter} = parseFrontmatter(content)
+          const slug = frontmatter.slug || postId
+
+          results.push({postId, slug, locale})
+          break
         }
       }
     }
@@ -247,3 +248,66 @@ export function getAllMdxSlugsWithLocales(): {slug: string; locale: string}[] {
 
   return results
 }
+
+export function getAvailableLocalesForPost(postId: string): string[] {
+  const contentDir = getContentDir()
+  const postDir = path.join(contentDir, postId)
+
+  if (!fs.existsSync(postDir)) {
+    return []
+  }
+
+  const locales: string[] = []
+
+  for (const locale of SUPPORTED_LOCALES) {
+    for (const ext of SUPPORTED_EXTENSIONS) {
+      const filePath = path.join(postDir, `${locale}${ext}`)
+      if (fs.existsSync(filePath)) {
+        locales.push(locale)
+        break
+      }
+    }
+  }
+
+  return locales
+}
+
+export function getPostIdBySlug(slug: string, locale: string): string | null {
+  const postIds = getPostIds()
+
+  for (const postId of postIds) {
+    const post = getMdxBlogPost(postId, locale)
+    if (post && post.slug === slug) {
+      return postId
+    }
+  }
+
+  return null
+}
+
+export function getPostLanguageVariants(
+  postId: string
+): {locale: string; slug: string}[] {
+  const variants: {locale: string; slug: string}[] = []
+  const availableLocales = getAvailableLocalesForPost(postId)
+
+  for (const locale of availableLocales) {
+    const post = getMdxBlogPost(postId, locale)
+    if (post) {
+      variants.push({locale, slug: post.slug})
+    }
+  }
+
+  return variants
+}
+
+export const getContentSlugs = getPostIds
+export const getMDXSlugs = getPostIds
+export const getMDXContent = (
+  postId: string,
+  locale: string
+): string | null => {
+  const result = getContentByPostId(postId, locale)
+  return result?.content ?? null
+}
+export const getContentBySlug = getContentByPostId

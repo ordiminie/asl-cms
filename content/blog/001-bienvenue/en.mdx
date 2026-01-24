@@ -1,0 +1,143 @@
+---
+id: '001-bienvenue'
+lang: 'en'
+slug: 'welcome-to-our-blog'
+title: 'Welcome to our Blog with MDX'
+description: 'Discover how MDX combines the simplicity of Markdown with the power of React components to create rich and interactive content.'
+author: 'ShipSaaS Team'
+category: 'Tutorial'
+hashtags: ['mdx', 'nextjs', 'react', 'blog']
+publishedAt: '2025-01-05'
+image: '/images/blog/article-test.png'
+---
+
+# Welcome to our Blog with MDX!
+
+This is an example of **MDX content** that combines the simplicity of Markdown with the power of React components. MDX allows you to write rich and interactive content.
+
+## What is MDX?
+
+MDX is a file format that allows you to use JSX in your Markdown documents. This means you can:
+
+- Write content in standard **Markdown**
+- Integrate custom _React components_
+- Create interactive experiences
+- Maintain code readability
+
+### Formatting Examples
+
+Here are some Markdown formatting examples that work perfectly:
+
+1. **Bold text** and _italic text_
+2. `Inline code` with backticks
+3. [Links to external sites](https://nextjs.org)
+4. [Internal links](/pricing) to other pages
+
+> **Important Quote**
+> MDX revolutionizes the way we create technical content by combining the simplicity of Markdown with the flexibility of React.
+
+## Code Examples
+
+### JavaScript
+
+```javascript
+// React function example
+function WelcomeMessage({name}) {
+  return (
+    <div className="welcome">
+      <h2>Hello {name}!</h2>
+      <p>Welcome to our Next.js application</p>
+    </div>
+  )
+}
+
+export default WelcomeMessage
+```
+
+### TypeScript
+
+```typescript
+interface User {
+  id: number
+  name: string
+  email: string
+  isActive: boolean
+}
+
+const createUser = (userData: Omit<User, 'id'>): User => {
+  return {
+    id: Date.now(),
+    ...userData,
+  }
+}
+```
+
+### CSS
+
+```css
+.blog-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: 'Inter', sans-serif;
+}
+
+.highlight {
+  background: linear-gradient(120deg, #a8edea 0%, #fed6e3 100%);
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+}
+```
+
+## Lists and Structures
+
+### Technologies Used in This Project
+
+- **Next.js 15** - React Framework with App Router
+- **TypeScript** - Static typing for JavaScript
+- **Tailwind CSS** - Utility-first CSS framework
+- **MDX** - Markdown with React components
+- **ShadCN UI** - Modern UI components
+- **Next Intl** - Internationalization
+
+### Development Steps
+
+1. **Initial Setup**
+   - Install dependencies
+   - Configure Next.js
+   - Setup TypeScript
+
+2. **Development**
+   - Create components
+   - Implement pages
+   - Testing and optimization
+
+3. **Deployment**
+   - Production build
+   - Performance optimization
+   - Go live
+
+## Feature Table
+
+| Feature           | Description             | Status      |
+| ----------------- | ----------------------- | ----------- |
+| **Auth**          | Secure login system     | Implemented |
+| **Dashboard**     | User interface          | Implemented |
+| **Payments**      | Stripe integration      | Implemented |
+| **MDX Blog**      | Blog system with MDX    | In Progress |
+| **Organizations** | Multi-tenant management | Implemented |
+
+---
+
+## Conclusion
+
+MDX offers an exceptional content creation experience by combining:
+
+- **Simplicity**: Familiar Markdown syntax
+- **Flexibility**: Integrated React components
+- **Performance**: Optimized server-side rendering
+- **Maintainability**: Structured and readable code
+
+This approach revolutionizes technical content creation and enables rich, interactive experiences.
+
+**Ready to start?** Explore our [documentation](/docs) or visit our [pricing page](/pricing) to discover our offers.

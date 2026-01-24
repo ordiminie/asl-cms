@@ -63,7 +63,7 @@ export function mdxPostToUnified(
   post: MdxBlogPost,
   locale: string
 ): UnifiedBlogPost {
-  const {frontmatter, content, slug} = post
+  const {frontmatter, content, slug, postId} = post
 
   const title = frontmatter.title || extractTitleFromContent(content, slug)
   const description =
@@ -77,8 +77,8 @@ export function mdxPostToUnified(
     : undefined
 
   return {
-    id: slug,
-    slug,
+    id: frontmatter.id || postId,
+    slug: frontmatter.slug || slug,
     title,
     description,
     content,
@@ -96,7 +96,7 @@ export function mdxPostToUnified(
     nbView: 0,
     nbLike: 0,
     readTime: calculateReadTime(content),
-    language: locale,
+    language: frontmatter.lang || locale,
   }
 }
 

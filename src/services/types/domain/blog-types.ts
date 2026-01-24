@@ -7,7 +7,7 @@ export type UnifiedBlogPost = {
   source: 'database' | 'mdx'
 
   // Optional (DB has, MDX via frontmatter)
-  author?: {name: string; image?: string}
+  author?: {name: string; image?: string; bio?: string}
   category?: {name: string}
   hashtags?: string[]
   image?: string // Featured image URL
@@ -24,6 +24,9 @@ export type UnifiedBlogPost = {
 }
 
 export type MdxFrontmatter = {
+  id?: string // Unique post identifier (e.g., "001-thumbnails-parfaites")
+  lang?: string // Language code (en, fr, es)
+  slug?: string // Language-specific slug for URL
   title?: string
   description?: string
   author?: string
@@ -35,7 +38,8 @@ export type MdxFrontmatter = {
 }
 
 export type MdxBlogPost = {
-  slug: string
+  postId: string // Folder name / post identifier
+  slug: string // URL slug (from frontmatter or fallback to postId)
   content: string
   frontmatter: MdxFrontmatter
   extension: string
