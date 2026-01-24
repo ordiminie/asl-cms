@@ -1261,7 +1261,13 @@
     "readMore": "Read more",
     "pagination": {
       "previous": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "page": "Page",
+      "of": "of"
+    },
+    "category": {
+      "title": "Category: {category}",
+      "description": "All articles in the {category} category"
     }
   },
   "BlogPostPage": {
@@ -1271,7 +1277,8 @@
     "publishedOn": "Published on",
     "updatedOn": "Updated on",
     "share": "Share",
-    "comment": "Comment"
+    "comment": "Comment",
+    "author": "Author"
   },
   "BlogLayout": {
     "navigation": {

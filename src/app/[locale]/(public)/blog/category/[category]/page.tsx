@@ -4,8 +4,10 @@ import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {
   BLOG_POSTS_PER_PAGE,
-  getBlogListAlternates,
-  getPaginatedBlogPostsDal,
+  getAllBlogCategoriesDal,
+  getBlogPostsByCategoryDal,
+  getCategoryAlternates,
+  getCategoryBySlugDal,
 } from '@/app/dal/blog-dal'
 import {BlogList} from '@/components/features/blog/blog-list'
 import {env} from '@/env'
@@ -15,25 +17,45 @@ import {isPageEnabled} from '@/lib/utils'
 
 export const dynamic = 'force-static'
 
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({locale}))
+export async function generateStaticParams() {
+  if (!isPageEnabled(PagesConst.BLOG)) {
+    return []
+  }
+
+  const params: {locale: string; category: string}[] = []
+
+  for (const locale of routing.locales) {
+    const categories = await getAllBlogCategoriesDal(locale)
+    for (const category of categories) {
+      params.push({locale, category: category.slug})
+    }
+  }
+
+  return params
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{locale: string}>
+  params: Promise<{locale: string; category: string}>
 }): Promise<Metadata> {
-  const {locale} = await params
+  const {locale, category: categorySlug} = await params
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'BlogListPage'})
 
+  const category = await getCategoryBySlugDal(locale, categorySlug)
+  if (!category) {
+    return {
+      title: 'Category not found',
+    }
+  }
+
   const baseUrl = env.NEXT_PUBLIC_APP_URL || 'https://example.com'
-  const alternates = getBlogListAlternates(locale, baseUrl)
+  const alternates = getCategoryAlternates(locale, categorySlug, baseUrl)
 
   return {
-    title: t('meta.title'),
-    description: t('meta.description'),
+    title: t('category.title', {category: category.name}),
+    description: t('category.description', {category: category.name}),
     alternates: {
       canonical: alternates.canonical,
       languages: alternates.languages,
@@ -41,21 +63,32 @@ export async function generateMetadata({
   }
 }
 
-export default async function BlogListPage({
+export default async function BlogCategoryPage({
   params,
 }: {
-  params: Promise<{locale: string}>
+  params: Promise<{locale: string; category: string}>
 }) {
   if (!isPageEnabled(PagesConst.BLOG)) {
     return notFound()
   }
 
-  const {locale} = await params
+  const {locale, category: categorySlug} = await params
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'BlogListPage'})
 
-  const result = await getPaginatedBlogPostsDal(locale, 1, BLOG_POSTS_PER_PAGE)
-  const baseUrl = `/${locale}/blog`
+  const category = await getCategoryBySlugDal(locale, categorySlug)
+  if (!category) {
+    return notFound()
+  }
+
+  const result = await getBlogPostsByCategoryDal(
+    locale,
+    categorySlug,
+    1,
+    BLOG_POSTS_PER_PAGE
+  )
+
+  const baseUrl = `/${locale}/blog/category/${categorySlug}`
 
   const translations = {
     noCategory: t('noCategory'),
@@ -73,10 +106,10 @@ export default async function BlogListPage({
     <div>
       <header className="mb-12 text-center">
         <h1 className="text-foreground mb-4 text-4xl font-bold">
-          {t('title')}
+          {t('category.title', {category: category.name})}
         </h1>
         <p className="text-muted-foreground mx-auto max-w-2xl text-xl">
-          {t('description')}
+          {t('category.description', {category: category.name})}
         </p>
       </header>
 

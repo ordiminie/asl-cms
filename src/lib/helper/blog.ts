@@ -1,4 +1,3 @@
-// Interface pour un article de blog
 export interface BlogPost {
   slug: string
   title: string
