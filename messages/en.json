@@ -1278,7 +1278,9 @@
     "updatedOn": "Updated on",
     "share": "Share",
     "comment": "Comment",
-    "author": "Author"
+    "author": "Author",
+    "writtenBy": "Written by",
+    "relatedArticles": "Related Articles"
   },
   "BlogLayout": {
     "navigation": {
@@ -1313,6 +1315,15 @@
       "authors": "Authors",
       "categories": "Categories",
       "totalViews": "Total Views"
+    },
+    "cta": {
+      "badge": "Get Started",
+      "titleStart": "Ready to",
+      "titleHighlight": "get started",
+      "titleEnd": "?",
+      "description": "Join thousands of users building amazing things with our platform.",
+      "button": "Get Started Free",
+      "disclaimer": "No credit card required"
     }
   },
   "WelcomeFollowUpEmail": {

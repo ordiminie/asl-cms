@@ -1278,7 +1278,9 @@
     "updatedOn": "Actualizado el",
     "share": "Compartir",
     "comment": "Comentar",
-    "author": "Autor"
+    "author": "Autor",
+    "writtenBy": "Escrito por",
+    "relatedArticles": "Artículos relacionados"
   },
   "BlogLayout": {
     "navigation": {
@@ -1313,6 +1315,15 @@
       "authors": "Autores",
       "categories": "Categorías",
       "totalViews": "Vistas Totales"
+    },
+    "cta": {
+      "badge": "Empezar",
+      "titleStart": "¿Listo para",
+      "titleHighlight": "empezar",
+      "titleEnd": "?",
+      "description": "Únete a miles de usuarios que están creando cosas increíbles con nuestra plataforma.",
+      "button": "Empezar gratis",
+      "disclaimer": "No se requiere tarjeta de crédito"
     }
   },
   "WelcomeFollowUpEmail": {

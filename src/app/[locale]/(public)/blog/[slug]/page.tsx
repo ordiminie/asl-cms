@@ -5,6 +5,7 @@ import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {
   getAllUnifiedBlogSlugsDal,
   getPostAlternatesDal,
+  getRelatedPostsDal,
   getUnifiedBlogPostBySlugDal,
 } from '@/app/dal/blog-dal'
 import {BlogArticle} from '@/components/features/blog/blog-article'
@@ -90,6 +91,8 @@ export default async function BlogPostPage({
   const {locale, slug} = await params
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'BlogPostPage'})
+  const tList = await getTranslations({locale, namespace: 'BlogListPage'})
+  const tBlog = await getTranslations({locale, namespace: 'BlogPage'})
 
   const post = await getUnifiedBlogPostBySlugDal(slug, locale)
 
@@ -97,13 +100,33 @@ export default async function BlogPostPage({
     notFound()
   }
 
+  const relatedPosts = await getRelatedPostsDal(
+    locale,
+    slug,
+    post.category?.name,
+    3
+  )
+
   const translations = {
+    backToBlog: tBlog('backToBlog'),
     publishedOn: t('publishedOn'),
     updatedOn: t('updatedOn'),
     share: t('share'),
     comment: t('comment'),
     author: t('author'),
+    writtenBy: t('writtenBy'),
+    relatedArticles: t('relatedArticles'),
+    readMore: tList('readMore'),
+    views: tList('views'),
+    likes: tList('likes'),
   }
 
-  return <BlogArticle post={post} locale={locale} translations={translations} />
+  return (
+    <BlogArticle
+      post={post}
+      locale={locale}
+      relatedPosts={relatedPosts}
+      translations={translations}
+    />
+  )
 }

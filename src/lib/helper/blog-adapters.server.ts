@@ -87,6 +87,7 @@ export function mdxPostToUnified(
     author: frontmatter.author ? {name: frontmatter.author} : undefined,
     category: frontmatter.category ? {name: frontmatter.category} : undefined,
     hashtags: frontmatter.hashtags,
+    image: frontmatter.image,
 
     publishedAt,
     createdAt: publishedAt,

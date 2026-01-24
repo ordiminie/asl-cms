@@ -367,3 +367,60 @@ export function getCategoryAlternates(
     languages,
   }
 }
+
+export const getRelatedPostsDal = cache(
+  async (
+    locale: string,
+    currentSlug: string,
+    categoryName?: string,
+    limit: number = 3
+  ): Promise<UnifiedBlogPost[]> => {
+    const allPosts = await getAllPostsFromSources(locale)
+
+    const otherPosts = allPosts.filter((post) => post.slug !== currentSlug)
+
+    if (otherPosts.length === 0) {
+      return []
+    }
+
+    let sameCategoryPosts: UnifiedBlogPost[] = []
+    let differentCategoryPosts: UnifiedBlogPost[] = []
+
+    if (categoryName) {
+      sameCategoryPosts = otherPosts.filter(
+        (post) => post.category?.name === categoryName
+      )
+      differentCategoryPosts = otherPosts.filter(
+        (post) => post.category?.name !== categoryName
+      )
+    } else {
+      differentCategoryPosts = otherPosts
+    }
+
+    const shuffleArray = <T>(array: T[]): T[] => {
+      const shuffled = [...array]
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+      }
+      return shuffled
+    }
+
+    const shuffledSameCategory = shuffleArray(sameCategoryPosts)
+    const shuffledDifferentCategory = shuffleArray(differentCategoryPosts)
+
+    const relatedPosts: UnifiedBlogPost[] = []
+
+    for (const post of shuffledSameCategory) {
+      if (relatedPosts.length >= limit) break
+      relatedPosts.push(post)
+    }
+
+    for (const post of shuffledDifferentCategory) {
+      if (relatedPosts.length >= limit) break
+      relatedPosts.push(post)
+    }
+
+    return relatedPosts
+  }
+)

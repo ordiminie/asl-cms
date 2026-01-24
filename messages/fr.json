@@ -1278,7 +1278,9 @@
     "updatedOn": "Mis à jour le",
     "share": "Partager",
     "comment": "Commenter",
-    "author": "Auteur"
+    "author": "Auteur",
+    "writtenBy": "Écrit par",
+    "relatedArticles": "Articles connexes"
   },
   "BlogLayout": {
     "navigation": {
@@ -1313,6 +1315,15 @@
       "authors": "Auteurs",
       "categories": "Catégories",
       "totalViews": "Vues Totales"
+    },
+    "cta": {
+      "badge": "Commencer",
+      "titleStart": "Prêt à",
+      "titleHighlight": "commencer",
+      "titleEnd": "?",
+      "description": "Rejoignez des milliers d'utilisateurs qui créent des choses incroyables avec notre plateforme.",
+      "button": "Commencer gratuitement",
+      "disclaimer": "Pas de carte de crédit requise"
     }
   },
   "WelcomeFollowUpEmail": {
