@@ -214,6 +214,12 @@ export function blogPostExists(postId: string, locale: string): boolean {
   return getContentByPostId(postId, locale) !== null
 }
 
+function isPublishedByDate(publishedAt: string | undefined): boolean {
+  if (!publishedAt) return true
+  const publishDate = new Date(publishedAt)
+  return publishDate <= new Date()
+}
+
 export function getAllMdxSlugsWithLocales(): {
   postId: string
   slug: string
@@ -237,8 +243,12 @@ export function getAllMdxSlugsWithLocales(): {
         if (fs.existsSync(filePath)) {
           const content = fs.readFileSync(filePath, 'utf8')
           const {frontmatter} = parseFrontmatter(content)
-          const slug = frontmatter.slug || postId
 
+          if (!isPublishedByDate(frontmatter.publishedAt)) {
+            break
+          }
+
+          const slug = frontmatter.slug || postId
           results.push({postId, slug, locale})
           break
         }
@@ -293,7 +303,7 @@ export function getPostLanguageVariants(
 
   for (const locale of availableLocales) {
     const post = getMdxBlogPost(postId, locale)
-    if (post) {
+    if (post && isPublishedByDate(post.frontmatter.publishedAt)) {
       variants.push({locale, slug: post.slug})
     }
   }

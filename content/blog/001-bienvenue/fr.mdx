@@ -129,6 +129,151 @@ const createUser = (userData: Omit<User, 'id'>): User => {
 
 ---
 
+## Démonstration des Composants MDX
+
+Cette section présente tous les composants MDX disponibles dans ce blog.
+
+### Callouts
+
+Les callouts permettent de mettre en évidence des informations importantes.
+
+<Callout type="info">
+  **Information** - Ceci est un callout de type info pour partager des
+  informations utiles.
+</Callout>
+
+<Callout type="warning">
+  **Attention** - Ceci est un callout de type warning pour avertir
+  l'utilisateur.
+</Callout>
+
+<Callout type="success">
+  **Succès** - Ceci est un callout de type success pour confirmer une action
+  réussie.
+</Callout>
+
+<Callout type="error">
+  **Erreur** - Ceci est un callout de type error pour signaler un problème.
+</Callout>
+
+### Steps (Étapes)
+
+Les étapes permettent de présenter un processus de manière claire.
+
+<Steps>
+  <Step title="Installation">
+    Commencez par installer les dépendances avec `pnpm install`.
+  </Step>
+  <Step title="Configuration">
+    Configurez vos variables d'environnement dans `.env.local`.
+  </Step>
+  <Step title="Développement">
+    Lancez le serveur de développement avec `pnpm dev`.
+  </Step>
+</Steps>
+
+### Tabs (Onglets)
+
+Les onglets permettent d'organiser du contenu similaire.
+
+<Tabs defaultValue="npm">
+  <Tab value="npm" label="npm">
+    ```bash
+    npm install next react react-dom
+    ```
+  </Tab>
+  <Tab value="pnpm" label="pnpm">
+    ```bash
+    pnpm add next react react-dom
+    ```
+  </Tab>
+  <Tab value="yarn" label="yarn">
+    ```bash
+    yarn add next react react-dom
+    ```
+  </Tab>
+</Tabs>
+
+### Vidéo YouTube
+
+Intégration d'une vidéo YouTube :
+
+<Video
+  src="https://youtu.be/m0MwBM5t0RE?si=Q3egTrvARrRBjGWg"
+  title="Exemple de vidéo YouTube"
+/>
+
+### Vidéo Vimeo
+
+Intégration d'une vidéo Vimeo :
+
+<Video src="https://vimeo.com/1066069169" title="Exemple de vidéo Vimeo" />
+
+### Tweet / X
+
+Intégrez facilement des tweets dans votre contenu :
+
+<Tweet url="https://x.com/MikeCodeur/status/2014974205683519594" />
+
+Vous pouvez aussi utiliser l'ID directement :
+
+<Tweet id="2014974205683519594" />
+
+### Excalidraw
+
+Intégrez des diagrammes Excalidraw interactifs :
+
+<Excalidraw
+  src="https://link.excalidraw.com/readonly/OjxAPKt58G3nhLoVg1ZS"
+  alt="Diagramme illustrant l'architecture"
+  showExternalLink={true}
+  height={400}
+/>
+
+Vous pouvez aussi utiliser des liens Excalidraw avec JSON :
+
+<Excalidraw
+  src="https://excalidraw.com/#json=QH_3-2S6GZzlJ5UuD0I4M,D9xDvT68JElZ_QxmeyruXQ"
+  alt="Exemple de diagramme Excalidraw"
+  showExternalLink={true}
+  height={350}
+/>
+
+### Code avec nom de fichier
+
+```typescript title="src/components/example.tsx"
+export function Example() {
+  return <div>Hello World</div>
+}
+```
+
+### Images
+
+Vous pouvez intégrer des images avec Next/Image optimisé :
+
+<Image
+  src="/images/blog/article-test.png"
+  alt="Image exemple"
+  width={600}
+  height={400}
+/>
+
+---
+
+## Récapitulatif des composants disponibles
+
+| Composant      | Usage                                    | Exemple                                       |
+| -------------- | ---------------------------------------- | --------------------------------------------- |
+| `Callout`      | Messages d'alerte (info, warning, etc.)  | `<Callout type="info">...</Callout>`          |
+| `Steps`/`Step` | Guide étape par étape                    | `<Steps><Step title="...">...</Step></Steps>` |
+| `Tabs`/`Tab`   | Contenu avec onglets                     | `<Tabs><Tab value="..." label="...">...</Tab></Tabs>` |
+| `Video`        | Vidéos YouTube, Vimeo ou MP4             | `<Video src="..." title="..." />`             |
+| `Tweet`        | Intégration de tweets X/Twitter          | `<Tweet url="..." />` ou `<Tweet id="..." />` |
+| `Excalidraw`   | Diagrammes interactifs                   | `<Excalidraw src="..." alt="..." />`          |
+| `Image`        | Images optimisées Next.js                | `<Image src="..." alt="..." />`               |
+
+---
+
 ## Conclusion
 
 MDX offre une expérience de création de contenu exceptionnelle en combinant :
