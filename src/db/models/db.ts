@@ -3,6 +3,7 @@ import {Pool} from 'pg'
 
 import {env} from '@/env'
 
+import * as appSettings from './app-settings-model'
 import * as auth from './auth-model'
 import * as creditLedger from './credit-ledger-model'
 import * as notification from './notification-model'
@@ -22,6 +23,7 @@ const pool = new Pool({
 
 const db = drizzle(pool, {
   schema: {
+    ...appSettings,
     ...auth,
     ...creditLedger,
     ...user,

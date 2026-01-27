@@ -590,6 +590,29 @@ const seed = async () => {
     ON CONFLICT DO NOTHING;
   `)
 
+  // 11. Insérer les paramètres d'application
+  await client.query(`
+    INSERT INTO "app_settings" (
+      "key",
+      "value",
+      "type",
+      "category",
+      "label",
+      "description",
+      "updated_at"
+    )
+    VALUES
+      -- Email settings
+      ('email.enabled', 'true', 'boolean', 'email', 'Enable emails', 'Master toggle for all email sending', NOW()),
+      ('email.enabled_for_admins', 'true', 'boolean', 'email', 'Admin emails', 'Send emails to administrators', NOW()),
+      ('email.enabled_for_clients', 'true', 'boolean', 'email', 'Client emails', 'Send emails to clients', NOW()),
+      ('email.communication_email', 'onboarding@resend.dev', 'string', 'email', 'Communication email', 'Reply-to address for emails', NOW()),
+      -- General settings
+      ('general.maintenance_mode', 'false', 'boolean', 'general', 'Maintenance mode', 'Show maintenance page to users', NOW()),
+      ('general.maintenance_message', '', 'string', 'general', 'Maintenance message', 'Message shown during maintenance', NOW())
+    ON CONFLICT (key) DO NOTHING;
+  `)
+
   const end = Date.now()
 
   console.log('✅ Seed inserted in', end - start, 'ms')
@@ -652,6 +675,14 @@ const seed = async () => {
     '🔹 Mix de notifications lues/non lues avec dates étalées (0 à 30 jours)'
   )
   console.log('🔹 Cas de test : notifications récentes, moyennes et anciennes')
+  console.log('')
+  console.log("⚙️  Paramètres d'application créés :")
+  console.log('🔹 email.enabled : true')
+  console.log('🔹 email.enabled_for_admins : true')
+  console.log('🔹 email.enabled_for_clients : true')
+  console.log('🔹 email.communication_email : (empty)')
+  console.log('🔹 general.maintenance_mode : false')
+  console.log('🔹 general.maintenance_message : (empty)')
   console.log('')
 
   process.exit(0)

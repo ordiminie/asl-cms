@@ -26,9 +26,62 @@ import {
   getSubscriptionDetails,
 } from '@/lib/stripe/stripe-utils'
 
+import {
+  getBooleanSettingService,
+  getStringSettingService,
+} from './app-settings-service'
 import {getPlanByPriceIdService} from './subscription-service'
+import {AppSettingKeys} from './types/domain/app-settings-types'
 
 const resend = new Resend(env.RESEND_API_KEY)
+
+const DEFAULT_EMAIL_FROM = 'onboarding@resend.dev'
+
+const getEmailFrom = async (): Promise<string> => {
+  try {
+    const settingEmail = await getStringSettingService(
+      AppSettingKeys.EMAIL_COMMUNICATION_EMAIL
+    )
+    if (settingEmail && settingEmail.trim() !== '') {
+      return settingEmail
+    }
+  } catch {
+    // Ignore error, fallback to env or default
+  }
+  return env.EMAIL_FROM ?? DEFAULT_EMAIL_FROM
+}
+
+export type EmailRecipientType = 'admin' | 'client' | 'system'
+
+const shouldSendEmail = async (
+  recipientType: EmailRecipientType
+): Promise<boolean> => {
+  // System emails (magic link, OTP, verification, password reset) are never blocked
+  if (recipientType === 'system') {
+    return true
+  }
+
+  try {
+    const globalEnabled = await getBooleanSettingService(
+      AppSettingKeys.EMAIL_ENABLED
+    )
+    if (!globalEnabled) return false
+
+    if (recipientType === 'admin') {
+      return await getBooleanSettingService(
+        AppSettingKeys.EMAIL_ENABLED_FOR_ADMINS
+      )
+    }
+    if (recipientType === 'client') {
+      return await getBooleanSettingService(
+        AppSettingKeys.EMAIL_ENABLED_FOR_CLIENTS
+      )
+    }
+    return true
+  } catch {
+    return true
+  }
+}
 
 export const sendSimpleEmailService = async ({
   to,
@@ -39,26 +92,40 @@ export const sendSimpleEmailService = async ({
   subject: string
   text: string
 }) => {
+  const fromEmail = await getEmailFrom()
   await sendEmailService({
     to,
     subject,
     text,
-    from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
+    from: fromEmail,
   })
+}
+
+export interface SendEmailOptions extends CreateEmailRequestOptions {
+  recipientType?: EmailRecipientType
 }
 
 export const sendEmailService = async (
   payload: CreateEmailOptions,
-  options?: CreateEmailRequestOptions
+  options?: SendEmailOptions
 ) => {
+  const recipientType = options?.recipientType ?? 'client'
+  const canSend = await shouldSendEmail(recipientType)
+  if (!canSend) {
+    console.log('[EMAIL] Disabled by settings, skipping:', payload.subject)
+    return
+  }
+
   if (env.NEXT_PUBLIC_NODE_ENV === 'development') {
     payload.subject = `[DEV] ${payload.subject}`
   }
 
+  const fromEmail = await getEmailFrom()
+
   const {error} = await resend.emails.send(
     {
       ...payload,
-      from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
+      from: fromEmail,
     },
     options
   )
@@ -85,11 +152,12 @@ export const sendOrganizationInvitation = async ({
   inviteLink,
 }: SendOrganizationInvitationParams) => {
   const t = await getTranslations('email.user.organizationInvitation')
+  const fromEmail = await getEmailFrom()
 
   await sendEmailService({
     to: email,
     subject: t('subject', {teamName}),
-    from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
+    from: fromEmail,
     text: `${t('invitationMessage', {
       invitedByUsername,
       invitedByEmail,
@@ -112,15 +180,18 @@ export const sendMagicLinkEmailService = async ({
   url: string
 }) => {
   const t = await getTranslations('email.user.magicLink')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject'),
-    from: fromEmail,
-    text: t('preview'),
-    react: MagicLinkMail({url}),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject'),
+      from: fromEmail,
+      text: t('preview'),
+      react: MagicLinkMail({url}),
+    },
+    {recipientType: 'system'}
+  )
 }
 
 export const sendVerificationEmailService = async ({
@@ -131,15 +202,18 @@ export const sendVerificationEmailService = async ({
   url: string
 }) => {
   const t = await getTranslations('email.user.verification')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject'),
-    from: fromEmail,
-    text: t('preview'),
-    react: VerificationEmail({url}),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject'),
+      from: fromEmail,
+      text: t('preview'),
+      react: VerificationEmail({url}),
+    },
+    {recipientType: 'system'}
+  )
 }
 
 export const sendResetPasswordLinkEmailService = async ({
@@ -150,15 +224,18 @@ export const sendResetPasswordLinkEmailService = async ({
   url: string
 }) => {
   const t = await getTranslations('email.user.resetPassword')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject'),
-    from: fromEmail,
-    text: t('preview'),
-    react: ResetPasswordEmail({url}),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject'),
+      from: fromEmail,
+      text: t('preview'),
+      react: ResetPasswordEmail({url}),
+    },
+    {recipientType: 'system'}
+  )
 }
 
 export const sendOTPEmailService = async ({
@@ -171,15 +248,18 @@ export const sendOTPEmailService = async ({
   otpLink?: string
 }) => {
   const t = await getTranslations('email.user.otp')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject'),
-    from: fromEmail,
-    text: `${t('description')} ${otp}${otpLink ? `\n\n${t('verifyAutomatically')} : ${otpLink}` : ''}`,
-    react: OtpEmail({otp, otpLink}),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject'),
+      from: fromEmail,
+      text: `${t('description')} ${otp}${otpLink ? `\n\n${t('verifyAutomatically')} : ${otpLink}` : ''}`,
+      react: OtpEmail({otp, otpLink}),
+    },
+    {recipientType: 'system'}
+  )
 }
 
 export const sendEmailChangeEmailVerificationService = async ({
@@ -190,15 +270,18 @@ export const sendEmailChangeEmailVerificationService = async ({
   url: string
 }) => {
   const t = await getTranslations('email.user.emailChange')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject'),
-    from: fromEmail,
-    text: t('preview'),
-    react: EmailChangeEmailVerification({url}),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject'),
+      from: fromEmail,
+      text: t('preview'),
+      react: EmailChangeEmailVerification({url}),
+    },
+    {recipientType: 'system'}
+  )
 }
 
 export const sendNotificationEmailService = async ({
@@ -218,7 +301,7 @@ export const sendNotificationEmailService = async ({
     locale: language,
     namespace: 'email.user.notification',
   })
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
   await sendEmailService({
     to: email,
@@ -239,7 +322,7 @@ export const sendSubscriptionCompletedEmailService = async (
   subscription: Subscription
 ) => {
   const t = await getTranslations('email.user.subscriptionCompleted')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
   if (!subscription.stripeCustomerId) {
     console.error('Pas de stripeCustomerId dans la subscription')
@@ -304,7 +387,7 @@ export const sendSubscriptionUpdatedEmailService = async (
   subscription: Subscription
 ) => {
   const t = await getTranslations('email.user.subscriptionUpdated')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
   if (!subscription.stripeCustomerId) {
     console.error('Pas de stripeCustomerId dans la subscription')
@@ -369,7 +452,7 @@ export const sendSubscriptionCanceledEmailService = async (
   subscription: Subscription
 ) => {
   const t = await getTranslations('email.user.subscriptionCanceled')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
   if (!subscription.stripeCustomerId) {
     console.error('Pas de stripeCustomerId dans la subscription')
@@ -432,7 +515,7 @@ export const sendSubscriptionDeletedEmailService = async (
   subscription: Subscription
 ) => {
   const t = await getTranslations('email.user.subscriptionDeleted')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
   if (!subscription.stripeCustomerId) {
     console.error('Pas de stripeCustomerId dans la subscription')
@@ -501,7 +584,7 @@ export const sendWelcomeFollowUpEmailService = async ({
     locale: language,
     namespace: 'WelcomeFollowUpEmail',
   })
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
 
   await sendEmailService({
     to: email,
@@ -525,17 +608,20 @@ export const sendInternalEmailService = async ({
   data: string
 }) => {
   const t = await getTranslations('email.admin.internal')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const fromEmail = await getEmailFrom()
   const toEmail = env.EMAIL_TO ?? env.EMAIL_FROM ?? 'onboarding@resend.dev'
 
-  await sendEmailService({
-    to: toEmail,
-    subject: `${t('subject')} - ${title}`,
-    from: fromEmail,
-    text: t('preview'),
-    react: InternalEmail({
-      preview: t('preview'),
-      content: data,
-    }),
-  })
+  await sendEmailService(
+    {
+      to: toEmail,
+      subject: `${t('subject')} - ${title}`,
+      from: fromEmail,
+      text: t('preview'),
+      react: InternalEmail({
+        preview: t('preview'),
+        content: data,
+      }),
+    },
+    {recipientType: 'admin'}
+  )
 }

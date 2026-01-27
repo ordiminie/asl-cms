@@ -68,7 +68,7 @@ const data = {
       items: [
         {
           title: 'General',
-          url: '#',
+          url: '/admin/settings',
         },
         {
           title: 'Team',
