@@ -58,6 +58,10 @@ const data = {
           title: 'Crédits',
           url: '/admin/credits',
         },
+        {
+          title: 'Emails',
+          url: '/admin/emails',
+        },
       ],
     },
 
