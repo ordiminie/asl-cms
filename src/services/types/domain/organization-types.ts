@@ -64,3 +64,11 @@ export type MemberOrInvitationDTO = {
   joinedAt: Date | null
   status: 'member' | 'invited'
 }
+
+export type OrganizationSearchResult = {
+  id: string
+  name: string
+  slug: string | null
+  logo: string | null
+  memberEmails: string[]
+}

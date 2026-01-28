@@ -1,7 +1,7 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
-import {useTransition} from 'react'
+import {useState, useTransition} from 'react'
 import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
 import {z} from 'zod'
@@ -31,6 +31,8 @@ import {Input} from '@/components/ui/input'
 import {Switch} from '@/components/ui/switch'
 import {Textarea} from '@/components/ui/textarea'
 
+import {OrganizationSearch} from './organization-search'
+
 const formSchema = z.object({
   organizationId: z
     .string()
@@ -49,6 +51,7 @@ type FormInput = z.input<typeof formSchema>
 
 export function AdminGrantCreditsForm() {
   const [isPending, startTransition] = useTransition()
+  const [organizationName, setOrganizationName] = useState('')
 
   const form = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(formSchema),
@@ -62,6 +65,12 @@ export function AdminGrantCreditsForm() {
   })
 
   const hasExpiration = form.watch('hasExpiration')
+  const organizationId = form.watch('organizationId')
+
+  const handleOrganizationSelect = (id: string, name: string) => {
+    form.setValue('organizationId', id)
+    setOrganizationName(name)
+  }
 
   const onSubmit = (values: FormValues) => {
     startTransition(async () => {
@@ -79,6 +88,7 @@ export function AdminGrantCreditsForm() {
           description: result.message,
         })
         form.reset()
+        setOrganizationName('')
       } else {
         toast('Erreur', {
           description: result.message,
@@ -98,25 +108,17 @@ export function AdminGrantCreditsForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="organizationId"
-              render={({field}) => (
-                <FormItem>
-                  <FormLabel>ID de l&apos;organisation</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    UUID de l&apos;organisation à créditer
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormItem>
+              <FormLabel>Organisation</FormLabel>
+              <OrganizationSearch
+                onSelect={handleOrganizationSelect}
+                selectedOrganizationId={organizationId}
+                selectedOrganizationName={organizationName}
+              />
+              <FormDescription>
+                Recherchez par nom d&apos;organisation ou email d&apos;un membre
+              </FormDescription>
+            </FormItem>
 
             <FormField
               control={form.control}
@@ -209,7 +211,11 @@ export function AdminGrantCreditsForm() {
               />
             )}
 
-            <Button type="submit" disabled={isPending} className="w-full">
+            <Button
+              type="submit"
+              disabled={isPending || !organizationId}
+              className="w-full"
+            >
               {isPending ? 'Attribution en cours...' : 'Accorder les crédits'}
             </Button>
           </form>

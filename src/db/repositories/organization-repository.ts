@@ -4,6 +4,7 @@ import {
   invitation,
   member,
   organization as organizations,
+  user,
 } from '@/db/models/auth-model'
 import db from '@/db/models/db'
 import {
@@ -339,4 +340,50 @@ export const deleteInvitationByIdDao = async (
   invitationId: string
 ): Promise<void> => {
   await db.delete(invitation).where(eq(invitation.id, invitationId))
+}
+
+// ===== ADMIN SEARCH =====
+
+export type OrganizationWithMembersSearchResult = {
+  id: string
+  name: string
+  slug: string | null
+  logo: string | null
+  memberEmails: string[]
+}
+
+export const searchOrganizationsWithMemberEmailsDao = async (
+  searchTerm: string,
+  limit: number = 10
+): Promise<OrganizationWithMembersSearchResult[]> => {
+  const searchPattern = `%${searchTerm}%`
+
+  const rows = await db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      slug: organizations.slug,
+      logo: organizations.logo,
+      memberEmails: sql<
+        string[]
+      >`COALESCE(ARRAY_AGG(DISTINCT ${user.email}) FILTER (WHERE ${user.email} IS NOT NULL), ARRAY[]::text[])`,
+    })
+    .from(organizations)
+    .leftJoin(member, eq(organizations.id, member.organizationId))
+    .leftJoin(user, eq(member.userId, user.id))
+    .where(
+      or(
+        sql`${organizations.name} ILIKE ${searchPattern}`,
+        sql`${user.email} ILIKE ${searchPattern}`
+      )
+    )
+    .groupBy(
+      organizations.id,
+      organizations.name,
+      organizations.slug,
+      organizations.logo
+    )
+    .limit(limit)
+
+  return rows
 }

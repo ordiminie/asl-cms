@@ -16,6 +16,7 @@ import {
   getUserInvitationsDao,
   getUserOrganizationDao,
   getUserRoleInOrganizationDao,
+  searchOrganizationsWithMemberEmailsDao,
   updateOrganizationDao,
   updateUserOrganizationRoleDao,
 } from '@/db/repositories/organization-repository'
@@ -30,6 +31,7 @@ import {
   canReadOrganization,
   canReadOrganizationMember,
   canRemoveFromOrganization,
+  canSearchOrganizationsForAdmin,
   canUpdateOrganization,
   canUpdateOrganizationLimitOverrides,
 } from './authorization/organization-authorization'
@@ -46,6 +48,7 @@ import {
   InvitationWithUser,
   MemberOrInvitationDTO,
   OrganizationRole,
+  OrganizationSearchResult,
   UpdateOrganization,
 } from './types/domain/organization-types'
 import {uuidSchema} from './validation/common-validation'
@@ -568,3 +571,22 @@ export const getAdminUserOrganizationsWithUsageService = async (
 }
 
 export type {AdminUsageStats, PlanLimits}
+
+/**
+ * Search organizations by name or member email (admin only)
+ * Returns organizations with their member emails for display
+ */
+export const searchOrganizationsForAdminService = async (
+  searchTerm: string
+): Promise<OrganizationSearchResult[]> => {
+  if (!searchTerm || searchTerm.trim().length < 2) {
+    return []
+  }
+
+  const canSearch = await canSearchOrganizationsForAdmin()
+  if (!canSearch) {
+    return []
+  }
+
+  return await searchOrganizationsWithMemberEmailsDao(searchTerm.trim(), 10)
+}

@@ -454,3 +454,12 @@ export const canUpdateOrganizationLimitOverrides =
   async (): Promise<boolean> => {
     return isAuthAdmin()
   }
+
+/**
+ * Vérifie si l'utilisateur connecté peut rechercher des organisations pour l'admin
+ * Seuls les admins système peuvent effectuer cette recherche
+ * @returns true si l'accès est autorisé
+ */
+export const canSearchOrganizationsForAdmin = async (): Promise<boolean> => {
+  return isAuthAdmin()
+}

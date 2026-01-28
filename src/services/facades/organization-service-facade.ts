@@ -51,3 +51,5 @@ export const getUserOrganizationsWithUsageService =
 // ADMIN FUNCTIONS
 export const getAdminUserOrganizationsWithUsageService =
   organizationServiceInterceptor.getAdminUserOrganizationsWithUsageService
+export const searchOrganizationsForAdminService =
+  organizationServiceInterceptor.searchOrganizationsForAdminService
