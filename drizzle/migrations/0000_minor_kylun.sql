@@ -1,3 +1,5 @@
+CREATE TYPE "public"."setting_category" AS ENUM('email', 'general');--> statement-breakpoint
+CREATE TYPE "public"."setting_type" AS ENUM('boolean', 'string', 'number', 'json');--> statement-breakpoint
 CREATE TYPE "public"."organization_role" AS ENUM('admin', 'member', 'owner');--> statement-breakpoint
 CREATE TYPE "public"."role_type" AS ENUM('public', 'user', 'redactor', 'moderator', 'admin', 'super_admin');--> statement-breakpoint
 CREATE TYPE "public"."user_visibility" AS ENUM('public', 'private');--> statement-breakpoint
@@ -10,6 +12,17 @@ CREATE TYPE "public"."notification_channel" AS ENUM('email', 'push', 'both', 'no
 CREATE TYPE "public"."theme_type" AS ENUM('light', 'dark', 'system');--> statement-breakpoint
 CREATE TYPE "public"."two_factor_type" AS ENUM('otp', 'totp');--> statement-breakpoint
 CREATE TYPE "public"."submission_type" AS ENUM('contact', 'feedback', 'support');--> statement-breakpoint
+CREATE TABLE "app_settings" (
+	"key" text PRIMARY KEY NOT NULL,
+	"value" text NOT NULL,
+	"type" "setting_type" NOT NULL,
+	"category" "setting_category" NOT NULL,
+	"label" text,
+	"description" text,
+	"updated_at" timestamp with time zone DEFAULT now(),
+	"updated_by" uuid
+);
+--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
 	"account_id" text NOT NULL,
@@ -303,6 +316,7 @@ CREATE TABLE "user_submissions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+ALTER TABLE "app_settings" ADD CONSTRAINT "app_settings_updated_by_user_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "apikey" ADD CONSTRAINT "apikey_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitation" ADD CONSTRAINT "invitation_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
