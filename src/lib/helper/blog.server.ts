@@ -129,6 +129,7 @@ export function getAllMdxBlogPosts(locale: string): MdxBlogPost[] {
 export function extractPostMetadata(
   content: string,
   slug: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _extension?: string
 ): {
   slug: string
