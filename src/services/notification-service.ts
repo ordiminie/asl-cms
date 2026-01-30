@@ -19,7 +19,10 @@ import {
 } from '@/db/repositories/user-repository'
 import {env} from '@/env'
 import {logger} from '@/lib/logger'
-import {sendNotificationEmailService} from '@/services/facades/email-service-facade'
+import {
+  sendAdminInternalEmailService,
+  sendNotificationEmailService,
+} from '@/services/facades/email-service-facade'
 
 import {
   canDeleteNotification,
@@ -272,6 +275,11 @@ export const createNotificationService = async (
         await sendSubscriptionCompletedEmailService(
           parsed.data.metadata.subscription
         )
+        const sub = parsed.data.metadata.subscription
+        await sendAdminInternalEmailService({
+          title: '🎉 Nouvel abonnement créé',
+          data: `Plan: ${sub.plan || 'N/A'}\nClient: ${targetUser.email}\nStatut: ${sub.status || 'active'}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+        })
       } else if (
         parsed.data.type === 'subscription_updated' &&
         parsed.data.metadata?.subscription
@@ -279,6 +287,11 @@ export const createNotificationService = async (
         await sendSubscriptionUpdatedEmailService(
           parsed.data.metadata.subscription
         )
+        const sub = parsed.data.metadata.subscription
+        await sendAdminInternalEmailService({
+          title: '🔄 Abonnement mis à jour',
+          data: `Plan: ${sub.plan || 'N/A'}\nClient: ${targetUser.email}\nStatut: ${sub.status || 'N/A'}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+        })
       } else if (
         parsed.data.type === 'subscription_canceled' &&
         parsed.data.metadata?.subscription
@@ -286,6 +299,11 @@ export const createNotificationService = async (
         await sendSubscriptionCanceledEmailService(
           parsed.data.metadata.subscription
         )
+        const sub = parsed.data.metadata.subscription
+        await sendAdminInternalEmailService({
+          title: '⚠️ Abonnement annulé',
+          data: `Plan: ${sub.plan || 'N/A'}\nClient: ${targetUser.email}\nStatut: ${sub.status || 'canceled'}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+        })
       } else if (
         parsed.data.type === 'subscription_deleted' &&
         parsed.data.metadata?.subscription
@@ -293,6 +311,11 @@ export const createNotificationService = async (
         await sendSubscriptionDeletedEmailService(
           parsed.data.metadata.subscription
         )
+        const sub = parsed.data.metadata.subscription
+        await sendAdminInternalEmailService({
+          title: '🗑️ Abonnement supprimé',
+          data: `Plan: ${sub.plan || 'N/A'}\nClient: ${targetUser.email}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+        })
       } else {
         // Utiliser le service d'email générique pour les autres types
         let emailType: 'info' | 'warning' | 'success' | 'error' = 'info'
