@@ -145,7 +145,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/mailchimp__mailchimp_marketing": "^3.0.22",
     "@types/mdx": "^2.0.13",
-    "@types/node": "^24.10.13",
+    "@types/node": "^25.2.3",
     "@types/pg": "^8.16.0",
     "@types/qrcode": "^1.5.6",
     "@types/react": "19.2.14",
