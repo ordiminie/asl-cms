@@ -1,0 +1,177 @@
+---
+description: 
+paths: **table**
+---
+
+# Règle UI/UX - Tables avec Pagination
+
+## Vue d'ensemble
+
+Cette règle définit les standards de design et d'implémentation pour toutes les tables avec pagination dans l'application. Elle assure une expérience utilisateur cohérente et des patterns d'interface standardisés.
+
+## Structure générale
+
+Toutes les tables avec pagination doivent suivre cette architecture :
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle>Titre de la gestion</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <Toolbar />
+    <Table />
+    <Pagination />
+  </CardContent>
+</Card>
+```
+
+## Composants requis
+
+### 1. Container principal
+
+- **Utiliser** : `Card` de shadcn/ui comme container principal
+- **Structure** : `CardHeader` + `CardContent`
+- **Référence** : [users-management.tsx](src/components/features/admin/users/users-management.tsx)
+
+### 2. En-tête (CardHeader)
+
+- **Titre** : `CardTitle` avec le nom de la fonctionnalité (ex: "Gestion des utilisateurs")
+- **Style** : Pas de styling additionnel, utiliser les defaults de shadcn
+
+### 3. Barre d'outils (Toolbar)
+
+Doit inclure obligatoirement :
+
+- **Recherche** :
+  - Input avec icône Search à gauche
+  - Largeur fixe : `w-[300px]`
+  - Placeholder descriptif (ex: "Rechercher par nom ou email...")
+  - Bouton clear (X) conditionnel quand il y a du texte
+- **Compteur** : Affichage du nombre total d'éléments
+- **Sélecteur de limite** : Select avec options 10, 20, 50, 100 par page
+- **Layout responsive** : `flex-col gap-4 md:flex-row md:items-center md:justify-between`
+
+### 4. Table responsive
+
+#### Structure de base
+
+```tsx
+<Table>
+  <TableHeader>
+    <TableRow>
+      <TableHead>Colonne principale</TableHead>
+      <TableHead>Colonne secondaire</TableHead>
+      <TableHead className="hidden lg:table-cell">
+        Colonne masquée large
+      </TableHead>
+      <TableHead className="hidden md:table-cell">
+        Colonne masquée medium
+      </TableHead>
+      <TableHead>Actions</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>{/* Contenu */}</TableBody>
+</Table>
+```
+
+#### Règles de responsivité
+
+- **Mobile** : Afficher uniquement les colonnes essentielles
+- **Medium (md)** : `hidden md:table-cell` pour colonnes secondaires
+- **Large (lg)** : `hidden lg:table-cell` pour informations complémentaires
+- **Actions** : Toujours visibles, dernière colonne
+
+#### Cellules standard
+
+- **Cellule principale** : Avatar + informations principales avec `flex items-center gap-2`
+- **Badges** : Utiliser `Badge` variant "outline" ou "default" selon le contexte
+- **Dates** : Format relatif avec `formatDistanceToNow` de date-fns
+- **Actions** : `flex space-x-2` pour aligner les boutons
+
+### 5. Pagination
+
+#### Fonctionnalités requises
+
+- **Navigation** : Boutons Précédent/Suivant avec icônes
+- **Numérotation** : Pages visibles avec ellipses intelligentes
+- **État désactivé** : Sur les boutons aux limites
+- **Centrage** : `flex items-center justify-center`
+- **Référence** : [users-pagination.tsx](src/components/features/admin/users/users-pagination.tsx)
+
+#### Logique de pagination
+
+- Maximum 5 pages visibles
+- Ellipses (...) pour les plages non affichées
+- Toujours afficher la première et dernière page si applicable
+
+## Gestion des permissions
+
+Intégrer un système de permissions pour contrôler l'affichage des actions :
+
+```tsx
+interface Permissions {
+  canCreate: boolean
+  canEdit: boolean
+  canDelete: boolean
+  canManage: boolean
+}
+```
+
+## Navigation et état
+
+### URL et paramètres
+
+- **Search** : `search` parameter
+- **Page** : `page` parameter
+- **Limite** : `limit` parameter
+- **Reset page** : Remettre à la page 1 lors de nouveaux filtres
+
+### Handlers standardisés
+
+```tsx
+const handleSearch = (search: string) => {
+  const params = new URLSearchParams(searchParams.toString())
+  params.set('search', search)
+  params.set('page', '1') // Reset à la page 1
+  router.push(`?${params.toString()}`)
+}
+
+const handlePageChange = (page: number) => {
+  const params = new URLSearchParams(searchParams.toString())
+  params.set('page', page.toString())
+  router.push(`?${params.toString()}`)
+}
+
+const handlePerPageChange = (limit: string) => {
+  const params = new URLSearchParams(searchParams.toString())
+  params.set('limit', limit)
+  params.set('page', '1') // Reset à la page 1
+  router.push(`?${params.toString()}`)
+}
+```
+
+## Patterns de performance
+
+- **Server Components** : Privilégier pour le rendu initial
+- **Client Components** : Uniquement pour l'interactivité (recherche, pagination)
+- **Optimistic updates** : Avec Server Actions pour les mutations
+
+## Actions et feedbacks
+
+- **Dialogs** : Utiliser des composants séparés pour Edit/Delete
+- **Toast notifications** : Feedback immédiat avec `toast.success()` / `toast.error()`
+- **Loading states** : Gérer les états de chargement lors des actions
+
+## Accessibilité
+
+- **Labels** : Tous les inputs doivent avoir des labels appropriés
+- **ARIA** : États des boutons (disabled, active)
+- **Navigation** : Support clavier pour la pagination
+- **Contrast** : Respecter les ratios de contraste pour les badges et états
+
+## Exemple d'implémentation
+
+Référence complète : [users-management.tsx](src/components/features/admin/users/users-management.tsx)
+
+Cette règle doit être appliquée pour toutes les nouvelles tables avec pagination et utilisée pour standardiser les tables existantes.

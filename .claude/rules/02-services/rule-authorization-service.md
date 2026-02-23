@@ -1,0 +1,214 @@
+---
+description:
+paths: src/services/authorization/**
+---
+
+# Système d'Autorisation par Domaine avec CASL
+
+## Vue d'ensemble
+
+Le projet utilise **CASL (Code Access Security Library)** avec une architecture **par domaine** pour gérer les autorisations. Le système est organisé en couches avec un service central et des services spécialisés par domaine.
+
+## Architecture
+
+### Service Central d'Autorisation
+
+**[authorization-service.ts](src/services/authorization/authorization-service.ts)** - Service principal CASL
+
+- **Définit les règles CASL** avec `defineAbilitiesFor(user)`
+- **Fonctions utilitaires** : `userCan()`, `userCanOnResource()`, `filterFields()`
+- **Types et constantes** : `ActionsConst`, `SubjectsConst`, `AppAbility`
+- **Permissions par rôle** : GUEST, USER, ADMIN, SUPER_ADMIN
+
+### Services d'Autorisation par Domaine
+
+#### User Authorization
+
+**[user-authorization.ts](src/services/authorization/user-authorization.ts)**
+
+```typescript
+export const canReadUser = async (resourceId: string): Promise<boolean> => {
+  const authUser = await getAuthUser()
+  const targetUser = await getUserByIdDao(resourceId)
+
+  return userCanOnResource(authUser, ActionsConst.READ, SubjectsConst.USER, {
+    id: targetUser.id,
+    visibility: targetUser.visibility,
+  })
+}
+```
+
+#### Subscription Authorization
+
+**[subscription-authorization.ts](src/services/authorization/subscription-authorization.ts)**
+
+```typescript
+export const canReadSubscription = async (
+  resourceId?: string
+): Promise<boolean> => {
+  const authUser = await getAuthUser()
+
+  // Vérification précoce pour éviter les appels DAO inutiles
+  if (!userCan(authUser, ActionsConst.READ, SubjectsConst.SUBSCRIPTION)) {
+    return false
+  }
+
+  const subscription = await getSubscriptionByIdDao(resourceId)
+  return userCanOnResource(
+    authUser,
+    ActionsConst.READ,
+    SubjectsConst.SUBSCRIPTION,
+    {
+      id: subscription.id,
+      userId: subscription.userId,
+    }
+  )
+}
+```
+
+## Règles de Développement
+
+### 1. **Structure des Fonctions d'Autorisation**
+
+```typescript
+export const canActionResource = async (
+  resourceId: string
+): Promise<boolean> => {
+  const authUser = await getAuthUser()
+
+  // 1. Vérification précoce (optionnel, pour performance)
+  if (!userCan(authUser, ActionsConst.ACTION, SubjectsConst.RESOURCE)) {
+    return false
+  }
+
+  // 2. Récupération de la ressource si nécessaire
+  const resource = await getResourceByIdDao(resourceId)
+  if (!resource) return false
+
+  // 3. Vérification avec conditions CASL
+  return userCanOnResource(
+    authUser,
+    ActionsConst.ACTION,
+    SubjectsConst.RESOURCE,
+    {
+      id: resource.id,
+      // Autres propriétés pour les conditions (userId, visibility, etc.)
+    }
+  )
+}
+```
+
+### 2. **Nomenclature**
+
+- **Paramètres** : `resourceId` (pas `resourceUid`)
+- **Actions** : Utiliser `ActionsConst.READ/CREATE/UPDATE/DELETE/MANAGE`
+- **Subjects** : Utiliser `SubjectsConst.USER/SUBSCRIPTION/etc.`
+- **Fonctions** : `canActionResource` (ex: `canReadUser`, `canUpdateSubscription`)
+
+### 3. **Optimisation Performance**
+
+- **Vérification précoce** avec `userCan()` avant les appels DAO coûteux
+- **Éviter les appels DAO** pour les utilisateurs non autorisés
+- **Utiliser `userCanOnResource()`** uniquement quand les conditions sont nécessaires
+
+### 4. **Types et Interfaces**
+
+```typescript
+// Toujours typer les retours
+export const canReadResource = async (resourceId: string): Promise<boolean> => {
+  // ...
+}
+
+// Utiliser les types CASL
+import {
+  ActionsConst,
+  SubjectsConst,
+  userCanOnResource,
+} from './authorization-service'
+```
+
+## Permissions par Domaine
+
+### Users
+
+- **GUEST** : Lecture profils publics uniquement
+- **USER** : Lecture/modification de son propre profil + profils publics
+- **ADMIN** : Gestion complète de tous les utilisateurs
+
+### Subscriptions
+
+- **GUEST** : Aucun accès
+- **USER** : Lecture/modification de ses propres subscriptions
+- **ADMIN** : Gestion complète de toutes les subscriptions
+
+## Testing
+
+### Tests par Domaine
+
+- **Tester au niveau service** (pas besoin de tests autorisation séparés)
+- **Trois scénarios** : PUBLIC (guest), USER (connecté), ADMIN
+- **Vérifier les comportements** : accès autorisé/refusé, erreurs `AuthorizationError`
+
+### Exemple Test Pattern
+
+```typescript
+describe('[USER] Service with Authorization', () => {
+  it('should allow access to own resource', async () => {
+    setupAuthUserMocked(userTest)
+    const result = await getResourceService(ownResourceId)
+    expect(result).toBeDefined()
+  })
+
+  it('should deny access to other user resource', async () => {
+    setupAuthUserMocked(userTest)
+    await expect(getResourceService(otherResourceId)).rejects.toThrow(
+      AuthorizationError
+    )
+  })
+})
+```
+
+## Bonnes Pratiques
+
+### ✅ À Faire
+
+- **Une fonction par action** : `canReadUser`, `canUpdateUser`
+- **Logique métier dans les services d'autorisation** par domaine
+- **Utiliser les constantes** `ActionsConst` et `SubjectsConst`
+- **Typer tous les retours** avec `Promise<boolean>`
+- **Optimiser avec vérifications précoces**
+- **Gérer les ressources inexistantes** avec `return false`
+
+### ❌ À Éviter
+
+- **Mélanger logique métier et autorisation** dans le service central
+- **Utiliser des strings magiques** au lieu des constantes
+- **Oublier la gestion des ressources inexistantes**
+- **Appels DAO inutiles** pour utilisateurs non autorisés
+- **Noms ambigus** comme `resourceUid` au lieu de `resourceId`
+
+## Extensibilité
+
+Pour ajouter un nouveau domaine d'autorisation :
+
+1. **Créer** `domain-authorization.ts` dans `/authorization/`
+2. **Ajouter subject** dans `SubjectsConst` du service central
+3. **Définir règles CASL** dans `defineAbilitiesFor()`
+4. **Implémenter fonctions** `canActionDomain(resourceId)`
+5. **Ajouter tests** dans les services utilisant ces autorisations
+6. **Suivre le pattern** : vérification précoce + conditions CASL
+
+## Intégration avec les Services
+
+Les services métier utilisent les fonctions d'autorisation :
+
+```typescript
+// Dans un service métier
+export const getUserByIdService = async (userId: string) => {
+  const granted = await canReadUser(userId)
+  if (!granted) {
+    throw new AuthorizationError()
+  }
+  return await getUserByIdDao(userId)
+}
+```
