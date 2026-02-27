@@ -24,6 +24,7 @@ Automated 4-layer security audit for any codebase.
 ## Workflow
 
 Before starting, create the output directory:
+
 ```bash
 mkdir -p .security
 ```
@@ -31,13 +32,17 @@ mkdir -p .security
 ### Layer 1 — Dependency Audit
 
 Run in the project root:
+
 ```bash
 pnpm audit --json > .security/deps-audit.json
 ```
+
 If project uses npm instead:
+
 ```bash
 npm audit --json > .security/deps-audit.json
 ```
+
 Flags known CVEs in project dependencies.
 
 ### Layer 2 — Filesystem Scan (Trivy)
@@ -45,7 +50,9 @@ Flags known CVEs in project dependencies.
 ```bash
 trivy fs --scanners vuln,secret,misconfig --skip-dirs .next,node_modules,.git,dist,build,.turbo --format json -o .security/trivy-report.json .
 ```
+
 Detects:
+
 - Hardcoded secrets (API keys, tokens, passwords)
 - Infrastructure misconfigurations (Dockerfile, k8s, Terraform)
 - Vulnerable dependencies (cross-validates with Layer 1)
@@ -53,23 +60,29 @@ Detects:
 ### Layer 3 — Snyk
 
 #### Option A: Snyk CLI (standalone)
+
 ```bash
 snyk test --json > .security/snyk-report.json
 snyk code test --json > .security/snyk-code-report.json
 ```
+
 - `snyk test` — SCA (dependency vulnerabilities)
 - `snyk code test` — SAST (static code analysis)
 
 To monitor the project continuously:
+
 ```bash
 snyk monitor --all-projects
 ```
 
 #### Option B: Snyk Studio (MCP in Claude Code)
+
 If Snyk Studio MCP is configured, run:
+
 ```
 /snyk-fix
 ```
+
 This performs SAST + SCA + container + IaC scanning with automated fix suggestions.
 
 Save all outputs to `.security/`.
@@ -82,13 +95,14 @@ If Snyk is not installed or configured, skip this layer and note it in the repor
    - `.security/deps-audit.json` — parse vulnerabilities, group by severity
    - `.security/trivy-report.json` — parse findings, filter false positives
    - `.security/snyk-report.json` (if available)
-   For each scanner output: summarize critical/high findings in plain language, explain the impact, suggest fixes. Discard noise and low-confidence results.
+     For each scanner output: summarize critical/high findings in plain language, explain the impact, suggest fixes. Discard noise and low-confidence results.
 2. Apply the pentester prompt from `prompts/pentester.md`
 3. Analyze the full codebase with all scanner results as context — go deeper than the scanners
 4. Generate report using `templates/report.md`
 5. Save to `.security/report-YYYY-MM-DD.md`
 
 This layer catches what scanners miss:
+
 - Broken authentication / authorization logic
 - Business logic flaws
 - Unsafe data flows across components
@@ -99,6 +113,7 @@ This layer catches what scanners miss:
 ## Output Directory
 
 All results go in `.security/` at the project root:
+
 ```
 .security/
 ├── deps-audit.json       # Layer 1 raw output
@@ -110,6 +125,7 @@ All results go in `.security/` at the project root:
 ## Scheduling
 
 This skill can be called by:
+
 - **Cowork Scheduled Tasks** — recurring (e.g. every Friday)
 - **OpenClaw Cron** — sub-agent runs the skill, notifies via WhatsApp if critical findings
 - **CI/CD** — run on every PR or weekly via GitHub Actions
