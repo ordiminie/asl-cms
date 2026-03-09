@@ -1,0 +1,723 @@
+---
+description:
+paths:
+  - 'src/app/(app)/**'
+  - 'src/app/admin/**'
+  - '**table**'
+---
+
+# Structure d'un tableau avec pagination et recherche
+
+Ce guide décrit la structure recommandée pour implémenter un tableau avec pagination, limite et recherche dans le monorepo.
+
+## Structure de Pagination Unifiée
+
+### Structure de données (Repository/API)
+
+```typescript
+// Format retourné par les repositories et APIs
+pagination: {
+  total: number,        // ← Nombre total d'éléments
+  page: number,         // ← Page actuelle
+  limit: number,        // ← Éléments par page
+  totalPages: number    // ← Nombre total de pages
+}
+```
+
+### Props de composants React
+
+```typescript
+// Props des composants de gestion (plus explicites)
+interface Props {
+  totalItems: number // ← Mappé depuis pagination.total
+  currentPage: number // ← Mappé depuis pagination.page
+  pageSize: number // ← Mappé depuis pagination.limit
+}
+```
+
+**Mapping entre structure de données et props :**
+
+- `pagination.total` → `totalItems` (prop composant)
+- `pagination.page` → `currentPage` (prop composant)
+- `pagination.limit` → `pageSize` (prop composant)
+
+## Architecture des fichiers
+
+```
+app/
+  └── (app)/
+      └── my-feature/
+          ├── page.tsx                 # RSC - Point d'entrée avec Suspense
+          ├── my-feature-content.tsx   # RSC - Contenu avec appel service/DAL
+          └── actions.ts              # Server Actions pour mutations
+components/
+  └── features/
+      └── my-feature/
+          ├── my-feature-management.tsx  # RCC - UI Component
+          ├── my-feature-skeleton.tsx    # Loading state
+          ├── pagination.tsx             # Composant pagination
+          ├── toolbar.tsx                # Barre de recherche et filtres
+          ├── edit-item-dialog.tsx       # Dialogue d'édition
+          └── delete-item-dialog.tsx     # Dialogue de suppression
+```
+
+## Page Component (RSC)
+
+Le composant page doit être un RSC qui gère les searchParams et le Suspense :
+NOTE avec NEXT 15 :les queryparam sont async
+
+```tsx
+type SearchParamsType = Promise<{
+  page?: string
+  limit?: string
+  search?: string
+}>
+const params = await searchParams
+params.page
+```
+
+```tsx
+// page.tsx
+import {Suspense} from 'react'
+import {MyFeatureSkeleton} from '@/components/features/my-feature/my-feature-skeleton'
+import MyFeatureContent from './my-feature-content'
+
+type SearchParamsType = Promise<{
+  page?: string
+  limit?: string
+  search?: string
+}>
+
+export default async function MyFeaturePage({
+  searchParams,
+}: {
+  searchParams: SearchParamsType
+}) {
+  const params = await searchParams
+  const suspenseKey = `page=${params.page || '1'}-limit=${params.limit || '100'}-search=${params.search || ''}`
+
+  return (
+    <div className="bg-background">
+      <Suspense key={suspenseKey} fallback={<MyFeatureSkeleton />}>
+        <MyFeatureContent searchParams={searchParams} />
+      </Suspense>
+    </div>
+  )
+}
+```
+
+## Content Component (RSC)
+
+Le composant de contenu gère la logique de pagination et les appels aux services :
+
+```tsx
+// my-feature-content.tsx
+import {getItemsPaginationService} from '@mikecodeur/services/facades/my-feature-service-facade'
+import {MyFeatureManagement} from '@/components/features/my-feature/my-feature-management'
+import {getPermissions} from '@/app/dal/my-feature-dal'
+
+export default async function MyFeatureContent({
+  searchParams,
+}: {
+  searchParams: SearchParamsType
+}) {
+  const searchStore = await searchParams
+  const page = searchStore.page ? Number.parseInt(searchStore.page) : 1
+  const limit = searchStore.limit ? Number.parseInt(searchStore.limit) : 100
+  const offset = (page - 1) * limit
+
+  const items = await getItemsPaginationService({
+    limit,
+    offset,
+  })
+
+  const permissions = await getPermissions()
+
+  return (
+    <MyFeatureManagement
+      initialItems={items.data}
+      currentPage={page}
+      pageSize={limit}
+      totalItems={items.pagination.total}
+      permissions={permissions}
+    />
+  )
+}
+```
+
+## Management Component (RCC)
+
+Le composant client qui gère l'UI et les interactions :
+
+- Limiter l'usage du router client et preferer la revalidation coté server action (revalidatpath)
+
+```tsx
+// my-feature-management.tsx
+'use client'
+
+import {useState} from 'react'
+import {useRouter, useSearchParams} from 'next/navigation'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@mikecodeur/ui/components/table'
+import {Input} from '@mikecodeur/ui/components/input'
+import {Button} from '@mikecodeur/ui/components/button'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@mikecodeur/ui/components/card'
+import {EditItemDialog} from './edit-item-dialog'
+import {DeleteItemDialog} from './delete-item-dialog'
+import {updateItem, deleteItem} from '@/app/admin/my-feature/actions'
+import {toast} from 'sonner'
+
+interface Props {
+  initialItems: Item[]
+  currentPage: number
+  pageSize: number
+  totalItems: number
+  permissions: {
+    canCreate: boolean
+    canEdit: boolean
+    canDelete: boolean
+  }
+}
+
+export function MyFeatureManagement({
+  initialItems,
+  currentPage,
+  pageSize,
+  totalItems,
+  permissions,
+}: Props) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [search, setSearch] = useState(searchParams.get('search') || '')
+
+  const handleSearch = (value: string) => {
+    setSearch(value)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('search', value)
+    params.set('page', '1')
+    router.push(`?${params.toString()}`)
+  }
+
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('page', page.toString())
+    router.push(`?${params.toString()}`)
+  }
+
+  // Handlers pour les actions CRUD
+  const handleSaveItem = async (id: string, data: UpdateItemData) => {
+    const formData = new FormData()
+    formData.append('field1', data.field1)
+    formData.append('field2', data.field2)
+
+    const result = await updateItem(id, formData)
+    toast(result.success ? 'Succès' : 'Erreur', {
+      description: result.message,
+      action: {
+        label: 'Undo',
+        onClick: () => console.log('Undo'),
+      },
+    })
+  }
+
+  const handleDeleteItem = async (id: string) => {
+    const result = await deleteItem(id)
+
+    toast(result.success ? 'Succès' : 'Erreur', {
+      description: result.message,
+      action: {
+        label: 'Undo',
+        onClick: () => console.log('Undo'),
+      },
+    })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Liste des éléments</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center space-x-2">
+          <Input
+            placeholder="Rechercher..."
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="max-w-sm"
+          />
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Colonne 1</TableHead>
+              <TableHead>Colonne 2</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {initialItems.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.field1}</TableCell>
+                <TableCell>{item.field2}</TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    {permissions.canEdit && (
+                      <EditItemDialog
+                        item={{
+                          id: item.id,
+                          field1: item.field1,
+                          field2: item.field2,
+                        }}
+                        onSave={handleSaveItem}
+                      />
+                    )}
+                    {permissions.canDelete && (
+                      <DeleteItemDialog
+                        itemId={item.id}
+                        onDelete={handleDeleteItem}
+                      />
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(totalItems / pageSize)}
+          onPageChange={handlePageChange}
+        />
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+## Composants de dialogue pour les actions CRUD
+
+### Dialogue d'édition
+
+```tsx
+// edit-item-dialog.tsx
+'use client'
+
+import {useState} from 'react'
+import {zodResolver} from '@hookform/resolvers/zod'
+import {useForm} from 'react-hook-form'
+import * as z from 'zod'
+import {Edit} from 'lucide-react'
+import {Button} from '@mikecodeur/ui/components/button'
+import {Input} from '@mikecodeur/ui/components/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@mikecodeur/ui/components/dialog'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@mikecodeur/ui/components/form'
+
+// Schéma de validation
+const formSchema = z.object({
+  field1: z.string().min(1, 'Ce champ est requis'),
+  field2: z.string().min(1, 'Ce champ est requis'),
+})
+
+type FormValues = z.infer<typeof formSchema>
+
+interface EditItemDialogProps {
+  item: {
+    id: string
+    field1: string
+    field2: string
+  }
+  onSave: (id: string, data: {field1: string; field2: string}) => Promise<void>
+}
+
+export function EditItemDialog({item, onSave}: EditItemDialogProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      field1: item.field1,
+      field2: item.field2,
+    },
+  })
+
+  async function onSubmit(data: FormValues) {
+    setIsSubmitting(true)
+    try {
+      await onSave(item.id, data)
+      setIsDialogOpen(false)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Edit className="mr-2 h-4 w-4" />
+          Modifier
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Modifier l'élément</DialogTitle>
+          <DialogDescription>
+            Modifiez les champs ci-dessous et cliquez sur Enregistrer.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="field1"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>Champ 1</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="field2"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>Champ 2</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+### Dialogue de suppression
+
+```tsx
+// delete-item-dialog.tsx
+'use client'
+
+import {useState} from 'react'
+import {Trash2} from 'lucide-react'
+import {Button} from '@mikecodeur/ui/components/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@mikecodeur/ui/components/dialog'
+
+interface DeleteItemDialogProps {
+  itemId: string
+  onDelete: (id: string) => Promise<void>
+}
+
+export function DeleteItemDialog({itemId, onDelete}: DeleteItemDialogProps) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  async function handleDelete() {
+    setIsDeleting(true)
+    try {
+      await onDelete(itemId)
+      setIsDialogOpen(false)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  return (
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild>
+        <Button variant="destructive" size="sm">
+          <Trash2 className="mr-2 h-4 w-4" />
+          Supprimer
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirmer la suppression</DialogTitle>
+          <DialogDescription>
+            Êtes-vous sûr de vouloir supprimer cet élément ? Cette action ne
+            peut pas être annulée.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setIsDialogOpen(false)}
+          >
+            Annuler
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Suppression...' : 'Supprimer'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+## Toolbar de recherche et limit
+
+```tsx
+export function Toolbar({
+  onSearch,
+  totalCampaigns,
+  onPerPageChange,
+  perPage,
+}: EvergreenCampaignToolbarProps) {
+  const [searchValue, setSearchValue] = useState('')
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchValue(value)
+    if (onSearch) {
+      onSearch(value)
+    }
+  }
+
+  const handleClearSearch = () => {
+    setSearchValue('')
+    if (onSearch) {
+      onSearch('')
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex items-center gap-2">
+        {onSearch && (
+          <div className="relative flex w-[250px] items-center">
+            <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
+            <Input
+              placeholder="Rechercher..."
+              className="pr-8 pl-8"
+              value={searchValue}
+              onChange={handleSearchChange}
+            />
+            {searchValue && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 h-7 w-7"
+                onClick={handleClearSearch}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
+        <span className="text-muted-foreground text-sm">
+          {totalCampaigns} campagne{totalCampaigns > 1 ? 's' : ''} trouvée
+          {totalCampaigns > 1 ? 's' : ''}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground text-sm">Afficher</span>
+        <Select value={perPage} onValueChange={onPerPageChange}>
+          <SelectTrigger className="w-[70px]">
+            <SelectValue placeholder="50" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1">1</SelectItem>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="20">20</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-muted-foreground text-sm">par page</span>
+      </div>
+    </div>
+  )
+}
+```
+
+## Server Actions
+
+Les Server Actions sont utilisées pour les opérations de mutation :
+
+```tsx
+// actions.ts
+'use server'
+
+import {revalidatePath} from 'next/cache'
+import {
+  updateItemService,
+  deleteItemService,
+} from '@mikecodeur/services/facades/my-feature-service-facade'
+
+export async function updateItem(id: string, formData: FormData) {
+  try {
+    const field1 = formData.get('field1') as string
+    const field2 = formData.get('field2') as string
+
+    // Validation optionnelle des données
+    if (!field1 || !field2) {
+      return {
+        success: false,
+        message: 'Tous les champs sont requis',
+      }
+    }
+
+    await updateItemService({
+      id,
+      field1,
+      field2,
+    })
+
+    revalidatePath('/admin/my-feature')
+    return {
+      success: true,
+      message: 'Élément mis à jour avec succès',
+    }
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour:', error)
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'Une erreur est survenue',
+    }
+  }
+}
+
+export async function deleteItem(id: string) {
+  try {
+    await deleteItemService(id)
+
+    revalidatePath('/admin/my-feature')
+    return {
+      success: true,
+      message: 'Élément supprimé avec succès',
+    }
+  } catch (error) {
+    console.error('Erreur lors de la suppression:', error)
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'Une erreur est survenue',
+    }
+  }
+}
+```
+
+## Points importants
+
+1. **Imports Shadcn UI**
+   - Toujours utiliser le format `@mikecodeur/ui/components/<component>`
+   - Exemple : `import {Button} from '@mikecodeur/ui/components/button'`
+   - Regle UI UX dans [rule-table-ui-ux-pagination.mdc](.cursor/rules/01-presentation/rule-table-ui-ux-pagination.mdc)
+
+2. **Gestion des searchParams**
+   - Utiliser les searchParams pour la pagination et la recherche
+   - Format : `?page=1&limit=100&search=term`
+
+3. **Service Layer**
+   - Utiliser les facades de service pour les appels de données
+   - Exemple : `getItemsPaginationService({limit, offset})`
+
+4. **Permissions**
+   - Toujours implémenter un système de permissions
+   - Vérifier les permissions pour les actions CRUD
+
+5. **Composants**
+   - RSC par défaut pour les pages et le contenu
+   - RCC uniquement pour les composants interactifs
+   - Utiliser Suspense pour le loading state
+
+6. **État et Navigation**
+   - Gérer l'état de recherche avec useState
+   - Utiliser useRouter pour la navigation
+   - Mettre à jour l'URL avec les paramètres de recherche
+
+7. **Pagination**
+   - Calculer offset : `(page - 1) * limit`
+   - Gérer la pagination côté serveur
+   - Mettre à jour l'URL lors des changements de page
+
+8. **Skeleton Loading**
+   - Créer un composant skeleton pour le loading state
+   - Utiliser le composant Skeleton de Shadcn UI
+
+9. **Gestion des actions CRUD**
+   - Créer des composants dédiés pour chaque action (EditDialog, DeleteDialog)
+   - Utiliser Server Actions pour les mutations
+   - Gérer les états de chargement (isSubmitting, isDeleting)
+   - Afficher des toasts pour les retours utilisateur
+
+10. **Validation des formulaires**
+    - Utiliser Zod avec react-hook-form pour valider les données
+    - Appliquer la validation côté client et côté serveur
+    - Afficher des messages d'erreur explicites
+
+11. **Revalidation**
+    - Utiliser `revalidatePath` après chaque mutation pour rafraîchir les données
+    - Cibler le chemin exact de la page où les données sont affichées
+
+12. **Gestion des erreurs**
+    - Implémenter un try/catch sur toutes les opérations asynchrones
+    - Retourner des objets structurés avec success/message
+    - Logger les erreurs côté serveur
+    - Afficher des messages d'erreur utilisateur-friendly

@@ -8,6 +8,7 @@ import {
 
 import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
 import {env} from '@/env'
+import AdminNotificationEmail from '@/lib/emails/admin-notification-email'
 import EmailChangeEmailVerification from '@/lib/emails/email-change-email-verification'
 import InternalEmail from '@/lib/emails/internal-email'
 import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization-link-email'
@@ -620,6 +621,33 @@ export const sendInternalEmailService = async ({
       react: InternalEmail({
         preview: t('preview'),
         content: data,
+      }),
+    },
+    {recipientType: 'admin'}
+  )
+}
+
+interface SendAdminInternalEmailParams {
+  title: string
+  data: string
+}
+
+export const sendAdminInternalEmailService = async ({
+  title,
+  data,
+}: SendAdminInternalEmailParams) => {
+  const fromEmail = await getEmailFrom()
+  const toEmail = env.EMAIL_TO ?? env.EMAIL_FROM ?? 'onboarding@resend.dev'
+
+  await sendEmailService(
+    {
+      to: toEmail,
+      subject: `[Admin] ${title}`,
+      text: `${title}\n\n${data}`,
+      from: fromEmail,
+      react: AdminNotificationEmail({
+        title,
+        data,
       }),
     },
     {recipientType: 'admin'}

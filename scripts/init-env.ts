@@ -444,7 +444,7 @@ async function promptForValue(
     placeholder,
     initialValue,
     validate: (input) => {
-      if (envVar.required && !input.trim()) {
+      if (envVar.required && !input?.trim()) {
         if (envVar.name.includes('SECRET')) {
           return // OK, on générera automatiquement
         }

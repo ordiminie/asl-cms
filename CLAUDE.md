@@ -152,7 +152,8 @@ Always use `pnpm` over `npm` for this project.
 ### Rules Index
 
 **IMPORTANT:** Before implementing ANY feature, consult the **Rules Index** at:
-📋 [`.cursor/rules/RULES-INDEX.md`](.cursor/rules/RULES-INDEX.md)
+📋 [`.claude/rules/RULES-INDEX.md`](.claude/rules/RULES-INDEX.md) (Claude Code)
+📋 [`.cursor/rules/RULES-INDEX.md`](.cursor/rules/RULES-INDEX.md) (Cursor)
 
 This index is a table of contents for all project implementation rules. It helps you quickly find the relevant rule(s) for your task.
 
@@ -161,7 +162,7 @@ This index is a table of contents for all project implementation rules. It helps
 Before generating ANY new code, you **MUST** complete these verification steps:
 
 1. **Consult the Rules Index**
-   Open [`.cursor/rules/RULES-INDEX.md`](.cursor/rules/RULES-INDEX.md) and:
+   Open [`.claude/rules/RULES-INDEX.md`](.claude/rules/RULES-INDEX.md) (or `.cursor/rules/RULES-INDEX.md`) and:
    - Use the **Quick Decision Matrix** to identify relevant rules for your task
    - Read the **Description** column to find matching rules
    - **Read the full rule file(s)** before writing any code

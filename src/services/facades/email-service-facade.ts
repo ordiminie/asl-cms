@@ -29,3 +29,5 @@ export const sendWelcomeFollowUpEmailService =
   emailServiceInterceptor.sendWelcomeFollowUpEmailService
 export const sendInternalEmailService =
   emailServiceInterceptor.sendInternalEmailService
+export const sendAdminInternalEmailService =
+  emailServiceInterceptor.sendAdminInternalEmailService

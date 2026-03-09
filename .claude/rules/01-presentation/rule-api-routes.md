@@ -1,0 +1,406 @@
+---
+description: 
+paths: **/app/api/**
+---
+
+# Règle API Routes - Authentification et Architecture RESTful
+
+## Vue d'ensemble
+
+Cette règle définit les bonnes pratiques pour créer des API routes dans notre projet Next.js 15 avec TypeScript, en respectant l'architecture RESTful CRUD et en utilisant notre système d'authentification basé sur better-auth.
+A noter que nous preferons toujours utiliser l'approche React Server Component/Server action et qu'il s'agit d'un exemple en cas de besoin
+
+## Architecture des API Routes
+
+### Structure des fichiers
+
+```
+src/app/api/
+├── [resource]/
+│   ├── route.ts              # Routes statiques (GET, POST)
+│   ├── [id]/
+│   │   └── route.ts          # Routes dynamiques (GET, PUT, DELETE)
+│   └── by-token/
+│       └── route.ts          # Routes d'authentification par token
+```
+
+### Référence aux fichiers du système d'authentification
+
+- [api-auth.ts](src/lib/api-auth.ts) : Fonctions d'authentification
+- [projects/route.ts](src/app/api/projects/route.ts) : Exemple de routes statiques
+- [projects/[id]/route.ts](src/app/api/projects/[id]/route.ts) : Exemple de routes dynamiques
+- [projects/by-token/route.ts](src/app/api/projects/by-token/route.ts) : Exemple d'authentification par token
+
+## Conventions RESTful CRUD
+
+| Méthode HTTP | Route                  | Action                 | Fonction d'auth                  |
+| ------------ | ---------------------- | ---------------------- | -------------------------------- |
+| GET          | `/api/[resource]`      | Lister avec pagination | `withAuth()` ou `withUserAuth()` |
+| POST         | `/api/[resource]`      | Créer une ressource    | `withUserAuth()`                 |
+| GET          | `/api/[resource]/[id]` | Récupérer par ID       | `withDynamicUserAuth()`          |
+| PUT          | `/api/[resource]/[id]` | Mettre à jour          | `withDynamicUserAuth()`          |
+| DELETE       | `/api/[resource]/[id]` | Supprimer              | `withDynamicUserAuth()`          |
+
+## Système d'authentification
+
+### Types disponibles
+
+```typescript
+// Routes statiques
+withAuth(handler, role?)           // Authentification de base
+withUserAuth(handler)              // Rôle USER requis
+withAdminAuth(handler)             // Rôle ADMIN requis
+withRedactorAuth(handler)          // Rôle REDACTOR requis
+
+// Routes dynamiques
+withDynamicAuth(handler, role?)    // Authentification de base
+withDynamicUserAuth(handler)       // Rôle USER requis
+withDynamicAdminAuth(handler)      // Rôle ADMIN requis
+withDynamicRedactorAuth(handler)   // Rôle REDACTOR requis
+
+// Authentification par token Bearer
+withAuthToken(handler, role?)      // Token Bearer/API Key
+```
+
+### Modes d'authentification
+
+#### 1. Mode Session (Défaut)
+
+Utilise les cookies de session gérés par better-auth automatiquement.
+
+**Exemple route statique :**
+
+```typescript
+export const GET = withUserAuth(async (request: NextRequest, authUser) => {
+  // authUser contient l'utilisateur authentifié
+  // La session est vérifiée automatiquement
+})
+```
+
+**Exemple route dynamique :**
+
+```typescript
+export const GET = withDynamicUserAuth(
+  async (request: NextRequest, authUser, context) => {
+    const params = await context.params
+    const id = params.id
+    // traitement...
+  }
+)
+```
+
+#### 2. Mode Token Bearer (Tests/API)
+
+Pour les tests et l'accès par API externe.
+
+**Récupération du token :**
+
+```typescript
+// Côté client pour récupérer un token
+import {authClient} from '@/lib/better-auth/auth-client'
+
+const sessions = await authClient.listSessions()
+const token = sessions[0]?.token // Utiliser ce token
+```
+
+**Headers supportés :**
+
+```http
+Authorization: Bearer <token>
+X-API-Key: <token>
+X-Auth-Token: <token>
+```
+
+**Exemple d'utilisation :**
+
+```typescript
+export const GET = withAuthToken(async (request: NextRequest, authUser) => {
+  // Authentification par token vérifié
+  // authUser contient l'utilisateur authentifié
+})
+```
+
+## Template de Route Statique
+
+```typescript
+import {NextRequest, NextResponse} from 'next/server'
+import {withAuth, withUserAuth} from '@/lib/api-auth'
+import {
+  getResourcesWithPaginationService,
+  createResourceService,
+} from '@/services/facades/resource-service-facade'
+import {RoleConst} from '@/services/types/domain/auth-types'
+import {createResourceServiceSchema} from '@/services/validation/resource-validation'
+
+// GET - Lister avec pagination
+export const GET = withAuth(async (request: NextRequest, authUser) => {
+  try {
+    const {searchParams} = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const search = searchParams.get('search') || undefined
+
+    const offset = (page - 1) * limit
+
+    const result = await getResourcesWithPaginationService(
+      {limit, offset},
+      {
+        ...(search && {name: search}),
+        createdBy: authUser.id,
+      }
+    )
+
+    return NextResponse.json({
+      success: true,
+      data: result.data,
+      pagination: result.pagination,
+    })
+  } catch (error) {
+    console.error('Erreur GET /api/resources:', error)
+    return NextResponse.json(
+      {error: 'Erreur lors de la récupération'},
+      {status: 500}
+    )
+  }
+}, RoleConst.USER)
+
+// POST - Créer
+export const POST = withUserAuth(async (request: NextRequest, authUser) => {
+  try {
+    const body = await request.json()
+
+    // Validation
+    const validation = createResourceServiceSchema.safeParse(body)
+    if (!validation.success) {
+      return NextResponse.json(
+        {error: 'Données invalides', details: validation.error.errors},
+        {status: 400}
+      )
+    }
+
+    const resourceData = {
+      ...validation.data,
+      createdBy: authUser.id,
+    }
+
+    const newResource = await createResourceService(resourceData)
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Ressource créée avec succès',
+        data: newResource,
+      },
+      {status: 201}
+    )
+  } catch (error) {
+    console.error('Erreur POST /api/resources:', error)
+    return NextResponse.json(
+      {error: 'Erreur lors de la création'},
+      {status: 500}
+    )
+  }
+})
+```
+
+## Template de Route Dynamique
+
+```typescript
+import {NextRequest, NextResponse} from 'next/server'
+import {withDynamicUserAuth} from '@/lib/api-auth'
+import {
+  getResourceByIdService,
+  updateResourceService,
+  deleteResourceService,
+} from '@/services/facades/resource-service-facade'
+import {updateResourceServiceSchema} from '@/services/validation/resource-validation'
+
+// GET - Récupérer par ID
+export const GET = withDynamicUserAuth(
+  async (request: NextRequest, authUser, context) => {
+    try {
+      const params = await context.params
+      const resourceId = params.id
+
+      if (!resourceId) {
+        return NextResponse.json({error: 'ID manquant'}, {status: 400})
+      }
+
+      const resource = await getResourceByIdService(resourceId)
+
+      return NextResponse.json({
+        success: true,
+        data: resource,
+      })
+    } catch (error) {
+      console.error('Erreur GET /api/resources/[id]:', error)
+      return NextResponse.json({error: 'Ressource non trouvée'}, {status: 404})
+    }
+  }
+)
+
+// PUT - Mettre à jour
+export const PUT = withDynamicUserAuth(
+  async (request: NextRequest, authUser, context) => {
+    try {
+      const params = await context.params
+      const resourceId = params.id
+
+      if (!resourceId) {
+        return NextResponse.json({error: 'ID manquant'}, {status: 400})
+      }
+
+      const body = await request.json()
+
+      // Validation
+      const validation = updateResourceServiceSchema.safeParse({
+        ...body,
+        id: resourceId,
+      })
+
+      if (!validation.success) {
+        return NextResponse.json(
+          {error: 'Données invalides', details: validation.error.errors},
+          {status: 400}
+        )
+      }
+
+      const updatedResource = await updateResourceService(validation.data)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Ressource mise à jour avec succès',
+        data: updatedResource,
+      })
+    } catch (error) {
+      console.error('Erreur PUT /api/resources/[id]:', error)
+      return NextResponse.json(
+        {error: 'Erreur lors de la mise à jour'},
+        {status: 500}
+      )
+    }
+  }
+)
+
+// DELETE - Supprimer
+export const DELETE = withDynamicUserAuth(
+  async (request: NextRequest, authUser, context) => {
+    try {
+      const params = await context.params
+      const resourceId = params.id
+
+      if (!resourceId) {
+        return NextResponse.json({error: 'ID manquant'}, {status: 400})
+      }
+
+      await deleteResourceService(resourceId)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Ressource supprimée avec succès',
+      })
+    } catch (error) {
+      console.error('Erreur DELETE /api/resources/[id]:', error)
+      return NextResponse.json(
+        {error: 'Erreur lors de la suppression'},
+        {status: 500}
+      )
+    }
+  }
+)
+```
+
+## Template de Route par Token
+
+```typescript
+import {NextRequest, NextResponse} from 'next/server'
+import {withAuthToken} from '@/lib/api-auth'
+import {getResourcesWithPaginationService} from '@/services/facades/resource-service-facade'
+
+// GET - Test authentification par token
+export const GET = withAuthToken(async (request: NextRequest, authUser) => {
+  try {
+    const {searchParams} = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+
+    const offset = (page - 1) * limit
+
+    const result = await getResourcesWithPaginationService(
+      {limit, offset},
+      {createdBy: authUser.id}
+    )
+
+    return NextResponse.json({
+      success: true,
+      message: 'Authentification par token réussie',
+      user: {
+        id: authUser.id,
+        name: authUser.name,
+        email: authUser.email,
+        role: authUser.role,
+      },
+      data: result.data,
+      pagination: result.pagination,
+    })
+  } catch (error) {
+    console.error('Erreur GET /api/resources/by-token:', error)
+    return NextResponse.json(
+      {error: 'Erreur lors de la récupération'},
+      {status: 500}
+    )
+  }
+})
+```
+
+## Bonnes Pratiques
+
+### 1. Gestion des erreurs
+
+- Toujours logger les erreurs avec `console.error()`
+- Retourner des messages d'erreur cohérents
+- Utiliser les codes de statut HTTP appropriés
+
+### 2. Validation des données
+
+- Utiliser les schémas Zod des services de validation
+- Valider tous les paramètres d'entrée
+- Retourner les détails d'erreur de validation
+
+### 3. Authentification et autorisation
+
+- Toujours utiliser les fonctions `withAuth*` appropriées
+- Vérifier les rôles selon les besoins métier
+- Ne jamais exposer de données sensibles
+
+### 4. Réponses API standardisées
+
+```typescript
+// Succès
+{ success: true, data: result, message?: string }
+
+// Erreur
+{ error: string, details?: any }
+
+// Avec pagination
+{ success: true, data: items, pagination: { total, page, limit } }
+```
+
+### 5. Tests avec token Bearer
+
+```http
+GET http://localhost:3000/api/resources/by-token
+Authorization: Bearer <token_from_authClient.listSessions()>
+```
+
+## Intégration avec l'architecture
+
+Les API routes doivent respecter l'architecture en couches :
+
+- **Présentation** : API Routes (cette couche)
+- **Façades** : Utilisation des services facades uniquement
+- **Services** : Logique métier avec validation et autorisation
+- **DAL** : Non utilisé directement dans les API routes
+- **Persistance** : Accès via les services uniquement
+
+**Important :** Les API routes ne doivent jamais appeler directement les repositories ou la DAL, mais passer par les façades de services.

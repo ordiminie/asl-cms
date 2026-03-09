@@ -3,6 +3,7 @@
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {EMAIL_REGISTRY} from '@/lib/emails/email-registry'
 import {
+  sendAdminInternalEmailService,
   sendNotificationEmailService,
   sendWelcomeFollowUpEmailService,
 } from '@/services/facades/email-service-facade'
@@ -44,6 +45,34 @@ export async function sendTestEmailAction(
           message: params.message,
           type: params.type as 'info' | 'warning' | 'success' | 'error',
           language: params.language as 'fr' | 'en' | 'es',
+        })
+        break
+
+      case 'adminSubscriptionCreated':
+        await sendAdminInternalEmailService({
+          title: '🎉 Nouvel abonnement créé',
+          data: `Plan: ${params.plan}\nClient: ${params.clientEmail}\nStatut: ${params.status}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+        })
+        break
+
+      case 'adminSubscriptionUpdated':
+        await sendAdminInternalEmailService({
+          title: '🔄 Abonnement mis à jour',
+          data: `Plan: ${params.plan}\nClient: ${params.clientEmail}\nStatut: ${params.status}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+        })
+        break
+
+      case 'adminSubscriptionCanceled':
+        await sendAdminInternalEmailService({
+          title: '⚠️ Abonnement annulé',
+          data: `Plan: ${params.plan}\nClient: ${params.clientEmail}\nStatut: canceled\nDate: ${new Date().toLocaleString('fr-FR')}`,
+        })
+        break
+
+      case 'adminSubscriptionDeleted':
+        await sendAdminInternalEmailService({
+          title: '🗑️ Abonnement supprimé',
+          data: `Plan: ${params.plan}\nClient: ${params.clientEmail}\nDate: ${new Date().toLocaleString('fr-FR')}`,
         })
         break
 

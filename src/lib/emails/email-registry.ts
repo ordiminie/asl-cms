@@ -65,6 +65,76 @@ export const EMAIL_REGISTRY: Record<string, EmailDefinition> = {
       },
     ],
   },
+  adminSubscriptionCreated: {
+    id: 'adminSubscriptionCreated',
+    name: '[Admin] Subscription Created',
+    description: 'Notification admin pour nouvel abonnement',
+    params: [
+      {key: 'plan', label: 'Plan', type: 'text', default: 'pro'},
+      {
+        key: 'clientEmail',
+        label: 'Client Email',
+        type: 'email',
+        required: true,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: ['active', 'trialing', 'past_due'],
+        default: 'active',
+      },
+    ],
+  },
+  adminSubscriptionUpdated: {
+    id: 'adminSubscriptionUpdated',
+    name: '[Admin] Subscription Updated',
+    description: 'Notification admin pour mise à jour abonnement',
+    params: [
+      {key: 'plan', label: 'Plan', type: 'text', default: 'pro'},
+      {
+        key: 'clientEmail',
+        label: 'Client Email',
+        type: 'email',
+        required: true,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: ['active', 'trialing', 'past_due', 'canceled'],
+        default: 'active',
+      },
+    ],
+  },
+  adminSubscriptionCanceled: {
+    id: 'adminSubscriptionCanceled',
+    name: '[Admin] Subscription Canceled',
+    description: 'Notification admin pour annulation abonnement',
+    params: [
+      {key: 'plan', label: 'Plan', type: 'text', default: 'pro'},
+      {
+        key: 'clientEmail',
+        label: 'Client Email',
+        type: 'email',
+        required: true,
+      },
+    ],
+  },
+  adminSubscriptionDeleted: {
+    id: 'adminSubscriptionDeleted',
+    name: '[Admin] Subscription Deleted',
+    description: 'Notification admin pour suppression abonnement',
+    params: [
+      {key: 'plan', label: 'Plan', type: 'text', default: 'pro'},
+      {
+        key: 'clientEmail',
+        label: 'Client Email',
+        type: 'email',
+        required: true,
+      },
+    ],
+  },
 }
 
 export function getEmailIds(): string[] {
