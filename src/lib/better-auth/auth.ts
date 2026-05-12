@@ -344,10 +344,14 @@ function createDatabaseHooks() {
         },
         after: async (user: User) => {
           await initializeRegisterUserDataService(user.email)
-          await sendInternalEmailService({
-            title: 'Nouvel utilisateur enregistré',
-            data: `Un nouvel utilisateur s'est inscrit:\n\nEmail: ${user.email}\nNom: ${user.name}\nID: ${user.id}\nDate: ${new Date().toLocaleString('fr-FR')}`,
-          })
+          try {
+            await sendInternalEmailService({
+              title: 'Nouvel utilisateur enregistré',
+              data: `Un nouvel utilisateur s'est inscrit:\n\nEmail: ${user.email}\nNom: ${user.name}\nID: ${user.id}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+            })
+          } catch (error) {
+            console.error('[AUTH] Admin email failed, skipping:', error)
+          }
           try {
             await subscribeToNewsletterService(user.email, [
               NewsletterEmailTag.SubscriptionFree,
