@@ -1,9 +1,11 @@
 import {
   addPackCreditsTxnDao,
   allocateMonthlyCreditsTxnDao,
+  compensateNegativeBalanceTxnDao,
   consumeCreditsTxnDao,
   getBalanceDao,
   getDailyUsageDao,
+  getOrganizationsWithNegativeBalanceDao,
   getRecentActivityDao,
   getUsedThisPeriodDao,
   grantCreditsTxnDao,
@@ -660,5 +662,101 @@ export const allocateCreditsOnSubscriptionService = async (subscription: {
   } catch (error) {
     logger.error('❌ Erreur allocation crédits depuis Better Auth:', error)
     // Ne pas throw pour ne pas bloquer le callback Better Auth
+  }
+}
+
+/**
+ * Compense le solde negatif d'une organisation apres annulation/expiration
+ * d'un abonnement. Empeche le solde fantome du aux usages qui persistent
+ * dans le SUM quand leur allocation parente expire.
+ *
+ * Idempotent via UNIQUE INDEX sur (organizationId, source, sourceId).
+ */
+export const compensateNegativeBalanceOnCancellationService = async (params: {
+  organizationId: string
+  subscriptionId: string
+  subscriptionPeriodEnd?: Date
+}): Promise<void> => {
+  logger.info('🧹 Compensation solde negatif post-annulation', params)
+
+  try {
+    const entry = await compensateNegativeBalanceTxnDao({
+      organizationId: params.organizationId,
+      sourceId: `cancel:${params.subscriptionId}`,
+      reason: `Compensation post-cancellation (subscription ${params.subscriptionId})`,
+      treatAsExpiredAt: params.subscriptionPeriodEnd,
+    })
+
+    if (entry) {
+      logger.info('✅ Solde negatif compense', {
+        organizationId: params.organizationId,
+        amount: entry.amount,
+      })
+    } else {
+      logger.info('ℹ️ Pas de compensation necessaire (solde >= 0)', params)
+    }
+  } catch (error) {
+    logger.error('❌ Erreur compensation solde negatif:', error)
+  }
+}
+
+/**
+ * Cron de reconciliation : scanne toutes les organisations avec un solde
+ * negatif et compense chacune. Sert de filet pour :
+ * - Comptes legacy deja en negatif avant le deploiement du fix
+ * - Cas non couverts par onSubscriptionDeleted (downgrade, pause, plan change)
+ * - Hook Better Auth rate (defense en profondeur)
+ *
+ * sourceId='reconcile:<orgId>:<YYYY-MM-DD>' : idempotent par jour.
+ */
+export const reconcileNegativeBalancesService = async (): Promise<{
+  scanned: number
+  compensated: number
+  totalCompensated: number
+}> => {
+  logger.info('🔄 Reconciliation des soldes negatifs - debut')
+
+  const negatives = await getOrganizationsWithNegativeBalanceDao()
+
+  if (negatives.length === 0) {
+    logger.info('✅ Aucun solde negatif a reconcilier')
+    return {scanned: 0, compensated: 0, totalCompensated: 0}
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+  let compensatedCount = 0
+  let totalCompensated = 0
+
+  for (const {organizationId, balance} of negatives) {
+    try {
+      const entry = await compensateNegativeBalanceTxnDao({
+        organizationId,
+        sourceId: `reconcile:${organizationId}:${today}`,
+        reason: 'Reconciliation cron - compensation solde negatif fantome',
+      })
+      if (entry) {
+        compensatedCount++
+        totalCompensated += Number(entry.amount)
+        logger.info('✅ Org compensee', {
+          organizationId,
+          previousBalance: balance,
+          amountCompensated: entry.amount,
+        })
+      }
+    } catch (error) {
+      logger.error('❌ Erreur reconciliation org', {organizationId, error})
+    }
+  }
+
+  logger.info('🔄 Reconciliation terminee', {
+    scanned: negatives.length,
+    compensated: compensatedCount,
+    totalCompensated,
+  })
+
+  return {
+    scanned: negatives.length,
+    compensated: compensatedCount,
+    totalCompensated,
   }
 }

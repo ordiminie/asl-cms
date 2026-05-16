@@ -7,6 +7,7 @@ import {
   GiftIcon,
   RefreshCwIcon,
   ShoppingCartIcon,
+  WrenchIcon,
 } from 'lucide-react'
 
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
@@ -48,6 +49,11 @@ const sourceConfig: Record<
     icon: RefreshCwIcon,
     label: 'Remboursement',
     color: 'text-orange-500',
+  },
+  system_adjustment: {
+    icon: WrenchIcon,
+    label: 'Ajustement automatique',
+    color: 'text-slate-500',
   },
 }
 
