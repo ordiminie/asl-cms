@@ -128,7 +128,7 @@
     "stripe": "^20.4.1",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^13.0.2",
+    "uuid": "^14.0.0",
     "winston": "^3.19.0",
     "zod": "^4.4.3"
   },
