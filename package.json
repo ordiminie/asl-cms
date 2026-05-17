@@ -108,7 +108,7 @@
     "nextjs-toploader": "^3.9.17",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4",
-    "rate-limiter-flexible": "^9.1.1",
+    "rate-limiter-flexible": "^11.1.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-dropzone": "^15.0.0",
