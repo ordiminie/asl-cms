@@ -210,7 +210,7 @@ async function createStripeSession(
     return_url: `${origin}/checkout/success?redirect_status=succeeded&session_id={CHECKOUT_SESSION_ID}`,
     metadata,
     payment_method_types: ['card'],
-    ui_mode: 'embedded_page',
+    ui_mode: 'embedded',
 
     // Note: customer_creation='always' n'est disponible qu'en mode 'payment'
     // Pour les subscriptions, Stripe crée automatiquement un customer
