@@ -605,8 +605,7 @@ export const getAdminUsageStatsDao = async (
 
   const planLimits = activeSubscription?.limits as Record<string, number> | null
   const limitOverrides = organization?.limitOverrides as
-    | Record<string, number>
-    | undefined
+    Record<string, number> | undefined
 
   const getEffectiveLimit = (
     planLimit: number | undefined,

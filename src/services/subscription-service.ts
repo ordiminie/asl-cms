@@ -599,8 +599,7 @@ export const getEffectiveLimitsService = async (
   const activeSubscription = subscriptions[0]
   const planLimits = activeSubscription?.limits as Record<string, number> | null
   const limitOverrides = organization?.limitOverrides as
-    | Record<string, number>
-    | undefined
+    Record<string, number> | undefined
 
   const getEffectiveLimit = (
     planLimit: number | undefined,
@@ -1195,8 +1194,7 @@ export const getAdminStripeSubscriptionMRRService =
             quantity: stripeDetails.items.data[0]?.quantity || 1,
             status: stripeDetails.status,
             interval: stripeDetails.items.data[0]?.price.recurring?.interval as
-              | 'month'
-              | 'year',
+              'month' | 'year',
             intervalCount:
               stripeDetails.items.data[0]?.price.recurring?.interval_count || 1,
             currentPeriodStart: new Date(sub.periodStart || 0),

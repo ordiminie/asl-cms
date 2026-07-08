@@ -13,8 +13,10 @@ const INNGEST_FUNCTION_IDS = {
 } as const
 
 const helloWorld = inngest.createFunction(
-  {id: INNGEST_FUNCTION_IDS.HELLO_WORLD},
-  {event: INNGEST_EVENTS.TEST_HELLO_WORLD},
+  {
+    id: INNGEST_FUNCTION_IDS.HELLO_WORLD,
+    triggers: {event: INNGEST_EVENTS.TEST_HELLO_WORLD},
+  },
   async ({event, step}) => {
     await step.sleep('wait-a-moment', '1s')
     return {message: `Hello ${event.data.email}!`}
@@ -22,8 +24,10 @@ const helloWorld = inngest.createFunction(
 )
 
 const sendWelcomeFollowUpEmail = inngest.createFunction(
-  {id: INNGEST_FUNCTION_IDS.SEND_WELCOME_FOLLOW_UP_EMAIL},
-  {event: INNGEST_EVENTS.USER_REGISTERED},
+  {
+    id: INNGEST_FUNCTION_IDS.SEND_WELCOME_FOLLOW_UP_EMAIL,
+    triggers: {event: INNGEST_EVENTS.USER_REGISTERED},
+  },
   async ({event, step}) => {
     // Attendre 24 heures après l'inscription
     await step.sleep('wait-24-hours', '24h')
@@ -73,8 +77,8 @@ const reconcileNegativeCreditBalances = inngest.createFunction(
   {
     id: INNGEST_FUNCTION_IDS.RECONCILE_NEGATIVE_CREDIT_BALANCES,
     retries: 2,
+    triggers: {cron: '0 4 * * *'},
   },
-  {cron: '0 4 * * *'},
   async ({step}) => {
     logger.info('🔄 [Inngest] reconcile-negative-credit-balances - start')
 

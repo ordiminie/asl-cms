@@ -16,9 +16,9 @@ import * as userSubmission from './user-submission-model'
 
 const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  max: 20, // Limite de connexions
-  idleTimeoutMillis: 30_000, // Timeout pour connexions inactives
-  connectionTimeoutMillis: 10_000,
+  max: 3,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 30_000,
 })
 
 const db = drizzle(pool, {

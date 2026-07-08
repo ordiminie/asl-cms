@@ -1,6 +1,6 @@
 {
-  "id": "92fcc8a9-b58c-4227-9015-bb45b0005301",
-  "prevId": "5a3684ff-326b-4a78-a5d3-2352de81101d",
+  "id": "76e4ed15-22d3-4022-b93d-20a4b4618a1d",
+  "prevId": "92fcc8a9-b58c-4227-9015-bb45b0005301",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -223,11 +223,18 @@
           "primaryKey": false,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "reference_id": {
+          "name": "reference_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "config_id": {
+          "name": "config_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'default'"
         },
         "refill_interval": {
           "name": "refill_interval",
@@ -326,11 +333,11 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "apikey_user_id_user_id_fk": {
-          "name": "apikey_user_id_user_id_fk",
+        "apikey_reference_id_user_id_fk": {
+          "name": "apikey_reference_id_user_id_fk",
           "tableFrom": "apikey",
           "tableTo": "user",
-          "columnsFrom": ["user_id"],
+          "columnsFrom": ["reference_id"],
           "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"

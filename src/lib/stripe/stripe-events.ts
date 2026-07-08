@@ -851,8 +851,7 @@ async function handleInvoicePaidCreditAllocation(
     // Récupérer les overrides de l'organisation
     const organization = await getOrganizationByIdDao(referenceId)
     const limitOverrides = organization?.limitOverrides as
-      | Record<string, number>
-      | undefined
+      Record<string, number> | undefined
     const overrideCredits = limitOverrides?.credits ?? 0
 
     // Calculer les dates de période (API version 2025-11-17)

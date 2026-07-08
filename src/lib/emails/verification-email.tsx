@@ -1,3 +1,5 @@
+import {getTranslations} from 'next-intl/server'
+import {Fragment} from 'react'
 import {
   Body,
   Container,
@@ -8,9 +10,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from '@react-email/components'
-import {getTranslations} from 'next-intl/server'
-import {Fragment} from 'react'
+} from 'react-email'
 
 VerificationEmail.PreviewProps = {
   url: 'https://example.com/verify-email?token=123',

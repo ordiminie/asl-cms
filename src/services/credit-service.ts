@@ -637,8 +637,7 @@ export const allocateCreditsOnSubscriptionService = async (subscription: {
     // Récupérer les overrides de l'organisation
     const organization = await getOrganizationByIdDao(subscription.referenceId)
     const limitOverrides = organization?.limitOverrides as
-      | Record<string, number>
-      | undefined
+      Record<string, number> | undefined
     const overrideCredits = limitOverrides?.credits ?? 0
 
     // Allouer les crédits

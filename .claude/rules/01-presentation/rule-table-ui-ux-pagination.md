@@ -1,5 +1,5 @@
 ---
-description: 
+description:
 paths: **table**
 ---
 

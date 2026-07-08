@@ -109,6 +109,14 @@ This is a Next.js 15 SaaS boilerplate with a strict layered architecture:
 - Seed data in `src/db/scripts/seed.ts`
 - Always use transactions for related operations
 
+#### Database Migrations (STRICT)
+
+- **INTERDICTION** d'écrire un fichier de migration SQL à la main dans `drizzle/migrations/`
+- **INTERDICTION** d'éditer manuellement `drizzle/migrations/meta/_journal.json` ou les snapshots `meta/*_snapshot.json`
+- Toute migration passe par `pnpm db:generate` (drizzle-kit) après modification des modèles dans `src/db/models/`
+- Pour du SQL custom (index partiels, data migrations) : `drizzle-kit generate --custom` — c'est le seul mécanisme autorisé pour du SQL manuel (il maintient le journal et les snapshots correctement)
+- Si `db:generate` échoue (ex: collision de snapshots), corriger l'état des snapshots d'abord — ne JAMAIS contourner en créant les fichiers à la main
+
 #### Styling
 
 - Tailwind CSS v4 with utility-first approach
@@ -168,14 +176,15 @@ Before generating ANY new code, you **MUST** complete these verification steps:
    - **Read the full rule file(s)** before writing any code
 
    Common rule mappings:
-   | Task | Rules to Read |
-   |------|---------------|
-   | New page/component | `rule-presentation`, `rule-safe-route` |
+
+   | Task                | Rules to Read                                                             |
+   | ------------------- | ------------------------------------------------------------------------- |
+   | New page/component  | `rule-presentation`, `rule-safe-route`                                    |
    | Form implementation | `rule-form-front-and-back`, `rule-zod-client-server-internationalization` |
-   | Server Action | `rule-safe-server-action`, `rule-server-actions-imports` |
-   | Business service | `rule-service`, `rule-authorization-service` |
-   | Database model | `rule-persistence` |
-   | API Route | `rule-api-routes` |
+   | Server Action       | `rule-safe-server-action`, `rule-server-actions-imports`                  |
+   | Business service    | `rule-service`, `rule-authorization-service`                              |
+   | Database model      | `rule-persistence`                                                        |
+   | API Route           | `rule-api-routes`                                                         |
 
 2. **Check Existing Codebase Patterns**
    Find and analyze **at least three existing examples** of similar functionality in the codebase. Look for:

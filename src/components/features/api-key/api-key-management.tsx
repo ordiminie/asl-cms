@@ -63,7 +63,7 @@ export function ApiKeyManagement() {
       const response = await authClient.apiKey.list()
       if (response.data) {
         setApiKeys(
-          response.data.map((key) => ({
+          response.data.apiKeys.map((key) => ({
             id: key.id,
             name: key.name,
             key: '****-****-****-****', // Hidden key for security

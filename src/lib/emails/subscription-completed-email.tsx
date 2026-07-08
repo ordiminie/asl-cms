@@ -1,3 +1,5 @@
+import {getTranslations} from 'next-intl/server'
+import {Fragment} from 'react'
 import {
   Body,
   Container,
@@ -7,9 +9,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from '@react-email/components'
-import {getTranslations} from 'next-intl/server'
-import {Fragment} from 'react'
+} from 'react-email'
 
 export type SubscriptionCompletedMailProps = {
   planName: string

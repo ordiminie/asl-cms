@@ -14,13 +14,7 @@ type SitemapEntry = {
   url: string
   lastModified?: string | Date
   changeFrequency?:
-    | 'always'
-    | 'hourly'
-    | 'daily'
-    | 'weekly'
-    | 'monthly'
-    | 'yearly'
-    | 'never'
+    'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
   priority?: number
   alternates?: {
     languages?: Record<string, string>
@@ -31,13 +25,7 @@ type RouteConfig = {
   path: string
   priority: number
   changeFrequency:
-    | 'always'
-    | 'hourly'
-    | 'daily'
-    | 'weekly'
-    | 'monthly'
-    | 'yearly'
-    | 'never'
+    'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
 }
 
 function buildUrl(

@@ -139,8 +139,7 @@ export const checkSubscriptionLimit = async (
   // 2. Récupérer les overrides de l'organisation
   const organization = await getOrganizationByIdDao(referenceId)
   const limitOverrides = organization?.limitOverrides as
-    | Record<string, number>
-    | undefined
+    Record<string, number> | undefined
 
   // 3. Appeler le service pour la logique métier
   const sub = subscription[0]
