@@ -1,3 +1,4 @@
+import {apiKey} from '@better-auth/api-key'
 import {stripe} from '@better-auth/stripe'
 import {betterAuth, BetterAuthOptions, User} from 'better-auth'
 import {drizzleAdapter} from 'better-auth/adapters/drizzle'
@@ -5,7 +6,6 @@ import {APIError, createAuthMiddleware} from 'better-auth/api'
 import {nextCookies} from 'better-auth/next-js'
 import {
   admin,
-  apiKey,
   bearer,
   customSession,
   magicLink,
