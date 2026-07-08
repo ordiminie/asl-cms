@@ -109,6 +109,14 @@ This is a Next.js 15 SaaS boilerplate with a strict layered architecture:
 - Seed data in `src/db/scripts/seed.ts`
 - Always use transactions for related operations
 
+#### Database Migrations (STRICT)
+
+- **INTERDICTION** d'écrire un fichier de migration SQL à la main dans `drizzle/migrations/`
+- **INTERDICTION** d'éditer manuellement `drizzle/migrations/meta/_journal.json` ou les snapshots `meta/*_snapshot.json`
+- Toute migration passe par `pnpm db:generate` (drizzle-kit) après modification des modèles dans `src/db/models/`
+- Pour du SQL custom (index partiels, data migrations) : `drizzle-kit generate --custom` — c'est le seul mécanisme autorisé pour du SQL manuel (il maintient le journal et les snapshots correctement)
+- Si `db:generate` échoue (ex: collision de snapshots), corriger l'état des snapshots d'abord — ne JAMAIS contourner en créant les fichiers à la main
+
 #### Styling
 
 - Tailwind CSS v4 with utility-first approach
