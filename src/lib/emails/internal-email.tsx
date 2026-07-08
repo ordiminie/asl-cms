@@ -1,13 +1,6 @@
-import {
-  Body,
-  Container,
-  Head,
-  Html,
-  Preview,
-  Tailwind,
-} from '@react-email/components'
 import {getTranslations} from 'next-intl/server'
 import React, {Fragment} from 'react'
+import {Body, Container, Head, Html, Preview, Tailwind} from 'react-email'
 
 type InternalEmailProps = {
   preview: string
