@@ -168,14 +168,15 @@ Before generating ANY new code, you **MUST** complete these verification steps:
    - **Read the full rule file(s)** before writing any code
 
    Common rule mappings:
-   | Task | Rules to Read |
-   |------|---------------|
-   | New page/component | `rule-presentation`, `rule-safe-route` |
+
+   | Task                | Rules to Read                                                             |
+   | ------------------- | ------------------------------------------------------------------------- |
+   | New page/component  | `rule-presentation`, `rule-safe-route`                                    |
    | Form implementation | `rule-form-front-and-back`, `rule-zod-client-server-internationalization` |
-   | Server Action | `rule-safe-server-action`, `rule-server-actions-imports` |
-   | Business service | `rule-service`, `rule-authorization-service` |
-   | Database model | `rule-persistence` |
-   | API Route | `rule-api-routes` |
+   | Server Action       | `rule-safe-server-action`, `rule-server-actions-imports`                  |
+   | Business service    | `rule-service`, `rule-authorization-service`                              |
+   | Database model      | `rule-persistence`                                                        |
+   | API Route           | `rule-api-routes`                                                         |
 
 2. **Check Existing Codebase Patterns**
    Find and analyze **at least three existing examples** of similar functionality in the codebase. Look for:

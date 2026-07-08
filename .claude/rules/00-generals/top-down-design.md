@@ -76,21 +76,11 @@ function formatResponse(result: SaveResult): ApiResponse {
 
 ```typescript
 // Types clairs pour le flux de données
-type InputParams = {
-  /* ... */
-}
-type ValidatedData = {
-  /* ... */
-}
-type ProcessedData = {
-  /* ... */
-}
-type SaveResult = {
-  /* ... */
-}
-type ApiResponse = {
-  /* ... */
-}
+type InputParams = {/* ... */}
+type ValidatedData = {/* ... */}
+type ProcessedData = {/* ... */}
+type SaveResult = {/* ... */}
+type ApiResponse = {/* ... */}
 ```
 
 ## Exemple Concret : Checkout Stripe

@@ -6,12 +6,7 @@ import {
 // Types de domaine découplés des types Drizzle
 export type CreditEntry = CreditLedgerModel
 export type CreditSource =
-  | 'plan'
-  | 'admin_grant'
-  | 'usage'
-  | 'pack'
-  | 'refund'
-  | 'system_adjustment'
+  'plan' | 'admin_grant' | 'usage' | 'pack' | 'refund' | 'system_adjustment'
 
 // Constantes pour les sources de crédits
 export const CreditSourceConst = {
