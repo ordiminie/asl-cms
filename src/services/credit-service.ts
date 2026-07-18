@@ -4,6 +4,7 @@ import {
   compensateNegativeBalanceTxnDao,
   consumeCreditsTxnDao,
   getBalanceDao,
+  getCurrentCreditPeriodDao,
   getDailyUsageDao,
   getOrganizationsWithNegativeBalanceDao,
   getRecentActivityDao,
@@ -94,30 +95,18 @@ export const getCreditBalanceService = async (
     plan: activeSub?.plan,
   })
 
-  // Déterminer les dates de période
-  // Toujours utiliser "maintenant" comme fin pour avoir la dernière consommation à droite
-  const now = new Date()
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-
-  let periodStart: Date
-  const periodEnd: Date = now // Toujours finir à maintenant
-
-  if (activeSub?.periodStart) {
-    // Utiliser le plus ancien entre periodStart Stripe et 30 jours ago
-    periodStart =
-      activeSub.periodStart < thirtyDaysAgo
-        ? activeSub.periodStart
-        : thirtyDaysAgo
-  } else {
-    // Fallback: 30 jours glissants
-    periodStart = thirtyDaysAgo
-  }
+  // Période de crédits courante : allocation active du ledger, fallback
+  // période subscription (mensualisée si annuelle), fallback mois calendaire
+  const period = await getCurrentCreditPeriodDao(organizationId, {
+    periodStart: activeSub?.periodStart ?? null,
+    periodEnd: activeSub?.periodEnd ?? null,
+  })
 
   logger.debug('📊 Period dates calculated:', {
     subPeriodStart: activeSub?.periodStart?.toISOString(),
     subPeriodEnd: activeSub?.periodEnd?.toISOString(),
-    effectivePeriodStart: periodStart.toISOString(),
-    effectivePeriodEnd: periodEnd.toISOString(),
+    effectivePeriodStart: period.periodStart.toISOString(),
+    effectivePeriodEnd: period.periodEnd.toISOString(),
   })
 
   // Calculer le solde disponible
@@ -126,8 +115,8 @@ export const getCreditBalanceService = async (
   // Calculer l'usage de la période courante
   const usedThisPeriod = await getUsedThisPeriodDao(
     organizationId,
-    periodStart,
-    periodEnd
+    period.periodStart,
+    period.periodEnd
   )
 
   // Récupérer l'allocation mensuelle du plan
@@ -138,8 +127,8 @@ export const getCreditBalanceService = async (
     available,
     balance: available, // Alias pour la compatibilité UI
     usedThisPeriod,
-    periodStart,
-    periodEnd,
+    periodStart: period.periodStart,
+    periodEnd: period.periodEnd,
     monthlyAllocation,
   }
 }

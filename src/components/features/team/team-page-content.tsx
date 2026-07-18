@@ -288,6 +288,12 @@ export function TeamPageContent({
               {formatDate(usage.periodEnd)}
             </p>
           )}
+          {usage.periodEnd && (
+            <p className="text-muted-foreground text-xs">
+              Prochain renouvellement des crédits :{' '}
+              {formatDate(usage.periodEnd)}
+            </p>
+          )}
         </CardContent>
       </Card>
 

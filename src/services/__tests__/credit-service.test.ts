@@ -40,17 +40,28 @@ import {setupAuthUserMocked} from './helper-service-test'
 import {userTest, userTestAdmin} from './service-test-data'
 
 // Mock repositories
-vi.mock('@/db/repositories/credit-ledger-repository', () => ({
-  getBalanceDao: vi.fn(),
-  getUsedThisPeriodDao: vi.fn(),
-  getDailyUsageDao: vi.fn(),
-  getRecentActivityDao: vi.fn(),
-  consumeCreditsTxnDao: vi.fn(),
-  allocateMonthlyCreditsTxnDao: vi.fn(),
-  grantCreditsTxnDao: vi.fn(),
-  addPackCreditsTxnDao: vi.fn(),
-  checkAllocationExistsDao: vi.fn(),
-}))
+// getCurrentCreditPeriodDao délègue au vrai resolveCreditPeriod (sans lookup
+// ledger) pour que les fenêtres de comptage restent calculées comme en prod.
+vi.mock('@/db/repositories/credit-ledger-repository', async () => {
+  const {resolveCreditPeriod} =
+    await import('@/lib/helper/credit-period-helper')
+  return {
+    getBalanceDao: vi.fn(),
+    getUsedThisPeriodDao: vi.fn(),
+    getDailyUsageDao: vi.fn(),
+    getRecentActivityDao: vi.fn(),
+    consumeCreditsTxnDao: vi.fn(),
+    allocateMonthlyCreditsTxnDao: vi.fn(),
+    grantCreditsTxnDao: vi.fn(),
+    addPackCreditsTxnDao: vi.fn(),
+    checkAllocationExistsDao: vi.fn(),
+    getCurrentCreditPeriodDao: vi
+      .fn()
+      .mockImplementation(async (_organizationId, subscriptionPeriod) =>
+        resolveCreditPeriod({subscriptionPeriod})
+      ),
+  }
+})
 
 vi.mock('@/db/repositories/subscription-repository', () => ({
   getActiveSubscriptionsOrFreePlanDao: vi.fn(),

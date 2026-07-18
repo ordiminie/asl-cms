@@ -1,5 +1,10 @@
-import {and, desc, eq, gt, isNull, or, sql} from 'drizzle-orm'
+import {and, desc, eq, gt, isNull, lte, or, sql} from 'drizzle-orm'
 
+import {
+  CreditPeriod,
+  CreditPeriodInput,
+  resolveCreditPeriod,
+} from '@/lib/helper/credit-period-helper'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 import {
   CreateCreditEntry,
@@ -10,6 +15,11 @@ import {
 
 import {creditLedger, CreditLedgerModel} from '../models/credit-ledger-model'
 import db from '../models/db'
+
+// Prédicat de l'index partiel credit_ledger_source_dedup_unique_idx.
+// Postgres n'infère un index unique partiel comme arbitre d'un ON CONFLICT
+// que si la clause reprend son prédicat (sinon erreur 42P10).
+const sourceDedupIndexPredicate = sql`${creditLedger.sourceId} IS NOT NULL AND ${creditLedger.source} IN ('pack', 'system_adjustment', 'refund')`
 
 // ========================================
 // BALANCE OPERATIONS
@@ -343,6 +353,7 @@ export const addPackCreditsTxnDao = async (params: {
           creditLedger.source,
           creditLedger.sourceId,
         ],
+        where: sourceDedupIndexPredicate,
       })
       .returning()
 
@@ -452,6 +463,7 @@ export const compensateNegativeBalanceTxnDao = async (params: {
           creditLedger.source,
           creditLedger.sourceId,
         ],
+        where: sourceDedupIndexPredicate,
       })
       .returning()
 
@@ -560,4 +572,35 @@ export const getAllOrganizationsCreditsDao = async (
       totalPages,
     },
   }
+}
+
+/**
+ * Résout la période de crédits courante d'une organisation.
+ * Source de vérité : l'allocation `plan` active du ledger, avec fallback sur
+ * la période subscription fournie par l'appelant, puis le mois calendaire.
+ */
+export const getCurrentCreditPeriodDao = async (
+  organizationId: string,
+  subscriptionPeriod?: CreditPeriodInput | null
+): Promise<CreditPeriod> => {
+  const now = new Date()
+
+  const [allocation] = await db
+    .select({
+      periodStart: creditLedger.periodStart,
+      periodEnd: creditLedger.periodEnd,
+    })
+    .from(creditLedger)
+    .where(
+      and(
+        eq(creditLedger.organizationId, organizationId),
+        eq(creditLedger.source, 'plan'),
+        lte(creditLedger.periodStart, now),
+        gt(creditLedger.periodEnd, now)
+      )
+    )
+    .orderBy(desc(creditLedger.periodStart))
+    .limit(1)
+
+  return resolveCreditPeriod({allocation, subscriptionPeriod, now})
 }

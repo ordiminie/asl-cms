@@ -2,6 +2,7 @@ import {cache} from 'react'
 
 import {
   canConsumeService,
+  ensureCreditsAllocatedService,
   getBalanceService,
   getCreditBalanceService,
   getCreditPacksService,
@@ -80,6 +81,21 @@ export const getRecentCreditActivityDal = cache(
     limit: number = 20
   ): Promise<CreditActivityItem[]> => {
     return getRecentActivityService(organizationId, limit)
+  }
+)
+
+// ========================================
+// ALLOCATION DAL
+// ========================================
+
+/**
+ * Allocation lazy appelable pendant un render RSC : pas de revalidation
+ * (revalidateTag/revalidatePath sont interdits pendant le render).
+ * La page lit les données fraîches dans la même requête, juste après.
+ */
+export const ensureCreditsAllocatedViewDal = cache(
+  async (organizationId: string): Promise<void> => {
+    return ensureCreditsAllocatedService(organizationId)
   }
 )
 

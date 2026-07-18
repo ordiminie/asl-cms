@@ -1,5 +1,6 @@
 import {forbidden, notFound} from 'next/navigation'
 
+import {ensureCreditsAllocatedViewDal} from '@/app/dal/credit-dal'
 import {
   getOrganizationBySlugDal,
   getOrganizationMembersDal,
@@ -32,6 +33,9 @@ export default async function TeamPage({params}: TeamPageProps) {
   if (!canReadMembers) {
     forbidden()
   }
+
+  // Allocation lazy avant lecture de l'usage (idempotent par période)
+  await ensureCreditsAllocatedViewDal(organization.id)
 
   // Récupérer les membres et l'usage de l'organisation en parallèle
   const [members, usage]: [
