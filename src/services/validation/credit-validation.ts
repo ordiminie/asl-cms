@@ -22,6 +22,7 @@ export const creditSourceSchema = z.enum([
   'usage',
   'pack',
   'refund',
+  'system_adjustment',
 ]) satisfies z.Schema<CreditSource>
 
 // Create credit entry schema

@@ -3,11 +3,7 @@ export type File = globalThis.File
 
 // Types d'entités supportées
 export type EntityType =
-  | 'user'
-  | 'organization'
-  | 'product'
-  | 'generic'
-  | 'post'
+  'user' | 'organization' | 'product' | 'generic' | 'post'
 
 // Types de fichiers pour une entité
 export type FileCategory = 'profile' | 'logo' | 'banner' | 'document' | 'image'

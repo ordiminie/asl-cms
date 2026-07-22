@@ -1,17 +1,22 @@
 import {env} from '@/env'
 import {INNGEST_EVENTS} from '@/lib/inngest/events'
 import {inngest} from '@/lib/inngest/inngest'
+import {logger} from '@/lib/logger'
+import {reconcileNegativeBalancesService} from '@/services/facades/credit-service-facade'
 import {sendWelcomeFollowUpEmailService} from '@/services/facades/email-service-facade'
 import {SupportedLanguage} from '@/services/types/common-type'
 
 const INNGEST_FUNCTION_IDS = {
   HELLO_WORLD: 'hello-world',
   SEND_WELCOME_FOLLOW_UP_EMAIL: 'send-welcome-follow-up-email',
+  RECONCILE_NEGATIVE_CREDIT_BALANCES: 'reconcile-negative-credit-balances',
 } as const
 
 const helloWorld = inngest.createFunction(
-  {id: INNGEST_FUNCTION_IDS.HELLO_WORLD},
-  {event: INNGEST_EVENTS.TEST_HELLO_WORLD},
+  {
+    id: INNGEST_FUNCTION_IDS.HELLO_WORLD,
+    triggers: {event: INNGEST_EVENTS.TEST_HELLO_WORLD},
+  },
   async ({event, step}) => {
     await step.sleep('wait-a-moment', '1s')
     return {message: `Hello ${event.data.email}!`}
@@ -19,8 +24,10 @@ const helloWorld = inngest.createFunction(
 )
 
 const sendWelcomeFollowUpEmail = inngest.createFunction(
-  {id: INNGEST_FUNCTION_IDS.SEND_WELCOME_FOLLOW_UP_EMAIL},
-  {event: INNGEST_EVENTS.USER_REGISTERED},
+  {
+    id: INNGEST_FUNCTION_IDS.SEND_WELCOME_FOLLOW_UP_EMAIL,
+    triggers: {event: INNGEST_EVENTS.USER_REGISTERED},
+  },
   async ({event, step}) => {
     // Attendre 24 heures après l'inscription
     await step.sleep('wait-24-hours', '24h')
@@ -56,4 +63,33 @@ const sendWelcomeFollowUpEmail = inngest.createFunction(
   }
 )
 
-export {helloWorld, sendWelcomeFollowUpEmail}
+/**
+ * Cron de reconciliation : compense automatiquement chaque nuit les soldes
+ * negatifs fantomes (annulations qui n'ont pas declenche le hook Better Auth,
+ * downgrades de plan, pauses Stripe, comptes legacy avant le deploiement).
+ *
+ * Idempotent par jour via sourceId='reconcile:<orgId>:<YYYY-MM-DD>'.
+ * Premier passage en prod = backfill automatique des comptes deja casses.
+ *
+ * Tourne quotidiennement a 4:00 UTC.
+ */
+const reconcileNegativeCreditBalances = inngest.createFunction(
+  {
+    id: INNGEST_FUNCTION_IDS.RECONCILE_NEGATIVE_CREDIT_BALANCES,
+    retries: 2,
+    triggers: {cron: '0 4 * * *'},
+  },
+  async ({step}) => {
+    logger.info('🔄 [Inngest] reconcile-negative-credit-balances - start')
+
+    const result = await step.run('reconcile', async () => {
+      return await reconcileNegativeBalancesService()
+    })
+
+    logger.info('🔄 [Inngest] reconcile complete', result)
+
+    return result
+  }
+)
+
+export {helloWorld, reconcileNegativeCreditBalances, sendWelcomeFollowUpEmail}

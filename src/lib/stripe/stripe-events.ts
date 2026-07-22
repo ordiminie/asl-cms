@@ -140,7 +140,27 @@ export async function onStripeEvent(event: Stripe.Event) {
     }
   } catch (error) {
     logger.error('❌ Erreur dans onEvent Stripe:', error)
+    // Re-throw pour les events critiques afin que Stripe retry au lieu
+    // d'avaler silencieusement : credit pack purchase + subscription deleted
+    // (qui declenche la compensation du solde negatif fantome).
+    if (isCriticalStripeEvent(event)) {
+      throw error
+    }
   }
+}
+
+function isCriticalStripeEvent(event: Stripe.Event): boolean {
+  // customer.subscription.deleted declenche la compensation du solde negatif
+  // fantome (hook Better Auth onSubscriptionDeleted). Si on swallow l'erreur,
+  // le user reste a -N jusqu'au cron de nuit (filet de secours).
+  if (event.type === 'customer.subscription.deleted') {
+    return true
+  }
+  if (event.type !== 'checkout.session.completed') {
+    return false
+  }
+  const session = event.data.object as Stripe.Checkout.Session
+  return session.metadata?.type === 'credit_pack'
 }
 
 /**
@@ -831,8 +851,7 @@ async function handleInvoicePaidCreditAllocation(
     // Récupérer les overrides de l'organisation
     const organization = await getOrganizationByIdDao(referenceId)
     const limitOverrides = organization?.limitOverrides as
-      | Record<string, number>
-      | undefined
+      Record<string, number> | undefined
     const overrideCredits = limitOverrides?.credits ?? 0
 
     // Calculer les dates de période (API version 2025-11-17)

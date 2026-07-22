@@ -38,8 +38,8 @@ const runClean = async () => {
 
   // Drops enums
   await db.execute(sql`
-    DO $$ 
-    DECLARE 
+    DO $$
+    DECLARE
       r RECORD;
     BEGIN
       FOR r IN (SELECT typname FROM pg_type WHERE typtype = 'e') LOOP
@@ -47,6 +47,12 @@ const runClean = async () => {
       END LOOP;
     END $$;
   `)
+
+  // Drop l'historique des migrations drizzle : sans ça, un clear laisse
+  // __drizzle_migrations peuplé alors que le schéma est vide, et db:migrate
+  // saute la 0000 puis échoue sur les suivantes (état inconsistant)
+  await db.execute(sql`DROP SCHEMA IF EXISTS drizzle CASCADE`)
+
   const end = Date.now()
 
   console.log('✅ Clean completed in', end - start, 'ms')

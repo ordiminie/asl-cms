@@ -53,3 +53,7 @@ export const canViewAdminCreditsStatsService =
 // ========================================
 export const allocateCreditsOnSubscriptionService =
   creditServiceInterceptor.allocateCreditsOnSubscriptionService
+export const compensateNegativeBalanceOnCancellationService =
+  creditServiceInterceptor.compensateNegativeBalanceOnCancellationService
+export const reconcileNegativeBalancesService =
+  creditServiceInterceptor.reconcileNegativeBalancesService

@@ -1,6 +1,7 @@
 'use client'
 
-import {Github, MoreHorizontal} from 'lucide-react'
+import {IconBrandGithub as Github} from '@tabler/icons-react'
+import {MoreHorizontal} from 'lucide-react'
 import Link from 'next/link'
 import {useRouter} from 'next/navigation'
 

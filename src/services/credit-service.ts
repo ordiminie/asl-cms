@@ -1,9 +1,12 @@
 import {
   addPackCreditsTxnDao,
   allocateMonthlyCreditsTxnDao,
+  compensateNegativeBalanceTxnDao,
   consumeCreditsTxnDao,
   getBalanceDao,
+  getCurrentCreditPeriodDao,
   getDailyUsageDao,
+  getOrganizationsWithNegativeBalanceDao,
   getRecentActivityDao,
   getUsedThisPeriodDao,
   grantCreditsTxnDao,
@@ -92,30 +95,18 @@ export const getCreditBalanceService = async (
     plan: activeSub?.plan,
   })
 
-  // Déterminer les dates de période
-  // Toujours utiliser "maintenant" comme fin pour avoir la dernière consommation à droite
-  const now = new Date()
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-
-  let periodStart: Date
-  const periodEnd: Date = now // Toujours finir à maintenant
-
-  if (activeSub?.periodStart) {
-    // Utiliser le plus ancien entre periodStart Stripe et 30 jours ago
-    periodStart =
-      activeSub.periodStart < thirtyDaysAgo
-        ? activeSub.periodStart
-        : thirtyDaysAgo
-  } else {
-    // Fallback: 30 jours glissants
-    periodStart = thirtyDaysAgo
-  }
+  // Période de crédits courante : allocation active du ledger, fallback
+  // période subscription (mensualisée si annuelle), fallback mois calendaire
+  const period = await getCurrentCreditPeriodDao(organizationId, {
+    periodStart: activeSub?.periodStart ?? null,
+    periodEnd: activeSub?.periodEnd ?? null,
+  })
 
   logger.debug('📊 Period dates calculated:', {
     subPeriodStart: activeSub?.periodStart?.toISOString(),
     subPeriodEnd: activeSub?.periodEnd?.toISOString(),
-    effectivePeriodStart: periodStart.toISOString(),
-    effectivePeriodEnd: periodEnd.toISOString(),
+    effectivePeriodStart: period.periodStart.toISOString(),
+    effectivePeriodEnd: period.periodEnd.toISOString(),
   })
 
   // Calculer le solde disponible
@@ -124,8 +115,8 @@ export const getCreditBalanceService = async (
   // Calculer l'usage de la période courante
   const usedThisPeriod = await getUsedThisPeriodDao(
     organizationId,
-    periodStart,
-    periodEnd
+    period.periodStart,
+    period.periodEnd
   )
 
   // Récupérer l'allocation mensuelle du plan
@@ -136,8 +127,8 @@ export const getCreditBalanceService = async (
     available,
     balance: available, // Alias pour la compatibilité UI
     usedThisPeriod,
-    periodStart,
-    periodEnd,
+    periodStart: period.periodStart,
+    periodEnd: period.periodEnd,
     monthlyAllocation,
   }
 }
@@ -635,8 +626,7 @@ export const allocateCreditsOnSubscriptionService = async (subscription: {
     // Récupérer les overrides de l'organisation
     const organization = await getOrganizationByIdDao(subscription.referenceId)
     const limitOverrides = organization?.limitOverrides as
-      | Record<string, number>
-      | undefined
+      Record<string, number> | undefined
     const overrideCredits = limitOverrides?.credits ?? 0
 
     // Allouer les crédits
@@ -660,5 +650,101 @@ export const allocateCreditsOnSubscriptionService = async (subscription: {
   } catch (error) {
     logger.error('❌ Erreur allocation crédits depuis Better Auth:', error)
     // Ne pas throw pour ne pas bloquer le callback Better Auth
+  }
+}
+
+/**
+ * Compense le solde negatif d'une organisation apres annulation/expiration
+ * d'un abonnement. Empeche le solde fantome du aux usages qui persistent
+ * dans le SUM quand leur allocation parente expire.
+ *
+ * Idempotent via UNIQUE INDEX sur (organizationId, source, sourceId).
+ */
+export const compensateNegativeBalanceOnCancellationService = async (params: {
+  organizationId: string
+  subscriptionId: string
+  subscriptionPeriodEnd?: Date
+}): Promise<void> => {
+  logger.info('🧹 Compensation solde negatif post-annulation', params)
+
+  try {
+    const entry = await compensateNegativeBalanceTxnDao({
+      organizationId: params.organizationId,
+      sourceId: `cancel:${params.subscriptionId}`,
+      reason: `Compensation post-cancellation (subscription ${params.subscriptionId})`,
+      treatAsExpiredAt: params.subscriptionPeriodEnd,
+    })
+
+    if (entry) {
+      logger.info('✅ Solde negatif compense', {
+        organizationId: params.organizationId,
+        amount: entry.amount,
+      })
+    } else {
+      logger.info('ℹ️ Pas de compensation necessaire (solde >= 0)', params)
+    }
+  } catch (error) {
+    logger.error('❌ Erreur compensation solde negatif:', error)
+  }
+}
+
+/**
+ * Cron de reconciliation : scanne toutes les organisations avec un solde
+ * negatif et compense chacune. Sert de filet pour :
+ * - Comptes legacy deja en negatif avant le deploiement du fix
+ * - Cas non couverts par onSubscriptionDeleted (downgrade, pause, plan change)
+ * - Hook Better Auth rate (defense en profondeur)
+ *
+ * sourceId='reconcile:<orgId>:<YYYY-MM-DD>' : idempotent par jour.
+ */
+export const reconcileNegativeBalancesService = async (): Promise<{
+  scanned: number
+  compensated: number
+  totalCompensated: number
+}> => {
+  logger.info('🔄 Reconciliation des soldes negatifs - debut')
+
+  const negatives = await getOrganizationsWithNegativeBalanceDao()
+
+  if (negatives.length === 0) {
+    logger.info('✅ Aucun solde negatif a reconcilier')
+    return {scanned: 0, compensated: 0, totalCompensated: 0}
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+  let compensatedCount = 0
+  let totalCompensated = 0
+
+  for (const {organizationId, balance} of negatives) {
+    try {
+      const entry = await compensateNegativeBalanceTxnDao({
+        organizationId,
+        sourceId: `reconcile:${organizationId}:${today}`,
+        reason: 'Reconciliation cron - compensation solde negatif fantome',
+      })
+      if (entry) {
+        compensatedCount++
+        totalCompensated += Number(entry.amount)
+        logger.info('✅ Org compensee', {
+          organizationId,
+          previousBalance: balance,
+          amountCompensated: entry.amount,
+        })
+      }
+    } catch (error) {
+      logger.error('❌ Erreur reconciliation org', {organizationId, error})
+    }
+  }
+
+  logger.info('🔄 Reconciliation terminee', {
+    scanned: negatives.length,
+    compensated: compensatedCount,
+    totalCompensated,
+  })
+
+  return {
+    scanned: negatives.length,
+    compensated: compensatedCount,
+    totalCompensated,
   }
 }

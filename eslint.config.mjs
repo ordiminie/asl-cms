@@ -5,6 +5,7 @@ import nextTs from 'eslint-config-next/typescript'
 import drizzle from 'eslint-plugin-drizzle'
 import promise from 'eslint-plugin-promise'
 import react from 'eslint-plugin-react'
+import reactHooks from 'eslint-plugin-react-hooks'
 import simpleImportSort from 'eslint-plugin-simple-import-sort'
 import unicorn from 'eslint-plugin-unicorn'
 
@@ -33,6 +34,7 @@ const eslintConfig = defineConfig([
       drizzle,
       promise,
       react,
+      'react-hooks': reactHooks,
       'simple-import-sort': simpleImportSort,
       unicorn,
     },
@@ -40,6 +42,13 @@ const eslintConfig = defineConfig([
       // React rules
       'react/prop-types': 'off',
       'react/react-in-jsx-scope': 'off',
+      // React Compiler diagnostics (error par défaut depuis react-hooks 7.1)
+      // gardés en warn : patterns existants à refactorer progressivement
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
       // TypeScript rules
       '@typescript-eslint/ban-ts-comment': 'warn',
       '@typescript-eslint/no-non-null-assertion': 'warn',

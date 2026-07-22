@@ -1,5 +1,10 @@
-import {and, desc, eq, gt, isNull, or, sql} from 'drizzle-orm'
+import {and, desc, eq, gt, isNull, lte, or, sql} from 'drizzle-orm'
 
+import {
+  CreditPeriod,
+  CreditPeriodInput,
+  resolveCreditPeriod,
+} from '@/lib/helper/credit-period-helper'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 import {
   CreateCreditEntry,
@@ -10,6 +15,11 @@ import {
 
 import {creditLedger, CreditLedgerModel} from '../models/credit-ledger-model'
 import db from '../models/db'
+
+// Prédicat de l'index partiel credit_ledger_source_dedup_unique_idx.
+// Postgres n'infère un index unique partiel comme arbitre d'un ON CONFLICT
+// que si la clause reprend son prédicat (sinon erreur 42P10).
+const sourceDedupIndexPredicate = sql`${creditLedger.sourceId} IS NOT NULL AND ${creditLedger.source} IN ('pack', 'system_adjustment', 'refund')`
 
 // ========================================
 // BALANCE OPERATIONS
@@ -41,11 +51,11 @@ export const getUsedThisPeriodDao = async (
   periodStart: Date,
   periodEnd: Date
 ): Promise<number> => {
-  // Calculate: consumed (negative usage) - refunded (positive refund)
+  // Calculate: consumed (negative usage) - refunded (positive refund + system_adjustment)
   const result = await db
     .select({
       consumed: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} = 'usage' AND ${creditLedger.amount} < 0 THEN ABS(${creditLedger.amount}) ELSE 0 END), 0)`,
-      refunded: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} = 'refund' THEN ${creditLedger.amount} ELSE 0 END), 0)`,
+      refunded: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} IN ('refund', 'system_adjustment') THEN ${creditLedger.amount} ELSE 0 END), 0)`,
     })
     .from(creditLedger)
     .where(
@@ -122,18 +132,18 @@ export const getDailyUsageDao = async (
   periodStart: Date,
   periodEnd: Date
 ): Promise<CreditUsageDay[]> => {
-  // Calculate net usage per day: consumed - refunded
+  // Calculate net usage per day: consumed - refunded (refund + system_adjustment)
   const result = await db
     .select({
       day: sql<string>`TO_CHAR(${creditLedger.createdAt}, 'YYYY-MM-DD')`,
       consumed: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} = 'usage' AND ${creditLedger.amount} < 0 THEN ABS(${creditLedger.amount}) ELSE 0 END), 0)`,
-      refunded: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} = 'refund' THEN ${creditLedger.amount} ELSE 0 END), 0)`,
+      refunded: sql<string>`COALESCE(SUM(CASE WHEN ${creditLedger.source} IN ('refund', 'system_adjustment') THEN ${creditLedger.amount} ELSE 0 END), 0)`,
     })
     .from(creditLedger)
     .where(
       and(
         eq(creditLedger.organizationId, organizationId),
-        sql`(${creditLedger.source} = 'usage' OR ${creditLedger.source} = 'refund')`,
+        sql`${creditLedger.source} IN ('usage', 'refund', 'system_adjustment')`,
         sql`${creditLedger.createdAt} >= ${periodStart}`,
         sql`${creditLedger.createdAt} <= ${periodEnd}`
       )
@@ -187,7 +197,13 @@ export const consumeCreditsTxnDao = async (
   reason: string
 ): Promise<CreditEntry> => {
   return await db.transaction(async (tx) => {
-    // Check balance within transaction
+    // Advisory lock par organisation : serialize les consommations concurrentes.
+    // Sans ça, deux SELECT SUM concurrents peuvent voir le même balance
+    // (PostgreSQL READ COMMITTED) et inserer chacun un negatif => overdraft.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext('credit_consume:' || ${organizationId}))`
+    )
+
     const balanceResult = await tx
       .select({
         balance: sql<string>`COALESCE(SUM(${creditLedger.amount}), 0)`,
@@ -317,19 +333,48 @@ export const addPackCreditsTxnDao = async (params: {
   sourceId: string
   expiresAt?: Date | null
 }): Promise<CreditEntry> => {
-  const [entry] = await db
-    .insert(creditLedger)
-    .values({
-      organizationId: params.organizationId,
-      amount: String(params.amount),
-      source: 'pack',
-      sourceId: params.sourceId,
-      reason: `Credit pack purchase (${params.amount} credits)`,
-      expiresAt: params.expiresAt ?? undefined,
-    })
-    .returning()
+  // Idempotence DB-level via UNIQUE INDEX (organization_id, source, source_id).
+  // Stripe peut retry le webhook : ON CONFLICT DO NOTHING evite le double credit.
+  // Wrappe en transaction pour atomicite avec le fallback SELECT.
+  return await db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(creditLedger)
+      .values({
+        organizationId: params.organizationId,
+        amount: String(params.amount),
+        source: 'pack',
+        sourceId: params.sourceId,
+        reason: `Credit pack purchase (${params.amount} credits)`,
+        expiresAt: params.expiresAt ?? undefined,
+      })
+      .onConflictDoNothing({
+        target: [
+          creditLedger.organizationId,
+          creditLedger.source,
+          creditLedger.sourceId,
+        ],
+        where: sourceDedupIndexPredicate,
+      })
+      .returning()
 
-  return entry
+    if (inserted.length > 0) {
+      return inserted[0]
+    }
+
+    const existing = await tx
+      .select()
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.organizationId, params.organizationId),
+          eq(creditLedger.source, 'pack'),
+          eq(creditLedger.sourceId, params.sourceId)
+        )
+      )
+      .limit(1)
+
+    return existing[0]
+  })
 }
 
 export const refundCreditsTxnDao = async (params: {
@@ -348,6 +393,124 @@ export const refundCreditsTxnDao = async (params: {
     .returning()
 
   return entry
+}
+
+/**
+ * Compense un solde negatif en inserant une ligne system_adjustment.
+ * Idempotent via UNIQUE INDEX (organization_id, source, source_id) + ON CONFLICT.
+ *
+ * Cas d'usage : a l'annulation/expiration d'un abonnement, les usages restent
+ * dans le SUM mais l'allocation parente disparait => solde negatif fantome.
+ * Cette fonction ramene le balance a 0 si negatif.
+ *
+ * `treatAsExpiredAt` : si fourni, les allocations dont expiresAt <= cette date
+ * sont exclues du calcul de balance, peu importe NOW(). Permet au hook
+ * onSubscriptionDeleted de simuler "as if the plan expired at periodEnd"
+ * sans dependre du timing exact de livraison du webhook par Stripe.
+ */
+export const compensateNegativeBalanceTxnDao = async (params: {
+  organizationId: string
+  sourceId: string
+  reason: string
+  treatAsExpiredAt?: Date
+}): Promise<CreditEntry | null> => {
+  return await db.transaction(async (tx) => {
+    // Lock en premier : couvre tout le reste de la transaction et evite que
+    // deux compensations concurrentes ou un consume concurrent ne corrompent
+    // le calcul de balance.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext('credit_consume:' || ${params.organizationId}))`
+    )
+
+    const expiryReference = params.treatAsExpiredAt ?? new Date()
+
+    const balanceResult = await tx
+      .select({
+        balance: sql<string>`COALESCE(SUM(${creditLedger.amount}), 0)`,
+      })
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.organizationId, params.organizationId),
+          or(
+            isNull(creditLedger.expiresAt),
+            gt(creditLedger.expiresAt, expiryReference)
+          )
+        )
+      )
+
+    const balance = Number(balanceResult[0]?.balance ?? 0)
+
+    if (balance >= 0) {
+      return null
+    }
+
+    // UNIQUE INDEX (organization_id, source, source_id) WHERE source_id IS NOT NULL
+    // assure l'idempotence : si deja insere, ON CONFLICT DO NOTHING et returning
+    // sera vide. On relit alors la ligne existante.
+    const inserted = await tx
+      .insert(creditLedger)
+      .values({
+        organizationId: params.organizationId,
+        amount: String(-balance),
+        source: 'system_adjustment',
+        sourceId: params.sourceId,
+        reason: params.reason,
+      })
+      .onConflictDoNothing({
+        target: [
+          creditLedger.organizationId,
+          creditLedger.source,
+          creditLedger.sourceId,
+        ],
+        where: sourceDedupIndexPredicate,
+      })
+      .returning()
+
+    if (inserted.length > 0) {
+      return inserted[0]
+    }
+
+    const existing = await tx
+      .select()
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.organizationId, params.organizationId),
+          eq(creditLedger.source, 'system_adjustment'),
+          eq(creditLedger.sourceId, params.sourceId)
+        )
+      )
+      .limit(1)
+
+    return existing[0] ?? null
+  })
+}
+
+/**
+ * Retourne toutes les organisations dont le solde calcule est strictement
+ * negatif. Utilise par le cron de reconciliation pour compenser en batch
+ * les soldes fantomes (annulation legacy, downgrades, hook rate, etc).
+ */
+export const getOrganizationsWithNegativeBalanceDao = async (): Promise<
+  Array<{organizationId: string; balance: number}>
+> => {
+  const rows = await db
+    .select({
+      organizationId: creditLedger.organizationId,
+      balance: sql<string>`COALESCE(SUM(${creditLedger.amount}), 0)`,
+    })
+    .from(creditLedger)
+    .where(
+      or(isNull(creditLedger.expiresAt), gt(creditLedger.expiresAt, new Date()))
+    )
+    .groupBy(creditLedger.organizationId)
+    .having(sql`COALESCE(SUM(${creditLedger.amount}), 0) < 0`)
+
+  return rows.map((row) => ({
+    organizationId: row.organizationId,
+    balance: Number(row.balance),
+  }))
 }
 
 // ========================================
@@ -409,4 +572,35 @@ export const getAllOrganizationsCreditsDao = async (
       totalPages,
     },
   }
+}
+
+/**
+ * Résout la période de crédits courante d'une organisation.
+ * Source de vérité : l'allocation `plan` active du ledger, avec fallback sur
+ * la période subscription fournie par l'appelant, puis le mois calendaire.
+ */
+export const getCurrentCreditPeriodDao = async (
+  organizationId: string,
+  subscriptionPeriod?: CreditPeriodInput | null
+): Promise<CreditPeriod> => {
+  const now = new Date()
+
+  const [allocation] = await db
+    .select({
+      periodStart: creditLedger.periodStart,
+      periodEnd: creditLedger.periodEnd,
+    })
+    .from(creditLedger)
+    .where(
+      and(
+        eq(creditLedger.organizationId, organizationId),
+        eq(creditLedger.source, 'plan'),
+        lte(creditLedger.periodStart, now),
+        gt(creditLedger.periodEnd, now)
+      )
+    )
+    .orderBy(desc(creditLedger.periodStart))
+    .limit(1)
+
+  return resolveCreditPeriod({allocation, subscriptionPeriod, now})
 }

@@ -107,9 +107,10 @@ export const apikey = pgTable('apikey', {
   start: text('start'),
   prefix: text('prefix'),
   key: text('key').notNull(),
-  userId: uuid('user_id')
+  referenceId: uuid('reference_id')
     .notNull()
     .references(() => user.id, {onDelete: 'cascade'}),
+  configId: text('config_id').notNull().default('default'),
   refillInterval: integer('refill_interval'),
   refillAmount: integer('refill_amount'),
   lastRefillAt: timestamp('last_refill_at'),
@@ -210,7 +211,7 @@ export const invitationRelation = relations(invitation, ({one}) => ({
 
 export const apikeyRelation = relations(apikey, ({one}) => ({
   user: one(user, {
-    fields: [apikey.userId],
+    fields: [apikey.referenceId],
     references: [user.id],
     relationName: 'userToApiKeys',
   }),

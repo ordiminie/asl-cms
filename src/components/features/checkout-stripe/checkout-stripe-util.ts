@@ -68,11 +68,7 @@ export type MetadataConfig = {
   subscriptionData: SubscriptionData
   customerInfo: CustomerInfo
   checkoutType:
-    | 'external'
-    | 'embed'
-    | 'payment-link'
-    | 'react-stripe'
-    | 'installments'
+    'external' | 'embed' | 'payment-link' | 'react-stripe' | 'installments'
 }
 
 // 🛠️ Fonctions utilitaires communes
@@ -156,11 +152,7 @@ export function createCheckoutMetadata(
   subscriptionData: SubscriptionData,
   customerInfo: CustomerInfo,
   checkoutType:
-    | 'external'
-    | 'embed'
-    | 'payment-link'
-    | 'react-stripe'
-    | 'installments'
+    'external' | 'embed' | 'payment-link' | 'react-stripe' | 'installments'
 ): Record<string, string> {
   const baseMetadata = {
     referenceId:

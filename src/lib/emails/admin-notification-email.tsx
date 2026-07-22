@@ -1,3 +1,4 @@
+import React, {Fragment} from 'react'
 import {
   Body,
   Container,
@@ -7,8 +8,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from '@react-email/components'
-import React, {Fragment} from 'react'
+} from 'react-email'
 
 import {APP_NAME} from '../constants'
 

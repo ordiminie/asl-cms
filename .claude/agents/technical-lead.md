@@ -145,8 +145,7 @@ interface CollaborationSystem {
     connectionManagement: 'scaling' | 'fallback' | 'reconnection'
     messageTypes: ['presence', 'document-changes', 'cursor-position']
     conflictResolution:
-      | 'operational-transform'
-      | 'conflict-free-replicated-data'
+      'operational-transform' | 'conflict-free-replicated-data'
   }
   backend: {
     eventStore: 'database' | 'redis' | 'memory'

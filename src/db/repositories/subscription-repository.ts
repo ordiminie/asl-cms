@@ -12,7 +12,10 @@ import type {
   SubscriptionPlanModel,
 } from '../models/subscription-model'
 import {subscription, subscriptionPlan} from '../models/subscription-model'
-import {getBalanceDao} from './credit-ledger-repository'
+import {
+  getBalanceDao,
+  getCurrentCreditPeriodDao,
+} from './credit-ledger-repository'
 import {getOrganizationByIdDao} from './organization-repository'
 
 export const createSubscriptionDao = async (values: SubscriptionAddModel) => {
@@ -603,10 +606,14 @@ export const getAdminUsageStatsDao = async (
     await getActiveSubscriptionsOrFreePlanDao(organizationId)
   const activeSubscription = subscriptions[0]
 
+  const period = await getCurrentCreditPeriodDao(organizationId, {
+    periodStart: activeSubscription?.periodStart ?? null,
+    periodEnd: activeSubscription?.periodEnd ?? null,
+  })
+
   const planLimits = activeSubscription?.limits as Record<string, number> | null
   const limitOverrides = organization?.limitOverrides as
-    | Record<string, number>
-    | undefined
+    Record<string, number> | undefined
 
   const getEffectiveLimit = (
     planLimit: number | undefined,
@@ -630,7 +637,7 @@ export const getAdminUsageStatsDao = async (
       users: getEffectiveLimit(planLimits?.users, limitOverrides?.users),
       credits: getEffectiveLimit(planLimits?.credits, limitOverrides?.credits),
     },
-    periodStart: activeSubscription?.periodStart || null,
-    periodEnd: activeSubscription?.periodEnd || null,
+    periodStart: period.periodStart,
+    periodEnd: period.periodEnd,
   }
 }

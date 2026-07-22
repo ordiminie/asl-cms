@@ -1,3 +1,4 @@
+import {apiKey} from '@better-auth/api-key'
 import {stripe} from '@better-auth/stripe'
 import {betterAuth, BetterAuthOptions, User} from 'better-auth'
 import {drizzleAdapter} from 'better-auth/adapters/drizzle'
@@ -5,7 +6,6 @@ import {APIError, createAuthMiddleware} from 'better-auth/api'
 import {nextCookies} from 'better-auth/next-js'
 import {
   admin,
-  apiKey,
   bearer,
   customSession,
   magicLink,
@@ -26,7 +26,10 @@ import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
 import {stripeClient} from '@/lib/stripe/stripe-client'
 import {onStripeEvent} from '@/lib/stripe/stripe-events'
-import {allocateCreditsOnSubscriptionService} from '@/services/facades/credit-service-facade'
+import {
+  allocateCreditsOnSubscriptionService,
+  compensateNegativeBalanceOnCancellationService,
+} from '@/services/facades/credit-service-facade'
 import {
   sendInternalEmailService,
   sendOrganizationInvitationService,
@@ -283,6 +286,22 @@ const options = {
           }
         },
         onSubscriptionDeleted: async ({subscription}) => {
+          // Compense le solde negatif fantome : sans ce hook, les usages
+          // de la periode payee restent dans le SUM apres expiration de
+          // l'allocation, creant une dette injuste pour le user qui revient.
+          // Try/catch obligatoire (pattern projet) : sans lui, une regression
+          // dans la compensation casse la notification subscription_deleted.
+          if (subscription.referenceId && subscription.id) {
+            try {
+              await compensateNegativeBalanceOnCancellationService({
+                organizationId: subscription.referenceId,
+                subscriptionId: subscription.id,
+              })
+            } catch (error) {
+              console.error('[AUTH] Credit compensation failed:', error)
+            }
+          }
+
           if (!subscription.stripeCustomerId) {
             return
           }
@@ -344,10 +363,14 @@ function createDatabaseHooks() {
         },
         after: async (user: User) => {
           await initializeRegisterUserDataService(user.email)
-          await sendInternalEmailService({
-            title: 'Nouvel utilisateur enregistré',
-            data: `Un nouvel utilisateur s'est inscrit:\n\nEmail: ${user.email}\nNom: ${user.name}\nID: ${user.id}\nDate: ${new Date().toLocaleString('fr-FR')}`,
-          })
+          try {
+            await sendInternalEmailService({
+              title: 'Nouvel utilisateur enregistré',
+              data: `Un nouvel utilisateur s'est inscrit:\n\nEmail: ${user.email}\nNom: ${user.name}\nID: ${user.id}\nDate: ${new Date().toLocaleString('fr-FR')}`,
+            })
+          } catch (error) {
+            console.error('[AUTH] Admin email failed, skipping:', error)
+          }
           try {
             await subscribeToNewsletterService(user.email, [
               NewsletterEmailTag.SubscriptionFree,

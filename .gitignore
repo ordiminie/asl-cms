@@ -12,6 +12,7 @@
 
 # worktrees
 .worktrees
+.claude/worktrees/
 
 # testing
 /coverage

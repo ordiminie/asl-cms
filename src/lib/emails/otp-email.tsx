@@ -1,3 +1,5 @@
+import {getTranslations} from 'next-intl/server'
+import {Fragment} from 'react'
 import {
   Body,
   Button,
@@ -8,9 +10,7 @@ import {
   Section,
   Tailwind,
   Text,
-} from '@react-email/components'
-import {getTranslations} from 'next-intl/server'
-import {Fragment} from 'react'
+} from 'react-email'
 
 OtpEmail.PreviewProps = {
   otp: '123456',
