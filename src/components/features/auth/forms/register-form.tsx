@@ -94,10 +94,23 @@ export function RegisterForm({
     try {
       const result = await registerProviderAction(provider)
       if (result?.success) {
-        // La redirection sera gérée par NextAuth
+        toast(tMessages('success'), {
+          description: result?.message,
+        })
+      } else if (result) {
+        toast(tMessages('error'), {
+          description: result?.message || tMessages('loginError'),
+        })
+      } else {
+        console.warn('redirection')
       }
     } catch (error) {
-      console.error('Erreur lors de la connexion avec le provider:', error)
+      //AI DO NOT REMOVE IT
+      if (isRedirectError(error)) {
+        throw error
+      } else {
+        console.error('Erreur lors de la connexion avec le provider:', error)
+      }
     }
   }
 

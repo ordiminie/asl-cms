@@ -1,7 +1,7 @@
 import {Metadata} from 'next'
 import {notFound, redirect} from 'next/navigation'
 
-import {env, PagesConst} from '@/env'
+import {PagesConst} from '@/env'
 import {isPageEnabled} from '@/lib/utils'
 
 interface DocsPageProps {
@@ -20,10 +20,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Page({params}: DocsPageProps) {
   const {locale} = await params
-  if (
-    !isPageEnabled(PagesConst.DOCS) ||
-    env.NEXT_PUBLIC_NODE_ENV !== 'development'
-  ) {
+  // Seul le flag de page fait foi : une condition sur NODE_ENV renverrait 404
+  // sur /docs en production alors que /docs/<slug> y répond normalement.
+  if (!isPageEnabled(PagesConst.DOCS)) {
     return notFound()
   }
   redirect(`/${locale}/docs/introduction`)

@@ -3,7 +3,7 @@
 
 import pg from 'pg'
 
-import initDotEnv from './env'
+import initDotEnv, {maskDbUrl} from './env'
 
 initDotEnv()
 
@@ -32,7 +32,7 @@ const seed = async () => {
   })
 
   console.log('⏳ Checking connexion ...')
-  console.log(`🗄️  URL : ${process.env.DATABASE_URL}`)
+  console.log(`🗄️  URL : ${maskDbUrl(process.env.DATABASE_URL)}`)
 
   await client.connect()
 

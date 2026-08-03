@@ -1,5 +1,6 @@
 'use client'
 import {Mail} from 'lucide-react'
+import {isRedirectError} from 'next/dist/client/components/redirect-error'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
@@ -55,10 +56,15 @@ export function LoginForm({className, ...props}: React.ComponentProps<'div'>) {
         console.warn('redirection')
       }
     } catch (error) {
-      console.error(`Erreur lors de la connexion ${provider}:`, error)
-      toast(tMessages('error'), {
-        description: tMessages('providerError', {provider}),
-      })
+      //AI DO NOT REMOVE IT
+      if (isRedirectError(error)) {
+        throw error
+      } else {
+        console.error(`Erreur lors de la connexion ${provider}:`, error)
+        toast(tMessages('error'), {
+          description: tMessages('providerError', {provider}),
+        })
+      }
     } finally {
       setIsLoadingProvider(null)
     }
