@@ -67,6 +67,14 @@ export default function middleware(request: NextRequest) {
 export const config = {
   // Match all pathnames except for
   // - … if they start with `/api`, `/trpc`, `/_next` or `/_vercel`
+  // - … `/monitoring`, le tunnel de Sentry : c'est un endpoint technique
+  //   appelé par le SDK navigateur, pas une page. Sans cette exclusion, l'i18n
+  //   le réécrit en `/fr/monitoring` — une route qui n'existe pas, d'où des
+  //   POST en 404 et, surtout, aucune erreur client remontée. Sans Sentry
+  //   configuré, cette exclusion est simplement sans effet.
   // - … the ones containing a dot (e.g. `favicon.ico`)
-  matcher: ['/((?!api|trpc|_next|_vercel|.*\\..*).*)', '/api/auth/error'],
+  matcher: [
+    '/((?!api|trpc|_next|_vercel|monitoring|.*\\..*).*)',
+    '/api/auth/error',
+  ],
 }

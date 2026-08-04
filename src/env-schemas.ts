@@ -57,6 +57,10 @@ export const serverSchema = {
   // Base de données
   DATABASE_URL: z.string().url(),
 
+  // Upload des sourcemaps vers Sentry au build. Absent = build normal, mais
+  // stacks minifiées côté Sentry. Contrairement au DSN, c'est un secret.
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+
   // Authentification
   BETTER_AUTH_SECRET: z.string().min(1),
   BETTER_AUTH_URL: z.string().url(),
@@ -100,6 +104,13 @@ export const serverSchema = {
 export const clientSchema = {
   // URL de l'application
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
+
+  // Suivi des erreurs (Sentry). Entièrement optionnel : sans DSN, le SDK n'est
+  // jamais initialisé et le boilerplate se comporte comme s'il n'était pas
+  // installé — voir docs/sentry.md.
+  // Le DSN n'est pas un secret : il part dans le bundle navigateur par
+  // conception, et n'autorise que l'envoi d'événements.
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 
   // Tailwind
   NEXT_PUBLIC_MAX_FILE_SIZE: z
