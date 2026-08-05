@@ -56,6 +56,12 @@ export const TrustedOriginsSchema = z
 export const serverSchema = {
   // Base de données
   DATABASE_URL: z.string().url(),
+  // Connexions Postgres ouvertes PAR INSTANCE. Le défaut 1 vise le serverless
+  // (Vercel), où chaque instance ouvre son propre pool : le total vaut
+  // `max × instances` et doit rester sous la limite du pooler. Sur un serveur
+  // long-running (VM, conteneur), ce défaut est au contraire trop bas — lire
+  // docs/database-pool.md, qui traite les deux cas.
+  DATABASE_POOL_MAX: z.coerce.number().int().positive().default(1),
 
   // Upload des sourcemaps vers Sentry au build. Absent = build normal, mais
   // stacks minifiées côté Sentry. Contrairement au DSN, c'est un secret.
