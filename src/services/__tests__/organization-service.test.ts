@@ -131,7 +131,9 @@ describe('[ADMIN] CRUD : OrganizationService', () => {
       data: [organizationData],
       pagination: {total: 1, page: 1, limit: 10, totalPages: 1},
     })
-    vi.mocked(getOrganizationsByUserIdDao).mockResolvedValue([organizationData])
+    vi.mocked(getOrganizationsByUserIdDao).mockResolvedValue([
+      {...organizationData, role: 'owner'},
+    ])
     vi.mocked(updateOrganizationDao).mockResolvedValue()
     vi.mocked(deleteOrganizationDao).mockResolvedValue()
   })
@@ -175,7 +177,7 @@ describe('[ADMIN] CRUD : OrganizationService', () => {
   it('should get organizations by user id', async () => {
     const result = await getOrganizationsByUserIdService(userTestAdmin.id)
 
-    expect(result).toEqual([organizationData])
+    expect(result).toEqual([{...organizationData, role: 'owner'}])
     expect(getOrganizationsByUserIdDao).toHaveBeenCalledWith(userTestAdmin.id)
   })
 })
@@ -220,6 +222,7 @@ describe('[ORGANIZATION OWNER] CRUD : OrganizationService', () => {
             description: 'Description de test',
             logo: null,
             metadata: null,
+            limitOverrides: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -286,6 +289,7 @@ describe('[ORGANIZATION ADMIN] CRUD : OrganizationService', () => {
             description: 'Description de test',
             logo: null,
             metadata: null,
+            limitOverrides: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -353,6 +357,7 @@ describe('[ORGANIZATION MEMBER] CRUD : OrganizationService', () => {
             description: 'Description de test',
             logo: null,
             metadata: null,
+            limitOverrides: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -435,6 +440,7 @@ describe('[USER NOT IN ORGANIZATION] CRUD : OrganizationService', () => {
             description: 'Description autre',
             logo: null,
             metadata: null,
+            limitOverrides: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },

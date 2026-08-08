@@ -66,18 +66,18 @@ visiteur.
 
 ## 2. Pourquoi le port 6543
 
-| Port | Mode | Comportement |
-| ---- | ---- | ------------ |
-| 5432 | **session** | Un client monopolise sa connexion toute la session. 15 connexions = **15 clients simultanés, point final.** |
-| 6543 | **transaction** | La connexion est prise puis rendue par transaction. 15 connexions servent **des centaines de clients**. |
+| Port | Mode            | Comportement                                                                                                |
+| ---- | --------------- | ----------------------------------------------------------------------------------------------------------- |
+| 5432 | **session**     | Un client monopolise sa connexion toute la session. 15 connexions = **15 clients simultanés, point final.** |
+| 6543 | **transaction** | La connexion est prise puis rendue par transaction. 15 connexions servent **des centaines de clients**.     |
 
 À ~20 ms par requête, 15 connexions en mode transaction absorbent
 théoriquement autour de **750 requêtes/seconde**. Les mêmes 15 en mode session
 plafonnent à 15 clients.
 
 La documentation Supabase recommande explicitement le mode transaction pour le
-serverless : *« ideal for serverless or edge functions, which require many
-transient connections »*.
+serverless : _« ideal for serverless or edge functions, which require many
+transient connections »_.
 
 ### Shared pooler, pas dedicated
 

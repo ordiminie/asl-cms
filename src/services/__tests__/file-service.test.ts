@@ -148,6 +148,7 @@ describe('[ADMIN] File Service', () => {
       description: 'Test description',
       logo: null,
       metadata: null,
+      limitOverrides: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -308,6 +309,7 @@ describe('[ORGANIZATION OWNER] File Service', () => {
 
             logo: null,
             metadata: null,
+            limitOverrides: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -324,6 +326,7 @@ describe('[ORGANIZATION OWNER] File Service', () => {
       description: 'Test description',
       logo: null,
       metadata: null,
+      limitOverrides: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     })

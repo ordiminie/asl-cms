@@ -42,6 +42,8 @@ const createUserWithOrgRole = (
   banned: false,
   banReason: null,
   banExpires: null,
+  twoFactorEnabled: false,
+  stripeCustomerId: null,
 })
 
 describe('buildOrganizationalAbilities', () => {
@@ -248,6 +250,8 @@ describe('buildOrganizationalAbilities', () => {
         banned: false,
         banReason: null,
         banExpires: null,
+        twoFactorEnabled: false,
+        stripeCustomerId: null,
       }
 
       // Contexte pour la première organisation (OWNER)
