@@ -4,3 +4,4 @@ build
 .next
 /src/app/\[locale\]/(public)/docs/_files/**/*.mdx
 /src/app/*/docs/_files/**/*.mdx
+pnpm-lock.yaml
