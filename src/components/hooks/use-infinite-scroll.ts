@@ -23,7 +23,6 @@ export function useInfiniteScroll<T>({
   initialData,
   initialHasMore,
   fetchMore,
-  pageSize,
   enabled = true,
 }: UseInfiniteScrollOptions<T>): UseInfiniteScrollResult<T> {
   const [items, setItems] = useState<T[]>(initialData)

@@ -114,7 +114,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       postsById.get(postId)?.push({locale, slug})
     }
 
-    for (const [_postId, variants] of postsById) {
+    for (const variants of postsById.values()) {
       // Build alternates with language-specific slugs
       const alternates: Record<string, string> = {}
 
