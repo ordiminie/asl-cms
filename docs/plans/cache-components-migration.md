@@ -72,7 +72,9 @@ mêmes capacités de cache. Le cache devient une propriété **de la fonction du
 **Pourquoi d'abord** : ces 5 points sont faux aujourd'hui, indépendamment de Next. Deux d'entre eux
 sont aussi des bloquants durs de la phase 2. Cette phase a de la valeur même si le reste est annulé.
 
-- [ ] **0.1 — `Math.random()` dans le DAL** (bloquant phase 2)
+- [x] **0.1 — `Math.random()` dans le DAL** (bloquant phase 2) — fait en `93eabf8`
+      Résolu par **suppression** du shuffle : les articles liés sortent dans leur ordre
+      naturel (même catégorie d'abord). Voir D6.
       `src/app/dal/blog-dal.ts:389-396` — `shuffleArray` rend `getRelatedPostsDal` non déterministe.
       Une fonction de lecture du DAL doit être déterministe pour être cachable.
       Sous cacheComponents : erreur de build E1432, non contournable par `instant = false`.
@@ -80,7 +82,7 @@ sont aussi des bloquants durs de la phase 2. Cette phase a de la valeur même si
       slug du post courant). **Pas** de `Math.random`, **pas** de `Date.now`.
       Vérif : `grep -n "Math.random" src/app/dal/blog-dal.ts` → 0 résultat.
 
-- [ ] **0.2 — `Math.random()` dans le skeleton sidebar**
+- [x] **0.2 — `Math.random()` dans le skeleton sidebar** — fait en `93eabf8` (largeur fixe)
       `src/components/ui/sidebar.tsx:603-606` — largeur aléatoire dans un `useMemo`.
       Composant client, donc E1434 sous cacheComponents.
       → Largeur déterministe dérivée de l'index, ou classe CSS fixe.
@@ -343,6 +345,15 @@ Trois options cohérentes :
 Recommandation : **option 2** pour la phase 3 (aucune infra requise), en documentant explicitement
 quand basculer vers `remote`. C'est un choix de positionnement produit — ce que les clients vont
 hériter et copier. **Décision de Mike requise.**
+
+**D6 — 2026-08-14 — Règle de simplicité : supprimer plutôt que remplacer.**
+Consigne de Mike, applicable à tout le chantier : quand un bout de code pose problème pour la
+migration **et n'a pas de vraie utilité**, on le supprime au lieu de lui trouver un équivalent
+sophistiqué. Ne pas introduire de complexité pour préserver un comportement dont personne n'a besoin.
+Premier cas : `shuffleArray` dans `blog-dal`. Une première version le remplaçait par une rotation
+déterministe dérivée d'un hash du slug — rejetée comme sur-ingénierie. L'ordre naturel suffit.
+Résultat : -18/+3 lignes au lieu de +15.
+En cas de doute sur « est-ce que ça a une vraie utilité », demander plutôt que deviner.
 
 **D5 — À VÉRIFIER en tâche 0.5** — pourquoi `generateStaticParams` du layout locale a-t-il été
 commenté (commit `0b30ca9`) ? Non documenté. Si la raison réapparaît, la tâche devient `[~]`.

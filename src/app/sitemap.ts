@@ -269,7 +269,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
   } catch (error) {
-    console.error('Error fetching blog data for sitemap:', error)
+    throw new Error('Sitemap: échec de récupération des données blog', {
+      cause: error,
+    })
   }
 
   return sitemapEntries
