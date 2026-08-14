@@ -221,7 +221,13 @@ Aucune route n'est encore convertie. C'est un état stable et mergeable.
   `credential-form`, `register-magic-link-form`) : leurs messages de succès/erreur survivront
   à une navigation aller-retour. Rien n'a été corrigé — il faut ouvrir l'app et constater les
   cas réels avant de toucher 38 fichiers (règle D6).
-  38 fichiers utilisent `Dialog`/`AlertDialog`/`Sheet`/`Popover`, 3 utilisent `useActionState`.
+
+  **Audit statique fait** : sur les 29 dialogs à état local,
+  `admin/plans/delete-plan-dialog.tsx` est le **seul sans aucun mécanisme de fermeture**
+  (0 occurrence de `setOpen(false)` ou `onOpenChange`) — c'est le premier candidat à rester
+  ouvert au retour arrière sous `<Activity>`. Les 28 autres en ont au moins un, donc
+  probablement corrects. Commencer la vérification visuelle par celui-là.
+
   Sous Activity, leur état survit à la navigation. Ne pas tout corriger : **lister** les cas où
   c'est visible (dialog resté ouvert au retour arrière, message de succès persistant) et n'en
   corriger que les occurrences réelles constatées.
