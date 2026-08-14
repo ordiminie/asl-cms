@@ -14,13 +14,11 @@ import {PagesConst} from '@/env'
 import {routing} from '@/i18n/routing'
 import {isPageEnabled} from '@/lib/utils'
 
-export const dynamic = 'force-static'
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false
 
 export async function generateStaticParams() {
-  if (!isPageEnabled(PagesConst.BLOG)) {
-    return []
-  }
-
   const params: {locale: string; page: string}[] = []
 
   for (const locale of routing.locales) {
@@ -30,7 +28,11 @@ export async function generateStaticParams() {
     }
   }
 
-  return params
+  // Cache Components exige au moins un param (empty-generate-static-params).
+  // Les chemins non listes restent servis a la demande.
+  return params.length > 0
+    ? params
+    : [{locale: routing.defaultLocale, page: '2'}]
 }
 
 export async function generateMetadata({

@@ -3,6 +3,10 @@ import {env} from 'process'
 import CheckoutPage from '@/components/features/checkout-stripe/checkout-page'
 import {logger} from '@/lib/logger'
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false
+
 type PropsParams = {
   params: Promise<{priceId: string}>
   searchParams: Promise<{

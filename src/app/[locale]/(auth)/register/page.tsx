@@ -6,6 +6,10 @@ import React from 'react'
 import {RegisterForm} from '@/components/features/auth/forms/register-form'
 import {APP_NAME} from '@/lib/constants'
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false
+
 export async function generateMetadata({
   params,
 }: {

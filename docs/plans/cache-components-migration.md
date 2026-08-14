@@ -156,10 +156,10 @@ Les 13 tests e2e passent en CI sur la branche.
 
 **⚠️ PARTIELLEMENT VÉRIFIÉ — action requise avant la phase 3.**
 
-| Specs                                         | Vérifié localement                   | Comment                                                                                                                                                              |
-| --------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Specs                                         | Vérifié localement                                          | Comment                                                                                                                                                              |
+| --------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `homepage.spec.ts` (3) + `mobile.spec.ts` (2) | ✅ **5 passed (1.9 min)** contre `pnpm build && pnpm start` | `CI=1 PLAYWRIGHT_PORT=3131 pnpm exec playwright test --project=chromium e2e/homepage.spec.ts e2e/mobile.spec.ts`                                                     |
-| `auth.spec.ts` (8)                            | ❌ **non vérifié**                   | écrivent en base ; ni Docker ni Postgres local sur cette machine, et `DATABASE_URL` pointe la Neon distante — y lancer ces tests créerait des comptes en base réelle |
+| `auth.spec.ts` (8)                            | ❌ **non vérifié**                                          | écrivent en base ; ni Docker ni Postgres local sur cette machine, et `DATABASE_URL` pointe la Neon distante — y lancer ces tests créerait des comptes en base réelle |
 
 Le job CI est écrit et syntaxiquement valide, mais **n'a jamais tourné** : il faut pousser la branche
 pour que GitHub Actions l'exécute. C'est le seul moyen de valider les 8 specs auth et le service
@@ -177,26 +177,26 @@ la phase 2 — la régression de rendu — mais **pas** les flux d'authentificat
 **Objectif** : l'app build et tourne sous `cacheComponents`, avec la validation différée partout.
 Aucune route n'est encore convertie. C'est un état stable et mergeable.
 
-- [ ] **2.1 — Activer le flag**
+- [x] **2.1 — Activer le flag**
       `next.config.ts` : retirer `useCache: true` de `experimental`, ajouter `cacheComponents: true`
       au niveau racine. Garder `authInterrupts`, `taint`, `staleTimes`
       (**tranché** : `staleTimes` survit et alimente déjà `cacheLife.default.stale` — voir Journal D3).
       Vérif : le warning `experimental.useCache is deprecated` disparaît du build.
 
-- [ ] **2.2 — Codemod d'opt-out global**
+- [x] **2.2 — Codemod d'opt-out global** — 70 fichiers modifiés (61 pages, 8 layouts, +1 à corriger : `base-layout.tsx` n'est pas un fichier de route, l'export y est inerte)
       `npx @next/codemod@canary cache-components-instant-false ./src/app`
       ⚠️ Bien passer `./src/app` (projet en `src/`). Un mauvais chemin affiche `0 ok` sans échouer :
       vérifier le nombre de fichiers touchés (attendu : ~64 pages + 8 layouts).
       Vérif : `grep -rl "export const instant = false" src/app | wc -l` ≈ 72.
 
-- [ ] **2.3 — Supprimer les route segment configs incompatibles**
+- [x] **2.3 — Supprimer les route segment configs incompatibles** — 9 `force-static` + 3 `dynamicParams` + 1 commentaire mort
       9 `dynamic = 'force-static'` : `[locale]/page.tsx:17`, `(public)/privacy:6`, `terms:6`,
       `contact:8`, `blog/page:19`, `blog/page/[page]:17`, `blog/category/[category]:18`,
       `blog/category/[category]/page/[page]:19`, `blog/[slug]:16`.
       3 `dynamicParams = false` : `privacy:7`, `terms:7`, `contact:9`.
       Vérif : `grep -rn "export const dynamic\b\|export const dynamicParams" src/app` → 0 résultat.
 
-- [ ] **2.4 — `generateStaticParams` ne doit jamais retourner `[]`**
+- [x] **2.4 — `generateStaticParams` ne doit jamais retourner `[]`** — 4 fichiers, fallback à un param unique ; les gardes `isPageEnabled` en early-return `[]` supprimées
       4 sites, dont **2 retournent `[]` avec le blog activé, sur le contenu livré** :
       `blog/page/[page]:24,28` et `blog/category/[category]/page/[page]:26,32` (boucle
       `for (page = 2; page <= totalPages)` jamais exécutée avec 4 articles et 10 par page).
@@ -205,7 +205,7 @@ Aucune route n'est encore convertie. C'est un état stable et mergeable.
       → Retourner au moins un param valide dans tous les cas. Les paths non retournés restent servis.
       Vérif : `pnpm build` sans erreur `empty-generate-static-params`.
 
-- [ ] **2.5 — Logout : reload complet**
+- [x] **2.5 — Logout : reload complet** — `window.location.assign` avec disable ESLint justifié
       `src/components/features/auth/forms/logout-button.tsx:21` — `router.push('/login/')`.
       Sous `<Activity>`, l'état client est préservé entre navigations, **y compris à travers un
       changement d'authentification**. La doc recommande explicitement `window.location.href` pour
@@ -244,6 +244,12 @@ pattern DAL avant de le généraliser.
 Pour chaque route : retirer son `instant = false`, suivre les insights du dev overlay, cacher la
 donnée avec `'use cache'` + `cacheLife` + `cacheTag` **dans la fonction du DAL**, envelopper l'accès
 runtime dans `<Suspense>`. Un commit par route.
+
+> **Repérage fait pour la phase 3** : 21 accès à l'heure courante dans `src/services` et
+> `src/app/dal`. La grande majorité est dans des chemins de **mutation** (`createdAt`, `updatedAt`,
+> horodatage d'emails) exécutés en Server Action, donc jamais prerendus — sans risque.
+> À surveiller en revanche dans les chemins de **lecture** : `credit-service.ts:203,714`,
+> `subscription-service.ts:174`. Ils casseront s'ils entrent dans un scope `'use cache'`.
 
 - [ ] **3.1 — Décision de doctrine de cache** (voir Journal D4, à trancher avant 3.2)
 - [ ] **3.2 — `(public)/privacy`, `terms`, `contact`** (statiques, le cas le plus simple)
@@ -367,6 +373,18 @@ Trois options cohérentes :
 Recommandation : **option 2** pour la phase 3 (aucune infra requise), en documentant explicitement
 quand basculer vers `remote`. C'est un choix de positionnement produit — ce que les clients vont
 hériter et copier. **Décision de Mike requise.**
+
+**D8 — 2026-08-14 — Le logger Winston bloquait TOUT le prerender.**
+Premier build sous `cacheComponents` : échec sur `/en/account/billing/credit`, avec une stack
+pointant `services/facades/interceptors/create-service-interceptor.ts:17` — le `logger.info` que
+l'intercepteur émet **à chaque appel de méthode de service**. Cause réelle :
+`winston.format.timestamp()` (`src/lib/logger.ts:12`) appelle `new Date()`, soit un accès à l'heure
+courante interdit au prerender (`blocking-prerender-current-time`). Comme toute page prerendue passe
+par une façade, le blocage était systémique — pas propre à cette page.
+Correctif : logger neutralisé quand `process.env.NEXT_PHASE === 'phase-production-build'`. Ces logs
+sont du bruit de build, on ne perd rien. Un seul point de correction débloque toutes les pages.
+À retenir pour la phase 3 : le même problème peut réapparaître **au runtime** à l'intérieur d'un
+scope `'use cache'`, où l'heure courante est également interdite.
 
 **D7 — 2026-08-14 — Base de test en CI : Postgres éphémère, jamais la preview.**
 Les specs e2e ne sont pas en lecture seule : `auth.spec.ts:50` crée un compte

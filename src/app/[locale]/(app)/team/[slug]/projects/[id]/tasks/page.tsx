@@ -8,6 +8,10 @@ import {TaskBoardComponent} from '@/components/features/tasks/task-board'
 import {Button} from '@/components/ui/button'
 import {getProjectByIdService} from '@/services/facades/project-service-facade'
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false
+
 async function TaskBoard({projectId}: {projectId: string}) {
   const [tasks, project] = await Promise.all([
     getTasksByProjectGroupedByStatusDal(projectId),

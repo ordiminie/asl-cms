@@ -4,6 +4,10 @@ import {getProjectPermissions} from '@/app/dal/project-dal'
 import {EditProjectForm} from '@/components/features/projects/edit-project-form'
 import {getProjectByIdService} from '@/services/facades/project-service-facade'
 
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false
+
 export default async function EditProjectPage({
   params,
 }: {

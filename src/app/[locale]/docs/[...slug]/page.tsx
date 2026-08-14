@@ -13,8 +13,12 @@ import {
   getDocFilePath,
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
+
+// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false
+
 //disable because shiki theme
-//export const dynamic = 'force-static'
 
 interface DocsPageProps {
   params: Promise<{
