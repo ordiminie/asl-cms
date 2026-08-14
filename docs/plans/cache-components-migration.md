@@ -1,7 +1,7 @@
 ---
 validated: no
 status: in-progress
-current_phase: 0
+current_phase: 1
 branch: feat/cache-components-migration
 worktree: .worktrees/cache-components-migration
 research: docs/research/s000-cache-components-migration.md
@@ -89,14 +89,14 @@ sont aussi des bloquants durs de la phase 2. Cette phase a de la valeur même si
       Note : `src/components/ui/*` est dans les `globalIgnores` d'ESLint — le lint ne le verra pas.
       Vérif : `grep -n "Math.random" src/components/ui/sidebar.tsx` → 0 résultat.
 
-- [ ] **0.3 — `sitemap.ts` avale ses erreurs**
+- [x] **0.3 — `sitemap.ts` avale ses erreurs** — fait en `8f0f64d` (throw avec `cause`)
       `src/app/sitemap.ts:271-273` — `catch` → `console.error`, le sitemap est retourné amputé sans
       que rien n'échoue. C'est ce qui rendrait la régression SEO de la phase 2 invisible.
       → Faire remonter l'erreur (throw) ou au minimum échouer le build en production.
       Vérif : provoquer une erreur DAL et constater que le build échoue au lieu de produire un sitemap
       partiel. À défaut, revue de code manuelle.
 
-- [ ] **0.4 — `revalidateTag('plans','max')` → `updateTag('plans')`**
+- [x] **0.4 — `revalidateTag('plans','max')` → `updateTag('plans')`** — fait en `8f0f64d`
       `src/app/[locale]/admin/plans/actions.ts:40,95,140,177` — `'max'` = stale-while-revalidate
       (expire = 1 an). Les tags `plans` sont posés par `subscription-dal.ts:49,69` et consommés par
       `(public)/pricing/page.tsx:20-25` + les 5 actions checkout.
@@ -104,7 +104,7 @@ sont aussi des bloquants durs de la phase 2. Cette phase a de la valeur même si
       → `updateTag` (read-your-writes), autorisé uniquement en Server Action — ce qui est le cas ici.
       Vérif : `grep -n "revalidateTag" src/app/\[locale\]/admin/plans/actions.ts` → 0 résultat.
 
-- [ ] **0.5 — Décommenter `generateStaticParams` du layout locale**
+- [x] **0.5 — Décommenter `generateStaticParams` du layout locale** — fait en `a11ec6d`, D5 tranché
       `src/app/[locale]/layout.tsx:51-53` — commenté, donc `locale` est un fallback param sur
       **40 des 64 pages**, ce qui fait suspendre tous les hooks de route en phase 2.
       `routing` est déjà importé (l.7). 3 lignes.
@@ -120,6 +120,12 @@ pnpm lint && pnpm exec tsc --noEmit && pnpm exec vitest run --pool=forks && pnpm
 
 Attendu : lint 0 warning, tsc 0 erreur, 374 tests passed, build exit 0.
 De plus : la sortie de build doit toujours lister les mêmes routes SSG qu'en baseline.
+
+**✅ PASSÉ le 2026-08-14** (commit `a11ec6d`) : lint 0 warning, tsc 0 erreur, 374 passed / 8 skipped,
+build exit 0, table de routes identique à la baseline.
+**Référence sitemap pour la phase 2** : `.next/server/app/sitemap.xml.body` contient bien les URLs
+blog (`blog/welcome-to-our-blog`, `blog/bienvenue-sur-notre-blog`, …). C'est cette présence qu'il
+faudra revérifier au Gate 2.
 
 ---
 
@@ -355,5 +361,9 @@ déterministe dérivée d'un hash du slug — rejetée comme sur-ingénierie. L'
 Résultat : -18/+3 lignes au lieu de +15.
 En cas de doute sur « est-ce que ça a une vraie utilité », demander plutôt que deviner.
 
-**D5 — À VÉRIFIER en tâche 0.5** — pourquoi `generateStaticParams` du layout locale a-t-il été
-commenté (commit `0b30ca9`) ? Non documenté. Si la raison réapparaît, la tâche devient `[~]`.
+**D5 — 2026-08-14 — TRANCHÉ : aucune raison de garder `generateStaticParams` désactivé.**
+`git show 0b30ca9` montre un commit intitulé « supprimer la fonction generateMetadata… » qui déplaçait
+`generateMetadata` de `base-layout.tsx` vers `layout.tsx`. `generateStaticParams` était actif dans
+`base-layout.tsx` — où il était de toute façon **inerte**, Next ne lisant cet export que depuis un
+fichier de route — et a été recopié commenté dans `layout.tsx`. Dommage collatéral d'un refactor,
+pas une désactivation volontaire. Réactivé, build vert, table de routes inchangée.
