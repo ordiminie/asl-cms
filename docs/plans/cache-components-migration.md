@@ -215,12 +215,17 @@ Aucune route n'est encore convertie. C'est un état stable et mergeable.
       la raison, ou `window.location.assign` si la règle l'accepte dans ce contexte.
       Vérif : `pnpm lint` vert + test e2e de logout.
 
-- [ ] **2.6 — Audit `<Activity>` sur les dialogs**
-      38 fichiers utilisent `Dialog`/`AlertDialog`/`Sheet`/`Popover`, 3 utilisent `useActionState`.
-      Sous Activity, leur état survit à la navigation. Ne pas tout corriger : **lister** les cas où
-      c'est visible (dialog resté ouvert au retour arrière, message de succès persistant) et n'en
-      corriger que les occurrences réelles constatées.
-      Vérif : liste écrite dans le Journal + corrections des cas constatés.
+- [~] **2.6 — Audit `<Activity>` sur les dialogs** — surface mesurée, audit visuel **non fait**.
+  38 fichiers utilisent `Dialog`/`AlertDialog`/`Sheet`/`Popover`, dont 29 pilotent l'ouverture
+  par un `useState(false)` local. 3 fichiers utilisent `useActionState` (`magic-link-form`,
+  `credential-form`, `register-magic-link-form`) : leurs messages de succès/erreur survivront
+  à une navigation aller-retour. Rien n'a été corrigé — il faut ouvrir l'app et constater les
+  cas réels avant de toucher 38 fichiers (règle D6).
+  38 fichiers utilisent `Dialog`/`AlertDialog`/`Sheet`/`Popover`, 3 utilisent `useActionState`.
+  Sous Activity, leur état survit à la navigation. Ne pas tout corriger : **lister** les cas où
+  c'est visible (dialog resté ouvert au retour arrière, message de succès persistant) et n'en
+  corriger que les occurrences réelles constatées.
+  Vérif : liste écrite dans le Journal + corrections des cas constatés.
 
 ### Gate 2 (bloquant)
 
@@ -325,7 +330,10 @@ d'organisation.
       C'est le livrable d'architecture : la règle doit devenir **plus simple** qu'avant.
       Si elle est plus compliquée, c'est que la migration a mal tourné.
 - [ ] **5.2 — `rule-architecture.md`** — le DAL porte désormais le cache.
-- [ ] **5.3 — `src/app/[locale]/docs/_files/en/10-deployment/01-vercel.mdx:227-234`**
+- [x] **5.3 — `src/app/[locale]/docs/_files/en/10-deployment/01-vercel.mdx:227-234`** — fait :
+      `useCache: true` remplacé par `cacheComponents: true` au niveau racine dans l'exemple livré
+      aux clients. ⚠️ **À revoir si l'option 2 de D10 est retenue** : il faudra alors retirer
+      `cacheComponents` de cet exemple plutôt que de le documenter.
       Le bloc « Performance optimizations » prescrit `useCache: true` **aux clients**, sur une page
       publiquement indexable. À mettre à jour.
 - [ ] **5.4 — `README.md`** — mentionner Cache Components / PPR.
@@ -387,3 +395,77 @@ boilerplate). L'option retenue ne demande aucune infra et reste compatible avec 
 `base-layout.tsx` — où il était de toute façon **inerte**, Next ne lisant cet export que depuis un
 fichier de route — et a été recopié commenté dans `layout.tsx`. Dommage collatéral d'un refactor,
 pas une désactivation volontaire. Réactivé, build vert, table de routes inchangée.
+
+**D6 — 2026-08-14 — Règle de simplicité : supprimer plutôt que remplacer.**
+Consigne de Mike, applicable à tout le chantier : quand un bout de code pose problème pour la
+migration **et n'a pas de vraie utilité**, on le supprime au lieu de lui trouver un équivalent
+sophistiqué. Ne pas introduire de complexité pour préserver un comportement dont personne n'a besoin.
+Premier cas : `shuffleArray` dans `blog-dal`. Une première version le remplaçait par une rotation
+déterministe dérivée d'un hash du slug — rejetée comme sur-ingénierie. L'ordre naturel suffit.
+Résultat : -18/+3 lignes au lieu de +15.
+En cas de doute sur « est-ce que ça a une vraie utilité », demander plutôt que deviner.
+
+**D7 — 2026-08-14 — Base de test en CI : Postgres éphémère, jamais la preview.**
+Les specs e2e ne sont pas en lecture seule : `auth.spec.ts:50` crée un compte
+(`should successfully register a new user`) et `auth.spec.ts:121` se connecte avec `user@gmail.com`,
+qui vient du seed. Les pointer sur la base de preview (`secrets.DATABASE_URL`) la polluerait à chaque
+run. Choix : service `postgres:17` dans le job, `db:push && db:seed` avant les tests. Aucun secret
+supplémentaire requis, isolation totale, et c'est le pattern déjà documenté dans
+`.claude/rules/00-generals/rule-ci-cd-devops.md`.
+
+**D8 — 2026-08-14 — Le logger Winston bloquait TOUT le prerender.**
+Premier build sous `cacheComponents` : échec sur `/en/account/billing/credit`, avec une stack
+pointant `services/facades/interceptors/create-service-interceptor.ts:17` — le `logger.info` que
+l'intercepteur émet **à chaque appel de méthode de service**. Cause réelle :
+`winston.format.timestamp()` (`src/lib/logger.ts`) appelle `new Date()`, soit un accès à l'heure
+courante interdit au prerender (`blocking-prerender-current-time`). Comme toute page prerendue passe
+par une façade, le blocage était systémique — pas propre à cette page.
+Correctif : logger neutralisé quand `process.env.NEXT_PHASE === 'phase-production-build'`. Ces logs
+sont du bruit de build, on ne perd rien. Un seul point de correction débloque toutes les pages.
+À retenir pour la suite : le même problème peut réapparaître **au runtime** à l'intérieur d'un scope
+`'use cache'`, où l'heure courante est également interdite.
+
+**D9 — 2026-08-14 — Les routes publiques restent dynamiques malgré `'use cache'`.**
+Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `cacheLife('max')` sont
+appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
+`Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
+route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D10 — 2026-08-14 — CONFIRMÉ : next-intl ne supporte pas encore `cacheComponents`. Décision requise.**
+
+La cause de D9 est **upstream**, pas dans ce repo. Sources :
+
+- <https://github.com/amannn/next-intl/issues/1493> — « Support for `cacheComponents` », ouverte
+- <https://github.com/amannn/next-intl/issues/2074> — « Does it actually support cache components from Nextjs 16? »
+- <https://next-intl.dev/blog/nextjs-root-params> — `next/root-params` est présenté comme un _futur_
+  levier (« improved integration with Next.js cache mechanisms like `cacheComponents` »), pas comme
+  un pattern utilisable aujourd'hui. Limitation documentée : « `next/root-params` currently doesn't
+  work in Route Handlers or Server Actions ».
+
+Version installée : `next-intl@4.13.5`. Next.js 16 est supporté depuis 4.4, **mais pas
+`cacheComponents`**.
+
+**Contournement testé et écarté.** Avant de conclure, l'hypothèse « passer `messages` explicitement
+au provider » a été implémentée et buildée : dans `base-layout.tsx`, chargement des messages par
+`await import('../../../messages/<locale>.json')` (donc hors contexte de requête) et
+`<NextIntlClientProvider locale={locale} messages={messages}>`. **Résultat : aucun changement.**
+`/en/privacy`, `/en/terms`, `/en/contact` restent `ƒ` avec exactement le même profil `30d / 1y`.
+Contournement reverté (règle D6). Ne pas le retenter — le blocage est plus profond que le provider.
+
+**Conséquence** : toutes les routes de ce boilerplate sont internationalisées. Aucune n'échappe à
+next-intl. Le bénéfice principal de la migration — le shell statique / PPR — **ne peut pas être
+obtenu aujourd'hui**, quelle que soit la quantité de `'use cache'` posée en dessous.
+
+**Deux options, décision de Mike :**
+
+1. **Garder la branche en l'état.** `cacheComponents` activé, build vert, application fonctionnelle,
+   59 routes en `instant = false`. On récolte le PPR le jour où next-intl le supporte, en reprenant
+   la phase 3 là où elle s'est arrêtée. Coût : porter l'opt-out et un modèle de rendu changé pour un
+   bénéfice différé.
+2. **Revenir à l'option A+** (retirer le flag, 2 fichiers) et attendre next-intl avant de migrer.
+   C'est ce que prescrivait la doc Next à l'origine pour un projet non-adoptant. Tout le travail des
+   phases 0 et 1 reste acquis — ce sont des corrections de bugs et un filet de tests, indépendants
+   du flag.
+
+Recommandation : **option 2**, et rouvrir ce plan quand l'issue amannn/next-intl#1493 est résolue.
+La branche documente entièrement le chemin, donc reprendre coûtera peu.
