@@ -218,3 +218,5 @@ Every new feature must be analyzed against existing rules and codebase patterns 
 
 - Ne pas utiliser de commentaires pour expliquer le code, seulement pour le code complexe
 - Ne lance pas de pnpm build a la fin
+
+@AGENTS.md
