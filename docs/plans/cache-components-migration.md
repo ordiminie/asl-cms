@@ -1,7 +1,7 @@
 ---
 validated: no
 status: in-progress
-current_phase: 1
+current_phase: 2
 branch: feat/cache-components-migration
 worktree: .worktrees/cache-components-migration
 research: docs/research/s000-cache-components-migration.md
@@ -134,25 +134,41 @@ faudra revérifier au Gate 2.
 **Pourquoi** : le seul filet actuel est le build, et le cas `sitemap.ts` prouve qu'il reste vert sur
 une régression. Toucher au modèle de rendu de 64 pages sans e2e est un pilotage à l'aveugle.
 
-- [ ] **1.1 — Adapter `playwright.config.ts` pour la CI**
-      `playwright.config.ts:50-54` — `webServer.command` est `pnpm dev`. En CI il faut
-      `pnpm build && pnpm start` pour tester le vrai rendu de production (c'est précisément là que
-      se jouent PPR et le shell statique).
-      Vérif : `CI=1 pnpm test:e2e` passe en local.
+- [x] **1.1 — Adapter `playwright.config.ts` pour la CI**
+      `webServer.command` devient `pnpm build && pnpm start` quand `CI=1`, `pnpm dev` sinon.
+      Timeout porté à 300 s (le build ne tient pas dans les 60 s par défaut).
+      Port rendu configurable via `PLAYWRIGHT_PORT` : la suite est lançable même quand 3000 est
+      occupé par un autre projet — cas réel rencontré pendant cette phase.
 
-- [ ] **1.2 — Job e2e dans `.github/workflows/preview.yml`**
-      Le workflow a déjà `DATABASE_URL` en secret et lance `pnpm db:migrate`. Ajouter un job après
-      le build : install navigateurs (`pnpm exec playwright install --with-deps chromium`), seed,
-      `pnpm test:e2e`. Commencer par **chromium seul** pour le temps de CI.
-      Vérif : la PR de cette phase montre le job vert dans les checks GitHub.
+- [x] **1.2 — Job e2e dans `.github/workflows/preview.yml`**
+      Job `e2e` séparé, avec un **service Postgres 17 éphémère** (`postgres:17`, healthcheck
+      `pg_isready`) et `DATABASE_URL: postgresql://test:test@localhost:5432/test`.
+      Étapes : install → `playwright install --with-deps chromium` → `db:push && db:seed` →
+      `test:e2e --project=chromium`. Rapport uploadé en artefact si échec.
+      **Décision D7** : jamais la base de preview — deux specs écrivent (création de compte) et une
+      lit le seed (`user@gmail.com`).
 
-- [ ] **1.3 — Baseline e2e documentée**
-      Noter dans le Journal le nombre de tests e2e verts avant migration. C'est la référence de
-      non-régression pour les phases 2 à 4.
+- [x] **1.3 — Baseline e2e documentée** — voir Gate 1 ci-dessous.
 
 ### Gate 1 (bloquant)
 
-Les 13 tests e2e passent en CI sur la branche. Sans ça, **ne pas entamer la phase 2**.
+Les 13 tests e2e passent en CI sur la branche.
+
+**⚠️ PARTIELLEMENT VÉRIFIÉ — action requise avant la phase 3.**
+
+| Specs                                         | Vérifié localement                   | Comment                                                                                                                                                              |
+| --------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `homepage.spec.ts` (3) + `mobile.spec.ts` (2) | ✅ **5 passed (1.9 min)** contre `pnpm build && pnpm start` | `CI=1 PLAYWRIGHT_PORT=3131 pnpm exec playwright test --project=chromium e2e/homepage.spec.ts e2e/mobile.spec.ts`                                                     |
+| `auth.spec.ts` (8)                            | ❌ **non vérifié**                   | écrivent en base ; ni Docker ni Postgres local sur cette machine, et `DATABASE_URL` pointe la Neon distante — y lancer ces tests créerait des comptes en base réelle |
+
+Le job CI est écrit et syntaxiquement valide, mais **n'a jamais tourné** : il faut pousser la branche
+pour que GitHub Actions l'exécute. C'est le seul moyen de valider les 8 specs auth et le service
+Postgres éphémère.
+
+**Conséquence assumée** : la phase 2 a été menée avec un filet partiel (5 specs de rendu sur 13,
+plus le build et le contrôle sitemap manuel). Les 5 specs vérifiées couvrent le risque principal de
+la phase 2 — la régression de rendu — mais **pas** les flux d'authentification.
+**Ne pas entamer la phase 4 (auth) sans avoir vu le job e2e vert en CI.**
 
 ---
 
@@ -351,6 +367,14 @@ Trois options cohérentes :
 Recommandation : **option 2** pour la phase 3 (aucune infra requise), en documentant explicitement
 quand basculer vers `remote`. C'est un choix de positionnement produit — ce que les clients vont
 hériter et copier. **Décision de Mike requise.**
+
+**D7 — 2026-08-14 — Base de test en CI : Postgres éphémère, jamais la preview.**
+Les specs e2e ne sont pas en lecture seule : `auth.spec.ts:50` crée un compte
+(`should successfully register a new user`) et `auth.spec.ts:121` se connecte avec `user@gmail.com`,
+qui vient du seed. Les pointer sur la base de preview (`secrets.DATABASE_URL`) la polluerait à chaque
+run. Choix : service `postgres:17` dans le job, `db:push && db:seed` avant les tests. Aucun secret
+supplémentaire requis, isolation totale, et c'est le pattern déjà documenté dans
+`.claude/rules/00-generals/rule-ci-cd-devops.md`.
 
 **D6 — 2026-08-14 — Règle de simplicité : supprimer plutôt que remplacer.**
 Consigne de Mike, applicable à tout le chantier : quand un bout de code pose problème pour la
