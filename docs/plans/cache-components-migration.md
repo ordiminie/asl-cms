@@ -1,0 +1,348 @@
+---
+validated: no
+status: in-progress
+current_phase: 0
+branch: feat/cache-components-migration
+worktree: .worktrees/cache-components-migration
+research: docs/research/s000-cache-components-migration.md
+last_updated: 2026-08-14
+---
+
+# Plan — Migration Cache Components (Next.js 16.3)
+
+## ▶ START HERE (protocole de reprise)
+
+Tu reprends ce chantier dans une nouvelle session, ou tu es un agent qui n'a aucun contexte.
+Fais **exactement** ceci, dans l'ordre :
+
+1. `cd .worktrees/cache-components-migration` puis `git branch --show-current`
+   → doit afficher `feat/cache-components-migration`. Sinon, arrête-toi et signale.
+2. Lis le frontmatter ci-dessus : `current_phase` dit où on en est.
+3. Lis le **Journal de décisions** en bas de ce fichier. Il contient les arbitrages déjà tranchés.
+   Ne les rouvre pas sans raison nouvelle.
+4. Va à la phase `current_phase`, prends la **première tâche non cochée**.
+5. Exécute-la, lance sa commande de vérification, coche la case, commit.
+6. Avant de passer à la phase suivante, exécute le **Gate** de la phase courante. Il est bloquant.
+7. Mets à jour `current_phase` et `last_updated` dans le frontmatter.
+
+**Règles non négociables :**
+
+- Une tâche = un commit. Message en conventional commit, scope `cache-components` sauf phase 0.
+- Ne coche jamais une case sans avoir lancé sa commande de vérification et vu qu'elle passe.
+- Si une tâche s'avère fausse ou impossible, ne la supprime pas : marque-la `[~]` et écris
+  pourquoi dans le Journal.
+- Ne saute pas un Gate. Ils existent parce que le build ment (voir Trap T2 de la recherche).
+
+**Prérequis d'environnement** (à refaire si le worktree est recréé) :
+
+```bash
+cp ../../.env.test ../../.env.production .          # gitignorés, absents d'un worktree neuf
+pnpm install
+```
+
+## Contexte
+
+Recherche complète et vérifiée : `docs/research/s000-cache-components-migration.md` (v2, révisée
+après challenge adversarial — 20 objections confirmées). **Lis-la avant la phase 2.**
+
+Résumé exécutif : `experimental.useCache: true` est activé mais **0 directive `'use cache'`** existe.
+La doc prescrit soit de retirer le flag, soit d'adopter réellement le modèle. On adopte, parce que
+c'est un boilerplate : le coût est payé une fois et amorti sur tous les forks, et l'échéance est
+réelle (`dynamicIO`, jumeau du flag, est déjà fatal — E394).
+
+**Objectif d'architecture** : garder une architecture en couches simple et extensible, avec les
+mêmes capacités de cache. Le cache devient une propriété **de la fonction du DAL** (`'use cache'` +
+`cacheTag`) au lieu d'un choix binaire au niveau de la route. La règle
+`rule-react-cache-next-cache.md` se simplifie.
+
+## Baseline (commit 41c217e)
+
+| Contrôle        | État                             |
+| --------------- | -------------------------------- |
+| `pnpm lint`     | 0 erreur, 0 warning              |
+| `pnpm exec tsc` | 0 erreur                         |
+| `pnpm test`     | 374 passed, 8 skipped            |
+| `pnpm build`    | vert                             |
+| e2e Playwright  | 13 tests, **non branchés en CI** |
+
+---
+
+## Phase 0 — Corriger les bugs existants (flag inchangé)
+
+**Pourquoi d'abord** : ces 5 points sont faux aujourd'hui, indépendamment de Next. Deux d'entre eux
+sont aussi des bloquants durs de la phase 2. Cette phase a de la valeur même si le reste est annulé.
+
+- [ ] **0.1 — `Math.random()` dans le DAL** (bloquant phase 2)
+      `src/app/dal/blog-dal.ts:389-396` — `shuffleArray` rend `getRelatedPostsDal` non déterministe.
+      Une fonction de lecture du DAL doit être déterministe pour être cachable.
+      Sous cacheComponents : erreur de build E1432, non contournable par `instant = false`.
+      → Remplacer par un ordre stable dérivé de la donnée (ex. tri par slug, ou rotation basée sur le
+      slug du post courant). **Pas** de `Math.random`, **pas** de `Date.now`.
+      Vérif : `grep -n "Math.random" src/app/dal/blog-dal.ts` → 0 résultat.
+
+- [ ] **0.2 — `Math.random()` dans le skeleton sidebar**
+      `src/components/ui/sidebar.tsx:603-606` — largeur aléatoire dans un `useMemo`.
+      Composant client, donc E1434 sous cacheComponents.
+      → Largeur déterministe dérivée de l'index, ou classe CSS fixe.
+      Note : `src/components/ui/*` est dans les `globalIgnores` d'ESLint — le lint ne le verra pas.
+      Vérif : `grep -n "Math.random" src/components/ui/sidebar.tsx` → 0 résultat.
+
+- [ ] **0.3 — `sitemap.ts` avale ses erreurs**
+      `src/app/sitemap.ts:271-273` — `catch` → `console.error`, le sitemap est retourné amputé sans
+      que rien n'échoue. C'est ce qui rendrait la régression SEO de la phase 2 invisible.
+      → Faire remonter l'erreur (throw) ou au minimum échouer le build en production.
+      Vérif : provoquer une erreur DAL et constater que le build échoue au lieu de produire un sitemap
+      partiel. À défaut, revue de code manuelle.
+
+- [ ] **0.4 — `revalidateTag('plans','max')` → `updateTag('plans')`**
+      `src/app/[locale]/admin/plans/actions.ts:40,95,140,177` — `'max'` = stale-while-revalidate
+      (expire = 1 an). Les tags `plans` sont posés par `subscription-dal.ts:49,69` et consommés par
+      `(public)/pricing/page.tsx:20-25` + les 5 actions checkout.
+      **Bug actif : les prix publics peuvent rester périmés après une modif admin.**
+      → `updateTag` (read-your-writes), autorisé uniquement en Server Action — ce qui est le cas ici.
+      Vérif : `grep -n "revalidateTag" src/app/\[locale\]/admin/plans/actions.ts` → 0 résultat.
+
+- [ ] **0.5 — Décommenter `generateStaticParams` du layout locale**
+      `src/app/[locale]/layout.tsx:51-53` — commenté, donc `locale` est un fallback param sur
+      **40 des 64 pages**, ce qui fait suspendre tous les hooks de route en phase 2.
+      `routing` est déjà importé (l.7). 3 lignes.
+      ⚠️ Vérifier d'abord **pourquoi** ça avait été désactivé (commit `0b30ca9`, non documenté).
+      Si la raison réapparaît, marquer `[~]` et documenter dans le Journal.
+      Vérif : `pnpm build` vert + les 3 locales toujours générées dans la sortie de build.
+
+### Gate 0 (bloquant)
+
+```bash
+pnpm lint && pnpm exec tsc --noEmit && pnpm exec vitest run --pool=forks && pnpm build
+```
+
+Attendu : lint 0 warning, tsc 0 erreur, 374 tests passed, build exit 0.
+De plus : la sortie de build doit toujours lister les mêmes routes SSG qu'en baseline.
+
+---
+
+## Phase 1 — Le filet de sécurité
+
+**Pourquoi** : le seul filet actuel est le build, et le cas `sitemap.ts` prouve qu'il reste vert sur
+une régression. Toucher au modèle de rendu de 64 pages sans e2e est un pilotage à l'aveugle.
+
+- [ ] **1.1 — Adapter `playwright.config.ts` pour la CI**
+      `playwright.config.ts:50-54` — `webServer.command` est `pnpm dev`. En CI il faut
+      `pnpm build && pnpm start` pour tester le vrai rendu de production (c'est précisément là que
+      se jouent PPR et le shell statique).
+      Vérif : `CI=1 pnpm test:e2e` passe en local.
+
+- [ ] **1.2 — Job e2e dans `.github/workflows/preview.yml`**
+      Le workflow a déjà `DATABASE_URL` en secret et lance `pnpm db:migrate`. Ajouter un job après
+      le build : install navigateurs (`pnpm exec playwright install --with-deps chromium`), seed,
+      `pnpm test:e2e`. Commencer par **chromium seul** pour le temps de CI.
+      Vérif : la PR de cette phase montre le job vert dans les checks GitHub.
+
+- [ ] **1.3 — Baseline e2e documentée**
+      Noter dans le Journal le nombre de tests e2e verts avant migration. C'est la référence de
+      non-régression pour les phases 2 à 4.
+
+### Gate 1 (bloquant)
+
+Les 13 tests e2e passent en CI sur la branche. Sans ça, **ne pas entamer la phase 2**.
+
+---
+
+## Phase 2 — Bascule mécanique
+
+**Objectif** : l'app build et tourne sous `cacheComponents`, avec la validation différée partout.
+Aucune route n'est encore convertie. C'est un état stable et mergeable.
+
+- [ ] **2.1 — Activer le flag**
+      `next.config.ts` : retirer `useCache: true` de `experimental`, ajouter `cacheComponents: true`
+      au niveau racine. Garder `authInterrupts`, `taint`, `staleTimes`
+      (**tranché** : `staleTimes` survit et alimente déjà `cacheLife.default.stale` — voir Journal D3).
+      Vérif : le warning `experimental.useCache is deprecated` disparaît du build.
+
+- [ ] **2.2 — Codemod d'opt-out global**
+      `npx @next/codemod@canary cache-components-instant-false ./src/app`
+      ⚠️ Bien passer `./src/app` (projet en `src/`). Un mauvais chemin affiche `0 ok` sans échouer :
+      vérifier le nombre de fichiers touchés (attendu : ~64 pages + 8 layouts).
+      Vérif : `grep -rl "export const instant = false" src/app | wc -l` ≈ 72.
+
+- [ ] **2.3 — Supprimer les route segment configs incompatibles**
+      9 `dynamic = 'force-static'` : `[locale]/page.tsx:17`, `(public)/privacy:6`, `terms:6`,
+      `contact:8`, `blog/page:19`, `blog/page/[page]:17`, `blog/category/[category]:18`,
+      `blog/category/[category]/page/[page]:19`, `blog/[slug]:16`.
+      3 `dynamicParams = false` : `privacy:7`, `terms:7`, `contact:9`.
+      Vérif : `grep -rn "export const dynamic\b\|export const dynamicParams" src/app` → 0 résultat.
+
+- [ ] **2.4 — `generateStaticParams` ne doit jamais retourner `[]`**
+      4 sites, dont **2 retournent `[]` avec le blog activé, sur le contenu livré** :
+      `blog/page/[page]:24,28` et `blog/category/[category]/page/[page]:26,32` (boucle
+      `for (page = 2; page <= totalPages)` jamais exécutée avec 4 articles et 10 par page).
+      Plus `blog/category/[category]:22`, `blog/[slug]:20` **et** un second `return []` dans le
+      `catch` de `blog/[slug]:30`.
+      → Retourner au moins un param valide dans tous les cas. Les paths non retournés restent servis.
+      Vérif : `pnpm build` sans erreur `empty-generate-static-params`.
+
+- [ ] **2.5 — Logout : reload complet**
+      `src/components/features/auth/forms/logout-button.tsx:21` — `router.push('/login/')`.
+      Sous `<Activity>`, l'état client est préservé entre navigations, **y compris à travers un
+      changement d'authentification**. La doc recommande explicitement `window.location.href` pour
+      les flux de logout.
+      ⚠️ Attention à la règle `@next/next/no-location-assign-relative-destination` (déjà rencontrée) :
+      ici le reload complet est **voulu et documenté** — utiliser un `eslint-disable-next-line` avec
+      la raison, ou `window.location.assign` si la règle l'accepte dans ce contexte.
+      Vérif : `pnpm lint` vert + test e2e de logout.
+
+- [ ] **2.6 — Audit `<Activity>` sur les dialogs**
+      38 fichiers utilisent `Dialog`/`AlertDialog`/`Sheet`/`Popover`, 3 utilisent `useActionState`.
+      Sous Activity, leur état survit à la navigation. Ne pas tout corriger : **lister** les cas où
+      c'est visible (dialog resté ouvert au retour arrière, message de succès persistant) et n'en
+      corriger que les occurrences réelles constatées.
+      Vérif : liste écrite dans le Journal + corrections des cas constatés.
+
+### Gate 2 (bloquant)
+
+```bash
+pnpm lint && pnpm exec tsc --noEmit && pnpm exec vitest run --pool=forks && pnpm build && CI=1 pnpm test:e2e
+```
+
+**Plus deux contrôles manuels que le build ne fait pas :**
+
+1. `curl localhost:3000/sitemap.xml` après `pnpm build && pnpm start` → doit contenir les URLs
+   blog. C'est le Trap T2 : le build reste vert même si le sitemap est amputé.
+2. Le nombre de routes prerendered dans la sortie de build est ≥ baseline.
+
+---
+
+## Phase 3 — Conversion des routes publiques
+
+**Pourquoi commencer là** : pas d'auth, gain PPR immédiat, risque faible. C'est ici qu'on valide le
+pattern DAL avant de le généraliser.
+
+Pour chaque route : retirer son `instant = false`, suivre les insights du dev overlay, cacher la
+donnée avec `'use cache'` + `cacheLife` + `cacheTag` **dans la fonction du DAL**, envelopper l'accès
+runtime dans `<Suspense>`. Un commit par route.
+
+- [ ] **3.1 — Décision de doctrine de cache** (voir Journal D4, à trancher avant 3.2)
+- [ ] **3.2 — `(public)/privacy`, `terms`, `contact`** (statiques, le cas le plus simple)
+- [ ] **3.3 — `(public)/blog` + `blog/page/[page]`**
+- [ ] **3.4 — `blog/[slug]` + `blog/category/*`** (dépend de 0.1)
+- [ ] **3.5 — `(public)/pricing`** (dépend de 0.4 ; valide le pattern `cacheTag` sur les plans)
+- [ ] **3.6 — `docs` + `docs/[...slug]`** (attention : `docs/[...slug]/page.tsx:186` lit `headers()`)
+- [ ] **3.7 — `src/app/sitemap.ts` et `robots.ts`**
+      Special Route Handlers, **aucune échappatoire `instant`** : ils doivent être convertis.
+      5 `new Date()` (`:73,151,176,224,261`) + 4 accès DAL non cachés (`:106,163,190,233`).
+- [ ] **3.8 — Les 7 hooks de route dans les layouts**
+      `lang-toggle:20,22`, `app-breadcrumb:23`, `docs-breadcrumb:68`, `docs-sidebar:60`,
+      `use-table-of-contents:15`, `post-form:111` (+ `auth-provider`, traité en phase 4).
+      Les 6 layouts contiennent **0 `Suspense`**. Pousser la lecture au composant feuille le plus bas.
+
+### Gate 3 (bloquant)
+
+Gate 2 + aucune route publique ne porte encore `instant = false` + le sitemap contient toutes les
+URLs + les Core Web Vitals ne régressent pas (comparer un `next build` avant/après sur la sortie
+prerender).
+
+---
+
+## Phase 4 — L'authentification
+
+**Le seul chantier réellement architectural.** À faire en dernier, quand le pattern est éprouvé.
+
+- [ ] **4.1 — `AuthProvider` racine**
+      `src/components/context/auth-provider.tsx` (`'use client'`) utilise `useRouter`,
+      `usePathname:35`, `useParams:36`, et enveloppe les 64 pages via
+      `[locale]/layout.tsx:29` → `base-layout.tsx:24` → `app-providers.tsx:26`.
+      Dépend de 0.5 (sans lui, `locale` est fallback param sur 40 pages).
+
+- [ ] **4.2 — `withAuth` : l'await précède tout le JSX**
+      `src/components/features/auth/with-auth.tsx:17` `await getAuthUser()`, `:24` `redirect()`,
+      `:27` `forbidden()`, `:30` premier JSX. Appliqué à `(app)/layout.tsx:62`, `admin/layout.tsx:49`
+      et 17 pages. Envelopper `{children}` de `<Suspense>` **ne sert à rien**, l'await est en amont.
+
+- [ ] **4.3 — Porter le contrôle d'accès dans `src/proxy.ts`**
+      Sous streaming, `forbidden()` arrive après le début d'un `200` et ne peut plus changer le statut.
+      La doc dit : « run that check in `proxy` instead ». `src/proxy.ts` ne fait aujourd'hui **aucune**
+      auth (routing next-intl + cookie de thème).
+      ⚠️ Décision de sécurité : ne pas dégrader le modèle d'autorisation CASL existant. Le proxy fait
+      le gating grossier (authentifié / pas authentifié), les services gardent l'autorisation fine.
+
+- [ ] **4.4 — Réécrire `.claude/rules/01-presentation/rule-safe-route.md`**
+      La règle actuelle (`:21`) impose la protection au layout **et** à la page. Le nouveau modèle
+      change ça. La règle doit refléter le code, sinon les prochains agents produiront du faux.
+
+- [ ] **4.5 — Les 7 pages qui `await searchParams` au-dessus de la frontière Suspense**
+      `admin/blog:17` (Suspense en `:22`), `admin/organizations:25`, `admin/plans:21`,
+      `admin/submissions:27`, `admin/subscriptions:25`, `admin/users:21`,
+      `(public)/checkout/[priceId]:18` (aucun Suspense).
+      Passer la promesse en prop au composant enveloppé, ne pas l'await en tête.
+
+- [ ] **4.6 — Retirer les derniers `instant = false`**
+
+### Gate 4 (bloquant)
+
+Gate 3 + `grep -rn "instant = false" src/app` → 0 + les 13 e2e verts + parcours manuel :
+login, logout, accès admin refusé pour un user standard (doit rester un vrai 403), changement
+d'organisation.
+
+---
+
+## Phase 5 — Documentation et règles
+
+- [ ] **5.1 — `rule-react-cache-next-cache.md`** — réécrire pour le nouveau modèle.
+      C'est le livrable d'architecture : la règle doit devenir **plus simple** qu'avant.
+      Si elle est plus compliquée, c'est que la migration a mal tourné.
+- [ ] **5.2 — `rule-architecture.md`** — le DAL porte désormais le cache.
+- [ ] **5.3 — `src/app/[locale]/docs/_files/en/10-deployment/01-vercel.mdx:227-234`**
+      Le bloc « Performance optimizations » prescrit `useCache: true` **aux clients**, sur une page
+      publiquement indexable. À mettre à jour.
+- [ ] **5.4 — `README.md`** — mentionner Cache Components / PPR.
+- [ ] **5.5 — ADR dans `docs/`** — pourquoi ce choix, ce qui a été écarté.
+
+---
+
+## Rollback
+
+Chaque phase est un ensemble de commits sur `feat/cache-components-migration`.
+
+- Rollback d'une phase : `git revert` de ses commits.
+- Rollback total : abandonner la branche. `dev` n'est jamais touchée avant merge.
+- Point de non-retour : aucun. Même après la phase 2, retirer `cacheComponents` et remettre les
+  `force-static` reste possible tant que la phase 3 n'a pas converti les DAL.
+
+---
+
+## Journal de décisions
+
+> Tout arbitrage pris en cours de route s'écrit ici, daté. Un agent qui reprend le chantier lit
+> cette section pour ne pas rouvrir un débat déjà tranché.
+
+**D1 — 2026-08-14 — Migrer plutôt que retirer le flag.**
+La doc prescrit de retirer le flag pour un projet non-adoptant (0 `use cache`). Décision inverse
+assumée : c'est un boilerplate, le coût est payé une fois et amorti sur tous les forks, et
+l'échéance est réelle (`dynamicIO`, cité dans la même phrase de dépréciation, est déjà fatal —
+E394, `config.js:129-131`). Contexte donné par Mike : rien n'est figé en prod, gros chantiers
+acceptés, objectif = architecture propre qui scale.
+
+**D2 — 2026-08-14 — `unstable_cache` n'est pas supprimé.**
+`migrating-to-cache-components.md` : « Your existing `fetch` and `unstable_cache` caching keeps
+working as a separate layer ». Lève le risque principal (perte de persistance entre déploiements
+sur le cache des plans Stripe). Les 3 `unstable_cache` restent en place jusqu'à décision D4.
+
+**D3 — 2026-08-14 — `staleTimes` survit à `cacheComponents`.**
+Vérifié dans les sources : `config.js:1016-1020` le normalise sans garde, `config.js:1054-1057`
+backfille `cacheLife['default'].stale = staleTimes.static`, `stale-time.js:81-85` l'utilise au
+runtime. Empiriquement `cacheLife.default.stale = 180`, qui vient de `next.config.ts:40`.
+→ Garder le bloc `staleTimes`. Ce n'est pas un risque.
+
+**D4 — À TRANCHER avant la tâche 3.2 — Doctrine de cache du boilerplate.**
+Trois options cohérentes :
+
+1. `'use cache'` partout + `use cache: remote` pour ce qui doit survivre aux déploiements
+2. `'use cache'` pour le rendu, `unstable_cache` conservé pour les données coûteuses/durables (Stripe)
+3. `'use cache'` + cacheHandler custom
+
+Recommandation : **option 2** pour la phase 3 (aucune infra requise), en documentant explicitement
+quand basculer vers `remote`. C'est un choix de positionnement produit — ce que les clients vont
+hériter et copier. **Décision de Mike requise.**
+
+**D5 — À VÉRIFIER en tâche 0.5** — pourquoi `generateStaticParams` du layout locale a-t-il été
+commenté (commit `0b30ca9`) ? Non documenté. Si la raison réapparaît, la tâche devient `[~]`.
