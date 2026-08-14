@@ -5,15 +5,18 @@ allowed-tools:
   - Read
   - Bash
 ---
+
 You are shipping a story. Target story: $ARGUMENTS
 
 Resolve $ARGUMENTS to the story id (`s<number>-<slug>`) — the review file docs/reviews/<id>.md must exist for it.
 
 ## Step 0 — Gate (fail-closed, mechanical)
+
 Run: `grep -q '^Ship allowed: yes' docs/reviews/<id>.md`
 If the file is missing or the command fails, STOP immediately: "Ship blocked — review missing or negative. Run /ks-review <id>." Nothing below runs without a passing gate.
 
 Then proceed:
+
 1. Check out feature/<id>; commit docs/reviews/<id>.md on it if not already committed (the PR must carry its review). Then verify the tests pass. Failing tests → stop.
 2. If a PR for feature/<id> already exists, don't open a duplicate — check its state: MERGED → jump straight to the Cleanup step (confirming the deployment on the way); OPEN → continue. Otherwise push the branch and open a clean PR from feature/<id> to the default branch: clear title, structured description (what, why, how to test), readable diff. Include the review verdict (max severity + findings summary) in the PR body.
 3. Read the ship strategy from AGENTS.md ("Ship strategy" section). No section, or no explicit `auto` → the mode is manual.
@@ -28,10 +31,13 @@ Then proceed:
 Never merge in manual mode, even if everything is green — the gate authorizes the ship, the human decides it.
 
 ## Final step — Cleanup (ONLY after a PROVEN merge)
+
 Never clean up on the promise of a merge — only on proof:
+
 1. Verify: `gh pr view feature/<id> --json state,mergedAt --jq '.state'` must return exactly `MERGED`. An OPEN PR, a closed-unmerged PR, or an "about to be merged" does NOT qualify: skip cleanup entirely.
 
    Do NOT use `git merge-base --is-ancestor` here: a squash merge rewrites the work into a new commit, so the branch's commits are never ancestors of the default branch. The check would fail on every correctly merged story and no branch would ever be cleaned up.
+
 2. Only then delete the branch, local and remote: `git branch -D feature/<id>` and `git push origin --delete feature/<id>`.
 
    `-D` is required, again because of the squash: `-d` refuses a branch git considers unmerged, which is every squashed branch. The safety therefore rests entirely on step 1 — never run step 2 without the `MERGED` proof.

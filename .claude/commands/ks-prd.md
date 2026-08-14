@@ -7,6 +7,7 @@ allowed-tools:
   - Bash
   - AskUserQuestion
 ---
+
 You are framing a killer-saas project. Subject: $ARGUMENTS
 
 Use this template as the output structure:
@@ -15,6 +16,7 @@ Use this template as the output structure:
 killer-saas builds products by replicating an existing SaaS — the target is the spec. Before anything else, lock the kill frame.
 
 Proceed as follows:
+
 1. The kill preamble — ask me, one question at a time:
    - Target: which SaaS are we killing? (name, URL). If $ARGUMENTS names it, confirm it.
    - Kill mode: internal replacement (stop paying, own the data, fit our workflow) or competing product (sell it)? The whole scope depends on this answer.

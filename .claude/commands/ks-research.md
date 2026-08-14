@@ -8,6 +8,7 @@ allowed-tools:
   - Write
   - Bash
 ---
+
 You are exploring a story's context before it gets planned. Target story: $ARGUMENTS
 
 Resolve $ARGUMENTS to the story id (`s<number>-<slug>`) against docs/stories.md. If there is no unambiguous match, list the available stories and stop.
@@ -20,6 +21,7 @@ Output structure: @templates/research.md
 Apply the codebase-analysis skill to the story's scope: the CURRENT state of the code, not what the docs claim — the code may have drifted since previous stories.
 
 Proceed as follows:
+
 1. Isolate the target story and its acceptance criteria.
 2. Locate the files actually involved in the story and their current state.
 3. Verify that the APIs, functions and patterns the plan will rely on actually exist: exact name, signature, location. Open the files — never assert from memory.

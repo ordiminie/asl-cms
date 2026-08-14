@@ -104,16 +104,35 @@ export function FileDropzone({
     onFilesServerSelectedToRemove(file)
   }
 
+  // Révoquer uniquement les previews des fichiers qui ont disparu de la liste,
+  // jamais celles encore affichées
+  const previewsRef = React.useRef<Set<string>>(new Set())
+
   React.useEffect(() => {
-    // Cleanup previews on unmount
-    return () => {
-      for (const file of files) {
-        if (file.preview) {
-          URL.revokeObjectURL(file.preview)
-        }
+    const currentPreviews = new Set(
+      files
+        .map((file) => file.preview)
+        .filter((preview): preview is string => Boolean(preview))
+    )
+
+    for (const preview of previewsRef.current) {
+      if (!currentPreviews.has(preview)) {
+        URL.revokeObjectURL(preview)
       }
     }
-  }, [files])
+
+    previewsRef.current = currentPreviews
+  })
+
+  React.useEffect(() => {
+    // Cleanup previews on unmount
+    const previews = previewsRef
+    return () => {
+      for (const preview of previews.current) {
+        URL.revokeObjectURL(preview)
+      }
+    }
+  }, [])
 
   // Une fois un fichier local présent côté serveur, il est retiré de la liste
   // locale : la carte serveur prend le relais
