@@ -386,15 +386,6 @@ export function getCategoryAlternates(
   }
 }
 
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
-  return shuffled
-}
-
 export const getRelatedPostsDal = cache(
   async (
     locale: string,
@@ -416,17 +407,14 @@ export const getRelatedPostsDal = cache(
       ? otherPosts.filter((post) => post.category?.name !== categoryName)
       : otherPosts
 
-    const shuffledSameCategory = shuffleArray(sameCategoryPosts)
-    const shuffledDifferent = shuffleArray(differentCategoryPosts)
-
     const result: UnifiedBlogPost[] = []
 
-    for (const post of shuffledSameCategory) {
+    for (const post of sameCategoryPosts) {
       if (result.length >= limit) break
       result.push(post)
     }
 
-    for (const post of shuffledDifferent) {
+    for (const post of differentCategoryPosts) {
       if (result.length >= limit) break
       result.push(post)
     }
