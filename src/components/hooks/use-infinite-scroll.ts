@@ -39,10 +39,13 @@ export function useInfiniteScroll<T>({
     enabled,
     itemsLength: items.length,
   })
-  stateRef.current = {hasMore, isLoading, enabled, itemsLength: items.length}
 
   const fetchMoreRef = useRef(fetchMore)
-  fetchMoreRef.current = fetchMore
+
+  useEffect(() => {
+    stateRef.current = {hasMore, isLoading, enabled, itemsLength: items.length}
+    fetchMoreRef.current = fetchMore
+  })
 
   const loadMore = useCallback(async () => {
     const {hasMore, isLoading, enabled, itemsLength} = stateRef.current

@@ -4,7 +4,7 @@ import {zodResolver} from '@hookform/resolvers/zod'
 import {Plus, Save, X} from 'lucide-react'
 import {useParams, useRouter} from 'next/navigation'
 import {useState} from 'react'
-import {useFieldArray, useForm} from 'react-hook-form'
+import {useFieldArray, useForm, useWatch} from 'react-hook-form'
 import {toast} from 'sonner'
 
 import {
@@ -174,8 +174,10 @@ export function PostForm({
     name: 'translations',
   })
 
-  const watchedHashtags = form.watch('hashtags') || []
-  const watchedNewHashtags = form.watch('newHashtags') || []
+  const watchedHashtags =
+    useWatch({control: form.control, name: 'hashtags'}) || []
+  const watchedNewHashtags =
+    useWatch({control: form.control, name: 'newHashtags'}) || []
 
   const addTranslation = () => {
     const usedLanguages = form.getValues('translations').map((t) => t.language)

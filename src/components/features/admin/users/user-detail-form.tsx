@@ -4,11 +4,12 @@ import {zodResolver} from '@hookform/resolvers/zod'
 import {ArrowLeft, Building2, Calendar, Shield, User, Zap} from 'lucide-react'
 import Link from 'next/link'
 import {useState} from 'react'
-import {useForm} from 'react-hook-form'
+import {useForm, useWatch} from 'react-hook-form'
 import {toast} from 'sonner'
 import {z} from 'zod'
 
 import {updateUserDetailAction} from '@/app/[locale]/admin/users/actions'
+import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
@@ -56,6 +57,11 @@ const userDetailSchema = z.object({
 
 type UserDetailFormData = z.infer<typeof userDetailSchema>
 
+const toBanExpiresInSeconds = (banExpires?: string) =>
+  banExpires
+    ? Math.floor((new Date(banExpires).getTime() - Date.now()) / 1000)
+    : undefined
+
 interface UserDetailFormProps {
   user: UserType
   permissions: {
@@ -91,6 +97,8 @@ export default function UserDetailForm({
     },
   })
 
+  const isBanned = useWatch({control: form.control, name: 'banned'})
+
   const onSubmit = async (data: UserDetailFormData) => {
     setIsLoading(true)
     try {
@@ -102,11 +110,7 @@ export default function UserDetailForm({
         visibility: data.visibility,
         banned: data.banned,
         banReason: data.banReason,
-        banExpiresIn: data.banExpires
-          ? Math.floor(
-              (new Date(data.banExpires).getTime() - Date.now()) / 1000
-            )
-          : undefined,
+        banExpiresIn: toBanExpiresInSeconds(data.banExpires),
         twoFactorEnabled: data.twoFactorEnabled,
         emailVerified: data.emailVerified,
       }
@@ -378,7 +382,7 @@ export default function UserDetailForm({
                         )}
                       />
 
-                      {form.watch('banned') && (
+                      {isBanned && (
                         <>
                           <FormField
                             control={form.control}
@@ -495,11 +499,14 @@ export default function UserDetailForm({
                   <p className="text-muted-foreground text-sm font-medium">
                     Photo de profil
                   </p>
-                  <img
-                    src={user.image}
-                    alt="Photo de profil"
-                    className="mt-2 h-16 w-16 rounded-full object-cover"
-                  />
+                  <Avatar className="mt-2 h-16 w-16">
+                    <AvatarImage
+                      src={user.image}
+                      alt="Photo de profil"
+                      className="object-cover"
+                    />
+                    <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
                 </div>
               )}
             </CardContent>

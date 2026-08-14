@@ -115,40 +115,37 @@ export function FileDropzone({
     }
   }, [files])
 
-  React.useEffect(() => {
-    if (defaultFiles && defaultFiles.length > 0) {
-      setFiles((prevFiles) => {
-        // Créer une map des fichiers serveur par taille et type pour la correspondance
-        const serverFileMap = new Map()
-        defaultFiles.forEach((serverFile) => {
-          const key = `${serverFile.size}-${serverFile.type}`
-          serverFileMap.set(key, serverFile)
-        })
+  // Une fois un fichier local présent côté serveur, il est retiré de la liste
+  // locale : la carte serveur prend le relais
+  const serverFilesKey = defaultFiles
+    .map((serverFile) => `${serverFile.size}-${serverFile.type}`)
+    .join('|')
+  const [syncedServerFilesKey, setSyncedServerFilesKey] =
+    React.useState(serverFilesKey)
 
-        // Filtrer les fichiers locaux qui ont une correspondance sur le serveur
-        return prevFiles.filter((localFile) => {
-          const localKey = `${localFile.size}-${localFile.type}`
-          const hasServerMatch = serverFileMap.has(localKey)
+  if (syncedServerFilesKey !== serverFilesKey) {
+    setSyncedServerFilesKey(serverFilesKey)
 
-          // Si on trouve une correspondance, supprimer le fichier local
-          if (hasServerMatch) {
-            // Nettoyer l'URL de preview
-            if (localFile.preview) {
-              URL.revokeObjectURL(localFile.preview)
-            }
-            // Supprimer du uploadProgress
-            setUploadProgress((prev) => {
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const {[localFile.name]: _, ...rest} = prev
-              return rest
-            })
-            return false // Supprimer ce fichier local
-          }
-          return true // Garder ce fichier local
-        })
-      })
+    const serverFileKeys = new Set(serverFilesKey.split('|'))
+    const uploadedNames = new Set(
+      files
+        .filter((localFile) =>
+          serverFileKeys.has(`${localFile.size}-${localFile.type}`)
+        )
+        .map((localFile) => localFile.name)
+    )
+
+    if (uploadedNames.size > 0) {
+      setFiles((prevFiles) =>
+        prevFiles.filter((localFile) => !uploadedNames.has(localFile.name))
+      )
+      setUploadProgress((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).filter(([name]) => !uploadedNames.has(name))
+        )
+      )
     }
-  }, [defaultFiles])
+  }
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes'

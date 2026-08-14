@@ -58,10 +58,14 @@ export function OrganizationProvider({
   const [referenceId, setReferenceId] = useState<string | undefined>(
     getReferenceIdByBillingMode(user?.id, initialOrganization?.id)
   )
+  const [syncedOrganization, setSyncedOrganization] =
+    useState(initialOrganization)
 
-  useEffect(() => {
+  // Resynchroniser sur la prop quand le serveur renvoie une autre organisation
+  if (syncedOrganization !== initialOrganization) {
+    setSyncedOrganization(initialOrganization)
     setCurrentOrganization(initialOrganization)
-  }, [initialOrganization])
+  }
 
   // Dérivation des organisations depuis l'utilisateur
   const organizations = useMemo(() => user?.organizations || [], [user])

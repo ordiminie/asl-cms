@@ -1,7 +1,7 @@
 'use client'
 
 import {Search, X} from 'lucide-react'
-import {useEffect, useState} from 'react'
+import {useState} from 'react'
 
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -40,10 +40,13 @@ export function PostsToolbar({
   initialCategory = '',
 }: PostsToolbarProps) {
   const [searchValue, setSearchValue] = useState(initialSearch)
+  const [syncedSearch, setSyncedSearch] = useState(initialSearch)
 
-  useEffect(() => {
+  // Resynchroniser le champ quand la recherche vient de l'URL
+  if (syncedSearch !== initialSearch) {
+    setSyncedSearch(initialSearch)
     setSearchValue(initialSearch)
-  }, [initialSearch])
+  }
 
   const handleSearchChange = (e: {target: {value: string}}) => {
     const value = e.target.value

@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from 'react'
+import {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
 import {useOrganization} from '@/components/context/organization-provider'
@@ -26,6 +26,19 @@ import {formatDate} from '@/lib/helper/date-helper'
 
 import {PartialInvitationWithUser} from './invitations-content'
 
+// Récupérer les invitations envoyées par l'organisation (pour les owners)
+const fetchInvitations = async (
+  organizationId: string | undefined
+): Promise<PartialInvitationWithUser[]> => {
+  if (!organizationId) {
+    return []
+  }
+  const result = await authClient.organization.listInvitations({
+    query: {organizationId},
+  })
+  return result.data || []
+}
+
 // Composant pour les invitations envoyées par l'organisation
 export default function InvitationsOrganization() {
   const {currentUserOrganization} = useOrganization()
@@ -38,31 +51,31 @@ export default function InvitationsOrganization() {
     useState<PartialInvitationWithUser | null>(null)
   const [isCanceling, setIsCanceling] = useState(false)
 
-  const fetchInvitations = useCallback(async () => {
-    if (!currentUserOrganization?.organization?.id) {
-      setIsLoading(false)
-      return
-    }
-
-    try {
-      // Récupérer les invitations envoyées par l'organisation (pour les owners)
-      const result = await authClient.organization.listInvitations({
-        query: {
-          organizationId: currentUserOrganization.organization.id,
-        },
-      })
-      setInvitationsOrganization(result.data || [])
-    } catch (error) {
-      console.error('Erreur lors du chargement des invitations:', error)
-      toast.error('Erreur lors du chargement des invitations')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentUserOrganization?.organization?.id])
+  const organizationId = currentUserOrganization?.organization?.id
 
   useEffect(() => {
-    fetchInvitations()
-  }, [fetchInvitations])
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const invitations = await fetchInvitations(organizationId)
+        if (cancelled) return
+        setInvitationsOrganization(invitations)
+      } catch (error) {
+        if (cancelled) return
+        console.error('Erreur lors du chargement des invitations:', error)
+        toast.error('Erreur lors du chargement des invitations')
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [organizationId])
 
   const openCancelModal = (invitation: PartialInvitationWithUser) => {
     setInvitationToCancel(invitation)
@@ -89,7 +102,7 @@ export default function InvitationsOrganization() {
 
       toast.success('Invitation annulée avec succès')
       closeCancelModal()
-      fetchInvitations()
+      setInvitationsOrganization(await fetchInvitations(organizationId))
     } catch (error) {
       console.error("Erreur lors de l'annulation de l'invitation:", error)
       toast.error("Erreur lors de l'annulation de l'invitation")

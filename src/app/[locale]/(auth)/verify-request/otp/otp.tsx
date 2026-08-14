@@ -30,14 +30,22 @@ import {
 import {Input} from '@/components/ui/input'
 import {authClient} from '@/lib/better-auth/auth-client'
 
+const verifyOtpCode = async (code: string) => {
+  const formData = new FormData()
+  formData.append('code', code)
+  return verifyOTPAction({success: false, message: ''}, formData)
+}
+
+type VerificationResult = Awaited<ReturnType<typeof verifyOtpCode>>
+
 export default function OtpVerificationPage() {
   const t = useTranslations('Auth.OtpVerificationPage')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isSendingOtp, setIsSendingOtp] = useState(false)
-  const hasSentOtp = useRef(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const codeFromUrl = searchParams.get('code') ?? ''
+  const [isLoading, setIsLoading] = useState(codeFromUrl.length === 6)
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const hasSentOtp = useRef(false)
 
   // Schéma de validation avec traductions
   const otpSchema = z.object({
@@ -83,46 +91,63 @@ export default function OtpVerificationPage() {
     }
   }, [t])
 
-  const handleVerifyCode = useCallback(
-    async (code: string) => {
-      setIsLoading(true)
-      try {
-        const formData = new FormData()
-        formData.append('code', code)
+  const applyVerificationResult = (result: VerificationResult) => {
+    if (result.success) {
+      toast.success(t('messages.verificationSuccess'))
+      // Rediriger vers le dashboard après 2 secondes
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 2000)
+    } else {
+      toast.error(result.message || t('messages.verificationError'))
+    }
+  }
 
-        const result = await verifyOTPAction(
-          {success: false, message: ''},
-          formData
-        )
+  const applyVerificationError = (error: unknown) => {
+    if (isRedirectError(error)) {
+      toast.success(t('messages.redirecting'))
+    } else {
+      toast.error(t('messages.verificationError'))
+    }
+  }
 
-        if (result.success) {
-          toast.success(t('messages.verificationSuccess'))
-          // Rediriger vers le dashboard après 2 secondes
-          setTimeout(() => {
-            router.push('/dashboard')
-          }, 2000)
-        } else {
-          toast.error(result.message || t('messages.verificationError'))
-        }
-      } catch (error) {
-        if (isRedirectError(error)) {
-          toast.success(t('messages.redirecting'))
-        } else {
-          toast.error(t('messages.verificationError'))
-        }
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    [router, t]
-  )
+  const handleVerifyCode = async (code: string) => {
+    setIsLoading(true)
+    try {
+      applyVerificationResult(await verifyOtpCode(code))
+    } catch (error) {
+      applyVerificationError(error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   // Si on a un code dans l'URL, on le vérifie automatiquement
   useEffect(() => {
-    if (codeFromUrl && codeFromUrl.length === 6) {
-      handleVerifyCode(codeFromUrl)
+    if (codeFromUrl.length !== 6) return
+
+    let cancelled = false
+
+    const verify = async () => {
+      try {
+        const result = await verifyOtpCode(codeFromUrl)
+        if (cancelled) return
+        applyVerificationResult(result)
+      } catch (error) {
+        if (cancelled) return
+        applyVerificationError(error)
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
     }
-  }, [codeFromUrl, handleVerifyCode])
+
+    void verify()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codeFromUrl])
 
   // Envoyer l'OTP seulement si pas de code dans l'URL
   useEffect(() => {

@@ -41,18 +41,49 @@ type SubscriptionPageProps = {
   availablePlans: AvailablePlan[]
 }
 
+type LoadedSubscriptions = {
+  subscriptions: Subscription[]
+  isYearly: boolean
+}
+
+const findActiveSubscription = (subscriptions: Subscription[]) =>
+  subscriptions.find(
+    (sub) => sub.status === 'active' || sub.status === 'trialing'
+  )
+
+const fetchSubscriptions = async (
+  referenceId: string | undefined
+): Promise<LoadedSubscriptions> => {
+  const {data} = await authClient.subscription.list({
+    query: {referenceId: referenceId || ''},
+  })
+  const subscriptions = data || []
+
+  // Hack time to get the yearly price from the subscription id
+  // https://github.com/better-auth/better-auth/pull/3239
+  const stripeSubscriptionId =
+    findActiveSubscription(subscriptions)?.stripeSubscriptionId
+  if (!stripeSubscriptionId) {
+    return {subscriptions, isYearly: false}
+  }
+
+  const priceId = await getPriceIdFromSubscriptionIdAction(stripeSubscriptionId)
+  return {subscriptions, isYearly: await isYearlyPrice(priceId || '')}
+}
+
 export default function SubscriptionPage({
   availablePlans,
 }: SubscriptionPageProps) {
   const {referenceId} = useOrganization()
   const {isOwner} = useOrganizationRole()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadedReferenceId, setLoadedReferenceId] = useState<
+    string | undefined | null
+  >(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [isYearly, setIsYearly] = useState(false)
   const [activeSubscriptionIsYearly, setActiveSubscriptionIsYearly] =
     useState(false)
-  const [realPriceId, setRealPriceId] = useState<string | null>(null)
   const [selectedSeats, setSelectedSeats] = useState<{
     [planId: string]: number
   }>({
@@ -61,81 +92,64 @@ export default function SubscriptionPage({
     enterprise: 10,
   })
 
-  const loadSubscriptions = async () => {
-    try {
-      setLoading(true)
-      const {data} = await authClient.subscription.list({
-        query: {
-          referenceId: referenceId || '',
-        },
-      })
+  const loading = loadedReferenceId !== referenceId
 
-      // Récupérer le vrai priceId via Stripe si il y a un abonnement actif
-      const activeSubscription = data?.find(
-        (sub) => sub.status === 'active' || sub.status === 'trialing'
-      )
+  const applySubscriptions = (loaded: LoadedSubscriptions) => {
+    setSubscriptions(loaded.subscriptions)
+    setIsYearly(loaded.isYearly)
+    setActiveSubscriptionIsYearly(loaded.isYearly)
 
-      //Hack time to get the yearly price from the subscription id
-      //https://github.com/better-auth/better-auth/pull/3239
-      if (activeSubscription?.stripeSubscriptionId) {
-        const priceId = await getPriceIdFromSubscriptionIdAction(
-          activeSubscription.stripeSubscriptionId
-        )
-        const isYearly = await isYearlyPrice(priceId || '')
-        setIsYearly(isYearly)
-        setActiveSubscriptionIsYearly(isYearly)
-        setRealPriceId(priceId)
-      } else {
-        setRealPriceId(null)
-        setIsYearly(false) // Réinitialiser à false si pas d'abonnement actif
-      }
-
-      setSubscriptions(data || [])
-    } catch (error) {
-      console.error('Erreur lors du chargement des abonnements:', error)
-      toast.error('Impossible de charger les abonnements', {
-        description: !isOwner
-          ? "Vous n'êtes pas propriétaire de cette organisation"
-          : '',
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadSubscriptions()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [referenceId])
-
-  // Update isYearly when realPriceId changes
-  useEffect(() => {
-    if (realPriceId) {
-      const updateIsYearly = async () => {
-        console.log('🔍 realPriceId', realPriceId)
-        const yearly = await isYearlyPrice(realPriceId)
-        console.log('🔍 isYearly', yearly)
-        setIsYearly(yearly)
-        setActiveSubscriptionIsYearly(yearly)
-      }
-      updateIsYearly()
-    } else {
-      setIsYearly(false)
-    }
-  }, [realPriceId])
-
-  // Initialiser les seats avec l'abonnement actuel
-  useEffect(() => {
-    const activeSubscription = subscriptions.find(
-      (sub) => sub.status === 'active' || sub.status === 'trialing'
-    )
+    const activeSubscription = findActiveSubscription(loaded.subscriptions)
     if (activeSubscription) {
       setSelectedSeats((prev) => ({
         ...prev,
         [activeSubscription.plan]: activeSubscription.seats || 1,
       }))
     }
-  }, [subscriptions])
+  }
+
+  const notifyLoadError = (error: unknown) => {
+    console.error('Erreur lors du chargement des abonnements:', error)
+    toast.error('Impossible de charger les abonnements', {
+      description: !isOwner
+        ? "Vous n'êtes pas propriétaire de cette organisation"
+        : '',
+    })
+  }
+
+  const loadSubscriptions = async () => {
+    try {
+      applySubscriptions(await fetchSubscriptions(referenceId))
+    } catch (error) {
+      notifyLoadError(error)
+    } finally {
+      setLoadedReferenceId(referenceId)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const loaded = await fetchSubscriptions(referenceId)
+        if (cancelled) return
+        applySubscriptions(loaded)
+      } catch (error) {
+        if (cancelled) return
+        notifyLoadError(error)
+      } finally {
+        if (!cancelled) setLoadedReferenceId(referenceId)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referenceId])
 
   const handleUpgrade = async (planId: string, annual = false) => {
     try {
@@ -225,7 +239,7 @@ export default function SubscriptionPage({
             : '',
         })
       } else if (data?.url) {
-        window.location.href = data.url
+        window.location.assign(data.url)
       } else {
         toast.success('Abonnement annulé')
         await loadSubscriptions()

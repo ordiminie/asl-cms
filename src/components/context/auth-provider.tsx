@@ -3,7 +3,7 @@
 import type {Session} from 'better-auth'
 import {useParams} from 'next/navigation'
 import {useTheme} from 'next-themes'
-import React, {createContext, useContext, useEffect, useState} from 'react'
+import React, {createContext, useContext, useEffect} from 'react'
 
 import {usePathname, useRouter} from '@/i18n/navigation'
 import {stripLocalePrefix} from '@/lib/helper/locale-helper'
@@ -30,9 +30,6 @@ export default function AuthProvider({
   initialUser = null,
   initialSession = null,
 }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(initialUser)
-  const [session, setSession] = useState<Session | null>(initialSession)
-
   const {theme, setTheme} = useTheme()
   const router = useRouter()
   const pathname = usePathname()
@@ -41,7 +38,7 @@ export default function AuthProvider({
   // défaut sur les pages statiques, et c'est justement ce décalage qui laisse
   // le préfixe dans le pathname retourné par usePathname().
   const currentLocale = params.locale as string
-  // Synchroniser avec les props quand elles changent
+  // Appliquer les préférences de l'utilisateur quand elles changent
   useEffect(() => {
     //init theme
     const userTheme = initialUser?.settings?.theme
@@ -55,26 +52,12 @@ export default function AuthProvider({
         locale: userLang,
       })
     }
-
-    //init user
-    setUser(initialUser)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialUser])
 
-  useEffect(() => {
-    setSession(initialSession)
-  }, [initialSession])
-
-  // useEffect(() => {
-
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [initialUser])
-
   const value: AuthContextType = {
-    user,
-    session,
-    // setUser,
-    // setSession,
+    user: initialUser,
+    session: initialSession,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -26,15 +26,38 @@ export default function NotificationsManagement({
 }: NotificationsManagementProps) {
   const [data, setData] = useState(initialData)
   const [filter, setFilter] = useState<'all' | 'unread'>('unread')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const {updateUnreadCount, decrementUnreadCount} = useUnreadNotifications()
 
   // Charger les notifications non lues au démarrage
   useEffect(() => {
-    if (filter === 'unread') {
-      handleFilterChange('unread')
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const result = await getNotificationsByFilterAction(
+          `${userId}`,
+          'unread',
+          {page: 1, limit: initialData.pagination.limit}
+        )
+        if (cancelled) return
+        if (result.success && result.data) {
+          setData(result.data)
+        }
+      } catch (error) {
+        if (cancelled) return
+        console.error('Error filtering notifications:', error)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [userId, initialData.pagination.limit])
 
   const handleFilterChange = async (newFilter: 'all' | 'unread') => {
     setFilter(newFilter)

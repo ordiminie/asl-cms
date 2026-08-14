@@ -11,7 +11,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import {arrayMove} from '@dnd-kit/sortable'
-import {useEffect, useState, useTransition} from 'react'
+import {useState, useTransition} from 'react'
 import {toast} from 'sonner'
 
 import {updateTasksOrderAction} from '@/app/[locale]/(app)/team/[slug]/projects/actions'
@@ -32,11 +32,14 @@ interface TaskBoardProps {
 export function TaskBoardComponent({tasks, usersMap = {}}: TaskBoardProps) {
   const [activeTask, setActiveTask] = useState<TaskDTO | null>(null)
   const [localTasks, setLocalTasks] = useState(tasks)
+  const [syncedTasks, setSyncedTasks] = useState(tasks)
   const [isPending, startTransition] = useTransition()
 
-  useEffect(() => {
+  // Resynchroniser sur la prop quand le serveur renvoie de nouvelles tâches
+  if (syncedTasks !== tasks) {
+    setSyncedTasks(tasks)
     setLocalTasks(tasks)
-  }, [tasks])
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

@@ -46,6 +46,23 @@ interface ApiKey {
   expiresAt?: string
 }
 
+const toIsoString = (date: Date | string) =>
+  date instanceof Date ? date.toISOString() : date
+
+const fetchApiKeys = async (): Promise<ApiKey[]> => {
+  const response = await authClient.apiKey.list()
+  if (!response.data) {
+    return []
+  }
+  return response.data.apiKeys.map((key) => ({
+    id: key.id,
+    name: key.name,
+    key: '****-****-****-****', // Hidden key for security
+    createdAt: toIsoString(key.createdAt),
+    expiresAt: key.expiresAt ? toIsoString(key.expiresAt) : undefined,
+  }))
+}
+
 export function ApiKeyManagement() {
   const t = useTranslations('ApiKeysPage')
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
@@ -54,31 +71,14 @@ export function ApiKeyManagement() {
   const [newKeyName, setNewKeyName] = useState('')
   const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<string>('')
+  const [minExpiresAt, setMinExpiresAt] = useState<string>('')
   const [neverExpires, setNeverExpires] = useState(false)
   // Remove visibility toggle since we can't retrieve keys after creation
 
   const loadApiKeys = async () => {
     setIsLoading(true)
     try {
-      const response = await authClient.apiKey.list()
-      if (response.data) {
-        setApiKeys(
-          response.data.apiKeys.map((key) => ({
-            id: key.id,
-            name: key.name,
-            key: '****-****-****-****', // Hidden key for security
-            createdAt:
-              key.createdAt instanceof Date
-                ? key.createdAt.toISOString()
-                : key.createdAt,
-            expiresAt: key.expiresAt
-              ? key.expiresAt instanceof Date
-                ? key.expiresAt.toISOString()
-                : key.expiresAt
-              : undefined,
-          }))
-        )
-      }
+      setApiKeys(await fetchApiKeys())
     } catch (error) {
       console.error('Error loading API keys:', error)
       toast.error(t('errors.loadFailed'))
@@ -157,9 +157,35 @@ export function ApiKeyManagement() {
 
   // Load API keys on component mount
   useEffect(() => {
-    loadApiKeys()
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const keys = await fetchApiKeys()
+        if (cancelled) return
+        setApiKeys(keys)
+      } catch (error) {
+        if (cancelled) return
+        console.error('Error loading API keys:', error)
+        toast.error(t('errors.loadFailed'))
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const handleCreateDialogOpenChange = (open: boolean) => {
+    setIsCreateDialogOpen(open)
+    if (open) {
+      // Minimum 1 minute from now
+      setMinExpiresAt(new Date(Date.now() + 60_000).toISOString().slice(0, 16))
+    }
+  }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString()
@@ -174,7 +200,10 @@ export function ApiKeyManagement() {
             {t('management.description')}
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <Dialog
+          open={isCreateDialogOpen}
+          onOpenChange={handleCreateDialogOpenChange}
+        >
           <DialogTrigger asChild>
             <Button className="w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
@@ -229,9 +258,7 @@ export function ApiKeyManagement() {
                       value={expiresAt}
                       onChange={(e) => setExpiresAt(e.target.value)}
                       disabled={isLoading}
-                      min={new Date(Date.now() + 60000)
-                        .toISOString()
-                        .slice(0, 16)} // Minimum 1 minute from now
+                      min={minExpiresAt}
                     />
                     <p className="text-muted-foreground text-xs">
                       {t('createDialog.expirationHelp')}

@@ -2,7 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {useState, useTransition} from 'react'
-import {useForm} from 'react-hook-form'
+import {useForm, useWatch} from 'react-hook-form'
 import {toast} from 'sonner'
 import {z} from 'zod'
 
@@ -64,8 +64,11 @@ export function AdminGrantCreditsForm() {
     },
   })
 
-  const hasExpiration = form.watch('hasExpiration')
-  const organizationId = form.watch('organizationId')
+  const hasExpiration = useWatch({control: form.control, name: 'hasExpiration'})
+  const organizationId = useWatch({
+    control: form.control,
+    name: 'organizationId',
+  })
 
   const handleOrganizationSelect = (id: string, name: string) => {
     form.setValue('organizationId', id)

@@ -26,6 +26,11 @@ import {
 } from '@/components/ui/table'
 import {authClient} from '@/lib/better-auth/auth-client'
 
+const fetchSessions = async (): Promise<Session[]> => {
+  const {data} = await authClient.listSessions()
+  return data || []
+}
+
 export function ListTokensSection() {
   const t = useTranslations('AccountPage.UserSecuritySection.listTokens')
   const [sessions, setSessions] = useState<Session[]>([])
@@ -35,8 +40,7 @@ export function ListTokensSection() {
   const loadSessions = async () => {
     try {
       setIsLoading(true)
-      const {data} = await authClient.listSessions()
-      setSessions(data || [])
+      setSessions(await fetchSessions())
     } catch (error) {
       console.error('Erreur lors du chargement des sessions:', error)
       toast.error(t('errors.loadSessions'))
@@ -99,7 +103,27 @@ export function ListTokensSection() {
   }
 
   useEffect(() => {
-    loadSessions()
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const data = await fetchSessions()
+        if (cancelled) return
+        setSessions(data)
+      } catch (error) {
+        if (cancelled) return
+        console.error('Erreur lors du chargement des sessions:', error)
+        toast.error(t('errors.loadSessions'))
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

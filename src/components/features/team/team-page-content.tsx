@@ -1,6 +1,7 @@
 'use client'
 
 import {CalendarDays, Coins, FolderKanban, Users, Zap} from 'lucide-react'
+import {useRouter} from 'next/navigation'
 import {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -41,6 +42,7 @@ export function TeamPageContent({
     setCurrentOrganizationWithoutRedirect,
     organizations,
   } = useOrganization()
+  const router = useRouter()
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
 
@@ -101,8 +103,10 @@ export function TeamPageContent({
       }
       toast.success("Vous avez quitté l'organisation avec succès")
       setIsLeaveModalOpen(false)
-      // Rediriger vers le dashboard
-      window.location.href = '/dashboard'
+      // Rediriger vers le dashboard : refresh pour recharger la liste des
+      // organisations côté serveur
+      router.push('/dashboard')
+      router.refresh()
     } catch (error) {
       console.error("Erreur lors de la sortie de l'organisation:", error)
       toast.error("Erreur lors de la sortie de l'organisation")
