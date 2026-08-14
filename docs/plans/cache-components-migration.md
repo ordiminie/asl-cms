@@ -1,7 +1,7 @@
 ---
 validated: no
 status: in-progress
-current_phase: 2
+current_phase: 3
 branch: feat/cache-components-migration
 worktree: .worktrees/cache-components-migration
 research: docs/research/s000-cache-components-migration.md
@@ -251,10 +251,14 @@ runtime dans `<Suspense>`. Un commit par route.
 > À surveiller en revanche dans les chemins de **lecture** : `credit-service.ts:203,714`,
 > `subscription-service.ts:174`. Ils casseront s'ils entrent dans un scope `'use cache'`.
 
-- [ ] **3.1 — Décision de doctrine de cache** (voir Journal D4, à trancher avant 3.2)
-- [ ] **3.2 — `(public)/privacy`, `terms`, `contact`** (statiques, le cas le plus simple)
-- [ ] **3.3 — `(public)/blog` + `blog/page/[page]`**
-- [ ] **3.4 — `blog/[slug]` + `blog/category/*`** (dépend de 0.1)
+- [x] **3.1 — Décision de doctrine de cache** — tranchée, voir D4 (à confirmer par Mike)
+- [~] **3.2 — `(public)/privacy`, `terms`, `contact`** — opt-out retiré, `'use cache'` +
+  `cacheLife('max')` appliqués. Le profil de cache apparaît bien dans la sortie de build
+  (`30d 1y`), **mais les routes restent `ƒ` au lieu de redevenir statiques.** Voir D9.
+- [~] **3.3 — `(public)/blog` + `blog/page/[page]`** — opt-out retiré, build vert, routes en `ƒ`.
+  Le cache du DAL reste à poser, mais bloqué par D9.
+- [~] **3.4 — `blog/[slug]` + `blog/category/*`** — opt-out retiré, build vert, routes en `ƒ`.
+  Bloqué par D9.
 - [ ] **3.5 — `(public)/pricing`** (dépend de 0.4 ; valide le pattern `cacheTag` sur les plans)
 - [ ] **3.6 — `docs` + `docs/[...slug]`** (attention : `docs/[...slug]/page.tsx:186` lit `headers()`)
 - [ ] **3.7 — `src/app/sitemap.ts` et `robots.ts`**

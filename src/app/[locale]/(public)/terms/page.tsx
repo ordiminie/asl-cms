@@ -1,11 +1,8 @@
+import {cacheLife} from 'next/cache'
 import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {routing} from '@/i18n/routing'
-
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
-export const instant = false
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
@@ -26,6 +23,9 @@ export async function generateMetadata({
 }
 
 const Page = async ({params}: {params: Promise<{locale: string}>}) => {
+  'use cache'
+  cacheLife('max')
+
   const {locale} = await params
   setRequestLocale(locale)
   const t = await getTranslations('TermsPage')
