@@ -363,45 +363,19 @@ backfille `cacheLife['default'].stale = staleTimes.static`, `stale-time.js:81-85
 runtime. Empiriquement `cacheLife.default.stale = 180`, qui vient de `next.config.ts:40`.
 → Garder le bloc `staleTimes`. Ce n'est pas un risque.
 
-**D4 — À TRANCHER avant la tâche 3.2 — Doctrine de cache du boilerplate.**
-Trois options cohérentes :
+**D4 — 2026-08-14 — Doctrine de cache : hybride assumé (option 2).**
+Tranché par défaut pour ne pas bloquer la phase 3, **à confirmer par Mike**.
 
-1. `'use cache'` partout + `use cache: remote` pour ce qui doit survivre aux déploiements
-2. `'use cache'` pour le rendu, `unstable_cache` conservé pour les données coûteuses/durables (Stripe)
-3. `'use cache'` + cacheHandler custom
+| Type de donnée                                                  | Mécanisme                                                            | Pourquoi                                                                                         |
+| --------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Rendu de page / lecture publique                                | `'use cache'` + `cacheLife` + `cacheTag` **dans la fonction du DAL** | c'est là que l'architecture en couches place déjà le cache                                       |
+| Donnée coûteuse devant survivre aux déploiements (plans Stripe) | `unstable_cache` conservé                                            | `'use cache'` est in-memory : il repart froid à chaque déploiement et chaque instance serverless |
+| Donnée par utilisateur                                          | ni l'un ni l'autre — `<Suspense>` + streaming                        | dépend de la requête                                                                             |
 
-Recommandation : **option 2** pour la phase 3 (aucune infra requise), en documentant explicitement
-quand basculer vers `remote`. C'est un choix de positionnement produit — ce que les clients vont
-hériter et copier. **Décision de Mike requise.**
-
-**D8 — 2026-08-14 — Le logger Winston bloquait TOUT le prerender.**
-Premier build sous `cacheComponents` : échec sur `/en/account/billing/credit`, avec une stack
-pointant `services/facades/interceptors/create-service-interceptor.ts:17` — le `logger.info` que
-l'intercepteur émet **à chaque appel de méthode de service**. Cause réelle :
-`winston.format.timestamp()` (`src/lib/logger.ts:12`) appelle `new Date()`, soit un accès à l'heure
-courante interdit au prerender (`blocking-prerender-current-time`). Comme toute page prerendue passe
-par une façade, le blocage était systémique — pas propre à cette page.
-Correctif : logger neutralisé quand `process.env.NEXT_PHASE === 'phase-production-build'`. Ces logs
-sont du bruit de build, on ne perd rien. Un seul point de correction débloque toutes les pages.
-À retenir pour la phase 3 : le même problème peut réapparaître **au runtime** à l'intérieur d'un
-scope `'use cache'`, où l'heure courante est également interdite.
-
-**D7 — 2026-08-14 — Base de test en CI : Postgres éphémère, jamais la preview.**
-Les specs e2e ne sont pas en lecture seule : `auth.spec.ts:50` crée un compte
-(`should successfully register a new user`) et `auth.spec.ts:121` se connecte avec `user@gmail.com`,
-qui vient du seed. Les pointer sur la base de preview (`secrets.DATABASE_URL`) la polluerait à chaque
-run. Choix : service `postgres:17` dans le job, `db:push && db:seed` avant les tests. Aucun secret
-supplémentaire requis, isolation totale, et c'est le pattern déjà documenté dans
-`.claude/rules/00-generals/rule-ci-cd-devops.md`.
-
-**D6 — 2026-08-14 — Règle de simplicité : supprimer plutôt que remplacer.**
-Consigne de Mike, applicable à tout le chantier : quand un bout de code pose problème pour la
-migration **et n'a pas de vraie utilité**, on le supprime au lieu de lui trouver un équivalent
-sophistiqué. Ne pas introduire de complexité pour préserver un comportement dont personne n'a besoin.
-Premier cas : `shuffleArray` dans `blog-dal`. Une première version le remplaçait par une rotation
-déterministe dérivée d'un hash du slug — rejetée comme sur-ingénierie. L'ordre naturel suffit.
-Résultat : -18/+3 lignes au lieu de +15.
-En cas de doute sur « est-ce que ça a une vraie utilité », demander plutôt que deviner.
+Les deux autres options écartées : « tout en `use cache: remote` » (demande un cache handler et une
+infra), « cacheHandler custom » (idem, et ça impose un choix d'hébergement aux clients du
+boilerplate). L'option retenue ne demande aucune infra et reste compatible avec un passage ultérieur
+à `remote` : il suffira de changer la directive.
 
 **D5 — 2026-08-14 — TRANCHÉ : aucune raison de garder `generateStaticParams` désactivé.**
 `git show 0b30ca9` montre un commit intitulé « supprimer la fonction generateMetadata… » qui déplaçait
