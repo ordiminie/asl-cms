@@ -1,17 +1,26 @@
+import {notFound} from 'next/navigation'
+import * as rootParams from 'next/root-params'
 import {hasLocale} from 'next-intl'
 import {getRequestConfig} from 'next-intl/server'
 
 import {routing} from './routing'
 
-export default getRequestConfig(async ({requestLocale}) => {
-  // Typically corresponds to the `[locale]` segment
-  const requested = await requestLocale
-  const locale = hasLocale(routing.locales, requested)
-    ? requested
-    : routing.defaultLocale
+/*
+ * La locale est lue via `next/root-params` plutôt que `requestLocale` : c'est ce
+ * qui permet à next-intl de fonctionner sous Cache Components, la lecture du
+ * contexte de requête rendant sinon tout l'arbre dynamique.
+ * Limite connue : root-params n'est pas disponible dans les Route Handlers ni
+ * les Server Actions — y passer la locale explicitement.
+ */
+export default getRequestConfig(async () => {
+  const paramValue = await rootParams.locale()
+
+  if (!hasLocale(routing.locales, paramValue)) {
+    notFound()
+  }
 
   return {
-    locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
+    locale: paramValue,
+    messages: (await import(`../../messages/${paramValue}.json`)).default,
   }
 })
