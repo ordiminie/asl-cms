@@ -1,6 +1,10 @@
 /* eslint-disable no-restricted-properties */
 import {defineConfig, devices} from '@playwright/test'
 
+// Port configurable : permet de lancer la suite quand 3000 est déjà pris
+const PORT = process.env.PLAYWRIGHT_PORT ?? '3000'
+const BASE_URL = `http://localhost:${PORT}`
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -19,7 +23,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
+    baseURL: BASE_URL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -46,10 +50,17 @@ export default defineConfig({
     },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /*
+   * En CI on teste le build de production : le shell statique et le streaming
+   * ne se comportent pas comme en dev, et c'est précisément ce que ces tests
+   * doivent protéger pendant la migration Cache Components.
+   */
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
+    command: process.env.CI
+      ? `pnpm build && pnpm start --port ${PORT}`
+      : `pnpm dev --port ${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
+    timeout: 300_000,
   },
 })
