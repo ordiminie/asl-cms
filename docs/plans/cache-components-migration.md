@@ -1,6 +1,6 @@
 ---
 validated: no
-status: in-progress
+status: blocked-upstream
 current_phase: 3
 branch: feat/cache-components-migration
 worktree: .worktrees/cache-components-migration
