@@ -459,6 +459,27 @@ appliqués. Le build passe, et le profil de cache **est bien pris en compte** (c
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
 
+**D22 — 2026-08-15 — Les hooks refactorés ont enfin des tests, et ils ont été validés par mutation.**
+
+7 specs sur `useOrganization` et `OrganizationSync`
+(`src/components/context/__tests__/organization.test.tsx`) : identités stables, organisation active
+issue de la session, bascule optimiste + `setActive` + `refresh`, no-op sur l'organisation déjà
+courante, activation de la première organisation quand la session n'en porte aucune.
+
+**La première version de ces tests ne valait rien**, et c'est le point à retenir. Elle passait au
+vert avec la régression réintroduite : `user.organizations` est déjà une référence stable, donc le
+`useMemo` ne changeait rien dans le cas testé. Le vrai chemin est l'utilisateur **sans**
+organisation, où `?? []` recrée un tableau à chaque rendu. Test corrigé, puis validé par mutation :
+
+| Mutation             | Résultat         |
+| -------------------- | ---------------- |
+| `useMemo` retiré     | 1 test échoue    |
+| `useCallback` retiré | 2 tests échouent |
+| code correct         | 7 passent        |
+
+Règle à garder : un test écrit pour couvrir une régression connue doit être vérifié en réintroduisant
+la régression. Sinon on ne mesure que du vert.
+
 **D21 — 2026-08-15 — Le build ne peut plus passer sans base.**
 
 Cause racine de D19 et D20 : `pnpm build` restait vert alors que les trois `DATABASE_URL` du projet
