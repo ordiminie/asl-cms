@@ -1,7 +1,7 @@
 ---
 validated: no
 status: in-progress
-current_phase: 3
+current_phase: 5
 branch: feat/cache-components-migration
 worktree: .worktrees/cache-components-migration
 research: docs/research/s000-cache-components-migration.md
@@ -438,6 +438,32 @@ Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `c
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D16 — 2026-08-15 — Les routes authentifiées restent dynamiques : c'est structurel, pas un renoncement.**
+Les 9 routes `(auth)` passent sans correctif — ce sont des formulaires clients. Les **39 routes
+`(app)` et `admin`** échouent toutes sur le même point, vérifié sur `/admin/subscriptions` :
+
+```
+at a.s.user (src/components/context/auth-provider.tsx:29:3)
+  → app-providers → body → html
+```
+
+`admin/layout.tsx:29` fait `await getAuthUser()` (donc `headers()`) et passe le résultat à
+`<AuthProvider initialUser={user}>`, qui enveloppe **tout** l'arbre. Il n'existe aucun enfant à
+isoler dans un `<Suspense>` : c'est littéralement le cas que la doc Next décrit comme « there's no
+child to wrap in `<Suspense>` ».
+
+Décision : `instant = false` conservé sur ces 39 routes, avec la justification écrite **dans chaque
+fichier** plutôt qu'un TODO générique. Ce n'est pas un contournement — c'est l'échappatoire prévue
+par Next pour les routes légitimement bloquantes, et une page admin est per-utilisateur par nature.
+
+**Ce que lèverait le blocage**, si un jour le gain le justifie : changer la façon dont
+`AuthProvider` obtient l'utilisateur — le récupérer côté client, ou le streamer depuis un enfant
+plutôt que le recevoir en prop du layout. C'est une décision d'architecture produit, pas une
+mécanique de migration. Elle touche aussi `withAuth` (l'`await` précède tout le JSX) et la
+sémantique de `forbidden()` sous streaming, qui arrive après le début d'un `200`.
+
+**Prérequis avant d'y toucher** : les 8 specs e2e d'authentification n'ont **jamais tourné**.
 
 **D15 — 2026-08-15 — Cacher le DAL blog force à cacher aussi l'horloge.**
 Poser `'use cache'` sur les 12 fonctions de `blog-dal.ts` a buté sur
