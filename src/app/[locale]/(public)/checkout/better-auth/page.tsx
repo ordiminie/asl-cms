@@ -1,3 +1,5 @@
+import {connection} from 'next/server'
+
 import {
   getEntreprisePlan,
   getFreePlan,
@@ -12,6 +14,12 @@ import CheckoutBetterAuth from './checkout-better-auth'
 export const instant = false
 
 export default async function Page() {
+  // Le SDK Stripe lit `Date.now()` à chaque appel, ce qui est interdit au
+  // prerender. `instant = false` ne suffit pas : il autorise une route
+  // bloquante, pas la lecture de l'horloge. Il faut marquer explicitement le
+  // rendu comme fait à la requête.
+  await connection()
+
   // permet un gestion dynamique des prix (si modifié coté dashboard stripe)
   const [planFree, planPro, planEntreprise, planLifetime] = await Promise.all([
     getFreePlan(),
