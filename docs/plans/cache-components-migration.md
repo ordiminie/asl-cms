@@ -282,12 +282,12 @@ runtime dans `<Suspense>`. Un commit par route.
 - [x] **3.2 — `(public)/privacy`, `terms`, `contact`** — ✅ `○ (Static)`, profil `1d/1w` — opt-out retiré, `'use cache'` +
       `cacheLife('max')` appliqués. Le profil de cache apparaît bien dans la sortie de build
       (`30d 1y`), **mais les routes restent `ƒ` au lieu de redevenir statiques.** Voir D9.
-- [~] **3.3 — `(public)/blog` + `blog/page/[page]`** — opt-out retiré, routes en `◐` (shell
-  prerendu) mais **le contenu n'est pas caché** : le blog-dal utilise encore `cache()` de React.
-  Reste à poser `'use cache'` + `cacheTag` dessus (doctrine D4). — opt-out retiré, build vert, routes en `ƒ`.
-  Le cache du DAL reste à poser, mais bloqué par D9.
-- [~] **3.4 — `blog/[slug]` + `blog/category/*`** — idem 3.3 : `◐`, contenu non caché. — opt-out retiré, build vert, routes en `ƒ`.
-  Bloqué par D9.
+- [x] **3.3 — `(public)/blog` + `blog/page/[page]`** — fait. L'annotation « bloqué par D9 » qui
+      traînait ici était périmée : D9 est mort avec D11, et le blog-dal porte bien 12 scopes
+      `'use cache'` + `cacheLife('days')` + `cacheTag('blog')` (commit `a26c05b`). Vérifié dans la sortie
+      de build : profil `1d / 1w` en face des routes blog, `/en/blog` en `○`.
+- [x] **3.4 — `blog/[slug]` + `blog/category/*`** — idem 3.3, même cache, même vérification.
+      Les routes à params non listés restent `◐`, ce qui est le comportement attendu.
 - [x] **3.5 — `(public)/pricing`** — migrée (dépend de 0.4 ; valide le pattern `cacheTag` sur les plans)
 - [x] **3.6 — `docs` + `docs/[...slug]`** — `docs` en `○`, `[...slug]` opt-out assumé (D13) (attention : `docs/[...slug]/page.tsx:186` lit `headers()`)
 - [x] **3.7 — `src/app/sitemap.ts` et `robots.ts`** — les deux en `○ (Static)`. Les 5
@@ -348,7 +348,8 @@ prerender).
 - [x] table de routes : 42 `○`, 102 `◐`, 35 `ƒ` — les 21 routes `(app)` passent de bloquantes à `◐`.
       Chiffres identiques avec et sans base joignable.
 - [x] 13 specs e2e vertes sur le build de production, base locale seedée (D19)
-- [ ] **parcours manuel restant** : accès admin refusé pour un user standard (doit rester un vrai 403) et changement d'organisation. Les e2e ne couvrent ni l'un ni l'autre.
+- [x] accès admin refusé pour un utilisateur standard — couvert par `e2e/authorization.spec.ts`, et il n'y a pas de 403 : voir D20
+- [ ] **reste** : le changement d'organisation de bout en bout. Les tests unitaires vérifient que `setActive` puis `router.refresh()` sont bien appelés, mais personne n'a constaté que la session serveur reflète ensuite la nouvelle organisation — c'est `router.refresh()` face au cache privé, jamais vérifié en vrai.
 
 ---
 
@@ -590,9 +591,9 @@ justifie un jour.
 `usePathname()`, et sur `team/[slug]` les params ne sont pas connus au prerender. Un `<Suspense>` a
 suffi. Le reste passait déjà grâce au `loading.tsx` du segment, qui fait office de boundary.
 
-**Reste à faire** : le parcours manuel du Gate 4 (login, logout, 403 admin, changement
-d'organisation). Le build ne le couvre pas, et les 8 specs e2e d'authentification n'ont toujours
-jamais tourné.
+**Reste à faire** (au moment de D19) : le parcours manuel du Gate 4. Depuis, login, logout et l'accès
+admin refusé sont couverts par les specs (voir D20) ; seul le changement d'organisation de bout en
+bout reste à constater.
 
 **D17 — 2026-08-15 — D16 EST FAUX. Il existe un pattern officiel pour l'auth sous Cache Components.**
 
