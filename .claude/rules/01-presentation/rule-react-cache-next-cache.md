@@ -93,26 +93,35 @@ segment, `{children}` compris. Il faut pousser la lecture dans un composant plac
 `<Suspense>`.
 
 ```tsx
-// lib/auth.ts — 'use cache: private' peut lire cookies()/headers(),
-// le résultat reste dans le navigateur, jamais sur le serveur
-export async function getCurrentUser(): Promise<User> {
+// user-dal.ts — 'use cache: private' est la seule directive qui peut lire
+// cookies()/headers() ; le résultat reste dans le navigateur, jamais sur le
+// serveur, et ne survit pas à un rechargement de page.
+export const getCurrentUserDal = async (): Promise<CurrentUserContext> => {
   'use cache: private'
-  const {userId} = await getSession()
-  if (!userId) redirect('/login')
-  return findUserById(userId) // ne renvoyer que ce dont le client a besoin
+  cacheLife('minutes')
+
+  const user = await getAuthUser()
+  if (!user) redirect('/login')
+  // ...
 }
 ```
 
+Le `cacheLife` n'est pas décoratif : sous 5 minutes de `stale`, le contenu sort
+de l'App Shell de la route et les navigations authentifiées cessent d'être
+instantanées ; sous 30 secondes, il sort carrément des prerenders. `minutes`
+donne `stale` 5 min et `revalidate` 1 min.
+
 ```tsx
 // Le layout ne fait PAS await : il crée la promesse et la passe telle quelle
-function Dashboard() {
-  const userPromise = getCurrentUser()
+export default function AppLayout({children}) {
+  const userPromise = getCurrentUserDal()
   return (
-    <UserProvider userPromise={userPromise}>
-      <Suspense fallback={<span>…</span>}>
-        <UserBadge />
+    <AuthProvider userPromise={userPromise}>
+      <Suspense fallback={<SidebarSkeleton />}>
+        <AppSidebar />
       </Suspense>
-    </UserProvider>
+      {children}
+    </AuthProvider>
   )
 }
 ```
@@ -127,21 +136,34 @@ fonction interne — sinon un appelant peut demander les données d'un autre uti
 ⚠️ Les clés de cache et les `cacheTag` sont stockés **en clair**. Jamais de secret ni de donnée
 personnelle dedans : indexer sur un identifiant stable.
 
-> **État du boilerplate** : ce pattern n'est **pas encore appliqué**. Les 39 routes `(app)` et
-> `admin` portent `instant = false` parce que leurs layouts font un `await` sur la session. C'est le
-> chantier restant, voir D17 dans `docs/plans/cache-components-migration.md`.
+**Un provider ne doit jamais suspendre** : il emporterait `{children}` avec lui. `AuthProvider` et
+`OrganizationProvider` ne portent que la promesse et l'état client ; ce sont les hooks
+(`useAuth`, `useOrganization`) qui déroulent, et les effets vivent dans des composants dédiés
+(`UserPreferencesSync`, `OrganizationSync`) montés derrière un `<Suspense>`.
+
+**Le contrôle d'accès n'est pas dans le stream.** Un `redirect()` ou un `forbidden()` déclenché en
+cours de rendu part après le début d'un `200` et ne peut plus changer le statut. Le gating grossier
+(cookie de session présent ou non) est donc fait dans `src/proxy.ts`, et un contrôle de rôle qui doit
+rendre un vrai 403 garde son layout bloquant. Voir
+[rule-safe-route.md](rule-safe-route.md).
+
+> **État du boilerplate** : appliqué. Les 21 routes `(app)` sont en `◐` (shell prerendu, session
+> streamée). `admin` reste bloquant par choix, pour le 403. Voir D17 et D18 dans
+> `docs/plans/cache-components-migration.md`.
 
 ## Routes bloquantes assumées
 
 Une route légitimement dépendante de la requête porte `export const instant = false` **avec la raison
 écrite dans le fichier**, jamais un TODO générique.
 
-Cas actuels :
+Il en reste quatre dans tout `src/app`, un par fichier qui décide :
 
-- les 39 routes `(app)` et `admin` — **provisoire** : le layout `await` la session à son niveau
-  supérieur. Voir la section Authentification ci-dessus pour le pattern qui lève ça.
-- `checkout/*` — prix, session, état Stripe
+- `admin/layout.tsx` — le contrôle du rôle ADMIN doit rendre un vrai 403
+- `checkout/[priceId]` et `checkout/better-auth` — prix, session, état Stripe
 - `docs/[...slug]` — lit `x-theme` pour la coloration Shiki
+
+L'opt-out d'un layout couvre son segment : ne pas le répéter sur chaque page en dessous, ça ne change
+rien et ça périme.
 
 ## Le piège du logger
 

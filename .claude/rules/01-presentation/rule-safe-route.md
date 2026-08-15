@@ -1,422 +1,139 @@
 ---
-description: Sécurisation des Routes et Layouts avec withAuth HOC
+description: Sécurisation des Routes et Layouts sous Cache Components
 paths:
   - '**page.tsx'
   - '**layout.tsx'
 ---
 
-# Sécurisation des Routes et Layouts avec withAuth
+# Sécurisation des Routes et Layouts
 
-Guide complet pour sécuriser les routes et layouts avec les HOCs `withAuth` et `withAuthAdmin` dans Next.js 15 App Router.
+Sous `cacheComponents`, une route authentifiée doit rester sécurisée **sans**
+bloquer son shell. D'où un contrôle en quatre niveaux, chacun avec un rôle
+précis.
 
-## Principe de Sécurité Multi-Couches
+## Les quatre niveaux
 
-**STRATÉGIE DE DÉFENSE EN PROFONDEUR** : Next.js 15 recommande une protection à plusieurs niveaux pour maximiser la sécurité :
+| Niveau            | Où                          | Ce qu'il décide                              |
+| ----------------- | --------------------------- | -------------------------------------------- |
+| 0. Proxy          | `src/proxy.ts`              | pas de cookie de session → redirect `/login` |
+| 1. Route          | layout ou page (`withAuth`) | rôle insuffisant → `forbidden()` (403)       |
+| 2. Server Actions | `requireActionAuth()`       | chaque mutation revérifie la session         |
+| 3. Services / DAL | autorisation CASL           | qui a le droit sur quelle ressource          |
 
-1. ✅ **Layout** - Protection de toute la section de routes
-2. ✅ **Page** - Protection supplémentaire au niveau de chaque page
-3. ✅ **Server Actions** - Protection via `requireActionAuth()` (voir [rule-safe-server-action.mdc](.cursor/rules/01-presentation/rule-safe-server-action.mdc))
-4. ✅ **Data Access Layer** - Protection au plus près des données
+Le niveau 0 est un **garde-fou de routage**, pas une preuve : la présence d'un
+cookie ne dit rien de sa validité. Il existe pour trancher avant le premier
+octet — sous streaming, un `redirect()` déclenché en cours de rendu part après le
+début d'un `200` et ne peut plus changer le statut. La sécurité réelle reste aux
+niveaux 2 et 3, au plus près de la donnée.
 
-> ⚠️ **IMPORTANT** : Les layouts ne se re-rendent pas lors de la navigation côté client. Une protection **uniquement** au niveau layout peut laisser des failles de sécurité. **Protégez TOUJOURS les layouts ET les pages.**
+## La règle d'or des layouts
 
-## HOCs d'Authentification Disponibles
+**Ne jamais `await` la session au niveau supérieur d'un layout.** Ça tient tout
+le segment derrière la requête, `{children}` compris, et le shell statique est
+perdu.
 
-Les HOCs sont définis dans [with-auth.tsx](src/components/features/auth/with-auth.tsx) :
-
-```tsx
-// HOC générique avec rôle optionnel
-const withAuth = <P extends object>(
-  WrappedComponent: React.ComponentType<P & WithAuthProps>,
-  requiredRole?: Roles
-)
-
-// HOC pour les routes admin
-export const withAuthAdmin = <P extends object>(
-  WrappedComponent: React.ComponentType<P & WithAuthProps>
-) => withAuth(WrappedComponent, RoleConst.ADMIN)
-```
-
-### Comportement des HOCs
-
-1. **Vérifie l'authentification** via `getAuthUser()`
-2. **Vérifie le rôle requis** via `hasRequiredRole()`
-3. **Redirige vers `/login`** si non authentifié
-4. **Retourne 403 Forbidden** si rôle insuffisant
-5. **Passe l'utilisateur** au composant protégé via prop `user`
-
-## Pattern 1 : Protection Routes Utilisateur Standard
-
-### Layout Utilisateur Protégé
-
-**Référence : [src/app/[locale]/(app)/layout.tsx](<mdc:src/app/[locale]/(app)/layout.tsx>)**
+Le layout crée la promesse et la passe telle quelle :
 
 ```tsx
-import {withAuth} from '@/components/features/auth/with-auth'
-import {
-  getAuthUser,
-  getSessionAuth,
-} from '@/services/authentication/auth-service'
-import {RoleConst} from '@/services/types/domain/auth-types'
+// src/app/[locale]/(app)/layout.tsx
+import {getCurrentUserDal} from '@/app/dal/user-dal'
 
-async function AppLayout({children}: {children: React.ReactNode}) {
-  const user = await getAuthUser()
-  const sessionAuth = await getSessionAuth()
+export default function AppLayout({children}: {children: React.ReactNode}) {
+  const userPromise = getCurrentUserDal() // créée, jamais attendue
 
   return (
-    <AuthProvider initialUser={user} initialSession={sessionAuth?.session}>
-      <SidebarProvider>
-        <AppSidebar user={user} />
-        <SidebarInset>
-          <main>{children}</main>
-        </SidebarInset>
-      </SidebarProvider>
-    </AuthProvider>
-  )
-}
-
-// ✅ OBLIGATOIRE - Protection au niveau layout
-export default withAuth(AppLayout, RoleConst.USER)
-```
-
-### Page Utilisateur Protégée
-
-**Référence : [src/app/[locale]/(app)/dashboard/page.tsx](<mdc:src/app/[locale]/(app)/dashboard/page.tsx>)**
-
-```tsx
-import {withAuth} from '@/components/features/auth/with-auth'
-import {RoleConst} from '@/services/types/domain/auth-types'
-
-async function DashboardPage() {
-  // Logique de la page
-  return <div>Dashboard</div>
-}
-
-// ✅ OBLIGATOIRE - Protection supplémentaire au niveau page
-export default withAuth(DashboardPage, RoleConst.USER)
-```
-
-## Pattern 2 : Protection Routes Admin
-
-### Layout Admin Protégé
-
-**Référence : [src/app/[locale]/admin/layout.tsx](src/app/[locale]/admin/layout.tsx)**
-
-```tsx
-import {withAuthAdmin} from '@/components/features/auth/with-auth'
-import {
-  getAuthUser,
-  getSessionAuth,
-} from '@/services/authentication/auth-service'
-
-async function AdminLayout({children}: {children: React.ReactNode}) {
-  const user = await getAuthUser()
-  const sessionAuth = await getSessionAuth()
-
-  return (
-    <AuthProvider initialUser={user} initialSession={sessionAuth?.session}>
-      <SidebarProvider>
-        <AdminSidebar user={user} />
-        <SidebarInset>
-          <main>{children}</main>
-        </SidebarInset>
-      </SidebarProvider>
-    </AuthProvider>
-  )
-}
-
-// ✅ OBLIGATOIRE - Protection admin au niveau layout
-export default withAuthAdmin(AdminLayout)
-```
-
-### Page Admin Protégée
-
-**Référence : [src/app/[locale]/admin/page.tsx](src/app/[locale]/admin/page.tsx)**
-
-```tsx
-import {withAuthAdmin} from '@/components/features/auth/with-auth'
-
-async function AdminPage() {
-  // Logique admin
-  return <div>Admin Dashboard</div>
-}
-
-// ✅ OBLIGATOIRE - Protection admin au niveau page
-export default withAuthAdmin(AdminPage)
-```
-
-## Pattern 3 : Page avec Accès à l'Utilisateur
-
-Quand vous avez besoin des données utilisateur dans votre page :
-
-```tsx
-import {withAuth, WithAuthProps} from '@/components/features/auth/with-auth'
-import {RoleConst} from '@/services/types/domain/auth-types'
-
-// ✅ Le prop 'user' est automatiquement injecté par withAuth
-async function ProfilePage({user}: WithAuthProps) {
-  return (
-    <div>
-      <h1>Profil de {user.name}</h1>
-      <p>Email: {user.email}</p>
-    </div>
-  )
-}
-
-export default withAuth(ProfilePage, RoleConst.USER)
-```
-
-## Architecture de Sécurité Multi-Niveaux
-
-```
-┌─────────────────────────────────────────┐
-│  1. Layout (withAuth/withAuthAdmin)     │ ← Premier niveau de protection
-│     - Protège toute la section          │
-│     - Vérifie auth + rôle               │
-└─────────────────────────────────────────┘
-              ↓
-┌─────────────────────────────────────────┐
-│  2. Page (withAuth/withAuthAdmin)       │ ← Deuxième niveau (OBLIGATOIRE)
-│     - Double vérification               │
-│     - Protection navigation client      │
-└─────────────────────────────────────────┘
-              ↓
-┌─────────────────────────────────────────┐
-│  3. Server Actions (requireActionAuth)  │ ← Troisième niveau
-│     - Protection des mutations          │
-│     - Voir rule-safe-server-action.mdc  │
-└─────────────────────────────────────────┘
-              ↓
-┌─────────────────────────────────────────┐
-│  4. Data Access Layer                   │ ← Dernier niveau (le plus sûr)
-│     - Protection au plus près données   │
-└─────────────────────────────────────────┘
-```
-
-## Règles Strictes à Respecter
-
-### ✅ À FAIRE
-
-1. **Protéger TOUJOURS layout ET page**
-
-```tsx
-// Layout
-export default withAuthAdmin(AdminLayout)
-
-// Page
-export default withAuthAdmin(AdminPage)
-```
-
-2. **Utiliser le bon HOC selon le contexte**
-
-```tsx
-// Routes utilisateur
-export default withAuth(Component, RoleConst.USER)
-
-// Routes admin
-export default withAuthAdmin(Component)
-```
-
-3. **Récupérer les données utilisateur si nécessaire**
-
-```tsx
-async function MyLayout({children}: {children: React.ReactNode}) {
-  const user = await getAuthUser() // ✅ Pour passer aux composants enfants
-  const sessionAuth = await getSessionAuth() // ✅ Pour AuthProvider
-
-  return (
-    <AuthProvider initialUser={user} initialSession={sessionAuth?.session}>
-      {children}
+    <AuthProvider userPromise={userPromise}>
+      <OrganizationProvider>
+        <Suspense fallback={null}>
+          <UserPreferencesSync />
+          <OrganizationSync />
+        </Suspense>
+        <Suspense fallback={<SidebarSkeleton />}>
+          <AppSidebar />
+        </Suspense>
+        {children}
+      </OrganizationProvider>
     </AuthProvider>
   )
 }
 ```
 
-4. **Combiner avec protection Server Actions**
+`getCurrentUserDal()` est en `'use cache: private'` : la seule directive
+autorisée à lire `cookies()` / `headers()`, avec un résultat gardé côté
+navigateur et jamais sur le serveur. Elle redirige vers `/login` si la session
+est absente. Détail dans
+[rule-react-cache-next-cache.md](rule-react-cache-next-cache.md).
+
+**Côté client**, `useAuth()` et `useOrganization()` déroulent la promesse avec
+`use()` : ils **suspendent**, donc ne s'appellent que depuis un composant placé
+derrière un `<Suspense>`. Un provider qui suspend emporte `{children}` avec lui —
+c'est pour ça que les effets vivent dans `UserPreferencesSync` et
+`OrganizationSync` plutôt que dans les providers.
+
+## Le contrôle de rôle : `withAuth`
+
+`withAuth` (et son raccourci `withAuthAdmin`) fait un `await` sur la session,
+redirige si non authentifié, appelle `forbidden()` si le rôle manque, et injecte
+`user` en prop.
 
 ```tsx
-// Dans la page
+// Sur une page : la page streame derrière le loading.tsx du segment
+export default withAuth(Page)
 export default withAuthAdmin(AdminPage)
-
-// Dans l'action associée
-export async function adminAction() {
-  await requireActionAuth({
-    roles: [RoleConst.ADMIN],
-  }) // ✅ Double protection
-  // ...
-}
 ```
 
-### ❌ À ÉVITER
-
-1. **Ne JAMAIS protéger uniquement le layout**
-
-```tsx
-// Layout
-export default withAuthAdmin(AdminLayout) // ✅ OK
-
-// Page
-export default AdminPage // ❌ DANGER - Pas de protection !
-```
-
-2. **Ne pas mélanger les niveaux de permission**
+Sur un **layout**, l'`await` de `withAuth` bloque le segment : la route doit
+alors porter `export const instant = false` avec la raison écrite dans le
+fichier. C'est le cas de `admin/layout.tsx`, et c'est assumé — un vrai 403 doit
+être tranché avant le premier octet.
 
 ```tsx
-// Layout admin
-export default withAuthAdmin(AdminLayout) // ADMIN requis
+// src/app/[locale]/admin/layout.tsx
+export const instant = false // contrôle de rôle ADMIN, doit rendre un vrai 403
 
-// Page avec USER
-export default withAuth(AdminPage, RoleConst.USER) // ❌ Incohérent !
-```
-
-3. **Ne pas oublier getAuthUser dans le layout**
-
-```tsx
-async function AppLayout({children}: {children: React.ReactNode}) {
-  // ❌ Pas de user ni session récupérés
-  return <div>{children}</div>
-}
-
-export default withAuth(AppLayout)
-```
-
-4. **Ne pas utiliser withAuth sur des composants client**
-
-```tsx
-'use client' // ❌ ERREUR
-
-function ClientComponent() {
-  return <div>Client</div>
-}
-
-export default withAuth(ClientComponent) // ❌ withAuth nécessite Server Component
-```
-
-## Templates de Code
-
-### Template Layout Protégé
-
-```tsx
-import {withAuth} from '@/components/features/auth/with-auth'
-import {
-  getAuthUser,
-  getSessionAuth,
-} from '@/services/authentication/auth-service'
-import {RoleConst} from '@/services/types/domain/auth-types'
-import AuthProvider from '@/components/context/auth-provider'
-
-async function MyLayout({children}: {children: React.ReactNode}) {
-  // 1. Récupérer les données auth
-  const user = await getAuthUser()
-  const sessionAuth = await getSessionAuth()
-
-  // 2. Structure du layout
+function AdminLayout({
+  children,
+  user,
+}: {children: React.ReactNode} & WithAuthProps) {
   return (
-    <AuthProvider initialUser={user} initialSession={sessionAuth?.session}>
-      {/* Votre layout */}
+    <AuthProvider userPromise={getCurrentUserDal()}>
+      <AdminSidebar user={user} />
       {children}
     </AuthProvider>
   )
 }
 
-// 3. Protection avec le rôle approprié
-export default withAuth(MyLayout, RoleConst.USER) // ou withAuthAdmin(MyLayout)
+export default withAuthAdmin(AdminLayout)
 ```
 
-### Template Page Protégée
+Pour une section **sans contrôle de rôle** (le groupe `(app)`), aucun `withAuth`
+sur le layout : le proxy fait le gating, `getCurrentUserDal()` redirige, et la
+route garde son shell statique.
 
-```tsx
-import {withAuth, WithAuthProps} from '@/components/features/auth/with-auth'
-import {RoleConst} from '@/services/types/domain/auth-types'
+## À faire / à éviter
 
-// Si besoin de l'utilisateur, ajouter WithAuthProps
-async function MyPage({user}: WithAuthProps) {
-  // Logique de la page
-  return <div>Page de {user.name}</div>
-}
+✅ **À faire**
 
-// Protection avec le même niveau que le layout
-export default withAuth(MyPage, RoleConst.USER) // ou withAuthAdmin(MyPage)
-```
+- Créer la promesse de session dans le layout, la passer aux providers.
+- Mettre chaque consommateur de `useAuth()` / `useOrganization()` derrière un
+  `<Suspense>` avec un fallback de même gabarit (sinon le contenu saute).
+- Ajouter le segment protégé à `AUTHENTICATED_SEGMENTS` dans `src/proxy.ts`.
+- Protéger la Server Action associée avec `requireActionAuth()`, toujours.
 
-## Relation avec les Server Actions
+❌ **À éviter**
 
-Les Server Actions doivent ÉGALEMENT être protégées avec `requireActionAuth()` :
+- `await getAuthUser()` en tête de layout — bloque tout le segment.
+- Appeler `useAuth()` dans un provider : il suspendrait `{children}`.
+- Se reposer sur le proxy pour la sécurité : il ne valide rien.
+- `withAuth` sur un composant client : les HOCs sont des Server Components.
 
-```tsx
-// Page protégée
-export default withAuthAdmin(AdminPage)
+## Checklist
 
-// Action associée - DOIT aussi être protégée
-;('use server')
-
-import {requireActionAuth} from '@/app/dal/user-dal'
-import {RoleConst} from '@/services/types/domain/auth-types'
-
-export async function adminAction() {
-  // ✅ OBLIGATOIRE - Protection identique
-  await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
-  })
-
-  // Logique métier
-}
-```
-
-**Référence complète** : Voir [rule-safe-server-action.mdc](.cursor/rules/01-presentation/rule-safe-server-action.mdc) pour la protection des Server Actions.
-
-## Rôles Disponibles
-
-```tsx
-enum RoleConst {
-  USER = 'USER', // Utilisateur standard
-  ADMIN = 'ADMIN', // Administrateur
-  SUPER_ADMIN = 'SUPER_ADMIN', // Super administrateur
-}
-```
-
-## Checklist de Sécurité Routes
-
-- [ ] Layout protégé avec `withAuth` ou `withAuthAdmin`
-- [ ] Page protégée avec le MÊME niveau que le layout
-- [ ] `getAuthUser()` et `getSessionAuth()` appelés dans le layout
-- [ ] AuthProvider configuré avec `initialUser` et `initialSession`
-- [ ] Rôles appropriés spécifiés (USER, ADMIN, SUPER_ADMIN)
-- [ ] Server Actions associées protégées avec `requireActionAuth()`
-- [ ] Tests de sécurité pour vérifier redirections et 403
-- [ ] Prop `user` utilisée si nécessaire (avec `WithAuthProps`)
-
-## Pourquoi la Double Protection ?
-
-### Problème : Layout seul
-
-> **Les layouts ne se re-rendent pas lors de la navigation côté client**. Si seul le layout est protégé, une navigation entre pages de la même section peut bypasser la vérification.
-
-### Solution : Layout + Page
-
-La double protection assure :
-
-1. **Protection initiale** au niveau layout (SSR)
-2. **Protection continue** au niveau page (navigation client)
-3. **Défense en profondeur** recommandée par Next.js 2025
-4. **Synchronisation** avec Server Actions et DAL
-
-## Bonnes Pratiques
-
-1. **Cohérence Layout/Page** : Même niveau de protection (USER ou ADMIN)
-2. **Données Utilisateur** : Toujours récupérer `user` et `session` dans le layout
-3. **AuthProvider** : Passer `initialUser` et `initialSession` pour l'état client
-4. **Server Components** : Les HOCs fonctionnent uniquement avec Server Components
-5. **Server Actions** : Combiner avec `requireActionAuth()` pour protection complète
-
-## En Cas de Problème en Production
-
-Si un admin n'a pas accès en production alors que ça fonctionne en dev :
-
-1. **Vérifier les variables d'environnement** (AUTH_SECRET, cookies, domaine)
-2. **Vérifier Better Auth** configuration et session persistence
-3. **Vérifier les logs** pour erreurs de redirection ou "headers already sent"
-4. **Vérifier le cache** Next.js (ISR/Static Generation)
-5. **Tester la session** avec `getAuthUser()` directement
-
-Cette architecture multi-couches garantit une sécurité maximale en respectant les recommandations Next.js 15 pour 2025.
+- [ ] Le segment est listé dans `AUTHENTICATED_SEGMENTS` (`src/proxy.ts`)
+- [ ] Le layout ne fait aucun `await` sur la session
+- [ ] Chaque consommateur de la session est derrière un `<Suspense>`
+- [ ] Contrôle de rôle : `withAuth`/`withAuthAdmin` + `instant = false` justifié
+      dans le fichier si c'est sur un layout
+- [ ] Server Actions protégées par `requireActionAuth()`
+- [ ] Autorisation métier dans les services (CASL), jamais dans l'UI seule
+- [ ] Vérifié à la main : login, logout, accès admin refusé pour un user standard

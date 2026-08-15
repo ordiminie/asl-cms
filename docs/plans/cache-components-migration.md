@@ -1,7 +1,7 @@
 ---
 validated: no
-status: phases 0-3 et 5 terminées, phase 4 classée
-current_phase: 5
+status: phases 0-5 terminées
+current_phase: 4
 branch: feat/cache-components-migration
 worktree: .worktrees/cache-components-migration
 research: docs/research/s000-cache-components-migration.md
@@ -17,8 +17,8 @@ last_updated: 2026-08-15
 > qui couvre **tout** ce que couvre le boilerplate — pas seulement les parties faciles.
 > Les tests e2e sont **dépriorisés** : bienvenus en local si l'occasion se présente, jamais un gate.
 >
-> **Chantier n°1 : l'authentification (D17).** Lire d'abord
-> <https://nextjs.org/docs/app/guides/authentication-with-cache-components>.
+> **Chantier n°1 : l'authentification (D17) — FAIT le 2026-08-15, voir D18.** Les 21 routes `(app)`
+> sont passées en `◐`. Il reste 4 opt-out dans tout `src/app`, tous justifiés.
 > Ne pas déduire un pattern d'un symptôme de build — chercher le guide officiel d'abord.
 
 Tu reprends ce chantier dans une nouvelle session, ou tu es un agent qui n'a aucun contexte.
@@ -310,41 +310,40 @@ prerender).
 
 **Le seul chantier réellement architectural.** À faire en dernier, quand le pattern est éprouvé.
 
-- [~] **4.1 — `AuthProvider` racine** — classé, voir D16
-  `src/components/context/auth-provider.tsx` (`'use client'`) utilise `useRouter`,
-  `usePathname:35`, `useParams:36`, et enveloppe les 64 pages via
-  `[locale]/layout.tsx:29` → `base-layout.tsx:24` → `app-providers.tsx:26`.
-  Dépend de 0.5 (sans lui, `locale` est fallback param sur 40 pages).
+- [x] **4.1 — `AuthProvider` racine** — porte la promesse de session, plus sa valeur. `useAuth()`
+      déroule avec `use()` et suspend ; les effets thème/langue sont sortis dans
+      `UserPreferencesSync`, monté derrière un `<Suspense>`. Un provider qui suspend emporterait
+      `{children}`. Même traitement pour `OrganizationProvider` (état client seul) et
+      `OrganizationSync`.
 
-- [~] **4.2 — `withAuth`** — classé, voir D16
-  `src/components/features/auth/with-auth.tsx:17` `await getAuthUser()`, `:24` `redirect()`,
-  `:27` `forbidden()`, `:30` premier JSX. Appliqué à `(app)/layout.tsx:62`, `admin/layout.tsx:49`
-  et 17 pages. Envelopper `{children}` de `<Suspense>` **ne sert à rien**, l'await est en amont.
+- [x] **4.2 — `withAuth`** — conservé, mais cantonné au **contrôle de rôle**. `(app)/layout.tsx` ne
+      l'utilise plus : le gating vient du proxy et `getCurrentUserDal()` redirige. `admin/layout.tsx`
+      le garde et reste bloquant, assumé (4.6).
 
-- [~] **4.3 — Contrôle d'accès dans `proxy.ts`** — non requis tant que 4.1/4.2 ne sont pas faits (D16)
-  Sous streaming, `forbidden()` arrive après le début d'un `200` et ne peut plus changer le statut.
-  La doc dit : « run that check in `proxy` instead ». `src/proxy.ts` ne fait aujourd'hui **aucune**
-  auth (routing next-intl + cookie de thème).
-  ⚠️ Décision de sécurité : ne pas dégrader le modèle d'autorisation CASL existant. Le proxy fait
-  le gating grossier (authentifié / pas authentifié), les services gardent l'autorisation fine.
+- [x] **4.3 — Contrôle d'accès dans `proxy.ts`** — `getSessionCookie` de Better Auth, sans appel
+      base : pas de cookie sur `/account`, `/admin`, `/chat`, `/dashboard`, `/team` → redirect
+      `/{locale}/login`. Contrôle optimiste assumé comme tel ; l'autorisation CASL n'est pas touchée.
 
-- [~] **4.4 — `rule-safe-route.md`** — inchangée : le modèle layout+page reste valide (D16)
-  La règle actuelle (`:21`) impose la protection au layout **et** à la page. Le nouveau modèle
-  change ça. La règle doit refléter le code, sinon les prochains agents produiront du faux.
+- [x] **4.4 — `rule-safe-route.md`** — réécrite sur le code réel : les 4 niveaux (proxy, route,
+      Server Action, services), la règle d'or des layouts, et la raison de l'opt-out admin.
+      `rule-react-cache-next-cache.md` et la doc client `05-authorization/02-route-protection.mdx`
+      mises à jour aussi — cette dernière décrivait un `src/middleware.ts` qui n'a jamais existé.
 
-- [~] **4.5 — `await searchParams`** — sans objet : ces 7 pages sont admin, donc bloquantes (D16)
-  `admin/blog:17` (Suspense en `:22`), `admin/organizations:25`, `admin/plans:21`,
-  `admin/submissions:27`, `admin/subscriptions:25`, `admin/users:21`,
-  `(public)/checkout/[priceId]:18` (aucun Suspense).
-  Passer la promesse en prop au composant enveloppé, ne pas l'await en tête.
+- [x] **4.5 — `await searchParams`** — sans objet : les 7 pages concernées sont admin ou checkout,
+      qui restent bloquantes par choix.
 
-- [~] **4.6 — Derniers `instant = false`** — 42 conservés délibérément, justifiés dans chaque fichier (D16)
+- [x] **4.6 — Derniers `instant = false`** — 4 dans tout `src/app`, un par fichier qui décide :
+      `admin/layout.tsx` (403), `checkout/[priceId]`, `checkout/better-auth` (D12),
+      `docs/[...slug]` (D13). Les 17 opt-out des pages admin étaient redondants avec celui du
+      layout : retirés, table de routes inchangée.
 
 ### Gate 4 (bloquant)
 
-Gate 3 + `grep -rn "instant = false" src/app` → 0 (hors opt-out justifiés) + parcours manuel :
-login, logout, accès admin refusé pour un user standard (doit rester un vrai 403), changement
-d'organisation.
+- [x] lint 0 erreur, tsc 0 erreur, 374 tests passed, build exit 0
+- [x] `grep -rn "instant = false" src/app` → 4, tous justifiés dans leur fichier
+- [x] table de routes : 42 `○`, 102 `◐`, 35 `ƒ` — les 21 routes `(app)` passent de bloquantes à `◐`
+- [ ] **parcours manuel restant** : login, logout, accès admin refusé pour un user standard (doit
+      rester un vrai 403), changement d'organisation. À faire sur `pnpm dev` avec le seed.
 
 ---
 
@@ -454,6 +453,49 @@ Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `c
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D18 — 2026-08-15 — L'authentification est migrée. Le 403 reste bloquant, par choix.**
+
+Le pattern de D17 est appliqué. Résultat mesuré : les 21 routes `(app)` passent de bloquantes à `◐`
+(shell prerendu, session streamée). 42 `○`, 102 `◐`, 35 `ƒ`.
+
+**Ce qui a été fait**, dans l'ordre des commits :
+
+1. `getCurrentUserDal()` en `'use cache: private'` + `cacheLife('minutes')` dans `user-dal.ts`.
+   `getAuthUser()` est laissé **intact** : il reste la vérité serveur, relue à chaque requête par les
+   services, les Server Actions et CASL. Le cache privé ne sert qu'à l'UI — sinon une identité gardée
+   côté navigateur piloterait l'autorisation serveur.
+2. Les providers portent la promesse, les hooks déroulent, les effets partent dans
+   `UserPreferencesSync` et `OrganizationSync`.
+3. Gating dans le proxy via `getSessionCookie`.
+4. Opt-out retirés : 21 pages `(app)`, puis les 17 pages admin où ils étaient redondants.
+
+**Arbitrage tranché par Mike : option A pour le 403.** Trois options étaient sur la table pour le
+contrôle de rôle admin — proxy léger + admin bloquant, proxy en runtime Node appelant
+`auth.api.getSession()`, ou cookie cache Better Auth portant le rôle. Retenu : le proxy fait le
+gating grossier sans appel base, et `admin/layout.tsx` garde son contrôle de rôle bloquant. Un vrai
+403 doit être tranché avant le premier octet ; sous streaming, `forbidden()` part après le début d'un
+`200`. Les deux autres options font migrer les 17 routes admin en plus, au prix d'un appel session
+par navigation ou d'un rôle potentiellement périmé dans un cookie. À rouvrir si le gain sur admin le
+justifie un jour.
+
+**Trois choses trouvées en relisant le code contre la doc, après coup :**
+
+- `use cache: private` **sans `cacheLife`** laissait le profil implicite. Le seuil compte : sous
+  5 min de `stale`, le contenu sort de l'App Shell de la route ; sous 30 s, des prerenders.
+- `useOrganization()` recréait `organizations` et `setCurrentOrganization` à chaque rendu, alors que
+  l'ancien provider les mémoïsait et que `team-page-content` les met dans les dépendances d'un
+  `useEffect` qui appelle le setter. Boucle de rendu en puissance. `useMemo`/`useCallback` rétablis.
+- La doc client `02-route-protection.mdx` décrivait un `src/middleware.ts` avec des helpers
+  inexistants. Remplacée par le vrai `proxy.ts`.
+
+**Le seul vrai bloquant du groupe `(app)`** n'était pas la session mais `AppBreadcrumb` : il appelle
+`usePathname()`, et sur `team/[slug]` les params ne sont pas connus au prerender. Un `<Suspense>` a
+suffi. Le reste passait déjà grâce au `loading.tsx` du segment, qui fait office de boundary.
+
+**Reste à faire** : le parcours manuel du Gate 4 (login, logout, 403 admin, changement
+d'organisation). Le build ne le couvre pas, et les 8 specs e2e d'authentification n'ont toujours
+jamais tourné.
 
 **D17 — 2026-08-15 — D16 EST FAUX. Il existe un pattern officiel pour l'auth sous Cache Components.**
 
