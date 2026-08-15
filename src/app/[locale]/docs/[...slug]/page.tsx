@@ -14,11 +14,10 @@ import {
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
 
-// TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
-// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+// Lit le thème dans les headers pour la coloration Shiki : le prerender figerait
+// une seule variante (code clair en dark mode). À lever en passant Shiki en
+// dual-theme (themes: {light, dark}), qui produit une sortie pilotée par CSS.
 export const instant = false
-
-//disable because shiki theme
 
 interface DocsPageProps {
   params: Promise<{

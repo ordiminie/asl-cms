@@ -263,13 +263,13 @@ runtime dans `<Suspense>`. Un commit par route.
 > `subscription-service.ts:174`. Ils casseront s'ils entrent dans un scope `'use cache'`.
 
 - [x] **3.1 — Décision de doctrine de cache** — tranchée, voir D4 (à confirmer par Mike)
-- [~] **3.2 — `(public)/privacy`, `terms`, `contact`** — opt-out retiré, `'use cache'` +
-  `cacheLife('max')` appliqués. Le profil de cache apparaît bien dans la sortie de build
-  (`30d 1y`), **mais les routes restent `ƒ` au lieu de redevenir statiques.** Voir D9.
-- [~] **3.3 — `(public)/blog` + `blog/page/[page]`** — opt-out retiré, build vert, routes en `ƒ`.
-  Le cache du DAL reste à poser, mais bloqué par D9.
-- [~] **3.4 — `blog/[slug]` + `blog/category/*`** — opt-out retiré, build vert, routes en `ƒ`.
-  Bloqué par D9.
+- [x] **3.2 — `(public)/privacy`, `terms`, `contact`** — ✅ `○ (Static)`, profil `1d/1w` — opt-out retiré, `'use cache'` +
+      `cacheLife('max')` appliqués. Le profil de cache apparaît bien dans la sortie de build
+      (`30d 1y`), **mais les routes restent `ƒ` au lieu de redevenir statiques.** Voir D9.
+- [x] **3.3 — `(public)/blog` + `blog/page/[page]`** — ✅ statiques — opt-out retiré, build vert, routes en `ƒ`.
+      Le cache du DAL reste à poser, mais bloqué par D9.
+- [x] **3.4 — `blog/[slug]` + `blog/category/*`** — ✅ statiques — opt-out retiré, build vert, routes en `ƒ`.
+      Bloqué par D9.
 - [ ] **3.5 — `(public)/pricing`** (dépend de 0.4 ; valide le pattern `cacheTag` sur les plans)
 - [ ] **3.6 — `docs` + `docs/[...slug]`** (attention : `docs/[...slug]/page.tsx:186` lit `headers()`)
 - [ ] **3.7 — `src/app/sitemap.ts` et `robots.ts`**
@@ -436,6 +436,13 @@ Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `c
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D12 — 2026-08-15 — Le tunnel de paiement reste dynamique, assumé.**
+`(public)/checkout/[priceId]` et `checkout/better-auth` gardent `instant = false`. Ils échouaient
+sur `usePathname()` dans un composant client hors `<Suspense>`, mais surtout : un tunnel de paiement
+dépend du prix, de la session et de l'état Stripe — il n'a rien à prerendre. Forcer un shell statique
+ici serait de la complexité sans bénéfice (règle D6). `instant = false` est l'échappatoire prévue par
+Next pour exactement ce cas.
 
 **D11 — 2026-08-15 — D9 et D10 SONT FAUX. Le blocage n'existait pas, il est levé.**
 
