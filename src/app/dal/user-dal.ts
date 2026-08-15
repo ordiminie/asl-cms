@@ -1,8 +1,12 @@
 import 'server-only'
 
+import {redirect} from 'next/navigation'
 import {cache} from 'react'
 
-import {getAuthUser} from '@/services/authentication/auth-service'
+import {
+  getAuthUser,
+  getSessionActiveOrganizationId,
+} from '@/services/authentication/auth-service'
 import {hasRequiredRoles} from '@/services/authentication/auth-util'
 import {isUserAdmin} from '@/services/authorization/authorization-service'
 import {canManageUsers} from '@/services/authorization/user-authorization'
@@ -104,3 +108,45 @@ export const getAdminUserOrganizationsWithUsageDal = cache(
     return await getAdminUserOrganizationsWithUsageService(userId)
   }
 )
+
+// ========================================
+// SESSION COURANTE (Cache Components)
+// ========================================
+
+import {Organization} from '@/services/types/domain/organization-types'
+
+export type CurrentUserContext = {
+  user: User
+  activeOrganization: Organization | null
+}
+
+/**
+ * Lecteur de session destiné à la couche présentation.
+ *
+ * `use cache: private` est la seule directive autorisée à lire `cookies()` et
+ * `headers()` : le résultat reste dans le navigateur, jamais sur le serveur. Les
+ * layouts créent cette promesse sans l'attendre et la passent aux providers, qui
+ * la déroulent avec `use()` derrière un `<Suspense>`. Un `await` en tête de
+ * layout bloquerait tout le segment, `{children}` compris.
+ *
+ * Ne remplace pas `getAuthUser()`, qui reste la vérité serveur relue à chaque
+ * requête par les services, les Server Actions et l'autorisation CASL.
+ *
+ * @see https://nextjs.org/docs/app/guides/authentication-with-cache-components
+ */
+export const getCurrentUserDal = async (): Promise<CurrentUserContext> => {
+  'use cache: private'
+
+  const user = await getAuthUser()
+  if (!user) {
+    redirect('/login')
+  }
+
+  const activeOrganizationId = await getSessionActiveOrganizationId()
+  const activeOrganization =
+    user.organizations?.find(
+      (member) => member.organization?.id === activeOrganizationId
+    )?.organization ?? null
+
+  return {user, activeOrganization}
+}
