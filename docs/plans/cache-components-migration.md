@@ -1,11 +1,11 @@
 ---
 validated: no
-status: blocked-upstream
+status: in-progress
 current_phase: 3
 branch: feat/cache-components-migration
 worktree: .worktrees/cache-components-migration
 research: docs/research/s000-cache-components-migration.md
-last_updated: 2026-08-14
+last_updated: 2026-08-15
 ---
 
 # Plan — Migration Cache Components (Next.js 16.3)
@@ -431,13 +431,40 @@ sont du bruit de build, on ne perd rien. Un seul point de correction débloque t
 À retenir pour la suite : le même problème peut réapparaître **au runtime** à l'intérieur d'un scope
 `'use cache'`, où l'heure courante est également interdite.
 
-**D9 — 2026-08-14 — Les routes publiques restent dynamiques malgré `'use cache'`.**
+**D9 (OBSOLÈTE — voir D11) — 2026-08-14 — Les routes publiques restent dynamiques malgré `'use cache'`.**
 Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `cacheLife('max')` sont
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
 
-**D10 — 2026-08-14 — CONFIRMÉ : next-intl ne supporte pas encore `cacheComponents`. Décision requise.**
+**D11 — 2026-08-15 — D9 et D10 SONT FAUX. Le blocage n'existait pas, il est levé.**
+
+Correction majeure. L'issue [amannn/next-intl#1493](https://github.com/amannn/next-intl/issues/1493)
+n'est **pas ouverte** : elle a été fermée le 2026-08-04, le mainteneur pointant `next/root-params`
+(Next 16.3) comme le fix. D9 et D10 reposaient sur un résultat de recherche périmé que je n'ai pas
+vérifié en ouvrant l'issue. **Ne pas s'y fier — les lire comme un historique d'erreur.**
+
+Cause réelle du symptôme décrit en D9 : la typegen répondait « No root params detected », parce que
+`src/app/layout.tsx` (un pass-through `return children`, présent uniquement à cause du `not-found`
+racine) empêchait `[locale]` d'être un root param.
+
+Correctifs appliqués, build vert :
+
+1. `src/app/{layout,page,not-found}.tsx` supprimés — `[locale]/layout.tsx` devient le layout racine
+2. `error.tsx` et `forbidden.tsx` déplacés à la racine → `[locale]/` (ils y étaient orphelins)
+3. `[locale]/[...rest]` supprimé — ce catch-all ne servait qu'à compenser le `not-found` racine et
+   appelait `notFound()` sans condition, donc ne produisait aucun shell statique non vide.
+   Vérifié au runtime : les routes inconnues rendent bien le 404 localisé sans lui.
+4. `src/i18n/request.ts` : `rootParams.locale()` au lieu de `requestLocale`
+5. `public-footer` : `'use cache'` + `getTranslations` (le `© new Date().getFullYear()` interdisait
+   le prerender de toute page contenant le footer)
+
+**Résultat mesuré : 151 routes `○ (Static)` contre 25 `●` en baseline.**
+
+Limite connue : `next/root-params` ne fonctionne pas dans les Route Handlers ni les Server Actions.
+2 fichiers `'use server'` utilisent `getTranslations` — leur passer la locale explicitement.
+
+**D10 (OBSOLÈTE — voir D11) — 2026-08-14 — CONFIRMÉ : next-intl ne supporte pas encore `cacheComponents`. Décision requise.**
 
 La cause de D9 est **upstream**, pas dans ce repo. Sources :
 
