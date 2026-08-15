@@ -163,7 +163,11 @@ une régression. Toucher au modèle de rendu de 64 pages sans e2e est un pilotag
 
 Les 13 tests e2e passent en CI sur la branche.
 
-**⚠️ PARTIELLEMENT VÉRIFIÉ — action requise avant la phase 3.**
+**✅ PASSÉ le 2026-08-15 — 13 passed (25 s)**, en local contre le build de production
+(`CI=1 PLAYWRIGHT_PORT=3131 pnpm exec playwright test --project=chromium`), sur un Postgres 17
+local seedé. Les 8 specs d'authentification ont enfin tourné. Voir D19 pour la mise en place.
+
+Historique de l'état partiel qui a précédé :
 
 | Specs                                         | Vérifié localement                                          | Comment                                                                                                                                                              |
 | --------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -341,9 +345,10 @@ prerender).
 
 - [x] lint 0 erreur, tsc 0 erreur, 374 tests passed, build exit 0
 - [x] `grep -rn "instant = false" src/app` → 4, tous justifiés dans leur fichier
-- [x] table de routes : 42 `○`, 102 `◐`, 35 `ƒ` — les 21 routes `(app)` passent de bloquantes à `◐`
-- [ ] **parcours manuel restant** : login, logout, accès admin refusé pour un user standard (doit
-      rester un vrai 403), changement d'organisation. À faire sur `pnpm dev` avec le seed.
+- [x] table de routes : 42 `○`, 102 `◐`, 35 `ƒ` — les 21 routes `(app)` passent de bloquantes à `◐`.
+      Chiffres identiques avec et sans base joignable.
+- [x] 13 specs e2e vertes sur le build de production, base locale seedée (D19)
+- [ ] **parcours manuel restant** : accès admin refusé pour un user standard (doit rester un vrai 403) et changement d'organisation. Les e2e ne couvrent ni l'un ni l'autre.
 
 ---
 
@@ -453,6 +458,29 @@ Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `c
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D19 — 2026-08-15 — Les e2e tournent enfin, et elles ont trouvé un bug que le build cachait.**
+
+Les 13 specs passent (25 s) sur le build de production, contre un Postgres local. Mise en place :
+
+- **Les trois bases configurées étaient mortes.** `.env.test` et `.env.production` pointaient un
+  Vercel Postgres (`user 'default'`, base `verceldb`), service discontinué ; `.env.development`
+  pointait un projet Supabase supprimé. Conséquence : **tous les builds de cette migration ont
+  tourné sans base**, en avalant en boucle `Failed to resolve plans for seat pricing validation`.
+- Postgres 17 installé en local (`brew install postgresql@17`), base `shipsaas`, `db:push` +
+  `db:seed`. ⚠️ Le schéma utilise `uuid_generate_v4()` : sur un Postgres neuf il faut
+  `CREATE EXTENSION "uuid-ossp"` avant le push. Neon et Supabase l'activent par défaut, pas un
+  serveur local — c'est un piège pour qui fork le boilerplate.
+- `playwright.config.ts` impose maintenant la `DATABASE_URL` de `.env.test` au serveur sous test.
+  Sans ça, `pnpm start` charge `.env.production` : deux specs créent un compte, une lit le seed —
+  lancées en local, elles écrivaient dans la base de production.
+
+**Le bug trouvé** : `/checkout/better-auth` échouait au prerender sur `Date.now()`, lu par le SDK
+Stripe à chaque appel. Il ne se manifestait pas sans base, parce que `getPlanByPriceId` échouait
+avant d'atteindre Stripe. Et `instant = false` ne couvre pas ce cas — il autorise une route
+bloquante, pas la lecture de l'horloge ; il faut `await connection()`. C'est le Trap T2 en vrai : le
+build restait vert sur un environnement cassé. Table de routes inchangée après correction
+(42 / 102 / 35), donc les conclusions des phases 2 et 3 tiennent.
 
 **D18 — 2026-08-15 — L'authentification est migrée. Le 403 reste bloquant, par choix.**
 
