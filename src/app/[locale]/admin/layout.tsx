@@ -1,9 +1,14 @@
 import {Metadata} from 'next'
-import React from 'react'
+import React, {Suspense} from 'react'
 
+import {getCurrentUserDal} from '@/app/dal/user-dal'
 import AuthProvider from '@/components/context/auth-provider'
+import {UserPreferencesSync} from '@/components/context/user-preferences-sync'
 import {AppBreadcrumb} from '@/components/features/app-breadcrumb'
-import {withAuthAdmin} from '@/components/features/auth/with-auth'
+import {
+  withAuthAdmin,
+  WithAuthProps,
+} from '@/components/features/auth/with-auth'
 import {AdminSidebar} from '@/components/features/layouts/sidebar/admin-sidebar'
 import {
   SidebarInset,
@@ -11,16 +16,12 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import {APP_NAME} from '@/lib/constants'
-import {
-  getAuthUser,
-  getSessionAuth,
-} from '@/services/authentication/auth-service'
 
-// Route authentifiée, pas encore migrée. Le layout fait un `await` sur la session à son
-// niveau supérieur, ce qui bloque tout le segment. Le pattern officiel existe :
-// https://nextjs.org/docs/app/guides/authentication-with-cache-components
-// (session en 'use cache: private', promesse passée au provider, use() derrière Suspense).
-// Voir D17 dans docs/plans/cache-components-migration.md.
+// Opt-out assumé : le contrôle du rôle ADMIN doit rendre un vrai 403, donc être
+// tranché avant le premier octet. Sous streaming, `forbidden()` arriverait après
+// le début d'un 200 et ne pourrait plus changer le statut. Le gating grossier
+// (authentifié / pas authentifié) est fait dans `proxy.ts` ; le contrôle de rôle
+// reste bloquant ici. Voir D17 dans docs/plans/cache-components-migration.md.
 export const instant = false
 
 export const metadata: Metadata = {
@@ -28,11 +29,17 @@ export const metadata: Metadata = {
   description: "Page d'espace administrateur",
 }
 
-async function AppLayout({children}: {children: React.ReactNode}) {
-  const user = await getAuthUser()
-  const sessionAuth = await getSessionAuth()
+function AdminLayout({
+  children,
+  user,
+}: {
+  children: React.ReactNode
+} & WithAuthProps) {
   return (
-    <AuthProvider initialUser={user} initialSession={sessionAuth?.session}>
+    <AuthProvider userPromise={getCurrentUserDal()}>
+      <Suspense fallback={null}>
+        <UserPreferencesSync />
+      </Suspense>
       <SidebarProvider>
         <AdminSidebar user={user} />
         <SidebarInset>
@@ -53,4 +60,4 @@ async function AppLayout({children}: {children: React.ReactNode}) {
   )
 }
 
-export default withAuthAdmin(AppLayout)
+export default withAuthAdmin(AdminLayout)

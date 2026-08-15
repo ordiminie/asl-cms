@@ -37,11 +37,8 @@ export function TeamPageContent({
   members,
   usage,
 }: TeamPageContentProps) {
-  const {
-    currentOrganization,
-    setCurrentOrganizationWithoutRedirect,
-    organizations,
-  } = useOrganization()
+  const {currentOrganization, setCurrentOrganization, organizations} =
+    useOrganization()
   const router = useRouter()
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
@@ -76,13 +73,13 @@ export function TeamPageContent({
 
       if (userOrg?.organization?.id) {
         // Mettre à jour le contexte sans rediriger (on est déjà sur la bonne page)
-        setCurrentOrganizationWithoutRedirect(userOrg.organization.id)
+        setCurrentOrganization(userOrg.organization.id)
       }
     }
   }, [
     organization.id,
     currentOrganization?.id,
-    setCurrentOrganizationWithoutRedirect,
+    setCurrentOrganization,
     organizations,
   ])
 
