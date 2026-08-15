@@ -12,6 +12,15 @@ last_updated: 2026-08-15
 
 ## ▶ START HERE (protocole de reprise)
 
+> **Priorité posée par Mike le 2026-08-15** : faire **le plus propre possible en termes de pattern,
+> au regard de la doc officielle** (Next, next-intl, Better Auth). Une archi propre sans bidouille,
+> qui couvre **tout** ce que couvre le boilerplate — pas seulement les parties faciles.
+> Les tests e2e sont **dépriorisés** : bienvenus en local si l'occasion se présente, jamais un gate.
+>
+> **Chantier n°1 : l'authentification (D17).** Lire d'abord
+> <https://nextjs.org/docs/app/guides/authentication-with-cache-components>.
+> Ne pas déduire un pattern d'un symptôme de build — chercher le guide officiel d'abord.
+
 Tu reprends ce chantier dans une nouvelle session, ou tu es un agent qui n'a aucun contexte.
 Fais **exactement** ceci, dans l'ordre :
 
@@ -168,7 +177,10 @@ Postgres éphémère.
 **Conséquence assumée** : la phase 2 a été menée avec un filet partiel (5 specs de rendu sur 13,
 plus le build et le contrôle sitemap manuel). Les 5 specs vérifiées couvrent le risque principal de
 la phase 2 — la régression de rendu — mais **pas** les flux d'authentification.
-**Ne pas entamer la phase 4 (auth) sans avoir vu le job e2e vert en CI.**
+**Priorité révisée le 2026-08-15 par Mike** : la propreté des patterns prime sur la couverture de
+tests. Les e2e ne sont **plus un gate bloquant** pour la phase 4. Les faire tourner en local est
+bienvenu si l'occasion se présente (`CI=1 PLAYWRIGHT_PORT=3131 pnpm exec playwright test`), mais ça
+ne conditionne rien.
 
 ---
 
@@ -330,7 +342,7 @@ prerender).
 
 ### Gate 4 (bloquant)
 
-Gate 3 + `grep -rn "instant = false" src/app` → 0 + les 13 e2e verts + parcours manuel :
+Gate 3 + `grep -rn "instant = false" src/app` → 0 (hors opt-out justifiés) + parcours manuel :
 login, logout, accès admin refusé pour un user standard (doit rester un vrai 403), changement
 d'organisation.
 
@@ -474,7 +486,9 @@ revérifier la session dans **chaque** Server Action.
 **État réel** : les 39 routes `(app)` et `admin` portent toujours `instant = false`. Ce n'est plus
 « impossible », c'est **non fait**. Le refactor touche `AuthProvider`, `OrganizationProvider`,
 `AppSidebar` et `withAuth` — et il est à faire **après** avoir vu les 8 specs e2e d'authentification
-vertes en CI, jamais avant : c'est le modèle d'autorisation qu'on déplace.
+vertes — **révisé** : ce n'est plus un prérequis bloquant (priorité de Mike du 2026-08-15), mais
+c'est le modèle d'autorisation qu'on déplace, donc vérifier manuellement login / logout / accès
+admin refusé pour un user standard.
 
 **D16 (CORRIGÉ PAR D17) — 2026-08-15 — Les routes authentifiées restent dynamiques.**
 Les 9 routes `(auth)` passent sans correctif — ce sont des formulaires clients. Les **39 routes
