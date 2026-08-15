@@ -1,7 +1,13 @@
 'use client'
 
 import {useRouter} from 'next/navigation'
-import React, {createContext, useContext, useState} from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from 'react'
 
 import {authClient} from '@/lib/better-auth/auth-client'
 import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
@@ -27,10 +33,13 @@ export function OrganizationProvider({children}: {children: React.ReactNode}) {
   const [selectedOrganization, setSelectedOrganization] =
     useState<Organization | null>(null)
 
+  const value = useMemo(
+    () => ({selectedOrganization, setSelectedOrganization}),
+    [selectedOrganization]
+  )
+
   return (
-    <OrganizationContext.Provider
-      value={{selectedOrganization, setSelectedOrganization}}
-    >
+    <OrganizationContext.Provider value={value}>
       {children}
     </OrganizationContext.Provider>
   )
@@ -59,7 +68,10 @@ export function useOrganization() {
   const {user, activeOrganization} = useAuth()
   const router = useRouter()
 
-  const organizations = user?.organizations ?? []
+  // Identités stables : `organizations` et `setCurrentOrganization` finissent
+  // dans les dépendances d'effets consommateurs, où un nouvel objet à chaque
+  // rendu déclencherait une boucle.
+  const organizations = useMemo(() => user?.organizations ?? [], [user])
   const currentOrganization =
     selection.selectedOrganization ?? activeOrganization
   const currentUserOrganization =
@@ -71,21 +83,26 @@ export function useOrganization() {
     currentOrganization?.id
   )
 
-  const setCurrentOrganization = async (organizationId: string) => {
-    if (organizationId === currentOrganization?.id) return
+  const currentOrganizationId = currentOrganization?.id
+  const {setSelectedOrganization} = selection
+  const setCurrentOrganization = useCallback(
+    async (organizationId: string) => {
+      if (organizationId === currentOrganizationId) return
 
-    const member = organizations.find(
-      (org) => org.organization?.id === organizationId
-    )
-    if (!member?.organization) return
+      const member = organizations.find(
+        (org) => org.organization?.id === organizationId
+      )
+      if (!member?.organization) return
 
-    // Choix appliqué tout de suite côté client, puis la session serveur est
-    // mise à jour et relue. OrganizationSync rendra la main à la session dès
-    // qu'elle aura rattrapé ce choix.
-    selection.setSelectedOrganization(member.organization)
-    await authClient.organization.setActive({organizationId})
-    router.refresh()
-  }
+      // Choix appliqué tout de suite côté client, puis la session serveur est
+      // mise à jour et relue. OrganizationSync rendra la main à la session dès
+      // qu'elle aura rattrapé ce choix.
+      setSelectedOrganization(member.organization)
+      await authClient.organization.setActive({organizationId})
+      router.refresh()
+    },
+    [currentOrganizationId, organizations, router, setSelectedOrganization]
+  )
 
   return {
     user,

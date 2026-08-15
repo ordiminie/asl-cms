@@ -1,5 +1,6 @@
 import 'server-only'
 
+import {cacheLife} from 'next/cache'
 import {redirect} from 'next/navigation'
 import {cache} from 'react'
 
@@ -136,6 +137,11 @@ export type CurrentUserContext = {
  */
 export const getCurrentUserDal = async (): Promise<CurrentUserContext> => {
   'use cache: private'
+  // `minutes` : stale 5 min — le seuil exact à partir duquel le contenu entre
+  // dans l'App Shell de la route, donc les navigations authentifiées restent
+  // instantanées — revalidate 1 min, pour qu'un changement de rôle ou
+  // d'organisation soit repris vite.
+  cacheLife('minutes')
 
   const user = await getAuthUser()
   if (!user) {
