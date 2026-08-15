@@ -1,5 +1,6 @@
 import 'server-only'
 
+import {cacheLife, cacheTag} from 'next/cache'
 import {cache} from 'react'
 
 import {routing} from '@/i18n/routing'
@@ -9,6 +10,7 @@ import {
   getMdxBlogPost,
   getPostIdBySlug,
   getPostLanguageVariants,
+  getPublicationCutoff,
 } from '@/lib/helper/blog.server'
 import {
   dbPostToUnified,
@@ -76,7 +78,7 @@ async function getAllPostsFromSources(
       continue
     }
 
-    if (!isMdxPublished(mdxPost)) {
+    if (!isMdxPublished(mdxPost, await getPublicationCutoff())) {
       continue
     }
 
@@ -95,6 +97,10 @@ async function getAllPostsFromSources(
 
 export const getAllUnifiedBlogPostsDal = cache(
   async (locale: string): Promise<UnifiedBlogPost[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     return getAllPostsFromSources(locale)
   }
 )
@@ -105,6 +111,10 @@ export const getPaginatedBlogPostsDal = cache(
     page: number = 1,
     limit: number = BLOG_POSTS_PER_PAGE
   ): Promise<PaginatedBlogResult> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const allPosts = await getAllPostsFromSources(locale)
     const total = allPosts.length
     const totalPages = Math.ceil(total / limit)
@@ -132,6 +142,10 @@ export const getBlogPostsByCategoryDal = cache(
     page: number = 1,
     limit: number = BLOG_POSTS_PER_PAGE
   ): Promise<PaginatedBlogResult> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const allPosts = await getAllPostsFromSources(locale)
     const categoryPosts = allPosts.filter(
       (post) =>
@@ -159,6 +173,10 @@ export const getBlogPostsByCategoryDal = cache(
 
 export const getAllBlogCategoriesDal = cache(
   async (locale: string): Promise<BlogCategory[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const allPosts = await getAllPostsFromSources(locale)
     const categoryMap = new Map<string, {name: string; count: number}>()
 
@@ -185,6 +203,10 @@ export const getCategoryBySlugDal = cache(
     locale: string,
     categorySlug: string
   ): Promise<BlogCategory | null> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const categories = await getAllBlogCategoriesDal(locale)
     return categories.find((c) => c.slug === categorySlug) || null
   }
@@ -216,6 +238,10 @@ async function getDbPostBySlug(
 
 export const getUnifiedBlogPostBySlugDal = cache(
   async (slug: string, locale: string): Promise<UnifiedBlogPost | null> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const dbPost = await getDbPostBySlug(slug, locale)
     if (dbPost) {
       return dbPost
@@ -225,7 +251,7 @@ export const getUnifiedBlogPostBySlugDal = cache(
     if (postId) {
       const mdxPost = getMdxBlogPost(postId, locale)
       if (mdxPost) {
-        if (!isMdxPublished(mdxPost)) {
+        if (!isMdxPublished(mdxPost, await getPublicationCutoff())) {
           return null
         }
         return mdxPostToUnified(mdxPost, locale)
@@ -242,11 +268,15 @@ export const getPostAlternatesDal = cache(
     currentLocale: string,
     baseUrl: string
   ): Promise<BlogAlternates> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const languages: Record<string, string> = {}
 
     const postId = getPostIdBySlug(slug, currentLocale)
     if (postId) {
-      const variants = getPostLanguageVariants(postId)
+      const variants = await getPostLanguageVariants(postId)
       for (const variant of variants) {
         languages[variant.locale] =
           `${baseUrl}/${variant.locale}/blog/${variant.slug}`
@@ -274,6 +304,10 @@ export const getPostAlternatesDal = cache(
 
 export const getAllUnifiedBlogSlugsDal = cache(
   async (): Promise<{postId: string; slug: string; locale: string}[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const results: {postId: string; slug: string; locale: string}[] = []
     const seenKeys = new Set<string>()
 
@@ -294,7 +328,7 @@ export const getAllUnifiedBlogSlugsDal = cache(
       // DB error, continue with MDX
     }
 
-    const mdxSlugs = getAllMdxSlugsWithLocales()
+    const mdxSlugs = await getAllMdxSlugsWithLocales()
     for (const item of mdxSlugs) {
       const key = `${item.slug}-${item.locale}`
       if (!seenKeys.has(key)) {
@@ -312,6 +346,10 @@ export const getTotalPagesDal = cache(
     locale: string,
     limit: number = BLOG_POSTS_PER_PAGE
   ): Promise<number> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const allPosts = await getAllPostsFromSources(locale)
     return Math.ceil(allPosts.length / limit)
   }
@@ -323,6 +361,10 @@ export const getCategoryTotalPagesDal = cache(
     categorySlug: string,
     limit: number = BLOG_POSTS_PER_PAGE
   ): Promise<number> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const result = await getBlogPostsByCategoryDal(
       locale,
       categorySlug,
@@ -393,6 +435,10 @@ export const getRelatedPostsDal = cache(
     categoryName?: string,
     limit: number = 3
   ): Promise<UnifiedBlogPost[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const allPosts = await getAllPostsFromSources(locale)
 
     const otherPosts = allPosts.filter((post) => post.slug !== currentSlug)
@@ -428,6 +474,10 @@ export const getPostLanguageVariantsDal = cache(
     slug: string,
     currentLocale: string
   ): Promise<{locale: string; slug: string}[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
     const postId = getPostIdBySlug(slug, currentLocale)
     if (!postId) {
       return []

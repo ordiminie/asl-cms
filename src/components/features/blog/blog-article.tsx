@@ -2,7 +2,9 @@ import rehypeShiki from '@shikijs/rehype'
 import {ArrowLeft, Calendar, Clock, Eye, FileText, User} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import {connection} from 'next/server'
 import {MDXRemote} from 'next-mdx-remote/rsc'
+import {Suspense} from 'react'
 import remarkGfm from 'remark-gfm'
 
 import {LikeButton} from '@/components/features/blog/like-button'
@@ -207,37 +209,9 @@ export function BlogArticle({
       </div>
 
       <div className="prose prose-lg prose-gray dark:prose-invert prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-p:text-muted-foreground prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-code:bg-muted prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-pre:bg-muted prose-pre:border prose-blockquote:border-l-primary prose-blockquote:bg-muted/50 prose-blockquote:py-1 prose-blockquote:not-italic prose-img:rounded-xl prose-img:shadow-lg max-w-none">
-        <MDXRemote
-          source={post.content}
-          components={mdxComponents}
-          options={{
-            mdxOptions: {
-              remarkPlugins: [remarkGfm],
-              rehypePlugins: [
-                [
-                  rehypeShiki,
-                  {
-                    themes: {
-                      light: 'github-dark',
-                      dark: 'github-dark',
-                    },
-                    langs: [
-                      'javascript',
-                      'typescript',
-                      'jsx',
-                      'tsx',
-                      'css',
-                      'json',
-                      'bash',
-                      'html',
-                      'markdown',
-                    ],
-                  },
-                ],
-              ],
-            },
-          }}
-        />
+        <Suspense fallback={<div className="text-muted-foreground">…</div>}>
+          <ArticleContent content={post.content} />
+        </Suspense>
       </div>
 
       {post.author && (
@@ -303,5 +277,48 @@ export function BlogArticle({
         />
       )}
     </article>
+  )
+}
+
+/**
+ * La compilation MDX (next-mdx-remote + rehypeShiki) lit l'horloge : elle ne
+ * peut pas être prerendue. Isolée ici pour être enveloppée d'un <Suspense>,
+ * ce qui laisse le reste de l'article se prerendre normalement.
+ */
+async function ArticleContent({content}: {content: string}) {
+  // La compilation MDX lit l'horloge : <Suspense> seul ne suffit pas, l'IO
+  // synchrone casse le prerender quoi qu'il arrive. connection() marque
+  // explicitement ce sous-arbre comme rendu à la requête.
+  await connection()
+
+  return (
+    <MDXRemote
+      source={content}
+      components={mdxComponents}
+      options={{
+        mdxOptions: {
+          remarkPlugins: [remarkGfm],
+          rehypePlugins: [
+            [
+              rehypeShiki,
+              {
+                themes: {light: 'github-dark', dark: 'github-dark'},
+                langs: [
+                  'javascript',
+                  'typescript',
+                  'jsx',
+                  'tsx',
+                  'css',
+                  'json',
+                  'bash',
+                  'html',
+                  'markdown',
+                ],
+              },
+            ],
+          ],
+        },
+      }}
+    />
   )
 }

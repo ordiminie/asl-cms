@@ -267,11 +267,11 @@ runtime dans `<Suspense>`. Un commit par route.
       `cacheLife('max')` appliqués. Le profil de cache apparaît bien dans la sortie de build
       (`30d 1y`), **mais les routes restent `ƒ` au lieu de redevenir statiques.** Voir D9.
 - [~] **3.3 — `(public)/blog` + `blog/page/[page]`** — opt-out retiré, routes en `◐` (shell
-      prerendu) mais **le contenu n'est pas caché** : le blog-dal utilise encore `cache()` de React.
-      Reste à poser `'use cache'` + `cacheTag` dessus (doctrine D4). — opt-out retiré, build vert, routes en `ƒ`.
-      Le cache du DAL reste à poser, mais bloqué par D9.
+  prerendu) mais **le contenu n'est pas caché** : le blog-dal utilise encore `cache()` de React.
+  Reste à poser `'use cache'` + `cacheTag` dessus (doctrine D4). — opt-out retiré, build vert, routes en `ƒ`.
+  Le cache du DAL reste à poser, mais bloqué par D9.
 - [~] **3.4 — `blog/[slug]` + `blog/category/*`** — idem 3.3 : `◐`, contenu non caché. — opt-out retiré, build vert, routes en `ƒ`.
-      Bloqué par D9.
+  Bloqué par D9.
 - [ ] **3.5 — `(public)/pricing`** (dépend de 0.4 ; valide le pattern `cacheTag` sur les plans)
 - [ ] **3.6 — `docs` + `docs/[...slug]`** (attention : `docs/[...slug]/page.tsx:186` lit `headers()`)
 - [ ] **3.7 — `src/app/sitemap.ts` et `robots.ts`**
@@ -438,6 +438,22 @@ Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `c
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D15 — 2026-08-15 — Cacher le DAL blog force à cacher aussi l'horloge.**
+Poser `'use cache'` sur les 12 fonctions de `blog-dal.ts` a buté sur
+`Date.now()` en frames ignore-listées. Origine : `isMdxPublished`
+(`blog-adapters.server.ts`) et `isPublishedByDate` (`blog.server.ts`) font
+`publishDate <= new Date()` — c'est la **publication programmée** des articles MDX, un article daté
+dans le futur reste caché. Lire l'horloge est interdit dans un scope `'use cache'`.
+
+Trois options pesées : supprimer la publication programmée (change silencieusement le comportement
+d'un pipeline de contenu), ne pas cacher le blog (statu quo `◐`), ou **cacher l'instant de
+référence**. Retenu : `getPublicationCutoff()` avec `'use cache'` + `cacheLife('hours')`, passé en
+paramètre aux deux prédicats. La fonctionnalité est conservée avec une granularité horaire — ce qui
+correspond de toute façon à la précision d'un `publishedAt` en date.
+
+Invalidation : `updateTag('blog')` ajouté dans `revalidateBlogPaths()` (`admin/blog/actions.ts`).
+Sans lui, une publication n'apparaîtrait qu'au bout du `cacheLife('days')`.
 
 **D14 — 2026-08-15 — `root-params` casse les Server Actions : fallback obligatoire.**
 Régression introduite puis corrigée le jour même. Passer `i18n/request.ts` à `rootParams.locale()`
