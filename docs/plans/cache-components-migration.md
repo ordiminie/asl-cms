@@ -266,9 +266,11 @@ runtime dans `<Suspense>`. Un commit par route.
 - [x] **3.2 — `(public)/privacy`, `terms`, `contact`** — ✅ `○ (Static)`, profil `1d/1w` — opt-out retiré, `'use cache'` +
       `cacheLife('max')` appliqués. Le profil de cache apparaît bien dans la sortie de build
       (`30d 1y`), **mais les routes restent `ƒ` au lieu de redevenir statiques.** Voir D9.
-- [x] **3.3 — `(public)/blog` + `blog/page/[page]`** — ✅ statiques — opt-out retiré, build vert, routes en `ƒ`.
+- [~] **3.3 — `(public)/blog` + `blog/page/[page]`** — opt-out retiré, routes en `◐` (shell
+      prerendu) mais **le contenu n'est pas caché** : le blog-dal utilise encore `cache()` de React.
+      Reste à poser `'use cache'` + `cacheTag` dessus (doctrine D4). — opt-out retiré, build vert, routes en `ƒ`.
       Le cache du DAL reste à poser, mais bloqué par D9.
-- [x] **3.4 — `blog/[slug]` + `blog/category/*`** — ✅ statiques — opt-out retiré, build vert, routes en `ƒ`.
+- [~] **3.4 — `blog/[slug]` + `blog/category/*`** — idem 3.3 : `◐`, contenu non caché. — opt-out retiré, build vert, routes en `ƒ`.
       Bloqué par D9.
 - [ ] **3.5 — `(public)/pricing`** (dépend de 0.4 ; valide le pattern `cacheTag` sur les plans)
 - [ ] **3.6 — `docs` + `docs/[...slug]`** (attention : `docs/[...slug]/page.tsx:186` lit `headers()`)
@@ -436,6 +438,29 @@ Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `c
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D14 — 2026-08-15 — `root-params` casse les Server Actions : fallback obligatoire.**
+Régression introduite puis corrigée le jour même. Passer `i18n/request.ts` à `rootParams.locale()`
+casse les Server Actions qui appellent `getTranslations` — le serveur jette :
+`` `import('next/root-params').locale()` was used inside a Server Action. This is not supported. ``
+Deux fichiers concernés : `[locale]/(auth)/action.ts` et `components/features/user/action.ts`.
+Aucun Route Handler.
+
+**Ni le build ni les e2e ne l'attrapent.** Les Server Actions ne sont jamais prerendues, et le test
+`should show error for invalid login credentials` **passait quand même** — il est permissif, il
+accepte « toujours sur /login » comme succès. Trouvé uniquement en lisant le log de `next start`.
+À retenir : après un changement d'i18n, lire le log du serveur de production en direct.
+
+Correctif : `try { await rootParams.locale() } catch { await requestLocale }`. Le fallback n'a aucun
+impact sur le prerender puisque ces contextes ne sont jamais prerendus.
+
+**D13 — 2026-08-15 — `docs/[...slug]` reste dynamique à cause de Shiki.**
+La page lit `x-theme` dans les headers pour passer le thème à `MDXContent`, qui alimente la
+coloration syntaxique. Prerendre figerait une seule variante : du code en thème clair s'afficherait
+en dark mode. `instant = false` conservé, avec la piste de sortie écrite dans le fichier — passer
+Shiki en **dual-theme** (`themes: {light, dark}`), qui produit une sortie pilotée par variables CSS.
+C'est le seul opt-out public restant qui vaut la peine d'être levé : les docs sont du contenu, donc
+du SEO.
 
 **D12 — 2026-08-15 — Le tunnel de paiement reste dynamique, assumé.**
 `(public)/checkout/[priceId]` et `checkout/better-auth` gardent `instant = false`. Ils échouaient
