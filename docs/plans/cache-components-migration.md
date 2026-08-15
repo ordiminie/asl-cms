@@ -459,6 +459,21 @@ appliqués. Le build passe, et le profil de cache **est bien pris en compte** (c
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
 
+**D21 — 2026-08-15 — Le build ne peut plus passer sans base.**
+
+Cause racine de D19 et D20 : `pnpm build` restait vert alors que les trois `DATABASE_URL` du projet
+étaient mortes, ce qui a laissé dormir un bug de prerender pendant tout le chantier. Le signal le
+plus utilisé de la migration ne valait donc rien sur tout le code qui touche la base.
+
+`pnpm build` lance désormais `scripts/preflight-build.ts` avant `next build` : `db:check`, et arrêt
+net si la base ne répond pas, avec un message qui explique pourquoi. Échappatoire explicite
+`SKIP_DB_CHECK=1` pour les cas où l'absence de base est voulue (image Docker, CI sans Postgres).
+Documenté dans le README, avec le piège `uuid-ossp` pour un Postgres local neuf.
+
+⚠️ **À savoir avant de pousser** : le job `Build` de `preview.yml` utilise `secrets.DATABASE_URL`.
+Si ce secret est lui aussi une URL Vercel Postgres morte, la CI passera au rouge — ce qui est le
+comportement voulu, mais autant le savoir à l'avance.
+
 **D20 — 2026-08-15 — Le 403 admin n'existe pas, et `instant = false` n'y peut rien. D18 est corrigé.**
 
 La spec écrite pour prouver le 403 l'a réfuté. Un utilisateur standard qui visite `/en/admin`

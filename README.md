@@ -29,12 +29,41 @@ pnpm dev
 ## Scripts disponibles
 
 - `pnpm dev` - Démarre le serveur de développement
-- `pnpm build` - Construit l'application pour la production
+- `pnpm build` - Construit l'application pour la production (vérifie d'abord que
+  la base est joignable — voir ci-dessous)
 - `pnpm start` - Démarre l'application en mode production
 - `pnpm lint` - Vérifie le code avec ESLint
 - `pnpm format` - Vérifie le formatage avec Prettier
 - `pnpm format:fix` - Corrige les problèmes de formatage
 - `pnpm test` - Exécute les tests avec Vitest
+
+### Le build exige une base joignable
+
+`pnpm build` lance `db:check` avant `next build` et s'arrête si la base ne
+répond pas.
+
+Ce n'est pas du zèle : un build Next reste **vert** avec une base injoignable.
+Les lectures échouent en silence, le sitemap sort amputé des contenus en base,
+et les chemins de code qui la touchent ne sont jamais exercés — un bug de
+prerender peut donc dormir des heures derrière un build vert.
+
+Si l'absence de base est voulue (build d'image Docker, CI sans service
+Postgres) :
+
+```bash
+SKIP_DB_CHECK=1 pnpm build
+```
+
+### Base Postgres en local
+
+Le schéma utilise `uuid_generate_v4()`. Sur un Postgres neuf, activer
+l'extension **avant** le premier `db:push`, sinon il échoue en fin de course
+(Neon et Supabase l'activent par défaut, pas un serveur local) :
+
+```bash
+psql -d votre_base -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+pnpm db:push && pnpm db:seed
+```
 
 ## CI/CD local
 

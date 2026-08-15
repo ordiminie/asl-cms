@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "tsx scripts/preflight-build.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
