@@ -443,7 +443,40 @@ appliqués. Le build passe, et le profil de cache **est bien pris en compte** (c
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
 
-**D16 — 2026-08-15 — Les routes authentifiées restent dynamiques : c'est structurel, pas un renoncement.**
+**D17 — 2026-08-15 — D16 EST FAUX. Il existe un pattern officiel pour l'auth sous Cache Components.**
+
+Next publie un guide dédié que je n'avais pas lu :
+<https://nextjs.org/docs/app/guides/authentication-with-cache-components>.
+Il dit exactement l'inverse de D16 :
+
+> Keep the session read out of a layout's top level. A top-level `await` on the session in a layout
+> holds the whole segment, including `{children}`, behind that request, so push it into a component
+> inside a boundary.
+
+C'est littéralement ce que fait `(app)/layout.tsx` et `admin/layout.tsx`. Mon « aucun enfant à
+isoler, c'est structurel » était une conclusion tirée d'un symptôme, sans vérifier la doc.
+
+**Le pattern correct, en 4 points :**
+
+1. `'use cache: private'` sur le lecteur de session — directive prévue pour lire `cookies()` et
+   `headers()`, résultat gardé **côté navigateur uniquement**, jamais sur le serveur.
+2. Le layout **ne fait pas `await`** : il crée la promesse et la passe telle quelle au provider.
+3. Le provider client reçoit une `Promise<User>` et les consommateurs la déroulent avec `use()`,
+   chacun derrière son propre `<Suspense>`. La chrome se rend sans attendre la session.
+4. Données dérivées de la session : le getter exporté résout l'utilisateur et passe **l'id** à une
+   fonction non exportée en `'use cache'` + `cacheTag(\`x:${userId}\`)`. Ne pas exporter la fonction
+   interne, sinon un appelant peut demander les données d'un autre utilisateur.
+
+Pièges signalés par le guide : ne jamais lire `cookies()` dans un `'use cache'` simple ; ne pas
+mettre de secret ni de donnée personnelle dans une clé de cache ou un `cacheTag` (stockés en clair) ;
+revérifier la session dans **chaque** Server Action.
+
+**État réel** : les 39 routes `(app)` et `admin` portent toujours `instant = false`. Ce n'est plus
+« impossible », c'est **non fait**. Le refactor touche `AuthProvider`, `OrganizationProvider`,
+`AppSidebar` et `withAuth` — et il est à faire **après** avoir vu les 8 specs e2e d'authentification
+vertes en CI, jamais avant : c'est le modèle d'autorisation qu'on déplace.
+
+**D16 (CORRIGÉ PAR D17) — 2026-08-15 — Les routes authentifiées restent dynamiques.**
 Les 9 routes `(auth)` passent sans correctif — ce sont des formulaires clients. Les **39 routes
 `(app)` et `admin`** échouent toutes sur le même point, vérifié sur `/admin/subscriptions` :
 

@@ -84,6 +84,53 @@ async function ArticleContent({content}: {content: string}) {
 }
 ```
 
+## Authentification
+
+Pattern officiel : <https://nextjs.org/docs/app/guides/authentication-with-cache-components>
+
+**Règle d'or : ne jamais `await` la session au niveau supérieur d'un layout.** Ça bloque tout le
+segment, `{children}` compris. Il faut pousser la lecture dans un composant placé derrière un
+`<Suspense>`.
+
+```tsx
+// lib/auth.ts — 'use cache: private' peut lire cookies()/headers(),
+// le résultat reste dans le navigateur, jamais sur le serveur
+export async function getCurrentUser(): Promise<User> {
+  'use cache: private'
+  const {userId} = await getSession()
+  if (!userId) redirect('/login')
+  return findUserById(userId) // ne renvoyer que ce dont le client a besoin
+}
+```
+
+```tsx
+// Le layout ne fait PAS await : il crée la promesse et la passe telle quelle
+function Dashboard() {
+  const userPromise = getCurrentUser()
+  return (
+    <UserProvider userPromise={userPromise}>
+      <Suspense fallback={<span>…</span>}>
+        <UserBadge />
+      </Suspense>
+    </UserProvider>
+  )
+}
+```
+
+Les composants clients déroulent la promesse avec `use()`, chacun derrière son propre `<Suspense>` :
+la chrome se rend sans attendre la session.
+
+**Données dérivées de la session** : le getter exporté résout l'utilisateur et passe **l'id** à une
+fonction **non exportée** en `'use cache'` + `cacheTag(\`notes:${userId}\`)`. Ne pas exporter la
+fonction interne — sinon un appelant peut demander les données d'un autre utilisateur.
+
+⚠️ Les clés de cache et les `cacheTag` sont stockés **en clair**. Jamais de secret ni de donnée
+personnelle dedans : indexer sur un identifiant stable.
+
+> **État du boilerplate** : ce pattern n'est **pas encore appliqué**. Les 39 routes `(app)` et
+> `admin` portent `instant = false` parce que leurs layouts font un `await` sur la session. C'est le
+> chantier restant, voir D17 dans `docs/plans/cache-components-migration.md`.
+
 ## Routes bloquantes assumées
 
 Une route légitimement dépendante de la requête porte `export const instant = false` **avec la raison
@@ -91,8 +138,8 @@ Une route légitimement dépendante de la requête porte `export const instant =
 
 Cas actuels :
 
-- les 39 routes `(app)` et `admin` — le layout lit la session et la passe à `AuthProvider`, qui
-  enveloppe tout l'arbre : aucun enfant à isoler
+- les 39 routes `(app)` et `admin` — **provisoire** : le layout `await` la session à son niveau
+  supérieur. Voir la section Authentification ci-dessus pour le pattern qui lève ça.
 - `checkout/*` — prix, session, état Stripe
 - `docs/[...slug]` — lit `x-theme` pour la coloration Shiki
 

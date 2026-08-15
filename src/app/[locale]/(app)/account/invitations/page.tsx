@@ -6,10 +6,11 @@ import {isPageEnabled} from '@/lib/utils'
 
 import InvitationsContent from './invitations-content'
 
-// Route authentifiée : le layout lit la session via getAuthUser() -> headers() et la
-// passe à AuthProvider, qui enveloppe tout l'arbre. Aucun enfant à isoler dans un
-// <Suspense> — c'est le cas que la doc Next appelle « no child to wrap ». Lever cet
-// opt-out demande de revoir comment AuthProvider obtient l'utilisateur (D16).
+// Route authentifiée, pas encore migrée. Le layout fait un `await` sur la session à son
+// niveau supérieur, ce qui bloque tout le segment. Le pattern officiel existe :
+// https://nextjs.org/docs/app/guides/authentication-with-cache-components
+// (session en 'use cache: private', promesse passée au provider, use() derrière Suspense).
+// Voir D17 dans docs/plans/cache-components-migration.md.
 export const instant = false
 
 export default async function Page() {
