@@ -1,12 +1,15 @@
 import {expect, Page, test} from '@playwright/test'
 
 /**
- * Contrôle d'accès des routes authentifiées sous Cache Components.
+ * Contrôle d'accès et session sous Cache Components.
  *
- * Ces trois comportements sont ceux que la migration a le plus déplacés :
- * le gating est passé dans le proxy, la session se lit derrière un <Suspense>,
- * et le contrôle de rôle est resté bloquant pour que le 403 reste un vrai 403.
- * Le build ne peut rien prouver de tout ça — d'où ces specs.
+ * Ce que la migration a le plus déplacé : le gating est passé dans le proxy, la
+ * session se lit derrière un <Suspense> via un cache privé, et l'organisation
+ * active vient de cette session plutôt que d'un état client. Le build ne peut
+ * rien prouver de tout ça — d'où ces specs.
+ *
+ * Sur le statut du refus admin, lire D20 : il n'y a pas de 403, et c'est une
+ * limite de Cache Components, pas un oubli.
  */
 
 const login = async (page: Page, email: string) => {
@@ -74,5 +77,74 @@ test.describe('Contrôle d’accès', () => {
 
     expect(response?.status()).toBe(200)
     await expect(page).toHaveURL(/\/en\/admin/)
+  })
+})
+
+test.describe('Changement d’organisation', () => {
+  test('le choix survit à un rechargement', async ({page}) => {
+    await login(page, 'user@gmail.com')
+    await page.goto('/en/dashboard')
+
+    // Scopé à l'en-tête, et ciblé par rôle : `asChild` de Radix écrase le
+    // data-slot du bouton, et les items de navigation en portent un identique.
+    const switcher = page
+      .locator('[data-slot="sidebar-header"]')
+      .getByRole('button')
+      .first()
+    await expect(switcher).toBeVisible({timeout: 15_000})
+    // Le switcher affiche « Chargement... » tant que l'organisation active
+    // n'est pas résolue. Lire son texte à ce moment fait échouer la détection
+    // de l'organisation courante, et on finit par cliquer sur celle qui est
+    // déjà active — le handler sort alors sans rien faire.
+    await expect(switcher).not.toContainText('Chargement', {timeout: 15_000})
+
+    const switcherLabel = await switcher.innerText()
+
+    await switcher.click()
+    const items = page.getByRole('menuitem').filter({hasNotText: 'Add team'})
+    // Les items portent leur raccourci clavier ("Acme Corp.⌘2") et le bouton
+    // concatène nom + description : on compare sur les seuls noms.
+    const names = (await items.allInnerTexts()).map((text) =>
+      text.split('⌘')[0].trim()
+    )
+    const current = names.find((name) => switcherLabel.includes(name))
+    const targetName = names.find((name) => name !== current)
+
+    expect(names.length).toBeGreaterThan(1)
+    // Sans cette assertion, un échec de détection se manifeste 30 s plus tard
+    // par un waitForResponse qui expire, sans dire pourquoi.
+    expect(
+      current,
+      `organisation courante introuvable dans « ${switcherLabel} » parmi ${names}`
+    ).toBeTruthy()
+    if (!targetName) {
+      throw new Error(
+        `Aucune autre organisation que "${current}" dans ${names}`
+      )
+    }
+
+    // Attendre la réponse de set-active : sans ça, le rechargement plus bas
+    // peut annuler la requête en vol et le test devient flaky — ce qui est
+    // arrivé. C'est aussi une assertion en soi : la session serveur a bien été
+    // mise à jour.
+    const [setActiveResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes('set-active') &&
+          response.request().method() === 'POST'
+      ),
+      items.filter({hasText: targetName}).first().click(),
+    ])
+    expect(setActiveResponse.ok()).toBe(true)
+
+    // Bascule optimiste côté client
+    await expect(switcher).toContainText(targetName)
+
+    // La vraie assertion : après un rechargement, le cache privé est vidé
+    // (il ne survit pas à un reload) et l'organisation affichée ne peut venir
+    // que de la session serveur. Si `setActive` n'avait pas pris, on
+    // retomberait sur la précédente.
+    await page.reload()
+    await expect(switcher).toContainText(targetName)
   })
 })

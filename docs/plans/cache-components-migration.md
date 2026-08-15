@@ -349,7 +349,12 @@ prerender).
       Chiffres identiques avec et sans base joignable.
 - [x] 13 specs e2e vertes sur le build de production, base locale seedée (D19)
 - [x] accès admin refusé pour un utilisateur standard — couvert par `e2e/authorization.spec.ts`, et il n'y a pas de 403 : voir D20
-- [ ] **reste** : le changement d'organisation de bout en bout. Les tests unitaires vérifient que `setActive` puis `router.refresh()` sont bien appelés, mais personne n'a constaté que la session serveur reflète ensuite la nouvelle organisation — c'est `router.refresh()` face au cache privé, jamais vérifié en vrai.
+- [x] changement d'organisation de bout en bout — spec e2e : bascule, attente de la réponse
+      `set-active`, **rechargement**, et l'organisation affichée est toujours la nouvelle. Le cache
+      privé ne survivant pas à un reload, ce qui s'affiche ne peut venir que de la session serveur.
+      Voir D23.
+
+**Gate 4 franchi le 2026-08-15.**
 
 ---
 
@@ -459,6 +464,29 @@ Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `c
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D23 — 2026-08-15 — Le changement d'organisation est vérifié de bout en bout. Gate 4 franchi.**
+
+Dernier trou de vérification fermé : la spec bascule d'organisation, attend la réponse de
+`set-active`, **recharge la page**, et constate que l'organisation affichée est toujours la nouvelle.
+Comme le cache privé ne survit pas à un rechargement, ce qui s'affiche alors ne peut venir que de la
+session serveur — c'est ce qui prouve que `setActive` + `router.refresh()` font vraiment le travail.
+
+Écrire cette spec a demandé quatre passes, et chaque échec disait quelque chose :
+
+1. `.first()` sur `[data-slot="sidebar-menu-button"]` attrapait un item de navigation — `asChild` de
+   Radix écrase le `data-slot` du bouton du switcher.
+2. Le nom lu contenait le raccourci clavier (`Acme Corp.⌘2`) et le libellé du bouton concatène nom et
+   description sans saut de ligne : le filtre n'excluait rien et je cliquais sur l'organisation déjà
+   active.
+3. Le rechargement annulait la requête `set-active` en vol. Corrigé en attendant la réponse — ce qui
+   en fait au passage une assertion supplémentaire.
+4. Le switcher affiche « Chargement... » tant que l'organisation active n'est pas résolue ; lire son
+   texte à ce moment cassait la détection, et le handler sortait sans rien faire. L'échec se
+   manifestait 30 s plus tard par un `waitForResponse` expiré, sans dire pourquoi — d'où l'assertion
+   explicite ajoutée sur la détection.
+
+Stabilité vérifiée : 4 exécutions consécutives sans flaky, puis la suite complète (19 specs).
 
 **D22 — 2026-08-15 — Les hooks refactorés ont enfin des tests, et ils ont été validés par mutation.**
 
