@@ -231,12 +231,15 @@ Aucune route n'est encore convertie. C'est un état stable et mergeable.
       la raison, ou `window.location.assign` si la règle l'accepte dans ce contexte.
       Vérif : `pnpm lint` vert + test e2e de logout.
 
-- [~] **2.6 — Audit `<Activity>` sur les dialogs** — surface mesurée, audit visuel **non fait**.
-  38 fichiers utilisent `Dialog`/`AlertDialog`/`Sheet`/`Popover`, dont 29 pilotent l'ouverture
-  par un `useState(false)` local. 3 fichiers utilisent `useActionState` (`magic-link-form`,
-  `credential-form`, `register-magic-link-form`) : leurs messages de succès/erreur survivront
-  à une navigation aller-retour. Rien n'a été corrigé — il faut ouvrir l'app et constater les
-  cas réels avant de toucher 38 fichiers (règle D6).
+- [x] **2.6 — Audit `<Activity>` sur les dialogs** — tranché par une spec plutôt que par lecture de
+      code : `e2e/activity-state.spec.ts` ouvre un dialog contrôlé, navigue côté client, revient en
+      arrière, et constate qu'il ne réapparaît pas. Deux corrections à l'analyse d'origine ci-dessous.
+      Surface mesurée à l'époque, conservée pour mémoire :
+      38 fichiers utilisent `Dialog`/`AlertDialog`/`Sheet`/`Popover`, dont 29 pilotent l'ouverture
+      par un `useState(false)` local. 3 fichiers utilisent `useActionState` (`magic-link-form`,
+      `credential-form`, `register-magic-link-form`) : leurs messages de succès/erreur survivront
+      à une navigation aller-retour. Rien n'a été corrigé — il faut ouvrir l'app et constater les
+      cas réels avant de toucher 38 fichiers (règle D6).
 
   **Audit statique fait** : sur les 29 dialogs à état local,
   `admin/plans/delete-plan-dialog.tsx` est le **seul sans aucun mécanisme de fermeture**
@@ -464,6 +467,26 @@ Sur `privacy` / `terms` / `contact`, l'opt-out est retiré et `'use cache'` + `c
 appliqués. Le build passe, et le profil de cache **est bien pris en compte** (colonnes
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
+
+**D24 — 2026-08-15 — Les dialogs ne réapparaissent pas au retour arrière. L'analyse de 2.6 était fausse.**
+
+Vérifié par une spec (`e2e/activity-state.spec.ts`) : dialog contrôlé ouvert sur `/admin/plans`,
+navigation client vers `/admin/users`, retour arrière — le dialog reste fermé. Un marqueur posé sur
+`window` avant la navigation prouve qu'aucun rechargement de document n'a eu lieu, sinon le test
+passerait pour une mauvaise raison.
+
+**Deux erreurs dans l'analyse statique de 2.6** :
+
+1. `admin/plans/delete-plan-dialog.tsx` y était désigné « seul dialog sans aucun mécanisme de
+   fermeture, premier candidat ». Faux : il est **non contrôlé**, donc Radix le ferme lui-même.
+   L'absence de `setOpen(false)` était le signe qu'il n'y avait rien à fermer à la main, pas d'un
+   oubli. Compter des occurrences ne remplace pas la lecture du composant.
+2. Le risque portait sur les dialogs **contrôlés** de page — pas ceux du layout, qui ne sont pas
+   démontés à la navigation de toute façon.
+
+À noter au passage : sous streaming, le bouton s'affiche **avant** d'être hydraté, et un premier
+clic peut ne rien déclencher. La spec réessaie via `expect(...).toPass()`. Ça vaut pour toute spec
+qui clique tôt sur une route `◐`.
 
 **D23 — 2026-08-15 — Le changement d'organisation est vérifié de bout en bout. Gate 4 franchi.**
 
