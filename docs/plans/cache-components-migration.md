@@ -480,8 +480,10 @@ raisonnement plausible au lieu d'une page de doc (voir D16 → D17).
 Deux points restent ouverts :
 
 1. `instant = false` sur `admin/layout` n'a plus qu'une raison : `withAuthAdmin` fait un `await` sur
-   la session en tête de layout. Reste à vérifier s'il est encore nécessaire, sachant que
-   `admin/loading.tsx` existe et sert de boundary — c'est ce qui a suffi aux 21 routes `(app)`.
+   la session en tête de layout. **Vérifié en le retirant** : le build échoue sur
+   `admin/organizations` (`uncached or runtime data during prerendering`). Il est donc bien
+   nécessaire — mais pour cette raison-là, pas pour le 403. Le `loading.tsx` du segment, qui a suffi
+   aux 21 routes `(app)`, ne suffit pas ici parce que l'`await` est dans le layout lui-même.
 2. Obtenir un vrai 403 demande de remonter le contrôle de rôle dans le proxy : ce sont les options B
    (appel `auth.api.getSession()`) ou C (cookie cache Better Auth) de l'arbitrage D18, à rouvrir si
    le code de statut compte — clients d'API, crawlers, monitoring.

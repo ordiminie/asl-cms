@@ -17,14 +17,16 @@ import {
 } from '@/components/ui/sidebar'
 import {APP_NAME} from '@/lib/constants'
 
-// Opt-out : `withAuthAdmin` fait un `await` sur la session au niveau supérieur
-// du layout, ce qui tient tout le segment.
+// Opt-out nécessaire : `withAuthAdmin` fait un `await` sur la session au niveau
+// supérieur du layout, ce qui tient tout le segment. Vérifié en le retirant —
+// le build échoue sur `admin/organizations` (uncached or runtime data during
+// prerendering).
 //
 // ⚠️ Ce n'est PAS ce qui produit le 403, contrairement à ce qui était écrit ici.
 // Sous Cache Components, toute route dynamique streame un shell d'abord, donc
 // `forbidden()` arrive après que le statut soit parti : /admin rend un 200 avec
-// l'UI forbidden — mesuré, e2e `authorization.spec.ts`. Aucun contenu admin ne
-// fuit, mais pour un vrai 403 il faudrait faire le contrôle de rôle dans
+// l'UI forbidden — mesuré dans `e2e/authorization.spec.ts`. Aucun contenu admin
+// ne fuit, mais pour un vrai 403 il faudrait remonter le contrôle de rôle dans
 // `proxy.ts`, comme le prescrit la doc :
 // https://nextjs.org/docs/app/api-reference/functions/forbidden
 // Voir D20 dans docs/plans/cache-components-migration.md.
