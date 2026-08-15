@@ -53,7 +53,7 @@ Rules for pages, components, forms, and Server Actions.
 | **Secure Server Action**  | [rule-safe-server-action.mdc](01-presentation/rule-safe-server-action.mdc)                                 | Mandatory requireActionAuth(), role verification           | Creating a Server Action        |
 | **Server Action Imports** | [rule-server-actions-imports.mdc](01-presentation/rule-server-actions-imports.mdc)                         | What can/cannot be imported in a Server Action             | Import errors in Server Actions |
 | **Server Action i18n**    | [rule-server-actions-internationalization.md](01-presentation/rule-server-actions-internationalization.md) | Translated messages in Server Actions with getTranslations | Multilingual Server Action      |
-| **Secure Routes**         | [rule-safe-route.mdc](01-presentation/rule-safe-route.mdc)                                                 | withAuth/withAuthAdmin HOCs for pages and layouts          | Securing a page or layout       |
+| **Secure Routes**         | [rule-safe-route.mdc](01-presentation/rule-safe-route.mdc)                                                 | Proxy gating, session promise in layouts, withAuth for role checks          | Securing a page or layout, reading the session       |
 
 ### Tables and Pagination
 
@@ -68,7 +68,7 @@ Rules for pages, components, forms, and Server Actions.
 | ----------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------- |
 | **API Routes**                | [rule-api-routes.mdc](01-presentation/rule-api-routes.mdc)                         | RESTful CRUD, withAuth/withAuthToken authentication  | Creating an API Route                 |
 | **React Query**               | [rule-react-query.mdc](01-presentation/rule-react-query.mdc)                       | useQuery/useMutation hooks, query keys, invalidation | Client-side fetching with React Query |
-| **React Cache vs Next Cache** | [rule-react-cache-next-cache.mdc](01-presentation/rule-react-cache-next-cache.mdc) | cache() vs unstable_cache(), when to use each        | Optimizing data caching               |
+| **React Cache vs Next Cache** | [rule-react-cache-next-cache.mdc](01-presentation/rule-react-cache-next-cache.mdc) | Cache Components: 'use cache' in the DAL, unstable_cache, per-user data behind Suspense        | Caching a read, invalidating it, opting a route out               |
 
 ### Internationalization
 

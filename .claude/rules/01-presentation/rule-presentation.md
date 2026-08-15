@@ -53,7 +53,7 @@ components/
 ```tsx
 // app/(app)/account/page.tsx
 import {notFound} from 'next/navigation'
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 import {EditUserProfileForm} from '@/components/features/user/edit-user-profile'
 
 export default async function Page() {
@@ -156,7 +156,7 @@ export function EditUserProfileForm({user}: {user: User}) {
 'use server'
 
 import {revalidatePath} from 'next/cache'
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 import {updateUserService} from '@/services/facades/user-service-facade'
 import {userFormSchema} from './user-form-validation'
 
@@ -212,26 +212,36 @@ export async function updateUserAction(
 
 ## Organisation des Layouts
 
+**Ne jamais `await` la session au niveau supérieur d'un layout.** Sous Cache Components, ça tient
+tout le segment derrière la requête, `{children}` compris, et le shell statique est perdu. Le layout
+crée la promesse et la passe ; les consommateurs la déroulent derrière un `<Suspense>`.
+
 ```tsx
 // app/(app)/layout.tsx
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {Suspense} from 'react'
+import {getCurrentUserDal} from '@/app/dal/user-dal'
+import AuthProvider from '@/components/context/auth-provider'
 import Header from '@/components/features/dashboard-layout/header'
 import Footer from '@/components/features/dashboard-layout/footer'
 
-async function AppLayout({children}: {children: React.ReactNode}) {
-  const user = await getAuthUser()
+export default function AppLayout({children}: {children: React.ReactNode}) {
+  const userPromise = getCurrentUserDal() // créée, jamais attendue
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Header user={user} />
-      <main className="container mx-auto flex-1">{children}</main>
-      <Footer />
-    </div>
+    <AuthProvider userPromise={userPromise}>
+      <div className="flex min-h-screen flex-col">
+        <Suspense fallback={<HeaderSkeleton />}>
+          <Header />
+        </Suspense>
+        <main className="container mx-auto flex-1">{children}</main>
+        <Footer />
+      </div>
+    </AuthProvider>
   )
 }
-
-export default AppLayout
 ```
+
+Détail du modèle et du contrôle d'accès : [rule-safe-route.md](rule-safe-route.md).
 
 ## Bonnes Pratiques
 
@@ -316,7 +326,7 @@ import {getUserByIdDal, getConnectedUser} from '@/app/dal/user-dal'
 import {updateUserService} from '@/services/facades/user-service-facade'
 
 // ✅ Correct : Utilisation des utilitaires d'authentification
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 
 // ✅ Correct : Utilisation des types de domaine
 import {User, UserDTO} from '@/services/types/domain/user-types'

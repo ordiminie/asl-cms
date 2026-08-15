@@ -41,7 +41,7 @@ beforeEach(() => {
 
 ### Modules à mocker systématiquement
 - Tous les repositories : `@/db/repositories/*`
-- Auth utils : `../authentication/auth-utils`
+- Auth utils : `../authentication/auth-service`
 - Base de données : `@/db/models/db`
 
 ## Utilisateurs de Test

@@ -156,7 +156,7 @@ export function FormWithUpload({entity}: {entity: EntityType}) {
 ```tsx
 'use server'
 
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 import {uploadImageForEntityService} from '@/services/facades/file-service-facade'
 import {
   EntityTypeConst,
