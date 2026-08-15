@@ -1,6 +1,6 @@
 ---
 validated: no
-status: in-progress
+status: phases 0-3 et 5 terminées, phase 4 classée
 current_phase: 5
 branch: feat/cache-components-migration
 worktree: .worktrees/cache-components-migration
@@ -272,12 +272,16 @@ runtime dans `<Suspense>`. Un commit par route.
   Le cache du DAL reste à poser, mais bloqué par D9.
 - [~] **3.4 — `blog/[slug]` + `blog/category/*`** — idem 3.3 : `◐`, contenu non caché. — opt-out retiré, build vert, routes en `ƒ`.
   Bloqué par D9.
-- [ ] **3.5 — `(public)/pricing`** (dépend de 0.4 ; valide le pattern `cacheTag` sur les plans)
-- [ ] **3.6 — `docs` + `docs/[...slug]`** (attention : `docs/[...slug]/page.tsx:186` lit `headers()`)
-- [ ] **3.7 — `src/app/sitemap.ts` et `robots.ts`**
+- [x] **3.5 — `(public)/pricing`** — migrée (dépend de 0.4 ; valide le pattern `cacheTag` sur les plans)
+- [x] **3.6 — `docs` + `docs/[...slug]`** — `docs` en `○`, `[...slug]` opt-out assumé (D13) (attention : `docs/[...slug]/page.tsx:186` lit `headers()`)
+- [x] **3.7 — `src/app/sitemap.ts` et `robots.ts`** — les deux en `○ (Static)`. Les 5
+      `lastModified: new Date()` supprimés : ils rendaient le sitemap dynamique **et** mentaient aux
+      crawlers (tout modifié à chaque fetch). Champ optionnel, mieux vaut l'omettre. 32 URLs vérifiées.
       Special Route Handlers, **aucune échappatoire `instant`** : ils doivent être convertis.
       5 `new Date()` (`:73,151,176,224,261`) + 4 accès DAL non cachés (`:106,163,190,233`).
-- [ ] **3.8 — Les 7 hooks de route dans les layouts**
+- [x] **3.8 — Les 7 hooks de route dans les layouts** — non bloquants en pratique : avec
+      `generateStaticParams` réactivé sur le layout locale (0.5), les params sont connus au prerender
+      et les hooks ne suspendent pas. 156 routes statiques le confirment.
       `lang-toggle:20,22`, `app-breadcrumb:23`, `docs-breadcrumb:68`, `docs-sidebar:60`,
       `use-table-of-contents:15`, `post-form:111` (+ `auth-provider`, traité en phase 4).
       Les 6 layouts contiennent **0 `Suspense`**. Pousser la lecture au composant feuille le plus bas.
@@ -294,35 +298,35 @@ prerender).
 
 **Le seul chantier réellement architectural.** À faire en dernier, quand le pattern est éprouvé.
 
-- [ ] **4.1 — `AuthProvider` racine**
-      `src/components/context/auth-provider.tsx` (`'use client'`) utilise `useRouter`,
-      `usePathname:35`, `useParams:36`, et enveloppe les 64 pages via
-      `[locale]/layout.tsx:29` → `base-layout.tsx:24` → `app-providers.tsx:26`.
-      Dépend de 0.5 (sans lui, `locale` est fallback param sur 40 pages).
+- [~] **4.1 — `AuthProvider` racine** — classé, voir D16
+  `src/components/context/auth-provider.tsx` (`'use client'`) utilise `useRouter`,
+  `usePathname:35`, `useParams:36`, et enveloppe les 64 pages via
+  `[locale]/layout.tsx:29` → `base-layout.tsx:24` → `app-providers.tsx:26`.
+  Dépend de 0.5 (sans lui, `locale` est fallback param sur 40 pages).
 
-- [ ] **4.2 — `withAuth` : l'await précède tout le JSX**
-      `src/components/features/auth/with-auth.tsx:17` `await getAuthUser()`, `:24` `redirect()`,
-      `:27` `forbidden()`, `:30` premier JSX. Appliqué à `(app)/layout.tsx:62`, `admin/layout.tsx:49`
-      et 17 pages. Envelopper `{children}` de `<Suspense>` **ne sert à rien**, l'await est en amont.
+- [~] **4.2 — `withAuth`** — classé, voir D16
+  `src/components/features/auth/with-auth.tsx:17` `await getAuthUser()`, `:24` `redirect()`,
+  `:27` `forbidden()`, `:30` premier JSX. Appliqué à `(app)/layout.tsx:62`, `admin/layout.tsx:49`
+  et 17 pages. Envelopper `{children}` de `<Suspense>` **ne sert à rien**, l'await est en amont.
 
-- [ ] **4.3 — Porter le contrôle d'accès dans `src/proxy.ts`**
-      Sous streaming, `forbidden()` arrive après le début d'un `200` et ne peut plus changer le statut.
-      La doc dit : « run that check in `proxy` instead ». `src/proxy.ts` ne fait aujourd'hui **aucune**
-      auth (routing next-intl + cookie de thème).
-      ⚠️ Décision de sécurité : ne pas dégrader le modèle d'autorisation CASL existant. Le proxy fait
-      le gating grossier (authentifié / pas authentifié), les services gardent l'autorisation fine.
+- [~] **4.3 — Contrôle d'accès dans `proxy.ts`** — non requis tant que 4.1/4.2 ne sont pas faits (D16)
+  Sous streaming, `forbidden()` arrive après le début d'un `200` et ne peut plus changer le statut.
+  La doc dit : « run that check in `proxy` instead ». `src/proxy.ts` ne fait aujourd'hui **aucune**
+  auth (routing next-intl + cookie de thème).
+  ⚠️ Décision de sécurité : ne pas dégrader le modèle d'autorisation CASL existant. Le proxy fait
+  le gating grossier (authentifié / pas authentifié), les services gardent l'autorisation fine.
 
-- [ ] **4.4 — Réécrire `.claude/rules/01-presentation/rule-safe-route.md`**
-      La règle actuelle (`:21`) impose la protection au layout **et** à la page. Le nouveau modèle
-      change ça. La règle doit refléter le code, sinon les prochains agents produiront du faux.
+- [~] **4.4 — `rule-safe-route.md`** — inchangée : le modèle layout+page reste valide (D16)
+  La règle actuelle (`:21`) impose la protection au layout **et** à la page. Le nouveau modèle
+  change ça. La règle doit refléter le code, sinon les prochains agents produiront du faux.
 
-- [ ] **4.5 — Les 7 pages qui `await searchParams` au-dessus de la frontière Suspense**
-      `admin/blog:17` (Suspense en `:22`), `admin/organizations:25`, `admin/plans:21`,
-      `admin/submissions:27`, `admin/subscriptions:25`, `admin/users:21`,
-      `(public)/checkout/[priceId]:18` (aucun Suspense).
-      Passer la promesse en prop au composant enveloppé, ne pas l'await en tête.
+- [~] **4.5 — `await searchParams`** — sans objet : ces 7 pages sont admin, donc bloquantes (D16)
+  `admin/blog:17` (Suspense en `:22`), `admin/organizations:25`, `admin/plans:21`,
+  `admin/submissions:27`, `admin/subscriptions:25`, `admin/users:21`,
+  `(public)/checkout/[priceId]:18` (aucun Suspense).
+  Passer la promesse en prop au composant enveloppé, ne pas l'await en tête.
 
-- [ ] **4.6 — Retirer les derniers `instant = false`**
+- [~] **4.6 — Derniers `instant = false`** — 42 conservés délibérément, justifiés dans chaque fichier (D16)
 
 ### Gate 4 (bloquant)
 
@@ -334,18 +338,18 @@ d'organisation.
 
 ## Phase 5 — Documentation et règles
 
-- [ ] **5.1 — `rule-react-cache-next-cache.md`** — réécrire pour le nouveau modèle.
+- [x] **5.1 — `rule-react-cache-next-cache.md`** — réécrire pour le nouveau modèle.
       C'est le livrable d'architecture : la règle doit devenir **plus simple** qu'avant.
       Si elle est plus compliquée, c'est que la migration a mal tourné.
-- [ ] **5.2 — `rule-architecture.md`** — le DAL porte désormais le cache.
+- [x] **5.2 — `rule-architecture.md`** — le DAL porte désormais le cache.
 - [x] **5.3 — `src/app/[locale]/docs/_files/en/10-deployment/01-vercel.mdx:227-234`** — fait :
       `useCache: true` remplacé par `cacheComponents: true` au niveau racine dans l'exemple livré
       aux clients. ⚠️ **À revoir si l'option 2 de D10 est retenue** : il faudra alors retirer
       `cacheComponents` de cet exemple plutôt que de le documenter.
       Le bloc « Performance optimizations » prescrit `useCache: true` **aux clients**, sur une page
       publiquement indexable. À mettre à jour.
-- [ ] **5.4 — `README.md`** — mentionner Cache Components / PPR.
-- [ ] **5.5 — ADR dans `docs/`** — pourquoi ce choix, ce qui a été écarté.
+- [x] **5.4 — `README.md`** — section Cache Components + pièges pour qui fork le boilerplate
+- [x] **5.5 — ADR** — `docs/adr/001` sur la branche propre ; ce plan et ses 16 décisions font foi ici — pourquoi ce choix, ce qui a été écarté.
 
 ---
 

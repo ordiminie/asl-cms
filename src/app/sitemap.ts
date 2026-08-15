@@ -70,7 +70,6 @@ function createEntriesForRoute(
 
   return locales.map((locale) => ({
     url: buildUrl(baseUrl, locale, route.path, defaultLocale),
-    lastModified: new Date(),
     changeFrequency: route.changeFrequency,
     priority: route.priority,
     alternates: {
@@ -148,7 +147,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             `/blog/${variant.slug}`,
             defaultLocale
           ),
-          lastModified: new Date(),
           changeFrequency: 'weekly',
           priority: 0.7,
           alternates: {
@@ -173,7 +171,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         sitemapEntries.push({
           url: buildUrl(baseUrl, locale, pagePath, defaultLocale),
-          lastModified: new Date(),
           changeFrequency: 'daily',
           priority: 0.6,
           alternates: {
@@ -221,7 +218,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       for (const locale of availableLocales) {
         sitemapEntries.push({
           url: buildUrl(baseUrl, locale, categoryPath, defaultLocale),
-          lastModified: new Date(),
           changeFrequency: 'weekly',
           priority: 0.6,
           alternates: {
@@ -258,7 +254,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
           sitemapEntries.push({
             url: buildUrl(baseUrl, locale, categoryPagePath, defaultLocale),
-            lastModified: new Date(),
             changeFrequency: 'weekly',
             priority: 0.5,
             alternates: {

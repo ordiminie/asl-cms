@@ -194,3 +194,26 @@ sudo pnpm exec playwright install-deps
 pnpm exec playwright install-deps
 sudo apt-get install libasound2t64
 ```
+
+## Cache Components (Next.js 16)
+
+Le projet tourne sous `cacheComponents: true`. **Rien n'est caché par défaut** : chaque lecture est
+dynamique tant qu'on ne la cache pas explicitement, et Next prerend un shell statique servi
+immédiatement pendant que le contenu dynamique streame (Partial Prerendering).
+
+Le cache est une propriété **de la fonction du DAL** (`'use cache'` + `cacheLife` + `cacheTag`), pas
+de la route. Règle complète :
+[`.claude/rules/01-presentation/rule-react-cache-next-cache.md`](.claude/rules/01-presentation/rule-react-cache-next-cache.md).
+
+Points d'attention si vous partez de ce boilerplate :
+
+- **`[locale]` doit rester un root param.** Ne pas réintroduire de `layout.tsx` au-dessus de
+  `src/app/[locale]/` : `next/root-params` cesserait de fonctionner et plus aucune route ne serait
+  prerendue. Vérifier avec `pnpm exec next typegen` puis `.next/types/root-params.d.ts`.
+- **Les routes authentifiées sont volontairement bloquantes** (`export const instant = false`), avec
+  la raison écrite dans chaque fichier.
+- **Pas d'horloge ni d'aléatoire** dans un scope `'use cache'` : `new Date()`, `Date.now()`,
+  `Math.random()` font échouer le prerender.
+
+Le détail complet de la migration, les 16 décisions prises et les pièges rencontrés :
+[`docs/plans/cache-components-migration.md`](docs/plans/cache-components-migration.md).
