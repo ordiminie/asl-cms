@@ -45,7 +45,12 @@ export default function AppLayout({children}: {children: React.ReactNode}) {
                 <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                   <div className="flex h-14 items-center gap-2">
                     <SidebarTrigger />
-                    <AppBreadcrumb />
+                    {/* usePathname() : sur les routes à params inconnus au
+                        prerender (team/[slug]), le chemin n'existe qu'à la
+                        requête. */}
+                    <Suspense fallback={null}>
+                      <AppBreadcrumb />
+                    </Suspense>
                     <div className="ml-auto">
                       <QuickFeedbackButton />
                     </div>

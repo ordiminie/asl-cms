@@ -8,13 +8,6 @@ import {TaskBoardComponent} from '@/components/features/tasks/task-board'
 import {Button} from '@/components/ui/button'
 import {getProjectByIdService} from '@/services/facades/project-service-facade'
 
-// Route authentifiée, pas encore migrée. Le layout fait un `await` sur la session à son
-// niveau supérieur, ce qui bloque tout le segment. Le pattern officiel existe :
-// https://nextjs.org/docs/app/guides/authentication-with-cache-components
-// (session en 'use cache: private', promesse passée au provider, use() derrière Suspense).
-// Voir D17 dans docs/plans/cache-components-migration.md.
-export const instant = false
-
 async function TaskBoard({projectId}: {projectId: string}) {
   const [tasks, project] = await Promise.all([
     getTasksByProjectGroupedByStatusDal(projectId),
