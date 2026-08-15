@@ -459,6 +459,37 @@ appliqués. Le build passe, et le profil de cache **est bien pris en compte** (c
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
 
+**D20 — 2026-08-15 — Le 403 admin n'existe pas, et `instant = false` n'y peut rien. D18 est corrigé.**
+
+La spec écrite pour prouver le 403 l'a réfuté. Un utilisateur standard qui visite `/en/admin`
+reçoit **200**, avec l'UI forbidden. Aucun contenu admin ne fuit — la protection fait son travail —
+mais le statut est faux.
+
+La cause est écrite noir sur blanc dans la doc de `forbidden`, que je n'avais pas lue avant de
+trancher D18 :
+
+> Because the check runs inside the `<Suspense>` boundary, the response has already begun streaming
+> as a `200`, and the status can't change once streaming has started. **With Cache Components, every
+> dynamic route streams a static shell first, so run that check in `proxy` instead.**
+
+Donc la justification de D18 — « on garde `instant = false` sur `admin/layout` parce qu'un vrai 403
+doit être tranché avant le premier octet » — **est fausse**. Cet opt-out n'achète que le droit de
+bloquer, jamais le statut. C'est la deuxième fois dans ce chantier qu'une conclusion est tirée d'un
+raisonnement plausible au lieu d'une page de doc (voir D16 → D17).
+
+Deux points restent ouverts :
+
+1. `instant = false` sur `admin/layout` n'a plus qu'une raison : `withAuthAdmin` fait un `await` sur
+   la session en tête de layout. Reste à vérifier s'il est encore nécessaire, sachant que
+   `admin/loading.tsx` existe et sert de boundary — c'est ce qui a suffi aux 21 routes `(app)`.
+2. Obtenir un vrai 403 demande de remonter le contrôle de rôle dans le proxy : ce sont les options B
+   (appel `auth.api.getSession()`) ou C (cookie cache Better Auth) de l'arbitrage D18, à rouvrir si
+   le code de statut compte — clients d'API, crawlers, monitoring.
+
+Consigné dans le code, dans `rule-safe-route.md` et dans `e2e/authorization.spec.ts`, où
+l'assertion `toBe(200)` est volontairement stricte : le jour où le contrôle passe dans le proxy, le
+test tombe et le signale.
+
 **D19 — 2026-08-15 — Les e2e tournent enfin, et elles ont trouvé un bug que le build cachait.**
 
 Les 13 specs passent (25 s) sur le build de production, contre un Postgres local. Mise en place :

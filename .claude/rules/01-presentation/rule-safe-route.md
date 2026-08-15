@@ -13,18 +13,29 @@ précis.
 
 ## Les quatre niveaux
 
-| Niveau            | Où                          | Ce qu'il décide                              |
-| ----------------- | --------------------------- | -------------------------------------------- |
-| 0. Proxy          | `src/proxy.ts`              | pas de cookie de session → redirect `/login` |
-| 1. Route          | layout ou page (`withAuth`) | rôle insuffisant → `forbidden()` (403)       |
-| 2. Server Actions | `requireActionAuth()`       | chaque mutation revérifie la session         |
-| 3. Services / DAL | autorisation CASL           | qui a le droit sur quelle ressource          |
+| Niveau            | Où                          | Ce qu'il décide                                      |
+| ----------------- | --------------------------- | ---------------------------------------------------- |
+| 0. Proxy          | `src/proxy.ts`              | pas de cookie de session → redirect `/login`         |
+| 1. Route          | layout ou page (`withAuth`) | rôle insuffisant → UI `forbidden()`, mais statut 200 |
+| 2. Server Actions | `requireActionAuth()`       | chaque mutation revérifie la session                 |
+| 3. Services / DAL | autorisation CASL           | qui a le droit sur quelle ressource                  |
 
 Le niveau 0 est un **garde-fou de routage**, pas une preuve : la présence d'un
 cookie ne dit rien de sa validité. Il existe pour trancher avant le premier
 octet — sous streaming, un `redirect()` déclenché en cours de rendu part après le
 début d'un `200` et ne peut plus changer le statut. La sécurité réelle reste aux
 niveaux 2 et 3, au plus près de la donnée.
+
+⚠️ **Le niveau 1 ne rend pas un vrai 403, et `instant = false` n'y change rien.**
+Sous Cache Components, **toute** route dynamique streame un shell d'abord : quand
+`forbidden()` est levé, le statut est déjà parti. Mesuré : `/admin` visité par un
+utilisateur standard rend un `200` portant l'UI forbidden (e2e
+`authorization.spec.ts`). Aucun contenu protégé ne fuit — la doc juge d'ailleurs
+ce compromis acceptable pour une page — mais si le code de statut compte
+(clients d'API, crawlers, monitoring), le contrôle de rôle doit remonter dans le
+proxy. C'est ce que prescrit
+[la doc de `forbidden`](https://nextjs.org/docs/app/api-reference/functions/forbidden) :
+« run that check in `proxy` instead ».
 
 ## La règle d'or des layouts
 
@@ -82,14 +93,14 @@ export default withAuth(Page)
 export default withAuthAdmin(AdminPage)
 ```
 
-Sur un **layout**, l'`await` de `withAuth` bloque le segment : la route doit
-alors porter `export const instant = false` avec la raison écrite dans le
-fichier. C'est le cas de `admin/layout.tsx`, et c'est assumé — un vrai 403 doit
-être tranché avant le premier octet.
+Sur un **layout**, l'`await` de `withAuth` tient le segment : la route doit alors
+porter `export const instant = false` avec la raison écrite dans le fichier.
+C'est le cas de `admin/layout.tsx`. Ne pas croire que cet opt-out achète le
+statut 403 — il n'achète que le droit de bloquer.
 
 ```tsx
 // src/app/[locale]/admin/layout.tsx
-export const instant = false // contrôle de rôle ADMIN, doit rendre un vrai 403
+export const instant = false // withAuthAdmin await la session en tête de layout
 
 function AdminLayout({
   children,
@@ -136,4 +147,5 @@ route garde son shell statique.
       dans le fichier si c'est sur un layout
 - [ ] Server Actions protégées par `requireActionAuth()`
 - [ ] Autorisation métier dans les services (CASL), jamais dans l'UI seule
-- [ ] Vérifié à la main : login, logout, accès admin refusé pour un user standard
+- [ ] Couvert par `e2e/authorization.spec.ts` : redirect sans session, contenu
+      protégé qui ne fuit pas, accès légitime qui passe

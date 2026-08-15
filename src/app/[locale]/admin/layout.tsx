@@ -17,11 +17,17 @@ import {
 } from '@/components/ui/sidebar'
 import {APP_NAME} from '@/lib/constants'
 
-// Opt-out assumé : le contrôle du rôle ADMIN doit rendre un vrai 403, donc être
-// tranché avant le premier octet. Sous streaming, `forbidden()` arriverait après
-// le début d'un 200 et ne pourrait plus changer le statut. Le gating grossier
-// (authentifié / pas authentifié) est fait dans `proxy.ts` ; le contrôle de rôle
-// reste bloquant ici. Voir D17 dans docs/plans/cache-components-migration.md.
+// Opt-out : `withAuthAdmin` fait un `await` sur la session au niveau supérieur
+// du layout, ce qui tient tout le segment.
+//
+// ⚠️ Ce n'est PAS ce qui produit le 403, contrairement à ce qui était écrit ici.
+// Sous Cache Components, toute route dynamique streame un shell d'abord, donc
+// `forbidden()` arrive après que le statut soit parti : /admin rend un 200 avec
+// l'UI forbidden — mesuré, e2e `authorization.spec.ts`. Aucun contenu admin ne
+// fuit, mais pour un vrai 403 il faudrait faire le contrôle de rôle dans
+// `proxy.ts`, comme le prescrit la doc :
+// https://nextjs.org/docs/app/api-reference/functions/forbidden
+// Voir D20 dans docs/plans/cache-components-migration.md.
 export const instant = false
 
 export const metadata: Metadata = {
