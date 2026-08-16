@@ -165,12 +165,7 @@ import {
 } from '@/components/ui/table'
 import {Input} from '@/components/ui/input'
 import {Button} from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {EditItemDialog} from './edit-item-dialog'
 import {DeleteItemDialog} from './delete-item-dialog'
 import {updateItem, deleteItem} from '@/app/admin/my-feature/actions'
