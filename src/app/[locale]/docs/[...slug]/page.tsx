@@ -3,6 +3,7 @@ import matter from 'gray-matter'
 import type {Metadata} from 'next'
 import {notFound} from 'next/navigation'
 
+import {CopyPageButton} from '@/components/features/docs/copy-page-button'
 import {DocsPagination} from '@/components/features/docs/docs-pagination'
 import {
   TableOfContents,
@@ -209,12 +210,20 @@ export default async function DocsPage({params}: DocsPageProps) {
       <TableOfContentsMobile items={headings} />
 
       <div className="w-full max-w-4xl">
-        {/* Title from frontmatter */}
-        {frontmatter.title && (
-          <h1 className="mb-6 scroll-mt-20 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
-            {frontmatter.title}
-          </h1>
-        )}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          {frontmatter.title && (
+            <h1 className="scroll-mt-20 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+              {frontmatter.title}
+            </h1>
+          )}
+          <CopyPageButton
+            markdown={
+              frontmatter.title
+                ? `# ${frontmatter.title}\n\n${content}`
+                : content
+            }
+          />
+        </div>
 
         <MDXContent source={content} />
 
