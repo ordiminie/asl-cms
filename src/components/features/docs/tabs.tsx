@@ -58,7 +58,7 @@ export function Tabs({children, defaultValue, className}: TabsProps) {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-background [&>div>*:first-child]:mt-0 [&>div>*:last-child]:mb-0">
+      <div className="bg-background p-4 [&>div>*:first-child]:mt-0 [&>div>*:last-child]:mb-0">
         {tabElements.map((tab) => (
           <div
             key={tab.props.value}
