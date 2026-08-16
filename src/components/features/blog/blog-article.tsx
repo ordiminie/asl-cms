@@ -208,7 +208,7 @@ export function BlogArticle({
         )}
       </div>
 
-      <div className="prose prose-lg prose-gray dark:prose-invert prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-p:text-muted-foreground prose-p:leading-relaxed prose-strong:text-foreground prose-code:bg-muted prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-pre:bg-muted prose-pre:border prose-blockquote:border-l-primary prose-blockquote:bg-muted/50 prose-blockquote:py-1 prose-blockquote:not-italic prose-img:rounded-xl prose-img:shadow-lg max-w-none">
+      <div className="max-w-none">
         <Suspense fallback={<div className="text-muted-foreground">…</div>}>
           <ArticleContent content={post.content} />
         </Suspense>

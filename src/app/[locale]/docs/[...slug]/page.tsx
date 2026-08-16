@@ -5,6 +5,7 @@ import {notFound} from 'next/navigation'
 import {connection} from 'next/server'
 import {Suspense} from 'react'
 
+import {DocsPagination} from '@/components/features/docs/docs-pagination'
 import {MDXContent} from '@/components/mdx-content'
 import {env} from '@/env'
 import {routing} from '@/i18n/routing'
@@ -34,6 +35,23 @@ function getAllSlugsFromStructure(items: DocItem[]): string[] {
   }
 
   return slugs
+}
+
+/**
+ * Ordre de lecture de la documentation, à plat. Sert la navigation
+ * précédent/suivant : la structure des fichiers fait foi, rien à maintenir.
+ */
+function flattenDocs(items: DocItem[]): DocItem[] {
+  const flat: DocItem[] = []
+
+  for (const item of items) {
+    flat.push(item)
+    if (item.children) {
+      flat.push(...flattenDocs(item.children))
+    }
+  }
+
+  return flat
 }
 
 export async function generateStaticParams() {
@@ -192,18 +210,35 @@ export default async function DocsPage({params}: DocsPageProps) {
     )
   }
 
+  const ordered = flattenDocs(getDocsStructure(resolvedParams.locale).items)
+  const position = ordered.findIndex((item) => item.slug === slug)
+  const previous = position > 0 ? ordered[position - 1] : undefined
+  const next =
+    position >= 0 && position < ordered.length - 1
+      ? ordered[position + 1]
+      : undefined
+
   return (
     <div className="w-full max-w-4xl">
       {/* Title from frontmatter */}
       {frontmatter.title && (
-        <h1 className="border-border mb-6 scroll-mt-20 border-b pb-2 text-2xl font-bold sm:text-3xl md:text-4xl">
+        <h1 className="scroll-mt-20 text-3xl font-bold tracking-tight md:text-4xl">
           {frontmatter.title}
         </h1>
       )}
+      {frontmatter.description && (
+        <p className="text-muted-foreground mt-3 text-lg leading-relaxed">
+          {frontmatter.description}
+        </p>
+      )}
 
-      <Suspense fallback={<DocsContentSkeleton />}>
-        <DocsContent content={content} />
-      </Suspense>
+      <div className="mt-8">
+        <Suspense fallback={<DocsContentSkeleton />}>
+          <DocsContent content={content} />
+        </Suspense>
+      </div>
+
+      <DocsPagination previous={previous} next={next} />
     </div>
   )
 }
