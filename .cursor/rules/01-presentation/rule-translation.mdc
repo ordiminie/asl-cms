@@ -83,6 +83,27 @@ L'organisation des clés suit une hiérarchie logique basée sur l'architecture 
 }
 ```
 
+## ⚠️ Le contrat `next/root-params`
+
+Sous Cache Components, next-intl ne peut pas lire la locale dans le contexte de requête : ça rendrait
+tout l'arbre dynamique. Elle vient de `next/root-params` (`src/i18n/request.ts`). Trois règles en
+découlent, chacune payée d'une régression :
+
+1. **`[locale]` doit rester un root param.** Ne jamais réintroduire de `layout.tsx` au-dessus de
+   `src/app/[locale]/` : `root-params` cesserait de fonctionner et **plus aucune route ne serait
+   prerendue**. C'est la différence entre 25 et 151 routes statiques sur ce boilerplate.
+   Vérifier avec `pnpm exec next typegen` puis `.next/types/root-params.d.ts`.
+2. **`root-params` n'existe pas dans les Server Actions ni les Route Handlers.** Il y jette
+   (« can only be called in the context of a route »). Le fallback sur le cookie `NEXT_LOCALE` est
+   obligatoire, et **paresseux** : il ne s'évalue que si `root-params` a échoué, donc jamais pendant
+   un prerender.
+3. **Ne pas déstructurer `requestLocale` dans la signature de `getRequestConfig`.** next-intl le
+   résout en amont via `headers()`, ce qui casse toute page portant `'use cache'`.
+
+⚠️ Ni le build ni les e2e n'attrapent une régression sur ce point : les Server Actions ne sont jamais
+prerendues. Après un changement d'i18n, lancer `pnpm start` et exercer un formulaire qui passe par
+une Server Action traduite, **en lisant le log du serveur en direct**.
+
 ## Utilisation Côté Serveur vs Côté Client
 
 ### Traductions Côté Serveur (Server Components)

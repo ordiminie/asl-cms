@@ -87,6 +87,15 @@ const databaseUrl = env.DATABASE_URL
 
 ### ❌ INTERDIT - Importations Prohibées
 
+```ts
+// ❌ INTERDIT - next/root-params
+import * as rootParams from 'next/root-params'
+// Jette dans une Server Action : « can only be called in the context of a route ».
+// La locale se lit via getTranslations, qui retombe sur le cookie NEXT_LOCALE.
+// Voir rule-translation.md, section « Le contrat next/root-params ».
+```
+
+
 #### 1. Composants React Client
 
 ```typescript
