@@ -3,6 +3,7 @@ description:
 globs: 
 alwaysApply: true
 ---
+
 # Architecture Rules
 
 ## Principe général
@@ -23,7 +24,8 @@ alwaysApply: true
 - **Utilise uniquement des types de domaine** (ex : `User`, `UserDTO` de `src/services/types/domain/`).
 - **N'a pas le droit d'appeler directement les services métier** ni les objets de la persistance.
 - **Pour les lectures (getters)** :  
-  Passe par la **DAL** (`src/app/dal/`), qui utilise `react-cache` pour optimiser le cache serveur.
+  Passe par la **DAL** (`src/app/dal/`), qui porte le cache de la lecture. Une donnée par
+  utilisateur n'est pas cachée : elle est streamée derrière un `<Suspense>`.
 - **Pour les mutations** :  
   Utilise **exclusivement les Server Actions** (fonctions `"use server"`).
 - **Pour toute logique métier** :  
@@ -44,8 +46,8 @@ alwaysApply: true
 
 - Sert d'interface entre la présentation/DAL et les services métier.
 - Peut appliquer des interceptors (logs, audit, etc.).
-- Exemples :  
-  - `getUserByIdService` dans `user-service-facade.ts`  
+- Exemples :
+  - `getUserByIdService` dans `user-service-facade.ts`
   - `getActiveSubscriptionsByUserEmailService` dans `subscription-service-facade.ts`
 
 ### 4. Couche Service

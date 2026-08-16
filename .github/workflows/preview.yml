@@ -32,6 +32,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Rules alignment
+        run: pnpm check:rules
+
       - name: Build
         run: pnpm build
         env:

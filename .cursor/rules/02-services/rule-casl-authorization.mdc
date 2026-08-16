@@ -3,6 +3,7 @@ description:
 globs: src/services/authorization/**
 alwaysApply: false
 ---
+
 # Système d'Autorisation CASL
 
 ## Vue d'ensemble
@@ -149,11 +150,13 @@ Les tests sont définis dans [casl-authorization-service.test.ts](mdc:src/servic
 ### Utilisation des Constantes
 
 **✅ Correct** :
+
 ```typescript
 userCan(user, ActionsConst.READ, SubjectsConst.USER)
 ```
 
 **❌ Incorrect** :
+
 ```typescript
 userCan(user, 'read', 'User') // Risque d'erreur de frappe
 ```
@@ -194,7 +197,14 @@ if (!userCan(user, ActionsConst.UPDATE, SubjectsConst.USER)) {
 }
 
 // Avec conditions
-if (!userCanOnResource(user, ActionsConst.READ, SubjectsConst.SUBSCRIPTION, subscription)) {
+if (
+  !userCanOnResource(
+    user,
+    ActionsConst.READ,
+    SubjectsConst.SUBSCRIPTION,
+    subscription
+  )
+) {
   throw new AuthorizationError('Cannot access this subscription')
 }
 ```

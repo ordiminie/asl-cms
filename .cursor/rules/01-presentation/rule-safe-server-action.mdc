@@ -3,6 +3,7 @@ description:
 globs: **action**
 alwaysApply: false
 ---
+
 # Sécurisation des Server Actions avec requireActionAuth()
 
 Guide complet pour sécuriser les Server Actions avec la fonction `requireActionAuth()` dans Next.js 15.
@@ -14,8 +15,9 @@ Guide complet pour sécuriser les Server Actions avec la fonction `requireAction
 ## Fonction requireActionAuth()
 
 La fonction [requireActionAuth()](mdc:src/app/dal/user-dal.ts) est définie dans le DAL et assure :
+
 - **Vérification de l'authentification** de l'utilisateur
-- **Vérification des rôles** (optionnel)  
+- **Vérification des rôles** (optionnel)
 - **Gestion des erreurs d'autorisation**
 - **Retour de l'utilisateur authentifié**
 
@@ -27,8 +29,11 @@ export async function requireActionAuth(options?: RequireAuthOptions) {
   if (!user) {
     throw new AuthorizationError('Utilisateur non authentifié')
   }
-  
-  if (options?.roles && !hasRequiredRoles(user, options.roles as unknown as Roles[])) {
+
+  if (
+    options?.roles &&
+    !hasRequiredRoles(user, options.roles as unknown as Roles[])
+  ) {
     throw new AuthorizationError('Accès interdit')
   }
 
@@ -47,7 +52,7 @@ Pour les actions où seule l'authentification est requise :
 ```tsx
 'use server'
 
-import { requireActionAuth } from '@/app/dal/user-dal'
+import {requireActionAuth} from '@/app/dal/user-dal'
 
 export async function updateUserAction(
   prevState?: FormState,
@@ -55,18 +60,18 @@ export async function updateUserAction(
 ): Promise<FormState> {
   // ✅ OBLIGATOIRE - Vérification d'authentification en premier
   const user = await requireActionAuth()
-  
+
   if (!formData) {
-    return { success: false, message: 'Données invalides' }
+    return {success: false, message: 'Données invalides'}
   }
 
   // Logique métier seulement après authentification
   try {
     await updateUserService(validatedData)
     revalidatePath('/account')
-    return { success: true, message: 'Profil mis à jour avec succès' }
+    return {success: true, message: 'Profil mis à jour avec succès'}
   } catch (error) {
-    return { success: false, message: 'Échec de la mise à jour' }
+    return {success: false, message: 'Échec de la mise à jour'}
   }
 }
 ```
@@ -80,8 +85,8 @@ Pour les actions nécessitant des rôles spécifiques :
 ```tsx
 'use server'
 
-import { requireActionAuth } from '@/app/dal/user-dal'
-import { RoleConst } from '@/services/types/domain/auth-types'
+import {requireActionAuth} from '@/app/dal/user-dal'
+import {RoleConst} from '@/services/types/domain/auth-types'
 
 export async function updateUserAction(
   userId: string,
@@ -94,16 +99,16 @@ export async function updateUserAction(
   })
 
   if (!formData) {
-    return { success: false, message: 'Données invalides' }
+    return {success: false, message: 'Données invalides'}
   }
 
   // Logique métier pour admin seulement
   try {
     await updateUserService(userData)
     revalidatePath('/admin/users')
-    return { success: true, message: 'Utilisateur mis à jour avec succès' }
+    return {success: true, message: 'Utilisateur mis à jour avec succès'}
   } catch (error) {
-    return { success: false, message: 'Erreur lors de la mise à jour' }
+    return {success: false, message: 'Erreur lors de la mise à jour'}
   }
 }
 ```
@@ -117,7 +122,7 @@ Quand vous avez besoin des informations utilisateur :
 ```tsx
 'use server'
 
-import { requireActionAuth } from '@/app/dal/user-dal'
+import {requireActionAuth} from '@/app/dal/user-dal'
 
 export async function updateOrganizationAction(
   prevState?: FormState,
@@ -127,7 +132,7 @@ export async function updateOrganizationAction(
   const user = await requireActionAuth()
 
   if (!user) {
-    return { success: false, message: 'Utilisateur non trouvé' }
+    return {success: false, message: 'Utilisateur non trouvé'}
   }
 
   // Utilisation des infos utilisateur dans la logique
@@ -136,9 +141,9 @@ export async function updateOrganizationAction(
       ...validatedData,
       updatedBy: user.id,
     })
-    return { success: true, message: 'Organisation mise à jour' }
+    return {success: true, message: 'Organisation mise à jour'}
   } catch (error) {
-    return { success: false, message: 'Échec de la mise à jour' }
+    return {success: false, message: 'Échec de la mise à jour'}
   }
 }
 ```
@@ -148,13 +153,13 @@ export async function updateOrganizationAction(
 ```tsx
 'use server'
 
-import { revalidatePath } from 'next/cache'
-import { requireActionAuth } from '@/app/dal/user-dal'
-import { RoleConst } from '@/services/types/domain/auth-types'
+import {revalidatePath} from 'next/cache'
+import {requireActionAuth} from '@/app/dal/user-dal'
+import {RoleConst} from '@/services/types/domain/auth-types'
 
 export type FormState = {
   success: boolean
-  errors?: Array<{ field: string; message: string }>
+  errors?: Array<{field: string; message: string}>
   message?: string
 }
 
@@ -170,19 +175,19 @@ export async function secureAction(
 
     // 2. VALIDATION DES DONNÉES
     if (!formData) {
-      return { success: false, message: 'Données invalides' }
+      return {success: false, message: 'Données invalides'}
     }
 
     // 3. VALIDATION ZOD
     const validationResult = schema.safeParse(data)
     if (!validationResult.success) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: 'Erreur de validation',
-        errors: validationResult.error.errors.map(err => ({
+        errors: validationResult.error.errors.map((err) => ({
           field: err.path[0] as string,
-          message: err.message
-        }))
+          message: err.message,
+        })),
       }
     }
 
@@ -191,21 +196,20 @@ export async function secureAction(
 
     // 5. REVALIDATION
     revalidatePath('/target-path')
-    
-    return { success: true, message: 'Action réussie' }
 
+    return {success: true, message: 'Action réussie'}
   } catch (error) {
     // 6. GESTION DES ERREURS D'AUTORISATION
     if (error instanceof AuthorizationError) {
-      return { 
-        success: false, 
-        message: 'Accès non autorisé' 
+      return {
+        success: false,
+        message: 'Accès non autorisé',
       }
     }
-    
-    return { 
-      success: false, 
-      message: error instanceof Error ? error.message : 'Erreur inconnue' 
+
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Erreur inconnue',
     }
   }
 }
@@ -216,14 +220,14 @@ export async function secureAction(
 ```tsx
 // Types pour requireActionAuth
 type RequireAuthOptions = {
-  roles?: Roles[]  // Rôles requis (optionnel)
+  roles?: Roles[] // Rôles requis (optionnel)
 }
 
 // Rôles disponibles
 enum RoleConst {
   USER = 'USER',
-  ADMIN = 'ADMIN', 
-  SUPER_ADMIN = 'SUPER_ADMIN'
+  ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
 }
 ```
 
@@ -232,6 +236,7 @@ enum RoleConst {
 ### ✅ À FAIRE
 
 1. **Toujours appeler `requireActionAuth()` en premier**
+
 ```tsx
 export async function myAction() {
   const user = await requireActionAuth() // ✅ PREMIER appel
@@ -240,19 +245,21 @@ export async function myAction() {
 ```
 
 2. **Spécifier les rôles nécessaires**
+
 ```tsx
 await requireActionAuth({
-  roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN]
+  roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
 }) // ✅ Rôles explicites
 ```
 
 3. **Gérer les erreurs d'autorisation**
+
 ```tsx
 try {
   await requireActionAuth()
 } catch (error) {
   if (error instanceof AuthorizationError) {
-    return { success: false, message: 'Accès refusé' }
+    return {success: false, message: 'Accès refusé'}
   }
 } // ✅ Gestion appropriée
 ```
@@ -260,6 +267,7 @@ try {
 ### ❌ À ÉVITER
 
 1. **Ne jamais oublier la sécurisation**
+
 ```tsx
 export async function myAction() {
   // ❌ DANGER - Pas de vérification d'auth
@@ -268,6 +276,7 @@ export async function myAction() {
 ```
 
 2. **Ne pas vérifier après la logique métier**
+
 ```tsx
 export async function myAction() {
   await someService() // ❌ Logique avant sécurité
@@ -276,6 +285,7 @@ export async function myAction() {
 ```
 
 3. **Ne pas ignorer les erreurs d'autorisation**
+
 ```tsx
 try {
   await requireActionAuth()
@@ -294,13 +304,13 @@ await unsecuredService() // ❌ DANGER
 export async function complexAction(resourceId: string) {
   // 1. Auth globale
   const user = await requireActionAuth({
-    roles: [RoleConst.USER]
+    roles: [RoleConst.USER],
   })
 
   // 2. Vérification spécifique à la ressource
   const canAccess = await canAccessResource(user.id, resourceId)
   if (!canAccess) {
-    return { success: false, message: 'Accès à la ressource refusé' }
+    return {success: false, message: 'Accès à la ressource refusé'}
   }
 
   // 3. Logique métier
@@ -313,11 +323,11 @@ export async function complexAction(resourceId: string) {
 ```tsx
 export async function updateResourceAction(resourceId: string) {
   const user = await requireActionAuth()
-  
+
   // Vérification via service d'autorisation
   const canUpdate = await canUpdateResource(user.id, resourceId)
   if (!canUpdate) {
-    return { success: false, message: 'Permission insuffisante' }
+    return {success: false, message: 'Permission insuffisante'}
   }
 
   // Logique métier
@@ -328,7 +338,7 @@ export async function updateResourceAction(resourceId: string) {
 ## Gestion d'Erreurs Standardisée
 
 ```tsx
-import { AuthorizationError } from '@/services/errors/authorization-error'
+import {AuthorizationError} from '@/services/errors/authorization-error'
 
 export async function secureAction() {
   try {
@@ -339,14 +349,14 @@ export async function secureAction() {
     if (error instanceof AuthorizationError) {
       return {
         success: false,
-        message: 'Vous n\'êtes pas autorisé à effectuer cette action'
+        message: "Vous n'êtes pas autorisé à effectuer cette action",
       }
     }
-    
+
     // Autres erreurs
     return {
       success: false,
-      message: 'Une erreur inattendue est survenue'
+      message: 'Une erreur inattendue est survenue',
     }
   }
 }

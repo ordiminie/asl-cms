@@ -22,7 +22,8 @@ description:
 - **Utilise uniquement des types de domaine** (ex : `User`, `UserDTO` de `src/services/types/domain/`).
 - **N'a pas le droit d'appeler directement les services métier** ni les objets de la persistance.
 - **Pour les lectures (getters)** :  
-  Passe par la **DAL** (`src/app/dal/`), qui utilise `react-cache` pour optimiser le cache serveur.
+  Passe par la **DAL** (`src/app/dal/`), qui porte le cache de la lecture. Une donnée par
+  utilisateur n'est pas cachée : elle est streamée derrière un `<Suspense>`.
 - **Pour les mutations** :  
   Utilise **exclusivement les Server Actions** (fonctions `"use server"`).
 - **Pour toute logique métier** :  

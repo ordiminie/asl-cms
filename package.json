@@ -10,6 +10,8 @@
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
+    "check:rules": "tsx scripts/check-rules.ts",
+    "check:rules:fix": "tsx scripts/check-rules.ts --fix",
     "format": "prettier . --check",
     "format:fix": "prettier . --write",
     "test": "vitest --pool=forks",

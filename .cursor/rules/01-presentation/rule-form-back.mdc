@@ -3,6 +3,7 @@ description:
 globs: **/action.ts,**/forms/**/*.tsx
 alwaysApply: false
 ---
+
 # Validation des Formulaires Côté Backend
 
 Guide complet pour la validation des formulaires avec Server Actions dans Next.js 15 / React 19.
@@ -37,15 +38,15 @@ components/
 
 ### Template standard d'une Server Action
 
-**Référence : [action.ts](mdc:src/app/[locale]/(auth)/action.ts)**
+**Référence : [action.ts](<mdc:src/app/[locale]/(auth)/action.ts>)**
 
 ```tsx
 'use server'
 
-import { isRedirectError } from 'next/dist/client/components/redirect-error'
-import { redirect } from 'next/navigation'
-import { ValidationSchema } from '@/components/features/module/validation'
-import { ServiceFacade } from '@/services/facades/service-facade'
+import {isRedirectError} from 'next/dist/client/components/redirect-error'
+import {redirect} from 'next/navigation'
+import {ValidationSchema} from '@/components/features/module/validation'
+import {ServiceFacade} from '@/services/facades/service-facade'
 
 type ActionResult = {
   success: boolean
@@ -67,10 +68,10 @@ export async function formAction(
       const errors = validationResult.error.errors
         .map((err) => err.message)
         .join(', ')
-      return { success: false, message: errors }
+      return {success: false, message: errors}
     }
 
-    const { field1, field2 } = validationResult.data
+    const {field1, field2} = validationResult.data
 
     // 2. VALIDATION MÉTIER VIA FAÇADE
     const result = await ServiceFacade({
@@ -80,18 +81,18 @@ export async function formAction(
 
     // 3. REDIRECTION APRÈS SUCCÈS
     redirect('/success-page')
-
   } catch (error) {
     // 4. GESTION SPÉCIALISÉE DES ERREURS
     if (isRedirectError(error)) {
       throw error // OBLIGATOIRE pour Next.js
     }
-    
+
     return {
       success: false,
-      message: error instanceof Error 
-        ? error.message 
-        : 'Une erreur inattendue est survenue'
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Une erreur inattendue est survenue',
     }
   }
 }
@@ -116,7 +117,7 @@ if (!validationResult.success) {
   const errors = validationResult.error.errors
     .map((err) => err.message)
     .join(', ')
-  return { success: false, message: errors }
+  return {success: false, message: errors}
 }
 ```
 
@@ -132,15 +133,15 @@ const data = ValidationSchema.parse(formData)
 **✅ CORRECT - Utiliser les façades de service ou DAL**
 
 ```tsx
-import { getUserByEmailService } from '@/services/facades/user-service-facade'
-import { getUserByEmailDal } from '@/app/dal/user-dal'
+import {getUserByEmailService} from '@/services/facades/user-service-facade'
+import {getUserByEmailDal} from '@/app/dal/user-dal'
 
 // Vérifier l'existence avant traitement
 const existingUser = await getUserByEmailService(email)
 if (existingUser) {
   return {
     success: false,
-    message: 'Un compte existe déjà avec cet email'
+    message: 'Un compte existe déjà avec cet email',
   }
 }
 ```
@@ -148,10 +149,10 @@ if (existingUser) {
 **❌ INTERDIRE - Accès direct aux couches inférieures**
 
 ```tsx
-// JAMAIS d'import direct depuis la persistence 
-import { getUserByEmailDao } from '@/db/repositories/user-repository'
+// JAMAIS d'import direct depuis la persistence
+import {getUserByEmailDao} from '@/db/repositories/user-repository'
 // JAMAIS d'import direct de service (utiliser les facades)
-import { getUserByEmailService } from '@/services/user-service'
+import {getUserByEmailService} from '@/services/user-service'
 ```
 
 ### 3. Gestion des erreurs Next.js OBLIGATOIRE
@@ -159,23 +160,22 @@ import { getUserByEmailService } from '@/services/user-service'
 **✅ OBLIGATOIRE - Gestion des erreurs de redirection**
 
 ```tsx
-import { isRedirectError } from 'next/dist/client/components/redirect-error'
+import {isRedirectError} from 'next/dist/client/components/redirect-error'
 
 try {
   // Logique métier
   await createUserService(userData)
   redirect('/dashboard')
-  
 } catch (error) {
   // OBLIGATOIRE - Relancer les erreurs de redirection
   if (isRedirectError(error)) {
     throw error
   }
-  
+
   // Traiter les autres erreurs
   return {
     success: false,
-    message: error instanceof Error ? error.message : 'Erreur inconnue'
+    message: error instanceof Error ? error.message : 'Erreur inconnue',
   }
 }
 ```
@@ -188,27 +188,27 @@ try {
 
 ```tsx
 'use client'
-import { useActionState } from 'react'
-import { formAction } from './action'
+import {useActionState} from 'react'
+import {formAction} from './action'
 
 export function MyForm() {
   const [state, formAction] = useActionState(formAction, {
     success: false,
     message: '',
   })
-  
+
   const error = state && !state.success ? state.message : null
 
   return (
     <form action={formAction}>
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
-      
+
       <div className="grid gap-6">
         <div className="grid gap-3">
           <Label htmlFor="field">Champ</Label>
           <Input id="field" name="field" required />
         </div>
-        
+
         <SubmitButton />
       </div>
     </form>
@@ -219,10 +219,10 @@ export function MyForm() {
 ### Bouton de soumission avec état de chargement
 
 ```tsx
-import { useFormStatus } from 'react-dom'
+import {useFormStatus} from 'react-dom'
 
 function SubmitButton() {
-  const { pending } = useFormStatus()
+  const {pending} = useFormStatus()
   return (
     <Button type="submit" className="w-full" disabled={pending}>
       {pending ? 'Traitement en cours...' : 'Valider'}
@@ -240,16 +240,19 @@ function SubmitButton() {
 ```tsx
 import z from 'zod'
 
-export const formSchema = z.object({
-  name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
-  email: z.string().email('Adresse email invalide'),
-  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
-  confirmPassword: z.string().min(8, 'Confirmation requise'),
-})
-.refine((data) => data.password === data.confirmPassword, {
-  message: 'Les mots de passe ne correspondent pas',
-  path: ['confirmPassword'],
-})
+export const formSchema = z
+  .object({
+    name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
+    email: z.string().email('Adresse email invalide'),
+    password: z
+      .string()
+      .min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
+    confirmPassword: z.string().min(8, 'Confirmation requise'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Les mots de passe ne correspondent pas',
+    path: ['confirmPassword'],
+  })
 ```
 
 ### Messages d'erreur en français
@@ -286,9 +289,11 @@ const initialState: ActionResult = {
 ## Flux de Données Respecté
 
 ### Pour les lectures
+
 **RSC** → **DAL** → **Service Facades** → **Services** → **Repositories** → **Models**
 
 ### Pour les mutations (Server Actions)
+
 **Client Components** → **Server Actions** → **Service Facades** → **Services** → **Repositories** → **Models**
 
 ## Checklist de Validation Backend

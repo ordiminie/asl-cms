@@ -14,7 +14,7 @@ Key Principles
 
 ## Configuration du Logger
 
-Le projet utilise **Winston** pour la gestion des logs côté serveur uniquement. Le logger est configuré dans [logger.ts](src/lib/logger.ts).
+Le projet utilise **Winston** pour la gestion des logs côté serveur uniquement. Le logger est configuré dans [logger.ts](mdc:src/lib/logger.ts).
 
 ```ts
 import {logger} from '@/lib/logger'
@@ -76,7 +76,7 @@ logger.log('📝 Information générale:', message)
 
 Les services disposent d'intercepteurs automatiques qui loggent les appels de méthodes :
 
-[organization-service-logger-interceptor.ts](src/services/facades/interceptors/organization-service-logger-interceptor.ts)
+[organization-service-logger-interceptor.ts](mdc:src/services/facades/interceptors/organization-service-logger-interceptor.ts)
 
 ```ts
 // Les intercepteurs loggent automatiquement :
@@ -107,7 +107,7 @@ export const createUserService = async (userData: CreateUser) => {
 
 ## Utilisation dans les Webhooks
 
-Exemple d'usage dans les webhooks Stripe [stripe-events.ts](src/lib/stripe/stripe-events.ts) :
+Exemple d'usage dans les webhooks Stripe [stripe-events.ts](mdc:src/lib/stripe/stripe-events.ts) :
 
 ```ts
 export async function onStripeEvent(event: Stripe.Event) {

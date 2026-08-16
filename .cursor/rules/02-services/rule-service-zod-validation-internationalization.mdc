@@ -3,6 +3,7 @@ description:
 globs: src/services/validation/**.ts
 alwaysApply: false
 ---
+
 # Règle Service - Internationalisation des Validations Zod au niveau service
 
 ## Vue d'ensemble
@@ -118,21 +119,25 @@ Les clés de traduction suivent le format `/Service.{Domain}.validation` :
 ## Avantages de cette Approche
 
 ### ✅ **Traductions Intégrées**
+
 - `getTranslations` appelé directement dans les fichiers de validation
 - Pas besoin de passer la fonction de traduction en paramètre
 - Traductions automatiques selon la locale de la requête
 
 ### ✅ **Séparation des Responsabilités**
+
 - Code serveur uniquement (pas de logique client)
 - Validations centralisées dans les fichiers de validation
 - Services focus sur la logique métier
 
 ### ✅ **Maintenabilité**
+
 - Une seule fonction par schéma de validation
 - Clés de traduction organisées par domaine
 - Modifications centralisées
 
 ### ✅ **Performance**
+
 - Traductions récupérées une seule fois par validation
 - Pas de surcharge côté client
 - Cache automatique de next-intl
@@ -140,6 +145,7 @@ Les clés de traduction suivent le format `/Service.{Domain}.validation` :
 ## Conventions de Nommage
 
 ### Fonctions de Validation
+
 ```typescript
 // Format : create{Entity}ServiceSchema
 createUpdateUserServiceSchema()
@@ -148,6 +154,7 @@ createUserSettingsServiceSchema()
 ```
 
 ### Clés de Traduction
+
 ```typescript
 // Format : Service.{Domain}.validation.{field}.{rule}
 'Service.User.validation.name.min'
@@ -156,6 +163,7 @@ createUserSettingsServiceSchema()
 ```
 
 ### Namespaces par Domaine
+
 ```typescript
 // Utilisateurs
 getTranslations('Service.User')
@@ -170,6 +178,7 @@ getTranslations('Service.Subscription')
 ## Exemple Complet
 
 ### 1. Définition du Schéma
+
 ```typescript
 // user-validation.ts
 export async function createUpdateUserServiceSchema() {
@@ -186,6 +195,7 @@ export async function createUpdateUserServiceSchema() {
 ```
 
 ### 2. Traductions
+
 ```json
 {
   "Service": {
@@ -205,6 +215,7 @@ export async function createUpdateUserServiceSchema() {
 ```
 
 ### 3. Utilisation dans le Service
+
 ```typescript
 // user-service.ts
 const translatedSchema = await createUpdateUserServiceSchema()
@@ -217,6 +228,7 @@ if (!parsed.success) {
 ## Différences avec l'Approche Client
 
 ### Côté Service (Cette règle)
+
 ```typescript
 // Traductions intégrées dans le fichier de validation
 export async function createUpdateUserServiceSchema() {
@@ -226,6 +238,7 @@ export async function createUpdateUserServiceSchema() {
 ```
 
 ### Côté Client (Règle précédente)
+
 ```typescript
 // Fonction de traduction passée en paramètre
 export function createUserFormSchema(t: (key: string) => string) {
@@ -252,6 +265,7 @@ export function createUserFormSchema(t: (key: string) => string) {
 ## Résumé
 
 Cette approche garantit :
+
 - **Traductions automatiques** côté service
 - **Code serveur pur** sans logique client
 - **Organisation claire** des clés de traduction

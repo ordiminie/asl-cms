@@ -3,6 +3,7 @@ description:
 globs: **table**
 alwaysApply: false
 ---
+
 # Règle UI/UX - Tables avec Pagination
 
 ## Vue d'ensemble

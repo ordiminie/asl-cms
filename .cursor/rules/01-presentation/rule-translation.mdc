@@ -3,6 +3,7 @@ description:
 globs: messages/*.json
 alwaysApply: false
 ---
+
 # Règle Traductions - Next-intl
 
 ## Vue d'ensemble
@@ -10,9 +11,8 @@ alwaysApply: false
 Ce projet utilise **Next-intl** pour gérer les traductions internationales. Le système est organisé de manière hiérarchique pour faciliter la maintenance et la cohérence des traductions.
 
 Key Principles
+
 - Traduire toutes les langues
-
-
 
 ## Architecture des Traductions
 
@@ -32,6 +32,7 @@ messages/
 L'organisation des clés suit une hiérarchie logique basée sur l'architecture de l'application :
 
 #### 1. **Pages** (Niveau principal)
+
 ```json
 {
   "HomePage": {
@@ -47,6 +48,7 @@ L'organisation des clés suit une hiérarchie logique basée sur l'architecture 
 ```
 
 #### 2. **Composants** (Niveau secondaire)
+
 ```json
 {
   "AccountPage": {
@@ -65,6 +67,7 @@ L'organisation des clés suit une hiérarchie logique basée sur l'architecture 
 ```
 
 #### 3. **Composants UI ShadCN** (Clé séparée)
+
 ```json
 {
   "ui": {
@@ -92,7 +95,7 @@ import {getTranslations} from 'next-intl/server'
 
 export default async function Page() {
   const t = await getTranslations('AccountSettingsPage')
-  
+
   return (
     <div>
       <h1>{t('title')}</h1>
@@ -103,6 +106,7 @@ export default async function Page() {
 ```
 
 **Avantages :**
+
 - Traductions rendues côté serveur (SEO optimisé)
 - Pas de bundle JavaScript supplémentaire
 - Performance optimale
@@ -119,7 +123,7 @@ import {useTranslations} from 'next-intl'
 
 export function EditUserSettingsForm({user}: {user: User}) {
   const t = useTranslations('AccountSettingsPage')
-  
+
   return (
     <form>
       <label>{t('appearance.theme.label')}</label>
@@ -132,6 +136,7 @@ export function EditUserSettingsForm({user}: {user: User}) {
 ```
 
 **Avantages :**
+
 - Traductions dynamiques
 - Support des interactions utilisateur
 - Mise à jour en temps réel
@@ -139,24 +144,29 @@ export function EditUserSettingsForm({user}: {user: User}) {
 ## Conventions de Nommage
 
 ### Clés de Pages
+
 - **Format** : `{PageName}`
 - **Exemple** : `HomePage`, `AccountPage`, `TermsPage`
 
 ### Clés de Composants
+
 - **Format** : `{PageName}.{ComponentName}`
 - **Exemple** : `AccountPage.EditUserProfileForm`
 
 ### Clés de Composants UI
+
 - **Format** : `ui.{componentName}.{property}`
 - **Exemple** : `ui.fileInput.title`, `ui.button.submit`
 
 ### Clés de Sections
+
 - **Format** : `{PageName}.{SectionName}`
 - **Exemple** : `AccountPage.profile`, `AccountPage.security`
 
 ## Exemples Concrets
 
 ### Page avec Sections
+
 ```json
 {
   "AccountPage": {
@@ -174,6 +184,7 @@ export function EditUserSettingsForm({user}: {user: User}) {
 ```
 
 ### Composant avec Formulaires
+
 ```json
 {
   "AccountPage": {
@@ -198,6 +209,7 @@ export function EditUserSettingsForm({user}: {user: User}) {
 ```
 
 ### Composants UI ShadCN
+
 ```json
 {
   "ui": {
@@ -215,21 +227,25 @@ export function EditUserSettingsForm({user}: {user: User}) {
 ## Bonnes Pratiques
 
 ### 1. **Organisation Hiérarchique**
+
 - Commencez toujours par la page
 - Puis les sections principales
 - Enfin les composants spécifiques
 
 ### 2. **Nommage Cohérent**
+
 - Utilisez des noms descriptifs
 - Évitez les abréviations
 - Maintenez la cohérence entre les langues
 
 ### 3. **Séparation des Responsabilités**
+
 - Composants UI dans la clé `ui`
 - Composants métier dans la clé de la page
 - Messages d'erreur dans des sous-clés dédiées
 
 ### 4. **Gestion des États**
+
 ```json
 {
   "form": {
@@ -241,6 +257,7 @@ export function EditUserSettingsForm({user}: {user: User}) {
 ```
 
 ### 5. **Messages d'Erreur**
+
 ```json
 {
   "errors": {
@@ -253,6 +270,7 @@ export function EditUserSettingsForm({user}: {user: User}) {
 ## Utilisation dans le Code
 
 ### Server Component
+
 ```tsx
 // Récupération des traductions
 const t = await getTranslations('AccountPage')
@@ -263,6 +281,7 @@ const t = await getTranslations('AccountPage')
 ```
 
 ### Client Component
+
 ```tsx
 // Récupération des traductions
 const t = useTranslations('AccountPage.EditUserProfileForm')
@@ -273,6 +292,7 @@ const t = useTranslations('AccountPage.EditUserProfileForm')
 ```
 
 ### Composant UI
+
 ```tsx
 // Récupération des traductions UI
 const t = useTranslations('ui.fileUpload')
@@ -295,10 +315,12 @@ Next-intl supporte les pluriels avec ICU MessageFormat :
 ## Validation des Traductions
 
 ### Vérification de Complétude
+
 - Assurez-vous que toutes les clés existent dans toutes les langues
 - Utilisez des outils de validation pour détecter les clés manquantes
 
 ### Tests de Traduction
+
 ```tsx
 // Test de présence des clés
 expect(t('form.save')).toBeDefined()
@@ -308,12 +330,14 @@ expect(t('form.updating')).toBeDefined()
 ## Maintenance
 
 ### Ajout de Nouvelles Langues
+
 1. Créer le fichier `messages/{locale}.json`
 2. Copier la structure depuis `fr.json`
 3. Traduire toutes les valeurs
 4. Ajouter la locale dans la configuration Next-intl
 
 ### Ajout de Nouvelles Clés
+
 1. Ajouter la clé dans `fr.json`
 2. Ajouter la clé dans tous les autres fichiers de langue
 3. Utiliser la clé dans le code
@@ -329,4 +353,3 @@ expect(t('form.updating')).toBeDefined()
 - **Maintenance** : Validation et tests réguliers
 
 Cette organisation garantit une maintenance facile et une cohérence des traductions dans toute l'application.
-
