@@ -404,21 +404,6 @@ export const mdxComponents = {
       </h4>
     )
   },
-  p: ({children}: {children: ReactNode}) => (
-    <span className="mb-4 block text-base leading-7">{children}</span>
-  ),
-  ul: ({children}: {children: ReactNode}) => (
-    <ul className="mb-4 list-inside list-disc space-y-2">{children}</ul>
-  ),
-  ol: ({children}: {children: ReactNode}) => (
-    <ol className="mb-4 list-inside list-decimal space-y-2">{children}</ol>
-  ),
-  li: ({children}: {children: ReactNode}) => <li>{children}</li>,
-  blockquote: ({children}: {children: ReactNode}) => (
-    <blockquote className="border-primary bg-muted mb-4 rounded-r-lg border-l-4 py-2 pl-4 italic">
-      {children}
-    </blockquote>
-  ),
   code: ({
     children,
     className,
@@ -429,15 +414,13 @@ export const mdxComponents = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any
   }) => {
-    // Détecter le vrai code inline : court, sans saut de ligne, et pas dans un contexte de bloc
-    const textContent = getTextContent(children)
-    const isRealInline =
-      textContent.length < 15 && !textContent.includes('\n') && !className
+    // Le code inline a une chaîne pour enfant ; celui d'un bloc a les <span>
+    // que Shiki a produits.
+    const isInline = !className && typeof children === 'string'
 
-    if (isRealInline) {
-      // C'est du vrai code inline dans une phrase
+    if (isInline) {
       return (
-        <code className="bg-muted border-border rounded border px-2 py-1 font-mono text-sm before:content-none after:content-none">
+        <code className="bg-muted border-border rounded border px-1.5 py-0.5 font-mono text-[0.9em] before:content-none after:content-none">
           {children}
         </code>
       )
@@ -510,28 +493,9 @@ export const mdxComponents = {
     )
   },
   table: ({children}: {children: ReactNode}) => (
-    <div className="mb-4 w-full overflow-x-auto">
-      <table className="border-border w-full border-collapse border">
-        {children}
-      </table>
+    <div className="w-full overflow-x-auto">
+      <table>{children}</table>
     </div>
-  ),
-  thead: ({children}: {children: ReactNode}) => (
-    <thead className="bg-muted">{children}</thead>
-  ),
-  tbody: ({children}: {children: ReactNode}) => (
-    <tbody className="divide-border divide-y">{children}</tbody>
-  ),
-  tr: ({children}: {children: ReactNode}) => (
-    <tr className="hover:bg-muted/50">{children}</tr>
-  ),
-  th: ({children}: {children: ReactNode}) => (
-    <th className="border-border border px-4 py-2 text-left font-semibold">
-      {children}
-    </th>
-  ),
-  td: ({children}: {children: ReactNode}) => (
-    <td className="border-border border px-4 py-2">{children}</td>
   ),
   a: ({href, children}: {href?: string; children: ReactNode}) => {
     if (href && href.startsWith('/')) {
@@ -555,7 +519,6 @@ export const mdxComponents = {
       </a>
     )
   },
-  hr: () => <hr className="border-border my-8" />,
   img: (props: React.ComponentProps<typeof Image>) => {
     const imageUrl = props.src as string
     const isGif = imageUrl?.includes('.gif')
