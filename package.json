@@ -6,10 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "tsx scripts/preflight-build.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
+    "check:rules": "tsx scripts/check-rules.ts",
+    "check:rules:fix": "tsx scripts/check-rules.ts --fix",
     "format": "prettier . --check",
     "format:fix": "prettier . --write",
     "test": "vitest --pool=forks",

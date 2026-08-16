@@ -5,7 +5,7 @@ paths: **action**
 
 # Sécurisation des Server Actions avec requireActionAuth()
 
-Guide complet pour sécuriser les Server Actions avec la fonction `requireActionAuth()` dans Next.js 15.
+Guide complet pour sécuriser les Server Actions avec la fonction `requireActionAuth()` dans Next.js 16.
 
 ## Principe de Sécurité
 
@@ -79,7 +79,7 @@ export async function updateUserAction(
 
 Pour les actions nécessitant des rôles spécifiques :
 
-**Référence : [admin/users/actions.ts](src/app/admin/users/actions.ts)**
+**Référence : [admin/users/actions.ts](src/app/[locale]/admin/users/actions.ts)**
 
 ```tsx
 'use server'

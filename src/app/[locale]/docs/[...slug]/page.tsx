@@ -1,9 +1,15 @@
 import fs from 'fs'
 import matter from 'gray-matter'
 import type {Metadata} from 'next'
-import {headers} from 'next/headers'
 import {notFound} from 'next/navigation'
+import {Suspense} from 'react'
 
+import {CopyPageButton} from '@/components/features/docs/copy-page-button'
+import {DocsPagination} from '@/components/features/docs/docs-pagination'
+import {
+  TableOfContents,
+  TableOfContentsMobile,
+} from '@/components/features/docs/table-of-contents'
 import {MDXContent} from '@/components/mdx-content'
 import {env} from '@/env'
 import {routing} from '@/i18n/routing'
@@ -11,10 +17,10 @@ import {
   type DocItem,
   findDocBySlug,
   getDocFilePath,
+  getDocsNavigation,
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
-//disable because shiki theme
-//export const dynamic = 'force-static'
+import {extractMdxHeadings} from '@/lib/helper/mdx-headings'
 
 interface DocsPageProps {
   params: Promise<{
@@ -93,7 +99,7 @@ export async function generateMetadata({
   const description =
     frontmatter.description || docItem.description || 'ShipSaaS Documentation'
 
-  const siteUrl = env.NEXT_PUBLIC_APP_URL || 'https://ship-saas.now'
+  const siteUrl = env.NEXT_PUBLIC_APP_URL || 'https://example.com'
   const ogImage = `${siteUrl}/shipsaas/shipsaas.png`
   const pageUrl = `${siteUrl}/${locale}/docs/${slug}`
 
@@ -161,6 +167,17 @@ export async function generateMetadata({
   }
 }
 
+function MDXContentSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden>
+      <div className="bg-muted h-4 w-full animate-pulse rounded" />
+      <div className="bg-muted h-4 w-11/12 animate-pulse rounded" />
+      <div className="bg-muted h-4 w-4/5 animate-pulse rounded" />
+      <div className="bg-muted h-40 w-full animate-pulse rounded-lg" />
+    </div>
+  )
+}
+
 export default async function DocsPage({params}: DocsPageProps) {
   const resolvedParams = await params
   const slug = resolvedParams.slug.join('/')
@@ -182,10 +199,6 @@ export default async function DocsPage({params}: DocsPageProps) {
     content = mdxContent
   }
 
-  // Obtenir le thème depuis les headers
-  const headersList = await headers()
-  const theme = headersList.get('x-theme') || 'light'
-
   if (!content) {
     return (
       <div className="max-w-4xl">
@@ -197,16 +210,36 @@ export default async function DocsPage({params}: DocsPageProps) {
     )
   }
 
-  return (
-    <div className="w-full max-w-4xl">
-      {/* Title from frontmatter */}
-      {frontmatter.title && (
-        <h1 className="border-border mb-6 scroll-mt-20 border-b pb-2 text-2xl font-bold sm:text-3xl md:text-4xl">
-          {frontmatter.title}
-        </h1>
-      )}
+  const headings = extractMdxHeadings(content)
 
-      <MDXContent source={content} theme={theme} />
-    </div>
+  return (
+    <>
+      <TableOfContentsMobile items={headings} />
+
+      <div className="w-full max-w-4xl">
+        <div className="mb-6 flex items-start justify-between gap-4">
+          {frontmatter.title && (
+            <h1 className="scroll-mt-20 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+              {frontmatter.title}
+            </h1>
+          )}
+          <CopyPageButton
+            markdown={
+              frontmatter.title
+                ? `# ${frontmatter.title}\n\n${content}`
+                : content
+            }
+          />
+        </div>
+
+        <Suspense fallback={<MDXContentSkeleton />}>
+          <MDXContent source={content} />
+        </Suspense>
+
+        <DocsPagination {...getDocsNavigation(slug, resolvedParams.locale)} />
+      </div>
+
+      <TableOfContents items={headings} />
+    </>
   )
 }

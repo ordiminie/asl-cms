@@ -219,16 +219,19 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'iyatdxbvlmszswgoevtc.supabase.co', // Your Supabase domain
+        hostname: 'your-project.supabase.co', // Your Supabase domain
       },
     ],
   },
+
+  // Cache Components: 'use cache' directive, cacheLife/cacheTag, and Partial
+  // Prerendering by default. Replaces the removed experimental.useCache flag.
+  cacheComponents: true,
 
   // Performance optimizations
   experimental: {
     authInterrupts: true,
     taint: true,
-    useCache: true,
     staleTimes: {
       dynamic: 30,    // 30 seconds for dynamic content
       static: 180,    // 3 minutes for static content
@@ -308,7 +311,7 @@ ANALYZE=true pnpm build
 
 ### Real User Monitoring
 
-```typescript
+```tsx
 // lib/analytics.ts
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'

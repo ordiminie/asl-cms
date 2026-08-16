@@ -33,9 +33,7 @@ Cette règle définit les patterns de composition des pages pour assurer une hi�
       <CardTitle>{t('section.title')}</CardTitle>
       <CardDescription>{t('section.description')}</CardDescription>
     </CardHeader>
-    <CardContent>
-      {/* Contenu de la section */}
-    </CardContent>
+    <CardContent>{/* Contenu de la section */}</CardContent>
   </Card>
 </div>
 ```
@@ -60,9 +58,7 @@ Pour introduire un groupe de Cards (ex: section Sécurité) :
 ```tsx
 <div className="space-y-1">
   <h2 className="text-lg font-semibold">{t('section.title')}</h2>
-  <p className="text-muted-foreground text-sm">
-    {t('section.description')}
-  </p>
+  <p className="text-muted-foreground text-sm">{t('section.description')}</p>
 </div>
 ```
 
@@ -115,9 +111,7 @@ Les formulaires avec plusieurs sections logiques doivent être découpés en plu
       <CardHeader>
         <CardTitle>{t('marketing.title')}</CardTitle>
       </CardHeader>
-      <CardContent>
-        {/* Champs marketing */}
-      </CardContent>
+      <CardContent>{/* Champs marketing */}</CardContent>
       <CardFooter>
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? t('form.updating') : t('form.updateSettings')}
@@ -286,12 +280,12 @@ import {
 
 ## Types de Pages et Patterns
 
-| Type de Page | Pattern |
-|--------------|---------|
-| Liste | Header + Action Button + Search/Filters + Data Table/Grid |
-| Détail/Edit | Header + Cards par section |
-| Formulaire | Header + Multi-Cards (une par section logique) |
-| Dashboard | Stats Cards + Sections avec "View All" links |
+| Type de Page | Pattern                                                   |
+| ------------ | --------------------------------------------------------- |
+| Liste        | Header + Action Button + Search/Filters + Data Table/Grid |
+| Détail/Edit  | Header + Cards par section                                |
+| Formulaire   | Header + Multi-Cards (une par section logique)            |
+| Dashboard    | Stats Cards + Sections avec "View All" links              |
 
 ## Hiérarchie Visuelle
 

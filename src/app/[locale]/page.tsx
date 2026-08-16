@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
+import {Suspense} from 'react'
 
 import ButtonConnexionDashboard from '@/components/features/auth/button-connexion-dashboard'
 import PublicFooter from '@/components/features/layouts/public-footer'
@@ -13,8 +14,6 @@ import {Button} from '@/components/ui/button'
 import {Component} from '@/components/ui/vapour-text-effect'
 import {routing} from '@/i18n/routing'
 import {APP_NAME} from '@/lib/constants'
-
-export const dynamic = 'force-static'
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
@@ -74,7 +73,9 @@ export default async function Home({
         </nav>
         <div className="ml-auto flex items-center gap-2">
           <LangToggle />
-          <ButtonConnexionDashboard />
+          <Suspense fallback={<Button disabled>&nbsp;</Button>}>
+            <ButtonConnexionDashboard />
+          </Suspense>
           <ModeToggle />
         </div>
       </header>

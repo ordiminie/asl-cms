@@ -3,15 +3,17 @@ description:
 globs: 
 alwaysApply: false
 ---
+
 # Règle React Query - Guide d'Implémentation
 
 ## Vue d'ensemble
 
-Cette règle définit comment implémenter React Query dans notre application Next.js 15 avec TypeScript, en suivant les patterns établis pour la gestion des projets.
+Cette règle définit comment implémenter React Query dans notre application Next.js 16 avec TypeScript, en suivant les patterns établis pour la gestion des projets.
 
 ## Architecture React Query
 
 ### Structure des dossiers
+
 ```
 src/
 ├── components/
@@ -32,6 +34,7 @@ src/
 ## Configuration Provider
 
 ### QueryProvider Setup
+
 Référence : [query-provider.tsx](mdc:src/components/context/query-provider.tsx)
 
 ```typescript
@@ -39,12 +42,12 @@ Référence : [query-provider.tsx](mdc:src/components/context/query-provider.tsx
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60 * 1000,      // 1 minute
-      gcTime: 10 * 60 * 1000,    // 10 minutes  
+      staleTime: 60 * 1000, // 1 minute
+      gcTime: 10 * 60 * 1000, // 10 minutes
       retry: (failureCount, error) => {
         // Pas de retry sur erreurs 4xx
         if (error && typeof error === 'object' && 'status' in error) {
-          const statusError = error as { status: number }
+          const statusError = error as {status: number}
           if (statusError.status >= 400 && statusError.status < 500) {
             return false
           }
@@ -60,6 +63,7 @@ const queryClient = new QueryClient({
 ```
 
 ### Intégration dans AppProviders
+
 Référence : [app-providers.tsx](mdc:src/components/context/app-providers.tsx)
 
 ```typescript
@@ -76,6 +80,7 @@ Référence : [app-providers.tsx](mdc:src/components/context/app-providers.tsx)
 ## API Client Pattern
 
 ### Client API générique
+
 Référence : [api-client.ts](mdc:src/lib/api/api-client.ts)
 
 ```typescript
@@ -117,6 +122,7 @@ export async function apiClient<T>(
 ```
 
 ### API spécifique par entité
+
 Référence : [projects-api.ts](mdc:src/lib/api/projects-api.ts)
 
 ```typescript
@@ -140,17 +146,29 @@ export interface PaginatedResponse<T> {
 
 // Fonctions API CRUD complètes
 export const entityApi = {
-  getEntities: async (params) => apiClient<PaginatedResponse<EntityDTO>>(`/api/entities?${searchParams}`),
-  getEntity: async (id) => apiClient<ApiResponse<EntityDTO>>(`/api/entities/${id}`),
-  createEntity: async (data) => apiClient<ApiResponse<EntityDTO>>('/api/entities', { method: 'POST', body: JSON.stringify(data) }),
-  updateEntity: async (id, data) => apiClient<ApiResponse<EntityDTO>>(`/api/entities/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteEntity: async (id) => apiClient<ApiResponse<void>>(`/api/entities/${id}`, { method: 'DELETE' }),
+  getEntities: async (params) =>
+    apiClient<PaginatedResponse<EntityDTO>>(`/api/entities?${searchParams}`),
+  getEntity: async (id) =>
+    apiClient<ApiResponse<EntityDTO>>(`/api/entities/${id}`),
+  createEntity: async (data) =>
+    apiClient<ApiResponse<EntityDTO>>('/api/entities', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateEntity: async (id, data) =>
+    apiClient<ApiResponse<EntityDTO>>(`/api/entities/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteEntity: async (id) =>
+    apiClient<ApiResponse<void>>(`/api/entities/${id}`, {method: 'DELETE'}),
 }
 ```
 
 ## Hooks React Query Pattern
 
 ### Structure des Query Keys
+
 Référence : [project-client.ts](mdc:src/components/hooks/client/project-client.ts)
 
 ```typescript
@@ -158,16 +176,23 @@ Référence : [project-client.ts](mdc:src/components/hooks/client/project-client
 export const entityKeys = {
   all: ['entities'] as const,
   lists: () => [...entityKeys.all, 'list'] as const,
-  list: (params: Record<string, unknown>) => [...entityKeys.lists(), params] as const,
+  list: (params: Record<string, unknown>) =>
+    [...entityKeys.lists(), params] as const,
   details: () => [...entityKeys.all, 'detail'] as const,
   detail: (id: string) => [...entityKeys.details(), id] as const,
 }
 ```
 
 ### Hooks de lecture (Queries)
+
 ```typescript
 // Hook liste avec pagination et cache optimisé
-export function useEntities(params: { page?: number; limit?: number; search?: string; organizationId?: string }) {
+export function useEntities(params: {
+  page?: number
+  limit?: number
+  search?: string
+  organizationId?: string
+}) {
   return useQuery({
     queryKey: entityKeys.list(params),
     queryFn: () => entityApi.getEntities(params),
@@ -186,6 +211,7 @@ export function useEntity(id: string) {
 ```
 
 ### Hooks de mutation (Mutations)
+
 ```typescript
 // Hook création avec invalidation automatique
 export function useCreateEntity() {
@@ -194,13 +220,14 @@ export function useCreateEntity() {
   return useMutation({
     mutationFn: (data: CreateEntity) => entityApi.createEntity(data),
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: entityKeys.lists() })
+      queryClient.invalidateQueries({queryKey: entityKeys.lists()})
       toast.success(response.message || 'Entité créée avec succès')
     },
     onError: (error: unknown) => {
-      const message = error && typeof error === 'object' && 'message' in error
-        ? (error.message as string)
-        : 'Erreur lors de la création'
+      const message =
+        error && typeof error === 'object' && 'message' in error
+          ? (error.message as string)
+          : 'Erreur lors de la création'
       toast.error(message)
     },
   })
@@ -211,18 +238,19 @@ export function useUpdateEntity() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<UpdateEntity> }) =>
+    mutationFn: ({id, data}: {id: string; data: Partial<UpdateEntity>}) =>
       entityApi.updateEntity(id, data),
     onSuccess: (response, variables) => {
       // Invalider listes + détail spécifique
-      queryClient.invalidateQueries({ queryKey: entityKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: entityKeys.detail(variables.id) })
+      queryClient.invalidateQueries({queryKey: entityKeys.lists()})
+      queryClient.invalidateQueries({queryKey: entityKeys.detail(variables.id)})
       toast.success(response.message || 'Entité mise à jour avec succès')
     },
     onError: (error: unknown) => {
-      const message = error && typeof error === 'object' && 'message' in error
-        ? (error.message as string)
-        : 'Erreur lors de la mise à jour'
+      const message =
+        error && typeof error === 'object' && 'message' in error
+          ? (error.message as string)
+          : 'Erreur lors de la mise à jour'
       toast.error(message)
     },
   })
@@ -232,12 +260,13 @@ export function useUpdateEntity() {
 ## Composants React Query Pattern
 
 ### Composant principal de gestion
+
 Référence : [projects-management-react-query.tsx](mdc:src/components/features/projects/react-query/projects-management-react-query.tsx)
 
 ```typescript
 export function EntityManagementReactQuery({ organization, searchParams }: Props) {
   const searchStore = use(searchParams)
-  
+
   // États locaux pour pagination/recherche
   const [page, setPage] = useState(Number(searchStore.page) || 1)
   const [limit, setLimit] = useState(Number(searchStore.limit) || 20)
@@ -274,6 +303,7 @@ export function EntityManagementReactQuery({ organization, searchParams }: Props
 ```
 
 ### Dialog de création
+
 Référence : [create-project-dialog-rq.tsx](mdc:src/components/features/projects/react-query/create-project-dialog-rq.tsx)
 
 ```typescript
@@ -319,6 +349,7 @@ export function CreateEntityDialog({ organizationId, trigger }: Props) {
 ```
 
 ### Dialog d'édition
+
 Référence : [edit-project-dialog-rq.tsx](mdc:src/components/features/projects/react-query/edit-project-dialog-rq.tsx)
 
 ```typescript
@@ -362,6 +393,7 @@ export function EditEntityDialog({ entity, onSave, isLoading }: Props) {
 ```
 
 ### Dialog de suppression
+
 Référence : [delete-project-dialog-rq.tsx](mdc:src/components/features/projects/react-query/delete-project-dialog-rq.tsx)
 
 ```typescript
@@ -405,6 +437,7 @@ export function DeleteEntityDialog({ entityId, entityName, onDelete, isLoading }
 ## Pagination Unifiée React Query
 
 ### Structure de réponse standardisée
+
 Toutes les APIs retournent une structure de pagination uniforme :
 
 ```typescript
@@ -415,13 +448,14 @@ Toutes les APIs retournent une structure de pagination uniforme :
   "pagination": {
     "total": 25,        // ← Nombre total d'éléments
     "page": 1,          // ← Page actuelle
-    "limit": 10,        // ← Éléments par page  
+    "limit": 10,        // ← Éléments par page
     "totalPages": 3     // ← Nombre total de pages
   }
 }
 ```
 
 ### Utilisation dans les composants
+
 ```typescript
 export function EntityManagementReactQuery({ organization, searchParams }: Props) {
   const { data: entitiesResponse } = useEntities({
@@ -451,12 +485,13 @@ export function EntityManagementReactQuery({ organization, searchParams }: Props
 ```
 
 ### Gestion des états par défaut
+
 Toujours prévoir des valeurs par défaut pour éviter les erreurs :
 
 ```typescript
 const pagination = entitiesResponse?.pagination || {
   total: 0,
-  page: 1, 
+  page: 1,
   limit: 20,
   totalPages: 0,
 }
@@ -465,6 +500,7 @@ const pagination = entitiesResponse?.pagination || {
 ## Intégration avec l'authentification
 
 ### Récupération utilisateur authentifié
+
 ```typescript
 // Dans les composants React Query
 const user = authClient.useSession()
@@ -479,25 +515,30 @@ createMutation.mutate({
 ## Bonnes pratiques
 
 ### 1. Query Keys hiérarchiques
+
 - Structure cohérente pour invalidation précise
 - Utilisation de `const` assertions pour type safety
 
 ### 2. Gestion des erreurs
+
 - Classe `ApiError` personnalisée
 - Messages d'erreur utilisateur contextuels
 - Toast notifications automatiques
 
 ### 3. États de chargement
+
 - `isLoading`, `isPending` pour UX fluide
 - Placeholder data pour éviter les clignotements
 - États de chargement granulaires par action
 
 ### 4. Cache et performance
+
 - `staleTime` et `gcTime` optimisés
 - Invalidation ciblée vs globale
 - Prefetch pour chargement anticipé
 
 ### 5. Types TypeScript
+
 - Types stricts pour requêtes et réponses
 - Inférence automatique avec Zod
 - Interfaces cohérentes entre API et hooks
@@ -505,6 +546,7 @@ createMutation.mutate({
 ## Checklist d'implémentation
 
 ### Nouvelle entité React Query
+
 - [ ] Créer `entity-api.ts` avec CRUD complet
 - [ ] Créer `entity-client.ts` avec hooks + query keys
 - [ ] Créer composants dialog (create, edit, delete)
@@ -513,6 +555,7 @@ createMutation.mutate({
 - [ ] Tests des hooks et composants
 
 ### Configuration projet
+
 - [ ] QueryProvider configuré dans app-providers
 - [ ] DevTools activés en développement
 - [ ] Types API response standardisés

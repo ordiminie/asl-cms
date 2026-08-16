@@ -3,6 +3,7 @@ description:
 globs: 
 alwaysApply: false
 ---
+
 # Règle Zod - Internationalisation Client/Serveur
 
 ## Vue d'ensemble
@@ -123,7 +124,7 @@ import {createUserFormSchema} dmin/users/user-form-validation'
 
 export function EditUserProfileForm({user}: {user: User}) {
   const t = useTranslations('AccountPage.EditUserProfileForm')
-  
+
   // Créer le schéma avec messages traduits
   const userFormSchemaClient = createUserFormSchema(t)
   type FormValues = z.infer<typeof userFormSchemaClient>
@@ -196,63 +197,80 @@ export async function updateUserAction(
 ## Approches d'Implémentation
 
 ### Option 1 : Schéma Complet (Clone)
+
 ```typescript
 export function createUserFormSchema(t: (key: string) => string) {
   return z.object({
     id: z.string().uuid(t('validation.uuid.invalid')).optional(),
     name: z.string().min(2, t('validation.name.min')),
     email: z.string().email(t('validation.email.invalid')),
-    image: z.string().url(t('validation.image.invalid')).optional().or(z.literal('')),
+    image: z
+      .string()
+      .url(t('validation.image.invalid'))
+      .optional()
+      .or(z.literal('')),
     visibility: z.enum(['public', 'private']),
   })
 }
 ```
 
 **Avantages :**
+
 - Contrôle total sur tous les champs
 - Pas de dépendance au schéma de base
 
 **Inconvénients :**
+
 - Duplication de code
 - Maintenance plus difficile
 
 ### Option 2 : Extension avec Override (Recommandé)
+
 ```typescript
 export function createUserFormSchema(t: (key: string) => string) {
   return userFormSchema.extend({
     id: z.string().uuid(t('validation.uuid.invalid')).optional(),
     name: z.string().min(2, t('validation.name.min')),
     email: z.string().email(t('validation.email.invalid')),
-    image: z.string().url(t('validation.image.invalid')).optional().or(z.literal('')),
+    image: z
+      .string()
+      .url(t('validation.image.invalid'))
+      .optional()
+      .or(z.literal('')),
     visibility: z.enum(['public', 'private']),
   })
 }
 ```
 
 **Avantages :**
+
 - Réutilisation du schéma de base
 - Override automatique des messages
 - Maintenance plus facile
 - Cohérence garantie
 
 **Inconvénients :**
+
 - Dépendance au schéma de base
 
 ## Extensions Avancées
 
 ### Extension avec Nouveaux Champs
+
 ```typescript
 export function createExtendedUserFormSchema(t: (key: string) => string) {
   return userFormSchema.extend({
     // Override des messages existants
     name: z.string().min(2, t('validation.name.min')),
     email: z.string().email(t('validation.email.invalid')),
-    
+
     // Nouveaux champs avec traductions
-    phone: z.string().regex(/^\+?[1-9]\d{1,14}$/, t('validation.phone.invalid')),
+    phone: z
+      .string()
+      .regex(/^\+?[1-9]\d{1,14}$/, t('validation.phone.invalid')),
     settings: z.object({
       theme: z.enum(['light', 'dark'], {
-        errorMap: () => ({ message: t('validation.theme.invalid') })
+        errorMap: () => ({message: t('validation.theme.invalid')}),
       }),
     }),
   })
@@ -260,13 +278,17 @@ export function createExtendedUserFormSchema(t: (key: string) => string) {
 ```
 
 ### Extension avec Conditions
+
 ```typescript
-export function createConditionalUserFormSchema(t: (key: string) => string, isAdmin: boolean) {
+export function createConditionalUserFormSchema(
+  t: (key: string) => string,
+  isAdmin: boolean
+) {
   return userFormSchema.extend({
     // Champs conditionnels selon le rôle
     ...(isAdmin && {
       role: z.enum(['user', 'admin'], {
-        errorMap: () => ({ message: t('validation.role.invalid') })
+        errorMap: () => ({message: t('validation.role.invalid')}),
       }),
     }),
   })
@@ -276,22 +298,26 @@ export function createConditionalUserFormSchema(t: (key: string) => string, isAd
 ## Avantages de cette Approche
 
 ### ✅ **Base Commune**
+
 - Une seule fonction `createUserFormSchema(t)` fonctionne partout
 - Même structure de validation côté client et serveur
 - Cohérence garantie entre les validations
 
 ### ✅ **Traductions Dynamiques**
+
 - Messages traduits côté client avec `useTranslations`
 - Messages traduits côté serveur avec `getTranslations`
 - Même namespace pour les clés de traduction
 
 ### ✅ **Maintenabilité**
+
 - Schéma de base `userFormSchema` pour référence
 - Fonction de création avec traductions
 - Modifications centralisées
 - Extension avec override pour flexibilité
 
 ### ✅ **Type Safety**
+
 - TypeScript infère les types correctement
 - Même type `UserFormSchemaType` partout
 - Validation des clés de traduction
@@ -299,6 +325,7 @@ export function createConditionalUserFormSchema(t: (key: string) => string, isAd
 ## Conventions de Nommage
 
 ### Clés de Traduction
+
 ```typescript
 // Format : {PageName}.{ComponentName}.{Section}
 'AccountPage.EditUserProfileForm.validation.name.min'
@@ -307,6 +334,7 @@ export function createConditionalUserFormSchema(t: (key: string) => string, isAd
 ```
 
 ### Fonctions de Schéma
+
 ```typescript
 // Format : create{Entity}FormSchema
 createUserFormSchema(t)
@@ -317,6 +345,7 @@ createPasswordFormSchema(t)
 ## Exemple Complet
 
 ### 1. Définition du Schéma
+
 ```typescript
 // user-form-validation.ts
 export function createUserFormSchema(t: (key: string) => string) {
@@ -324,13 +353,18 @@ export function createUserFormSchema(t: (key: string) => string) {
     id: z.string().uuid(t('validation.uuid.invalid')).optional(),
     name: z.string().min(2, t('validation.name.min')),
     email: z.string().email(t('validation.email.invalid')),
-    image: z.string().url(t('validation.image.invalid')).optional().or(z.literal('')),
+    image: z
+      .string()
+      .url(t('validation.image.invalid'))
+      .optional()
+      .or(z.literal('')),
     visibility: z.enum(['public', 'private']),
   })
 }
 ```
 
 ### 2. Traductions
+
 ```json
 {
   "AccountPage": {
@@ -356,12 +390,14 @@ export function createUserFormSchema(t: (key: string) => string) {
 ```
 
 ### 3. Utilisation Client
+
 ```typescript
 const t = useTranslations('AccountPage.EditUserProfileForm')
 const userFormSchemaClient = createUserFormSchema(t)
 ```
 
 ### 4. Utilisation Serveur
+
 ```typescript
 const t = await getTranslations('AccountPage.EditUserProfileForm')
 const userFormSchemaServer = createUserFormSchema(t)
@@ -380,6 +416,7 @@ const userFormSchemaServer = createUserFormSchema(t)
 ## Résumé
 
 Cette approche garantit :
+
 - **Traductions cohérentes** côté client et serveur
 - **Base commune** pour les validations
 - **Maintenabilité** optimale avec extension et override

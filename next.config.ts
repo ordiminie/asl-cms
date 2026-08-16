@@ -25,16 +25,20 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'iyatdxbvlmszswgoevtc.supabase.co',
+        hostname: 'your-project.supabase.co',
         port: '',
       },
     ],
   },
 
+  // Remplace experimental.useCache (retiré en Next 16) : active la directive
+  // 'use cache', cacheLife/cacheTag, et le PPR par défaut.
+  cacheComponents: true,
+
   experimental: {
     authInterrupts: true,
     taint: true,
-    useCache: true,
+    // staleTimes survit à cacheComponents et alimente cacheLife.default.stale
     staleTimes: {
       dynamic: 30,
       static: 180,

@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Système d'Upload de Fichiers et Images
 
-Guide complet pour l'upload de fichiers et d'images dans l'architecture Next.js 15 / React 19.
+Guide complet pour l'upload de fichiers et d'images dans l'architecture Next.js 16 / React 19.
 
 ## Architecture d'Upload
 
@@ -158,7 +158,7 @@ export function FormWithUpload({entity}: {entity: EntityType}) {
 ```tsx
 'use server'
 
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 import {uploadImageForEntityService} from '@/services/facades/file-service-facade'
 import {
   EntityTypeConst,

@@ -6,7 +6,7 @@ description:
 
 ## Vue d'ensemble
 
-Cette règle définit comment implémenter React Query dans notre application Next.js 15 avec TypeScript, en suivant les patterns établis pour la gestion des projets.
+Cette règle définit comment implémenter React Query dans notre application Next.js 16 avec TypeScript, en suivant les patterns établis pour la gestion des projets.
 
 ## Architecture React Query
 

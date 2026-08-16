@@ -1,3 +1,5 @@
+import {connection} from 'next/server'
+
 import {
   getEntreprisePlan,
   getFreePlan,
@@ -8,7 +10,16 @@ import {getSubscriptionRecap} from '@/lib/stripe/stripe-utils'
 
 import CheckoutBetterAuth from './checkout-better-auth'
 
+// Tunnel de paiement : dynamique par nature (prix, session utilisateur).
+export const instant = false
+
 export default async function Page() {
+  // Le SDK Stripe lit `Date.now()` à chaque appel, ce qui est interdit au
+  // prerender. `instant = false` ne suffit pas : il autorise une route
+  // bloquante, pas la lecture de l'horloge. Il faut marquer explicitement le
+  // rendu comme fait à la requête.
+  await connection()
+
   // permet un gestion dynamique des prix (si modifié coté dashboard stripe)
   const [planFree, planPro, planEntreprise, planLifetime] = await Promise.all([
     getFreePlan(),

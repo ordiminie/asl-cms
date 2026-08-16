@@ -1,13 +1,19 @@
+import {cacheLife} from 'next/cache'
 import Link from 'next/link'
-import {useTranslations} from 'next-intl'
+import {getTranslations} from 'next-intl/server'
 
 import ImageTheme from '@/components/image-theme'
 import {PagesConst} from '@/env'
 import {APP_NAME} from '@/lib/constants'
 import {isPageEnabled} from '@/lib/utils'
 
-export default function PublicFooter() {
-  const t = useTranslations('HomePage')
+// L'année du copyright lit l'heure courante : sans cache, elle interdit le
+// prerender de toute page contenant le footer.
+export default async function PublicFooter() {
+  'use cache'
+  cacheLife('days')
+
+  const t = await getTranslations('HomePage')
 
   return (
     <footer className="border-border bg-background/80 mt-auto w-full border-t px-4 py-12 sm:px-6 md:px-8">

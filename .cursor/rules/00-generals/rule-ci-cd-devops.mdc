@@ -44,14 +44,18 @@ pnpm lint-staged
 
 ### Testing Strategy
 
-Each package in the monorepo must include:
+Two levels, and two only:
 
-- **Unit tests** for individual functions and components
-  - Database and authentication are mocked
-  - Use `vi.mock()` for external dependencies
-- **Integration tests** using TestContainers
-  - Real database interactions with isolated containers
-  - Authentication flows tested with mocked providers
+- **Unit tests** (Vitest) for functions, services and components
+  - Database and authentication are mocked with `vi.mock()`
+  - No real database, no network
+- **End-to-end tests** (Playwright) for full user flows
+  - Run against the **production build** (`pnpm build && pnpm start`), never `pnpm dev`:
+    the static shell and streaming don't behave the same, and that's what the tests protect
+  - Backed by an **ephemeral Postgres service** in CI, seeded before the run
+
+There is no integration-test layer between the two, and no TestContainers: repository behaviour is
+covered by the e2e suite running against a real seeded database.
 
 #### Unit Testing with Vitest
 
@@ -77,40 +81,6 @@ describe('UserService', () => {
 
     const result = await userService.createUser({name: 'John'})
     expect(result).toEqual(mockUser)
-  })
-})
-```
-
-#### Integration Testing with TestContainers
-
-- Use **TestContainers** for isolated database testing
-- Each test runs in a fresh database instance
-
-Example Integration Test:
-
-```ts
-import {PostgreSqlContainer} from '@testcontainers/postgresql'
-import {drizzle} from 'drizzle-orm/node-postgres'
-
-describe('UserRepository Integration', () => {
-  let container
-  let db
-
-  beforeAll(async () => {
-    container = await new PostgreSqlContainer().start()
-    db = drizzle(/* container connection config */)
-    await db.migrate()
-  })
-
-  afterAll(async () => {
-    await container.stop()
-  })
-
-  it('should persist and retrieve user data', async () => {
-    const userRepo = new UserRepository(db)
-    const user = await userRepo.create({name: 'John'})
-    const retrieved = await userRepo.findById(user.id)
-    expect(retrieved).toEqual(user)
   })
 })
 ```
@@ -148,36 +118,46 @@ name: CI Pipeline
 on: [push, pull_request]
 
 jobs:
-  test:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm check:rules
+      - run: pnpm test
+
+  e2e:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:latest
+        image: postgres:17
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test
           POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-retries 5
         ports:
           - 5432:5432
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - run: npm install
-      - run: npm run lint
-      - run: npm run test
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Run Migrations
-        run: npm run db:migrate
-      - name: Deploy
-        run: npm run deploy
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm db:push && pnpm db:seed
+      - run: pnpm test:e2e --project=chromium
 ```
+
+⚠️ **Jamais la base de preview pour les e2e** : deux specs créent un compte et une lit le seed. Un
+service Postgres éphémère isole totalement, sans secret supplémentaire.
 
 ### Deployment Guidelines
 

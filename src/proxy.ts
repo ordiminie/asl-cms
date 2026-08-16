@@ -1,10 +1,37 @@
+import {getSessionCookie} from 'better-auth/cookies'
 import type {NextRequest} from 'next/server'
 import {NextResponse} from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 
 import {routing} from './i18n/routing'
+import {stripLocalePrefix} from './lib/helper/locale-helper'
 
 const intlMiddleware = createMiddleware(routing)
+
+// Segments servis derrière une session : le groupe (app) et l'espace admin.
+const AUTHENTICATED_SEGMENTS = [
+  '/account',
+  '/admin',
+  '/chat',
+  '/dashboard',
+  '/team',
+]
+
+const localeOf = (pathname: string) => {
+  const firstSegment = pathname.split('/')[1]
+  return routing.locales.includes(
+    firstSegment as (typeof routing.locales)[number]
+  )
+    ? firstSegment
+    : routing.defaultLocale
+}
+
+const isAuthenticatedPath = (pathname: string, locale: string) => {
+  const path = stripLocalePrefix(pathname, locale)
+  return AUTHENTICATED_SEGMENTS.some(
+    (segment) => path === segment || path.startsWith(`${segment}/`)
+  )
+}
 
 export default function middleware(request: NextRequest) {
   const {pathname, searchParams} = request.nextUrl
@@ -21,6 +48,18 @@ export default function middleware(request: NextRequest) {
     }
 
     return NextResponse.redirect(redirectUrl)
+  }
+
+  // Gating grossier : sans cookie de session, inutile de rendre une route
+  // authentifiée. C'est ce qui permet à ces routes de streamer — sous Cache
+  // Components, un `redirect()` déclenché pendant le stream part après le début
+  // d'un 200 et ne peut plus changer le statut.
+  // Contrôle optimiste, sans appel base : la présence du cookie ne prouve pas
+  // que la session est valide. La vraie vérification reste côté serveur —
+  // getCurrentUserDal, withAuth et l'autorisation CASL dans les services.
+  const locale = localeOf(pathname)
+  if (isAuthenticatedPath(pathname, locale) && !getSessionCookie(request)) {
+    return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
   }
 
   // Obtenir le thème depuis le cookie

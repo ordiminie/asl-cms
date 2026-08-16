@@ -31,7 +31,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-This is a Next.js 15 SaaS boilerplate with a strict layered architecture:
+This is a Next.js 16 SaaS boilerplate with a strict layered architecture, running under
+`cacheComponents: true` (Partial Prerendering, nothing cached by default):
 
 ### Core Technologies
 
@@ -49,12 +50,15 @@ This is a Next.js 15 SaaS boilerplate with a strict layered architecture:
 
 1. **Presentation** (`src/app/`, `src/components/`)
    - Uses domain types only
-   - Reads through DAL (with react-cache)
+   - Reads through DAL
+   - Per-user data streams behind `<Suspense>`, never cached
    - Mutations through Server Actions only
    - No direct service/persistence calls
 
 2. **DAL (Data Access Layer)** (`src/app/dal/`)
-   - Caches data access with react-cache
+   - Owns caching: `'use cache'` + `cacheLife` + `cacheTag` per read function
+     (`unstable_cache` for data that must survive deployments, nothing for per-user data)
+   - React `cache()` on top, to deduplicate within a single request
    - Transforms persistence entities to DTOs
    - Never exposes raw Drizzle models
 

@@ -146,10 +146,12 @@ export default function InvitationsUsers({
                           <Badge variant="outline" className="text-xs">
                             {invitation.status}
                           </Badge>
-                          <span suppressHydrationWarning>
+                          <span>
                             Expire:{' '}
                             {formatDate(
-                              new Date(invitation.expiresAt ?? new Date())
+                              invitation.expiresAt
+                                ? new Date(invitation.expiresAt)
+                                : null
                             )}
                           </span>
                         </div>
@@ -165,11 +167,12 @@ export default function InvitationsUsers({
                     <TableCell className="hidden sm:table-cell">
                       <Badge variant="outline">{invitation.status}</Badge>
                     </TableCell>
-                    <TableCell
-                      className="hidden sm:table-cell"
-                      suppressHydrationWarning
-                    >
-                      {formatDate(new Date(invitation.expiresAt ?? new Date()))}
+                    <TableCell className="hidden sm:table-cell">
+                      {formatDate(
+                        invitation.expiresAt
+                          ? new Date(invitation.expiresAt)
+                          : null
+                      )}
                     </TableCell>
                     <TableCell>
                       {invitation.status === 'pending' && (

@@ -2,6 +2,7 @@ import 'server-only'
 
 import fs from 'fs'
 import matter from 'gray-matter'
+import {cacheLife} from 'next/cache'
 import path from 'path'
 
 import {MdxBlogPost, MdxFrontmatter} from '@/services/types/domain/blog-types'
@@ -215,17 +216,29 @@ export function blogPostExists(postId: string, locale: string): boolean {
   return getContentByPostId(postId, locale) !== null
 }
 
-function isPublishedByDate(publishedAt: string | undefined): boolean {
-  if (!publishedAt) return true
-  const publishDate = new Date(publishedAt)
-  return publishDate <= new Date()
+/**
+ * Instant de référence pour la publication programmée, mis en cache : lire
+ * l'horloge est interdit dans un scope 'use cache'. Granularité horaire, ce qui
+ * correspond à la précision d'un `publishedAt` en date.
+ */
+export async function getPublicationCutoff(): Promise<number> {
+  'use cache'
+  cacheLife('hours')
+  return Date.now()
 }
 
-export function getAllMdxSlugsWithLocales(): {
-  postId: string
-  slug: string
-  locale: string
-}[] {
+function isPublishedByDate(
+  publishedAt: string | undefined,
+  nowMs: number
+): boolean {
+  if (!publishedAt) return true
+  return new Date(publishedAt).getTime() <= nowMs
+}
+
+export async function getAllMdxSlugsWithLocales(): Promise<
+  {postId: string; slug: string; locale: string}[]
+> {
+  const nowMs = await getPublicationCutoff()
   const contentDir = getContentDir()
   const results: {postId: string; slug: string; locale: string}[] = []
 
@@ -245,7 +258,7 @@ export function getAllMdxSlugsWithLocales(): {
           const content = fs.readFileSync(filePath, 'utf8')
           const {frontmatter} = parseFrontmatter(content)
 
-          if (!isPublishedByDate(frontmatter.publishedAt)) {
+          if (!isPublishedByDate(frontmatter.publishedAt, nowMs)) {
             break
           }
 
@@ -296,15 +309,16 @@ export function getPostIdBySlug(slug: string, locale: string): string | null {
   return null
 }
 
-export function getPostLanguageVariants(
+export async function getPostLanguageVariants(
   postId: string
-): {locale: string; slug: string}[] {
+): Promise<{locale: string; slug: string}[]> {
+  const nowMs = await getPublicationCutoff()
   const variants: {locale: string; slug: string}[] = []
   const availableLocales = getAvailableLocalesForPost(postId)
 
   for (const locale of availableLocales) {
     const post = getMdxBlogPost(postId, locale)
-    if (post && isPublishedByDate(post.frontmatter.publishedAt)) {
+    if (post && isPublishedByDate(post.frontmatter.publishedAt, nowMs)) {
       variants.push({locale, slug: post.slug})
     }
   }

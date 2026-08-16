@@ -1,12 +1,10 @@
+import {cacheLife} from 'next/cache'
 import {Metadata} from 'next/types'
 import {setRequestLocale} from 'next-intl/server'
 
 import {routing} from '@/i18n/routing'
 
 import {ContactForm} from './contact-form'
-
-export const dynamic = 'force-static'
-export const dynamicParams = false
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
@@ -20,6 +18,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const Page = async ({params}: {params: Promise<{locale: string}>}) => {
+  'use cache'
+  cacheLife('max')
+
   const {locale} = await params
   setRequestLocale(locale)
 

@@ -3,18 +3,16 @@ description:
 globs: src/services/**
 alwaysApply: false
 ---
----
----
-description: services layer rules
-globs: 
----
+
 You are an expert in TypeScript, Node.js, Next.js App Router, React, Shadcn UI, Radix UI, and Tailwind.
 
 Key Principles
+
 - The **service layer** handles business logic, authorization, and validation
 - Services communicate with persistence layer through DAOs/repositories
 
 # File Organization
+
 - `/services/` main services files
   - `authentication/` → Authorization layer
   - `authorization/` → Permission and access control
@@ -24,6 +22,7 @@ Key Principles
   - `__tests__/` → Service tests
 
 # Service Implementation
+
 - Validate inputs with Zod (validation layer)
 - Check authorization before operations (authorization / RBAC)
 - Handle errors appropriately
@@ -31,6 +30,7 @@ Key Principles
 
 Example Service:
 [user-service.ts](mdc:src/services/user-service.ts)
+
 ```ts
 export const getUserByIdService = async (id: string) => {
   const parsed = userUuidSchema.safeParse(id)
@@ -47,24 +47,28 @@ export const getUserByIdService = async (id: string) => {
 ```
 
 # Service Facade Implementation
+
 - All fonctions in the service must be mapped in the facade with same name
 - Facade automatically use the right incerceptor
-Exemple 
-[user-service-facade.ts](mdc:src/services/facades/user-service-facade.ts)
+  Exemple
+  [user-service-facade.ts](mdc:src/services/facades/user-service-facade.ts)
 
 ```ts
 import userServiceInterceptor from './interceptors/user-service-logger-interceptor'
 export const updateUserService = userServiceInterceptor.updateUserService
 ```
 
-# Domain Types 
+# Domain Types
+
 - All domains types are isolated in the package `src/services/types/domain/`
 - Directly derived form de drizzle type model
 - Theses types are types for fonctions in services
-Exemple 
+  Exemple
 
 ```ts
-[subscription-types.ts](mdc:src/services/types/domain/subscription-types.ts)
+;[subscription - types.ts](
+  src / services / types / domain / subscription - types.ts
+)
 import {
   SubscriptionAddModel,
   SubscriptionModel,
@@ -80,11 +84,13 @@ export type UpdateSubscription = {
 ```
 
 # Example Validation:
-- Valadation schema satisfies domain types 
-- Exemple 
-[user-validation.ts](mdc:src/services/validation/user-validation.ts)
+
+- Valadation schema satisfies domain types
+- Exemple
+  [user-validation.ts](mdc:src/services/validation/user-validation.ts)
+
 ```ts
-import { z } from 'zod'
+import {z} from 'zod'
 
 export const createUserServiceSchema = baseUserServiceSchema.extend({
   name: z
@@ -102,23 +108,27 @@ export const createUserServiceSchema = baseUserServiceSchema.extend({
 }) satisfies z.Schema<CreateUser>
 ```
 
-# Authentication 
+# Authentication
+
 - Check auth via getAuthUser (better-auth)
+
 ```ts
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 const authUser = await getAuthUser()
 ```
-Exemple 
-[auth-utils.ts](mdc:src/services/authentication/auth-utils.ts)
+
+Exemple
+[auth-service.ts](mdc:src/services/authentication/auth-service.ts)
 
 Authorization
+
 - Check permissions before operations
 - Based on authentication service (getAuthUser)
 - based on CASL lib [authorization-service.ts](mdc:src/services/authorization/authorization-service.ts)
-- Authorization answer the question :  Can ConnectedUser DO Action to THIS Ressources ID
-- exemple  : canReadUser("50"), Can Auth User Read the user with ID 50
-- exemple  : canReadPost("50"), Can Auth User Read the user with ID 50 
-Example Authorization:
+- Authorization answer the question : Can ConnectedUser DO Action to THIS Ressources ID
+- exemple : canReadUser("50"), Can Auth User Read the user with ID 50
+- exemple : canReadPost("50"), Can Auth User Read the user with ID 50
+  Example Authorization:
 
 ```ts
 export const canReadUser = async (resourceId: string): Promise<boolean> => {
@@ -146,6 +156,7 @@ export const canUpdateUser = async (resourceId: string): Promise<boolean> => {
 ```
 
 Key points:
+
 - Always fetch resource to check ownership
 - Use permissionAcces with:
   - authUser: authenticated user
@@ -164,6 +175,7 @@ Key points:
 - Verify input validation
 - import setupAuthUserMocked, userTest, userTestAdmin relatively like this
 - Allways Tests with role PUBLIC (no auth), USER (auth connected), ADMIN (role admin)
+
 ```ts
 import {setupAuthUserMocked} from './helper-service-test'
 import {userTest, userTestAdmin} from './service-test-data'
@@ -171,6 +183,7 @@ import {userTest, userTestAdmin} from './service-test-data'
 
 Example Test:
 [user-service.test.ts](mdc:src/services/__tests__/user-service.test.ts)
+
 ```ts
 import {describe, it, expect, beforeEach, vi} from 'vitest'
 import {
@@ -343,3 +356,4 @@ Best Practices
 - Test all service methods
 - Use TypeScript for type safety
 - Keep services focused and modular
+```

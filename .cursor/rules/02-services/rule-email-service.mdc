@@ -3,6 +3,7 @@ description:
 globs:
 alwaysApply: false
 ---
+
 # Service d'Email avec Resend et React Email
 
 ## Configuration
@@ -41,7 +42,7 @@ Le service d'envoi d'email est défini dans [email-service.ts](mdc:src/services/
 ### Utilisation de Resend
 
 ```tsx
-import { env } from '@/env'
+import {env} from '@/env'
 
 const resend = new Resend(env.RESEND_API_KEY)
 
@@ -58,9 +59,9 @@ export const sendEmailService = async (
 ```tsx
 await sendEmailService({
   to: email,
-  subject: 'Sujet de l\'email',
+  subject: "Sujet de l'email",
   from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
-  text: 'Version texte de l\'email',
+  text: "Version texte de l'email",
   react: MonTemplateReact({
     // Props du template
   }),

@@ -30,7 +30,7 @@ UI component tests focus on behavior from the user's perspective:
 
 <Tab value="Testing Approach">
 **User-Centric Testing:**
-```typescript
+```tsx
 // ✅ Good: Test what users see and do
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
@@ -379,7 +379,7 @@ describe('UserList', () => {
 
 <Tab value="Interactive Components">
 **Interactive Elements and State Management:**
-```typescript
+```tsx
 // src/components/__tests__/SubscriptionPlanSelector.test.tsx
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -507,7 +507,7 @@ describe('ConfirmationDialog', () => {
 
 <Tab value="Layout Components">
 **Layout and Navigation Components:**
-```typescript
+```tsx
 // src/components/__tests__/Layout.test.tsx
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
@@ -601,7 +601,7 @@ Test complex user interactions and workflows:
 
 <Tab value="Keyboard Navigation">
 **Accessibility and Keyboard Navigation:**
-```typescript
+```tsx
 // src/components/__tests__/AccessibleModal.test.tsx
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -715,7 +715,7 @@ describe('Form Keyboard Navigation', () => {
 
 <Tab value="Mouse Interactions">
 **Click, Hover, and Mouse Events:**
-```typescript
+```tsx
 // src/components/__tests__/Tooltip.test.tsx
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -814,7 +814,7 @@ describe('DropdownMenu', () => {
 
 <Tab value="Touch Events">
 **Mobile Touch Interactions:**
-```typescript
+```tsx
 // src/components/__tests__/SwipeableCard.test.tsx
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
@@ -919,7 +919,7 @@ describe('PullToRefresh', () => {
 
 <Tab value="Drag and Drop">
 **Drag and Drop Interactions:**
-```typescript
+```tsx
 // src/components/__tests__/DragDropList.test.tsx
 import { render, screen } from '@testing-library/react'
 import { DndProvider } from 'react-dnd'
@@ -1068,7 +1068,7 @@ Test React Context providers and complex component trees:
 
 <Tab value="Context Providers">
 **Testing Components with Context:**
-```typescript
+```tsx
 // src/app/__tests__/theme.test.tsx
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -1185,7 +1185,7 @@ describe('Components with Theme', () => {
 
 <Tab value="Auth Context">
 **Authentication Context Testing:**
-```typescript
+```tsx
 // src/components/__tests__/AuthProvider.test.tsx
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -1344,7 +1344,7 @@ export const renderWithAuth = (
 
 <Tab value="Complex Providers">
 **Multiple Providers and Complex State:**
-```typescript
+```tsx
 // src/test/utils/test-providers.tsx
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/components/auth/AuthProvider'
