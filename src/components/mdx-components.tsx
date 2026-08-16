@@ -371,7 +371,7 @@ export const mdxComponents = {
     return (
       <h1
         id={id}
-        className="border-border mb-6 scroll-mt-20 border-b pb-2 text-4xl font-bold"
+        className="mt-2 mb-6 scroll-mt-20 text-3xl font-bold tracking-tight"
       >
         {children}
       </h1>
@@ -381,7 +381,10 @@ export const mdxComponents = {
     const textContent = getTextContent(children)
     const id = slugify(textContent)
     return (
-      <h2 id={id} className="mt-8 mb-4 scroll-mt-20 text-3xl font-semibold">
+      <h2
+        id={id}
+        className="mt-12 mb-4 scroll-mt-20 text-2xl font-semibold tracking-tight"
+      >
         {children}
       </h2>
     )
@@ -390,7 +393,10 @@ export const mdxComponents = {
     const textContent = getTextContent(children)
     const id = slugify(textContent)
     return (
-      <h3 id={id} className="mt-6 mb-3 scroll-mt-20 text-2xl font-medium">
+      <h3
+        id={id}
+        className="mt-9 mb-3 scroll-mt-20 text-xl font-semibold tracking-tight"
+      >
         {children}
       </h3>
     )
@@ -399,23 +405,25 @@ export const mdxComponents = {
     const textContent = getTextContent(children)
     const id = slugify(textContent)
     return (
-      <h4 id={id} className="mt-4 mb-2 scroll-mt-20 text-xl font-medium">
+      <h4 id={id} className="mt-7 mb-2 scroll-mt-20 text-lg font-semibold">
         {children}
       </h4>
     )
   },
   p: ({children}: {children: ReactNode}) => (
-    <span className="mb-4 block text-base leading-7">{children}</span>
+    <p className="mb-5 text-base leading-7">{children}</p>
   ),
   ul: ({children}: {children: ReactNode}) => (
-    <ul className="mb-4 list-inside list-disc space-y-2">{children}</ul>
+    <ul className="my-5 list-outside list-disc space-y-2 pl-6">{children}</ul>
   ),
   ol: ({children}: {children: ReactNode}) => (
-    <ol className="mb-4 list-inside list-decimal space-y-2">{children}</ol>
+    <ol className="my-5 list-outside list-decimal space-y-2 pl-6">
+      {children}
+    </ol>
   ),
   li: ({children}: {children: ReactNode}) => <li>{children}</li>,
   blockquote: ({children}: {children: ReactNode}) => (
-    <blockquote className="border-primary bg-muted mb-4 rounded-r-lg border-l-4 py-2 pl-4 italic">
+    <blockquote className="border-border bg-muted/40 my-6 rounded-r-lg border-l-2 py-3 pl-5">
       {children}
     </blockquote>
   ),
@@ -506,35 +514,33 @@ export const mdxComponents = {
     )
   },
   table: ({children}: {children: ReactNode}) => (
-    <div className="mb-4 w-full overflow-x-auto">
-      <table className="border-border w-full border-collapse border">
-        {children}
-      </table>
+    <div className="my-6 w-full overflow-x-auto">
+      <table className="w-full border-collapse text-sm">{children}</table>
     </div>
   ),
   thead: ({children}: {children: ReactNode}) => (
-    <thead className="bg-muted">{children}</thead>
+    <thead className="border-border border-b">{children}</thead>
   ),
   tbody: ({children}: {children: ReactNode}) => (
     <tbody className="divide-border divide-y">{children}</tbody>
   ),
   tr: ({children}: {children: ReactNode}) => (
-    <tr className="hover:bg-muted/50">{children}</tr>
+    <tr className="hover:bg-muted/40">{children}</tr>
   ),
   th: ({children}: {children: ReactNode}) => (
-    <th className="border-border border px-4 py-2 text-left font-semibold">
+    <th className="text-muted-foreground px-4 py-2.5 text-left text-xs font-medium tracking-wide uppercase">
       {children}
     </th>
   ),
   td: ({children}: {children: ReactNode}) => (
-    <td className="border-border border px-4 py-2">{children}</td>
+    <td className="px-4 py-3 align-top">{children}</td>
   ),
   a: ({href, children}: {href?: string; children: ReactNode}) => {
     if (href && href.startsWith('/')) {
       return (
         <Link
           href={href}
-          className="text-primary hover:text-primary/80 underline transition-colors"
+          className="text-link decoration-link/40 hover:decoration-link underline underline-offset-2 transition-colors"
         >
           {children}
         </Link>
@@ -545,13 +551,13 @@ export const mdxComponents = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary hover:text-primary/80 underline transition-colors"
+        className="text-link decoration-link/40 hover:decoration-link underline underline-offset-2 transition-colors"
       >
         {children}
       </a>
     )
   },
-  hr: () => <hr className="border-border my-8" />,
+  hr: () => <hr className="border-border my-10" />,
   img: (props: React.ComponentProps<typeof Image>) => {
     const imageUrl = props.src as string
     const isGif = imageUrl?.includes('.gif')
@@ -600,7 +606,7 @@ export const mdxComponents = {
       return (
         <Link
           href={href}
-          className="text-primary hover:text-primary/80 underline transition-colors"
+          className="text-link decoration-link/40 hover:decoration-link underline underline-offset-2 transition-colors"
         >
           {children}
         </Link>
@@ -611,7 +617,7 @@ export const mdxComponents = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary hover:text-primary/80 underline transition-colors"
+        className="text-link decoration-link/40 hover:decoration-link underline underline-offset-2 transition-colors"
       >
         {children}
       </a>

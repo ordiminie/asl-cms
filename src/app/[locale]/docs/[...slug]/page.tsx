@@ -1,8 +1,9 @@
 import fs from 'fs'
 import matter from 'gray-matter'
 import type {Metadata} from 'next'
-import {headers} from 'next/headers'
 import {notFound} from 'next/navigation'
+import {connection} from 'next/server'
+import {Suspense} from 'react'
 
 import {MDXContent} from '@/components/mdx-content'
 import {env} from '@/env'
@@ -13,11 +14,6 @@ import {
   getDocFilePath,
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
-
-// Lit le thème dans les headers pour la coloration Shiki : le prerender figerait
-// une seule variante (code clair en dark mode). À lever en passant Shiki en
-// dual-theme (themes: {light, dark}), qui produit une sortie pilotée par CSS.
-export const instant = false
 
 interface DocsPageProps {
   params: Promise<{
@@ -185,10 +181,6 @@ export default async function DocsPage({params}: DocsPageProps) {
     content = mdxContent
   }
 
-  // Obtenir le thème depuis les headers
-  const headersList = await headers()
-  const theme = headersList.get('x-theme') || 'light'
-
   if (!content) {
     return (
       <div className="max-w-4xl">
@@ -209,7 +201,33 @@ export default async function DocsPage({params}: DocsPageProps) {
         </h1>
       )}
 
-      <MDXContent source={content} theme={theme} />
+      <Suspense fallback={<DocsContentSkeleton />}>
+        <DocsContent content={content} />
+      </Suspense>
+    </div>
+  )
+}
+
+/**
+ * La compilation MDX lit l'horloge, ce qui est interdit au prerender. Isolée
+ * ici pour que le reste de la page — titre, fil d'ariane, sidebar, sommaire —
+ * se prerende quand même. Même remède que pour l'article de blog, voir D15.
+ */
+async function DocsContent({content}: {content: string}) {
+  // <Suspense> seul ne suffit pas : l'IO synchrone casse le prerender quoi
+  // qu'il arrive. connection() marque ce sous-arbre comme rendu à la requête.
+  await connection()
+
+  return <MDXContent source={content} />
+}
+
+function DocsContentSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden>
+      <div className="bg-muted h-4 w-full animate-pulse rounded" />
+      <div className="bg-muted h-4 w-11/12 animate-pulse rounded" />
+      <div className="bg-muted h-4 w-4/5 animate-pulse rounded" />
+      <div className="bg-muted h-32 w-full animate-pulse rounded-lg" />
     </div>
   )
 }

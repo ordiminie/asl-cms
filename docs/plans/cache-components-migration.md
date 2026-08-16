@@ -517,10 +517,14 @@ le bon écran, c'est un mauvais échange. À rouvrir seulement pour un besoin ex
 
 **D24 — 2026-08-15 — Les dialogs ne réapparaissent pas au retour arrière. L'analyse de 2.6 était fausse.**
 
-Vérifié par une spec (`e2e/activity-state.spec.ts`) : dialog contrôlé ouvert sur `/admin/plans`,
-navigation client vers `/admin/users`, retour arrière — le dialog reste fermé. Un marqueur posé sur
-`window` avant la navigation prouve qu'aucun rechargement de document n'a eu lieu, sinon le test
-passerait pour une mauvaise raison.
+Vérifié au navigateur : dialog contrôlé ouvert sur `/admin/plans`, navigation, retour arrière — il
+reste fermé.
+
+**La spec e2e correspondante a été retirée**, après trois tentatives de fiabilisation. Le dialog
+est modal : il bloque tout clic extérieur, donc impossible de naviguer par l'UI en le laissant
+ouvert. Et passer par l'historique du navigateur provoque un rechargement complet, qui remet
+l'état à zéro et ne prouve donc rien sur `<Activity>` — c'est le marqueur `window` du test qui l'a
+révélé. Un test qui ne peut pas échouer pour la bonne raison ne vaut pas mieux que pas de test.
 
 **Deux erreurs dans l'analyse statique de 2.6** :
 
