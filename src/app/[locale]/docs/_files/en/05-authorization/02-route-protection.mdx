@@ -15,7 +15,7 @@ Route protection ensures only authorized users can access specific pages in your
 ### 🌍 Public Routes
 **Accessible by everyone (including unauthenticated users)**
 
-```typescript
+```tsx
 // No protection needed
 export default function PublicPage() {
   return <div>Anyone can see this</div>
@@ -27,7 +27,7 @@ export default function PublicPage() {
 ### 🔒 Private Routes
 **Requires authentication (any logged-in user)**
 
-```typescript
+```tsx
 // Using withAuth HOC
 import { withAuth } from '@/components/features/auth/with-auth'
 
@@ -43,7 +43,7 @@ export default withAuth(DashboardPage)
 ### 👤 Role-Based Routes
 **Requires specific role or permission**
 
-```typescript
+```tsx
 import { withAuth } from '@/components/features/auth/with-auth'
 
 function ModeratorPanel() {
@@ -60,7 +60,7 @@ export default withAuth(ModeratorPanel, {
 ### 👑 Admin Routes
 **Admin/backoffice access only**
 
-```typescript
+```tsx
 import { withAuth } from '@/components/features/auth/with-auth'
 
 function AdminDashboard() {
@@ -167,7 +167,7 @@ segment, `{children}` included, behind the request, and the static shell is lost
 The layout creates the promise and passes it down; consumers unwrap it behind a
 `<Suspense>` boundary.
 
-```typescript
+```tsx
 // src/app/[locale]/(app)/layout.tsx
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const userPromise = getCurrentUserDal() // created, never awaited
@@ -194,7 +194,7 @@ they suspend — call them only from a component behind a boundary.
 
 The boilerplate includes a forbidden page for users who don't have sufficient permissions:
 
-```typescript
+```tsx
 // src/app/forbidden.tsx
 export default function ForbiddenPage() {
   return (
@@ -213,7 +213,7 @@ export default function ForbiddenPage() {
 
 ### Basic Page Protection
 
-```typescript
+```tsx
 // src/app/dashboard/page.tsx
 import withAuth, { WithAuthProps } from '@/components/features/auth/with-auth'
 import { RoleConst } from '@/services/types/domain/auth-types'
@@ -233,7 +233,7 @@ export default withAuth(DashboardPage)
 
 ### Admin Page Protection
 
-```typescript
+```tsx
 // src/app/admin/page.tsx
 import withAuth, { WithAuthProps } from '@/components/features/auth/with-auth'
 import { RoleConst } from '@/services/types/domain/auth-types'
@@ -253,7 +253,7 @@ export default withAuth(AdminPage, RoleConst.ADMIN)
 
 ### Using withAuthAdmin Shortcut
 
-```typescript
+```tsx
 // src/app/admin/users/page.tsx
 import { withAuthAdmin, WithAuthProps } from '@/components/features/auth/with-auth'
 

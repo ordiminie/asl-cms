@@ -350,7 +350,7 @@ export async function getProjectPermissions(projectId?: string) {
 
 ### Step 2: Using Permissions in RSC Pages
 
-```typescript
+```tsx
 // From src/app/[locale]/(app)/team/[slug]/projects/[id]/edit/page.tsx
 import { notFound } from 'next/navigation'
 import { getProjectPermissions } from '@/app/dal/project-dal'
@@ -405,7 +405,7 @@ export default async function ProjectPage({
 
 ### Step 3: Permission-Based UI in Components
 
-```typescript
+```tsx
 // In ProjectActions component
 interface ProjectActionsProps {
   project: Project
