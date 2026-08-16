@@ -3,6 +3,10 @@ import matter from 'gray-matter'
 import type {Metadata} from 'next'
 import {notFound} from 'next/navigation'
 
+import {
+  TableOfContents,
+  TableOfContentsMobile,
+} from '@/components/features/docs/table-of-contents'
 import {MDXContent} from '@/components/mdx-content'
 import {env} from '@/env'
 import {routing} from '@/i18n/routing'
@@ -12,6 +16,7 @@ import {
   getDocFilePath,
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
+import {extractMdxHeadings} from '@/lib/helper/mdx-headings'
 
 // La compilation MDX (next-mdx-remote + rehypeShiki) lit l'horloge : elle ne
 // peut pas être prerendue. À lever en isolant le rendu du contenu derrière un
@@ -195,16 +200,24 @@ export default async function DocsPage({params}: DocsPageProps) {
     )
   }
 
-  return (
-    <div className="w-full max-w-4xl">
-      {/* Title from frontmatter */}
-      {frontmatter.title && (
-        <h1 className="mb-6 scroll-mt-20 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
-          {frontmatter.title}
-        </h1>
-      )}
+  const headings = extractMdxHeadings(content)
 
-      <MDXContent source={content} />
-    </div>
+  return (
+    <>
+      <TableOfContentsMobile items={headings} />
+
+      <div className="w-full max-w-4xl">
+        {/* Title from frontmatter */}
+        {frontmatter.title && (
+          <h1 className="mb-6 scroll-mt-20 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
+            {frontmatter.title}
+          </h1>
+        )}
+
+        <MDXContent source={content} />
+      </div>
+
+      <TableOfContents items={headings} />
+    </>
   )
 }

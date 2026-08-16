@@ -4,22 +4,12 @@ import type {ReactNode} from 'react'
 import React from 'react'
 import {Tweet as ReactTweet} from 'react-tweet'
 
+import {slugifyHeading} from '@/lib/helper/mdx-headings'
+
 import {Callout} from './features/docs/callout'
 import {CodeBlock} from './features/docs/code-block'
 import {Step, Steps} from './features/docs/steps'
 import {Tab, Tabs} from './features/docs/tabs'
-
-function slugify(text: string): string {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '')
-    .replace(/--+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '')
-}
 
 // Helper function to extract text content from React children
 function getTextContent(children: ReactNode): string {
@@ -366,22 +356,22 @@ export const Excalidraw = ({
 export const mdxComponents = {
   // Les titres ne portent que leur ancre : la typographie vient de prose.
   h1: ({children}: {children: ReactNode}) => (
-    <h1 id={slugify(getTextContent(children))} className="scroll-mt-20">
+    <h1 id={slugifyHeading(getTextContent(children))} className="scroll-mt-20">
       {children}
     </h1>
   ),
   h2: ({children}: {children: ReactNode}) => (
-    <h2 id={slugify(getTextContent(children))} className="scroll-mt-20">
+    <h2 id={slugifyHeading(getTextContent(children))} className="scroll-mt-20">
       {children}
     </h2>
   ),
   h3: ({children}: {children: ReactNode}) => (
-    <h3 id={slugify(getTextContent(children))} className="scroll-mt-20">
+    <h3 id={slugifyHeading(getTextContent(children))} className="scroll-mt-20">
       {children}
     </h3>
   ),
   h4: ({children}: {children: ReactNode}) => (
-    <h4 id={slugify(getTextContent(children))} className="scroll-mt-20">
+    <h4 id={slugifyHeading(getTextContent(children))} className="scroll-mt-20">
       {children}
     </h4>
   ),

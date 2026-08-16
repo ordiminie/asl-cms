@@ -1,10 +1,12 @@
 'use client'
 
 import {ChevronRight, Menu} from 'lucide-react'
-import Link from 'next/link'
 import * as React from 'react'
 
-import {useTableOfContents} from '@/components/hooks/use-table-of-contents'
+import {
+  type TocItem,
+  useActiveHeading,
+} from '@/components/hooks/use-table-of-contents'
 import {Button} from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -15,9 +17,10 @@ import {
 import {cn} from '@/lib/utils'
 
 // Composant mobile séparé - style Better Auth
-export function TableOfContentsMobile() {
-  const {toc, activeId} = useTableOfContents()
+export function TableOfContentsMobile({items}: {items: TocItem[]}) {
+  const activeId = useActiveHeading(items.map((item) => item.id))
   const [open, setOpen] = React.useState(false)
+  const toc = items
 
   if (toc.length === 0) {
     return undefined
@@ -62,27 +65,16 @@ export function TableOfContentsMobile() {
           {toc.map((item) => (
             <DropdownMenuItem
               key={item.id}
-              onClick={() => {
-                setOpen(false) // Fermer le dropdown d'abord
-                setTimeout(() => {
-                  const element = document.getElementById(item.id)
-                  if (element) {
-                    element.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'start',
-                    })
-                    window.history.pushState(undefined, '', `#${item.id}`)
-                  }
-                }, 100) // Petit délai pour laisser le dropdown se fermer
-              }}
+              asChild
               className={cn(
-                'cursor-pointer',
                 getIndentationClass(item.level),
                 activeId === item.id &&
                   'bg-accent text-accent-foreground font-medium'
               )}
             >
-              {item.text}
+              <a href={`#${item.id}`} onClick={() => setOpen(false)}>
+                {item.text}
+              </a>
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -91,24 +83,12 @@ export function TableOfContentsMobile() {
   )
 }
 
-export function TableOfContents() {
-  const {toc, activeId} = useTableOfContents()
+export function TableOfContents({items}: {items: TocItem[]}) {
+  const activeId = useActiveHeading(items.map((item) => item.id))
+  const toc = items
 
   if (toc.length === 0) {
     return undefined
-  }
-
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-    e.preventDefault()
-    const element = document.getElementById(id)
-    if (element) {
-      element.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      })
-      // Update URL without page reload
-      window.history.pushState(undefined, '', `#${id}`)
-    }
   }
 
   const getIndentationClass = (level: number) => {
@@ -135,10 +115,9 @@ export function TableOfContents() {
         </div>
         <nav className="space-y-1">
           {toc.map((item) => (
-            <Link
+            <a
               key={item.id}
               href={`#${item.id}`}
-              onClick={(e) => handleClick(e, item.id)}
               className={cn(
                 'hover:text-foreground block py-1 text-sm transition-colors',
                 getIndentationClass(item.level),
@@ -148,7 +127,7 @@ export function TableOfContents() {
               )}
             >
               {item.text}
-            </Link>
+            </a>
           ))}
         </nav>
       </div>
