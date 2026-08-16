@@ -157,6 +157,19 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /*
+    Tailwind v4 a retiré le cursor: pointer que la v3 posait sur les boutons.
+    Sans cette règle, tout élément cliquable qui n'est pas un <a> garde le
+    curseur de texte : onglets, déclencheurs de dialog, boutons ShadCN.
+    https://tailwindcss.com/docs/upgrade-guide
+  */
+  button:not(:disabled),
+  [role='button']:not(:disabled),
+  [role='tab']:not(:disabled),
+  [role='menuitem']:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 /*
