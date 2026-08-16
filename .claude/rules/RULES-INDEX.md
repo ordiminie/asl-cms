@@ -79,10 +79,11 @@ Rules for pages, components, forms, and Server Actions.
 
 ### Other Components
 
-| Rule            | Link                                                        | Description                                                  | When to Consult                |
-| --------------- | ----------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------ |
-| **Charts**      | [rule-chart.mdc](01-presentation/rule-chart.md)             | ShadCN Charts with Recharts, ChartContainer, ChartConfig     | Adding charts/graphs           |
-| **File Upload** | [rule-upload-file.mdc](01-presentation/rule-upload-file.md) | FileUpload component, upload Server Action, Supabase Storage | Implementing file/image upload |
+| Rule              | Link                                                           | Description                                                                               | When to Consult                                          |
+| ----------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Charts**        | [rule-chart.mdc](01-presentation/rule-chart.md)                | ShadCN Charts with Recharts, ChartContainer, ChartConfig                                  | Adding charts/graphs                                     |
+| **File Upload**   | [rule-upload-file.mdc](01-presentation/rule-upload-file.md)    | FileUpload component, upload Server Action, Supabase Storage                              | Implementing file/image upload                           |
+| **MDX Rendering** | [rule-mdx-rendering.md](01-presentation/rule-mdx-rendering.md) | Shared MDX renderer, prose vs mapping, Shiki dual-theme, table of contents, MDX authoring | Touching the blog or docs rendering, writing MDX content |
 
 ---
 
