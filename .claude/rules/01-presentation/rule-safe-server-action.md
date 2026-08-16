@@ -5,7 +5,7 @@ paths: **action**
 
 # Sécurisation des Server Actions avec requireActionAuth()
 
-Guide complet pour sécuriser les Server Actions avec la fonction `requireActionAuth()` dans Next.js 15.
+Guide complet pour sécuriser les Server Actions avec la fonction `requireActionAuth()` dans Next.js 16.
 
 ## Principe de Sécurité
 

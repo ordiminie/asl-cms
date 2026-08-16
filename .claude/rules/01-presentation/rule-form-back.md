@@ -7,7 +7,7 @@ paths:
 
 # Validation des Formulaires Côté Backend
 
-Guide complet pour la validation des formulaires avec Server Actions dans Next.js 15 / React 19.
+Guide complet pour la validation des formulaires avec Server Actions dans Next.js 16 / React 19.
 
 ## Principes Architecturaux
 

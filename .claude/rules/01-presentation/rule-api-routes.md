@@ -7,7 +7,7 @@ paths: **/app/api/**
 
 ## Vue d'ensemble
 
-Cette règle définit les bonnes pratiques pour créer des API routes dans notre projet Next.js 15 avec TypeScript, en respectant l'architecture RESTful CRUD et en utilisant notre système d'authentification basé sur better-auth.
+Cette règle définit les bonnes pratiques pour créer des API routes dans notre projet Next.js 16 avec TypeScript, en respectant l'architecture RESTful CRUD et en utilisant notre système d'authentification basé sur better-auth.
 A noter que nous preferons toujours utiliser l'approche React Server Component/Server action et qu'il s'agit d'un exemple en cas de besoin
 
 ## Architecture des API Routes
