@@ -338,21 +338,21 @@ Pour chaque route : retirer son `instant = false`, suivre les insights du dev ov
 donnée dans **la fonction du DAL**, envelopper l'accès runtime dans `<Suspense>`. **Un commit par
 route.**
 
-- [ ] **E1 — Adopter la doctrine de cache (D4)**
-      | Type de donnée | Mécanisme | Où |
-      | --- | --- | --- |
-      | Lecture publique (blog, docs, plans) | `'use cache'` + `cacheLife` + `cacheTag` | fonction du DAL |
-      | Donnée coûteuse devant survivre aux déploiements | `unstable_cache` **conservé** | fonction du DAL |
-      | Donnée par utilisateur | ni l'un ni l'autre — `<Suspense>` + streaming | composant de la page |
-
+- [ ] **E1 — Adopter la doctrine de cache (D4)**, résumée dans le tableau ci-dessous.
       `unstable_cache` n'est pas supprimé par Cache Components : la doc de migration dit
-                          explicitement que `fetch` et `unstable_cache` continuent de fonctionner comme une couche
-                          séparée (D2). C'est ce qui lève le risque sur les données qui doivent survivre à un
-                          déploiement — `'use cache'` est in-memory et repart froid à chaque déploiement et chaque
-                          instance serverless.
-                          `cache()` de React reste utile **en plus**, pour dédupliquer dans une même requête.
-                          **Acceptation** : la règle de cache du projet est réécrite et **plus simple** qu'avant. Si
-                          elle est plus compliquée, la migration a mal tourné.
+      explicitement que `fetch` et `unstable_cache` continuent de fonctionner comme une couche
+      séparée (D2). C'est ce qui lève le risque sur les données qui doivent survivre à un
+      déploiement — `'use cache'` est in-memory et repart froid à chaque déploiement et chaque
+      instance serverless. `cache()` de React reste utile **en plus**, pour dédupliquer dans une
+      même requête.
+      **Acceptation** : la règle de cache du projet est réécrite et **plus simple** qu'avant. Si
+      elle est plus compliquée, la migration a mal tourné.
+
+| Type de donnée                                   | Mécanisme                                     | Où                   |
+| ------------------------------------------------ | --------------------------------------------- | -------------------- |
+| Lecture publique (blog, docs, plans)             | `'use cache'` + `cacheLife` + `cacheTag`      | fonction du DAL      |
+| Donnée coûteuse devant survivre aux déploiements | `unstable_cache` **conservé**                 | fonction du DAL      |
+| Donnée par utilisateur                           | ni l'un ni l'autre — `<Suspense>` + streaming | composant de la page |
 
 - [ ] **E2 — Repérer les lectures d'horloge dans les chemins de lecture**
       Lister tous les accès à l'heure courante dans `src/services` et `src/app/dal`. La grande
