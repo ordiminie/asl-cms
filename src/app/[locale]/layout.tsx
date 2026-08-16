@@ -1,3 +1,5 @@
+import '../globals.css'
+
 import {notFound} from 'next/navigation'
 import {Metadata} from 'next/types'
 import {hasLocale} from 'next-intl'

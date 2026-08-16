@@ -468,6 +468,33 @@ appliqués. Le build passe, et le profil de cache **est bien pris en compte** (c
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
 
+**D26 — 2026-08-16 — L'application était livrée sans aucun CSS. Régression introduite par D11.**
+
+La plus grave régression de ce chantier, trouvée par hasard en ouvrant une page docs dans un
+navigateur pour un tout autre sujet.
+
+`globals.css` était importé par `src/app/layout.tsx`. D11 a **supprimé ce fichier** pour que
+`[locale]/layout.tsx` devienne la racine — et l'import est parti avec. Le build de production
+sortait depuis sans aucune feuille de style : 0 octet de CSS sur `/en`, `/login`, `/blog`,
+`/pricing`. Le Tailwind compilé existait bien dans `.next/static` (197 Ko), simplement plus aucune
+page ne le référençait.
+
+Correctif : `import '../globals.css'` en tête de `src/app/[locale]/layout.tsx`. Vérifié en A/B —
+sans l'import 0 octet, avec 197 688 octets sur chaque route.
+
+**Rien ne l'a vu, et c'est le vrai enseignement** : ni `next build` (un import CSS manquant n'est
+une erreur pour personne), ni `tsc`, ni les 381 tests unitaires, ni les 22 specs e2e — une assertion
+de DOM passe très bien sur une page sans styles. Le préflight base de D21 ne couvrait qu'une
+famille de mensonges du build ; en voici une autre.
+
+Garde-fou ajouté : `e2e/styles.spec.ts` vérifie sur quatre routes qu'une feuille `/_next/static` est
+bien présente **et** qu'une utilitaire Tailwind résout réellement (`display: flex`), plutôt que de
+faire confiance au `<link>`. Validé par mutation : 4 échecs sans l'import, 4 succès avec.
+
+À noter aussi, sur la méthode : ma première mesure a conclu à tort que le correctif ne marchait pas,
+parce que le serveur local n'avait jamais redémarré (`EADDRINUSE` silencieux dans un log que je ne
+lisais pas). Vérifier que l'on teste bien ce que l'on croit tester, avant de conclure.
+
 **D25 — 2026-08-16 — La limitation du 403 est bornée au rendu de page. L'API rend de vrais statuts.**
 
 Avant d'envisager un appel base par navigation dans le proxy pour récupérer un vrai 403 (options B
