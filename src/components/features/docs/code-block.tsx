@@ -95,7 +95,7 @@ export function CodeBlock({
     })()
 
   return (
-    <div className="group border-border bg-muted relative my-6 w-full max-w-full overflow-hidden rounded-lg border">
+    <div className="group border-border bg-background relative my-6 w-full max-w-full overflow-hidden rounded-lg border">
       {/* Header with filename and copy button */}
       {(filename || detectedLanguage) && (
         <div className="border-border bg-muted flex items-center justify-between border-b px-4 py-2">

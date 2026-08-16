@@ -65,10 +65,6 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.869 0.005 56.366);
-  /* Liens de contenu : `primary` vaut la couleur du texte en dark
-     (oklch 0.985, identique à --foreground), donc un lien y était
-     indistinguable du paragraphe. */
-  --link: oklch(0.52 0.17 256);
 }
 /*
   ---break---
@@ -106,7 +102,6 @@
   --sidebar-accent-foreground: oklch(0.985 0.001 106.423);
   --sidebar-border: oklch(0.268 0.007 34.298);
   --sidebar-ring: oklch(0.553 0.013 58.071);
-  --link: oklch(0.76 0.13 245);
 }
 /*
   ---break---
@@ -118,7 +113,6 @@
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-link: var(--link);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -293,32 +287,4 @@
 /* Styles pour le code avec surlignage de syntaxe */
 .milkdown-wrapper .ProseMirror .code-fence {
   @apply bg-muted text-foreground;
-}
-
-/*
-  Shiki en dual-theme : chaque token porte --shiki-light et --shiki-dark, et
-  c'est le CSS qui tranche. Sans ces règles, `defaultColor: false` laisse le
-  code sans couleur.
-
-  Les tokens sont ciblés par leurs variables, pas par la classe `.shiki` : le
-  mapping `pre` du MDX remplace le <pre> de Shiki par le sien, et la classe
-  disparaît au passage.
-
-  Seule la couleur du texte est reprise : le fond des blocs reste celui du
-  design system, sinon github-light imposerait un bloc blanc en mode clair.
-*/
-[style*='--shiki-light'] {
-  color: var(--shiki-light);
-}
-
-[style*='--shiki-light-bg'] {
-  background-color: var(--shiki-light-bg);
-}
-
-.dark [style*='--shiki-dark'] {
-  color: var(--shiki-dark);
-}
-
-.dark [style*='--shiki-dark-bg'] {
-  background-color: var(--shiki-dark-bg);
 }

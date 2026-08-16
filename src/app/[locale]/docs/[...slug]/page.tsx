@@ -1,11 +1,9 @@
 import fs from 'fs'
 import matter from 'gray-matter'
 import type {Metadata} from 'next'
+import {headers} from 'next/headers'
 import {notFound} from 'next/navigation'
-import {connection} from 'next/server'
-import {Suspense} from 'react'
 
-import {DocsPagination} from '@/components/features/docs/docs-pagination'
 import {MDXContent} from '@/components/mdx-content'
 import {env} from '@/env'
 import {routing} from '@/i18n/routing'
@@ -15,6 +13,11 @@ import {
   getDocFilePath,
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
+
+// Lit le thème dans les headers pour la coloration Shiki : le prerender figerait
+// une seule variante (code clair en dark mode). À lever en passant Shiki en
+// dual-theme (themes: {light, dark}), qui produit une sortie pilotée par CSS.
+export const instant = false
 
 interface DocsPageProps {
   params: Promise<{
@@ -35,23 +38,6 @@ function getAllSlugsFromStructure(items: DocItem[]): string[] {
   }
 
   return slugs
-}
-
-/**
- * Ordre de lecture de la documentation, à plat. Sert la navigation
- * précédent/suivant : la structure des fichiers fait foi, rien à maintenir.
- */
-function flattenDocs(items: DocItem[]): DocItem[] {
-  const flat: DocItem[] = []
-
-  for (const item of items) {
-    flat.push(item)
-    if (item.children) {
-      flat.push(...flattenDocs(item.children))
-    }
-  }
-
-  return flat
 }
 
 export async function generateStaticParams() {
@@ -199,6 +185,10 @@ export default async function DocsPage({params}: DocsPageProps) {
     content = mdxContent
   }
 
+  // Obtenir le thème depuis les headers
+  const headersList = await headers()
+  const theme = headersList.get('x-theme') || 'light'
+
   if (!content) {
     return (
       <div className="max-w-4xl">
@@ -210,59 +200,16 @@ export default async function DocsPage({params}: DocsPageProps) {
     )
   }
 
-  const ordered = flattenDocs(getDocsStructure(resolvedParams.locale).items)
-  const position = ordered.findIndex((item) => item.slug === slug)
-  const previous = position > 0 ? ordered[position - 1] : undefined
-  const next =
-    position >= 0 && position < ordered.length - 1
-      ? ordered[position + 1]
-      : undefined
-
   return (
     <div className="w-full max-w-4xl">
       {/* Title from frontmatter */}
       {frontmatter.title && (
-        <h1 className="scroll-mt-20 text-3xl font-bold tracking-tight md:text-4xl">
+        <h1 className="border-border mb-6 scroll-mt-20 border-b pb-2 text-2xl font-bold sm:text-3xl md:text-4xl">
           {frontmatter.title}
         </h1>
       )}
-      {frontmatter.description && (
-        <p className="text-muted-foreground mt-3 text-lg leading-relaxed">
-          {frontmatter.description}
-        </p>
-      )}
 
-      <div className="mt-8">
-        <Suspense fallback={<DocsContentSkeleton />}>
-          <DocsContent content={content} />
-        </Suspense>
-      </div>
-
-      <DocsPagination previous={previous} next={next} />
-    </div>
-  )
-}
-
-/**
- * La compilation MDX lit l'horloge, ce qui est interdit au prerender. Isolée
- * ici pour que le reste de la page — titre, fil d'ariane, sidebar, sommaire —
- * se prerende quand même. Même remède que pour l'article de blog, voir D15.
- */
-async function DocsContent({content}: {content: string}) {
-  // <Suspense> seul ne suffit pas : l'IO synchrone casse le prerender quoi
-  // qu'il arrive. connection() marque ce sous-arbre comme rendu à la requête.
-  await connection()
-
-  return <MDXContent source={content} />
-}
-
-function DocsContentSkeleton() {
-  return (
-    <div className="space-y-4" aria-hidden>
-      <div className="bg-muted h-4 w-full animate-pulse rounded" />
-      <div className="bg-muted h-4 w-11/12 animate-pulse rounded" />
-      <div className="bg-muted h-4 w-4/5 animate-pulse rounded" />
-      <div className="bg-muted h-32 w-full animate-pulse rounded-lg" />
+      <MDXContent source={content} theme={theme} />
     </div>
   )
 }

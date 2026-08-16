@@ -6,11 +6,12 @@ import {mdxComponents} from './mdx-components'
 
 interface MDXContentProps {
   source: string
+  theme?: string
 }
 
-export async function MDXContent({source}: MDXContentProps) {
+export async function MDXContent({source, theme = 'light'}: MDXContentProps) {
   return (
-    <article className="w-full max-w-none overflow-x-hidden">
+    <article className="prose prose-sm sm:prose-base lg:prose-lg prose-gray dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-blockquote:border-l-primary w-full max-w-none overflow-x-hidden">
       <MDXRemote
         source={source}
         components={mdxComponents}
@@ -21,15 +22,7 @@ export async function MDXContent({source}: MDXContentProps) {
               [
                 rehypeShiki,
                 {
-                  // Dual-theme : Shiki émet les deux couleurs par token, en
-                  // variables CSS (--shiki-light / --shiki-dark), et c'est le
-                  // CSS qui tranche. Avant, le thème venait du header x-theme
-                  // alors que l'UI suit next-themes : sans cookie, un visiteur
-                  // en sombre recevait du code clair sur fond sombre, illisible.
-                  // Ça rend aussi la sortie indépendante de la requête, donc
-                  // prerenderable — voir D13.
-                  themes: {light: 'github-light', dark: 'github-dark'},
-                  defaultColor: false,
+                  theme: theme === 'dark' ? 'github-dark' : 'github-light',
                   langs: [
                     'javascript',
                     'typescript',
