@@ -56,7 +56,20 @@ const IGNORED_CONSOLE = [
   /Download the React DevTools/i,
   /was preloaded using link preload/i,
   /Image with src .* was detected as the Largest Contentful Paint/i,
+  // next-themes rend un <script> inline pour poser le thème avant peinture ;
+  // React 19 le signale en développement. Tiers, absent du build de production.
+  /Encountered a script tag while rendering React component/,
 ]
+
+/**
+ * En développement, Next signale dans la console ce qui empêche une route
+ * d'être prerendue ou une navigation d'être instantanée. Ce sont de vrais
+ * signaux, mais ils sont déjà remontés par l'overlay et le terminal : les
+ * compter ici rendrait la suite rouge en local et personne ne la lancerait.
+ * La suite fait foi contre le build de production, comme le veut la config.
+ */
+const DEV_ONLY_ADVISORIES =
+  /Next\.js encountered (the unstable value|uncached data)/
 
 const login = async (page: Page, email: string) => {
   await page.goto('/en/login')
@@ -88,11 +101,16 @@ const checkPage = async (page: Page, route: string) => {
     if (message.type() !== 'error') return
     const text = message.text()
     if (IGNORED_CONSOLE.some((pattern) => pattern.test(text))) return
+    if (!process.env.CI && DEV_ONLY_ADVISORIES.test(text)) return
     consoleErrors.push(text)
   }
   page.on('console', onConsole)
 
-  await page.goto(route, {waitUntil: 'networkidle'})
+  // `networkidle` est fragile ici : certaines pages émettent des requêtes
+  // périodiques et n'atteignent jamais le silence réseau. `load` suffit, puis
+  // on laisse au streaming et à l'hydratation le temps de parler.
+  await page.goto(route, {waitUntil: 'load'})
+  await page.waitForTimeout(1_500)
 
   // La frontière d'erreur de Next remplace le contenu sans changer le statut.
   await expect(
@@ -106,26 +124,39 @@ const checkPage = async (page: Page, route: string) => {
   expect(consoleErrors, `${route} : ${consoleErrors[0]}`).toEqual([])
 }
 
-test.describe('Pages authentifiées — utilisateur standard', () => {
-  test.beforeEach(async ({page}) => {
-    await login(page, 'user@gmail.com')
-  })
+/**
+ * Une seule session par groupe, réutilisée en série. Se reconnecter avant
+ * chaque page — 24 fois — rendait la suite instable sans rien tester de plus :
+ * l'authentification a déjà ses propres specs.
+ */
+const describeRoutes = (title: string, email: string, routes: string[]) => {
+  test.describe.serial(title, () => {
+    let page: Page
 
-  for (const route of [...USER_ROUTES, ...TEAM_ROUTES]) {
-    test(`${route} rend sans erreur`, async ({page}) => {
-      await checkPage(page, route)
+    test.beforeAll(async ({browser}) => {
+      page = await browser.newPage()
+      await login(page, email)
     })
-  }
-})
 
-test.describe('Pages authentifiées — administrateur', () => {
-  test.beforeEach(async ({page}) => {
-    await login(page, 'admin@gmail.com')
-  })
-
-  for (const route of ADMIN_ROUTES) {
-    test(`${route} rend sans erreur`, async ({page}) => {
-      await checkPage(page, route)
+    test.afterAll(async () => {
+      await page.close()
     })
-  }
-})
+
+    for (const route of routes) {
+      test(`${route} rend sans erreur`, async () => {
+        await checkPage(page, route)
+      })
+    }
+  })
+}
+
+describeRoutes('Pages authentifiées — utilisateur standard', 'user@gmail.com', [
+  ...USER_ROUTES,
+  ...TEAM_ROUTES,
+])
+
+describeRoutes(
+  'Pages authentifiées — administrateur',
+  'admin@gmail.com',
+  ADMIN_ROUTES
+)
