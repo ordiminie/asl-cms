@@ -86,9 +86,7 @@ export function MultipleFileUpload() {
 
       {selectedFiles.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium">
-            {selectedFiles.length} file(s) selected:
-          </p>
+          <p className="text-sm font-medium">{selectedFiles.length} file(s) selected:</p>
           {selectedFiles.map((file, index) => (
             <div key={index} className="text-sm text-muted-foreground">
               {file.name} ({formatFileSize(file.size)})
@@ -168,9 +166,7 @@ export function CompleteUploadForm({ entityId }: { entityId: string }) {
         {selectedFiles.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">
-                {selectedFiles.length} file(s) ready to upload
-              </p>
+              <p className="text-sm font-medium">{selectedFiles.length} file(s) ready to upload</p>
               <Button
                 onClick={handleUpload}
                 disabled={isUploading}
@@ -189,9 +185,7 @@ export function CompleteUploadForm({ entityId }: { entityId: string }) {
                 >
                   <div className="flex-1">
                     <p className="text-sm font-medium">{file.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatFileSize(file.size)} • {file.type}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(file.size)} • {file.type}</p>
                   </div>
 
                   <Button
@@ -247,9 +241,7 @@ The component provides visual feedback for different drag states:
     <div className="border-2 border-dashed border-muted-foreground/25">
       <div className="text-center p-6">
         <Upload className="mx-auto h-12 w-12 text-muted-foreground/50" />
-        <p className="mt-2 text-sm text-muted-foreground">
-          Click to upload or drag and drop
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Click to upload or drag and drop</p>
       </div>
     </div>
     ```
@@ -261,9 +253,7 @@ The component provides visual feedback for different drag states:
     <div className="border-2 border-dashed border-primary">
       <div className="text-center p-6 bg-primary/5">
         <Upload className="mx-auto h-12 w-12 text-primary" />
-        <p className="mt-2 text-sm text-primary">
-          Drop files here to upload
-        </p>
+        <p className="mt-2 text-sm text-primary">Drop files here to upload</p>
       </div>
     </div>
     ```
@@ -275,9 +265,7 @@ The component provides visual feedback for different drag states:
     <div className="border-2 border-dashed border-muted-foreground/25 opacity-50">
       <div className="text-center p-6">
         <Loader2 className="mx-auto h-12 w-12 animate-spin text-muted-foreground" />
-        <p className="mt-2 text-sm text-muted-foreground">
-          Uploading...
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Uploading...</p>
       </div>
     </div>
     ```
@@ -378,13 +366,9 @@ export function ValidatedFileUpload() {
 
       {errors.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-medium text-destructive">
-            Validation Errors:
-          </p>
+          <p className="text-sm font-medium text-destructive">Validation Errors:</p>
           {errors.map((error, index) => (
-            <p key={index} className="text-xs text-destructive">
-              {error}
-            </p>
+            <p key={index} className="text-xs text-destructive">{error}</p>
           ))}
         </div>
       )}
