@@ -468,6 +468,26 @@ appliqués. Le build passe, et le profil de cache **est bien pris en compte** (c
 `Revalidate 30d` / `Expire 1y` en face de `/en/privacy`, `/fr/privacy`, `/es/privacy`). Pourtant la
 route reste marquée `ƒ (Dynamic)` au lieu de `○ (Static)`. Cause : voir D10.
 
+**D25 — 2026-08-16 — La limitation du 403 est bornée au rendu de page. L'API rend de vrais statuts.**
+
+Avant d'envisager un appel base par navigation dans le proxy pour récupérer un vrai 403 (options B
+et C de D18), il fallait mesurer ce que la limitation coûte vraiment. Réponse : moins que ce que D20
+laissait craindre.
+
+Les Route Handlers ne streament aucun shell. `src/lib/api-auth.ts` rend bien `401` sans session et
+`403` sur rôle insuffisant, et c'est maintenant vérifié par deux specs (`/api/projects` sans session
+→ 401, avec session → pas 401). La couche où un code de statut est réellement consommé — clients
+d'API, monitoring, intégrations — n'est donc pas touchée.
+
+Ce qui reste imparfait est le seul rendu de page : `/admin` visité par un utilisateur standard rend
+un `200` portant l'UI forbidden. La doc de Next juge explicitement ce compromis acceptable dans ce
+cas (« This is usually fine for a page, where the user sees the forbidden UI regardless »).
+
+**Conséquence sur l'arbitrage** : les options B et C restent disponibles mais ne se justifient plus
+par défaut. Payer un appel session à chaque navigation authentifiée — sur un boilerplate, donc pour
+tous les forks — pour corriger un code de statut sur une page où l'utilisateur voit de toute façon
+le bon écran, c'est un mauvais échange. À rouvrir seulement pour un besoin explicite.
+
 **D24 — 2026-08-15 — Les dialogs ne réapparaissent pas au retour arrière. L'analyse de 2.6 était fausse.**
 
 Vérifié par une spec (`e2e/activity-state.spec.ts`) : dialog contrôlé ouvert sur `/admin/plans`,

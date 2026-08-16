@@ -80,6 +80,29 @@ test.describe('Contrôle d’accès', () => {
   })
 })
 
+test.describe('API : les statuts, eux, sont réels', () => {
+  // Contrepoint à D20 : le 200 sur /admin est une limite du rendu de page sous
+  // streaming. Les Route Handlers ne streament aucun shell, donc la couche API
+  // — celle où un code de statut est réellement consommé (clients, monitoring,
+  // crawlers) — rend bien de vrais codes. C'est ce qui borne la portée de la
+  // limitation, et il vaut mieux le prouver que l'affirmer.
+
+  test('sans session, /api/projects rend 401', async ({request}) => {
+    const response = await request.get('/api/projects')
+
+    expect(response.status()).toBe(401)
+  })
+
+  test('avec session, /api/projects ne rend pas 401', async ({page}) => {
+    await login(page, 'user@gmail.com')
+
+    const response = await page.request.get('/api/projects')
+
+    expect(response.status()).not.toBe(401)
+    expect(response.status()).toBeLessThan(500)
+  })
+})
+
 test.describe('Changement d’organisation', () => {
   test('le choix survit à un rechargement', async ({page}) => {
     await login(page, 'user@gmail.com')

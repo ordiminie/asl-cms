@@ -31,11 +31,16 @@ Sous Cache Components, **toute** route dynamique streame un shell d'abord : quan
 `forbidden()` est levé, le statut est déjà parti. Mesuré : `/admin` visité par un
 utilisateur standard rend un `200` portant l'UI forbidden (e2e
 `authorization.spec.ts`). Aucun contenu protégé ne fuit — la doc juge d'ailleurs
-ce compromis acceptable pour une page — mais si le code de statut compte
-(clients d'API, crawlers, monitoring), le contrôle de rôle doit remonter dans le
-proxy. C'est ce que prescrit
+ce compromis acceptable pour une page — mais si le code de statut compte, le
+contrôle de rôle doit remonter dans le proxy. C'est ce que prescrit
 [la doc de `forbidden`](https://nextjs.org/docs/app/api-reference/functions/forbidden) :
 « run that check in `proxy` instead ».
+
+**La portée est bornée au rendu de page.** Les Route Handlers ne streament aucun
+shell : `src/lib/api-auth.ts` rend bien `401` sans session et `403` sur rôle
+insuffisant, et c'est vérifié dans `e2e/authorization.spec.ts`. La couche où un
+code de statut est réellement consommé — clients d'API, monitoring — n'est donc
+pas concernée.
 
 ## La règle d'or des layouts
 
