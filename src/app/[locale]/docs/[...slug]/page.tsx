@@ -3,6 +3,7 @@ import matter from 'gray-matter'
 import type {Metadata} from 'next'
 import {notFound} from 'next/navigation'
 
+import {DocsPagination} from '@/components/features/docs/docs-pagination'
 import {
   TableOfContents,
   TableOfContentsMobile,
@@ -14,6 +15,7 @@ import {
   type DocItem,
   findDocBySlug,
   getDocFilePath,
+  getDocsNavigation,
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
 import {extractMdxHeadings} from '@/lib/helper/mdx-headings'
@@ -215,6 +217,8 @@ export default async function DocsPage({params}: DocsPageProps) {
         )}
 
         <MDXContent source={content} />
+
+        <DocsPagination {...getDocsNavigation(slug, resolvedParams.locale)} />
       </div>
 
       <TableOfContents items={headings} />
