@@ -2,6 +2,7 @@ import fs from 'fs'
 import matter from 'gray-matter'
 import type {Metadata} from 'next'
 import {notFound} from 'next/navigation'
+import {Suspense} from 'react'
 
 import {CopyPageButton} from '@/components/features/docs/copy-page-button'
 import {DocsPagination} from '@/components/features/docs/docs-pagination'
@@ -20,11 +21,6 @@ import {
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
 import {extractMdxHeadings} from '@/lib/helper/mdx-headings'
-
-// La compilation MDX (next-mdx-remote + rehypeShiki) lit l'horloge : elle ne
-// peut pas être prerendue. À lever en isolant le rendu du contenu derrière un
-// <Suspense> + await connection(), comme le fait blog-article.tsx.
-export const instant = false
 
 interface DocsPageProps {
   params: Promise<{
@@ -171,6 +167,17 @@ export async function generateMetadata({
   }
 }
 
+function MDXContentSkeleton() {
+  return (
+    <div className="space-y-4" aria-hidden>
+      <div className="bg-muted h-4 w-full animate-pulse rounded" />
+      <div className="bg-muted h-4 w-11/12 animate-pulse rounded" />
+      <div className="bg-muted h-4 w-4/5 animate-pulse rounded" />
+      <div className="bg-muted h-40 w-full animate-pulse rounded-lg" />
+    </div>
+  )
+}
+
 export default async function DocsPage({params}: DocsPageProps) {
   const resolvedParams = await params
   const slug = resolvedParams.slug.join('/')
@@ -225,7 +232,9 @@ export default async function DocsPage({params}: DocsPageProps) {
           />
         </div>
 
-        <MDXContent source={content} />
+        <Suspense fallback={<MDXContentSkeleton />}>
+          <MDXContent source={content} />
+        </Suspense>
 
         <DocsPagination {...getDocsNavigation(slug, resolvedParams.locale)} />
       </div>
