@@ -326,10 +326,16 @@ const usersWithSubscriptions = await db
 
 <Tab value="Caching">
 ```typescript
-// Use React cache for data access layer
+// Cache the read in the DAL function itself.
+// 'use cache' spans requests, cache() from React deduplicates within one.
 import { cache } from 'react'
+import { cacheLife, cacheTag } from 'next/cache'
 
 export const getUser = cache(async (userId: string) => {
+  'use cache'
+  cacheLife('hours')
+  cacheTag(`user:${userId}`)
+
   return await db.query.users.findFirst({
     where: eq(users.id, userId),
   })

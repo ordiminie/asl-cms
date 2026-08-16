@@ -44,7 +44,7 @@ The layer is organized with clear separation between server and client code:
     - **RSC First** - Server Components by default
     - **Selective Client** - "use client" only when needed
     - **Server Actions** - All mutations through server
-    - **DAL Caching** - React cache for performance
+    - **DAL Caching** - `'use cache'` in the DAL function, per read
   </Tab>
 
   <Tab value="component-types" label="⚛️ Component Types">
@@ -93,14 +93,21 @@ The layer is organized with clear separation between server and client code:
     ```typescript
     // src/app/dal/user-dal.ts
     import { cache } from 'react'
+    import { cacheLife, cacheTag } from 'next/cache'
     import { getUserByIdService } from '@/services/facades/user-service-facade'
 
-    // ✅ Cached data access with react-cache
+    // ✅ Public read: cached across requests, invalidated by tag.
+    //    cache() from React still deduplicates within one request.
     export const getUserByIdDal = cache(async (id: string) => {
+      'use cache'
+      cacheLife('hours')
+      cacheTag(`user:${id}`)
+
       const userModel = await getUserByIdService(id)
       return transformToUserDTO(userModel) // Transform to domain type
     })
 
+    // ✅ Per-user read: no cache at all — the page streams it behind <Suspense>
     export const getUserSubscriptionsDal = cache(async (userId: string) => {
       const subscriptions = await getSubscriptionsByUserIdService(userId)
       return transformToSubscriptionDTOs(subscriptions)
@@ -108,7 +115,7 @@ The layer is organized with clear separation between server and client code:
     ```
 
     **Benefits:**
-    - **Caching:** `react-cache` prevents duplicate requests
+    - **Caching:** `'use cache'` across requests, `cache()` within one request
     - **Type Safety:** Transforms DB models to domain types
     - **Performance:** Server-side data fetching
     - **Reusability:** Shared across multiple components
@@ -459,9 +466,9 @@ The Presentation Layer implements several performance optimizations:
       <h4 className="font-semibold">Caching Strategy</h4>
     </div>
     <div className="space-y-2 text-sm">
-      <div>• **React cache** in DAL layer</div>
-      <div>• **Request deduplication** automatic</div>
-      <div>• **Route revalidation** with Server Actions</div>
+      <div>• **`'use cache'`** in DAL layer, per read</div>
+      <div>• **Request deduplication** with React `cache()`</div>
+      <div>• **Tag invalidation** with `updateTag` in Server Actions</div>
       <div>• **Static generation** where possible</div>
     </div>
   </div>
