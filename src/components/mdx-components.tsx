@@ -509,7 +509,15 @@ export const mdxComponents = {
         rawCode={rawCode}
         {...props}
       >
-        <pre className="overflow-x-auto p-4 text-sm">{children}</pre>
+        {/* Le style vient de Shiki : il porte --shiki-light-bg et
+            --shiki-dark-bg, exploités dans globals.css. Sans ce passage,
+            le bloc perd le fond de son thème. */}
+        <pre
+          className="overflow-x-auto p-4 text-sm"
+          style={(props as {style?: React.CSSProperties}).style}
+        >
+          {children}
+        </pre>
       </CodeBlock>
     )
   },

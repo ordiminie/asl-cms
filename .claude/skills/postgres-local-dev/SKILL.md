@@ -122,6 +122,14 @@ qu'on croit. Toujours tuer explicitement avant de relancer :
 PIDS=$(lsof -t -nP -iTCP:3000 -sTCP:LISTEN); [ -n "$PIDS" ] && kill $PIDS
 ```
 
+**Le port des tests doit être celui du build.** `BETTER_AUTH_URL` est figé au
+build : si le build vise `:3001` et que Playwright sert sur `:3131`, le client
+Better Auth poste dans le vide. Les requêtes relatives passent, les appels
+absolus non — donc la connexion « marche » mais le changement d'organisation ne
+persiste pas, sans la moindre erreur. Symptôme : un état qui tient à l'écran mais
+disparaît au rechargement. Lancer les e2e avec `PLAYWRIGHT_PORT` égal au port du
+build, ou rebuilder pour le port des tests.
+
 **Les e2e écrivent en base.** Deux specs créent un compte, une autre lit le seed,
 une autre change l'organisation active. Ne jamais les pointer sur une base
 réelle. `playwright.config.ts` impose la `DATABASE_URL` de `.env.test` au serveur

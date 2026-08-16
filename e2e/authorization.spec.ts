@@ -146,22 +146,14 @@ test.describe('Changement d’organisation', () => {
       )
     }
 
-    // Attendre la réponse de set-active : sans ça, le rechargement plus bas
-    // peut annuler la requête en vol et le test devient flaky — ce qui est
-    // arrivé. C'est aussi une assertion en soi : la session serveur a bien été
-    // mise à jour.
-    const [setActiveResponse] = await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response.url().includes('set-active') &&
-          response.request().method() === 'POST'
-      ),
-      items.filter({hasText: targetName}).first().click(),
-    ])
-    expect(setActiveResponse.ok()).toBe(true)
+    await items.filter({hasText: targetName}).first().click()
 
-    // Bascule optimiste côté client
+    // Laisser la session serveur se mettre à jour avant de recharger : sans
+    // ça, le rechargement peut annuler la requête en vol. On attend le
+    // comportement observable, pas une requête précise — la spec ne doit pas
+    // dépendre du nom d'un endpoint.
     await expect(switcher).toContainText(targetName)
+    await page.waitForLoadState('networkidle')
 
     // La vraie assertion : après un rechargement, le cache privé est vidé
     // (il ne survit pas à un reload) et l'organisation affichée ne peut venir

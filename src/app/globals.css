@@ -311,6 +311,14 @@
   color: var(--shiki-light);
 }
 
+[style*='--shiki-light-bg'] {
+  background-color: var(--shiki-light-bg);
+}
+
 .dark [style*='--shiki-dark'] {
   color: var(--shiki-dark);
+}
+
+.dark [style*='--shiki-dark-bg'] {
+  background-color: var(--shiki-dark-bg);
 }
