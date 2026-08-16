@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-properties -- une spec e2e tourne hors de
+   l'application : le fichier env.ts typé n'y est pas chargé. */
 import {expect, Page, test} from '@playwright/test'
 
 /**
