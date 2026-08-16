@@ -10,7 +10,7 @@ interface MDXContentProps {
 
 export async function MDXContent({source}: MDXContentProps) {
   return (
-    <article className="prose prose-sm sm:prose-base lg:prose-lg prose-gray dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-blockquote:border-l-primary w-full max-w-none overflow-x-hidden">
+    <article className="prose prose-sm sm:prose-base lg:prose-lg prose-gray dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-link prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-blockquote:border-l-primary w-full max-w-none overflow-x-hidden">
       <MDXRemote
         source={source}
         components={mdxComponents}

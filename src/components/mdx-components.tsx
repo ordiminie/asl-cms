@@ -538,7 +538,7 @@ export const mdxComponents = {
       return (
         <Link
           href={href}
-          className="text-primary hover:text-primary/80 underline transition-colors"
+          className="text-link hover:text-link/80 underline underline-offset-2 transition-colors"
         >
           {children}
         </Link>
@@ -549,7 +549,7 @@ export const mdxComponents = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary hover:text-primary/80 underline transition-colors"
+        className="text-link hover:text-link/80 underline underline-offset-2 transition-colors"
       >
         {children}
       </a>
@@ -604,7 +604,7 @@ export const mdxComponents = {
       return (
         <Link
           href={href}
-          className="text-primary hover:text-primary/80 underline transition-colors"
+          className="text-link hover:text-link/80 underline underline-offset-2 transition-colors"
         >
           {children}
         </Link>
@@ -615,7 +615,7 @@ export const mdxComponents = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary hover:text-primary/80 underline transition-colors"
+        className="text-link hover:text-link/80 underline underline-offset-2 transition-colors"
       >
         {children}
       </a>
