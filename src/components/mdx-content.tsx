@@ -1,4 +1,5 @@
 import rehypeShiki from '@shikijs/rehype'
+import {connection} from 'next/server'
 import {MDXRemote} from 'next-mdx-remote/rsc'
 import remarkGfm from 'remark-gfm'
 
@@ -8,9 +9,18 @@ interface MDXContentProps {
   source: string
 }
 
+/**
+ * Rendu unique du MDX, partagé par la documentation et le blog.
+ *
+ * La compilation MDX (next-mdx-remote + rehypeShiki) lit l'horloge : elle ne
+ * peut pas être prerendue. connection() marque le sous-arbre comme rendu à la
+ * requête, ce qui impose aux appelants de l'envelopper d'un <Suspense>.
+ */
 export async function MDXContent({source}: MDXContentProps) {
+  await connection()
+
   return (
-    <article className="prose prose-gray dark:prose-invert prose-headings:text-foreground prose-a:text-link prose-strong:text-foreground prose-code:text-foreground prose-code:before:content-none prose-code:after:content-none prose-pre:bg-transparent prose-pre:p-0 w-full max-w-none overflow-x-hidden">
+    <div className="prose prose-gray dark:prose-invert prose-headings:text-foreground prose-a:text-link prose-strong:text-foreground prose-code:text-foreground prose-code:before:content-none prose-code:after:content-none prose-pre:bg-transparent prose-pre:p-0 w-full max-w-none overflow-x-hidden">
       <MDXRemote
         source={source}
         components={mdxComponents}
@@ -67,6 +77,6 @@ export async function MDXContent({source}: MDXContentProps) {
           },
         }}
       />
-    </article>
+    </div>
   )
 }
