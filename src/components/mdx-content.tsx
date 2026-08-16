@@ -6,10 +6,9 @@ import {mdxComponents} from './mdx-components'
 
 interface MDXContentProps {
   source: string
-  theme?: string
 }
 
-export async function MDXContent({source, theme = 'light'}: MDXContentProps) {
+export async function MDXContent({source}: MDXContentProps) {
   return (
     <article className="prose prose-sm sm:prose-base lg:prose-lg prose-gray dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-code:text-foreground prose-pre:bg-muted prose-blockquote:border-l-primary w-full max-w-none overflow-x-hidden">
       <MDXRemote
@@ -22,7 +21,8 @@ export async function MDXContent({source, theme = 'light'}: MDXContentProps) {
               [
                 rehypeShiki,
                 {
-                  theme: theme === 'dark' ? 'github-dark' : 'github-light',
+                  themes: {light: 'github-light', dark: 'github-dark'},
+                  defaultColor: false,
                   langs: [
                     'javascript',
                     'typescript',

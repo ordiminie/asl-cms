@@ -456,6 +456,7 @@ export const mdxComponents = {
     filename,
     rawCode,
     title,
+    style,
     ...props
   }: {
     children: ReactNode
@@ -463,6 +464,7 @@ export const mdxComponents = {
     filename?: string
     rawCode?: string
     title?: string
+    style?: React.CSSProperties
     'data-language'?: string
   }) => {
     // Extract language from data-language attribute first (set by Shiki transformer)
@@ -501,7 +503,9 @@ export const mdxComponents = {
         rawCode={rawCode}
         {...props}
       >
-        <pre className="overflow-x-auto p-4 text-sm">{children}</pre>
+        <pre className={className} style={style}>
+          {children}
+        </pre>
       </CodeBlock>
     )
   },

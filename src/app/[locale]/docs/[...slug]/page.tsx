@@ -1,7 +1,6 @@
 import fs from 'fs'
 import matter from 'gray-matter'
 import type {Metadata} from 'next'
-import {headers} from 'next/headers'
 import {notFound} from 'next/navigation'
 
 import {MDXContent} from '@/components/mdx-content'
@@ -14,9 +13,9 @@ import {
   getDocsStructure,
 } from '@/lib/files/docs-file-helper'
 
-// Lit le thème dans les headers pour la coloration Shiki : le prerender figerait
-// une seule variante (code clair en dark mode). À lever en passant Shiki en
-// dual-theme (themes: {light, dark}), qui produit une sortie pilotée par CSS.
+// La compilation MDX (next-mdx-remote + rehypeShiki) lit l'horloge : elle ne
+// peut pas être prerendue. À lever en isolant le rendu du contenu derrière un
+// <Suspense> + await connection(), comme le fait blog-article.tsx.
 export const instant = false
 
 interface DocsPageProps {
@@ -185,10 +184,6 @@ export default async function DocsPage({params}: DocsPageProps) {
     content = mdxContent
   }
 
-  // Obtenir le thème depuis les headers
-  const headersList = await headers()
-  const theme = headersList.get('x-theme') || 'light'
-
   if (!content) {
     return (
       <div className="max-w-4xl">
@@ -209,7 +204,7 @@ export default async function DocsPage({params}: DocsPageProps) {
         </h1>
       )}
 
-      <MDXContent source={content} theme={theme} />
+      <MDXContent source={content} />
     </div>
   )
 }

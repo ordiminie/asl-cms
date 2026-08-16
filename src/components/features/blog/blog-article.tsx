@@ -302,7 +302,8 @@ async function ArticleContent({content}: {content: string}) {
             [
               rehypeShiki,
               {
-                themes: {light: 'github-dark', dark: 'github-dark'},
+                themes: {light: 'github-light', dark: 'github-dark'},
+                defaultColor: false,
                 langs: [
                   'javascript',
                   'typescript',

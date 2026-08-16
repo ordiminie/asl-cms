@@ -156,6 +156,23 @@
   }
 }
 
+/*
+  Shiki dual-theme : le HTML porte les couleurs des deux thèmes en variables
+  (--shiki-light / --shiki-dark), le CSS tranche selon le thème actif. Le rendu
+  ne depend donc plus de la requete. Le fond du bloc vient du design system,
+  pas de Shiki : github-light a un fond blanc, identique a celui de la page.
+*/
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
+  background-color: transparent;
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark);
+}
+
 /* Milkdown Editor Styles */
 .milkdown-wrapper {
   @apply relative;
