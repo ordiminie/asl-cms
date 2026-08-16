@@ -181,7 +181,7 @@ B et C sont **plus chers que la v1 ne l'annonçait** : le poste dominant n'est p
 
 **Q1 — Flag intentionnel ou copié ? → partiellement tranché.** Ce n'est pas un résidu de template : il
 est reproduit délibérément dans la doc client (`vercel.mdx:227,231`). Croyance erronée assumée et
-documentée. Reste à confirmer par Mike s'il y avait intention d'adopter PPR.
+documentée. Reste à confirmer par le mainteneur s'il y avait intention d'adopter PPR.
 
 **Q2 — Argument commercial ? → positionnement, pas contrainte.** `unstable_cache.md:7-8` recommande
 d'opter pour Cache Components, et l'ancien guide est retitré « Caching and Revalidating (**Previous

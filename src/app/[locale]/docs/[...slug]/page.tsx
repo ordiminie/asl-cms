@@ -99,7 +99,7 @@ export async function generateMetadata({
   const description =
     frontmatter.description || docItem.description || 'ShipSaaS Documentation'
 
-  const siteUrl = env.NEXT_PUBLIC_APP_URL || 'https://ship-saas.now'
+  const siteUrl = env.NEXT_PUBLIC_APP_URL || 'https://example.com'
   const ogImage = `${siteUrl}/shipsaas/shipsaas.png`
   const pageUrl = `${siteUrl}/${locale}/docs/${slug}`
 

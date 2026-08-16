@@ -12,7 +12,7 @@ last_updated: 2026-08-15
 
 ## ▶ START HERE (protocole de reprise)
 
-> **Priorité posée par Mike le 2026-08-15** : faire **le plus propre possible en termes de pattern,
+> **Priorité posée par le mainteneur le 2026-08-15** : faire **le plus propre possible en termes de pattern,
 > au regard de la doc officielle** (Next, next-intl, Better Auth). Une archi propre sans bidouille,
 > qui couvre **tout** ce que couvre le boilerplate — pas seulement les parties faciles.
 > Les tests e2e sont **dépriorisés** : bienvenus en local si l'occasion se présente, jamais un gate.
@@ -181,7 +181,7 @@ Postgres éphémère.
 **Conséquence assumée** : la phase 2 a été menée avec un filet partiel (5 specs de rendu sur 13,
 plus le build et le contrôle sitemap manuel). Les 5 specs vérifiées couvrent le risque principal de
 la phase 2 — la régression de rendu — mais **pas** les flux d'authentification.
-**Priorité révisée le 2026-08-15 par Mike** : la propreté des patterns prime sur la couverture de
+**Priorité révisée le 2026-08-15 par le mainteneur** : la propreté des patterns prime sur la couverture de
 tests. Les e2e ne sont **plus un gate bloquant** pour la phase 4. Les faire tourner en local est
 bienvenu si l'occasion se présente (`CI=1 PLAYWRIGHT_PORT=3131 pnpm exec playwright test`), mais ça
 ne conditionne rien.
@@ -281,7 +281,7 @@ runtime dans `<Suspense>`. Un commit par route.
 > À surveiller en revanche dans les chemins de **lecture** : `credit-service.ts:203,714`,
 > `subscription-service.ts:174`. Ils casseront s'ils entrent dans un scope `'use cache'`.
 
-- [x] **3.1 — Décision de doctrine de cache** — tranchée, voir D4 (à confirmer par Mike)
+- [x] **3.1 — Décision de doctrine de cache** — tranchée, voir D4 (à confirmer par le mainteneur)
 - [x] **3.2 — `(public)/privacy`, `terms`, `contact`** — ✅ `○ (Static)`, profil `1d/1w` — opt-out retiré, `'use cache'` +
       `cacheLife('max')` appliqués. Le profil de cache apparaît bien dans la sortie de build
       (`30d 1y`), **mais les routes restent `ƒ` au lieu de redevenir statiques.** Voir D9.
@@ -398,7 +398,7 @@ Chaque phase est un ensemble de commits sur `feat/cache-components-migration`.
 La doc prescrit de retirer le flag pour un projet non-adoptant (0 `use cache`). Décision inverse
 assumée : c'est un boilerplate, le coût est payé une fois et amorti sur tous les forks, et
 l'échéance est réelle (`dynamicIO`, cité dans la même phrase de dépréciation, est déjà fatal —
-E394, `config.js:129-131`). Contexte donné par Mike : rien n'est figé en prod, gros chantiers
+E394, `config.js:129-131`). Contexte donné par le mainteneur : rien n'est figé en prod, gros chantiers
 acceptés, objectif = architecture propre qui scale.
 
 **D2 — 2026-08-14 — `unstable_cache` n'est pas supprimé.**
@@ -413,7 +413,7 @@ runtime. Empiriquement `cacheLife.default.stale = 180`, qui vient de `next.confi
 → Garder le bloc `staleTimes`. Ce n'est pas un risque.
 
 **D4 — 2026-08-14 — Doctrine de cache : hybride assumé (option 2).**
-Tranché par défaut pour ne pas bloquer la phase 3, **à confirmer par Mike**.
+Tranché par défaut pour ne pas bloquer la phase 3, **à confirmer par le mainteneur**.
 
 | Type de donnée                                                  | Mécanisme                                                            | Pourquoi                                                                                         |
 | --------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -434,7 +434,7 @@ fichier de route — et a été recopié commenté dans `layout.tsx`. Dommage co
 pas une désactivation volontaire. Réactivé, build vert, table de routes inchangée.
 
 **D6 — 2026-08-14 — Règle de simplicité : supprimer plutôt que remplacer.**
-Consigne de Mike, applicable à tout le chantier : quand un bout de code pose problème pour la
+Consigne du mainteneur, applicable à tout le chantier : quand un bout de code pose problème pour la
 migration **et n'a pas de vraie utilité**, on le supprime au lieu de lui trouver un équivalent
 sophistiqué. Ne pas introduire de complexité pour préserver un comportement dont personne n'a besoin.
 Premier cas : `shuffleArray` dans `blog-dal`. Une première version le remplaçait par une rotation
@@ -670,7 +670,7 @@ Le pattern de D17 est appliqué. Résultat mesuré : les 21 routes `(app)` passe
 3. Gating dans le proxy via `getSessionCookie`.
 4. Opt-out retirés : 21 pages `(app)`, puis les 17 pages admin où ils étaient redondants.
 
-**Arbitrage tranché par Mike : option A pour le 403.** Trois options étaient sur la table pour le
+**Arbitrage tranché par le mainteneur : option A pour le 403.** Trois options étaient sur la table pour le
 contrôle de rôle admin — proxy léger + admin bloquant, proxy en runtime Node appelant
 `auth.api.getSession()`, ou cookie cache Better Auth portant le rôle. Retenu : le proxy fait le
 gating grossier sans appel base, et `admin/layout.tsx` garde son contrôle de rôle bloquant. Un vrai
@@ -728,7 +728,7 @@ revérifier la session dans **chaque** Server Action.
 **État réel** : les 39 routes `(app)` et `admin` portent toujours `instant = false`. Ce n'est plus
 « impossible », c'est **non fait**. Le refactor touche `AuthProvider`, `OrganizationProvider`,
 `AppSidebar` et `withAuth` — et il est à faire **après** avoir vu les 8 specs e2e d'authentification
-vertes — **révisé** : ce n'est plus un prérequis bloquant (priorité de Mike du 2026-08-15), mais
+vertes — **révisé** : ce n'est plus un prérequis bloquant (priorité du mainteneur du 2026-08-15), mais
 c'est le modèle d'autorisation qu'on déplace, donc vérifier manuellement login / logout / accès
 admin refusé pour un user standard.
 
@@ -856,7 +856,7 @@ Contournement reverté (règle D6). Ne pas le retenter — le blocage est plus p
 next-intl. Le bénéfice principal de la migration — le shell statique / PPR — **ne peut pas être
 obtenu aujourd'hui**, quelle que soit la quantité de `'use cache'` posée en dessous.
 
-**Deux options, décision de Mike :**
+**Deux options, décision du mainteneur :**
 
 1. **Garder la branche en l'état.** `cacheComponents` activé, build vert, application fonctionnelle,
    59 routes en `instant = false`. On récolte le PPR le jour où next-intl le supporte, en reprenant
