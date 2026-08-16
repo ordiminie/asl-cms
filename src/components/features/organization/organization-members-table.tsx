@@ -1,4 +1,5 @@
 import {UserCog} from 'lucide-react'
+import {cacheLife} from 'next/cache'
 
 import {getMembersAndInvitationsDal} from '@/app/dal/organization-dal'
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
@@ -25,10 +26,20 @@ import {EditMemberRoleDialog} from './edit-member-role-dialog'
 import {OrganizationAddMemberForm} from './organization-add-member-form'
 import {RemoveMemberButton} from './remove-member-button'
 
-function isInvitationExpired(joinedAt: Date | null): boolean {
+/**
+ * L'instant de référence est caché dans sa propre fonction : lire l'horloge
+ * pendant le rendu interdirait le prerender de la page. Granularité horaire,
+ * ce qui suffit largement pour une date d'expiration d'invitation.
+ */
+async function getExpiryCutoff(): Promise<number> {
+  'use cache'
+  cacheLife('hours')
+  return Date.now()
+}
+
+function isInvitationExpired(joinedAt: Date | null, cutoff: number): boolean {
   if (!joinedAt) return false
-  const today = new Date()
-  return new Date(joinedAt) < today
+  return new Date(joinedAt).getTime() < cutoff
 }
 
 export default async function OrganizationMembersTable({
@@ -40,6 +51,7 @@ export default async function OrganizationMembersTable({
   canManageMembers?: boolean
   adminView?: boolean
 }) {
+  const expiryCutoff = await getExpiryCutoff()
   //const isAdmin = await isAuthAdmin()
   const members = await getMembersAndInvitationsDal(organizationId)
 
@@ -94,12 +106,12 @@ export default async function OrganizationMembersTable({
                     {member.status === 'invited' && (
                       <span
                         className={`ml-2 rounded px-2 py-0.5 text-xs font-semibold ${
-                          isInvitationExpired(member.joinedAt)
+                          isInvitationExpired(member.joinedAt, expiryCutoff)
                             ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
                             : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
                         }`}
                       >
-                        {isInvitationExpired(member.joinedAt)
+                        {isInvitationExpired(member.joinedAt, expiryCutoff)
                           ? 'Invitation expirée'
                           : 'Invitation en attente'}
                       </span>

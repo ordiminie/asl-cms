@@ -181,10 +181,12 @@ export default function InvitationsOrganization() {
                               En attente
                             </Badge>
                           )}
-                          <span suppressHydrationWarning>
+                          <span>
                             Expire:{' '}
                             {formatDate(
-                              new Date(invitation.expiresAt ?? new Date())
+                              invitation.expiresAt
+                                ? new Date(invitation.expiresAt)
+                                : null
                             )}
                           </span>
                         </div>
@@ -215,11 +217,12 @@ export default function InvitationsOrganization() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell
-                      className="hidden sm:table-cell"
-                      suppressHydrationWarning
-                    >
-                      {formatDate(new Date(invitation.expiresAt ?? new Date()))}
+                    <TableCell className="hidden sm:table-cell">
+                      {formatDate(
+                        invitation.expiresAt
+                          ? new Date(invitation.expiresAt)
+                          : null
+                      )}
                     </TableCell>
                     <TableCell>
                       {invitation.status === 'pending' && (
