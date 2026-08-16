@@ -199,7 +199,7 @@ export default async function DocsPage({params}: DocsPageProps) {
     <div className="w-full max-w-4xl">
       {/* Title from frontmatter */}
       {frontmatter.title && (
-        <h1 className="border-border mb-6 scroll-mt-20 border-b pb-2 text-2xl font-bold sm:text-3xl md:text-4xl">
+        <h1 className="mb-6 scroll-mt-20 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
           {frontmatter.title}
         </h1>
       )}

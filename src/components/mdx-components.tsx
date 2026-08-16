@@ -364,46 +364,27 @@ export const Excalidraw = ({
   )
 }
 export const mdxComponents = {
-  //NEW ONE
-  h1: ({children}: {children: ReactNode}) => {
-    const textContent = getTextContent(children)
-    const id = slugify(textContent)
-    return (
-      <h1
-        id={id}
-        className="border-border mb-6 scroll-mt-20 border-b pb-2 text-4xl font-bold"
-      >
-        {children}
-      </h1>
-    )
-  },
-  h2: ({children}: {children: ReactNode}) => {
-    const textContent = getTextContent(children)
-    const id = slugify(textContent)
-    return (
-      <h2 id={id} className="mt-8 mb-4 scroll-mt-20 text-3xl font-semibold">
-        {children}
-      </h2>
-    )
-  },
-  h3: ({children}: {children: ReactNode}) => {
-    const textContent = getTextContent(children)
-    const id = slugify(textContent)
-    return (
-      <h3 id={id} className="mt-6 mb-3 scroll-mt-20 text-2xl font-medium">
-        {children}
-      </h3>
-    )
-  },
-  h4: ({children}: {children: ReactNode}) => {
-    const textContent = getTextContent(children)
-    const id = slugify(textContent)
-    return (
-      <h4 id={id} className="mt-4 mb-2 scroll-mt-20 text-xl font-medium">
-        {children}
-      </h4>
-    )
-  },
+  // Les titres ne portent que leur ancre : la typographie vient de prose.
+  h1: ({children}: {children: ReactNode}) => (
+    <h1 id={slugify(getTextContent(children))} className="scroll-mt-20">
+      {children}
+    </h1>
+  ),
+  h2: ({children}: {children: ReactNode}) => (
+    <h2 id={slugify(getTextContent(children))} className="scroll-mt-20">
+      {children}
+    </h2>
+  ),
+  h3: ({children}: {children: ReactNode}) => (
+    <h3 id={slugify(getTextContent(children))} className="scroll-mt-20">
+      {children}
+    </h3>
+  ),
+  h4: ({children}: {children: ReactNode}) => (
+    <h4 id={slugify(getTextContent(children))} className="scroll-mt-20">
+      {children}
+    </h4>
+  ),
   code: ({
     children,
     className,
