@@ -79,7 +79,7 @@ export async function updateUserAction(
 
 Pour les actions nécessitant des rôles spécifiques :
 
-**Référence : [admin/users/actions.ts](src/app/admin/users/actions.ts)**
+**Référence : [admin/users/actions.ts](src/app/[locale]/admin/users/actions.ts)**
 
 ```tsx
 'use server'

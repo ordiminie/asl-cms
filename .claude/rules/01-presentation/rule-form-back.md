@@ -39,7 +39,7 @@ components/
 
 ### Template standard d'une Server Action
 
-**Référence : [action.ts](<mdc:src/app/(auth)/action.ts>)**
+**Référence : [action.ts](<src/app/[locale]/(auth)/action.ts>)**
 
 ```tsx
 'use server'
