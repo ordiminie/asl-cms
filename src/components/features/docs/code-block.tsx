@@ -71,10 +71,11 @@ export function CodeBlock({
     }
   }, [rawCode])
 
-  // Extract language from className if not provided
-  // Handle Shiki classes that might contain multiple classes
+  // Un bloc sans langage est étiqueté text par Shiki : ne rien afficher.
+  const PLAIN_LANGUAGES = ['text', 'plaintext', 'txt', 'ansi']
+
   const detectedLanguage =
-    language ||
+    (language && !PLAIN_LANGUAGES.includes(language) ? language : '') ||
     (() => {
       if (!className) return ''
 
@@ -136,8 +137,8 @@ export function CodeBlock({
           <button
             onClick={copyToClipboard}
             className={cn(
-              'absolute top-2 right-2 z-10 flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-xs opacity-0 transition-colors group-hover:opacity-100',
-              'bg-background/80 hover:bg-background backdrop-blur-sm',
+              'absolute top-2 right-2 z-10 flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-xs transition-colors',
+              'border-border bg-background/80 hover:bg-background border backdrop-blur-sm',
               copied
                 ? 'text-green-600'
                 : 'text-muted-foreground hover:text-foreground'
