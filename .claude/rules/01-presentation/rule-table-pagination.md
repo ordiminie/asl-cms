@@ -112,7 +112,7 @@ Le composant de contenu gère la logique de pagination et les appels aux service
 
 ```tsx
 // my-feature-content.tsx
-import {getItemsPaginationService} from '@mikecodeur/services/facades/my-feature-service-facade'
+import {getItemsPaginationService} from '@/services/facades/my-feature-service-facade'
 import {MyFeatureManagement} from '@/components/features/my-feature/my-feature-management'
 import {getPermissions} from '@/app/dal/my-feature-dal'
 
@@ -164,15 +164,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@mikecodeur/ui/components/table'
-import {Input} from '@mikecodeur/ui/components/input'
-import {Button} from '@mikecodeur/ui/components/button'
+} from '@/components/ui/table'
+import {Input} from '@/components/ui/input'
+import {Button} from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@mikecodeur/ui/components/card'
+} from '@/components/ui/card'
 import {EditItemDialog} from './edit-item-dialog'
 import {DeleteItemDialog} from './delete-item-dialog'
 import {updateItem, deleteItem} from '@/app/admin/my-feature/actions'
@@ -320,8 +320,8 @@ import {zodResolver} from '@hookform/resolvers/zod'
 import {useForm} from 'react-hook-form'
 import * as z from 'zod'
 import {Edit} from 'lucide-react'
-import {Button} from '@mikecodeur/ui/components/button'
-import {Input} from '@mikecodeur/ui/components/input'
+import {Button} from '@/components/ui/button'
+import {Input} from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -330,7 +330,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@mikecodeur/ui/components/dialog'
+} from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
@@ -338,7 +338,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@mikecodeur/ui/components/form'
+} from '@/components/ui/form'
 
 // Schéma de validation
 const formSchema = z.object({
@@ -450,7 +450,7 @@ export function EditItemDialog({item, onSave}: EditItemDialogProps) {
 
 import {useState} from 'react'
 import {Trash2} from 'lucide-react'
-import {Button} from '@mikecodeur/ui/components/button'
+import {Button} from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -459,7 +459,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@mikecodeur/ui/components/dialog'
+} from '@/components/ui/dialog'
 
 interface DeleteItemDialogProps {
   itemId: string
@@ -607,7 +607,7 @@ import {revalidatePath} from 'next/cache'
 import {
   updateItemService,
   deleteItemService,
-} from '@mikecodeur/services/facades/my-feature-service-facade'
+} from '@/services/facades/my-feature-service-facade'
 
 export async function updateItem(id: string, formData: FormData) {
   try {
@@ -666,8 +666,8 @@ export async function deleteItem(id: string) {
 ## Points importants
 
 1. **Imports Shadcn UI**
-   - Toujours utiliser le format `@mikecodeur/ui/components/<component>`
-   - Exemple : `import {Button} from '@mikecodeur/ui/components/button'`
+   - Toujours utiliser le format `@/components/ui/<component>`
+   - Exemple : `import {Button} from '@/components/ui/button'`
    - Regle UI UX dans [rule-table-ui-ux-pagination.mdc](.cursor/rules/01-presentation/rule-table-ui-ux-pagination.mdc)
 
 2. **Gestion des searchParams**

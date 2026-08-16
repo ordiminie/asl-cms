@@ -85,15 +85,6 @@ Cette règle documente le jeu de test complet configuré dans [seed.ts](mdc:src/
 
 **🎯 Cas d'usage** : Tester les permissions sans contexte organisationnel, accès limité aux ressources publiques.
 
-### 👑 Cas Spéciaux Mike Codeur
-
-| Email                  | Nom         | Rôle Global | Organisation | Rôle Org |
-| ---------------------- | ----------- | ----------- | ------------ | -------- |
-| `admin@mikecodeur.com` | Mike Codeur | ADMIN       | TechCorp     | OWNER    |
-| `ons@mikecodeur.com`   | Ons         | ADMIN       | TechCorp     | ADMIN    |
-
-**🎯 Cas d'usage** : Utilisateurs propriétaires du système, permissions maximales.
-
 ## Scénarios de Test Recommandés
 
 ### 1. **Tests de Permissions Globales**

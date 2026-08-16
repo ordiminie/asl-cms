@@ -94,7 +94,6 @@ import * as rootParams from 'next/root-params'
 // Voir rule-translation.md, section « Le contrat next/root-params ».
 ```
 
-
 #### 1. Composants React Client
 
 ```typescript
