@@ -30,6 +30,28 @@ import {logger} from '@/lib/logger'
 - ✅ Webhooks
 - ❌ Client Components (utiliser `console.log` à la place)
 
+## ⚠️ Le logger et Cache Components
+
+Winston horodate chaque log via `new Date()` — un accès à l'heure courante **interdit au prerender
+et dans un scope `'use cache'`**. Comme l'intercepteur de services logge à chaque appel de méthode,
+et que toute page prerendue passe par une façade, le blocage serait systémique.
+
+Le logger est donc **neutralisé pendant le build** (`src/lib/logger.ts`) :
+
+```ts
+const isBuildPrerender = process.env.NEXT_PHASE === 'phase-production-build'
+export const logger = isBuildPrerender ? noopLogger : winstonLogger
+```
+
+Deux conséquences pour qui écrit du code :
+
+- **Ne pas appeler `logger` à l'intérieur d'une fonction portant `'use cache'`.** La garde ci-dessus
+  ne couvre que le build : au runtime, dans un scope caché, l'horloge reste interdite. Logger avant
+  ou après l'appel caché, pas dedans.
+- **Si une erreur de prerender pointe une page qui semble sans rapport avec le logging, vérifier le
+  logger avant de suspecter la page.** C'est le piège qui a coûté le plus cher pendant la migration
+  Cache Components.
+
 ## Niveaux de Log Disponibles
 
 ```ts
