@@ -190,6 +190,21 @@ l'aveugle.
       les tests. **Jamais la base de preview** : deux specs écrivent, une lit le seed (D7).
       **Acceptation** : le job passe sur la branche, rapport uploadé en artefact si échec.
 
+- [ ] **B4 — Balayer le rendu des pages authentifiées**
+      Les specs d'autorisation vérifient qui a le droit d'entrer ; rien ne vérifie que la page
+      **rend** une fois entré. C'est le trou le plus coûteux sous Cache Components : le shell part
+      en `200` avant que le contenu n'arrive, donc une page qui casse en cours de stream affiche
+      une frontière d'erreur dans un document parfaitement valide, et aucune assertion de statut ne
+      le voit.
+      Écrire une spec qui parcourt toutes les routes authentifiées — compte, facturation, équipe,
+      admin — et contrôle trois choses par page : pas de frontière d'erreur, pas d'erreur console,
+      pas d'imbrication HTML invalide.
+      Trois pièges à éviter dans cette spec, tous rencontrés : - **une session par groupe, en série.** Se reconnecter avant chaque page rend la suite
+      instable sans rien tester de plus. - **ne pas attendre `networkidle`** : certaines pages émettent des requêtes périodiques et
+      n'y arrivent jamais. - **ignorer les diagnostics propres au mode développement** (voir l'annexe « dev contre
+      production »), sinon la suite est rouge en local et personne ne la lance.
+      **Acceptation** : la spec passe trois fois d'affilée contre le build de production.
+
 ### Gate B (bloquant)
 
 Toutes les specs e2e existantes passent contre le build de production, sur une base seedée.
@@ -359,7 +374,15 @@ route.**
       majorité est dans des chemins de **mutation** (`createdAt`, horodatage d'emails), exécutés en
       Server Action, donc jamais prerendus — sans risque. Ce sont les chemins de **lecture** qui
       casseront en entrant dans un scope `'use cache'`.
-      **Acceptation** : liste écrite, chaque entrée classée mutation ou lecture.
+      Deux formes concrètes trouvées sur le boilerplate, dans des pages authentifiées que rien ne
+      testait : `new Date(valeur ?? new Date())` — un repli qui fabrique une date quand la donnée
+      n'en a pas, donc une information fausse en plus d'une lecture d'horloge — et un
+      `const today = new Date()` en tête d'un composant serveur.
+      ⚠️ **Un `suppressHydrationWarning` est un indice.** Il signale qu'on a masqué une divergence
+      serveur/client au lieu d'en traiter la cause, et la cause est presque toujours une lecture
+      d'horloge ou d'aléatoire.
+      **Acceptation** : liste écrite, chaque entrée classée mutation ou lecture ; les lectures sont
+      supprimées ou passent par un instant de référence caché.
 
 - [ ] **E3 — Convertir les pages de contenu statique**
       **Acceptation** : ces routes repassent en `○`, avec leur profil de cache visible dans la
@@ -555,6 +578,17 @@ personnelle dedans : indexer sur un identifiant stable.
       **Acceptation** : aucune de ces occurrences ne subsiste dans un sens périmé, et les exemples
       de DAL montrent `'use cache'` + `cacheLife` + `cacheTag`.
 
+- [ ] **G5 — Automatiser le contrôle d'alignement**
+      Les trois tâches précédentes ne tiennent que si quelque chose les rejoue. Un script — lancé
+      en CI juste après le lint — vérifie mécaniquement : les chemins de fichiers cités dans les
+      règles existent, l'index les liste toutes sans lien mort, les deux jeux de règles disent la
+      même chose si le projet en maintient deux, et aucun terme périmé ne subsiste.
+      Ce dernier point suppose de **lister, après chaque changement d'architecture, les termes que
+      le changement rend faux**. C'est ce contrôle qui a trouvé un paragraphe qu'un audit manuel
+      venait de laisser passer.
+      **Acceptation** : le script échoue sur une règle volontairement désalignée, et passe une fois
+      corrigée.
+
 ### Gate G — sortie de la partie 1
 
 L'ensemble des Gates A→F tient, et un `pnpm build` produit une table de routes stable entre deux
@@ -686,6 +720,18 @@ const exposeLanguage: ShikiTransformer = {
       fin de ligne, ou une ligne commençant par `<Majuscule`.
       **Acceptation** : plus aucun bloc `ts`/`js` ne contient de JSX ; les balises sont colorées.
 
+- [ ] **J3 bis — Remettre sur une ligne le contenu des balises JSX inline**
+      Conséquence directe de I1, et elle ne se voit qu'à l'exécution. Une balise écrite sur
+      plusieurs lignes dans du MDX — `<p className="…">` puis son texte à la ligne — voit son
+      contenu **reparsé comme un bloc Markdown**, ce qui produit un second `<p>` à l'intérieur.
+      Tant que le mapping rendait les paragraphes en `<span>`, l'imbrication était légale et les
+      classes de la balise littérale étaient silencieusement perdues ; avec de vrais `<p>`, c'est
+      du HTML invalide et une erreur d'hydratation.
+      Chercher les `<p` ouverts seuls sur leur ligne dans tout le contenu MDX et ramener le texte
+      sur la même ligne.
+      **Acceptation** : sur chaque page du site, aucun `<p>` imbriqué dans un `<p>` ni bloc à
+      l'intérieur d'un `<p>` — contrôle automatisable en parcourant le HTML rendu.
+
 - [ ] **J4 — Rendre le curseur pointer aux éléments cliquables**
       **Tailwind v4 ne pose plus `cursor: pointer` sur `<button>`**, contrairement à la v3 : tout ce
       qui est cliquable sans être un `<a>` garde le curseur de texte — onglets, déclencheurs de
@@ -778,6 +824,27 @@ Chacune était invisible pour `next build`, `tsc`, les tests unitaires **et** le
 | Bug de prerender sur l'horloge           | la base était morte, la lecture échouait **avant** d'atteindre le code fautif                               | préflight base (G1)                                              |
 | `root-params` cassant les Server Actions | les Server Actions ne sont jamais prerendues ; le test concerné était permissif                             | lire le log de `next start` en direct après un changement d'i18n |
 | Prix publics périmés après modif admin   | `revalidateTag` en stale-while-revalidate : techniquement correct                                           | parcours manuel admin → page publique                            |
+
+## Dev contre production : lesquels de ces messages comptent
+
+Sous Cache Components, le mode développement affiche dans la console des diagnostics que le build
+de production n'émet pas. Les confondre avec des défauts fait perdre des heures ; les ignorer en
+bloc fait rater de vrais problèmes. Le partage constaté :
+
+| Message                                                                             | Ce que c'est                                                  | Compte-t-il ?                                                         |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
+| « encountered the unstable value `new Date()` » pointant l'intercepteur de services | le logger, qui horodate à chaque appel de méthode             | non en soi — mais le logger reste actif en dev, et c'est le piège n°1 |
+| « encountered the unstable value » pointant un de vos composants                    | une vraie lecture d'horloge dans un chemin de rendu           | **oui**, à corriger                                                   |
+| « uncached data during prerendering or a navigation »                               | une lecture non cachée hors `<Suspense>`                      | **oui**, c'est la promesse de navigation instantanée qui tombe        |
+| « Encountered a script tag while rendering React component »                        | `next-themes` rend un `<script>` inline ; React 19 le signale | non, dépendance tierce, absent du build                               |
+
+Le test décisif : **relancer contre `pnpm build && pnpm start`**. Ce qui disparaît était un
+diagnostic de développement ; ce qui reste est un défaut.
+
+⚠️ **Pour lancer les e2e en local**, les URLs d'authentification (`BETTER_AUTH_URL`,
+`NEXT_PUBLIC_APP_URL`) doivent pointer le port réellement servi. Sur un autre port, les specs
+d'authentification échouent en boucle sur un écran de chargement, ce qui ressemble à un bug de
+l'application alors que c'est un problème d'environnement.
 
 ## Écrire un test qui vaut quelque chose
 
