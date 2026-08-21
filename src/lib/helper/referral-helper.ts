@@ -34,3 +34,26 @@ export const isValidReferralCode = (value: string | undefined): boolean => {
     REFERRAL_CODE_PATTERN.test(normalized)
   )
 }
+
+/**
+ * Extrait le ref d'un en-tête `Cookie` brut.
+ *
+ * Utile là où le scope de requête Next n'est pas garanti : les hooks Better
+ * Auth reçoivent la requête en argument, la lire directement évite de dépendre
+ * de `cookies()` de `next/headers`.
+ */
+export const parseReferralCodeFromCookieHeader = (
+  header: string | null | undefined
+): string | undefined => {
+  if (!header) return undefined
+
+  for (const part of header.split(';')) {
+    const [name, ...rest] = part.trim().split('=')
+    if (name !== REFERRAL_COOKIE_NAME) continue
+
+    const value = decodeURIComponent(rest.join('='))
+    return isValidReferralCode(value) ? normalizeReferralCode(value) : undefined
+  }
+
+  return undefined
+}

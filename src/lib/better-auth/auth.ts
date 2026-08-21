@@ -1,6 +1,11 @@
 import {apiKey} from '@better-auth/api-key'
 import {stripe} from '@better-auth/stripe'
-import {betterAuth, BetterAuthOptions, User} from 'better-auth'
+import {
+  betterAuth,
+  BetterAuthOptions,
+  GenericEndpointContext,
+  User,
+} from 'better-auth'
 import {drizzleAdapter} from 'better-auth/adapters/drizzle'
 import {APIError, createAuthMiddleware} from 'better-auth/api'
 import {nextCookies} from 'better-auth/next-js'
@@ -23,10 +28,8 @@ import {
 import {env} from '@/env'
 import {APP_ISSUER} from '@/lib/constants'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
-import {
-  clearReferralCookie,
-  readReferralCodeFromCookies,
-} from '@/lib/helper/referral-helper.server'
+import {parseReferralCodeFromCookieHeader} from '@/lib/helper/referral-helper'
+import {readReferralCodeFromCookies} from '@/lib/helper/referral-helper.server'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
 import {stripeClient} from '@/lib/stripe/stripe-client'
 import {onStripeEvent} from '@/lib/stripe/stripe-events'
@@ -366,11 +369,15 @@ function createDatabaseHooks() {
             },
           }
         },
-        after: async (user: User) => {
+        after: async (user: User, context: GenericEndpointContext | null) => {
           const registration = await initializeRegisterUserDataService(
             user.email
           )
-          await attributeReferralOnSignUp(user, registration?.organizationId)
+          await attributeReferralOnSignUp(
+            user,
+            registration?.organizationId,
+            context
+          )
           try {
             await sendInternalEmailService({
               title: 'Nouvel utilisateur enregistré',
@@ -492,17 +499,33 @@ function createAuthRedirectMiddleware() {
  * paie. On ne fait rien si l'inscription n'en a pas créé — un utilisateur qui
  * rejoint une organisation existante sur invitation n'apporte aucun client.
  *
+ * Le ref est lu en priorité sur la requête transmise par Better Auth, et
+ * seulement à défaut via `cookies()` : les hooks `after` sont exécutés après la
+ * transaction, un scope de requête Next n'y est pas garanti.
+ *
+ * Le cookie n'est PAS effacé. Une organisation ne peut être attribuée qu'une
+ * fois — l'index unique sur `referral.organization_id` s'en charge — mais un
+ * utilisateur qui crée plusieurs organisations pendant la fenêtre de 60 jours
+ * les rattache toutes au même affilié.
+ *
  * L'ensemble est encapsulé dans un try/catch : une attribution ratée ne doit
  * jamais empêcher une inscription d'aboutir.
  */
 async function attributeReferralOnSignUp(
   user: User,
-  organizationId: string | undefined
+  organizationId: string | undefined,
+  context: GenericEndpointContext | null
 ): Promise<void> {
   if (!organizationId) return
 
   try {
-    const code = await readReferralCodeFromCookies()
+    const cookieHeader =
+      context?.headers?.get('cookie') ?? context?.request?.headers.get('cookie')
+
+    const code =
+      parseReferralCodeFromCookieHeader(cookieHeader) ??
+      (await readReferralCodeFromCookies())
+
     if (!code) return
 
     await attributeReferralForOrganizationService({
@@ -512,7 +535,5 @@ async function attributeReferralOnSignUp(
     })
   } catch (error) {
     console.error('[AUTH] Referral attribution failed, skipping:', error)
-  } finally {
-    await clearReferralCookie()
   }
 }
