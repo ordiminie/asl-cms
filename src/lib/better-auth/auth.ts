@@ -23,9 +23,14 @@ import {
 import {env} from '@/env'
 import {APP_ISSUER} from '@/lib/constants'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
+import {
+  clearReferralCookie,
+  readReferralCodeFromCookies,
+} from '@/lib/helper/referral-helper.server'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
 import {stripeClient} from '@/lib/stripe/stripe-client'
 import {onStripeEvent} from '@/lib/stripe/stripe-events'
+import {attributeReferralForOrganizationService} from '@/services/facades/affiliate-service-facade'
 import {
   allocateCreditsOnSubscriptionService,
   compensateNegativeBalanceOnCancellationService,
@@ -362,7 +367,10 @@ function createDatabaseHooks() {
           }
         },
         after: async (user: User) => {
-          await initializeRegisterUserDataService(user.email)
+          const registration = await initializeRegisterUserDataService(
+            user.email
+          )
+          await attributeReferralOnSignUp(user, registration?.organizationId)
           try {
             await sendInternalEmailService({
               title: 'Nouvel utilisateur enregistré',
@@ -475,4 +483,36 @@ function createAuthRedirectMiddleware() {
       throw ctx.redirect('/dashboard')
     }
   })
+}
+
+/**
+ * Fige l'attribution d'affiliation au moment de l'inscription.
+ *
+ * L'organisation est le sujet attribué, pas l'utilisateur : c'est elle qui
+ * paie. On ne fait rien si l'inscription n'en a pas créé — un utilisateur qui
+ * rejoint une organisation existante sur invitation n'apporte aucun client.
+ *
+ * L'ensemble est encapsulé dans un try/catch : une attribution ratée ne doit
+ * jamais empêcher une inscription d'aboutir.
+ */
+async function attributeReferralOnSignUp(
+  user: User,
+  organizationId: string | undefined
+): Promise<void> {
+  if (!organizationId) return
+
+  try {
+    const code = await readReferralCodeFromCookies()
+    if (!code) return
+
+    await attributeReferralForOrganizationService({
+      code,
+      organizationId,
+      referredUserId: user.id,
+    })
+  } catch (error) {
+    console.error('[AUTH] Referral attribution failed, skipping:', error)
+  } finally {
+    await clearReferralCookie()
+  }
 }

@@ -151,7 +151,8 @@
       "organizations": "Organizations",
       "plans": "Plans",
       "blog": "Blog",
-      "credits": "Credits"
+      "credits": "Credits",
+      "affiliates": "Affiliates"
     },
     "account": {
       "title": "Account",
@@ -160,7 +161,8 @@
       "organizations": "Organizations",
       "invitations": "Invitations",
       "settings": "Settings",
-      "apiKeys": "API Keys"
+      "apiKeys": "API Keys",
+      "affiliate": "Affiliate"
     },
     "projects": {
       "title": "Projects",
@@ -1412,6 +1414,72 @@
     "success": {
       "creditsGranted": "Credits granted successfully",
       "purchaseComplete": "Purchase completed successfully"
+    }
+  },
+  "Affiliate": {
+    "page": {
+      "title": "Affiliate",
+      "description": "Share your link and earn a reward for every organization you bring in.",
+      "payoutNotice": "Rewards are paid manually by an administrator once the holding period has elapsed."
+    },
+    "link": {
+      "title": "Your referral link",
+      "description": "The ref belongs to you: it stays the same across all your organizations.",
+      "codeLabel": "Your ref",
+      "codePlaceholder": "your-name",
+      "codeHelp": "Lowercase letters, digits and hyphens, 32 characters max. Unique across the app.",
+      "save": "Save",
+      "saving": "Saving...",
+      "copy": "Copy"
+    },
+    "stats": {
+      "referredAccounts": "Referred accounts",
+      "waitingPeriod": "In holding period",
+      "waitingCount": "{count, plural, =0 {no reward} one {# reward} other {# rewards}}",
+      "commissionDue": "Commission due",
+      "totalPaid": "Total paid"
+    },
+    "validation": {
+      "codeMin": "The code must be at least 3 characters",
+      "codeMax": "The code cannot exceed 32 characters",
+      "codePattern": "Lowercase letters, digits and hyphens only"
+    },
+    "success": {
+      "codeSaved": "Ref saved",
+      "linkCopied": "Link copied"
+    },
+    "errors": {
+      "unauthorized": "Unauthorized",
+      "codeSaveFailed": "Could not save the ref"
+    },
+    "admin": {
+      "title": "Affiliates",
+      "description": "Commissions due and payouts for the affiliate program.",
+      "tableTitle": "{count, plural, =0 {No affiliate} one {# affiliate} other {# affiliates}}",
+      "columns": {
+        "code": "Ref",
+        "status": "Status",
+        "referred": "Referred",
+        "waiting": "Holding",
+        "due": "Due",
+        "paid": "Paid",
+        "actions": "Actions"
+      },
+      "empty": "No affiliate yet",
+      "markPaid": "Mark paid",
+      "markPaidTitle": "Record the payout",
+      "markPaidDescription": "Confirm you transferred {amount} to affiliate {code}. The record is final.",
+      "reference": "Transfer reference",
+      "referencePlaceholder": "TRF-2026-001",
+      "cancel": "Cancel",
+      "confirmPaid": "Confirm",
+      "recording": "Recording...",
+      "payoutRecorded": "Payout recorded",
+      "nothingDue": "No commission due for this affiliate",
+      "payoutFailed": "Could not record the payout",
+      "unauthorized": "Unauthorized",
+      "previous": "Previous",
+      "next": "Next"
     }
   }
 }

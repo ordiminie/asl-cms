@@ -151,7 +151,8 @@
       "organizations": "Organisations",
       "plans": "Plans",
       "blog": "Blog",
-      "credits": "Crédits"
+      "credits": "Crédits",
+      "affiliates": "Affiliés"
     },
     "account": {
       "title": "Compte",
@@ -160,7 +161,8 @@
       "organizations": "Organisations",
       "invitations": "Invitations",
       "settings": "Paramètres",
-      "apiKeys": "Clés API"
+      "apiKeys": "Clés API",
+      "affiliate": "Affiliation"
     },
     "projects": {
       "title": "Projets",
@@ -1412,6 +1414,72 @@
     "success": {
       "creditsGranted": "Crédits accordés avec succès",
       "purchaseComplete": "Achat effectué avec succès"
+    }
+  },
+  "Affiliate": {
+    "page": {
+      "title": "Affiliation",
+      "description": "Partagez votre lien et gagnez une prime pour chaque organisation que vous amenez.",
+      "payoutNotice": "Les primes sont versées manuellement par un administrateur une fois le délai de carence écoulé."
+    },
+    "link": {
+      "title": "Votre lien de parrainage",
+      "description": "Le ref vous appartient : il reste le même quelles que soient vos organisations.",
+      "codeLabel": "Votre ref",
+      "codePlaceholder": "votre-nom",
+      "codeHelp": "Minuscules, chiffres et tirets, 32 caractères maximum. Unique dans toute l'application.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement...",
+      "copy": "Copier"
+    },
+    "stats": {
+      "referredAccounts": "Comptes parrainés",
+      "waitingPeriod": "En période de carence",
+      "waitingCount": "{count, plural, =0 {aucune prime} one {# prime} other {# primes}}",
+      "commissionDue": "Commission due",
+      "totalPaid": "Total versé"
+    },
+    "validation": {
+      "codeMin": "Le code doit contenir au moins 3 caractères",
+      "codeMax": "Le code ne peut pas dépasser 32 caractères",
+      "codePattern": "Uniquement des minuscules, chiffres et tirets"
+    },
+    "success": {
+      "codeSaved": "Ref enregistré",
+      "linkCopied": "Lien copié"
+    },
+    "errors": {
+      "unauthorized": "Accès non autorisé",
+      "codeSaveFailed": "Impossible d'enregistrer le ref"
+    },
+    "admin": {
+      "title": "Affiliés",
+      "description": "Commissions dues et versements du programme d'affiliation.",
+      "tableTitle": "{count, plural, =0 {Aucun affilié} one {# affilié} other {# affiliés}}",
+      "columns": {
+        "code": "Ref",
+        "status": "Statut",
+        "referred": "Parrainés",
+        "waiting": "En carence",
+        "due": "Dû",
+        "paid": "Versé",
+        "actions": "Actions"
+      },
+      "empty": "Aucun affilié pour le moment",
+      "markPaid": "Marquer payé",
+      "markPaidTitle": "Enregistrer le versement",
+      "markPaidDescription": "Confirmez avoir viré {amount} à l'affilié {code}. L'enregistrement est définitif.",
+      "reference": "Référence du virement",
+      "referencePlaceholder": "VIR-2026-001",
+      "cancel": "Annuler",
+      "confirmPaid": "Confirmer",
+      "recording": "Enregistrement...",
+      "payoutRecorded": "Versement enregistré",
+      "nothingDue": "Aucune commission due pour cet affilié",
+      "payoutFailed": "Impossible d'enregistrer le versement",
+      "unauthorized": "Accès non autorisé",
+      "previous": "Précédent",
+      "next": "Suivant"
     }
   }
 }

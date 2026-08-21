@@ -3,6 +3,14 @@ import type {NextRequest} from 'next/server'
 import {NextResponse} from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 
+import {
+  isValidReferralCode,
+  normalizeReferralCode,
+  REFERRAL_COOKIE_MAX_AGE_SECONDS,
+  REFERRAL_COOKIE_NAME,
+  REFERRAL_QUERY_PARAM,
+} from '@/lib/helper/referral-helper'
+
 import {routing} from './i18n/routing'
 import {stripLocalePrefix} from './lib/helper/locale-helper'
 
@@ -88,6 +96,30 @@ export default function middleware(request: NextRequest) {
 
   // Ajouter le header du thème pour Shiki
   response.headers.set('x-theme', theme)
+
+  // Attribution d'affiliation : le premier ref rencontre gagne.
+  // Le garde sur le cookie existant EST la règle first-touch — un second lien
+  // affilié cliqué plus tard ne remplace pas le premier. Le paramètre n'est pas
+  // retiré de l'URL ici : les pages publiques ne lisent pas searchParams, donc
+  // il ne casse aucun prerender, et une redirection coûterait un aller-retour
+  // sur chaque visite.
+  const referralCode = searchParams.get(REFERRAL_QUERY_PARAM)
+  if (
+    isValidReferralCode(referralCode ?? undefined) &&
+    !request.cookies.get(REFERRAL_COOKIE_NAME)
+  ) {
+    response.cookies.set(
+      REFERRAL_COOKIE_NAME,
+      normalizeReferralCode(referralCode as string),
+      {
+        path: '/',
+        maxAge: REFERRAL_COOKIE_MAX_AGE_SECONDS,
+        httpOnly: true,
+        secure: request.nextUrl.protocol === 'https:',
+        sameSite: 'lax',
+      }
+    )
+  }
 
   // Forcer le cookie theme sur la réponse (important pour iOS)
   if (!request.cookies.get('theme')) {

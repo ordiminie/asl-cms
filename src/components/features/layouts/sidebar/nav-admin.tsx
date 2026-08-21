@@ -5,6 +5,7 @@ import {
   Building2,
   Coins,
   CreditCard,
+  Handshake,
   type LucideIcon,
   MoreHorizontal,
   Users,
@@ -65,6 +66,11 @@ export function NavAdmin({
       title: t('admin.credits'),
       url: '/admin/credits',
       icon: Coins,
+    },
+    {
+      title: t('admin.affiliates'),
+      url: '/admin/affiliates',
+      icon: Handshake,
     },
   ]
 

@@ -151,7 +151,8 @@
       "organizations": "Organizaciones",
       "plans": "Planes",
       "blog": "Blog",
-      "credits": "Créditos"
+      "credits": "Créditos",
+      "affiliates": "Afiliados"
     },
     "account": {
       "title": "Cuenta",
@@ -160,7 +161,8 @@
       "organizations": "Organizaciones",
       "invitations": "Invitaciones",
       "settings": "Configuración",
-      "apiKeys": "Claves API"
+      "apiKeys": "Claves API",
+      "affiliate": "Afiliación"
     },
     "projects": {
       "title": "Proyectos",
@@ -1412,6 +1414,72 @@
     "success": {
       "creditsGranted": "Créditos otorgados con éxito",
       "purchaseComplete": "Compra completada con éxito"
+    }
+  },
+  "Affiliate": {
+    "page": {
+      "title": "Afiliación",
+      "description": "Comparte tu enlace y gana una prima por cada organización que traigas.",
+      "payoutNotice": "Las primas las paga manualmente un administrador una vez transcurrido el periodo de carencia."
+    },
+    "link": {
+      "title": "Tu enlace de referido",
+      "description": "El ref te pertenece: es el mismo para todas tus organizaciones.",
+      "codeLabel": "Tu ref",
+      "codePlaceholder": "tu-nombre",
+      "codeHelp": "Minúsculas, dígitos y guiones, 32 caracteres máximo. Único en toda la aplicación.",
+      "save": "Guardar",
+      "saving": "Guardando...",
+      "copy": "Copiar"
+    },
+    "stats": {
+      "referredAccounts": "Cuentas referidas",
+      "waitingPeriod": "En periodo de carencia",
+      "waitingCount": "{count, plural, =0 {ninguna prima} one {# prima} other {# primas}}",
+      "commissionDue": "Comisión pendiente",
+      "totalPaid": "Total pagado"
+    },
+    "validation": {
+      "codeMin": "El código debe tener al menos 3 caracteres",
+      "codeMax": "El código no puede superar los 32 caracteres",
+      "codePattern": "Solo minúsculas, dígitos y guiones"
+    },
+    "success": {
+      "codeSaved": "Ref guardado",
+      "linkCopied": "Enlace copiado"
+    },
+    "errors": {
+      "unauthorized": "Acceso no autorizado",
+      "codeSaveFailed": "No se pudo guardar el ref"
+    },
+    "admin": {
+      "title": "Afiliados",
+      "description": "Comisiones pendientes y pagos del programa de afiliación.",
+      "tableTitle": "{count, plural, =0 {Ningún afiliado} one {# afiliado} other {# afiliados}}",
+      "columns": {
+        "code": "Ref",
+        "status": "Estado",
+        "referred": "Referidos",
+        "waiting": "En carencia",
+        "due": "Pendiente",
+        "paid": "Pagado",
+        "actions": "Acciones"
+      },
+      "empty": "Todavía no hay afiliados",
+      "markPaid": "Marcar pagado",
+      "markPaidTitle": "Registrar el pago",
+      "markPaidDescription": "Confirma que has transferido {amount} al afiliado {code}. El registro es definitivo.",
+      "reference": "Referencia de la transferencia",
+      "referencePlaceholder": "TRF-2026-001",
+      "cancel": "Cancelar",
+      "confirmPaid": "Confirmar",
+      "recording": "Registrando...",
+      "payoutRecorded": "Pago registrado",
+      "nothingDue": "No hay comisión pendiente para este afiliado",
+      "payoutFailed": "No se pudo registrar el pago",
+      "unauthorized": "Acceso no autorizado",
+      "previous": "Anterior",
+      "next": "Siguiente"
     }
   }
 }

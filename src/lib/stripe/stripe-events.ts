@@ -7,6 +7,10 @@ import {
 } from '@/db/repositories/user-repository'
 import {logger} from '@/lib/logger'
 import {
+  recordBountyForPaidInvoiceService,
+  refundBountyBySourceService,
+} from '@/services/facades/affiliate-service-facade'
+import {
   allocateMonthlyCreditsService,
   completeCreditPackPurchaseService,
 } from '@/services/facades/credit-service-facade'
@@ -121,6 +125,24 @@ export async function onStripeEvent(event: Stripe.Event) {
           } catch (error) {
             logger.error('❌ Erreur allocation crédits mensuels:', error)
           }
+        }
+
+        try {
+          await handleInvoicePaidAffiliateBounty(invoice)
+        } catch (error) {
+          logger.error('❌ Erreur prime affiliation:', error)
+        }
+        break
+      }
+
+      case 'charge.refunded': {
+        logger.info('↩️ Charge refunded:', event.data.object.id)
+        const charge = event.data.object as Stripe.Charge
+
+        try {
+          await handleChargeRefundedAffiliateBounty(charge)
+        } catch (error) {
+          logger.error('❌ Erreur remboursement prime affiliation:', error)
         }
         break
       }
@@ -936,4 +958,73 @@ async function handleCreditPackPurchase(
     credits,
     sessionId: session.id,
   })
+}
+
+/**
+ * Enregistre la prime d'affiliation d'une facture réellement encaissée.
+ *
+ * Deux filtres portent la correction du calcul :
+ * - `amount_paid > 0`, qui écarte les factures d'essai. Stripe renvoie bien un
+ *   `payment_status: 'paid'` pour un essai à zéro, s'y fier verserait une prime
+ *   sur un client qui n'a jamais payé.
+ * - l'identifiant de facture comme clé d'idempotence, qui rend l'opération sûre
+ *   au rejeu — Stripe ne garantit ni l'unicité ni l'ordre de livraison.
+ */
+async function handleInvoicePaidAffiliateBounty(
+  invoice: Stripe.Invoice
+): Promise<void> {
+  const amountPaid = invoice.amount_paid ?? 0
+  if (amountPaid <= 0) {
+    logger.info('🎁 Facture à zéro (essai) - pas de prime affiliation')
+    return
+  }
+
+  const subscriptionId = (invoice as unknown as {subscription?: string | null})
+    .subscription as string | undefined
+  if (!subscriptionId) return
+
+  const stripeSubscription = (await stripeClient.subscriptions.retrieve(
+    subscriptionId
+  )) as Stripe.Subscription
+
+  const referenceId = stripeSubscription.metadata?.referenceId
+  const planCode = stripeSubscription.metadata?.plan
+  if (!referenceId || !planCode) {
+    logger.warn('⚠️ Metadata subscription incomplètes - skip prime affiliation')
+    return
+  }
+
+  const result = await recordBountyForPaidInvoiceService({
+    organizationId: referenceId,
+    planCode,
+    sourceId: invoice.id as string,
+    amountPaidCents: amountPaid,
+    stripeSubscriptionId: subscriptionId,
+  })
+
+  logger.info('🎁 Prime affiliation traitée', {
+    invoiceId: invoice.id,
+    created: result.created,
+    reason: result.reason,
+  })
+}
+
+/**
+ * Annule la prime attachée aux factures d'une charge remboursée.
+ *
+ * Avant versement la prime est annulée, après versement elle est compensée par
+ * une ligne négative : le ledger reste append-only.
+ */
+async function handleChargeRefundedAffiliateBounty(
+  charge: Stripe.Charge
+): Promise<void> {
+  const invoiceId = (charge as unknown as {invoice?: string | null}).invoice
+  if (!invoiceId) return
+
+  const handled = await refundBountyBySourceService(
+    invoiceId,
+    `stripe_refund:${charge.id}`
+  )
+
+  logger.info('↩️ Remboursement prime affiliation traité', {invoiceId, handled})
 }

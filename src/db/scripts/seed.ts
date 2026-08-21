@@ -613,6 +613,24 @@ const seed = async () => {
     ON CONFLICT (key) DO NOTHING;
   `)
 
+  // 12. Insérer le barème du programme d'affiliation
+  // Montants d'exemple : chaque SaaS bâti sur ce boilerplate remplace cette
+  // table par le sien. Rien n'est codé en dur dans le code applicatif.
+  await client.query(`
+    INSERT INTO "affiliate_program_reward" (
+      "plan_code",
+      "bounty_cents",
+      "currency",
+      "hold_days",
+      "is_active"
+    )
+    VALUES
+      ('pro', 5000, 'USD', 30, true),
+      ('enterprise', 15000, 'USD', 30, true),
+      ('lifetime', 10000, 'USD', 30, true)
+    ON CONFLICT (plan_code) DO NOTHING;
+  `)
+
   const end = Date.now()
 
   console.log('✅ Seed inserted in', end - start, 'ms')
@@ -628,6 +646,11 @@ const seed = async () => {
   console.log(
     '🔹 LIFETIME : 20 projets, 50 GB stockage, 5000 crédits/mois (€70 unique, 14j trial)'
   )
+  console.log('')
+  console.log("🎁 Barème d'affiliation créé (exemple, à adapter par SaaS) :")
+  console.log('🔹 PRO : 50 USD, carence 30 jours')
+  console.log('🔹 ENTERPRISE : 150 USD, carence 30 jours')
+  console.log('🔹 LIFETIME : 100 USD, carence 30 jours')
   console.log('')
   console.log('📊 Jeu de test créé avec succès :')
   console.log(
