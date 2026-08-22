@@ -2,6 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import Image from 'next/image'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
@@ -38,6 +39,8 @@ export function EditOrganizationForm({
   organization: Organization
   canEdit: boolean
 }) {
+  const t = useTranslations('Organization.form')
+  const tCommon = useTranslations('Common')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [organizationImage, setOrganizationImage] = useState(
@@ -68,14 +71,14 @@ export function EditOrganizationForm({
     setIsSubmitting(false)
 
     if (result.success) {
-      toast('Succès', {
+      toast(t('successTitle'), {
         description: result.message,
       })
     } else {
       for (const error of result?.errors ?? []) {
         form.setError(error.field, {type: 'manual', message: error.message})
       }
-      toast('Erreur', {
+      toast(t('errorTitle'), {
         description: result.message,
       })
     }
@@ -99,17 +102,17 @@ export function EditOrganizationForm({
         form.setValue('logo', result.imageUrl)
         setOrganizationImage(result.imageUrl)
 
-        toast('Succès', {
+        toast(t('successTitle'), {
           description: result.message,
         })
       } else {
-        toast('Erreur', {
+        toast(t('errorTitle'), {
           description: result.message || "Erreur lors de l'upload",
         })
       }
     } catch (error) {
       console.error("Erreur lors de l'upload:", error)
-      toast('Erreur', {
+      toast(t('errorTitle'), {
         description: "Impossible d'uploader l'image. Veuillez réessayer.",
       })
     } finally {
@@ -139,7 +142,7 @@ export function EditOrganizationForm({
                       {organization.name?.charAt(0)}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500">Aucune image</p>
+                  <p className="text-sm text-gray-500">{t('noImage')}</p>
                 </div>
               </div>
             )}
@@ -162,7 +165,7 @@ export function EditOrganizationForm({
             isUploading={isUploading}
           />
           {isUploading && (
-            <p className="text-muted-foreground text-sm">Upload en cours...</p>
+            <p className="text-muted-foreground text-sm">{t('uploading')}</p>
           )}
         </div>
         <FormField
@@ -170,9 +173,9 @@ export function EditOrganizationForm({
           name="name"
           render={({field}) => (
             <FormItem>
-              <FormLabel>Nom</FormLabel>
+              <FormLabel>{tCommon('fields.name')}</FormLabel>
               <FormControl>
-                <Input placeholder="Nom de l'organisation" {...field} />
+                <Input placeholder={t('namePlaceholder')} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -184,9 +187,9 @@ export function EditOrganizationForm({
           name="slug"
           render={({field}) => (
             <FormItem>
-              <FormLabel>Slug</FormLabel>
+              <FormLabel>{tCommon('fields.slug')}</FormLabel>
               <FormControl>
-                <Input placeholder="slug-de-lorganisation" {...field} />
+                <Input placeholder={t('slugPlaceholder')} {...field} />
               </FormControl>
               <FormDescription>
                 Utilisé dans l&apos;URL de l&apos;organisation. Doit contenir
@@ -202,10 +205,10 @@ export function EditOrganizationForm({
           name="description"
           render={({field}) => (
             <FormItem>
-              <FormLabel>Description</FormLabel>
+              <FormLabel>{tCommon('fields.description')}</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Description de l'organisation"
+                  placeholder={t('descriptionPlaceholder')}
                   className="resize-none"
                   {...field}
                 />
@@ -220,7 +223,7 @@ export function EditOrganizationForm({
           disabled={isSubmitting || !canEdit}
           className="mb-8"
         >
-          {isSubmitting ? 'Mise à jour...' : 'Enregistrer'}
+          {isSubmitting ? t('updating') : tCommon('actions.save')}
         </Button>
       </form>
     </Form>

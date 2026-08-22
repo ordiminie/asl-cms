@@ -1,4 +1,5 @@
 import {notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {getTasksByProjectGroupedByStatusDal} from '@/app/dal/task-dal'
@@ -39,6 +40,8 @@ export default async function TasksPage({
 }: {
   params: Promise<{id: string; slug: string}>
 }) {
+  const t = await getTranslations('ProjectsPages')
+  const tProjects = await getTranslations('Projects')
   const {id, slug} = await params
   const project = await getProjectByIdService(id)
 
@@ -53,18 +56,20 @@ export default async function TasksPage({
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{project.name}</h1>
-          <p className="text-muted-foreground">Gestion des tâches</p>
+          <p className="text-muted-foreground">{t('tasksTitle')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <a href={`/team/${slug}/projects/${id}/edit`}>Modifier le projet</a>
+            <a href={`/team/${slug}/projects/${id}/edit`}>
+              {tProjects('form.editTitle')}
+            </a>
           </Button>
           <CreateTaskModal
             projectId={id}
             organizationId={project.organizationId}
             users={users}
           >
-            <Button>Nouvelle tâche</Button>
+            <Button>{t('newTask')}</Button>
           </CreateTaskModal>
         </div>
       </div>
@@ -74,7 +79,7 @@ export default async function TasksPage({
           <div className="flex h-64 items-center justify-center">
             <div className="text-center">
               <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
-              <p className="text-muted-foreground">Chargement des tâches...</p>
+              <p className="text-muted-foreground">{t('loadingTasks')}</p>
             </div>
           </div>
         }

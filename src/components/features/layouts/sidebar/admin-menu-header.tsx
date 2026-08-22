@@ -1,6 +1,7 @@
 'use client'
 
 import {Settings} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import * as React from 'react'
 
 import {
@@ -10,6 +11,7 @@ import {
 } from '@/components/ui/sidebar'
 
 export function AdminMenuHeader() {
+  const t = useTranslations('AppSidebar.nav')
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -21,9 +23,11 @@ export function AdminMenuHeader() {
             <Settings className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-bold text-red-600">Admin</span>
+            <span className="truncate font-bold text-red-600">
+              {t('adminLabel')}
+            </span>
             <span className="text-muted-foreground truncate text-xs">
-              Panel d&apos;administration
+              {t('adminPanel')}
             </span>
           </div>
         </SidebarMenuButton>

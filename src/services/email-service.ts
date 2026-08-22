@@ -1,5 +1,5 @@
 import {Subscription} from '@better-auth/stripe'
-import {getTranslations} from 'next-intl/server'
+import {getLocale, getTranslations} from 'next-intl/server'
 import {
   type CreateEmailOptions,
   type CreateEmailRequestOptions,
@@ -322,6 +322,7 @@ export const sendNotificationEmailService = async ({
 export const sendSubscriptionCompletedEmailService = async (
   subscription: Subscription
 ) => {
+  const locale = await getLocale()
   const t = await getTranslations('email.user.subscriptionCompleted')
   const fromEmail = await getEmailFrom()
 
@@ -360,11 +361,11 @@ export const sendSubscriptionCompletedEmailService = async (
 
   // Calculer les dates
   const periodEnd = subscription.periodEnd
-    ? new Date(subscription.periodEnd).toLocaleDateString('fr-FR')
+    ? new Date(subscription.periodEnd).toLocaleDateString(locale)
     : 'Non disponible'
 
   const nextBilling = subscription.periodEnd
-    ? new Date(subscription.periodEnd).toLocaleDateString('fr-FR')
+    ? new Date(subscription.periodEnd).toLocaleDateString(locale)
     : 'Non disponible'
 
   await sendEmailService({
@@ -387,6 +388,7 @@ export const sendSubscriptionCompletedEmailService = async (
 export const sendSubscriptionUpdatedEmailService = async (
   subscription: Subscription
 ) => {
+  const locale = await getLocale()
   const t = await getTranslations('email.user.subscriptionUpdated')
   const fromEmail = await getEmailFrom()
 
@@ -425,11 +427,11 @@ export const sendSubscriptionUpdatedEmailService = async (
 
   // Calculer les dates
   const periodEnd = subscription.periodEnd
-    ? new Date(subscription.periodEnd).toLocaleDateString('fr-FR')
+    ? new Date(subscription.periodEnd).toLocaleDateString(locale)
     : 'Non disponible'
 
   const nextBilling = subscription.periodEnd
-    ? new Date(subscription.periodEnd).toLocaleDateString('fr-FR')
+    ? new Date(subscription.periodEnd).toLocaleDateString(locale)
     : 'Non disponible'
 
   await sendEmailService({
@@ -452,6 +454,7 @@ export const sendSubscriptionUpdatedEmailService = async (
 export const sendSubscriptionCanceledEmailService = async (
   subscription: Subscription
 ) => {
+  const locale = await getLocale()
   const t = await getTranslations('email.user.subscriptionCanceled')
   const fromEmail = await getEmailFrom()
 
@@ -489,10 +492,10 @@ export const sendSubscriptionCanceledEmailService = async (
     : 'Non défini'
 
   // Calculer les dates
-  const canceledAt = new Date().toLocaleDateString('fr-FR')
+  const canceledAt = new Date().toLocaleDateString(locale)
 
   const periodEnd = subscription.periodEnd
-    ? new Date(subscription.periodEnd).toLocaleDateString('fr-FR')
+    ? new Date(subscription.periodEnd).toLocaleDateString(locale)
     : 'Non disponible'
 
   await sendEmailService({
@@ -515,6 +518,7 @@ export const sendSubscriptionCanceledEmailService = async (
 export const sendSubscriptionDeletedEmailService = async (
   subscription: Subscription
 ) => {
+  const locale = await getLocale()
   const t = await getTranslations('email.user.subscriptionDeleted')
   const fromEmail = await getEmailFrom()
 
@@ -552,7 +556,7 @@ export const sendSubscriptionDeletedEmailService = async (
     : 'Non défini'
 
   // Date de suppression
-  const deletedAt = new Date().toLocaleDateString('fr-FR')
+  const deletedAt = new Date().toLocaleDateString(locale)
 
   await sendEmailService({
     to: user.email,

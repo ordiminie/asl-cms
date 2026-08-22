@@ -1,7 +1,7 @@
 'use client'
 
 import {formatDistanceToNow} from 'date-fns'
-import {fr} from 'date-fns/locale'
+import {useLocale, useTranslations} from 'next-intl'
 import {useState} from 'react'
 
 import {
@@ -18,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {Notification} from '@/services/types/domain/notification-types'
 
 import NotificationIcon from './notification-icon'
@@ -33,6 +34,8 @@ export default function NotificationItem({
   onUpdate,
   onDelete,
 }: NotificationItemProps) {
+  const t = useTranslations('Notifications')
+  const locale = useLocale()
   const [loading, setLoading] = useState(false)
 
   const handleMarkAsRead = async () => {
@@ -83,7 +86,7 @@ export default function NotificationItem({
 
   const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
     addSuffix: true,
-    locale: fr,
+    locale: getDateFnsLocale(locale),
   })
 
   const handleCardClick = async () => {
@@ -125,7 +128,7 @@ export default function NotificationItem({
             {!notification.read && (
               <div
                 className="h-2 w-2 rounded-full bg-blue-500"
-                title="Non lue"
+                title={t('unread')}
               />
             )}
 

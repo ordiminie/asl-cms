@@ -1,5 +1,6 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {toast} from 'sonner'
 
@@ -29,6 +30,7 @@ type EmailsTestFormProps = {
 }
 
 export default function EmailsTestForm({emailRegistry}: EmailsTestFormProps) {
+  const t = useTranslations('AdminPages')
   const [selectedEmailId, setSelectedEmailId] = useState<string>('')
   const [params, setParams] = useState<Record<string, string>>({})
   const [isPending, startTransition] = useTransition()
@@ -53,7 +55,7 @@ export default function EmailsTestForm({emailRegistry}: EmailsTestFormProps) {
 
   const handleSubmit = () => {
     if (!selectedEmailId || !selectedEmail) {
-      toast.error('Please select an email')
+      toast.error(t('selectEmailError'))
       return
     }
 
@@ -62,7 +64,7 @@ export default function EmailsTestForm({emailRegistry}: EmailsTestFormProps) {
       .map((param) => param.label)
 
     if (missingFields.length > 0) {
-      toast.error(`Missing required fields: ${missingFields.join(', ')}`)
+      toast.error(t('missingFields', {fields: missingFields.join(', ')}))
       return
     }
 
@@ -80,17 +82,15 @@ export default function EmailsTestForm({emailRegistry}: EmailsTestFormProps) {
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle>Email Test Configuration</CardTitle>
-          <CardDescription>
-            Select an email type and configure parameters
-          </CardDescription>
+          <CardTitle>{t('emailConfigTitle')}</CardTitle>
+          <CardDescription>{t('emailConfigDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email-select">Email Type</Label>
+            <Label htmlFor="email-select">{t('emailType')}</Label>
             <Select value={selectedEmailId} onValueChange={handleEmailChange}>
               <SelectTrigger id="email-select">
-                <SelectValue placeholder="Select an email" />
+                <SelectValue placeholder={t('selectEmail')} />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(emailRegistry).map((email) => (
@@ -164,8 +164,8 @@ export default function EmailsTestForm({emailRegistry}: EmailsTestFormProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Parameters Preview</CardTitle>
-          <CardDescription>JSON preview of current parameters</CardDescription>
+          <CardTitle>{t('parametersPreview')}</CardTitle>
+          <CardDescription>{t('parametersPreviewDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <pre className="bg-muted max-h-96 overflow-auto rounded-lg p-4 text-sm">

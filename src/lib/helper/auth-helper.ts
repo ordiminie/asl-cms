@@ -23,7 +23,8 @@ export function buildBannedMessage(
     banReason?: string | null
     banExpires?: Date | string | null
   },
-  translations?: BanTranslations
+  translations?: BanTranslations,
+  locale = 'en'
 ): string {
   const t = translations || defaultBanTranslations
 
@@ -39,8 +40,8 @@ export function buildBannedMessage(
 
     if (expiryDate > now) {
       message += ` ${t.expires({
-        date: expiryDate.toLocaleDateString('fr-FR'),
-        time: expiryDate.toLocaleTimeString('fr-FR'),
+        date: expiryDate.toLocaleDateString(locale),
+        time: expiryDate.toLocaleTimeString(locale),
       })}`
     }
   } else {

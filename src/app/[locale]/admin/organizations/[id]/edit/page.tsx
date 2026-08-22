@@ -1,5 +1,6 @@
 import {Coins, FolderKanban, Users, Zap} from 'lucide-react'
 import {notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {
@@ -15,6 +16,8 @@ import {Progress} from '@/components/ui/progress'
 import {getOrganizationByIdService} from '@/services/facades/organization-service-facade'
 
 async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
+  const t = await getTranslations('AdminOrganizations')
+  const tOrgs = await getTranslations('Organizations')
   const {id} = await params
   const [organization, usage, permissions] = await Promise.all([
     getOrganizationByIdService(id),
@@ -50,9 +53,7 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="mb-8 text-2xl font-bold">
-          Modifier l&apos;organisation
-        </h1>
+        <h1 className="mb-8 text-2xl font-bold">{t('editTitle')}</h1>
         <EditOrganizationForm organization={organization} canEdit={canEdit} />
       </div>
 
@@ -62,7 +63,7 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center space-x-2">
                 <Zap className="h-5 w-5" />
-                <span>Utilisation</span>
+                <span>{tOrgs('usage')}</span>
               </CardTitle>
               <Badge variant="outline" className="uppercase">
                 {usage.plan}
@@ -75,7 +76,7 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <FolderKanban className="h-4 w-4" />
-                    Projets
+                    {tOrgs('projects')}
                   </span>
                   <span className="font-medium">
                     {formatUsage(usage.projects, usage.limits.projects)}
@@ -94,7 +95,7 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Membres
+                    {tOrgs('members')}
                   </span>
                   <span className="font-medium">
                     {formatUsage(usage.users, usage.limits.users)}
@@ -113,7 +114,7 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <Coins className="h-4 w-4" />
-                    Crédits
+                    {tOrgs('credits')}
                   </span>
                   <span className="font-medium">{usage.credits}</span>
                 </div>
@@ -132,11 +133,9 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
       </div>
 
       <div className="mx-auto mt-12">
-        <h2 className="mb-4 text-xl font-semibold">
-          Membres de l&apos;organisation
-        </h2>
+        <h2 className="mb-4 text-xl font-semibold">{tOrgs('membersTitle')}</h2>
         {canReadMembers ? (
-          <Suspense fallback={<div>Chargement des membres...</div>}>
+          <Suspense fallback={<div>{tOrgs('loadingMembers')}</div>}>
             <OrganizationMembersTable
               organizationId={organization.id}
               canManageMembers={canManageMembers}

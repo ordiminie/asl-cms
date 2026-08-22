@@ -2,6 +2,7 @@
 import {motion} from 'framer-motion'
 import {Check} from 'lucide-react'
 import Link from 'next/link'
+import {useTranslations} from 'next-intl'
 import React from 'react'
 
 import {PriceRecap} from '@/components/features/checkout-stripe/actions'
@@ -50,6 +51,7 @@ export default function PricingPlans({
   subscriptions?: ActiveSubscription[]
   availablePlans: AvailablePlan[]
 }) {
+  const t = useTranslations('Pricing')
   const subscription = subscriptions?.[0]
   const currentPlan = subscription?.plan || 'free'
   const {data: session} = authClient.useSession()
@@ -139,11 +141,10 @@ export default function PricingPlans({
       <div className="container mx-auto px-4 md:px-6">
         <div className="mb-12 space-y-4 text-center">
           <h2 className="text-foreground text-3xl font-bold tracking-tighter sm:text-5xl">
-            Simple, transparent pricing
+            {t('heading')}
           </h2>
           <p className="text-muted-foreground mx-auto max-w-[600px] md:text-xl/relaxed">
-            Choose the plan that&apos;s right for you and start creating
-            beautiful code snippets for your emails
+            {t('subheading')}
           </p>
 
           {/* Billing Toggle */}
@@ -153,7 +154,7 @@ export default function PricingPlans({
                 htmlFor="billing-toggle"
                 className="text-foreground text-lg font-medium"
               >
-                Monthly
+                {t('billing.monthly')}
               </Label>
               <Switch
                 id="billing-toggle"
@@ -166,10 +167,10 @@ export default function PricingPlans({
                   htmlFor="billing-toggle"
                   className="text-foreground text-lg font-medium"
                 >
-                  Yearly
+                  {t('billing.yearly')}
                 </Label>
                 <span className="inline-block rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-500">
-                  Save 20%
+                  {t('billing.save')}
                 </span>
               </div>
             </div>
@@ -182,14 +183,14 @@ export default function PricingPlans({
             {isCurrentPlan('free') && (
               <div className="absolute -top-4 right-0 left-0 flex justify-center">
                 <span className="rounded-full bg-green-500 px-3 py-1 text-sm font-medium text-black">
-                  Current Plan
+                  {t('badge.currentPlan')}
                 </span>
               </div>
             )}
             <CardHeader>
-              <CardTitle className="text-2xl">Free</CardTitle>
+              <CardTitle className="text-2xl">{t('plans.free.name')}</CardTitle>
               <CardDescription className="text-muted-foreground">
-                Perfect for getting started
+                {t('plans.free.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -211,7 +212,7 @@ export default function PricingPlans({
             <CardFooter>
               <Link href={linkFree} className="w-full">
                 <Button className="bg-background text-foreground border-input hover:bg-muted w-full border">
-                  Get Started
+                  {t('cta.getStarted')}
                 </Button>
               </Link>
             </CardFooter>
@@ -222,18 +223,18 @@ export default function PricingPlans({
             <div className="absolute -top-4 right-0 left-0 flex justify-center">
               {isCurrentPlan('pro') ? (
                 <span className="rounded-full bg-green-500 px-3 py-1 text-sm font-medium text-black">
-                  Current Plan
+                  {t('badge.currentPlan')}
                 </span>
               ) : (
                 <span className="rounded-full bg-yellow-500 px-3 py-1 text-sm font-medium text-black">
-                  Most Popular
+                  {t('badge.mostPopular')}
                 </span>
               )}
             </div>
             <CardHeader>
-              <CardTitle className="text-2xl">Pro</CardTitle>
+              <CardTitle className="text-2xl">{t('plans.pro.name')}</CardTitle>
               <CardDescription className="text-muted-foreground">
-                Perfect for regular users
+                {t('plans.pro.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -248,17 +249,19 @@ export default function PricingPlans({
                   ${isYearly ? prices.pro.yearly : prices.pro.monthly}
                 </motion.div>
                 <div className="text-muted-foreground text-sm">
-                  per {isYearly ? 'year' : 'month'}
+                  {isYearly ? t('perYear') : t('perMonth')}
                 </div>
                 {isYearly && (
                   <div className="text-sm text-yellow-500">
-                    ✨ 2 months free
+                    {t('monthsFree')}
                   </div>
                 )}
 
                 {/* Sélecteur de sièges */}
                 <div className="mt-3 flex items-center justify-center gap-2">
-                  <span className="text-muted-foreground text-xs">Users:</span>
+                  <span className="text-muted-foreground text-xs">
+                    {t('users')}
+                  </span>
                   <Select
                     value={seatsByPlan.pro.toString()}
                     onValueChange={(value) =>
@@ -281,7 +284,7 @@ export default function PricingPlans({
                 {seatsByPlan.pro > 1 && (
                   <div className="text-muted-foreground mt-1 text-xs">
                     ${isYearly ? priceProYearly?.price : priceProMonthly?.price}{' '}
-                    per user
+                    {t('perUser')}
                   </div>
                 )}
               </div>
@@ -294,7 +297,7 @@ export default function PricingPlans({
             <CardFooter>
               <Link href={linkPro} className="w-full">
                 <Button className="w-full bg-yellow-500 text-black hover:bg-yellow-400">
-                  Subscribe Now
+                  {t('cta.subscribe')}
                 </Button>
               </Link>
             </CardFooter>
@@ -305,14 +308,16 @@ export default function PricingPlans({
             {isCurrentPlan('entreprise') && (
               <div className="absolute -top-4 right-0 left-0 flex justify-center">
                 <span className="rounded-full bg-green-500 px-3 py-1 text-sm font-medium text-black">
-                  Current Plan
+                  {t('badge.currentPlan')}
                 </span>
               </div>
             )}
             <CardHeader>
-              <CardTitle className="text-2xl">Enterprise</CardTitle>
+              <CardTitle className="text-2xl">
+                {t('plans.enterprise.name')}
+              </CardTitle>
               <CardDescription className="text-muted-foreground">
-                Pour les grandes organisations
+                {t('plans.enterprise.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -330,12 +335,14 @@ export default function PricingPlans({
                     : prices.entreprise.monthly}
                 </motion.div>
                 <div className="text-muted-foreground text-sm">
-                  per {isYearly ? 'year' : 'month'}
+                  {isYearly ? t('perYear') : t('perMonth')}
                 </div>
 
                 {/* Sélecteur de sièges */}
                 <div className="mt-3 flex items-center justify-center gap-2">
-                  <span className="text-muted-foreground text-xs">Users:</span>
+                  <span className="text-muted-foreground text-xs">
+                    {t('users')}
+                  </span>
                   <Select
                     value={seatsByPlan.entreprise.toString()}
                     onValueChange={(value) =>
@@ -361,7 +368,7 @@ export default function PricingPlans({
                     {isYearly
                       ? priceEntrepriseYearly?.price
                       : priceEntrepriseMonthly?.price}{' '}
-                    per user
+                    {t('perUser')}
                   </div>
                 )}
               </div>
@@ -374,7 +381,7 @@ export default function PricingPlans({
             <CardFooter>
               <Link href={linkEntreprise} className="w-full">
                 <Button className="bg-background text-foreground border-input hover:bg-muted w-full border">
-                  Subscribe Now
+                  {t('cta.subscribe')}
                 </Button>
               </Link>
             </CardFooter>
@@ -385,14 +392,16 @@ export default function PricingPlans({
             {isCurrentPlan('lifetime') && (
               <div className="absolute -top-4 right-0 left-0 flex justify-center">
                 <span className="rounded-full bg-green-500 px-3 py-1 text-sm font-medium text-black">
-                  Current Plan
+                  {t('badge.currentPlan')}
                 </span>
               </div>
             )}
             <CardHeader>
-              <CardTitle className="text-2xl">Lifetime</CardTitle>
+              <CardTitle className="text-2xl">
+                {t('plans.lifetime.name')}
+              </CardTitle>
               <CardDescription className="text-muted-foreground">
-                Perfect for long-term users
+                {t('plans.lifetime.description')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -407,12 +416,12 @@ export default function PricingPlans({
                   ${prices.lifetime.monthly}
                 </motion.div>
                 <div className="text-muted-foreground text-sm">
-                  one-time payment
+                  {t('oneTimePayment')}
                 </div>
 
                 {seatsByPlan.lifetime > 1 && (
                   <div className="text-muted-foreground mt-1 text-xs">
-                    ${priceLifetime?.price} per user
+                    ${priceLifetime?.price} {t('perUser')}
                   </div>
                 )}
               </div>
@@ -425,7 +434,7 @@ export default function PricingPlans({
             <CardFooter>
               <Link href={linkLifetime} className="w-full">
                 <Button className="bg-background text-foreground border-input hover:bg-muted w-full border">
-                  Buy Lifetime
+                  {t('cta.buyLifetime')}
                 </Button>
               </Link>
             </CardFooter>

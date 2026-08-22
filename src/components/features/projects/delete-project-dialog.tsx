@@ -1,6 +1,7 @@
 'use client'
 
 import {Trash2} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 
 import {Button} from '@/components/ui/button'
@@ -25,6 +26,8 @@ export function DeleteProjectDialog({
   projectName,
   onDelete,
 }: DeleteProjectDialogProps) {
+  const t = useTranslations('Projects')
+  const tCommon = useTranslations('Common')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -43,16 +46,14 @@ export function DeleteProjectDialog({
       <DialogTrigger asChild>
         <Button variant="destructive" size="sm">
           <Trash2 className="mr-2 h-4 w-4" />
-          Supprimer
+          {tCommon('actions.delete')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirmer la suppression</DialogTitle>
+          <DialogTitle>{tCommon('messages.confirmDelete')}</DialogTitle>
           <DialogDescription>
-            Êtes-vous sûr de vouloir supprimer le projet &quot;{projectName}
-            &quot; ? Cette action ne peut pas être annulée et supprimera
-            également toutes les tâches associées.
+            {t('form.deleteDescription', {name: projectName})}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -61,7 +62,7 @@ export function DeleteProjectDialog({
             variant="outline"
             onClick={() => setIsDialogOpen(false)}
           >
-            Annuler
+            {tCommon('actions.cancel')}
           </Button>
           <Button
             type="button"
@@ -69,7 +70,7 @@ export function DeleteProjectDialog({
             onClick={handleDelete}
             disabled={isDeleting}
           >
-            {isDeleting ? 'Suppression...' : 'Supprimer'}
+            {isDeleting ? t('form.deleting') : tCommon('actions.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

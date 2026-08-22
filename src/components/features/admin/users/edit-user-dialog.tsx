@@ -2,6 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Edit} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import * as z from 'zod'
@@ -51,6 +52,8 @@ interface EditUserDialogProps {
 }
 
 export function EditUserDialog({user, onSave}: EditUserDialogProps) {
+  const t = useTranslations('AdminUsers')
+  const tCommon = useTranslations('Common')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -79,12 +82,12 @@ export function EditUserDialog({user, onSave}: EditUserDialogProps) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Edit className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Modifier</span>
+          <span className="hidden sm:inline">{tCommon('actions.edit')}</span>
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier l&apos;utilisateur</DialogTitle>
+          <DialogTitle>{t('editTitle')}</DialogTitle>
           <DialogDescription>
             Modifiez les informations de l&apos;utilisateur et cliquez sur
             Enregistrer.
@@ -97,7 +100,7 @@ export function EditUserDialog({user, onSave}: EditUserDialogProps) {
               name="name"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Nom</FormLabel>
+                  <FormLabel>{tCommon('fields.name')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -110,7 +113,7 @@ export function EditUserDialog({user, onSave}: EditUserDialogProps) {
               name="email"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{tCommon('fields.email')}</FormLabel>
                   <FormControl>
                     <Input {...field} type="email" />
                   </FormControl>
@@ -123,19 +126,23 @@ export function EditUserDialog({user, onSave}: EditUserDialogProps) {
               name="visibility"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Visibilité</FormLabel>
+                  <FormLabel>{tCommon('fields.visibility')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner la visibilité" />
+                        <SelectValue placeholder={t('selectVisibility')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="private">Privé</SelectItem>
+                      <SelectItem value="public">
+                        {tCommon('states.public')}
+                      </SelectItem>
+                      <SelectItem value="private">
+                        {tCommon('states.private')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -148,10 +155,10 @@ export function EditUserDialog({user, onSave}: EditUserDialogProps) {
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
               >
-                Annuler
+                {tCommon('actions.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                {isSubmitting ? t('saving') : tCommon('actions.save')}
               </Button>
             </DialogFooter>
           </form>

@@ -11,6 +11,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import {arrayMove} from '@dnd-kit/sortable'
+import {useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {toast} from 'sonner'
 
@@ -30,6 +31,7 @@ interface TaskBoardProps {
 }
 
 export function TaskBoardComponent({tasks, usersMap = {}}: TaskBoardProps) {
+  const t = useTranslations('Tasks')
   const [activeTask, setActiveTask] = useState<TaskDTO | null>(null)
   const [localTasks, setLocalTasks] = useState(tasks)
   const [syncedTasks, setSyncedTasks] = useState(tasks)
@@ -162,10 +164,10 @@ export function TaskBoardComponent({tasks, usersMap = {}}: TaskBoardProps) {
           if (!response.success) {
             toast.error(response.message)
           } else {
-            toast.success('Ordre des tâches mis à jour')
+            toast.success(t('actions.updateOrder'))
           }
         } catch {
-          toast.error('Erreur lors de la mise à jour')
+          toast.error(t('actions.orderUpdateError'))
         }
       })
     }
@@ -181,19 +183,19 @@ export function TaskBoardComponent({tasks, usersMap = {}}: TaskBoardProps) {
       <div className="flex h-full gap-6">
         <TaskColumn
           status="todo"
-          title="À faire"
+          title={t('board.columns.todo')}
           tasks={localTasks.todo}
           usersMap={usersMap}
         />
         <TaskColumn
           status="in_progress"
-          title="En cours"
+          title={t('board.columns.in_progress')}
           tasks={localTasks.in_progress}
           usersMap={usersMap}
         />
         <TaskColumn
           status="done"
-          title="Terminé"
+          title={t('board.columns.done')}
           tasks={localTasks.done}
           usersMap={usersMap}
         />

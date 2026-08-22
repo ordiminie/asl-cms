@@ -1,5 +1,6 @@
 'use client'
 import {Plus} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {useDebounce} from 'react-use'
 import {toast} from 'sonner'
@@ -34,6 +35,8 @@ export function OrganizationAddMemberForm({
   organizationId: string
   existingMemberIds: string[]
 }) {
+  const t = useTranslations('Organization.invite')
+  const tRoles = useTranslations('Organization.roles')
   const [email, setEmail] = useState('')
   const [searchValue, setSearchValue] = useState('')
   const [results, setResults] = useState<UserDTO[]>([])
@@ -83,7 +86,7 @@ export function OrganizationAddMemberForm({
 
   function handleInvite() {
     if (!selectedUser) {
-      toast.error('Veuillez sélectionner un utilisateur')
+      toast.error(t('selectUser'))
       return
     }
 
@@ -97,7 +100,7 @@ export function OrganizationAddMemberForm({
       )
 
       if (res.success) {
-        toast.success(res.message || 'Membre invité avec succès')
+        toast.success(res.message || t('success'))
         setEmail('')
         setSelectedUser(null)
         setResults([])
@@ -114,27 +117,24 @@ export function OrganizationAddMemberForm({
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Plus className="mr-2 h-4 w-4" />
-          Ajouter un membre
+          {t('addMember')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite a Team Member</DialogTitle>
-          <DialogDescription>
-            Entrez l&apos;adresse email de l&apos;utilisateur que vous souhaitez
-            inviter.
-          </DialogDescription>
+          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
         <div className="pt-6">
           {/* Input Email */}
           <div className="mb-8">
             <Label className="mb-3 block text-sm font-medium">
-              Email address
+              {t('emailLabel')}
             </Label>
             <div className="relative">
               <Input
                 type="email"
-                placeholder="steve.wozniak@example.com"
+                placeholder={t('emailPlaceholder')}
                 value={email}
                 onChange={(e) => handleSearch(e.target.value)}
                 disabled={isPending}
@@ -185,7 +185,7 @@ export function OrganizationAddMemberForm({
           {selectedUser && (
             <div className="mb-8">
               <Label className="mb-3 block text-sm font-medium">
-                Utilisateur sélectionné
+                {t('selectedUser')}
               </Label>
               <div className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3">
                 <div className="flex items-center space-x-3">
@@ -208,7 +208,7 @@ export function OrganizationAddMemberForm({
                   }}
                   className="text-green-700 hover:text-green-900"
                 >
-                  Changer
+                  {t('change')}
                 </Button>
               </div>
             </div>
@@ -217,7 +217,7 @@ export function OrganizationAddMemberForm({
           {/* Sélection du rôle */}
           <div className="mb-6">
             <Label className="mb-3 block text-sm font-medium">
-              Select role
+              {t('selectRoleLabel')}
             </Label>
             <RadioGroup
               value={selectedRole}
@@ -234,10 +234,10 @@ export function OrganizationAddMemberForm({
                 />
                 <div className="flex-1">
                   <Label htmlFor="admin" className="cursor-pointer font-medium">
-                    Admin
+                    {tRoles('ADMIN')}
                   </Label>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Invite users, update payment, and delete the team.
+                    {t('adminDescription')}
                   </p>
                 </div>
               </div>
@@ -252,10 +252,10 @@ export function OrganizationAddMemberForm({
                     htmlFor="member"
                     className="cursor-pointer font-medium"
                   >
-                    Member
+                    {tRoles('MEMBER')}
                   </Label>
                   <p className="text-muted-foreground mt-1 text-sm">
-                    Manage emails, domains, and webhooks.
+                    {t('memberDescription')}
                   </p>
                 </div>
               </div>
@@ -269,7 +269,7 @@ export function OrganizationAddMemberForm({
               disabled={isPending || !selectedUser}
               className="w-full"
             >
-              {isPending ? 'Envoi en cours...' : 'Invite'}
+              {isPending ? t('sending') : t('submit')}
             </Button>
           </div>
         </div>

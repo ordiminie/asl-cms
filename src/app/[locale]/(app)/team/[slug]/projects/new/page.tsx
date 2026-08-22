@@ -1,5 +1,6 @@
 import {Metadata} from 'next'
 import {forbidden, notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 
 import {getOrganizationBySlugDal} from '@/app/dal/organization-dal'
 import {CreateProjectForm} from '@/components/features/projects/create-project-form'
@@ -11,9 +12,12 @@ import {
   checkProjectCreationLimit,
 } from '@/services/authorization/project-authorization'
 
-export const metadata: Metadata = {
-  title: 'Nouveau projet',
-  description: 'Créer un nouveau projet',
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('Projects')
+  return {
+    title: t('form.newProject'),
+    description: t('form.createTitle'),
+  }
 }
 
 interface NewProjectPageProps {
@@ -23,6 +27,7 @@ interface NewProjectPageProps {
 }
 
 export default async function NewProjectPage({params}: NewProjectPageProps) {
+  const t = await getTranslations('Projects')
   const {slug} = await params
 
   // Récupérer l'organisation par slug
@@ -52,7 +57,7 @@ export default async function NewProjectPage({params}: NewProjectPageProps) {
   return (
     <div className="space-y-6">
       <div className="max-w-2xl">
-        <h1 className="mb-8 text-2xl font-bold">Créer un nouveau projet</h1>
+        <h1 className="mb-8 text-2xl font-bold">{t('form.createTitle')}</h1>
         <CreateProjectForm
           organization={organization}
           organizationSlug={slug}

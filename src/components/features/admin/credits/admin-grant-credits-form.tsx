@@ -1,6 +1,7 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
+import {useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {useForm, useWatch} from 'react-hook-form'
 import {toast} from 'sonner'
@@ -33,28 +34,34 @@ import {Textarea} from '@/components/ui/textarea'
 
 import {OrganizationSearch} from './organization-search'
 
-const formSchema = z.object({
-  organizationId: z
-    .string()
-    .uuid({message: "L'ID de l'organisation est invalide"}),
-  amount: z
-    .number()
-    .positive({message: 'Le montant doit être positif'})
-    .max(10000, {message: 'Le montant maximum est 10000 crédits'}),
-  reason: z.string().max(500).optional(),
-  hasExpiration: z.boolean(),
-  expiresAt: z.date().nullable().optional(),
-})
+const createFormSchema = (t: (key: string) => string) =>
+  z.object({
+    organizationId: z
+      .string()
+      .uuid({message: t('validation.organizationIdInvalid')}),
+    amount: z
+      .number()
+      .positive({message: t('validation.positive')})
+      .max(10000, {message: t('validation.max')}),
+    reason: z.string().max(500).optional(),
+    hasExpiration: z.boolean(),
+    expiresAt: z.date().nullable().optional(),
+  })
 
-type FormValues = z.infer<typeof formSchema>
-type FormInput = z.input<typeof formSchema>
+type FormSchema = ReturnType<typeof createFormSchema>
+
+type FormValues = z.infer<FormSchema>
+type FormInput = z.input<FormSchema>
 
 export function AdminGrantCreditsForm() {
+  const t = useTranslations('AdminCredits')
+  const tCommon = useTranslations('Common')
+  const schema = createFormSchema(t)
   const [isPending, startTransition] = useTransition()
   const [organizationName, setOrganizationName] = useState('')
 
   const form = useForm<FormInput, unknown, FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       organizationId: '',
       amount: 0,
@@ -87,13 +94,13 @@ export function AdminGrantCreditsForm() {
       const result = await grantCreditsAction(input)
 
       if (result.success) {
-        toast('Succès', {
+        toast(t('successTitle'), {
           description: result.message,
         })
         form.reset()
         setOrganizationName('')
       } else {
-        toast('Erreur', {
+        toast(t('errorTitle'), {
           description: result.message,
         })
       }
@@ -103,7 +110,7 @@ export function AdminGrantCreditsForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Accorder des crédits</CardTitle>
+        <CardTitle>{t('grantTitle')}</CardTitle>
         <CardDescription>
           Accordez des crédits bonus à une organisation
         </CardDescription>
@@ -112,7 +119,7 @@ export function AdminGrantCreditsForm() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormItem>
-              <FormLabel>Organisation</FormLabel>
+              <FormLabel>{tCommon('fields.organization')}</FormLabel>
               <OrganizationSearch
                 onSelect={handleOrganizationSelect}
                 selectedOrganizationId={organizationId}
@@ -128,18 +135,18 @@ export function AdminGrantCreditsForm() {
               name="amount"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Nombre de crédits</FormLabel>
+                  <FormLabel>{t('amountLabel')}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       min={1}
                       max={10000}
-                      placeholder="100"
+                      placeholder={t('amountPlaceholder')}
                       {...field}
                       onChange={(e) => field.onChange(Number(e.target.value))}
                     />
                   </FormControl>
-                  <FormDescription>Maximum 10000 crédits</FormDescription>
+                  <FormDescription>{t('amountHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -150,12 +157,9 @@ export function AdminGrantCreditsForm() {
               name="reason"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Raison (optionnel)</FormLabel>
+                  <FormLabel>{t('reasonLabel')}</FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Bonus de bienvenue, geste commercial..."
-                      {...field}
-                    />
+                    <Textarea placeholder={t('reasonPlaceholder')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -169,11 +173,9 @@ export function AdminGrantCreditsForm() {
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">
-                      Date d&apos;expiration
+                      {t('expiresAt')}
                     </FormLabel>
-                    <FormDescription>
-                      Les crédits expireront après cette date
-                    </FormDescription>
+                    <FormDescription>{t('expiresHint')}</FormDescription>
                   </div>
                   <FormControl>
                     <Switch
@@ -191,7 +193,7 @@ export function AdminGrantCreditsForm() {
                 name="expiresAt"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Date d&apos;expiration</FormLabel>
+                    <FormLabel>{t('expiresAt')}</FormLabel>
                     <FormControl>
                       <Input
                         type="date"
@@ -219,7 +221,7 @@ export function AdminGrantCreditsForm() {
               disabled={isPending || !organizationId}
               className="w-full"
             >
-              {isPending ? 'Attribution en cours...' : 'Accorder les crédits'}
+              {isPending ? t('submitting') : t('submit')}
             </Button>
           </form>
         </Form>

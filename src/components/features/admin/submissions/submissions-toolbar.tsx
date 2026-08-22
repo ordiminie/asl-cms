@@ -1,6 +1,7 @@
 'use client'
 
 import {Search, X} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import React, {useEffect, useRef, useState} from 'react'
 import {useDebounce} from 'react-use'
 
@@ -37,6 +38,7 @@ export function SubmissionsToolbar({
   onReadChange,
   readFilter,
 }: SubmissionsToolbarProps) {
+  const t = useTranslations('AdminSubmissions')
   const [searchValue, setSearchValue] = useState(initialSearch)
   const isUserTyping = useRef(false)
 
@@ -84,7 +86,7 @@ export function SubmissionsToolbar({
             <div className="relative flex w-[250px] items-center">
               <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
               <Input
-                placeholder="Rechercher..."
+                placeholder={t('filters.searchPlaceholder')}
                 className="pr-8 pl-8"
                 value={searchValue}
                 onChange={handleSearchChange}
@@ -105,24 +107,24 @@ export function SubmissionsToolbar({
 
           <Select value={typeFilter} onValueChange={onTypeChange}>
             <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Type" />
+              <SelectValue placeholder={t('filters.typePlaceholder')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous types</SelectItem>
-              <SelectItem value="contact">Contact</SelectItem>
-              <SelectItem value="feedback">Feedback</SelectItem>
-              <SelectItem value="support">Support</SelectItem>
+              <SelectItem value="all">{t('types.all')}</SelectItem>
+              <SelectItem value="contact">{t('types.contact')}</SelectItem>
+              <SelectItem value="feedback">{t('types.feedback')}</SelectItem>
+              <SelectItem value="support">{t('types.support')}</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={readFilter} onValueChange={onReadChange}>
             <SelectTrigger className="w-[130px]">
-              <SelectValue placeholder="Statut" />
+              <SelectValue placeholder={t('filters.statusPlaceholder')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="false">Non lus</SelectItem>
-              <SelectItem value="true">Lus</SelectItem>
+              <SelectItem value="all">{t('filters.all')}</SelectItem>
+              <SelectItem value="false">{t('filters.unread')}</SelectItem>
+              <SelectItem value="true">{t('filters.read')}</SelectItem>
             </SelectContent>
           </Select>
 
@@ -132,7 +134,9 @@ export function SubmissionsToolbar({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-sm">Afficher</span>
+          <span className="text-muted-foreground text-sm">
+            {t('filters.show')}
+          </span>
           <Select value={perPage} onValueChange={onPerPageChange}>
             <SelectTrigger className="w-[70px]">
               <SelectValue placeholder="20" />

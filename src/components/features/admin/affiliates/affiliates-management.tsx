@@ -1,7 +1,7 @@
 'use client'
 
 import {useRouter, useSearchParams} from 'next/navigation'
-import {useTranslations} from 'next-intl'
+import {useLocale, useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {toast} from 'sonner'
 
@@ -37,8 +37,12 @@ type AffiliatesManagementProps = {
   total: number
 }
 
-const formatAmount = (cents: number, currency: string): string =>
-  new Intl.NumberFormat('fr-FR', {style: 'currency', currency}).format(
+const formatAmount = (
+  cents: number,
+  currency: string,
+  locale: string
+): string =>
+  new Intl.NumberFormat(locale, {style: 'currency', currency}).format(
     cents / 100
   )
 
@@ -49,6 +53,7 @@ export function AffiliatesManagement({
   total,
 }: AffiliatesManagementProps) {
   const t = useTranslations('Affiliate.admin')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -114,13 +119,13 @@ export function AffiliatesManagement({
                     {row.referredOrganizations}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {formatAmount(row.waitingCents, row.currency)}
+                    {formatAmount(row.waitingCents, row.currency, locale)}
                   </TableCell>
                   <TableCell>
-                    {formatAmount(row.dueCents, row.currency)}
+                    {formatAmount(row.dueCents, row.currency, locale)}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {formatAmount(row.paidCents, row.currency)}
+                    {formatAmount(row.paidCents, row.currency, locale)}
                   </TableCell>
                   <TableCell className="text-right">
                     <MarkPaidDialog row={row} />
@@ -161,6 +166,7 @@ export function AffiliatesManagement({
 
 function MarkPaidDialog({row}: {row: AdminAffiliateRowDTO}) {
   const t = useTranslations('Affiliate.admin')
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const [reference, setReference] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -194,7 +200,7 @@ function MarkPaidDialog({row}: {row: AdminAffiliateRowDTO}) {
           <DialogTitle>{t('markPaidTitle')}</DialogTitle>
           <DialogDescription>
             {t('markPaidDescription', {
-              amount: formatAmount(row.dueCents, row.currency),
+              amount: formatAmount(row.dueCents, row.currency, locale),
               code: row.code,
             })}
           </DialogDescription>

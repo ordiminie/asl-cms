@@ -7,6 +7,7 @@ import {
   useStripe,
 } from '@stripe/react-stripe-js'
 import {loadStripe, Stripe} from '@stripe/stripe-js'
+import {useTranslations} from 'next-intl'
 import React, {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -24,6 +25,7 @@ type CheckoutButtonProps = {
 //Numéro : 4242 4242 4242 4242
 // Composant pour le formulaire de configuration du mode de paiement
 function CheckoutForm() {
+  const t = useTranslations('Checkout.reactStripe')
   const stripe = useStripe()
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
@@ -45,11 +47,9 @@ function CheckoutForm() {
     })
 
     if (error) {
-      toast.error('Échec de la configuration', {
+      toast.error(t('setupFailed'), {
         description:
-          error instanceof Error
-            ? error.message
-            : "Une erreur est survenue lors de la configuration de l'abonnement",
+          error instanceof Error ? error.message : t('setupFailedDescription'),
       })
     }
 
@@ -64,7 +64,7 @@ function CheckoutForm() {
         disabled={!stripe || isProcessing}
         className="mt-4 w-full"
       >
-        {isProcessing ? 'Configuration en cours...' : "Configurer l'abonnement"}
+        {isProcessing ? t('processing') : t('submit')}
       </Button>
     </form>
   )
@@ -76,6 +76,8 @@ export default function CheckoutButtonReactStripe({
   seats = 1,
   guest = false,
 }: CheckoutButtonProps) {
+  const t = useTranslations('Checkout.reactStripe')
+  const tCommon = useTranslations('Common')
   const [isLoading, setIsLoading] = useState(false)
   const [guestEmail, setGuestEmail] = useState('')
   const [showEmailForm, setShowEmailForm] = useState(false)
@@ -99,8 +101,8 @@ export default function CheckoutButtonReactStripe({
   const handleGuestEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!guestEmail.trim()) {
-      toast.error('Email requis', {
-        description: 'Veuillez saisir votre adresse email pour continuer',
+      toast.error(t('emailRequired'), {
+        description: t('emailRequiredDescription'),
       })
       return
     }
@@ -108,8 +110,8 @@ export default function CheckoutButtonReactStripe({
     // Valider l'email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(guestEmail)) {
-      toast.error('Email invalide', {
-        description: 'Veuillez saisir une adresse email valide',
+      toast.error(t('emailInvalid'), {
+        description: t('emailInvalidDescription'),
       })
       return
     }
@@ -126,15 +128,10 @@ export default function CheckoutButtonReactStripe({
       if (guest) setShowEmailForm(false)
     } catch (error) {
       console.error("Erreur lors de la création de l'abonnement:", error)
-      toast.error(
-        "Une erreur est survenue lors de la création de l'abonnement",
-        {
-          description:
-            error instanceof Error
-              ? error.message
-              : "Une erreur est survenue lors de la création de l'abonnement",
-        }
-      )
+      toast.error(t('subscriptionError'), {
+        description:
+          error instanceof Error ? error.message : t('subscriptionError'),
+      })
     } finally {
       setIsLoading(false)
     }
@@ -144,21 +141,18 @@ export default function CheckoutButtonReactStripe({
   if (guest && showEmailForm && !clientSecret) {
     return (
       <div className="space-y-4">
-        <div className="text-sm text-gray-600">
-          Veuillez saisir votre adresse email pour continuer en tant
-          qu&apos;invité
-        </div>
+        <div className="text-sm text-gray-600">{t('guestIntro')}</div>
         <form onSubmit={handleGuestEmailSubmit} className="space-y-4">
           <div>
             <label htmlFor="guest-email" className="block text-sm font-medium">
-              Adresse email
+              {t('emailLabel')}
             </label>
             <input
               id="guest-email"
               type="email"
               value={guestEmail}
               onChange={(e) => setGuestEmail(e.target.value)}
-              placeholder="votre@email.com"
+              placeholder={t('emailPlaceholder')}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
               required
             />
@@ -170,7 +164,7 @@ export default function CheckoutButtonReactStripe({
               variant={variant}
               className="flex-1 rounded-lg bg-yellow-400 px-4 py-2.5 font-medium text-black transition-colors hover:bg-yellow-500 disabled:opacity-50"
             >
-              {isLoading ? 'Création en cours...' : 'Continuer'}
+              {isLoading ? t('creating') : t('continueLabel')}
             </Button>
             <Button
               type="button"
@@ -178,7 +172,7 @@ export default function CheckoutButtonReactStripe({
               variant="outline"
               className="px-4 py-2.5"
             >
-              Annuler
+              {tCommon('actions.cancel')}
             </Button>
           </div>
         </form>
@@ -195,10 +189,10 @@ export default function CheckoutButtonReactStripe({
         className='disabled:opacity-50" w-full rounded-lg bg-yellow-400 px-4 py-2.5 font-medium text-black transition-colors hover:bg-yellow-500'
       >
         {isLoading
-          ? "Création de l'abonnement..."
+          ? t('creatingSubscription')
           : guest
-            ? "S'abonner en tant qu'invité"
-            : "S'abonner avec Stripe"}
+            ? t('subscribeGuest')
+            : t('subscribeStripe')}
       </Button>
 
       {clientSecret && stripe && (

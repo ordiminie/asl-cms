@@ -1,4 +1,5 @@
 import {useRouter} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {toast} from 'sonner'
 
@@ -34,6 +35,9 @@ export default function InvitationsUsers({
   onInvitationUpdate: (invitationId: string) => void
 }) {
   const router = useRouter()
+  const t = useTranslations('Invitations.received')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false)
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
   const [invitationToAction, setInvitationToAction] =
@@ -65,19 +69,19 @@ export default function InvitationsUsers({
         invitationId: invitationToAction.id,
       })
       if (error) {
-        toast.error("Erreur lors de l'acceptation de l'invitation", {
+        toast.error(t('acceptError'), {
           description:
             error.message || error.statusText || 'Une erreur est survenue',
         })
         return
       }
       onInvitationUpdate(invitationToAction.id)
-      toast.success('Invitation acceptée avec succès')
+      toast.success(t('acceptSuccess'))
       closeModals()
       router.refresh()
     } catch (error) {
       console.error("Erreur lors de l'acceptation de l'invitation:", error)
-      toast.error("Erreur lors de l'acceptation de l'invitation")
+      toast.error(t('acceptError'))
     } finally {
       setIsProcessing(false)
     }
@@ -96,11 +100,11 @@ export default function InvitationsUsers({
         return
       }
       onInvitationUpdate(invitationToAction.id)
-      toast.success('Invitation rejetée avec succès')
+      toast.success(t('rejectSuccess'))
       closeModals()
     } catch (error) {
       console.error("Erreur lors de la réjection de l'invitation:", error)
-      toast.error("Erreur lors de la réjection de l'invitation")
+      toast.error(t('rejectError'))
     } finally {
       setIsProcessing(false)
     }
@@ -110,27 +114,29 @@ export default function InvitationsUsers({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Invitations reçues</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Organisation</TableHead>
-                <TableHead>Inviteur</TableHead>
-                <TableHead>Rôle</TableHead>
-                <TableHead className="hidden sm:table-cell">Statut</TableHead>
+                <TableHead>{tCommon('fields.organization')}</TableHead>
+                <TableHead>{t('inviter')}</TableHead>
+                <TableHead>{tCommon('fields.role')}</TableHead>
                 <TableHead className="hidden sm:table-cell">
-                  Date d&apos;expiration
+                  {tCommon('fields.status')}
                 </TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="hidden sm:table-cell">
+                  {tCommon('fields.expiresAt')}
+                </TableHead>
+                <TableHead>{tCommon('fields.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {invitations.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center">
-                    Aucune invitation reçue
+                    {t('empty')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -147,18 +153,19 @@ export default function InvitationsUsers({
                             {invitation.status}
                           </Badge>
                           <span>
-                            Expire:{' '}
+                            {t('expires')}{' '}
                             {formatDate(
                               invitation.expiresAt
                                 ? new Date(invitation.expiresAt)
-                                : null
+                                : null,
+                              locale
                             )}
                           </span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {invitation.inviter?.name || 'Inviteur inconnue'}
+                      {invitation.inviter?.name || t('unknownInviter')}
                     </TableCell>
 
                     <TableCell>
@@ -171,7 +178,8 @@ export default function InvitationsUsers({
                       {formatDate(
                         invitation.expiresAt
                           ? new Date(invitation.expiresAt)
-                          : null
+                          : null,
+                        locale
                       )}
                     </TableCell>
                     <TableCell>
@@ -206,13 +214,12 @@ export default function InvitationsUsers({
       <Dialog open={isAcceptModalOpen} onOpenChange={setIsAcceptModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmer l&apos;acceptation</DialogTitle>
+            <DialogTitle>{t('acceptTitle')}</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir accepter l&apos;invitation de{' '}
-              <strong>{invitationToAction?.organization?.name}</strong> ?
-              <br />
-              Vous rejoindrez cette organisation en tant que{' '}
-              <strong>{invitationToAction?.role}</strong>.
+              {t('acceptDescription', {
+                name: invitationToAction?.organization?.name ?? '',
+                role: invitationToAction?.role ?? '',
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -221,14 +228,14 @@ export default function InvitationsUsers({
               onClick={closeModals}
               disabled={isProcessing}
             >
-              Annuler
+              {tCommon('actions.cancel')}
             </Button>
             <Button
               variant="default"
               onClick={handleAcceptInvitation}
               disabled={isProcessing}
             >
-              {isProcessing ? 'Acceptation...' : "Accepter l'invitation"}
+              {isProcessing ? t('accepting') : t('accept')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -238,12 +245,11 @@ export default function InvitationsUsers({
       <Dialog open={isRejectModalOpen} onOpenChange={setIsRejectModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmer le rejet</DialogTitle>
+            <DialogTitle>{t('rejectTitle')}</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir rejeter l&apos;invitation de{' '}
-              <strong>{invitationToAction?.organization?.name}</strong> ?
-              <br />
-              Cette action ne peut pas être annulée.
+              {t('rejectDescription', {
+                name: invitationToAction?.organization?.name ?? '',
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -252,14 +258,14 @@ export default function InvitationsUsers({
               onClick={closeModals}
               disabled={isProcessing}
             >
-              Annuler
+              {tCommon('actions.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={handleRejectInvitation}
               disabled={isProcessing}
             >
-              {isProcessing ? 'Rejet...' : "Rejeter l'invitation"}
+              {isProcessing ? t('rejecting') : t('reject')}
             </Button>
           </DialogFooter>
         </DialogContent>

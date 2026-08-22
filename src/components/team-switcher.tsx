@@ -1,6 +1,7 @@
 'use client'
 
 import {Plus} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import * as React from 'react'
 import {toast} from 'sonner'
 
@@ -31,6 +32,7 @@ export function TeamSwitcher({
     id: string
   }[]
 }) {
+  const t = useTranslations('TeamSwitcher')
   const {isMobile} = useSidebar()
   const {currentOrganization, setCurrentOrganization} = useOrganization()
   //console.log('TeamSwitcher currentOrganization', currentOrganization)
@@ -40,7 +42,7 @@ export function TeamSwitcher({
     teams.find((team) => team.id === currentOrganization?.id) || undefined
 
   const handleCreateOrganization = () => {
-    toast.error('You cannot create an organization')
+    toast.error(t('cannotCreate'))
   }
 
   return (
@@ -65,9 +67,9 @@ export function TeamSwitcher({
                   </div>
                 </>
               )}
-              {!activeTeam && teams.length > 0 && <span>Chargement...</span>}
+              {!activeTeam && teams.length > 0 && <span>{t('loading')}</span>}
               {!activeTeam && teams.length === 0 && (
-                <span>Aucune organisation</span>
+                <span>{t('noOrganization')}</span>
               )}
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -78,7 +80,7 @@ export function TeamSwitcher({
             sideOffset={4}
           >
             <DropdownMenuLabel className="text-muted-foreground text-xs">
-              Teams
+              {t('teams')}
             </DropdownMenuLabel>
             {teams.map((team, index) => (
               <DropdownMenuItem
@@ -101,7 +103,9 @@ export function TeamSwitcher({
               <div className="bg-background flex size-6 items-center justify-center rounded-md border">
                 <Plus className="size-4" />
               </div>
-              <div className="text-muted-foreground font-medium">Add team</div>
+              <div className="text-muted-foreground font-medium">
+                {t('addTeam')}
+              </div>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

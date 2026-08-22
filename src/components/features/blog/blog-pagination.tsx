@@ -1,5 +1,6 @@
 import {ChevronLeft, ChevronRight} from 'lucide-react'
 import Link from 'next/link'
+import {useTranslations} from 'next-intl'
 
 import {PaginatedBlogResult} from '@/app/dal/blog-dal'
 import {Button} from '@/components/ui/button'
@@ -21,6 +22,7 @@ export function BlogPagination({
   baseUrl,
   translations,
 }: BlogPaginationProps) {
+  const t = useTranslations('BlogListPage')
   const {page, totalPages, hasNext, hasPrev} = pagination
 
   if (totalPages <= 1) {
@@ -73,7 +75,7 @@ export function BlogPagination({
   return (
     <nav
       className="mt-12 flex flex-col items-center gap-4"
-      aria-label="Pagination"
+      aria-label={t('paginationLabel')}
     >
       <div className="flex items-center gap-2">
         {hasPrev ? (

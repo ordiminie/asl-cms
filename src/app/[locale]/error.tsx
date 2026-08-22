@@ -1,6 +1,7 @@
 'use client' // Error boundaries must be Client Components
 
 import Link from 'next/link'
+import {useTranslations} from 'next-intl'
 import React from 'react'
 import {useEffect} from 'react'
 
@@ -32,6 +33,8 @@ export default function Error({
   error: Error & {digest?: string}
   reset: () => void
 }) {
+  const t = useTranslations('ErrorPage')
+
   useEffect(() => {
     // Log the error to an error reporting service
     console.error(error)
@@ -42,29 +45,25 @@ export default function Error({
       <div className="mx-auto max-w-md text-center">
         <ErrorIcon className="text-destructive mx-auto h-12 w-12" />
         <h1 className="text-foreground mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-          Une erreur est survenue
+          {t('title')}
         </h1>
-        <p className="text-muted-foreground mt-4">
-          Désol&eacute;, une erreur inattendue s&apos;est produite. Veuillez
-          r&eacute;essayer ou contacter l&apos;administrateur si le
-          probl&egrave;me persiste.
-        </p>
+        <p className="text-muted-foreground mt-4">{t('description')}</p>
         <pre className="bg-muted text-muted-foreground mt-6 max-h-40 overflow-x-auto rounded-md p-4 text-left text-xs">
-          {error.message || error.digest || 'Erreur inconnue'}
+          {error.message || error.digest || t('unknown')}
         </pre>
         <div className="mt-6 flex flex-col items-center gap-2">
           <button
             className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary inline-flex items-center rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
             onClick={() => reset()}
           >
-            R&eacute;essayer
+            {t('retry')}
           </button>
           <Link
             href="/"
             className="text-muted-foreground hover:text-primary text-sm underline"
             prefetch={false}
           >
-            Retour &agrave; l&apos;accueil
+            {t('backHome')}
           </Link>
         </div>
       </div>

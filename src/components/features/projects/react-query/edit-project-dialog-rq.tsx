@@ -2,6 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Edit} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import {z} from 'zod'
@@ -27,7 +28,7 @@ import {Textarea} from '@/components/ui/textarea'
 import {ProjectDTO} from '@/services/types/domain/project-types'
 
 const editProjectSchema = z.object({
-  name: z.string().min(1, 'Le nom est requis'),
+  name: z.string().min(1, 'The name is required'),
   description: z.string().optional(),
 })
 
@@ -43,6 +44,8 @@ interface Props {
 }
 
 export function EditProjectDialog({project, onSave, isLoading = false}: Props) {
+  const t = useTranslations('Projects')
+  const tCommon = useTranslations('Common')
   const [open, setOpen] = useState(false)
 
   const form = useForm<EditProjectFormData>({
@@ -66,12 +69,12 @@ export function EditProjectDialog({project, onSave, isLoading = false}: Props) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Edit className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Modifier</span>
+          <span className="hidden sm:inline">{tCommon('actions.edit')}</span>
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier le projet</DialogTitle>
+          <DialogTitle>{t('form.editTitle')}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -80,9 +83,12 @@ export function EditProjectDialog({project, onSave, isLoading = false}: Props) {
               name="name"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Nom du projet</FormLabel>
+                  <FormLabel>{t('form.nameLabel')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nom du projet" {...field} />
+                    <Input
+                      placeholder={t('form.namePlaceholderShort')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -93,9 +99,12 @@ export function EditProjectDialog({project, onSave, isLoading = false}: Props) {
               name="description"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('form.descriptionLabel')}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Description du projet" {...field} />
+                    <Textarea
+                      placeholder={t('form.descriptionShortPlaceholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -111,7 +120,7 @@ export function EditProjectDialog({project, onSave, isLoading = false}: Props) {
                 Annuler
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Mise à jour...' : 'Mettre à jour'}
+                {isLoading ? t('form.updating') : t('form.updateShort')}
               </Button>
             </div>
           </form>

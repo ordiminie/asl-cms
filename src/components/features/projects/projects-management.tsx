@@ -1,10 +1,10 @@
 'use client'
 
 import {formatDistanceToNow} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {Edit, Folder, Loader2, Plus} from 'lucide-react'
 import Link from 'next/link'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {useCallback, useEffect} from 'react'
 import {toast} from 'sonner'
 
@@ -25,6 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {Project} from '@/services/types/domain/project-types'
 
 import {DeleteProjectDialog} from './delete-project-dialog'
@@ -61,6 +62,9 @@ export default function ProjectsManagement({
   permissions,
   searchQuery,
 }: Props) {
+  const t = useTranslations('Projects')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -130,7 +134,7 @@ export default function ProjectsManagement({
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
         <div className="flex items-center justify-between">
-          <CardTitle>Gestion des projets</CardTitle>
+          <CardTitle>{t('management.title')}</CardTitle>
           {permissions.canCreate && (
             <Button asChild>
               <Link href={`/team/${organizationSlug}/projects/new`}>
@@ -154,12 +158,14 @@ export default function ProjectsManagement({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Projet</TableHead>
+              <TableHead>{t('management.project')}</TableHead>
               <TableHead className="hidden xl:table-cell">
-                Description
+                {tCommon('fields.description')}
               </TableHead>
-              <TableHead className="hidden lg:table-cell">Créé</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {t('management.createdAt')}
+              </TableHead>
+              <TableHead>{tCommon('fields.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -174,20 +180,20 @@ export default function ProjectsManagement({
                   <div>
                     <div className="font-medium">{project.name}</div>
                     <div className="text-muted-foreground text-sm xl:hidden">
-                      {project.description || 'Aucune description'}
+                      {project.description || t('management.noDescription')}
                     </div>
                   </div>
                 </TableCell>
                 <TableCell className="hidden xl:table-cell">
                   <div className="truncate">
-                    {project.description || 'Aucune description'}
+                    {project.description || t('management.noDescription')}
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden text-sm lg:table-cell">
                   {project.createdAt &&
                     formatDistanceToNow(new Date(project.createdAt), {
                       addSuffix: true,
-                      locale: fr,
+                      locale: getDateFnsLocale(locale),
                     })}
                 </TableCell>
                 <TableCell>

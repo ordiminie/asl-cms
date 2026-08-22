@@ -1,4 +1,5 @@
 import {notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 
 import {getPostFilesDal} from '@/app/dal/file-dal'
 import {getAllCategoriesDal, getAllHashtagsDal} from '@/app/dal/post-dal'
@@ -12,6 +13,7 @@ type PageProps = {
 }
 
 async function EditPostPage({params}: PageProps) {
+  const t = await getTranslations('AdminPages')
   const {id} = await params
 
   // Récupération du post avec ses relations
@@ -41,9 +43,7 @@ async function EditPostPage({params}: PageProps) {
     <div className="space-y-6">
       <div className="max-w-4xl space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Modifier le post
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('editPost')}</h1>
           <p className="text-muted-foreground">ID: {post.id}</p>
         </div>
 

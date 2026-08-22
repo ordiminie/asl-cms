@@ -1,5 +1,6 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
 import {useEffect, useState} from 'react'
 
 import {useOrganization} from '@/components/context/organization-provider'
@@ -37,6 +38,7 @@ function LoadingSkeleton() {
 }
 
 export function CreditPageContent({packs}: CreditPageContentProps) {
+  const t = useTranslations('CreditsUi')
   const {referenceId} = useOrganization()
   const [loading, setLoading] = useState(true)
   const [balance, setBalance] = useState<CreditBalanceDetails | null>(null)
@@ -78,9 +80,7 @@ export function CreditPageContent({packs}: CreditPageContentProps) {
 
   if (!referenceId) {
     return (
-      <div className="text-muted-foreground">
-        Veuillez sélectionner une organisation
-      </div>
+      <div className="text-muted-foreground">{t('selectOrganization')}</div>
     )
   }
 
@@ -89,11 +89,7 @@ export function CreditPageContent({packs}: CreditPageContentProps) {
   }
 
   if (!balance) {
-    return (
-      <div className="text-muted-foreground">
-        Impossible de charger les crédits
-      </div>
-    )
+    return <div className="text-muted-foreground">{t('loadError')}</div>
   }
 
   return (

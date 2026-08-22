@@ -1,5 +1,6 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 
 import {Input} from '@/components/ui/input'
@@ -31,6 +32,7 @@ export function SubscriptionsToolbar({
   onPerPageChange,
   perPage,
 }: SubscriptionsToolbarProps) {
+  const t = useTranslations('AdminPages')
   const [searchValue, setSearchValue] = useState(initialSearch)
 
   const handleSearchChange = (value: string) => {
@@ -42,7 +44,7 @@ export function SubscriptionsToolbar({
     <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-1 items-center gap-2">
         <Input
-          placeholder="Rechercher un abonnement..."
+          placeholder={t('subscriptionSearchPlaceholder')}
           value={searchValue}
           onChange={(e) => handleSearchChange(e.target.value)}
           className="max-w-sm"

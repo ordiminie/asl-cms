@@ -1,6 +1,6 @@
 import {cacheLife} from 'next/cache'
 import {Metadata} from 'next/types'
-import {setRequestLocale} from 'next-intl/server'
+import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {routing} from '@/i18n/routing'
 
@@ -11,9 +11,10 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('ContactPage.metadata')
   return {
-    title: 'Contact',
-    description: 'Contactez-nous pour toute question ou demande.',
+    title: t('title'),
+    description: t('description'),
   }
 }
 

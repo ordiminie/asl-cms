@@ -1,10 +1,10 @@
 'use client'
 
 import {formatDistanceToNow} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {Building2, Users} from 'lucide-react'
 import Link from 'next/link'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {toast} from 'sonner'
 
 import {
@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {Organization} from '@/services/types/domain/organization-types'
 
 import {DeleteOrganizationDialog} from './delete-organization-dialog'
@@ -52,6 +53,9 @@ export default function OrganizationsManagement({
   permissions,
   searchQuery,
 }: Props) {
+  const t = useTranslations('AdminOrganizations')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -87,7 +91,7 @@ export default function OrganizationsManagement({
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
-        <CardTitle>Gestion des organisations</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <OrganizationsToolbar
@@ -101,13 +105,17 @@ export default function OrganizationsManagement({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Organisation</TableHead>
-              <TableHead className="hidden md:table-cell">Slug</TableHead>
+              <TableHead>{t('organization')}</TableHead>
+              <TableHead className="hidden md:table-cell">
+                {tCommon('fields.slug')}
+              </TableHead>
               <TableHead className="hidden xl:table-cell">
                 Description
               </TableHead>
-              <TableHead className="hidden lg:table-cell">Créée</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {t('createdAt')}
+              </TableHead>
+              <TableHead>{tCommon('fields.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -139,14 +147,14 @@ export default function OrganizationsManagement({
                 </TableCell>
                 <TableCell className="hidden xl:table-cell">
                   <div className="truncate">
-                    {organization.description || 'Aucune description'}
+                    {organization.description || t('noDescription')}
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden text-sm lg:table-cell">
                   {organization.createdAt &&
                     formatDistanceToNow(new Date(organization.createdAt), {
                       addSuffix: true,
-                      locale: fr,
+                      locale: getDateFnsLocale(locale),
                     })}
                 </TableCell>
                 <TableCell>

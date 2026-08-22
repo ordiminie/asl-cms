@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {getCreditPacksDal} from '@/app/dal/credit-dal'
@@ -22,25 +23,24 @@ function LoadingSkeleton() {
 }
 
 export default async function CreditPage() {
+  const t = await getTranslations('Credits')
   const packs = await getCreditPacksDal()
 
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Crédits</h1>
-        <p className="text-muted-foreground">
-          Gérez vos crédits et achetez des packs supplémentaires
-        </p>
+        <h1 className="text-3xl font-bold">{t('page.title')}</h1>
+        <p className="text-muted-foreground">{t('page.description')}</p>
       </div>
 
       <Tabs defaultValue="credits" className="mb-6 w-fit">
         <TabsList>
-          <TabsTrigger value="credits">Credits</TabsTrigger>
+          <TabsTrigger value="credits">{t('tabs.credits')}</TabsTrigger>
           <TabsTrigger value="usage" asChild>
-            <Link href="/account/billing/usage">Usage</Link>
+            <Link href="/account/billing/usage">{t('tabs.usage')}</Link>
           </TabsTrigger>
           <TabsTrigger value="plans" asChild>
-            <Link href="/account/billing/subscription">Plans</Link>
+            <Link href="/account/billing/subscription">{t('tabs.plans')}</Link>
           </TabsTrigger>
         </TabsList>
       </Tabs>

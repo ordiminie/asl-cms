@@ -1,6 +1,7 @@
 'use client'
 
 import {Heart} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useEffect, useOptimistic, useTransition} from 'react'
 import {toast} from 'sonner'
 
@@ -17,6 +18,7 @@ interface LikeButtonProps {
 }
 
 export function LikeButton({postId, initialLikes, className}: LikeButtonProps) {
+  const t = useTranslations('BlogPostPage')
   const [isPending, startTransition] = useTransition()
   const [optimisticLikes, setOptimisticLikes] =
     useOptimistic<number>(initialLikes)
@@ -31,7 +33,7 @@ export function LikeButton({postId, initialLikes, className}: LikeButtonProps) {
     const result = await incrementLikePostById(postId)
 
     if (result.success) {
-      toast.success('Merci pour votre like !', {
+      toast.success(t('likeThanks'), {
         duration: 2000,
       })
     } else {

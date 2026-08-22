@@ -3,6 +3,7 @@
 import {Subscription} from '@better-auth/stripe'
 import {Calendar, CheckCircle} from 'lucide-react'
 import Link from 'next/link'
+import {useLocale, useTranslations} from 'next-intl'
 import React, {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -74,6 +75,10 @@ const fetchSubscriptions = async (
 export default function SubscriptionPage({
   availablePlans,
 }: SubscriptionPageProps) {
+  const t = useTranslations('Subscription')
+  const tCommon = useTranslations('Common')
+  const tCredits = useTranslations('Credits')
+  const locale = useLocale()
   const {referenceId} = useOrganization()
   const {isOwner} = useOrganizationRole()
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
@@ -110,10 +115,8 @@ export default function SubscriptionPage({
 
   const notifyLoadError = (error: unknown) => {
     console.error('Erreur lors du chargement des abonnements:', error)
-    toast.error('Impossible de charger les abonnements', {
-      description: !isOwner
-        ? "Vous n'êtes pas propriétaire de cette organisation"
-        : '',
+    toast.error(t('errors.loadFailed'), {
+      description: !isOwner ? t('errors.notOwnerOfThis') : '',
     })
   }
 
@@ -166,7 +169,7 @@ export default function SubscriptionPage({
       const isCreateMode = !activeSubscription && referenceId
 
       if (!isUpdateMode && !isCreateMode) {
-        toast.error('Impossible de déterminer le mode de subscription')
+        toast.error(t('errors.modeUnknown'))
         return
       }
 
@@ -200,24 +203,22 @@ export default function SubscriptionPage({
       if (error) {
         console.error('Erreur upgrade détails:', error)
         toast.error(
-          error.message || error.statusText || 'Erreur lors de la mise à jour',
+          error.message || error.statusText || t('errors.updateFailed'),
           {
             description: !isOwner
-              ? "Vous n'êtes pas propriétaire de l'organisation"
+              ? t('errors.notOwner')
               : error.message
                 ? ''
                 : JSON.stringify(error),
           }
         )
       } else {
-        toast.success('Redirection vers le paiement...')
+        toast.success(t('success.redirecting'))
       }
     } catch (error) {
       console.error('Erreur upgrade:', error)
-      toast.error('Erreur lors de la mise à jour', {
-        description: !isOwner
-          ? "Vous n'êtes pas propriétaire de cette organisation"
-          : '',
+      toast.error(t('errors.updateFailed'), {
+        description: !isOwner ? t('errors.notOwnerOfThis') : '',
       })
     } finally {
       setActionLoading(null)
@@ -233,23 +234,19 @@ export default function SubscriptionPage({
       })
 
       if (error) {
-        toast.error(error.message || "Erreur lors de l'annulation", {
-          description: !isOwner
-            ? "Vous n'êtes pas propriétaire de cette organisation"
-            : '',
+        toast.error(error.message || t('errors.cancelFailed'), {
+          description: !isOwner ? t('errors.notOwnerOfThis') : '',
         })
       } else if (data?.url) {
         window.location.assign(data.url)
       } else {
-        toast.success('Abonnement annulé')
+        toast.success(t('success.canceled'))
         await loadSubscriptions()
       }
     } catch (error) {
       console.error('Erreur cancel:', error)
-      toast.error("Erreur lors de l'annulation", {
-        description: !isOwner
-          ? "Vous n'êtes pas propriétaire de cette organisation"
-          : '',
+      toast.error(t('errors.cancelFailed'), {
+        description: !isOwner ? t('errors.notOwnerOfThis') : '',
       })
     } finally {
       setActionLoading(null)
@@ -262,21 +259,17 @@ export default function SubscriptionPage({
       const {error} = await authClient.subscription.restore()
 
       if (error) {
-        toast.error(error.message || 'Erreur lors de la restauration', {
-          description: !isOwner
-            ? "Vous n'êtes pas propriétaire de cette organisation"
-            : '',
+        toast.error(error.message || t('errors.restoreFailed'), {
+          description: !isOwner ? t('errors.notOwnerOfThis') : '',
         })
       } else {
-        toast.success('Abonnement restauré avec succès')
+        toast.success(t('success.restored'))
         await loadSubscriptions()
       }
     } catch (error) {
       console.error('Erreur restore:', error)
-      toast.error('Erreur lors de la restauration', {
-        description: !isOwner
-          ? "Vous n'êtes pas propriétaire de cette organisation"
-          : '',
+      toast.error(t('errors.restoreFailed'), {
+        description: !isOwner ? t('errors.notOwnerOfThis') : '',
       })
     } finally {
       setActionLoading(null)
@@ -332,8 +325,9 @@ export default function SubscriptionPage({
       if (activeSubscription.cancelAtPeriodEnd) {
         return (
           <Button variant="outline" disabled className="w-full">
-            À partir du{' '}
-            {formatDate(activeSubscription.periodEnd?.toISOString())}
+            {t('actions.startingFrom', {
+              date: formatDate(activeSubscription.periodEnd?.toISOString()),
+            })}
           </Button>
         )
       }
@@ -345,7 +339,9 @@ export default function SubscriptionPage({
           disabled={actionLoading === 'cancel'}
           className="w-full"
         >
-          {actionLoading === 'cancel' ? 'Annulation...' : 'Passer au gratuit'}
+          {actionLoading === 'cancel'
+            ? t('actions.canceling')
+            : t('actions.downgradeFree')}
         </Button>
       )
     }
@@ -363,8 +359,8 @@ export default function SubscriptionPage({
             className="w-full"
           >
             {actionLoading === 'restore'
-              ? 'Restauration...'
-              : `Continuer ${planName}`}
+              ? t('actions.restoring')
+              : t('actions.continuePlan', {plan: planName})}
           </Button>
         )
       }
@@ -377,7 +373,9 @@ export default function SubscriptionPage({
           disabled={actionLoading === 'cancel'}
           className="w-full"
         >
-          {actionLoading === 'cancel' ? 'Annulation...' : 'Annuler'}
+          {actionLoading === 'cancel'
+            ? t('actions.canceling')
+            : tCommon('actions.cancel')}
         </Button>
       )
     }
@@ -390,8 +388,8 @@ export default function SubscriptionPage({
           className="w-full"
         >
           {actionLoading === `upgrade-${plan.id}`
-            ? 'Mise à jour...'
-            : 'Mettre à jour'}
+            ? t('actions.updating')
+            : t('actions.update')}
         </Button>
       )
     }
@@ -404,15 +402,15 @@ export default function SubscriptionPage({
         className="w-full"
       >
         {actionLoading === `upgrade-${plan.id}`
-          ? 'Redirection...'
-          : `Passer à ${plan.name}`}
+          ? t('actions.redirecting')
+          : t('actions.switchTo', {plan: plan.name})}
       </Button>
     )
   }
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A'
-    return new Date(dateString).toLocaleDateString('fr-FR')
+    if (!dateString) return ''
+    return new Date(dateString).toLocaleDateString(locale)
   }
 
   // Calcul des prix totaux avec le nombre de sièges
@@ -475,42 +473,40 @@ export default function SubscriptionPage({
       <Tabs defaultValue="plans" className="w-fit">
         <TabsList>
           <TabsTrigger value="credits" asChild>
-            <Link href="/account/billing/credit">Credits</Link>
+            <Link href="/account/billing/credit">
+              {tCredits('tabs.credits')}
+            </Link>
           </TabsTrigger>
           <TabsTrigger value="usage" asChild>
-            <Link href="/account/billing/usage">Usage</Link>
+            <Link href="/account/billing/usage">{tCredits('tabs.usage')}</Link>
           </TabsTrigger>
-          <TabsTrigger value="plans">Plans</TabsTrigger>
+          <TabsTrigger value="plans">{tCredits('tabs.plans')}</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {/* Header */}
       <div className="flex flex-col space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Choisissez votre plan</h1>
+        <h1 className="text-3xl font-bold">{t('heading')}</h1>
         <p className="text-muted-foreground">
-          {activeSubscription
-            ? 'Modifiez votre abonnement ou changez de plan'
-            : 'Sélectionnez le plan qui vous convient'}
+          {activeSubscription ? t('subheadingActive') : t('subheadingNew')}
         </p>
 
         {/* Récapitulatif discret de l&apos;offre en cours */}
         {activeSubscription && (
           <p className="text-muted-foreground text-sm italic">
-            Offre &apos;
-            {availablePlans.find(
-              (p: AvailablePlan) => p.id === activeSubscription.plan
-            )?.name || activeSubscription.plan}
-            &apos; ({activeSubscription.seats || 1} siège
-            {activeSubscription.seats && activeSubscription.seats > 1
-              ? 's'
-              : ''}
-            ) - {activeSubscriptionIsYearly ? 'Annuel' : 'Mensuel'} -{' '}
-            {activeSubscription.cancelAtPeriodEnd
-              ? 'se termine'
-              : 'se renouvelle'}{' '}
-            le {formatDate(activeSubscription.periodEnd?.toISOString())}
-            {activeSubscription.cancelAtPeriodEnd &&
-              ', passage au gratuit automatique'}
+            {t('recap', {
+              plan:
+                availablePlans.find(
+                  (p: AvailablePlan) => p.id === activeSubscription.plan
+                )?.name || activeSubscription.plan,
+              seats: activeSubscription.seats || 1,
+              billing: activeSubscriptionIsYearly
+                ? t('billing.yearly')
+                : t('billing.monthly'),
+              ending: activeSubscription.cancelAtPeriodEnd ? 'yes' : 'no',
+              date: formatDate(activeSubscription.periodEnd?.toISOString()),
+              autoFree: activeSubscription.cancelAtPeriodEnd ? 'yes' : 'no',
+            })}
           </p>
         )}
 
@@ -521,7 +517,7 @@ export default function SubscriptionPage({
               htmlFor="billing-toggle"
               className="text-foreground text-lg font-medium"
             >
-              Mensuel
+              {t('billing.monthly')}
             </Label>
             <Switch
               id="billing-toggle"
@@ -534,10 +530,10 @@ export default function SubscriptionPage({
                 htmlFor="billing-toggle"
                 className="text-foreground text-lg font-medium"
               >
-                Annuel
+                {t('billing.yearly')}
               </Label>
               <span className="inline-block rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-500">
-                Économisez 17%
+                {t('billing.save')}
               </span>
             </div>
           </div>
@@ -565,28 +561,36 @@ export default function SubscriptionPage({
               {/* Badges selon l'état */}
               {isCurrent && !isEnding && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
-                  <Badge className="bg-blue-500">Plan actuel</Badge>
+                  <Badge className="bg-blue-500">{t('badge.current')}</Badge>
                 </div>
               )}
               {isEnding && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
                   <Badge className="bg-orange-500">
-                    Se termine le{' '}
-                    {formatDate(activeSubscription?.periodEnd?.toISOString())}
+                    {t('badge.endingOn', {
+                      date: formatDate(
+                        activeSubscription?.periodEnd?.toISOString()
+                      ),
+                    })}
                   </Badge>
                 </div>
               )}
               {isFutureFree && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
                   <Badge className="bg-green-500">
-                    Votre futur plan à partir du{' '}
-                    {formatDate(activeSubscription?.periodEnd?.toISOString())}
+                    {t('badge.futureFree', {
+                      date: formatDate(
+                        activeSubscription?.periodEnd?.toISOString()
+                      ),
+                    })}
                   </Badge>
                 </div>
               )}
               {plan.popular && !isCurrent && !isFutureFree && !isEnding && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
-                  <Badge className="bg-yellow-500 text-black">Populaire</Badge>
+                  <Badge className="bg-yellow-500 text-black">
+                    {t('badge.popular')}
+                  </Badge>
                 </div>
               )}
 
@@ -602,11 +606,11 @@ export default function SubscriptionPage({
                   <div className="text-3xl font-bold">
                     {plan.id === 'free'
                       ? plan.priceDisplay
-                      : `${formatPrice(calculatePrice(plan.id))}/${isYearly ? 'an' : 'mois'}`}
+                      : `${formatPrice(calculatePrice(plan.id))}/${isYearly ? t('billing.perYear') : t('billing.perMonth')}`}
                   </div>
                   {isYearly && plan.id !== 'free' && (
                     <div className="text-sm text-yellow-500">
-                      ✨ 2 mois gratuits
+                      {t('billing.monthsFree')}
                     </div>
                   )}
                   {plan.id !== 'free' && selectedSeats[plan.id] > 1 && (
@@ -614,7 +618,7 @@ export default function SubscriptionPage({
                       {formatPrice(
                         isYearly ? plan.yearlyPrice : (plan.price ?? 0)
                       )}{' '}
-                      par utilisateur
+                      {t('billing.perUser')}
                     </div>
                   )}
                 </div>
@@ -626,10 +630,11 @@ export default function SubscriptionPage({
                     <div className="text-muted-foreground flex items-center justify-center space-x-2">
                       <Calendar className="h-4 w-4" />
                       <span>
-                        Prochaine facturation:{' '}
-                        {formatDate(
-                          activeSubscription.periodEnd?.toISOString()
-                        )}
+                        {t('nextBilling', {
+                          date: formatDate(
+                            activeSubscription.periodEnd?.toISOString()
+                          ),
+                        })}
                       </span>
                     </div>
                   </div>
@@ -650,7 +655,7 @@ export default function SubscriptionPage({
                 {plan.id !== 'free' && (
                   <div className="space-y-2 border-t pt-2">
                     <Label className="text-sm font-medium">
-                      Nombre de sièges
+                      {t('seats.label')}
                     </Label>
                     <div className="flex items-center space-x-2">
                       <Select
@@ -676,16 +681,16 @@ export default function SubscriptionPage({
                         </SelectContent>
                       </Select>
                       <span className="text-muted-foreground text-sm">
-                        utilisateur(s)
+                        {t('seats.unit')}
                       </span>
                       {hasSeatsChanged(plan.id) && (
                         <Badge variant="outline" className="text-orange-600">
-                          Modifié
+                          {t('badge.modified')}
                         </Badge>
                       )}
                     </div>
                     <p className="text-muted-foreground text-xs">
-                      Prix ajusté selon le nombre d&apos;utilisateurs
+                      {t('seats.priceNote')}
                     </p>
                   </div>
                 )}
@@ -701,10 +706,7 @@ export default function SubscriptionPage({
 
       {/* Note d'information */}
       <div className="bg-muted/50 text-muted-foreground rounded-lg p-4 text-center text-sm">
-        <p>
-          Tous les plans incluent une période d&apos;essai gratuite de 14 jours.
-          Vous pouvez annuler à tout moment depuis cette page.
-        </p>
+        <p>{t('trialNote')}</p>
       </div>
     </div>
   )

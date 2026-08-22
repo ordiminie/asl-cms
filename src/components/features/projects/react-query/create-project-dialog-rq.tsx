@@ -1,6 +1,7 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import {z} from 'zod'
@@ -27,7 +28,7 @@ import {Textarea} from '@/components/ui/textarea'
 import {authClient} from '@/lib/better-auth/auth-client'
 
 const createProjectSchema = z.object({
-  name: z.string().min(1, 'Le nom est requis'),
+  name: z.string().min(1, 'The name is required'),
   description: z.string().optional(),
 })
 
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export function CreateProjectDialog({organizationId, trigger}: Props) {
+  const t = useTranslations('Projects')
   const [open, setOpen] = useState(false)
   const createProjectMutation = useCreateProject()
   const user = authClient.useSession()
@@ -73,7 +75,7 @@ export function CreateProjectDialog({organizationId, trigger}: Props) {
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Créer un nouveau projet</DialogTitle>
+          <DialogTitle>{t('form.createTitle')}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -82,9 +84,12 @@ export function CreateProjectDialog({organizationId, trigger}: Props) {
               name="name"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Nom du projet</FormLabel>
+                  <FormLabel>{t('form.nameLabel')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Nom du projet" {...field} />
+                    <Input
+                      placeholder={t('form.namePlaceholderShort')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -95,9 +100,12 @@ export function CreateProjectDialog({organizationId, trigger}: Props) {
               name="description"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Description (optionnel)</FormLabel>
+                  <FormLabel>{t('form.descriptionOptionalLabel')}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Description du projet" {...field} />
+                    <Textarea
+                      placeholder={t('form.descriptionShortPlaceholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -113,7 +121,9 @@ export function CreateProjectDialog({organizationId, trigger}: Props) {
                 Annuler
               </Button>
               <Button type="submit" disabled={createProjectMutation.isPending}>
-                {createProjectMutation.isPending ? 'Création...' : 'Créer'}
+                {createProjectMutation.isPending
+                  ? t('form.creating')
+                  : t('form.createShort')}
               </Button>
             </div>
           </form>

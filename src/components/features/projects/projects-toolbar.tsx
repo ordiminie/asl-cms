@@ -1,6 +1,7 @@
 'use client'
 
 import {Search, X} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 import {useDebounce} from 'react-use'
 
@@ -31,6 +32,7 @@ export function ProjectsToolbar({
   perPage,
   showPerPageSelector = true,
 }: ProjectsToolbarProps) {
+  const t = useTranslations('Projects')
   const [searchValue, setSearchValue] = useState(initialSearch)
 
   useDebounce(
@@ -65,7 +67,7 @@ export function ProjectsToolbar({
           <div className="relative flex w-[250px] items-center">
             <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
             <Input
-              placeholder="Rechercher un projet..."
+              placeholder={t('toolbar.searchPlaceholder')}
               className="pr-8 pl-8"
               value={searchValue}
               onChange={handleSearchChange}
@@ -90,7 +92,9 @@ export function ProjectsToolbar({
       </div>
       {showPerPageSelector && (
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-sm">Afficher</span>
+          <span className="text-muted-foreground text-sm">
+            {t('toolbar.show')}
+          </span>
           <Select value={perPage} onValueChange={onPerPageChange}>
             <SelectTrigger className="w-[70px]">
               <SelectValue placeholder="20" />

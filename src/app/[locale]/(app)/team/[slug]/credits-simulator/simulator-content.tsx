@@ -9,6 +9,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {toast} from 'sonner'
 
@@ -41,6 +42,8 @@ export function SimulatorContent({
   organizationId,
   initialBalance,
 }: SimulatorContentProps) {
+  const t = useTranslations('CreditsSimulator')
+  const locale = useLocale()
   const [prompt, setPrompt] = useState('')
   const [balance, setBalance] = useState(initialBalance)
   const [isPending, startTransition] = useTransition()
@@ -49,7 +52,7 @@ export function SimulatorContent({
       id: 'init',
       timestamp: new Date(),
       type: 'info',
-      message: 'Simulateur initialisé',
+      message: t('logs.initialized'),
       credits: initialBalance,
     },
   ])
@@ -81,12 +84,12 @@ export function SimulatorContent({
 
   const handleGenerate = () => {
     if (!prompt.trim()) {
-      toast.error('Veuillez entrer un prompt')
+      toast.error(t('toast.promptRequired'))
       return
     }
 
     startTransition(async () => {
-      addLog('info', `Génération en cours: "${prompt.slice(0, 40)}..."`)
+      addLog('info', t('logs.generating', {prompt: prompt.slice(0, 40)}))
 
       const result = await simulateAiGenerationAction(organizationId, prompt)
 
@@ -101,14 +104,14 @@ export function SimulatorContent({
       setBalance(data.newBalance)
 
       if (data.success) {
-        addLog('success', 'Génération réussie', -1)
-        toast.success('Génération terminée!')
+        addLog('success', t('logs.success'), -1)
+        toast.success(t('toast.done'))
       } else if (data.refunded) {
-        addLog('refund', `Erreur API - Remboursement effectué`, +1)
-        toast.warning('Erreur du service IA - Crédits remboursés')
+        addLog('refund', t('logs.refund'), +1)
+        toast.warning(t('toast.refunded'))
       } else {
-        addLog('error', data.error || 'Erreur inconnue')
-        toast.error(data.error || 'Erreur lors de la génération')
+        addLog('error', data.error || t('toast.unknownError'))
+        toast.error(data.error || t('toast.generationFailed'))
       }
 
       setPrompt('')
@@ -145,25 +148,20 @@ export function SimulatorContent({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Simulateur de Crédits IA
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Testez la consommation de crédits avec une fausse API IA (1 crédit
-            par génération)
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-muted-foreground text-sm">{t('description')}</p>
         </div>
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={refreshBalance}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Actualiser
+            {t('refresh')}
           </Button>
           <Badge
             variant="outline"
             className="flex items-center gap-2 px-4 py-2 text-lg"
           >
             <Coins className="h-5 w-5" />
-            <span className="font-bold">{balance}</span> crédits
+            <span className="font-bold">{balance}</span> {t('creditsBadge')}
           </Badge>
         </div>
       </div>
@@ -174,12 +172,12 @@ export function SimulatorContent({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5" />
-              Prompt IA
+              {t('promptTitle')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <Textarea
-              placeholder="Entrez votre prompt ici... (ex: Analyse les tendances du marché SaaS en 2024)"
+              placeholder={t('promptPlaceholder')}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={5}
@@ -187,9 +185,7 @@ export function SimulatorContent({
               className="resize-none"
             />
             <div className="flex items-center justify-between">
-              <p className="text-muted-foreground text-sm">
-                Coût: <strong>1 crédit</strong> par génération
-              </p>
+              <p className="text-muted-foreground text-sm">{t('costLabel')}</p>
               <Button
                 onClick={handleGenerate}
                 disabled={isPending || !prompt.trim()}
@@ -197,12 +193,12 @@ export function SimulatorContent({
                 {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Génération...
+                    {t('generating')}
                   </>
                 ) : (
                   <>
                     <Zap className="mr-2 h-4 w-4" />
-                    Générer (-1 crédit)
+                    {t('generate')}
                   </>
                 )}
               </Button>
@@ -214,7 +210,7 @@ export function SimulatorContent({
                 {lastResult.success ? (
                   <Alert className="border-green-500/50 bg-green-500/10">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <AlertTitle>Génération réussie</AlertTitle>
+                    <AlertTitle>{t('successTitle')}</AlertTitle>
                     <AlertDescription className="mt-2 text-sm whitespace-pre-wrap">
                       {lastResult.output}
                     </AlertDescription>
@@ -222,13 +218,13 @@ export function SimulatorContent({
                 ) : lastResult.refunded ? (
                   <Alert className="border-orange-500/50 bg-orange-500/10">
                     <RefreshCw className="h-4 w-4 text-orange-500" />
-                    <AlertTitle>Erreur - Crédits remboursés</AlertTitle>
+                    <AlertTitle>{t('refundedTitle')}</AlertTitle>
                     <AlertDescription>{lastResult.error}</AlertDescription>
                   </Alert>
                 ) : (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Erreur</AlertTitle>
+                    <AlertTitle>{t('errorTitle')}</AlertTitle>
                     <AlertDescription>{lastResult.error}</AlertDescription>
                   </Alert>
                 )}
@@ -243,16 +239,18 @@ export function SimulatorContent({
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Coins className="h-5 w-5" />
-                Console des Crédits
+                {t('consoleTitle')}
               </span>
-              <Badge variant="secondary">{logs.length} événements</Badge>
+              <Badge variant="secondary">
+                {t('eventsCount', {count: logs.length})}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="bg-muted/50 h-[400px] space-y-2 overflow-y-auto rounded-lg border p-3">
               {logs.length === 0 ? (
                 <p className="text-muted-foreground py-8 text-center text-sm">
-                  Aucun événement pour le moment...
+                  {t('noEvents')}
                 </p>
               ) : (
                 logs.map((log) => (
@@ -264,7 +262,7 @@ export function SimulatorContent({
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{log.message}</p>
                       <p className="text-muted-foreground text-xs">
-                        {log.timestamp.toLocaleTimeString('fr-FR')}
+                        {log.timestamp.toLocaleTimeString(locale)}
                       </p>
                     </div>
                     {log.credits !== undefined && (
@@ -297,31 +295,28 @@ export function SimulatorContent({
             <div className="space-y-2">
               <h3 className="flex items-center gap-2 font-semibold">
                 <Zap className="h-4 w-4 text-blue-500" />
-                Comment ça marche
+                {t('help.howTitle')}
               </h3>
               <p className="text-muted-foreground text-sm">
-                Chaque génération consomme 1 crédit. Les crédits sont déduits
-                avant l&apos;appel API.
+                {t('help.howBody')}
               </p>
             </div>
             <div className="space-y-2">
               <h3 className="flex items-center gap-2 font-semibold">
                 <AlertCircle className="h-4 w-4 text-orange-500" />
-                Gestion des erreurs
+                {t('help.errorsTitle')}
               </h3>
               <p className="text-muted-foreground text-sm">
-                ~20% des requêtes échouent. En cas d&apos;erreur, les crédits
-                sont automatiquement remboursés.
+                {t('help.errorsBody')}
               </p>
             </div>
             <div className="space-y-2">
               <h3 className="flex items-center gap-2 font-semibold">
                 <RefreshCw className="h-4 w-4 text-green-500" />
-                Remboursement
+                {t('help.refundTitle')}
               </h3>
               <p className="text-muted-foreground text-sm">
-                Les remboursements apparaissent dans le ledger avec la source
-                &quot;Refund&quot;.
+                {t('help.refundBody')}
               </p>
             </div>
           </div>

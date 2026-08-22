@@ -1,6 +1,7 @@
 'use client'
 
 import {ChevronLeft, ChevronRight} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 
 import {Button} from '@/components/ui/button'
 
@@ -15,6 +16,7 @@ export function SubmissionsPagination({
   totalPages,
   onPageChange,
 }: SubmissionsPaginationProps) {
+  const t = useTranslations('Common.pagination')
   const generatePageNumbers = () => {
     const pages = []
     const maxVisiblePages = 5
@@ -61,7 +63,7 @@ export function SubmissionsPagination({
         disabled={currentPage <= 1}
       >
         <ChevronLeft className="h-4 w-4" />
-        Précédent
+        {t('previous')}
       </Button>
 
       <div className="flex space-x-1">
@@ -85,7 +87,7 @@ export function SubmissionsPagination({
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage >= totalPages}
       >
-        Suivant
+        {t('next')}
         <ChevronRight className="h-4 w-4" />
       </Button>
     </div>

@@ -10,6 +10,11 @@ import {useEffect} from 'react'
  * Elle remplace tout le document — d'où les balises html/body — et ne peut donc
  * s'appuyer sur aucun style ni provider de l'application. Elle reste
  * volontairement autonome et minimale.
+ *
+ * Conséquence : ses textes sont **volontairement en dur**. `NextIntlClientProvider`
+ * vit dans le layout de `[locale]`, celui-là même qui vient d'échouer ; un
+ * `useTranslations` ici jetterait à son tour et on perdrait le dernier filet.
+ * C'est le seul écran de l'application qui n'est pas traduit, et c'est assumé.
  */
 export default function GlobalError({
   error,

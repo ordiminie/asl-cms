@@ -2,6 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Edit} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import * as z from 'zod'
@@ -62,6 +63,8 @@ export function EditOrganizationDialog({
   organization,
   onSave,
 }: EditOrganizationDialogProps) {
+  const t = useTranslations('AdminOrganizations')
+  const tCommon = useTranslations('Common')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -91,12 +94,12 @@ export function EditOrganizationDialog({
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Edit className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Modifier</span>
+          <span className="hidden sm:inline">{tCommon('actions.edit')}</span>
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier l&apos;organisation</DialogTitle>
+          <DialogTitle>{t('editTitle')}</DialogTitle>
           <DialogDescription>
             Modifiez les informations de l&apos;organisation ci-dessous et
             cliquez sur Enregistrer.
@@ -109,7 +112,7 @@ export function EditOrganizationDialog({
               name="name"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Nom</FormLabel>
+                  <FormLabel>{tCommon('fields.name')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -122,7 +125,7 @@ export function EditOrganizationDialog({
               name="slug"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Slug</FormLabel>
+                  <FormLabel>{tCommon('fields.slug')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -135,7 +138,7 @@ export function EditOrganizationDialog({
               name="description"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{tCommon('fields.description')}</FormLabel>
                   <FormControl>
                     <Textarea {...field} />
                   </FormControl>
@@ -148,7 +151,7 @@ export function EditOrganizationDialog({
               name="limitOverrides"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Limites supplémentaires</FormLabel>
+                  <FormLabel>{t('extraLimits')}</FormLabel>
                   <FormControl>
                     <LimitsManager
                       limits={field.value || {}}
@@ -169,10 +172,10 @@ export function EditOrganizationDialog({
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
               >
-                Annuler
+                {tCommon('actions.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                {isSubmitting ? t('saving') : tCommon('actions.save')}
               </Button>
             </DialogFooter>
           </form>

@@ -1,12 +1,11 @@
 import {ChevronLeft, ChevronRight} from 'lucide-react'
 import Link from 'next/link'
+import {useTranslations} from 'next-intl'
 
 import type {DocsNavigation} from '@/lib/files/docs-file-helper'
 
-// Les libellés restent en anglais, comme le reste de la chrome de la doc
-// (« On this page », « Search documentation… ») : cette section n'est pas
-// encore internationalisée.
 export function DocsPagination({previous, next}: DocsNavigation) {
+  const t = useTranslations('Common.pagination')
   if (!previous && !next) return undefined
 
   return (
@@ -18,7 +17,7 @@ export function DocsPagination({previous, next}: DocsNavigation) {
         >
           <span className="text-muted-foreground flex items-center gap-1 text-xs">
             <ChevronLeft className="h-3 w-3" />
-            Previous
+            {t('previous')}
           </span>
           <span className="group-hover:text-foreground font-medium">
             {previous.title}
@@ -34,7 +33,7 @@ export function DocsPagination({previous, next}: DocsNavigation) {
           className="border-border hover:border-foreground/20 hover:bg-muted/50 group flex flex-col items-end gap-1 rounded-lg border p-4 text-right transition-colors sm:col-start-2"
         >
           <span className="text-muted-foreground flex items-center gap-1 text-xs">
-            Next
+            {t('next')}
             <ChevronRight className="h-3 w-3" />
           </span>
           <span className="group-hover:text-foreground font-medium">

@@ -2,9 +2,8 @@
 
 import {Session} from 'better-auth'
 import {formatDistanceToNow} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {Copy, Monitor, Smartphone, Trash2} from 'lucide-react'
-import {useTranslations} from 'next-intl'
+import {useLocale, useTranslations} from 'next-intl'
 import {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -25,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {authClient} from '@/lib/better-auth/auth-client'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 
 const fetchSessions = async (): Promise<Session[]> => {
   const {data} = await authClient.listSessions()
@@ -33,6 +33,7 @@ const fetchSessions = async (): Promise<Session[]> => {
 
 export function ListTokensSection() {
   const t = useTranslations('AccountPage.UserSecuritySection.listTokens')
+  const locale = useLocale()
   const [sessions, setSessions] = useState<Session[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -219,7 +220,7 @@ export function ListTokensSection() {
                     <TableCell className="text-muted-foreground hidden text-sm md:table-cell">
                       {formatDistanceToNow(new Date(session.updatedAt), {
                         addSuffix: true,
-                        locale: fr,
+                        locale: getDateFnsLocale(locale),
                       })}
                     </TableCell>
                     <TableCell>

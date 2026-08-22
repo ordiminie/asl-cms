@@ -1,6 +1,7 @@
 'use client'
 
 import {Loader2, Send} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import React, {useEffect, useRef, useState} from 'react'
 
 import {Button} from '@/components/ui/button'
@@ -17,6 +18,7 @@ interface Message {
 }
 
 export function ChatInterface() {
+  const t = useTranslations('Chat')
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -156,10 +158,8 @@ export function ChatInterface() {
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <div className="text-muted-foreground py-8 text-center">
-            <h3 className="mb-2 text-lg font-medium">
-              Bienvenue dans le Chat IA
-            </h3>
-            <p>Posez-moi une question pour commencer la conversation</p>
+            <h3 className="mb-2 text-lg font-medium">{t('welcome')}</h3>
+            <p>{t('welcomeHint')}</p>
           </div>
         ) : (
           messages.map((message) => (
@@ -194,7 +194,7 @@ export function ChatInterface() {
                         <div className="flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           <span className="text-muted-foreground text-sm">
-                            Réflexion en cours...
+                            {t('thinking')}
                           </span>
                         </div>
                       )
@@ -214,7 +214,7 @@ export function ChatInterface() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Tapez votre message..."
+            placeholder={t('placeholder')}
             disabled={isLoading}
             className="flex-1"
           />

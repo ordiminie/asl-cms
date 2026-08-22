@@ -1,6 +1,7 @@
 'use client'
 
 import {Trash2} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {toast} from 'sonner'
 
@@ -25,6 +26,7 @@ export function CancelInvitationButton({
   invitationId: string
   userEmail: string
 }) {
+  const t = useTranslations('Organization.invite')
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -35,10 +37,10 @@ export function CancelInvitationButton({
         invitationId
       )
       if (res.success) {
-        toast.success('Invitation annulée')
+        toast.success(t('cancelSuccess'))
         setOpen(false)
       } else {
-        toast.error(res.message || "Erreur lors de l'annulation")
+        toast.error(res.message || t('cancelError'))
       }
     })
   }
@@ -52,12 +54,9 @@ export function CancelInvitationButton({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirmer l&apos;annulation</DialogTitle>
+          <DialogTitle>{t('cancelTitle')}</DialogTitle>
         </DialogHeader>
-        <p>
-          Voulez-vous vraiment annuler l&apos;invitation pour <b>{userEmail}</b>{' '}
-          ?
-        </p>
+        <p>{t('cancelConfirm', {email: userEmail})}</p>
         <DialogFooter>
           <Button
             variant="outline"
@@ -71,7 +70,7 @@ export function CancelInvitationButton({
             onClick={handleCancel}
             disabled={isPending}
           >
-            {isPending ? 'Annulation...' : 'Annuler invitation'}
+            {isPending ? t('canceling') : t('cancelAction')}
           </Button>
         </DialogFooter>
       </DialogContent>

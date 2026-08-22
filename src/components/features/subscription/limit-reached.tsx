@@ -1,5 +1,6 @@
 import {AlertTriangle, ArrowRight, Zap} from 'lucide-react'
 import Link from 'next/link'
+import {useTranslations} from 'next-intl'
 
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Badge} from '@/components/ui/badge'
@@ -19,6 +20,7 @@ interface LimitReachedProps {
 }
 
 export function LimitReached({limits}: LimitReachedProps) {
+  const t = useTranslations('LimitReached')
   const progressPercentage =
     limits.limit > 0 ? (limits.usage / limits.limit) * 100 : 0
 
@@ -84,7 +86,7 @@ export function LimitReached({limits}: LimitReachedProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  Utilisation actuelle
+                  {t('currentUsage')}
                 </span>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">
@@ -104,7 +106,7 @@ export function LimitReached({limits}: LimitReachedProps) {
             {/* Message explicatif */}
             <Alert>
               <Zap className="h-4 w-4" />
-              <AlertTitle>Mise à niveau nécessaire</AlertTitle>
+              <AlertTitle>{t('upgradeNeeded')}</AlertTitle>
               <AlertDescription>
                 Pour créer plus de {limitConfig.label.toLowerCase()}, vous devez
                 mettre à niveau votre abonnement.

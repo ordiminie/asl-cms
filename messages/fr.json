@@ -1,4 +1,78 @@
 {
+  "Common": {
+    "actions": {
+      "add": "Ajouter",
+      "cancel": "Annuler",
+      "change": "Changer",
+      "close": "Fermer",
+      "confirm": "Confirmer",
+      "create": "Créer",
+      "delete": "Supprimer",
+      "edit": "Modifier",
+      "retry": "Réessayer",
+      "save": "Enregistrer",
+      "search": "Rechercher",
+      "select": "Sélectionner",
+      "view": "Afficher",
+      "viewDetails": "Voir les détails"
+    },
+    "fields": {
+      "actions": "Actions",
+      "category": "Catégorie",
+      "code": "Code",
+      "createdAt": "Créé le",
+      "currency": "Devise",
+      "description": "Description",
+      "email": "Email",
+      "expiresAt": "Date d'expiration",
+      "language": "Langue",
+      "message": "Message",
+      "name": "Nom",
+      "organization": "Organisation",
+      "plan": "Plan",
+      "price": "Prix",
+      "project": "Projet",
+      "role": "Rôle",
+      "slug": "Slug",
+      "status": "Statut",
+      "subject": "Sujet",
+      "title": "Titre",
+      "type": "Type",
+      "user": "Utilisateur",
+      "visibility": "Visibilité"
+    },
+    "states": {
+      "archived": "Archivé",
+      "draft": "Brouillon",
+      "free": "Gratuit",
+      "monthly": "Mensuel",
+      "popular": "Populaire",
+      "private": "Privé",
+      "public": "Public",
+      "published": "Publié",
+      "yearly": "Annuel"
+    },
+    "messages": {
+      "cannotBeUndone": "Cette action ne peut pas être annulée.",
+      "confirmDelete": "Confirmer la suppression",
+      "genericError": "Une erreur est survenue",
+      "loading": "Chargement...",
+      "noResults": "Aucun résultat"
+    },
+    "pagination": {
+      "first": "Première",
+      "goToFirst": "Aller à la première page",
+      "goToLast": "Aller à la dernière page",
+      "goToNext": "Aller à la page suivante",
+      "goToPrevious": "Aller à la page précédente",
+      "last": "Dernière",
+      "next": "Suivant",
+      "of": "sur",
+      "page": "Page",
+      "previous": "Précédent",
+      "pageOf": "Page {current} sur {total}"
+    }
+  },
   "LocaleLayout": {
     "title": "Next SaaS Boilerplate",
     "description": "Next SaaS Boilerplate"
@@ -193,6 +267,19 @@
       "designEngineering": "Ingénierie de Design",
       "salesMarketing": "Ventes & Marketing",
       "travel": "Voyage"
+    },
+    "nav": {
+      "platform": "Plateforme",
+      "projects": "Projets",
+      "more": "Plus",
+      "viewProject": "Voir le projet",
+      "shareProject": "Partager le projet",
+      "deleteProject": "Supprimer le projet",
+      "home": "Accueil",
+      "dashboard": "Tableau de bord",
+      "login": "Connexion",
+      "adminLabel": "Admin",
+      "adminPanel": "Panel d'administration"
     }
   },
   "NavUser": {
@@ -1232,7 +1319,18 @@
       "save": "Enregistrer",
       "cancel": "Annuler",
       "creating": "Création...",
-      "updating": "Mise à jour..."
+      "updating": "Mise à jour...",
+      "createTitle": "Créer une nouvelle tâche",
+      "createDescription": "Ajoutez une nouvelle tâche à votre projet. Remplissez les informations ci-dessous.",
+      "titleRequired": "Titre *",
+      "titleExample": "Ex : développer la fonctionnalité",
+      "descriptionDetail": "Décrivez la tâche en détail...",
+      "selectStatus": "Sélectionnez un statut",
+      "selectUser": "Sélectionnez un utilisateur",
+      "unassigned": "Non assigné",
+      "createTask": "Créer la tâche",
+      "successTitle": "Succès",
+      "errorTitle": "Erreur"
     },
     "messages": {
       "createSuccess": "Tâche créée avec succès",
@@ -1275,7 +1373,8 @@
     "category": {
       "title": "Catégorie : {category}",
       "description": "Tous les articles de la catégorie {category}"
-    }
+    },
+    "paginationLabel": "Pagination"
   },
   "BlogPostPage": {
     "meta": {
@@ -1287,7 +1386,8 @@
     "comment": "Commenter",
     "author": "Auteur",
     "writtenBy": "Écrit par",
-    "relatedArticles": "Articles connexes"
+    "relatedArticles": "Articles connexes",
+    "likeThanks": "Merci pour votre like !"
   },
   "BlogLayout": {
     "navigation": {
@@ -1351,7 +1451,7 @@
   "Credits": {
     "page": {
       "title": "Crédits",
-      "description": "Gérez vos crédits et suivez votre consommation"
+      "description": "Gérez vos crédits et achetez des packs supplémentaires"
     },
     "balance": {
       "title": "Solde de crédits",
@@ -1419,6 +1519,26 @@
     "success": {
       "creditsGranted": "Crédits accordés avec succès",
       "purchaseComplete": "Achat effectué avec succès"
+    },
+    "tabs": {
+      "credits": "Crédits",
+      "usage": "Utilisation",
+      "plans": "Plans"
+    },
+    "usage": {
+      "title": "Crédits",
+      "description": "Gérez vos crédits de génération d'images",
+      "cardTitle": "Utilisation des crédits",
+      "period": "Période : {start} - {end}",
+      "creditsUsed": "Crédits utilisés",
+      "balance": "Solde : {count}",
+      "selectOrganization": "Veuillez sélectionner une organisation"
+    },
+    "subscription": {
+      "title": "Abonnements",
+      "choosePlan": "Choisissez votre plan",
+      "currentPlan": "Plan actuel",
+      "popular": "Populaire"
     }
   },
   "Affiliate": {
@@ -1485,6 +1605,1103 @@
       "unauthorized": "Accès non autorisé",
       "previous": "Précédent",
       "next": "Suivant"
+    }
+  },
+  "Pricing": {
+    "heading": "Des tarifs simples et transparents",
+    "subheading": "Choisissez le plan qui vous convient et commencez à créer de beaux extraits de code pour vos emails",
+    "billing": {
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "save": "Économisez 20%"
+    },
+    "badge": {
+      "currentPlan": "Plan actuel",
+      "mostPopular": "Le plus populaire"
+    },
+    "plans": {
+      "free": {
+        "name": "Free",
+        "description": "Parfait pour démarrer"
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "Parfait pour un usage régulier"
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "description": "Pour les grandes organisations"
+      },
+      "lifetime": {
+        "name": "Lifetime",
+        "description": "Parfait pour le long terme"
+      }
+    },
+    "perMonth": "par mois",
+    "perYear": "par an",
+    "oneTimePayment": "paiement unique",
+    "monthsFree": "✨ 2 mois offerts",
+    "users": "Utilisateurs :",
+    "perUser": "par utilisateur",
+    "cta": {
+      "getStarted": "Commencer",
+      "subscribe": "S'abonner",
+      "buyLifetime": "Acheter à vie"
+    }
+  },
+  "ContactPage": {
+    "metadata": {
+      "title": "Contact",
+      "description": "Contactez-nous pour toute question ou demande."
+    },
+    "card": {
+      "title": "Contactez-nous",
+      "description": "Une question, une suggestion ou besoin d'aide ? Nous sommes là pour vous."
+    },
+    "success": {
+      "title": "Message envoyé !",
+      "cta": "Envoyer un autre message",
+      "message": "Votre message a été envoyé avec succès. Nous vous répondrons rapidement."
+    },
+    "fields": {
+      "email": {
+        "label": "Email",
+        "placeholder": "votre@email.com"
+      },
+      "subject": {
+        "label": "Sujet",
+        "placeholder": "Objet de votre message"
+      },
+      "content": {
+        "label": "Message",
+        "placeholder": "Décrivez votre demande en détail..."
+      }
+    },
+    "submit": {
+      "idle": "Envoyer le message",
+      "pending": "Envoi en cours..."
+    },
+    "validation": {
+      "emailRequired": "L'email est requis",
+      "emailInvalid": "Veuillez entrer un email valide",
+      "subjectMin": "Le sujet doit contenir au moins 3 caractères",
+      "subjectMax": "Le sujet ne doit pas dépasser 255 caractères",
+      "contentMin": "Le message doit contenir au moins 10 caractères",
+      "contentMax": "Le message ne doit pas dépasser 5000 caractères"
+    },
+    "errors": {
+      "generic": "Une erreur est survenue. Veuillez réessayer.",
+      "server": "Une erreur est survenue. Veuillez réessayer plus tard.",
+      "rateLimit": "Trop de requêtes. Réessayez dans {seconds} secondes.",
+      "allFieldsRequired": "Tous les champs sont obligatoires.",
+      "subjectRange": "Le sujet doit contenir entre 3 et 255 caractères.",
+      "contentRange": "Le message doit contenir entre 10 et 5000 caractères.",
+      "emailInvalid": "Veuillez entrer un email valide."
+    }
+  },
+  "CheckoutPlans": {
+    "heading": "Choisissez votre plan",
+    "subheading": "Sélectionnez le plan qui correspond le mieux à vos besoins",
+    "billing": {
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "discount": "-20%",
+      "monthsFree": "✨ 2 mois gratuits",
+      "perMonth": "par mois",
+      "perYear": "par an",
+      "free": "gratuit",
+      "users": "Utilisateurs :",
+      "perUser": "par utilisateur"
+    },
+    "badge": {
+      "mostPopular": "Le plus populaire",
+      "enterprise": "Enterprise"
+    },
+    "plans": {
+      "free": {
+        "name": "Free",
+        "description": "Parfait pour commencer",
+        "cta": "Plan actuel",
+        "features": [
+          "Code snippets illimités",
+          "5 snippets sauvegardés",
+          "Thèmes de base",
+          "Support standard"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "Pour les utilisateurs réguliers",
+        "features": [
+          "Code snippets illimités",
+          "Snippets sauvegardés illimités",
+          "Thèmes premium",
+          "Support prioritaire",
+          "Coloration syntaxique personnalisée",
+          "Organisation des snippets"
+        ]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "description": "Pour les grandes organisations",
+        "features": [
+          "Tout du plan Pro",
+          "Utilisateurs illimités",
+          "Support 24/7 dédié",
+          "SSO et sécurité avancée",
+          "API personnalisée",
+          "Formation équipe incluse"
+        ]
+      }
+    },
+    "cta": {
+      "subscribePro": "S'abonner au Pro {period}",
+      "subscribeEnterprise": "S'abonner à Enterprise {period}",
+      "redirecting": "Redirection..."
+    },
+    "toast": {
+      "error": "Erreur",
+      "redirecting": "Redirection vers le paiement...",
+      "errorPro": "Erreur lors de la mise à niveau vers Pro",
+      "errorEnterprise": "Erreur lors de la mise à niveau vers Enterprise"
+    },
+    "secureNotice": "Vous serez redirigé vers la page de paiement sécurisée"
+  },
+  "Checkout": {
+    "success": {
+      "verifying": "Vérification de votre paiement...",
+      "creatingSubscription": "Création de votre abonnement en cours...",
+      "subscriptionCreated": "Votre abonnement a été créé avec succès !",
+      "subscriptionError": "Erreur lors de la création de l'abonnement",
+      "unexpectedError": "Erreur inattendue lors de la création de l'abonnement",
+      "paymentProcessed": "Votre paiement a été traité avec succès !",
+      "paymentCancelled": "Le paiement a échoué ou a été annulé",
+      "failureTitle": "Échec du paiement",
+      "retry": "Réessayer",
+      "subscriptionTitle": "Abonnement créé !",
+      "paymentTitle": "Paiement réussi !",
+      "setupIntentId": "Setup Intent ID :",
+      "paymentId": "Payment ID :",
+      "goToDashboard": "Aller au tableau de bord",
+      "returnHome": "Retour à l'accueil"
+    },
+    "reactStripe": {
+      "setupFailed": "Échec de la configuration",
+      "setupFailedDescription": "Une erreur est survenue lors de la configuration de l'abonnement",
+      "processing": "Configuration en cours...",
+      "submit": "Configurer l'abonnement",
+      "emailRequired": "Email requis",
+      "emailRequiredDescription": "Veuillez saisir votre adresse email pour continuer",
+      "emailInvalid": "Email invalide",
+      "emailInvalidDescription": "Veuillez saisir une adresse email valide",
+      "guestIntro": "Veuillez saisir votre adresse email pour continuer en tant qu'invité",
+      "emailLabel": "Adresse email",
+      "emailPlaceholder": "votre@email.com",
+      "creating": "Création en cours...",
+      "continueLabel": "Continuer",
+      "subscriptionError": "Une erreur est survenue lors de la création de l'abonnement",
+      "creatingSubscription": "Création de l'abonnement...",
+      "subscribeGuest": "S'abonner en tant qu'invité",
+      "subscribeStripe": "S'abonner avec Stripe"
+    },
+    "recap": {
+      "lifetimeAccess": "Accès à vie",
+      "subtotal": "Sous-total :",
+      "discount": "Remise :",
+      "total": "Total",
+      "installmentsNotice": "Vous pouvez payer en 3 ou 2 fois"
+    },
+    "errors": {
+      "title": "Erreur",
+      "generic": "Une erreur est survenue"
+    },
+    "page": {
+      "title": "Finalisez votre achat",
+      "testBannerLabel": "Mode Test :",
+      "testBannerText": "Paiements en plusieurs fois activés",
+      "secureNotice": "Votre paiement est sécurisé et chiffré",
+      "chooseMethod": "Choisissez votre mode de paiement ci-dessous",
+      "clickButton": "Cliquez sur le bouton ci-dessous pour finaliser votre achat",
+      "fillForm": "Remplissez le formulaire ci-dessous pour finaliser votre achat",
+      "paymentLinkGuestOnly": "Le mode « paiement Link » est réservé aux utilisateurs non connectés."
+    },
+    "installments": {
+      "title": "Finaliser votre commande",
+      "securedByStripe": "Paiement sécurisé par Stripe",
+      "splitPaymentDescription": "Paiement en {plan}",
+      "noticeTitle": "Paiement échelonné",
+      "noticeText": "Votre premier paiement sera débité aujourd'hui, puis les paiements suivants seront automatiquement prélevés chaque mois.",
+      "preparing": "Préparation du paiement...",
+      "payGuest": "Payer en {count} fois (Invité)",
+      "payStart": "Commencer le paiement en {count} fois",
+      "redirecting": "Redirection vers le paiement en cours...",
+      "sessionError": "Erreur lors de la création de la session de paiement",
+      "unexpectedError": "Une erreur inattendue est survenue",
+      "selectorTitle": "Options de paiement",
+      "recurringNotice": "Les abonnements nécessitent un paiement unique",
+      "selectorDescription": "Choisissez votre mode de paiement préféré",
+      "noExtraFees": "Aucun frais supplémentaire",
+      "firstPaymentToday": "Premier paiement aujourd'hui",
+      "recommended": "Recommandé",
+      "monthly": "Mensuel",
+      "schedule": "Calendrier de paiement :"
+    }
+  },
+  "ErrorPage": {
+    "title": "Une erreur est survenue",
+    "description": "Désolé, une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur si le problème persiste.",
+    "unknown": "Erreur inconnue",
+    "retry": "Réessayer",
+    "backHome": "Retour à l'accueil"
+  },
+  "NotAuthorizedPage": {
+    "title": "Accès non autorisé",
+    "description": "Désolé, vous n'avez pas la permission d'accéder à cette page. Contactez un administrateur si vous pensez qu'il s'agit d'une erreur.",
+    "backHome": "Retour à l'accueil"
+  },
+  "ThemeToggle": {
+    "label": "Changer de thème",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Système"
+  },
+  "DocsPage": {
+    "brand": "ShipSaaS",
+    "title": "Documentation",
+    "searchPlaceholder": "Rechercher dans la documentation...",
+    "searchLabel": "Rechercher dans la documentation",
+    "escKey": "Échap",
+    "comingSoon": "Contenu à venir...",
+    "onThisPage": "Sur cette page"
+  },
+  "PublicMobileMenu": {
+    "toggle": "Ouvrir le menu",
+    "login": "Connexion",
+    "privacy": "Confidentialité",
+    "terms": "Mentions légales",
+    "docs": "Documentation",
+    "blog": "Blog"
+  },
+  "QuickFeedback": {
+    "trigger": "Envoyer un feedback",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Votre message...",
+    "required": "Veuillez entrer un message",
+    "success": "Merci pour votre feedback !",
+    "error": "Erreur lors de l'envoi du feedback"
+  },
+  "MdxContent": {
+    "invalidTweet": "Tweet invalide : impossible d'extraire l'ID du tweet",
+    "loadingTweet": "Chargement du tweet...",
+    "videoUnsupported": "Votre navigateur ne prend pas en charge la lecture de vidéos.",
+    "viewFullscreen": "Voir en plein écran",
+    "openInExcalidraw": "Ouvrir dans Excalidraw",
+    "defaultAlt": "Image"
+  },
+  "Invitations": {
+    "received": {
+      "title": "Invitations reçues",
+      "inviter": "Inviteur",
+      "unknownInviter": "Inviteur inconnu",
+      "empty": "Aucune invitation reçue",
+      "expires": "Expire :",
+      "acceptTitle": "Confirmer l'acceptation",
+      "acceptDescription": "Êtes-vous sûr de vouloir accepter l'invitation de {name} ? Vous rejoindrez cette organisation en tant que {role}.",
+      "accept": "Accepter l'invitation",
+      "accepting": "Acceptation...",
+      "rejectTitle": "Confirmer le rejet",
+      "rejectDescription": "Êtes-vous sûr de vouloir rejeter l'invitation de {name} ? Cette action ne peut pas être annulée.",
+      "reject": "Rejeter l'invitation",
+      "rejecting": "Rejet...",
+      "acceptSuccess": "Invitation acceptée avec succès",
+      "acceptError": "Erreur lors de l'acceptation de l'invitation",
+      "rejectSuccess": "Invitation rejetée avec succès",
+      "rejectError": "Erreur lors du rejet de l'invitation"
+    },
+    "sent": {
+      "loading": "Chargement des invitations",
+      "loadingDescription": "Veuillez patienter pendant le chargement des invitations...",
+      "loadError": "Erreur lors du chargement des invitations",
+      "cancelTitle": "Confirmer l'annulation",
+      "cancelSuccess": "Invitation annulée avec succès",
+      "cancelError": "Erreur lors de l'annulation de l'invitation",
+      "title": "Invitations envoyées par {organization}",
+      "empty": "Aucune invitation envoyée",
+      "expires": "Expire :",
+      "cancelDescription": "Êtes-vous sûr de vouloir annuler l'invitation envoyée à {email} ? Cette action ne peut pas être annulée.",
+      "cancel": "Confirmer l'annulation",
+      "canceling": "Annulation..."
+    }
+  },
+  "Notifications": {
+    "empty": {
+      "title": "Aucune notification",
+      "allRead": "Toutes vos notifications ont été lues.",
+      "none": "Vous n'avez aucune notification pour le moment."
+    },
+    "filter": {
+      "all": "Toutes",
+      "unread": "Non lues",
+      "allNotifications": "Toutes les notifications",
+      "unreadOnly": "Non lues uniquement",
+      "showing": "Affichage : {value}"
+    },
+    "markAllAsRead": "Marquer tout comme lu",
+    "unread": "Non lue",
+    "pagination": {
+      "showing": "Affichage de {start} à {end} sur {total} notifications"
+    }
+  },
+  "Projects": {
+    "management": {
+      "title": "Gestion des projets",
+      "titleReactQuery": "Gestion des projets (React Query)",
+      "project": "Projet",
+      "noDescription": "Aucune description",
+      "loading": "Chargement des projets...",
+      "unknownError": "Erreur inconnue",
+      "createdAt": "Créé"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Rechercher un projet...",
+      "show": "Afficher"
+    },
+    "form": {
+      "newProject": "Nouveau projet",
+      "createTitle": "Créer un nouveau projet",
+      "editTitle": "Modifier le projet",
+      "deleteTitle": "Supprimer le projet",
+      "infoTitle": "Informations du projet",
+      "nameLabel": "Nom du projet",
+      "namePlaceholder": "Mon super projet",
+      "descriptionLabel": "Description",
+      "descriptionOptionalLabel": "Description (optionnel)",
+      "descriptionPlaceholder": "Décrivez brièvement ce projet...",
+      "create": "Créer le projet",
+      "creating": "Création...",
+      "update": "Mettre à jour le projet",
+      "updating": "Mise à jour...",
+      "saving": "Enregistrement...",
+      "deleting": "Suppression...",
+      "createDescription": "Créez un nouveau projet dans l'organisation {organization}.",
+      "editDescription": "Modifiez les informations de base du projet.",
+      "editDialogDescription": "Modifiez les informations du projet ci-dessous.",
+      "deleteDescription": "Êtes-vous sûr de vouloir supprimer le projet « {name} » ? Cette action ne peut pas être annulée et supprimera également toutes les tâches associées.",
+      "deleteDialogDescription": "Êtes-vous sûr de vouloir supprimer le projet {name} ? Cette action est irréversible.",
+      "updateShort": "Mettre à jour",
+      "createShort": "Créer",
+      "descriptionShortPlaceholder": "Description du projet",
+      "namePlaceholderShort": "Nom du projet"
+    },
+    "validation": {
+      "nameRequired": "Le nom du projet est requis",
+      "organizationRequired": "L'organisation est requise"
+    },
+    "errors": {
+      "generic": "Une erreur est survenue",
+      "notAllowed": "Vous n'êtes pas autorisé à effectuer cette action"
+    }
+  },
+  "Organization": {
+    "roles": {
+      "OWNER": "Propriétaire",
+      "ADMIN": "Administrateur",
+      "MEMBER": "Membre"
+    },
+    "members": {
+      "title": "Membres",
+      "tableTitle": "Membres de l'organisation",
+      "avatar": "Avatar",
+      "action": "Action",
+      "pendingInvitation": "Invitation en attente",
+      "expiredInvitation": "Invitation expirée",
+      "loading": "Chargement des membres...",
+      "editRole": "Modifier le rôle",
+      "editRoleTitle": "Modifier le rôle de {name}",
+      "editRoleDescription": "Sélectionnez le nouveau rôle pour ce membre de l'organisation.",
+      "selectRole": "Sélectionner un rôle",
+      "roleUpdated": "Rôle de {name} mis à jour avec succès",
+      "roleUpdateError": "Erreur lors de la mise à jour du rôle",
+      "ownerImmutable": "Le rôle « Propriétaire » ne peut pas être modifié. Veuillez contacter l'administrateur de l'organisation.",
+      "updating": "Mise à jour...",
+      "update": "Mettre à jour",
+      "removeTitle": "Confirmer la suppression",
+      "removeConfirm": "Voulez-vous vraiment retirer {name} de l'organisation ?",
+      "removeSuccess": "Membre supprimé",
+      "removeError": "Erreur lors de la suppression",
+      "removing": "Suppression..."
+    },
+    "invite": {
+      "title": "Inviter un membre",
+      "emailPlaceholder": "steve.wozniak@example.com",
+      "submit": "Inviter",
+      "sending": "Envoi en cours...",
+      "success": "Membre invité avec succès",
+      "selectUser": "Veuillez sélectionner un utilisateur",
+      "cancelTitle": "Confirmer l'annulation",
+      "cancelConfirm": "Voulez-vous vraiment annuler l'invitation pour {email} ?",
+      "cancelSuccess": "Invitation annulée",
+      "cancelError": "Erreur lors de l'annulation",
+      "canceling": "Annulation...",
+      "cancelAction": "Annuler l'invitation",
+      "addMember": "Ajouter un membre",
+      "description": "Entrez l'adresse email de l'utilisateur que vous souhaitez inviter.",
+      "emailLabel": "Adresse email",
+      "selectedUser": "Utilisateur sélectionné",
+      "change": "Changer",
+      "selectRoleLabel": "Sélectionner un rôle",
+      "adminDescription": "Inviter des utilisateurs, modifier le paiement et supprimer l'équipe.",
+      "memberDescription": "Gérer les emails, les domaines et les webhooks."
+    },
+    "form": {
+      "namePlaceholder": "Nom de l'organisation",
+      "slugPlaceholder": "slug-de-lorganisation",
+      "descriptionPlaceholder": "Description de l'organisation",
+      "noImage": "Aucune image",
+      "uploading": "Upload en cours...",
+      "updating": "Mise à jour...",
+      "successTitle": "Succès",
+      "errorTitle": "Erreur"
+    }
+  },
+  "Subscription": {
+    "heading": "Choisissez votre plan",
+    "subheadingActive": "Modifiez votre abonnement ou changez de plan",
+    "subheadingNew": "Sélectionnez le plan qui vous convient",
+    "recap": "Offre « {plan} » ({seats, plural, one {# siège} other {# sièges}}) - {billing} - {ending, select, yes {se termine} other {se renouvelle}} le {date}{autoFree, select, yes {, passage au gratuit automatique} other {}}",
+    "billing": {
+      "monthly": "Mensuel",
+      "yearly": "Annuel",
+      "save": "Économisez 17%",
+      "perYear": "an",
+      "perMonth": "mois",
+      "monthsFree": "✨ 2 mois gratuits",
+      "perUser": "par utilisateur"
+    },
+    "badge": {
+      "current": "Plan actuel",
+      "endingOn": "Se termine le {date}",
+      "futureFree": "Votre futur plan à partir du {date}",
+      "popular": "Populaire",
+      "modified": "Modifié"
+    },
+    "nextBilling": "Prochaine facturation : {date}",
+    "seats": {
+      "label": "Nombre de sièges",
+      "unit": "utilisateur(s)",
+      "priceNote": "Prix ajusté selon le nombre d'utilisateurs"
+    },
+    "trialNote": "Tous les plans incluent une période d'essai gratuite de 14 jours. Vous pouvez annuler à tout moment depuis cette page.",
+    "actions": {
+      "startingFrom": "À partir du {date}",
+      "downgradeFree": "Passer au gratuit",
+      "canceling": "Annulation...",
+      "restoring": "Restauration...",
+      "continuePlan": "Continuer {plan}",
+      "updating": "Mise à jour...",
+      "update": "Mettre à jour",
+      "redirecting": "Redirection...",
+      "switchTo": "Passer à {plan}"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger les abonnements",
+      "modeUnknown": "Impossible de déterminer le mode de subscription",
+      "updateFailed": "Erreur lors de la mise à jour",
+      "notOwner": "Vous n'êtes pas propriétaire de l'organisation",
+      "cancelFailed": "Erreur lors de l'annulation",
+      "restoreFailed": "Erreur lors de la restauration",
+      "notOwnerOfThis": "Vous n'êtes pas propriétaire de cette organisation"
+    },
+    "success": {
+      "redirecting": "Redirection vers le paiement...",
+      "canceled": "Abonnement annulé",
+      "restored": "Abonnement restauré avec succès"
+    }
+  },
+  "Dashboard": {
+    "badge": "Espace client",
+    "heading": "Vue d'ensemble de votre activité",
+    "subheading": "Suivez vos revenus, vos clients et vos opportunités de croissance en un coup d’œil.",
+    "revenueTrend": "{trend} de revenus vs mois dernier",
+    "activeUsers": "{count} utilisateurs actifs",
+    "lastPeak": "Dernier pic : {month} avec {amount}",
+    "tabs": {
+      "overview": "Aperçu",
+      "analytics": "Analytiques",
+      "reports": "Rapports"
+    },
+    "metrics": {
+      "monthlyRevenue": "Revenu mensuel",
+      "vsPreviousMonth": "{trend} vs mois précédent",
+      "averageTicket": "Tickets moyens",
+      "completedTransactions": "{count} transactions complétées",
+      "newCustomers": "Nouveaux clients",
+      "acquisitionCampaign": "Campagne d’acquisition Q2",
+      "cumulativeRevenue": "Revenus cumulés (6 mois)",
+      "bestMonth": "Meilleur mois : {month}",
+      "salesVolume": "Volume de ventes",
+      "leadingProduct": "{product} est en tête ({count} ventes)",
+      "averageRevenuePerCustomer": "Revenu moyen / client",
+      "basedOnCompleted": "Basé sur les transactions complétées",
+      "conversionRate": "Taux de conversion",
+      "conversionDetail": "+3,2 pts depuis janvier"
+    },
+    "insights": {
+      "title": "Insights clés",
+      "description": "Identifiez vos leviers de croissance et priorisez vos actions.",
+      "topProduct": "Produit phare",
+      "topProductDetail": "{count} ventes sur 30 jours",
+      "strongestGrowth": "Croissance la plus forte",
+      "strongestGrowthDetail": "{amount} générés",
+      "conversionDetail": "Campagnes multi-canales performantes",
+      "averageBasket": "Panier moyen",
+      "averageBasketDetail": "Combos plan + add-ons en hausse"
+    },
+    "charts": {
+      "revenueTitle": "Revenus mensuels",
+      "revenueDescription": "Détail des revenus récurrents sur 6 mois",
+      "salesTitle": "Répartition des ventes",
+      "salesDescription": "Ventilation par plans et add-ons",
+      "revenueLabel": "Revenu",
+      "salesLabel": "Ventes"
+    },
+    "transactions": {
+      "title": "Transactions récentes",
+      "description": "Les cinq dernières opérations clients",
+      "completed": "Complété",
+      "pending": "En attente"
+    },
+    "goals": {
+      "title": "Objectifs trimestriels",
+      "description": "Suivi de vos jalons stratégiques",
+      "acquisition": "Acquisition",
+      "acquisitionDetail": "4 500 / 6 000 leads",
+      "retention": "Fidélisation",
+      "retentionDetail": "2 700 / 3 000 clients actifs",
+      "revenue": "Chiffre d'affaires",
+      "revenueDetail": "650k / 1M €",
+      "satisfaction": "Satisfaction client",
+      "satisfactionDetail": "Note moyenne 4,1 / 5"
+    },
+    "analytics": {
+      "marketingTitle": "Performances marketing",
+      "marketingDescription": "Détail des canaux et campagnes pour vos prochains arbitrages.",
+      "marketingBody": "Ajoutez ici vos rapports personnalisés (ex : CAC, LTV par canal, cohortes clients…).",
+      "pipelineTitle": "Pipeline commercial",
+      "pipelineDescription": "Conversion par étape, valeur des deals et forecast.",
+      "pipelineBody": "Branchez vos données CRM pour suivre en direct vos opportunités."
+    },
+    "reports": {
+      "title": "Rapports exportables",
+      "description": "Téléchargez vos exports financiers et marketing.",
+      "body": "Connectez vos automatisations (Notion, Looker, Google Sheets…) pour alimenter vos reportings."
+    }
+  },
+  "CreditsSimulator": {
+    "title": "Simulateur de crédits IA",
+    "description": "Testez la consommation de crédits avec une fausse API IA (1 crédit par génération)",
+    "refresh": "Actualiser",
+    "creditsBadge": "crédits",
+    "promptTitle": "Prompt IA",
+    "promptPlaceholder": "Entrez votre prompt ici... (ex : analyse les tendances du marché SaaS en 2024)",
+    "cost": "Coût : <strong>1 crédit</strong> par génération",
+    "costLabel": "Coût : 1 crédit par génération",
+    "generating": "Génération...",
+    "generate": "Générer (-1 crédit)",
+    "successTitle": "Génération réussie",
+    "refundedTitle": "Erreur - Crédits remboursés",
+    "errorTitle": "Erreur",
+    "consoleTitle": "Console des crédits",
+    "eventsCount": "{count} événements",
+    "noEvents": "Aucun événement pour le moment...",
+    "logs": {
+      "initialized": "Simulateur initialisé",
+      "generating": "Génération en cours : « {prompt}… »",
+      "success": "Génération réussie",
+      "refund": "Erreur API - Remboursement effectué"
+    },
+    "toast": {
+      "promptRequired": "Veuillez entrer un prompt",
+      "done": "Génération terminée !",
+      "refunded": "Erreur du service IA - Crédits remboursés",
+      "unknownError": "Erreur inconnue",
+      "generationFailed": "Erreur lors de la génération"
+    },
+    "help": {
+      "howTitle": "Comment ça marche",
+      "howBody": "Chaque génération consomme 1 crédit. Les crédits sont déduits avant l'appel API.",
+      "errorsTitle": "Gestion des erreurs",
+      "errorsBody": "~20 % des requêtes échouent. En cas d'erreur, les crédits sont automatiquement remboursés.",
+      "refundTitle": "Remboursement",
+      "refundBody": "Les remboursements apparaissent dans le ledger avec la source « Refund »."
+    }
+  },
+  "TeamPage": {
+    "membersTitle": "Membres de l'équipe",
+    "usageTitle": "Utilisation",
+    "detailsTitle": "Informations détaillées",
+    "uniqueId": "Identifiant unique",
+    "slug": "Slug de l'organisation",
+    "lastUpdate": "Dernière mise à jour",
+    "notSet": "Non définie",
+    "actionsTitle": "Actions",
+    "leave": "Quitter l'organisation",
+    "leaveConfirm": "Êtes-vous sûr de vouloir quitter l'organisation {name} ? Cette action est irréversible et vous perdrez l'accès à toutes les ressources de l'organisation.",
+    "leaving": "Sortie en cours...",
+    "notFound": "Organisation non trouvée",
+    "leaveSuccess": "Vous avez quitté l'organisation avec succès",
+    "leaveError": "Erreur lors de la sortie de l'organisation"
+  },
+  "Chat": {
+    "title": "Chat IA",
+    "description": "Conversation avec votre assistant IA local (Ollama)",
+    "welcome": "Bienvenue dans le Chat IA",
+    "welcomeHint": "Posez-moi une question pour commencer la conversation",
+    "thinking": "Réflexion en cours...",
+    "placeholder": "Tapez votre message..."
+  },
+  "Organizations": {
+    "title": "Mes organisations",
+    "empty": "Vous n'avez pas encore d'organisation.",
+    "createFirst": "Créer votre première organisation",
+    "owner": "Propriétaire",
+    "usage": "Utilisation",
+    "projects": "Projets",
+    "members": "Membres",
+    "credits": "Crédits",
+    "viewDetails": "Voir les détails",
+    "editTitle": "Modifier l'organisation",
+    "membersTitle": "Membres de l'organisation",
+    "loadingMembers": "Chargement des membres..."
+  },
+  "NotificationsPage": {
+    "title": "Notifications",
+    "description": "Restez informé de toutes vos activités et mises à jour importantes."
+  },
+  "AcceptInvitation": {
+    "title": "Invitation d'organisation",
+    "subtitle": "Vous avez été invité à rejoindre une organisation",
+    "invitedBy": "Invité par",
+    "acceptSuccess": "Invitation acceptée avec succès",
+    "acceptError": "Erreur lors de l'acceptation de l'invitation",
+    "declineSuccess": "Invitation annulée avec succès",
+    "declineError": "Erreur lors de l'annulation de l'invitation"
+  },
+  "TeamSwitcher": {
+    "loading": "Chargement...",
+    "noOrganization": "Aucune organisation",
+    "teams": "Équipes",
+    "addTeam": "Ajouter une équipe",
+    "cannotCreate": "Vous ne pouvez pas créer une organisation"
+  },
+  "ProjectsPages": {
+    "tasksTitle": "Gestion des tâches",
+    "loadingTasks": "Chargement des tâches...",
+    "newTask": "Nouvelle tâche"
+  },
+  "LimitReached": {
+    "currentUsage": "Utilisation actuelle",
+    "upgradeNeeded": "Mise à niveau nécessaire"
+  },
+  "CreditsUi": {
+    "buy": "Acheter des crédits",
+    "popular": "Populaire",
+    "available": "Crédits disponibles",
+    "usedThisMonth": "Utilisés ce mois",
+    "currentPeriod": "Période actuelle",
+    "start": "Début :",
+    "end": "Fin :",
+    "noActivePeriod": "Pas de période active",
+    "recentActivity": "Activité récente",
+    "noActivity": "Aucune activité récente",
+    "selectOrganization": "Veuillez sélectionner une organisation",
+    "loadError": "Impossible de charger les crédits"
+  },
+  "TasksUi": {
+    "emptyColumn": "Aucune tâche"
+  },
+  "AdminPlans": {
+    "management": {
+      "title": "Gestion des plans",
+      "plan": "Plan",
+      "noDescription": "Aucune description",
+      "searchPlaceholder": "Rechercher un plan...",
+      "createdAt": "Créé"
+    },
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif",
+      "free": "Gratuit",
+      "oneTime": "Paiement unique",
+      "recurring": "Récurrent"
+    },
+    "form": {
+      "createTitle": "Créer un nouveau plan",
+      "createDescription": "Ajoutez un nouveau plan d'abonnement au système.",
+      "editTitle": "Modifier le plan",
+      "editDescription": "Modifiez les informations du plan.",
+      "codePlaceholder": "free, pro, enterprise...",
+      "codeDescription": "Identifiant unique du plan",
+      "nameLabel": "Nom du plan",
+      "namePlaceholder": "Gratuit, Pro, Entreprise...",
+      "nameDescription": "Nom affiché du plan",
+      "priceIdLabel": "Price ID Stripe",
+      "priceIdPlaceholder": "price_1234567890",
+      "priceIdDescription": "Identifiant du prix dans Stripe",
+      "descriptionPlaceholder": "Description du plan...",
+      "monthlyPrice": "Prix mensuel",
+      "monthlyPricePlaceholder": "9.99",
+      "yearlyPrice": "Prix annuel",
+      "yearlyPricePlaceholder": "99.99",
+      "yearlyPriceIdLabel": "Price ID Stripe annuel",
+      "yearlyPriceIdPlaceholder": "price_1234567890_annual",
+      "yearlyPriceIdDescription": "Identifiant du prix annuel dans Stripe (optionnel)",
+      "currencyPlaceholder": "EUR",
+      "displayOrder": "Ordre d'affichage",
+      "recurringLabel": "Abonnement récurrent",
+      "recurringDescription": "Ce plan est-il un abonnement récurrent ?",
+      "creating": "Création...",
+      "create": "Créer le plan",
+      "updating": "Modification...",
+      "update": "Modifier le plan"
+    },
+    "limits": {
+      "title": "Limites",
+      "namePlaceholder": "Nom de la limite"
+    },
+    "delete": {
+      "archiveTitle": "Archiver le plan",
+      "deleteTitle": "Supprimer définitivement le plan",
+      "archiveConfirm": "Êtes-vous sûr de vouloir archiver le plan {name} ? Le plan sera archivé et ne sera plus visible pour les nouveaux abonnements.",
+      "deleteConfirm": "Êtes-vous sûr de vouloir supprimer définitivement le plan {name} ? Cette action est irréversible et supprimera définitivement toutes les données associées.",
+      "permanentLabel": "Suppression définitive",
+      "permanentHint": "Cochez cette case pour supprimer définitivement le plan au lieu de l'archiver.",
+      "archiving": "Archivage...",
+      "archive": "Archiver",
+      "deleting": "Suppression...",
+      "deletePermanently": "Supprimer définitivement"
+    }
+  },
+  "AdminOrganizations": {
+    "title": "Gestion des organisations",
+    "organization": "Organisation",
+    "noDescription": "Aucune description",
+    "createdAt": "Créée",
+    "searchPlaceholder": "Rechercher par nom, slug ou description...",
+    "show": "Afficher",
+    "editTitle": "Modifier l'organisation",
+    "extraLimits": "Limites supplémentaires",
+    "saving": "Enregistrement...",
+    "deleteTitle": "Confirmer la suppression",
+    "deleting": "Suppression...",
+    "cancelInvitation": "Annuler l'invitation",
+    "canceling": "Annulation...",
+    "invitationCanceled": "Invitation annulée",
+    "validation": {
+      "nameRequired": "Le nom est requis",
+      "nameMax": "Le nom ne peut pas dépasser 100 caractères",
+      "slugRequired": "Le slug est requis",
+      "slugMax": "Le slug ne peut pas dépasser 50 caractères"
+    },
+    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer l'organisation « {name} » ? Cette action ne peut pas être annulée et supprimera définitivement toutes les données associées.",
+    "cancelInvitationConfirm": "Voulez-vous vraiment supprimer l'invitation pour {email} ?",
+    "cancelError": "Erreur lors de l'annulation"
+  },
+  "AdminUsers": {
+    "title": "Gestion des utilisateurs",
+    "user": "Utilisateur",
+    "createdAt": "Créé",
+    "viewDetails": "Voir les détails",
+    "searchPlaceholder": "Rechercher par nom ou email...",
+    "show": "Afficher",
+    "editTitle": "Modifier l'utilisateur",
+    "deleteTitle": "Confirmer la suppression",
+    "deleting": "Suppression...",
+    "saving": "Enregistrement...",
+    "settingsTitle": "Paramètres utilisateur",
+    "fullName": "Nom complet",
+    "namePlaceholder": "Nom de l'utilisateur",
+    "emailPlaceholder": "email@exemple.com",
+    "selectVisibility": "Sélectionner la visibilité",
+    "selectRole": "Sélectionner un rôle",
+    "banReason": "Raison du bannissement",
+    "banReasonPlaceholder": "Expliquez la raison du bannissement...",
+    "saveChanges": "Enregistrer les modifications",
+    "updateError": "Erreur lors de la mise à jour de l'utilisateur",
+    "notSet": "Non défini",
+    "enabled": "Activées",
+    "disabled": "Désactivées",
+    "projects": "Projets",
+    "members": "Membres",
+    "status": {
+      "active": "Actif",
+      "pending": "En attente"
+    },
+    "roles": {
+      "user": "Utilisateur",
+      "admin": "Admin",
+      "super_admin": "Super Admin",
+      "moderator": "Modérateur",
+      "redactor": "Rédacteur"
+    },
+    "validation": {
+      "nameRequired": "Le nom est requis",
+      "emailInvalid": "Email invalide",
+      "emailFormat": "Format email invalide",
+      "visibilityRequired": "La visibilité est requise"
+    },
+    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer l'utilisateur {name} ? Cette action ne peut pas être annulée.",
+    "personalInfo": "Informations personnelles",
+    "systemInfo": "Informations système",
+    "moderation": "Modération",
+    "emailVerified": "Email vérifié",
+    "emailVerifiedDescription": "L'utilisateur a vérifié son adresse email",
+    "twoFactor": "2FA activée",
+    "twoFactorDescription": "Authentification à deux facteurs",
+    "banned": "Utilisateur banni",
+    "bannedDescription": "Interdire l'accès à l'utilisateur",
+    "banExpires": "Date d'expiration du bannissement",
+    "createdOn": "Créé le",
+    "lastUpdate": "Dernière modification",
+    "theme": "Thème",
+    "language": "Langue",
+    "timezone": "Fuseau horaire",
+    "notifications": "Notifications",
+    "channel": "Canal",
+    "orgsAndUsage": "Organisations et utilisation"
+  },
+  "AdminBlog": {
+    "listTitle": "Liste des posts",
+    "columns": {
+      "title": "Titre",
+      "author": "Auteur",
+      "views": "Vues",
+      "likes": "Likes",
+      "createdAt": "Créé le"
+    },
+    "status": {
+      "draft": "Brouillon",
+      "published": "Publié",
+      "archived": "Archivé",
+      "all": "Tous les statuts"
+    },
+    "categories": {
+      "none": "Aucune catégorie",
+      "all": "Toutes catégories",
+      "placeholder": "Catégorie"
+    },
+    "untitled": "Sans titre",
+    "unknown": "Inconnu",
+    "successTitle": "Succès",
+    "errorTitle": "Erreur",
+    "searchPlaceholder": "Rechercher dans les titres...",
+    "statusPlaceholder": "Statut",
+    "show": "Afficher",
+    "editTitle": "Modifier le post",
+    "deleteTitle": "Confirmer la suppression",
+    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer ce post ? Cette action supprimera également toutes les traductions associées. Cette action ne peut pas être annulée.",
+    "deleting": "Suppression...",
+    "saving": "Enregistrement...",
+    "selectStatus": "Sélectionner un statut",
+    "selectCategory": "Sélectionner une catégorie",
+    "form": {
+      "generalConfig": "Configuration générale",
+      "hashtags": "Hashtags",
+      "selectHashtags": "Sélectionner des hashtags",
+      "chooseHashtag": "Choisir un hashtag...",
+      "addHashtag": "Ajouter un nouveau hashtag",
+      "hashtagPlaceholder": "Ex : react, javascript, web_dev (lettres, chiffres, _)",
+      "allHashtagsSelected": "Tous les hashtags sont déjà sélectionnés",
+      "selectedHashtags": "Hashtags sélectionnés",
+      "hashtagTooShort": "Le hashtag doit contenir au moins 2 caractères valides",
+      "files": "Fichiers",
+      "translations": "Traductions",
+      "addLanguage": "Ajouter une langue",
+      "titleRequired": "Titre *",
+      "titlePlaceholder": "Titre de l'article",
+      "slugRequired": "Slug *",
+      "slugPlaceholder": "slug-de-larticle",
+      "slugDescription": "URL de l'article (généré automatiquement depuis le titre)",
+      "descriptionPlaceholder": "Description courte de l'article",
+      "content": "Contenu",
+      "contentPlaceholder": "Contenu complet de l'article (Markdown supporté)",
+      "seoMeta": "SEO Meta",
+      "metaTitle": "Meta Title",
+      "metaTitlePlaceholder": "Titre pour les moteurs de recherche",
+      "metaTitleHint": "Recommandé : 50-60 caractères",
+      "metaDescription": "Meta Description",
+      "metaDescriptionPlaceholder": "Description pour les moteurs de recherche",
+      "metaDescriptionHint": "Recommandé : 150-160 caractères",
+      "metaKeywords": "Meta Keywords",
+      "metaKeywordsPlaceholder": "mots-clés, séparés, par, des, virgules",
+      "metaKeywordsHint": "Mots-clés séparés par des virgules",
+      "create": "Créer le post",
+      "update": "Mettre à jour",
+      "genericError": "Une erreur est survenue",
+      "fileUploaded": "Fichier uploadé :"
+    },
+    "dropzone": {
+      "prompt": "Glissez-déposez des fichiers ici, ou cliquez pour les sélectionner",
+      "active": "Déposez les fichiers ici...",
+      "disabled": "L'upload de fichiers est désactivé",
+      "linkCopied": "Lien copié dans le presse-papiers",
+      "unknownSize": "Taille inconnue",
+      "unknownType": "Type inconnu"
+    }
+  },
+  "AdminSubscriptions": {
+    "title": "Gestion des abonnements",
+    "reference": "Référence",
+    "seats": "Sièges",
+    "start": "Début",
+    "end": "Fin",
+    "status": {
+      "active": "Actif",
+      "canceled": "Annulé",
+      "trialing": "Essai",
+      "past_due": "En retard",
+      "incomplete": "Incomplet"
+    },
+    "cancel": "Annuler l'abonnement",
+    "canceling": "Annulation...",
+    "reactivate": "Réactiver l'abonnement",
+    "reactivating": "Réactivation...",
+    "confirmReactivate": "Confirmer la réactivation",
+    "customerId": "Customer ID",
+    "cancelConfirm": "Êtes-vous sûr de vouloir annuler cet abonnement ?",
+    "reactivateConfirm": "Êtes-vous sûr de vouloir réactiver cet abonnement ?",
+    "confirmCancel": "Confirmer l'annulation",
+    "reactivateShort": "Réactiver"
+  },
+  "AdminSubmissions": {
+    "title": "Soumissions utilisateurs",
+    "subject": "Sujet",
+    "date": "Date",
+    "viewDetail": "Voir le détail",
+    "archive": "Archiver",
+    "message": "Message",
+    "metadata": "Métadonnées",
+    "anonymous": "Anonyme",
+    "noEmail": "Email non fourni",
+    "unread": "Non lu",
+    "types": {
+      "contact": "Contact",
+      "feedback": "Feedback",
+      "support": "Support",
+      "all": "Tous types"
+    },
+    "filters": {
+      "all": "Tous",
+      "read": "Lus",
+      "unread": "Non lus",
+      "searchPlaceholder": "Rechercher...",
+      "statusPlaceholder": "Statut",
+      "typePlaceholder": "Type",
+      "show": "Afficher"
+    },
+    "read": "Lu"
+  },
+  "AdminCredits": {
+    "grantTitle": "Accorder des crédits",
+    "amountLabel": "Nombre de crédits",
+    "amountPlaceholder": "100",
+    "amountHint": "Maximum 10000 crédits",
+    "reasonLabel": "Raison (optionnel)",
+    "reasonPlaceholder": "Bonus de bienvenue, geste commercial...",
+    "expiresAt": "Date d'expiration",
+    "submit": "Accorder les crédits",
+    "submitting": "Attribution en cours...",
+    "successTitle": "Succès",
+    "errorTitle": "Erreur",
+    "searchPlaceholder": "Rechercher par nom ou email...",
+    "validation": {
+      "positive": "Le montant doit être positif",
+      "max": "Le montant maximum est 10000 crédits",
+      "organizationIdInvalid": "L'ID de l'organisation est invalide"
+    },
+    "expiresHint": "Les crédits expireront après cette date"
+  },
+  "AdminDashboard": {
+    "totalUsers": "Total utilisateurs",
+    "totalOrganizations": "Total organisations",
+    "activeSubscriptions": "Abonnements actifs",
+    "monthlyGrowth": "Croissance mensuelle",
+    "newUsers": "Nouveaux utilisateurs (12 mois)",
+    "newSubscriptions": "Nouvelles souscriptions",
+    "users": "Utilisateurs",
+    "organizations": "Organisations",
+    "subscriptions": "Abonnements",
+    "insights": "Insights clés",
+    "userPeak": "Pic de nouveaux utilisateurs",
+    "bestSubscriptionMonth": "Meilleur mois abonnements",
+    "topPlan": "Plan phare",
+    "activePopulation": "Population active",
+    "twelveMonthProjection": "Projection sur 12 mois",
+    "multiPlanBreakdown": "Répartition multi-plans",
+    "monthlySignatureTracking": "Suivi mensuel des signatures",
+    "mrrTotal": "MRR total",
+    "mrrProjected": "MRR annuel projeté",
+    "arpu": "ARPU global",
+    "usersPerOrg": "{count} utilisateurs par organisation",
+    "activeSubscriptionsCount": "{count} abonnements actifs",
+    "signatures": "{count} signatures",
+    "accountCreations": "{count} créations de compte",
+    "newThisMonth": "{count} nouveaux ce mois-ci",
+    "countInMonth": "{count} en {month}",
+    "topPlanDetail": "{count} abonnements • {mrr} ({share}% du MRR)",
+    "activeUsersCount": "{count} utilisateurs actifs",
+    "totalUsersCount": "{count} utilisateurs au total",
+    "topPlanShare": "{share}% générés par {plan}",
+    "creditsExpireAfter": "Les crédits expireront après cette date"
+  },
+  "AdminPages": {
+    "dashboard": "Dashboard Administration",
+    "settingsTitle": "Paramètres de l'application",
+    "settingsDescription": "Configurez les paramètres globaux de l'application",
+    "settingsUpdateError": "Erreur lors de la mise à jour des paramètres",
+    "emailsTitle": "Test des emails",
+    "emailsDescription": "Testez les templates emails en les envoyant à une adresse précise",
+    "emailConfigTitle": "Configuration du test email",
+    "emailConfigDescription": "Sélectionnez un type d’email et configurez les paramètres",
+    "emailType": "Type d’email",
+    "selectEmail": "Sélectionner un email",
+    "selectEmailError": "Veuillez sélectionner un email",
+    "missingFields": "Champs obligatoires manquants : {fields}",
+    "parametersPreview": "Aperçu des paramètres",
+    "parametersPreviewDescription": "Aperçu JSON des paramètres actuels",
+    "newPost": "Créer un nouveau post",
+    "editPost": "Modifier le post",
+    "userDetails": "Détails de l'utilisateur",
+    "creditsTitle": "Gestion des crédits",
+    "creditsDescription": "Accordez des crédits aux organisations",
+    "subscriptionSearchPlaceholder": "Rechercher un abonnement..."
+  },
+  "NotificationValidation": {
+    "create": {
+      "userId": {
+        "invalid": "L'ID utilisateur doit être un UUID valide."
+      },
+      "type": {
+        "required": "Le type de notification est requis."
+      },
+      "title": {
+        "required": "Le titre est requis.",
+        "maxLength": "Le titre ne doit pas dépasser 255 caractères."
+      },
+      "message": {
+        "required": "Le message est requis.",
+        "maxLength": "Le message ne doit pas dépasser 1000 caractères."
+      }
+    },
+    "update": {
+      "id": {
+        "invalid": "L'ID de la notification doit être un UUID valide."
+      }
+    },
+    "markAsRead": {
+      "id": {
+        "invalid": "L'ID de la notification doit être un UUID valide."
+      }
     }
   }
 }

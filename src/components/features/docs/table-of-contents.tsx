@@ -1,6 +1,7 @@
 'use client'
 
 import {ChevronRight, Menu} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import * as React from 'react'
 
 import {
@@ -18,6 +19,7 @@ import {cn} from '@/lib/utils'
 
 // Composant mobile séparé - style Better Auth
 export function TableOfContentsMobile({items}: {items: TocItem[]}) {
+  const t = useTranslations('DocsPage')
   const activeId = useActiveHeading(items.map((item) => item.id))
   const [open, setOpen] = React.useState(false)
   const toc = items
@@ -27,7 +29,7 @@ export function TableOfContentsMobile({items}: {items: TocItem[]}) {
   }
 
   const activeItem = toc.find((item) => item.id === activeId)
-  const currentTitle = activeItem?.text || toc[0]?.text || 'On this page'
+  const currentTitle = activeItem?.text || toc[0]?.text || t('onThisPage')
 
   const getIndentationClass = (level: number) => {
     switch (level) {
@@ -54,7 +56,7 @@ export function TableOfContentsMobile({items}: {items: TocItem[]}) {
             className="w-full justify-start gap-2 border-0"
           >
             <Menu className="h-4 w-4" />
-            <span className="text-sm">On this page</span>
+            <span className="text-sm">{t('onThisPage')}</span>
             <ChevronRight className="h-3 w-3" />
             <span className="text-muted-foreground max-w-[150px] truncate text-xs">
               {currentTitle}
@@ -84,6 +86,7 @@ export function TableOfContentsMobile({items}: {items: TocItem[]}) {
 }
 
 export function TableOfContents({items}: {items: TocItem[]}) {
+  const t = useTranslations('DocsPage')
   const activeId = useActiveHeading(items.map((item) => item.id))
   const toc = items
 
@@ -111,7 +114,7 @@ export function TableOfContents({items}: {items: TocItem[]}) {
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 rounded-lg border p-4 backdrop-blur">
         <div className="mb-4 flex items-center gap-2">
           <Menu className="h-4 w-4" />
-          <span className="text-sm font-medium">On this page</span>
+          <span className="text-sm font-medium">{t('onThisPage')}</span>
         </div>
         <nav className="space-y-1">
           {toc.map((item) => (

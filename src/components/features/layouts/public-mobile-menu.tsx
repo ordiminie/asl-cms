@@ -2,6 +2,7 @@
 
 import {Menu} from 'lucide-react'
 import Link from 'next/link'
+import {useTranslations} from 'next-intl'
 
 import {Button} from '@/components/ui/button'
 import {
@@ -15,11 +16,16 @@ import {PagesConst} from '@/env'
 import {isPageEnabled} from '@/lib/utils'
 
 export function PublicMobileMenu() {
+  const t = useTranslations('PublicMobileMenu')
   const navItems = [
-    {href: '/privacy', label: 'Privacy'},
-    {href: '/terms', label: 'Terms'},
-    ...(isPageEnabled(PagesConst.DOCS) ? [{href: '/docs', label: 'Docs'}] : []),
-    ...(isPageEnabled(PagesConst.BLOG) ? [{href: '/blog', label: 'Blog'}] : []),
+    {href: '/privacy', label: t('privacy')},
+    {href: '/terms', label: t('terms')},
+    ...(isPageEnabled(PagesConst.DOCS)
+      ? [{href: '/docs', label: t('docs')}]
+      : []),
+    ...(isPageEnabled(PagesConst.BLOG)
+      ? [{href: '/blog', label: t('blog')}]
+      : []),
   ]
 
   return (
@@ -27,7 +33,7 @@ export function PublicMobileMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon">
           <Menu className="h-[1.2rem] w-[1.2rem]" />
-          <span className="sr-only">Toggle menu</span>
+          <span className="sr-only">{t('toggle')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -38,7 +44,7 @@ export function PublicMobileMenu() {
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link href="/login">Connexion</Link>
+          <Link href="/login">{t('login')}</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

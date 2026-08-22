@@ -1,6 +1,7 @@
 'use client'
 
 import {Minus, Plus} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 
 import {Button} from '@/components/ui/button'
@@ -18,6 +19,7 @@ export function LimitsManager({
   onChange,
   className,
 }: LimitsManagerProps) {
+  const t = useTranslations('AdminPlans')
   const [newLimitKey, setNewLimitKey] = useState('')
   const [newLimitValue, setNewLimitValue] = useState(0)
 
@@ -47,7 +49,7 @@ export function LimitsManager({
 
   return (
     <div className={className}>
-      <Label className="text-sm font-medium">Limites</Label>
+      <Label className="text-sm font-medium">{t('limits.title')}</Label>
 
       <div className="mt-2 space-y-3">
         {Object.entries(limits).map(([key, value]) => (
@@ -63,7 +65,7 @@ export function LimitsManager({
                   onChange(newLimits)
                 }
               }}
-              placeholder="Nom de la limite"
+              placeholder={t('limits.namePlaceholder')}
               className="flex-1"
             />
             <Input
@@ -88,7 +90,7 @@ export function LimitsManager({
           <Input
             value={newLimitKey}
             onChange={(e) => setNewLimitKey(e.target.value)}
-            placeholder="Nom de la limite"
+            placeholder={t('limits.namePlaceholder')}
             className="flex-1"
             onKeyDown={(e) => {
               if (e.key === 'Enter') {

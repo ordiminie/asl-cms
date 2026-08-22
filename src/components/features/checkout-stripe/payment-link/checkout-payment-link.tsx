@@ -1,5 +1,6 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 import {toast} from 'sonner'
 
@@ -20,6 +21,7 @@ export default function CheckoutPaymentLink({
   seats = 1,
   guest = true,
 }: CheckoutButtonProps) {
+  const t = useTranslations('Checkout.errors')
   const [isLoading, setIsLoading] = useState(false)
 
   const handleCheckout = async () => {
@@ -35,9 +37,8 @@ export default function CheckoutPaymentLink({
       window.location.href = result.url ?? '' // Redirect to the payment link
     } catch (error) {
       console.error('Error:', error)
-      toast.error('Error', {
-        description:
-          error instanceof Error ? error.message : 'Something went wrong',
+      toast.error(t('title'), {
+        description: error instanceof Error ? error.message : t('generic'),
       })
     } finally {
       setIsLoading(false)

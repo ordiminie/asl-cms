@@ -1,6 +1,7 @@
 'use client'
 
 import {CreditCard} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 import {toast} from 'sonner'
 
@@ -36,6 +37,7 @@ export default function CheckoutInstallment({
 }: CheckoutInstallmentProps) {
   const [selectedInstallmentType, setSelectedInstallmentType] =
     useState<InstallmentType>(InstallmentType.FULL_PAYMENT)
+  const t = useTranslations('Checkout.installments')
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleInstallmentCheckout = async () => {
@@ -55,17 +57,15 @@ export default function CheckoutInstallment({
       )
 
       if (result.success && result.sessionUrl) {
-        toast.success('Redirection vers le paiement en cours...')
+        toast.success(t('redirecting'))
         // Rediriger vers la session Stripe
         window.location.href = result.sessionUrl
       } else {
-        toast.error(
-          result.error || 'Erreur lors de la création de la session de paiement'
-        )
+        toast.error(result.error || t('sessionError'))
       }
     } catch (error) {
       console.error('Erreur checkout échéancier:', error)
-      toast.error('Une erreur inattendue est survenue')
+      toast.error(t('unexpectedError'))
     } finally {
       setIsProcessing(false)
     }
@@ -93,12 +93,14 @@ export default function CheckoutInstallment({
         <CardHeader>
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            <CardTitle>Finaliser votre commande</CardTitle>
+            <CardTitle>{t('title')}</CardTitle>
           </div>
           <CardDescription>
             {selectedInstallmentType === InstallmentType.FULL_PAYMENT
-              ? 'Paiement sécurisé par Stripe'
-              : `Paiement en ${selectedInstallmentType.replace('_', ' ').toLowerCase()}`}
+              ? t('securedByStripe')
+              : t('splitPaymentDescription', {
+                  plan: selectedInstallmentType.replace('_', ' ').toLowerCase(),
+                })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -114,11 +116,9 @@ export default function CheckoutInstallment({
             <div className="space-y-4">
               <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-950/20">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  🔄 <strong>Paiement échelonné</strong>
+                  🔄 <strong>{t('noticeTitle')}</strong>
                   <br />
-                  Votre premier paiement sera débité aujourd&apos;hui, puis les
-                  paiements suivants seront automatiquement prélevés chaque
-                  mois.
+                  {t('noticeText')}
                 </p>
               </div>
 
@@ -129,10 +129,14 @@ export default function CheckoutInstallment({
                 size="lg"
               >
                 {isProcessing
-                  ? 'Préparation du paiement...'
+                  ? t('preparing')
                   : guest
-                    ? `Payer en ${selectedInstallmentType.split('_')[0]} fois (Invité)`
-                    : `Commencer le paiement en ${selectedInstallmentType.split('_')[0]} fois`}
+                    ? t('payGuest', {
+                        count: selectedInstallmentType.split('_')[0],
+                      })
+                    : t('payStart', {
+                        count: selectedInstallmentType.split('_')[0],
+                      })}
               </Button>
 
               <p className="text-muted-foreground text-center text-xs">

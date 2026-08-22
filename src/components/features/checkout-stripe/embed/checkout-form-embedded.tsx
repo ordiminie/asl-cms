@@ -4,6 +4,7 @@ import {
   EmbeddedCheckoutProvider,
 } from '@stripe/react-stripe-js'
 import {loadStripe, Stripe} from '@stripe/stripe-js'
+import {useTranslations} from 'next-intl'
 import React, {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -31,6 +32,7 @@ export default function StripeFormEmbedded({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   variant = 'default',
 }: CheckoutButtonProps) {
+  const t = useTranslations('Checkout.errors')
   const [, setIsLoading] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false) // 🛡️ Flag pour éviter double init
 
@@ -65,9 +67,8 @@ export default function StripeFormEmbedded({
       } catch (error) {
         console.error('Error:', error)
         if (isSubscribed) {
-          toast.error('Error', {
-            description:
-              error instanceof Error ? error.message : 'Something went wrong',
+          toast.error(t('title'), {
+            description: error instanceof Error ? error.message : t('generic'),
           })
         }
       } finally {
@@ -83,7 +84,7 @@ export default function StripeFormEmbedded({
     return () => {
       isSubscribed = false
     }
-  }, [priceId, seats, guest, isInitialized])
+  }, [priceId, seats, guest, isInitialized, t])
 
   const options = {
     clientSecret,

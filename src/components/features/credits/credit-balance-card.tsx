@@ -1,6 +1,7 @@
 'use client'
 
 import {CoinsIcon, TrendingDownIcon} from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {CreditBalanceDTO} from '@/services/types/domain/credit-types'
@@ -10,9 +11,11 @@ interface CreditBalanceCardProps {
 }
 
 export function CreditBalanceCard({balance}: CreditBalanceCardProps) {
+  const t = useTranslations('CreditsUi')
+  const locale = useLocale()
   const formatDate = (date: Date | null) => {
     if (!date) return '-'
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -24,7 +27,7 @@ export function CreditBalanceCard({balance}: CreditBalanceCardProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Crédits disponibles
+            {t('available')}
           </CardTitle>
           <CoinsIcon className="text-muted-foreground h-4 w-4" />
         </CardHeader>
@@ -41,7 +44,7 @@ export function CreditBalanceCard({balance}: CreditBalanceCardProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Utilisés ce mois
+            {t('usedThisMonth')}
           </CardTitle>
           <TrendingDownIcon className="text-muted-foreground h-4 w-4" />
         </CardHeader>
@@ -58,7 +61,7 @@ export function CreditBalanceCard({balance}: CreditBalanceCardProps) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
-            Période actuelle
+            {t('currentPeriod')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -66,16 +69,16 @@ export function CreditBalanceCard({balance}: CreditBalanceCardProps) {
             {balance.periodStart && balance.periodEnd ? (
               <>
                 <p>
-                  <span className="font-medium">Début :</span>{' '}
+                  <span className="font-medium">{t('start')}</span>{' '}
                   {formatDate(balance.periodStart)}
                 </p>
                 <p>
-                  <span className="font-medium">Fin :</span>{' '}
+                  <span className="font-medium">{t('end')}</span>{' '}
                   {formatDate(balance.periodEnd)}
                 </p>
               </>
             ) : (
-              <p className="text-muted-foreground">Pas de période active</p>
+              <p className="text-muted-foreground">{t('noActivePeriod')}</p>
             )}
           </div>
         </CardContent>

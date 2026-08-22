@@ -1,25 +1,25 @@
 import Link from 'next/link'
+import {getTranslations} from 'next-intl/server'
 import {JSX, SVGProps} from 'react'
 
-export function NotAutorized() {
+export async function NotAutorized() {
+  const t = await getTranslations('NotAuthorizedPage')
+
   return (
     <div className="bg-background flex flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-md text-center">
         <LockIcon className="text-primary mx-auto h-12 w-12" />
         <h1 className="text-foreground mt-4 text-3xl font-bold tracking-tight sm:text-4xl">
-          Unauthorized
+          {t('title')}
         </h1>
-        <p className="text-muted-foreground mt-4">
-          Sorry, you don t have permission to access this page. Please contact
-          an administrator if you believe this is an error.
-        </p>
+        <p className="text-muted-foreground mt-4">{t('description')}</p>
         <div className="mt-6">
           <Link
             href="/"
             className="bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary inline-flex items-center rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
             prefetch={false}
           >
-            Go to Homepage
+            {t('backHome')}
           </Link>
         </div>
       </div>

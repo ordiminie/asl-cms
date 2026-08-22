@@ -1,5 +1,6 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {toast} from 'sonner'
 
@@ -37,6 +38,7 @@ export function PlansToolbar({
   perPage,
   permissions,
 }: Props) {
+  const t = useTranslations('AdminPlans')
   const [searchValue, setSearchValue] = useState(initialSearch)
 
   const handleSearchChange = (value: string) => {
@@ -48,7 +50,7 @@ export function PlansToolbar({
     <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-1 items-center gap-2">
         <Input
-          placeholder="Rechercher un plan..."
+          placeholder={t('management.searchPlaceholder')}
           value={searchValue}
           onChange={(e) => handleSearchChange(e.target.value)}
           className="max-w-sm"

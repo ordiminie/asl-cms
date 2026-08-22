@@ -1,5 +1,6 @@
 import {UserCog} from 'lucide-react'
 import {cacheLife} from 'next/cache'
+import {getTranslations} from 'next-intl/server'
 
 import {getMembersAndInvitationsDal} from '@/app/dal/organization-dal'
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
@@ -51,6 +52,8 @@ export default async function OrganizationMembersTable({
   canManageMembers?: boolean
   adminView?: boolean
 }) {
+  const t = await getTranslations('Organization.members')
+  const tCommon = await getTranslations('Common')
   const expiryCutoff = await getExpiryCutoff()
   //const isAdmin = await isAuthAdmin()
   const members = await getMembersAndInvitationsDal(organizationId)
@@ -58,7 +61,7 @@ export default async function OrganizationMembersTable({
   return (
     <div className="overflow-x-auto">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Membres</h3>
+        <h3 className="text-lg font-semibold">{t('title')}</h3>
         {canManageMembers && !adminView && (
           <OrganizationAddMemberForm
             organizationId={organizationId}
@@ -76,15 +79,21 @@ export default async function OrganizationMembersTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Avatar</TableHead>
-            <TableHead>Nom</TableHead>
-            <TableHead className="hidden sm:table-cell">Email</TableHead>
-            <TableHead className="hidden md:table-cell">Rôle</TableHead>
+            <TableHead>{t('avatar')}</TableHead>
+            <TableHead>{tCommon('fields.name')}</TableHead>
+            <TableHead className="hidden sm:table-cell">
+              {tCommon('fields.email')}
+            </TableHead>
+            <TableHead className="hidden md:table-cell">
+              {tCommon('fields.role')}
+            </TableHead>
             <TableHead className="hidden lg:table-cell">
               Date d&apos;ajout
             </TableHead>
-            <TableHead className="w-10 text-center">Rôle</TableHead>
-            <TableHead className="w-10 text-center">Action</TableHead>
+            <TableHead className="w-10 text-center">
+              {tCommon('fields.role')}
+            </TableHead>
+            <TableHead className="w-10 text-center">{t('action')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -112,8 +121,8 @@ export default async function OrganizationMembersTable({
                         }`}
                       >
                         {isInvitationExpired(member.joinedAt, expiryCutoff)
-                          ? 'Invitation expirée'
-                          : 'Invitation en attente'}
+                          ? t('expiredInvitation')
+                          : t('pendingInvitation')}
                       </span>
                     )}
                   </span>
@@ -151,14 +160,14 @@ export default async function OrganizationMembersTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label="Modifier le rôle"
+                              aria-label={t('editRole')}
                             >
                               <UserCog className="h-4 w-4" />
                             </Button>
                           }
                         />
                       </TooltipTrigger>
-                      <TooltipContent>Modifier le rôle</TooltipContent>
+                      <TooltipContent>{t('editRole')}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 ) : null}

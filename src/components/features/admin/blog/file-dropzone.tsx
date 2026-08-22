@@ -1,6 +1,7 @@
 'use client'
 
 import {Copy, File, Upload, X} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import * as React from 'react'
 import {useDropzone} from 'react-dropzone'
 import {toast} from 'sonner'
@@ -33,8 +34,10 @@ export function FileDropzone({
   defaultFiles = [],
   onFilesServerSelectedToRemove,
   disabled = true,
-  disabledMessage = 'Uploading files is disabled',
+  disabledMessage,
 }: FileDropzoneProps) {
+  const t = useTranslations('AdminBlog')
+  const disabledLabel = disabledMessage ?? t('dropzone.disabled')
   const [files, setFiles] = React.useState<FileWithPreview[]>([])
   const [uploadProgress, setUploadProgress] = React.useState<{
     [key: string]: number
@@ -43,7 +46,7 @@ export function FileDropzone({
   const onDrop = React.useCallback(
     (acceptedFiles: File[]) => {
       if (disabled) {
-        toast.error(disabledMessage)
+        toast.error(disabledLabel)
         return
       }
       const newFiles = acceptedFiles.map((file) =>
@@ -69,7 +72,7 @@ export function FileDropzone({
         }, 200)
       }
     },
-    [disabled, disabledMessage, onFilesSelected]
+    [disabled, disabledLabel, onFilesSelected]
   )
 
   const {getRootProps, getInputProps, isDragActive} = useDropzone({
@@ -184,9 +187,7 @@ export function FileDropzone({
         <Upload className="text-muted-foreground h-8 w-8" />
         <div>
           <p className="text-sm font-medium">
-            {isDragActive
-              ? 'Drop the files here...'
-              : 'Drag & drop files here, or click to select files'}
+            {isDragActive ? t('dropzone.active') : t('dropzone.prompt')}
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
             Supports images files
@@ -255,7 +256,7 @@ export function FileDropzone({
                       onClick={(e) => {
                         e.preventDefault()
                         navigator.clipboard.writeText(file.url || '')
-                        toast.success('Link copied to clipboard')
+                        toast.success(t('dropzone.linkCopied'))
                       }}
                       className="shrink-0"
                     >

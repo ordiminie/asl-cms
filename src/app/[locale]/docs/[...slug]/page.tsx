@@ -2,6 +2,7 @@ import fs from 'fs'
 import matter from 'gray-matter'
 import type {Metadata} from 'next'
 import {notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {CopyPageButton} from '@/components/features/docs/copy-page-button'
@@ -179,6 +180,7 @@ function MDXContentSkeleton() {
 }
 
 export default async function DocsPage({params}: DocsPageProps) {
+  const t = await getTranslations('DocsPage')
   const resolvedParams = await params
   const slug = resolvedParams.slug.join('/')
   const docItem = findDocBySlug(slug, resolvedParams.locale)
@@ -204,7 +206,7 @@ export default async function DocsPage({params}: DocsPageProps) {
       <div className="max-w-4xl">
         <div className="prose prose-gray dark:prose-invert max-w-none">
           <h1>{docItem.title}</h1>
-          <p className="text-muted-foreground">Contenu à venir...</p>
+          <p className="text-muted-foreground">{t('comingSoon')}</p>
         </div>
       </div>
     )

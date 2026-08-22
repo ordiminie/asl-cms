@@ -1,5 +1,7 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
+
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {
@@ -24,13 +26,14 @@ export default function NotificationsToolbar({
   hasUnreadNotifications,
   loading,
 }: NotificationsToolbarProps) {
+  const t = useTranslations('Notifications')
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2">
-              {filter === 'all' ? 'Toutes' : 'Non lues'}
+              {filter === 'all' ? t('filter.all') : t('filter.unread')}
               <svg
                 className="h-4 w-4"
                 fill="none"
@@ -52,26 +55,26 @@ export default function NotificationsToolbar({
               className="gap-2"
             >
               <div className="h-2 w-2 rounded-full bg-gray-500" />
-              Toutes les notifications
+              {t('filter.allNotifications')}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onFilterChange('unread')}
               className="gap-2"
             >
               <div className="h-2 w-2 rounded-full bg-blue-500" />
-              Non lues uniquement
+              {t('filter.unreadOnly')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
         {filter === 'all' && (
           <Badge variant="secondary" className="text-xs">
-            Affichage : Toutes
+            {t('filter.showing', {value: t('filter.all')})}
           </Badge>
         )}
         {filter === 'unread' && (
           <Badge variant="default" className="text-xs">
-            Affichage : Non lues
+            {t('filter.showing', {value: t('filter.unread')})}
           </Badge>
         )}
       </div>
@@ -98,7 +101,7 @@ export default function NotificationsToolbar({
                 d="M5 13l4 4L19 7"
               />
             </svg>
-            Marquer tout comme lu
+            {t('markAllAsRead')}
           </Button>
         )}
       </div>

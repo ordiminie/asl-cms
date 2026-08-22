@@ -6,6 +6,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react'
+import {useTranslations} from 'next-intl'
 
 import {Button} from '@/components/ui/button'
 
@@ -20,6 +21,7 @@ export function PostsPagination({
   totalPages,
   onPageChange,
 }: PostsPaginationProps) {
+  const t = useTranslations('Common.pagination')
   const canGoPrevious = currentPage > 1
   const canGoNext = currentPage < totalPages
 
@@ -60,7 +62,7 @@ export function PostsPagination({
   return (
     <div className="flex items-center justify-between pt-4">
       <div className="text-muted-foreground text-sm">
-        Page {currentPage} sur {totalPages}
+        {t('pageOf', {current: currentPage, total: totalPages})}
       </div>
 
       <div className="flex items-center space-x-2">

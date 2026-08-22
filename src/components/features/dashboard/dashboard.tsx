@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Users,
 } from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 import {
   Bar,
   BarChart,
@@ -39,6 +40,8 @@ import {Separator} from '@/components/ui/separator'
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs'
 
 export default function DashboardPage() {
+  const t = useTranslations('Dashboard')
+  const locale = useLocale()
   const revenueData = [
     {date: 'Jan', Revenu: 5250, growth: 12},
     {date: 'Fév', Revenu: 8750, growth: 18},
@@ -57,46 +60,56 @@ export default function DashboardPage() {
   ]
 
   const transactions = [
-    {id: '#TR-123', client: 'Martin Dupont', amount: 422.5, status: 'Complété'},
+    {
+      id: '#TR-123',
+      client: 'Martin Dupont',
+      amount: 422.5,
+      status: 'completed',
+    },
     {
       id: '#TR-124',
       client: 'Sophie Laurent',
       amount: 87.25,
-      status: 'En attente',
+      status: 'pending',
     },
     {
       id: '#TR-125',
       client: 'Julien Moreau',
       amount: 245.99,
-      status: 'Complété',
+      status: 'completed',
     },
-    {id: '#TR-126', client: 'Laura Blanc', amount: 650, status: 'En attente'},
-    {id: '#TR-127', client: 'Thomas Petit', amount: 120.75, status: 'Complété'},
+    {id: '#TR-126', client: 'Laura Blanc', amount: 650, status: 'pending'},
+    {
+      id: '#TR-127',
+      client: 'Thomas Petit',
+      amount: 120.75,
+      status: 'completed',
+    },
   ] as const
 
   const quarterGoals = [
     {
-      title: 'Acquisition',
+      title: t('goals.acquisition'),
       progress: 75,
-      detail: '4 500 / 6 000 leads',
+      detail: t('goals.acquisitionDetail'),
       color: 'bg-sky-500',
     },
     {
-      title: 'Fidélisation',
+      title: t('goals.retention'),
       progress: 90,
-      detail: '2 700 / 3 000 clients actifs',
+      detail: t('goals.retentionDetail'),
       color: 'bg-emerald-500',
     },
     {
-      title: "Chiffre d'affaires",
+      title: t('goals.revenue'),
       progress: 65,
-      detail: '650k / 1M €',
+      detail: t('goals.revenueDetail'),
       color: 'bg-indigo-500',
     },
     {
-      title: 'Satisfaction client',
+      title: t('goals.satisfaction'),
       progress: 82,
-      detail: 'Note moyenne 4,1 / 5',
+      detail: t('goals.satisfactionDetail'),
       color: 'bg-amber-500',
     },
   ] as const
@@ -120,7 +133,7 @@ export default function DashboardPage() {
   )
 
   const completedTransactions = transactions.filter(
-    (transaction) => transaction.status === 'Complété'
+    (transaction) => transaction.status === 'completed'
   )
   const totalCompletedAmount = completedTransactions.reduce(
     (sum, transaction) => sum + transaction.amount,
@@ -134,19 +147,19 @@ export default function DashboardPage() {
   const activeUsers = 8750
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'EUR',
     }).format(amount)
   }
 
   const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('fr-FR').format(value)
+    return new Intl.NumberFormat(locale).format(value)
   }
 
   const revenueChartConfig = {
     Revenu: {
-      label: 'Revenu',
+      label: t('charts.revenueLabel'),
       theme: {
         light: 'var(--chart-3)',
         dark: 'var(--chart-3)',
@@ -156,7 +169,7 @@ export default function DashboardPage() {
 
   const salesChartConfig = {
     Ventes: {
-      label: 'Ventes',
+      label: t('charts.salesLabel'),
       theme: {
         light: 'var(--chart-1)',
         dark: 'var(--chart-1)',
@@ -166,57 +179,61 @@ export default function DashboardPage() {
 
   const heroMetrics = [
     {
-      title: 'Revenu mensuel',
+      title: t('metrics.monthlyRevenue'),
       value: formatCurrency(lastMonthRevenue),
-      subtitle:
-        revenueTrend >= 0
-          ? `+${revenueTrend}% vs mois précédent`
-          : `${revenueTrend}% vs mois précédent`,
+      subtitle: t('metrics.vsPreviousMonth', {
+        trend: revenueTrend >= 0 ? `+${revenueTrend}%` : `${revenueTrend}%`,
+      }),
       icon: DollarSign,
     },
     {
-      title: 'Tickets moyens',
+      title: t('metrics.averageTicket'),
       value: formatCurrency(averageCompletedTicket),
-      subtitle: `${completedTransactions.length} transactions complétées`,
+      subtitle: t('metrics.completedTransactions', {
+        count: completedTransactions.length,
+      }),
       icon: CreditCard,
     },
     {
-      title: 'Nouveaux clients',
+      title: t('metrics.newCustomers'),
       value: formatNumber(2350),
-      subtitle: 'Campagne d’acquisition Q2',
+      subtitle: t('metrics.acquisitionCampaign'),
       icon: Users,
     },
   ] as const
 
   const mainStatCards = [
     {
-      title: 'Revenus cumulés (6 mois)',
+      title: t('metrics.cumulativeRevenue'),
       value: formatCurrency(totalRevenue),
-      description: `Meilleur mois : ${bestRevenueMonth.date}`,
+      description: t('metrics.bestMonth', {month: bestRevenueMonth.date}),
       icon: DollarSign,
       growth: revenueTrend,
       accent: 'from-emerald-500/25 via-emerald-500/0 to-transparent',
     },
     {
-      title: 'Volume de ventes',
+      title: t('metrics.salesVolume'),
       value: formatNumber(totalSales),
-      description: `${bestProduct.name} est en tête (${formatNumber(bestProduct.Ventes)} ventes)`,
+      description: t('metrics.leadingProduct', {
+        product: bestProduct.name,
+        count: formatNumber(bestProduct.Ventes),
+      }),
       icon: TrendingUp,
       growth: 14,
       accent: 'from-sky-500/25 via-sky-500/0 to-transparent',
     },
     {
-      title: 'Revenu moyen / client',
+      title: t('metrics.averageRevenuePerCustomer'),
       value: formatCurrency(averageCompletedTicket),
-      description: 'Basé sur les transactions complétées',
+      description: t('metrics.basedOnCompleted'),
       icon: CreditCard,
       growth: 7,
       accent: 'from-violet-500/25 via-violet-500/0 to-transparent',
     },
     {
-      title: 'Taux de conversion',
+      title: t('metrics.conversionRate'),
       value: '24,5%',
-      description: '+3,2 pts depuis janvier',
+      description: t('metrics.conversionDetail'),
       icon: TrendingUp,
       growth: 12,
       accent: 'from-amber-500/25 via-amber-500/0 to-transparent',
@@ -225,27 +242,31 @@ export default function DashboardPage() {
 
   const insightItems = [
     {
-      title: 'Produit phare',
+      title: t('insights.topProduct'),
       value: bestProduct.name,
-      details: `${formatNumber(bestProduct.Ventes)} ventes sur 30 jours`,
+      details: t('insights.topProductDetail', {
+        count: formatNumber(bestProduct.Ventes),
+      }),
       icon: TrendingUp,
     },
     {
-      title: 'Croissance la plus forte',
+      title: t('insights.strongestGrowth'),
       value: bestRevenueMonth.date,
-      details: `${formatCurrency(bestRevenueMonth.Revenu)} générés`,
+      details: t('insights.strongestGrowthDetail', {
+        amount: formatCurrency(bestRevenueMonth.Revenu),
+      }),
       icon: Sparkles,
     },
     {
-      title: 'Taux de conversion',
+      title: t('metrics.conversionRate'),
       value: '24,5%',
-      details: 'Campagnes multi-canales performantes',
+      details: t('insights.conversionDetail'),
       icon: Users,
     },
     {
-      title: 'Panier moyen',
+      title: t('insights.averageBasket'),
       value: formatCurrency(averageCompletedTicket),
-      details: 'Combos plan + add-ons en hausse',
+      details: t('insights.averageBasketDetail'),
       icon: CreditCard,
     },
   ] as const
@@ -256,16 +277,13 @@ export default function DashboardPage() {
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <Badge className="w-max border-white/20 bg-white/10 text-xs tracking-wide text-white/80 uppercase">
-              Espace client
+              {t('badge')}
             </Badge>
             <div>
               <h2 className="text-2xl font-semibold md:text-3xl">
-                Vue d&apos;ensemble de votre activité
+                {t('heading')}
               </h2>
-              <p className="text-sm text-white/70">
-                Suivez vos revenus, vos clients et vos opportunités de
-                croissance en un coup d’œil.
-              </p>
+              <p className="text-sm text-white/70">{t('subheading')}</p>
             </div>
           </div>
           <Sparkles className="hidden h-12 w-12 text-white/60 sm:block" />
@@ -297,16 +315,20 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm">
             <Badge className="flex items-center gap-1 border border-emerald-400/20 bg-emerald-500/15 text-emerald-100">
               <ArrowUpRight className="h-3 w-3" />
-              {revenueTrend >= 0 ? `+${revenueTrend}%` : `${revenueTrend}%`} de
-              revenus vs mois dernier
+              {t('revenueTrend', {
+                trend:
+                  revenueTrend >= 0 ? `+${revenueTrend}%` : `${revenueTrend}%`,
+              })}
             </Badge>
             <Badge className="flex items-center gap-1 border border-white/20 bg-white/10 text-white">
               <Users className="h-3 w-3" />
-              {formatNumber(activeUsers)} utilisateurs actifs
+              {t('activeUsers', {count: formatNumber(activeUsers)})}
             </Badge>
             <span className="text-white/70">
-              Dernier pic : {bestRevenueMonth.date} avec{' '}
-              {formatCurrency(bestRevenueMonth.Revenu)}
+              {t('lastPeak', {
+                month: bestRevenueMonth.date,
+                amount: formatCurrency(bestRevenueMonth.Revenu),
+              })}
             </span>
           </div>
         </CardContent>
@@ -314,9 +336,9 @@ export default function DashboardPage() {
 
       <Tabs defaultValue="overview" className="space-y-6">
         <TabsList className="bg-muted/40">
-          <TabsTrigger value="overview">Aperçu</TabsTrigger>
-          <TabsTrigger value="analytics">Analytiques</TabsTrigger>
-          <TabsTrigger value="reports">Rapports</TabsTrigger>
+          <TabsTrigger value="overview">{t('tabs.overview')}</TabsTrigger>
+          <TabsTrigger value="analytics">{t('tabs.analytics')}</TabsTrigger>
+          <TabsTrigger value="reports">{t('tabs.reports')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -369,10 +391,10 @@ export default function DashboardPage() {
             <Card className="border-border/50 border">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold">
-                  Revenus mensuels
+                  {t('charts.revenueTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Détail des revenus récurrents sur 6 mois
+                  {t('charts.revenueDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="w-full">
@@ -422,10 +444,10 @@ export default function DashboardPage() {
             <Card className="border-border/50 border">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold">
-                  Répartition des ventes
+                  {t('charts.salesTitle')}
                 </CardTitle>
                 <CardDescription>
-                  Ventilation par plans et add-ons
+                  {t('charts.salesDescription')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="w-full">
@@ -445,7 +467,10 @@ export default function DashboardPage() {
                         content={
                           <ChartTooltipContent
                             formatter={(value) =>
-                              [`${value}`, 'Ventes'] as [string, string]
+                              [`${value}`, t('charts.salesLabel')] as [
+                                string,
+                                string,
+                              ]
                             }
                           />
                         }
@@ -467,15 +492,15 @@ export default function DashboardPage() {
             <Card className="border-border/50 border">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold">
-                  Transactions récentes
+                  {t('transactions.title')}
                 </CardTitle>
                 <CardDescription>
-                  Les cinq dernières opérations clients
+                  {t('transactions.description')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {transactions.map((transaction, index) => {
-                  const isCompleted = transaction.status === 'Complété'
+                  const isCompleted = transaction.status === 'completed'
                   return (
                     <div key={transaction.id} className="space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -496,7 +521,9 @@ export default function DashboardPage() {
                                 : 'border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-300'
                             }`}
                           >
-                            {transaction.status}
+                            {isCompleted
+                              ? t('transactions.completed')
+                              : t('transactions.pending')}
                           </Badge>
                         </div>
                       </div>
@@ -512,11 +539,9 @@ export default function DashboardPage() {
             <Card className="border-border/50 border">
               <CardHeader>
                 <CardTitle className="text-lg font-semibold">
-                  Objectifs trimestriels
+                  {t('goals.title')}
                 </CardTitle>
-                <CardDescription>
-                  Suivi de vos jalons stratégiques
-                </CardDescription>
+                <CardDescription>{t('goals.description')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {quarterGoals.map((goal) => (
@@ -542,11 +567,9 @@ export default function DashboardPage() {
           <Card className="border-border/50 border">
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
-                Insights clés
+                {t('insights.title')}
               </CardTitle>
-              <CardDescription>
-                Identifiez vos leviers de croissance et priorisez vos actions.
-              </CardDescription>
+              <CardDescription>{t('insights.description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {insightItems.map((insight, index) => {
@@ -582,29 +605,24 @@ export default function DashboardPage() {
         <TabsContent value="analytics" className="grid gap-4 lg:grid-cols-2">
           <Card className="border-border/50 border">
             <CardHeader>
-              <CardTitle>Performances marketing</CardTitle>
+              <CardTitle>{t('analytics.marketingTitle')}</CardTitle>
               <CardDescription>
-                Détail des canaux et campagnes pour vos prochains arbitrages.
+                {t('analytics.marketingDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-muted-foreground text-sm">
-              <p>
-                Ajoutez ici vos rapports personnalisés (ex: CAC, LTV par canal,
-                cohortes clients…).
-              </p>
+              <p>{t('analytics.marketingBody')}</p>
             </CardContent>
           </Card>
           <Card className="border-border/50 border">
             <CardHeader>
-              <CardTitle>Pipeline commercial</CardTitle>
+              <CardTitle>{t('analytics.pipelineTitle')}</CardTitle>
               <CardDescription>
-                Conversion par étape, valeur des deals et forecast.
+                {t('analytics.pipelineDescription')}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-muted-foreground text-sm">
-              <p>
-                Branchez vos données CRM pour suivre en direct vos opportunités.
-              </p>
+              <p>{t('analytics.pipelineBody')}</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -612,16 +630,11 @@ export default function DashboardPage() {
         <TabsContent value="reports">
           <Card className="border-border/50 border">
             <CardHeader>
-              <CardTitle>Rapports exportables</CardTitle>
-              <CardDescription>
-                Téléchargez vos exports financiers et marketing.
-              </CardDescription>
+              <CardTitle>{t('reports.title')}</CardTitle>
+              <CardDescription>{t('reports.description')}</CardDescription>
             </CardHeader>
             <CardContent className="text-muted-foreground text-sm">
-              <p>
-                Connectez vos automatisations (Notion, Looker, Google Sheets…)
-                pour alimenter vos reportings.
-              </p>
+              <p>{t('reports.body')}</p>
             </CardContent>
           </Card>
         </TabsContent>

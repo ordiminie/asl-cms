@@ -1,8 +1,8 @@
 'use client'
 
 import {format} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {CheckCircle, Mail, MessageSquare, Phone} from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 import {ReactNode, useEffect, useState} from 'react'
 
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
@@ -16,18 +16,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {UserSubmissionWithUser} from '@/services/types/domain/user-submission-types'
 
 interface SubmissionDetailDialogProps {
   submission: UserSubmissionWithUser
   onMarkAsRead?: (id: string) => void
   children: ReactNode
-}
-
-const typeLabels = {
-  contact: 'Contact',
-  feedback: 'Feedback',
-  support: 'Support',
 }
 
 const typeIcons = {
@@ -41,6 +36,8 @@ export function SubmissionDetailDialog({
   onMarkAsRead,
   children,
 }: SubmissionDetailDialogProps) {
+  const t = useTranslations('AdminSubmissions')
+  const locale = useLocale()
   const [open, setOpen] = useState(false)
   const TypeIcon = typeIcons[submission.type]
 
@@ -57,9 +54,9 @@ export function SubmissionDetailDialog({
         <DialogHeader>
           <div className="flex items-center gap-2">
             <TypeIcon className="text-muted-foreground h-5 w-5" />
-            <Badge variant="outline">{typeLabels[submission.type]}</Badge>
+            <Badge variant="outline">{t(`types.${submission.type}`)}</Badge>
             <Badge variant={submission.read ? 'secondary' : 'default'}>
-              {submission.read ? 'Lu' : 'Non lu'}
+              {submission.read ? t('read') : t('unread')}
             </Badge>
           </div>
           <DialogTitle className="mt-2 text-xl">
@@ -68,7 +65,7 @@ export function SubmissionDetailDialog({
           <DialogDescription>
             Soumis le{' '}
             {format(new Date(submission.createdAt), 'PPP à HH:mm', {
-              locale: fr,
+              locale: getDateFnsLocale(locale),
             })}
           </DialogDescription>
         </DialogHeader>
@@ -78,7 +75,7 @@ export function SubmissionDetailDialog({
             <Avatar className="size-10">
               <AvatarImage
                 src={submission.user?.image || ''}
-                alt={submission.user?.name || 'Anonyme'}
+                alt={submission.user?.name || t('anonymous')}
               />
               <AvatarFallback>
                 {submission.user?.name
@@ -89,18 +86,16 @@ export function SubmissionDetailDialog({
             </Avatar>
             <div>
               <div className="font-medium">
-                {submission.user?.name || 'Anonyme'}
+                {submission.user?.name || t('anonymous')}
               </div>
               <div className="text-muted-foreground text-sm">
-                {submission.user?.email ||
-                  submission.email ||
-                  'Email non fourni'}
+                {submission.user?.email || submission.email || t('noEmail')}
               </div>
             </div>
           </div>
 
           <div className="rounded-lg border p-4">
-            <h4 className="mb-2 text-sm font-medium">Message</h4>
+            <h4 className="mb-2 text-sm font-medium">{t('message')}</h4>
             <p className="text-muted-foreground text-sm whitespace-pre-wrap">
               {submission.message}
             </p>
@@ -109,7 +104,7 @@ export function SubmissionDetailDialog({
           {submission.metadata &&
             Object.keys(submission.metadata).length > 0 && (
               <div className="rounded-lg border p-4">
-                <h4 className="mb-2 text-sm font-medium">Métadonnées</h4>
+                <h4 className="mb-2 text-sm font-medium">{t('metadata')}</h4>
                 <pre className="text-muted-foreground overflow-auto text-xs">
                   {JSON.stringify(submission.metadata, null, 2)}
                 </pre>

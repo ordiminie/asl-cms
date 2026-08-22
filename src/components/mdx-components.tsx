@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import {getTranslations} from 'next-intl/server'
 import type {ReactNode} from 'react'
 import React from 'react'
 import {Tweet as ReactTweet} from 'react-tweet'
@@ -51,13 +52,14 @@ const extractTweetId = (url: string): string | null => {
   return null
 }
 
-const TweetEmbed = ({url, id, native = false}: TweetEmbedProps) => {
+const TweetEmbed = async ({url, id, native = false}: TweetEmbedProps) => {
+  const t = await getTranslations('MdxContent')
   const tweetId = id || (url ? extractTweetId(url) : null)
 
   if (!tweetId) {
     return (
       <div className="my-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-        Tweet invalide: impossible d&apos;extraire l&apos;ID du tweet
+        {t('invalidTweet')}
       </div>
     )
   }
@@ -67,7 +69,7 @@ const TweetEmbed = ({url, id, native = false}: TweetEmbedProps) => {
       <div className="my-4 flex justify-center">
         <blockquote className="twitter-tweet" data-theme="dark">
           <a href={`https://twitter.com/i/status/${tweetId}`}>
-            Loading tweet...
+            {t('loadingTweet')}
           </a>
         </blockquote>
         <script async src="https://platform.twitter.com/widgets.js" />
@@ -96,13 +98,14 @@ type VideoProps = {
   playsInline?: boolean
 }
 
-const Video = ({
+const Video = async ({
   src,
   title,
   width = '100%',
   height = 'auto',
   ...props
 }: VideoProps) => {
+  const t = await getTranslations('MdxContent')
   // Détecter le type de vidéo (YouTube, Vimeo, etc.)
   if (src.includes('youtube.com') || src.includes('youtu.be')) {
     // Extraire l'ID de la vidéo YouTube
@@ -162,13 +165,13 @@ const Video = ({
         className="rounded-lg"
         {...props}
       >
-        Votre navigateur ne prend pas en charge la lecture de vidéos.
+        {t('videoUnsupported')}
       </video>
     </div>
   )
 }
 
-export const Excalidraw = ({
+export const Excalidraw = async ({
   src,
   alt,
   data,
@@ -183,6 +186,7 @@ export const Excalidraw = ({
   defaultMode?: boolean
   showExternalLink?: boolean
 }) => {
+  const t = await getTranslations('MdxContent')
   // Si src commence par "https://link.excalidraw.com" ou contient "excalidraw.com", c'est un lien embed externe
   const isExcalidrawLink =
     src &&
@@ -227,7 +231,7 @@ export const Excalidraw = ({
                 rel="noopener noreferrer"
                 className="text-blue-500 hover:underline"
               >
-                Voir en plein écran
+                {t('viewFullscreen')}
               </a>
             </>
           )}
@@ -340,7 +344,7 @@ export const Excalidraw = ({
               rel="noopener noreferrer"
               className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
             >
-              Ouvrir dans Excalidraw
+              {t('openInExcalidraw')}
             </a>
           </div>
         </div>

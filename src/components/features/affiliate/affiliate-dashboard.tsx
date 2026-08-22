@@ -2,7 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Check, Copy} from 'lucide-react'
-import {useTranslations} from 'next-intl'
+import {useLocale, useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
@@ -39,8 +39,12 @@ type AffiliateDashboardProps = {
   appUrl: string
 }
 
-const formatAmount = (cents: number, currency: string): string =>
-  new Intl.NumberFormat('fr-FR', {style: 'currency', currency}).format(
+const formatAmount = (
+  cents: number,
+  currency: string,
+  locale: string
+): string =>
+  new Intl.NumberFormat(locale, {style: 'currency', currency}).format(
     cents / 100
   )
 
@@ -49,6 +53,7 @@ export function AffiliateDashboard({
   appUrl,
 }: AffiliateDashboardProps) {
   const t = useTranslations('Affiliate')
+  const locale = useLocale()
   const [isPending, startTransition] = useTransition()
   const [copied, setCopied] = useState(false)
   const [currentCode, setCurrentCode] = useState(dashboard.code ?? '')
@@ -98,16 +103,16 @@ export function AffiliateDashboard({
     },
     {
       label: t('stats.waitingPeriod'),
-      value: formatAmount(dashboard.waitingCents, dashboard.currency),
+      value: formatAmount(dashboard.waitingCents, dashboard.currency, locale),
       hint: t('stats.waitingCount', {count: dashboard.waitingCount}),
     },
     {
       label: t('stats.commissionDue'),
-      value: formatAmount(dashboard.dueCents, dashboard.currency),
+      value: formatAmount(dashboard.dueCents, dashboard.currency, locale),
     },
     {
       label: t('stats.totalPaid'),
-      value: formatAmount(dashboard.paidCents, dashboard.currency),
+      value: formatAmount(dashboard.paidCents, dashboard.currency, locale),
     },
   ]
 

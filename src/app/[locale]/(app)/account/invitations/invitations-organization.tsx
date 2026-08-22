@@ -1,3 +1,4 @@
+import {useLocale, useTranslations} from 'next-intl'
 import {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -42,6 +43,9 @@ const fetchInvitations = async (
 // Composant pour les invitations envoyées par l'organisation
 export default function InvitationsOrganization() {
   const {currentUserOrganization} = useOrganization()
+  const t = useTranslations('Invitations.sent')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const [invitations, setInvitationsOrganization] = useState<
     PartialInvitationWithUser[]
   >([])
@@ -64,7 +68,7 @@ export default function InvitationsOrganization() {
       } catch (error) {
         if (cancelled) return
         console.error('Erreur lors du chargement des invitations:', error)
-        toast.error('Erreur lors du chargement des invitations')
+        toast.error(t('loadError'))
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -75,7 +79,7 @@ export default function InvitationsOrganization() {
     return () => {
       cancelled = true
     }
-  }, [organizationId])
+  }, [organizationId, t])
 
   const openCancelModal = (invitation: PartialInvitationWithUser) => {
     setInvitationToCancel(invitation)
@@ -100,12 +104,12 @@ export default function InvitationsOrganization() {
         return
       }
 
-      toast.success('Invitation annulée avec succès')
+      toast.success(t('cancelSuccess'))
       closeCancelModal()
       setInvitationsOrganization(await fetchInvitations(organizationId))
     } catch (error) {
       console.error("Erreur lors de l'annulation de l'invitation:", error)
-      toast.error("Erreur lors de l'annulation de l'invitation")
+      toast.error(t('cancelError'))
     } finally {
       setIsCanceling(false)
     }
@@ -116,10 +120,10 @@ export default function InvitationsOrganization() {
       <div>
         <Card>
           <CardHeader>
-            <CardTitle>Chargement des invitations</CardTitle>
+            <CardTitle>{t('loading')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>Veuillez patienter pendant le chargement des invitations...</p>
+            <p>{t('loadingDescription')}</p>
           </CardContent>
         </Card>
       </div>
@@ -130,28 +134,31 @@ export default function InvitationsOrganization() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Invitations envoyées par{' '}
-            {currentUserOrganization?.organization?.name}
+            {t('title', {
+              organization: currentUserOrganization?.organization?.name ?? '',
+            })}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Rôle</TableHead>
-                <TableHead className="hidden sm:table-cell">Statut</TableHead>
+                <TableHead>{tCommon('fields.email')}</TableHead>
+                <TableHead>{tCommon('fields.role')}</TableHead>
                 <TableHead className="hidden sm:table-cell">
-                  Date d&apos;expiration
+                  {tCommon('fields.status')}
                 </TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="hidden sm:table-cell">
+                  {tCommon('fields.expiresAt')}
+                </TableHead>
+                <TableHead>{tCommon('fields.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {invitations.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center">
-                    Aucune invitation envoyée
+                    {t('empty')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -182,11 +189,12 @@ export default function InvitationsOrganization() {
                             </Badge>
                           )}
                           <span>
-                            Expire:{' '}
+                            {t('expires')}{' '}
                             {formatDate(
                               invitation.expiresAt
                                 ? new Date(invitation.expiresAt)
-                                : null
+                                : null,
+                              locale
                             )}
                           </span>
                         </div>
@@ -221,7 +229,8 @@ export default function InvitationsOrganization() {
                       {formatDate(
                         invitation.expiresAt
                           ? new Date(invitation.expiresAt)
-                          : null
+                          : null,
+                        locale
                       )}
                     </TableCell>
                     <TableCell>
@@ -231,7 +240,7 @@ export default function InvitationsOrganization() {
                           size="sm"
                           onClick={() => openCancelModal(invitation)}
                         >
-                          Annuler
+                          {tCommon('actions.cancel')}
                         </Button>
                       )}
                     </TableCell>
@@ -247,12 +256,11 @@ export default function InvitationsOrganization() {
       <Dialog open={isCancelModalOpen} onOpenChange={setIsCancelModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmer l&apos;annulation</DialogTitle>
+            <DialogTitle>{t('cancel')}</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir annuler l&apos;invitation envoyée à{' '}
-              <strong>{invitationToCancel?.email}</strong> ?
-              <br />
-              Cette action ne peut pas être annulée.
+              {t('cancelDescription', {
+                email: invitationToCancel?.email ?? '',
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -261,14 +269,14 @@ export default function InvitationsOrganization() {
               onClick={closeCancelModal}
               disabled={isCanceling}
             >
-              Annuler
+              {tCommon('actions.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={handleCancelInvitation}
               disabled={isCanceling}
             >
-              {isCanceling ? 'Annulation...' : "Confirmer l'annulation"}
+              {isCanceling ? t('canceling') : t('cancel')}
             </Button>
           </DialogFooter>
         </DialogContent>
