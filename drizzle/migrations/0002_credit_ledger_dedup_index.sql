@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX "credit_ledger_source_dedup_unique_idx" ON "credit_ledger" USING btree ("organization_id","source","source_id") WHERE "credit_ledger"."source_id" IS NOT NULL AND "credit_ledger"."source" IN ('pack', 'system_adjustment', 'refund');

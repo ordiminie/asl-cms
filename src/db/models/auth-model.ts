@@ -70,6 +70,11 @@ export const account = pgTable(
       .primaryKey(),
     accountId: text('account_id').notNull(),
     providerId: text('provider_id').notNull(),
+    // Identite du compte scopee par emetteur (better-auth 1.7) : la table est
+    // desormais clee sur (issuer, account_id). Nullable a dessein — un
+    // ADD COLUMN NOT NULL sans defaut echoue sur une table non vide chez un
+    // projet deja deploye, et better-auth ecrit toujours la valeur.
+    issuer: text('issuer'),
     userId: uuid('user_id')
       .notNull()
       .references(() => user.id, {onDelete: 'cascade'}),
@@ -85,6 +90,7 @@ export const account = pgTable(
   },
   (table) => ({
     accountProviderUnique: unique().on(table.accountId, table.providerId),
+    accountIssuerAccountIdUnique: unique().on(table.issuer, table.accountId),
   })
 )
 
