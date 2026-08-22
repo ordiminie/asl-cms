@@ -1,5 +1,6 @@
 import {z} from 'zod'
 
+import {REFERRAL_TRACKING_MODES} from './lib/helper/referral-helper'
 import {
   StripeCheckoutType,
   StripeCheckoutTypeSchema,
@@ -166,6 +167,13 @@ export const clientSchema = {
   NEXT_PUBLIC_BILLING_MODE: z
     .enum([BillingModes.USER, BillingModes.ORGANIZATION])
     .default(BillingModes.ORGANIZATION),
+
+  // Attribution d'affiliation : voir REFERRAL_TRACKING_MODES pour le detail.
+  // 'cookie' pose un traceur soumis a consentement en UE ; 'code-only' n'en
+  // pose aucun et s'appuie sur le code saisi a l'inscription.
+  NEXT_PUBLIC_AFFILIATE_TRACKING: z
+    .enum(REFERRAL_TRACKING_MODES)
+    .default('cookie'),
 
   // Méthodes d'authentification
   NEXT_PUBLIC_AUTH_METHODS: z

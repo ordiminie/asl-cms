@@ -1,5 +1,10 @@
 import z from 'zod'
 
+import {
+  REFERRAL_CODE_MAX_LENGTH,
+  REFERRAL_CODE_PATTERN,
+} from '@/lib/helper/referral-helper'
+
 export const authLoginFormSchema = z.object({
   email: z.string().email('Adresse email invalide'),
   password: z
@@ -18,6 +23,12 @@ export const createAuthRegisterFormSchema = (t: (key: string) => string) => {
       name: z.string().min(2, t('validation.nameMin')),
       password: z.string().min(8, t('validation.passwordMin')),
       confirmPassword: z.string().min(8, t('validation.confirmPasswordMin')),
+      referralCode: z
+        .string()
+        .regex(REFERRAL_CODE_PATTERN, t('validation.referralCodePattern'))
+        .max(REFERRAL_CODE_MAX_LENGTH)
+        .optional()
+        .or(z.literal('')),
     })
     .refine((data) => data.password === data.confirmPassword, {
       message: t('validation.passwordMismatch'),
@@ -35,6 +46,15 @@ export const authRegisterFormSchema = authLoginFormSchema
     confirmPassword: z
       .string()
       .min(8, 'Le mot de passe doit contenir au moins 8 caractères'),
+    referralCode: z
+      .string()
+      .regex(
+        REFERRAL_CODE_PATTERN,
+        'Uniquement des minuscules, chiffres et tirets'
+      )
+      .max(REFERRAL_CODE_MAX_LENGTH)
+      .optional()
+      .or(z.literal('')),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Les mots de passe ne correspondent pas',

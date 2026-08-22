@@ -756,7 +756,11 @@
         },
         "submit": "Sign up",
         "submitting": "Signing up...",
-        "generalError": "An error occurred during registration"
+        "generalError": "An error occurred during registration",
+        "referralCode": {
+          "label": "Referral code (optional)",
+          "placeholder": "your-referrer-code"
+        }
       },
       "alreadyAccount": "Already have an account?",
       "loginLink": "Sign in",
@@ -768,7 +772,8 @@
         "nameMin": "Name must be at least 2 characters",
         "passwordMin": "Password must be at least 8 characters",
         "confirmPasswordMin": "Password must be at least 8 characters",
-        "passwordMismatch": "Passwords do not match"
+        "passwordMismatch": "Passwords do not match",
+        "referralCodePattern": "Lowercase letters, digits and hyphens only"
       }
     },
     "RegisterMagicLinkForm": {

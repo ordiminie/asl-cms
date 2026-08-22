@@ -16,6 +16,7 @@ vi.mock('@/db/repositories/affiliate-repository', () => ({
   approveMaturedCommissionsDao: vi.fn(),
   getCommissionsByAffiliateIdDao: vi.fn(),
   getCommissionsBySourceIdDao: vi.fn(),
+  getCommissionsByPaymentIntentIdDao: vi.fn(),
   refundCommissionTxnDao: vi.fn(),
   getAffiliateTotalsDao: vi.fn(),
   createPayoutTxnDao: vi.fn(),
@@ -31,6 +32,7 @@ import {
   getMyAffiliateDashboardService,
   markAffiliatePayoutPaidService,
   recordBountyForPaidInvoiceService,
+  refundBountyByPaymentIntentService,
   refundBountyBySourceService,
   setMyAffiliateCodeService,
 } from '../affiliate-service'
@@ -100,6 +102,7 @@ const commissionData: AffiliateCommission = {
   currency: 'USD',
   sourceId: 'in_123',
   stripeSubscriptionId: 'sub_123',
+  stripePaymentIntentId: 'pi_123',
   maturesAt: new Date(),
   approvedAt: null,
   paidAt: null,
@@ -481,6 +484,41 @@ describe('Remboursement et maturation : AffiliateService', () => {
     const handled = await refundBountyBySourceService('in_123', 'refund')
 
     expect(handled).toBe(0)
+  })
+
+  it('should refund from the payment intent, the only usable link', async () => {
+    vi.mocked(
+      affiliateRepository.getCommissionsByPaymentIntentIdDao
+    ).mockResolvedValue([commissionData])
+    vi.mocked(affiliateRepository.refundCommissionTxnDao).mockResolvedValue(
+      commissionData
+    )
+
+    const handled = await refundBountyByPaymentIntentService(
+      'pi_123',
+      'stripe_dispute:dp_1'
+    )
+
+    expect(handled).toBe(1)
+    expect(
+      affiliateRepository.getCommissionsByPaymentIntentIdDao
+    ).toHaveBeenCalledWith('pi_123')
+    expect(affiliateRepository.refundCommissionTxnDao).toHaveBeenCalledWith(
+      commissionData.id,
+      'stripe_dispute:dp_1',
+      expect.any(Date)
+    )
+  })
+
+  it('should not refund twice from the payment intent', async () => {
+    vi.mocked(
+      affiliateRepository.getCommissionsByPaymentIntentIdDao
+    ).mockResolvedValue([{...commissionData, status: 'voided'}])
+
+    const handled = await refundBountyByPaymentIntentService('pi_123', 'x')
+
+    expect(handled).toBe(0)
+    expect(affiliateRepository.refundCommissionTxnDao).not.toHaveBeenCalled()
   })
 
   it('should approve matured commissions', async () => {

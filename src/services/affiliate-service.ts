@@ -11,6 +11,7 @@ import {
   getAffiliatesWithPaginationDao,
   getAffiliateTotalsDao,
   getCommissionsByAffiliateIdDao,
+  getCommissionsByPaymentIntentIdDao,
   getCommissionsBySourceIdDao,
   getProgramRewardByPlanCodeDao,
   getReferralByOrganizationIdDao,
@@ -212,6 +213,7 @@ export const recordBountyForPaidInvoiceService = async (params: {
   sourceId: string
   amountPaidCents: number
   stripeSubscriptionId?: string
+  stripePaymentIntentId?: string
 }): Promise<{created: boolean; reason?: string}> => {
   const parsed = recordBountyServiceSchema.safeParse(params)
   if (!parsed.success) {
@@ -239,6 +241,7 @@ export const recordBountyForPaidInvoiceService = async (params: {
     currency: reward.currency,
     sourceId: params.sourceId,
     stripeSubscriptionId: params.stripeSubscriptionId,
+    stripePaymentIntentId: params.stripePaymentIntentId,
     maturesAt: addDays(now, reward.holdDays),
   })
 
@@ -253,15 +256,10 @@ export const recordBountyForPaidInvoiceService = async (params: {
   return {created}
 }
 
-/**
- * Annule ou compense la prime rattachée à une facture remboursée.
- * Appelé depuis le webhook, sans autorisation.
- */
-export const refundBountyBySourceService = async (
-  sourceId: string,
+const refundCommissions = async (
+  commissions: AffiliateCommission[],
   reason: string
 ): Promise<number> => {
-  const commissions = await getCommissionsBySourceIdDao(sourceId)
   const now = new Date()
   let handled = 0
 
@@ -277,8 +275,46 @@ export const refundBountyBySourceService = async (
     handled += 1
   }
 
+  return handled
+}
+
+/**
+ * Annule ou compense la prime rattachée à une facture remboursée.
+ * Appelé depuis le webhook, sans autorisation.
+ */
+export const refundBountyBySourceService = async (
+  sourceId: string,
+  reason: string
+): Promise<number> => {
+  const commissions = await getCommissionsBySourceIdDao(sourceId)
+  const handled = await refundCommissions(commissions, reason)
+
   if (handled > 0) {
     logger.info('[AFFILIATE-SERVICE] remboursement traité', {sourceId, handled})
+  }
+
+  return handled
+}
+
+/**
+ * Même traitement, à partir du paiement plutôt que de la facture.
+ *
+ * C'est le seul chemin praticable depuis un remboursement ou un litige :
+ * Stripe expose la liaison `invoice -> payments -> payment_intent`, jamais
+ * l'inverse. Un `charge.refunded` ne connaît que son paiement.
+ */
+export const refundBountyByPaymentIntentService = async (
+  paymentIntentId: string,
+  reason: string
+): Promise<number> => {
+  const commissions = await getCommissionsByPaymentIntentIdDao(paymentIntentId)
+  const handled = await refundCommissions(commissions, reason)
+
+  if (handled > 0) {
+    logger.info('[AFFILIATE-SERVICE] remboursement traité', {
+      paymentIntentId,
+      handled,
+    })
   }
 
   return handled

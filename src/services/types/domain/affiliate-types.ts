@@ -99,6 +99,7 @@ export type CreateCommission = Pick<
   currency?: string
   sourceId?: string
   stripeSubscriptionId?: string
+  stripePaymentIntentId?: string
   maturesAt: Date
 }
 

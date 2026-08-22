@@ -8,6 +8,23 @@
 export const REFERRAL_QUERY_PARAM = 'ref'
 
 /**
+ * Modes d'attribution.
+ *
+ * `cookie` capte le ref à la visite et le garde 60 jours. C'est le mode le plus
+ * performant, mais la CNIL exclut explicitement les traceurs d'affiliation des
+ * exemptions de consentement (FAQ cookies, question 13) : à activer derrière un
+ * consentement, ou à laisser désactivé.
+ *
+ * `code-only` ne pose aucun traceur. L'attribution repose uniquement sur le
+ * code saisi à l'inscription. Moins performant, conforme sans bandeau.
+ *
+ * `off` désactive toute attribution automatique.
+ */
+export const REFERRAL_TRACKING_MODES = ['cookie', 'code-only', 'off'] as const
+
+export type ReferralTrackingMode = (typeof REFERRAL_TRACKING_MODES)[number]
+
+/**
  * Le cookie n'est pas signé, et c'est délibéré : sa valeur est un code public,
  * visible dans l'URL partagée par l'affilié. Le forger revient à cliquer le
  * lien — il n'y a aucun privilège à gagner. Le code est en revanche revalidé

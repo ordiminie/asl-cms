@@ -195,6 +195,7 @@ export const createBountyCommissionTxnDao = async (
         currency: data.currency ?? 'USD',
         sourceId: data.sourceId,
         stripeSubscriptionId: data.stripeSubscriptionId,
+        stripePaymentIntentId: data.stripePaymentIntentId,
         maturesAt: data.maturesAt,
       })
       .onConflictDoNothing()
@@ -266,6 +267,15 @@ export const getCommissionsByAffiliateIdDao = async (
   }
 }
 
+export const getCommissionsByPaymentIntentIdDao = async (
+  paymentIntentId: string
+): Promise<AffiliateCommissionModel[]> => {
+  return db
+    .select()
+    .from(affiliateCommission)
+    .where(eq(affiliateCommission.stripePaymentIntentId, paymentIntentId))
+}
+
 export const getCommissionsBySourceIdDao = async (
   sourceId: string
 ): Promise<AffiliateCommissionModel[]> => {
@@ -307,6 +317,7 @@ export const refundCommissionTxnDao = async (
           currency: existing.currency,
           sourceId: existing.sourceId,
           stripeSubscriptionId: existing.stripeSubscriptionId,
+          stripePaymentIntentId: existing.stripePaymentIntentId,
           maturesAt: now,
           approvedAt: now,
           voidReason: reason,

@@ -756,7 +756,11 @@
         },
         "submit": "Registrarse",
         "submitting": "Registrando...",
-        "generalError": "Ocurrió un error durante el registro"
+        "generalError": "Ocurrió un error durante el registro",
+        "referralCode": {
+          "label": "Código de referido (opcional)",
+          "placeholder": "codigo-de-tu-referidor"
+        }
       },
       "alreadyAccount": "¿Ya tienes una cuenta?",
       "loginLink": "Iniciar sesión",
@@ -768,7 +772,8 @@
         "nameMin": "El nombre debe contener al menos 2 caracteres",
         "passwordMin": "La contraseña debe contener al menos 8 caracteres",
         "confirmPasswordMin": "La contraseña debe contener al menos 8 caracteres",
-        "passwordMismatch": "Las contraseñas no coinciden"
+        "passwordMismatch": "Las contraseñas no coinciden",
+        "referralCodePattern": "Solo minúsculas, dígitos y guiones"
       }
     },
     "RegisterMagicLinkForm": {

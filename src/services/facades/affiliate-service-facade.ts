@@ -25,6 +25,8 @@ export const recordBountyForPaidInvoiceService =
   affiliateServiceInterceptor.recordBountyForPaidInvoiceService
 export const refundBountyBySourceService =
   affiliateServiceInterceptor.refundBountyBySourceService
+export const refundBountyByPaymentIntentService =
+  affiliateServiceInterceptor.refundBountyByPaymentIntentService
 export const approveMaturedCommissionsService =
   affiliateServiceInterceptor.approveMaturedCommissionsService
 

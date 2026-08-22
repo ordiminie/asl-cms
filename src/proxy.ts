@@ -3,6 +3,7 @@ import type {NextRequest} from 'next/server'
 import {NextResponse} from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 
+import {env} from '@/env'
 import {
   isValidReferralCode,
   normalizeReferralCode,
@@ -105,6 +106,7 @@ export default function middleware(request: NextRequest) {
   // sur chaque visite.
   const referralCode = searchParams.get(REFERRAL_QUERY_PARAM)
   if (
+    env.NEXT_PUBLIC_AFFILIATE_TRACKING === 'cookie' &&
     isValidReferralCode(referralCode ?? undefined) &&
     !request.cookies.get(REFERRAL_COOKIE_NAME)
   ) {

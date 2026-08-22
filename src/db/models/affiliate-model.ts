@@ -197,6 +197,10 @@ export const affiliateCommission = pgTable(
     // facture ne peut produire qu'une seule commission de prime.
     sourceId: text('source_id'),
     stripeSubscriptionId: text('stripe_subscription_id'),
+    // Seule liaison exploitable vers un remboursement : Stripe expose
+    // `invoice -> payments -> payment_intent`, jamais l'inverse. Sans cette
+    // colonne, un `charge.refunded` ne retrouve pas la prime à annuler.
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
     // Matérialisé à l'insertion : changer le barème ne réécrit pas l'histoire.
     maturesAt: timestamp('matures_at').notNull(),
     approvedAt: timestamp('approved_at'),
@@ -217,6 +221,9 @@ export const affiliateCommission = pgTable(
       table.organizationId
     ),
     payoutIdIdx: index('affiliate_commission_payout_id_idx').on(table.payoutId),
+    paymentIntentIdx: index('affiliate_commission_payment_intent_idx').on(
+      table.stripePaymentIntentId
+    ),
     // Idempotence webhook : une facture Stripe ne peut créer qu'une prime.
     // Les clawbacks et ajustements sont exclus, ils référencent la même source
     // que la ligne qu'ils corrigent.

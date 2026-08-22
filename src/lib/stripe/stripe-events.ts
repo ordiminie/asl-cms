@@ -8,7 +8,7 @@ import {
 import {logger} from '@/lib/logger'
 import {
   recordBountyForPaidInvoiceService,
-  refundBountyBySourceService,
+  refundBountyByPaymentIntentService,
 } from '@/services/facades/affiliate-service-facade'
 import {
   allocateMonthlyCreditsService,
@@ -140,9 +140,27 @@ export async function onStripeEvent(event: Stripe.Event) {
         const charge = event.data.object as Stripe.Charge
 
         try {
-          await handleChargeRefundedAffiliateBounty(charge)
+          await voidAffiliateBountyForPayment(
+            charge.payment_intent,
+            `stripe_refund:${charge.id}`
+          )
         } catch (error) {
           logger.error('❌ Erreur remboursement prime affiliation:', error)
+        }
+        break
+      }
+
+      case 'charge.dispute.created': {
+        logger.info('⚖️ Dispute created:', event.data.object.id)
+        const dispute = event.data.object as Stripe.Dispute
+
+        try {
+          await voidAffiliateBountyForPayment(
+            dispute.payment_intent,
+            `stripe_dispute:${dispute.id}`
+          )
+        } catch (error) {
+          logger.error('❌ Erreur litige prime affiliation:', error)
         }
         break
       }
@@ -994,12 +1012,16 @@ async function handleInvoicePaidAffiliateBounty(
     return
   }
 
+  const payment = invoice.payments?.data[0]?.payment?.payment_intent
+  const paymentIntentId = typeof payment === 'string' ? payment : payment?.id
+
   const result = await recordBountyForPaidInvoiceService({
     organizationId: referenceId,
     planCode,
     sourceId: invoice.id as string,
     amountPaidCents: amountPaid,
     stripeSubscriptionId: subscriptionId,
+    stripePaymentIntentId: paymentIntentId,
   })
 
   logger.info('🎁 Prime affiliation traitée', {
@@ -1010,21 +1032,32 @@ async function handleInvoicePaidAffiliateBounty(
 }
 
 /**
- * Annule la prime attachée aux factures d'une charge remboursée.
+ * Annule la prime rattachée à un paiement remboursé ou contesté.
  *
- * Avant versement la prime est annulée, après versement elle est compensée par
- * une ligne négative : le ledger reste append-only.
+ * Un litige est traité comme un remboursement : l'argent est susceptible de
+ * repartir, et un chargeback arrive jusqu'à 120 jours après la transaction,
+ * donc bien au-delà de toute carence raisonnable. Si le litige est finalement
+ * gagné, un administrateur régularise — c'est le sens d'un ledger append-only,
+ * on ajoute une écriture plutôt que d'en réécrire une.
  */
-async function handleChargeRefundedAffiliateBounty(
-  charge: Stripe.Charge
+async function voidAffiliateBountyForPayment(
+  paymentIntent: string | Stripe.PaymentIntent | null,
+  reason: string
 ): Promise<void> {
-  const invoiceId = (charge as unknown as {invoice?: string | null}).invoice
-  if (!invoiceId) return
+  const paymentIntentId =
+    typeof paymentIntent === 'string' ? paymentIntent : paymentIntent?.id
+  if (!paymentIntentId) {
+    logger.info('⚖️ Pas de payment intent - skip annulation prime')
+    return
+  }
 
-  const handled = await refundBountyBySourceService(
-    invoiceId,
-    `stripe_refund:${charge.id}`
+  const handled = await refundBountyByPaymentIntentService(
+    paymentIntentId,
+    reason
   )
 
-  logger.info('↩️ Remboursement prime affiliation traité', {invoiceId, handled})
+  logger.info('↩️ Annulation prime affiliation traitée', {
+    paymentIntentId,
+    handled,
+  })
 }

@@ -756,7 +756,11 @@
         },
         "submit": "S'inscrire",
         "submitting": "Inscription en cours...",
-        "generalError": "Une erreur est survenue lors de l'inscription"
+        "generalError": "Une erreur est survenue lors de l'inscription",
+        "referralCode": {
+          "label": "Code de parrainage (facultatif)",
+          "placeholder": "code-de-votre-parrain"
+        }
       },
       "alreadyAccount": "Vous avez déjà un compte?",
       "loginLink": "Se connecter",
@@ -768,7 +772,8 @@
         "nameMin": "Le nom doit contenir au moins 2 caractères",
         "passwordMin": "Le mot de passe doit contenir au moins 8 caractères",
         "confirmPasswordMin": "Le mot de passe doit contenir au moins 8 caractères",
-        "passwordMismatch": "Les mots de passe ne correspondent pas"
+        "passwordMismatch": "Les mots de passe ne correspondent pas",
+        "referralCodePattern": "Uniquement des minuscules, chiffres et tirets"
       }
     },
     "RegisterMagicLinkForm": {
