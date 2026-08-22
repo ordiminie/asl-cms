@@ -1,9 +1,17 @@
+CREATE TYPE "public"."affiliate_payout_method" AS ENUM('credit', 'manual');--> statement-breakpoint
+CREATE TYPE "public"."affiliate_payout_status" AS ENUM('pending', 'paid', 'failed');--> statement-breakpoint
+CREATE TYPE "public"."affiliate_status" AS ENUM('pending', 'active', 'suspended', 'banned');--> statement-breakpoint
+CREATE TYPE "public"."affiliate_type" AS ENUM('customer', 'professional');--> statement-breakpoint
+CREATE TYPE "public"."affiliate_commission_status" AS ENUM('pending', 'approved', 'paid', 'refunded', 'voided');--> statement-breakpoint
+CREATE TYPE "public"."affiliate_commission_type" AS ENUM('bounty', 'clawback', 'adjustment');--> statement-breakpoint
+CREATE TYPE "public"."referral_source" AS ENUM('cookie', 'signup_code', 'manual');--> statement-breakpoint
+CREATE TYPE "public"."referral_status" AS ENUM('active', 'self_referral', 'voided');--> statement-breakpoint
 CREATE TYPE "public"."setting_category" AS ENUM('email', 'general');--> statement-breakpoint
 CREATE TYPE "public"."setting_type" AS ENUM('boolean', 'string', 'number', 'json');--> statement-breakpoint
 CREATE TYPE "public"."organization_role" AS ENUM('admin', 'member', 'owner');--> statement-breakpoint
 CREATE TYPE "public"."role_type" AS ENUM('public', 'user', 'redactor', 'moderator', 'admin', 'super_admin');--> statement-breakpoint
 CREATE TYPE "public"."user_visibility" AS ENUM('public', 'private');--> statement-breakpoint
-CREATE TYPE "public"."credit_source" AS ENUM('plan', 'admin_grant', 'usage', 'pack', 'refund');--> statement-breakpoint
+CREATE TYPE "public"."credit_source" AS ENUM('plan', 'admin_grant', 'usage', 'pack', 'refund', 'system_adjustment');--> statement-breakpoint
 CREATE TYPE "public"."post_status" AS ENUM('draft', 'published', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."task_status" AS ENUM('todo', 'in_progress', 'done');--> statement-breakpoint
 CREATE TYPE "public"."plan_status" AS ENUM('active', 'inactive', 'deprecated');--> statement-breakpoint
@@ -12,6 +20,82 @@ CREATE TYPE "public"."notification_channel" AS ENUM('email', 'push', 'both', 'no
 CREATE TYPE "public"."theme_type" AS ENUM('light', 'dark', 'system');--> statement-breakpoint
 CREATE TYPE "public"."two_factor_type" AS ENUM('otp', 'totp');--> statement-breakpoint
 CREATE TYPE "public"."submission_type" AS ENUM('contact', 'feedback', 'support');--> statement-breakpoint
+CREATE TABLE "affiliate" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"code" text NOT NULL,
+	"status" "affiliate_status" DEFAULT 'active' NOT NULL,
+	"type" "affiliate_type" DEFAULT 'customer' NOT NULL,
+	"payout_method" "affiliate_payout_method" DEFAULT 'manual' NOT NULL,
+	"legal_name" text,
+	"tax_id" text,
+	"country" text,
+	"suspended_at" timestamp,
+	"suspended_reason" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "affiliate_commission" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+	"affiliate_id" uuid NOT NULL,
+	"referral_id" uuid NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"type" "affiliate_commission_type" DEFAULT 'bounty' NOT NULL,
+	"status" "affiliate_commission_status" DEFAULT 'pending' NOT NULL,
+	"plan_code" text NOT NULL,
+	"amount_cents" integer NOT NULL,
+	"currency" char(3) DEFAULT 'USD' NOT NULL,
+	"source_id" text,
+	"stripe_subscription_id" text,
+	"stripe_payment_intent_id" text,
+	"matures_at" timestamp NOT NULL,
+	"approved_at" timestamp,
+	"paid_at" timestamp,
+	"voided_at" timestamp,
+	"void_reason" text,
+	"parent_commission_id" uuid,
+	"payout_id" uuid,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "affiliate_payout" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+	"affiliate_id" uuid NOT NULL,
+	"amount_cents" integer NOT NULL,
+	"currency" char(3) DEFAULT 'USD' NOT NULL,
+	"status" "affiliate_payout_status" DEFAULT 'pending' NOT NULL,
+	"method" "affiliate_payout_method" DEFAULT 'manual' NOT NULL,
+	"external_reference" text,
+	"affiliate_snapshot" jsonb,
+	"initiated_by_user_id" uuid,
+	"notes" text,
+	"paid_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "affiliate_program_reward" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+	"plan_code" text NOT NULL,
+	"bounty_cents" integer NOT NULL,
+	"currency" char(3) DEFAULT 'USD' NOT NULL,
+	"hold_days" integer DEFAULT 30 NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "referral" (
+	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
+	"affiliate_id" uuid NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"referred_user_id" uuid NOT NULL,
+	"source" "referral_source" DEFAULT 'cookie' NOT NULL,
+	"status" "referral_status" DEFAULT 'active' NOT NULL,
+	"locked_at" timestamp DEFAULT now() NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "app_settings" (
 	"key" text PRIMARY KEY NOT NULL,
 	"value" text NOT NULL,
@@ -27,6 +111,7 @@ CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
 	"account_id" text NOT NULL,
 	"provider_id" text NOT NULL,
+	"issuer" text,
 	"user_id" uuid NOT NULL,
 	"access_token" text,
 	"refresh_token" text,
@@ -37,7 +122,8 @@ CREATE TABLE "account" (
 	"password" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "account_account_id_provider_id_unique" UNIQUE("account_id","provider_id")
+	CONSTRAINT "account_account_id_provider_id_unique" UNIQUE("account_id","provider_id"),
+	CONSTRAINT "account_issuer_account_id_unique" UNIQUE("issuer","account_id")
 );
 --> statement-breakpoint
 CREATE TABLE "apikey" (
@@ -46,7 +132,8 @@ CREATE TABLE "apikey" (
 	"start" text,
 	"prefix" text,
 	"key" text NOT NULL,
-	"user_id" uuid NOT NULL,
+	"reference_id" uuid NOT NULL,
+	"config_id" text DEFAULT 'default' NOT NULL,
 	"refill_interval" integer,
 	"refill_amount" integer,
 	"last_refill_at" timestamp,
@@ -115,7 +202,10 @@ CREATE TABLE "two_factor" (
 	"id" uuid PRIMARY KEY DEFAULT uuid_generate_v4() NOT NULL,
 	"secret" text NOT NULL,
 	"backup_codes" text NOT NULL,
-	"user_id" uuid NOT NULL
+	"user_id" uuid NOT NULL,
+	"verified" boolean DEFAULT true,
+	"failed_verification_count" integer DEFAULT 0,
+	"locked_until" timestamp
 );
 --> statement-breakpoint
 CREATE TABLE "user" (
@@ -316,9 +406,18 @@ CREATE TABLE "user_submissions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+ALTER TABLE "affiliate" ADD CONSTRAINT "affiliate_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "affiliate_commission" ADD CONSTRAINT "affiliate_commission_affiliate_id_affiliate_id_fk" FOREIGN KEY ("affiliate_id") REFERENCES "public"."affiliate"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "affiliate_commission" ADD CONSTRAINT "affiliate_commission_referral_id_referral_id_fk" FOREIGN KEY ("referral_id") REFERENCES "public"."referral"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "affiliate_commission" ADD CONSTRAINT "affiliate_commission_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "affiliate_payout" ADD CONSTRAINT "affiliate_payout_affiliate_id_affiliate_id_fk" FOREIGN KEY ("affiliate_id") REFERENCES "public"."affiliate"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "affiliate_payout" ADD CONSTRAINT "affiliate_payout_initiated_by_user_id_user_id_fk" FOREIGN KEY ("initiated_by_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "referral" ADD CONSTRAINT "referral_affiliate_id_affiliate_id_fk" FOREIGN KEY ("affiliate_id") REFERENCES "public"."affiliate"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "referral" ADD CONSTRAINT "referral_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "referral" ADD CONSTRAINT "referral_referred_user_id_user_id_fk" FOREIGN KEY ("referred_user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "app_settings" ADD CONSTRAINT "app_settings_updated_by_user_id_fk" FOREIGN KEY ("updated_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "apikey" ADD CONSTRAINT "apikey_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "apikey" ADD CONSTRAINT "apikey_reference_id_user_id_fk" FOREIGN KEY ("reference_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitation" ADD CONSTRAINT "invitation_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREIGN KEY ("inviter_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "member" ADD CONSTRAINT "member_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -341,7 +440,23 @@ ALTER TABLE "task" ADD CONSTRAINT "task_assigned_to_user_id_fk" FOREIGN KEY ("as
 ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_submissions" ADD CONSTRAINT "user_submissions_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_submissions" ADD CONSTRAINT "user_submissions_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "affiliate_user_id_unique_idx" ON "affiliate" USING btree ("user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "affiliate_code_unique_idx" ON "affiliate" USING btree ("code");--> statement-breakpoint
+CREATE INDEX "affiliate_status_idx" ON "affiliate" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "affiliate_commission_affiliate_status_idx" ON "affiliate_commission" USING btree ("affiliate_id","status","matures_at");--> statement-breakpoint
+CREATE INDEX "affiliate_commission_organization_id_idx" ON "affiliate_commission" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "affiliate_commission_payout_id_idx" ON "affiliate_commission" USING btree ("payout_id");--> statement-breakpoint
+CREATE INDEX "affiliate_commission_payment_intent_idx" ON "affiliate_commission" USING btree ("stripe_payment_intent_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "affiliate_commission_source_dedup_idx" ON "affiliate_commission" USING btree ("affiliate_id","source_id") WHERE "affiliate_commission"."source_id" IS NOT NULL AND "affiliate_commission"."type" = 'bounty';--> statement-breakpoint
+CREATE UNIQUE INDEX "affiliate_commission_organization_bounty_idx" ON "affiliate_commission" USING btree ("organization_id") WHERE "affiliate_commission"."type" = 'bounty';--> statement-breakpoint
+CREATE INDEX "affiliate_payout_affiliate_id_idx" ON "affiliate_payout" USING btree ("affiliate_id");--> statement-breakpoint
+CREATE INDEX "affiliate_payout_status_idx" ON "affiliate_payout" USING btree ("status");--> statement-breakpoint
+CREATE UNIQUE INDEX "affiliate_program_reward_plan_code_idx" ON "affiliate_program_reward" USING btree ("plan_code");--> statement-breakpoint
+CREATE UNIQUE INDEX "referral_organization_id_unique_idx" ON "referral" USING btree ("organization_id");--> statement-breakpoint
+CREATE INDEX "referral_affiliate_id_idx" ON "referral" USING btree ("affiliate_id");--> statement-breakpoint
+CREATE INDEX "referral_referred_user_id_idx" ON "referral" USING btree ("referred_user_id");--> statement-breakpoint
 CREATE INDEX "credit_ledger_organization_id_idx" ON "credit_ledger" USING btree ("organization_id");--> statement-breakpoint
 CREATE INDEX "credit_ledger_created_at_idx" ON "credit_ledger" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "credit_ledger_expires_at_idx" ON "credit_ledger" USING btree ("expires_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "credit_ledger_source_dedup_unique_idx" ON "credit_ledger" USING btree ("organization_id","source","source_id") WHERE "credit_ledger"."source_id" IS NOT NULL AND "credit_ledger"."source" IN ('pack', 'system_adjustment', 'refund');--> statement-breakpoint
 CREATE UNIQUE INDEX "post_language_unique" ON "posts_translation" USING btree ("postid","language");
