@@ -27,6 +27,7 @@ export type Subjects =
   | 'Category'
   | 'Hashtag'
   | 'Credit'
+  | 'Affiliate'
   | 'all'
 
 // Constantes pour les actions et subjects
@@ -52,6 +53,7 @@ export const SubjectsConst = {
   CATEGORY: 'Category' as Subjects,
   HASHTAG: 'Hashtag' as Subjects,
   CREDIT: 'Credit' as Subjects,
+  AFFILIATE: 'Affiliate' as Subjects,
   ALL: 'all' as Subjects,
 } as const
 /**
@@ -118,6 +120,7 @@ export function buildAdminAbilities(builder: AppAbilityBuilder) {
 
   // Peut gérer tous les crédits (grant, read, etc.)
   can(ActionsConst.MANAGE, SubjectsConst.CREDIT)
+  can(ActionsConst.MANAGE, SubjectsConst.AFFILIATE)
 }
 
 /**
@@ -188,6 +191,9 @@ export function buildBaseUserAbilities(builder: AppAbilityBuilder, user: User) {
 
   // Files - peut gérer ses propres fichiers
   can(ActionsConst.MANAGE, SubjectsConst.FILE, {userId: user.id})
+
+  // Affiliation - peut gérer son propre ref et consulter ses commissions
+  can(ActionsConst.MANAGE, SubjectsConst.AFFILIATE, {userId: user.id})
 
   // Peut lire les logs (accès en lecture seule)
   can(ActionsConst.READ, SubjectsConst.LOG)

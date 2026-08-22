@@ -14,6 +14,7 @@ import {
 import {AuthMethod, env} from '@/env'
 import {auth, AuthAppConfig} from '@/lib/better-auth/auth'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
+import {rememberReferralCodeFromSignUp} from '@/lib/helper/referral-helper.server'
 import {
   getUserByEmailService,
   isEmailAvailableService,
@@ -274,6 +275,7 @@ export async function registerCredentialAction(
     email: formData.get('email')?.toString().toLowerCase(),
     password: formData.get('password'),
     confirmPassword: formData.get('confirmPassword'),
+    referralCode: formData.get('referralCode')?.toString() ?? '',
   })
 
   if (!validationResult.success) {
@@ -289,7 +291,13 @@ export async function registerCredentialAction(
     }
   }
 
-  const {name, email, password} = validationResult.data
+  const {name, email, password, referralCode} = validationResult.data
+
+  // Repli d'attribution quand aucun cookie n'a été posé : lien partagé sans
+  // paramètre, inscription depuis un autre appareil, navigateur avec bloqueur,
+  // ou mode 'code-only' où l'on ne pose volontairement aucun traceur.
+  // Le hook Better Auth lira ce cookie juste après, via `cookies()`.
+  await rememberReferralCodeFromSignUp(referralCode)
 
   // 2. Vérifier si l'email est disponible
   const isEmailAvailable = await isEmailAvailableService(email)

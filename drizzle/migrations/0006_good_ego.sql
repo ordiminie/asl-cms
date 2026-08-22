@@ -1,0 +1,2 @@
+ALTER TABLE "affiliate_commission" ADD COLUMN "stripe_payment_intent_id" text;--> statement-breakpoint
+CREATE INDEX "affiliate_commission_payment_intent_idx" ON "affiliate_commission" USING btree ("stripe_payment_intent_id");
