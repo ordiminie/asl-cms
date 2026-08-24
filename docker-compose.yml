@@ -1,0 +1,12 @@
+services:
+  dev:
+    build: .
+    volumes:
+      - .:/workspace
+      - claude-auth:/home/dev/.claude
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+
+volumes:
+  claude-auth:
