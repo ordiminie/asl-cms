@@ -142,6 +142,8 @@ const checkIndex = () => {
 
 // 3. Les deux jeux de règles disent-ils la même chose ?
 const checkTwins = (shouldFix: boolean) => {
+  const expectedCursorFiles = new Set<string>()
+
   for (const claudeFile of walk(CLAUDE_RULES, '.md')) {
     const relative = path.relative(CLAUDE_RULES, claudeFile)
     const isIndex = path.basename(claudeFile) === 'RULES-INDEX.md'
@@ -149,6 +151,7 @@ const checkTwins = (shouldFix: boolean) => {
       CURSOR_RULES,
       isIndex ? relative : relative.replace(/\.md$/, '.mdc')
     )
+    expectedCursorFiles.add(cursorFile)
 
     const expected = toCursorBody(
       stripFrontmatter(fs.readFileSync(claudeFile, 'utf8'))
@@ -176,6 +179,24 @@ const checkTwins = (shouldFix: boolean) => {
         cursorFile,
         'diverge de la règle Claude (lancer `pnpm check:rules --fix`)'
       )
+    }
+  }
+
+  const cursorRuleFiles = [
+    ...walk(CURSOR_RULES, '.mdc'),
+    ...walk(CURSOR_RULES, '.md').filter(
+      (file) => path.basename(file) !== 'RULES-INDEX.md'
+    ),
+  ]
+
+  for (const cursorFile of cursorRuleFiles) {
+    if (expectedCursorFiles.has(cursorFile)) continue
+
+    if (shouldFix) {
+      fs.unlinkSync(cursorFile)
+      console.log(`  supprimé ${cursorFile}`)
+    } else {
+      fail(cursorFile, 'copie Cursor sans règle Claude correspondante')
     }
   }
 }

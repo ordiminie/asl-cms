@@ -9,7 +9,18 @@ Guide complet pour sécuriser les Server Actions avec la fonction `requireAction
 
 ## Principe de Sécurité
 
-**TOUTES les Server Actions DOIVENT être sécurisées** avec `requireActionAuth()` avant d'exécuter toute logique métier, meme si coté service il y a une verification des authorizations.
+Toute Server Action réservée à un utilisateur connecté ou réalisant une
+opération privilégiée DOIT appeler `requireActionAuth()` avant d'exécuter la
+logique métier, même si le service vérifie aussi les autorisations.
+
+Une Server Action peut être explicitement publique lorsque le parcours métier
+l'exige, par exemple pour un formulaire de contact, une inscription à la
+newsletter, une consultation de documentation ou un checkout invité. Cette
+exception doit rester volontaire et limitée : validation serveur stricte,
+limitation de débit lorsque l'action écrit ou déclenche un service externe, et
+aucune opération administrative ou privilégiée. Une action publique ne doit
+jamais créer ou modifier une ressource Stripe de catalogue, un rôle, un crédit,
+un paramètre d'application ou une ressource appartenant à un autre utilisateur.
 
 ## Fonction requireActionAuth()
 

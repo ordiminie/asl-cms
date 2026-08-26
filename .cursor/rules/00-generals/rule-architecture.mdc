@@ -64,6 +64,17 @@ alwaysApply: true
 - Définit les **types de modèle** (ex : `UserModel` dans `src/db/models/user-model.ts`).
 - Les repositories (`src/db/repositories/`) effectuent les requêtes SQL.
 
+### Dépendances à éviter
+
+- La présentation ne doit pas importer de modèles ni de types depuis
+  `src/db/models/` ou `src/db/repositories/`. Un type nécessaire à l'interface
+  appartient à `src/services/types/domain/`.
+- La présentation et les Server Actions ne doivent pas appeler directement un
+  service métier lorsqu'une façade existe.
+- Un service ne doit jamais importer sa façade ni la façade d'un autre
+  service. Les dépendances entre domaines passent par les fonctions de service
+  elles-mêmes afin de conserver le sens façade → service → persistance.
+
 ---
 
 ## Exemples Concrets
