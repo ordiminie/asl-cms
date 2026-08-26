@@ -1,3 +1,5 @@
+import {getTranslations} from 'next-intl/server'
+
 import {
   getAllCategoriesDal,
   getAllHashtagsDal,
@@ -7,6 +9,7 @@ import {PostForm} from '@/components/features/admin/blog/post-form'
 import {withAuthAdmin} from '@/components/features/auth/with-auth'
 
 async function NewPostPage() {
+  const t = await getTranslations('AdminPages')
   // Vérifications des permissions
   const permissions = await getPostPermissionsDal()
 
@@ -26,9 +29,7 @@ async function NewPostPage() {
     <div className="space-y-6">
       <div className="max-w-4xl space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Créer un nouveau post
-          </h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('newPost')}</h1>
           <p className="text-muted-foreground">
             Créez un nouveau post de blog avec du contenu traduit en plusieurs
             langues

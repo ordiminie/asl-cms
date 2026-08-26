@@ -1,3 +1,5 @@
+import '../globals.css'
+
 import {notFound} from 'next/navigation'
 import {Metadata} from 'next/types'
 import {hasLocale} from 'next-intl'
@@ -48,6 +50,6 @@ export async function generateMetadata({
   }
 }
 
-// export function generateStaticParams() {
-//   return routing.locales.map((locale) => ({locale}))
-// }
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({locale}))
+}

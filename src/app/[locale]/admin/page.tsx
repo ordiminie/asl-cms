@@ -1,4 +1,5 @@
 import {notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {AdminDashboardSkeleton} from '@/components/features/admin/dashboard/admin-dashboard-skeleton'
@@ -9,6 +10,7 @@ import {isPageEnabled} from '@/lib/utils'
 import AdminDashboardContent from './admin-dashboard-content'
 
 async function AdminPage() {
+  const t = await getTranslations('AdminPages')
   if (!isPageEnabled(PagesConst.ADMIN)) {
     return notFound()
   }
@@ -18,7 +20,7 @@ async function AdminPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold tracking-tight">
-            Dashboard Administration
+            {t('dashboard')}
           </h1>
         </div>
 

@@ -3,6 +3,7 @@
 import {GalleryVerticalEnd, Search} from 'lucide-react'
 import Link from 'next/link'
 import {usePathname} from 'next/navigation'
+import {useTranslations} from 'next-intl'
 import * as React from 'react'
 
 import {SearchModal} from '@/components/features/docs/search-modal'
@@ -57,6 +58,7 @@ export function DocsSidebar({
   structure,
   ...props
 }: DocsSidebarProps & React.ComponentProps<typeof Sidebar>) {
+  const t = useTranslations('DocsPage')
   const pathname = usePathname()
   const navMain = transformDocsToNavStructure(structure)
   const [searchOpen, setSearchOpen] = React.useState(false)
@@ -72,8 +74,8 @@ export function DocsSidebar({
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">ShipSaaS</span>
-                  <span className="">Documentation</span>
+                  <span className="font-medium">{t('brand')}</span>
+                  <span className="">{t('title')}</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -86,7 +88,7 @@ export function DocsSidebar({
           className="text-muted-foreground bg-muted/50 hover:bg-muted/70 relative flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors"
         >
           <Search className="mr-2 h-4 w-4" />
-          <span className="flex-1 text-left">Search documentation...</span>
+          <span className="flex-1 text-left">{t('searchPlaceholder')}</span>
           <kbd className="bg-muted text-muted-foreground pointer-events-none inline-flex h-5 items-center gap-1 rounded border px-1.5 font-mono text-[10px] font-medium select-none">
             <span className="text-xs">⌘K</span>
           </kbd>

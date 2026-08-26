@@ -52,7 +52,7 @@ import {
 } from '@/services/facades/user-service-facade'
 
 // Services d'authentification
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 
 // Types de domaine
 import {UpdateUser, User} from '@/services/types/domain/user-types'
@@ -85,6 +85,14 @@ const databaseUrl = env.DATABASE_URL
 ```
 
 ### ❌ INTERDIT - Importations Prohibées
+
+```ts
+// ❌ INTERDIT - next/root-params
+import * as rootParams from 'next/root-params'
+// Jette dans une Server Action : « can only be called in the context of a route ».
+// La locale se lit via getTranslations, qui retombe sur le cookie NEXT_LOCALE.
+// Voir rule-translation.md, section « Le contrat next/root-params ».
+```
 
 #### 1. Composants React Client
 
@@ -158,7 +166,7 @@ import {AuthProvider} from '@/components/context/auth-provider'
 import {userFormSchema} from './validation'
 
 // 2. Authentification
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 
 // 3. Logique métier via façades
 import {updateUserService} from '@/services/facades/user-service-facade'
@@ -194,7 +202,7 @@ export async function updateUserAction(formData: FormData) {
 import {revalidatePath} from 'next/cache'
 import {redirect} from 'next/navigation'
 
-import {getAuthUser} from '@/services/authentication/auth-utils'
+import {getAuthUser} from '@/services/authentication/auth-service'
 import {updateUserService} from '@/services/facades/user-service-facade'
 import {UpdateUser} from '@/services/types/domain/user-types'
 
@@ -255,7 +263,7 @@ export async function badUpdateUserAction(formData: FormData) {
 
 1. **Utilisez uniquement les façades** (`@/services/facades/`) pour la logique métier
 2. **Validez avec Zod** depuis des schémas dédiés
-3. **Authentifiez via** `@/services/authentication/auth-utils`
+3. **Authentifiez via** `@/services/authentication/auth-service`
 4. **Invalideez le cache** avec `revalidatePath` ou `revalidateTag`
 5. **Redirigez avec** `redirect` de Next.js
 6. **Évitez tout import** de composants UI, hooks client, ou accès direct à la persistance

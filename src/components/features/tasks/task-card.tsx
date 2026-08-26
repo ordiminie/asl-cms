@@ -3,6 +3,7 @@
 import {useSortable} from '@dnd-kit/sortable'
 import {CSS} from '@dnd-kit/utilities'
 import {Calendar, Clock, GripVertical} from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 
 import {Avatar, AvatarFallback} from '@/components/ui/avatar'
 import {Badge} from '@/components/ui/badge'
@@ -24,13 +25,9 @@ const statusColors = {
   done: 'bg-green-100 text-green-800 border-green-200',
 }
 
-const statusLabels = {
-  todo: 'À faire',
-  in_progress: 'En cours',
-  done: 'Terminé',
-}
-
 export function TaskCard({task, assignedUser}: TaskCardProps) {
+  const t = useTranslations('Tasks')
+  const locale = useLocale()
   const {attributes, listeners, setNodeRef, transform, transition, isDragging} =
     useSortable({
       id: task.id,
@@ -79,12 +76,12 @@ export function TaskCard({task, assignedUser}: TaskCardProps) {
               variant="secondary"
               className={`text-xs ${statusColors[task.status]}`}
             >
-              {statusLabels[task.status]}
+              {t(`card.status.${task.status}`)}
             </Badge>
             {task.dueDate && (
               <div className="text-muted-foreground flex items-center text-xs">
                 <Calendar className="mr-1 h-3 w-3" />
-                {new Date(task.dueDate).toLocaleDateString('fr-FR', {
+                {new Date(task.dueDate).toLocaleDateString(locale, {
                   day: '2-digit',
                   month: '2-digit',
                 })}
@@ -103,8 +100,8 @@ export function TaskCard({task, assignedUser}: TaskCardProps) {
         {task.createdAt && (
           <div className="text-muted-foreground mt-2 flex items-center text-xs">
             <Clock className="mr-1 h-3 w-3" />
-            Créé le{' '}
-            {new Date(task.createdAt).toLocaleDateString('fr-FR', {
+            {t('card.createdAt')}{' '}
+            {new Date(task.createdAt).toLocaleDateString(locale, {
               day: '2-digit',
               month: '2-digit',
               year: 'numeric',

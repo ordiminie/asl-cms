@@ -1,0 +1,76 @@
+/**
+ * Constantes et normalisation du ref d'affiliation.
+ *
+ * Ce fichier est volontairement sans aucun import : il est lu par le proxy, qui
+ * tourne sur le runtime edge et ne peut pas charger Drizzle ni Node.
+ */
+
+export const REFERRAL_QUERY_PARAM = 'ref'
+
+/**
+ * Modes d'attribution.
+ *
+ * `cookie` capte le ref à la visite et le garde 60 jours. C'est le mode le plus
+ * performant, mais la CNIL exclut explicitement les traceurs d'affiliation des
+ * exemptions de consentement (FAQ cookies, question 13) : à activer derrière un
+ * consentement, ou à laisser désactivé.
+ *
+ * `code-only` ne pose aucun traceur. L'attribution repose uniquement sur le
+ * code saisi à l'inscription. Moins performant, conforme sans bandeau.
+ *
+ * `off` désactive toute attribution automatique.
+ */
+export const REFERRAL_TRACKING_MODES = ['cookie', 'code-only', 'off'] as const
+
+export type ReferralTrackingMode = (typeof REFERRAL_TRACKING_MODES)[number]
+
+/**
+ * Le cookie n'est pas signé, et c'est délibéré : sa valeur est un code public,
+ * visible dans l'URL partagée par l'affilié. Le forger revient à cliquer le
+ * lien — il n'y a aucun privilège à gagner. Le code est en revanche revalidé
+ * par le motif ci-dessous avant toute lecture en base.
+ */
+export const REFERRAL_COOKIE_NAME = 'ref'
+
+/** 60 jours, la fenêtre d'attribution du programme. */
+export const REFERRAL_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 60
+
+export const REFERRAL_CODE_MAX_LENGTH = 32
+
+export const REFERRAL_CODE_PATTERN = /^[a-z0-9-]+$/
+
+export const normalizeReferralCode = (value: string): string =>
+  value.trim().toLowerCase()
+
+export const isValidReferralCode = (value: string | undefined): boolean => {
+  if (!value) return false
+  const normalized = normalizeReferralCode(value)
+  return (
+    normalized.length >= 3 &&
+    normalized.length <= REFERRAL_CODE_MAX_LENGTH &&
+    REFERRAL_CODE_PATTERN.test(normalized)
+  )
+}
+
+/**
+ * Extrait le ref d'un en-tête `Cookie` brut.
+ *
+ * Utile là où le scope de requête Next n'est pas garanti : les hooks Better
+ * Auth reçoivent la requête en argument, la lire directement évite de dépendre
+ * de `cookies()` de `next/headers`.
+ */
+export const parseReferralCodeFromCookieHeader = (
+  header: string | null | undefined
+): string | undefined => {
+  if (!header) return undefined
+
+  for (const part of header.split(';')) {
+    const [name, ...rest] = part.trim().split('=')
+    if (name !== REFERRAL_COOKIE_NAME) continue
+
+    const value = decodeURIComponent(rest.join('='))
+    return isValidReferralCode(value) ? normalizeReferralCode(value) : undefined
+  }
+
+  return undefined
+}

@@ -211,7 +211,7 @@ describe('[createNotificationService]', () => {
 
   it('devrait lever une erreur si utilisateur cible inexistant', async () => {
     setupAuthUserMocked(adminUser)
-    vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(null)
+    vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(undefined)
 
     const notificationData = {
       userId: currentAuthUserId,
@@ -275,8 +275,12 @@ describe('[createTypedNotificationService]', () => {
       title: 'Subscription Created',
       message: 'Your subscription has been created',
       metadata: {
-        subscriptionId: 'sub-123',
-        planName: 'Premium',
+        subscription: {
+          id: 'sub-123',
+          plan: 'Premium',
+          referenceId: currentAuthUserId,
+          status: 'active' as const,
+        },
       },
     }
 
@@ -388,7 +392,7 @@ describe('[getNotificationByIdService]', () => {
   it('devrait lever une erreur si notification inexistante', async () => {
     setupAuthUserMocked(userTest)
     vi.mocked(notificationRepository.getNotificationByIdDao).mockResolvedValue(
-      null
+      undefined
     )
 
     await expect(getNotificationByIdService(notificationId)).rejects.toThrow(
@@ -398,7 +402,7 @@ describe('[getNotificationByIdService]', () => {
 })
 
 describe('[getNotificationsByUserIdService]', () => {
-  const pagination = {page: 1, limit: 10}
+  const pagination = {limit: 10, offset: 0}
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -469,7 +473,7 @@ describe('[getNotificationsByUserIdService]', () => {
 })
 
 describe('[getUnreadNotificationsByUserIdService]', () => {
-  const pagination = {page: 1, limit: 10}
+  const pagination = {limit: 10, offset: 0}
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -555,7 +559,7 @@ describe('[markNotificationAsReadService]', () => {
     })
 
     const result = await markNotificationAsReadService(notificationId)
-    expect(result.read).toBe(true)
+    expect(result?.read).toBe(true)
     expect(
       notificationRepository.markNotificationAsReadDao
     ).toHaveBeenCalledWith(notificationId)
@@ -690,11 +694,11 @@ describe('[deleteNotificationService]', () => {
       notificationTest
     )
     vi.mocked(notificationRepository.deleteNotificationDao).mockResolvedValue(
-      notificationTest
+      true
     )
 
     const result = await deleteNotificationService(notificationId)
-    expect(result).toEqual(notificationTest)
+    expect(result).toBe(true)
     expect(notificationRepository.deleteNotificationDao).toHaveBeenCalledWith(
       notificationId
     )
@@ -725,11 +729,11 @@ describe('[deleteNotificationService]', () => {
       otherUserNotification
     )
     vi.mocked(notificationRepository.deleteNotificationDao).mockResolvedValue(
-      otherUserNotification
+      true
     )
 
     const result = await deleteNotificationService(notificationId)
-    expect(result).toEqual(otherUserNotification)
+    expect(result).toBe(true)
   })
 
   it('devrait lever une erreur si ID invalide', async () => {

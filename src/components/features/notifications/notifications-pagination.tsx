@@ -1,5 +1,7 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
+
 import {Button} from '@/components/ui/button'
 
 interface NotificationsPaginationProps {
@@ -16,6 +18,8 @@ export default function NotificationsPagination({
   pagination,
   onPageChange,
 }: NotificationsPaginationProps) {
+  const t = useTranslations('Notifications')
+  const tCommon = useTranslations('Common.pagination')
   const {total, page, limit, totalPages} = pagination
 
   const startItem = (page - 1) * limit + 1
@@ -24,7 +28,11 @@ export default function NotificationsPagination({
   return (
     <div className="flex items-center justify-between">
       <div className="text-muted-foreground text-sm">
-        Affichage de {startItem} à {endItem} sur {total} notifications
+        {t('pagination.showing', {
+          start: startItem,
+          end: endItem,
+          total,
+        })}
       </div>
 
       <div className="flex items-center gap-2">
@@ -34,7 +42,7 @@ export default function NotificationsPagination({
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
         >
-          Précédent
+          {tCommon('previous')}
         </Button>
 
         <div className="flex items-center gap-1">
@@ -71,7 +79,7 @@ export default function NotificationsPagination({
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
         >
-          Suivant
+          {tCommon('next')}
         </Button>
       </div>
     </div>

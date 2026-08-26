@@ -1,5 +1,6 @@
 'use client'
 import {Plus} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {useDebounce} from 'react-use'
 import {toast} from 'sonner'
@@ -32,6 +33,7 @@ export function OrganizationAdminAddMemberForm({
   organizationId: string
   existingMemberIds: string[]
 }) {
+  const t = useTranslations('Organization.invite')
   const [email, setEmail] = useState('')
   const [searchValue, setSearchValue] = useState('')
   const [results, setResults] = useState<UserDTO[]>([])
@@ -77,7 +79,7 @@ export function OrganizationAdminAddMemberForm({
 
   function handleInvite() {
     if (!selectedUser) {
-      toast.error('Veuillez sélectionner un utilisateur')
+      toast.error(t('selectUser'))
       return
     }
 
@@ -90,7 +92,7 @@ export function OrganizationAdminAddMemberForm({
       )
 
       if (res.success) {
-        toast.success(res.message || 'Membre invité avec succès')
+        toast.success(res.message || t('success'))
         setEmail('')
         setSelectedUser(null)
         setResults([])
@@ -112,7 +114,7 @@ export function OrganizationAdminAddMemberForm({
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite a Team Member</DialogTitle>
+          <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>
             Entrez l&apos;adresse email de l&apos;utilisateur que vous souhaitez
             inviter.
@@ -127,7 +129,7 @@ export function OrganizationAdminAddMemberForm({
             <div className="relative">
               <Input
                 type="email"
-                placeholder="steve.wozniak@example.com"
+                placeholder={t('emailPlaceholder')}
                 value={email}
                 onChange={(e) => handleSearch(e.target.value)}
                 disabled={isPending}
@@ -262,7 +264,7 @@ export function OrganizationAdminAddMemberForm({
               disabled={isPending || !selectedUser}
               className="w-full"
             >
-              {isPending ? 'Envoi en cours...' : 'Invite'}
+              {isPending ? t('sending') : t('submit')}
             </Button>
           </div>
         </div>

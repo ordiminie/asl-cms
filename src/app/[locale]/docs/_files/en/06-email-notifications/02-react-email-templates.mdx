@@ -80,7 +80,7 @@ src/lib/emails/
 
 Here's the structure of a typical template using `magic-link-email.tsx` as an example:
 
-```typescript
+```tsx
 // From src/lib/emails/magic-link-email.tsx
 import {
   Body,
@@ -144,7 +144,7 @@ export default async function MagicLinkMail({ url }: MagicLinkMailProps) {
 
 All templates use Tailwind CSS for consistent styling:
 
-```typescript
+```tsx
 // Responsive container
 <Container className="mx-auto my-[40px] max-w-[465px] rounded border border-solid border-[#eaeaea] p-8">
 
@@ -159,7 +159,7 @@ All templates use Tailwind CSS for consistent styling:
 
 Templates automatically load translations using next-intl:
 
-```typescript
+```tsx
 // Server-side translation loading
 const t = await getTranslations('email.user.verify')
 

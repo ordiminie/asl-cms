@@ -52,3 +52,10 @@ export function getEnvFromArg() {
 }
 
 export default initDotEnv
+
+export function maskDbUrl(url: string | undefined): string {
+  if (!url) {
+    return ''
+  }
+  return url.replace(/:\/\/([^:/@]+):[^@]*@/, '://$1:***@')
+}

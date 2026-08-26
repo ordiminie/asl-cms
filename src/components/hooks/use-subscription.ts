@@ -43,44 +43,79 @@ export type UseSubscriptionReturn = {
   stripeCustomerId: string | null
 }
 
+const fetchSubscriptions = async (
+  referenceId: string | undefined
+): Promise<Subscription[]> => {
+  if (!referenceId) {
+    return []
+  }
+  const {data} = await authClient.subscription.list({query: {referenceId}})
+  return data || []
+}
+
 export function useSubscription(): UseSubscriptionReturn {
   const {referenceId} = useOrganization()
 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadedReferenceId, setLoadedReferenceId] = useState<
+    string | undefined | null
+  >(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const loadSubscriptions = useCallback(async () => {
-    if (!referenceId) {
-      setLoading(false)
-      setSubscriptions([])
-      return
-    }
+  const loading = refreshing || loadedReferenceId !== referenceId
 
-    try {
-      setLoading(true)
-      setError(null)
+  const applyLoaded = useCallback((data: Subscription[]) => {
+    setSubscriptions(data)
+    setError(null)
+  }, [])
 
-      const {data} = await authClient.subscription.list({
-        query: {
-          referenceId: referenceId || '',
-        },
-      })
+  const applyLoadError = useCallback((err: unknown) => {
+    console.error('Error loading subscriptions:', err)
+    setSubscriptions([])
+    setError(
+      err instanceof Error ? err : new Error('Failed to load subscriptions')
+    )
+  }, [])
 
-      setSubscriptions(data || [])
-    } catch (err) {
-      console.error('Error loading subscriptions:', err)
-      setError(
-        err instanceof Error ? err : new Error('Failed to load subscriptions')
-      )
-    } finally {
-      setLoading(false)
-    }
-  }, [referenceId])
+  const finishLoad = useCallback((loadedFor: string | undefined) => {
+    setLoadedReferenceId(loadedFor)
+    setRefreshing(false)
+  }, [])
 
   useEffect(() => {
-    loadSubscriptions()
-  }, [loadSubscriptions])
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const data = await fetchSubscriptions(referenceId)
+        if (cancelled) return
+        applyLoaded(data)
+      } catch (err) {
+        if (cancelled) return
+        applyLoadError(err)
+      } finally {
+        if (!cancelled) finishLoad(referenceId)
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [referenceId, applyLoaded, applyLoadError, finishLoad])
+
+  const refetch = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      applyLoaded(await fetchSubscriptions(referenceId))
+    } catch (err) {
+      applyLoadError(err)
+    } finally {
+      finishLoad(referenceId)
+    }
+  }, [referenceId, applyLoaded, applyLoadError, finishLoad])
 
   const activeSubscription =
     subscriptions.find(
@@ -116,7 +151,7 @@ export function useSubscription(): UseSubscriptionReturn {
     activeSubscription,
     loading,
     error,
-    refetch: loadSubscriptions,
+    refetch,
 
     isActive,
     isTrialing,

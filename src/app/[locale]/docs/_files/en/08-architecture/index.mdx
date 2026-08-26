@@ -51,7 +51,7 @@ The system follows a **unidirectional data flow** through three main layers:
     ```
 
     **Key Benefits:**
-    - Cached reads with `react-cache`
+    - Cached reads with `'use cache'` in the DAL function
     - Validated writes with business rules
     - Authorized access at service level
     - Clean separation of concerns
@@ -103,7 +103,7 @@ The system follows a **unidirectional data flow** through three main layers:
     <div className="space-y-2 text-sm">
       <div>• **Reads:** Component → DAL → Service → Repository</div>
       <div>• **Writes:** Server Action → Service → Repository</div>
-      <div>• **Caching:** DAL layer with `react-cache`</div>
+      <div>• **Caching:** DAL layer with `'use cache'` + `cacheTag`</div>
       <div>• **Validation:** Service layer with Zod schemas</div>
     </div>
   </div>
@@ -134,7 +134,7 @@ The system follows a **unidirectional data flow** through three main layers:
     </div>
     <div className="space-y-2 text-sm">
       <div>• **Server-first:** RSC by default</div>
-      <div>• **Caching:** DAL layer with React cache</div>
+      <div>• **Caching:** DAL layer, Partial Prerendering</div>
       <div>• **Database:** Connection pooling with Drizzle</div>
       <div>• **Client:** Minimal client-side JavaScript</div>
     </div>
@@ -159,9 +159,16 @@ Here's how a typical user operation flows through all layers:
 
     // 📊 DAL (Data Access Layer)
     import { cache } from 'react'
+    import { cacheLife, cacheTag } from 'next/cache'
     import { getUserByIdService } from '@/services/facades/user-service-facade'
 
+    // 'use cache' makes the read cacheable across requests; cache() from React
+    // still deduplicates it within a single request.
     export const getUserByIdDal = cache(async (id: string) => {
+      'use cache'
+      cacheLife('hours')
+      cacheTag(`user:${id}`)
+
       const userModel = await getUserByIdService(id)
       return transformToUserDTO(userModel) // Transform to domain type
     })

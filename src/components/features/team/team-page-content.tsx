@@ -1,6 +1,8 @@
 'use client'
 
 import {CalendarDays, Coins, FolderKanban, Users, Zap} from 'lucide-react'
+import {useRouter} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {useEffect, useState} from 'react'
 import {toast} from 'sonner'
 
@@ -36,11 +38,12 @@ export function TeamPageContent({
   members,
   usage,
 }: TeamPageContentProps) {
-  const {
-    currentOrganization,
-    setCurrentOrganizationWithoutRedirect,
-    organizations,
-  } = useOrganization()
+  const t = useTranslations('TeamPage')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
+  const {currentOrganization, setCurrentOrganization, organizations} =
+    useOrganization()
+  const router = useRouter()
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
 
@@ -74,19 +77,19 @@ export function TeamPageContent({
 
       if (userOrg?.organization?.id) {
         // Mettre à jour le contexte sans rediriger (on est déjà sur la bonne page)
-        setCurrentOrganizationWithoutRedirect(userOrg.organization.id)
+        setCurrentOrganization(userOrg.organization.id)
       }
     }
   }, [
     organization.id,
     currentOrganization?.id,
-    setCurrentOrganizationWithoutRedirect,
+    setCurrentOrganization,
     organizations,
   ])
 
   const handleLeaveOrganization = async () => {
     if (!organization.id) {
-      toast.error('Organisation non trouvée')
+      toast.error(t('notFound'))
       return
     }
 
@@ -99,21 +102,23 @@ export function TeamPageContent({
         toast.error(error.message)
         return
       }
-      toast.success("Vous avez quitté l'organisation avec succès")
+      toast.success(t('leaveSuccess'))
       setIsLeaveModalOpen(false)
-      // Rediriger vers le dashboard
-      window.location.href = '/dashboard'
+      // Rediriger vers le dashboard : refresh pour recharger la liste des
+      // organisations côté serveur
+      router.push('/dashboard')
+      router.refresh()
     } catch (error) {
       console.error("Erreur lors de la sortie de l'organisation:", error)
-      toast.error("Erreur lors de la sortie de l'organisation")
+      toast.error(t('leaveError'))
     } finally {
       setIsLeaving(false)
     }
   }
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Non définie'
-    return new Intl.DateTimeFormat('fr-FR', {
+    if (!date) return t('notSet')
+    return new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -175,7 +180,7 @@ export function TeamPageContent({
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Users className="h-5 w-5" />
-              <span>Membres de l&apos;équipe</span>
+              <span>{t('membersTitle')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -217,7 +222,7 @@ export function TeamPageContent({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center space-x-2">
               <Zap className="h-5 w-5" />
-              <span>Utilisation</span>
+              <span>{t('usageTitle')}</span>
             </CardTitle>
             <Badge variant="outline" className="uppercase">
               {usage.plan}
@@ -300,13 +305,13 @@ export function TeamPageContent({
       {/* Informations détaillées */}
       <Card>
         <CardHeader>
-          <CardTitle>Informations détaillées</CardTitle>
+          <CardTitle>{t('detailsTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <h4 className="text-muted-foreground text-sm font-medium">
-                Identifiant unique
+                {t('uniqueId')}
               </h4>
               <p className="bg-muted rounded p-2 font-mono text-sm">
                 {organization.id}
@@ -315,7 +320,7 @@ export function TeamPageContent({
 
             <div className="space-y-2">
               <h4 className="text-muted-foreground text-sm font-medium">
-                Slug de l&apos;organisation
+                {t('slug')}
               </h4>
               <p className="bg-muted rounded p-2 font-mono text-sm">
                 {organization.slug}
@@ -325,7 +330,7 @@ export function TeamPageContent({
             {organization.updatedAt && (
               <div className="space-y-2">
                 <h4 className="text-muted-foreground text-sm font-medium">
-                  Dernière mise à jour
+                  {t('lastUpdate')}
                 </h4>
                 <p className="text-sm">{formatDate(organization.updatedAt)}</p>
               </div>
@@ -337,14 +342,14 @@ export function TeamPageContent({
       {/* Bouton pour quitter l'organisation */}
       <Card>
         <CardHeader>
-          <CardTitle>Actions</CardTitle>
+          <CardTitle>{t('actionsTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Button
             variant="destructive"
             onClick={() => setIsLeaveModalOpen(true)}
           >
-            Quitter l&apos;organisation
+            {t('leave')}
           </Button>
         </CardContent>
       </Card>
@@ -353,12 +358,9 @@ export function TeamPageContent({
       <Dialog open={isLeaveModalOpen} onOpenChange={setIsLeaveModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Quitter l&apos;organisation</DialogTitle>
+            <DialogTitle>{t('leave')}</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir quitter l&apos;organisation{' '}
-              <strong>{organization.name}</strong> ? Cette action est
-              irréversible et vous perdrez l&apos;accès à toutes les ressources
-              de l&apos;organisation.
+              {t('leaveConfirm', {name: organization.name})}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -367,14 +369,14 @@ export function TeamPageContent({
               onClick={() => setIsLeaveModalOpen(false)}
               disabled={isLeaving}
             >
-              Annuler
+              {tCommon('actions.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={handleLeaveOrganization}
               disabled={isLeaving}
             >
-              {isLeaving ? 'Sortie en cours...' : "Quitter l'organisation"}
+              {isLeaving ? t('leaving') : t('leave')}
             </Button>
           </DialogFooter>
         </DialogContent>

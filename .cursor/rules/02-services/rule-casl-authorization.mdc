@@ -3,6 +3,7 @@ description:
 globs: src/services/authorization/**
 alwaysApply: false
 ---
+
 # Système d'Autorisation CASL
 
 ## Vue d'ensemble
@@ -137,7 +138,7 @@ Cette fonction utilise l'API interne CASL pour vérifier les conditions :
 
 ## Tests
 
-Les tests sont définis dans [casl-abilities.test.ts](mdc:src/services/authorization/__tests__/casl-abilities.test.ts) :
+Les tests sont définis dans [casl-authorization-service.test.ts](mdc:src/services/authorization/__tests__/casl-authorization-service.test.ts) :
 
 - **Tests par rôle** : Vérification des permissions pour chaque rôle utilisateur
 - **Tests de ressources** : Permissions sur User, Subscription, Log, Technical
@@ -149,11 +150,13 @@ Les tests sont définis dans [casl-abilities.test.ts](mdc:src/services/authoriza
 ### Utilisation des Constantes
 
 **✅ Correct** :
+
 ```typescript
 userCan(user, ActionsConst.READ, SubjectsConst.USER)
 ```
 
 **❌ Incorrect** :
+
 ```typescript
 userCan(user, 'read', 'User') // Risque d'erreur de frappe
 ```
@@ -194,7 +197,14 @@ if (!userCan(user, ActionsConst.UPDATE, SubjectsConst.USER)) {
 }
 
 // Avec conditions
-if (!userCanOnResource(user, ActionsConst.READ, SubjectsConst.SUBSCRIPTION, subscription)) {
+if (
+  !userCanOnResource(
+    user,
+    ActionsConst.READ,
+    SubjectsConst.SUBSCRIPTION,
+    subscription
+  )
+) {
   throw new AuthorizationError('Cannot access this subscription')
 }
 ```

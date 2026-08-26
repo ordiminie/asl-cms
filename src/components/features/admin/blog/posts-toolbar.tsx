@@ -1,7 +1,8 @@
 'use client'
 
 import {Search, X} from 'lucide-react'
-import {useEffect, useState} from 'react'
+import {useTranslations} from 'next-intl'
+import {useState} from 'react'
 
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -39,11 +40,15 @@ export function PostsToolbar({
   initialStatus = '',
   initialCategory = '',
 }: PostsToolbarProps) {
+  const t = useTranslations('AdminBlog')
   const [searchValue, setSearchValue] = useState(initialSearch)
+  const [syncedSearch, setSyncedSearch] = useState(initialSearch)
 
-  useEffect(() => {
+  // Resynchroniser le champ quand la recherche vient de l'URL
+  if (syncedSearch !== initialSearch) {
+    setSyncedSearch(initialSearch)
     setSearchValue(initialSearch)
-  }, [initialSearch])
+  }
 
   const handleSearchChange = (e: {target: {value: string}}) => {
     const value = e.target.value
@@ -79,7 +84,7 @@ export function PostsToolbar({
         <div className="relative flex w-full items-center sm:w-[250px]">
           <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
           <Input
-            placeholder="Rechercher dans les titres..."
+            placeholder={t('searchPlaceholder')}
             className="pr-8 pl-8"
             value={searchValue}
             onChange={handleSearchChange}
@@ -102,13 +107,19 @@ export function PostsToolbar({
           onValueChange={handleStatusChange}
         >
           <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="Statut" />
+            <SelectValue placeholder={t('statusPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tous les statuts</SelectItem>
-            <SelectItem value={POST_STATUS.DRAFT}>Brouillon</SelectItem>
-            <SelectItem value={POST_STATUS.PUBLISHED}>Publié</SelectItem>
-            <SelectItem value={POST_STATUS.ARCHIVED}>Archivé</SelectItem>
+            <SelectItem value="all">{t('status.all')}</SelectItem>
+            <SelectItem value={POST_STATUS.DRAFT}>
+              {t('status.draft')}
+            </SelectItem>
+            <SelectItem value={POST_STATUS.PUBLISHED}>
+              {t('status.published')}
+            </SelectItem>
+            <SelectItem value={POST_STATUS.ARCHIVED}>
+              {t('status.archived')}
+            </SelectItem>
           </SelectContent>
         </Select>
 
@@ -118,10 +129,10 @@ export function PostsToolbar({
           onValueChange={handleCategoryChange}
         >
           <SelectTrigger className="w-full sm:w-[140px]">
-            <SelectValue placeholder="Catégorie" />
+            <SelectValue placeholder={t('categories.placeholder')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Toutes catégories</SelectItem>
+            <SelectItem value="all">{t('categories.all')}</SelectItem>
             {categories.map((category) => (
               <SelectItem key={category.id} value={category.id}>
                 {category.name}
@@ -138,7 +149,7 @@ export function PostsToolbar({
 
       {/* Sélecteur de pagination */}
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-sm">Afficher</span>
+        <span className="text-muted-foreground text-sm">{t('show')}</span>
         <Select value={perPage} onValueChange={onPerPageChange}>
           <SelectTrigger className="w-[70px]">
             <SelectValue placeholder="10" />

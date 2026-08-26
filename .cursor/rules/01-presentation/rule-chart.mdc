@@ -3,6 +3,7 @@ description:
 globs:
 alwaysApply: false
 ---
+
 # ShadCN Charts - Guide d'Implémentation
 
 Ce guide explique comment utiliser les charts ShadCN basés sur Recharts dans le projet.
@@ -28,7 +29,7 @@ Les couleurs de charts doivent être ajoutées au fichier CSS global :
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
   }
- 
+
   .dark {
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -114,11 +115,7 @@ Inspiré de [admin-dashboard.tsx](mdc:src/components/features/admin/dashboard/ad
           margin={{top: 20, right: 30, left: 20, bottom: 20}}
         >
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis
-            dataKey="monthLabel"
-            tickLine={false}
-            axisLine={false}
-          />
+          <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} />
           <ChartTooltip
             content={
@@ -157,21 +154,14 @@ Inspiré de [admin-dashboard.tsx](mdc:src/components/features/admin/dashboard/ad
     </p>
   </CardHeader>
   <CardContent>
-    <ChartContainer
-      className="min-h-[320px]"
-      config={organizationChartConfig}
-    >
+    <ChartContainer className="min-h-[320px]" config={organizationChartConfig}>
       <ResponsiveContainer width="100%" height={300}>
         <BarChart
           data={formattedOrganizationGrowth}
           margin={{top: 20, right: 30, left: 20, bottom: 20}}
         >
           <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis
-            dataKey="monthLabel"
-            tickLine={false}
-            axisLine={false}
-          />
+          <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
           <YAxis tickLine={false} axisLine={false} />
           <ChartTooltip
             content={
@@ -246,31 +236,36 @@ const statCards = [
 ### ✅ À Faire
 
 1. **Toujours utiliser `ChartContainer`** avec une hauteur minimale :
+
    ```tsx
    <ChartContainer className="min-h-[320px]" config={chartConfig}>
    ```
 
 2. **Définir une `ChartConfig`** pour chaque chart :
+
    ```tsx
    const config = {
      dataKey: {
        label: 'Label',
-       theme: { light: 'var(--chart-1)', dark: 'var(--chart-1)' }
-     }
+       theme: {light: 'var(--chart-1)', dark: 'var(--chart-1)'},
+     },
    } satisfies ChartConfig
    ```
 
 3. **Utiliser `accessibilityLayer`** pour l'accessibilité :
+
    ```tsx
    <LineChart accessibilityLayer data={data}>
    ```
 
 4. **Wrapper avec `ResponsiveContainer`** pour la responsivité :
+
    ```tsx
    <ResponsiveContainer width="100%" height={300}>
    ```
 
 5. **Utiliser `ChartTooltip` et `ChartTooltipContent`** pour les tooltips :
+
    ```tsx
    <ChartTooltip content={<ChartTooltipContent />} />
    ```
@@ -291,6 +286,7 @@ const statCards = [
 ## Composants Disponibles
 
 ### Charts Supportés
+
 - `BarChart` - Graphiques en barres
 - `LineChart` - Graphiques en ligne
 - `AreaChart` - Graphiques en aires
@@ -298,6 +294,7 @@ const statCards = [
 - `RadarChart` - Graphiques radar
 
 ### Composants ShadCN
+
 - `ChartContainer` - Conteneur principal avec theming
 - `ChartTooltip` - Tooltip personnalisé
 - `ChartTooltipContent` - Contenu du tooltip
@@ -305,6 +302,7 @@ const statCards = [
 - `ChartLegendContent` - Contenu de la légende
 
 ### Composants Recharts
+
 - `CartesianGrid` - Grille du graphique
 - `XAxis`, `YAxis` - Axes X et Y
 - `ResponsiveContainer` - Conteneur responsive
@@ -325,12 +323,12 @@ Tester les charts avec des données mock :
 
 ```tsx
 const mockData = [
-  { month: "January", desktop: 186, mobile: 80 },
-  { month: "February", desktop: 305, mobile: 200 },
+  {month: 'January', desktop: 186, mobile: 80},
+  {month: 'February', desktop: 305, mobile: 200},
 ]
 
 // Tester le rendu
-expect(screen.getByRole('img', { name: /chart/i })).toBeInTheDocument()
+expect(screen.getByRole('img', {name: /chart/i})).toBeInTheDocument()
 
 // Tester les interactions
 await user.hover(screen.getByTestId('chart-bar'))

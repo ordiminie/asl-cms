@@ -1,6 +1,7 @@
 'use server'
 
 import {headers} from 'next/headers'
+import {getTranslations} from 'next-intl/server'
 import {RateLimiterMemory} from 'rate-limiter-flexible'
 
 import {createUserSubmissionService} from '@/services/facades/user-submission-service-facade'
@@ -28,6 +29,7 @@ export async function submitContactAction(
   _prevState: ContactFormState,
   formData: FormData
 ): Promise<ContactFormState> {
+  const t = await getTranslations('ContactPage')
   const headersList = await headers()
   const ip =
     headersList.get('x-forwarded-for') ||
@@ -43,7 +45,7 @@ export async function submitContactAction(
       )
       return {
         success: false,
-        message: `Trop de requêtes. Réessayez dans ${retryAfter} secondes.`,
+        message: t('errors.rateLimit', {seconds: retryAfter}),
       }
     }
     throw error
@@ -56,7 +58,7 @@ export async function submitContactAction(
   if (!email || !subject || !content) {
     return {
       success: false,
-      message: 'Tous les champs sont obligatoires.',
+      message: t('errors.allFieldsRequired'),
     }
   }
 
@@ -64,21 +66,21 @@ export async function submitContactAction(
   if (!emailRegex.test(email)) {
     return {
       success: false,
-      message: 'Veuillez entrer un email valide.',
+      message: t('errors.emailInvalid'),
     }
   }
 
   if (subject.length < 3 || subject.length > 255) {
     return {
       success: false,
-      message: 'Le sujet doit contenir entre 3 et 255 caractères.',
+      message: t('errors.subjectRange'),
     }
   }
 
   if (content.length < 10 || content.length > 5000) {
     return {
       success: false,
-      message: 'Le message doit contenir entre 10 et 5000 caractères.',
+      message: t('errors.contentRange'),
     }
   }
 
@@ -96,14 +98,13 @@ export async function submitContactAction(
 
     return {
       success: true,
-      message:
-        'Votre message a été envoyé avec succès. Nous vous répondrons rapidement.',
+      message: t('success.message'),
     }
   } catch (error) {
     console.error('Error submitting contact form:', error)
     return {
       success: false,
-      message: 'Une erreur est survenue. Veuillez réessayer plus tard.',
+      message: t('errors.server'),
     }
   }
 }

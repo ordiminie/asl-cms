@@ -2,6 +2,7 @@
 
 import {Edit, Eye, FileText, MoreHorizontal, Plus} from 'lucide-react'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {toast} from 'sonner'
 
@@ -65,6 +66,9 @@ export function PostsManagement({
   permissions,
   initialFilters,
 }: PostsManagementProps) {
+  const t = useTranslations('AdminBlog')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [search, setSearch] = useState(initialFilters.search)
@@ -111,11 +115,11 @@ export function PostsManagement({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case POST_STATUS.PUBLISHED:
-        return <Badge variant="default">Publié</Badge>
+        return <Badge variant="default">{t('status.published')}</Badge>
       case POST_STATUS.DRAFT:
-        return <Badge variant="secondary">Brouillon</Badge>
+        return <Badge variant="secondary">{t('status.draft')}</Badge>
       case POST_STATUS.ARCHIVED:
-        return <Badge variant="outline">Archivé</Badge>
+        return <Badge variant="outline">{t('status.archived')}</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
@@ -134,7 +138,7 @@ export function PostsManagement({
 
     const result = await updatePostAction(id, formData)
 
-    toast(result.success ? 'Succès' : 'Erreur', {
+    toast(result.success ? t('successTitle') : t('errorTitle'), {
       description: result.message,
       action: {
         label: 'Undo',
@@ -146,7 +150,7 @@ export function PostsManagement({
   const handleDeletePost = async (id: string) => {
     const result = await deletePostAction(id)
 
-    toast(result.success ? 'Succès' : 'Erreur', {
+    toast(result.success ? t('successTitle') : t('errorTitle'), {
       description: result.message,
       action: {
         label: 'Undo',
@@ -157,7 +161,7 @@ export function PostsManagement({
 
   const formatDate = (date: Date | null) => {
     if (!date) return '-'
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -190,7 +194,7 @@ export function PostsManagement({
 
       <Card>
         <CardHeader>
-          <CardTitle>Liste des Posts</CardTitle>
+          <CardTitle>{t('listTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <PostsToolbar
@@ -210,16 +214,24 @@ export function PostsManagement({
             <TableHeader>
               <TableRow>
                 <TableHead className="hidden">ID</TableHead>
-                <TableHead>Titre</TableHead>
-                <TableHead>Statut</TableHead>
+                <TableHead>{t('columns.title')}</TableHead>
+                <TableHead>{tCommon('fields.status')}</TableHead>
                 <TableHead className="hidden md:table-cell">
                   Catégorie
                 </TableHead>
-                <TableHead className="hidden lg:table-cell">Auteur</TableHead>
-                <TableHead className="hidden lg:table-cell">Vues</TableHead>
-                <TableHead className="hidden lg:table-cell">Likes</TableHead>
-                <TableHead className="hidden md:table-cell">Créé le</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  {t('columns.author')}
+                </TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  {t('columns.views')}
+                </TableHead>
+                <TableHead className="hidden lg:table-cell">
+                  {t('columns.likes')}
+                </TableHead>
+                <TableHead className="hidden md:table-cell">
+                  {t('columns.createdAt')}
+                </TableHead>
+                <TableHead>{tCommon('fields.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -236,7 +248,7 @@ export function PostsManagement({
                       {post.postTranslations?.find((t) => t.language === 'fr')
                         ?.title ||
                         post.postTranslations?.[0]?.title ||
-                        'Sans titre'}
+                        t('untitled')}
                     </button>
                   </TableCell>
                   <TableCell>{getStatusBadge(post.status)}</TableCell>
@@ -245,7 +257,7 @@ export function PostsManagement({
                       '-'}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {post.author?.name || 'Inconnu'}
+                    {post.author?.name || t('unknown')}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <div className="flex items-center gap-1">

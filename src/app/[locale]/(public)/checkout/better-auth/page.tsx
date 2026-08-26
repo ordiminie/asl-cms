@@ -1,3 +1,5 @@
+import {connection} from 'next/server'
+
 import {
   getEntreprisePlan,
   getFreePlan,
@@ -5,10 +7,31 @@ import {
   getProPlan,
 } from '@/app/dal/subscription-dal'
 import {getSubscriptionRecap} from '@/lib/stripe/stripe-utils'
+import {
+  getAuthUser,
+  getSessionReferenceId,
+} from '@/services/authentication/auth-service'
 
 import CheckoutBetterAuth from './checkout-better-auth'
 
+// Tunnel de paiement : dynamique par nature (prix, session utilisateur).
+export const instant = false
+
 export default async function Page() {
+  // Le SDK Stripe lit `Date.now()` à chaque appel, ce qui est interdit au
+  // prerender. `instant = false` ne suffit pas : il autorise une route
+  // bloquante, pas la lecture de l'horloge. Il faut marquer explicitement le
+  // rendu comme fait à la requête.
+  await connection()
+
+  // Qui est facturé : l'organisation en mode `organization`, l'utilisateur
+  // sinon. Résolu ici et pas dans le composant : `useOrganization` vit dans le
+  // provider de l'espace connecté, absent d'une route publique. Sans lui,
+  // `referenceMiddleware` retombe sur `user.id` et l'abonnement devient
+  // invisible de l'application.
+  const user = await getAuthUser()
+  const referenceId = user ? await getSessionReferenceId() : undefined
+
   // permet un gestion dynamique des prix (si modifié coté dashboard stripe)
   const [planFree, planPro, planEntreprise, planLifetime] = await Promise.all([
     getFreePlan(),
@@ -45,5 +68,10 @@ export default async function Page() {
     entrepriseYearly: priceEntrepriseYearly.recap,
   }
 
-  return <CheckoutBetterAuth initialPriceRecaps={initialPriceRecaps} />
+  return (
+    <CheckoutBetterAuth
+      initialPriceRecaps={initialPriceRecaps}
+      referenceId={referenceId}
+    />
+  )
 }

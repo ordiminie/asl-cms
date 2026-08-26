@@ -63,6 +63,16 @@ export const subscription = pgTable(
     trialStart: timestamp('trial_start'),
     trialEnd: timestamp('trial_end'),
 
+    // Champs ajoutes par @better-auth/stripe 1.7 : le plugin les ecrit dans le
+    // MEME adapter.update que cancelAtPeriodEnd (onSubscriptionUpdated). Tant
+    // qu'ils manquent, l'UPDATE entier echoue et aucune annulation ni aucun
+    // changement de plan ne redescend de Stripe.
+    cancelAt: timestamp('cancel_at'),
+    canceledAt: timestamp('canceled_at'),
+    endedAt: timestamp('ended_at'),
+    billingInterval: text('billing_interval'),
+    stripeScheduleId: text('stripe_schedule_id'),
+
     // Optional audit fields
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),

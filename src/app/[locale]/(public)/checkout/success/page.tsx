@@ -3,16 +3,18 @@
 import {CheckCircle2} from 'lucide-react'
 import Link from 'next/link'
 import {useSearchParams} from 'next/navigation'
+import {useTranslations} from 'next-intl'
 import {useEffect, useState} from 'react'
 
 import {confirmSubscription} from '@/components/features/checkout-stripe/react-stripe/actions'
 import {Button} from '@/components/ui/button'
 
 export default function SuccessPage() {
+  const t = useTranslations('Checkout.success')
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>(
     'loading'
   )
-  const [message, setMessage] = useState('Vérification de votre paiement...')
+  const [message, setMessage] = useState('')
   const searchParams = useSearchParams()
 
   // Gestion des différents types de paiement
@@ -26,42 +28,40 @@ export default function SuccessPage() {
         // Si c'est un setup intent (abonnement), finaliser l'abonnement
         if (setupIntent) {
           try {
-            setMessage('Création de votre abonnement en cours...')
+            setMessage(t('creatingSubscription'))
             const result = await confirmSubscription(setupIntent)
 
             if (result.success) {
               setStatus('success')
-              setMessage('Votre abonnement a été créé avec succès !')
+              setMessage(t('subscriptionCreated'))
             } else {
               setStatus('error')
-              setMessage(
-                result.error || "Erreur lors de la création de l'abonnement"
-              )
+              setMessage(result.error || t('subscriptionError'))
             }
           } catch {
             setStatus('error')
-            setMessage("Erreur inattendue lors de la création de l'abonnement")
+            setMessage(t('unexpectedError'))
           }
         } else {
           // Paiement unique classique
           setStatus('success')
-          setMessage('Votre paiement a été traité avec succès !')
+          setMessage(t('paymentProcessed'))
         }
       } else {
         setStatus('error')
-        setMessage('Le paiement a échoué ou a été annulé')
+        setMessage(t('paymentCancelled'))
       }
     }
 
     handlePaymentVerification()
-  }, [redirectStatus, setupIntent])
+  }, [redirectStatus, setupIntent, t])
 
   if (status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="animate-spin text-yellow-400">⚪</div>
-          <p className="mt-2 text-zinc-400">{message}</p>
+          <p className="mt-2 text-zinc-400">{message || t('verifying')}</p>
         </div>
       </div>
     )
@@ -72,10 +72,10 @@ export default function SuccessPage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="text-red-500">❌</div>
-          <h1 className="mt-4 text-2xl font-bold">Échec du paiement</h1>
-          <p className="mt-2 text-zinc-400">{message}</p>
+          <h1 className="mt-4 text-2xl font-bold">{t('failureTitle')}</h1>
+          <p className="mt-2 text-zinc-400">{message || t('verifying')}</p>
           <Button asChild className="mt-4">
-            <Link href="/pricing">Réessayer</Link>
+            <Link href="/pricing">{t('retry')}</Link>
           </Button>
         </div>
       </div>
@@ -89,14 +89,14 @@ export default function SuccessPage() {
           <CheckCircle2 className="h-6 w-6 text-green-600" />
         </div>
         <h1 className="mt-4 text-2xl font-bold">
-          {setupIntent ? 'Abonnement créé !' : 'Paiement réussi !'}
+          {setupIntent ? t('subscriptionTitle') : t('paymentTitle')}
         </h1>
-        <p className="mt-2 text-zinc-400">{message}</p>
+        <p className="mt-2 text-zinc-400">{message || t('verifying')}</p>
 
         {(paymentIntent || setupIntent) && (
           <div className="mt-4 rounded border border-zinc-800 bg-zinc-950 p-4">
             <p className="text-sm text-zinc-400">
-              {setupIntent ? 'Setup Intent ID:' : 'Payment ID:'}
+              {setupIntent ? t('setupIntentId') : t('paymentId')}
             </p>
             <p className="mt-1 font-mono text-sm text-zinc-300">
               {setupIntent || paymentIntent}
@@ -106,10 +106,10 @@ export default function SuccessPage() {
 
         <div className="mt-6 space-y-3">
           <Button asChild className="w-full">
-            <Link href="/dashboard">Go to Dashboard</Link>
+            <Link href="/dashboard">{t('goToDashboard')}</Link>
           </Button>
           <Button asChild variant="outline" className="w-full">
-            <Link href="/">Return Home</Link>
+            <Link href="/">{t('returnHome')}</Link>
           </Button>
         </div>
       </div>

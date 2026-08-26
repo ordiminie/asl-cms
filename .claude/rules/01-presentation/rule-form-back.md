@@ -7,7 +7,7 @@ paths:
 
 # Validation des Formulaires Côté Backend
 
-Guide complet pour la validation des formulaires avec Server Actions dans Next.js 15 / React 19.
+Guide complet pour la validation des formulaires avec Server Actions dans Next.js 16 / React 19.
 
 ## Principes Architecturaux
 
@@ -39,7 +39,7 @@ components/
 
 ### Template standard d'une Server Action
 
-**Référence : [action.ts](<mdc:src/app/(auth)/action.ts>)**
+**Référence : [action.ts](<src/app/[locale]/(auth)/action.ts>)**
 
 ```tsx
 'use server'

@@ -41,6 +41,7 @@ type FormValues = {
   email: string
   password: string
   confirmPassword: string
+  referralCode?: string
 }
 
 type ValidationError = {
@@ -85,6 +86,7 @@ export function RegisterForm({
       email: '',
       password: '',
       confirmPassword: '',
+      referralCode: '',
     },
   })
 
@@ -94,10 +96,23 @@ export function RegisterForm({
     try {
       const result = await registerProviderAction(provider)
       if (result?.success) {
-        // La redirection sera gérée par NextAuth
+        toast(tMessages('success'), {
+          description: result?.message,
+        })
+      } else if (result) {
+        toast(tMessages('error'), {
+          description: result?.message || tMessages('loginError'),
+        })
+      } else {
+        console.warn('redirection')
       }
     } catch (error) {
-      console.error('Erreur lors de la connexion avec le provider:', error)
+      //AI DO NOT REMOVE IT
+      if (isRedirectError(error)) {
+        throw error
+      } else {
+        console.error('Erreur lors de la connexion avec le provider:', error)
+      }
     }
   }
 
@@ -320,6 +335,26 @@ export function RegisterForm({
                         <FormLabel>{t('form.confirmPassword.label')}</FormLabel>
                         <FormControl>
                           <Input type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="referralCode"
+                    render={({field}) => (
+                      <FormItem>
+                        <FormLabel className="text-muted-foreground text-xs font-normal">
+                          {t('form.referralCode.label')}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t('form.referralCode.placeholder')}
+                            autoComplete="off"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

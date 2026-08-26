@@ -1,5 +1,6 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
 import {useEffect, useState} from 'react'
 
 import {
@@ -24,17 +25,41 @@ export default function NotificationsManagement({
   initialData,
   userId,
 }: NotificationsManagementProps) {
+  const t = useTranslations('Notifications')
   const [data, setData] = useState(initialData)
   const [filter, setFilter] = useState<'all' | 'unread'>('unread')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const {updateUnreadCount, decrementUnreadCount} = useUnreadNotifications()
 
   // Charger les notifications non lues au démarrage
   useEffect(() => {
-    if (filter === 'unread') {
-      handleFilterChange('unread')
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        const result = await getNotificationsByFilterAction(
+          `${userId}`,
+          'unread',
+          {page: 1, limit: initialData.pagination.limit}
+        )
+        if (cancelled) return
+        if (result.success && result.data) {
+          setData(result.data)
+        }
+      } catch (error) {
+        if (cancelled) return
+        console.error('Error filtering notifications:', error)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [userId, initialData.pagination.limit])
 
   const handleFilterChange = async (newFilter: 'all' | 'unread') => {
     setFilter(newFilter)
@@ -157,11 +182,9 @@ export default function NotificationsManagement({
           <Card className="p-12 text-center">
             <div className="space-y-3">
               <div className="text-muted-foreground mx-auto h-12 w-12">🔔</div>
-              <h3 className="text-lg font-semibold">Aucune notification</h3>
+              <h3 className="text-lg font-semibold">{t('empty.title')}</h3>
               <p className="text-muted-foreground">
-                {filter === 'unread'
-                  ? 'Toutes vos notifications ont été lues.'
-                  : "Vous n'avez aucune notification pour le moment."}
+                {filter === 'unread' ? t('empty.allRead') : t('empty.none')}
               </p>
             </div>
           </Card>

@@ -1,8 +1,8 @@
 'use client'
 
 import {formatDistanceToNow} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {Folder, Plus} from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 import {use, useState} from 'react'
 
 import {OrganizationDTO} from '@/app/dal/organization-dal'
@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {ProjectDTO} from '@/services/types/domain/project-types'
 
 import {ProjectsPagination} from '../projects-pagination'
@@ -43,6 +44,9 @@ export function ProjectsManagementReactQuery({
   organization,
   searchParams,
 }: Props) {
+  const t = useTranslations('Projects')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const searchStore = use(searchParams)
 
   // États locaux pour la pagination et recherche
@@ -107,7 +111,7 @@ export function ProjectsManagementReactQuery({
     return (
       <Card className="border-0 sm:border">
         <CardContent className="p-6">
-          <div className="text-center">Chargement des projets...</div>
+          <div className="text-center">{t('management.loading')}</div>
         </CardContent>
       </Card>
     )
@@ -121,7 +125,7 @@ export function ProjectsManagementReactQuery({
             Erreur lors du chargement des projets:{' '}
             {error && typeof error === 'object' && 'message' in error
               ? (error.message as string)
-              : 'Erreur inconnue'}
+              : t('management.unknownError')}
           </div>
         </CardContent>
       </Card>
@@ -141,7 +145,7 @@ export function ProjectsManagementReactQuery({
       <CardHeader className="px-4 sm:px-6">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Gestion des projets (React Query)</CardTitle>
+            <CardTitle>{t('management.titleReactQuery')}</CardTitle>
             <p className="text-muted-foreground mt-1 text-sm">
               Organisation : {organization.name}
             </p>
@@ -171,12 +175,14 @@ export function ProjectsManagementReactQuery({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Projet</TableHead>
+              <TableHead>{t('management.project')}</TableHead>
               <TableHead className="hidden xl:table-cell">
-                Description
+                {tCommon('fields.description')}
               </TableHead>
-              <TableHead className="hidden lg:table-cell">Créé</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {t('management.createdAt')}
+              </TableHead>
+              <TableHead>{tCommon('fields.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -191,20 +197,20 @@ export function ProjectsManagementReactQuery({
                   <div>
                     <div className="font-medium">{project.name}</div>
                     <div className="text-muted-foreground text-sm xl:hidden">
-                      {project.description || 'Aucune description'}
+                      {project.description || t('management.noDescription')}
                     </div>
                   </div>
                 </TableCell>
                 <TableCell className="hidden xl:table-cell">
                   <div className="truncate">
-                    {project.description || 'Aucune description'}
+                    {project.description || t('management.noDescription')}
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden text-sm lg:table-cell">
                   {project.createdAt &&
                     formatDistanceToNow(new Date(project.createdAt), {
                       addSuffix: true,
-                      locale: fr,
+                      locale: getDateFnsLocale(locale),
                     })}
                 </TableCell>
                 <TableCell>

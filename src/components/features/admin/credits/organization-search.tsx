@@ -1,6 +1,7 @@
 'use client'
 
 import {Building2, Mail, Search, X} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {useDebounce} from 'react-use'
 
@@ -20,6 +21,7 @@ export function OrganizationSearch({
   selectedOrganizationId,
   selectedOrganizationName,
 }: OrganizationSearchProps) {
+  const t = useTranslations('AdminCredits')
   const [searchValue, setSearchValue] = useState('')
   const [results, setResults] = useState<OrganizationSearchResult[]>([])
   const [isPending, startTransition] = useTransition()
@@ -91,7 +93,7 @@ export function OrganizationSearch({
         <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
           type="text"
-          placeholder="Rechercher par nom ou email..."
+          placeholder={t('searchPlaceholder')}
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           className="pr-9 pl-9"

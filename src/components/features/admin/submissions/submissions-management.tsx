@@ -1,9 +1,9 @@
 'use client'
 
 import {formatDistanceToNow} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {Archive, Eye, Mail, MessageSquare, Phone} from 'lucide-react'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {toast} from 'sonner'
 
 import {
@@ -28,6 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {UserSubmissionWithUser} from '@/services/types/domain/user-submission-types'
 
 import {SubmissionDetailDialog} from './submission-detail-dialog'
@@ -50,12 +51,6 @@ interface Props {
   readFilter?: boolean
 }
 
-const typeLabels = {
-  contact: 'Contact',
-  feedback: 'Feedback',
-  support: 'Support',
-}
-
 const typeIcons = {
   contact: Mail,
   feedback: MessageSquare,
@@ -72,6 +67,9 @@ export default function SubmissionsManagement({
   typeFilter,
   readFilter,
 }: Props) {
+  const t = useTranslations('AdminSubmissions')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -140,7 +138,7 @@ export default function SubmissionsManagement({
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
-        <CardTitle>Soumissions utilisateurs</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <SubmissionsToolbar
@@ -160,14 +158,16 @@ export default function SubmissionsManagement({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Sujet</TableHead>
+              <TableHead>{tCommon('fields.type')}</TableHead>
+              <TableHead>{t('subject')}</TableHead>
               <TableHead className="hidden lg:table-cell">
-                Utilisateur
+                {tCommon('fields.user')}
               </TableHead>
-              <TableHead className="hidden md:table-cell">Date</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="hidden md:table-cell">
+                {t('date')}
+              </TableHead>
+              <TableHead>{tCommon('fields.status')}</TableHead>
+              <TableHead>{tCommon('fields.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -182,7 +182,7 @@ export default function SubmissionsManagement({
                     <div className="flex items-center gap-2">
                       <TypeIcon className="text-muted-foreground h-4 w-4" />
                       <Badge variant="outline">
-                        {typeLabels[submission.type]}
+                        {t(`types.${submission.type}`)}
                       </Badge>
                     </div>
                   </TableCell>
@@ -194,7 +194,7 @@ export default function SubmissionsManagement({
                       <Avatar className="size-6">
                         <AvatarImage
                           src={submission.user?.image || ''}
-                          alt={submission.user?.name || 'Anonyme'}
+                          alt={submission.user?.name || t('anonymous')}
                         />
                         <AvatarFallback className="text-xs">
                           {submission.user?.name
@@ -204,19 +204,21 @@ export default function SubmissionsManagement({
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-sm">
-                        {submission.user?.name || submission.email || 'Anonyme'}
+                        {submission.user?.name ||
+                          submission.email ||
+                          t('anonymous')}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground hidden text-sm md:table-cell">
                     {formatDistanceToNow(new Date(submission.createdAt), {
                       addSuffix: true,
-                      locale: fr,
+                      locale: getDateFnsLocale(locale),
                     })}
                   </TableCell>
                   <TableCell>
                     <Badge variant={submission.read ? 'secondary' : 'default'}>
-                      {submission.read ? 'Lu' : 'Non lu'}
+                      {submission.read ? t('read') : t('unread')}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -234,7 +236,7 @@ export default function SubmissionsManagement({
                             </SubmissionDetailDialog>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Voir le détail</p>
+                            <p>{t('viewDetail')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -252,7 +254,7 @@ export default function SubmissionsManagement({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Archiver</p>
+                              <p>{t('archive')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>

@@ -137,7 +137,7 @@ Cette fonction utilise l'API interne CASL pour vérifier les conditions :
 
 ## Tests
 
-Les tests sont définis dans [casl-abilities.test.ts](src/services/authorization/__tests__/casl-abilities.test.ts) :
+Les tests sont définis dans [casl-authorization-service.test.ts](src/services/authorization/__tests__/casl-authorization-service.test.ts) :
 
 - **Tests par rôle** : Vérification des permissions pour chaque rôle utilisateur
 - **Tests de ressources** : Permissions sur User, Subscription, Log, Technical

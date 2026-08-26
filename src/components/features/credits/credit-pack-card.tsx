@@ -1,6 +1,7 @@
 'use client'
 
 import {useRouter} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {useTransition} from 'react'
 
 import {purchaseCreditPackAction} from '@/app/[locale]/(app)/account/billing/credit/actions'
@@ -22,6 +23,8 @@ interface CreditPackCardProps {
 }
 
 export function CreditPackCard({pack, organizationId}: CreditPackCardProps) {
+  const t = useTranslations('CreditsUi')
+  const locale = useLocale()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
@@ -36,7 +39,7 @@ export function CreditPackCard({pack, organizationId}: CreditPackCardProps) {
   }
 
   const formatPrice = (priceInCents: number) => {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'EUR',
     }).format(priceInCents / 100)
@@ -48,7 +51,7 @@ export function CreditPackCard({pack, organizationId}: CreditPackCardProps) {
     <Card className={`relative ${pack.popular ? 'border-primary' : ''}`}>
       {pack.popular && (
         <Badge className="absolute -top-2 right-4" variant="default">
-          Populaire
+          {t('popular')}
         </Badge>
       )}
       <CardHeader>

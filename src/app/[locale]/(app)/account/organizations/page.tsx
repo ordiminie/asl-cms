@@ -2,6 +2,7 @@ import {Coins, Zap} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 
 import {getUserOrganizationsWithUsageDal} from '@/app/dal/organization-dal'
 import {Badge} from '@/components/ui/badge'
@@ -21,6 +22,9 @@ import {canUpdateOrganization} from '@/services/authorization/organization-autho
 import {UserOrganizationRoleConst} from '@/services/types/domain/auth-types'
 
 export default async function OrganizationsPage() {
+  const t = await getTranslations('Organizations')
+  const tCommon = await getTranslations('Common')
+  const tRoles = await getTranslations('Organization.roles')
   if (!isPageEnabled(PagesConst.ORGANIZATION)) {
     return notFound()
   }
@@ -63,20 +67,16 @@ export default async function OrganizationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Mes Organisations
+          {t('title')}
         </h2>
       </div>
 
       <div>
         {sortedOrganizations.length === 0 ? (
           <div className="text-center">
-            <p className="text-muted-foreground mb-4">
-              Vous n&apos;avez pas encore d&apos;organisation.
-            </p>
+            <p className="text-muted-foreground mb-4">{t('empty')}</p>
             <Button asChild>
-              <Link href="/account/organizations/new">
-                Créer votre première organisation
-              </Link>
+              <Link href="/account/organizations/new">{t('createFirst')}</Link>
             </Button>
           </div>
         ) : (
@@ -101,7 +101,7 @@ export default async function OrganizationsPage() {
                       </Badge>
                       {organization.role ===
                         UserOrganizationRoleConst.OWNER && (
-                        <Badge variant="default">Propriétaire</Badge>
+                        <Badge variant="default">{t('owner')}</Badge>
                       )}
                     </div>
                   </div>
@@ -122,12 +122,14 @@ export default async function OrganizationsPage() {
                   <div className="rounded-lg border p-3">
                     <div className="mb-2 flex items-center gap-2 text-sm font-medium">
                       <Zap className="h-4 w-4" />
-                      Utilisation
+                      {t('usage')}
                     </div>
                     <div className="space-y-3">
                       <div>
                         <div className="mb-1 flex justify-between text-xs">
-                          <span className="text-muted-foreground">Projets</span>
+                          <span className="text-muted-foreground">
+                            {t('projects')}
+                          </span>
                           <span>
                             {formatUsage(
                               organization.usage.projects,
@@ -149,7 +151,9 @@ export default async function OrganizationsPage() {
                       </div>
                       <div>
                         <div className="mb-1 flex justify-between text-xs">
-                          <span className="text-muted-foreground">Membres</span>
+                          <span className="text-muted-foreground">
+                            {t('members')}
+                          </span>
                           <span>
                             {formatUsage(
                               organization.usage.users,
@@ -173,7 +177,7 @@ export default async function OrganizationsPage() {
                         <div className="mb-1 flex justify-between text-xs">
                           <span className="text-muted-foreground flex items-center gap-1">
                             <Coins className="h-3 w-3" />
-                            Crédits
+                            {t('credits')}
                           </span>
                           <span>{organization.usage.credits}</span>
                         </div>
@@ -194,19 +198,19 @@ export default async function OrganizationsPage() {
 
                   <div className="space-y-2">
                     <p className="text-muted-foreground text-sm">
-                      Rôle:{' '}
+                      {tCommon('fields.role')}:{' '}
                       {organization.role === UserOrganizationRoleConst.OWNER
-                        ? 'Propriétaire'
+                        ? tRoles('OWNER')
                         : organization.role === UserOrganizationRoleConst.ADMIN
-                          ? 'Administrateur'
-                          : 'Membre'}
+                          ? tRoles('ADMIN')
+                          : tRoles('MEMBER')}
                     </p>
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">
                   <Button variant="outline" asChild>
                     <Link href={`/team/${organization.slug}`}>
-                      Voir les détails
+                      {t('viewDetails')}
                     </Link>
                   </Button>
                   {permissions[organization.id] && (
@@ -214,7 +218,7 @@ export default async function OrganizationsPage() {
                       <Link
                         href={`/account/organizations/${organization.id}/edit`}
                       >
-                        Modifier
+                        {tCommon('actions.edit')}
                       </Link>
                     </Button>
                   )}

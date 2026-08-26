@@ -3,7 +3,7 @@
 
 import pg from 'pg'
 
-import initDotEnv from './env'
+import initDotEnv, {maskDbUrl} from './env'
 
 initDotEnv()
 
@@ -32,7 +32,7 @@ const seed = async () => {
   })
 
   console.log('⏳ Checking connexion ...')
-  console.log(`🗄️  URL : ${process.env.DATABASE_URL}`)
+  console.log(`🗄️  URL : ${maskDbUrl(process.env.DATABASE_URL)}`)
 
   await client.connect()
 
@@ -228,14 +228,23 @@ const seed = async () => {
     INSERT INTO "account" (
       "account_id",
       "provider_id",
+      "issuer",
       "user_id",
       "password",
       "created_at",
       "updated_at"
     )
     SELECT 
-      uuid_generate_v4() as "account_id",
+      -- better-auth 1.7 exige les TROIS a la connexion : provider_id, issuer et
+      -- account_id = user.id. Un uuid aleatoire ici passait en 1.6 (qui ne
+      -- testait que provider_id) et fait echouer toute connexion par mot de
+      -- passe en 1.7, avec un trompeur « Invalid credentials ».
+      u.id::text as "account_id",
       'credential' as "provider_id",
+      -- createLocalAccountIssuer('credential') dans better-auth 1.7.
+      -- Le backfill de la migration ne rattrape pas le seed : il tourne
+      -- pendant db:migrate, donc AVANT les insertions ci-dessous.
+      'local:credential' as "issuer",
       u.id as "user_id",
       '48ea88853800794bc5312d8ad65fe149:d8503b790be4373e803d663b895438fa1e8f0b809a1b86a2b3fb6290f7f2310c4acb82dfe3737d2a3dd318a786653af3438022f24286ee0e9e8b2dda9b91f8f9' as "password",
       NOW() as "created_at",
@@ -613,6 +622,24 @@ const seed = async () => {
     ON CONFLICT (key) DO NOTHING;
   `)
 
+  // 12. Insérer le barème du programme d'affiliation
+  // Montants d'exemple : chaque SaaS bâti sur ce boilerplate remplace cette
+  // table par le sien. Rien n'est codé en dur dans le code applicatif.
+  await client.query(`
+    INSERT INTO "affiliate_program_reward" (
+      "plan_code",
+      "bounty_cents",
+      "currency",
+      "hold_days",
+      "is_active"
+    )
+    VALUES
+      ('pro', 5000, 'USD', 30, true),
+      ('enterprise', 15000, 'USD', 30, true),
+      ('lifetime', 10000, 'USD', 30, true)
+    ON CONFLICT (plan_code) DO NOTHING;
+  `)
+
   const end = Date.now()
 
   console.log('✅ Seed inserted in', end - start, 'ms')
@@ -628,6 +655,11 @@ const seed = async () => {
   console.log(
     '🔹 LIFETIME : 20 projets, 50 GB stockage, 5000 crédits/mois (€70 unique, 14j trial)'
   )
+  console.log('')
+  console.log("🎁 Barème d'affiliation créé (exemple, à adapter par SaaS) :")
+  console.log('🔹 PRO : 50 USD, carence 30 jours')
+  console.log('🔹 ENTERPRISE : 150 USD, carence 30 jours')
+  console.log('🔹 LIFETIME : 100 USD, carence 30 jours')
   console.log('')
   console.log('📊 Jeu de test créé avec succès :')
   console.log(

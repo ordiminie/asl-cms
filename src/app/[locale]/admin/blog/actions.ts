@@ -1,6 +1,6 @@
 'use server'
 
-import {revalidatePath} from 'next/cache'
+import {revalidatePath, updateTag} from 'next/cache'
 import * as z from 'zod'
 
 import {requireActionAuth} from '@/app/dal/user-dal'
@@ -49,6 +49,10 @@ type TranslationInput = {
 }
 
 function revalidateBlogPaths(slug?: string) {
+  // Le DAL blog est caché sous le tag 'blog' : sans ça, une publication ne
+  // remonterait qu'au bout du cacheLife('days').
+  updateTag('blog')
+
   for (const locale of routing.locales) {
     revalidatePath(`/${locale}/blog`)
     if (slug) {

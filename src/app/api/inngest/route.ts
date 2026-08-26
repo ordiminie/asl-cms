@@ -1,6 +1,7 @@
 import {serve} from 'inngest/next'
 
 import {
+  approveMaturedAffiliateCommissions,
   helloWorld,
   reconcileNegativeCreditBalances,
   sendWelcomeFollowUpEmail,
@@ -14,5 +15,6 @@ export const {GET, POST, PUT} = serve({
     helloWorld,
     sendWelcomeFollowUpEmail,
     reconcileNegativeCreditBalances,
+    approveMaturedAffiliateCommissions,
   ],
 })

@@ -5,7 +5,7 @@ import Image from 'next/image'
 import {useTranslations} from 'next-intl'
 import QRCode from 'qrcode'
 import {useEffect, useState} from 'react'
-import {useForm} from 'react-hook-form'
+import {useForm, useWatch} from 'react-hook-form'
 import {toast} from 'sonner'
 import {z} from 'zod'
 
@@ -61,7 +61,7 @@ export function TwoFactorForm({user}: {user: User}) {
     },
   })
 
-  const selectedAction = form.watch('action')
+  const selectedAction = useWatch({control: form.control, name: 'action'})
 
   // Générer le QR code quand l'URI TOTP est disponible
   useEffect(() => {

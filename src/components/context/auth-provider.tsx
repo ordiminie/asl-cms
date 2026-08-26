@@ -1,85 +1,46 @@
 'use client'
 
-import type {Session} from 'better-auth'
-import {useLocale} from 'next-intl'
-import {useTheme} from 'next-themes'
-import React, {createContext, useContext, useEffect, useState} from 'react'
+import React, {createContext, use, useContext} from 'react'
 
-import {usePathname, useRouter} from '@/i18n/navigation'
+import type {CurrentUserContext} from '@/app/dal/user-dal'
 import {RoleConst} from '@/services/types/domain/auth-types'
-import {User} from '@/services/types/domain/user-types'
 
-interface AuthContextType {
-  user: User | null
-  session: Session | null
-  //setUser: (user: User | null) => void
-  //setSession: (session: Session | null) => void
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+// Le contexte porte la promesse, pas sa valeur : le provider ne doit jamais
+// suspendre, sinon il emporte {children} avec lui et le shell statique est
+// perdu. Ce sont les consommateurs qui la déroulent, chacun derrière son
+// <Suspense>.
+// undefined = hors provider, null = provider sans session (pages publiques).
+const AuthContext = createContext<
+  Promise<CurrentUserContext> | null | undefined
+>(undefined)
 
 interface AuthProviderProps {
   children: React.ReactNode
-  initialUser?: User | null
-  initialSession?: Session | null
+  userPromise?: Promise<CurrentUserContext> | null
 }
 
 export default function AuthProvider({
   children,
-  initialUser = null,
-  initialSession = null,
+  userPromise = null,
 }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(initialUser)
-  const [session, setSession] = useState<Session | null>(initialSession)
-
-  const {theme, setTheme} = useTheme()
-  const router = useRouter()
-  const pathname = usePathname()
-  const currentLocale = useLocale()
-  // Synchroniser avec les props quand elles changent
-  useEffect(() => {
-    //init theme
-    const userTheme = initialUser?.settings?.theme
-    if (userTheme && theme !== userTheme) {
-      setTheme(userTheme)
-    }
-    //init lang
-    const userLang = initialUser?.settings?.language
-    if (userLang && currentLocale !== userLang) {
-      router.replace(pathname, {locale: userLang})
-    }
-
-    //init user
-    setUser(initialUser)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialUser])
-
-  useEffect(() => {
-    setSession(initialSession)
-  }, [initialSession])
-
-  // useEffect(() => {
-
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [initialUser])
-
-  const value: AuthContextType = {
-    user,
-    session,
-    // setUser,
-    // setSession,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={userPromise}>{children}</AuthContext.Provider>
+  )
 }
 
-// Hook personnalisé pour utiliser le contexte d'authentification
+/**
+ * Suspend tant que la session n'est pas résolue : à n'appeler que depuis un
+ * composant placé derrière un <Suspense>.
+ */
 export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
+  const userPromise = useContext(AuthContext)
+  if (userPromise === undefined) {
     throw new Error('useAuth must be used within an AuthProvider')
   }
-  return context
+  if (!userPromise) {
+    return {user: null, activeOrganization: null}
+  }
+  return use(userPromise)
 }
 
 // Hook utilitaire pour vérifier les rôles de l'utilisateur

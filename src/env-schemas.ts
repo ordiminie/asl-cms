@@ -1,5 +1,6 @@
 import {z} from 'zod'
 
+import {REFERRAL_TRACKING_MODES} from './lib/helper/referral-helper'
 import {
   StripeCheckoutType,
   StripeCheckoutTypeSchema,
@@ -56,6 +57,16 @@ export const TrustedOriginsSchema = z
 export const serverSchema = {
   // Base de données
   DATABASE_URL: z.string().url(),
+  // Connexions Postgres ouvertes PAR INSTANCE. Le défaut 1 vise le serverless
+  // (Vercel), où chaque instance ouvre son propre pool : le total vaut
+  // `max × instances` et doit rester sous la limite du pooler. Sur un serveur
+  // long-running (VM, conteneur), ce défaut est au contraire trop bas — lire
+  // docs/database-pool.md, qui traite les deux cas.
+  DATABASE_POOL_MAX: z.coerce.number().int().positive().default(1),
+
+  // Upload des sourcemaps vers Sentry au build. Absent = build normal, mais
+  // stacks minifiées côté Sentry. Contrairement au DSN, c'est un secret.
+  SENTRY_AUTH_TOKEN: z.string().optional(),
 
   // Authentification
   BETTER_AUTH_SECRET: z.string().min(1),
@@ -100,6 +111,13 @@ export const serverSchema = {
 export const clientSchema = {
   // URL de l'application
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
+
+  // Suivi des erreurs (Sentry). Entièrement optionnel : sans DSN, le SDK n'est
+  // jamais initialisé et le boilerplate se comporte comme s'il n'était pas
+  // installé — voir docs/sentry.md.
+  // Le DSN n'est pas un secret : il part dans le bundle navigateur par
+  // conception, et n'autorise que l'envoi d'événements.
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 
   // Tailwind
   NEXT_PUBLIC_MAX_FILE_SIZE: z
@@ -149,6 +167,24 @@ export const clientSchema = {
   NEXT_PUBLIC_BILLING_MODE: z
     .enum([BillingModes.USER, BillingModes.ORGANIZATION])
     .default(BillingModes.ORGANIZATION),
+
+  /**
+   * Achat sans compte. Mode BONUS, désactivé par défaut : à `false` le produit
+   * se comporte exactement comme sans lui, un visiteur non connecté étant
+   * envoyé s'inscrire. Un seul endroit du code le lit — le CTA de la vitrine
+   * tarifaire — donc le remettre à `false` suffit à le retirer entièrement.
+   */
+  NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true'),
+
+  // Attribution d'affiliation : voir REFERRAL_TRACKING_MODES pour le detail.
+  // 'cookie' pose un traceur soumis a consentement en UE ; 'code-only' n'en
+  // pose aucun et s'appuie sur le code saisi a l'inscription.
+  NEXT_PUBLIC_AFFILIATE_TRACKING: z
+    .enum(REFERRAL_TRACKING_MODES)
+    .default('cookie'),
 
   // Méthodes d'authentification
   NEXT_PUBLIC_AUTH_METHODS: z

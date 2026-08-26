@@ -42,7 +42,7 @@ components/
 
 ## Forms and Server Actions
 
-In Next.js 15 and React 19, sometimes we want client validation with React Hook form for more reactivity.
+In Next.js 16 and React 19, sometimes we want client validation with React Hook form for more reactivity.
 
 - Validation is done on client side with zod and rhf then submit to Server Action
 - But we want revalidate it on server side with server action and add extra validation rules

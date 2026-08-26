@@ -1,6 +1,7 @@
 'use client'
 
 import {Trash2} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 
 import {Button} from '@/components/ui/button'
@@ -25,6 +26,8 @@ export function DeleteOrganizationDialog({
   organizationName,
   onDelete,
 }: DeleteOrganizationDialogProps) {
+  const t = useTranslations('AdminOrganizations')
+  const tCommon = useTranslations('Common')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -43,16 +46,14 @@ export function DeleteOrganizationDialog({
       <DialogTrigger asChild>
         <Button variant="destructive" size="sm">
           <Trash2 className="h-4 w-4 sm:mr-2" />
-          <span className="hidden sm:inline">Supprimer</span>
+          <span className="hidden sm:inline">{tCommon('actions.delete')}</span>
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirmer la suppression</DialogTitle>
+          <DialogTitle>{t('deleteTitle')}</DialogTitle>
           <DialogDescription>
-            Êtes-vous sûr de vouloir supprimer l&apos;organisation &quot;
-            {organizationName}&quot; ? Cette action ne peut pas être annulée et
-            supprimera définitivement toutes les données associées.
+            {t('deleteConfirm', {name: organizationName})}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -61,7 +62,7 @@ export function DeleteOrganizationDialog({
             variant="outline"
             onClick={() => setIsDialogOpen(false)}
           >
-            Annuler
+            {tCommon('actions.cancel')}
           </Button>
           <Button
             type="button"
@@ -69,7 +70,7 @@ export function DeleteOrganizationDialog({
             onClick={handleDelete}
             disabled={isDeleting}
           >
-            {isDeleting ? 'Suppression...' : 'Supprimer'}
+            {isDeleting ? t('deleting') : tCommon('actions.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

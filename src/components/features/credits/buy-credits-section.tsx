@@ -1,5 +1,7 @@
 'use client'
 
+import {useTranslations} from 'next-intl'
+
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {CreditPackConfig} from '@/services/types/domain/credit-types'
 
@@ -14,10 +16,11 @@ export function BuyCreditsSection({
   packs,
   organizationId,
 }: BuyCreditsSectionProps) {
+  const t = useTranslations('CreditsUi')
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Acheter des crédits</CardTitle>
+        <CardTitle>{t('buy')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 md:grid-cols-3">

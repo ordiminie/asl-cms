@@ -1,3 +1,4 @@
+import {getTranslations} from 'next-intl/server'
 import React from 'react'
 
 import {
@@ -28,6 +29,7 @@ export default async function CheckoutPage({
   guest: boolean
   enableInstallments?: boolean
 }) {
+  const t = await getTranslations('Checkout.page')
   let recapInfo
   try {
     recapInfo = await getSubscriptionRecapInfo(priceId, couponId, seats)
@@ -52,6 +54,7 @@ export default async function CheckoutPage({
     seats,
     guest,
     isRecurring,
+    t,
   })
 
   return (
@@ -82,14 +85,14 @@ export default async function CheckoutPage({
           {/* Right side - Checkout */}
           <Card className="bg-card text-foreground space-y-6 border-0 p-4 sm:border sm:p-6">
             <div>
-              <h2 className="mb-1 text-xl font-bold">Finalisez votre achat</h2>
+              <h2 className="mb-1 text-xl font-bold">{t('title')}</h2>
 
               {/* Bannière test pour les installments */}
               {checkoutConfig.showTestBanner && (
                 <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/20">
                   <p className="text-sm text-green-700 dark:text-green-300">
-                    🆕 <strong>Mode Test:</strong> Paiements en plusieurs fois
-                    activés
+                    🆕 <strong>{t('testBannerLabel')}</strong>{' '}
+                    {t('testBannerText')}
                   </p>
                 </div>
               )}
@@ -104,7 +107,7 @@ export default async function CheckoutPage({
             </div>
 
             <div className="text-muted-foreground text-center text-sm">
-              Votre paiement est sécurisé et chiffré
+              {t('secureNotice')}
             </div>
           </Card>
         </div>
@@ -148,6 +151,7 @@ function getCheckoutConfig({
   seats,
   guest,
   isRecurring,
+  t,
 }: {
   enableInstallments: boolean
   recapInfo: RecapInfo
@@ -155,6 +159,7 @@ function getCheckoutConfig({
   seats: number
   guest: boolean
   isRecurring: boolean
+  t: (key: string) => string
 }): CheckoutConfig {
   console.log('🔧 getCheckoutConfig', {
     enableInstallments,
@@ -193,7 +198,7 @@ function getCheckoutConfig({
           guest={guest}
         />
       ),
-      message: 'Choisissez votre mode de paiement ci-dessous',
+      message: t('chooseMethod'),
       showTestBanner: true,
     }
   }
@@ -210,22 +215,17 @@ function getCheckoutConfig({
               guest={guest}
             />
           ),
-          message:
-            'Cliquez sur le bouton ci-dessous pour finaliser votre achat',
+          message: t('clickButton'),
         }
       } else {
         return {
           component: (
             <div>
-              <p>
-                Le mode &apos;paiement Link&apos; est reservé aux utilisateurs
-                non connectés.
-              </p>
+              <p>{t('paymentLinkGuestOnly')}</p>
               <p></p>
             </div>
           ),
-          message:
-            'Cliquez sur le bouton ci-dessous pour finaliser votre achat',
+          message: t('clickButton'),
         }
       }
 
@@ -234,8 +234,7 @@ function getCheckoutConfig({
         component: (
           <CheckoutFormEmbedded priceId={priceId} seats={seats} guest={guest} />
         ),
-        message:
-          'Remplissez le formulaire ci-dessous pour finaliser votre achat',
+        message: t('fillForm'),
       }
 
     case StripeCheckoutConst.REACT_STRIPE_FORM:
@@ -247,7 +246,7 @@ function getCheckoutConfig({
             guest={guest}
           />
         ),
-        message: 'Cliquez sur le bouton ci-dessous pour finaliser votre achat',
+        message: t('clickButton'),
       }
 
     case StripeCheckoutConst.EXTERNAL_FORM:
@@ -259,7 +258,7 @@ function getCheckoutConfig({
             guest={guest}
           />
         ),
-        message: 'Cliquez sur le bouton ci-dessous pour finaliser votre achat',
+        message: t('clickButton'),
       }
 
     default:

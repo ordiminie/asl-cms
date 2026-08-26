@@ -20,6 +20,10 @@ const eslintConfig = defineConfig([
     'build/**',
     'next-env.d.ts',
     // Additional ignores:
+    // Les worktrees vivent sous la racine du dépôt : sans cette ligne, un
+    // `pnpm lint` depuis le dépôt principal parcourt le .next de chaque
+    // worktree et remonte des dizaines de milliers de faux positifs.
+    '.worktrees/**',
     'node_modules/**',
     'dist/**',
     'src/components/ui/*',

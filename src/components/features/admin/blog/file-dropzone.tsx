@@ -1,6 +1,7 @@
 'use client'
 
 import {Copy, File, Upload, X} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import * as React from 'react'
 import {useDropzone} from 'react-dropzone'
 import {toast} from 'sonner'
@@ -33,8 +34,10 @@ export function FileDropzone({
   defaultFiles = [],
   onFilesServerSelectedToRemove,
   disabled = true,
-  disabledMessage = 'Uploading files is disabled',
+  disabledMessage,
 }: FileDropzoneProps) {
+  const t = useTranslations('AdminBlog')
+  const disabledLabel = disabledMessage ?? t('dropzone.disabled')
   const [files, setFiles] = React.useState<FileWithPreview[]>([])
   const [uploadProgress, setUploadProgress] = React.useState<{
     [key: string]: number
@@ -43,7 +46,7 @@ export function FileDropzone({
   const onDrop = React.useCallback(
     (acceptedFiles: File[]) => {
       if (disabled) {
-        toast.error(disabledMessage)
+        toast.error(disabledLabel)
         return
       }
       const newFiles = acceptedFiles.map((file) =>
@@ -69,7 +72,7 @@ export function FileDropzone({
         }, 200)
       }
     },
-    [disabled, disabledMessage, onFilesSelected]
+    [disabled, disabledLabel, onFilesSelected]
   )
 
   const {getRootProps, getInputProps, isDragActive} = useDropzone({
@@ -104,51 +107,67 @@ export function FileDropzone({
     onFilesServerSelectedToRemove(file)
   }
 
+  // Révoquer uniquement les previews des fichiers qui ont disparu de la liste,
+  // jamais celles encore affichées
+  const previewsRef = React.useRef<Set<string>>(new Set())
+
   React.useEffect(() => {
-    // Cleanup previews on unmount
-    return () => {
-      for (const file of files) {
-        if (file.preview) {
-          URL.revokeObjectURL(file.preview)
-        }
+    const currentPreviews = new Set(
+      files
+        .map((file) => file.preview)
+        .filter((preview): preview is string => Boolean(preview))
+    )
+
+    for (const preview of previewsRef.current) {
+      if (!currentPreviews.has(preview)) {
+        URL.revokeObjectURL(preview)
       }
     }
-  }, [files])
+
+    previewsRef.current = currentPreviews
+  })
 
   React.useEffect(() => {
-    if (defaultFiles && defaultFiles.length > 0) {
-      setFiles((prevFiles) => {
-        // Créer une map des fichiers serveur par taille et type pour la correspondance
-        const serverFileMap = new Map()
-        defaultFiles.forEach((serverFile) => {
-          const key = `${serverFile.size}-${serverFile.type}`
-          serverFileMap.set(key, serverFile)
-        })
-
-        // Filtrer les fichiers locaux qui ont une correspondance sur le serveur
-        return prevFiles.filter((localFile) => {
-          const localKey = `${localFile.size}-${localFile.type}`
-          const hasServerMatch = serverFileMap.has(localKey)
-
-          // Si on trouve une correspondance, supprimer le fichier local
-          if (hasServerMatch) {
-            // Nettoyer l'URL de preview
-            if (localFile.preview) {
-              URL.revokeObjectURL(localFile.preview)
-            }
-            // Supprimer du uploadProgress
-            setUploadProgress((prev) => {
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              const {[localFile.name]: _, ...rest} = prev
-              return rest
-            })
-            return false // Supprimer ce fichier local
-          }
-          return true // Garder ce fichier local
-        })
-      })
+    // Cleanup previews on unmount
+    const previews = previewsRef
+    return () => {
+      for (const preview of previews.current) {
+        URL.revokeObjectURL(preview)
+      }
     }
-  }, [defaultFiles])
+  }, [])
+
+  // Une fois un fichier local présent côté serveur, il est retiré de la liste
+  // locale : la carte serveur prend le relais
+  const serverFilesKey = defaultFiles
+    .map((serverFile) => `${serverFile.size}-${serverFile.type}`)
+    .join('|')
+  const [syncedServerFilesKey, setSyncedServerFilesKey] =
+    React.useState(serverFilesKey)
+
+  if (syncedServerFilesKey !== serverFilesKey) {
+    setSyncedServerFilesKey(serverFilesKey)
+
+    const serverFileKeys = new Set(serverFilesKey.split('|'))
+    const uploadedNames = new Set(
+      files
+        .filter((localFile) =>
+          serverFileKeys.has(`${localFile.size}-${localFile.type}`)
+        )
+        .map((localFile) => localFile.name)
+    )
+
+    if (uploadedNames.size > 0) {
+      setFiles((prevFiles) =>
+        prevFiles.filter((localFile) => !uploadedNames.has(localFile.name))
+      )
+      setUploadProgress((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).filter(([name]) => !uploadedNames.has(name))
+        )
+      )
+    }
+  }
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes'
@@ -168,9 +187,7 @@ export function FileDropzone({
         <Upload className="text-muted-foreground h-8 w-8" />
         <div>
           <p className="text-sm font-medium">
-            {isDragActive
-              ? 'Drop the files here...'
-              : 'Drag & drop files here, or click to select files'}
+            {isDragActive ? t('dropzone.active') : t('dropzone.prompt')}
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
             Supports images files
@@ -239,7 +256,7 @@ export function FileDropzone({
                       onClick={(e) => {
                         e.preventDefault()
                         navigator.clipboard.writeText(file.url || '')
-                        toast.success('Link copied to clipboard')
+                        toast.success(t('dropzone.linkCopied'))
                       }}
                       className="shrink-0"
                     >

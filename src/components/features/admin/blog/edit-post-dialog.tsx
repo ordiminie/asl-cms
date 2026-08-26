@@ -2,6 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Edit} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import * as z from 'zod'
@@ -57,6 +58,8 @@ export function EditPostDialog({
   categories,
   onSave,
 }: EditPostDialogProps) {
+  const t = useTranslations('AdminBlog')
+  const tCommon = useTranslations('Common')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -92,7 +95,7 @@ export function EditPostDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier le post</DialogTitle>
+          <DialogTitle>{t('editTitle')}</DialogTitle>
           <DialogDescription>ID: {post.id}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -102,22 +105,22 @@ export function EditPostDialog({
               name="status"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Statut</FormLabel>
+                  <FormLabel>{tCommon('fields.status')}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un statut" />
+                        <SelectValue placeholder={t('selectStatus')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value={POST_STATUS.DRAFT}>
-                        Brouillon
+                        {t('status.draft')}
                       </SelectItem>
                       <SelectItem value={POST_STATUS.PUBLISHED}>
-                        Publié
+                        {t('status.published')}
                       </SelectItem>
                       <SelectItem value={POST_STATUS.ARCHIVED}>
-                        Archivé
+                        {t('status.archived')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -130,18 +133,20 @@ export function EditPostDialog({
               name="categoryId"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Catégorie</FormLabel>
+                  <FormLabel>{tCommon('fields.category')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value || 'none'}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une catégorie" />
+                        <SelectValue placeholder={t('selectCategory')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">Aucune catégorie</SelectItem>
+                      <SelectItem value="none">
+                        {t('categories.none')}
+                      </SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
@@ -159,10 +164,10 @@ export function EditPostDialog({
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
               >
-                Annuler
+                {tCommon('actions.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                {isSubmitting ? t('saving') : tCommon('actions.save')}
               </Button>
             </DialogFooter>
           </form>

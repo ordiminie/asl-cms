@@ -1,6 +1,7 @@
 'use client'
 
 import {Search, X} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 
 import {Button} from '@/components/ui/button'
@@ -28,6 +29,7 @@ export function OrganizationsToolbar({
   onPerPageChange,
   perPage,
 }: OrganizationsToolbarProps) {
+  const t = useTranslations('AdminOrganizations')
   const [searchValue, setSearchValue] = useState(initialSearch)
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +54,7 @@ export function OrganizationsToolbar({
           <div className="relative flex w-[300px] items-center">
             <Search className="text-muted-foreground absolute top-2.5 left-2 h-4 w-4" />
             <Input
-              placeholder="Rechercher par nom, slug ou description..."
+              placeholder={t('searchPlaceholder')}
               className="pr-8 pl-8"
               value={searchValue}
               onChange={handleSearchChange}
@@ -77,7 +79,7 @@ export function OrganizationsToolbar({
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-sm">Afficher</span>
+        <span className="text-muted-foreground text-sm">{t('show')}</span>
         <Select value={perPage} onValueChange={onPerPageChange}>
           <SelectTrigger className="w-[70px]">
             <SelectValue placeholder="20" />

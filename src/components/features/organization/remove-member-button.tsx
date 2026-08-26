@@ -1,5 +1,6 @@
 'use client'
 import {Trash2} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState, useTransition} from 'react'
 import {toast} from 'sonner'
 
@@ -24,6 +25,8 @@ export function RemoveMemberButton({
   userId: string
   userName: string
 }) {
+  const t = useTranslations('Organization.members')
+  const tCommon = useTranslations('Common')
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -31,10 +34,10 @@ export function RemoveMemberButton({
     startTransition(async () => {
       const res = await removeUserFromOrganizationAction(organizationId, userId)
       if (res.success) {
-        toast.success('Membre supprimé')
+        toast.success(t('removeSuccess'))
         setOpen(false)
       } else {
-        toast.error(res.message || 'Erreur lors de la suppression')
+        toast.error(res.message || t('removeError'))
       }
     })
   }
@@ -48,12 +51,9 @@ export function RemoveMemberButton({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirmer la suppression</DialogTitle>
+          <DialogTitle>{t('removeTitle')}</DialogTitle>
         </DialogHeader>
-        <p>
-          Voulez-vous vraiment retirer <b>{userName}</b> de
-          l&apos;organisation&nbsp;?
-        </p>
+        <p>{t('removeConfirm', {name: userName})}</p>
         <DialogFooter>
           <Button
             variant="outline"
@@ -67,7 +67,7 @@ export function RemoveMemberButton({
             onClick={handleDelete}
             disabled={isPending}
           >
-            {isPending ? 'Suppression...' : 'Supprimer'}
+            {isPending ? t('removing') : tCommon('actions.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

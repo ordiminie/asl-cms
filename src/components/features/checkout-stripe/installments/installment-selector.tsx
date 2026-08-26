@@ -1,6 +1,7 @@
 'use client'
 
 import {Calendar, CreditCard} from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 
 import {Badge} from '@/components/ui/badge'
 import {
@@ -34,8 +35,10 @@ export default function InstallmentSelector({
   selectedInstallmentType,
   isRecurring = false,
 }: InstallmentSelectorProps) {
+  const t = useTranslations('Checkout.installments')
+  const locale = useLocale()
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount / 100) // Convertir les centimes en euros
@@ -51,12 +54,10 @@ export default function InstallmentSelector({
       <CardHeader>
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5" />
-          <CardTitle>Options de Paiement</CardTitle>
+          <CardTitle>{t('selectorTitle')}</CardTitle>
         </div>
         <CardDescription>
-          {isRecurring
-            ? 'Les abonnements nécessitent un paiement unique'
-            : 'Choisissez votre mode de paiement préféré'}
+          {isRecurring ? t('recurringNotice') : t('selectorDescription')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -76,14 +77,14 @@ export default function InstallmentSelector({
 
             if (installmentType === InstallmentType.FULL_PAYMENT) {
               paymentDetails = formatCurrency(totalAmount)
-              savingsText = 'Aucun frais supplémentaire'
+              savingsText = t('noExtraFees')
             } else {
               const {installmentAmount} = calculateInstallmentAmount(
                 totalAmount,
                 plan.numberOfPayments
               )
               paymentDetails = `${plan.numberOfPayments} × ${formatCurrency(installmentAmount)}`
-              savingsText = "Premier paiement aujourd'hui"
+              savingsText = t('firstPaymentToday')
             }
 
             return (
@@ -104,7 +105,7 @@ export default function InstallmentSelector({
                         <span className="font-medium">{plan.description}</span>
                         {installmentType === InstallmentType.FULL_PAYMENT && (
                           <Badge variant="secondary" className="text-xs">
-                            Recommandé
+                            {t('recommended')}
                           </Badge>
                         )}
                       </div>
@@ -117,7 +118,7 @@ export default function InstallmentSelector({
                       {installmentType !== InstallmentType.FULL_PAYMENT && (
                         <div className="text-muted-foreground flex items-center gap-1 text-xs">
                           <Calendar className="h-3 w-3" />
-                          Mensuel
+                          {t('monthly')}
                         </div>
                       )}
                     </div>
@@ -131,7 +132,7 @@ export default function InstallmentSelector({
         {selectedInstallmentType !== InstallmentType.FULL_PAYMENT && (
           <div className="mt-4 rounded-lg bg-blue-50 p-3 dark:bg-blue-950/20">
             <div className="text-sm text-blue-700 dark:text-blue-300">
-              <div className="mb-1 font-medium">Calendrier de paiement :</div>
+              <div className="mb-1 font-medium">{t('schedule')}</div>
               <ul className="space-y-1">
                 {Array.from({
                   length:
@@ -157,7 +158,7 @@ export default function InstallmentSelector({
                     <li key={index} className="flex justify-between">
                       <span>
                         Paiement {index + 1} -{' '}
-                        {paymentDate.toLocaleDateString('fr-FR', {
+                        {paymentDate.toLocaleDateString(locale, {
                           month: 'long',
                           year: 'numeric',
                         })}

@@ -1,9 +1,9 @@
 import {faker} from '@faker-js/faker'
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
+import {SubscriptionPlanModel} from '@/db/models/subscription-model'
 import {
   addPackCreditsTxnDao,
-  checkAllocationExistsDao,
   consumeCreditsTxnDao,
   getBalanceDao,
   getDailyUsageDao,
@@ -54,7 +54,6 @@ vi.mock('@/db/repositories/credit-ledger-repository', async () => {
     allocateMonthlyCreditsTxnDao: vi.fn(),
     grantCreditsTxnDao: vi.fn(),
     addPackCreditsTxnDao: vi.fn(),
-    checkAllocationExistsDao: vi.fn(),
     getCurrentCreditPeriodDao: vi
       .fn()
       .mockImplementation(async (_organizationId, subscriptionPeriod) =>
@@ -74,7 +73,7 @@ const otherOrganizationId = faker.string.uuid()
 const mockCreditEntry: CreditEntry = {
   id: faker.string.uuid(),
   organizationId,
-  amount: 100,
+  amount: '100',
   source: 'admin_grant' as CreditSource,
   sourceId: null,
   reason: 'Test grant',
@@ -112,38 +111,71 @@ const mockSubscription = {
   referenceId: organizationId,
   plan: 'pro',
   status: 'active',
+  stripeCustomerId: null,
+  stripeSubscriptionId: null,
   periodStart: new Date('2024-01-01'),
   periodEnd: new Date('2024-02-01'),
+  cancelAtPeriodEnd: null,
+  cancelAt: null,
+  canceledAt: null,
+  endedAt: null,
+  billingInterval: null,
+  stripeScheduleId: null,
+  seats: null,
+  trialStart: null,
+  trialEnd: null,
   limits: {credits: 1000},
   createdAt: new Date(),
   updatedAt: new Date(),
 }
 
+const createMockPlan = (
+  overrides: Partial<SubscriptionPlanModel>
+): SubscriptionPlanModel => ({
+  id: faker.string.uuid(),
+  code: 'plan',
+  planName: 'Plan',
+  priceId: 'price_plan',
+  annualDiscountPriceId: null,
+  limits: null,
+  freeTrial: null,
+  description: null,
+  features: null,
+  price: null,
+  yearlyPrice: null,
+  currency: 'EUR',
+  isRecurring: true,
+  status: 'active',
+  version: 1,
+  isLegacy: false,
+  displayOrder: 0,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+})
+
 const mockCreditPacks = [
-  {
-    id: faker.string.uuid(),
+  createMockPlan({
     code: '10tokens',
     planName: '10 Tokens',
     price: '5.00',
     priceId: 'price_10tokens',
     limits: {credits: 10},
-  },
-  {
-    id: faker.string.uuid(),
+  }),
+  createMockPlan({
     code: '50tokens',
     planName: '50 Tokens',
     price: '20.00',
     priceId: 'price_50tokens',
     limits: {credits: 50},
-  },
-  {
-    id: faker.string.uuid(),
+  }),
+  createMockPlan({
     code: '150tokens',
     planName: '150 Tokens',
     price: '50.00',
     priceId: 'price_150tokens',
     limits: {credits: 150},
-  },
+  }),
 ]
 
 // Helper pour créer un utilisateur avec une membership
@@ -168,6 +200,7 @@ const createUserWithOrgMembership = (
         description: 'Test',
         logo: null,
         metadata: null,
+        limitOverrides: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -192,7 +225,7 @@ describe('[ADMIN] Credit Service', () => {
     ])
     vi.mocked(consumeCreditsTxnDao).mockResolvedValue({
       ...mockCreditEntry,
-      amount: -50,
+      amount: '-50',
       source: 'usage',
     })
     vi.mocked(grantCreditsTxnDao).mockResolvedValue(mockCreditEntry)
@@ -200,7 +233,6 @@ describe('[ADMIN] Credit Service', () => {
       ...mockCreditEntry,
       source: 'pack',
     })
-    vi.mocked(checkAllocationExistsDao).mockResolvedValue(true)
     vi.mocked(getPlanByCodeDao).mockImplementation(async (code: string) => {
       return mockCreditPacks.find((p) => p.code === code)
     })
@@ -255,7 +287,7 @@ describe('[ADMIN] Credit Service', () => {
     it('should consume credits', async () => {
       const result = await consumeService(organizationId, 50, 'AI generation')
 
-      expect(result.amount).toBe(-50)
+      expect(result.amount).toBe('-50')
       expect(result.source).toBe('usage')
       expect(consumeCreditsTxnDao).toHaveBeenCalledWith(
         organizationId,
@@ -392,10 +424,9 @@ describe('[USER] Credit Service - Member of Organization', () => {
     ])
     vi.mocked(consumeCreditsTxnDao).mockResolvedValue({
       ...mockCreditEntry,
-      amount: -20,
+      amount: '-20',
       source: 'usage',
     })
-    vi.mocked(checkAllocationExistsDao).mockResolvedValue(true)
     vi.mocked(getPlanByCodeDao).mockImplementation(async (code: string) => {
       return mockCreditPacks.find((p) => p.code === code)
     })
@@ -471,7 +502,7 @@ describe('[USER] Credit Service - Member of Organization', () => {
     it('should consume own org credits', async () => {
       const result = await consumeService(organizationId, 20, 'Test usage')
 
-      expect(result.amount).toBe(-20)
+      expect(result.amount).toBe('-20')
       expect(consumeCreditsTxnDao).toHaveBeenCalledWith(
         organizationId,
         20,

@@ -2,9 +2,9 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Edit} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {useForm} from 'react-hook-form'
-import * as z from 'zod'
 
 import {Button} from '@/components/ui/button'
 import {
@@ -28,14 +28,12 @@ import {Input} from '@/components/ui/input'
 import {Textarea} from '@/components/ui/textarea'
 import {Project} from '@/services/types/domain/project-types'
 
+import {
+  createProjectFormSchema,
+  ProjectFormSchemaType,
+} from './project-form-validation'
+
 // Schéma de validation
-const formSchema = z.object({
-  name: z.string().min(1, 'Le nom du projet est requis'),
-  description: z.string().optional(),
-})
-
-type FormValues = z.infer<typeof formSchema>
-
 interface EditProjectDialogProps {
   project: Project
   onSave: (
@@ -45,18 +43,21 @@ interface EditProjectDialogProps {
 }
 
 export function EditProjectDialog({project, onSave}: EditProjectDialogProps) {
+  const t = useTranslations('Projects')
+  const projectFormSchema = createProjectFormSchema(t)
+  const tCommon = useTranslations('Common')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<ProjectFormSchemaType>({
+    resolver: zodResolver(projectFormSchema),
     defaultValues: {
       name: project.name,
       description: project.description || '',
     },
   })
 
-  async function onSubmit(data: FormValues) {
+  async function onSubmit(data: ProjectFormSchemaType) {
     setIsSubmitting(true)
     try {
       await onSave(project.id, data)
@@ -71,14 +72,14 @@ export function EditProjectDialog({project, onSave}: EditProjectDialogProps) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Edit className="mr-2 h-4 w-4" />
-          Modifier
+          {tCommon('actions.edit')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier le projet</DialogTitle>
+          <DialogTitle>{t('form.editTitle')}</DialogTitle>
           <DialogDescription>
-            Modifiez les informations du projet ci-dessous.
+            {t('form.editDialogDescription')}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -88,7 +89,7 @@ export function EditProjectDialog({project, onSave}: EditProjectDialogProps) {
               name="name"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Nom du projet</FormLabel>
+                  <FormLabel>{t('form.nameLabel')}</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -101,7 +102,7 @@ export function EditProjectDialog({project, onSave}: EditProjectDialogProps) {
               name="description"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('form.descriptionLabel')}</FormLabel>
                   <FormControl>
                     <Textarea {...field} />
                   </FormControl>
@@ -115,10 +116,10 @@ export function EditProjectDialog({project, onSave}: EditProjectDialogProps) {
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
               >
-                Annuler
+                {tCommon('actions.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                {isSubmitting ? t('form.saving') : tCommon('actions.save')}
               </Button>
             </DialogFooter>
           </form>

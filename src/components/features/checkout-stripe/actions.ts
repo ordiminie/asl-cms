@@ -1,7 +1,9 @@
 'use server'
 
+import {requireActionAuth} from '@/app/dal/user-dal'
 import {stripeClient} from '@/lib/stripe/stripe-client'
 import {getSubscriptionRecap} from '@/lib/stripe/stripe-utils'
+import {RoleConst} from '@/services/types/domain/auth-types'
 // Numéro : 4242 4242 4242 4242
 // Date d'expiration : N'importe quelle date future
 // CVC : N'importe quels 3 chiffres
@@ -48,6 +50,10 @@ export async function createStripePrice(
   currency: string = 'eur'
 ) {
   try {
+    await requireActionAuth({
+      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    })
+
     // Créer d'abord un produit
     const product = await stripeClient.products.create({
       name: 'Pro Bundle',

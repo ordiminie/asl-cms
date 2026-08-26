@@ -2,6 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Edit} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {ReactNode, useState} from 'react'
 import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
@@ -53,18 +54,15 @@ interface EditMemberRoleDialogProps {
   triggerButton?: ReactNode
 }
 
-const roleLabels = {
-  [UserOrganizationRoleConst.OWNER]: 'Propriétaire',
-  [UserOrganizationRoleConst.ADMIN]: 'Administrateur',
-  [UserOrganizationRoleConst.MEMBER]: 'Membre',
-}
-
 export function EditMemberRoleDialog({
   memberId,
   memberName,
   currentRole,
   triggerButton,
 }: EditMemberRoleDialogProps) {
+  const t = useTranslations('Organization.members')
+  const tRoles = useTranslations('Organization.roles')
+  const tCommon = useTranslations('Common')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -81,9 +79,7 @@ export function EditMemberRoleDialog({
       console.log('onSubmit', data)
       console.log('memberId', memberId)
       if (currentRole === UserOrganizationRoleConst.OWNER) {
-        toast.error(
-          "Le rôle 'Propriétaire' ne peut pas être modifié. Veuillez contacter l'administrateur de l'organisation."
-        )
+        toast.error(t('ownerImmutable'))
         return
       }
       const {error} = await authClient.organization.updateMemberRole({
@@ -98,13 +94,9 @@ export function EditMemberRoleDialog({
 
       setIsDialogOpen(false)
       //
-      toast.success(`Rôle de ${memberName} mis à jour avec succès`)
+      toast.success(t('roleUpdated', {name: memberName}))
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Erreur lors de la mise à jour du rôle'
-      )
+      toast.error(error instanceof Error ? error.message : t('roleUpdateError'))
     } finally {
       setIsSubmitting(false)
     }
@@ -118,16 +110,14 @@ export function EditMemberRoleDialog({
         ) : (
           <Button variant="outline" size="sm">
             <Edit className="mr-2 h-4 w-4" />
-            Modifier le rôle
+            {t('editRole')}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier le rôle de {memberName}</DialogTitle>
-          <DialogDescription>
-            Sélectionnez le nouveau rôle pour ce membre de l&apos;organisation.
-          </DialogDescription>
+          <DialogTitle>{t('editRoleTitle', {name: memberName})}</DialogTitle>
+          <DialogDescription>{t('editRoleDescription')}</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -136,25 +126,25 @@ export function EditMemberRoleDialog({
               name="role"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Rôle</FormLabel>
+                  <FormLabel>{tCommon('fields.role')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un rôle" />
+                        <SelectValue placeholder={t('selectRole')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value={UserOrganizationRoleConst.OWNER}>
-                        {roleLabels[UserOrganizationRoleConst.OWNER]}
+                        {tRoles('OWNER')}
                       </SelectItem>
                       <SelectItem value={UserOrganizationRoleConst.ADMIN}>
-                        {roleLabels[UserOrganizationRoleConst.ADMIN]}
+                        {tRoles('ADMIN')}
                       </SelectItem>
                       <SelectItem value={UserOrganizationRoleConst.MEMBER}>
-                        {roleLabels[UserOrganizationRoleConst.MEMBER]}
+                        {tRoles('MEMBER')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -168,10 +158,10 @@ export function EditMemberRoleDialog({
                 variant="outline"
                 onClick={() => setIsDialogOpen(false)}
               >
-                Annuler
+                {tCommon('actions.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Mise à jour...' : 'Mettre à jour'}
+                {isSubmitting ? t('updating') : t('update')}
               </Button>
             </DialogFooter>
           </form>

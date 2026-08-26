@@ -1,6 +1,7 @@
 'use client'
 
 import {usePathname} from 'next/navigation'
+import {useTranslations} from 'next-intl'
 import React from 'react'
 
 import {
@@ -65,6 +66,7 @@ function generateDocsBreadcrumb(pathname: string, structure: DocsStructure) {
 }
 
 export function DocsBreadcrumb({structure}: DocsBreadcrumbProps) {
+  const t = useTranslations('DocsPage')
   const pathname = usePathname()
   const breadcrumbItems = generateDocsBreadcrumb(pathname, structure)
 
@@ -72,7 +74,7 @@ export function DocsBreadcrumb({structure}: DocsBreadcrumbProps) {
     <Breadcrumb>
       <BreadcrumbList className="flex-nowrap">
         <BreadcrumbItem className="hidden md:block">
-          <BreadcrumbLink href="/docs">Documentation</BreadcrumbLink>
+          <BreadcrumbLink href="/docs">{t('title')}</BreadcrumbLink>
         </BreadcrumbItem>
         {breadcrumbItems.map((item) => (
           <React.Fragment key={item.href}>

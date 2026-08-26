@@ -1,4 +1,6 @@
 import {UserCog} from 'lucide-react'
+import {cacheLife} from 'next/cache'
+import {getTranslations} from 'next-intl/server'
 
 import {getMembersAndInvitationsDal} from '@/app/dal/organization-dal'
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
@@ -25,10 +27,20 @@ import {EditMemberRoleDialog} from './edit-member-role-dialog'
 import {OrganizationAddMemberForm} from './organization-add-member-form'
 import {RemoveMemberButton} from './remove-member-button'
 
-function isInvitationExpired(joinedAt: Date | null): boolean {
+/**
+ * L'instant de référence est caché dans sa propre fonction : lire l'horloge
+ * pendant le rendu interdirait le prerender de la page. Granularité horaire,
+ * ce qui suffit largement pour une date d'expiration d'invitation.
+ */
+async function getExpiryCutoff(): Promise<number> {
+  'use cache'
+  cacheLife('hours')
+  return Date.now()
+}
+
+function isInvitationExpired(joinedAt: Date | null, cutoff: number): boolean {
   if (!joinedAt) return false
-  const today = new Date()
-  return new Date(joinedAt) < today
+  return new Date(joinedAt).getTime() < cutoff
 }
 
 export default async function OrganizationMembersTable({
@@ -40,13 +52,16 @@ export default async function OrganizationMembersTable({
   canManageMembers?: boolean
   adminView?: boolean
 }) {
+  const t = await getTranslations('Organization.members')
+  const tCommon = await getTranslations('Common')
+  const expiryCutoff = await getExpiryCutoff()
   //const isAdmin = await isAuthAdmin()
   const members = await getMembersAndInvitationsDal(organizationId)
 
   return (
     <div className="overflow-x-auto">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Membres</h3>
+        <h3 className="text-lg font-semibold">{t('title')}</h3>
         {canManageMembers && !adminView && (
           <OrganizationAddMemberForm
             organizationId={organizationId}
@@ -64,15 +79,21 @@ export default async function OrganizationMembersTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Avatar</TableHead>
-            <TableHead>Nom</TableHead>
-            <TableHead className="hidden sm:table-cell">Email</TableHead>
-            <TableHead className="hidden md:table-cell">Rôle</TableHead>
+            <TableHead>{t('avatar')}</TableHead>
+            <TableHead>{tCommon('fields.name')}</TableHead>
+            <TableHead className="hidden sm:table-cell">
+              {tCommon('fields.email')}
+            </TableHead>
+            <TableHead className="hidden md:table-cell">
+              {tCommon('fields.role')}
+            </TableHead>
             <TableHead className="hidden lg:table-cell">
               Date d&apos;ajout
             </TableHead>
-            <TableHead className="w-10 text-center">Rôle</TableHead>
-            <TableHead className="w-10 text-center">Action</TableHead>
+            <TableHead className="w-10 text-center">
+              {tCommon('fields.role')}
+            </TableHead>
+            <TableHead className="w-10 text-center">{t('action')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -94,14 +115,14 @@ export default async function OrganizationMembersTable({
                     {member.status === 'invited' && (
                       <span
                         className={`ml-2 rounded px-2 py-0.5 text-xs font-semibold ${
-                          isInvitationExpired(member.joinedAt)
+                          isInvitationExpired(member.joinedAt, expiryCutoff)
                             ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
                             : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100'
                         }`}
                       >
-                        {isInvitationExpired(member.joinedAt)
-                          ? 'Invitation expirée'
-                          : 'Invitation en attente'}
+                        {isInvitationExpired(member.joinedAt, expiryCutoff)
+                          ? t('expiredInvitation')
+                          : t('pendingInvitation')}
                       </span>
                     )}
                   </span>
@@ -139,14 +160,14 @@ export default async function OrganizationMembersTable({
                             <Button
                               variant="ghost"
                               size="icon"
-                              aria-label="Modifier le rôle"
+                              aria-label={t('editRole')}
                             >
                               <UserCog className="h-4 w-4" />
                             </Button>
                           }
                         />
                       </TooltipTrigger>
-                      <TooltipContent>Modifier le rôle</TooltipContent>
+                      <TooltipContent>{t('editRole')}</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 ) : null}

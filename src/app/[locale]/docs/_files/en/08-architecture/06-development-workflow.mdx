@@ -251,6 +251,7 @@ pnpm build
 
 <Callout type="info">
 **Branch Strategy:** Use feature branches with descriptive names like `feature/user-authentication` or `fix/payment-webhook-handling`.
+
 </Callout>
 
 ```bash
@@ -269,7 +270,7 @@ git push origin feature/new-feature-name
 
 ### React Server Components
 
-```typescript
+```tsx
 // Prefer Server Components for data fetching
 export default async function UserDashboard() {
   const user = await getCurrentUser()
@@ -325,10 +326,16 @@ const usersWithSubscriptions = await db
 
 <Tab value="Caching">
 ```typescript
-// Use React cache for data access layer
+// Cache the read in the DAL function itself.
+// 'use cache' spans requests, cache() from React deduplicates within one.
 import { cache } from 'react'
+import { cacheLife, cacheTag } from 'next/cache'
 
 export const getUser = cache(async (userId: string) => {
+  'use cache'
+  cacheLife('hours')
+  cacheTag(`user:${userId}`)
+
   return await db.query.users.findFirst({
     where: eq(users.id, userId),
   })
@@ -437,7 +444,7 @@ STRIPE_SECRET_KEY=sk_live_...
 
 ### Error Tracking
 
-```typescript
+```tsx
 // Error boundary for React components
 import { ErrorBoundary } from 'next/dist/client/components/error-boundary'
 

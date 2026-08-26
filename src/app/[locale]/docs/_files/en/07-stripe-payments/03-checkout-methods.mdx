@@ -134,7 +134,7 @@ const checkoutConfig = getCheckoutConfig({
 ### 🎯 Embedded Form (Recommended)
 
 **Implementation:**
-```typescript
+```tsx
 // From checkout-page.tsx
 <CheckoutFormEmbedded
   priceId={priceId}
@@ -160,7 +160,7 @@ const checkoutConfig = getCheckoutConfig({
 ### 🔗 External Redirect
 
 **Implementation:**
-```typescript
+```tsx
 // From checkout-page.tsx
 <CheckoutButtonExternal
   priceId={priceId}
@@ -186,7 +186,7 @@ const checkoutConfig = getCheckoutConfig({
 ### ⚛️ React Stripe Integration
 
 **Implementation:**
-```typescript
+```tsx
 // From checkout-page.tsx
 <CheckoutButtonReactStripe
   priceId={priceId}
@@ -212,7 +212,7 @@ const checkoutConfig = getCheckoutConfig({
 ### 🔗 Payment Links
 
 **Implementation:**
-```typescript
+```tsx
 // From checkout-page.tsx
 <CheckoutPaymentLink
   priceId={priceId}
@@ -244,7 +244,7 @@ const checkoutConfig = getCheckoutConfig({
 
 All Custom System checkout methods support guest checkout with automatic user account creation:
 
-```typescript
+```tsx
 // Enable guest checkout
 <CheckoutPage
   priceId="price_123"
@@ -334,7 +334,7 @@ All Custom System checkout methods support guest checkout with automatic user ac
 
 Enable installments for supported payment methods in the Custom System:
 
-```typescript
+```tsx
 // Enable installments
 <CheckoutPage
   priceId="price_123"
@@ -355,7 +355,7 @@ Enable installments for supported payment methods in the Custom System:
 
 Support for team/organization subscriptions in the Custom System:
 
-```typescript
+```tsx
 // Multi-seat subscription
 <CheckoutPage
   priceId="price_123"

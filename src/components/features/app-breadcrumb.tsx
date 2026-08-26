@@ -1,6 +1,7 @@
 'use client'
 
 import {usePathname} from 'next/navigation'
+import {useTranslations} from 'next-intl'
 import React from 'react'
 
 import {
@@ -20,6 +21,7 @@ function truncateSegment(segment: string, maxLength: number = 16): string {
 }
 
 export function AppBreadcrumb() {
+  const t = useTranslations('AppSidebar.nav')
   const pathname = usePathname()
   const segments = pathname.split('/').filter(Boolean)
 
@@ -30,7 +32,7 @@ export function AppBreadcrumb() {
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink href="/">Accueil</BreadcrumbLink>
+          <BreadcrumbLink href="/">{t('home')}</BreadcrumbLink>
         </BreadcrumbItem>
 
         {visibleSegments.map((segment, index) => {

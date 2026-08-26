@@ -1,3 +1,5 @@
+import {useTranslations} from 'next-intl'
+
 import {Card, CardContent, CardHeader} from '@/components/ui/card'
 import {Skeleton} from '@/components/ui/skeleton'
 import {
@@ -10,6 +12,8 @@ import {
 } from '@/components/ui/table'
 
 export function PlansManagementSkeleton() {
+  const t = useTranslations('AdminPlans')
+  const tCommon = useTranslations('Common')
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
@@ -24,12 +28,18 @@ export function PlansManagementSkeleton() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Plan</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead className="hidden lg:table-cell">Prix</TableHead>
-              <TableHead className="hidden lg:table-cell">Statut</TableHead>
-              <TableHead className="hidden md:table-cell">Créé</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>{t('management.plan')}</TableHead>
+              <TableHead>{tCommon('fields.code')}</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {tCommon('fields.price')}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {tCommon('fields.status')}
+              </TableHead>
+              <TableHead className="hidden md:table-cell">
+                {t('management.createdAt')}
+              </TableHead>
+              <TableHead>{tCommon('fields.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

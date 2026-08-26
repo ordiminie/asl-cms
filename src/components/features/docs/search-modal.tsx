@@ -2,6 +2,7 @@
 
 import {FileText, Hash, Search} from 'lucide-react'
 import {useRouter} from 'next/navigation'
+import {useTranslations} from 'next-intl'
 import {useCallback, useEffect, useState} from 'react'
 
 import {searchDocsAction} from '@/app/[locale]/docs/actions'
@@ -27,6 +28,7 @@ export function SearchModal({open, onOpenChange}: SearchModalProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const t = useTranslations('DocsPage')
   const router = useRouter()
 
   // Real search function using our search service
@@ -81,19 +83,19 @@ export function SearchModal({open, onOpenChange}: SearchModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl gap-0 p-0 [&>button]:hidden">
-        <DialogTitle className="sr-only">Search documentation</DialogTitle>
+        <DialogTitle className="sr-only">{t('searchLabel')}</DialogTitle>
         <div className="border-b">
           <div className="flex items-center px-4">
             <Search className="text-muted-foreground mr-3 h-4 w-4" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search documentation..."
+              placeholder={t('searchPlaceholder')}
               className="placeholder:text-muted-foreground h-14 flex-1 border-0 bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0"
               autoFocus
             />
             <kbd className="bg-muted text-muted-foreground pointer-events-none inline-flex h-5 items-center gap-1 rounded border px-1.5 font-mono text-[10px] font-medium select-none">
-              <span className="text-xs">Esc</span>
+              <span className="text-xs">{t('escKey')}</span>
             </kbd>
           </div>
         </div>

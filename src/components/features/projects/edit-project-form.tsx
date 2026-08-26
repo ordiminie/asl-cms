@@ -1,10 +1,10 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
-import * as z from 'zod'
 
 import {updateProjectAction} from '@/app/[locale]/(app)/team/[slug]/projects/actions'
 import {Button} from '@/components/ui/button'
@@ -27,12 +27,10 @@ import {Input} from '@/components/ui/input'
 import {Textarea} from '@/components/ui/textarea'
 import {Project} from '@/services/types/domain/project-types'
 
-const projectFormSchema = z.object({
-  name: z.string().min(1, 'Le nom du projet est requis'),
-  description: z.string().optional(),
-})
-
-type ProjectFormValues = z.infer<typeof projectFormSchema>
+import {
+  createProjectFormSchema,
+  ProjectFormSchemaType,
+} from './project-form-validation'
 
 interface EditProjectFormProps {
   project: Project
@@ -40,9 +38,11 @@ interface EditProjectFormProps {
 }
 
 export function EditProjectForm({project, canEdit}: EditProjectFormProps) {
+  const t = useTranslations('Projects')
+  const projectFormSchema = createProjectFormSchema(t)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const form = useForm<ProjectFormValues>({
+  const form = useForm<ProjectFormSchemaType>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
       name: project.name,
@@ -50,9 +50,9 @@ export function EditProjectForm({project, canEdit}: EditProjectFormProps) {
     },
   })
 
-  async function onSubmit(data: ProjectFormValues) {
+  async function onSubmit(data: ProjectFormSchemaType) {
     if (!canEdit) {
-      toast.error("Vous n'avez pas les droits pour modifier ce projet")
+      toast.error(t('errors.notAllowed'))
       return
     }
 
@@ -71,23 +71,21 @@ export function EditProjectForm({project, canEdit}: EditProjectFormProps) {
     } else {
       if (result.errors) {
         for (const error of result.errors) {
-          form.setError(error.field as keyof ProjectFormValues, {
+          form.setError(error.field as keyof ProjectFormSchemaType, {
             type: 'manual',
             message: error.message,
           })
         }
       }
-      toast.error(result.message || 'Une erreur est survenue')
+      toast.error(result.message || t('errors.generic'))
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Informations du projet</CardTitle>
-        <CardDescription>
-          Modifiez les informations de base du projet.
-        </CardDescription>
+        <CardTitle>{t('form.infoTitle')}</CardTitle>
+        <CardDescription>{t('form.editDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -97,7 +95,7 @@ export function EditProjectForm({project, canEdit}: EditProjectFormProps) {
               name="name"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Nom du projet</FormLabel>
+                  <FormLabel>{t('form.nameLabel')}</FormLabel>
                   <FormControl>
                     <Input {...field} disabled={!canEdit} />
                   </FormControl>
@@ -111,13 +109,13 @@ export function EditProjectForm({project, canEdit}: EditProjectFormProps) {
               name="description"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('form.descriptionLabel')}</FormLabel>
                   <FormControl>
                     <Textarea
                       {...field}
                       disabled={!canEdit}
                       rows={4}
-                      placeholder="Décrivez brièvement ce projet..."
+                      placeholder={t('form.descriptionPlaceholder')}
                     />
                   </FormControl>
                   <FormMessage />
@@ -127,7 +125,7 @@ export function EditProjectForm({project, canEdit}: EditProjectFormProps) {
 
             {canEdit && (
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Mise à jour...' : 'Mettre à jour le projet'}
+                {isSubmitting ? t('form.updating') : t('form.update')}
               </Button>
             )}
 

@@ -16,7 +16,7 @@ The email and notification system is designed to be easily extensible. You can c
 
 Follow the existing pattern when creating new templates in `src/lib/emails/`:
 
-```typescript
+```tsx
 // Example: custom-welcome-email.tsx
 import {
   Body,
@@ -254,7 +254,7 @@ const isCriticalNotification = (type: NotificationType): boolean => {
 
 Customize the Tailwind classes in your templates:
 
-```typescript
+```tsx
 // Custom brand colors
 <Text className="text-2xl font-bold text-brand-primary">
 <Link className="text-brand-secondary hover:text-brand-secondary-dark">
@@ -317,7 +317,7 @@ export function NotificationEmailError(props: NotificationProps) {
 
 For templates requiring different layouts per language:
 
-```typescript
+```tsx
 export default async function MultiLanguageTemplate({
   content,
   language,

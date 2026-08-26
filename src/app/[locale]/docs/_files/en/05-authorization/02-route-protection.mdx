@@ -15,7 +15,7 @@ Route protection ensures only authorized users can access specific pages in your
 ### 🌍 Public Routes
 **Accessible by everyone (including unauthenticated users)**
 
-```typescript
+```tsx
 // No protection needed
 export default function PublicPage() {
   return <div>Anyone can see this</div>
@@ -27,7 +27,7 @@ export default function PublicPage() {
 ### 🔒 Private Routes
 **Requires authentication (any logged-in user)**
 
-```typescript
+```tsx
 // Using withAuth HOC
 import { withAuth } from '@/components/features/auth/with-auth'
 
@@ -43,7 +43,7 @@ export default withAuth(DashboardPage)
 ### 👤 Role-Based Routes
 **Requires specific role or permission**
 
-```typescript
+```tsx
 import { withAuth } from '@/components/features/auth/with-auth'
 
 function ModeratorPanel() {
@@ -60,7 +60,7 @@ export default withAuth(ModeratorPanel, {
 ### 👑 Admin Routes
 **Admin/backoffice access only**
 
-```typescript
+```tsx
 import { withAuth } from '@/components/features/auth/with-auth'
 
 function AdminDashboard() {
@@ -126,43 +126,67 @@ withAuth<P>(WrappedComponent: ComponentType<P & WithAuthProps>, requiredRole?: R
   </Tab>
 </Tabs>
 
-## Route-Level Middleware
+## Route-Level Gating in the Proxy
 
-For advanced protection, use Next.js middleware:
+Authenticated routes are gated in `src/proxy.ts` before anything renders. This
+matters under Cache Components: those routes stream, and a `redirect()` fired
+mid-render leaves after a `200` has already started, so it can no longer change
+the status code.
 
 ```typescript
-// src/middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+// src/proxy.ts
+import { getSessionCookie } from 'better-auth/cookies'
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+const AUTHENTICATED_SEGMENTS = ['/account', '/admin', '/chat', '/dashboard', '/team']
 
-  // Admin routes protection
-  if (pathname.startsWith('/admin')) {
-    const userRole = getUserRoleFromSession(request)
+export default function middleware(request: NextRequest) {
+  const locale = localeOf(request.nextUrl.pathname)
 
-    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
-      return NextResponse.redirect(new URL('/unauthorized', request.url))
-    }
+  if (isAuthenticatedPath(request.nextUrl.pathname, locale) && !getSessionCookie(request)) {
+    return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
   }
 
-  // Organization routes protection
-  if (pathname.startsWith('/organization')) {
-    const hasOrgAccess = checkOrganizationAccess(request)
-
-    if (!hasOrgAccess) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-  }
-
-  return NextResponse.next()
-}
-
-export const config = {
-  matcher: ['/admin/:path*', '/organization/:path*']
+  // ... i18n routing, theme cookie
 }
 ```
+
+<Callout type="warning">
+  `getSessionCookie` only checks that a cookie is **present** — it validates
+  nothing, and anyone can forge a cookie. This is Better Auth's documented
+  optimistic check: it saves a useless render, it is not a security boundary.
+  Real enforcement stays server-side, in `withAuth`, in the DAL, and in the
+  service-layer authorization.
+</Callout>
+
+Add your own protected segment to `AUTHENTICATED_SEGMENTS` when you create one.
+
+## Reading the Session Under Cache Components
+
+Never `await` the session at the top level of a layout: it holds the whole
+segment, `{children}` included, behind the request, and the static shell is lost.
+The layout creates the promise and passes it down; consumers unwrap it behind a
+`<Suspense>` boundary.
+
+```tsx
+// src/app/[locale]/(app)/layout.tsx
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const userPromise = getCurrentUserDal() // created, never awaited
+
+  return (
+    <AuthProvider userPromise={userPromise}>
+      <Suspense fallback={<SidebarSkeleton />}>
+        <AppSidebar />
+      </Suspense>
+      {children}
+    </AuthProvider>
+  )
+}
+```
+
+`getCurrentUserDal()` uses `'use cache: private'`, the only directive allowed to
+read `cookies()` and `headers()`. Its result is kept in the browser, never on the
+server. Client hooks (`useAuth`, `useOrganization`) resolve it with `use()`, so
+they suspend — call them only from a component behind a boundary.
 
 ## Error Pages
 
@@ -170,7 +194,7 @@ export const config = {
 
 The boilerplate includes a forbidden page for users who don't have sufficient permissions:
 
-```typescript
+```tsx
 // src/app/forbidden.tsx
 export default function ForbiddenPage() {
   return (
@@ -189,7 +213,7 @@ export default function ForbiddenPage() {
 
 ### Basic Page Protection
 
-```typescript
+```tsx
 // src/app/dashboard/page.tsx
 import withAuth, { WithAuthProps } from '@/components/features/auth/with-auth'
 import { RoleConst } from '@/services/types/domain/auth-types'
@@ -209,7 +233,7 @@ export default withAuth(DashboardPage)
 
 ### Admin Page Protection
 
-```typescript
+```tsx
 // src/app/admin/page.tsx
 import withAuth, { WithAuthProps } from '@/components/features/auth/with-auth'
 import { RoleConst } from '@/services/types/domain/auth-types'
@@ -229,7 +253,7 @@ export default withAuth(AdminPage, RoleConst.ADMIN)
 
 ### Using withAuthAdmin Shortcut
 
-```typescript
+```tsx
 // src/app/admin/users/page.tsx
 import { withAuthAdmin, WithAuthProps } from '@/components/features/auth/with-auth'
 

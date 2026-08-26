@@ -58,15 +58,15 @@ stripe trigger checkout.session.completed \
 /*
 // payment unique
 stripe trigger payment_intent.succeeded \
-  --add "payment_intent:receipt_email=admin@mikecodeur.com" \
+  --add "payment_intent:receipt_email=admin@example.com" \
   --add "payment_intent:metadata[plan]=lifetime" \
-  --add "payment_intent:metadata[customerEmail]=admin@mikecodeur.com" 
+  --add "payment_intent:metadata[customerEmail]=admin@example.com" 
 
   // payment recurent
 stripe trigger customer.subscription.updated \
-  --add "payment_intent:receipt_email=admin@mikecodeur.com" \
+  --add "payment_intent:receipt_email=admin@example.com" \
   --add "payment_intent:metadata[plan]=pro" \
-  --add "payment_intent:metadata[customerEmail]=admin@mikecodeur.com" \
+  --add "payment_intent:metadata[customerEmail]=admin@example.com" \
   --add "payment_intent:metadata[interval]=year"
 */
 

@@ -2,6 +2,7 @@
 
 //import {Invitation} from 'better-auth/plugins/organization'
 import {useRouter} from 'next/navigation'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {toast} from 'sonner'
 
@@ -34,6 +35,7 @@ interface AcceptInvitationFormProps {
 }
 
 export function AcceptInvitationForm({invitation}: AcceptInvitationFormProps) {
+  const t = useTranslations('AcceptInvitation')
   const router = useRouter()
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -44,14 +46,15 @@ export function AcceptInvitationForm({invitation}: AcceptInvitationFormProps) {
         invitationId: invitation.id,
       })
 
-      toast.success('Invitation acceptée avec succès')
+      toast.success(t('acceptSuccess'))
 
-      //router.push(`/team/${invitation.organizationSlug}`)
-      //this route wil set as active organization (keep window.location.href)
-      window.location.href = `/team/${invitation.organizationSlug}`
+      // Cette route définit l'organisation active côté serveur : refresh pour
+      // invalider le cache router et recharger la session à jour
+      router.push(`/team/${invitation.organizationSlug}`)
+      router.refresh()
     } catch (err) {
       console.error("Erreur lors de l'acceptation de l'invitation:", err)
-      toast.error('Erreur lors de l&apos;acceptation de l&apos;invitation')
+      toast.error(t('acceptError'))
     } finally {
       setIsProcessing(false)
     }
@@ -66,11 +69,11 @@ export function AcceptInvitationForm({invitation}: AcceptInvitationFormProps) {
       await authClient.organization.rejectInvitation({
         invitationId: invitation.id,
       })
-      toast.success('Invitation annulée avec succès')
+      toast.success(t('declineSuccess'))
       router.push('/dashboard')
     } catch (err) {
       console.error("Erreur lors de l'annulation de l'invitation:", err)
-      toast.error('Erreur lors de l&apos;annulation de l&apos;invitation')
+      toast.error(t('declineError'))
     } finally {
       setIsProcessing(false)
     }
@@ -79,10 +82,8 @@ export function AcceptInvitationForm({invitation}: AcceptInvitationFormProps) {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Invitation d&apos;Organisation</CardTitle>
-        <CardDescription>
-          Vous avez été invité à rejoindre une organisation
-        </CardDescription>
+        <CardTitle>{t('title')}</CardTitle>
+        <CardDescription>{t('subtitle')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
@@ -93,7 +94,7 @@ export function AcceptInvitationForm({invitation}: AcceptInvitationFormProps) {
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium">Invité par</p>
+          <p className="text-sm font-medium">{t('invitedBy')}</p>
           <p className="text-muted-foreground text-sm">
             {invitation.inviterEmail}
           </p>

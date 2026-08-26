@@ -1,8 +1,8 @@
 'use client'
 
 import {formatDistanceToNow} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {toast} from 'sonner'
 
 import {
@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {Plan} from '@/services/types/domain/subscription-types'
 
 import {DeletePlanDialog} from './delete-plan-dialog'
@@ -49,6 +50,9 @@ export default function PlansManagement({
   permissions,
   searchQuery,
 }: Props) {
+  const t = useTranslations('AdminPlans')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -73,13 +77,13 @@ export default function PlansManagement({
   }
 
   const getPlanStatusDisplay = (plan: Plan) => {
-    return plan.status === 'active' ? 'Actif' : 'Inactif'
+    return plan.status === 'active' ? t('status.active') : t('status.inactive')
   }
 
   const formatPrice = (price?: string | null, currency?: string) => {
-    if (!price) return 'Gratuit'
+    if (!price) return t('status.free')
     const numPrice = parseFloat(price)
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency || 'EUR',
     }).format(numPrice)
@@ -88,7 +92,7 @@ export default function PlansManagement({
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
-        <CardTitle>Gestion des plans</CardTitle>
+        <CardTitle>{t('management.title')}</CardTitle>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <PlansToolbar
@@ -103,13 +107,21 @@ export default function PlansManagement({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Plan</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead className="hidden lg:table-cell">Prix</TableHead>
-              <TableHead className="hidden lg:table-cell">Statut</TableHead>
-              <TableHead className="hidden lg:table-cell">Type</TableHead>
-              <TableHead className="hidden md:table-cell">Créé</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>{t('management.plan')}</TableHead>
+              <TableHead>{tCommon('fields.code')}</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {tCommon('fields.price')}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {tCommon('fields.status')}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {tCommon('fields.type')}
+              </TableHead>
+              <TableHead className="hidden md:table-cell">
+                {t('management.createdAt')}
+              </TableHead>
+              <TableHead>{tCommon('fields.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -124,7 +136,7 @@ export default function PlansManagement({
                   <div>
                     <div className="font-medium">{plan.planName}</div>
                     <div className="text-muted-foreground text-sm">
-                      {plan.description || 'Aucune description'}
+                      {plan.description || t('management.noDescription')}
                     </div>
                   </div>
                 </TableCell>
@@ -146,7 +158,7 @@ export default function PlansManagement({
                 <TableCell className="hidden lg:table-cell">
                   <Badge
                     variant={
-                      getPlanStatusDisplay(plan) === 'Actif'
+                      getPlanStatusDisplay(plan) === t('status.active')
                         ? 'default'
                         : 'secondary'
                     }
@@ -162,13 +174,15 @@ export default function PlansManagement({
                         : 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300'
                     }
                   >
-                    {plan.isRecurring ? 'Récurrent' : 'One-time'}
+                    {plan.isRecurring
+                      ? t('status.recurring')
+                      : t('status.oneTime')}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden text-sm md:table-cell">
                   {formatDistanceToNow(new Date(plan.createdAt || ''), {
                     addSuffix: true,
-                    locale: fr,
+                    locale: getDateFnsLocale(locale),
                   })}
                 </TableCell>
                 <TableCell>

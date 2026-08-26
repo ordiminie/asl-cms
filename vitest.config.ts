@@ -1,18 +1,19 @@
 import react from '@vitejs/plugin-react'
 import dotenv from 'dotenv'
 import path from 'path'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import {defineConfig} from 'vitest/config'
-dotenv.config({path: path.resolve(__dirname, '.env.test')})
+dotenv.config({path: path.resolve(import.meta.dirname, '.env.test')})
 
 // Configuration avec projects pour différents environnements
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  plugins: [react()],
+  resolve: {tsconfigPaths: true},
   test: {
     projects: [
       // Projet pour les tests client (jsdom)
       {
-        plugins: [react(), tsconfigPaths()],
+        plugins: [react()],
+        resolve: {tsconfigPaths: true},
         test: {
           name: 'client',
           environment: 'jsdom',
@@ -30,7 +31,8 @@ export default defineConfig({
       },
       // Projet pour les servers (node)
       {
-        plugins: [react(), tsconfigPaths()],
+        plugins: [react()],
+        resolve: {tsconfigPaths: true},
         test: {
           name: 'server',
           environment: 'node',

@@ -86,5 +86,27 @@ const consoleLogger = {
     console.log('📝', message, ...args)
   },
 }
+/*
+ * Pendant le prerender du build, Winston horodate chaque log via `new Date()`.
+ * Sous Cache Components c'est un accès à l'heure courante interdit au prerender
+ * (blocking-prerender-current-time), et comme l'intercepteur de services logge à
+ * chaque appel, ça ferait échouer toutes les pages prerendues. Ces logs sont de
+ * toute façon du bruit de build : on les neutralise.
+ */
+// eslint-disable-next-line no-restricted-properties
+const isBuildPrerender = process.env.NEXT_PHASE === 'phase-production-build'
+
+const noopLogger = {
+  error: () => {},
+  warn: () => {},
+  info: () => {},
+  debug: () => {},
+  log: () => {},
+}
+
 // Exporter le logger approprié selon l'environnement
-export const logger = isConsole ? consoleLogger : winstonLogger
+export const logger = isBuildPrerender
+  ? noopLogger
+  : isConsole
+    ? consoleLogger
+    : winstonLogger

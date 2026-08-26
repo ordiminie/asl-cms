@@ -22,9 +22,12 @@ else
   source .env.development
 fi
 
+# Masquer le mot de passe avant affichage
+MASKED_DATABASE_URL=$(echo "$DATABASE_URL" | sed -E 's#://([^:/@]+):[^@]*@#://\1:***@#')
+
 # Afficher la confirmation
 echo "Environnement: $ENV"
-echo "Base de données: $DATABASE_URL"
+echo "Base de données: $MASKED_DATABASE_URL"
 echo -n "Continuer la sauvegarde? (yes/no): "
 read confirmation
 

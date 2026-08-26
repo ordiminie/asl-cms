@@ -1,0 +1,46 @@
+import {ChevronLeft, ChevronRight} from 'lucide-react'
+import Link from 'next/link'
+import {useTranslations} from 'next-intl'
+
+import type {DocsNavigation} from '@/lib/files/docs-file-helper'
+
+export function DocsPagination({previous, next}: DocsNavigation) {
+  const t = useTranslations('Common.pagination')
+  if (!previous && !next) return undefined
+
+  return (
+    <nav className="border-border mt-12 grid gap-4 border-t pt-6 sm:grid-cols-2">
+      {previous ? (
+        <Link
+          href={previous.href}
+          className="border-border hover:border-foreground/20 hover:bg-muted/50 group flex flex-col gap-1 rounded-lg border p-4 transition-colors"
+        >
+          <span className="text-muted-foreground flex items-center gap-1 text-xs">
+            <ChevronLeft className="h-3 w-3" />
+            {t('previous')}
+          </span>
+          <span className="group-hover:text-foreground font-medium">
+            {previous.title}
+          </span>
+        </Link>
+      ) : (
+        <span />
+      )}
+
+      {next && (
+        <Link
+          href={next.href}
+          className="border-border hover:border-foreground/20 hover:bg-muted/50 group flex flex-col items-end gap-1 rounded-lg border p-4 text-right transition-colors sm:col-start-2"
+        >
+          <span className="text-muted-foreground flex items-center gap-1 text-xs">
+            {t('next')}
+            <ChevronRight className="h-3 w-3" />
+          </span>
+          <span className="group-hover:text-foreground font-medium">
+            {next.title}
+          </span>
+        </Link>
+      )}
+    </nav>
+  )
+}

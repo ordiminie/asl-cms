@@ -39,9 +39,12 @@ if [ ! -f "$DUMP_FILE" ]; then
   exit 1
 fi
 
+# Masquer le mot de passe avant affichage
+MASKED_DATABASE_URL=$(echo "$DATABASE_URL" | sed -E 's#://([^:/@]+):[^@]*@#://\1:***@#')
+
 # Afficher la confirmation
 echo "Environnement: $ENV"
-echo "Base de données: $DATABASE_URL"
+echo "Base de données: $MASKED_DATABASE_URL"
 echo "Fichier dump: $DUMP_FILE"
 echo "Vous êtes sur le point de restaurer la base de données dans l'environnement '$ENV'."
 echo "Cela écrasera toutes les données existantes !"

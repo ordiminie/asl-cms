@@ -10,6 +10,7 @@ import {
   Smile,
   ThumbsDown,
 } from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {toast} from 'sonner'
 
@@ -34,6 +35,7 @@ const moodIcons = [
 ]
 
 export function QuickFeedbackButton() {
+  const t = useTranslations('QuickFeedback')
   const [open, setOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
@@ -41,7 +43,7 @@ export function QuickFeedbackButton() {
 
   const handleSubmit = async () => {
     if (!message.trim()) {
-      toast.error('Veuillez entrer un message')
+      toast.error(t('required'))
       return
     }
 
@@ -55,15 +57,15 @@ export function QuickFeedbackButton() {
       const result = await createQuickFeedbackAction(fullMessage)
 
       if (result.success) {
-        toast.success('Merci pour votre feedback !')
+        toast.success(t('success'))
         setMessage('')
         setSelectedMood(null)
         setOpen(false)
       } else {
-        toast.error(result.message || "Erreur lors de l'envoi")
+        toast.error(result.message || t('error'))
       }
     } catch {
-      toast.error("Erreur lors de l'envoi")
+      toast.error(t('error'))
     } finally {
       setIsSubmitting(false)
     }
@@ -81,16 +83,16 @@ export function QuickFeedbackButton() {
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Envoyer un feedback</p>
+            <p>{t('trigger')}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
       <PopoverContent align="end" className="w-80">
         <div className="space-y-3">
-          <div className="text-sm font-medium">Message</div>
+          <div className="text-sm font-medium">{t('messageLabel')}</div>
           <Textarea
-            placeholder="Votre message..."
+            placeholder={t('messagePlaceholder')}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="min-h-[80px] resize-none"

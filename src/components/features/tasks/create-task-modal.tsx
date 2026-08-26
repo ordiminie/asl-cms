@@ -1,6 +1,7 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 import {useForm} from 'react-hook-form'
 import {toast} from 'sonner'
@@ -55,6 +56,7 @@ export function CreateTaskModal({
   users,
   children,
 }: CreateTaskModalProps) {
+  const t = useTranslations('Tasks')
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -91,7 +93,7 @@ export function CreateTaskModal({
     setIsSubmitting(false)
 
     if (result.success) {
-      toast.success('Succès', {
+      toast.success(t('form.successTitle'), {
         description: result.message,
       })
       form.reset()
@@ -106,7 +108,7 @@ export function CreateTaskModal({
           })
         }
       }
-      toast.error('Erreur', {
+      toast.error(t('form.errorTitle'), {
         description: result.message,
       })
     }
@@ -117,11 +119,8 @@ export function CreateTaskModal({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Créer une nouvelle tâche</DialogTitle>
-          <DialogDescription>
-            Ajoutez une nouvelle tâche à votre projet. Remplissez les
-            informations ci-dessous.
-          </DialogDescription>
+          <DialogTitle>{t('form.createTitle')}</DialogTitle>
+          <DialogDescription>{t('form.createDescription')}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -134,12 +133,9 @@ export function CreateTaskModal({
               name="title"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Titre *</FormLabel>
+                  <FormLabel>{t('form.titleRequired')}</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Ex: Développer la fonctionnalité"
-                      {...field}
-                    />
+                    <Input placeholder={t('form.titleExample')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -151,10 +147,10 @@ export function CreateTaskModal({
               name="description"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t('form.description')}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Décrivez la tâche en détail..."
+                      placeholder={t('form.descriptionDetail')}
                       rows={3}
                       {...field}
                     />
@@ -169,20 +165,26 @@ export function CreateTaskModal({
               name="status"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Statut</FormLabel>
+                  <FormLabel>{t('form.status')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez un statut" />
+                        <SelectValue placeholder={t('form.selectStatus')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="todo">À faire</SelectItem>
-                      <SelectItem value="in_progress">En cours</SelectItem>
-                      <SelectItem value="done">Terminé</SelectItem>
+                      <SelectItem value="todo">
+                        {t('board.columns.todo')}
+                      </SelectItem>
+                      <SelectItem value="in_progress">
+                        {t('board.columns.in_progress')}
+                      </SelectItem>
+                      <SelectItem value="done">
+                        {t('board.columns.done')}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -195,18 +197,20 @@ export function CreateTaskModal({
               name="assignedTo"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Assigné à</FormLabel>
+                  <FormLabel>{t('form.assignedTo')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez un utilisateur" />
+                        <SelectValue placeholder={t('form.selectUser')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="unassigned">Non assigné</SelectItem>
+                      <SelectItem value="unassigned">
+                        {t('form.unassigned')}
+                      </SelectItem>
                       {users.map((user) => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.name || user.email}
@@ -225,10 +229,10 @@ export function CreateTaskModal({
                 variant="outline"
                 onClick={() => setOpen(false)}
               >
-                Annuler
+                {t('form.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Création...' : 'Créer la tâche'}
+                {isSubmitting ? t('form.creating') : t('form.createTask')}
               </Button>
             </DialogFooter>
           </form>

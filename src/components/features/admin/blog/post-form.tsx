@@ -3,8 +3,9 @@
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Plus, Save, X} from 'lucide-react'
 import {useParams, useRouter} from 'next/navigation'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
-import {useFieldArray, useForm} from 'react-hook-form'
+import {useFieldArray, useForm, useWatch} from 'react-hook-form'
 import {toast} from 'sonner'
 
 import {
@@ -107,6 +108,8 @@ export function PostForm({
   hashtags,
   files = [],
 }: PostFormProps) {
+  const t = useTranslations('AdminBlog')
+  const tCommon = useTranslations('Common')
   const router = useRouter()
   const params = useParams()
   const currentLocale = params.locale as SupportedLanguage
@@ -174,8 +177,10 @@ export function PostForm({
     name: 'translations',
   })
 
-  const watchedHashtags = form.watch('hashtags') || []
-  const watchedNewHashtags = form.watch('newHashtags') || []
+  const watchedHashtags =
+    useWatch({control: form.control, name: 'hashtags'}) || []
+  const watchedNewHashtags =
+    useWatch({control: form.control, name: 'newHashtags'}) || []
 
   const addTranslation = () => {
     const usedLanguages = form.getValues('translations').map((t) => t.language)
@@ -250,7 +255,7 @@ export function PostForm({
       }
     } else if (cleanInput.length < 2) {
       // Montrer un message d'erreur si le hashtag est trop court après nettoyage
-      console.warn('Le hashtag doit contenir au moins 2 caractères valides')
+      console.warn(t('form.hashtagTooShort'))
     }
   }
 
@@ -302,7 +307,7 @@ export function PostForm({
           })
         }
 
-        toast.error(result?.message || 'Une erreur est survenue')
+        toast.error(result?.message || t('form.genericError'))
       }
     } catch (error) {
       console.error('Erreur lors de la soumission:', error)
@@ -325,7 +330,7 @@ export function PostForm({
         const formData = new FormData()
         formData.append('file', file)
         const result = await uploadFileAction(post?.id ?? '', formData)
-        console.log('Fichier uploadé :', result)
+        console.log(t('form.fileUploaded'), result)
         if (result.success) {
           toast.success(result.message)
         } else if (!result.success) {
@@ -373,7 +378,7 @@ export function PostForm({
         {/* Configuration générale */}
         <Card>
           <CardHeader>
-            <CardTitle>Configuration générale</CardTitle>
+            <CardTitle>{t('form.generalConfig')}</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -382,22 +387,22 @@ export function PostForm({
               name="status"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Statut</FormLabel>
+                  <FormLabel>{tCommon('fields.status')}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un statut" />
+                        <SelectValue placeholder={t('selectStatus')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       <SelectItem value={POST_STATUS.DRAFT}>
-                        Brouillon
+                        {t('status.draft')}
                       </SelectItem>
                       <SelectItem value={POST_STATUS.PUBLISHED}>
-                        Publié
+                        {t('status.published')}
                       </SelectItem>
                       <SelectItem value={POST_STATUS.ARCHIVED}>
-                        Archivé
+                        {t('status.archived')}
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -411,18 +416,20 @@ export function PostForm({
               name="categoryId"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Catégorie</FormLabel>
+                  <FormLabel>{tCommon('fields.category')}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     value={field.value || 'none'}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner une catégorie" />
+                        <SelectValue placeholder={t('selectCategory')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">Aucune catégorie</SelectItem>
+                      <SelectItem value="none">
+                        {t('categories.none')}
+                      </SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
@@ -440,12 +447,12 @@ export function PostForm({
         {/* Hashtags */}
         <Card>
           <CardHeader>
-            <CardTitle>Hashtags</CardTitle>
+            <CardTitle>{t('form.hashtags')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Sélecteur de hashtags */}
             <div>
-              <FormLabel>Sélectionner des hashtags</FormLabel>
+              <FormLabel>{t('form.selectHashtags')}</FormLabel>
               <Select
                 value={hashtagSelectValue}
                 onValueChange={(value) => {
@@ -460,7 +467,7 @@ export function PostForm({
                 }}
               >
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Choisir un hashtag..." />
+                  <SelectValue placeholder={t('form.chooseHashtag')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem
@@ -468,7 +475,7 @@ export function PostForm({
                     className="text-primary font-medium"
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    Ajouter un nouveau hashtag
+                    {t('form.addHashtag')}
                   </SelectItem>
                   {hashtags
                     .filter((hashtag) => !watchedHashtags.includes(hashtag.id))
@@ -481,7 +488,7 @@ export function PostForm({
                     (hashtag) => !watchedHashtags.includes(hashtag.id)
                   ).length === 0 && (
                     <SelectItem value="no-more" disabled>
-                      Tous les hashtags sont déjà sélectionnés
+                      {t('form.allHashtagsSelected')}
                     </SelectItem>
                   )}
                 </SelectContent>
@@ -490,11 +497,11 @@ export function PostForm({
 
             {/* Ajouter nouveau hashtag */}
             <div>
-              <FormLabel>Ajouter un nouveau hashtag</FormLabel>
+              <FormLabel>{t('form.addHashtag')}</FormLabel>
               <div className="mt-2 flex gap-2">
                 <Input
                   id="new-hashtag-input"
-                  placeholder="Ex: react, javascript, web_dev (lettres, chiffres, _)"
+                  placeholder={t('form.hashtagPlaceholder')}
                   value={newHashtagInput}
                   onChange={(e) => setNewHashtagInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -521,7 +528,7 @@ export function PostForm({
             {/* Hashtags sélectionnés */}
             {(watchedHashtags.length > 0 || watchedNewHashtags.length > 0) && (
               <div>
-                <FormLabel>Hashtags sélectionnés</FormLabel>
+                <FormLabel>{t('form.selectedHashtags')}</FormLabel>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {/* Hashtags existants sélectionnés */}
                   {watchedHashtags.map((hashtagId) => {
@@ -578,7 +585,7 @@ export function PostForm({
         {/* Fichiers */}
         <Card>
           <CardHeader>
-            <CardTitle>Fichiers</CardTitle>
+            <CardTitle>{t('form.files')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -599,7 +606,7 @@ export function PostForm({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Traductions
+              {t('form.translations')}
               <Button
                 type="button"
                 variant="outline"
@@ -608,7 +615,7 @@ export function PostForm({
                 disabled={translationFields.length >= 3}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Ajouter une langue
+                {t('form.addLanguage')}
               </Button>
             </CardTitle>
           </CardHeader>
@@ -657,7 +664,7 @@ export function PostForm({
                       name={`translations.${index}.language`}
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Langue</FormLabel>
+                          <FormLabel>{tCommon('fields.language')}</FormLabel>
                           <Select
                             onValueChange={field.onChange}
                             value={field.value}
@@ -685,11 +692,11 @@ export function PostForm({
                       name={`translations.${index}.title`}
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Titre *</FormLabel>
+                          <FormLabel>{t('form.titleRequired')}</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder="Titre de l'article"
+                              placeholder={t('form.titlePlaceholder')}
                               onChange={(e) => {
                                 field.onChange(e)
                                 const slug = generateSlug(e.target.value)
@@ -710,13 +717,15 @@ export function PostForm({
                       name={`translations.${index}.slug`}
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Slug *</FormLabel>
+                          <FormLabel>{t('form.slugRequired')}</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="slug-de-larticle" />
+                            <Input
+                              {...field}
+                              placeholder={t('form.slugPlaceholder')}
+                            />
                           </FormControl>
                           <FormDescription>
-                            URL de l&apos;article (généré automatiquement depuis
-                            le titre)
+                            {t('form.slugDescription')}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -728,11 +737,11 @@ export function PostForm({
                       name={`translations.${index}.description`}
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Description</FormLabel>
+                          <FormLabel>{tCommon('fields.description')}</FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
-                              placeholder="Description courte de l'article"
+                              placeholder={t('form.descriptionPlaceholder')}
                               rows={3}
                             />
                           </FormControl>
@@ -746,12 +755,12 @@ export function PostForm({
                       name={`translations.${index}.content`}
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Contenu</FormLabel>
+                          <FormLabel>{t('form.content')}</FormLabel>
                           <FormControl>
                             <MarkdownEditor
                               value={field.value}
                               onChange={field.onChange}
-                              placeholder="Contenu complet de l'article (Markdown supporté)"
+                              placeholder={t('form.contentPlaceholder')}
                               id={`content-${index}`}
                             />
                           </FormControl>
@@ -762,22 +771,22 @@ export function PostForm({
 
                     {/* SEO Meta */}
                     <div className="space-y-4 border-t pt-4">
-                      <h4 className="font-medium">SEO Meta</h4>
+                      <h4 className="font-medium">{t('form.seoMeta')}</h4>
 
                       <FormField
                         control={form.control}
                         name={`translations.${index}.metaTitle`}
                         render={({field}) => (
                           <FormItem>
-                            <FormLabel>Meta Title</FormLabel>
+                            <FormLabel>{t('form.metaTitle')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
-                                placeholder="Titre pour les moteurs de recherche"
+                                placeholder={t('form.metaTitlePlaceholder')}
                               />
                             </FormControl>
                             <FormDescription>
-                              Recommandé: 50-60 caractères
+                              {t('form.metaTitleHint')}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -789,16 +798,18 @@ export function PostForm({
                         name={`translations.${index}.metaDescription`}
                         render={({field}) => (
                           <FormItem>
-                            <FormLabel>Meta Description</FormLabel>
+                            <FormLabel>{t('form.metaDescription')}</FormLabel>
                             <FormControl>
                               <Textarea
                                 {...field}
-                                placeholder="Description pour les moteurs de recherche"
+                                placeholder={t(
+                                  'form.metaDescriptionPlaceholder'
+                                )}
                                 rows={3}
                               />
                             </FormControl>
                             <FormDescription>
-                              Recommandé: 150-160 caractères
+                              {t('form.metaDescriptionHint')}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -810,15 +821,15 @@ export function PostForm({
                         name={`translations.${index}.metaKeywords`}
                         render={({field}) => (
                           <FormItem>
-                            <FormLabel>Meta Keywords</FormLabel>
+                            <FormLabel>{t('form.metaKeywords')}</FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
-                                placeholder="mots-clés, séparés, par, des, virgules"
+                                placeholder={t('form.metaKeywordsPlaceholder')}
                               />
                             </FormControl>
                             <FormDescription>
-                              Mots-clés séparés par des virgules
+                              {t('form.metaKeywordsHint')}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -840,10 +851,10 @@ export function PostForm({
           <Button type="submit" disabled={isSubmitting}>
             <Save className="mr-2 h-4 w-4" />
             {isSubmitting
-              ? 'Enregistrement...'
+              ? t('saving')
               : mode === 'create'
-                ? 'Créer le post'
-                : 'Mettre à jour'}
+                ? t('form.create')
+                : t('form.update')}
           </Button>
         </div>
       </form>

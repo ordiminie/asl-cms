@@ -1,10 +1,6 @@
 import {DocsBreadcrumb} from '@/components/features/docs/docs-breadcrumb'
 import {DocsMenuHeader} from '@/components/features/docs/docs-menu-header'
 import {DocsSidebar} from '@/components/features/docs/docs-sidebar'
-import {
-  TableOfContents,
-  TableOfContentsMobile,
-} from '@/components/features/docs/table-of-contents'
 import {Separator} from '@/components/ui/separator'
 import {
   SidebarInset,
@@ -40,10 +36,8 @@ export default async function DocsLayout({children, params}: DocsLayoutProps) {
         </header>
         <main className="relative flex-1">
           <div className="mx-auto w-full px-2 py-4 md:px-4 xl:max-w-5xl xl:pr-72">
-            <TableOfContentsMobile />
             {children}
           </div>
-          <TableOfContents />
         </main>
       </SidebarInset>
     </SidebarProvider>

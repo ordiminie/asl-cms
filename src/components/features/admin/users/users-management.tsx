@@ -1,10 +1,10 @@
 'use client'
 
 import {formatDistanceToNow} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {Eye, Loader2} from 'lucide-react'
 import Link from 'next/link'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {useCallback, useEffect} from 'react'
 import {toast} from 'sonner'
 
@@ -32,6 +32,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {User} from '@/services/types/domain/user-types'
 
 import {DeleteUserDialog} from './delete-user-dialog'
@@ -64,6 +65,9 @@ export default function UsersManagement({
   permissions,
   searchQuery,
 }: Props) {
+  const t = useTranslations('AdminUsers')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -129,32 +133,32 @@ export default function UsersManagement({
   const users = IS_INFINITE_SCROLL ? infiniteUsers : initialUsers
 
   const getUserRoleDisplay = (role?: string) => {
-    if (!role) return 'Public'
+    if (!role) return tCommon('states.public')
     switch (role) {
       case 'admin':
-        return 'Admin'
+        return t('roles.admin')
       case 'moderator':
-        return 'Modérateur'
+        return t('roles.moderator')
       case 'user':
-        return 'Utilisateur'
+        return t('roles.user')
       case 'redactor':
-        return 'Rédacteur'
+        return t('roles.redactor')
       case 'super_admin':
-        return 'Super Admin'
+        return t('roles.super_admin')
       default:
-        return 'Public'
+        return tCommon('states.public')
     }
   }
 
   const getUserStatusDisplay = (user: User) => {
     const isVerified = user.emailVerified
-    return isVerified ? 'Actif' : 'En attente'
+    return isVerified ? t('status.active') : t('status.pending')
   }
 
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
-        <CardTitle>Gestion des utilisateurs</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <UsersToolbar
@@ -169,12 +173,18 @@ export default function UsersManagement({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Utilisateur</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead className="hidden lg:table-cell">Rôle</TableHead>
-              <TableHead className="hidden lg:table-cell">Statut</TableHead>
-              <TableHead className="hidden md:table-cell">Créé</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>{t('user')}</TableHead>
+              <TableHead>{tCommon('fields.email')}</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {tCommon('fields.role')}
+              </TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {tCommon('fields.status')}
+              </TableHead>
+              <TableHead className="hidden md:table-cell">
+                {t('createdAt')}
+              </TableHead>
+              <TableHead>{tCommon('fields.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -193,7 +203,9 @@ export default function UsersManagement({
                   <div>
                     <div className="font-medium">{user.name}</div>
                     <div className="text-muted-foreground text-sm">
-                      {user.visibility === 'public' ? 'Public' : 'Privé'}
+                      {user.visibility === 'public'
+                        ? tCommon('states.public')
+                        : tCommon('states.private')}
                     </div>
                   </div>
                 </TableCell>
@@ -208,7 +220,7 @@ export default function UsersManagement({
                 <TableCell className="hidden lg:table-cell">
                   <Badge
                     variant={
-                      getUserStatusDisplay(user) === 'Actif'
+                      getUserStatusDisplay(user) === t('status.active')
                         ? 'default'
                         : 'secondary'
                     }
@@ -219,7 +231,7 @@ export default function UsersManagement({
                 <TableCell className="text-muted-foreground hidden text-sm md:table-cell">
                   {formatDistanceToNow(new Date(user.createdAt || ''), {
                     addSuffix: true,
-                    locale: fr,
+                    locale: getDateFnsLocale(locale),
                   })}
                 </TableCell>
                 <TableCell>
@@ -234,7 +246,7 @@ export default function UsersManagement({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Voir les détails</p>
+                          <p>{t('viewDetails')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

@@ -2,6 +2,7 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {Plus} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {useForm} from 'react-hook-form'
 
@@ -36,6 +37,8 @@ interface Props {
 }
 
 export function CreatePlanDialog({onSave}: Props) {
+  const t = useTranslations('AdminPlans')
+  const tCommon = useTranslations('Common')
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -81,10 +84,8 @@ export function CreatePlanDialog({onSave}: Props) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Créer un nouveau plan</DialogTitle>
-          <DialogDescription>
-            Ajoutez un nouveau plan d&apos;abonnement au système.
-          </DialogDescription>
+          <DialogTitle>{t('form.createTitle')}</DialogTitle>
+          <DialogDescription>{t('form.createDescription')}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -98,15 +99,15 @@ export function CreatePlanDialog({onSave}: Props) {
                 name="code"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Code</FormLabel>
+                    <FormLabel>{tCommon('fields.code')}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="free, pro, enterprise..."
+                        placeholder={t('form.codePlaceholder')}
                         {...field}
                       />
                     </FormControl>
                     <FormDescription>
-                      Identifiant unique du plan
+                      {t('form.codeDescription')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -118,14 +119,16 @@ export function CreatePlanDialog({onSave}: Props) {
                 name="planName"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Nom du plan</FormLabel>
+                    <FormLabel>{t('form.nameLabel')}</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Gratuit, Pro, Entreprise..."
+                        placeholder={t('form.namePlaceholder')}
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>Nom affiché du plan</FormDescription>
+                    <FormDescription>
+                      {t('form.nameDescription')}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -137,12 +140,15 @@ export function CreatePlanDialog({onSave}: Props) {
               name="priceId"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Price ID Stripe</FormLabel>
+                  <FormLabel>{t('form.priceIdLabel')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="price_1234567890" {...field} />
+                    <Input
+                      placeholder={t('form.priceIdPlaceholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormDescription>
-                    Identifiant du prix dans Stripe
+                    {t('form.priceIdDescription')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -154,9 +160,12 @@ export function CreatePlanDialog({onSave}: Props) {
               name="description"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{tCommon('fields.description')}</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Description du plan..." {...field} />
+                    <Textarea
+                      placeholder={t('form.descriptionPlaceholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -169,12 +178,12 @@ export function CreatePlanDialog({onSave}: Props) {
                 name="price"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Prix mensuel</FormLabel>
+                    <FormLabel>{t('form.monthlyPrice')}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="9.99"
+                        placeholder={t('form.monthlyPricePlaceholder')}
                         {...field}
                       />
                     </FormControl>
@@ -188,12 +197,12 @@ export function CreatePlanDialog({onSave}: Props) {
                 name="yearlyPrice"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Prix annuel</FormLabel>
+                    <FormLabel>{t('form.yearlyPrice')}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="99.99"
+                        placeholder={t('form.yearlyPricePlaceholder')}
                         {...field}
                       />
                     </FormControl>
@@ -208,12 +217,15 @@ export function CreatePlanDialog({onSave}: Props) {
               name="annualDiscountPriceId"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Price ID Stripe annuel</FormLabel>
+                  <FormLabel>{t('form.yearlyPriceIdLabel')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="price_1234567890_annual" {...field} />
+                    <Input
+                      placeholder={t('form.yearlyPriceIdPlaceholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormDescription>
-                    Identifiant du prix annuel dans Stripe (optionnel)
+                    {t('form.yearlyPriceIdDescription')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -226,9 +238,12 @@ export function CreatePlanDialog({onSave}: Props) {
                 name="currency"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Devise</FormLabel>
+                    <FormLabel>{tCommon('fields.currency')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="EUR" {...field} />
+                      <Input
+                        placeholder={t('form.currencyPlaceholder')}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -240,7 +255,7 @@ export function CreatePlanDialog({onSave}: Props) {
                 name="displayOrder"
                 render={({field}) => (
                   <FormItem>
-                    <FormLabel>Ordre d&apos;affichage</FormLabel>
+                    <FormLabel>{t('form.displayOrder')}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -262,10 +277,10 @@ export function CreatePlanDialog({onSave}: Props) {
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">
-                      Abonnement récurrent
+                      {t('form.recurringLabel')}
                     </FormLabel>
                     <FormDescription>
-                      Ce plan est-il un abonnement récurrent&nbsp;?
+                      {t('form.recurringDescription')}
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -284,10 +299,10 @@ export function CreatePlanDialog({onSave}: Props) {
                 variant="outline"
                 onClick={() => setIsOpen(false)}
               >
-                Annuler
+                {tCommon('actions.cancel')}
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Création...' : 'Créer le plan'}
+                {isLoading ? t('form.creating') : t('form.create')}
               </Button>
             </DialogFooter>
           </form>

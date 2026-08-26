@@ -11,24 +11,17 @@ import {
 import {BlogArticle} from '@/components/features/blog/blog-article'
 import {env} from '@/env'
 import {PagesConst} from '@/env'
+import {routing} from '@/i18n/routing'
 import {isPageEnabled} from '@/lib/utils'
 
-export const dynamic = 'force-static'
-
 export async function generateStaticParams() {
-  if (!isPageEnabled(PagesConst.BLOG)) {
-    return []
-  }
+  const slugs = await getAllUnifiedBlogSlugsDal()
 
-  try {
-    const slugs = await getAllUnifiedBlogSlugsDal()
-    return slugs.map(({slug, locale}) => ({
-      locale,
-      slug,
-    }))
-  } catch {
-    return []
-  }
+  // Cache Components exige au moins un param (empty-generate-static-params).
+  // Les chemins non listes restent servis a la demande.
+  return slugs.length > 0
+    ? slugs.map(({slug, locale}) => ({locale, slug}))
+    : [{locale: routing.defaultLocale, slug: 'none'}]
 }
 
 export async function generateMetadata({

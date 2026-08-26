@@ -1,25 +1,16 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import {getTranslations} from 'next-intl/server'
 import type {ReactNode} from 'react'
 import React from 'react'
 import {Tweet as ReactTweet} from 'react-tweet'
+
+import {slugifyHeading} from '@/lib/helper/mdx-headings'
 
 import {Callout} from './features/docs/callout'
 import {CodeBlock} from './features/docs/code-block'
 import {Step, Steps} from './features/docs/steps'
 import {Tab, Tabs} from './features/docs/tabs'
-
-function slugify(text: string): string {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '')
-    .replace(/--+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '')
-}
 
 // Helper function to extract text content from React children
 function getTextContent(children: ReactNode): string {
@@ -61,13 +52,14 @@ const extractTweetId = (url: string): string | null => {
   return null
 }
 
-const TweetEmbed = ({url, id, native = false}: TweetEmbedProps) => {
+const TweetEmbed = async ({url, id, native = false}: TweetEmbedProps) => {
+  const t = await getTranslations('MdxContent')
   const tweetId = id || (url ? extractTweetId(url) : null)
 
   if (!tweetId) {
     return (
       <div className="my-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-600 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
-        Tweet invalide: impossible d&apos;extraire l&apos;ID du tweet
+        {t('invalidTweet')}
       </div>
     )
   }
@@ -77,7 +69,7 @@ const TweetEmbed = ({url, id, native = false}: TweetEmbedProps) => {
       <div className="my-4 flex justify-center">
         <blockquote className="twitter-tweet" data-theme="dark">
           <a href={`https://twitter.com/i/status/${tweetId}`}>
-            Loading tweet...
+            {t('loadingTweet')}
           </a>
         </blockquote>
         <script async src="https://platform.twitter.com/widgets.js" />
@@ -106,13 +98,14 @@ type VideoProps = {
   playsInline?: boolean
 }
 
-const Video = ({
+const Video = async ({
   src,
   title,
   width = '100%',
   height = 'auto',
   ...props
 }: VideoProps) => {
+  const t = await getTranslations('MdxContent')
   // Détecter le type de vidéo (YouTube, Vimeo, etc.)
   if (src.includes('youtube.com') || src.includes('youtu.be')) {
     // Extraire l'ID de la vidéo YouTube
@@ -172,13 +165,13 @@ const Video = ({
         className="rounded-lg"
         {...props}
       >
-        Votre navigateur ne prend pas en charge la lecture de vidéos.
+        {t('videoUnsupported')}
       </video>
     </div>
   )
 }
 
-export const Excalidraw = ({
+export const Excalidraw = async ({
   src,
   alt,
   data,
@@ -193,6 +186,7 @@ export const Excalidraw = ({
   defaultMode?: boolean
   showExternalLink?: boolean
 }) => {
+  const t = await getTranslations('MdxContent')
   // Si src commence par "https://link.excalidraw.com" ou contient "excalidraw.com", c'est un lien embed externe
   const isExcalidrawLink =
     src &&
@@ -237,7 +231,7 @@ export const Excalidraw = ({
                 rel="noopener noreferrer"
                 className="text-blue-500 hover:underline"
               >
-                Voir en plein écran
+                {t('viewFullscreen')}
               </a>
             </>
           )}
@@ -350,7 +344,7 @@ export const Excalidraw = ({
               rel="noopener noreferrer"
               className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
             >
-              Ouvrir dans Excalidraw
+              {t('openInExcalidraw')}
             </a>
           </div>
         </div>
@@ -364,60 +358,26 @@ export const Excalidraw = ({
   )
 }
 export const mdxComponents = {
-  //NEW ONE
-  h1: ({children}: {children: ReactNode}) => {
-    const textContent = getTextContent(children)
-    const id = slugify(textContent)
-    return (
-      <h1
-        id={id}
-        className="border-border mb-6 scroll-mt-20 border-b pb-2 text-4xl font-bold"
-      >
-        {children}
-      </h1>
-    )
-  },
-  h2: ({children}: {children: ReactNode}) => {
-    const textContent = getTextContent(children)
-    const id = slugify(textContent)
-    return (
-      <h2 id={id} className="mt-8 mb-4 scroll-mt-20 text-3xl font-semibold">
-        {children}
-      </h2>
-    )
-  },
-  h3: ({children}: {children: ReactNode}) => {
-    const textContent = getTextContent(children)
-    const id = slugify(textContent)
-    return (
-      <h3 id={id} className="mt-6 mb-3 scroll-mt-20 text-2xl font-medium">
-        {children}
-      </h3>
-    )
-  },
-  h4: ({children}: {children: ReactNode}) => {
-    const textContent = getTextContent(children)
-    const id = slugify(textContent)
-    return (
-      <h4 id={id} className="mt-4 mb-2 scroll-mt-20 text-xl font-medium">
-        {children}
-      </h4>
-    )
-  },
-  p: ({children}: {children: ReactNode}) => (
-    <span className="mb-4 block text-base leading-7">{children}</span>
-  ),
-  ul: ({children}: {children: ReactNode}) => (
-    <ul className="mb-4 list-inside list-disc space-y-2">{children}</ul>
-  ),
-  ol: ({children}: {children: ReactNode}) => (
-    <ol className="mb-4 list-inside list-decimal space-y-2">{children}</ol>
-  ),
-  li: ({children}: {children: ReactNode}) => <li>{children}</li>,
-  blockquote: ({children}: {children: ReactNode}) => (
-    <blockquote className="border-primary bg-muted mb-4 rounded-r-lg border-l-4 py-2 pl-4 italic">
+  // Les titres ne portent que leur ancre : la typographie vient de prose.
+  h1: ({children}: {children: ReactNode}) => (
+    <h1 id={slugifyHeading(getTextContent(children))} className="scroll-mt-20">
       {children}
-    </blockquote>
+    </h1>
+  ),
+  h2: ({children}: {children: ReactNode}) => (
+    <h2 id={slugifyHeading(getTextContent(children))} className="scroll-mt-20">
+      {children}
+    </h2>
+  ),
+  h3: ({children}: {children: ReactNode}) => (
+    <h3 id={slugifyHeading(getTextContent(children))} className="scroll-mt-20">
+      {children}
+    </h3>
+  ),
+  h4: ({children}: {children: ReactNode}) => (
+    <h4 id={slugifyHeading(getTextContent(children))} className="scroll-mt-20">
+      {children}
+    </h4>
   ),
   code: ({
     children,
@@ -429,15 +389,13 @@ export const mdxComponents = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any
   }) => {
-    // Détecter le vrai code inline : court, sans saut de ligne, et pas dans un contexte de bloc
-    const textContent = getTextContent(children)
-    const isRealInline =
-      textContent.length < 15 && !textContent.includes('\n') && !className
+    // Le code inline a une chaîne pour enfant ; celui d'un bloc a les <span>
+    // que Shiki a produits.
+    const isInline = !className && typeof children === 'string'
 
-    if (isRealInline) {
-      // C'est du vrai code inline dans une phrase
+    if (isInline) {
       return (
-        <code className="bg-muted border-border rounded border px-2 py-1 font-mono text-sm before:content-none after:content-none">
+        <code className="bg-muted border-border rounded border px-1.5 py-0.5 font-mono text-[0.9em] before:content-none after:content-none">
           {children}
         </code>
       )
@@ -456,6 +414,7 @@ export const mdxComponents = {
     filename,
     rawCode,
     title,
+    style,
     ...props
   }: {
     children: ReactNode
@@ -463,6 +422,7 @@ export const mdxComponents = {
     filename?: string
     rawCode?: string
     title?: string
+    style?: React.CSSProperties
     'data-language'?: string
   }) => {
     // Extract language from data-language attribute first (set by Shiki transformer)
@@ -501,40 +461,23 @@ export const mdxComponents = {
         rawCode={rawCode}
         {...props}
       >
-        <pre className="overflow-x-auto p-4 text-sm">{children}</pre>
+        <pre className={className} style={style}>
+          {children}
+        </pre>
       </CodeBlock>
     )
   },
   table: ({children}: {children: ReactNode}) => (
-    <div className="mb-4 w-full overflow-x-auto">
-      <table className="border-border w-full border-collapse border">
-        {children}
-      </table>
+    <div className="w-full overflow-x-auto">
+      <table>{children}</table>
     </div>
-  ),
-  thead: ({children}: {children: ReactNode}) => (
-    <thead className="bg-muted">{children}</thead>
-  ),
-  tbody: ({children}: {children: ReactNode}) => (
-    <tbody className="divide-border divide-y">{children}</tbody>
-  ),
-  tr: ({children}: {children: ReactNode}) => (
-    <tr className="hover:bg-muted/50">{children}</tr>
-  ),
-  th: ({children}: {children: ReactNode}) => (
-    <th className="border-border border px-4 py-2 text-left font-semibold">
-      {children}
-    </th>
-  ),
-  td: ({children}: {children: ReactNode}) => (
-    <td className="border-border border px-4 py-2">{children}</td>
   ),
   a: ({href, children}: {href?: string; children: ReactNode}) => {
     if (href && href.startsWith('/')) {
       return (
         <Link
           href={href}
-          className="text-primary hover:text-primary/80 underline transition-colors"
+          className="text-link hover:text-link/80 underline underline-offset-2 transition-colors"
         >
           {children}
         </Link>
@@ -545,13 +488,12 @@ export const mdxComponents = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary hover:text-primary/80 underline transition-colors"
+        className="text-link hover:text-link/80 underline underline-offset-2 transition-colors"
       >
         {children}
       </a>
     )
   },
-  hr: () => <hr className="border-border my-8" />,
   img: (props: React.ComponentProps<typeof Image>) => {
     const imageUrl = props.src as string
     const isGif = imageUrl?.includes('.gif')
@@ -600,7 +542,7 @@ export const mdxComponents = {
       return (
         <Link
           href={href}
-          className="text-primary hover:text-primary/80 underline transition-colors"
+          className="text-link hover:text-link/80 underline underline-offset-2 transition-colors"
         >
           {children}
         </Link>
@@ -611,7 +553,7 @@ export const mdxComponents = {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary hover:text-primary/80 underline transition-colors"
+        className="text-link hover:text-link/80 underline underline-offset-2 transition-colors"
       >
         {children}
       </a>

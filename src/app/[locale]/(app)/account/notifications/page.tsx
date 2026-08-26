@@ -1,4 +1,5 @@
 import {notFound} from 'next/navigation'
+import {useTranslations} from 'next-intl'
 import {Suspense} from 'react'
 
 import {PagesConst} from '@/env'
@@ -8,6 +9,7 @@ import NotificationsContent from './notifications-content'
 import NotificationsSkeleton from './notifications-skeleton'
 
 export default function NotificationsPage() {
+  const t = useTranslations('NotificationsPage')
   if (!isPageEnabled(PagesConst.NOTIFICATIONS)) {
     return notFound()
   }
@@ -16,9 +18,7 @@ export default function NotificationsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
-        <p className="text-muted-foreground">
-          Restez informé de toutes vos activités et mises à jour importantes.
-        </p>
+        <p className="text-muted-foreground">{t('description')}</p>
       </div>
 
       <Suspense fallback={<NotificationsSkeleton />}>

@@ -339,8 +339,9 @@ export async function update2FAAction(
         },
       })
       console.log('enableTwoFactor result', result)
-      // better-auth retourne { totpURI: string; backupCodes: string[] } en cas de succès
-      if (result.totpURI && result.backupCodes) {
+      // Depuis better-auth 1.7, enableTwoFactor rend une union discriminee par
+      // `method` : la branche OTP n'a ni totpURI ni backupCodes.
+      if (result.method === 'totp') {
         revalidatePath('/account')
         return {
           success: true,

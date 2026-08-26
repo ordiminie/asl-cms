@@ -3,12 +3,14 @@
 import {zodResolver} from '@hookform/resolvers/zod'
 import {ArrowLeft, Building2, Calendar, Shield, User, Zap} from 'lucide-react'
 import Link from 'next/link'
+import {useLocale, useTranslations} from 'next-intl'
 import {useState} from 'react'
-import {useForm} from 'react-hook-form'
+import {useForm, useWatch} from 'react-hook-form'
 import {toast} from 'sonner'
 import {z} from 'zod'
 
 import {updateUserDetailAction} from '@/app/[locale]/admin/users/actions'
+import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
@@ -56,6 +58,11 @@ const userDetailSchema = z.object({
 
 type UserDetailFormData = z.infer<typeof userDetailSchema>
 
+const toBanExpiresInSeconds = (banExpires?: string) =>
+  banExpires
+    ? Math.floor((new Date(banExpires).getTime() - Date.now()) / 1000)
+    : undefined
+
 interface UserDetailFormProps {
   user: UserType
   permissions: {
@@ -72,6 +79,9 @@ export default function UserDetailForm({
   permissions,
   organizationsWithUsage,
 }: UserDetailFormProps) {
+  const t = useTranslations('AdminUsers')
+  const locale = useLocale()
+  const tCommon = useTranslations('Common')
   const [isLoading, setIsLoading] = useState(false)
 
   const form = useForm<UserDetailFormData>({
@@ -91,6 +101,8 @@ export default function UserDetailForm({
     },
   })
 
+  const isBanned = useWatch({control: form.control, name: 'banned'})
+
   const onSubmit = async (data: UserDetailFormData) => {
     setIsLoading(true)
     try {
@@ -102,11 +114,7 @@ export default function UserDetailForm({
         visibility: data.visibility,
         banned: data.banned,
         banReason: data.banReason,
-        banExpiresIn: data.banExpires
-          ? Math.floor(
-              (new Date(data.banExpires).getTime() - Date.now()) / 1000
-            )
-          : undefined,
+        banExpiresIn: toBanExpiresInSeconds(data.banExpires),
         twoFactorEnabled: data.twoFactorEnabled,
         emailVerified: data.emailVerified,
       }
@@ -128,7 +136,7 @@ export default function UserDetailForm({
         }
       }
     } catch (error) {
-      toast.error('Erreur lors de la mise à jour de l&apos;utilisateur')
+      toast.error(t('updateError'))
       console.error(error)
     } finally {
       setIsLoading(false)
@@ -136,8 +144,8 @@ export default function UserDetailForm({
   }
 
   const formatDate = (date: string | Date | null | undefined) => {
-    if (!date) return 'Non défini'
-    return new Date(date).toLocaleDateString('fr-FR', {
+    if (!date) return t('notSet')
+    return new Date(date).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -184,7 +192,7 @@ export default function UserDetailForm({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Informations personnelles
+                {t('personalInfo')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -199,12 +207,12 @@ export default function UserDetailForm({
                       name="name"
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Nom complet</FormLabel>
+                          <FormLabel>{t('fullName')}</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               disabled={!permissions.canEdit}
-                              placeholder="Nom de l'utilisateur"
+                              placeholder={t('namePlaceholder')}
                             />
                           </FormControl>
                           <FormMessage />
@@ -217,13 +225,13 @@ export default function UserDetailForm({
                       name="email"
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>{tCommon('fields.email')}</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
                               type="email"
                               disabled={!permissions.canEdit}
-                              placeholder="email@exemple.com"
+                              placeholder={t('emailPlaceholder')}
                             />
                           </FormControl>
                           <FormMessage />
@@ -236,7 +244,7 @@ export default function UserDetailForm({
                       name="role"
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Rôle</FormLabel>
+                          <FormLabel>{tCommon('fields.role')}</FormLabel>
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
@@ -244,23 +252,27 @@ export default function UserDetailForm({
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner un rôle" />
+                                <SelectValue placeholder={t('selectRole')} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="public">Public</SelectItem>
-                              <SelectItem value="user">Utilisateur</SelectItem>
+                              <SelectItem value="public">
+                                {tCommon('states.public')}
+                              </SelectItem>
+                              <SelectItem value="user">
+                                {t('roles.user')}
+                              </SelectItem>
                               <SelectItem value="redactor">
-                                Rédacteur
+                                {t('roles.redactor')}
                               </SelectItem>
                               <SelectItem value="moderator">
-                                Modérateur
+                                {t('roles.moderator')}
                               </SelectItem>
                               <SelectItem value="admin">
-                                Administrateur
+                                {t('roles.admin')}
                               </SelectItem>
                               <SelectItem value="super_admin">
-                                Super Admin
+                                {t('roles.super_admin')}
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -274,7 +286,7 @@ export default function UserDetailForm({
                       name="visibility"
                       render={({field}) => (
                         <FormItem>
-                          <FormLabel>Visibilité</FormLabel>
+                          <FormLabel>{tCommon('fields.visibility')}</FormLabel>
                           <Select
                             onValueChange={field.onChange}
                             defaultValue={field.value}
@@ -282,12 +294,18 @@ export default function UserDetailForm({
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Sélectionner la visibilité" />
+                                <SelectValue
+                                  placeholder={t('selectVisibility')}
+                                />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="public">Public</SelectItem>
-                              <SelectItem value="private">Privé</SelectItem>
+                              <SelectItem value="public">
+                                {tCommon('states.public')}
+                              </SelectItem>
+                              <SelectItem value="private">
+                                {tCommon('states.private')}
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -304,10 +322,10 @@ export default function UserDetailForm({
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
                             <FormLabel className="text-base">
-                              Email vérifié
+                              {t('emailVerified')}
                             </FormLabel>
                             <FormDescription>
-                              L&apos;utilisateur a vérifié son adresse email
+                              {t('emailVerifiedDescription')}
                             </FormDescription>
                           </div>
                           <FormControl>
@@ -328,10 +346,10 @@ export default function UserDetailForm({
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
                             <FormLabel className="text-base">
-                              2FA activée
+                              {t('twoFactor')}
                             </FormLabel>
                             <FormDescription>
-                              Authentification à deux facteurs
+                              {t('twoFactorDescription')}
                             </FormDescription>
                           </div>
                           <FormControl>
@@ -350,7 +368,7 @@ export default function UserDetailForm({
                   <div className="border-t pt-6">
                     <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
                       <Shield className="h-5 w-5" />
-                      Modération
+                      {t('moderation')}
                     </h3>
 
                     <div className="space-y-4">
@@ -361,10 +379,10 @@ export default function UserDetailForm({
                           <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                             <div className="space-y-0.5">
                               <FormLabel className="text-base">
-                                Utilisateur banni
+                                {t('banned')}
                               </FormLabel>
                               <FormDescription>
-                                Interdire l&apos;accès à l&apos;utilisateur
+                                {t('bannedDescription')}
                               </FormDescription>
                             </div>
                             <FormControl>
@@ -378,19 +396,19 @@ export default function UserDetailForm({
                         )}
                       />
 
-                      {form.watch('banned') && (
+                      {isBanned && (
                         <>
                           <FormField
                             control={form.control}
                             name="banReason"
                             render={({field}) => (
                               <FormItem>
-                                <FormLabel>Raison du bannissement</FormLabel>
+                                <FormLabel>{t('banReason')}</FormLabel>
                                 <FormControl>
                                   <Textarea
                                     {...field}
                                     disabled={!permissions.canManage}
-                                    placeholder="Expliquez la raison du bannissement..."
+                                    placeholder={t('banReasonPlaceholder')}
                                     className="min-h-[80px]"
                                   />
                                 </FormControl>
@@ -404,9 +422,7 @@ export default function UserDetailForm({
                             name="banExpires"
                             render={({field}) => (
                               <FormItem>
-                                <FormLabel>
-                                  Date d&apos;expiration du bannissement
-                                </FormLabel>
+                                <FormLabel>{t('banExpires')}</FormLabel>
                                 <FormControl>
                                   <Input
                                     {...field}
@@ -432,9 +448,7 @@ export default function UserDetailForm({
                         type="submit"
                         disabled={!form.formState.isDirty || isLoading}
                       >
-                        {isLoading
-                          ? 'Enregistrement...'
-                          : 'Enregistrer les modifications'}
+                        {isLoading ? t('saving') : t('saveChanges')}
                       </Button>
                       <Button
                         type="button"
@@ -458,7 +472,7 @@ export default function UserDetailForm({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Informations système
+                {t('systemInfo')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -469,14 +483,14 @@ export default function UserDetailForm({
 
               <div>
                 <p className="text-muted-foreground text-sm font-medium">
-                  Créé le
+                  {t('createdOn')}
                 </p>
                 <p className="text-sm">{formatDate(user.createdAt)}</p>
               </div>
 
               <div>
                 <p className="text-muted-foreground text-sm font-medium">
-                  Dernière modification
+                  {t('lastUpdate')}
                 </p>
                 <p className="text-sm">{formatDate(user.updatedAt)}</p>
               </div>
@@ -495,11 +509,14 @@ export default function UserDetailForm({
                   <p className="text-muted-foreground text-sm font-medium">
                     Photo de profil
                   </p>
-                  <img
-                    src={user.image}
-                    alt="Photo de profil"
-                    className="mt-2 h-16 w-16 rounded-full object-cover"
-                  />
+                  <Avatar className="mt-2 h-16 w-16">
+                    <AvatarImage
+                      src={user.image}
+                      alt="Photo de profil"
+                      className="object-cover"
+                    />
+                    <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
                 </div>
               )}
             </CardContent>
@@ -508,48 +525,50 @@ export default function UserDetailForm({
           {user.settings && (
             <Card>
               <CardHeader>
-                <CardTitle>Paramètres utilisateur</CardTitle>
+                <CardTitle>{t('settingsTitle')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <p className="text-muted-foreground text-sm font-medium">
-                    Thème
+                    {t('theme')}
                   </p>
                   <p className="text-sm capitalize">{user.settings.theme}</p>
                 </div>
 
                 <div>
                   <p className="text-muted-foreground text-sm font-medium">
-                    Langue
+                    {t('language')}
                   </p>
                   <p className="text-sm uppercase">{user.settings.language}</p>
                 </div>
 
                 <div>
                   <p className="text-muted-foreground text-sm font-medium">
-                    Fuseau horaire
+                    {t('timezone')}
                   </p>
                   <p className="text-sm">{user.settings.timezone}</p>
                 </div>
 
                 <div>
                   <p className="text-muted-foreground text-sm font-medium">
-                    Notifications
+                    {t('notifications')}
                   </p>
                   <div className="space-y-1 text-sm">
                     <p>
                       Email:{' '}
                       {user.settings.enableEmailNotifications
-                        ? 'Activées'
-                        : 'Désactivées'}
+                        ? t('enabled')
+                        : t('disabled')}
                     </p>
                     <p>
                       Push:{' '}
                       {user.settings.enablePushNotifications
-                        ? 'Activées'
-                        : 'Désactivées'}
+                        ? t('enabled')
+                        : t('disabled')}
                     </p>
-                    <p>Canal: {user.settings.notificationChannel}</p>
+                    <p>
+                      {t('channel')}: {user.settings.notificationChannel}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -564,7 +583,7 @@ export default function UserDetailForm({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Organisations et utilisation
+              {t('orgsAndUsage')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -582,7 +601,9 @@ export default function UserDetailForm({
                     <div>
                       <div className="mb-1 flex items-center gap-2 text-sm">
                         <Zap className="h-3 w-3" />
-                        <span className="text-muted-foreground">Projets</span>
+                        <span className="text-muted-foreground">
+                          {t('projects')}
+                        </span>
                         <span className="ml-auto">
                           {formatUsage(
                             org.usage.projects,
@@ -606,7 +627,9 @@ export default function UserDetailForm({
                     <div>
                       <div className="mb-1 flex items-center gap-2 text-sm">
                         <User className="h-3 w-3" />
-                        <span className="text-muted-foreground">Membres</span>
+                        <span className="text-muted-foreground">
+                          {t('members')}
+                        </span>
                         <span className="ml-auto">
                           {formatUsage(org.usage.users, org.usage.limits.users)}
                         </span>

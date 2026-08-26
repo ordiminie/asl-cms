@@ -1,6 +1,7 @@
 'use client'
 
 import {Package2Icon} from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 
 import {Card} from '@/components/ui/card'
 import {ScrollArea} from '@/components/ui/scroll-area'
@@ -28,9 +29,11 @@ export default function SubscriptionRecap({
   ],
   currency = 'eur',
 }: SubscriptionRecapProps) {
+  const t = useTranslations('Checkout.recap')
+  const locale = useLocale()
   // Fonction utilitaire pour formater la devise
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount)
@@ -48,7 +51,9 @@ export default function SubscriptionRecap({
             <h2 className="truncate text-lg font-bold sm:text-xl">
               {planName}
             </h2>
-            <p className="text-muted-foreground text-sm">Lifetime Access</p>
+            <p className="text-muted-foreground text-sm">
+              {t('lifetimeAccess')}
+            </p>
           </div>
         </div>
 
@@ -85,27 +90,27 @@ export default function SubscriptionRecap({
         <div className="border-border space-y-3 border-t pt-4">
           <div className="flex justify-between">
             <span className="text-muted-foreground text-sm sm:text-base">
-              Subtotal:
+              {t('subtotal')}
             </span>
             <span className="text-foreground text-sm sm:text-base">
               {formatCurrency(originalPrice)}
             </span>
           </div>
           <div className="flex justify-between text-yellow-400">
-            <span className="text-sm sm:text-base">Discount:</span>
+            <span className="text-sm sm:text-base">{t('discount')}</span>
             <span className="text-sm sm:text-base">
               -{formatCurrency(discount)}
             </span>
           </div>
           <div className="border-border flex justify-between border-t pt-2 text-lg font-bold">
-            <span>Total</span>
+            <span>{t('total')}</span>
             <span>{formatCurrency(price)}</span>
           </div>
         </div>
 
         {/* Payment Options */}
         <div className="text-muted-foreground text-center text-xs sm:text-sm">
-          You can pay in 3 or 2 installments
+          {t('installmentsNotice')}
         </div>
       </div>
     </Card>

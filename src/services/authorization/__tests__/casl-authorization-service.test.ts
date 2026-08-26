@@ -32,6 +32,7 @@ describe('CASL Abilities', () => {
     image: null,
     visibility: 'public',
     twoFactorEnabled: false,
+    stripeCustomerId: null,
   }
 
   const adminUser: User = {
@@ -48,6 +49,7 @@ describe('CASL Abilities', () => {
     image: null,
     visibility: 'public',
     twoFactorEnabled: false,
+    stripeCustomerId: null,
   }
 
   const superAdminUser: User = {
@@ -64,6 +66,7 @@ describe('CASL Abilities', () => {
     banExpires: null,
     visibility: 'public',
     twoFactorEnabled: false,
+    stripeCustomerId: null,
   }
 
   describe('defineAbilitiesFor', () => {
@@ -479,6 +482,7 @@ describe('CASL Abilities', () => {
       image: null,
       visibility: 'public',
       twoFactorEnabled: false,
+      stripeCustomerId: null,
     }
 
     it('un utilisateur USER a des permissions limitées', () => {

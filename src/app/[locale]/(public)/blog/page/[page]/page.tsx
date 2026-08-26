@@ -14,13 +14,7 @@ import {PagesConst} from '@/env'
 import {routing} from '@/i18n/routing'
 import {isPageEnabled} from '@/lib/utils'
 
-export const dynamic = 'force-static'
-
 export async function generateStaticParams() {
-  if (!isPageEnabled(PagesConst.BLOG)) {
-    return []
-  }
-
   const params: {locale: string; page: string}[] = []
 
   for (const locale of routing.locales) {
@@ -30,7 +24,11 @@ export async function generateStaticParams() {
     }
   }
 
-  return params
+  // Cache Components exige au moins un param (empty-generate-static-params).
+  // Les chemins non listes restent servis a la demande.
+  return params.length > 0
+    ? params
+    : [{locale: routing.defaultLocale, page: '2'}]
 }
 
 export async function generateMetadata({

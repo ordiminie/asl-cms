@@ -1,4 +1,5 @@
 import {notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {getOrganizationPermissions} from '@/app/dal/organization-dal'
@@ -11,6 +12,7 @@ export default async function EditOrganizationPage({
 }: {
   params: Promise<{id: string}>
 }) {
+  const t = await getTranslations('Organizations')
   const {id} = await params
   const organization = await getOrganizationByIdService(id)
   const {canReadMembers, canManageMembers, canEdit} =
@@ -24,7 +26,7 @@ export default async function EditOrganizationPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Modifier l&apos;organisation
+          {t('editTitle')}
         </h2>
       </div>
 
@@ -34,11 +36,9 @@ export default async function EditOrganizationPage({
         </div>
 
         <div>
-          <h3 className="mb-4 text-lg font-medium">
-            Membres de l&apos;organisation
-          </h3>
+          <h3 className="mb-4 text-lg font-medium">{t('membersTitle')}</h3>
           {canReadMembers ? (
-            <Suspense fallback={<div>Chargement des membres...</div>}>
+            <Suspense fallback={<div>{t('loadingMembers')}</div>}>
               <OrganizationMembersTable
                 organizationId={organization.id}
                 canManageMembers={canManageMembers}

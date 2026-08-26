@@ -1,8 +1,8 @@
 'use client'
 
 import {format} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {useRouter, useSearchParams} from 'next/navigation'
+import {useLocale, useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {useTransition} from 'react'
 import {toast} from 'sonner'
@@ -29,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {Subscription} from '@/services/types/domain/subscription-types'
 
 import {SubscriptionsPagination} from './subscriptions-pagination'
@@ -55,6 +56,9 @@ export default function SubscriptionsManagement({
   permissions,
   searchQuery,
 }: SubscriptionsManagementProps) {
+  const t = useTranslations('AdminSubscriptions')
+  const tCommon = useTranslations('Common')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [selectedSubscription, setSelectedSubscription] =
@@ -86,15 +90,15 @@ export default function SubscriptionsManagement({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge variant="default">Actif</Badge>
+        return <Badge variant="default">{t('status.active')}</Badge>
       case 'trialing':
-        return <Badge variant="secondary">Essai</Badge>
+        return <Badge variant="secondary">{t('status.trialing')}</Badge>
       case 'canceled':
-        return <Badge variant="destructive">Annulé</Badge>
+        return <Badge variant="destructive">{t('status.canceled')}</Badge>
       case 'incomplete':
-        return <Badge variant="outline">Incomplet</Badge>
+        return <Badge variant="outline">{t('status.incomplete')}</Badge>
       case 'past_due':
-        return <Badge variant="destructive">En retard</Badge>
+        return <Badge variant="destructive">{t('status.past_due')}</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -112,13 +116,15 @@ export default function SubscriptionsManagement({
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return 'N/A'
-    return format(new Date(date), 'dd/MM/yyyy', {locale: fr})
+    return format(new Date(date), 'dd/MM/yyyy', {
+      locale: getDateFnsLocale(locale),
+    })
   }
 
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
-        <CardTitle>Gestion des abonnements</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <SubscriptionsToolbar
@@ -133,16 +139,20 @@ export default function SubscriptionsManagement({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Plan</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead className="hidden lg:table-cell">Référence</TableHead>
+              <TableHead>{tCommon('fields.plan')}</TableHead>
+              <TableHead>{tCommon('fields.status')}</TableHead>
               <TableHead className="hidden lg:table-cell">
-                Customer ID
+                {t('reference')}
               </TableHead>
-              <TableHead className="hidden md:table-cell">Début</TableHead>
-              <TableHead className="hidden md:table-cell">Fin</TableHead>
-              <TableHead>Sièges</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="hidden lg:table-cell">
+                {t('customerId')}
+              </TableHead>
+              <TableHead className="hidden md:table-cell">
+                {t('start')}
+              </TableHead>
+              <TableHead className="hidden md:table-cell">{t('end')}</TableHead>
+              <TableHead>{t('seats')}</TableHead>
+              <TableHead>{tCommon('fields.actions')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -207,7 +217,7 @@ export default function SubscriptionsManagement({
                               handleReactivateSubscription(subscription)
                             }
                           >
-                            Réactiver
+                            {t('reactivateShort')}
                           </Button>
                         )}
                     </div>
@@ -229,13 +239,13 @@ export default function SubscriptionsManagement({
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Annuler l&apos;abonnement</DialogTitle>
+            <DialogTitle>{t('cancel')}</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir annuler cet abonnement ?
+              {t('cancelConfirm')}
               <br />
-              Plan: {selectedSubscription?.plan}
+              {tCommon('fields.plan')}: {selectedSubscription?.plan}
               <br />
-              Référence: {selectedSubscription?.referenceId}
+              {t('reference')}: {selectedSubscription?.referenceId}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2">
@@ -264,7 +274,7 @@ export default function SubscriptionsManagement({
                 })
               }}
             >
-              {isPending ? 'Annulation...' : "Confirmer l'annulation"}
+              {isPending ? t('canceling') : t('confirmCancel')}
             </Button>
           </div>
         </DialogContent>
@@ -277,13 +287,13 @@ export default function SubscriptionsManagement({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Réactiver l&apos;abonnement</DialogTitle>
+            <DialogTitle>{t('reactivate')}</DialogTitle>
             <DialogDescription>
-              Êtes-vous sûr de vouloir réactiver cet abonnement ?
+              {t('reactivateConfirm')}
               <br />
-              Plan: {selectedSubscription?.plan}
+              {tCommon('fields.plan')}: {selectedSubscription?.plan}
               <br />
-              Référence: {selectedSubscription?.referenceId}
+              {t('reference')}: {selectedSubscription?.referenceId}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end space-x-2">
@@ -311,7 +321,7 @@ export default function SubscriptionsManagement({
                 })
               }}
             >
-              {isPending ? 'Réactivation...' : 'Confirmer la réactivation'}
+              {isPending ? t('reactivating') : t('confirmReactivate')}
             </Button>
           </div>
         </DialogContent>

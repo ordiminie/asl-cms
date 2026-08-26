@@ -1,6 +1,7 @@
 'use client'
 
 import {Trash2} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 
 import {Button} from '@/components/ui/button'
@@ -21,6 +22,8 @@ interface DeletePostDialogProps {
 }
 
 export function DeletePostDialog({postId, onDelete}: DeletePostDialogProps) {
+  const t = useTranslations('AdminBlog')
+  const tCommon = useTranslations('Common')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -44,12 +47,8 @@ export function DeletePostDialog({postId, onDelete}: DeletePostDialogProps) {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Confirmer la suppression</DialogTitle>
-          <DialogDescription>
-            Êtes-vous sûr de vouloir supprimer ce post ? Cette action supprimera
-            également toutes les traductions associées. Cette action ne peut pas
-            être annulée.
-          </DialogDescription>
+          <DialogTitle>{t('deleteTitle')}</DialogTitle>
+          <DialogDescription>{t('deleteConfirm')}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button
@@ -57,7 +56,7 @@ export function DeletePostDialog({postId, onDelete}: DeletePostDialogProps) {
             variant="outline"
             onClick={() => setIsDialogOpen(false)}
           >
-            Annuler
+            {tCommon('actions.cancel')}
           </Button>
           <Button
             type="button"
@@ -65,7 +64,7 @@ export function DeletePostDialog({postId, onDelete}: DeletePostDialogProps) {
             onClick={handleDelete}
             disabled={isDeleting}
           >
-            {isDeleting ? 'Suppression...' : 'Supprimer'}
+            {isDeleting ? t('deleting') : tCommon('actions.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

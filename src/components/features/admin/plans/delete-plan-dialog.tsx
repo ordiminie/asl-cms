@@ -1,6 +1,7 @@
 'use client'
 
 import {Trash2} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 
 import {
@@ -24,6 +25,8 @@ interface Props {
 }
 
 export function DeletePlanDialog({planId, planName, onDelete}: Props) {
+  const t = useTranslations('AdminPlans')
+  const tCommon = useTranslations('Common')
   const [isLoading, setIsLoading] = useState(false)
   const [permanent, setPermanent] = useState(false)
 
@@ -48,25 +51,12 @@ export function DeletePlanDialog({planId, planName, onDelete}: Props) {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
-            {permanent ? 'Supprimer définitivement' : 'Archiver'} le plan
+            {permanent ? t('delete.deleteTitle') : t('delete.archiveTitle')}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            Êtes-vous sûr de vouloir{' '}
-            {permanent ? 'supprimer définitivement' : 'archiver'} le plan{' '}
-            <strong>{planName}</strong> ?
-            {permanent ? (
-              <span className="text-destructive">
-                <br />
-                Cette action est irréversible et supprimera définitivement
-                toutes les données associées.
-              </span>
-            ) : (
-              <span>
-                <br />
-                Le plan sera archivé et ne sera plus visible pour les nouveaux
-                abonnements.
-              </span>
-            )}
+            {permanent
+              ? t('delete.deleteConfirm', {name: planName})
+              : t('delete.archiveConfirm', {name: planName})}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -81,17 +71,16 @@ export function DeletePlanDialog({planId, planName, onDelete}: Props) {
               htmlFor="permanent"
               className="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              Suppression définitive
+              {t('delete.permanentLabel')}
             </label>
           </div>
           <p className="text-muted-foreground mt-2 text-sm">
-            Cochez cette case pour supprimer définitivement le plan au lieu de
-            l&apos;archiver.
+            {t('delete.permanentHint')}
           </p>
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel>Annuler</AlertDialogCancel>
+          <AlertDialogCancel>{tCommon('actions.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isLoading}
@@ -103,11 +92,11 @@ export function DeletePlanDialog({planId, planName, onDelete}: Props) {
           >
             {isLoading
               ? permanent
-                ? 'Suppression...'
-                : 'Archivage...'
+                ? t('delete.deleting')
+                : t('delete.archiving')
               : permanent
-                ? 'Supprimer définitivement'
-                : 'Archiver'}
+                ? t('delete.deletePermanently')
+                : t('delete.archive')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,5 +1,26 @@
 /* eslint-disable no-restricted-properties */
+import fs from 'node:fs'
+import path from 'node:path'
+
 import {defineConfig, devices} from '@playwright/test'
+import dotenv from 'dotenv'
+
+// Port configurable : permet de lancer la suite quand 3000 est déjà pris
+const PORT = process.env.PLAYWRIGHT_PORT ?? '3000'
+const BASE_URL = `http://localhost:${PORT}`
+
+// `pnpm start` charge .env.production. Or deux specs créent un compte et une
+// autre lit le seed : lancées en local, elles écriraient dans la base de
+// production. On impose donc la DATABASE_URL de .env.test au serveur sous test.
+// En CI, DATABASE_URL est déjà celle du Postgres éphémère du job et gagne.
+const testEnvPath = path.resolve(process.cwd(), '.env.test')
+const testDatabaseUrl = fs.existsSync(testEnvPath)
+  ? dotenv.parse(fs.readFileSync(testEnvPath)).DATABASE_URL
+  : undefined
+
+const webServerEnv = process.env.DATABASE_URL
+  ? undefined
+  : testDatabaseUrl && {DATABASE_URL: testDatabaseUrl}
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -19,7 +40,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
+    baseURL: BASE_URL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -46,10 +67,18 @@ export default defineConfig({
     },
   ],
 
-  /* Run your local dev server before starting the tests */
+  /*
+   * En CI on teste le build de production : le shell statique et le streaming
+   * ne se comportent pas comme en dev, et c'est précisément ce que ces tests
+   * doivent protéger pendant la migration Cache Components.
+   */
   webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
+    command: process.env.CI
+      ? `pnpm build && pnpm start --port ${PORT}`
+      : `pnpm dev --port ${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
+    timeout: 300_000,
+    ...(webServerEnv ? {env: webServerEnv} : {}),
   },
 })

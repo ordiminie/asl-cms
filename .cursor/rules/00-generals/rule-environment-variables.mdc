@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Principe Général
 
-Le projet utilise `@t3-oss/env-nextjs` pour la gestion des variables d'environnement avec validation TypeScript stricte. Toutes les variables d'environnement doivent être déclarées dans [env.ts](mdc:env.ts).
+Le projet utilise `@t3-oss/env-nextjs` pour la gestion des variables d'environnement avec validation TypeScript stricte. Toutes les variables d'environnement doivent être déclarées dans [env.ts](env.ts).
 
 ## Structure du Fichier env.ts
 
@@ -124,7 +124,7 @@ export const db = drizzle(env.DATABASE_URL)
 
 ### ✅ À Faire
 
-- Déclarer toutes les variables dans [env.ts](mdc:env.ts)
+- Déclarer toutes les variables dans [env.ts](env.ts)
 - Utiliser des validations Zod appropriées
 - Préfixer les variables client avec `NEXT_PUBLIC_`
 - Utiliser des transformations pour les types non-string
@@ -185,7 +185,7 @@ emptyStringAsUndefined: true,
 
 ## Exemple Complet
 
-Voir [env.ts](mdc:env.ts) pour la configuration complète du projet avec toutes les variables d'environnement validées et typées.
+Voir [env.ts](env.ts) pour la configuration complète du projet avec toutes les variables d'environnement validées et typées.
 
 ## Debugging
 

@@ -100,9 +100,8 @@ export function mdxPostToUnified(
   }
 }
 
-export function isMdxPublished(post: MdxBlogPost): boolean {
+export function isMdxPublished(post: MdxBlogPost, nowMs: number): boolean {
   const {publishedAt} = post.frontmatter
   if (!publishedAt) return true
-  const publishDate = new Date(publishedAt)
-  return publishDate <= new Date()
+  return new Date(publishedAt).getTime() <= nowMs
 }

@@ -2,9 +2,9 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {AlertCircle, CheckCircle2, Loader2, Mail, Send} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {useForm} from 'react-hook-form'
-import {z} from 'zod'
 
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
@@ -27,32 +27,21 @@ import {Input} from '@/components/ui/input'
 import {Textarea} from '@/components/ui/textarea'
 
 import {submitContactAction} from './actions'
-
-const contactFormSchema = z.object({
-  email: z
-    .string()
-    .min(1, {message: "L'email est requis"})
-    .email({message: 'Veuillez entrer un email valide'}),
-  subject: z
-    .string()
-    .min(3, {message: 'Le sujet doit contenir au moins 3 caractères'})
-    .max(255, {message: 'Le sujet ne doit pas dépasser 255 caractères'}),
-  content: z
-    .string()
-    .min(10, {message: 'Le message doit contenir au moins 10 caractères'})
-    .max(5000, {message: 'Le message ne doit pas dépasser 5000 caractères'}),
-})
-
-type ContactFormValues = z.infer<typeof contactFormSchema>
+import {
+  ContactFormSchemaType,
+  createContactFormSchema,
+} from './contact-form-validation'
 
 export function ContactForm() {
+  const t = useTranslations('ContactPage')
+  const contactFormSchema = createContactFormSchema(t)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState<{
     success: boolean
     message: string
   } | null>(null)
 
-  const form = useForm<ContactFormValues>({
+  const form = useForm<ContactFormSchemaType>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
       email: '',
@@ -61,7 +50,7 @@ export function ContactForm() {
     },
   })
 
-  const onSubmit = async (data: ContactFormValues) => {
+  const onSubmit = async (data: ContactFormSchemaType) => {
     setIsSubmitting(true)
     setSubmitResult(null)
 
@@ -83,7 +72,7 @@ export function ContactForm() {
     } catch {
       setSubmitResult({
         success: false,
-        message: 'Une erreur est survenue. Veuillez réessayer.',
+        message: t('errors.generic'),
       })
     } finally {
       setIsSubmitting(false)
@@ -99,7 +88,7 @@ export function ContactForm() {
               <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="mb-2 text-xl font-semibold text-green-800 dark:text-green-200">
-              Message envoyé !
+              {t('success.title')}
             </h3>
             <p className="text-muted-foreground mb-6 max-w-sm">
               {submitResult.message}
@@ -109,7 +98,7 @@ export function ContactForm() {
               onClick={() => setSubmitResult(null)}
               className="border-green-300 dark:border-green-700"
             >
-              Envoyer un autre message
+              {t('success.cta')}
             </Button>
           </div>
         </CardContent>
@@ -123,11 +112,8 @@ export function ContactForm() {
         <div className="bg-primary/10 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
           <Mail className="text-primary h-6 w-6" />
         </div>
-        <CardTitle className="text-2xl">Contactez-nous</CardTitle>
-        <CardDescription>
-          Une question, une suggestion ou besoin d&apos;aide ? Nous sommes là
-          pour vous.
-        </CardDescription>
+        <CardTitle className="text-2xl">{t('card.title')}</CardTitle>
+        <CardDescription>{t('card.description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -144,11 +130,11 @@ export function ContactForm() {
               name="email"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>{t('fields.email.label')}</FormLabel>
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="votre@email.com"
+                      placeholder={t('fields.email.placeholder')}
                       {...field}
                     />
                   </FormControl>
@@ -162,9 +148,12 @@ export function ContactForm() {
               name="subject"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Sujet</FormLabel>
+                  <FormLabel>{t('fields.subject.label')}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Objet de votre message" {...field} />
+                    <Input
+                      placeholder={t('fields.subject.placeholder')}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -176,10 +165,10 @@ export function ContactForm() {
               name="content"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Message</FormLabel>
+                  <FormLabel>{t('fields.content.label')}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Décrivez votre demande en détail..."
+                      placeholder={t('fields.content.placeholder')}
                       className="min-h-[140px] resize-none"
                       {...field}
                     />
@@ -198,12 +187,12 @@ export function ContactForm() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Envoi en cours...
+                  {t('submit.pending')}
                 </>
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
-                  Envoyer le message
+                  {t('submit.idle')}
                 </>
               )}
             </Button>

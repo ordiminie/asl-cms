@@ -22,7 +22,8 @@ description:
 - **Utilise uniquement des types de domaine** (ex : `User`, `UserDTO` de `src/services/types/domain/`).
 - **N'a pas le droit d'appeler directement les services métier** ni les objets de la persistance.
 - **Pour les lectures (getters)** :  
-  Passe par la **DAL** (`src/app/dal/`), qui utilise `react-cache` pour optimiser le cache serveur.
+  Passe par la **DAL** (`src/app/dal/`), qui porte le cache de la lecture. Une donnée par
+  utilisateur n'est pas cachée : elle est streamée derrière un `<Suspense>`.
 - **Pour les mutations** :  
   Utilise **exclusivement les Server Actions** (fonctions `"use server"`).
 - **Pour toute logique métier** :  
@@ -30,7 +31,12 @@ description:
 
 ### 2. Couche DAL (Data Access Layer)
 
-- Sert à **mettre en cache** les accès aux données avec `react-cache` (`cache(async () => ...)`).
+- Sert à **mettre en cache** les accès aux données. Sous Cache Components (Next 16), le cache est une
+  propriété **de la fonction du DAL** : `'use cache'` + `cacheLife` + `cacheTag` pour les lectures
+  publiques, `unstable_cache` pour ce qui doit survivre aux déploiements, rien du tout pour les
+  données par utilisateur (qui passent par `<Suspense>`). `cache()` de React reste utilisé en plus,
+  pour dédupliquer dans une même requête.
+  Détail complet : `.claude/rules/01-presentation/rule-react-cache-next-cache.md`.
 - Transforme les entités de la persistance en **DTO** pour la présentation.
 - N'expose jamais directement les modèles Drizzle à la présentation.
 
@@ -55,6 +61,17 @@ description:
 - Utilise **Drizzle ORM** pour la modélisation et l'accès aux données.
 - Définit les **types de modèle** (ex : `UserModel` dans `src/db/models/user-model.ts`).
 - Les repositories (`src/db/repositories/`) effectuent les requêtes SQL.
+
+### Dépendances à éviter
+
+- La présentation ne doit pas importer de modèles ni de types depuis
+  `src/db/models/` ou `src/db/repositories/`. Un type nécessaire à l'interface
+  appartient à `src/services/types/domain/`.
+- La présentation et les Server Actions ne doivent pas appeler directement un
+  service métier lorsqu'une façade existe.
+- Un service ne doit jamais importer sa façade ni la façade d'un autre
+  service. Les dépendances entre domaines passent par les fonctions de service
+  elles-mêmes afin de conserver le sens façade → service → persistance.
 
 ---
 

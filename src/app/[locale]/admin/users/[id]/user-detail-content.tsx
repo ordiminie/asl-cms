@@ -1,4 +1,5 @@
 import {notFound} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 
 import {
   getAdminUserOrganizationsWithUsageDal,
@@ -14,6 +15,7 @@ interface UserDetailContentProps {
 export default async function UserDetailContent({
   userId,
 }: UserDetailContentProps) {
+  const t = await getTranslations('AdminPages')
   const [user, permissions, organizationsWithUsage] = await Promise.all([
     getUserByIdDal(userId),
     getUserPermissionsDal(),
@@ -28,7 +30,7 @@ export default async function UserDetailContent({
     <div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-foreground text-2xl font-bold">
-          Détails de l&apos;utilisateur
+          {t('userDetails')}
         </h1>
         <p className="text-muted-foreground mt-2">
           Visualisez et modifiez les informations de l&apos;utilisateur{' '}

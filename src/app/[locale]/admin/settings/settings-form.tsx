@@ -1,6 +1,7 @@
 'use client'
 
 import {Loader2, Mail, Settings} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 import {toast} from 'sonner'
 
@@ -48,6 +49,7 @@ const categoryConfig: Record<
 }
 
 export default function SettingsForm({settingsGrouped}: SettingsFormProps) {
+  const t = useTranslations('AdminPages')
   const [isLoading, setIsLoading] = useState(false)
   const [formValues, setFormValues] = useState<Record<string, string>>(() => {
     const values: Record<string, string> = {}
@@ -81,7 +83,7 @@ export default function SettingsForm({settingsGrouped}: SettingsFormProps) {
         toast.error(result.message)
       }
     } catch (error) {
-      toast.error('Erreur lors de la mise à jour des paramètres')
+      toast.error(t('settingsUpdateError'))
       console.error(error)
     } finally {
       setIsLoading(false)

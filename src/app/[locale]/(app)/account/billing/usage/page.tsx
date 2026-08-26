@@ -1,9 +1,9 @@
 'use client'
 
 import {eachDayOfInterval, format} from 'date-fns'
-import {fr} from 'date-fns/locale'
 import {Coins} from 'lucide-react'
 import Link from 'next/link'
+import {useLocale, useTranslations} from 'next-intl'
 import {useEffect, useMemo, useState} from 'react'
 import {
   Bar,
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/chart'
 import {Skeleton} from '@/components/ui/skeleton'
 import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs'
+import {getDateFnsLocale} from '@/lib/helper/date-helper'
 import {
   CreditBalanceDetails,
   CreditUsageDay,
@@ -50,6 +51,9 @@ function LoadingSkeleton() {
 }
 
 export default function UsagePage() {
+  const t = useTranslations('Credits')
+  const tGraph = useTranslations('Credits.graph')
+  const locale = useLocale()
   const {referenceId} = useOrganization()
   const [loading, setLoading] = useState(true)
   const [balance, setBalance] = useState<CreditBalanceDetails | null>(null)
@@ -105,26 +109,30 @@ export default function UsagePage() {
     return allDays.map((date) => {
       const dayKey = format(date, 'yyyy-MM-dd')
       return {
-        day: format(date, 'd MMM', {locale: fr}),
+        day: format(date, 'd MMM', {locale: getDateFnsLocale(locale)}),
         creditsUsed: usageMap.get(dayKey) ?? 0,
       }
     })
-  }, [balance, usageData])
+  }, [balance, usageData, locale])
 
   const totalUsed = usageData.reduce((sum, day) => sum + day.creditsUsed, 0)
 
   const periodStartFormatted = balance?.periodStart
-    ? format(new Date(balance.periodStart), 'd MMM yyyy', {locale: fr})
+    ? format(new Date(balance.periodStart), 'd MMM yyyy', {
+        locale: getDateFnsLocale(locale),
+      })
     : ''
   const periodEndFormatted = balance?.periodEnd
-    ? format(new Date(balance.periodEnd), 'd MMM yyyy', {locale: fr})
+    ? format(new Date(balance.periodEnd), 'd MMM yyyy', {
+        locale: getDateFnsLocale(locale),
+      })
     : ''
 
   if (!referenceId) {
     return (
       <div>
         <div className="text-muted-foreground">
-          Veuillez sélectionner une organisation
+          {t('usage.selectOrganization')}
         </div>
       </div>
     )
@@ -139,22 +147,20 @@ export default function UsagePage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Credits
+            {t('usage.title')}
           </h2>
-          <p className="text-muted-foreground">
-            Manage your image generation credits
-          </p>
+          <p className="text-muted-foreground">{t('usage.description')}</p>
         </div>
       </div>
 
       <Tabs defaultValue="usage" className="w-fit">
         <TabsList>
           <TabsTrigger value="credits" asChild>
-            <Link href="/account/billing/credit">Credits</Link>
+            <Link href="/account/billing/credit">{t('tabs.credits')}</Link>
           </TabsTrigger>
-          <TabsTrigger value="usage">Usage</TabsTrigger>
+          <TabsTrigger value="usage">{t('tabs.usage')}</TabsTrigger>
           <TabsTrigger value="plans" asChild>
-            <Link href="/account/billing/subscription">Plans</Link>
+            <Link href="/account/billing/subscription">{t('tabs.plans')}</Link>
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -162,19 +168,27 @@ export default function UsagePage() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
-            <CardTitle>Credits Usage</CardTitle>
+            <CardTitle>{t('usage.cardTitle')}</CardTitle>
             <p className="text-muted-foreground text-sm">
-              Period: {periodStartFormatted} - {periodEndFormatted}
+              {t('usage.period', {
+                start: periodStartFormatted,
+                end: periodEndFormatted,
+              })}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-muted-foreground text-sm">Credits Used</p>
+            <p className="text-muted-foreground text-sm">
+              {t('usage.creditsUsed')}
+            </p>
             <p className="text-3xl font-bold">
-              {new Intl.NumberFormat('fr-FR').format(totalUsed)}
+              {new Intl.NumberFormat(locale).format(totalUsed)}
             </p>
             <p className="text-muted-foreground text-sm">
-              Balance:{' '}
-              {new Intl.NumberFormat('fr-FR').format(balance?.balance ?? 0)}
+              {t('usage.balance', {
+                count: new Intl.NumberFormat(locale).format(
+                  balance?.balance ?? 0
+                ),
+              })}
             </p>
           </div>
         </CardHeader>
@@ -182,9 +196,7 @@ export default function UsagePage() {
           {chartData.length === 0 ? (
             <div className="flex h-[400px] flex-col items-center justify-center gap-4">
               <Coins className="text-muted-foreground h-12 w-12" />
-              <p className="text-muted-foreground">
-                Aucune donnée d&apos;utilisation pour cette période
-              </p>
+              <p className="text-muted-foreground">{tGraph('noData')}</p>
             </div>
           ) : (
             <ChartContainer config={chartConfig} className="h-[400px] w-full">
@@ -216,7 +228,9 @@ export default function UsagePage() {
           )}
           <div className="mt-4 flex items-center justify-center gap-2">
             <div className="h-3 w-3 rounded-sm bg-[hsl(35,92%,50%)]" />
-            <span className="text-muted-foreground text-sm">Credits Used</span>
+            <span className="text-muted-foreground text-sm">
+              {t('usage.creditsUsed')}
+            </span>
           </div>
         </CardContent>
       </Card>

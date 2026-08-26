@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {eq, or, sql} from 'drizzle-orm'
+import {and, eq, isNotNull, or, sql} from 'drizzle-orm'
 
 import {
+  account,
   member,
   organization,
   session,
@@ -377,4 +378,22 @@ export const getUsersByOrganizationDao = async (
     .orderBy(users.name)
 
   return rows
+}
+
+/**
+ * Indique si l'utilisateur dispose d'un identifiant mot de passe, donc s'il peut
+ * se connecter par lui-même. Un compte créé depuis Stripe n'en a aucun : c'est
+ * le seul marqueur stable pour router l'e-mail d'accès, là où « le compte vient
+ * d'être créé » bascule d'un rejeu de webhook à l'autre.
+ */
+export const hasPasswordCredentialDao = async (
+  userId: string
+): Promise<boolean> => {
+  const rows = await db
+    .select({id: account.id})
+    .from(account)
+    .where(and(eq(account.userId, userId), isNotNull(account.password)))
+    .limit(1)
+
+  return rows.length > 0
 }

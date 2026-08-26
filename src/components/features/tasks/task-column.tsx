@@ -3,6 +3,7 @@
 import {useDroppable} from '@dnd-kit/core'
 import {SortableContext, verticalListSortingStrategy} from '@dnd-kit/sortable'
 import {Plus} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
@@ -32,6 +33,7 @@ export function TaskColumn({
   onAddTask,
   usersMap = {},
 }: TaskColumnProps) {
+  const t = useTranslations('TasksUi')
   const {setNodeRef, isOver} = useDroppable({
     id: status,
     data: {
@@ -84,7 +86,7 @@ export function TaskColumn({
             </SortableContext>
             {tasks.length === 0 && (
               <div className="text-muted-foreground flex h-32 items-center justify-center text-sm">
-                Aucune tâche
+                {t('emptyColumn')}
               </div>
             )}
           </div>

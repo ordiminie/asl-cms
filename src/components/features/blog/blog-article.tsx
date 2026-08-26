@@ -1,13 +1,11 @@
-import rehypeShiki from '@shikijs/rehype'
 import {ArrowLeft, Calendar, Clock, Eye, FileText, User} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import {MDXRemote} from 'next-mdx-remote/rsc'
-import remarkGfm from 'remark-gfm'
+import {Suspense} from 'react'
 
 import {LikeButton} from '@/components/features/blog/like-button'
 import {RelatedArticles} from '@/components/features/blog/related-articles'
-import {mdxComponents} from '@/components/mdx-components'
+import {MDXContent} from '@/components/mdx-content'
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
@@ -206,39 +204,9 @@ export function BlogArticle({
         )}
       </div>
 
-      <div className="prose prose-lg prose-gray dark:prose-invert prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-p:text-muted-foreground prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground prose-code:bg-muted prose-code:rounded prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-pre:bg-muted prose-pre:border prose-blockquote:border-l-primary prose-blockquote:bg-muted/50 prose-blockquote:py-1 prose-blockquote:not-italic prose-img:rounded-xl prose-img:shadow-lg max-w-none">
-        <MDXRemote
-          source={post.content}
-          components={mdxComponents}
-          options={{
-            mdxOptions: {
-              remarkPlugins: [remarkGfm],
-              rehypePlugins: [
-                [
-                  rehypeShiki,
-                  {
-                    themes: {
-                      light: 'github-dark',
-                      dark: 'github-dark',
-                    },
-                    langs: [
-                      'javascript',
-                      'typescript',
-                      'jsx',
-                      'tsx',
-                      'css',
-                      'json',
-                      'bash',
-                      'html',
-                      'markdown',
-                    ],
-                  },
-                ],
-              ],
-            },
-          }}
-        />
-      </div>
+      <Suspense fallback={<div className="text-muted-foreground">…</div>}>
+        <MDXContent source={post.content} />
+      </Suspense>
 
       {post.author && (
         <Card className="mt-12">

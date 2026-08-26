@@ -16,8 +16,6 @@ import {PagesConst} from '@/env'
 import {routing} from '@/i18n/routing'
 import {isPageEnabled} from '@/lib/utils'
 
-export const dynamic = 'force-static'
-
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
 }

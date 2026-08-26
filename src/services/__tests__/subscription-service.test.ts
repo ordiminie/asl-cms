@@ -96,6 +96,11 @@ describe('[ADMIN] CRUD : Subscription Service', () => {
     stripeCustomerId: null,
     stripeSubscriptionId: 'sub_123',
     cancelAtPeriodEnd: false,
+    cancelAt: null,
+    canceledAt: null,
+    endedAt: null,
+    billingInterval: null,
+    stripeScheduleId: null,
     seats: 1,
   }
 
@@ -165,6 +170,11 @@ describe('[USER] CRUD : Subscription Service', () => {
     stripeCustomerId: null,
     stripeSubscriptionId: 'sub_123',
     cancelAtPeriodEnd: false,
+    cancelAt: null,
+    canceledAt: null,
+    endedAt: null,
+    billingInterval: null,
+    stripeScheduleId: null,
     seats: 1,
   }
 
@@ -281,6 +291,11 @@ describe('[STRIPE] Webhook Subscription Service', () => {
     stripeCustomerId: testUser.stripeCustomerId,
     stripeSubscriptionId: 'sub_123',
     cancelAtPeriodEnd: false,
+    cancelAt: null,
+    canceledAt: null,
+    endedAt: null,
+    billingInterval: null,
+    stripeScheduleId: null,
     seats: 1,
   }
 
@@ -378,6 +393,11 @@ describe('[USER] Active Subscriptions Service', () => {
     stripeCustomerId: null,
     stripeSubscriptionId: 'sub_123',
     cancelAtPeriodEnd: false,
+    cancelAt: null,
+    canceledAt: null,
+    endedAt: null,
+    billingInterval: null,
+    stripeScheduleId: null,
     seats: 1,
   }
 

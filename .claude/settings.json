@@ -1,4 +1,11 @@
 {
+  "worktree": {
+    "baseRef": "head",
+    "bgIsolation": "none"
+  },
+  "permissions": {
+    "allow": ["Bash(git worktree:*)"]
+  },
   "hooks": {
     "PostToolUse": [
       {

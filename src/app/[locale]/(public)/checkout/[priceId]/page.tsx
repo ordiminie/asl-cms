@@ -3,6 +3,9 @@ import {env} from 'process'
 import CheckoutPage from '@/components/features/checkout-stripe/checkout-page'
 import {logger} from '@/lib/logger'
 
+// Tunnel de paiement : dynamique par nature (prix, session utilisateur).
+export const instant = false
+
 type PropsParams = {
   params: Promise<{priceId: string}>
   searchParams: Promise<{

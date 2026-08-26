@@ -1,6 +1,7 @@
 'use client'
 
 import {Trash2} from 'lucide-react'
+import {useTranslations} from 'next-intl'
 import React, {useState} from 'react'
 
 import {Button} from '@/components/ui/button'
@@ -27,6 +28,8 @@ export function DeleteProjectDialog({
   onDelete,
   isLoading = false,
 }: Props) {
+  const t = useTranslations('Projects')
+  const tCommon = useTranslations('Common')
   const [open, setOpen] = useState(false)
 
   const handleDelete = async () => {
@@ -43,10 +46,9 @@ export function DeleteProjectDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Supprimer le projet</DialogTitle>
+          <DialogTitle>{t('form.deleteTitle')}</DialogTitle>
           <DialogDescription>
-            Êtes-vous sûr de vouloir supprimer le projet{' '}
-            <strong>{projectName}</strong> ? Cette action est irréversible.
+            {t('form.deleteDialogDescription', {name: projectName})}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -64,7 +66,7 @@ export function DeleteProjectDialog({
             onClick={handleDelete}
             disabled={isLoading}
           >
-            {isLoading ? 'Suppression...' : 'Supprimer'}
+            {isLoading ? t('form.deleting') : tCommon('actions.delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

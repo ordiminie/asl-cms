@@ -294,3 +294,43 @@ export function getDocFilePath(
   const slugParts = slug.split('/')
   return findActualPath(docsPath, slugParts)
 }
+
+export interface DocsNavigation {
+  previous?: DocItem
+  next?: DocItem
+}
+
+/**
+ * Ordre de lecture de la documentation, à plat.
+ *
+ * L'arborescence est déjà triée par les préfixes numériques des fichiers : un
+ * parcours en profondeur suffit à retrouver l'ordre des pages, sans rien à
+ * maintenir à la main quand un .mdx est ajouté.
+ */
+export function flattenDocsItems(items: DocItem[]): DocItem[] {
+  const flattened: DocItem[] = []
+
+  for (const item of items) {
+    flattened.push(item)
+    if (item.children) {
+      flattened.push(...flattenDocsItems(item.children))
+    }
+  }
+
+  return flattened
+}
+
+export function getDocsNavigation(
+  slug: string,
+  locale: string = 'en'
+): DocsNavigation {
+  const pages = flattenDocsItems(getDocsStructure(locale).items)
+  const index = pages.findIndex((page) => page.slug === slug)
+
+  if (index === -1) return {}
+
+  return {
+    previous: pages[index - 1],
+    next: pages[index + 1],
+  }
+}

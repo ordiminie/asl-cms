@@ -11,6 +11,7 @@ import {
   Trophy,
   Users,
 } from 'lucide-react'
+import {useLocale, useTranslations} from 'next-intl'
 import {
   Bar,
   BarChart,
@@ -40,24 +41,26 @@ interface AdminDashboardProps {
 }
 
 export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
+  const t = useTranslations('AdminDashboard')
+  const locale = useLocale()
   const {totalUsers, totalOrganizations, userGrowth, organizationGrowth} = stats
 
   const formatCurrency = (amount: number, currency: string = 'eur') => {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount / 100)
   }
 
   const formatNumber = (value: number) => {
-    return new Intl.NumberFormat('fr-FR').format(value)
+    return new Intl.NumberFormat(locale).format(value)
   }
 
   // Transformer les données pour les graphiques avec des noms de mois plus lisibles
   const formatMonthData = (data: {month: string; count: number}[]) => {
     return data.map((item) => ({
       ...item,
-      monthLabel: new Date(`${item.month}-01`).toLocaleDateString('fr-FR', {
+      monthLabel: new Date(`${item.month}-01`).toLocaleDateString(locale, {
         month: 'short',
         year: '2-digit',
       }),
@@ -116,7 +119,7 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
   // Configuration des graphiques ShadCN
   const userChartConfig = {
     count: {
-      label: 'Utilisateurs',
+      label: t('users'),
       theme: {
         light: 'var(--chart-1)',
         dark: 'var(--chart-1)',
@@ -126,7 +129,7 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
 
   const organizationChartConfig = {
     count: {
-      label: 'Organisations',
+      label: t('organizations'),
       theme: {
         light: 'var(--chart-2)',
         dark: 'var(--chart-2)',
@@ -146,7 +149,7 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
 
   const subscriptionChartConfig = {
     count: {
-      label: 'Abonnements',
+      label: t('subscriptions'),
       theme: {
         light: 'var(--chart-4)',
         dark: 'var(--chart-4)',
@@ -168,7 +171,7 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
 
   const heroMetrics = [
     {
-      title: 'MRR total',
+      title: t('mrrTotal'),
       value: formatCurrency(mrrStats.totalMRR, mrrStats.currency),
       subtitle: `${
         mrrStats.subscriptionGrowthPercent >= 0 ? '+' : ''
@@ -176,100 +179,116 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
       icon: DollarSign,
     },
     {
-      title: 'Abonnements actifs',
+      title: t('activeSubscriptions'),
       value: formatNumber(mrrStats.totalActiveSubscriptions),
       subtitle: topPlan
-        ? `${topPlanShare}% générés par ${topPlan.planName}`
-        : 'Répartition multi-plans',
+        ? t('topPlanShare', {share: topPlanShare, plan: topPlan.planName})
+        : t('multiPlanBreakdown'),
       icon: Sparkles,
     },
     {
-      title: 'Nouvelles souscriptions',
+      title: t('newSubscriptions'),
       value: formatNumber(mrrStats.newSubscriptionsThisMonth),
       subtitle: latestSubscriptionPoint
-        ? `${formatNumber(latestSubscriptionPoint.count)} en ${latestSubscriptionPoint.monthLabel}`
-        : 'Suivi mensuel des signatures',
+        ? t('countInMonth', {
+            count: formatNumber(latestSubscriptionPoint.count),
+            month: latestSubscriptionPoint.monthLabel,
+          })
+        : t('monthlySignatureTracking'),
       icon: TrendingUp,
     },
   ] as const
 
   const mainStatCards = [
     {
-      title: 'Total utilisateurs',
+      title: t('totalUsers'),
       value: formatNumber(totalUsers),
       icon: Users,
       growth: userGrowthPercent,
       description: lastUserPoint
-        ? `${formatNumber(lastUserPoint.count)} nouveaux ce mois-ci`
-        : 'Population active',
+        ? t('newThisMonth', {count: formatNumber(lastUserPoint.count)})
+        : t('activePopulation'),
       accent: 'from-sky-500/25 via-sky-500/0 to-transparent',
     },
     {
-      title: 'Total organisations',
+      title: t('totalOrganizations'),
       value: formatNumber(totalOrganizations),
       icon: Building2,
       growth: orgGrowthPercent,
-      description: `${formatNumber(averageUsersPerOrg)} utilisateurs par organisation`,
+      description: t('usersPerOrg', {count: formatNumber(averageUsersPerOrg)}),
       accent: 'from-violet-500/25 via-violet-500/0 to-transparent',
     },
     {
-      title: 'MRR total',
+      title: t('mrrTotal'),
       value: formatCurrency(mrrStats.totalMRR, mrrStats.currency),
       icon: DollarSign,
       growth: mrrStats.subscriptionGrowthPercent,
-      description: `${formatNumber(mrrStats.totalActiveSubscriptions)} abonnements actifs`,
+      description: t('activeSubscriptionsCount', {
+        count: formatNumber(mrrStats.totalActiveSubscriptions),
+      }),
       accent: 'from-emerald-500/25 via-emerald-500/0 to-transparent',
     },
     {
-      title: 'Nouvelles souscriptions',
+      title: t('newSubscriptions'),
       value: formatNumber(mrrStats.newSubscriptionsThisMonth),
       icon: TrendingUp,
       growth: mrrStats.subscriptionGrowthPercent,
       description: latestSubscriptionPoint
-        ? `${formatNumber(latestSubscriptionPoint.count)} en ${latestSubscriptionPoint.monthLabel}`
-        : 'Croissance mensuelle',
+        ? t('countInMonth', {
+            count: formatNumber(latestSubscriptionPoint.count),
+            month: latestSubscriptionPoint.monthLabel,
+          })
+        : t('monthlyGrowth'),
       accent: 'from-amber-500/25 via-amber-500/0 to-transparent',
     },
   ] as const
 
   const secondaryHighlights = [
     {
-      title: 'MRR annuel projeté',
+      title: t('mrrProjected'),
       value: formatCurrency(mrrStats.yearlyMRR, mrrStats.currency),
-      description: 'Projection sur 12 mois',
+      description: t('twelveMonthProjection'),
       icon: Sparkles,
     },
     {
-      title: 'ARPU global',
+      title: t('arpu'),
       value: formatCurrency(mrrStats.averageRevenuePerUser, mrrStats.currency),
-      description: `${formatNumber(totalUsers)} utilisateurs actifs`,
+      description: t('activeUsersCount', {count: formatNumber(totalUsers)}),
       icon: Users,
     },
   ] as const
 
   const insightItems = [
     topPlan && {
-      title: 'Plan phare',
+      title: t('topPlan'),
       value: topPlan.planName,
-      details: `${formatNumber(topPlan.subscriptionCount)} abonnements • ${formatCurrency(topPlan.totalMRR, topPlan.currency)} (${topPlanShare}% du MRR)`,
+      details: t('topPlanDetail', {
+        count: formatNumber(topPlan.subscriptionCount),
+        mrr: formatCurrency(topPlan.totalMRR, topPlan.currency),
+        share: topPlanShare,
+      }),
       icon: Trophy,
     },
     bestSubscriptionMonth && {
-      title: 'Meilleur mois abonnements',
+      title: t('bestSubscriptionMonth'),
       value: bestSubscriptionMonth.monthLabel,
-      details: `${formatNumber(bestSubscriptionMonth.count)} signatures`,
+      details: t('signatures', {
+        count: formatNumber(bestSubscriptionMonth.count),
+      }),
       icon: TrendingUp,
     },
     bestUserMonth && {
-      title: 'Pic de nouveaux utilisateurs',
+      title: t('userPeak'),
       value: bestUserMonth.monthLabel,
-      details: `${formatNumber(bestUserMonth.count)} créations de compte`,
+      details: t('accountCreations', {
+        count: formatNumber(bestUserMonth.count),
+      }),
       icon: Users,
     },
     {
-      title: 'Nouveaux utilisateurs (12 mois)',
+      title: t('newUsers'),
       value: formatNumber(cumulativeNewUsers),
-      details: `${formatNumber(totalUsers)} utilisateurs au total`,
+      details: t('totalUsersCount', {count: formatNumber(totalUsers)}),
       icon: Sparkles,
     },
   ].filter(Boolean) as {
@@ -503,7 +522,7 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
                               string,
                             ]
                           }
-                          return [String(value), 'Abonnements'] as [
+                          return [String(value), t('subscriptions')] as [
                             string,
                             string,
                           ]
@@ -557,7 +576,7 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
                         formatter={(value) =>
                           [
                             `${Number(value).toLocaleString()}`,
-                            'Nouveaux abonnements',
+                            t('newSubscriptions'),
                           ] as [string, string]
                         }
                       />
@@ -611,10 +630,10 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
                     content={
                       <ChartTooltipContent
                         formatter={(value) =>
-                          [
-                            `${Number(value).toLocaleString()}`,
-                            'Utilisateurs',
-                          ] as [string, string]
+                          [`${Number(value).toLocaleString()}`, t('users')] as [
+                            string,
+                            string,
+                          ]
                         }
                       />
                     }
@@ -663,7 +682,7 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
                     content={
                       <ChartTooltipContent
                         formatter={(value) =>
-                          [`${value}`, 'Organisations'] as [string, string]
+                          [`${value}`, t('organizations')] as [string, string]
                         }
                       />
                     }
@@ -682,7 +701,9 @@ export function AdminDashboard({stats, mrrStats}: AdminDashboardProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Insights clés</CardTitle>
+          <CardTitle className="text-lg font-semibold">
+            {t('insights')}
+          </CardTitle>
           <p className="text-muted-foreground text-sm">
             Synthèse des signaux forts pour prioriser vos prochaines actions.
           </p>
