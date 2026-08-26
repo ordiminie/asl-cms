@@ -219,7 +219,16 @@ async function createStripeSession(
     mode: subscriptionData.plan.isRecurring ? 'subscription' : 'payment',
     success_url: `${origin}/checkout/success?redirect_status=succeeded&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/pricing`,
+    // `subscription_data.metadata` en plus de `metadata` : le plugin lit les
+    // metadata de la SESSION dans onCheckoutSessionCompleted, mais celles de la
+    // SUBSCRIPTION dans onSubscriptionCreated/Updated. Sans elles, un
+    // `customer.subscription.created` arrivant avant la session fait chercher
+    // par stripeCustomerId et crée une SECONDE ligne d'abonnement. Le plugin
+    // pose lui-même les deux.
     metadata,
+    subscription_data: subscriptionData.plan.isRecurring
+      ? {metadata}
+      : undefined,
     payment_method_types: ['card'],
   })
 

@@ -10,28 +10,19 @@ import {
 import PricingPlans from '@/components/features/payment/pricing'
 import {AvailablePlan} from '@/lib/stripe/stripe-types'
 import {getSubscriptionRecap} from '@/lib/stripe/stripe-utils'
-import {
-  getAuthUser,
-  getSessionReferenceId,
-} from '@/services/authentication/auth-service'
+import {getAuthUser} from '@/services/authentication/auth-service'
 
 /**
- * Vitrine tarifaire — mode `better-auth`.
+ * Vitrine tarifaire — ANCIENNE version, conservée telle quelle pour les
+ * installations restées sur le tunnel maison. Mode `custom` : tout le monde
+ * passe par /checkout/[priceId], connecté ou non.
  *
- * Reprend le contrat vérifié de /account/billing/subscription : connecté ->
- * `authClient.subscription.upgrade()`, le plugin choisissant Checkout ou portail
- * Stripe selon qu'un abonnement actif existe ; non connecté -> inscription, la
- * route `/subscription/upgrade` répondant 401 sans session.
- *
- * Mise en page, grille et cartes strictement inchangées : seul le mécanisme de
- * paiement change. /pricing_old sert la version 100 % maison.
+ * Elle partage le composant de /pricing : seul `checkoutMode` diffère, donc les
+ * deux grilles ne peuvent pas diverger visuellement.
  */
 export default async function Page() {
   const user = await getAuthUser()
   const userSubscriptions = user ? await getActiveSubscriptionsDal() : []
-  // Qui est facturé. Résolu ici et pas dans le composant : `useOrganization`
-  // vit dans le provider de l'espace connecté, absent d'une route publique.
-  const referenceId = user ? await getSessionReferenceId() : undefined
 
   // Récupération des plans via le DAL
   const [planFree, planPro, planEntreprise, planLifetime] = await Promise.all([
@@ -122,8 +113,7 @@ export default async function Page() {
 
   return (
     <PricingPlans
-      checkoutMode="better-auth"
-      referenceId={referenceId}
+      checkoutMode="custom"
       subscriptions={userSubscriptions}
       priceProMonthly={priceProMonthly.recap}
       priceProYearly={priceProYearly.recap}

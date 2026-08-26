@@ -8,6 +8,13 @@
       "when": 1787378732519,
       "tag": "0000_calm_maddog",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787481119985,
+      "tag": "0001_fast_maggott",
+      "breakpoints": true
     }
   ]
 }

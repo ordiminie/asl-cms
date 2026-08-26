@@ -45,13 +45,13 @@ et `:582`.
 
 C'est la contrainte qui détermine tout le modèle de données.
 
-| Preuve | Fichier:ligne |
-| --- | --- |
-| `NEXT_PUBLIC_BILLING_MODE` par défaut `organization` | `src/env-schemas.ts:166-168` |
-| `.env` d'exemple confirme | `env.example:41` |
-| `getReferenceIdByBillingMode(userId, organizationId)` | `src/lib/helper/subscription-helper.ts:6-15` |
+| Preuve                                                                      | Fichier:ligne                                           |
+| --------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `NEXT_PUBLIC_BILLING_MODE` par défaut `organization`                        | `src/env-schemas.ts:166-168`                            |
+| `.env` d'exemple confirme                                                   | `env.example:41`                                        |
+| `getReferenceIdByBillingMode(userId, organizationId)`                       | `src/lib/helper/subscription-helper.ts:6-15`            |
 | En mode ORG, `getBillingReferenceId()` prend l'org dont le rôle est `owner` | `src/services/subscription-service.ts:373-416` (`:401`) |
-| Les crédits font déjà `getOrganizationByIdDao(subscription.referenceId)` | `src/services/credit-service.ts:628-634` |
+| Les crédits font déjà `getOrganizationByIdDao(subscription.referenceId)`    | `src/services/credit-service.ts:628-634`                |
 
 `subscription.referenceId` (`src/db/models/subscription-model.ts:55`) est donc une colonne
 **polymorphe** : organizationId par défaut, userId si le mode bascule. Le commentaire `// userId`
@@ -98,8 +98,11 @@ ligne 37, et il existe un bloc d'écriture de cookie à copier tel quel (guardé
 ```ts
 // src/proxy.ts:94-100 — le seul Set-Cookie du projet
 response.cookies.set('theme', theme, {
-  path: '/', maxAge: 60 * 60 * 24 * 365, httpOnly: false,
-  secure: request.nextUrl.protocol === 'https:', sameSite: 'lax',
+  path: '/',
+  maxAge: 60 * 60 * 24 * 365,
+  httpOnly: false,
+  secure: request.nextUrl.protocol === 'https:',
+  sameSite: 'lax',
 })
 ```
 
@@ -124,11 +127,11 @@ appelle `getLocale()`.
 `src/lib/better-auth/auth.ts:206-323`. C'est là que `credit-service` se branche déjà, avec la même
 forme de payload :
 
-| Hook | Ligne | Usage pour l'affiliation |
-| --- | --- | --- |
-| `onSubscriptionComplete` | `:214-241` | première conversion |
-| `onSubscriptionUpdate` | `:242-270` | renouvellement / upgrade |
-| `onSubscriptionDeleted` | `:288-320` | arrêt de la récurrence |
+| Hook                     | Ligne                                             | Usage pour l'affiliation                |
+| ------------------------ | ------------------------------------------------- | --------------------------------------- |
+| `onSubscriptionComplete` | `:214-241`                                        | première conversion                     |
+| `onSubscriptionUpdate`   | `:242-270`                                        | renouvellement / upgrade                |
+| `onSubscriptionDeleted`  | `:288-320`                                        | arrêt de la récurrence                  |
 | `onEvent: onStripeEvent` | `:322` → `src/lib/stripe/stripe-events.ts:25-150` | `invoice.paid`, remboursements, litiges |
 
 **Le montant réellement encaissé n'existe que sur l'`invoice`**, pas dans les payloads des hooks
@@ -189,7 +192,7 @@ Deux conséquences :
    précisément `client_reference_id` qu'elle utilise. Son seul point d'entrée restant serait la
    metadata `referral` sur le **Customer** Stripe, via `getCustomerCreateParams`.
 2. **Les metadata, elles, sont fusionnées** (`additionalParams.metadata` et `ctx.body.metadata`) dans
-   la session *et* dans `subscription_data.metadata`. C'est donc le canal à utiliser.
+   la session _et_ dans `subscription_data.metadata`. C'est donc le canal à utiliser.
 
 ### Repository crédits — les patterns à copier littéralement
 
@@ -202,7 +205,9 @@ Deux conséquences :
   ```
 - **Advisory lock transactionnel** (`consumeCreditsTxnDao:194-239`) :
   ```ts
-  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('credit_consume:' || ${organizationId}))`)
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtext('credit_consume:' || ${organizationId}))`
+  )
   ```
 - **Idempotence webhook** (`addPackCreditsTxnDao:330-378`) : `onConflictDoNothing({target, where})`
   puis, si `returning()` est vide, relecture de la ligne existante **dans la même transaction**.
@@ -240,12 +245,12 @@ d'essai à 0 €.
 
 ### T2 — Quatre chemins morts à ne pas brancher
 
-| Chemin | État |
-| --- | --- |
-| `src/app/api/webhooks/stripe/route.ts` | `const disableWebhook = true` (`:76`) → HTTP **410** (`:79-88`), tout le fichier est inatteignable |
-| `handleFullCheckoutSessionCompleted` | `src/lib/stripe/stripe-events.ts:428`, appel commenté `:90` |
-| `handleInvoicePaidCreditAllocation` | `src/lib/stripe/stripe-events.ts:805`, `@deprecated` `:803` |
-| `createSubscriptionFromStripeService` | `src/services/subscription-service.ts:143` — écrit `referenceId: user.id` en dur (`:200-209`), incohérent avec le reste |
+| Chemin                                 | État                                                                                                                    |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `src/app/api/webhooks/stripe/route.ts` | `const disableWebhook = true` (`:76`) → HTTP **410** (`:79-88`), tout le fichier est inatteignable                      |
+| `handleFullCheckoutSessionCompleted`   | `src/lib/stripe/stripe-events.ts:428`, appel commenté `:90`                                                             |
+| `handleInvoicePaidCreditAllocation`    | `src/lib/stripe/stripe-events.ts:805`, `@deprecated` `:803`                                                             |
+| `createSubscriptionFromStripeService`  | `src/services/subscription-service.ts:143` — écrit `referenceId: user.id` en dur (`:200-209`), incohérent avec le reste |
 
 Le vrai point d'entrée webhook est **`POST /api/auth/stripe/webhook`**, servi par le catch-all
 Better Auth (`src/app/api/auth/[...all]/route.ts:1-4`, cf. `package.json:34`).
@@ -315,12 +320,12 @@ depuis la présentation. Il faudra compléter les ré-exports.
 
 ### O1 — Modèle de commission
 
-| | Bounty forfaitaire | % récurrent |
-| --- | --- | --- |
-| Exemple | 50 € une fois par org Creator | 20 % de chaque facture, 12 mois |
-| Prévisibilité coût | totale | variable |
-| Complexité ledger | 1 ligne par org | N lignes par org, sur des années |
-| C'est ce que fait ta doc Lumail | **oui** | non |
+|                                 | Bounty forfaitaire            | % récurrent                      |
+| ------------------------------- | ----------------------------- | -------------------------------- |
+| Exemple                         | 50 € une fois par org Creator | 20 % de chaque facture, 12 mois  |
+| Prévisibilité coût              | totale                        | variable                         |
+| Complexité ledger               | 1 ligne par org               | N lignes par org, sur des années |
+| C'est ce que fait ta doc Lumail | **oui**                       | non                              |
 
 **Recommandation : bounty forfaitaire par plan en v1**, avec le champ `max_months` déjà présent en
 base pour ouvrir le récurrent plus tard sans migration. C'est le modèle de ta doc d'exemple, et c'est
@@ -362,11 +367,11 @@ le code lisible — il faut un `promotionCodes.retrieve()`.
 
 ### O5 — Payouts
 
-| | Manuel + enregistrement | Stripe Connect |
-| --- | --- | --- |
-| KYC | aucun | onboarding complet par affilié |
-| Coût | 0 | 0,25 % cross-border, Express **déprécié** au profit d'Accounts v2 |
-| Suffit jusqu'à | Fathom a payé 100 k$+ comme ça | au-delà |
+|                | Manuel + enregistrement        | Stripe Connect                                                    |
+| -------------- | ------------------------------ | ----------------------------------------------------------------- |
+| KYC            | aucun                          | onboarding complet par affilié                                    |
+| Coût           | 0                              | 0,25 % cross-border, Express **déprécié** au profit d'Accounts v2 |
+| Suffit jusqu'à | Fathom a payé 100 k$+ comme ça | au-delà                                                           |
 
 **Recommandation : manuel en v1**, exactement comme ta doc Lumail (« The dashboard records the amount
 due, but it does not automatically send money »). Ce qui compte n'est pas d'automatiser le virement,
@@ -377,13 +382,13 @@ c'est que **l'enregistrement du paiement soit immuable et idempotent**.
 C'est le point qui évite le plus gros risque juridique, et il tombe particulièrement bien ici parce
 que **le ledger de crédits existe déjà**.
 
-| | Referral client → client | Affiliation professionnelle |
-| --- | --- | --- |
-| Récompense | **crédit produit** (`grantCreditsTxnDao`) | **cash** |
-| Facture | aucune | obligatoire (SIRET) |
-| TVA / DAS2 / KYC | hors sujet | à traiter |
-| Friction d'entrée | nulle | inscription au programme |
-| Coût réel | marge, pas trésorerie | trésorerie |
+|                   | Referral client → client                  | Affiliation professionnelle |
+| ----------------- | ----------------------------------------- | --------------------------- |
+| Récompense        | **crédit produit** (`grantCreditsTxnDao`) | **cash**                    |
+| Facture           | aucune                                    | obligatoire (SIRET)         |
+| TVA / DAS2 / KYC  | hors sujet                                | à traiter                   |
+| Friction d'entrée | nulle                                     | inscription au programme    |
+| Coût réel         | marge, pas trésorerie                     | trésorerie                  |
 
 Un particulier qui perçoit des commissions de façon habituelle exerce une activité commerciale et
 devrait être immatriculé — il ne peut donc pas vous fournir de facture conforme. Payer un client
@@ -517,8 +522,8 @@ récompenses au clic et au lead, règlement multi-devises, marketplace d'affili�
 3. **Onboarding** (O3) — construit-on l'écran de confirmation, ou v1 sans rattrapage ?
 4. **Consentement cookie — tranché par la CNIL, et défavorable.** Ce n'est pas une zone grise en
    France : la [FAQ CNIL sur les cookies, question 13](https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies/FAQ)
-   énonce que *« les traceurs utilisés pour la facturation des opérations d'affiliation n'entrent pas
-   dans les exemptions prévues par l'article 82 de la loi Informatique et Libertés »*. Le cookie
+   énonce que _« les traceurs utilisés pour la facturation des opérations d'affiliation n'entrent pas
+   dans les exemptions prévues par l'article 82 de la loi Informatique et Libertés »_. Le cookie
    d'attribution **exige donc un consentement préalable**, et le fait qu'il soit first-party,
    HttpOnly et posé par le serveur **n'y change rien** — c'est la finalité qui est jugée, pas la
    technique. (Au niveau UE, aucune jurisprudence CJUE ni ligne directrice EDPB spécifique n'existe ;
@@ -528,13 +533,14 @@ récompenses au clic et au lead, règlement multi-devises, marketplace d'affili�
    (`cookie | url-only | code-only`). Le mode `code-only` — un champ « code de parrainage » au
    signup — est le seul 100 % sans traceur, au prix de l'attribution multi-session. Pour un
    boilerplate vendu en Europe, c'est un argument commercial autant qu'une contrainte.
+
 5. **Statut de l'affilié et facturation** — un affilié est un fournisseur, pas un client. Il doit
    émettre une facture conforme (SIRET, mentions obligatoires), ou bien c'est vous qui la générez
    pour lui (auto-facturation sous mandat, à acter dans les CGU du programme — c'est ce que fait
    Rewardful). Repères France : franchise en base de TVA à **37 500 €** de CA N-1 au 1er janvier 2026
    (le seuil unique à 25 000 € de la LF 2025 a été abandonné par la loi du 4 novembre 2025) ;
-   **DAS2** à partir de 2 400 € de commissions versées par an à un même bénéficiaire — *applicabilité
-   exacte à l'affiliation SaaS à confirmer par un expert-comptable*. **DAC7** vise limitativement
+   **DAS2** à partir de 2 400 € de commissions versées par an à un même bénéficiaire — _applicabilité
+   exacte à l'affiliation SaaS à confirmer par un expert-comptable_. **DAC7** vise limitativement
    location immobilière, services personnels, vente de biens et location de moyens de transport : un
    programme d'affiliation interne ne semble pas dans le périmètre, mais le point est incertain si le
    programme devenait une véritable marketplace de partenaires. À faire valider, pas à deviner.
@@ -544,4 +550,3 @@ récompenses au clic et au lead, règlement multi-devises, marketplace d'affili�
 7. **Que faire d'une organisation créée hors parcours d'inscription** (invitation dans une org
    existante, seconde org créée par un user déjà client) ? La règle « une attribution par
    organisation, à jamais » suppose de trancher si un client existant peut être « re-parrainé ».
-

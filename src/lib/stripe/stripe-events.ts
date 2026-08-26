@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {
   getUserByEmailDao,
+  hasPasswordCredentialDao,
   updateUserSafeByUidDao,
 } from '@/db/repositories/user-repository'
 import {logger} from '@/lib/logger'
@@ -54,16 +55,13 @@ export async function onStripeEvent(event: Stripe.Event) {
 
         // CAS : Checkout AS guest + Creation de compte
         if (isCustomCheckout) {
-          try {
-            // - le checkout as guest
-            // - creation du compte
-            await handleGuestCheckoutSessionCompleted(session)
-          } catch (error) {
-            logger.error(
-              '❌ Erreur dans handleGuestCheckoutSessionCompleted:',
-              error
-            )
-          }
+          // PAS de try/catch : une erreur doit remonter au catch externe qui
+          // re-throw (isCriticalStripeEvent) -> 400 -> Stripe rejoue. Sans ça,
+          // un échec de création de compte laisse un paiement encaissé, un
+          // abonnement bloqué sur referenceId 'guest', et personne d'informé.
+          // Le rejeu est sûr : chaque étape retrouve l'existant au lieu de le
+          // dupliquer, et le plugin met à jour NOTRE ligne par son uuid.
+          await handleGuestCheckoutSessionCompleted(session)
         }
 
         // CAS : Paiement en plusieurs fois
@@ -200,7 +198,12 @@ function isCriticalStripeEvent(event: Stripe.Event): boolean {
     return false
   }
   const session = event.data.object as Stripe.Checkout.Session
-  return session.metadata?.type === 'credit_pack'
+  // Le checkout maison (invité compris) crée le compte, l'organisation et
+  // recolle l'abonnement : une erreur doit faire rejouer Stripe.
+  return (
+    session.metadata?.type === 'credit_pack' ||
+    session.metadata?.source === 'custom_checkout'
+  )
 }
 
 /**
@@ -229,6 +232,14 @@ async function handleGuestCheckoutSessionCompleted(
 
   // 4️⃣ Mise à jour subscription
   await updateSubscriptionWithUser(metadata.subscriptionId, finalUser) //metadata.subscriptionId the uuid in bd
+
+  // 5️⃣ Signaler un éventuel doublon d'abonnement
+  await warnOnDuplicateSubscription(finalUser, metadata.subscriptionId)
+
+  // 6️⃣ Donner à l'acheteur un moyen d'entrer : le compte créé depuis Stripe
+  // n'a pas de mot de passe, un simple e-mail de vérification le laisserait
+  // devant un écran de connexion sans rien à saisir.
+  await sendGuestAccessEmail(finalUser)
 
   logger.info('🎉 Workflow guest checkout terminé avec succès!')
 }
@@ -329,6 +340,100 @@ async function createGuestUser(customerData: {
   )
 
   return finalUser
+}
+
+/**
+ * Détecte le cas où l'acheteur invité avait déjà un abonnement actif sous ce
+ * compte, et vient d'en payer un second.
+ *
+ * Structurellement indétectable en amont : Stripe ne collecte l'e-mail que
+ * PENDANT le checkout, donc à la création de session on ignore qui achète. On
+ * ne peut que le constater après encaissement.
+ *
+ * On se contente de le SIGNALER. Annuler ou rembourser d'office serait une
+ * décision commerciale prise par un webhook — jamais sans arbitrage humain.
+ */
+async function warnOnDuplicateSubscription(
+  user: {id: string; email: string},
+  newSubscriptionId: string
+): Promise<void> {
+  try {
+    const {referenceId} = await getBillingContext(user.id)
+    const subscriptions = await getSubscriptionByUserIdService(referenceId)
+
+    const others = subscriptions.filter(
+      (sub) =>
+        sub.id !== newSubscriptionId &&
+        (sub.status === 'active' || sub.status === 'trialing')
+    )
+
+    if (others.length > 0) {
+      logger.error(
+        '🚨 DOUBLON: achat invité alors qu’un abonnement actif existe déjà',
+        {
+          email: user.email,
+          referenceId,
+          nouveau: newSubscriptionId,
+          existants: others.map((sub) => ({
+            id: sub.id,
+            plan: sub.plan,
+            stripeSubscriptionId: sub.stripeSubscriptionId,
+          })),
+        }
+      )
+    }
+  } catch (error) {
+    // Purement informatif : ne doit jamais faire échouer le webhook.
+    logger.error('❌ Détection de doublon impossible (non bloquant):', error)
+  }
+}
+
+/**
+ * Prévient l'acheteur que son abonnement est actif.
+ *
+ * Le routage se décide sur « cette personne peut-elle se connecter seule ? » et
+ * non sur « le compte vient d'être créé » : ce second critère bascule d'un rejeu
+ * Stripe à l'autre, et enverrait un e-mail « compte existant » à quelqu'un qui
+ * n'a aucun mot de passe.
+ *
+ * Non bloquant : l'accès est déjà en place, un échec d'envoi ne doit jamais
+ * faire rejouer le webhook.
+ */
+async function sendGuestAccessEmail(user: {
+  id: string
+  email: string
+}): Promise<void> {
+  try {
+    const canSignInAlone = await hasPasswordCredentialDao(user.id)
+    if (canSignInAlone) {
+      logger.info(
+        '📧 Compte déjà connectable - pas de magic link (mot de passe existant)'
+      )
+      return
+    }
+
+    // Imports dynamiques : `auth.ts` importe CE module (via l'option onEvent du
+    // plugin Stripe). Un import statique refermerait le cycle et casserait le
+    // démarrage de l'authentification.
+    const [{auth}, {headers}] = await Promise.all([
+      import('@/lib/better-auth/auth'),
+      import('next/headers'),
+    ])
+
+    await auth.api.signInMagicLink({
+      headers: await headers(),
+      body: {
+        email: user.email,
+        callbackURL: '/account/billing/subscription',
+      },
+    })
+    logger.info('📧 Magic link envoyé à l’acheteur invité')
+  } catch (error) {
+    logger.error(
+      '❌ Envoi du lien d’accès invité échoué (non bloquant):',
+      error
+    )
+  }
 }
 
 /**

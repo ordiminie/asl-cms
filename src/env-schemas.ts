@@ -168,6 +168,17 @@ export const clientSchema = {
     .enum([BillingModes.USER, BillingModes.ORGANIZATION])
     .default(BillingModes.ORGANIZATION),
 
+  /**
+   * Achat sans compte. Mode BONUS, désactivé par défaut : à `false` le produit
+   * se comporte exactement comme sans lui, un visiteur non connecté étant
+   * envoyé s'inscrire. Un seul endroit du code le lit — le CTA de la vitrine
+   * tarifaire — donc le remettre à `false` suffit à le retirer entièrement.
+   */
+  NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true'),
+
   // Attribution d'affiliation : voir REFERRAL_TRACKING_MODES pour le detail.
   // 'cookie' pose un traceur soumis a consentement en UE ; 'code-only' n'en
   // pose aucun et s'appuie sur le code saisi a l'inscription.

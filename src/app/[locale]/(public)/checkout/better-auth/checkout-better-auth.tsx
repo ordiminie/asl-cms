@@ -33,10 +33,17 @@ interface CheckoutBetterAuthProps {
     entrepriseMonthly: PriceRecap
     entrepriseYearly: PriceRecap
   }
+  /**
+   * Qui est facturé. Résolu côté serveur : sans lui, `referenceMiddleware`
+   * retombe sur `user.id` alors que la facturation peut être par organisation,
+   * et l'abonnement créé n'est rattaché à personne de visible.
+   */
+  referenceId?: string
 }
 
 export default function CheckoutBetterAuth({
   initialPriceRecaps,
+  referenceId,
 }: CheckoutBetterAuthProps) {
   const t = useTranslations('CheckoutPlans')
   const [isUpgradingPro, setIsUpgradingPro] = useState(false)
@@ -61,8 +68,13 @@ export default function CheckoutBetterAuth({
         plan: 'pro',
         successUrl: '/checkout/success?redirect_status=succeeded',
         cancelUrl: '/pricing',
+        // Le portail Stripe ne lit QUE `returnUrl` : `successUrl` et
+        // `cancelUrl` ne servent qu'au Checkout. Sans lui, un client déjà
+        // abonné revient sur l'accueil après son changement d'offre.
+        returnUrl: '/account/billing/subscription',
         annual: isYearly,
         seats: seats,
+        ...(referenceId ? {referenceId} : {}),
       })
 
       if (error) {
@@ -89,8 +101,13 @@ export default function CheckoutBetterAuth({
         plan: 'enterprise',
         successUrl: '/checkout/success?redirect_status=succeeded',
         cancelUrl: '/pricing',
+        // Le portail Stripe ne lit QUE `returnUrl` : `successUrl` et
+        // `cancelUrl` ne servent qu'au Checkout. Sans lui, un client déjà
+        // abonné revient sur l'accueil après son changement d'offre.
+        returnUrl: '/account/billing/subscription',
         annual: isYearly,
         seats: seats,
+        ...(referenceId ? {referenceId} : {}),
       })
 
       if (error) {

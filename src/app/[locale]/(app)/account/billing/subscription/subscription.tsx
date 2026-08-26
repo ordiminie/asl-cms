@@ -182,17 +182,31 @@ export default function SubscriptionPage({
         seats: number
         subscriptionId?: string
         referenceId?: string
+        returnUrl?: string
       } = {
         plan: planId,
         successUrl: '/account/billing/subscription',
         cancelUrl: '/account/billing/subscription',
+        // Le portail Stripe ne lit QUE `returnUrl` : `successUrl` et
+        // `cancelUrl` ne servent qu'au Checkout. Sans lui, le plugin retombe
+        // sur `/` et le client revient sur l'accueil après son changement
+        // d'offre.
+        returnUrl: '/account/billing/subscription',
         annual,
         seats,
       }
 
       if (isUpdateMode) {
-        // Mode UPDATE : modifier une subscription existante
-        upgradeParams.subscriptionId = activeSubscription.id
+        // Mode UPDATE : modifier une subscription existante.
+        // Le plugin résout ce paramètre par `stripeSubscriptionId`, jamais par
+        // l'id de notre ligne — passer ce dernier lève SUBSCRIPTION_NOT_FOUND
+        // avant même d'atteindre le portail Stripe.
+        // Repli : sans id Stripe (webhook perdu), on n'envoie rien et la route
+        // retrouve l'abonnement actif par `referenceId`.
+        if (activeSubscription.stripeSubscriptionId) {
+          upgradeParams.subscriptionId = activeSubscription.stripeSubscriptionId
+        }
+        upgradeParams.referenceId = referenceId
       } else if (isCreateMode) {
         // Mode CREATE : créer une nouvelle subscription
         upgradeParams.referenceId = referenceId
@@ -256,7 +270,15 @@ export default function SubscriptionPage({
   const handleRestore = async () => {
     try {
       setActionLoading('restore')
-      const {error} = await authClient.subscription.restore()
+      // `referenceId` obligatoire : sans lui, `referenceMiddleware` retombe sur
+      // `user.id` alors que la facturation est par organisation, et la route
+      // leve SUBSCRIPTION_NOT_FOUND. `subscriptionId` est l'id STRIPE.
+      const {error} = await authClient.subscription.restore({
+        ...(pendingCancelSubscription?.stripeSubscriptionId
+          ? {subscriptionId: pendingCancelSubscription.stripeSubscriptionId}
+          : {}),
+        ...(referenceId ? {referenceId} : {}),
+      })
 
       if (error) {
         toast.error(error.message || t('errors.restoreFailed'), {
@@ -275,6 +297,26 @@ export default function SubscriptionPage({
       setActionLoading(null)
     }
   }
+
+  /**
+   * Abonnement en attente d'annulation. Reprend `isPendingCancel` du plugin :
+   *
+   *   !!(sub.cancelAtPeriodEnd || sub.cancelAt)
+   *
+   * Stripe ne bascule plus le booléen `cancel_at_period_end` — il pose une DATE
+   * `cancel_at`. Tester le seul booléen laissait donc le bouton « Annuler »
+   * alors que l'abonnement était déjà résilié en base.
+   */
+  const pendingCancelSubscription = subscriptions.find(
+    (sub) =>
+      (sub.status === 'active' || sub.status === 'trialing') &&
+      Boolean(sub.cancelAtPeriodEnd || sub.cancelAt)
+  )
+  const isPendingCancel = Boolean(pendingCancelSubscription)
+
+  /** La date de fin effective : `cancelAt` prime sur la fin de période. */
+  const cancelEffectiveAt =
+    pendingCancelSubscription?.cancelAt ?? pendingCancelSubscription?.periodEnd
 
   // Fonctions helper pour l'approche Zapier
   const isCurrentPlan = (planId: string) => {
@@ -322,11 +364,11 @@ export default function SubscriptionPage({
         )
       }
       // Si abonnement payant se termine, plan gratuit devient le futur plan
-      if (activeSubscription.cancelAtPeriodEnd) {
+      if (isPendingCancel) {
         return (
           <Button variant="outline" disabled className="w-full">
             {t('actions.startingFrom', {
-              date: formatDate(activeSubscription.periodEnd?.toISOString()),
+              date: formatDate(cancelEffectiveAt?.toISOString()),
             })}
           </Button>
         )
@@ -349,7 +391,7 @@ export default function SubscriptionPage({
     // Logique existante pour les plans payants
     if (isCurrent && !hasChanged) {
       // Si l'abonnement est déjà marqué pour annulation, afficher le bouton pour continuer
-      if (activeSubscription?.cancelAtPeriodEnd) {
+      if (isPendingCancel) {
         const planName = plan.name
         return (
           <Button
@@ -503,9 +545,13 @@ export default function SubscriptionPage({
               billing: activeSubscriptionIsYearly
                 ? t('billing.yearly')
                 : t('billing.monthly'),
-              ending: activeSubscription.cancelAtPeriodEnd ? 'yes' : 'no',
-              date: formatDate(activeSubscription.periodEnd?.toISOString()),
-              autoFree: activeSubscription.cancelAtPeriodEnd ? 'yes' : 'no',
+              ending: isPendingCancel ? 'yes' : 'no',
+              date: formatDate(
+                (
+                  cancelEffectiveAt ?? activeSubscription.periodEnd
+                )?.toISOString()
+              ),
+              autoFree: isPendingCancel ? 'yes' : 'no',
             })}
           </p>
         )}
@@ -548,10 +594,9 @@ export default function SubscriptionPage({
               ? !activeSubscription // Pour le plan gratuit, on est "actuel" s'il n'y a pas d'abonnement du tout
               : isCurrentPlan(plan.id) // Pour les autres plans, logique normale
           // État spécial pour plan gratuit quand abonnement se termine
-          const isFutureFree =
-            plan.id === 'free' && activeSubscription?.cancelAtPeriodEnd
+          const isFutureFree = plan.id === 'free' && isPendingCancel
           // État spécial pour plan payant qui se termine
-          const isEnding = isCurrent && activeSubscription?.cancelAtPeriodEnd
+          const isEnding = isCurrent && isPendingCancel
 
           return (
             <Card
@@ -568,9 +613,7 @@ export default function SubscriptionPage({
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
                   <Badge className="bg-orange-500">
                     {t('badge.endingOn', {
-                      date: formatDate(
-                        activeSubscription?.periodEnd?.toISOString()
-                      ),
+                      date: formatDate(cancelEffectiveAt?.toISOString()),
                     })}
                   </Badge>
                 </div>
@@ -579,9 +622,7 @@ export default function SubscriptionPage({
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 transform">
                   <Badge className="bg-green-500">
                     {t('badge.futureFree', {
-                      date: formatDate(
-                        activeSubscription?.periodEnd?.toISOString()
-                      ),
+                      date: formatDate(cancelEffectiveAt?.toISOString()),
                     })}
                   </Badge>
                 </div>
