@@ -11,6 +11,11 @@ const withNextIntl = createNextIntlPlugin()
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['localhost'],
   pageExtensions: ['js', 'jsx', 'mdx', 'md', 'ts', 'tsx'],
+  logging: {
+    incomingRequests: {
+      ignore: [/\/api\/auth\/magic-link\/verify/],
+    },
+  },
   images: {
     remotePatterns: [
       {

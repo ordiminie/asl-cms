@@ -26,6 +26,7 @@ import {
   getUserByStripeCustomerIdDao,
 } from '@/db/repositories/user-repository'
 import {env} from '@/env'
+import {sendMagicLink} from '@/lib/better-auth/magic-link-integration'
 import {APP_ISSUER} from '@/lib/constants'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {parseReferralCodeFromCookieHeader} from '@/lib/helper/referral-helper'
@@ -157,26 +158,7 @@ const options = {
       },
     }),
     magicLink({
-      sendMagicLink: async ({email, url}) => {
-        console.log('sendMagicLink', email, url)
-        // Find user by email for notification service
-        let user = await getUserByEmailDao(email)
-        if (!user) {
-          // Regsiter with magic Link
-          //await initializeRegisterUserDataService(email, true)
-          user = await getUserByEmailDao(email)
-        }
-        if (user) {
-          await createTypedNotificationService({
-            userId: user.id,
-            type: NotificationTypeConst.magic_link,
-            metadata: {
-              url,
-              email,
-            },
-          })
-        }
-      },
+      sendMagicLink,
     }),
     admin(),
     organization({

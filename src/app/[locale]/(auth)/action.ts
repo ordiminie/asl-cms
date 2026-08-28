@@ -472,14 +472,22 @@ export async function registerMagicLinkAction(
       ],
     }
   }
-  // 3. Envoi du magic link avec better auth
-  const response = await auth.api.signInMagicLink({
-    headers: await headers(),
-    body: {
-      email,
-      callbackURL: '/dashboard',
-    },
-  })
+  let response
+  try {
+    // 3. Envoi du magic link avec better auth
+    response = await auth.api.signInMagicLink({
+      headers: await headers(),
+      body: {
+        email,
+        callbackURL: '/dashboard',
+      },
+    })
+  } catch {
+    return {
+      success: false,
+      message: t('sendError'),
+    }
+  }
 
   if (!response.status) {
     return {
@@ -488,22 +496,7 @@ export async function registerMagicLinkAction(
     }
   }
 
-  // 4. Créer son organisation dans la base de données
-  try {
-    redirect('/verify-request')
-  } catch (error) {
-    if (isRedirectError(error)) {
-      throw error
-    }
-    return {
-      success: false,
-      message: t('unexpectedError'),
-    }
-  }
-  return {
-    success: true,
-    message: t('linkSent'),
-  }
+  redirect('/verify-request')
 }
 
 /**
