@@ -33,12 +33,14 @@ vi.mock('../facades/email-service-facade', () => ({
 
 import * as notificationRepository from '@/db/repositories/notification-repository'
 import * as userRepository from '@/db/repositories/user-repository'
+import {logger} from '@/lib/logger'
 
 import {AuthorizationError} from '../errors/authorization-error'
 import {
   ValidationError,
   ValidationParsedZodError,
 } from '../errors/validation-error'
+import {sendMagicLinkEmailService} from '../facades/email-service-facade'
 import {
   countUnreadNotificationsByUserIdService,
   createNotificationService,
@@ -93,6 +95,43 @@ const notificationTest = {
   read: false,
   createdAt: new Date(),
 } satisfies Notification
+
+function containsSecret(
+  value: unknown,
+  secrets: string[],
+  seen = new WeakSet<object>()
+): boolean {
+  if (typeof value === 'string') {
+    return secrets.some((secret) => value.includes(secret))
+  }
+  if (typeof value !== 'object' || value === null || seen.has(value)) {
+    return false
+  }
+
+  seen.add(value)
+  if (value instanceof Error && containsSecret(value.message, secrets, seen)) {
+    return true
+  }
+
+  return Reflect.ownKeys(value).some((key) =>
+    containsSecret(Reflect.get(value, key), secrets, seen)
+  )
+}
+
+const emailEnabledSettings = {
+  userId: currentAuthUserId,
+  enableEmailNotifications: true,
+  notificationChannel: 'email' as const,
+  language: 'fr' as const,
+  enablePushNotifications: true,
+  emailDigest: true,
+  marketingEmails: false,
+  theme: 'system' as const,
+  timezone: 'Europe/Paris',
+  twoFactorType: 'totp' as const,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+}
 
 describe('[createNotificationService]', () => {
   beforeEach(() => {
@@ -331,6 +370,72 @@ describe('[createTypedNotificationService]', () => {
       ...typedNotificationData,
       read: false,
     })
+  })
+})
+
+describe('[createTypedNotificationService] confidentialité magic-link', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(userTest)
+    vi.mocked(userRepository.getUserSettingsByUserIdDao).mockResolvedValue(
+      emailEnabledSettings
+    )
+    vi.mocked(notificationRepository.createNotificationDao).mockResolvedValue(
+      notificationTest
+    )
+    vi.mocked(sendMagicLinkEmailService).mockResolvedValue(undefined)
+  })
+
+  it('ne journalise le bearer token ni en succès ni après un refus fournisseur', async () => {
+    const magicUrl =
+      'https://example.test/api/auth/magic-link/verify?token=service-secret'
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const notification = {
+      userId: currentAuthUserId,
+      type: 'magic_link' as const,
+      title: 'Lien de connexion',
+      message: 'Votre lien est prêt',
+      metadata: {url: magicUrl, email: userTest.email},
+    }
+
+    await createTypedNotificationService(notification)
+
+    expect(notificationRepository.createNotificationDao).toHaveBeenCalledOnce()
+    expect(sendMagicLinkEmailService).toHaveBeenCalledOnce()
+
+    vi.mocked(sendMagicLinkEmailService).mockRejectedValueOnce(
+      new Error(`provider refused ${magicUrl}`)
+    )
+    await createTypedNotificationService(notification)
+
+    const emittedLogs = [
+      ...vi.mocked(logger.debug).mock.calls,
+      ...vi.mocked(logger.error).mock.calls,
+      ...vi.mocked(logger.info).mock.calls,
+      ...vi.mocked(logger.warn).mock.calls,
+      ...consoleError.mock.calls,
+    ]
+    expect(containsSecret(emittedLogs, [magicUrl, 'service-secret'])).toBe(
+      false
+    )
+
+    consoleError.mockRestore()
+  })
+
+  it('conserve les métadonnées de debug des autres types', async () => {
+    await createNotificationService({
+      userId: currentAuthUserId,
+      type: 'system_maintenance',
+      title: 'Maintenance',
+      message: 'Maintenance planifiée',
+      metadata: {auditMarker: 'visible-non-secret'},
+    })
+
+    expect(
+      containsSecret(vi.mocked(logger.debug).mock.calls, ['visible-non-secret'])
+    ).toBe(true)
   })
 })
 

@@ -3,7 +3,11 @@ import {createServiceInterceptor} from './create-service-interceptor'
 
 const emailServiceInterceptor = createServiceInterceptor(
   emailServiceMethods,
-  'EMAIL-SERVICE'
+  'EMAIL-SERVICE',
+  {
+    shouldLogDetails: (methodName) =>
+      methodName !== 'sendMagicLinkEmailService',
+  }
 )
 
 export default emailServiceInterceptor

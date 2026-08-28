@@ -198,7 +198,11 @@ export const createNotificationService = async (
       logger.debug("📧 Envoi d'email autorisé pour:", parsed.data.type)
 
       // Gérer les emails spécifiques Better Auth
-      logger.debug('🔍 Métadonnées reçues:', parsed.data.metadata)
+      if (parsed.data.type === 'magic_link') {
+        logger.debug('🔍 Métadonnées magic_link reçues: [REDACTED]')
+      } else {
+        logger.debug('🔍 Métadonnées reçues:', parsed.data.metadata)
+      }
 
       if (parsed.data.type === 'reset_password' && parsed.data.metadata?.url) {
         console.log('🔄 Envoi email reset password à:', targetUser.email)
@@ -348,10 +352,14 @@ export const createNotificationService = async (
     }
   } catch (emailError) {
     // Ne pas faire échouer la création de notification si l'email échoue
-    console.error(
-      "Erreur lors de l'envoi de l'email de notification:",
-      emailError
-    )
+    if (parsed.data.type === 'magic_link') {
+      console.error("Erreur lors de l'envoi de l'email magic_link")
+    } else {
+      console.error(
+        "Erreur lors de l'envoi de l'email de notification:",
+        emailError
+      )
+    }
   }
 
   return notification
