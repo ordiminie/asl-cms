@@ -1,0 +1,2325 @@
+---
+title: Repository Testing
+description: Database layer testing with transactions, migrations, and data integrity validation for the repository pattern
+keywords: 'ShipSaaS, repository testing, database testing, DAO testing, data layer tests, integration testing'
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+
+Test the database access layer, repository functions, and data integrity with real database operations in a controlled environment.
+
+## Table of Contents
+
+- [Repository Testing Strategy](#repository-testing-strategy)
+- [Database Operations Testing](#database-operations-testing)
+- [Transaction Testing](#transaction-testing)
+- [Migration and Schema Testing](#migration-and-schema-testing)
+
+## Repository Testing Strategy
+
+Repository tests validate database operations and data integrity:
+
+<Callout type="info">
+**Repository Scope:** Test database repositories with real database connections while maintaining test isolation and performance.
+</Callout>
+
+<Tabs items={['Testing Approach', 'Test Environment', 'Data Isolation']}>
+
+<Tab value="Testing Approach">
+**Repository Testing Principles:**
+```typescript
+// src/db/repositories/__tests__/user-repository.test.ts
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { db } from '@/db'
+import { users, userSettings } from '@/db/models'
+import { eq } from 'drizzle-orm'
+import {
+  getUserByIdDao,
+  createUserDao,
+  updateUserDao,
+  deleteUserDao,
+  searchUsersDao,
+} from '../user-repository'
+import { createTestUser } from '@/test/factories/user-factory'
+
+describe('User Repository', () => {
+  const testUserId = 'test-user-' + crypto.randomUUID()
+
+  beforeEach(async () => {
+    // Clean test data before each test
+    await db.delete(userSettings).where(eq(userSettings.userId, testUserId))
+    await db.delete(users).where(eq(users.id, testUserId))
+  })
+
+  afterEach(async () => {
+    // Clean up after each test
+    await db.delete(userSettings).where(eq(userSettings.userId, testUserId))
+    await db.delete(users).where(eq(users.id, testUserId))
+  })
+
+  describe('getUserByIdDao', () => {
+    it('should return user with relations', async () => {
+      // Insert test user
+      const testUser = createTestUser({ id: testUserId })
+      await db.insert(users).values(testUser)
+
+      // Insert related data
+      await db.insert(userSettings).values({
+        userId: testUserId,
+        theme: 'dark',
+        language: 'en',
+        timezone: 'UTC',
+      })
+
+      // Test repository function
+      const result = await getUserByIdDao(testUserId)
+
+      expect(result).toBeDefined()
+      expect(result?.id).toBe(testUserId)
+      expect(result?.name).toBe(testUser.name)
+      expect(result?.settings).toBeDefined()
+      expect(result?.settings?.theme).toBe('dark')
+    })
+
+    it('should return null for non-existent user', async () => {
+      const result = await getUserByIdDao('non-existent-id')
+      expect(result).toBeNull()
+    })
+  })
+})
+```
+
+**Key Principles:**
+- **Real Database**: Test against actual database, not mocks
+- **Test Isolation**: Each test is independent and isolated
+- **Data Cleanup**: Proper setup and teardown of test data
+- **Realistic Data**: Use factories to create realistic test data
+</Tab>
+
+<Tab value="Test Environment">
+**Test Database Configuration:**
+```typescript
+// src/db/__tests__/setup-test-db.ts
+import { drizzle } from 'drizzle-orm/neon-http'
+import { neon } from '@neondatabase/serverless'
+import { migrate } from 'drizzle-orm/neon-http/migrator'
+import * as schema from '@/db/models'
+
+// Test database configuration
+const testDbUrl = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL
+if (!testDbUrl) {
+  throw new Error('TEST_DATABASE_URL or DATABASE_URL must be set for testing')
+}
+
+export const testDb = drizzle(neon(testDbUrl), { schema })
+
+// Setup test database
+export const setupTestDatabase = async () => {
+  // Run migrations
+  await migrate(testDb, { migrationsFolder: './drizzle/migrations' })
+
+  // Verify UUID extension
+  await testDb.execute(sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+}
+
+// Clean all test data
+export const cleanTestDatabase = async () => {
+  // Delete in reverse dependency order
+  await testDb.delete(userSettings).where(like(userSettings.userId, 'test-%'))
+  await testDb.delete(members).where(like(members.id, 'test-%'))
+  await testDb.delete(projects).where(like(projects.id, 'test-%'))
+  await testDb.delete(organizations).where(like(organizations.name, 'Test%'))
+  await testDb.delete(users).where(like(users.email, '%@test.example'))
+}
+
+// Seed test data
+export const seedTestData = async () => {
+  const users = await testDb.insert(usersTable).values([
+    createTestUser({ email: 'user1@test.example' }),
+    createTestUser({ email: 'user2@test.example' }),
+    createTestUser({ email: 'admin@test.example', role: 'admin' }),
+  ]).returning()
+
+  const organizations = await testDb.insert(organizationsTable).values([
+    createTestOrganization({ ownerId: users[0].id, name: 'Test Org 1' }),
+    createTestOrganization({ ownerId: users[1].id, name: 'Test Org 2' }),
+  ]).returning()
+
+  return { users, organizations }
+}
+
+// Global test setup
+beforeAll(async () => {
+  await setupTestDatabase()
+})
+
+afterAll(async () => {
+  await cleanTestDatabase()
+})
+```
+
+**Environment Variables:**
+```bash
+# .env.test
+NODE_ENV=test
+DATABASE_URL=postgresql://localhost:5432/saas_test
+TEST_DATABASE_URL=postgresql://localhost:5432/saas_test
+```
+</Tab>
+
+<Tab value="Data Isolation">
+**Test Data Isolation Strategies:**
+```typescript
+// Strategy 1: UUID-based test data
+describe('User Repository with UUID isolation', () => {
+  const testPrefix = 'test-' + crypto.randomUUID().slice(0, 8)
+
+  beforeEach(async () => {
+    await cleanTestDataByPrefix(testPrefix)
+  })
+
+  it('should create user with unique ID', async () => {
+    const testUser = createTestUser({
+      id: `${testPrefix}-user-1`,
+      email: `${testPrefix}@test.example`,
+    })
+
+    const result = await createUserDao(testUser)
+    expect(result.id).toBe(testUser.id)
+  })
+})
+
+// Strategy 2: Transaction-based isolation
+describe('User Repository with transaction isolation', () => {
+  it('should rollback on test completion', async () => {
+    await db.transaction(async (tx) => {
+      // All operations within transaction
+      const user = await tx.insert(users).values(createTestUser()).returning()
+      const settings = await tx.insert(userSettings).values({
+        userId: user[0].id,
+        theme: 'dark',
+      }).returning()
+
+      // Test repository functions with tx
+      const result = await getUserByIdDao(user[0].id)
+      expect(result).toBeDefined()
+
+      // Transaction automatically rolls back at end of test
+      throw new Error('Rollback transaction')
+    }).catch(() => {
+      // Expected rollback
+    })
+
+    // Verify data was rolled back
+    const users = await db.select().from(usersTable).limit(1)
+    expect(users).toHaveLength(0)
+  })
+})
+
+// Strategy 3: Dedicated test schema
+describe('User Repository with schema isolation', () => {
+  const testSchema = 'test_' + Date.now()
+
+  beforeAll(async () => {
+    await db.execute(sql`CREATE SCHEMA ${sql.identifier(testSchema)}`)
+    // Create tables in test schema
+    await createTablesInSchema(testSchema)
+  })
+
+  afterAll(async () => {
+    await db.execute(sql`DROP SCHEMA ${sql.identifier(testSchema)} CASCADE`)
+  })
+
+  // Tests run in isolated schema
+})
+```
+</Tab>
+
+</Tabs>
+
+## Database Operations Testing
+
+Test CRUD operations and complex database queries:
+
+<Tabs items={['Basic CRUD Operations', 'Complex Queries', 'Relationship Handling', 'Performance Testing']}>
+
+<Tab value="Basic CRUD Operations">
+**Create, Read, Update, Delete Testing:**
+```typescript
+// src/db/repositories/__tests__/user-repository.test.ts
+describe('User Repository CRUD Operations', () => {
+  describe('createUserDao', () => {
+    it('should create user with UUID', async () => {
+      const userData = {
+        name: 'New User',
+        email: 'new@example.com',
+        emailVerified: false,
+      }
+
+      const result = await createUserDao(userData)
+
+      expect(result.id).toBeDefined()
+      expect(result.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+      expect(result.name).toBe(userData.name)
+      expect(result.email).toBe(userData.email)
+      expect(result.createdAt).toBeInstanceOf(Date)
+      expect(result.updatedAt).toBeInstanceOf(Date)
+    })
+
+    it('should handle email uniqueness constraint', async () => {
+      const userData = {
+        name: 'User One',
+        email: 'duplicate@example.com',
+      }
+
+      await createUserDao(userData)
+
+      // Attempt to create duplicate
+      await expect(createUserDao({
+        name: 'User Two',
+        email: 'duplicate@example.com',
+      })).rejects.toThrow(/unique constraint/i)
+    })
+
+    it('should set default values', async () => {
+      const userData = {
+        name: 'Test User',
+        email: 'test@example.com',
+      }
+
+      const result = await createUserDao(userData)
+
+      expect(result.emailVerified).toBe(false) // Default value
+      expect(result.role).toBe('user') // Default role
+      expect(result.visibility).toBe('private') // Default visibility
+    })
+  })
+
+  describe('updateUserDao', () => {
+    it('should update user fields', async () => {
+      // Create user first
+      const user = await createUserDao({
+        name: 'Original Name',
+        email: 'original@example.com',
+      })
+
+      // Update user
+      const updated = await updateUserDao(user.id, {
+        name: 'Updated Name',
+        emailVerified: true,
+      })
+
+      expect(updated.name).toBe('Updated Name')
+      expect(updated.email).toBe('original@example.com') // Unchanged
+      expect(updated.emailVerified).toBe(true)
+      expect(updated.updatedAt.getTime()).toBeGreaterThan(user.updatedAt.getTime())
+    })
+
+    it('should handle partial updates', async () => {
+      const user = await createUserDao({
+        name: 'Test User',
+        email: 'test@example.com',
+      })
+
+      const updated = await updateUserDao(user.id, {
+        emailVerified: true,
+      })
+
+      expect(updated.name).toBe('Test User') // Unchanged
+      expect(updated.emailVerified).toBe(true) // Updated
+    })
+
+    it('should return null for non-existent user', async () => {
+      const result = await updateUserDao('non-existent-id', {
+        name: 'New Name',
+      })
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('deleteUserDao', () => {
+    it('should delete user and return deleted data', async () => {
+      const user = await createUserDao({
+        name: 'To Delete',
+        email: 'delete@example.com',
+      })
+
+      const deleted = await deleteUserDao(user.id)
+
+      expect(deleted).toBeDefined()
+      expect(deleted?.id).toBe(user.id)
+
+      // Verify deletion
+      const found = await getUserByIdDao(user.id)
+      expect(found).toBeNull()
+    })
+
+    it('should handle cascading deletes', async () => {
+      const user = await createUserDao({
+        name: 'User with Settings',
+        email: 'withsettings@example.com',
+      })
+
+      // Create related data
+      await db.insert(userSettings).values({
+        userId: user.id,
+        theme: 'dark',
+        language: 'en',
+      })
+
+      await deleteUserDao(user.id)
+
+      // Verify cascading delete
+      const settings = await db.select()
+        .from(userSettings)
+        .where(eq(userSettings.userId, user.id))
+
+      expect(settings).toHaveLength(0)
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Complex Queries">
+**Advanced Query Testing:**
+```typescript
+// src/db/repositories/__tests__/advanced-queries.test.ts
+describe('Advanced Query Operations', () => {
+  beforeEach(async () => {
+    // Seed data for complex queries
+    await seedTestData()
+  })
+
+  describe('searchUsersDao', () => {
+    it('should search by name', async () => {
+      await createUserDao({ name: 'Alice Johnson', email: 'alice@example.com' })
+      await createUserDao({ name: 'Bob Smith', email: 'bob@example.com' })
+      await createUserDao({ name: 'Charlie Brown', email: 'charlie@example.com' })
+
+      const results = await searchUsersDao('Alice')
+
+      expect(results).toHaveLength(1)
+      expect(results[0].name).toBe('Alice Johnson')
+    })
+
+    it('should search by email', async () => {
+      await createUserDao({ name: 'Test User', email: 'alice@example.com' })
+
+      const results = await searchUsersDao('alice@')
+
+      expect(results).toHaveLength(1)
+      expect(results[0].email).toBe('alice@example.com')
+    })
+
+    it('should be case insensitive', async () => {
+      await createUserDao({ name: 'Alice Johnson', email: 'alice@example.com' })
+
+      const results = await searchUsersDao('ALICE')
+
+      expect(results).toHaveLength(1)
+      expect(results[0].name).toBe('Alice Johnson')
+    })
+
+    it('should exclude organization members', async () => {
+      const org = await createOrganizationDao({ name: 'Test Org' })
+      const user1 = await createUserDao({ name: 'Member User', email: 'member@example.com' })
+      const user2 = await createUserDao({ name: 'Member Two', email: 'member2@example.com' })
+      const user3 = await createUserDao({ name: 'Non Member', email: 'non@example.com' })
+
+      // Add users to organization
+      await addMemberToOrganizationDao(user1.id, org.id, 'member')
+      await addMemberToOrganizationDao(user2.id, org.id, 'member')
+
+      const results = await searchUsersDao('Member', org.id)
+
+      expect(results).toHaveLength(1)
+      expect(results[0].name).toBe('Non Member')
+    })
+  })
+
+  describe('getUsersWithOrganizationsDao', () => {
+    it('should include organization data', async () => {
+      const org = await createOrganizationDao({ name: 'Test Organization' })
+      const user = await createUserDao({ name: 'Org User', email: 'orguser@example.com' })
+      await addMemberToOrganizationDao(user.id, org.id, 'admin')
+
+      const results = await getUsersWithOrganizationsDao()
+
+      const userWithOrg = results.find(u => u.id === user.id)
+      expect(userWithOrg).toBeDefined()
+      expect(userWithOrg?.organizations).toHaveLength(1)
+      expect(userWithOrg?.organizations[0].name).toBe('Test Organization')
+      expect(userWithOrg?.organizations[0].role).toBe('admin')
+    })
+  })
+
+  describe('Pagination and Sorting', () => {
+    it('should paginate results', async () => {
+      // Create 25 users
+      const users = await Promise.all(
+        Array.from({ length: 25 }, (_, i) =>
+          createUserDao({
+            name: `User ${i + 1}`,
+            email: `user${i + 1}@example.com`,
+          })
+        )
+      )
+
+      const page1 = await getUsersPaginatedDao({ page: 1, limit: 10 })
+      const page2 = await getUsersPaginatedDao({ page: 2, limit: 10 })
+
+      expect(page1.data).toHaveLength(10)
+      expect(page2.data).toHaveLength(10)
+      expect(page1.pagination.total).toBe(25)
+      expect(page1.pagination.totalPages).toBe(3)
+
+      // Ensure different users on different pages
+      const page1Ids = page1.data.map(u => u.id)
+      const page2Ids = page2.data.map(u => u.id)
+      expect(page1Ids.some(id => page2Ids.includes(id))).toBe(false)
+    })
+
+    it('should sort results', async () => {
+      await createUserDao({ name: 'Charlie', email: 'c@example.com' })
+      await createUserDao({ name: 'Alice', email: 'a@example.com' })
+      await createUserDao({ name: 'Bob', email: 'b@example.com' })
+
+      const sortedAsc = await getUsersSortedDao('name', 'asc')
+      const sortedDesc = await getUsersSortedDao('name', 'desc')
+
+      expect(sortedAsc.map(u => u.name)).toEqual(['Alice', 'Bob', 'Charlie'])
+      expect(sortedDesc.map(u => u.name)).toEqual(['Charlie', 'Bob', 'Alice'])
+    })
+  })
+
+  describe('Aggregation Queries', () => {
+    it('should count users by organization', async () => {
+      const org1 = await createOrganizationDao({ name: 'Org 1' })
+      const org2 = await createOrganizationDao({ name: 'Org 2' })
+
+      // Add users to organizations
+      const users = await Promise.all([
+        createUserDao({ name: 'User 1', email: 'u1@example.com' }),
+        createUserDao({ name: 'User 2', email: 'u2@example.com' }),
+        createUserDao({ name: 'User 3', email: 'u3@example.com' }),
+      ])
+
+      await addMemberToOrganizationDao(users[0].id, org1.id, 'member')
+      await addMemberToOrganizationDao(users[1].id, org1.id, 'member')
+      await addMemberToOrganizationDao(users[2].id, org2.id, 'member')
+
+      const counts = await getUserCountByOrganizationDao()
+
+      expect(counts).toEqual(
+        expect.arrayContaining([
+          { organizationId: org1.id, count: 2 },
+          { organizationId: org2.id, count: 1 },
+        ])
+      )
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Relationship Handling">
+**Foreign Key and Relationship Testing:**
+```typescript
+// src/db/repositories/__tests__/relationships.test.ts
+describe('Relationship Handling', () => {
+  describe('One-to-Many Relationships', () => {
+    it('should handle user-organization relationships', async () => {
+      const owner = await createUserDao({
+        name: 'Owner User',
+        email: 'owner@example.com',
+      })
+
+      const organization = await createOrganizationDao({
+        name: 'Test Organization',
+        ownerId: owner.id,
+      })
+
+      // Create members
+      const member1 = await createUserDao({
+        name: 'Member 1',
+        email: 'member1@example.com',
+      })
+
+      const member2 = await createUserDao({
+        name: 'Member 2',
+        email: 'member2@example.com',
+      })
+
+      await addMemberToOrganizationDao(member1.id, organization.id, 'member')
+      await addMemberToOrganizationDao(member2.id, organization.id, 'admin')
+
+      // Test relationship query
+      const orgWithMembers = await getOrganizationWithMembersDao(organization.id)
+
+      expect(orgWithMembers).toBeDefined()
+      expect(orgWithMembers?.members).toHaveLength(2)
+      expect(orgWithMembers?.members.map(m => m.user.name)).toContain('Member 1')
+      expect(orgWithMembers?.members.map(m => m.user.name)).toContain('Member 2')
+    })
+
+    it('should handle nested relationships', async () => {
+      const user = await createUserDao({ name: 'User', email: 'user@example.com' })
+      const org = await createOrganizationDao({ name: 'Org', ownerId: user.id })
+      const project = await createProjectDao({
+        name: 'Project',
+        organizationId: org.id,
+        ownerId: user.id,
+      })
+
+      await createTaskDao({
+        title: 'Task 1',
+        projectId: project.id,
+        assignedTo: user.id,
+      })
+
+      const userWithNestedData = await getUserWithAllRelationsDao(user.id)
+
+      expect(userWithNestedData?.organizations).toHaveLength(1)
+      expect(userWithNestedData?.organizations[0].projects).toHaveLength(1)
+      expect(userWithNestedData?.organizations[0].projects[0].tasks).toHaveLength(1)
+    })
+  })
+
+  describe('Many-to-Many Relationships', () => {
+    it('should handle user-project assignments', async () => {
+      const users = await Promise.all([
+        createUserDao({ name: 'Dev 1', email: 'dev1@example.com' }),
+        createUserDao({ name: 'Dev 2', email: 'dev2@example.com' }),
+      ])
+
+      const project = await createProjectDao({
+        name: 'Shared Project',
+        organizationId: testOrganizationId,
+        ownerId: users[0].id,
+      })
+
+      // Assign both users to project
+      await assignUserToProjectDao(users[0].id, project.id, 'owner')
+      await assignUserToProjectDao(users[1].id, project.id, 'contributor')
+
+      const projectWithUsers = await getProjectWithAssignmentsDao(project.id)
+
+      expect(projectWithUsers?.assignments).toHaveLength(2)
+      expect(projectWithUsers?.assignments.map(a => a.user.name)).toContain('Dev 1')
+      expect(projectWithUsers?.assignments.map(a => a.user.name)).toContain('Dev 2')
+    })
+  })
+
+  describe('Constraint Validation', () => {
+    it('should enforce foreign key constraints', async () => {
+      // Attempt to create organization with non-existent owner
+      await expect(
+        createOrganizationDao({
+          name: 'Invalid Org',
+          ownerId: 'non-existent-user-id',
+        })
+      ).rejects.toThrow(/foreign key constraint/i)
+    })
+
+    it('should prevent deletion when referenced', async () => {
+      const owner = await createUserDao({
+        name: 'Owner',
+        email: 'owner@example.com',
+      })
+
+      await createOrganizationDao({
+        name: 'Dependent Org',
+        ownerId: owner.id,
+      })
+
+      // Should not be able to delete user with dependent organization
+      await expect(deleteUserDao(owner.id)).rejects.toThrow(/foreign key constraint/i)
+    })
+
+    it('should handle cascading deletes properly', async () => {
+      const organization = await createOrganizationDao({
+        name: 'Org to Delete',
+        ownerId: testUserId,
+      })
+
+      const project = await createProjectDao({
+        name: 'Dependent Project',
+        organizationId: organization.id,
+        ownerId: testUserId,
+      })
+
+      await deleteOrganizationDao(organization.id)
+
+      // Project should be deleted due to cascade
+      const deletedProject = await getProjectByIdDao(project.id)
+      expect(deletedProject).toBeNull()
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Performance Testing">
+**Database Performance and Query Optimization:**
+```typescript
+// src/db/repositories/__tests__/performance.test.ts
+describe('Database Performance', () => {
+  describe('Query Performance', () => {
+    it('should perform efficiently with large datasets', async () => {
+      // Create large dataset
+      const userCount = 1000
+      const users = Array.from({ length: userCount }, (_, i) => ({
+        name: `User ${i}`,
+        email: `user${i}@example.com`,
+      }))
+
+      const startInsert = Date.now()
+      await db.insert(usersTable).values(users)
+      const insertTime = Date.now() - startInsert
+
+      expect(insertTime).toBeLessThan(5000) // Should insert 1000 users in < 5s
+
+      // Test query performance
+      const startQuery = Date.now()
+      const results = await searchUsersDao('User 5')
+      const queryTime = Date.now() - startQuery
+
+      expect(queryTime).toBeLessThan(100) // Search should be < 100ms
+      expect(results.length).toBeGreaterThan(0)
+    })
+
+    it('should use indexes effectively', async () => {
+      // Create users with indexed email field
+      await Promise.all([
+        createUserDao({ name: 'User A', email: 'indexed@example.com' }),
+        createUserDao({ name: 'User B', email: 'another@example.com' }),
+      ])
+
+      // Query by indexed field should be fast
+      const start = Date.now()
+      const user = await getUserByEmailDao('indexed@example.com')
+      const duration = Date.now() - start
+
+      expect(user).toBeDefined()
+      expect(duration).toBeLessThan(50) // Index lookup should be very fast
+    })
+  })
+
+  describe('Connection Management', () => {
+    it('should handle concurrent connections', async () => {
+      const concurrentRequests = 20
+
+      const promises = Array.from({ length: concurrentRequests }, (_, i) =>
+        createUserDao({
+          name: `Concurrent User ${i}`,
+          email: `concurrent${i}@example.com`,
+        })
+      )
+
+      const start = Date.now()
+      const results = await Promise.all(promises)
+      const duration = Date.now() - start
+
+      expect(results).toHaveLength(concurrentRequests)
+      expect(duration).toBeLessThan(2000) // All requests should complete quickly
+    })
+
+    it('should handle connection pooling', async () => {
+      // Simulate high load
+      const heavyLoad = async () => {
+        const promises = Array.from({ length: 100 }, () =>
+          getUsersWithOrganizationsDao()
+        )
+        return Promise.all(promises)
+      }
+
+      // Should not throw connection errors
+      await expect(heavyLoad()).resolves.toBeDefined()
+    })
+  })
+
+  describe('Memory Usage', () => {
+    it('should handle large result sets without memory issues', async () => {
+      // Create large dataset
+      const largeDataset = Array.from({ length: 5000 }, (_, i) => ({
+        name: `Large User ${i}`,
+        email: `large${i}@example.com`,
+      }))
+
+      await db.insert(usersTable).values(largeDataset)
+
+      // Query large result set with pagination
+      const results = await getUsersPaginatedDao({ page: 1, limit: 1000 })
+
+      expect(results.data).toHaveLength(1000)
+      expect(results.pagination.total).toBeGreaterThanOrEqual(5000)
+    })
+  })
+
+  describe('Query Analysis', () => {
+    it('should generate efficient query plans', async () => {
+      // Enable query logging for analysis (in test environment)
+      const queryStart = Date.now()
+
+      await db
+        .select()
+        .from(users)
+        .leftJoin(organizations, eq(users.id, organizations.ownerId))
+        .where(eq(users.email, 'test@example.com'))
+
+      const queryTime = Date.now() - queryStart
+
+      // Complex join should still be reasonably fast
+      expect(queryTime).toBeLessThan(200)
+    })
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Transaction Testing
+
+Test database transactions and atomic operations:
+
+<Tabs items={['Transaction Basics', 'Complex Transactions', 'Error Handling', 'Concurrency Testing']}>
+
+<Tab value="Transaction Basics">
+**Basic Transaction Testing:**
+```typescript
+// src/db/__tests__/transactions.test.ts
+import { describe, it, expect } from 'vitest'
+import { db } from '@/db'
+import { users, organizations, members } from '@/db/models'
+
+describe('Database Transactions', () => {
+  describe('Basic Transaction Operations', () => {
+    it('should commit transaction on success', async () => {
+      const result = await db.transaction(async (tx) => {
+        // Create user
+        const [user] = await tx.insert(users).values({
+          name: 'Transaction User',
+          email: 'transaction@example.com',
+        }).returning()
+
+        // Create organization
+        const [org] = await tx.insert(organizations).values({
+          name: 'Transaction Org',
+          ownerId: user.id,
+        }).returning()
+
+        // Create membership
+        const [member] = await tx.insert(members).values({
+          userId: user.id,
+          organizationId: org.id,
+          role: 'owner',
+        }).returning()
+
+        return { user, org, member }
+      })
+
+      // Verify all data exists after commit
+      expect(result.user.id).toBeDefined()
+      expect(result.org.id).toBeDefined()
+      expect(result.member.id).toBeDefined()
+
+      const savedUser = await db.query.users.findFirst({
+        where: eq(users.id, result.user.id),
+      })
+      expect(savedUser).toBeDefined()
+    })
+
+    it('should rollback transaction on error', async () => {
+      const initialUserCount = await db.select({ count: count() }).from(users)
+
+      try {
+        await db.transaction(async (tx) => {
+          // Create user (this should succeed)
+          const [user] = await tx.insert(users).values({
+            name: 'Rollback User',
+            email: 'rollback@example.com',
+          }).returning()
+
+          // Create organization (this should succeed)
+          await tx.insert(organizations).values({
+            name: 'Rollback Org',
+            ownerId: user.id,
+          })
+
+          // Simulate business logic error
+          throw new Error('Business logic error')
+        })
+      } catch (error) {
+        // Expected error
+        expect(error.message).toBe('Business logic error')
+      }
+
+      // Verify rollback - no new users should exist
+      const finalUserCount = await db.select({ count: count() }).from(users)
+      expect(finalUserCount[0].count).toBe(initialUserCount[0].count)
+    })
+
+    it('should handle nested transactions', async () => {
+      const result = await db.transaction(async (tx) => {
+        const [user] = await tx.insert(users).values({
+          name: 'Nested User',
+          email: 'nested@example.com',
+        }).returning()
+
+        // Nested transaction (savepoint)
+        const orgResult = await tx.transaction(async (nestedTx) => {
+          return await nestedTx.insert(organizations).values({
+            name: 'Nested Org',
+            ownerId: user.id,
+          }).returning()
+        })
+
+        return { user, organization: orgResult[0] }
+      })
+
+      expect(result.user.id).toBeDefined()
+      expect(result.organization.id).toBeDefined()
+    })
+  })
+
+  describe('Transaction Isolation', () => {
+    it('should maintain read committed isolation', async () => {
+      const testEmail = 'isolation@example.com'
+
+      // Start first transaction
+      const tx1Promise = db.transaction(async (tx1) => {
+        await tx1.insert(users).values({
+          name: 'Isolation User',
+          email: testEmail,
+        })
+
+        // Simulate long operation
+        await new Promise(resolve => setTimeout(resolve, 100))
+
+        return 'tx1-complete'
+      })
+
+      // Start second transaction after a delay
+      await new Promise(resolve => setTimeout(resolve, 50))
+
+      const tx2Promise = db.transaction(async (tx2) => {
+        // Should not see uncommitted data from tx1
+        const user = await tx2.query.users.findFirst({
+          where: eq(users.email, testEmail),
+        })
+
+        return user
+      })
+
+      const [tx1Result, tx2Result] = await Promise.all([tx1Promise, tx2Promise])
+
+      expect(tx1Result).toBe('tx1-complete')
+      expect(tx2Result).toBeUndefined() // Shouldn't see uncommitted data
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Complex Transactions">
+**Multi-Table Transaction Operations:**
+```typescript
+// src/services/__tests__/transaction-service.test.ts
+describe('Complex Transaction Scenarios', () => {
+  describe('User Onboarding Transaction', () => {
+    it('should complete full user onboarding atomically', async () => {
+      const userData = {
+        name: 'New User',
+        email: 'newuser@example.com',
+        organizationName: 'New User Org',
+      }
+
+      const result = await db.transaction(async (tx) => {
+        // 1. Create user
+        const [user] = await tx.insert(users).values({
+          name: userData.name,
+          email: userData.email,
+          emailVerified: false,
+        }).returning()
+
+        // 2. Create organization
+        const [organization] = await tx.insert(organizations).values({
+          name: userData.organizationName,
+          ownerId: user.id,
+        }).returning()
+
+        // 3. Create owner membership
+        const [membership] = await tx.insert(members).values({
+          userId: user.id,
+          organizationId: organization.id,
+          role: 'owner',
+        }).returning()
+
+        // 4. Create default user settings
+        const [settings] = await tx.insert(userSettings).values({
+          userId: user.id,
+          theme: 'system',
+          language: 'en',
+          timezone: 'UTC',
+        }).returning()
+
+        // 5. Create welcome notification
+        const [notification] = await tx.insert(notifications).values({
+          userId: user.id,
+          type: 'welcome',
+          title: 'Welcome to our platform!',
+          message: 'Thanks for joining us.',
+        }).returning()
+
+        return {
+          user,
+          organization,
+          membership,
+          settings,
+          notification,
+        }
+      })
+
+      // Verify all related data was created
+      expect(result.user.id).toBeDefined()
+      expect(result.organization.ownerId).toBe(result.user.id)
+      expect(result.membership.userId).toBe(result.user.id)
+      expect(result.settings.userId).toBe(result.user.id)
+      expect(result.notification.userId).toBe(result.user.id)
+
+      // Verify data integrity
+      const userWithData = await getUserWithAllDataDao(result.user.id)
+      expect(userWithData?.organizations).toHaveLength(1)
+      expect(userWithData?.settings).toBeDefined()
+      expect(userWithData?.notifications).toHaveLength(1)
+    })
+
+    it('should rollback on onboarding failure', async () => {
+      const initialCounts = await db.transaction(async (tx) => ({
+        users: (await tx.select({ count: count() }).from(users))[0].count,
+        organizations: (await tx.select({ count: count() }).from(organizations))[0].count,
+        members: (await tx.select({ count: count() }).from(members))[0].count,
+      }))
+
+      await expect(
+        db.transaction(async (tx) => {
+          // Create user
+          const [user] = await tx.insert(users).values({
+            name: 'Failing User',
+            email: 'failing@example.com',
+          }).returning()
+
+          // Create organization
+          await tx.insert(organizations).values({
+            name: 'Failing Org',
+            ownerId: user.id,
+          })
+
+          // Simulate failure during onboarding
+          throw new Error('Email service unavailable')
+        })
+      ).rejects.toThrow('Email service unavailable')
+
+      // Verify complete rollback
+      const finalCounts = await db.transaction(async (tx) => ({
+        users: (await tx.select({ count: count() }).from(users))[0].count,
+        organizations: (await tx.select({ count: count() }).from(organizations))[0].count,
+        members: (await tx.select({ count: count() }).from(members))[0].count,
+      }))
+
+      expect(finalCounts.users).toBe(initialCounts.users)
+      expect(finalCounts.organizations).toBe(initialCounts.organizations)
+      expect(finalCounts.members).toBe(initialCounts.members)
+    })
+  })
+
+  describe('Subscription Management Transaction', () => {
+    it('should handle subscription upgrade atomically', async () => {
+      // Setup existing subscription
+      const user = await createUserDao({
+        name: 'Subscriber',
+        email: 'subscriber@example.com',
+      })
+
+      const oldSubscription = await createSubscriptionDao({
+        userId: user.id,
+        planId: 'basic',
+        status: 'active',
+      })
+
+      const result = await db.transaction(async (tx) => {
+        // 1. Cancel old subscription
+        await tx.update(subscriptions)
+          .set({
+            status: 'canceled',
+            canceledAt: new Date(),
+          })
+          .where(eq(subscriptions.id, oldSubscription.id))
+
+        // 2. Create new subscription
+        const [newSubscription] = await tx.insert(subscriptions).values({
+          userId: user.id,
+          planId: 'pro',
+          status: 'active',
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: addDays(new Date(), 30),
+        }).returning()
+
+        // 3. Update user limits
+        await tx.update(users)
+          .set({ planId: 'pro' })
+          .where(eq(users.id, user.id))
+
+        // 4. Create upgrade notification
+        await tx.insert(notifications).values({
+          userId: user.id,
+          type: 'subscription_upgrade',
+          title: 'Subscription Upgraded',
+          message: 'Your subscription has been upgraded to Pro.',
+        })
+
+        return newSubscription
+      })
+
+      // Verify transaction results
+      const updatedUser = await getUserByIdDao(user.id)
+      expect(updatedUser?.planId).toBe('pro')
+
+      const canceledSub = await getSubscriptionByIdDao(oldSubscription.id)
+      expect(canceledSub?.status).toBe('canceled')
+
+      const newSub = await getSubscriptionByIdDao(result.id)
+      expect(newSub?.status).toBe('active')
+      expect(newSub?.planId).toBe('pro')
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Error Handling">
+**Transaction Error Scenarios:**
+```typescript
+describe('Transaction Error Handling', () => {
+  describe('Constraint Violations', () => {
+    it('should rollback on unique constraint violation', async () => {
+      const existingUser = await createUserDao({
+        name: 'Existing User',
+        email: 'existing@example.com',
+      })
+
+      await expect(
+        db.transaction(async (tx) => {
+          // Create organization first
+          const [org] = await tx.insert(organizations).values({
+            name: 'New Org',
+            ownerId: existingUser.id,
+          }).returning()
+
+          // Attempt to create user with duplicate email (should fail)
+          await tx.insert(users).values({
+            name: 'Duplicate Email User',
+            email: 'existing@example.com', // Duplicate!
+          })
+
+          return org
+        })
+      ).rejects.toThrow(/unique constraint/i)
+
+      // Verify organization was not created due to rollback
+      const orgs = await db.select()
+        .from(organizations)
+        .where(eq(organizations.name, 'New Org'))
+
+      expect(orgs).toHaveLength(0)
+    })
+
+    it('should rollback on foreign key constraint violation', async () => {
+      await expect(
+        db.transaction(async (tx) => {
+          // Create organization with non-existent owner
+          await tx.insert(organizations).values({
+            name: 'Orphaned Org',
+            ownerId: 'non-existent-user-id',
+          })
+
+          // This line should never be reached
+          await tx.insert(users).values({
+            name: 'Should Not Exist',
+            email: 'shouldnot@example.com',
+          })
+        })
+      ).rejects.toThrow(/foreign key constraint/i)
+
+      // Verify no data was created
+      const orphanedOrg = await db.select()
+        .from(organizations)
+        .where(eq(organizations.name, 'Orphaned Org'))
+
+      const shouldNotExistUser = await db.select()
+        .from(users)
+        .where(eq(users.email, 'shouldnot@example.com'))
+
+      expect(orphanedOrg).toHaveLength(0)
+      expect(shouldNotExistUser).toHaveLength(0)
+    })
+  })
+
+  describe('Business Logic Errors', () => {
+    it('should rollback on validation errors', async () => {
+      const initialUserCount = (await db.select({ count: count() }).from(users))[0].count
+
+      await expect(
+        db.transaction(async (tx) => {
+          // Create valid user
+          const [user] = await tx.insert(users).values({
+            name: 'Valid User',
+            email: 'valid@example.com',
+          }).returning()
+
+          // Business validation that fails
+          if (user.email.includes('valid')) {
+            throw new ValidationError('Business rule violation')
+          }
+
+          // This should never execute
+          await tx.insert(organizations).values({
+            name: 'Should Not Exist',
+            ownerId: user.id,
+          })
+        })
+      ).rejects.toThrow('Business rule violation')
+
+      // Verify complete rollback
+      const finalUserCount = (await db.select({ count: count() }).from(users))[0].count
+      expect(finalUserCount).toBe(initialUserCount)
+    })
+  })
+
+  describe('Network and System Errors', () => {
+    it('should handle connection errors gracefully', async () => {
+      // Simulate network error during transaction
+      const mockError = new Error('Connection lost')
+      mockError.code = 'ECONNRESET'
+
+      // Mock database connection failure
+      vi.spyOn(db, 'transaction').mockRejectedValueOnce(mockError)
+
+      await expect(
+        createUserWithOrganizationTransaction({
+          name: 'Network User',
+          email: 'network@example.com',
+          organizationName: 'Network Org',
+        })
+      ).rejects.toThrow('Connection lost')
+
+      // Verify no partial data exists
+      const user = await getUserByEmailDao('network@example.com')
+      expect(user).toBeNull()
+    })
+
+    it('should handle deadlock detection and retry', async () => {
+      let attemptCount = 0
+
+      const transactionWithRetry = async () => {
+        return await db.transaction(async (tx) => {
+          attemptCount++
+
+          if (attemptCount === 1) {
+            // Simulate deadlock on first attempt
+            const deadlockError = new Error('Deadlock detected')
+            deadlockError.code = '40P01'
+            throw deadlockError
+          }
+
+          // Success on retry
+          return await tx.insert(users).values({
+            name: 'Retry User',
+            email: 'retry@example.com',
+          }).returning()
+        })
+      }
+
+      // Should succeed after retry
+      const result = await retryTransaction(transactionWithRetry, { maxRetries: 3 })
+
+      expect(attemptCount).toBe(2) // First attempt failed, second succeeded
+      expect(result).toHaveLength(1)
+      expect(result[0].email).toBe('retry@example.com')
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Concurrency Testing">
+**Concurrent Transaction Testing:**
+```typescript
+describe('Concurrent Transaction Testing', () => {
+  describe('Race Condition Prevention', () => {
+    it('should handle concurrent user creation safely', async () => {
+      const email = 'concurrent@example.com'
+
+      // Attempt to create same user concurrently
+      const promises = Array.from({ length: 5 }, () =>
+        createUserDao({
+          name: 'Concurrent User',
+          email,
+        }).catch(error => error)
+      )
+
+      const results = await Promise.all(promises)
+
+      // Only one should succeed, others should fail with constraint error
+      const successes = results.filter(r => r && r.id)
+      const failures = results.filter(r => r instanceof Error)
+
+      expect(successes).toHaveLength(1)
+      expect(failures).toHaveLength(4)
+      expect(failures.every(e => e.message.includes('unique constraint'))).toBe(true)
+    })
+
+    it('should handle concurrent organization member additions', async () => {
+      const user = await createUserDao({
+        name: 'Member User',
+        email: 'member@example.com',
+      })
+
+      const org = await createOrganizationDao({
+        name: 'Concurrent Org',
+        ownerId: user.id,
+      })
+
+      // Attempt to add same user to org multiple times concurrently
+      const promises = Array.from({ length: 3 }, () =>
+        addMemberToOrganizationDao(user.id, org.id, 'member').catch(error => error)
+      )
+
+      const results = await Promise.all(promises)
+
+      // Only one should succeed
+      const successes = results.filter(r => r && r.id)
+      const failures = results.filter(r => r instanceof Error)
+
+      expect(successes).toHaveLength(1)
+      expect(failures.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Lock Testing', () => {
+    it('should handle row-level locking correctly', async () => {
+      const user = await createUserDao({
+        name: 'Lock User',
+        email: 'lock@example.com',
+      })
+
+      // Concurrent updates to same user
+      const updatePromises = Array.from({ length: 5 }, (_, i) =>
+        db.transaction(async (tx) => {
+          // Select for update (row lock)
+          const [lockedUser] = await tx
+            .select()
+            .from(users)
+            .where(eq(users.id, user.id))
+            .for('update')
+
+          // Simulate processing time
+          await new Promise(resolve => setTimeout(resolve, 100))
+
+          // Update with incremented version
+          const newName = `Updated User ${i}`
+          return await tx
+            .update(users)
+            .set({ name: newName })
+            .where(eq(users.id, user.id))
+            .returning()
+        })
+      )
+
+      const results = await Promise.all(updatePromises)
+
+      // All should succeed but in serial order due to locking
+      expect(results).toHaveLength(5)
+      results.forEach(result => {
+        expect(result).toHaveLength(1)
+        expect(result[0].name).toMatch(/^Updated User \d$/)
+      })
+
+      // Final name should be from last update
+      const finalUser = await getUserByIdDao(user.id)
+      expect(finalUser?.name).toMatch(/^Updated User \d$/)
+    })
+
+    it('should handle optimistic concurrency control', async () => {
+      const user = await createUserDao({
+        name: 'Version User',
+        email: 'version@example.com',
+      })
+
+      // Add version field to user
+      await db
+        .update(users)
+        .set({ version: 1 })
+        .where(eq(users.id, user.id))
+
+      const updateWithOptimisticLock = async (expectedVersion: number, newName: string) => {
+        return await db.transaction(async (tx) => {
+          const [currentUser] = await tx
+            .select()
+            .from(users)
+            .where(eq(users.id, user.id))
+
+          if (currentUser.version !== expectedVersion) {
+            throw new Error('Optimistic lock conflict')
+          }
+
+          return await tx
+            .update(users)
+            .set({
+              name: newName,
+              version: currentUser.version + 1
+            })
+            .where(eq(users.id, user.id))
+            .returning()
+        })
+      }
+
+      // Concurrent updates with same expected version
+      const promises = [
+        updateWithOptimisticLock(1, 'First Update'),
+        updateWithOptimisticLock(1, 'Second Update'),
+      ]
+
+      const results = await Promise.allSettled(promises)
+
+      // One should succeed, one should fail
+      const successes = results.filter(r => r.status === 'fulfilled')
+      const failures = results.filter(r => r.status === 'rejected')
+
+      expect(successes).toHaveLength(1)
+      expect(failures).toHaveLength(1)
+
+      if (failures[0].status === 'rejected') {
+        expect(failures[0].reason.message).toBe('Optimistic lock conflict')
+      }
+    })
+  })
+
+  describe('Deadlock Prevention', () => {
+    it('should avoid deadlocks with consistent ordering', async () => {
+      const user1 = await createUserDao({
+        name: 'User 1',
+        email: 'user1@deadlock.com',
+      })
+
+      const user2 = await createUserDao({
+        name: 'User 2',
+        email: 'user2@deadlock.com',
+      })
+
+      // Update users in consistent order to avoid deadlocks
+      const updateInOrder = async (users: string[], suffix: string) => {
+        const sortedUsers = [...users].sort() // Consistent ordering
+
+        return await db.transaction(async (tx) => {
+          for (const userId of sortedUsers) {
+            await tx
+              .update(users)
+              .set({ name: `Updated ${suffix} ${userId.slice(-4)}` })
+              .where(eq(users.id, userId))
+          }
+          return 'success'
+        })
+      }
+
+      // Concurrent transactions updating same users in different orders
+      const promises = [
+        updateInOrder([user1.id, user2.id], 'A'),
+        updateInOrder([user2.id, user1.id], 'B'),
+      ]
+
+      // Both should succeed without deadlock
+      const results = await Promise.all(promises)
+
+      expect(results).toEqual(['success', 'success'])
+    })
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Migration and Schema Testing
+
+Test database migrations, schema changes, and data integrity:
+
+<Tabs items={['Migration Testing', 'Schema Validation', 'Data Migration', 'Rollback Testing']}>
+
+<Tab value="Migration Testing">
+**Database Migration Testing:**
+```typescript
+// src/db/__tests__/migrations.test.ts
+import { describe, it, expect, beforeAll } from 'vitest'
+import { migrate } from 'drizzle-orm/neon-http/migrator'
+import { sql } from 'drizzle-orm'
+import { db } from '@/db'
+
+describe('Database Migrations', () => {
+  beforeAll(async () => {
+    // Ensure test database is up to date
+    await migrate(db, { migrationsFolder: './drizzle/migrations' })
+  })
+
+  describe('Schema Creation', () => {
+    it('should have all required tables', async () => {
+      const tables = await db.execute(sql`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_type = 'BASE TABLE'
+      `)
+
+      const tableNames = tables.rows.map(row => row.table_name)
+
+      // Verify critical tables exist
+      const expectedTables = [
+        'users',
+        'organizations',
+        'members',
+        'projects',
+        'tasks',
+        'subscriptions',
+        'notifications',
+        'user_settings',
+      ]
+
+      expectedTables.forEach(tableName => {
+        expect(tableNames).toContain(tableName)
+      })
+    })
+
+    it('should have UUID extension enabled', async () => {
+      const extensions = await db.execute(sql`
+        SELECT extname FROM pg_extension WHERE extname = 'uuid-ossp'
+      `)
+
+      expect(extensions.rows).toHaveLength(1)
+      expect(extensions.rows[0].extname).toBe('uuid-ossp')
+    })
+
+    it('should generate UUIDs correctly', async () => {
+      const result = await db.execute(sql`SELECT uuid_generate_v4() as uuid`)
+      const uuid = result.rows[0].uuid
+
+      expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    })
+  })
+
+  describe('Foreign Key Constraints', () => {
+    it('should have proper foreign key relationships', async () => {
+      const constraints = await db.execute(sql`
+        SELECT
+          tc.constraint_name,
+          tc.table_name,
+          kcu.column_name,
+          ccu.table_name AS foreign_table_name,
+          ccu.column_name AS foreign_column_name
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+          ON tc.constraint_name = kcu.constraint_name
+        JOIN information_schema.constraint_column_usage AS ccu
+          ON ccu.constraint_name = tc.constraint_name
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_schema = 'public'
+      `)
+
+      const constraintData = constraints.rows
+
+      // Verify key relationships
+      const expectedConstraints = [
+        { table: 'organizations', column: 'owner_id', foreignTable: 'users' },
+        { table: 'members', column: 'user_id', foreignTable: 'users' },
+        { table: 'members', column: 'organization_id', foreignTable: 'organizations' },
+        { table: 'projects', column: 'organization_id', foreignTable: 'organizations' },
+        { table: 'projects', column: 'owner_id', foreignTable: 'users' },
+      ]
+
+      expectedConstraints.forEach(({ table, column, foreignTable }) => {
+        const constraint = constraintData.find(
+          c => c.table_name === table && c.column_name === column
+        )
+        expect(constraint).toBeDefined()
+        expect(constraint?.foreign_table_name).toBe(foreignTable)
+      })
+    })
+  })
+
+  describe('Indexes', () => {
+    it('should have performance indexes', async () => {
+      const indexes = await db.execute(sql`
+        SELECT
+          indexname,
+          tablename,
+          indexdef
+        FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND indexname NOT LIKE '%_pkey'
+      `)
+
+      const indexNames = indexes.rows.map(row => row.indexname)
+
+      // Verify critical indexes exist
+      const expectedIndexes = [
+        'users_email_unique',
+        'organizations_slug_unique',
+        'idx_members_organization_id',
+        'idx_projects_organization_id',
+      ]
+
+      expectedIndexes.forEach(indexName => {
+        expect(indexNames).toContain(indexName)
+      })
+    })
+
+    it('should have unique constraints', async () => {
+      const uniqueConstraints = await db.execute(sql`
+        SELECT
+          tc.table_name,
+          tc.constraint_name,
+          kcu.column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+        WHERE tc.constraint_type = 'UNIQUE'
+        AND tc.table_schema = 'public'
+      `)
+
+      const constraints = uniqueConstraints.rows
+
+      // Verify unique constraints
+      const expectedUnique = [
+        { table: 'users', column: 'email' },
+        { table: 'organizations', column: 'slug' },
+      ]
+
+      expectedUnique.forEach(({ table, column }) => {
+        const constraint = constraints.find(
+          c => c.table_name === table && c.column_name === column
+        )
+        expect(constraint).toBeDefined()
+      })
+    })
+  })
+
+  describe('Column Definitions', () => {
+    it('should have correct column types and constraints', async () => {
+      const columns = await db.execute(sql`
+        SELECT
+          column_name,
+          data_type,
+          is_nullable,
+          column_default
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'users'
+        ORDER BY ordinal_position
+      `)
+
+      const columnData = columns.rows.reduce((acc, row) => {
+        acc[row.column_name] = {
+          type: row.data_type,
+          nullable: row.is_nullable === 'YES',
+          default: row.column_default,
+        }
+        return acc
+      }, {})
+
+      // Verify critical columns
+      expect(columnData.id.type).toBe('text')
+      expect(columnData.id.nullable).toBe(false)
+
+      expect(columnData.email.type).toBe('character varying')
+      expect(columnData.email.nullable).toBe(false)
+
+      expect(columnData.created_at.type).toBe('timestamp without time zone')
+      expect(columnData.created_at.nullable).toBe(false)
+      expect(columnData.created_at.default).toContain('now()')
+    })
+
+    it('should have proper enum types', async () => {
+      const enums = await db.execute(sql`
+        SELECT
+          t.typname as enum_name,
+          e.enumlabel as enum_value
+        FROM pg_type t
+        JOIN pg_enum e ON t.oid = e.enumtypid
+        WHERE t.typname LIKE '%_enum'
+        ORDER BY t.typname, e.enumsortorder
+      `)
+
+      const enumData = enums.rows.reduce((acc, row) => {
+        if (!acc[row.enum_name]) acc[row.enum_name] = []
+        acc[row.enum_name].push(row.enum_value)
+        return acc
+      }, {})
+
+      // Verify enums exist and have correct values
+      if (enumData.role_enum) {
+        expect(enumData.role_enum).toContain('user')
+        expect(enumData.role_enum).toContain('admin')
+      }
+
+      if (enumData.member_role_enum) {
+        expect(enumData.member_role_enum).toContain('member')
+        expect(enumData.member_role_enum).toContain('admin')
+        expect(enumData.member_role_enum).toContain('owner')
+      }
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Schema Validation">
+**Schema Integrity and Validation:**
+```typescript
+// src/db/__tests__/schema-validation.test.ts
+describe('Schema Validation', () => {
+  describe('Data Type Validation', () => {
+    it('should enforce UUID format', async () => {
+      // Valid UUID should work
+      await expect(
+        createUserDao({
+          id: '123e4567-e89b-12d3-a456-426614174000',
+          name: 'UUID User',
+          email: 'uuid@example.com',
+        })
+      ).resolves.toBeDefined()
+
+      // Invalid UUID should fail
+      await expect(
+        db.insert(users).values({
+          id: 'invalid-uuid',
+          name: 'Invalid User',
+          email: 'invalid@example.com',
+        })
+      ).rejects.toThrow()
+    })
+
+    it('should enforce email format constraints', async () => {
+      // Valid emails should work
+      const validEmails = [
+        'test@example.com',
+        'user.name@domain.co.uk',
+        'user+tag@gmail.com',
+      ]
+
+      for (const email of validEmails) {
+        await expect(
+          createUserDao({
+            name: `User for ${email}`,
+            email,
+          })
+        ).resolves.toBeDefined()
+      }
+
+      // Note: Basic email validation is usually handled at application level
+      // Database typically stores email as varchar without format validation
+    })
+
+    it('should enforce enum constraints', async () => {
+      const user = await createUserDao({
+        name: 'Enum Test User',
+        email: 'enum@example.com',
+      })
+
+      const org = await createOrganizationDao({
+        name: 'Enum Test Org',
+        ownerId: user.id,
+      })
+
+      // Valid enum values should work
+      await expect(
+        db.insert(members).values({
+          userId: user.id,
+          organizationId: org.id,
+          role: 'member',
+        })
+      ).resolves.toBeDefined()
+
+      // Invalid enum value should fail
+      await expect(
+        db.insert(members).values({
+          userId: user.id,
+          organizationId: org.id,
+          role: 'invalid_role' as any,
+        })
+      ).rejects.toThrow()
+    })
+  })
+
+  describe('Constraint Validation', () => {
+    it('should enforce NOT NULL constraints', async () => {
+      // Missing required field should fail
+      await expect(
+        db.insert(users).values({
+          id: crypto.randomUUID(),
+          // name is missing - should fail if NOT NULL
+          email: 'nonull@example.com',
+        })
+      ).rejects.toThrow()
+    })
+
+    it('should enforce unique constraints', async () => {
+      const email = 'unique@example.com'
+
+      // First user should succeed
+      await createUserDao({
+        name: 'First User',
+        email,
+      })
+
+      // Duplicate email should fail
+      await expect(
+        createUserDao({
+          name: 'Second User',
+          email,
+        })
+      ).rejects.toThrow(/unique constraint/i)
+    })
+
+    it('should enforce check constraints', async () => {
+      // If you have check constraints, test them
+      // Example: age must be >= 0
+      if (hasAgeColumn) {
+        await expect(
+          db.insert(users).values({
+            name: 'Invalid Age User',
+            email: 'age@example.com',
+            age: -5,
+          })
+        ).rejects.toThrow(/check constraint/i)
+      }
+    })
+  })
+
+  describe('Relationship Integrity', () => {
+    it('should maintain referential integrity on delete', async () => {
+      const user = await createUserDao({
+        name: 'Owner User',
+        email: 'owner@example.com',
+      })
+
+      const org = await createOrganizationDao({
+        name: 'Dependent Org',
+        ownerId: user.id,
+      })
+
+      // Should not be able to delete user with dependent records
+      await expect(
+        db.delete(users).where(eq(users.id, user.id))
+      ).rejects.toThrow(/foreign key constraint/i)
+
+      // Should be able to delete after removing dependencies
+      await db.delete(organizations).where(eq(organizations.id, org.id))
+      await expect(
+        db.delete(users).where(eq(users.id, user.id))
+      ).resolves.toBeDefined()
+    })
+
+    it('should handle cascading deletes properly', async () => {
+      const user = await createUserDao({
+        name: 'Cascade User',
+        email: 'cascade@example.com',
+      })
+
+      const org = await createOrganizationDao({
+        name: 'Cascade Org',
+        ownerId: user.id,
+      })
+
+      const member = await db.insert(members).values({
+        userId: user.id,
+        organizationId: org.id,
+        role: 'owner',
+      }).returning()
+
+      // Delete organization should cascade to members
+      await db.delete(organizations).where(eq(organizations.id, org.id))
+
+      const remainingMembers = await db
+        .select()
+        .from(members)
+        .where(eq(members.organizationId, org.id))
+
+      expect(remainingMembers).toHaveLength(0)
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Data Migration">
+**Data Migration and Transformation Testing:**
+```typescript
+// src/db/__tests__/data-migration.test.ts
+describe('Data Migration Testing', () => {
+  describe('Migration Scripts', () => {
+    it('should migrate user data correctly', async () => {
+      // Simulate old schema data
+      const oldUserData = [
+        { id: 1, full_name: 'John Doe', email_address: 'john@example.com' },
+        { id: 2, full_name: 'Jane Smith', email_address: 'jane@example.com' },
+      ]
+
+      // Migration function (example)
+      const migrateUserData = async (oldData: any[]) => {
+        return await db.transaction(async (tx) => {
+          const results = []
+          for (const oldUser of oldData) {
+            const [newUser] = await tx.insert(users).values({
+              id: crypto.randomUUID(), // Convert from integer to UUID
+              name: oldUser.full_name, // Rename field
+              email: oldUser.email_address, // Rename field
+              emailVerified: false, // New field with default
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            }).returning()
+            results.push(newUser)
+          }
+          return results
+        })
+      }
+
+      const migratedUsers = await migrateUserData(oldUserData)
+
+      expect(migratedUsers).toHaveLength(2)
+      expect(migratedUsers[0].name).toBe('John Doe')
+      expect(migratedUsers[0].email).toBe('john@example.com')
+      expect(migratedUsers[0].id).toMatch(/^[0-9a-f-]{36}$/) // UUID format
+    })
+
+    it('should handle data transformation during migration', async () => {
+      // Example: Splitting full name into first/last name
+      const oldData = [
+        { id: 1, full_name: 'John Doe', email: 'john@example.com' },
+        { id: 2, full_name: 'Jane Smith-Johnson', email: 'jane@example.com' },
+        { id: 3, full_name: 'Madonna', email: 'madonna@example.com' }, // Single name
+      ]
+
+      const migrateWithNameSplit = async (oldData: any[]) => {
+        return await db.transaction(async (tx) => {
+          for (const oldUser of oldData) {
+            const nameParts = oldUser.full_name.split(' ')
+            const firstName = nameParts[0]
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : ''
+
+            await tx.insert(users).values({
+              name: oldUser.full_name, // Keep full name
+              firstName,
+              lastName,
+              email: oldUser.email,
+            })
+          }
+        })
+      }
+
+      await migrateWithNameSplit(oldData)
+
+      const users = await db.select().from(usersTable).orderBy(usersTable.firstName)
+
+      expect(users[0].firstName).toBe('Jane')
+      expect(users[0].lastName).toBe('Smith-Johnson')
+      expect(users[1].firstName).toBe('John')
+      expect(users[1].lastName).toBe('Doe')
+      expect(users[2].firstName).toBe('Madonna')
+      expect(users[2].lastName).toBe('')
+    })
+  })
+
+  describe('Schema Evolution', () => {
+    it('should handle adding new columns', async () => {
+      // Simulate adding a new column to existing table
+      const addColumnMigration = async () => {
+        await db.execute(sql`
+          ALTER TABLE users
+          ADD COLUMN IF NOT EXISTS avatar_url TEXT
+        `)
+      }
+
+      await addColumnMigration()
+
+      // Verify column was added
+      const columns = await db.execute(sql`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'users'
+        AND column_name = 'avatar_url'
+      `)
+
+      expect(columns.rows).toHaveLength(1)
+
+      // Verify we can insert data with new column
+      const user = await createUserDao({
+        name: 'Avatar User',
+        email: 'avatar@example.com',
+        avatarUrl: 'https://example.com/avatar.jpg',
+      })
+
+      expect(user.avatarUrl).toBe('https://example.com/avatar.jpg')
+    })
+
+    it('should handle column renaming', async () => {
+      // Test column rename migration
+      const renameColumnMigration = async () => {
+        await db.execute(sql`
+          ALTER TABLE users
+          RENAME COLUMN name TO display_name
+        `)
+      }
+
+      // Create user with old column name first
+      const user = await createUserDao({
+        name: 'Old Name User',
+        email: 'oldname@example.com',
+      })
+
+      await renameColumnMigration()
+
+      // Verify data is preserved after rename
+      const updatedUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, user.id))
+        .then(rows => rows[0])
+
+      expect(updatedUser.display_name).toBe('Old Name User')
+    })
+  })
+
+  describe('Data Integrity During Migration', () => {
+    it('should maintain data integrity during large migrations', async () => {
+      // Create large dataset
+      const largeDataset = Array.from({ length: 1000 }, (_, i) => ({
+        name: `User ${i}`,
+        email: `user${i}@example.com`,
+      }))
+
+      // Batch migration
+      const batchMigration = async (data: any[], batchSize = 100) => {
+        const results = []
+        for (let i = 0; i < data.length; i += batchSize) {
+          const batch = data.slice(i, i + batchSize)
+          const batchResults = await db.insert(users).values(batch).returning()
+          results.push(...batchResults)
+        }
+        return results
+      }
+
+      const migratedUsers = await batchMigration(largeDataset)
+
+      expect(migratedUsers).toHaveLength(1000)
+
+      // Verify data integrity
+      const userCount = await db.select({ count: count() }).from(users)
+      expect(userCount[0].count).toBeGreaterThanOrEqual(1000)
+
+      // Verify no duplicates
+      const emails = await db.select({ email: users.email }).from(users)
+      const uniqueEmails = new Set(emails.map(e => e.email))
+      expect(uniqueEmails.size).toBe(emails.length)
+    })
+
+    it('should rollback failed migrations', async () => {
+      const initialUserCount = (await db.select({ count: count() }).from(users))[0].count
+
+      const failingMigration = async () => {
+        return await db.transaction(async (tx) => {
+          // Add some users
+          await tx.insert(users).values([
+            { name: 'Migration User 1', email: 'migration1@example.com' },
+            { name: 'Migration User 2', email: 'migration2@example.com' },
+          ])
+
+          // Simulate migration failure
+          throw new Error('Migration failed at step 3')
+        })
+      }
+
+      await expect(failingMigration()).rejects.toThrow('Migration failed at step 3')
+
+      // Verify rollback - no new users should exist
+      const finalUserCount = (await db.select({ count: count() }).from(users))[0].count
+      expect(finalUserCount).toBe(initialUserCount)
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Rollback Testing">
+**Migration Rollback and Recovery:**
+```typescript
+// src/db/__tests__/rollback.test.ts
+describe('Migration Rollback Testing', () => {
+  describe('Schema Rollbacks', () => {
+    it('should rollback column additions', async () => {
+      // Add column
+      await db.execute(sql`
+        ALTER TABLE users
+        ADD COLUMN temp_field TEXT DEFAULT 'test'
+      `)
+
+      // Verify column exists
+      let columns = await db.execute(sql`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'users'
+        AND column_name = 'temp_field'
+      `)
+      expect(columns.rows).toHaveLength(1)
+
+      // Rollback - remove column
+      await db.execute(sql`
+        ALTER TABLE users
+        DROP COLUMN IF EXISTS temp_field
+      `)
+
+      // Verify column is gone
+      columns = await db.execute(sql`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'users'
+        AND column_name = 'temp_field'
+      `)
+      expect(columns.rows).toHaveLength(0)
+    })
+
+    it('should rollback index creation', async () => {
+      const indexName = 'idx_users_temp_test'
+
+      // Create index
+      await db.execute(sql`
+        CREATE INDEX ${sql.identifier(indexName)}
+        ON users (created_at)
+      `)
+
+      // Verify index exists
+      let indexes = await db.execute(sql`
+        SELECT indexname FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND indexname = ${indexName}
+      `)
+      expect(indexes.rows).toHaveLength(1)
+
+      // Rollback - drop index
+      await db.execute(sql`
+        DROP INDEX IF EXISTS ${sql.identifier(indexName)}
+      `)
+
+      // Verify index is gone
+      indexes = await db.execute(sql`
+        SELECT indexname FROM pg_indexes
+        WHERE schemaname = 'public'
+        AND indexname = ${indexName}
+      `)
+      expect(indexes.rows).toHaveLength(0)
+    })
+  })
+
+  describe('Data Rollbacks', () => {
+    it('should rollback data changes', async () => {
+      const initialCount = (await db.select({ count: count() }).from(users))[0].count
+
+      // Perform migration with data changes
+      const migrationData = await db.transaction(async (tx) => {
+        // Add test data
+        const newUsers = await tx.insert(users).values([
+          { name: 'Rollback User 1', email: 'rollback1@example.com' },
+          { name: 'Rollback User 2', email: 'rollback2@example.com' },
+        ]).returning()
+
+        return newUsers
+      })
+
+      // Verify data was added
+      const afterMigrationCount = (await db.select({ count: count() }).from(users))[0].count
+      expect(afterMigrationCount).toBe(initialCount + 2)
+
+      // Rollback - remove the data
+      await db.transaction(async (tx) => {
+        for (const user of migrationData) {
+          await tx.delete(users).where(eq(users.id, user.id))
+        }
+      })
+
+      // Verify rollback
+      const afterRollbackCount = (await db.select({ count: count() }).from(users))[0].count
+      expect(afterRollbackCount).toBe(initialCount)
+    })
+
+    it('should handle partial rollbacks', async () => {
+      const testUsers = [
+        { name: 'Partial 1', email: 'partial1@example.com' },
+        { name: 'Partial 2', email: 'partial2@example.com' },
+        { name: 'Partial 3', email: 'partial3@example.com' },
+      ]
+
+      const createdUsers = await db.insert(users).values(testUsers).returning()
+
+      // Partial rollback - remove only some users
+      await db.transaction(async (tx) => {
+        // Remove first two users, keep the third
+        await tx.delete(users).where(
+          or(
+            eq(users.id, createdUsers[0].id),
+            eq(users.id, createdUsers[1].id)
+          )
+        )
+      })
+
+      // Verify partial rollback
+      const remainingUsers = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, 'partial3@example.com'))
+
+      expect(remainingUsers).toHaveLength(1)
+      expect(remainingUsers[0].name).toBe('Partial 3')
+
+      const removedUsers = await db
+        .select()
+        .from(users)
+        .where(
+          or(
+            eq(users.email, 'partial1@example.com'),
+            eq(users.email, 'partial2@example.com')
+          )
+        )
+
+      expect(removedUsers).toHaveLength(0)
+    })
+  })
+
+  describe('Recovery Testing', () => {
+    it('should recover from failed migrations', async () => {
+      // Simulate a migration failure scenario
+      const recoverFromFailure = async () => {
+        try {
+          await db.transaction(async (tx) => {
+            // Start migration
+            await tx.insert(users).values({
+              name: 'Recovery Test',
+              email: 'recovery@example.com',
+            })
+
+            // Simulate failure
+            throw new Error('Simulated migration failure')
+          })
+        } catch (error) {
+          // Recovery procedure
+          console.log('Migration failed, starting recovery...')
+
+          // Clean up any partial state
+          await db.delete(users).where(eq(users.email, 'recovery@example.com'))
+
+          // Verify clean state
+          const orphanedData = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, 'recovery@example.com'))
+
+          return orphanedData.length === 0
+        }
+
+        return false
+      }
+
+      const recoverySuccessful = await recoverFromFailure()
+      expect(recoverySuccessful).toBe(true)
+    })
+
+    it('should maintain database consistency after recovery', async () => {
+      // Check foreign key relationships are intact
+      const integrityCheck = await db.execute(sql`
+        SELECT
+          COUNT(*) as orphaned_count
+        FROM organizations o
+        LEFT JOIN users u ON o.owner_id = u.id
+        WHERE u.id IS NULL
+      `)
+
+      expect(integrityCheck.rows[0].orphaned_count).toBe('0')
+
+      // Check for duplicate data
+      const duplicateCheck = await db.execute(sql`
+        SELECT email, COUNT(*) as count
+        FROM users
+        GROUP BY email
+        HAVING COUNT(*) > 1
+      `)
+
+      expect(duplicateCheck.rows).toHaveLength(0)
+
+      // Check constraints are working
+      await expect(
+        createUserDao({
+          name: 'Constraint Test',
+          email: 'existing@example.com', // Assuming this already exists
+        })
+      ).rejects.toThrow(/unique constraint/i)
+    })
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Best Practices Summary
+
+<Callout type="success">
+**Repository Testing Excellence:**
+- **Real Database**: Test against actual database for realistic validation
+- **Data Isolation**: Ensure tests don't interfere with each other
+- **Transaction Testing**: Validate atomic operations and rollback behavior
+- **Performance Awareness**: Monitor query performance and connection usage
+</Callout>
+
+### **Key Principles:**
+
+1. **Test with Real Data**: Use actual database connections, not mocks
+2. **Isolation**: Each test should be completely independent
+3. **Comprehensive Coverage**: Test CRUD operations, relationships, and constraints
+4. **Performance Monitoring**: Track query performance and optimize slow operations
+5. **Migration Validation**: Ensure schema changes work correctly and can be rolled back
+
+### **Common Patterns:**
+
+```typescript
+// ✅ Good repository test structure
+describe('Repository Function', () => {
+  beforeEach(async () => {
+    await cleanTestData()
+  })
+
+  afterEach(async () => {
+    await cleanTestData()
+  })
+
+  it('should handle database operation correctly', async () => {
+    const testData = createTestData()
+    const result = await repositoryFunction(testData)
+    expect(result).toMatchExpectedShape()
+  })
+})
+```
+
+Ready to test your business logic? Continue with **[Service Testing](/docs/testing/service-testing)** to learn about testing business logic, authorization, and integration scenarios.

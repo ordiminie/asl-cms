@@ -1,0 +1,281 @@
+---
+description:
+paths:
+  - '**/form.tsx'
+  - '**/**form**.tsx'
+  - '**action.ts'
+---
+
+# Form generales rules
+
+You are an expert in TypeScript, Node.js, Next.js App Router, React, Shadcn UI, Radix UI, and Tailwind.
+
+Key Principles
+
+- Prioritize these rules inside /app/\*\* folders (folder for next layout (presentation))
+- Use **React Server Components (RSC)** by default for better performance
+- Only use `"use client"` when necessary (interactivity, browser APIs) else don't use it
+- Use **Server Actions** for mutations (exemple [action.ts](<mdc:apps/codemail/src/app/(app)/account/action.ts>) )
+- Use React Hook Form and Zod to validate data in client side
+- submit data to server action (action.ts) by using useActionState et useFormstatus
+- Validate data client component with react hook form
+
+Route Organization
+
+- A route or a group of routes can contain a shared actions.ts
+
+```
+app/
+  ├── (public)/ → Public routes
+  │   ├── page.tsx
+  │   └── layout.tsx
+  ├── (auth)/ → Authentication routes
+  │   ├── action.ts
+  │   ├── signin/
+  │   └── signup/
+  ├── (app)/ → Protected user routes
+  │   ├── account/
+  │   └── dashboard/
+  ├── (admin)/ → Admin routes
+  │   └── users/
+components/
+  ├── features/auth/auth-form-validation.ts  ← Schema zod de validation des forms
+```
+
+## Forms and Server Actions
+
+In Next.js 16 and React 19, sometimes we want client validation with React Hook form for more reactivity.
+
+- Validation is done on client side with zod and rhf then submit to Server Action
+- But we want revalidate it on server side with server action and add extra validation rules
+
+### Basic Structure
+
+[edit-user-profile.tsx](src/components/features/user/edit-user-profile.tsx)
+
+```tsx
+type FormValues = z.infer<typeof userFormSchema>
+
+export function EditUserProfileForm({user}: {user: User}) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image ?? undefined,
+      visibility: user.visibility,
+    },
+  })
+
+  async function onSubmit(data: FormValues) {
+    setIsSubmitting(true)
+    const formData = new FormData()
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value)
+      }
+    }
+
+    const result = await updateUserAction(undefined, formData)
+    setIsSubmitting(false)
+
+    if (result.success) {
+      toast('Success', {
+        description: result.message,
+        action: {
+          label: 'Undo',
+          onClick: () => console.log('Undo'),
+        },
+      })
+    } else {
+      for (const error of result?.errors ?? []) {
+        form.setError(error.field, {type: 'manual', message: error.message})
+      }
+      toast('Error', {
+        description: result.message,
+        action: {
+          label: 'OK',
+          onClick: () => console.log('Undo'),
+        },
+      })
+    }
+  }
+
+  const avatarImage = user.image ?? undefined
+  return (
+    <Form {...form}>
+      <div className="flex flex-col items-center gap-4">
+        <Avatar className="h-[100px] w-[100px]">
+          <AvatarImage src={avatarImage} alt={user.name} />
+          <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <p className="text-muted-foreground text-sm">{user.name}</p>
+      </div>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <input type="hidden" {...form.register('id')} />
+        <FileUpload />
+        <FormField
+          control={form.control}
+          name="name"
+          render={({field}) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Your name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({field}) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input placeholder="Your email" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="image"
+          render={({field}) => (
+            <FormItem>
+              <FormLabel>Profile Image URL</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="https://example.com/your-image.jpg"
+                  {...field}
+                />
+              </FormControl>
+              <FormDescription>
+                Leave empty to remove the profile image
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="visibility"
+          render={({field}) => (
+            <FormItem>
+              <FormLabel>Profile Visibility</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select visibility" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="public">Public</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button type="submit" disabled={isSubmitting} className="mb-8">
+          {isSubmitting ? 'Updating...' : 'Update Profile'}
+        </Button>
+      </form>
+    </Form>
+  )
+}
+```
+
+# Server Action
+
+- Meme si l'on utilise pas de useActionState on essaye de garder la meme signature
+- updateUserAction(prevState?: FormState, formData?: FormData): `Promise<FormState>`
+
+```ts
+type ValidationError = {
+  field: keyof UserFormSchemaType
+  message: string
+}
+export type FormState = {
+  success: boolean
+  errors?: ValidationError[]
+  message?: string
+}
+export async function updateUserAction(
+  prevState?: FormState,
+  formData?: FormData
+): Promise<FormState> {
+  const user = await requireActionAuth()
+  if (!user) {
+    return {success: false, message: 'User not found'}
+  }
+  if (!formData) {
+    return {success: false, message: 'Invalid data'}
+  }
+  // Extraire les données du FormData
+  const userData: UpdateUser = {
+    id: formData.get('id') as string,
+    name: formData.get('name') as string,
+    email: formData.get('email') as string,
+    image: formData.get('image') as string,
+    visibility: formData.get('visibility') as 'public' | 'private',
+  }
+
+  // STEP 1 : Valider les données avec le schéma Zod coté back
+  const validationResult = userFormSchema.safeParse(userData)
+
+  if (!validationResult.success) {
+    // Récupérer les messages d'erreur a plat
+    const errorMessages = validationResult.error.errors
+      .map((err) => `${err.path.join('.')}: ${err.message}`)
+      .join(', ')
+    // Récupérer les messages d'erreur pour chaque champs (normalement déjà fait par le front RHF)
+    const validationErrors: ValidationError[] =
+      validationResult.error.errors.map((err) => ({
+        field: err.path[0] as keyof UserFormSchemaType,
+        message: `zod server error ${err.message}`,
+      }))
+    return {
+      success: false,
+      message: `Validation failed: ${errorMessages}`,
+      errors: validationErrors,
+    }
+  }
+  // STEP 2 : Régles customs coté backend
+  if (userData.name?.toString().includes('  ')) {
+    return {
+      success: false,
+      errors: [
+        {
+          field: 'name',
+          message: 'Custom server error : Name must not contain 2 spaces',
+        },
+      ],
+      message: 'Server Error : Name must not contain 2 spaces',
+    }
+  }
+
+  const validatedData = validationResult.data as UpdateUser
+
+  try {
+    await updateUserService(validatedData)
+    revalidatePath('/account')
+    return {success: true, message: 'Profile updated successfully'}
+  } catch (error) {
+    console.error(error)
+    return {success: false, message: 'Failed to update profile'}
+  }
+}
+```
+
+Data Access Flow:
+
+1. RSC → DAL → Service Facades → Services → Repositories → Models
+2. Client Components → Server Actions → Service Facades → Services → Repositories → Models

@@ -1,0 +1,320 @@
+---
+description:
+---
+
+# Services Tests Rules
+
+## Vue d'ensemble
+
+Les tests de services suivent une architecture stricte pour valider la logique métier, l'autorisation et la validation. Chaque service doit être testé avec différents rôles d'utilisateur.
+
+## Structure des Tests
+
+### Organisation des fichiers
+
+- `src/services/__tests__/` → Dossier principal des tests
+- `helper-service-test.ts` → Fonctions utilitaires pour mocker l'authentification
+- `service-test-data.ts` → Utilisateurs de test prédéfinis
+- `setup-mocks.ts` → Mocks globaux des modules
+- `setup-test.ts` → Configuration de base des tests
+
+## Mocking des DAOs/Repositories
+
+### Pattern de mock obligatoire
+
+```ts
+// En haut du fichier de test
+vi.mock('@/db/repositories/user-repository', () => ({
+  getUserByIdDao: vi.fn(),
+  searchUsersDao: vi.fn(),
+  // ... autres fonctions du repository
+}))
+
+// Import après le mock
+import * as userRepository from '@/db/repositories/user-repository'
+
+// Dans beforeEach
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(userData)
+})
+```
+
+### Modules à mocker systématiquement
+
+- Tous les repositories : `@/db/repositories/*`
+- Auth utils : `../authentication/auth-service`
+- Base de données : `@/db/models/db`
+
+## Utilisateurs de Test
+
+### Utilisateurs prédéfinis
+
+Utiliser les utilisateurs définis dans [service-test-data.ts](src/services/__tests__/service-test-data.ts) :
+
+```ts
+import {userTest, userTestAdmin} from './service-test-data'
+
+// Utilisateur standard connecté
+export const userTest = {
+  id: 'ae760f8e-4aa6-4d71-a4c8-344429b7ae21',
+  roles: ['user'],
+  visibility: 'private',
+  // ... autres propriétés
+}
+
+// Utilisateur administrateur
+export const userTestAdmin = {
+  id: 'ae760f8e-4aa6-4d71-a4c8-344429b7ae21',
+  roles: ['admin'],
+  visibility: 'private',
+  // ... autres propriétés
+}
+```
+
+### Setup de l'authentification
+
+Utiliser [helper-service-test.ts](src/services/__tests__/helper-service-test.ts) :
+
+```ts
+import {setupAuthUserMocked} from './helper-service-test'
+
+// Utilisateur connecté
+setupAuthUserMocked(userTest)
+
+// Utilisateur admin
+setupAuthUserMocked(userTestAdmin)
+
+// Utilisateur non connecté (public)
+setupAuthUserMocked(undefined)
+```
+
+## Rôles et Autorisations
+
+### Rôles Globaux Obligatoires
+
+#### 1. ADMIN - Accès complet
+
+```ts
+describe('[ADMIN] CRUD : ServiceName', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(userTestAdmin)
+    // ... mocks
+  })
+
+  it('should create/read/update/delete', async () => {
+    // Tests avec accès complet
+  })
+})
+```
+
+#### 2. USER - Accès restreint
+
+```ts
+describe('[USER] CRUD : ServiceName', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(userTest)
+    // ... mocks
+  })
+
+  it('should access own resources', async () => {
+    // Tests avec accès aux propres ressources
+  })
+
+  it('should NOT access others resources', async () => {
+    await expect(service()).rejects.toThrow(AuthorizationError)
+  })
+})
+```
+
+#### 3. PUBLIC - Aucune authentification
+
+```ts
+describe('[PUBLIC] ServiceName', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(undefined) // Pas d'utilisateur connecté
+    // ... mocks
+  })
+
+  it('should NOT access protected resources', async () => {
+    await expect(service()).rejects.toThrow(AuthorizationError)
+  })
+})
+```
+
+### Rôles d'Organisation
+
+#### Structure des rôles
+
+```ts
+import {UserOrganizationRoleConst} from '../types/domain/auth-types'
+
+// OWNER - Propriétaire
+const userOwner = {
+  ...userTest,
+  organizations: [
+    {
+      userId: userTest.id,
+      organizationId,
+      role: UserOrganizationRoleConst.OWNER,
+      // ...
+    },
+  ],
+}
+
+// ADMIN - Administrateur d'organisation
+const userOrgAdmin = {
+  ...userTest,
+  organizations: [
+    {
+      role: UserOrganizationRoleConst.ADMIN,
+      // ...
+    },
+  ],
+}
+
+// MEMBER - Membre simple
+const userMember = {
+  ...userTest,
+  organizations: [
+    {
+      role: UserOrganizationRoleConst.MEMBER,
+      // ...
+    },
+  ],
+}
+```
+
+#### Tests par rôle d'organisation
+
+```ts
+describe('[ORGANIZATION OWNER] CRUD : ServiceName', () => {
+  // Peut tout faire dans son organisation
+})
+
+describe('[ORGANIZATION ADMIN] CRUD : ServiceName', () => {
+  // Peut administrer mais pas supprimer l'organisation
+})
+
+describe('[ORGANIZATION MEMBER] CRUD : ServiceName', () => {
+  // Peut lire mais pas modifier
+})
+
+describe('[USER NOT IN ORGANIZATION] CRUD : ServiceName', () => {
+  // N'a pas accès aux ressources de l'organisation
+})
+```
+
+## Patterns de Test Obligatoires
+
+### Structure de base
+
+```ts
+describe('[ROLE] CRUD : ServiceName', () => {
+  const resourceId = faker.string.uuid()
+  const resourceData = {
+    id: resourceId,
+    // ... propriétés
+  }
+
+  beforeEach(() => {
+    setupAuthUserMocked(appropriateUser)
+    vi.clearAllMocks()
+    // Mock des DAOs
+  })
+
+  it('should create resource', async () => {
+    const result = await createService(data)
+    expect(result).toEqual(expectedData)
+    expect(daoFunction).toHaveBeenCalledWith(expectedParams)
+  })
+
+  it('should read resource', async () => {
+    // Test de lecture
+  })
+
+  it('should update resource', async () => {
+    // Test de mise à jour
+  })
+
+  it('should delete resource', async () => {
+    // Test de suppression
+  })
+
+  it('should NOT access unauthorized resource', async () => {
+    await expect(service()).rejects.toThrow(AuthorizationError)
+    expect(daoFunction).not.toHaveBeenCalled()
+  })
+})
+```
+
+### Tests de validation
+
+```ts
+it('should throw validation error for invalid input', async () => {
+  await expect(service(invalidData)).rejects.toThrow('Message de validation')
+})
+```
+
+### Tests d'autorisation
+
+```ts
+it('should throw authorization error when not allowed', async () => {
+  await expect(service()).rejects.toThrow(AuthorizationError)
+})
+```
+
+## Exemples Concrets
+
+### Test utilisateur - [user-service.test.ts](src/services/__tests__/user-service.test.ts)
+
+- Teste la visibilité des profils (public/private)
+- Vérifie l'accès aux propres données vs données d'autres utilisateurs
+- Valide les permissions admin
+
+### Test organisation - [organization-service.test.ts](src/services/__tests__/organization-service.test.ts)
+
+- Teste tous les rôles d'organisation
+- Vérifie les permissions hiérarchiques
+- Valide la création/lecture/modification/suppression par rôle
+
+### Test subscription - [subscription-service.test.ts](src/services/__tests__/subscription-service.test.ts)
+
+- Teste les webhooks Stripe
+- Vérifie l'accès aux abonnements par utilisateur
+- Valide les permissions d'administration
+
+## Bonnes Pratiques
+
+### Obligatoires
+
+1. **Toujours tester les 3 rôles globaux** : ADMIN, USER, PUBLIC
+2. **Mocker tous les DAOs** utilisés par le service
+3. **Utiliser `vi.clearAllMocks()`** dans `beforeEach`
+4. **Tester les cas d'erreur** d'autorisation et de validation
+5. **Vérifier que les DAOs ne sont pas appelés** lors d'erreurs d'autorisation
+
+### Recommandées
+
+1. Utiliser `faker` pour générer des données de test
+2. Grouper les tests par rôle avec `describe`
+3. Nommer clairement les tests avec "should" + action
+4. Tester les cas limites et les erreurs métier
+5. Valider les paramètres passés aux DAOs
+
+### À éviter
+
+1. Ne pas tester directement les DAOs (responsabilité des tests d'intégration)
+2. Ne pas dupliquer la logique d'autorisation dans les tests
+3. Ne pas oublier de mocker les services externes
+4. Ne pas tester plusieurs rôles dans le même `it()`
+
+## Configuration
+
+### Setup initial
+
+Utiliser [setup-mocks.ts](src/services/__tests__/setup-mocks.ts) et [setup-test.ts](src/services/__tests__/setup-test.ts) pour la configuration globale.
+
+### Variables d'environnement
+
+Les tests utilisent `.env.test` pour isoler la configuration de test.

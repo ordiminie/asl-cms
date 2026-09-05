@@ -1,0 +1,312 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Règle Internationalisation des Emails - Next-intl
+
+## Vue d'ensemble
+
+Cette règle explique comment implémenter l'internationalisation des emails en utilisant **next-intl** avec les composants **react-email** et les services d'envoi d'emails.
+
+## Architecture des Traductions d'Emails
+
+### Organisation des Clés de Traduction
+
+Les traductions des emails sont organisées de manière hiérarchique dans les fichiers `messages/{locale}.json` :
+
+```json
+{
+  "email": {
+    "user": {
+      "verify": {
+        "subject": "Vérifiez votre adresse email",
+        "preview": "Vous avez demandé un lien magique pour connecter votre compte.",
+        "title": "Connexion",
+        "clickToConnect": "Cliquez ici pour vous connecter",
+        "ignoreMessage": "Si vous n'avez pas demandé ce lien, veuillez ignorer cet email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "resetPassword": {
+        "subject": "Réinitialisation de votre mot de passe",
+        "preview": "Vous avez demandé la réinitialisation de votre mot de passe.",
+        "title": "Réinitialisation du mot de passe",
+        "clickToReset": "Cliquez ici pour réinitialiser votre mot de passe",
+        "ignoreMessage": "Si vous n'avez pas demandé cette réinitialisation, veuillez ignorer cet email.",
+        "expirationWarning": "Ce lien expirera dans 24 heures.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      }
+    },
+    "admin": {
+      "userCreated": { ... },
+      "userDeleted": { ... },
+      "systemAlert": { ... }
+    }
+  }
+}
+```
+
+### Structure des Clés
+
+- **`email.user.verify`** : Emails de vérification/connexion utilisateur
+- **`email.user.resetPassword`** : Emails de réinitialisation de mot de passe
+- **`email.admin.xxx`** : Emails administratifs
+
+## Implémentation des Composants React-Email
+
+### 1. Utilisation de getTranslations
+
+Utilisez `getTranslations` de `next-intl/server` directement dans les composants react-email :
+
+```tsx
+// src/lib/emails/magic-link-email.tsx
+import {getTranslations} from 'next-intl/server'
+
+export default async function MagicLinkMail({url}: MagicLinkMailProps) {
+  // Récupération des traductions côté serveur directement avec next-intl
+  const t = await getTranslations('email.user.verify')
+
+  return (
+    <Html>
+      <Head />
+      <Tailwind>
+        <Fragment>
+          <Preview>{t('preview')}</Preview>
+          <Body className="mx-auto my-auto bg-white px-2 font-sans">
+            <Container className="mx-auto my-[40px] max-w-[465px] rounded border border-solid border-[#eaeaea] p-8">
+              <Text className="text-2xl font-bold text-black">
+                {t('title')}
+              </Text>
+              <Section className="my-4">
+                <Text className="text-base">
+                  <Link
+                    className="text-sky-500 hover:cursor-pointer hover:underline"
+                    href={url}
+                  >
+                    {t('clickToConnect')}
+                  </Link>
+                </Text>
+                <Text className="text-base text-gray-500">
+                  {t('ignoreMessage')}
+                </Text>
+              </Section>
+              <Text className="text-base leading-6 text-gray-500">
+                {t('footer')}
+              </Text>
+            </Container>
+          </Body>
+        </Fragment>
+      </Tailwind>
+    </Html>
+  )
+}
+```
+
+### 2. Types des Props
+
+Définissez des types simples pour les props des composants email :
+
+```tsx
+type MagicLinkMailProps = {
+  url: string
+}
+
+type ResetPasswordMailProps = {
+  url: string
+}
+```
+
+**Important** : Ne pas passer la `locale` en prop, utiliser directement `getTranslations()`.
+
+## Implémentation des Services d'Email
+
+### 1. Service avec Traductions
+
+Utilisez `getTranslations` dans les services pour traduire le subject et le text :
+
+```tsx
+// src/services/email-service.ts
+import {getTranslations} from 'next-intl/server'
+import {env} from '@/env'
+
+export const sendMagicLinkEmailService = async ({
+  email,
+  url,
+}: {
+  email: string
+  url: string
+}) => {
+  const t = await getTranslations('email.user.verify')
+  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+
+  await sendEmailService({
+    to: email,
+    subject: t('subject'), // Subject traduit
+    from: fromEmail,
+    text: t('preview'), // Text traduit
+    react: MagicLinkMail({url}), // Composant avec traductions
+  })
+}
+
+export const sendResetPasswordLinkEmailService = async ({
+  email,
+  url,
+}: {
+  email: string
+  url: string
+}) => {
+  const t = await getTranslations('email.user.resetPassword')
+  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+
+  await sendEmailService({
+    to: email,
+    subject: t('subject'),
+    from: fromEmail,
+    text: t('preview'),
+    react: ResetPasswordEmail({url}),
+  })
+}
+```
+
+### 2. Structure des Services
+
+Chaque service d'email doit :
+
+- Récupérer les traductions avec `getTranslations('email.user.xxx')`
+- Utiliser `t('subject')` pour le sujet de l'email
+- Utiliser `t('preview')` pour le texte de fallback
+- Passer les props nécessaires au composant react-email
+
+## Conventions de Nommage
+
+### Clés de Traduction
+
+- **Format** : `email.{user|admin}.{action}`
+- **Exemples** :
+  - `email.user.verify`
+  - `email.user.resetPassword`
+  - `email.admin.userCreated`
+
+### Composants Email
+
+- **Format** : `{Action}Mail` ou `{Action}Email`
+- **Exemples** : `MagicLinkMail`, `ResetPasswordMail`
+
+### Services Email
+
+- **Format** : `send{Action}EmailService`
+- **Exemples** : `sendMagicLinkEmailService`, `sendResetPasswordLinkEmailService`
+
+## Bonnes Pratiques
+
+### 1. **Traductions Côté Serveur**
+
+- Utilisez toujours `getTranslations` côté serveur
+- Pas de `useTranslations` dans les composants email
+- Les emails sont rendus côté serveur pour la performance
+
+### 2. **Props Minimales**
+
+- Passez seulement les données nécessaires (url, token, etc.)
+- Ne passez pas la `locale` en prop
+- Utilisez `getTranslations()` directement dans le composant
+
+### 3. **Structure des Traductions**
+
+- Organisez par type d'utilisateur (`user`, `admin`)
+- Puis par action (`verify`, `resetPassword`, etc.)
+- Incluez toujours `subject`, `preview`, `title`, `footer`
+
+### 4. **Gestion des Erreurs**
+
+- Les traductions manquantes seront détectées à la compilation
+- Utilisez des clés descriptives et cohérentes
+- Testez dans toutes les langues supportées
+
+## Exemple Complet
+
+### Fichier de Traductions
+
+```json
+{
+  "email": {
+    "user": {
+      "verify": {
+        "subject": "Vérifiez votre adresse email",
+        "preview": "Vous avez demandé un lien magique pour connecter votre compte.",
+        "title": "Connexion",
+        "clickToConnect": "Cliquez ici pour vous connecter",
+        "ignoreMessage": "Si vous n'avez pas demandé ce lien, veuillez ignorer cet email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      }
+    }
+  }
+}
+```
+
+### Composant Email
+
+```tsx
+export default async function MagicLinkMail({url}: MagicLinkMailProps) {
+  const t = await getTranslations('email.user.verify')
+
+  return (
+    <Html>
+      <Preview>{t('preview')}</Preview>
+      <Body>
+        <Text>{t('title')}</Text>
+        <Link href={url}>{t('clickToConnect')}</Link>
+        <Text>{t('ignoreMessage')}</Text>
+        <Text>{t('footer')}</Text>
+      </Body>
+    </Html>
+  )
+}
+```
+
+### Service Email
+
+```tsx
+export const sendMagicLinkEmailService = async ({
+  email,
+  url,
+}: {
+  email: string
+  url: string
+}) => {
+  const t = await getTranslations('email.user.verify')
+
+  await sendEmailService({
+    to: email,
+    subject: t('subject'),
+    text: t('preview'),
+    react: MagicLinkMail({url}),
+  })
+}
+```
+
+## Maintenance
+
+### Ajout d'un Nouvel Email
+
+1. Ajouter les traductions dans `messages/{locale}.json`
+2. Créer le composant react-email avec `getTranslations()`
+3. Créer le service avec les traductions du subject/text
+4. Tester dans toutes les langues
+
+### Modification des Traductions
+
+1. Modifier les clés dans tous les fichiers `messages/{locale}.json`
+2. Vérifier que les composants utilisent les bonnes clés
+3. Tester l'envoi d'emails dans toutes les langues
+
+## Résumé
+
+- **Composants** : `getTranslations('email.user.xxx')` directement
+- **Services** : `t('subject')` et `t('preview')` pour les métadonnées
+- **Structure** : `email.{user|admin}.{action}` pour les clés
+- **Props** : Minimales, sans `locale`
+- **Performance** : Rendu côté serveur avec next-intl
+
+Cette approche garantit des emails entièrement traduits et performants dans toute l'application.

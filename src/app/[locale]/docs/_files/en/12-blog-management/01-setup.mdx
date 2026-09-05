@@ -1,0 +1,308 @@
+---
+title: Blog Setup
+description: Enable and configure blog features in your SaaS application
+keywords: 'ShipSaaS, blog setup, blog configuration, blog installation, MDX setup, blog system setup'
+---
+
+Configure and enable the blog system in your SaaS boilerplate.
+
+## Enable Blog Pages
+
+The blog system is controlled by environment configuration:
+
+<Steps>
+<Step title="Environment Configuration">
+  Add blog page configuration to your environment file:
+
+  ```bash
+  # .env.local or .env.production
+  ENABLE_BLOG=true
+  ```
+
+  This enables both blog routes:
+  - `/blog` - Database-driven blog
+  - `/blog/mdx` - Static MDX blog
+</Step>
+
+<Step title="Verify Configuration">
+  The boilerplate checks page enablement with:
+
+  ```typescript
+  // lib/utils.ts
+  import { PagesConst } from '@/env'
+
+  export function isPageEnabled(page: string): boolean {
+    return process.env[`ENABLE_${page}`] === 'true'
+  }
+
+  // Usage in pages
+  if (!isPageEnabled(PagesConst.BLOG)) {
+    return notFound()
+  }
+  ```
+</Step>
+
+<Step title="Development Server">
+  Start your development server to see the blog:
+
+  ```bash
+  pnpm dev
+  ```
+
+  **Available Routes:**
+  - `http://localhost:3000/blog` - Database blog list
+  - `http://localhost:3000/blog/mdx` - MDX blog list
+  - `http://localhost:3000/admin/blog` - Admin dashboard (requires login)
+</Step>
+</Steps>
+
+## Database Setup
+
+For the database blog system, ensure your database includes the blog schema:
+
+<Steps>
+<Step title="Run Migrations">
+  Apply database migrations to create blog tables:
+
+  ```bash
+  pnpm db:migrate
+  ```
+
+  This creates the necessary tables:
+  - `post` - Main post data
+  - `post_translation` - Multi-language content
+  - `category` - Content categories
+  - `hashtag` - Content tags
+  - `post_hashtag` - Tag associations
+</Step>
+
+<Step title="Seed Sample Data (Optional)">
+  Add sample blog content for development:
+
+  ```bash
+  pnpm db:seed
+  ```
+
+  This creates:
+  - Sample categories
+  - Sample hashtags
+  - Sample blog posts with translations
+  - Published and draft content examples
+</Step>
+
+<Step title="Verify Database">
+  Check your database setup:
+
+  ```bash
+  pnpm db:studio
+  ```
+
+  This opens Drizzle Studio where you can:
+  - View blog tables
+  - Check sample data
+  - Manually add content
+  - Test relationships
+</Step>
+</Steps>
+
+## Admin Access
+
+Configure admin access for content management:
+
+<Steps>
+<Step title="User Permissions">
+  Blog management requires specific role permissions:
+
+  ```typescript
+  // Blog permissions by role
+  const blogPermissions = {
+    'blog-post:create': ['ADMIN', 'REDACTOR'],
+    'blog-post:read': ['ADMIN', 'REDACTOR', 'MODERATOR'],
+    'blog-post:update': ['ADMIN', 'REDACTOR'],
+    'blog-post:delete': ['ADMIN'],
+    'blog-post:publish': ['ADMIN', 'REDACTOR']
+  }
+  ```
+
+  **Required Roles:**
+  - `ADMIN` - Full blog management access
+  - `REDACTOR` - Can create, edit, and publish posts
+  - `MODERATOR` - Can view posts only
+</Step>
+
+<Step title="Access Admin Dashboard">
+  1. **Login** to your application
+  2. **Ensure Admin Role** in your user profile
+  3. **Navigate** to `/admin/blog`
+  4. **Create Content** using the admin interface
+
+  <Callout type="warning">
+    If you don't see the blog admin, check your user role in the database or use Drizzle Studio to update your user permissions.
+  </Callout>
+</Step>
+</Steps>
+
+## Navigation Setup
+
+Add blog links to your application navigation:
+
+<Tabs defaultValue="main-nav">
+  <Tab value="main-nav" label="Main Navigation">
+    ```tsx
+    // components/navigation.tsx
+    const navigation = [
+      { name: 'Home', href: '/' },
+      { name: 'Blog', href: '/blog' },
+      { name: 'Documentation', href: '/blog/mdx' },
+      // ... other links
+    ]
+    ```
+  </Tab>
+
+  <Tab value="admin-nav" label="Admin Navigation">
+    ```tsx
+    // components/admin-navigation.tsx (for admin users)
+    const adminNavigation = [
+      { name: 'Dashboard', href: '/admin' },
+      { name: 'Blog Management', href: '/admin/blog' },
+      // ... other admin links
+    ]
+    ```
+  </Tab>
+
+  <Tab value="footer-nav" label="Footer Links">
+    ```tsx
+    // components/footer.tsx
+    const footerLinks = {
+      resources: [
+        { name: 'Blog', href: '/blog' },
+        { name: 'Documentation', href: '/blog/mdx' },
+        // ... other resource links
+      ]
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## SEO Configuration
+
+Configure SEO settings for blog pages:
+
+<Steps>
+<Step title="Meta Tags Configuration">
+  Blog pages automatically generate SEO meta tags:
+
+  ```typescript
+  // Automatic meta generation for blog posts
+  export async function generateMetadata({ params }): Promise<Metadata> {
+    const post = await getPostBySlug(params.slug)
+
+    return {
+      title: post.title,
+      description: post.description,
+      openGraph: {
+        title: post.title,
+        description: post.description,
+        type: 'article',
+        publishedTime: post.publishedAt,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: post.title,
+        description: post.description,
+      }
+    }
+  }
+  ```
+</Step>
+
+<Step title="Sitemap Generation">
+  Blog posts are automatically included in your sitemap:
+
+  ```typescript
+  // Blog posts added to sitemap.xml
+  const blogPosts = await getAllPublishedPosts()
+  const blogUrls = blogPosts.map(post => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: post.updatedAt,
+    changeFrequency: 'weekly' as const,
+    priority: 0.7,
+  }))
+  ```
+</Step>
+</Steps>
+
+## Internationalization
+
+The blog system supports multiple languages:
+
+<Steps>
+<Step title="Language Configuration">
+  Configure supported languages in your i18n setup:
+
+  ```typescript
+  // i18n/routing.ts
+  export const routing = defineRouting({
+    locales: ['en', 'fr', 'es'],
+    defaultLocale: 'en'
+  })
+
+  // Supported languages for blog content
+  type SupportedLanguage = 'en' | 'fr' | 'es'
+  ```
+</Step>
+
+<Step title="Content Translation">
+  Blog posts automatically support multiple languages:
+
+  - **Database Blog**: Each post can have translations in multiple languages
+  - **MDX Blog**: Create separate MDX files for each language
+  - **Navigation**: Language switcher works with blog content
+  - **SEO**: Meta tags generated per language
+</Step>
+</Steps>
+
+## Development Workflow
+
+<Steps>
+<Step title="Local Development">
+  ```bash
+  # Start development server
+  pnpm dev
+
+  # Check blog functionality
+  # Visit: http://localhost:3000/blog
+  # Visit: http://localhost:3000/admin/blog
+  ```
+</Step>
+
+<Step title="Content Testing">
+  ```bash
+  # Reset and seed database with sample content
+  pnpm db:reset-seed
+
+  # Open database studio to manage content
+  pnpm db:studio
+
+  # Check blog in browser
+  open http://localhost:3000/blog
+  ```
+</Step>
+
+<Step title="Production Deployment">
+  ```bash
+  # Build application
+  pnpm build
+
+  # Run production migrations
+  pnpm db:migrate
+
+  # Deploy to your hosting platform
+  # Blog will be available at yourdomain.com/blog
+  ```
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Blog Ready!** Your blog system is now configured and ready for content creation. Visit `/admin/blog` to start creating content or add MDX files to start with static content.
+</Callout>

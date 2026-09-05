@@ -1,0 +1,377 @@
+---
+title: Database Blog
+description: Admin dashboard for dynamic content management with multi-language support and publishing workflow
+keywords: 'ShipSaaS, database blog, dynamic blog, database CMS, blog posts database, content database, blog storage'
+---
+
+Manage dynamic blog content through the admin dashboard with full internationalization support.
+
+<Callout type="info">
+  **Dynamic Content Management:** The database blog system provides a complete admin interface for content teams to create, edit, and manage blog posts with multi-language support.
+</Callout>
+
+## Admin Dashboard
+
+Access the blog admin dashboard at `/admin/blog` with proper permissions.
+
+**Blog Admin Dashboard:**
+<Image src="/docs/12/blog-admin-listpost.png" alt="Blog admin dashboard with post management"  />
+
+### Dashboard Features
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="space-y-2">
+    <h4 className="font-semibold">Content Management</h4>
+    <ul className="text-sm space-y-1">
+      <li>• Create and edit posts</li>
+      <li>• Markdown editor with preview</li>
+      <li>• Image upload and management</li>
+      <li>• SEO metadata editor</li>
+      <li>• Publishing workflow</li>
+    </ul>
+
+    **Markdown Editor Interface:**
+    <Image src="/docs/12/blog-admin-md-editor-support.png" alt="Blog markdown editor with preview" width={400} />
+  </div>
+
+  <div className="space-y-2">
+    <h4 className="font-semibold">Organization</h4>
+    <ul className="text-sm space-y-1">
+      <li>• Category management</li>
+      <li>• Hashtag system</li>
+      <li>• Content filtering and search</li>
+      <li>• Bulk operations</li>
+      <li>• Analytics dashboard</li>
+    </ul>
+
+    **Categories and Status Management:**
+    <Image src="/docs/12/blog-admin-statut-cat-hashtag.png" alt="Blog categories and status management" width={400} />
+  </div>
+</div>
+
+## Creating Blog Posts
+
+<Steps>
+<Step title="Access Admin Dashboard">
+  1. **Login** to your application
+  2. **Navigate** to `/admin/blog`
+  3. **Click** "New Post" button
+
+  <Callout type="warning">
+    Requires `ADMIN` or `REDACTOR` role permissions to create posts.
+  </Callout>
+</Step>
+
+<Step title="Fill Post Information">
+  **Basic Information:**
+  - **Title**: Post title (required)
+  - **Slug**: URL-friendly identifier (auto-generated)
+  - **Description**: Meta description for SEO
+  - **Category**: Select or create content category
+  - **Status**: Draft or Published
+
+  **Content:**
+  - **Markdown Editor**: Write your content with live preview
+  - **Image Upload**: Add images directly in the editor
+  - **Formatting**: Full markdown support with toolbar
+
+  **SEO Configuration:**
+  <Image src="/docs/12/blog-admin-seo.png" alt="Blog SEO configuration interface" />
+</Step>
+
+<Step title="Add Taxonomy">
+  **Categories:**
+  - Select existing category or create new
+  - Used for content organization
+  - Affects navigation and filtering
+
+  **Hashtags:**
+  - Add relevant tags for discoverability
+  - Auto-complete from existing tags
+  - Used for content search and related posts
+</Step>
+
+<Step title="Save and Publish">
+  **Draft Mode:**
+  - Save as draft for review
+  - Preview content before publishing
+  - Share draft links with team
+
+  **Publishing:**
+  - Set publishing date (immediate or scheduled)
+  - Change status to "Published"
+  - Content goes live automatically
+</Step>
+</Steps>
+
+## Multi-Language Support
+
+The database blog includes comprehensive internationalization features:
+
+### Language Management
+
+<Steps>
+<Step title="Supported Languages">
+  Configure supported languages in your application:
+
+  The blog system supports multiple languages including English, French, and Spanish.
+
+  **Multi-language Blog Management:**
+  <Image src="/docs/12/blog-admin-multilang.png" alt="Multi-language blog management interface"  />
+</Step>
+
+<Step title="Create Translations">
+  **In Admin Dashboard:**
+  1. **Create Base Post** in your primary language
+  2. **Click** "Add Translation" button
+  3. **Select Target Language** from dropdown
+  4. **Fill Translation Content**:
+     - Translated title
+     - Localized slug
+     - Translated description
+     - Translated content
+</Step>
+
+<Step title="Language-Specific Content">
+  Each translation includes translated title, slug, description, and content.
+
+  **Example URLs:**
+  - English: `/en/blog/getting-started-nextjs`
+  - French: `/fr/blog/commencer-avec-nextjs`
+  - Spanish: `/es/blog/empezar-con-nextjs`
+</Step>
+</Steps>
+
+### Translation Workflow
+
+<Steps>
+<Step title="Content Creation Process">
+  1. **Create Master Post** in primary language
+  2. **Save as Draft** for review
+  3. **Add Translations** for each target language
+  4. **Review All Languages** before publishing
+  5. **Publish Simultaneously** or per language
+</Step>
+
+<Step title="Translation Status">
+  **Admin Dashboard shows:**
+  - Languages available for each post
+  - Translation completeness status
+  - Last modified dates per language
+  - Missing translation indicators
+</Step>
+
+<Step title="Language Fallbacks">
+  **Automatic Fallback Logic:**
+  - If translation missing, show primary language
+  - Fallback chain: requested → default → available
+  - SEO hreflang tags for language variants
+  - Language switcher shows available translations
+</Step>
+</Steps>
+
+## Content Management Features
+
+### Publishing Workflow
+
+<Tabs defaultValue="draft-workflow">
+  <Tab value="draft-workflow" label="Draft Workflow">
+    **Draft Management:**
+    - Save work in progress as drafts
+    - Preview drafts with special URLs
+    - Share drafts with team for review
+    - Track revision history
+
+    ```typescript
+    // Post status management
+    enum PostStatus {
+      DRAFT = 'DRAFT',
+      PUBLISHED = 'PUBLISHED',
+      ARCHIVED = 'ARCHIVED'
+    }
+    ```
+  </Tab>
+
+  <Tab value="scheduling" label="Scheduled Publishing">
+    **Publishing Options:**
+    - Immediate publishing upon status change
+    - Scheduled publishing for future dates
+    - Bulk publishing operations
+  </Tab>
+
+  <Tab value="permissions" label="Role Permissions">
+    **Access Control:**
+    ```typescript
+    // Blog permissions by role
+    const permissions = {
+      'blog-post:create': ['ADMIN', 'REDACTOR'],
+      'blog-post:read': ['ADMIN', 'REDACTOR', 'MODERATOR'],
+      'blog-post:update': ['ADMIN', 'REDACTOR'],
+      'blog-post:delete': ['ADMIN'],
+      'blog-post:publish': ['ADMIN', 'REDACTOR']
+    }
+    ```
+
+    **Role Capabilities:**
+    - **ADMIN**: Full access, can delete and manage users
+    - **REDACTOR**: Create, edit, publish content
+    - **MODERATOR**: View and comment on content
+  </Tab>
+</Tabs>
+
+### Content Organization
+
+<Steps>
+<Step title="Categories">
+  **Category Management:**
+  - Create hierarchical categories
+  - Assign colors and icons
+  - SEO-friendly category pages
+  - Category-based navigation
+</Step>
+
+<Step title="Hashtag System">
+  **Tag Features:**
+  - Auto-complete from existing tags
+  - Tag popularity and usage stats
+  - Tag-based content discovery
+  - Tag cloud visualization
+</Step>
+
+<Step title="Content Filtering">
+  **Admin Filters:**
+  - Filter by status (draft, published)
+  - Filter by category
+  - Filter by author
+  - Filter by date range
+  - Search in title and content
+  - Language-specific filtering
+</Step>
+
+<Step title="File Management">
+  **Media Management:**
+  - Upload images directly in editor
+  - Organize media files
+  - Image optimization
+  - File browser with preview
+
+  **File Management Interface:**
+  <Image src="/docs/12/blog-admin-filemanagement.png" alt="Blog file management interface"  />
+</Step>
+</Steps>
+
+## Analytics and Insights
+
+### Content Analytics
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div className="space-y-2">
+    <h4 className="font-semibold">Post Metrics</h4>
+    <ul className="text-sm space-y-1">
+      <li>• Page views per post</li>
+      <li>• Reading time analytics</li>
+      <li>• Social shares tracking</li>
+      <li>• Comment engagement</li>
+      <li>• Language performance</li>
+    </ul>
+  </div>
+
+  <div className="space-y-2">
+    <h4 className="font-semibold">Content Insights</h4>
+    <ul className="text-sm space-y-1">
+      <li>• Popular categories</li>
+      <li>• Top performing tags</li>
+      <li>• Author performance</li>
+      <li>• Content freshness</li>
+      <li>• SEO performance</li>
+    </ul>
+  </div>
+</div>
+
+### Performance Tracking
+
+The blog system tracks basic analytics like page views and engagement metrics for each post.
+
+**Frontend Blog Detail Page:**
+<Image src="/docs/12/blog-frontend-details.png" alt="Frontend blog post detail page" />
+
+## Database Schema
+
+### Core Tables
+
+<Tabs defaultValue="posts">
+  <Tab value="posts" label="Posts">
+    ```sql
+    CREATE TABLE post (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      status post_status NOT NULL DEFAULT 'DRAFT',
+      nb_view INTEGER DEFAULT 0,
+      nb_like INTEGER DEFAULT 0,
+      category_id UUID REFERENCES category(id),
+      author_id UUID REFERENCES users(id),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      published_at TIMESTAMP
+    );
+    ```
+  </Tab>
+
+  <Tab value="translations" label="Translations">
+    ```sql
+    CREATE TABLE post_translation (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      post_id UUID REFERENCES post(id) ON DELETE CASCADE,
+      language supported_language NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      slug VARCHAR(255) NOT NULL,
+      description TEXT,
+      content TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+
+      UNIQUE(post_id, language),
+      UNIQUE(slug, language)
+    );
+    ```
+  </Tab>
+
+  <Tab value="taxonomy" label="Categories & Tags">
+    ```sql
+    -- Categories
+    CREATE TABLE category (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(100) NOT NULL UNIQUE,
+      slug VARCHAR(100) NOT NULL UNIQUE,
+      description TEXT,
+      color VARCHAR(7), -- Hex color
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- Hashtags
+    CREATE TABLE hashtag (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(50) NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- Post-Hashtag Junction
+    CREATE TABLE post_hashtag (
+      post_id UUID REFERENCES post(id) ON DELETE CASCADE,
+      hashtag_id UUID REFERENCES hashtag(id) ON DELETE CASCADE,
+      PRIMARY KEY (post_id, hashtag_id)
+    );
+    ```
+  </Tab>
+</Tabs>
+
+## Blog Routes
+
+The database blog is available at the following routes:
+
+- **Public Blog**: `/blog` - View published posts
+- **Admin Dashboard**: `/admin/blog` - Create and manage posts (requires admin access)
+- **Individual Posts**: `/blog/[slug]` - View specific post by slug
+
+<Callout type="success">
+  **Database Blog Ready!** Your dynamic blog system is fully configured with multi-language support, admin dashboard, and comprehensive content management features. Access `/admin/blog` to start creating content.
+</Callout>

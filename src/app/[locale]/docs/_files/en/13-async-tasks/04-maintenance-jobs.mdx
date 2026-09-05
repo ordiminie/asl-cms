@@ -1,0 +1,508 @@
+---
+title: Maintenance Jobs
+description: Scheduled cleanup and data maintenance tasks with cron jobs
+keywords: 'ShipSaaS, maintenance jobs, scheduled tasks, cron jobs, background maintenance, system tasks, automated maintenance'
+---
+
+Set up automated maintenance tasks using Inngest's cron scheduling for data cleanup, analytics, and system health monitoring.
+
+<Callout type="info">
+  **Automated Maintenance:** Schedule recurring tasks to keep your application healthy and performant without manual intervention.
+</Callout>
+
+## Database Cleanup Jobs
+
+### Clean Expired Sessions
+
+```typescript
+export const cleanExpiredSessions = inngest.createFunction(
+  {id: 'clean-expired-sessions'},
+  {cron: '0 2 * * *'}, // Daily at 2 AM
+  async ({step}) => {
+    const deleted = await step.run('delete-expired-sessions', async () => {
+      const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
+
+      return await deleteExpiredSessionsService({
+        expiredBefore: cutoffDate,
+      })
+    })
+
+    // Log cleanup results
+    await step.run('log-session-cleanup', async () => {
+      return await logMaintenanceActivity({
+        task: 'session_cleanup',
+        recordsDeleted: deleted.count,
+        executedAt: new Date(),
+      })
+    })
+
+    return {
+      task: 'session_cleanup',
+      deletedSessions: deleted.count,
+      executedAt: new Date().toISOString(),
+    }
+  }
+)
+```
+
+### Clean Expired Invitations
+
+```typescript
+export const cleanExpiredInvitations = inngest.createFunction(
+  {id: 'clean-expired-invitations'},
+  {cron: '0 3 * * *'}, // Daily at 3 AM
+  async ({step}) => {
+    // Delete invitations older than 7 days
+    const expiredInvitations = await step.run('delete-expired-invitations', async () => {
+      const cutoffDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
+
+      return await deleteExpiredInvitationsService({
+        expiredBefore: cutoffDate,
+      })
+    })
+
+    // Send notification emails for invitations expiring soon (1 day left)
+    const expiringInvitations = await step.run('notify-expiring-invitations', async () => {
+      const soonToExpire = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+
+      const invitations = await getInvitationsExpiringBeforeService(soonToExpire)
+
+      for (const invitation of invitations) {
+        await sendInvitationExpiringEmailService({
+          email: invitation.email,
+          organizationName: invitation.organization.name,
+          inviterName: invitation.inviter.name,
+          expiresAt: invitation.expiresAt,
+          invitationUrl: invitation.url,
+        })
+      }
+
+      return {notified: invitations.length}
+    })
+
+    return {
+      expiredDeleted: expiredInvitations.count,
+      expiringNotified: expiringInvitations.notified,
+    }
+  }
+)
+```
+
+### Archive Old Data
+
+```typescript
+export const archiveOldData = inngest.createFunction(
+  {id: 'archive-old-data'},
+  {cron: '0 1 1 * *'}, // Monthly on the 1st at 1 AM
+  async ({step}) => {
+    // Archive old audit logs (older than 1 year)
+    const archivedLogs = await step.run('archive-audit-logs', async () => {
+      const cutoffDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) // 1 year ago
+
+      return await archiveAuditLogsService({
+        olderThan: cutoffDate,
+        archiveLocation: 's3://audit-logs-archive/',
+      })
+    })
+
+    // Archive cancelled organization data (older than 90 days)
+    const archivedOrganizations = await step.run('archive-cancelled-organizations', async () => {
+      const cutoffDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) // 90 days ago
+
+      return await archiveCancelledOrganizationsService({
+        cancelledBefore: cutoffDate,
+        archiveLocation: 's3://organization-archive/',
+      })
+    })
+
+    // Generate archive report
+    await step.run('send-archive-report', async () => {
+      return await sendArchiveReportEmailService({
+        email: process.env.ADMIN_EMAIL,
+        archivedLogs: archivedLogs.count,
+        archivedOrganizations: archivedOrganizations.count,
+        executedAt: new Date(),
+      })
+    })
+
+    return {
+      archivedLogs: archivedLogs.count,
+      archivedOrganizations: archivedOrganizations.count,
+    }
+  }
+)
+```
+
+## Analytics and Reporting
+
+### Daily Analytics Report
+
+```typescript
+export const generateDailyAnalytics = inngest.createFunction(
+  {id: 'generate-daily-analytics'},
+  {cron: '0 9 * * *'}, // Daily at 9 AM
+  async ({step}) => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+    // Calculate daily metrics
+    const metrics = await step.run('calculate-daily-metrics', async () => {
+      return await calculateDailyMetricsService({
+        date: yesterday,
+        metrics: [
+          'new_signups',
+          'active_users',
+          'subscription_changes',
+          'revenue',
+          'churn_rate',
+        ],
+      })
+    })
+
+    // Generate charts and reports
+    const report = await step.run('generate-visual-report', async () => {
+      return await generateAnalyticsReportService({
+        metrics,
+        date: yesterday,
+        includeCharts: true,
+      })
+    })
+
+    // Send to stakeholders
+    await step.run('send-analytics-email', async () => {
+      const stakeholders = process.env.ANALYTICS_RECIPIENTS?.split(',') || []
+
+      return await sendDailyAnalyticsEmailService({
+        recipients: stakeholders,
+        report,
+        date: yesterday,
+      })
+    })
+
+    return {
+      metricsCalculated: Object.keys(metrics).length,
+      reportGenerated: true,
+      emailsSent: process.env.ANALYTICS_RECIPIENTS?.split(',').length || 0,
+    }
+  }
+)
+```
+
+### Weekly Health Check
+
+```typescript
+export const weeklyHealthCheck = inngest.createFunction(
+  {id: 'weekly-health-check'},
+  {cron: '0 10 * * 1'}, // Weekly on Monday at 10 AM
+  async ({step}) => {
+    // Check database performance
+    const dbHealth = await step.run('check-database-health', async () => {
+      return await checkDatabaseHealthService({
+        checks: [
+          'connection_count',
+          'slow_queries',
+          'table_sizes',
+          'index_usage',
+        ],
+      })
+    })
+
+    // Check application performance
+    const appHealth = await step.run('check-application-health', async () => {
+      return await checkApplicationHealthService({
+        checks: [
+          'memory_usage',
+          'response_times',
+          'error_rates',
+          'active_users',
+        ],
+      })
+    })
+
+    // Check external service status
+    const servicesHealth = await step.run('check-external-services', async () => {
+      return await checkExternalServicesHealthService({
+        services: ['stripe', 'resend', 'database', 'redis'],
+      })
+    })
+
+    // Generate health report
+    const healthReport = await step.run('generate-health-report', async () => {
+      return await generateHealthReportService({
+        database: dbHealth,
+        application: appHealth,
+        externalServices: servicesHealth,
+        generatedAt: new Date(),
+      })
+    })
+
+    // Send alert if issues detected
+    const hasIssues = dbHealth.issues.length > 0 ||
+                     appHealth.issues.length > 0 ||
+                     servicesHealth.issues.length > 0
+
+    if (hasIssues) {
+      await step.run('send-health-alert', async () => {
+        return await sendHealthAlertEmailService({
+          recipients: [process.env.ADMIN_EMAIL],
+          report: healthReport,
+          severity: 'warning',
+        })
+      })
+    }
+
+    return {
+      healthCheckCompleted: true,
+      issuesFound: hasIssues,
+      dbIssues: dbHealth.issues.length,
+      appIssues: appHealth.issues.length,
+      serviceIssues: servicesHealth.issues.length,
+    }
+  }
+)
+```
+
+## System Monitoring
+
+### Monitor Disk Usage
+
+```typescript
+export const monitorDiskUsage = inngest.createFunction(
+  {id: 'monitor-disk-usage'},
+  {cron: '0 */6 * * *'}, // Every 6 hours
+  async ({step}) => {
+    const usage = await step.run('check-disk-usage', async () => {
+      return await checkDiskUsageService({
+        paths: ['/tmp', '/var/log', '/uploads'],
+        thresholds: {
+          warning: 0.8, // 80%
+          critical: 0.9, // 90%
+        },
+      })
+    })
+
+    // Send alerts if thresholds exceeded
+    for (const path of Object.keys(usage.paths)) {
+      const pathUsage = usage.paths[path]
+
+      if (pathUsage.percentage > usage.thresholds.critical) {
+        await step.run(`send-critical-alert-${path}`, async () => {
+          return await sendDiskUsageAlertEmailService({
+            recipients: [process.env.ADMIN_EMAIL],
+            path,
+            usage: pathUsage,
+            severity: 'critical',
+          })
+        })
+      } else if (pathUsage.percentage > usage.thresholds.warning) {
+        await step.run(`send-warning-${path}`, async () => {
+          return await sendDiskUsageAlertEmailService({
+            recipients: [process.env.ADMIN_EMAIL],
+            path,
+            usage: pathUsage,
+            severity: 'warning',
+          })
+        })
+      }
+    }
+
+    return {
+      pathsChecked: Object.keys(usage.paths).length,
+      warningsIssued: usage.warnings,
+      criticalIssued: usage.criticals,
+    }
+  }
+)
+```
+
+### Backup Verification
+
+```typescript
+export const verifyBackups = inngest.createFunction(
+  {id: 'verify-backups'},
+  {cron: '0 5 * * 0'}, // Weekly on Sunday at 5 AM
+  async ({step}) => {
+    // Check database backup integrity
+    const backupStatus = await step.run('verify-database-backups', async () => {
+      return await verifyDatabaseBackupsService({
+        backupLocation: process.env.DATABASE_BACKUP_LOCATION,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      })
+    })
+
+    // Check file storage backups
+    const fileBackupStatus = await step.run('verify-file-backups', async () => {
+      return await verifyFileBackupsService({
+        backupLocation: process.env.FILE_BACKUP_LOCATION,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      })
+    })
+
+    // Generate backup report
+    await step.run('send-backup-report', async () => {
+      return await sendBackupReportEmailService({
+        recipients: [process.env.ADMIN_EMAIL],
+        databaseBackup: backupStatus,
+        fileBackup: fileBackupStatus,
+        verifiedAt: new Date(),
+      })
+    })
+
+    return {
+      databaseBackupValid: backupStatus.valid,
+      fileBackupValid: fileBackupStatus.valid,
+      reportSent: true,
+    }
+  }
+)
+```
+
+## Resource Optimization
+
+### Optimize Images
+
+```typescript
+export const optimizeImages = inngest.createFunction(
+  {id: 'optimize-images'},
+  {cron: '0 4 * * 0'}, // Weekly on Sunday at 4 AM
+  async ({step}) => {
+    // Find unoptimized images
+    const unoptimizedImages = await step.run('find-unoptimized-images', async () => {
+      return await findUnoptimizedImagesService({
+        location: '/uploads',
+        minSize: 500000, // 500KB
+      })
+    })
+
+    // Process images in batches
+    const optimized = await step.run('optimize-image-batch', async () => {
+      const results = []
+
+      for (const image of unoptimizedImages) {
+        try {
+          const result = await optimizeImageService({
+            path: image.path,
+            quality: 85,
+            format: 'webp',
+          })
+          results.push(result)
+        } catch (error) {
+          console.error(`Failed to optimize ${image.path}:`, error)
+        }
+      }
+
+      return results
+    })
+
+    // Update database records
+    await step.run('update-image-records', async () => {
+      for (const result of optimized) {
+        await updateImageRecordService({
+          originalPath: result.originalPath,
+          optimizedPath: result.optimizedPath,
+          sizeBefore: result.sizeBefore,
+          sizeAfter: result.sizeAfter,
+        })
+      }
+    })
+
+    return {
+      imagesFound: unoptimizedImages.length,
+      imagesOptimized: optimized.length,
+      spacesSaved: optimized.reduce((sum, r) => sum + (r.sizeBefore - r.sizeAfter), 0),
+    }
+  }
+)
+```
+
+## Cron Schedule Examples
+
+### Common Cron Patterns
+
+```typescript
+// Cron pattern examples for maintenance jobs
+
+const schedules = {
+  // Every minute (for testing)
+  everyMinute: '* * * * *',
+
+  // Every hour
+  hourly: '0 * * * *',
+
+  // Daily at 2 AM
+  dailyAt2AM: '0 2 * * *',
+
+  // Weekly on Monday at 10 AM
+  weeklyMonday: '0 10 * * 1',
+
+  // Monthly on the 1st at midnight
+  monthlyFirst: '0 0 1 * *',
+
+  // Quarterly (every 3 months)
+  quarterly: '0 0 1 */3 *',
+
+  // Every 6 hours
+  every6Hours: '0 */6 * * *',
+
+  // Weekdays at 9 AM
+  weekdaysAt9AM: '0 9 * * 1-5',
+
+  // Weekends at 11 PM
+  weekendsAt11PM: '0 23 * * 0,6',
+}
+```
+
+### Environment-Based Scheduling
+
+```typescript
+export const environmentBasedCleanup = inngest.createFunction(
+  {id: 'environment-based-cleanup'},
+  {
+    cron: process.env.NODE_ENV === 'production'
+      ? '0 2 * * *'    // Daily in production
+      : '*/30 * * * *' // Every 30 minutes in development
+  },
+  async ({step}) => {
+    // Cleanup logic here
+    return {cleaned: true}
+  }
+)
+```
+
+## Function Registration
+
+Add your maintenance functions to the Inngest serve configuration:
+
+```typescript
+// src/app/api/inngest/route.ts
+import {serve} from 'inngest/next'
+import {
+  helloWorld,
+  sendWelcomeFollowUpEmail,
+  cleanExpiredSessions,
+  cleanExpiredInvitations,
+  generateDailyAnalytics,
+  weeklyHealthCheck,
+  monitorDiskUsage,
+} from '@/lib/inngest/functions'
+import {inngest} from '@/lib/inngest/inngest'
+
+export const {GET, POST, PUT} = serve({
+  client: inngest,
+  functions: [
+    // Existing functions
+    helloWorld,
+    sendWelcomeFollowUpEmail,
+
+    // Maintenance jobs
+    cleanExpiredSessions,
+    cleanExpiredInvitations,
+    generateDailyAnalytics,
+    weeklyHealthCheck,
+    monitorDiskUsage,
+  ],
+})
+```
+
+<Callout type="success">
+  **Maintenance jobs are now automated!** Your application will perform regular cleanup, monitoring, and optimization tasks without manual intervention.
+</Callout>

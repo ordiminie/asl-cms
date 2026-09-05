@@ -1,0 +1,413 @@
+---
+title: Payment Processing
+description: Async Stripe webhook and subscription handling with Inngest
+keywords: 'ShipSaaS, payment processing, async payments, payment jobs, payment queue, background payment, payment workflows'
+---
+
+Handle Stripe webhooks and payment processing asynchronously to ensure reliable subscription management and billing operations.
+
+<Callout type="info">
+  **Webhook Reliability:** Async processing ensures Stripe webhooks are handled reliably even during high traffic or temporary service outages.
+</Callout>
+
+## Stripe Webhook Processing
+
+### Subscription Created
+
+```typescript
+export const processSubscriptionCreated = inngest.createFunction(
+  {
+    id: 'process-subscription-created',
+    retries: 3,
+  },
+  {event: 'stripe/subscription.created'},
+  async ({event, step}) => {
+    const {subscription, customer} = event.data
+
+    // Create organization from subscription
+    const organization = await step.run('create-organization', async () => {
+      return await createOrganizationService({
+        name: customer.name || `Organization ${subscription.id}`,
+        stripeCustomerId: customer.id,
+        stripeSubscriptionId: subscription.id,
+        planId: subscription.items.data[0]?.price.id,
+      })
+    })
+
+    // Update user's organization membership
+    await step.run('assign-user-to-organization', async () => {
+      const user = await getUserByStripeCustomerId(customer.id)
+      return await assignUserToOrganizationService({
+        userId: user.id,
+        organizationId: organization.id,
+        role: 'ADMIN',
+      })
+    })
+
+    // Send subscription confirmation email
+    await step.run('send-confirmation-email', async () => {
+      return await sendSubscriptionConfirmationEmailService({
+        email: customer.email,
+        userName: customer.name,
+        organizationName: organization.name,
+        plan: subscription.items.data[0]?.price.nickname,
+        billingCycle: subscription.items.data[0]?.price.recurring?.interval,
+      })
+    })
+
+    // Set up trial expiration reminder if applicable
+    if (subscription.trial_end) {
+      await step.sendEvent('schedule-trial-reminder', {
+        name: 'trial/expiration-reminder',
+        data: {
+          subscriptionId: subscription.id,
+          organizationId: organization.id,
+          trialEndsAt: new Date(subscription.trial_end * 1000).toISOString(),
+        },
+        ts: new Date(subscription.trial_end * 1000 - 7 * 24 * 60 * 60 * 1000), // 7 days before
+      })
+    }
+
+    return {
+      organizationId: organization.id,
+      subscriptionProcessed: true,
+    }
+  }
+)
+```
+
+### Payment Failed
+
+```typescript
+export const processPaymentFailed = inngest.createFunction(
+  {id: 'process-payment-failed'},
+  {event: 'stripe/payment.failed'},
+  async ({event, step}) => {
+    const {invoice, subscription, customer} = event.data
+
+    // Get organization details
+    const organization = await step.run('get-organization', async () => {
+      return await getOrganizationByStripeSubscriptionId(subscription.id)
+    })
+
+    // Update subscription status
+    await step.run('update-subscription-status', async () => {
+      return await updateOrganizationSubscriptionStatus({
+        organizationId: organization.id,
+        status: 'payment_failed',
+        lastFailedAt: new Date(),
+      })
+    })
+
+    // Send payment failure notification
+    await step.run('send-payment-failure-email', async () => {
+      return await sendPaymentFailedEmailService({
+        email: customer.email,
+        organizationName: organization.name,
+        amountDue: invoice.amount_due / 100,
+        currency: invoice.currency,
+        dueDate: new Date(invoice.due_date * 1000),
+        paymentUrl: invoice.hosted_invoice_url,
+      })
+    })
+
+    // Schedule retry reminder in 3 days
+    await step.sleep('wait-for-retry-reminder', '3d')
+    await step.run('send-retry-reminder', async () => {
+      // Check if payment was resolved in the meantime
+      const currentStatus = await getOrganizationSubscriptionStatus(organization.id)
+
+      if (currentStatus.status === 'payment_failed') {
+        return await sendPaymentRetryReminderEmailService({
+          email: customer.email,
+          organizationName: organization.name,
+          paymentUrl: invoice.hosted_invoice_url,
+        })
+      }
+    })
+
+    return {processed: true, organizationId: organization.id}
+  }
+)
+```
+
+### Subscription Cancelled
+
+```typescript
+export const processSubscriptionCancelled = inngest.createFunction(
+  {id: 'process-subscription-cancelled'},
+  {event: 'stripe/subscription.cancelled'},
+  async ({event, step}) => {
+    const {subscription, customer} = event.data
+
+    // Update organization status
+    const organization = await step.run('deactivate-organization', async () => {
+      return await updateOrganizationStatus({
+        stripeSubscriptionId: subscription.id,
+        status: 'cancelled',
+        cancelledAt: new Date(),
+      })
+    })
+
+    // Export user data (GDPR compliance)
+    const userData = await step.run('export-user-data', async () => {
+      return await exportOrganizationDataService(organization.id)
+    })
+
+    // Send cancellation confirmation
+    await step.run('send-cancellation-email', async () => {
+      return await sendSubscriptionCancelledEmailService({
+        email: customer.email,
+        organizationName: organization.name,
+        cancelledAt: new Date(),
+        dataExportUrl: userData.exportUrl,
+      })
+    })
+
+    // Schedule data deletion (30 days later)
+    await step.sendEvent('schedule-data-deletion', {
+      name: 'data/deletion-scheduled',
+      data: {
+        organizationId: organization.id,
+        scheduledFor: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      ts: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+    })
+
+    return {
+      cancelled: true,
+      organizationId: organization.id,
+      dataExportUrl: userData.exportUrl,
+    }
+  }
+)
+```
+
+## Invoice Processing
+
+### Invoice Payment Succeeded
+
+```typescript
+export const processInvoicePaymentSucceeded = inngest.createFunction(
+  {id: 'process-invoice-payment-succeeded'},
+  {event: 'stripe/invoice.payment_succeeded'},
+  async ({event, step}) => {
+    const {invoice, subscription, customer} = event.data
+
+    // Update organization billing status
+    await step.run('update-billing-status', async () => {
+      return await updateOrganizationBillingStatus({
+        stripeSubscriptionId: subscription.id,
+        status: 'paid',
+        lastPaymentAt: new Date(),
+        nextBillingDate: new Date(subscription.current_period_end * 1000),
+      })
+    })
+
+    // Send payment receipt
+    await step.run('send-payment-receipt', async () => {
+      return await sendPaymentReceiptEmailService({
+        email: customer.email,
+        invoiceNumber: invoice.number,
+        amountPaid: invoice.amount_paid / 100,
+        currency: invoice.currency,
+        paidAt: new Date(invoice.status_transitions.paid_at * 1000),
+        receiptUrl: invoice.receipt_url,
+      })
+    })
+
+    // Update usage limits if plan changed
+    if (invoice.subscription_proration_date) {
+      await step.run('update-usage-limits', async () => {
+        const plan = subscription.items.data[0]?.price
+        return await updateOrganizationLimitsService({
+          stripeSubscriptionId: subscription.id,
+          planId: plan.id,
+          limits: await getPlanLimitsService(plan.id),
+        })
+      })
+    }
+
+    return {processed: true, invoiceId: invoice.id}
+  }
+)
+```
+
+## Customer Management
+
+### Customer Updated
+
+```typescript
+export const processCustomerUpdated = inngest.createFunction(
+  {id: 'process-customer-updated'},
+  {event: 'stripe/customer.updated'},
+  async ({event, step}) => {
+    const {customer, previous_attributes} = event.data
+
+    // Update organization details
+    await step.run('update-organization-details', async () => {
+      const updates: any = {}
+
+      if (previous_attributes.name) {
+        updates.name = customer.name
+      }
+
+      if (previous_attributes.email) {
+        updates.billingEmail = customer.email
+      }
+
+      if (Object.keys(updates).length > 0) {
+        return await updateOrganizationByStripeCustomerId({
+          stripeCustomerId: customer.id,
+          updates,
+        })
+      }
+    })
+
+    // Sync user profile if email changed
+    if (previous_attributes.email) {
+      await step.run('sync-user-profile', async () => {
+        return await updateUserEmailByStripeCustomerId({
+          stripeCustomerId: customer.id,
+          newEmail: customer.email,
+        })
+      })
+    }
+
+    return {updated: true, customerId: customer.id}
+  }
+)
+```
+
+## Webhook Event Handlers
+
+### Event Router
+
+```typescript
+// Add to your Stripe webhook handler
+export async function handleStripeWebhook(event: Stripe.Event) {
+  const eventMappings = {
+    'customer.subscription.created': 'stripe/subscription.created',
+    'customer.subscription.deleted': 'stripe/subscription.cancelled',
+    'invoice.payment_failed': 'stripe/payment.failed',
+    'invoice.payment_succeeded': 'stripe/invoice.payment_succeeded',
+    'customer.updated': 'stripe/customer.updated',
+  }
+
+  const inngestEventName = eventMappings[event.type]
+
+  if (inngestEventName) {
+    await inngest.send({
+      name: inngestEventName,
+      data: {
+        ...event.data.object,
+        eventId: event.id,
+        eventType: event.type,
+      },
+    })
+  }
+}
+```
+
+### Webhook Verification
+
+```typescript
+// In your webhook route
+export async function POST(request: Request) {
+  const body = await request.text()
+  const signature = request.headers.get('stripe-signature')
+
+  try {
+    const event = stripe.webhooks.constructEvent(
+      body,
+      signature!,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    )
+
+    // Send to Inngest for async processing
+    await handleStripeWebhook(event)
+
+    return new Response('OK', {status: 200})
+  } catch (error) {
+    console.error('Webhook verification failed:', error)
+    return new Response('Webhook verification failed', {status: 400})
+  }
+}
+```
+
+## Payment Flow Monitoring
+
+### Dashboard Tracking
+
+Monitor payment processing in the Inngest dashboard:
+
+- **Subscription Lifecycle**: Track creation, updates, and cancellations
+- **Payment Status**: Monitor successful and failed payments
+- **Error Handling**: Debug webhook processing issues
+- **Retry Logic**: See automatic retry attempts
+
+### Custom Metrics
+
+```typescript
+export const trackPaymentMetrics = inngest.createFunction(
+  {id: 'track-payment-metrics'},
+  {event: 'stripe/payment.succeeded'},
+  async ({event, step}) => {
+    await step.run('record-payment-metrics', async () => {
+      return await recordMetrics({
+        event: 'payment_processed',
+        amount: event.data.amount / 100,
+        currency: event.data.currency,
+        customerId: event.data.customer,
+        timestamp: new Date(),
+      })
+    })
+
+    return {tracked: true}
+  }
+)
+```
+
+## Error Recovery
+
+### Failed Payment Recovery
+
+```typescript
+export const paymentRecoveryWorkflow = inngest.createFunction(
+  {id: 'payment-recovery-workflow'},
+  {event: 'stripe/payment.failed'},
+  async ({event, step}) => {
+    const {customer, subscription} = event.data
+
+    // Attempt 1: Send immediate notification
+    await step.run('send-immediate-notice', async () => {
+      return await sendPaymentFailedEmailService({
+        email: customer.email,
+        subscriptionId: subscription.id,
+        urgency: 'immediate',
+      })
+    })
+
+    // Wait 3 days, then check and send reminder
+    await step.sleep('wait-3-days', '3d')
+    const status = await step.run('check-payment-status', async () => {
+      return await getSubscriptionPaymentStatus(subscription.id)
+    })
+
+    if (status.failed) {
+      await step.run('send-reminder-with-help', async () => {
+        return await sendPaymentReminderWithHelpEmailService({
+          email: customer.email,
+          subscriptionId: subscription.id,
+        })
+      })
+    }
+
+    return {processed: true}
+  }
+)
+```
+
+<Callout type="success">
+  **Payment processing is now automated!** Your Stripe webhooks will be processed reliably with automatic retries and comprehensive error handling.
+</Callout>

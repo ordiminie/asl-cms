@@ -1,0 +1,343 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+# ShadCN Charts - Guide d'Implémentation
+
+Ce guide explique comment utiliser les charts ShadCN basés sur Recharts dans le projet.
+
+## Installation et Configuration
+
+### Installation du composant Chart
+
+```bash
+npx shadcn-ui@latest add chart
+```
+
+### Ajout des couleurs CSS requises
+
+Les couleurs de charts doivent être ajoutées au fichier CSS global :
+
+```css
+@layer base {
+  :root {
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+```
+
+## Structure d'Implémentation
+
+### Imports Requis
+
+```tsx
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from 'recharts'
+
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart'
+```
+
+### Configuration des Charts
+
+Définir la configuration avec `ChartConfig` pour chaque chart :
+
+```tsx
+const userChartConfig = {
+  count: {
+    label: 'Utilisateurs',
+    theme: {
+      light: 'var(--chart-1)',
+      dark: 'var(--chart-1)',
+    },
+  },
+} satisfies ChartConfig
+
+const organizationChartConfig = {
+  count: {
+    label: 'Organisations',
+    theme: {
+      light: 'var(--chart-2)',
+      dark: 'var(--chart-2)',
+    },
+  },
+} satisfies ChartConfig
+```
+
+## Exemples d'Implémentation
+
+### LineChart (Chart de ligne)
+
+Inspiré de [admin-dashboard.tsx](mdc:src/components/features/admin/dashboard/admin-dashboard.tsx) :
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle className="text-lg font-semibold">
+      Croissance des Utilisateurs
+    </CardTitle>
+    <p className="text-muted-foreground text-sm">
+      Évolution mensuelle des nouveaux utilisateurs
+    </p>
+  </CardHeader>
+  <CardContent>
+    <ChartContainer className="min-h-[320px]" config={userChartConfig}>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart
+          accessibilityLayer
+          data={formattedUserGrowth}
+          margin={{top: 20, right: 30, left: 20, bottom: 20}}
+        >
+          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+          <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
+          <YAxis tickLine={false} axisLine={false} />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                formatter={(value) => [
+                  `${value.toLocaleString()}`,
+                  'Utilisateurs',
+                ]}
+              />
+            }
+          />
+          <Line
+            type="monotone"
+            dataKey="count"
+            strokeWidth={2}
+            dot={{r: 4}}
+            activeDot={{r: 6}}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  </CardContent>
+</Card>
+```
+
+### BarChart (Chart en barres)
+
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle className="text-lg font-semibold">
+      Croissance des Organisations
+    </CardTitle>
+    <p className="text-muted-foreground text-sm">
+      Évolution mensuelle des nouvelles organisations
+    </p>
+  </CardHeader>
+  <CardContent>
+    <ChartContainer className="min-h-[320px]" config={organizationChartConfig}>
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart
+          data={formattedOrganizationGrowth}
+          margin={{top: 20, right: 30, left: 20, bottom: 20}}
+        >
+          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+          <XAxis dataKey="monthLabel" tickLine={false} axisLine={false} />
+          <YAxis tickLine={false} axisLine={false} />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                formatter={(value) => [`${value}`, 'Organisations']}
+              />
+            }
+          />
+          <Bar
+            dataKey="count"
+            fill="var(--color-count)"
+            radius={[4, 4, 0, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  </CardContent>
+</Card>
+```
+
+## Bonnes Pratiques
+
+### Structure des Données
+
+Transformer les données pour une meilleure lisibilité :
+
+```tsx
+const formatMonthData = (data: {month: string; count: number}[]) => {
+  return data.map((item) => ({
+    ...item,
+    monthLabel: new Date(item.month + '-01').toLocaleDateString('fr-FR', {
+      month: 'short',
+      year: '2-digit',
+    }),
+  }))
+}
+```
+
+### Calculs de Métriques
+
+Implémenter des fonctions utilitaires pour les calculs :
+
+```tsx
+const calculateGrowth = (data: {count: number}[]) => {
+  if (data.length < 2) return 0
+  const current = data[data.length - 1].count
+  const previous = data[data.length - 2].count
+  if (previous === 0) return current > 0 ? 100 : 0
+  return Math.round(((current - previous) / previous) * 100)
+}
+```
+
+### Cartes de Statistiques
+
+Combiner les charts avec des cartes de stats :
+
+```tsx
+const statCards = [
+  {
+    title: 'Total Utilisateurs',
+    value: totalUsers,
+    icon: Users,
+    growth: userGrowthPercent,
+    description: `${userGrowthPercent >= 0 ? '+' : ''}${userGrowthPercent}% ce mois-ci`,
+  },
+  // ... autres cartes
+]
+```
+
+## Règles Importantes
+
+### ✅ À Faire
+
+1. **Toujours utiliser `ChartContainer`** avec une hauteur minimale :
+
+   ```tsx
+   <ChartContainer className="min-h-[320px]" config={chartConfig}>
+   ```
+
+2. **Définir une `ChartConfig`** pour chaque chart :
+
+   ```tsx
+   const config = {
+     dataKey: {
+       label: 'Label',
+       theme: {light: 'var(--chart-1)', dark: 'var(--chart-1)'},
+     },
+   } satisfies ChartConfig
+   ```
+
+3. **Utiliser `accessibilityLayer`** pour l'accessibilité :
+
+   ```tsx
+   <LineChart accessibilityLayer data={data}>
+   ```
+
+4. **Wrapper avec `ResponsiveContainer`** pour la responsivité :
+
+   ```tsx
+   <ResponsiveContainer width="100%" height={300}>
+   ```
+
+5. **Utiliser `ChartTooltip` et `ChartTooltipContent`** pour les tooltips :
+
+   ```tsx
+   <ChartTooltip content={<ChartTooltipContent />} />
+   ```
+
+6. **Formatter les données** pour une meilleure présentation :
+   ```tsx
+   formatter={(value) => [`${value.toLocaleString()}`, 'Label']}
+   ```
+
+### ❌ À Éviter
+
+- Ne pas oublier la hauteur minimale sur `ChartContainer`
+- Ne pas utiliser directement les couleurs hardcodées
+- Ne pas ignorer l'accessibilité (`accessibilityLayer`)
+- Ne pas oublier de configurer les margins pour éviter les coupures
+- Ne pas utiliser Recharts sans les composants ShadCN
+
+## Composants Disponibles
+
+### Charts Supportés
+
+- `BarChart` - Graphiques en barres
+- `LineChart` - Graphiques en ligne
+- `AreaChart` - Graphiques en aires
+- `PieChart` - Graphiques circulaires
+- `RadarChart` - Graphiques radar
+
+### Composants ShadCN
+
+- `ChartContainer` - Conteneur principal avec theming
+- `ChartTooltip` - Tooltip personnalisé
+- `ChartTooltipContent` - Contenu du tooltip
+- `ChartLegend` - Légende personnalisée
+- `ChartLegendContent` - Contenu de la légende
+
+### Composants Recharts
+
+- `CartesianGrid` - Grille du graphique
+- `XAxis`, `YAxis` - Axes X et Y
+- `ResponsiveContainer` - Conteneur responsive
+- `Bar`, `Line`, `Area` - Éléments de données
+
+## Intégration avec l'Architecture
+
+Les charts s'intègrent dans l'architecture en couches :
+
+- **Présentation** : Composants charts dans `/components/features/`
+- **DAL** : Données formatées via les DAL (ex: [admin-dashboard-dal.ts](mdc:src/app/dal/admin-dashboard-dal.ts))
+- **Services** : Logique métier pour les calculs de statistiques
+- **Autorisation** : Vérifications d'accès via [admin-dashboard-authorization.ts](mdc:src/services/authorization/admin-dashboard-authorization.ts)
+
+## Testing
+
+Tester les charts avec des données mock :
+
+```tsx
+const mockData = [
+  {month: 'January', desktop: 186, mobile: 80},
+  {month: 'February', desktop: 305, mobile: 200},
+]
+
+// Tester le rendu
+expect(screen.getByRole('img', {name: /chart/i})).toBeInTheDocument()
+
+// Tester les interactions
+await user.hover(screen.getByTestId('chart-bar'))
+expect(screen.getByText('186')).toBeInTheDocument()
+```
+
+## Performance
+
+- Utiliser `ResponsiveContainer` pour éviter les re-renders inutiles
+- Mémoriser les configurations avec `useMemo` si nécessaire
+- Limiter le nombre de points de données affichés
+- Utiliser la pagination pour les grandes datasets

@@ -1,0 +1,1249 @@
+---
+title: 'Persistence Layer'
+description: 'Drizzle ORM, database models, repositories, type transformations, and data access patterns'
+keywords: 'ShipSaaS, persistence layer, data access, repository pattern, database layer, data persistence, ORM layer'
+---
+
+The Persistence Layer manages all database interactions using Drizzle ORM with PostgreSQL. It implements the Repository pattern with Data Access Objects (DAO) and maintains clean separation between domain types and database types.
+
+<Callout type="info">
+  **Layer Responsibility:** The Persistence Layer handles all database operations, schema definitions, migrations, and data transformations. It **never** contains business logic or authorization checks.
+</Callout>
+
+<Callout type="success">
+  **Perfect for:** Type-safe database operations, maintainable schema evolution, efficient queries, and clean data access patterns with proper type transformations.
+</Callout>
+
+## Persistence Layer Architecture
+
+The layer is organized with clear separation between models, repositories, and type definitions:
+
+<Tabs defaultValue="layer-structure">
+  <Tab value="layer-structure" label="🏗️ Persistence Structure">
+    **Persistence Layer Organization:**
+    ```
+    src/db/                         # 📁 Database Layer Root
+    ├── models/                     # 📋 Schema Definitions
+    │   ├── db.ts                  # Drizzle instance & schema export
+    │   ├── user-model.ts          # User table schema
+    │   ├── subscription-model.ts   # Subscription table schema
+    │   ├── organization-model.ts   # Organization table schema
+    │   └── index.ts               # All models export
+    ├── repositories/               # 🗄️ Data Access Objects (DAO)
+    │   ├── user-repository.ts     # User database operations
+    │   ├── subscription-repository.ts
+    │   └── organization-repository.ts
+    ├── migrations/                 # 🔄 Database Migrations
+    │   ├── 0001_create_users.sql
+    │   ├── 0002_create_subscriptions.sql
+    │   └── meta/
+    ├── helpers/                    # 🛠️ Database Utilities
+    │   ├── query-helper.ts        # Common query patterns
+    │   ├── transform-helper.ts    # Type transformations
+    │   └── transaction-helper.ts   # Transaction utilities
+    └── types/                      # 📝 Database Types
+        ├── models.ts              # Inferred Drizzle types
+        └── common.ts              # Common database types
+    ```
+
+    **Key Patterns:**
+    - **Repository Pattern** - DAO for each domain entity
+    - **Type Separation** - Domain types vs Drizzle types
+    - **Schema Evolution** - Migration-based changes
+    - **Connection Pooling** - Optimized database connections
+  </Tab>
+
+  <Tab value="drizzle-setup" label="⚙️ Drizzle Setup">
+    **Database Configuration:**
+    ```typescript
+    // src/db/models/db.ts
+    import { drizzle } from 'drizzle-orm/postgres-js'
+    import postgres from 'postgres'
+    import { env } from '@/env'
+
+    // Import all models
+    import * as user from './user-model'
+    import * as subscription from './subscription-model'
+    import * as organization from './organization-model'
+
+    // Connection pool
+    const pool = postgres(env.DATABASE_URL, {
+      max: 20,                    // Connection pool size
+      idle_timeout: 20,           // Idle timeout in seconds
+      connect_timeout: 10,        // Connection timeout in seconds
+    })
+
+    // Drizzle instance with all schemas
+    const db = drizzle(pool, {
+      schema: {
+        ...user,
+        ...subscription,
+        ...organization,
+      },
+    })
+
+    export default db
+    export type Database = typeof db
+    ```
+
+    **Environment Configuration:**
+    ```bash
+    # Database connection
+    DATABASE_URL="postgresql://user:password@localhost:5432/myapp"
+
+    # Connection pool settings
+    DB_POOL_SIZE=20
+    DB_IDLE_TIMEOUT=20
+    DB_CONNECT_TIMEOUT=10
+    ```
+
+    **Benefits:**
+    - **Connection Pooling** - Efficient resource usage
+    - **Type Safety** - Full TypeScript integration
+    - **Schema Registry** - Centralized model imports
+    - **Environment Flexibility** - Easy configuration
+  </Tab>
+
+  <Tab value="model-patterns" label="📋 Model Patterns">
+    **Schema Definition Patterns:**
+    ```typescript
+    // src/db/models/user-model.ts
+    import { relations, sql } from 'drizzle-orm'
+    import {
+      boolean,
+      integer,
+      pgEnum,
+      pgTable,
+      text,
+      timestamp,
+      uuid,
+    } from 'drizzle-orm/pg-core'
+
+    // Enums (prefer snake_case for DB columns)
+    export const userRoleEnum = pgEnum('user_role', [
+      'GUEST',
+      'USER',
+      'MODERATOR',
+      'REDACTOR',
+      'ADMIN',
+      'SUPER_ADMIN'
+    ])
+
+    // Main table definition
+    export const users = pgTable('users', {
+      id: uuid('id').primaryKey().defaultRandom(),
+      name: text('name').notNull(),
+      email: text('email').notNull().unique(),
+      emailVerified: timestamp('email_verified'),
+      image: text('image'),
+      role: userRoleEnum('role').notNull().default('USER'),
+      isActive: boolean('is_active').notNull().default(true),
+
+      // Metadata
+      metadata: text('metadata'), // JSON field
+
+      // Timestamps
+      createdAt: timestamp('created_at').notNull().defaultNow(),
+      updatedAt: timestamp('updated_at').notNull().defaultNow(),
+
+      // Foreign keys
+      organizationId: uuid('organization_id').references(() => organizations.id),
+    })
+
+    // Relations definition
+    export const usersRelations = relations(users, ({ one, many }) => ({
+      // One-to-one
+      organization: one(organizations, {
+        fields: [users.organizationId],
+        references: [organizations.id],
+      }),
+
+      // One-to-many
+      subscriptions: many(subscriptions),
+      sessions: many(sessions),
+    }))
+
+    // Type inference
+    export type UserModel = typeof users.$inferSelect
+    export type NewUserModel = typeof users.$inferInsert
+    ```
+
+    **Schema Conventions:**
+    - **snake_case** for column names
+    - **camelCase** for TypeScript properties
+    - **Enums** for constrained values
+    - **UUID** for primary keys
+    - **Timestamps** for audit trail
+  </Tab>
+</Tabs>
+
+## Repository Pattern (DAO)
+
+Repositories encapsulate all database operations for specific entities:
+
+<Tabs defaultValue="repository-structure">
+  <Tab value="repository-structure" label="🗄️ Repository Structure">
+    **User Repository Example:**
+    ```typescript
+    // src/db/repositories/user-repository.ts
+    import { eq, and, desc, count, sql } from 'drizzle-orm'
+    import db from '../models/db'
+    import { users, type UserModel, type NewUserModel } from '../models/user-model'
+    import { organizations } from '../models/organization-model'
+
+    // ===== CREATE OPERATIONS =====
+
+    export async function createUserDao(userData: NewUserModel): Promise<UserModel> {
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          ...userData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning()
+
+      return newUser
+    }
+
+    export async function createUsersDao(userDataArray: NewUserModel[]): Promise<UserModel[]> {
+      return await db
+        .insert(users)
+        .values(userDataArray.map(userData => ({
+          ...userData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })))
+        .returning()
+    }
+
+    // ===== READ OPERATIONS =====
+
+    export async function getUserByIdDao(id: string): Promise<UserModel | null> {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, id),
+        with: {
+          organization: true,
+          subscriptions: {
+            where: eq(subscriptions.status, 'active'),
+            orderBy: desc(subscriptions.createdAt),
+          },
+        },
+      })
+
+      return user || null
+    }
+
+    export async function getUserByEmailDao(email: string): Promise<UserModel | null> {
+      const user = await db.query.users.findFirst({
+        where: eq(users.email, email.toLowerCase()),
+      })
+
+      return user || null
+    }
+
+    export async function getUsersDao(
+      filters: {
+        organizationId?: string
+        role?: string
+        isActive?: boolean
+        limit?: number
+        offset?: number
+      } = {}
+    ): Promise<{
+      users: UserModel[]
+      totalCount: number
+    }> {
+      const conditions = []
+
+      if (filters.organizationId) {
+        conditions.push(eq(users.organizationId, filters.organizationId))
+      }
+
+      if (filters.role) {
+        conditions.push(eq(users.role, filters.role))
+      }
+
+      if (filters.isActive !== undefined) {
+        conditions.push(eq(users.isActive, filters.isActive))
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+      // Get users with pagination
+      const userResults = await db.query.users.findMany({
+        where: whereClause,
+        limit: filters.limit || 50,
+        offset: filters.offset || 0,
+        orderBy: desc(users.createdAt),
+        with: {
+          organization: true,
+        },
+      })
+
+      // Get total count
+      const [{ count: totalCount }] = await db
+        .select({ count: count() })
+        .from(users)
+        .where(whereClause)
+
+      return {
+        users: userResults,
+        totalCount,
+      }
+    }
+
+    // ===== UPDATE OPERATIONS =====
+
+    export async function updateUserDao(
+      id: string,
+      updates: Partial<NewUserModel>
+    ): Promise<UserModel> {
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          ...updates,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, id))
+        .returning()
+
+      return updatedUser
+    }
+
+    export async function updateUserMetadataDao(
+      id: string,
+      metadata: Record<string, any>
+    ): Promise<UserModel> {
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          metadata: JSON.stringify(metadata),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, id))
+        .returning()
+
+      return updatedUser
+    }
+
+    // ===== DELETE OPERATIONS =====
+
+    export async function deleteUserDao(id: string): Promise<UserModel> {
+      const [deletedUser] = await db
+        .delete(users)
+        .where(eq(users.id, id))
+        .returning()
+
+      return deletedUser
+    }
+
+    export async function softDeleteUserDao(id: string): Promise<UserModel> {
+      return await updateUserDao(id, {
+        isActive: false,
+        email: `deleted_${Date.now()}_${id}@deleted.com` // Unique constraint handling
+      })
+    }
+    ```
+  </Tab>
+
+  <Tab value="complex-queries" label="🔍 Complex Queries">
+    **Advanced Query Patterns:**
+    ```typescript
+    // Complex joins and aggregations
+    export async function getUsersWithSubscriptionStatsDao(
+      organizationId?: string
+    ): Promise<Array<UserModel & {
+      subscriptionCount: number
+      totalRevenue: number
+      lastSubscriptionDate: Date | null
+    }>> {
+      return await db
+        .select({
+          // User fields
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          createdAt: users.createdAt,
+
+          // Aggregated subscription data
+          subscriptionCount: count(subscriptions.id),
+          totalRevenue: sql<number>`COALESCE(SUM(${subscriptions.amount}), 0)`,
+          lastSubscriptionDate: sql<Date | null>`MAX(${subscriptions.createdAt})`,
+        })
+        .from(users)
+        .leftJoin(subscriptions, eq(users.id, subscriptions.userId))
+        .where(organizationId ? eq(users.organizationId, organizationId) : undefined)
+        .groupBy(users.id)
+        .orderBy(desc(users.createdAt))
+    }
+
+    // Subquery example
+    export async function getUsersWithActiveSubscriptionsDao(): Promise<UserModel[]> {
+      const activeSubscriptionUsers = db
+        .select({ userId: subscriptions.userId })
+        .from(subscriptions)
+        .where(eq(subscriptions.status, 'active'))
+
+      return await db
+        .select()
+        .from(users)
+        .where(
+          sql`${users.id} IN ${activeSubscriptionUsers}`
+        )
+    }
+
+    // Full-text search
+    export async function searchUsersDao(
+      searchTerm: string,
+      limit: number = 20
+    ): Promise<UserModel[]> {
+      return await db
+        .select()
+        .from(users)
+        .where(
+          sql`(
+            ${users.name} ILIKE ${'%' + searchTerm + '%'} OR
+            ${users.email} ILIKE ${'%' + searchTerm + '%'}
+          )`
+        )
+        .limit(limit)
+    }
+    ```
+
+    **Raw SQL for Complex Operations:**
+    ```typescript
+    // When Drizzle query builder isn't enough
+    export async function getUserAnalyticsDao(
+      startDate: Date,
+      endDate: Date
+    ): Promise<Array<{
+      date: string
+      newUsers: number
+      activeUsers: number
+      revenue: number
+    }>> {
+      return await db.execute(sql`
+        WITH daily_stats AS (
+          SELECT
+            DATE(created_at) as date,
+            COUNT(*) as new_users
+          FROM users
+          WHERE created_at BETWEEN ${startDate} AND ${endDate}
+          GROUP BY DATE(created_at)
+        ),
+        daily_revenue AS (
+          SELECT
+            DATE(s.created_at) as date,
+            SUM(s.amount) as revenue,
+            COUNT(DISTINCT s.user_id) as active_users
+          FROM subscriptions s
+          WHERE s.created_at BETWEEN ${startDate} AND ${endDate}
+          AND s.status = 'active'
+          GROUP BY DATE(s.created_at)
+        )
+        SELECT
+          COALESCE(ds.date, dr.date) as date,
+          COALESCE(ds.new_users, 0) as new_users,
+          COALESCE(dr.active_users, 0) as active_users,
+          COALESCE(dr.revenue, 0) as revenue
+        FROM daily_stats ds
+        FULL OUTER JOIN daily_revenue dr ON ds.date = dr.date
+        ORDER BY date
+      `)
+    }
+    ```
+  </Tab>
+
+  <Tab value="transactions" label="🔄 Transactions">
+    **Transaction Management:**
+    ```typescript
+    // src/db/repositories/transaction-helper.ts
+    import db from '../models/db'
+    import { users } from '../models/user-model'
+    import { subscriptions } from '../models/subscription-model'
+
+    // Simple transaction wrapper
+    export async function withTransaction<T>(
+      callback: (tx: typeof db) => Promise<T>
+    ): Promise<T> {
+      return await db.transaction(callback)
+    }
+
+    // Complex multi-table operation
+    export async function createUserWithSubscriptionDao(
+      userData: NewUserModel,
+      subscriptionData: NewSubscriptionModel
+    ): Promise<{
+      user: UserModel
+      subscription: SubscriptionModel
+    }> {
+      return await withTransaction(async (tx) => {
+        // 1. Create user
+        const [user] = await tx
+          .insert(users)
+          .values(userData)
+          .returning()
+
+        // 2. Create subscription with user reference
+        const [subscription] = await tx
+          .insert(subscriptions)
+          .values({
+            ...subscriptionData,
+            userId: user.id,
+          })
+          .returning()
+
+        // 3. Update user with subscription reference (if needed)
+        await tx
+          .update(users)
+          .set({
+            updatedAt: new Date(),
+            // Any user updates based on subscription
+          })
+          .where(eq(users.id, user.id))
+
+        return { user, subscription }
+      })
+    }
+
+    // Transaction with rollback handling
+    export async function transferSubscriptionDao(
+      subscriptionId: string,
+      fromUserId: string,
+      toUserId: string
+    ): Promise<SubscriptionModel> {
+      return await withTransaction(async (tx) => {
+        // 1. Verify subscription belongs to fromUser
+        const subscription = await tx.query.subscriptions.findFirst({
+          where: and(
+            eq(subscriptions.id, subscriptionId),
+            eq(subscriptions.userId, fromUserId)
+          ),
+        })
+
+        if (!subscription) {
+          throw new Error('Subscription not found or access denied')
+        }
+
+        // 2. Verify target user exists
+        const toUser = await tx.query.users.findFirst({
+          where: eq(users.id, toUserId),
+        })
+
+        if (!toUser) {
+          throw new Error('Target user not found')
+        }
+
+        // 3. Transfer subscription
+        const [transferredSubscription] = await tx
+          .update(subscriptions)
+          .set({
+            userId: toUserId,
+            updatedAt: new Date(),
+          })
+          .where(eq(subscriptions.id, subscriptionId))
+          .returning()
+
+        // 4. Log the transfer (audit trail)
+        await tx.insert(auditLogs).values({
+          action: 'subscription_transfer',
+          entityId: subscriptionId,
+          fromUserId,
+          toUserId,
+          timestamp: new Date(),
+        })
+
+        return transferredSubscription
+      })
+    }
+    ```
+
+    **Transaction Error Handling:**
+    ```typescript
+    export async function safeTransactionOperation<T>(
+      operation: () => Promise<T>,
+      retries: number = 3
+    ): Promise<T> {
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          return await operation()
+        } catch (error) {
+          if (attempt === retries) {
+            throw error
+          }
+
+          // Check if it's a retryable error
+          if (isRetryableError(error)) {
+            const delay = Math.pow(2, attempt) * 1000 // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
+
+          throw error
+        }
+      }
+
+      throw new Error('Transaction failed after retries')
+    }
+
+    function isRetryableError(error: any): boolean {
+      // PostgreSQL serialization failure
+      if (error.code === '40001') return true
+      // Deadlock detected
+      if (error.code === '40P01') return true
+      // Connection issues
+      if (error.message?.includes('connection')) return true
+
+      return false
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Type Transformations
+
+Clean separation between database types and domain types:
+
+<Tabs defaultValue="type-separation">
+  <Tab value="type-separation" label="📝 Type Separation">
+    **Domain Types vs Database Types:**
+    ```typescript
+    // src/services/types/domain/user-types.ts
+    // Domain types used by services and presentation layer
+    export interface User {
+      id: string
+      name: string
+      email: string
+      role: UserRole
+      isActive: boolean
+      createdAt: Date
+      updatedAt: Date
+
+      // Computed/transformed fields
+      displayName: string
+      avatarUrl?: string
+      permissions: Permission[]
+
+      // Related data (when needed)
+      organization?: Organization
+      activeSubscription?: Subscription
+    }
+
+    export interface CreateUserInput {
+      name: string
+      email: string
+      password: string
+      role?: UserRole
+      organizationId?: string
+    }
+
+    export interface UpdateUserInput {
+      id: string
+      name?: string
+      email?: string
+      role?: UserRole
+      isActive?: boolean
+    }
+
+    // Enums for domain logic
+    export enum UserRole {
+      GUEST = 'GUEST',
+      USER = 'USER',
+      MODERATOR = 'MODERATOR',
+      ADMIN = 'ADMIN',
+      SUPER_ADMIN = 'SUPER_ADMIN',
+    }
+    ```
+
+    **Database Types (Drizzle Generated):**
+    ```typescript
+    // src/db/types/models.ts
+    // Auto-generated from Drizzle schemas
+    import type { users, subscriptions } from '../models'
+
+    export type UserModel = typeof users.$inferSelect
+    export type NewUserModel = typeof users.$inferInsert
+    export type SubscriptionModel = typeof subscriptions.$inferSelect
+
+    // Database-specific types
+    export interface UserWithRelations extends UserModel {
+      organization?: OrganizationModel
+      subscriptions: SubscriptionModel[]
+    }
+    ```
+  </Tab>
+
+  <Tab value="transformation-helpers" label="🔄 Transformation Helpers">
+    **Type Transformation Utilities:**
+    ```typescript
+    // src/db/helpers/transform-helper.ts
+    import type { UserModel, UserWithRelations } from '../types/models'
+    import type { User, Organization, Subscription } from '@/services/types/domain'
+
+    // ===== USER TRANSFORMATIONS =====
+
+    export function transformUserModelToDTO(userModel: UserModel): User {
+      return {
+        id: userModel.id,
+        name: userModel.name,
+        email: userModel.email,
+        role: userModel.role as UserRole,
+        isActive: userModel.isActive,
+        createdAt: userModel.createdAt,
+        updatedAt: userModel.updatedAt,
+
+        // Computed fields
+        displayName: userModel.name || userModel.email.split('@')[0],
+        avatarUrl: userModel.image || generateAvatarUrl(userModel.email),
+        permissions: [], // Computed by authorization layer
+      }
+    }
+
+    export function transformUserWithRelationsToDTO(
+      userModel: UserWithRelations
+    ): User {
+      const baseUser = transformUserModelToDTO(userModel)
+
+      return {
+        ...baseUser,
+        organization: userModel.organization
+          ? transformOrganizationModelToDTO(userModel.organization)
+          : undefined,
+        activeSubscription: userModel.subscriptions
+          .find(s => s.status === 'active')
+          ? transformSubscriptionModelToDTO(
+              userModel.subscriptions.find(s => s.status === 'active')!
+            )
+          : undefined,
+      }
+    }
+
+    // ===== BATCH TRANSFORMATIONS =====
+
+    export function transformUsersToDTO(userModels: UserModel[]): User[] {
+      return userModels.map(transformUserModelToDTO)
+    }
+
+    export function transformUsersDTOToModels(
+      users: CreateUserInput[]
+    ): NewUserModel[] {
+      return users.map(user => ({
+        name: user.name,
+        email: user.email.toLowerCase(),
+        role: user.role || 'USER',
+        organizationId: user.organizationId || null,
+        isActive: true,
+        // Password hashing handled separately in service layer
+      }))
+    }
+
+    // ===== UTILITY FUNCTIONS =====
+
+    function generateAvatarUrl(email: string): string {
+      const hash = createHash('md5').update(email.toLowerCase()).digest('hex')
+      return `https://www.gravatar.com/avatar/${hash}?d=identicon&s=200`
+    }
+
+    // Metadata parsing (JSON fields)
+    export function parseUserMetadata(
+      metadata: string | null
+    ): Record<string, any> {
+      if (!metadata) return {}
+
+      try {
+        return JSON.parse(metadata)
+      } catch {
+        return {}
+      }
+    }
+
+    export function stringifyUserMetadata(
+      metadata: Record<string, any>
+    ): string {
+      return JSON.stringify(metadata)
+    }
+    ```
+
+    **Why Transform Types?**
+    - **Domain Purity** - Services work with business concepts
+    - **API Consistency** - Stable interfaces for presentation
+    - **Database Evolution** - Schema changes don't break domain
+    - **Security** - Hide internal database structure
+    - **Computed Fields** - Add derived data not in database
+  </Tab>
+
+  <Tab value="pagination-helpers" label="📄 Pagination Helpers">
+    **Pagination Utilities:**
+    ```typescript
+    // src/db/helpers/pagination-helper.ts
+    export interface PaginationOptions {
+      page?: number
+      limit?: number
+      offset?: number
+    }
+
+    export interface PaginatedResult<T> {
+      data: T[]
+      pagination: {
+        page: number
+        limit: number
+        totalItems: number
+        totalPages: number
+        hasNextPage: boolean
+        hasPreviousPage: boolean
+      }
+    }
+
+    export function calculatePagination(
+      options: PaginationOptions,
+      totalItems: number
+    ): {
+      offset: number
+      limit: number
+      pagination: PaginatedResult<any>['pagination']
+    } {
+      const limit = Math.min(options.limit || 20, 100) // Max 100 items
+      const page = Math.max(options.page || 1, 1)
+      const offset = options.offset ?? (page - 1) * limit
+
+      const totalPages = Math.ceil(totalItems / limit)
+
+      return {
+        offset,
+        limit,
+        pagination: {
+          page,
+          limit,
+          totalItems,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+        }
+      }
+    }
+
+    // Generic paginated query helper
+    export async function paginatedQuery<T>(
+      query: (offset: number, limit: number) => Promise<T[]>,
+      countQuery: () => Promise<number>,
+      options: PaginationOptions = {}
+    ): Promise<PaginatedResult<T>> {
+      const totalItems = await countQuery()
+      const { offset, limit, pagination } = calculatePagination(options, totalItems)
+
+      const data = await query(offset, limit)
+
+      return {
+        data,
+        pagination,
+      }
+    }
+
+    // Usage in repositories
+    export async function getPaginatedUsersDao(
+      filters: UserFilters = {},
+      paginationOptions: PaginationOptions = {}
+    ): Promise<PaginatedResult<User>> {
+      return await paginatedQuery(
+        async (offset, limit) => {
+          const users = await getUsersDao({ ...filters, offset, limit })
+          return transformUsersToDTO(users.users)
+        },
+        async () => {
+          const result = await getUsersDao(filters)
+          return result.totalCount
+        },
+        paginationOptions
+      )
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Database Migrations
+
+<Callout type="warning">
+  **Critical Setup:** Before running migrations, enable UUID extension in your PostgreSQL database:
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+  ```
+</Callout>
+
+Drizzle migrations provide schema evolution with version control:
+
+<Tabs defaultValue="migration-setup">
+  <Tab value="migration-setup" label="🔄 Migration Setup">
+    **Drizzle Configuration:**
+    ```typescript
+    // drizzle.config.ts
+    import type { Config } from 'drizzle-kit'
+    import { env } from './src/env'
+
+    export default {
+      schema: './src/db/models/*-model.ts',
+      out: './src/db/migrations',
+      driver: 'pg',
+      dbCredentials: {
+        connectionString: env.DATABASE_URL,
+      },
+      verbose: true,
+      strict: true,
+    } satisfies Config
+    ```
+
+    **Package.json Scripts:**
+    ```json
+    {
+      "scripts": {
+        "db:generate": "drizzle-kit generate:pg",
+        "db:migrate": "drizzle-kit push:pg",
+        "db:studio": "drizzle-kit studio",
+        "db:drop": "drizzle-kit drop",
+        "db:check": "drizzle-kit check:pg",
+        "db:up": "drizzle-kit up:pg"
+      }
+    }
+    ```
+
+    **Migration Workflow:**
+    ```bash
+    # 1. Modify schema in model files
+    # 2. Generate migration files
+    npm run db:generate
+
+    # 3. Review generated SQL
+    # 4. Apply migrations to database
+    npm run db:migrate
+
+    # 5. Verify changes in Drizzle Studio
+    npm run db:studio
+    ```
+  </Tab>
+
+  <Tab value="migration-examples" label="📝 Migration Examples">
+    **Generated Migration Files:**
+    ```sql
+    -- src/db/migrations/0001_create_users.sql
+    CREATE TABLE IF NOT EXISTS "users" (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      "name" text NOT NULL,
+      "email" text NOT NULL,
+      "email_verified" timestamp,
+      "image" text,
+      "role" "user_role" DEFAULT 'USER' NOT NULL,
+      "is_active" boolean DEFAULT true NOT NULL,
+      "metadata" text,
+      "created_at" timestamp DEFAULT now() NOT NULL,
+      "updated_at" timestamp DEFAULT now() NOT NULL,
+      "organization_id" uuid
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS "users_email_unique" ON "users" ("email");
+
+    ALTER TABLE "users" ADD CONSTRAINT "users_organization_id_organizations_id_fk"
+    FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+    ```
+
+    ```sql
+    -- src/db/migrations/0002_add_user_preferences.sql
+    ALTER TABLE "users" ADD COLUMN "preferences" jsonb DEFAULT '{}' NOT NULL;
+    ALTER TABLE "users" ADD COLUMN "timezone" text DEFAULT 'UTC' NOT NULL;
+    ALTER TABLE "users" ADD COLUMN "locale" text DEFAULT 'en' NOT NULL;
+
+    -- Create index for JSON queries
+    CREATE INDEX "users_preferences_idx" ON "users" USING GIN ("preferences");
+    ```
+
+    **Complex Migration with Data Migration:**
+    ```sql
+    -- src/db/migrations/0003_normalize_user_roles.sql
+    -- Add new role column
+    ALTER TABLE "users" ADD COLUMN "new_role" "user_role_v2" DEFAULT 'USER';
+
+    -- Data migration
+    UPDATE "users" SET "new_role" = CASE
+      WHEN "role" = 'ADMIN' THEN 'ADMIN'
+      WHEN "role" = 'MODERATOR' THEN 'MODERATOR'
+      ELSE 'USER'
+    END;
+
+    -- Drop old column and rename new one
+    ALTER TABLE "users" DROP COLUMN "role";
+    ALTER TABLE "users" RENAME COLUMN "new_role" TO "role";
+    ALTER TABLE "users" ALTER COLUMN "role" SET NOT NULL;
+    ```
+  </Tab>
+
+  <Tab value="migration-best-practices" label="✅ Migration Best Practices">
+    **Safe Migration Patterns:**
+    ```typescript
+    // src/db/migrations/helpers/migration-helper.ts
+    import db from '../../models/db'
+    import { sql } from 'drizzle-orm'
+
+    // Check if column exists before adding
+    export async function addColumnIfNotExists(
+      tableName: string,
+      columnName: string,
+      columnDefinition: string
+    ) {
+      const exists = await db.execute(sql`
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = ${tableName}
+        AND column_name = ${columnName}
+      `)
+
+      if (exists.length === 0) {
+        await db.execute(sql.raw(`
+          ALTER TABLE "${tableName}"
+          ADD COLUMN "${columnName}" ${columnDefinition}
+        `))
+      }
+    }
+
+    // Safe index creation
+    export async function createIndexIfNotExists(
+      indexName: string,
+      tableName: string,
+      columns: string[]
+    ) {
+      const exists = await db.execute(sql`
+        SELECT indexname
+        FROM pg_indexes
+        WHERE indexname = ${indexName}
+      `)
+
+      if (exists.length === 0) {
+        const columnList = columns.map(col => `"${col}"`).join(', ')
+        await db.execute(sql.raw(`
+          CREATE INDEX "${indexName}" ON "${tableName}" (${columnList})
+        `))
+      }
+    }
+
+    // Data migration with batching
+    export async function migrateDataInBatches<T>(
+      selectQuery: string,
+      updateFn: (batch: T[]) => Promise<void>,
+      batchSize: number = 1000
+    ) {
+      let offset = 0
+      let hasMore = true
+
+      while (hasMore) {
+        const batch = await db.execute(sql.raw(`
+          ${selectQuery}
+          LIMIT ${batchSize} OFFSET ${offset}
+        `))
+
+        if (batch.length === 0) {
+          hasMore = false
+          break
+        }
+
+        await updateFn(batch as T[])
+        offset += batchSize
+
+        // Progress logging
+        console.log(`Migrated ${offset} records...`)
+      }
+    }
+    ```
+
+    **Migration Guidelines:**
+    - **Backwards Compatible** - Don't break existing code
+    - **Atomic Operations** - Use transactions for complex changes
+    - **Data Validation** - Verify data integrity after migrations
+    - **Rollback Plan** - Always have a way to revert changes
+    - **Test Migrations** - Test on copy of production data
+    - **Index Strategy** - Add indexes after data, not during
+  </Tab>
+</Tabs>
+
+## Performance Optimization
+
+Database performance considerations and optimization patterns:
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🚀</div>
+      <h4 className="font-semibold">Query Optimization</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Selective loading** with Drizzle queries</div>
+      <div>• **Proper indexing** on frequently queried columns</div>
+      <div>• **Batch operations** for bulk data changes</div>
+      <div>• **Query analysis** with EXPLAIN ANALYZE</div>
+      <div>• **Connection pooling** for scalability</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">💾</div>
+      <h4 className="font-semibold">Data Access Patterns</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Repository pattern** for consistent access</div>
+      <div>• **Type transformations** for clean interfaces</div>
+      <div>• **Pagination** for large datasets</div>
+      <div>• **Eager loading** vs lazy loading strategies</div>
+      <div>• **Transaction optimization** for consistency</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🔍</div>
+      <h4 className="font-semibold">Monitoring & Analytics</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **Query performance tracking**</div>
+      <div>• **Slow query identification**</div>
+      <div>• **Database metrics collection**</div>
+      <div>• **Connection pool monitoring**</div>
+      <div>• **Error rate tracking**</div>
+    </div>
+  </div>
+
+  <div className="p-4 border rounded-lg">
+    <div className="flex items-center space-x-2 mb-3">
+      <div className="text-2xl">🛡️</div>
+      <h4 className="font-semibold">Data Security</h4>
+    </div>
+    <div className="space-y-2 text-sm">
+      <div>• **SQL injection prevention** with prepared statements</div>
+      <div>• **Data encryption** for sensitive fields</div>
+      <div>• **Access logging** for audit trails</div>
+      <div>• **Row-level security** where appropriate</div>
+      <div>• **Connection security** with TLS</div>
+    </div>
+  </div>
+</div>
+
+## Best Practices
+
+<Tabs defaultValue="repository-patterns">
+  <Tab value="repository-patterns" label="🗄️ Repository Patterns">
+    **Repository Design:**
+    ```typescript
+    // ✅ Good: Focused, single-responsibility repositories
+    export class UserRepository {
+      async findById(id: string): Promise<User | null> { }
+      async findByEmail(email: string): Promise<User | null> { }
+      async create(user: CreateUserInput): Promise<User> { }
+      async update(id: string, updates: UpdateUserInput): Promise<User> { }
+      async delete(id: string): Promise<void> { }
+    }
+
+    // ✅ Good: Use appropriate return types
+    async function getUserDao(id: string): Promise<UserModel | null> {
+      // Return null for not found, not undefined
+      return user || null
+    }
+
+    // ✅ Good: Consistent error handling
+    async function updateUserDao(id: string, data: UpdateUserInput): Promise<UserModel> {
+      const [updated] = await db.update(users)
+        .set(data)
+        .where(eq(users.id, id))
+        .returning()
+
+      if (!updated) {
+        throw new Error(`User ${id} not found`)
+      }
+
+      return updated
+    }
+
+    // ❌ Bad: Generic repositories lose type safety
+    export class GenericRepository<T> {
+      async findById(id: string): Promise<T | null> { } // Too generic
+    }
+    ```
+  </Tab>
+
+  <Tab value="type-safety" label="🔒 Type Safety">
+    **Type-Safe Patterns:**
+    ```typescript
+    // ✅ Good: Strong typing with Drizzle inference
+    export async function getUserWithSubscriptions(
+      id: string
+    ): Promise<UserModel & {
+      subscriptions: SubscriptionModel[]
+    } | null> {
+      return await db.query.users.findFirst({
+        where: eq(users.id, id),
+        with: {
+          subscriptions: true,
+        }
+      })
+    }
+
+    // ✅ Good: Custom types for complex queries
+    type UserWithStats = UserModel & {
+      subscriptionCount: number
+      totalRevenue: number
+    }
+
+    export async function getUsersWithStats(): Promise<UserWithStats[]> {
+      // Implementation with proper typing
+    }
+
+    // ❌ Bad: Losing type safety with any
+    export async function getUser(id: string): Promise<any> {
+      // Loses all type information
+    }
+    ```
+  </Tab>
+
+  <Tab value="error-handling" label="🚨 Error Handling">
+    **Database Error Patterns:**
+    ```typescript
+    // Custom database errors
+    export class DatabaseError extends Error {
+      constructor(message: string, public cause?: Error) {
+        super(message)
+        this.name = 'DatabaseError'
+      }
+    }
+
+    export class UniqueConstraintError extends DatabaseError {
+      constructor(field: string, value: string) {
+        super(`${field} '${value}' already exists`)
+        this.name = 'UniqueConstraintError'
+      }
+    }
+
+    // Error handling wrapper
+    export async function safeDbOperation<T>(
+      operation: () => Promise<T>,
+      context: string
+    ): Promise<T> {
+      try {
+        return await operation()
+      } catch (error) {
+        // PostgreSQL error codes
+        if (error.code === '23505') { // unique_violation
+          throw new UniqueConstraintError('field', 'value')
+        }
+
+        if (error.code === '23503') { // foreign_key_violation
+          throw new DatabaseError('Referenced record not found', error)
+        }
+
+        console.error(`Database error in ${context}:`, error)
+        throw new DatabaseError(`Database operation failed: ${context}`, error)
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Callout type="success">
+  **Persistence layer ready!** Your database operations are type-safe, performant, and maintainable with proper separation between domain and database concerns using Drizzle ORM.
+</Callout>

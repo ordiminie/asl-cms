@@ -1,0 +1,488 @@
+import 'server-only'
+
+import {cacheLife, cacheTag} from 'next/cache'
+import {cache} from 'react'
+
+import {routing} from '@/i18n/routing'
+import {
+  getAllMdxBlogPosts,
+  getAllMdxSlugsWithLocales,
+  getMdxBlogPost,
+  getPostIdBySlug,
+  getPostLanguageVariants,
+  getPublicationCutoff,
+} from '@/lib/helper/blog.server'
+import {
+  dbPostToUnified,
+  isMdxPublished,
+  mdxPostToUnified,
+} from '@/lib/helper/blog-adapters.server'
+import {
+  getAllPublishedPostSlugsService,
+  getPublishedPostsWithTranslationsService,
+} from '@/services/facades/post-service-facade'
+import {UnifiedBlogPost} from '@/services/types/domain/blog-types'
+import {SupportedLanguage} from '@/services/types/domain/post-types'
+
+export const BLOG_POSTS_PER_PAGE = 10
+
+export type PaginatedBlogResult = {
+  posts: UnifiedBlogPost[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    hasNext: boolean
+    hasPrev: boolean
+  }
+}
+
+export type BlogAlternates = {
+  canonical: string
+  languages: Record<string, string>
+}
+
+export type BlogCategory = {
+  slug: string
+  name: string
+  count: number
+}
+
+async function getAllPostsFromSources(
+  locale: string
+): Promise<UnifiedBlogPost[]> {
+  const posts: UnifiedBlogPost[] = []
+  const seenSlugs = new Set<string>()
+
+  try {
+    const dbResult = await getPublishedPostsWithTranslationsService(
+      {limit: 1000, offset: 0},
+      locale as SupportedLanguage
+    )
+
+    for (const post of dbResult.data) {
+      const unified = dbPostToUnified(post, locale)
+      if (unified) {
+        posts.push(unified)
+        seenSlugs.add(unified.slug)
+      }
+    }
+  } catch {
+    // DB error, continue with MDX
+  }
+
+  const mdxPosts = getAllMdxBlogPosts(locale)
+  for (const mdxPost of mdxPosts) {
+    if (seenSlugs.has(mdxPost.slug)) {
+      continue
+    }
+
+    if (!isMdxPublished(mdxPost, await getPublicationCutoff())) {
+      continue
+    }
+
+    const unified = mdxPostToUnified(mdxPost, locale)
+    posts.push(unified)
+  }
+
+  posts.sort((a, b) => {
+    const dateA = a.publishedAt || a.createdAt || new Date(0)
+    const dateB = b.publishedAt || b.createdAt || new Date(0)
+    return dateB.getTime() - dateA.getTime()
+  })
+
+  return posts
+}
+
+export const getAllUnifiedBlogPostsDal = cache(
+  async (locale: string): Promise<UnifiedBlogPost[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    return getAllPostsFromSources(locale)
+  }
+)
+
+export const getPaginatedBlogPostsDal = cache(
+  async (
+    locale: string,
+    page: number = 1,
+    limit: number = BLOG_POSTS_PER_PAGE
+  ): Promise<PaginatedBlogResult> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const allPosts = await getAllPostsFromSources(locale)
+    const total = allPosts.length
+    const totalPages = Math.ceil(total / limit)
+    const start = (page - 1) * limit
+    const posts = allPosts.slice(start, start + limit)
+
+    return {
+      posts,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    }
+  }
+)
+
+export const getBlogPostsByCategoryDal = cache(
+  async (
+    locale: string,
+    categorySlug: string,
+    page: number = 1,
+    limit: number = BLOG_POSTS_PER_PAGE
+  ): Promise<PaginatedBlogResult> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const allPosts = await getAllPostsFromSources(locale)
+    const categoryPosts = allPosts.filter(
+      (post) =>
+        post.category && slugifyCategory(post.category.name) === categorySlug
+    )
+
+    const total = categoryPosts.length
+    const totalPages = Math.ceil(total / limit)
+    const start = (page - 1) * limit
+    const posts = categoryPosts.slice(start, start + limit)
+
+    return {
+      posts,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+      },
+    }
+  }
+)
+
+export const getAllBlogCategoriesDal = cache(
+  async (locale: string): Promise<BlogCategory[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const allPosts = await getAllPostsFromSources(locale)
+    const categoryMap = new Map<string, {name: string; count: number}>()
+
+    for (const post of allPosts) {
+      if (post.category?.name) {
+        const slug = slugifyCategory(post.category.name)
+        const existing = categoryMap.get(slug)
+        if (existing) {
+          existing.count++
+        } else {
+          categoryMap.set(slug, {name: post.category.name, count: 1})
+        }
+      }
+    }
+
+    return Array.from(categoryMap.entries())
+      .map(([slug, {name, count}]) => ({slug, name, count}))
+      .sort((a, b) => b.count - a.count)
+  }
+)
+
+export const getCategoryBySlugDal = cache(
+  async (
+    locale: string,
+    categorySlug: string
+  ): Promise<BlogCategory | null> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const categories = await getAllBlogCategoriesDal(locale)
+    return categories.find((c) => c.slug === categorySlug) || null
+  }
+)
+
+async function getDbPostBySlug(
+  slug: string,
+  locale: string
+): Promise<UnifiedBlogPost | null> {
+  try {
+    const result = await getPublishedPostsWithTranslationsService(
+      {limit: 100, offset: 0},
+      locale as SupportedLanguage
+    )
+
+    for (const post of result.data) {
+      const translation = post.postTranslations?.find(
+        (t) => t.language === locale && t.slug === slug
+      )
+      if (translation) {
+        return dbPostToUnified(post, locale)
+      }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export const getUnifiedBlogPostBySlugDal = cache(
+  async (slug: string, locale: string): Promise<UnifiedBlogPost | null> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const dbPost = await getDbPostBySlug(slug, locale)
+    if (dbPost) {
+      return dbPost
+    }
+
+    const postId = getPostIdBySlug(slug, locale)
+    if (postId) {
+      const mdxPost = getMdxBlogPost(postId, locale)
+      if (mdxPost) {
+        if (!isMdxPublished(mdxPost, await getPublicationCutoff())) {
+          return null
+        }
+        return mdxPostToUnified(mdxPost, locale)
+      }
+    }
+
+    return null
+  }
+)
+
+export const getPostAlternatesDal = cache(
+  async (
+    slug: string,
+    currentLocale: string,
+    baseUrl: string
+  ): Promise<BlogAlternates> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const languages: Record<string, string> = {}
+
+    const postId = getPostIdBySlug(slug, currentLocale)
+    if (postId) {
+      const variants = await getPostLanguageVariants(postId)
+      for (const variant of variants) {
+        languages[variant.locale] =
+          `${baseUrl}/${variant.locale}/blog/${variant.slug}`
+      }
+    } else {
+      for (const locale of routing.locales) {
+        const post = await getUnifiedBlogPostBySlugDal(slug, locale)
+        if (post) {
+          languages[locale] = `${baseUrl}/${locale}/blog/${post.slug}`
+        }
+      }
+    }
+
+    const defaultLocale = routing.defaultLocale
+    if (languages[defaultLocale]) {
+      languages['x-default'] = languages[defaultLocale]
+    }
+
+    return {
+      canonical: `${baseUrl}/${currentLocale}/blog/${slug}`,
+      languages,
+    }
+  }
+)
+
+export const getAllUnifiedBlogSlugsDal = cache(
+  async (): Promise<{postId: string; slug: string; locale: string}[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const results: {postId: string; slug: string; locale: string}[] = []
+    const seenKeys = new Set<string>()
+
+    try {
+      const dbSlugs = await getAllPublishedPostSlugsService()
+      for (const item of dbSlugs) {
+        const key = `${item.slug}-${item.language}`
+        if (!seenKeys.has(key)) {
+          results.push({
+            postId: item.slug,
+            slug: item.slug,
+            locale: item.language,
+          })
+          seenKeys.add(key)
+        }
+      }
+    } catch {
+      // DB error, continue with MDX
+    }
+
+    const mdxSlugs = await getAllMdxSlugsWithLocales()
+    for (const item of mdxSlugs) {
+      const key = `${item.slug}-${item.locale}`
+      if (!seenKeys.has(key)) {
+        results.push(item)
+        seenKeys.add(key)
+      }
+    }
+
+    return results
+  }
+)
+
+export const getTotalPagesDal = cache(
+  async (
+    locale: string,
+    limit: number = BLOG_POSTS_PER_PAGE
+  ): Promise<number> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const allPosts = await getAllPostsFromSources(locale)
+    return Math.ceil(allPosts.length / limit)
+  }
+)
+
+export const getCategoryTotalPagesDal = cache(
+  async (
+    locale: string,
+    categorySlug: string,
+    limit: number = BLOG_POSTS_PER_PAGE
+  ): Promise<number> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const result = await getBlogPostsByCategoryDal(
+      locale,
+      categorySlug,
+      1,
+      limit
+    )
+    return result.pagination.totalPages
+  }
+)
+
+export function slugifyCategory(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+}
+
+export function getBlogListAlternates(
+  locale: string,
+  baseUrl: string,
+  page?: number
+): BlogAlternates {
+  const languages: Record<string, string> = {}
+  const pageSuffix = page && page > 1 ? `/page/${page}` : ''
+
+  for (const loc of routing.locales) {
+    languages[loc] = `${baseUrl}/${loc}/blog${pageSuffix}`
+  }
+  languages['x-default'] =
+    `${baseUrl}/${routing.defaultLocale}/blog${pageSuffix}`
+
+  return {
+    canonical: `${baseUrl}/${locale}/blog${pageSuffix}`,
+    languages,
+  }
+}
+
+export function getCategoryAlternates(
+  locale: string,
+  categorySlug: string,
+  baseUrl: string,
+  page?: number
+): BlogAlternates {
+  const languages: Record<string, string> = {}
+  const pageSuffix = page && page > 1 ? `/page/${page}` : ''
+
+  for (const loc of routing.locales) {
+    languages[loc] =
+      `${baseUrl}/${loc}/blog/category/${categorySlug}${pageSuffix}`
+  }
+  languages['x-default'] =
+    `${baseUrl}/${routing.defaultLocale}/blog/category/${categorySlug}${pageSuffix}`
+
+  return {
+    canonical: `${baseUrl}/${locale}/blog/category/${categorySlug}${pageSuffix}`,
+    languages,
+  }
+}
+
+export const getRelatedPostsDal = cache(
+  async (
+    locale: string,
+    currentSlug: string,
+    categoryName?: string,
+    limit: number = 3
+  ): Promise<UnifiedBlogPost[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const allPosts = await getAllPostsFromSources(locale)
+
+    const otherPosts = allPosts.filter((post) => post.slug !== currentSlug)
+
+    if (otherPosts.length === 0) return []
+
+    const sameCategoryPosts = categoryName
+      ? otherPosts.filter((post) => post.category?.name === categoryName)
+      : []
+
+    const differentCategoryPosts = categoryName
+      ? otherPosts.filter((post) => post.category?.name !== categoryName)
+      : otherPosts
+
+    const result: UnifiedBlogPost[] = []
+
+    for (const post of sameCategoryPosts) {
+      if (result.length >= limit) break
+      result.push(post)
+    }
+
+    for (const post of differentCategoryPosts) {
+      if (result.length >= limit) break
+      result.push(post)
+    }
+
+    return result
+  }
+)
+
+export const getPostLanguageVariantsDal = cache(
+  async (
+    slug: string,
+    currentLocale: string
+  ): Promise<{locale: string; slug: string}[]> => {
+    'use cache'
+    cacheLife('days')
+    cacheTag('blog')
+
+    const postId = getPostIdBySlug(slug, currentLocale)
+    if (!postId) {
+      return []
+    }
+
+    return getPostLanguageVariants(postId)
+  }
+)

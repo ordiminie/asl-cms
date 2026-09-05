@@ -1,0 +1,268 @@
+---
+title: 'Environment Setup'
+description: 'Configure your environment variables using the interactive CLI tool or manual configuration for development and production'
+keywords: "ShipSaaS, environment variables, CLI tool, configuration, Better Auth setup, Stripe configuration, database setup, env configuration"
+order: 2
+---
+
+Configure your application environment with either the recommended CLI tool or manual configuration. The CLI tool provides smart defaults and validation, while manual setup offers full control.
+
+## Method 1: CLI Tool (Recommended)
+
+<Callout type="success">
+  🚀 **Recommended**: Use the interactive CLI for automatic configuration with smart defaults and validation.
+</Callout>
+
+<Steps>
+<Step title="Run the CLI tool">
+  ```bash
+  pnpm init:env
+  ```
+
+  The tool automatically detects all required environment variables and guides you through configuration.
+</Step>
+
+<Step title="Choose environment">
+  Select your target environment:
+
+  - **Development**: Local development (creates `.env.development`)
+  - **Production**: Production deployment (creates `.env.production`)
+  - **Test**: Automated testing (creates `.env.test`)
+
+  <Image src="/docs/02/cli-env-select.png" alt="CLI Environment Selection" width={500} />
+</Step>
+
+<Step title="Configure services">
+  The tool organizes variables into categories:
+
+  1. **Database** - PostgreSQL connection
+  2. **Authentication** - Better Auth settings
+  3. **Email** - Resend integration
+  4. **Storage** - Supabase file storage
+  5. **Stripe** - Payment processing
+  6. **Pages & Features** - Enable/disable features
+  7. **OAuth** - Social authentication providers
+
+  <Image src="/docs/02/cli-stripe.png" alt="CLI Stripe Configuration" width={500} />
+</Step>
+</Steps>
+
+### CLI Features
+
+**Smart Defaults:**
+- Auto-generates secure secrets
+- Provides development URLs
+- Suggests sensible configuration
+
+**Interactive Selection:**
+<Image src="/docs/02/cli-checkout-type.png" alt="CLI Checkout Type Selection" width={500} />
+
+**Multi-Select Options:**
+<Image src="/docs/02/cli-pages.png" alt="CLI Pages Configuration" width={500} />
+
+**Validation:**
+- URL format validation
+- Email format checking
+- Required field enforcement
+
+## Method 2: Manual Configuration
+
+<Callout type="info">
+  ⚙️ **Manual Setup**: For advanced users who prefer full control over configuration.
+</Callout>
+
+<Steps>
+<Step title="Copy template">
+  ```bash
+  cp .env.example .env.local
+  ```
+</Step>
+
+<Step title="Edit configuration">
+  Open `.env.local` and configure your services:
+
+  ```bash
+  code .env.local  # VS Code
+  nano .env.local  # Terminal editor
+  ```
+</Step>
+</Steps>
+
+### Required Variables
+
+**Database Configuration:**
+```bash
+# PostgreSQL connection (Required)
+DATABASE_URL="postgresql://username:password@host:5432/database"
+DIRECT_URL="postgresql://username:password@host:5432/database"
+```
+
+**Authentication:**
+```bash
+# Better Auth secret (Required) - 32+ characters
+BETTER_AUTH_SECRET="your-super-secret-key-min-32-characters"
+BETTER_AUTH_URL="http://localhost:3000"
+```
+
+**Email Service:**
+```bash
+# Resend API key (Required for email)
+RESEND_API_KEY="re_xxxxxxxxxxxx"
+EMAIL_FROM="noreply@yourdomain.com"
+```
+
+### Payment Configuration (Stripe)
+
+```bash
+# Stripe keys (Required for payments)
+STRIPE_PUBLISHABLE_KEY="pk_test_..."
+STRIPE_SECRET_KEY="sk_test_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
+```
+
+**Get Stripe keys:**
+1. Create account at [stripe.com](https://stripe.com)
+2. Go to **Developers** → **API keys**
+3. Copy **Publishable** and **Secret** keys
+4. Setup webhook endpoint for real-time updates
+
+### Storage Configuration (Supabase)
+
+```bash
+# File storage (Optional)
+SUPABASE_URL="https://xxx.supabase.co"
+SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_BUCKET="your-bucket-name"
+STORAGE_TYPE="supabase"
+```
+
+### Social Authentication (Optional)
+
+**Google OAuth:**
+```bash
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+```
+
+**GitHub OAuth:**
+```bash
+GITHUB_CLIENT_ID="your-github-client-id"
+GITHUB_CLIENT_SECRET="your-github-client-secret"
+```
+
+## Environment Types
+
+### Development Environment
+
+**File**: `.env.development` or `.env.local`
+
+```bash
+# Development-specific settings
+BETTER_AUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+LOG_LEVEL="debug"
+NODE_ENV="development"
+```
+
+### Production Environment
+
+**File**: `.env.production`
+
+```bash
+# Production settings with HTTPS
+BETTER_AUTH_URL="https://yourdomain.com"
+NEXT_PUBLIC_APP_URL="https://yourdomain.com"
+LOG_LEVEL="info"
+NODE_ENV="production"
+```
+
+**Production Checklist:**
+- ✅ Use HTTPS URLs
+- ✅ Use production Stripe keys
+- ✅ Use production database
+- ✅ Set proper CORS origins
+- ✅ Use strong secrets
+
+### Test Environment
+
+**File**: `.env.test`
+
+```bash
+# Test database and mock services
+DATABASE_URL="postgresql://localhost:5432/test_db"
+BETTER_AUTH_SECRET="test-secret-32-characters-long"
+STRIPE_SECRET_KEY="sk_test_mock_key"
+LOG_LEVEL="silent"
+NODE_ENV="test"
+```
+
+## Validation & Security
+
+<Callout type="warning">
+  🔒 **Security**: Never commit `.env.*` files to Git. They contain sensitive credentials.
+</Callout>
+
+**Environment Validation:**
+The app automatically validates environment variables on startup using Zod schemas:
+
+```typescript
+// Variables are validated against these schemas
+serverSchema: z.object({
+  DATABASE_URL: z.string().url(),
+  BETTER_AUTH_SECRET: z.string().min(32),
+  STRIPE_SECRET_KEY: z.string().startsWith('sk_'),
+  // ... more validation rules
+})
+```
+
+**Best Practices:**
+- Use different secrets for each environment
+- Rotate secrets regularly
+- Use test keys in development
+- Validate URLs are properly formatted
+- Keep `.env.example` updated for team members
+
+## Troubleshooting
+
+**Common Issues:**
+
+```bash
+# Invalid database URL
+Error: Invalid DATABASE_URL format
+Solution: Ensure URL follows postgresql://user:pass@host:port/db
+
+# Missing required variables
+Error: BETTER_AUTH_SECRET is required
+Solution: Generate with: openssl rand -base64 32
+
+# Webhook validation failed
+Error: Stripe webhook signature invalid
+Solution: Check STRIPE_WEBHOOK_SECRET matches your webhook endpoint
+```
+
+**CLI Tool Issues:**
+
+```bash
+# CLI won't start
+pnpm install && pnpm init:env
+
+# Variables not detected
+# Check env-schemas.ts for proper exports
+# Restart CLI after schema changes
+```
+
+## Next Steps
+
+<Callout type="success">
+  ✅ **Environment configured!** Continue with database setup to complete your development environment.
+</Callout>
+
+After configuring your environment:
+
+1. **[Database Setup](/docs/getting-started/database-setup)** - Initialize your database
+2. **[Authentication](/docs/authentication)** - Configure auth providers
+3. **[Stripe Integration](/docs/stripe-payments)** - Setup payment processing
+
+<Callout type="info">
+  💡 **Pro tip**: Use the CLI tool's multi-environment support to easily manage development, staging, and production configurations.
+</Callout>

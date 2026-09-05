@@ -1,0 +1,67 @@
+---
+id: '004-tailwind-v4'
+lang: 'en'
+slug: 'discovering-tailwind-css-v4'
+title: 'Discovering Tailwind CSS v4'
+description: 'Tailwind CSS v4 brings a revolution in how we style our web applications.'
+author: 'ShipSaaS Team'
+category: 'Design'
+hashtags: ['tailwindcss', 'css', 'frontend', 'design']
+publishedAt: '2025-01-10'
+---
+
+# Discovering Tailwind CSS v4
+
+Tailwind CSS v4 brings a revolution in how we style our web applications.
+
+## Major Changes
+
+### New CSS Engine
+
+```css
+/* v4 Configuration */
+@import 'tailwindcss/theme' layer(theme);
+@import 'tailwindcss/base' layer(base);
+@import 'tailwindcss/components' layer(components);
+@import 'tailwindcss/utilities' layer(utilities);
+```
+
+### Simplified Configuration
+
+```javascript
+// tailwind.config.js v4
+export default {
+  content: ['./src/**/*.{html,js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        primary: 'oklch(0.7 0.15 200)',
+      },
+    },
+  },
+}
+```
+
+## Performance
+
+| Metric       | v3    | v4       |
+| ------------ | ----- | -------- |
+| Build time   | 2.5s  | 0.8s     |
+| CSS size     | 3.8MB | 1.2MB    |
+| Tree shaking | Yes   | Improved |
+
+## New Utilities
+
+### Container Queries
+
+```html
+<div class="@container">
+  <div class="@sm:text-lg @md:text-xl">Container-based responsive!</div>
+</div>
+```
+
+### Modern Colors
+
+```html
+<div class="bg-red-500/20 text-blue-600/80">Native opacity support</div>
+```

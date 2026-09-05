@@ -1,0 +1,214 @@
+---
+title: Database Migrations
+description: Automated database migrations in CI/CD pipeline with Drizzle ORM, schema management, and production deployment safety
+keywords: 'ShipSaaS, database migrations, migration deployment, production migrations, schema updates, migration strategy'
+---
+
+Complete guide to database migrations using Drizzle ORM in the GitHub Actions CI/CD pipeline.
+
+## Migration Overview
+
+The SaaS boilerplate uses **Drizzle ORM for database migrations** with automatic execution in the CI/CD pipeline:
+
+**Migration Strategy:**
+- **Schema-first approach** with TypeScript models
+- **Automatic migration generation** from schema changes
+- **CI/CD integration** runs migrations before deployment
+- **Production safety** with rollback capabilities
+- **UUID extension** required for PostgreSQL
+
+**Migration Flow:**
+1. Modify database schema in TypeScript models
+2. Generate migration files with `pnpm db:generate`
+3. Test migrations locally with `pnpm db:migrate`
+4. Push to GitHub - CI/CD runs migrations automatically
+5. Vercel deploys with updated database schema
+
+## Drizzle Configuration
+
+**Database setup and migration configuration:**
+
+### Drizzle Config
+
+**File**: `drizzle.config.ts`
+```typescript
+import { defineConfig } from 'drizzle-kit'
+import initDotEnv from './src/db/scripts/env'
+
+initDotEnv()
+
+export default defineConfig({
+  schema: './src/db/models/*',           // Schema location
+  out: './drizzle/migrations',          // Migration output directory
+  dialect: 'postgresql',                // Database type
+  dbCredentials: {
+    url: process.env.DATABASE_URL as string,
+  },
+  verbose: true,                        // Detailed migration logs
+  strict: true,                         // Strict type checking
+  introspect: {
+    casing: 'camel',                    // Convert snake_case to camelCase
+  },
+})
+```
+
+### Migration Scripts
+
+**Package.json migration commands:**
+```json
+{
+  "scripts": {
+    "db:generate": "drizzle-kit generate",     // Generate migration files
+    "db:migrate": "drizzle-kit migrate",       // Apply migrations
+    "db:push": "drizzle-kit push --force",     // Push schema directly (dev only)
+    "db:pull": "drizzle-kit pull",             // Pull schema from database
+    "db:drop": "drizzle-kit drop",             // Drop all tables (careful!)
+    "db:studio": "drizzle-kit studio",         // Open Drizzle Studio
+    "db:check": "tsx src/db/scripts/check.ts", // Check database connection
+    "db:seed": "tsx src/db/scripts/seed.ts",   // Seed database with data
+    "db:clear": "tsx src/db/scripts/clear.ts", // Clear all data
+    "db:reset-seed": "pnpm db:clear && pnpm db:push && pnpm db:seed"
+  }
+}
+```
+
+## Database Schema
+
+The boilerplate includes a complete database schema managed by Drizzle ORM with PostgreSQL, including:
+
+- **Authentication system** with Better Auth (users, sessions, accounts, 2FA)
+- **Multi-tenant organizations** with roles and member management
+- **Subscription and billing** with Stripe integration
+- **Project and task management** features
+- **Notification system** with user preferences
+- **User settings** and configuration options
+
+All schema changes are managed through Drizzle migrations and automatically applied during deployment.
+
+## Migration Execution in CI/CD
+
+**How migrations run in GitHub Actions:**
+
+### Production Workflow Migration
+
+**File**: `.github/workflows/production.yml`
+```yaml
+- name: Install Drizzle Kit
+  run: npm install -g drizzle-kit
+
+- name: Run database migrations
+  run: pnpm db:migrate
+  env:
+    DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+**Migration Process:**
+1. Install Drizzle Kit globally in CI environment
+2. Run `pnpm db:migrate` with production DATABASE_URL
+3. Migrations execute against production database
+4. If migrations fail, entire deployment is blocked
+5. If migrations succeed, Vercel deployment proceeds
+
+### Migration Script Execution
+
+**File**: `src/db/scripts/migrate.ts`
+```typescript
+#!/usr/bin/env node
+import { sql } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/node-postgres'
+import { migrate } from 'drizzle-orm/node-postgres/migrator'
+import pg from 'pg'
+
+import initDotEnv from './env'
+initDotEnv()
+
+const runMigrate = async () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not defined')
+  }
+
+  const client = new pg.Client({
+    connectionString: process.env.DATABASE_URL,
+  })
+
+  await client.connect()
+  const db = drizzle(client)
+
+  console.log('⏳ Running migrations...')
+
+  const start = Date.now()
+
+  // Critical: Create UUID extension first
+  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`)
+
+  // Run all pending migrations
+  await migrate(db, { migrationsFolder: './drizzle/migrations' })
+
+  const end = Date.now()
+
+  console.log('✅ Migrations completed in', end - start, 'ms')
+  process.exit(0)
+}
+
+try {
+  await runMigrate()
+} catch (error) {
+  console.error('❌ Migration failed')
+  console.error(error)
+  process.exit(1)
+}
+```
+
+**Key Features:**
+- **UUID Extension**: Creates `uuid-ossp` extension required for UUID primary keys
+- **Error Handling**: Fails gracefully with clear error messages
+- **Performance Tracking**: Logs migration execution time
+- **Exit Codes**: Proper exit codes for CI/CD pipeline
+
+## Development Workflow
+
+**Standard workflow for database changes:**
+
+### 1. Modify Schema Models
+```typescript
+// Update TypeScript schema files in src/db/models/
+export const users = pgTable('user', {
+  // ... existing fields
+  newField: text('new_field'), // Add new field
+})
+```
+
+### 2. Generate Migration
+```bash
+pnpm db:generate
+# Creates migration file in drizzle/migrations/
+```
+
+### 3. Test Locally
+```bash
+pnpm db:migrate
+# Applies migration to local database
+```
+
+### 4. Deploy
+```bash
+git add . && git commit -m "Add new field"
+git push origin main
+# GitHub Actions will run migration automatically
+```
+
+## Migration Safety
+
+**The CI/CD pipeline ensures safe migrations:**
+
+- **Automatic execution** during GitHub Actions
+- **Production database** receives delta changes only
+- **Rollback capability** through Vercel deployment rollback
+- **Zero-downtime** for additive changes (new columns, tables, indexes)
+
+**Migration best practices:**
+- Add new columns as nullable first
+- Use separate migrations for breaking changes
+- Test thoroughly in preview environment before production
+
+Your database migrations are automatically handled by the CI/CD pipeline. When you push schema changes, Drizzle will generate and execute the necessary delta migrations during deployment.

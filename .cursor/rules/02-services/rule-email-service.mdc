@@ -1,0 +1,112 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+# Service d'Email avec Resend et React Email
+
+## Configuration
+
+Le service d'email utilise [Resend](https://resend.com) comme fournisseur d'emails et [React Email](https://react.email) pour les templates.
+
+## Structure des Templates
+
+Les templates d'email sont stockés dans `src/lib/emails/` et utilisent les composants de `@react-email/components`.
+
+Exemple de template :
+[invitation-organization-link-email.tsx](mdc:src/lib/emails/invitation-organization-link-email.tsx)
+
+```tsx
+export type InvitationOrganizationLinkMailProps = {
+  invitedByUsername: string
+  invitedByEmail: string
+  teamName: string
+  inviteLink: string
+}
+
+export default function InvitationOrganizationLinkMail({
+  invitedByUsername,
+  invitedByEmail,
+  teamName,
+  inviteLink,
+}: InvitationOrganizationLinkMailProps) {
+  // Template React Email
+}
+```
+
+## Service d'Envoi
+
+Le service d'envoi d'email est défini dans [email-service.ts](mdc:src/services/email-service.ts).
+
+### Utilisation de Resend
+
+```tsx
+import {env} from '@/env'
+
+const resend = new Resend(env.RESEND_API_KEY)
+
+export const sendEmailService = async (
+  payload: CreateEmailOptions,
+  options?: CreateEmailRequestOptions
+) => {
+  // Configuration et envoi
+}
+```
+
+### Envoi d'un Email avec Template React
+
+```tsx
+await sendEmailService({
+  to: email,
+  subject: "Sujet de l'email",
+  from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
+  text: "Version texte de l'email",
+  react: MonTemplateReact({
+    // Props du template
+  }),
+})
+```
+
+## Bonnes Pratiques
+
+1. **Templates React Email**
+   - Utiliser les composants de `@react-email/components`
+   - Échapper les apostrophes avec `&apos;`
+   - Définir un type TypeScript pour les props
+   - Inclure une version texte de l'email
+
+2. **Service d'Envoi**
+   - Toujours fournir une version texte (`text`)
+   - Utiliser la propriété `react` pour les templates React
+   - Gérer les erreurs d'envoi
+   - Préfixer les sujets en développement avec `[DEV]`
+
+3. **Sécurité**
+   - Ne jamais exposer la clé API Resend
+   - Valider les entrées avant l'envoi
+   - Utiliser des variables d'environnement pour la configuration
+
+## Exemple Complet
+
+```tsx
+interface SendEmailParams {
+  email: string
+  // Autres paramètres
+}
+
+export const sendCustomEmail = async ({
+  email,
+  // Autres paramètres
+}: SendEmailParams) => {
+  await sendEmailService({
+    to: email,
+    subject: 'Sujet',
+    from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
+    text: 'Version texte',
+    react: MonTemplateReact({
+      // Props
+    }),
+  })
+}
+```

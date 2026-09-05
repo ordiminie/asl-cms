@@ -1,0 +1,796 @@
+---
+title: End-to-End Testing
+description: Complete user workflow testing with Playwright - authentication, navigation, mobile testing, and cross-browser compatibility
+keywords: 'ShipSaaS, E2E testing, Playwright, end-to-end testing, integration tests, browser testing, automated testing'
+---
+
+Complete user workflow testing with Playwright to ensure your SaaS application works correctly from the user's perspective across different browsers and devices.
+
+## Overview
+
+End-to-end (E2E) tests verify that **complete user workflows** function correctly by simulating real user interactions. E2E tests focus on:
+
+- **User Authentication Flows** - Login, registration, password reset
+- **Core User Journeys** - Navigation, form submissions, page interactions
+- **Cross-Browser Compatibility** - Chrome, Firefox, Safari testing
+- **Mobile Responsiveness** - Mobile device simulation and testing
+- **Visual Regression** - Screenshot comparison and UI consistency
+
+**Testing Philosophy:** E2E tests validate that all application layers work together correctly - from UI components to backend services and database operations.
+
+## Testing Architecture
+
+Playwright E2E tests follow a **workflow-focused approach** that mirrors real user behavior:
+
+### Test Organization Structure
+
+```
+e2e/
+├── auth.spec.ts         # 🔐 Authentication workflows
+├── homepage.spec.ts     # 🏠 Homepage and navigation
+├── mobile.spec.ts       # 📱 Mobile-specific testing
+└── user-flows.spec.ts   # 👤 Complete user journeys
+```
+
+### Playwright Configuration
+
+The boilerplate uses a **multi-browser, multi-environment** setup:
+
+```typescript
+// playwright.config.ts
+import { defineConfig, devices } from '@playwright/test'
+
+export default defineConfig({
+  testDir: './e2e',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+
+  use: {
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+  },
+
+  // Cross-browser testing
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
+
+  // Auto-start dev server
+  webServer: {
+    command: 'pnpm dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+  },
+})
+```
+
+**Key Features:**
+- **Parallel Execution** - Tests run concurrently for faster feedback
+- **Automatic Retry** - Failed tests retry in CI environments
+- **Visual Debugging** - Screenshots and traces for failed tests
+- **Multi-Browser Support** - Chrome, Firefox, Safari testing
+
+## Authentication Testing
+
+Comprehensive testing of user authentication flows:
+
+### Login Flow Testing
+
+```typescript
+// e2e/auth.spec.ts
+import { expect, test } from '@playwright/test'
+
+test.describe('Authentication', () => {
+  test('should display login page', async ({ page }) => {
+    await page.goto('/en/login')
+
+    // Check if login form is present
+    await expect(page.locator('form')).toBeVisible()
+
+    // Verify required form elements
+    await expect(page.locator('input[type="email"]')).toBeVisible()
+    await expect(page.locator('input[type="password"]')).toBeVisible()
+    await expect(page.locator('button[type="submit"]')).toBeVisible()
+  })
+
+  test('should successfully login with existing credentials', async ({ page }) => {
+    await page.goto('/en/login')
+
+    // Wait for form to load
+    await expect(page.locator('form')).toBeVisible()
+
+    // Fill login credentials
+    await page.fill('input[name="email"]', 'user@gmail.com')
+    await page.fill('input[name="password"]', 'Azerty123')
+
+    // Submit form
+    await page.click('button[type="submit"]')
+
+    // Wait for navigation or completion
+    await Promise.race([
+      page.waitForURL((url) => !url.toString().includes('/login'), {
+        timeout: 10000,
+      }),
+      page.waitForTimeout(8000),
+    ])
+
+    // Verify successful login
+    const currentUrl = page.url()
+    const isStillOnLogin = currentUrl.includes('/login')
+
+    if (isStillOnLogin) {
+      // Check for error messages if still on login page
+      const errorMessages = page.locator(
+        '.text-red-500, .text-destructive, [role="alert"]'
+      )
+      const errorCount = await errorMessages.count()
+
+      if (errorCount > 0) {
+        // Only fail if actual error keywords are present
+        let hasActualError = false
+        for (let i = 0; i < errorCount; i++) {
+          const errorText = await errorMessages.nth(i).textContent()
+          if (errorText &&
+              (errorText.toLowerCase().includes('error') ||
+               errorText.toLowerCase().includes('invalid') ||
+               errorText.toLowerCase().includes('incorrect'))) {
+            hasActualError = true
+            break
+          }
+        }
+
+        if (hasActualError) {
+          const firstError = await errorMessages.first().textContent()
+          throw new Error(`Login failed with error: ${firstError}`)
+        }
+      }
+    } else {
+      // Successful redirect to dashboard or app
+      expect(currentUrl).toMatch(/\/(dashboard|app|en$)/)
+    }
+  })
+
+  test('should show error for invalid login credentials', async ({ page }) => {
+    await page.goto('/en/login')
+
+    await expect(page.locator('form')).toBeVisible()
+
+    // Try invalid credentials
+    await page.fill('input[name="email"]', 'invalid@example.com')
+    await page.fill('input[name="password"]', 'wrongpassword')
+    await page.click('button[type="submit"]')
+
+    await page.waitForTimeout(3000)
+
+    // Check for error messages or staying on login page
+    const errorMessage = page.locator(
+      '.text-red-500, .text-destructive, [role="alert"], div:has-text("error")'
+    )
+
+    const errorCount = await errorMessage.count()
+    if (errorCount === 0) {
+      // Should stay on login page if no error shown
+      const currentUrl = page.url()
+      expect(currentUrl).toContain('/login')
+    } else {
+      await expect(errorMessage.first()).toBeVisible()
+    }
+  })
+})
+```
+
+### Registration Flow Testing
+
+```typescript
+test.describe('User Registration', () => {
+  test('should display register page', async ({ page }) => {
+    await page.goto('/en/register')
+
+    // Check social provider buttons
+    await expect(page.locator('button:has-text("Google")')).toBeVisible()
+    await expect(page.locator('button:has-text("Apple")')).toBeVisible()
+
+    // Show email registration form
+    await page.click('button:has-text("Create account with email")')
+    await expect(page.locator('form')).toBeVisible()
+
+    // Verify registration form fields
+    await expect(page.locator('input[name="name"]')).toBeVisible()
+    await expect(page.locator('input[name="email"]')).toBeVisible()
+    await expect(page.locator('input[name="password"]')).toBeVisible()
+    await expect(page.locator('input[name="confirmPassword"]')).toBeVisible()
+  })
+
+  test('should successfully register a new user', async ({ page }) => {
+    await page.goto('/en/register')
+
+    await page.click('button:has-text("Create account with email")')
+    await expect(page.locator('form')).toBeVisible()
+
+    // Generate unique test email
+    const timestamp = Date.now()
+    const testEmail = `test-${timestamp}@gmail.com`
+
+    // Fill registration form
+    await page.fill('input[name="name"]', 'Test User')
+    await page.fill('input[name="email"]', testEmail)
+    await page.fill('input[name="password"]', 'TestPassword123!')
+    await page.fill('input[name="confirmPassword"]', 'TestPassword123!')
+
+    // Submit registration
+    await page.click('button[type="submit"]')
+    await page.waitForTimeout(5000)
+
+    // Verify registration outcome
+    const currentUrl = page.url()
+    const isStillOnRegister = currentUrl.includes('/register')
+
+    if (isStillOnRegister) {
+      // Check for error messages
+      const errorMessages = page.locator('.text-red-500, .text-destructive')
+      const errorCount = await errorMessages.count()
+
+      if (errorCount > 0) {
+        const errorText = await errorMessages.first().textContent()
+        if (errorText && errorText.trim() && !errorText.includes('Success')) {
+          throw new Error(`Registration failed with error: ${errorText}`)
+        }
+      }
+    } else {
+      // Successful redirect to verify-request, login, or dashboard
+      expect(currentUrl).toMatch(/\/(verify-request|login|dashboard|app)/)
+    }
+  })
+
+  test('should show validation errors for incomplete registration', async ({ page }) => {
+    await page.goto('/en/register')
+
+    await page.click('button:has-text("Create account with email")')
+    await expect(page.locator('form')).toBeVisible()
+
+    // Submit without filling required fields
+    await page.click('button[type="submit"]')
+    await page.waitForTimeout(1000)
+
+    // Check for validation errors
+    const errorMessages = page.locator(
+      '[role="alert"], .text-red-500, .text-destructive'
+    )
+    await expect(errorMessages.first()).toBeVisible()
+  })
+
+  test('should show error for mismatched passwords', async ({ page }) => {
+    await page.goto('/en/register')
+
+    await page.click('button:has-text("Create account with email")')
+    await expect(page.locator('form')).toBeVisible()
+
+    // Fill form with mismatched passwords
+    await page.fill('input[name="name"]', 'Test User')
+    await page.fill('input[name="email"]', 'test@example.com')
+    await page.fill('input[name="password"]', 'TestPassword123!')
+    await page.fill('input[name="confirmPassword"]', 'DifferentPassword123!')
+
+    await page.click('button[type="submit"]')
+    await page.waitForTimeout(1000)
+
+    // Verify password mismatch error
+    const errorMessages = page.locator(
+      '[role="alert"], .text-red-500, .text-destructive'
+    )
+    await expect(errorMessages.first()).toBeVisible()
+  })
+
+  test('should navigate from login to register', async ({ page }) => {
+    await page.goto('/en/login')
+
+    // Click register link
+    await page.click('a[href="/register"]')
+
+    // Should be on register page
+    await expect(page).toHaveURL(/\/en\/register/)
+  })
+})
+```
+
+## Homepage and Navigation Testing
+
+Testing core navigation and homepage functionality:
+
+```typescript
+// e2e/homepage.spec.ts
+test.describe('Homepage', () => {
+  test('should display the homepage correctly', async ({ page }) => {
+    await page.goto('/')
+
+    // Check page title
+    await expect(page).toHaveTitle(/Next SaaS Boilerplate/)
+
+    // Check main hero heading
+    await expect(
+      page.getByRole('heading', { name: /Modern SaaS platform to boost/ })
+    ).toBeVisible()
+  })
+
+  test('should have working navigation', async ({ page }) => {
+    await page.goto('/')
+
+    // Check if navigation is present
+    const navigation = page.locator('nav').first()
+    await expect(navigation).toBeVisible()
+  })
+
+  test('should display hero section', async ({ page }) => {
+    await page.goto('/')
+
+    // Check for hero content
+    await expect(page.getByText('Modern SaaS platform')).toBeVisible()
+  })
+})
+```
+
+### Advanced Navigation Testing
+
+```typescript
+test.describe('Navigation Flows', () => {
+  test('should navigate through main sections', async ({ page }) => {
+    await page.goto('/')
+
+    // Test navigation to key pages
+    const testPages = [
+      { link: 'Features', expectedUrl: '/features' },
+      { link: 'Pricing', expectedUrl: '/pricing' },
+      { link: 'Login', expectedUrl: '/login' },
+    ]
+
+    for (const testPage of testPages) {
+      await page.goto('/')
+
+      // Click navigation link
+      await page.click(`text="${testPage.link}"`)
+
+      // Verify URL change
+      await expect(page).toHaveURL(new RegExp(testPage.expectedUrl))
+    }
+  })
+
+  test('should handle breadcrumb navigation', async ({ page }) => {
+    // Navigate to a deep page
+    await page.goto('/dashboard/settings/profile')
+
+    // Check breadcrumb is present
+    const breadcrumb = page.locator('[aria-label="breadcrumb"]')
+    await expect(breadcrumb).toBeVisible()
+
+    // Click breadcrumb link to navigate back
+    await page.click('text="Dashboard"')
+    await expect(page).toHaveURL(/\/dashboard/)
+  })
+
+  test('should maintain active navigation state', async ({ page }) => {
+    await page.goto('/dashboard')
+
+    // Check active navigation item
+    const activeNav = page.locator('nav .active, nav [aria-current="page"]')
+    await expect(activeNav).toBeVisible()
+  })
+})
+```
+
+## Mobile Testing
+
+Testing mobile responsiveness and mobile-specific interactions:
+
+```typescript
+// e2e/mobile.spec.ts
+test.describe('Mobile Navigation', () => {
+  // Set mobile viewport
+  test.use({ viewport: { width: 375, height: 667 } }) // iPhone-like viewport
+
+  test('should display mobile navigation correctly', async ({ page }) => {
+    await page.goto('/')
+
+    // Mobile nav might be hidden by default
+    await expect(page.locator('nav')).toBeAttached()
+  })
+
+  test('should display homepage on mobile', async ({ page }) => {
+    await page.goto('/')
+
+    // Check page loads correctly
+    await expect(page).toHaveTitle(/Next SaaS Boilerplate/)
+
+    // Check mobile-optimized content
+    await expect(page.getByText('Modern SaaS platform')).toBeVisible()
+  })
+
+  test('should handle mobile menu toggle', async ({ page }) => {
+    await page.goto('/')
+
+    // Look for mobile menu button (hamburger menu)
+    const mobileMenuButton = page.locator(
+      'button[aria-label="Toggle menu"], button:has(svg), .mobile-menu-toggle'
+    )
+
+    const buttonCount = await mobileMenuButton.count()
+    if (buttonCount > 0) {
+      // Click mobile menu button
+      await mobileMenuButton.first().click()
+
+      // Check if mobile menu opens
+      const mobileMenu = page.locator('.mobile-menu, .menu-open, nav ul')
+      await expect(mobileMenu).toBeVisible()
+    }
+  })
+
+  test('should maintain functionality on mobile', async ({ page }) => {
+    await page.goto('/en/login')
+
+    // Mobile login should work the same
+    await expect(page.locator('form')).toBeVisible()
+    await expect(page.locator('input[type="email"]')).toBeVisible()
+    await expect(page.locator('input[type="password"]')).toBeVisible()
+
+    // Form inputs should be properly sized for mobile
+    const emailInput = page.locator('input[type="email"]')
+    const inputBox = await emailInput.boundingBox()
+
+    if (inputBox) {
+      // Input should be reasonably sized for mobile
+      expect(inputBox.width).toBeGreaterThan(200)
+    }
+  })
+})
+```
+
+### Multi-Device Testing
+
+```typescript
+test.describe('Multi-Device Support', () => {
+  const devices = [
+    { name: 'iPhone', viewport: { width: 375, height: 667 } },
+    { name: 'iPad', viewport: { width: 768, height: 1024 } },
+    { name: 'Desktop', viewport: { width: 1280, height: 720 } },
+  ]
+
+  devices.forEach(device => {
+    test(`should work on ${device.name}`, async ({ page }) => {
+      // Set viewport for device
+      await page.setViewportSize(device.viewport)
+
+      await page.goto('/')
+
+      // Core functionality should work across devices
+      await expect(page.getByText('Modern SaaS platform')).toBeVisible()
+
+      // Navigation should be accessible
+      const navigation = page.locator('nav')
+      await expect(navigation).toBeVisible()
+
+      // Forms should be usable
+      await page.goto('/en/login')
+      const loginForm = page.locator('form')
+      await expect(loginForm).toBeVisible()
+
+      // Check form is properly sized
+      const formBox = await loginForm.boundingBox()
+      if (formBox) {
+        expect(formBox.width).toBeLessThanOrEqual(device.viewport.width)
+      }
+    })
+  })
+})
+```
+
+## Advanced E2E Patterns
+
+Complex testing scenarios and advanced patterns:
+
+### Form Testing Patterns
+
+```typescript
+test.describe('Form Interactions', () => {
+  test('should handle form validation properly', async ({ page }) => {
+    await page.goto('/en/register')
+    await page.click('button:has-text("Create account with email")')
+
+    // Test required field validation
+    await page.click('button[type="submit"]')
+
+    // Check HTML5 validation
+    const nameInput = page.locator('input[name="name"]')
+    const isInvalid = await nameInput.evaluate(el => !el.checkValidity())
+    expect(isInvalid).toBe(true)
+  })
+
+  test('should handle dynamic form changes', async ({ page }) => {
+    await page.goto('/settings/profile')
+
+    // Change form values
+    await page.fill('input[name="name"]', 'New Name')
+
+    // Check form dirty state
+    const form = page.locator('form')
+    const isDirty = await form.evaluate(el =>
+      el.classList.contains('dirty') || el.hasAttribute('data-dirty')
+    )
+
+    // Form should indicate unsaved changes
+    if (isDirty) {
+      expect(isDirty).toBe(true)
+    }
+  })
+
+  test('should handle file uploads', async ({ page }) => {
+    await page.goto('/settings/profile')
+
+    // Test file input if present
+    const fileInput = page.locator('input[type="file"]')
+    const fileInputCount = await fileInput.count()
+
+    if (fileInputCount > 0) {
+      // Upload test file
+      await fileInput.first().setInputFiles('test-image.png')
+
+      // Check file is selected
+      const fileName = await fileInput.first().inputValue()
+      expect(fileName).toContain('test-image.png')
+    }
+  })
+})
+```
+
+### API Integration Testing
+
+```typescript
+test.describe('API Integration', () => {
+  test('should handle slow API responses', async ({ page }) => {
+    // Simulate slow network
+    await page.route('**/api/**', route => {
+      setTimeout(() => route.continue(), 2000)
+    })
+
+    await page.goto('/dashboard')
+
+    // Check loading states
+    const loadingSpinner = page.locator('.loading, .spinner')
+    const spinnerCount = await loadingSpinner.count()
+
+    if (spinnerCount > 0) {
+      await expect(loadingSpinner.first()).toBeVisible()
+    }
+
+    // Wait for content to load
+    await expect(page.locator('main')).toBeVisible()
+  })
+
+  test('should handle API errors gracefully', async ({ page }) => {
+    // Mock API error
+    await page.route('**/api/user', route => {
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Server error' })
+      })
+    })
+
+    await page.goto('/dashboard')
+
+    // Check error handling
+    const errorMessage = page.locator(
+      '.error, .alert, [role="alert"], text="error"'
+    )
+
+    const errorCount = await errorMessage.count()
+    if (errorCount > 0) {
+      await expect(errorMessage.first()).toBeVisible()
+    }
+  })
+})
+```
+
+### Performance Testing
+
+```typescript
+test.describe('Performance', () => {
+  test('should load pages within acceptable time', async ({ page }) => {
+    const startTime = Date.now()
+
+    await page.goto('/')
+
+    // Wait for main content to load
+    await page.waitForSelector('main')
+
+    const loadTime = Date.now() - startTime
+
+    // Page should load within 5 seconds
+    expect(loadTime).toBeLessThan(5000)
+  })
+
+  test('should handle large datasets', async ({ page }) => {
+    await page.goto('/dashboard/users?limit=1000')
+
+    // Check if pagination or virtualization handles large lists
+    const userList = page.locator('.user-list, .data-table, table')
+    const userListCount = await userList.count()
+
+    if (userListCount > 0) {
+      await expect(userList.first()).toBeVisible()
+
+      // Check performance doesn't degrade
+      const startScroll = Date.now()
+      await page.mouse.wheel(0, 500)
+      const scrollTime = Date.now() - startScroll
+
+      expect(scrollTime).toBeLessThan(1000) // Should scroll smoothly
+    }
+  })
+})
+```
+
+## Running E2E Tests
+
+Commands and configurations for running E2E tests effectively:
+
+### Development Commands
+
+```bash
+# Run all E2E tests
+pnpm test:e2e
+
+# Run specific test files
+pnpm test:e2e auth.spec.ts
+pnpm test:e2e homepage.spec.ts
+
+# Run tests with UI (interactive mode)
+pnpm test:e2e:ui
+
+# Run tests in headed mode (visible browser)
+pnpm test:e2e:headed
+
+# Run tests on specific browser
+pnpm test:e2e --project=chromium
+pnpm test:e2e --project=firefox
+pnpm test:e2e --project=webkit
+```
+
+**Playwright Test Results Interface:**
+<Image src="/docs/09/test-playright-result.png" alt="Playwright test execution results and reporting"  />
+
+### Debug Commands
+
+```bash
+# Debug mode with breakpoints
+pnpm test:e2e --debug
+
+# Generate test report
+pnpm test:e2e --reporter=html
+
+# Run with trace collection
+pnpm test:e2e --trace on
+
+# Record video of test execution
+pnpm test:e2e --video on
+```
+
+**Playwright UI Mode Interface:**
+<Image src="/docs/09/test-playright-ui.png" alt="Playwright UI mode for interactive test development and debugging"  />
+
+### CI/CD Configuration
+
+```bash
+# CI-optimized run
+pnpm test:e2e --workers=1 --reporter=github
+
+# Generate JUnit XML for CI
+pnpm test:e2e --reporter=junit --output-file=test-results.xml
+
+# Run with retries for flaky tests
+pnpm test:e2e --retries=2
+```
+
+## Best Practices
+
+Essential guidelines for reliable E2E testing:
+
+### Test Reliability
+
+**1. Wait Strategies**
+```typescript
+// Good - Wait for specific elements
+await expect(page.locator('form')).toBeVisible()
+await expect(page.getByText('Welcome')).toBeVisible()
+
+// Avoid - Fixed timeouts
+await page.waitForTimeout(5000) // Only use when necessary
+```
+
+**2. Stable Selectors**
+```typescript
+// Good - Semantic selectors
+await page.click('button[type="submit"]')
+await page.getByRole('button', { name: 'Login' })
+
+// Avoid - Fragile CSS selectors
+await page.click('.btn.btn-primary.submit-btn') // May break with styling changes
+```
+
+**3. Data Independence**
+```typescript
+// Good - Generate unique test data
+const timestamp = Date.now()
+const testEmail = `test-${timestamp}@example.com`
+
+// Avoid - Hardcoded test data that might conflict
+const testEmail = 'test@example.com' // May fail if user exists
+```
+
+### Performance Optimization
+
+**1. Parallel Execution**
+```typescript
+// Good - Tests run independently
+test.describe.parallel('Independent Tests', () => {
+  test('test 1', async ({ page }) => { /* ... */ })
+  test('test 2', async ({ page }) => { /* ... */ })
+})
+```
+
+**2. Resource Cleanup**
+```typescript
+// Good - Clean up after tests
+test.afterEach(async ({ page }) => {
+  // Clear localStorage, cookies, etc.
+  await page.context().clearCookies()
+})
+```
+
+**3. Smart Waiting**
+```typescript
+// Good - Wait for network idle when needed
+await page.waitForLoadState('networkidle')
+
+// Good - Wait for specific API calls
+await page.waitForResponse(response =>
+  response.url().includes('/api/user') && response.status() === 200
+)
+```
+
+### Error Handling
+
+**1. Graceful Degradation**
+```typescript
+// Handle optional elements gracefully
+const optionalElement = page.locator('.optional-component')
+const elementCount = await optionalElement.count()
+
+if (elementCount > 0) {
+  await expect(optionalElement).toBeVisible()
+}
+```
+
+**2. Clear Error Messages**
+```typescript
+// Provide context in error messages
+if (errorCount > 0) {
+  const errorText = await errorMessages.first().textContent()
+  throw new Error(`Login failed with error: ${errorText}`)
+}
+```
+
+**3. Screenshot on Failure**
+```typescript
+// Automatic screenshots configured in playwright.config.ts
+use: {
+  screenshot: 'only-on-failure',
+  trace: 'on-first-retry',
+}
+```
+
+E2E testing ensures your SaaS application delivers a reliable user experience across all browsers and devices. Combined with unit, component, repository, and service tests, you have comprehensive coverage that catches issues before they reach production.

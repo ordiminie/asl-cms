@@ -1,0 +1,447 @@
+---
+title: 'Repository Pattern'
+description: 'Learn how to use existing repositories and create new ones for database operations'
+keywords: "ShipSaaS, repository pattern, data access layer, DAO, database operations, Drizzle queries, CRUD operations, transactions"
+order: 1
+---
+
+The repository pattern provides a clean abstraction layer for all database operations. This guide shows you how to use existing repositories and create new ones when needed.
+
+## Understanding Repositories
+
+Repositories are functions that handle specific database operations and live in `/src/db/repositories/`. They provide a consistent interface for data access throughout your application.
+
+### Repository Structure
+
+```typescript
+// /src/db/repositories/user-repository.ts
+export const getUserByIdDao = async (uid: string): Promise<User | undefined> => {
+  const row = await db.query.user.findFirst({
+    where: (user, {eq}) => eq(user.id, uid),
+    with: {
+      members: { with: { organization: true } },
+      settings: true,
+      notifications: true,
+    },
+  })
+  return row
+}
+```
+
+<Callout type="info">
+  Repository functions use the `Dao` suffix (Data Access Object) to distinguish them from business logic functions.
+</Callout>
+
+## Using Existing Repositories
+
+### User Repository
+
+**Common user operations:**
+
+```typescript
+import {
+  getUserByIdDao,
+  createUserDao,
+  updateUserDao,
+  getUserByEmailDao,
+  getAllUsersWithPaginationDao,
+} from '@/db/repositories/user-repository'
+
+// Get single user with relations
+const user = await getUserByIdDao("user-123")
+
+// Create new user
+const newUser = await createUserDao({
+  name: "John Doe",
+  email: "john@example.com",
+  role: "user"
+})
+
+// Update user
+const updated = await updateUserDao("user-123", {
+  name: "John Updated"
+})
+
+// Paginated users with search
+const result = await getAllUsersWithPaginationDao(
+  { limit: 10, offset: 0 },
+  "john" // search term
+)
+```
+
+### Organization Repository
+
+**Organization and membership operations:**
+
+```typescript
+import {
+  getOrganizationWithMembersDao,
+  createOrganizationDao,
+  addMemberToOrganizationDao,
+  updateMemberRoleDao,
+} from '@/db/repositories/organization-repository'
+
+// Get organization with all members
+const org = await getOrganizationWithMembersDao("org-123")
+
+// Create organization
+const newOrg = await createOrganizationDao({
+  name: "Acme Corp",
+  description: "Software company"
+})
+
+// Add member to organization
+await addMemberToOrganizationDao({
+  userId: "user-123",
+  organizationId: "org-123",
+  role: "member"
+})
+```
+
+### Project Repository
+
+**Project and task management:**
+
+```typescript
+import {
+  getUserProjectsDao,
+  createProjectDao,
+  getProjectTasksDao,
+  createTaskDao,
+  updateTaskStatusDao,
+} from '@/db/repositories/project-repository'
+
+// Get user's projects
+const projects = await getUserProjectsDao("user-123")
+
+// Create project
+const project = await createProjectDao({
+  name: "Website Redesign",
+  description: "Redesign the company website",
+  organizationId: "org-123"
+})
+
+// Get project tasks
+const tasks = await getProjectTasksDao("project-123")
+
+// Update task status
+await updateTaskStatusDao("task-123", "completed")
+```
+
+## Repository Patterns
+
+### Simple CRUD Operations
+
+**Basic create, read, update, delete:**
+
+```typescript
+// CREATE - Insert new record
+export const createUserDao = async (userData: CreateUserType): Promise<User> => {
+  const [user] = await db.insert(users)
+    .values(userData)
+    .returning()
+  return user
+}
+
+// READ - Find by ID
+export const getUserByIdDao = async (uid: string): Promise<User | undefined> => {
+  return await db.query.user.findFirst({
+    where: (user, {eq}) => eq(user.id, uid)
+  })
+}
+
+// UPDATE - Modify existing record
+export const updateUserDao = async (id: string, data: UpdateUserType): Promise<User> => {
+  const [updated] = await db.update(users)
+    .set(data)
+    .where(eq(users.id, id))
+    .returning()
+  return updated
+}
+
+// DELETE - Remove record (soft delete)
+export const deleteUserDao = async (id: string): Promise<User> => {
+  const [deleted] = await db.update(users)
+    .set({ deletedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning()
+  return deleted
+}
+```
+
+### Queries with Relationships
+
+**Loading related data:**
+
+```typescript
+// User with organizations and settings
+export const getUserWithOrganizationsDao = async (uid: string) => {
+  return await db.query.user.findFirst({
+    where: (user, {eq}) => eq(user.id, uid),
+    with: {
+      members: {
+        with: {
+          organization: true
+        }
+      },
+      settings: true,
+    }
+  })
+}
+
+// Organization with members and projects
+export const getOrganizationFullDao = async (orgId: string) => {
+  return await db.query.organization.findFirst({
+    where: (org, {eq}) => eq(org.id, orgId),
+    with: {
+      members: {
+        with: { user: true }
+      },
+      projects: {
+        with: { tasks: true }
+      }
+    }
+  })
+}
+```
+
+### Pagination and Search
+
+**Handling large datasets:**
+
+```typescript
+export const getAllUsersWithPaginationDao = async (
+  pagination: { limit: number; offset: number },
+  search?: string
+): Promise<{ data: User[]; total: number; hasMore: boolean }> => {
+
+  // Build search condition
+  const searchCondition = search
+    ? or(
+        ilike(users.name, `%${search}%`),
+        ilike(users.email, `%${search}%`)
+      )
+    : undefined
+
+  // Get paginated data and total count
+  const [data, [{ count }]] = await Promise.all([
+    db.select()
+      .from(users)
+      .where(searchCondition)
+      .limit(pagination.limit)
+      .offset(pagination.offset)
+      .orderBy(desc(users.createdAt)),
+
+    db.select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(searchCondition)
+  ])
+
+  return {
+    data,
+    total: count,
+    hasMore: pagination.offset + pagination.limit < count
+  }
+}
+```
+
+### Transactions
+
+**Multiple operations that must succeed together:**
+
+```typescript
+export const createUserWithOrganizationDao = async (
+  userData: CreateUserType,
+  orgData: CreateOrganizationType
+) => {
+  return await db.transaction(async (tx) => {
+    // Create user
+    const [user] = await tx.insert(users)
+      .values(userData)
+      .returning()
+
+    // Create organization
+    const [organization] = await tx.insert(organizations)
+      .values({
+        ...orgData,
+        ownerId: user.id
+      })
+      .returning()
+
+    // Add user as admin member
+    await tx.insert(members).values({
+      userId: user.id,
+      organizationId: organization.id,
+      role: 'admin'
+    })
+
+    return { user, organization }
+  })
+}
+```
+
+## Creating New Repositories
+
+### Step 1: Create Repository File
+
+```typescript
+// /src/db/repositories/my-new-repository.ts
+import { db } from '@/db/models/db'
+import { myTable } from '@/db/models/my-model'
+import { eq, and, desc } from 'drizzle-orm'
+
+export const getMyRecordByIdDao = async (id: string) => {
+  return await db.query.myTable.findFirst({
+    where: (table, {eq}) => eq(table.id, id)
+  })
+}
+
+export const createMyRecordDao = async (data: CreateMyRecordType) => {
+  const [record] = await db.insert(myTable)
+    .values(data)
+    .returning()
+  return record
+}
+
+// Add more functions as needed...
+```
+
+### Step 2: Use in Server Actions
+
+```typescript
+// /src/app/actions/my-actions.ts
+import { getMyRecordByIdDao, createMyRecordDao } from '@/db/repositories/my-new-repository'
+
+export async function createMyRecord(formData: FormData) {
+  const data = {
+    name: formData.get('name') as string,
+    // ... other fields
+  }
+
+  const record = await createMyRecordDao(data)
+  revalidatePath('/my-records')
+  return record
+}
+```
+
+## Repository Best Practices
+
+### Error Handling
+
+**Handle database constraint violations:**
+
+```typescript
+export const createUserDao = async (userData: CreateUserType) => {
+  try {
+    const [user] = await db.insert(users)
+      .values(userData)
+      .returning()
+    return user
+  } catch (error: any) {
+    if (error.code === '23505') { // Unique constraint violation
+      throw new Error('User with this email already exists')
+    }
+    throw error
+  }
+}
+```
+
+### Type Safety
+
+**Use generated types from schema:**
+
+```typescript
+import { type User, type CreateUserType } from '@/db/models/user-model'
+
+export const createUser = async (data: CreateUserType): Promise<User> => {
+  return await createUserDao(data)
+}
+```
+
+### Consistent Naming
+
+**Follow naming conventions:**
+
+```typescript
+// ✅ Good naming
+export const getUserByIdDao = async (id: string) => { ... }
+export const createUserDao = async (data: CreateUserType) => { ... }
+export const updateUserDao = async (id: string, data: UpdateUserType) => { ... }
+
+// ❌ Avoid inconsistent naming
+export const getUser = async (id: string) => { ... }
+export const userCreate = async (data: any) => { ... }
+export const modifyUser = async (id: string, data: any) => { ... }
+```
+
+## Using Repositories in Your App
+
+### From Services
+
+Repositories are typically called from service functions that handle business logic and validation:
+
+```typescript
+// /src/services/user-service.ts
+import { getUserByIdDao, updateUserDao } from '@/db/repositories/user-repository'
+
+export const getUserService = async (userId: string) => {
+  // Business logic, validation, authorization could go here
+  const user = await getUserByIdDao(userId)
+
+  if (!user) {
+    throw new Error('User not found')
+  }
+
+  return user
+}
+
+export const updateUserProfileService = async (userId: string, data: UpdateUserType) => {
+  // Validate business rules
+  if (!data.name || data.name.trim().length === 0) {
+    throw new Error('Name is required')
+  }
+
+  // Call repository
+  const updated = await updateUserDao(userId, data)
+
+  // Additional business logic (send notifications, log changes, etc.)
+  return updated
+}
+```
+
+### Service Layer Benefits
+
+Services provide a layer between your application and repositories for:
+
+- **Business logic validation**
+- **Authorization checks**
+- **Data transformation**
+- **External integrations** (emails, notifications)
+- **Transaction coordination** across multiple repositories
+
+```typescript
+// Example: Complex business operation using multiple repositories
+export const createUserWithOrganizationService = async (userData: CreateUserType, orgData: CreateOrganizationType) => {
+  // Call the repository transaction
+  const result = await createUserWithOrganizationDao(userData, orgData)
+
+  // Additional business logic
+  await sendWelcomeEmail(result.user.email)
+  await createUserSettings(result.user.id)
+
+  return result
+}
+```
+
+<Callout type="info">
+  **Service Pattern**: Services handle business logic and call repositories for data operations. This keeps your repositories focused on data access while services manage application workflows.
+</Callout>
+
+<Callout type="success">
+  The repository pattern keeps your database logic organized and reusable. Each repository focuses on a specific entity and provides a clean interface for data operations.
+</Callout>
+
+## Next Steps
+
+- **[Drizzle Queries](/docs/database/drizzle-queries)** - Learn advanced query patterns and relationships
+- **[Migration Workflow](/docs/database/migrations-workflow)** - Manage schema changes effectively

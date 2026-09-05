@@ -1,0 +1,27 @@
+import notificationServiceInterceptor from './interceptors/notification-service-logger-interceptor'
+
+// Facade pour les services de notification avec intercepteurs
+export const createNotificationService =
+  notificationServiceInterceptor.createNotificationService
+export const createTypedNotificationService =
+  notificationServiceInterceptor.createTypedNotificationService
+export const getNotificationByIdService =
+  notificationServiceInterceptor.getNotificationByIdService
+export const getNotificationsByUserIdService =
+  notificationServiceInterceptor.getNotificationsByUserIdService
+export const getUnreadNotificationsByUserIdService =
+  notificationServiceInterceptor.getUnreadNotificationsByUserIdService
+export const countUnreadNotificationsByUserIdService =
+  notificationServiceInterceptor.countUnreadNotificationsByUserIdService
+export const markNotificationAsReadService =
+  notificationServiceInterceptor.markNotificationAsReadService
+export const markAllNotificationsAsReadService =
+  notificationServiceInterceptor.markAllNotificationsAsReadService
+export const updateNotificationService =
+  notificationServiceInterceptor.updateNotificationService
+export const deleteNotificationService =
+  notificationServiceInterceptor.deleteNotificationService
+export const deleteReadNotificationsByUserIdService =
+  notificationServiceInterceptor.deleteReadNotificationsByUserIdService
+export const getAllNotificationsService =
+  notificationServiceInterceptor.getAllNotificationsService

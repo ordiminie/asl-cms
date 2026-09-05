@@ -48,4 +48,4 @@ Le besoin d'ergonomie qui motivait WordPress n'est pas abandonné : il est requa
 
 **Portée documentaire**
 - La convention de préfixe `zs-` visait des plugins WordPress : sans objet. La convention de nommage des modules est fixée par `/ks-architect`.
-- Décision répercutée dans `docs/cahier-des-charges-technique.md` §1.1, `docs/brief-produit-asl-cms.md` (section « Base technique ») et `docs/synthese-asl-cms-projetc.md` (section « Le produit »).
+- Décision répercutée dans `docs/bases/cahier-des-charges-technique.md` §1.1, `docs/bases/brief-produit-asl-cms.md` (section « Base technique ») et `docs/bases/synthese-asl-cms-projetc.md` (section « Le produit »).

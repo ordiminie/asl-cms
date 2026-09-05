@@ -1,0 +1,106 @@
+---
+id: '002-proxy-pattern'
+lang: 'en'
+slug: 'proxy-component-pattern'
+title: 'Proxy Component'
+description: 'Understanding Proxy Components in React to create reusable and maintainable code.'
+author: 'ShipSaaS Team'
+category: 'Tutorial'
+hashtags: ['react', 'patterns', 'components']
+publishedAt: '2025-01-01'
+---
+
+# Proxy Component
+
+### Understanding Proxy Components
+
+## Your Notes
+
+Detail what you learned here
+`src/exercise/01.md` or on a [Notion](https://go.mikecodeur.com/course-notes-template) page
+
+## Understanding
+
+Behind this technical term lies something quite simple. It's a reusable component. Following the DRY principle (don't repeat yourself), we don't want to duplicate certain portions of code. Proxy components are useful because they isolate code from future changes as we'll see in the exercises.
+
+```tsx
+function Checkbox() {
+  return <input type="checkbox" value="check" />
+}
+
+function App() {
+  return <Checkbox />
+}
+
+export default App
+```
+
+## Exercise
+
+Imagine a site structure containing like buttons
+
+```tsx
+function Header() {
+  return (
+    <div>
+      <h1>Welcome</h1>
+      <button>Like</button>
+    </div>
+  )
+}
+function Content() {
+  return (
+    <div>
+      <h2>Articles</h2>
+      <span>article 1</span>
+      <button>Like</button>
+      <span>article 2</span>
+      <button>Like</button>
+      <span>article 3</span>
+      <button>Like</button>
+    </div>
+  )
+}
+function Footer() {
+  return (
+    <div>
+      <h3>Contact us</h3>
+      <button>Like</button>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <React.Fragment>
+      <Header />
+      <Content />
+      <Footer />
+    </React.Fragment>
+  )
+}
+
+export default App
+```
+
+Imagine we want to change the button implementation
+
+```tsx
+<button>Like</button>
+// to
+<input type="Button" value="Like"/>
+// or another: Bootstrap Buttons / Material-ui Button etc ...
+```
+
+We would need to replace the implementation of this button everywhere in the code. In this exercise, we'll create a proxy component.
+
+## Bonus
+
+### 1. Change the Button Implementation
+
+Use `<input>` instead of `<button>` and apply a style of your choice.
+ex:
+
+```tsx
+{backgroundColor:'lightblue', border:'none', padding:'6px 6px' cursor: 'pointer'}
+```

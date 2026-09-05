@@ -1,0 +1,55 @@
+import organizationServiceInterceptor from './interceptors/organization-service-logger-interceptor'
+
+// CRUD ORGANIZATIONS
+export const createOrganizationService =
+  organizationServiceInterceptor.createOrganizationService
+export const getOrganizationByIdService =
+  organizationServiceInterceptor.getOrganizationByIdService
+export const getOrganizationBySlugService =
+  organizationServiceInterceptor.getOrganizationBySlugService
+export const updateOrganizationService =
+  organizationServiceInterceptor.updateOrganizationService
+export const deleteOrganizationService =
+  organizationServiceInterceptor.deleteOrganizationService
+export const getOrganizationsService =
+  organizationServiceInterceptor.getOrganizationsService
+export const getAllOrganizationsWithPaginationService =
+  organizationServiceInterceptor.getAllOrganizationsWithPaginationService
+
+// USER ORGANIZATIONS MANAGEMENT
+export const getUserOrganizationsService =
+  organizationServiceInterceptor.getUserOrganizationsService
+export const getOrganizationsByUserIdService =
+  organizationServiceInterceptor.getOrganizationsByUserIdService
+export const getOrganizationMembersService =
+  organizationServiceInterceptor.getOrganizationMembersService
+export const createOrganizationMemberService =
+  organizationServiceInterceptor.createOrganizationMemberService
+export const removeUserFromOrganizationService =
+  organizationServiceInterceptor.removeUserFromOrganizationService
+export const changeUserOrganizationRoleService =
+  organizationServiceInterceptor.changeUserOrganizationRoleService
+export const getUserRoleInOrganizationService =
+  organizationServiceInterceptor.getUserRoleInOrganizationService
+export const getInvitationMembersService =
+  organizationServiceInterceptor.getInvitationMembersService
+export const getMembersAndInvitationsService =
+  organizationServiceInterceptor.getMembersAndInvitationsService
+export const getUserInvitationsService =
+  organizationServiceInterceptor.getUserInvitationsService
+export const deleteUserInvitationsService =
+  organizationServiceInterceptor.deleteUserInvitationsService
+export const deleteInvitationByIdService =
+  organizationServiceInterceptor.deleteInvitationByIdService
+
+// USAGE FUNCTIONS
+export const getOrganizationUsageService =
+  organizationServiceInterceptor.getOrganizationUsageService
+export const getUserOrganizationsWithUsageService =
+  organizationServiceInterceptor.getUserOrganizationsWithUsageService
+
+// ADMIN FUNCTIONS
+export const getAdminUserOrganizationsWithUsageService =
+  organizationServiceInterceptor.getAdminUserOrganizationsWithUsageService
+export const searchOrganizationsForAdminService =
+  organizationServiceInterceptor.searchOrganizationsForAdminService

@@ -1,0 +1,366 @@
+---
+description: presentation Layer
+paths: src/app/**
+---
+
+# Règle Couche Présentation
+
+Vous êtes un expert en TypeScript, Node.js, Next.js App Router, React, Shadcn UI, Radix UI, et Tailwind.
+
+## Principes Clés
+
+- Priorisez ces règles dans les dossiers `/app/**` (dossiers pour les layouts Next.js - présentation)
+- Utilisez **React Server Components (RSC)** par défaut pour de meilleures performances
+- N'utilisez `"use client"` que lorsque nécessaire (interactivité, APIs navigateur)
+- Utilisez **Server Actions** pour les mutations (exemple [action.ts](src/components/features/user/action.ts))
+- Utilisez **DAL (Data Access Layer)** pour les getters (exemple [user-dal.ts](src/app/dal/user-dal.ts))
+
+## Organisation des Routes
+
+```
+app/
+  ├── (public)/ → Routes publiques
+  │   ├── page.tsx
+  │   └── layout.tsx
+  ├── (auth)/ → Routes d'authentification
+  │   ├── login/
+  │   └── register/
+  ├── (app)/ → Routes utilisateur protégées
+  │   ├── account/
+  │   └── dashboard/
+  └── (admin)/ → Routes admin
+      └── users/
+```
+
+## Organisation des Composants
+
+```
+components/
+  ├── features/ → Composants domaine métier
+  │   └── user/
+  │       ├── edit-user-profile.tsx
+  │       ├── action.ts
+  │       └── user-form-validation.ts
+  ├── ui/ → Composants UI réutilisables (ShadCN)
+  │   ├── button/
+  │   └── input/
+  ├── hooks/ → Hooks personnalisés
+  └── context/ → Fournisseurs de contexte
+```
+
+## Exemple Server Component:
+
+```tsx
+// app/(app)/account/page.tsx
+import {notFound} from 'next/navigation'
+import {getAuthUser} from '@/services/authentication/auth-service'
+import {EditUserProfileForm} from '@/components/features/user/edit-user-profile'
+
+export default async function Page() {
+  const user = await getAuthUser()
+
+  if (!user) {
+    notFound()
+  }
+
+  return (
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <div className="flex items-center justify-between space-y-2">
+        <h2 className="text-3xl font-bold tracking-tight">Mon Compte</h2>
+      </div>
+      <div>
+        <EditUserProfileForm user={user} />
+      </div>
+    </div>
+  )
+}
+```
+
+## Exemple Client Component:
+
+```tsx
+// components/features/user/edit-user-profile.tsx
+'use client'
+
+import {useForm} from 'react-hook-form'
+import {zodResolver} from '@hookform/resolvers/zod'
+import {useState} from 'react'
+import {toast} from 'sonner'
+import {updateUserAction} from './action'
+import {userFormSchema} from './user-form-validation'
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from '@/components/ui/form'
+import {Button} from '@/components/ui/button'
+import {Input} from '@/components/ui/input'
+
+export function EditUserProfileForm({user}: {user: User}) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const form = useForm({
+    resolver: zodResolver(userFormSchema),
+    defaultValues: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image ?? undefined,
+      visibility: user.visibility,
+    },
+  })
+
+  async function onSubmit(data) {
+    setIsSubmitting(true)
+    const formData = new FormData()
+
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined && value !== null) {
+        formData.append(key, value)
+      }
+    }
+
+    const result = await updateUserAction(undefined, formData)
+    setIsSubmitting(false)
+
+    if (result.success) {
+      toast('Success', {description: result.message})
+    } else {
+      for (const error of result?.errors ?? []) {
+        form.setError(error.field, {type: 'manual', message: error.message})
+      }
+      toast('Error', {description: result.message})
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* Champs de formulaire */}
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Mise à jour...' : 'Mettre à jour le profil'}
+        </Button>
+      </form>
+    </Form>
+  )
+}
+```
+
+## Exemple Server Action:
+
+```ts
+// components/features/user/action.ts
+'use server'
+
+import {revalidatePath} from 'next/cache'
+import {getAuthUser} from '@/services/authentication/auth-service'
+import {updateUserService} from '@/services/facades/user-service-facade'
+import {userFormSchema} from './user-form-validation'
+
+export type FormState = {
+  success: boolean
+  errors?: Array<{field: string; message: string}>
+  message?: string
+}
+
+export async function updateUserAction(
+  prevState?: FormState,
+  formData?: FormData
+): Promise<FormState> {
+  const user = await getAuthUser()
+  if (!user) {
+    return {success: false, message: 'Utilisateur non trouvé'}
+  }
+
+  if (!formData) {
+    return {success: false, message: 'Données invalides'}
+  }
+
+  // Validation côté serveur
+  const validationResult = userFormSchema.safeParse({
+    id: formData.get('id'),
+    name: formData.get('name'),
+    email: formData.get('email'),
+    // ... autres champs
+  })
+
+  if (!validationResult.success) {
+    const validationErrors = validationResult.error.errors.map((err) => ({
+      field: err.path[0] as string,
+      message: err.message,
+    }))
+
+    return {
+      success: false,
+      message: 'Erreur de validation',
+      errors: validationErrors,
+    }
+  }
+
+  try {
+    await updateUserService(validationResult.data)
+    revalidatePath('/account')
+    return {success: true, message: 'Profil mis à jour avec succès'}
+  } catch (error) {
+    return {success: false, message: 'Échec de la mise à jour du profil'}
+  }
+}
+```
+
+## Organisation des Layouts
+
+**Ne jamais `await` la session au niveau supérieur d'un layout.** Sous Cache Components, ça tient
+tout le segment derrière la requête, `{children}` compris, et le shell statique est perdu. Le layout
+crée la promesse et la passe ; les consommateurs la déroulent derrière un `<Suspense>`.
+
+```tsx
+// app/(app)/layout.tsx
+import {Suspense} from 'react'
+import {getCurrentUserDal} from '@/app/dal/user-dal'
+import AuthProvider from '@/components/context/auth-provider'
+import Header from '@/components/features/dashboard-layout/header'
+import Footer from '@/components/features/dashboard-layout/footer'
+
+export default function AppLayout({children}: {children: React.ReactNode}) {
+  const userPromise = getCurrentUserDal() // créée, jamais attendue
+
+  return (
+    <AuthProvider userPromise={userPromise}>
+      <div className="flex min-h-screen flex-col">
+        <Suspense fallback={<HeaderSkeleton />}>
+          <Header />
+        </Suspense>
+        <main className="container mx-auto flex-1">{children}</main>
+        <Footer />
+      </div>
+    </AuthProvider>
+  )
+}
+```
+
+Détail du modèle et du contrôle d'accès : [rule-safe-route.md](rule-safe-route.md).
+
+## Bonnes Pratiques
+
+- Utilisez RSC par défaut
+- Gardez les Client Components petits et focalisés
+- Récupérez les données dans RSC en utilisant le DAL
+- Utilisez Server Actions pour les mutations
+- Implémentez des error boundaries appropriées
+- Utilisez TypeScript pour la sécurité des types
+- Suivez des conventions de nommage cohérentes
+- Gardez les composants UI purs et réutilisables
+- Utilisez des états de chargement et d'erreur appropriés
+- Implémentez un design responsive avec Tailwind
+- Utilisez les composants Shadcn UI quand possible
+- Utilisez lucide-react pour les icônes
+
+## Gestion des Formulaires
+
+- Utilisez React Hook Form pour les formulaires client
+- Implémentez la validation Zod (côté client et serveur)
+- Utilisez Server Actions pour la soumission
+- Affichez des états de chargement appropriés
+- Gérez les erreurs avec élégance
+- Affichez des notifications toast (avec sonner)
+
+## Gestion des Erreurs
+
+- Implémentez des error boundaries
+- Utilisez des codes de statut HTTP appropriés
+- Affichez des messages d'erreur conviviaux
+- Loggez les erreurs de manière appropriée
+- Gérez les erreurs réseau
+- Fournissez une UI de secours
+
+## États de Chargement
+
+- Utilisez des Suspense boundaries
+- Implémentez des loading skeletons
+- Affichez des spinners appropriés
+- Gérez le chargement partiel
+- Prévenez les décalages de layout
+
+## Contraintes d'Architecture
+
+- Utilisez les règles ESLint pour enforcer l'architecture propre
+- Suivez des règles d'import strictes entre les couches
+- Prévenez l'accès direct aux bases de données ou repositories
+
+## Règles d'Import
+
+```ts
+// eslint.config.mjs
+export default [
+  {
+    // Règles pour la couche présentation (répertoire app)
+    files: ['src/app/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            // ❌ Interdit : accès direct aux couches inférieures
+            '@/db/models/*', // Pas d'accès direct aux modèles
+            '@/db/repositories/*', // Pas d'accès direct aux repositories
+            'drizzle-orm', // Pas d'accès à l'ORM
+            '@/services/*-service', // Pas d'accès direct aux services
+          ],
+        },
+      ],
+    },
+  },
+]
+```
+
+## Patterns d'Import Autorisés:
+
+```typescript
+// ✅ Correct : Utilisation du DAL dans Server Components
+import {getUserByIdDal, getConnectedUser} from '@/app/dal/user-dal'
+
+// ✅ Correct : Utilisation des Façades de Services dans Server Actions
+import {updateUserService} from '@/services/facades/user-service-facade'
+
+// ✅ Correct : Utilisation des utilitaires d'authentification
+import {getAuthUser} from '@/services/authentication/auth-service'
+
+// ✅ Correct : Utilisation des types de domaine
+import {User, UserDTO} from '@/services/types/domain/user-types'
+
+// ❌ Incorrect : Accès direct aux repositories
+import {getUserByIdDao} from '@/db/repositories/user-repository'
+
+// ❌ Incorrect : Accès direct aux services
+import {updateUser} from '@/services/user-service'
+
+// ❌ Incorrect : Accès direct aux modèles
+import {users} from '@/db/models/user-model'
+```
+
+## Flux d'Accès aux Données:
+
+1. **Lectures** : RSC → DAL (avec cache) → Service Facades → Services → Repositories → Models
+2. **Mutations** : Client Components → Server Actions → Service Facades → Services → Repositories → Models
+
+## Avantages:
+
+- Enforce les principes d'architecture propre
+- Prévient le couplage fort entre les couches
+- Facilite les tests et la maintenance
+- Assure une séparation appropriée des préoccupations
+- Facilite la refactorisation future
+- Maintient des patterns de flux de données cohérents
+
+## À Retenir:
+
+- Toujours utiliser le DAL pour la récupération de données dans RSC
+- Utiliser les Service Facades pour la logique métier
+- Ne jamais accéder directement à la base de données depuis la présentation
+- Garder la couche présentation focalisée sur les préoccupations UI
+- Utiliser `cache()` de React dans le DAL pour optimiser les performances
+- Implémenter la validation côté serveur dans les Server Actions
+- Utiliser des types de domaine dans la couche présentation

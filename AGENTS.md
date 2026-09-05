@@ -93,10 +93,110 @@ All pipeline data lives in markdown files under docs/, versioned by git. No data
 - Story docs — docs/research/<id>.md, docs/designs/<id>* (brief, md, html), docs/plans/<id>.md, docs/reviews/<id>.md: committed on feature/<id>. The implementer's single story commit brings the research, the design and the plan; /ks-ship commits the review. Every PR carries its own research, design, plan and review.
 - Task progress — the checkboxes in docs/plans/<id>.md: the implementer ticks each task as it lands, and they travel in the story's commit. The plan file is the live progress tracker, never a commit trigger.
 - Commits — **one commit per story**, not one per plan task. A second commit only for something you would want to revert on its own (typically a migration). The branch's commits are squashed at merge, so the default branch gets one commit per story.
+- Boilerplate-inherited docs — `docs/research/s000-*`, `docs/research/s001-*`, `docs/plans/cache-components-migration.md`, `docs/migrations/` and the subsystem docs in `docs/` (auth, Stripe, Inngest, Sentry…) belong to the ShipSaaS boilerplate, not to ASL-CMS. Never implement them and never treat them as project stories: see `docs/research/README.md`. Our own story ids start at `s01` in docs/stories.md.
 - Decisions — docs/decisions/NNN-<slug>.md (MADR format, @templates/adr.md): one file per structural decision, with the considered options and why they were rejected. Immutable: a change means a new ADR superseding the old one. Framing decisions commit on the default branch; story decisions travel with feature/<id>.
 
 ## Technical conventions
-<< IP Mike: boilerplate structure, stack, patterns, naming, commit rules. >>
+Ces conventions sont celles du boilerplate ShipSaaS, dont ce dépôt est issu. Elles
+portent sur le **code** ; les règles ci-dessus portent sur le **processus**. Les deux
+s'appliquent : une story passe par le pipeline killer-saas *et* respecte les règles
+d'architecture ci-dessous.
+
+**Piège à connaître** : `pnpm test` lance Vitest en mode *watch* — il ne rend jamais
+la main. Toute exécution non interactive (subagent `implementer`, subagent
+`reviewer`, CI) doit utiliser **`pnpm test --run`**, sinon elle reste bloquée
+indéfiniment. Un `Ctrl+C` sur le mode watch fait afficher `ELIFECYCLE Test failed`
+alors que les tests sont passés : le verdict est la ligne `Tests N passed`, pas
+celle de pnpm.
+
+### Rules Index
+
+**IMPORTANT:** Before implementing ANY feature, consult the **Rules Index** at:
+📋 [`.claude/rules/RULES-INDEX.md`](.claude/rules/RULES-INDEX.md)
+
+The rules in `.claude/rules/` are canonical. Files in `.cursor/rules/` are
+generated compatibility copies and must not be edited directly.
+
+This index is a table of contents for all project implementation rules. Browse it to quickly find the relevant rule(s) for your task.
+
+### Code Generation Prerequisites
+
+Before generating ANY new code, you **MUST** complete these verification steps:
+
+1. **Consult the Rules Index**
+   Open [`.claude/rules/RULES-INDEX.md`](.claude/rules/RULES-INDEX.md) and:
+   - Use the **Quick Decision Matrix** to identify relevant rules for your task
+   - Read the **Description** column to find matching rules
+   - **Read the full rule file(s)** before writing any code
+
+   Common rule mappings:
+
+   | Task                | Rules to Read                                                             |
+   | ------------------- | ------------------------------------------------------------------------- |
+   | New page/component  | `rule-presentation`, `rule-safe-route`                                    |
+   | Form implementation | `rule-form-front-and-back`, `rule-zod-client-server-internationalization` |
+   | Server Action       | `rule-safe-server-action`, `rule-server-actions-imports`                  |
+   | Business service    | `rule-service`, `rule-authorization-service`                              |
+   | Database model      | `rule-persistence`                                                        |
+   | API Route           | `rule-api-routes`                                                         |
+
+2. **Check Existing Codebase Patterns**
+   Find and analyze **at least three existing examples** of similar functionality in the codebase. Look for:
+   - Similar components, functions, or modules
+   - Existing patterns that solve comparable problems
+   - Code structure and conventions already in use
+
+   If no such examples exist, explicitly state that fact before proceeding.
+
+3. **Follow the Rules Exactly**
+   If a rule exists for your task, you **MUST** follow it exactly. The rules contain:
+   - Required patterns and code structure
+   - Security requirements (auth, validation)
+   - File naming and organization conventions
+   - Integration patterns with other layers
+
+**Until all verifications are complete, do NOT proceed with implementation.**
+Every new feature must be analyzed against existing rules and codebase patterns before any code is written. Always propose an implementation plan and wait for approval before coding.
+
+### Project Structure & Module Organization
+
+Application code lives in `src`; Next.js routes sit under `src/app` and shared UI components in `src/components`. Utilities and cross-cutting helpers belong in `src/lib`, while database schemas and migrations live in `drizzle` with supporting scripts in `src/db/scripts`. End-to-end Playwright scenarios are under `e2e`, docs for subsystems (auth, Stripe, Inngest) reside in `docs`, shared assets in `public`, and automation helpers in `scripts`.
+
+### Build, Test, and Development Commands
+
+Use `pnpm dev` to launch the Next.js 16 app with Turbopack. `pnpm build` compiles the production bundle and `pnpm start` serves it. Run code quality checks with `pnpm lint` and `pnpm format`; apply automatic formatting via `pnpm format:fix`. Execute unit and integration suites with `pnpm test`, and run Playwright journeys via `pnpm test:e2e` (append `--ui` for debugging). Database tasks rely on Drizzle: `pnpm db:generate`, `pnpm db:migrate`, and `pnpm db:reset-seed` to refresh fixtures.
+
+### Coding Style & Naming Conventions
+
+Follow Prettier defaults: two-space indentation, single quotes, no semicolons, 80-character line width, and Tailwind class sorting. ESLint enforces module ordering and disallows direct `process.env` access; import configuration from `@/env`. Name React components with PascalCase, variables and helpers with camelCase, and non-component files using kebab-case.
+
+Prefer functional programming over object-oriented programming: use pure
+functions, composition, immutability, stateless services, and functional
+modules. Wrap class-based external SDKs in functional adapters. Use OOP only
+for genuinely complex persistent state.
+
+### Testing Guidelines
+
+Vitest powers unit and integration tests with separate `jsdom` and `node` projects; colocate specs as `*.test.ts(x)` near the code under test. Initialize mocks using the setup files referenced in `vitest.config.ts`. For browser flows, add Playwright specs under `e2e` and run `pnpm test:e2e --project=chromium` when isolating failures. Keep seeds deterministic by updating `src/db/scripts/seed.ts` whenever tests rely on fixture data.
+
+### Database Migration Safety
+
+Never write migration SQL manually in `drizzle/migrations/`, and never edit
+`drizzle/migrations/meta/_journal.json` or snapshot files manually. After
+changing models in `src/db/models/`, generate migrations with
+`pnpm db:generate`. For custom SQL or data migrations, use
+`drizzle-kit generate --custom` so the journal and snapshots remain coherent.
+If generation fails, repair the snapshot state instead of bypassing it.
+
+Do not run `pnpm build` automatically as a final verification step.
+
+### Commit & Pull Request Guidelines
+
+Use Conventional Commits (e.g., `feat:`, `fix:`, `chore:`); Husky hooks will lint, format, and run targeted tests on staged files. Pull requests should summarize scope, call out impacted areas (UI, API, DB), and note any `.env` or migration updates. Include relevant screenshots or terminal output for visible changes and link to docs updates in `docs/` when applicable.
+
+### Security & Configuration Tips
+
+Bootstrap environment files with `pnpm init:env`, then fill values from `env.example`. Generate secrets such as `AUTH_SECRET` and Stripe keys using the scripts referenced in `README.md`, and never commit `.env`. When validating Stripe webhooks locally, run `pnpm stripe:listen` alongside `pnpm dev`.
 
 ## Definition of Done (per feature)
 - Single PR, structured description, readable diff
@@ -104,3 +204,13 @@ All pipeline data lives in markdown files under docs/, versioned by git. No data
 - No regression on existing code
 - Review passed (no open critical issue)
 - Deployed to production
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -1,0 +1,251 @@
+---
+description:
+---
+
+# Top-Down Design - Refactorisation des Fonctions Complexes
+
+## Principe Général
+
+Quand une fonction dépasse **100 lignes** ou devient **difficile à comprendre**, appliquez le **Top-Down Design** pour la décomposer en sous-fonctions claires et spécialisées.
+
+## Règles d'Application
+
+### ✅ Quand Refactoriser
+
+- **Longueur** : Fonction > 100 lignes
+- **Complexité** : Logique métier mélangée (validation + API + BDD)
+- **Lisibilité** : Conditions imbriquées difficiles à suivre
+- **Testabilité** : Impossible de tester unitairement
+- **Maintenance** : Modification d'une partie affecte tout le reste
+
+### 🎯 Méthodologie Top-Down
+
+#### 1. **Identifier les Étapes Principales**
+
+```typescript
+// ❌ AVANT : Fonction monolithique
+export async function complexFunction() {
+  // 150 lignes de code mélangé...
+}
+
+// ✅ APRÈS : Vue d'ensemble claire
+export async function complexFunction() {
+  // 1️⃣ Validation des paramètres
+  const validatedData = validateInput(params)
+
+  // 2️⃣ Logique métier principale
+  const processedData = await processBusinessLogic(validatedData)
+
+  // 3️⃣ Persistance des données
+  const result = await saveData(processedData)
+
+  // 4️⃣ Retour formaté
+  return formatResponse(result)
+}
+```
+
+#### 2. **Créer des Fonctions Spécialisées**
+
+Chaque sous-fonction a **une seule responsabilité** :
+
+```typescript
+// Validation pure
+function validateInput(params: InputParams): ValidatedData {
+  // Logique de validation isolée
+}
+
+// Logique métier pure
+async function processBusinessLogic(
+  data: ValidatedData
+): Promise<ProcessedData> {
+  // Transformation des données métier
+}
+
+// Accès données pur
+async function saveData(data: ProcessedData): Promise<SaveResult> {
+  // Interaction avec la base de données
+}
+
+// Formatage pur
+function formatResponse(result: SaveResult): ApiResponse {
+  // Transformation pour l'API
+}
+```
+
+#### 3. **Types Explicites pour Chaque Étape**
+
+```typescript
+// Types clairs pour le flux de données
+type InputParams = {/* ... */}
+type ValidatedData = {/* ... */}
+type ProcessedData = {/* ... */}
+type SaveResult = {/* ... */}
+type ApiResponse = {/* ... */}
+```
+
+## Exemple Concret : Checkout Stripe
+
+### Référence : [external-checkout/actions.ts](src/components/features/checkout-stripe/external-checkout/actions.ts)
+
+#### ✅ Top-Down Appliqué
+
+```typescript
+export async function createCheckoutSession(
+  priceId: string,
+  seats: number,
+  guest: boolean
+) {
+  // Vue d'ensemble du processus
+  const user = await getAuthUser()
+  const plan = getPlanByPriceId(priceId)
+
+  // 1️⃣ Validation du mode
+  const mode = checkCheckoutMode(guest, user)
+
+  // 2️⃣ Gestion customer
+  const customerInfo = await initUserCustomer(mode, user)
+
+  // 3️⃣ Initialisation subscription
+  const subscriptionId = await initSubscription(
+    customerInfo,
+    plan.planCode,
+    seats
+  )
+
+  // 4️⃣ Création metadata
+  const metadata = createMetadata(mode, subscriptionData, customerInfo)
+
+  // 5️⃣ Création session Stripe
+  const session = await createStripeSession(
+    priceId,
+    subscriptionData,
+    customerInfo,
+    metadata
+  )
+
+  return {success: true, url: session.url, sessionId: session.id}
+}
+```
+
+#### 🔧 Fonctions Spécialisées
+
+```typescript
+// Chaque fonction a un rôle précis
+function checkCheckoutMode(guest: boolean, user: User | undefined): CheckoutMode
+async function initUserCustomer(
+  mode: CheckoutMode,
+  user: User | undefined
+): Promise<CustomerInfo>
+async function initSubscription(
+  customerInfo: CustomerInfo,
+  planCode: SubscriptionPlan,
+  seats: number
+): Promise<string>
+function createMetadata(
+  mode: CheckoutMode,
+  subscriptionData: SubscriptionData,
+  customerInfo: CustomerInfo
+): Record<string, string>
+async function createStripeSession(
+  priceId: string,
+  subscriptionData: SubscriptionData,
+  customerInfo: CustomerInfo,
+  metadata: Record<string, string>
+): Promise<StripeSession>
+```
+
+## Avantages du Top-Down
+
+### ✅ **Lisibilité Maximale**
+
+- Fonction principale = table des matières
+- Chaque étape clairement identifiée
+- Flux logique évident
+
+### ✅ **Maintenabilité Optimale**
+
+- Modification isolée dans une seule fonction
+- Impact limité sur le reste du code
+- Debugging plus facile
+
+### ✅ **Testabilité Parfaite**
+
+- Tests unitaires pour chaque fonction
+- Mocks isolés et précis
+- Couverture de code granulaire
+
+### ✅ **Réutilisabilité**
+
+- Fonctions réutilisables dans d'autres contextes
+- Logic métier extraite et portable
+- DRY (Don't Repeat Yourself) respecté
+
+## Checklist de Refactorisation
+
+### 🔍 **Avant de Commencer**
+
+- [ ] Fonction > 100 lignes ?
+- [ ] Logique mélangée (validation + métier + persistance) ?
+- [ ] Conditions imbriquées complexes ?
+- [ ] Tests difficiles à écrire ?
+
+### 🛠️ **Étapes de Refactorisation**
+
+- [ ] Identifier les 4-6 étapes principales
+- [ ] Créer les types pour chaque étape
+- [ ] Extraire chaque étape en fonction spécialisée
+- [ ] Fonction principale = orchestration simple
+- [ ] Ajouter logs pour chaque étape
+- [ ] Tests unitaires pour chaque fonction
+
+### ✅ **Validation du Résultat**
+
+- [ ] Fonction principale < 50 lignes
+- [ ] Chaque sous-fonction < 30 lignes
+- [ ] Une responsabilité par fonction
+- [ ] Types explicites partout
+- [ ] Testable unitairement
+- [ ] Logs clairs et informatifs
+
+## Patterns à Éviter
+
+### ❌ **Anti-Patterns**
+
+```typescript
+// Fonction trop générique
+function processEverything(data: any): any
+
+// Logique mélangée
+function validateAndSaveAndNotify() {
+  // validation + BDD + email dans la même fonction
+}
+
+// Paramètres multiples non typés
+function complexProcess(a: string, b: number, c: boolean, d: any[], e: object)
+```
+
+### ✅ **Bonnes Pratiques**
+
+```typescript
+// Fonction spécialisée avec types
+function validateUserInput(input: UserInput): ValidatedUser
+
+// Responsabilité unique
+function saveUser(user: ValidatedUser): Promise<SavedUser>
+function sendWelcomeEmail(user: SavedUser): Promise<void>
+
+// Paramètres structurés
+function processUser(params: ProcessUserParams): Promise<ProcessUserResult>
+```
+
+## Application dans le Projet
+
+Appliquez cette méthodologie sur :
+
+- Server Actions complexes
+- Services métier longs
+- Fonctions de validation étendues
+- Logique de transformation de données
+- Orchestration d'APIs multiples
+
+**Objectif** : Code lisible, maintenable et testable à tous les niveaux.

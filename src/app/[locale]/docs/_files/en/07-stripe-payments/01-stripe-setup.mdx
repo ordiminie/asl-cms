@@ -1,0 +1,274 @@
+---
+title: 'Stripe Setup'
+description: 'Configure Stripe account, API keys, and webhooks for both Better Auth and Custom Boilerplate payment systems'
+keywords: 'ShipSaaS, Stripe setup, payment configuration, Stripe API, webhook setup, payment provider setup'
+---
+
+Setting up Stripe with the boilerplate requires configuring your Stripe account, retrieving API keys, and setting up webhook endpoints. This setup applies to **both payment systems** (Better Auth and Custom Boilerplate).
+
+<Callout type="info">
+  **Universal Setup:** This configuration works for both Better Auth's external checkout and the Custom Boilerplate's advanced checkout methods.
+</Callout>
+
+<Callout type="success">
+  **Perfect for:** Getting your payment system up and running quickly with proper webhook configuration and security for either payment approach.
+</Callout>
+
+## Stripe Account Setup
+
+<Steps>
+<Step title="Create Stripe Account">
+  1. Go to [stripe.com](https://stripe.com) and create an account
+  2. Complete the verification process
+  3. Access your dashboard at [dashboard.stripe.com](https://dashboard.stripe.com)
+</Step>
+
+<Step title="Retrieve API Keys">
+  1. Navigate to **Developers** → **API Keys**
+  2. Copy your **Publishable key** (starts with `pk_test_` or `pk_live_`)
+  3. Reveal and copy your **Secret key** (starts with `sk_test_` or `sk_live_`)
+  4. Keep these keys secure - never commit them to version control
+</Step>
+
+<Step title="Configure Products and Prices">
+  1. Go to **Products** in your Stripe dashboard
+  2. Create your products and pricing plans
+  3. Note the **Price IDs** (starts with `price_`) for your plans
+  4. These will be used in your plan configuration
+</Step>
+</Steps>
+
+## Environment Configuration
+
+Add your Stripe configuration to `.env.local`:
+
+<Tabs defaultValue="development">
+  <Tab value="development" label="🧪 Development">
+    ```bash
+    # Stripe Test Configuration
+    STRIPE_SECRET_KEY="sk_test_51A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2"
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_51A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0"
+
+    # Webhook Secret (configured later)
+    STRIPE_WEBHOOK_SECRET="whsec_1234567890abcdef..."
+
+    # Checkout Configuration
+    NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE="EmbededForm"
+    ```
+
+    <Callout type="warning">
+      **Test Mode:** Use test keys (starting with `sk_test_` and `pk_test_`) during development.
+    </Callout>
+  </Tab>
+
+  <Tab value="production" label="🚀 Production">
+    ```bash
+    # Stripe Live Configuration
+    STRIPE_SECRET_KEY="sk_live_51A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0E1F2"
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_live_51A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Y5Z6A7B8C9D0"
+
+    # Production Webhook Secret
+    STRIPE_WEBHOOK_SECRET="whsec_abcdef1234567890..."
+
+    # Checkout Configuration
+    NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE="EmbededForm"
+    ```
+
+    <Callout type="error">
+      **Security:** Never expose live keys. Use environment variables and secure deployment practices.
+    </Callout>
+  </Tab>
+</Tabs>
+
+## Stripe Client Configuration
+
+The boilerplate includes a pre-configured Stripe client in `src/lib/stripe/stripe-client.ts`:
+
+```typescript
+// From src/lib/stripe/stripe-client.ts
+import 'server-only'
+import Stripe from 'stripe'
+import { env } from '@/env'
+
+export const stripeClient = new Stripe(env.STRIPE_SECRET_KEY, {
+  apiVersion: '2025-07-30.basil',
+})
+```
+
+<Callout type="info">
+  **API Version:** The boilerplate uses Stripe API version `2025-07-30.basil` for the latest features and compatibility.
+</Callout>
+
+## Webhook Configuration
+
+Webhooks are essential for real-time payment event processing:
+
+### Create Webhook Endpoint
+
+<Steps>
+<Step title="Access Webhook Settings">
+  1. In your Stripe dashboard, go to **Developers** → **Webhooks**
+  2. Click **Add endpoint**
+</Step>
+
+<Step title="Configure Endpoint URL">
+  Set your webhook URL based on your environment:
+
+  **Development:**
+  ```
+  https://your-ngrok-url.ngrok.io/api/auth/stripe/webhook
+  ```
+
+  **Production:**
+  ```
+  https://yourdomain.com/api/auth/stripe/webhook
+  ```
+</Step>
+
+<Step title="Select Events">
+  Add these essential events for subscription management:
+
+  ```
+  customer.subscription.created
+  customer.subscription.updated
+  customer.subscription.deleted
+  invoice.payment_succeeded
+  invoice.payment_failed
+  checkout.session.completed
+  ```
+</Step>
+
+<Step title="Get Webhook Secret">
+  1. After creating the webhook, click on it
+  2. In the **Signing secret** section, click **Reveal**
+  3. Copy the secret (starts with `whsec_`)
+  4. Add it to your environment variables as `STRIPE_WEBHOOK_SECRET`
+</Step>
+</Steps>
+
+### Local Development Webhooks
+
+For local development, use the Stripe CLI:
+
+```bash
+# Install Stripe CLI
+# macOS: brew install stripe/stripe-cli/stripe
+# Windows: scoop install stripe
+# Linux: Download from https://github.com/stripe/stripe-cli
+
+# Login to your account
+stripe login
+
+# Forward webhooks to local server
+stripe listen --forward-to localhost:3000/api/auth/stripe/webhook
+
+# Copy the webhook secret from the output
+# Your webhook signing secret is whsec_1234567890abcdef...
+```
+
+<Callout type="tip">
+  **Development tip:** The Stripe CLI automatically provides a webhook secret when forwarding events. Use this secret in your `STRIPE_WEBHOOK_SECRET` environment variable during development.
+</Callout>
+
+<Callout type="info">
+  **Webhook Endpoint:** Both payment systems use the same webhook endpoint `/api/auth/stripe/webhook` but process events differently based on metadata.
+</Callout>
+
+## Checkout Method Configuration (Custom System Only)
+
+<Callout type="warning">
+  **Custom Boilerplate System Only:** This configuration applies only if you're using the Custom Boilerplate checkout system. Better Auth uses external Stripe checkout automatically.
+</Callout>
+
+Choose your preferred checkout method with the `NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE` environment variable:
+
+<Tabs defaultValue="embedded">
+  <Tab value="embedded" label="🎯 Embedded (Recommended)">
+    ```bash
+    NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE="EmbededForm"
+    ```
+
+    **Benefits:**
+    - Best user experience (no redirect)
+    - Full customization control
+    - Faster checkout process
+    - Mobile-optimized
+
+    **Use when:** You want the smoothest user experience
+  </Tab>
+
+  <Tab value="external" label="🔗 External">
+    ```bash
+    NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE="ExternalForm"
+    ```
+
+    **Benefits:**
+    - Stripe-hosted security
+    - Minimal integration effort
+    - Built-in payment methods
+    - PCI compliance handled by Stripe
+
+    **Use when:** You prefer Stripe to handle the checkout UI
+  </Tab>
+
+  <Tab value="react-stripe" label="⚛️ React Stripe">
+    ```bash
+    NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE="ReactStripeForm"
+    ```
+
+    **Benefits:**
+    - Custom React components
+    - Full UI control
+    - Advanced integrations
+    - Custom validation
+
+    **Use when:** You need complex custom checkout flows
+  </Tab>
+
+  <Tab value="payment-link" label="🔗 Payment Link">
+    ```bash
+    NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE="PaymentLink"
+    ```
+
+    **Benefits:**
+    - Simple implementation
+    - Share via email/social
+    - No coding required
+    - Quick setup
+
+    **Use when:** You need simple payment collection
+  </Tab>
+</Tabs>
+
+## Verification Checklist
+
+<Steps>
+<Step title="Test API Connection">
+  Verify your Stripe configuration:
+  ```bash
+  # Start your development server
+  npm run dev
+
+  # Check the console for Stripe initialization
+  # Should see no errors about missing keys
+  ```
+</Step>
+
+<Step title="Test Webhook Delivery">
+  1. Trigger a test event in your Stripe dashboard
+  2. Check your application logs for webhook processing
+  3. Verify events are being received and processed
+</Step>
+
+<Step title="Validate Environment Variables">
+  Ensure all required variables are set:
+  - ✅ `STRIPE_SECRET_KEY`
+  - ✅ `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+  - ✅ `STRIPE_WEBHOOK_SECRET`
+  - ✅ `NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE`
+</Step>
+</Steps>
+
+<Callout type="success">
+  **Stripe configured!** Your payment system is now ready to process payments with secure webhook handling and your chosen checkout method.
+</Callout>
