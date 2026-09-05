@@ -1,12 +1,48 @@
 services:
   dev:
     build: .
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - .:/workspace
       - claude-auth:/home/dev/.claude
+      # node_modules dans un volume nommé, PAS sur le bind mount Windows :
+      # pnpm est très symlink/hardlink-intensif et le passage par S:\ (drvfs)
+      # le rend extrêmement lent. Contrepartie : VSCode côté Windows ne voit
+      # plus node_modules (perte d'IntelliSense). Pour la retrouver, éditer
+      # dans le conteneur via l'extension VSCode "Dev Containers".
+      - node-modules:/workspace/node_modules
+      # Décommenter pour utiliser tes clés SSH dans le conteneur (git fetch upstream).
+      # Sous PowerShell la variable est USERPROFILE, pas HOME :
+      # - ${USERPROFILE}/.ssh:/home/dev/.ssh:ro
+    environment:
+      DATABASE_URL: postgres://asl:asl@db:5432/asl_cms
+    ports:
+      - "3000:3000"
     working_dir: /workspace
     stdin_open: true
     tty: true
 
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: asl
+      POSTGRES_PASSWORD: asl
+      POSTGRES_DB: asl_cms
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/db-init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Exposé pour pouvoir brancher un client SQL depuis Windows (DBeaver, TablePlus).
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U asl -d asl_cms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   claude-auth:
+  node-modules:
+  pgdata:
