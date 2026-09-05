@@ -20,7 +20,7 @@ CMS + espace membre modulable pour associations syndicales libres (ASL) de terra
 
 > ADR 001 — `docs/decisions/001-base-technique-cms.md`.
 
-**Retenu : le boilerplate ship-saas** (Next.js 15, Drizzle/PostgreSQL, Better Auth, Stripe, architecture en couches Presentation/Service/Persistence). **WordPress, envisagé comme base CMS, est écarté.**
+**Retenu : le boilerplate ship-saas** (Next.js 16, Drizzle/PostgreSQL, Better Auth, Stripe, architecture en couches Presentation/Service/Persistence). **WordPress, envisagé comme base CMS, est écarté.**
 
 L'intention derrière WordPress était bonne : un back-office ergonomique, prévisible, éventuellement déjà connu du bureau. Mais il entre en conflit avec les choix non négociables du projet — deux runtimes à héberger et maintenir (PHP + Node), un multi-tenant WP multisite incompatible avec le modèle `organization_id` + RLS Postgres, un second système d'identité face au magic link Better Auth, une facturation plateforme à redévelopper là où Stripe/ship-saas la couvre nativement, et un écosystème de plugins qui échappe au pipeline killer-saas (TDD + review) comme à un contrat de maintenance à [montant masqué]/an.
 

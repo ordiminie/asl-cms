@@ -12,7 +12,7 @@ Site multi-tenant (plateforme ASL-CMS), premier tenant = ASL La Fourche. Périm�
 
 > Décision formalisée dans `docs/decisions/001-base-technique-cms.md` (ADR 001) — options considérées et conséquences détaillées.
 
-**Retenu : le boilerplate ship-saas** (Next.js 15, Drizzle/PostgreSQL, Better Auth, Stripe, architecture en couches Presentation/Service/Persistence). **WordPress est écarté.**
+**Retenu : le boilerplate ship-saas** (Next.js 16, Drizzle/PostgreSQL, Better Auth, Stripe, architecture en couches Presentation/Service/Persistence). **WordPress est écarté.**
 
 WordPress avait été envisagé pour une seule raison, légitime : offrir au bureau un back-office ergonomique, prévisible, éventuellement déjà connu. Il a été écarté parce qu'il entre en conflit avec les choix non négociables du projet :
 
