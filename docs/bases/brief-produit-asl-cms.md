@@ -2,7 +2,7 @@
 
 Document de cadrage à apporter comme contexte lors des phases `/ks-prd` et `/ks-architect` du pipeline killer-saas. Ce n'est pas une spec technique — le WHAT/WHY et les grandes décisions structurantes seulement.
 
-**Sources et hiérarchie** : le périmètre du premier client fait foi dans `Admin-MEL/cahier-des-charges-fonctionnel_V5.md` (document contractuel, annexé au contrat) ; sa traduction technique de travail est `cahier-des-charges-technique.md`. Le présent brief se limite au niveau produit/plateforme et s'aligne sur ces deux documents.
+**Sources et hiérarchie** : le périmètre du premier client fait foi dans `docs/Admin-MEL/cahier-des-charges-fonctionnel_V5.md` (document contractuel, annexé au contrat) ; sa traduction technique de travail est `docs/bases/cahier-des-charges-technique.md`. Le présent brief se limite au niveau produit/plateforme et s'aligne sur ces deux documents.
 **Dernière mise à jour** : 5 septembre 2026 (synchronisation avec le cahier des charges technique).
 
 ## Vision

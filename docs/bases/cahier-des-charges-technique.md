@@ -1,6 +1,6 @@
 # Cahier des charges technique — Site ASL La Fourche
 
-**Usage** : document de travail interne à Zourite Studio, non contractuel (voir `contrat-prestation-services-asl-la-fourche.md`, Article 2). Il sert de base à l'écriture des user stories (`stories.md`) et au découpage en tâches de développement. Il part de `cahier-des-charges-fonctionnel_V4.md` (version de travail brute, questions/réponses) en y intégrant directement les réponses du bureau et les ajouts faits dans la version client consolidée `cahier-des-charges-fonctionnel_V5.md`.
+**Usage** : document de travail interne à Zourite Studio, non contractuel (voir `docs/Admin-MEL/contrat-prestation-services-asl-la-fourche.md`, Article 2). Il sert de base à l'écriture des user stories (`stories.md`) et au découpage en tâches de développement. Il part de `cahier-des-charges-fonctionnel_V4.md` (version de travail brute, questions/réponses) en y intégrant directement les réponses du bureau et les ajouts faits dans la version client consolidée `cahier-des-charges-fonctionnel_V5.md`.
 **Document contractuel de référence** : `cahier-des-charges-fonctionnel_V5.md` (annexé au contrat). En cas de divergence entre ce document et la V5, la V5 prévaut ; toute divergence constatée doit être signalée et corrigée ici.
 **Dernière synchronisation avec la V5** : 3 septembre 2026.
 

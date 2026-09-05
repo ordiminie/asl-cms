@@ -46,7 +46,7 @@ Décisions actées : pas d'abstraction générique "ressource partagée" fusionn
 
 **Contrat de prestation** : [clauses masquées]
 
-**Documents de référence** : le cahier des charges fonctionnel **V5** (`docs/Admin-MEL/cahier-des-charges-fonctionnel_V5.md`) est le document contractuel annexé au contrat — il prévaut en cas de divergence. Sa traduction technique de travail, interne et non contractuelle, est `docs/cahier-des-charges-technique.md` (dernière synchronisation avec la V5 : 3 septembre 2026).
+**Documents de référence** : le cahier des charges fonctionnel **V5** (`docs/Admin-MEL/cahier-des-charges-fonctionnel_V5.md`) est le document contractuel annexé au contrat — il prévaut en cas de divergence. Sa traduction technique de travail, interne et non contractuelle, est `docs/bases/cahier-des-charges-technique.md` (dernière synchronisation avec la V5 : 3 septembre 2026).
 
 **Questions au bureau — tranchées.** Les questions ouvertes des versions V3/V4 (multi-parcelles, méthode de création des comptes, droits sur le bandeau d'alerte, destinataires des notifications de fuite, format de publication des analyses d'eau, nom de domaine, statuts de facture, format et fréquence des relevés, expiration des annonces, accès ASL Community, saisie des résolutions de vote, utilité du module Voirie, émetteurs de campagnes email, modèles de mail) ont toutes reçu une réponse du bureau, intégrée dans la V5 et dans le cahier technique. Notamment : comptes créés par import d'une liste fournie ; bandeau d'alerte ouvert à tout le bureau ; campagnes email ouvertes à tout le bureau ; résolutions et résultats de vote réservés à la présidente ; 4 modèles d'email + un mode campagne libre ; relevés d'eau importés 1×/an ; pas d'expiration automatique des annonces ; module Voirie confirmé.
 
@@ -90,6 +90,6 @@ Stratégie de "build in public" à deux canaux distincts :
 
 ## Sources
 
-Docs lus dans `S:\VSCode\asl-cms\docs\` : `cahier-des-charges-technique.md`, `brief-produit-asl-cms.md`, `Lancer-le-container-Docker.txt`, et dans `docs\Admin-MEL\` : `cahier-des-charges-fonctionnel_V5.md`, `contrat-prestation-services-asl-la-fourche.md`, `Devis_042_ASL_La_Fourche_v9.pdf`, `ASL_LA_FOURCHE_Presentation.pdf` (support AG du 24/07/2026), `calendrier-previsionnel-v1.jpg`.
+Docs lus dans `docs/bases/` : `cahier-des-charges-technique.md`, `brief-produit-asl-cms.md` ; dans `docs/tutos/` : `Lancer-le-container-Docker.txt` ; et dans `docs/Admin-MEL/` : `cahier-des-charges-fonctionnel_V5.md`, `contrat-prestation-services-asl-la-fourche.md`, `Devis_042_ASL_La_Fourche_v9.pdf`, `ASL_LA_FOURCHE_Presentation.pdf` (support AG du 24/07/2026), `calendrier-previsionnel-v1.jpg`.
 Historique : `prd.md`, `stories.md` et `cahier-des-charges-fonctionnel_V3/V4` ont été lus lors de la première rédaction (2026-08-25) puis retirés du repo — voir Backlog produit.
 Recherche web complémentaire (concurrence, positionnement, naming) menée le 2026-08-25.
