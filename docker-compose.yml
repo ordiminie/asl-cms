@@ -13,11 +13,16 @@ services:
       # plus node_modules (perte d'IntelliSense). Pour la retrouver, éditer
       # dans le conteneur via l'extension VSCode "Dev Containers".
       - node-modules:/workspace/node_modules
+      # Le store pnpm aussi hors du bind mount : sinon pnpm le relocalise
+      # dans /workspace/.pnpm-store (1,4 Go écrits sur S:\).
+      - pnpm-store:/home/dev/.pnpm-store
       # Décommenter pour utiliser tes clés SSH dans le conteneur (git fetch upstream).
       # Sous PowerShell la variable est USERPROFILE, pas HOME :
       # - ${USERPROFILE}/.ssh:/home/dev/.ssh:ro
     environment:
       DATABASE_URL: postgres://asl:asl@db:5432/asl_cms
+      # Force le store pnpm sur le volume ci-dessus (variable lue par pnpm).
+      npm_config_store_dir: /home/dev/.pnpm-store
     ports:
       - "3000:3000"
     working_dir: /workspace
@@ -45,4 +50,5 @@ services:
 volumes:
   claude-auth:
   node-modules:
+  pnpm-store:
   pgdata:

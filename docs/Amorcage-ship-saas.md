@@ -68,12 +68,29 @@ Dis-moi simplement « les conflits sont là » et je les traite.
 
 ## Phase 3 — Installer et démarrer (conteneur)
 
+> ✅ **Fait le 5 septembre 2026.** Trois pièges rencontrés, tous corrigés dans le dépôt — lire les encadrés ci-dessous avant de refaire l'opération sur une autre machine.
+
+
 ```bash
 docker compose run --rm --service-ports dev     # depuis PowerShell
 # puis, dans le shell du conteneur :
 pnpm install
 pnpm init:env          # assistant interactif ; sinon : cp env.example .env.local
 ```
+
+> **Piège 1 — `pnpm install` échoue en permission (`EACCES`).** Docker crée un volume nommé vide appartenant à `root` quand le chemin monté n'existe pas dans l'image. Le `Dockerfile` crée donc `/workspace/node_modules` et `/home/dev/.pnpm-store` avec le propriétaire `dev`. Si le volume a déjà été créé avant ce correctif : `docker volume rm asl-cms_node-modules` puis `docker compose build`.
+
+> **Piège 2 — pnpm écrit 1,4 Go sur le disque Windows.** pnpm place son store sur le même système de fichiers que le projet pour faire des liens durs ; `/workspace` étant un bind mount, il déserte `/home/dev` et remplit `S:\`. D'où le volume `pnpm-store` et la variable `npm_config_store_dir` dans `docker-compose.yml`.
+
+> **Piège 3 — trois fichiers d'environnement, pas un.** `pnpm init:env` produit `.env.local`, mais le boilerplate lit `.env.<NODE_ENV>` **en dur** (`src/db/scripts/env.ts`). Il en faut donc trois, non commités (`.env*` est ignoré) :
+>
+> | Fichier | Lu par |
+> |---|---|
+> | `.env.local` | Next.js (`pnpm dev`, `pnpm build`) |
+> | `.env.development` | scripts Drizzle (`db:push`, `db:seed`, `db:migrate`) |
+> | `.env.test` | Vitest (`vitest.config.ts`) et Playwright (`playwright.config.ts`) |
+>
+> `.env.local` et `.env.development` sont des copies à garder en phase. `.env.test` pointe sur une base **séparée** `asl_cms_test` : Playwright impose son `DATABASE_URL` au serveur sous test, donc sans base dédiée les tests écraseraient les données de développement. Cette base est créée automatiquement par `docker/db-init/02-test-database.sql` sur un volume neuf ; sur un volume existant : `PGPASSWORD=asl psql -h db -U asl -d asl_cms -c "CREATE DATABASE asl_cms_test OWNER asl"`.
 
 Dans `.env.local`, la base est déjà servie par le conteneur `db` :
 
@@ -91,11 +108,18 @@ pnpm dev
 
 Le site est alors sur **http://localhost:3000** depuis le navigateur Windows (le port est publié, à condition de lancer avec `--service-ports`).
 
+`pnpm dev` est un serveur : il ne rend jamais la main et occupe le terminal. Pour lancer d'autres commandes, ouvrir un second shell dans le même conteneur depuis PowerShell : `docker exec -it <id-du-conteneur> bash`.
+
 > Si la page ne répond pas depuis Windows alors qu'elle répond dans le conteneur, forcer l'écoute sur toutes les interfaces : `pnpm dev -- -H 0.0.0.0`.
 
 ---
 
 ## Phase 4 — Vérifier avant de merger sur main
+
+> ✅ **Fait le 5 septembre 2026** : `pnpm test` → 451 tests passés, 8 ignorés, 23 fichiers de test, aucun échec. `pnpm dev` sert le site sur http://localhost:3000.
+>
+> `pnpm test:e2e` n'a pas été lancé : Playwright doit d'abord télécharger ses navigateurs (`pnpm exec playwright install`), ce qui demande aussi des dépendances système dans l'image. À traiter séparément.
+
 
 ```bash
 pnpm test          # Vitest : la suite du boilerplate doit passer

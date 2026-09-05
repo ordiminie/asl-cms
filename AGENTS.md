@@ -102,6 +102,13 @@ portent sur le **code** ; les règles ci-dessus portent sur le **processus**. Le
 s'appliquent : une story passe par le pipeline killer-saas *et* respecte les règles
 d'architecture ci-dessous.
 
+**Piège à connaître** : `pnpm test` lance Vitest en mode *watch* — il ne rend jamais
+la main. Toute exécution non interactive (subagent `implementer`, subagent
+`reviewer`, CI) doit utiliser **`pnpm test --run`**, sinon elle reste bloquée
+indéfiniment. Un `Ctrl+C` sur le mode watch fait afficher `ELIFECYCLE Test failed`
+alors que les tests sont passés : le verdict est la ligne `Tests N passed`, pas
+celle de pnpm.
+
 ### Rules Index
 
 **IMPORTANT:** Before implementing ANY feature, consult the **Rules Index** at:

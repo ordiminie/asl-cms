@@ -59,3 +59,5 @@ next-env.d.ts
 # Divers
 *.swp
 Thumbs.db
+# Store pnpm : ne doit pas atterrir sur le bind mount (voir docker-compose.yml)
+/.pnpm-store/v*/
