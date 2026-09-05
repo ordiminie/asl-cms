@@ -21,6 +21,8 @@ docker compose build
 
 ## Phase 1 — Brancher le boilerplate en upstream (PowerShell)
 
+> ✅ **Fait le 5 septembre 2026** (commit `27d78f6`). Cette phase reste la référence pour les récupérations upstream ultérieures.
+
 Cette phase est la seule à nécessiter **tes identifiants Git** : elle se fait donc côté Windows, où ton accès au dépôt privé est déjà configuré. Le dossier étant monté dans le conteneur, tout ce qui est récupéré ici sera immédiatement visible côté Claude Code.
 
 ```powershell
@@ -46,6 +48,8 @@ La dernière commande **va s'arrêter sur des conflits** : c'est attendu et norm
 
 ## Phase 2 — Résoudre les conflits (Claude Code, dans le conteneur)
 
+> ✅ **Fait** : 48 conflits résolus dans `27d78f6`. Le tableau ci-dessous documente la politique appliquée, à réutiliser aux prochains merges upstream.
+
 Fichiers en conflit attendus, tous à la racine :
 
 | Fichier | Nature du conflit | Résolution |
@@ -68,7 +72,7 @@ Dis-moi simplement « les conflits sont là » et je les traite.
 docker compose run --rm --service-ports dev     # depuis PowerShell
 # puis, dans le shell du conteneur :
 pnpm install
-cp .env.example .env.local
+pnpm init:env          # assistant interactif ; sinon : cp env.example .env.local
 ```
 
 Dans `.env.local`, la base est déjà servie par le conteneur `db` :
