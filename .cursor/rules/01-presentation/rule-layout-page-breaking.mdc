@@ -1,0 +1,278 @@
+---
+description: 
+globs: **layout**,**page**
+alwaysApply: false
+---
+
+# Règle Layout Responsive - Gestion des Breakpoints et Optimisations
+
+## Vue d'ensemble
+
+Cette règle définit les meilleures pratiques pour optimiser les layouts, cards, tableaux et composants afin d'éviter le scroll horizontal en mobile et assurer une expérience responsive optimale.
+
+## Architecture des Layouts
+
+### Layout Principal (Admin/App)
+
+```tsx
+// src/app/admin/layout.tsx - Container principal
+<main className="flex-1">
+  <div className="mx-auto w-full max-w-7xl px-0 py-4 sm:px-2 md:px-4">
+    {children}
+  </div>
+</main>
+```
+
+**Optimisations clés :**
+
+- **Mobile** : `px-0` (pas de padding horizontal)
+- **Small** : `sm:px-2` (8px de padding)
+- **Desktop** : `md:px-4` (16px de padding)
+
+**Problème résolu :** Évite l'accumulation de padding qui causait le scroll horizontal.
+
+## Card Responsive
+
+### Structure optimisée
+
+```tsx
+// Pattern à suivre pour toutes les Cards contenant des tableaux
+<Card className="border-0 sm:border">
+  <CardHeader className="px-4 sm:px-6">
+    <CardTitle>Titre de la gestion</CardTitle>
+  </CardHeader>
+  <CardContent className="px-4 sm:px-6">{/* Contenu du tableau */}</CardContent>
+</Card>
+```
+
+**Optimisations clés :**
+
+- **Border** : Supprimé en mobile (`border-0 sm:border`)
+- **Padding Header** : `px-4` mobile, `sm:px-6` desktop
+- **Padding Content** : `px-4` mobile, `sm:px-6` desktop
+
+**Économie d'espace :** ~20px de largeur récupérée en mobile.
+
+## Tableaux Responsives - Breakpoints Progressifs
+
+### Masquage progressif des colonnes
+
+Les colonnes doivent se masquer dans l'ordre de priorité décroissante :
+
+1. **Moins important** → **Plus important**
+2. **Large** → **Mobile**
+
+#### Exemple Organizations ([organizations-management.tsx](mdc:src/components/features/admin/organizations/organizations-management.tsx)) :
+
+```tsx
+<TableHeader>
+  <TableRow>
+    <TableHead>Organisation</TableHead> {/* Toujours visible */}
+    <TableHead className="hidden md:table-cell">Slug</TableHead>{' '}
+    {/* Masqué < 768px */}
+    <TableHead className="hidden xl:table-cell">Description</TableHead>{' '}
+    {/* Masqué < 1280px */}
+    <TableHead className="hidden lg:table-cell">Créée</TableHead>{' '}
+    {/* Masqué < 1024px */}
+    <TableHead>Actions</TableHead> {/* Toujours visible */}
+  </TableRow>
+</TableHeader>
+```
+
+#### Exemple Users ([users-management.tsx](mdc:src/components/features/admin/users/users-management.tsx)) :
+
+```tsx
+<TableHeader>
+  <TableRow>
+    <TableHead>Utilisateur</TableHead> {/* Toujours visible */}
+    <TableHead>Email</TableHead> {/* Toujours visible */}
+    <TableHead className="hidden lg:table-cell">Rôle</TableHead>{' '}
+    {/* Masqué < 1024px */}
+    <TableHead className="hidden lg:table-cell">Statut</TableHead>{' '}
+    {/* Masqué < 1024px */}
+    <TableHead className="hidden md:table-cell">Créé</TableHead>{' '}
+    {/* Masqué < 768px */}
+    <TableHead>Actions</TableHead> {/* Toujours visible */}
+  </TableRow>
+</TableHeader>
+```
+
+### Breakpoints Standards
+
+| Breakpoint             | Taille   | Utilisation                      |
+| ---------------------- | -------- | -------------------------------- |
+| `hidden`               | < 640px  | Masquer en mobile                |
+| `hidden sm:table-cell` | ≥ 640px  | Afficher à partir de small       |
+| `hidden md:table-cell` | ≥ 768px  | Afficher à partir de medium      |
+| `hidden lg:table-cell` | ≥ 1024px | Afficher à partir de large       |
+| `hidden xl:table-cell` | ≥ 1280px | Afficher à partir de extra large |
+
+## Gestion des Colonnes Principales
+
+### Information condensée en mobile
+
+Pour les colonnes principales (toujours visibles), afficher les informations secondaires sous le contenu principal :
+
+```tsx
+<TableCell className="flex items-center gap-2">
+  <Avatar className="size-8">
+    <AvatarImage src={user.image || ''} alt={user.name} />
+    <AvatarFallback>U</AvatarFallback>
+  </Avatar>
+  <div>
+    <div className="font-medium">{user.name}</div>
+    {/* Informations secondaires visibles uniquement en mobile */}
+    <div className="text-muted-foreground text-sm">
+      {user.visibility === 'public' ? 'Public' : 'Privé'}
+    </div>
+  </div>
+</TableCell>
+```
+
+## Optimisation des Actions
+
+### Masquage conditionnel des boutons
+
+```tsx
+<TableCell>
+  <div className="flex space-x-2">
+    {/* Bouton principal - toujours visible */}
+    {permissions.canEdit && <EditDialog />}
+    {/* Bouton secondaire - masqué en mobile */}
+    {permissions.canDelete && (
+      <div className="hidden sm:block">
+        <DeleteDialog />
+      </div>
+    )}
+  </div>
+</TableCell>
+```
+
+### Boutons adaptatifs
+
+Les boutons doivent s'adapter automatiquement :
+
+```tsx
+<Button variant="outline" size="sm">
+  <Edit className="h-4 w-4 sm:mr-2" />
+  <span className="hidden sm:inline">Modifier</span>
+</Button>
+```
+
+**Comportement :**
+
+- **Mobile** : Icône seulement
+- **Desktop** : Icône + texte
+
+## Suppression des Largeurs Fixes
+
+### ❌ Éviter les largeurs fixes
+
+```tsx
+{/* NE PAS FAIRE */}
+<TableHead className="w-[250px]">Organisation</TableHead>
+<TableHead className="w-[120px]">Slug</TableHead>
+```
+
+### ✅ Utiliser des largeurs flexibles
+
+```tsx
+{/* FAIRE */}
+<TableHead>Organisation</TableHead>
+<TableHead className="hidden md:table-cell">Slug</TableHead>
+```
+
+## Checklist d'Optimisation
+
+### Layout Level
+
+- [ ] Padding layout : `px-0 sm:px-2 md:px-4`
+- [ ] Container max-width approprié
+
+### Card Level
+
+- [ ] Border responsive : `border-0 sm:border`
+- [ ] Padding réduit : `px-4 sm:px-6`
+
+### Table Level
+
+- [ ] Suppression des largeurs fixes (`w-[xxx]`)
+- [ ] Breakpoints progressifs sur les colonnes
+- [ ] Colonnes principales avec infos condensées
+- [ ] Actions adaptatives
+
+### Mobile Experience
+
+- [ ] Pas de scroll horizontal
+- [ ] Informations essentielles visibles
+- [ ] Interactions possibles (boutons accessibles)
+- [ ] Performance maintenue
+
+## Exemple Complet
+
+Référence complète : [users-management.tsx](mdc:src/components/features/admin/users/users-management.tsx)
+
+```tsx
+export default function TableManagement() {
+  return (
+    <Card className="border-0 sm:border">
+      <CardHeader className="px-4 sm:px-6">
+        <CardTitle>Gestion</CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 sm:px-6">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Principal</TableHead>
+              <TableHead className="hidden md:table-cell">Secondaire</TableHead>
+              <TableHead className="hidden lg:table-cell">Tertiaire</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="size-8" />
+                    <div>
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-muted-foreground text-sm md:hidden">
+                        {item.secondary}
+                      </div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell className="hidden md:table-cell">
+                  {item.secondary}
+                </TableCell>
+                <TableCell className="hidden lg:table-cell">
+                  {item.tertiary}
+                </TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <EditButton />
+                    <div className="hidden sm:block">
+                      <DeleteButton />
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+```
+
+## Résultats Attendus
+
+- ✅ **Pas de scroll horizontal** sur mobile
+- ✅ **Tous les écrans supportés** (320px à 1920px+)
+- ✅ **Performance optimale**
+- ✅ **Expérience utilisateur fluide**
+- ✅ **Accessibilité maintenue**
+
+Cette approche garantit des interfaces qui s'adaptent parfaitement à tous les écrans tout en maintenant la lisibilité et l'utilisabilité.

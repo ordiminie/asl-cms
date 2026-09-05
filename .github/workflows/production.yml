@@ -1,0 +1,129 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    environment: Production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Database
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+          # Auth
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: https://prod.example.com
+
+          # Email
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: noreply@example.com
+          EMAIL_TO: admin@example.com
+
+          # Logging
+          LOG_LEVEL: info
+
+          # Supabase
+          NEXT_PUBLIC_SUPABASE_URL: https://xxx.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_BUCKET: BUCKET-NAME
+
+          # File Upload
+          NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
+          NEXT_PUBLIC_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
+          STORAGE_TYPE: supabase
+
+          # Stripe
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+
+          # OAuth (optional)
+          GOOGLE_CLIENT_ID: ''
+          GOOGLE_CLIENT_SECRET: ''
+
+          # Environment
+          NEXT_PUBLIC_NODE_ENV: production
+
+          # Client vars
+          NEXT_PUBLIC_APP_URL: https://prod.example.com
+          NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE: EmbededForm
+          NEXT_PUBLIC_BILLING_MODE: organization
+
+      - name: Test
+        run: pnpm test
+        env:
+          # Database
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+          # Auth
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: https://prod.example.com
+
+          # Email
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: noreply@example.com
+          EMAIL_TO: admin@example.com
+
+          # Logging
+          LOG_LEVEL: info
+
+          # Supabase
+          NEXT_PUBLIC_SUPABASE_URL: https://xxx.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_BUCKET: BUCKET-NAME
+
+          # File Upload
+          NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
+          NEXT_PUBLIC_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
+          STORAGE_TYPE: supabase
+
+          # Stripe
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+
+          # OAuth (optional)
+          GOOGLE_CLIENT_ID: ''
+          GOOGLE_CLIENT_SECRET: ''
+
+          # Environment
+          NEXT_PUBLIC_NODE_ENV: production
+
+          # Client vars
+          NEXT_PUBLIC_APP_URL: https://prod.example.com
+          NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE: EmbededForm
+          NEXT_PUBLIC_BILLING_MODE: organization
+
+      - name: Install Drizzle Kit
+        run: npm install -g drizzle-kit
+
+      - name: Run database migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

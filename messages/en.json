@@ -1,0 +1,2707 @@
+{
+  "Common": {
+    "actions": {
+      "add": "Add",
+      "cancel": "Cancel",
+      "change": "Change",
+      "close": "Close",
+      "confirm": "Confirm",
+      "create": "Create",
+      "delete": "Delete",
+      "edit": "Edit",
+      "retry": "Retry",
+      "save": "Save",
+      "search": "Search",
+      "select": "Select",
+      "view": "View",
+      "viewDetails": "View details"
+    },
+    "fields": {
+      "actions": "Actions",
+      "category": "Category",
+      "code": "Code",
+      "createdAt": "Created at",
+      "currency": "Currency",
+      "description": "Description",
+      "email": "Email",
+      "expiresAt": "Expiration date",
+      "language": "Language",
+      "message": "Message",
+      "name": "Name",
+      "organization": "Organization",
+      "plan": "Plan",
+      "price": "Price",
+      "project": "Project",
+      "role": "Role",
+      "slug": "Slug",
+      "status": "Status",
+      "subject": "Subject",
+      "title": "Title",
+      "type": "Type",
+      "user": "User",
+      "visibility": "Visibility"
+    },
+    "states": {
+      "archived": "Archived",
+      "draft": "Draft",
+      "free": "Free",
+      "monthly": "Monthly",
+      "popular": "Popular",
+      "private": "Private",
+      "public": "Public",
+      "published": "Published",
+      "yearly": "Yearly"
+    },
+    "messages": {
+      "cannotBeUndone": "This action cannot be undone.",
+      "confirmDelete": "Confirm deletion",
+      "genericError": "Something went wrong",
+      "loading": "Loading...",
+      "noResults": "No results"
+    },
+    "pagination": {
+      "first": "First",
+      "goToFirst": "Go to first page",
+      "goToLast": "Go to last page",
+      "goToNext": "Go to next page",
+      "goToPrevious": "Go to previous page",
+      "last": "Last",
+      "next": "Next",
+      "of": "of",
+      "page": "Page",
+      "previous": "Previous",
+      "pageOf": "Page {current} of {total}"
+    }
+  },
+  "LocaleLayout": {
+    "title": "Next SaaS Boilerplate",
+    "description": "Next SaaS Boilerplate"
+  },
+  "LangToggle": {
+    "label": "Change language",
+    "languages": {
+      "fr": "Français",
+      "en": "English",
+      "es": "Español"
+    }
+  },
+  "PublicLayout": {
+    "title": "Public Page",
+    "description": "Public Page"
+  },
+  "AuthLayout": {
+    "title": "Authentication",
+    "description": "Authentication"
+  },
+  "AuthErrorPage": {
+    "title": "Authentication Error",
+    "backToLogin": "Back to login",
+    "errors": {
+      "banned": "Your account has been suspended.",
+      "unknown": "An authentication error occurred.",
+      "unable_to_create_user": "Unable to create your account. Please try again."
+    }
+  },
+  "HomePage": {
+    "title": "Modern SaaS platform to boost your business",
+    "description": "Manage, analyze and grow your business with powerful tools and an intuitive interface.",
+    "metadata": {
+      "title": "Home - Next SaaS Boilerplate",
+      "description": "Modern SaaS platform to boost your business"
+    },
+    "navigation": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "contact": "Contact"
+    },
+    "hero": {
+      "title": "Modern SaaS platform to boost your business",
+      "description": "Manage, analyze and grow your business with powerful tools and an intuitive interface.",
+      "cta": "Try for free"
+    },
+    "features": {
+      "title": "Features",
+      "subtitle": "Discover what makes our platform unique",
+      "automation": {
+        "title": "Automation",
+        "description": "Automate your repetitive tasks and save time daily."
+      },
+      "analytics": {
+        "title": "Advanced Analytics",
+        "description": "Get detailed reports to drive your growth."
+      },
+      "security": {
+        "title": "Optimal Security",
+        "description": "Your data is protected with our secure infrastructure."
+      }
+    },
+    "footer": {
+      "byMike": "By Mike Codeur",
+      "allRightsReserved": "All rights reserved.",
+      "product": {
+        "title": "Product",
+        "features": "Features",
+        "pricing": "Pricing",
+        "demo": "Demo",
+        "updates": "Updates"
+      },
+      "resources": {
+        "title": "Resources",
+        "documentation": "Documentation",
+        "blog": "Blog",
+        "support": "Support",
+        "api": "API"
+      },
+      "legal": {
+        "title": "Legal & Contact",
+        "terms": "Legal Notice",
+        "privacy": "Privacy Policy",
+        "contact": "Contact",
+        "careers": "Careers"
+      }
+    }
+  },
+  "TermsPage": {
+    "title": "Terms of Use",
+    "description": "Terms of use page",
+    "terms": [
+      {
+        "title": "Introduction",
+        "contents": [
+          "By using this service, you agree to the terms of use. Please read them carefully before accessing or using the service.",
+          "This service is designed to help entrepreneurs manage their finances and sports activities. Its use is subject to the conditions set out below."
+        ]
+      },
+      {
+        "title": "Acceptance of Terms",
+        "contents": [
+          "By accessing or using this service, you agree to be bound by these terms. If you do not agree to these terms, please do not use the service.",
+          "We reserve the right to modify these terms at any time. Any changes will be posted on this page. Your continued use of the service after such modifications constitutes your acceptance of said modifications."
+        ]
+      },
+      {
+        "title": "Use of Service",
+        "contents": [
+          "You are responsible for maintaining the confidentiality of your login information.",
+          "You agree not to use the service for illegal or unauthorized purposes.",
+          "You agree not to access the source code of the service or modify it in any way.",
+          "You agree not to use the service for any activity that could harm the security or integrity of the service or any other computer system."
+        ]
+      },
+      {
+        "title": "User Data",
+        "contents": [
+          "You retain ownership of all data you enter or upload to the service.",
+          "We will not claim any ownership rights to your data.",
+          "You consent to our use of your data to provide and improve the service, as well as for analytical and marketing purposes."
+        ]
+      },
+      {
+        "title": "Limitation of Liability",
+        "contents": [
+          "We will not be liable for direct, indirect, incidental, special or consequential damages arising from the use or inability to use the service.",
+          "We do not guarantee that the service will be error-free or uninterrupted."
+        ]
+      },
+      {
+        "title": "Applicable Law",
+        "contents": [
+          "These terms are governed by the laws in force in your country of residence.",
+          "Any dispute arising from these terms will be subject to the exclusive jurisdiction of the competent courts of your country of residence."
+        ]
+      }
+    ]
+  },
+  "NotFoundPage": {
+    "title": "Page Not Found",
+    "description": "Sorry, we couldn't find the page you're looking for.",
+    "goBackHome": "Go Back Home"
+  },
+  "AppSidebar": {
+    "admin": {
+      "title": "Administration",
+      "dashboard": "Admin Dashboard",
+      "users": "Users",
+      "organizations": "Organizations",
+      "plans": "Plans",
+      "blog": "Blog",
+      "credits": "Credits",
+      "affiliates": "Affiliates"
+    },
+    "account": {
+      "title": "Account",
+      "accountAndSecurity": "Account & Security",
+      "subscriptions": "Subscriptions",
+      "organizations": "Organizations",
+      "invitations": "Invitations",
+      "settings": "Settings",
+      "apiKeys": "API Keys",
+      "affiliate": "Affiliate"
+    },
+    "projects": {
+      "title": "Projects",
+      "dashboard": "Dashboard",
+      "projects": "Projects"
+    },
+    "billing": {
+      "title": "Billing",
+      "subscription": "Subscription",
+      "credits": "Credits",
+      "usage": "Usage",
+      "creditsSimulator": "AI Simulator"
+    },
+    "models": {
+      "title": "Models",
+      "genesis": "Genesis",
+      "explorer": "Explorer",
+      "quantum": "Quantum"
+    },
+    "documentation": {
+      "title": "Documentation",
+      "introduction": "Introduction",
+      "getStarted": "Get Started",
+      "tutorials": "Tutorials",
+      "changelog": "Changelog"
+    },
+    "projectsList": {
+      "designEngineering": "Design Engineering",
+      "salesMarketing": "Sales & Marketing",
+      "travel": "Travel"
+    },
+    "nav": {
+      "platform": "Platform",
+      "projects": "Projects",
+      "more": "More",
+      "viewProject": "View project",
+      "shareProject": "Share project",
+      "deleteProject": "Delete project",
+      "home": "Home",
+      "dashboard": "Dashboard",
+      "login": "Sign in",
+      "adminLabel": "Admin",
+      "adminPanel": "Admin panel"
+    }
+  },
+  "NavUser": {
+    "upgradeToPro": "Upgrade to Pro",
+    "subscription": "Subscription",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "account": "Account",
+    "apiKeys": "API Keys",
+    "settings": "Settings",
+    "billing": "Billing",
+    "notifications": "Notifications",
+    "logout": "Log out"
+  },
+  "AccountPage": {
+    "title": "My Account",
+    "description": "Manage your profile and security settings",
+    "profile": {
+      "title": "Profile",
+      "description": "Manage your personal information"
+    },
+    "security": {
+      "title": "Security",
+      "description": "Manage your account security settings, including two-factor authentication, password and email changes."
+    },
+    "EditUserProfileForm": {
+      "name": {
+        "label": "Name",
+        "placeholder": "Your name"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "Your email"
+      },
+      "visibility": {
+        "label": "Profile Visibility",
+        "placeholder": "Select visibility",
+        "public": "Public",
+        "private": "Private"
+      },
+      "upload": {
+        "inProgress": "Upload in progress...",
+        "success": "Image uploaded successfully",
+        "error": "Upload error",
+        "errorRetry": "Unable to upload image. Please try again."
+      },
+      "form": {
+        "save": "Save",
+        "updating": "Updating...",
+        "success": "Profile updated successfully",
+        "error": "Error updating profile",
+        "undo": "Undo",
+        "ok": "OK",
+        "validationFailed": "Validation error",
+        "userNotFound": "User not found",
+        "invalidData": "Invalid data",
+        "updateFailed": "Failed to update profile",
+        "nameValidationError": "Name must not contain two consecutive spaces"
+      },
+      "validation": {
+        "name": {
+          "required": "Name is required",
+          "min": "Name must be at least 2 characters",
+          "invalid": "Invalid name"
+        },
+        "email": {
+          "required": "Email is required",
+          "invalid": "Invalid email address",
+          "format": "Invalid email format"
+        },
+        "image": {
+          "invalid": "Invalid image URL"
+        },
+        "visibility": {
+          "required": "Visibility is required",
+          "invalid": "Invalid visibility value"
+        },
+        "uuid": {
+          "invalid": "Invalid UUID"
+        },
+        "id": {
+          "invalid": "Invalid UUID"
+        }
+      }
+    },
+    "UserSecuritySection": {
+      "changePassword": {
+        "title": "Change Password",
+        "description": "Update your password to secure your account",
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm Password",
+        "submit": "Change Password",
+        "updating": "Updating...",
+        "success": "Password updated successfully",
+        "error": "Error changing password"
+      },
+      "changeEmail": {
+        "title": "Change Email Address",
+        "description": "Update your primary email address",
+        "currentEmail": "Current Email",
+        "newEmail": "New Email",
+        "submit": "Change Email",
+        "updating": "Updating...",
+        "success": "Email updated successfully",
+        "error": "Error changing email"
+      },
+      "twoFactor": {
+        "title": "Two-Factor Authentication",
+        "description": "Add an extra layer of security to your account",
+        "enable": "Enable 2FA",
+        "disable": "Disable 2FA",
+        "status": {
+          "title": "Current Status",
+          "enabled": "Two-factor authentication enabled",
+          "disabled": "Two-factor authentication disabled"
+        },
+        "typeSelection": {
+          "title": "Authentication Type",
+          "description": "Choose your preferred method for two-factor authentication",
+          "totp": "TOTP",
+          "otp": "OTP",
+          "updating": "Updating...",
+          "help": "TOTP: Authentication app (Google Auth, Authy) | OTP: Codes sent by email",
+          "error": "You must first enable two-factor authentication",
+          "successTotp": "2FA type changed to TOTP",
+          "successOtp": "2FA type changed to OTP"
+        },
+        "modal": {
+          "enableTitle": "Enable Two-Factor Authentication",
+          "disableTitle": "Disable Two-Factor Authentication",
+          "enableDescription": "To enable two-factor authentication, please confirm your password.",
+          "disableDescription": "To disable two-factor authentication, please confirm your password.",
+          "password": "Password",
+          "passwordPlaceholder": "Enter your password",
+          "cancel": "Cancel",
+          "enable": "Enable 2FA",
+          "disable": "Disable 2FA",
+          "processing": "Processing..."
+        },
+        "setup": {
+          "title": "2FA Setup Successful",
+          "description": "Your two-factor authentication has been enabled. Scan the QR code and note your backup codes.",
+          "qrCode": "QR Code",
+          "qrDescription": "Scan this QR code with your authentication app (Google Authenticator, Authy, etc.)",
+          "backupCodes": "Backup Codes",
+          "backupDescription": "Keep these codes safe. They will allow you to access your account if you lose your device.",
+          "totpUri": "TOTP URI (optional)",
+          "totpDescription": "If the QR code doesn't work, you can use this URI manually:",
+          "validate": "Validate Configuration",
+          "configured": "I've configured my app"
+        },
+        "validation": {
+          "title": "Validate 2FA Configuration",
+          "description": "Enter the first backup code to validate that your authentication app works correctly.",
+          "codeLabel": "Validation Code",
+          "codePlaceholder": "Enter the first backup code",
+          "codeHelper": "Use the first code from the list:",
+          "cancel": "Cancel",
+          "validate": "Validate",
+          "validating": "Validating...",
+          "error": "Please enter a validation code",
+          "errorGeneral": "Error validating the code."
+        },
+        "success": "Success",
+        "error": "Error"
+      },
+      "sessions": {
+        "title": "Active Sessions",
+        "description": "Manage your login sessions",
+        "current": "Current Session",
+        "revoke": "Revoke",
+        "revokeAll": "Revoke All Other Sessions"
+      },
+      "listTokens": {
+        "title": "Active Sessions",
+        "description": "Manage your sessions and access tokens. You can revoke suspicious or unused sessions.",
+        "loading": "Loading sessions...",
+        "noSessions": "No active sessions found",
+        "table": {
+          "device": "Device",
+          "ipAddress": "IP Address",
+          "token": "Token",
+          "lastActivity": "Last Activity",
+          "actions": "Actions",
+          "notAvailable": "Not available"
+        },
+        "actions": {
+          "copyToken": "Copy token",
+          "copyFullToken": "Copy full token",
+          "revoke": "Revoke",
+          "revoking": "Revoking...",
+          "refresh": "Refresh"
+        },
+        "success": {
+          "sessionRevoked": "Session revoked successfully",
+          "tokenCopied": "Token copied to clipboard"
+        },
+        "errors": {
+          "loadSessions": "Unable to load sessions",
+          "revokeSession": "Unable to revoke session",
+          "copyToken": "Unable to copy token"
+        },
+        "device": {
+          "unknown": "Unknown browser"
+        },
+        "sessionCount": "{count, plural, =0 {No active sessions} one {# active session} other {# active sessions}}"
+      }
+    }
+  },
+  "ApiKeysPage": {
+    "title": "API Keys",
+    "description": "Manage your API keys for external integrations",
+    "management": {
+      "title": "API Key Management",
+      "description": "Create and manage API keys to access your account programmatically"
+    },
+    "actions": {
+      "createKey": "Create API Key",
+      "cancel": "Cancel",
+      "create": "Create",
+      "creating": "Creating...",
+      "delete": "Delete",
+      "done": "Done"
+    },
+    "createDialog": {
+      "title": "Create New API Key",
+      "description": "Create a new API key for your application",
+      "nameLabel": "Key Name",
+      "namePlaceholder": "Enter a descriptive name for this API key",
+      "expirationLabel": "Expiration",
+      "neverExpires": "Never expires",
+      "expiresAtLabel": "Expires at",
+      "expirationHelp": "Choose when this API key should expire for security",
+      "newKeyLabel": "Your new API key",
+      "keyWarning": "⚠️ This is the only time you'll see this key. Copy it and store it securely."
+    },
+    "deleteDialog": {
+      "title": "Delete API Key",
+      "description": "Are you sure you want to delete the API key \"{name}\"? This action cannot be undone and will immediately revoke access for applications using this key."
+    },
+    "table": {
+      "name": "Name",
+      "key": "Key",
+      "created": "Created",
+      "expires": "Expires",
+      "actions": "Actions",
+      "noKeys": "No API keys found. Create your first API key to get started.",
+      "never": "Never",
+      "keyHidden": "Key is hidden for security reasons"
+    },
+    "messages": {
+      "keyCreated": "API key created successfully",
+      "keyDeleted": "API key deleted successfully",
+      "copiedToClipboard": "Copied to clipboard"
+    },
+    "errors": {
+      "nameRequired": "API key name is required",
+      "loadFailed": "Failed to load API keys",
+      "createFailed": "Failed to create API key",
+      "deleteFailed": "Failed to delete API key",
+      "invalidExpiration": "Expiration date must be in the future"
+    }
+  },
+  "AccountSettingsPage": {
+    "title": "Settings",
+    "description": "Configure your application preferences",
+    "settings": {
+      "title": "Settings",
+      "description": "Configure your application preferences"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "theme": {
+        "label": "Theme",
+        "placeholder": "Select a theme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+      },
+      "language": {
+        "label": "Language",
+        "placeholder": "Select a language",
+        "fr": "Français",
+        "en": "English",
+        "es": "Español",
+        "de": "Deutsch"
+      }
+    },
+    "notifications": {
+      "title": "Notifications",
+      "channel": {
+        "label": "Notification channel",
+        "placeholder": "Select a channel",
+        "email": "Email only",
+        "push": "Push notifications only",
+        "both": "Both",
+        "none": "No notifications"
+      },
+      "emailNotifications": {
+        "title": "Email notifications",
+        "description": "Receive important notifications via email"
+      },
+      "pushNotifications": {
+        "title": "Push notifications",
+        "description": "Receive real-time notifications"
+      },
+      "emailDigest": {
+        "title": "Daily email digest",
+        "description": "Receive a daily summary of your activities"
+      }
+    },
+    "marketing": {
+      "title": "Marketing",
+      "marketingEmails": {
+        "title": "Marketing emails",
+        "description": "Receive special offers and updates"
+      }
+    },
+    "form": {
+      "updating": "Updating...",
+      "updateSettings": "Update settings",
+      "success": "Success",
+      "error": "Error"
+    }
+  },
+  "ui": {
+    "fileUpload": {
+      "title": {
+        "uploading": "Uploading...",
+        "image": "Upload image",
+        "file": "Upload file"
+      },
+      "description": {
+        "uploading": "Please wait while your files are being uploaded",
+        "image": {
+          "single": "Drag or drop your image here or click to upload (WebP, JPEG, PNG)",
+          "multiple": "Drag or drop your images here or click to upload (WebP, JPEG, PNG)"
+        },
+        "file": {
+          "single": "Drag or drop your file here or click to upload",
+          "multiple": "Drag or drop your files here or click to upload"
+        }
+      },
+      "dropIt": "Drop it",
+      "errors": {
+        "imageOnly": "Only images are allowed (WebP, JPEG, JPG, PNG)",
+        "fileTooLarge": "File is too large. Maximum size: {maxSize} MB"
+      },
+      "fileInfo": {
+        "modified": "modified {date}"
+      }
+    }
+  },
+  "Service": {
+    "User": {
+      "validation": {
+        "name": {
+          "min": "Name must be at least 3 characters",
+          "max": "Name must not contain more than 30 characters",
+          "required": "Name is required",
+          "invalid": "Invalid name"
+        },
+        "email": {
+          "invalid": "Email is not valid",
+          "required": "Email is required",
+          "format": "Invalid email format"
+        },
+        "uuid": {
+          "invalid": "Identifier is not valid"
+        }
+      }
+    }
+  },
+  "services": {
+    "domain": {
+      "user": {
+        "validation": {
+          "name": {
+            "min": "Name must be at least 3 characters",
+            "max": "Name must not contain more than 30 characters",
+            "required": "Name is required",
+            "invalid": "Invalid name"
+          },
+          "email": {
+            "invalid": "Email is not valid",
+            "required": "Email is required",
+            "format": "Invalid email format"
+          },
+          "uuid": {
+            "invalid": "Identifier is not valid"
+          }
+        }
+      },
+      "notification": {
+        "reset_password": {
+          "title": "Password Reset",
+          "message": "A password reset request has been made for your account."
+        },
+        "email_verification": {
+          "title": "Email Verification",
+          "message": "Please verify your email address to activate your account."
+        },
+        "magic_link": {
+          "title": "Magic Link",
+          "message": "A magic link has been sent to your email address."
+        },
+        "otp_code": {
+          "title": "Verification Code",
+          "message": "Your one-time verification code for two-factor authentication."
+        },
+        "password_changed": {
+          "title": "Password Changed",
+          "message": "Your password has been successfully changed."
+        },
+        "change_email_verification": {
+          "title": "Email Change Verification",
+          "message": "Please confirm your email address change by clicking the link sent to your current email address."
+        },
+        "organization_invitation": {
+          "title": "Organization Invitation",
+          "message": "You have been invited to join an organization.",
+          "title_invited": "You have invited {email} to join the organization {organizationName}.",
+          "message_invited": "You have invited {email} to join the organization {organizationName}."
+        },
+        "subscription_created": {
+          "title": "Subscription Created",
+          "message": "Your subscription has been created successfully."
+        },
+        "subscription_updated": {
+          "title": "Subscription Updated",
+          "message": "Your subscription has been updated successfully."
+        },
+        "subscription_canceled": {
+          "title": "Subscription Canceled",
+          "message": "Your subscription has been canceled. It will remain active until the end of the billing period."
+        },
+        "subscription_deleted": {
+          "title": "Subscription Deleted",
+          "message": "Your subscription has been permanently deleted."
+        },
+        "project_created": {
+          "title": "Project Created",
+          "message": "Your project has been created successfully."
+        }
+      }
+    }
+  },
+  "Auth": {
+    "LoginPage": {
+      "title": "Login",
+      "metadata": {
+        "title": "Login - Next SaaS Boilerplate",
+        "description": "Sign in to your account"
+      }
+    },
+    "LoginForm": {
+      "welcome": "Welcome",
+      "description": "Sign in with your email and password",
+      "descriptionMagicLink": "Enter your email to receive a login link",
+      "providers": {
+        "apple": "Sign in with Apple",
+        "google": "Sign in with Google",
+        "github": "Sign in with GitHub",
+        "magicLink": "Sign in with Magic Link"
+      },
+      "loading": {
+        "connecting": "Connecting...",
+        "apple": "Connecting...",
+        "google": "Connecting...",
+        "github": "Connecting..."
+      },
+      "backToClassic": "Back to classic login",
+      "backToOptions": "Back to login options",
+      "terms": "By continuing, you agree to our",
+      "termsLink": "Terms of Service",
+      "and": "and our",
+      "privacyLink": "Privacy Policy",
+      "noAccount": "Don't have an account?",
+      "signUpLink": "Sign up"
+    },
+    "CredentialForm": {
+      "orContinueWith": "Or continue with",
+      "email": {
+        "label": "Email",
+        "placeholder": "user@gmail.com"
+      },
+      "password": {
+        "label": "Password",
+        "forgotPassword": "Forgot password?"
+      },
+      "submit": "Sign in",
+      "submitting": "Signing in..."
+    },
+    "MagicLinkForm": {
+      "email": {
+        "label": "Email",
+        "placeholder": "Enter your email"
+      },
+      "submit": "Send magic link",
+      "submitting": "Sending...",
+      "checkEmail": "Check your email",
+      "linkSent": "A login link has been sent to your email address."
+    },
+    "messages": {
+      "success": "Success",
+      "error": "Error",
+      "loginError": "Login error",
+      "providerError": "Error signing in with {provider}"
+    },
+    "LogoutPage": {
+      "title": "Logout",
+      "metadata": {
+        "title": "Logout - Next SaaS Boilerplate",
+        "description": "Sign out of your account"
+      }
+    },
+    "LogoutForm": {
+      "title": "Logout",
+      "description": "Sign out of {appName}",
+      "confirmLogout": "Are you sure you want to log out?",
+      "logoutButton": "Log out",
+      "loggingOut": "Logging out...",
+      "backToDashboard": "Have an account?",
+      "dashboardLink": "Dashboard"
+    },
+    "RegisterPage": {
+      "title": "Register",
+      "metadata": {
+        "title": "Register - Next SaaS Boilerplate",
+        "description": "Create your account"
+      }
+    },
+    "RegisterForm": {
+      "title": "Create an account",
+      "description": "Sign up to access your personal space",
+      "descriptionChoose": "Choose your registration method",
+      "providers": {
+        "apple": "Sign up with Apple",
+        "google": "Sign up with Google",
+        "github": "Sign up with GitHub",
+        "magicLink": "Sign up with Magic Link"
+      },
+      "or": "Or",
+      "createWithEmail": "Create account with email",
+      "backToOptions": "Back to registration options",
+      "form": {
+        "fullName": {
+          "label": "Full name",
+          "placeholder": "John Doe"
+        },
+        "email": {
+          "label": "Email",
+          "placeholder": "john@example.com"
+        },
+        "password": {
+          "label": "Password"
+        },
+        "confirmPassword": {
+          "label": "Confirm password"
+        },
+        "submit": "Sign up",
+        "submitting": "Signing up...",
+        "generalError": "An error occurred during registration",
+        "referralCode": {
+          "label": "Referral code (optional)",
+          "placeholder": "your-referrer-code"
+        }
+      },
+      "alreadyAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "terms": "By signing up, you agree to our",
+      "termsLink": "Terms of Service",
+      "and": "and our",
+      "privacyLink": "Privacy Policy",
+      "validation": {
+        "nameMin": "Name must be at least 2 characters",
+        "passwordMin": "Password must be at least 8 characters",
+        "confirmPasswordMin": "Password must be at least 8 characters",
+        "passwordMismatch": "Passwords do not match",
+        "referralCodePattern": "Lowercase letters, digits and hyphens only"
+      }
+    },
+    "RegisterMagicLinkForm": {
+      "email": {
+        "label": "Email",
+        "placeholder": "john@example.com"
+      },
+      "submit": "Send registration link",
+      "submitting": "Sending..."
+    },
+    "ResetPasswordPage": {
+      "title": "Password Reset",
+      "metadata": {
+        "title": "Password Reset - Next SaaS Boilerplate",
+        "description": "Reset your password"
+      }
+    },
+    "ResetPasswordForm": {
+      "requestTitle": "Password Reset",
+      "requestDescription": "Enter your email to receive a reset link",
+      "resetTitle": "New Password",
+      "resetDescription": "Enter your new password",
+      "email": {
+        "label": "Email",
+        "placeholder": "example@email.com"
+      },
+      "password": {
+        "label": "New password"
+      },
+      "confirmPassword": {
+        "label": "Confirm password"
+      },
+      "sendLink": "Send reset link",
+      "sendingLink": "Sending...",
+      "resetPassword": "Reset password",
+      "resetting": "Resetting...",
+      "backToLogin": "Back to login",
+      "emailSent": "Reset email sent",
+      "passwordResetSuccess": "Password reset successfully",
+      "errorOccurred": "An error occurred",
+      "terms": "By continuing, you agree to our",
+      "termsLink": "Terms of Service",
+      "and": "and our",
+      "privacyLink": "Privacy Policy",
+      "validation": {
+        "passwordMin": "Password must be at least 8 characters",
+        "passwordMax": "Password must not exceed 100 characters",
+        "passwordsMismatch": "Passwords do not match"
+      }
+    },
+    "VerifyRequestPage": {
+      "title": "Last step",
+      "description": "A verification email has been sent to your email address. You will find a link from us. Click on it to continue."
+    },
+    "OtpVerificationPage": {
+      "title": "OTP Verification",
+      "description": "Enter the 6-digit OTP code sent to your email",
+      "descriptionAutomatic": "Automatic code verification...",
+      "descriptionSending": "Sending OTP code...",
+      "codeLabel": "OTP Code",
+      "codePlaceholder": "123456",
+      "submitButton": "Verify OTP code",
+      "submitting": "Verifying...",
+      "backToLogin": "Back to login",
+      "useBackupCode": "Use a backup code",
+      "validation": {
+        "codeRequired": "Code must contain 6 digits",
+        "codeFormat": "Code must contain only digits"
+      },
+      "messages": {
+        "otpSent": "OTP code sent to email",
+        "otpSendError": "Error sending OTP code",
+        "verificationSuccess": "OTP verification successful",
+        "verificationError": "An error occurred during OTP verification",
+        "redirecting": "Redirecting to dashboard..."
+      },
+      "terms": "By continuing, you agree to our",
+      "termsLink": "Terms of Service",
+      "and": "and our",
+      "privacyLink": "Privacy Policy"
+    },
+    "TotpVerificationPage": {
+      "title": "Two-factor authentication",
+      "description": "Enter the verification code from your authentication app",
+      "codeLabel": "Verification code",
+      "codePlaceholder": "123456",
+      "submitButton": "Verify code",
+      "submitting": "Verifying...",
+      "backToLogin": "Back to login",
+      "useBackupCode": "Use a backup code",
+      "validation": {
+        "codeRequired": "Code must contain 6 digits",
+        "codeFormat": "Code must contain only digits"
+      },
+      "messages": {
+        "verificationSuccess": "Verification successful",
+        "verificationError": "Invalid verification code",
+        "generalError": "An error occurred during verification"
+      },
+      "terms": "By continuing, you agree to our",
+      "termsLink": "Terms of Service",
+      "and": "and our",
+      "privacyLink": "Privacy Policy"
+    },
+    "RecoveryCodePage": {
+      "title": "Backup code",
+      "description": "Enter one of your backup codes to access your account"
+    },
+    "RecoveryCodeForm": {
+      "title": "Account recovery",
+      "description": "Enter one of your backup codes to access your account",
+      "alertDescription": "Backup codes are generated when two-factor authentication is enabled. Each code can only be used once.",
+      "codeLabel": "Backup code",
+      "codePlaceholder": "e.g., ABC123DEF456",
+      "submitButton": "Access account",
+      "submitting": "Verifying...",
+      "noCodeMessage": "Don't have a backup code?",
+      "backToLogin": "Back to login",
+      "validation": {
+        "codeRequired": "Backup code is required",
+        "codeFormat": "Code must contain only letters, numbers, or hyphens"
+      },
+      "messages": {
+        "success": "Success",
+        "error": "Error"
+      }
+    }
+  },
+  "AuthActions": {
+    "login": {
+      "validationError": "Validation error",
+      "userNotFound": "No account found with this email",
+      "invalidCredentials": "Invalid credentials",
+      "connectionError": "An error occurred during login",
+      "userBanned": {
+        "base": "Your account has been suspended.",
+        "reason": "Reason: {reason}",
+        "expires": "Suspension will be lifted on {date} at {time}",
+        "permanent": "This suspension is permanent."
+      }
+    },
+    "magicLink": {
+      "validationError": "Validation error",
+      "userNotFound": "No account found with this email",
+      "sendError": "Error sending magic link",
+      "unexpectedError": "An error occurred while sending the magic link"
+    },
+    "register": {
+      "validationError": "Validation error",
+      "emailAlreadyUsed": "This email is already in use",
+      "userCreationError": "Error creating user",
+      "invalidCredentials": "Invalid credentials",
+      "accountCreationError": "An error occurred during account creation"
+    },
+    "registerMagicLink": {
+      "validationError": "Validation error",
+      "emailAlreadyUsed": "This email is already in use",
+      "sendError": "Error sending magic link",
+      "unexpectedError": "An error occurred while sending the magic link",
+      "linkSent": "A login link has been sent to your email address"
+    },
+    "verifyBackupCode": {
+      "emptyCode": "Backup code cannot be empty",
+      "invalidCode": "Invalid backup code",
+      "verificationError": "An error occurred during code verification"
+    },
+    "verifyOTP": {
+      "emptyCode": "OTP code cannot be empty",
+      "invalidCode": "Invalid OTP code",
+      "verificationError": "An error occurred during OTP verification"
+    },
+    "loginProvider": {
+      "redirecting": "Redirecting to provider...",
+      "connectionError": "An error occurred while connecting to the account"
+    },
+    "registerProvider": {
+      "redirecting": "Redirecting to provider..."
+    }
+  },
+  "email": {
+    "user": {
+      "verify": {
+        "subject": "Verify your email address",
+        "preview": "You have requested a magic link to connect to your account.",
+        "title": "Login",
+        "clickToConnect": "Click here to connect",
+        "ignoreMessage": "If you did not request this link, please ignore this email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "magicLink": {
+        "subject": "Your magic link to sign in",
+        "preview": "You have requested a magic link to connect to your account.",
+        "title": "Magic Login",
+        "clickToConnect": "Click here to connect",
+        "ignoreMessage": "If you did not request this link, please ignore this email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "resetPassword": {
+        "subject": "Reset your password",
+        "preview": "You have requested to reset your password.",
+        "title": "Password Reset",
+        "clickToReset": "Click here to reset your password",
+        "ignoreMessage": "If you did not request this reset, please ignore this email.",
+        "expirationWarning": "This link will expire in 24 hours.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "organizationInvitation": {
+        "subject": "Invitation to join {teamName}",
+        "preview": "{invitedByUsername} invites you to join {teamName}",
+        "title": "Organization Invitation",
+        "hello": "Hello,",
+        "invitationMessage": "{invitedByUsername} ({invitedByEmail}) invites you to join the organization {teamName}.",
+        "acceptInvitation": "To accept this invitation, please click on the following link:",
+        "clickToAccept": "Accept invitation",
+        "expirationWarning": "This link will expire in 24 hours.",
+        "ignoreMessage": "If you did not initiate this request, you can ignore this email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "welcome": {
+        "subject": "Welcome to {appName}",
+        "preview": "Welcome! Your account has been successfully created.",
+        "title": "Welcome!",
+        "welcomeMessage": "Thank you for signing up for {appName}. Your account has been successfully created.",
+        "getStarted": "Get Started",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "emailChange": {
+        "subject": "Email change confirmation",
+        "preview": "You have requested to change your email address.",
+        "title": "Email Change Confirmation",
+        "clickToConfirm": "Click here to confirm your new email address",
+        "expirationWarning": "This link will expire in 24 hours.",
+        "ignoreMessage": "If you did not request this change, please ignore this email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "verification": {
+        "subject": "Verify your email address",
+        "preview": "Verify your email address to activate your account",
+        "title": "Email Verification",
+        "welcomeMessage": "Thank you for signing up! To activate your account, please click on the link below:",
+        "clickToVerify": "Verify my email address",
+        "expirationWarning": "This link will expire in 24 hours.",
+        "ignoreMessage": "If you did not create an account, you can safely ignore this email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "otp": {
+        "subject": "Two-factor verification code",
+        "preview": "Your two-factor verification code",
+        "title": "Verification Code",
+        "description": "Here is your two-factor verification code:",
+        "expirationWarning": "This code will expire in 5 minutes.",
+        "verifyAutomatically": "Verify automatically",
+        "orCopyCode": "Or copy the code above into the application",
+        "ignoreMessage": "If you did not request this code, you can safely ignore this email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "subscriptionCompleted": {
+        "subject": "Welcome! Your {planName} subscription is active",
+        "preview": "Congratulations! Your {planName} subscription has been successfully activated.",
+        "title": "Subscription Activated",
+        "welcomeMessage": "Congratulations! Your {planName} subscription has been successfully activated.",
+        "planDetails": "Your subscription details:",
+        "planName": "Plan: {planName}",
+        "status": "Status: {status}",
+        "seats": "Seats: {seats}",
+        "price": "Price: {price}",
+        "limits": "Limits: {limits}",
+        "nextBilling": "Next billing: {nextBilling}",
+        "periodEnd": "Period ends: {periodEnd}",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "subscriptionUpdated": {
+        "subject": "Your {planName} subscription has been updated",
+        "preview": "Your {planName} subscription has been successfully modified.",
+        "title": "Subscription Updated",
+        "welcomeMessage": "Your {planName} subscription has been successfully modified.",
+        "planDetails": "Your updated subscription details:",
+        "planName": "Plan: {planName}",
+        "status": "Status: {status}",
+        "seats": "Seats: {seats}",
+        "price": "Price: {price}",
+        "limits": "Limits: {limits}",
+        "nextBilling": "Next billing: {nextBilling}",
+        "periodEnd": "Period ends: {periodEnd}",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "subscriptionCanceled": {
+        "subject": "Your {planName} subscription has been canceled",
+        "preview": "Your {planName} subscription has been successfully canceled.",
+        "title": "Subscription Canceled",
+        "message": "Your {planName} subscription has been successfully canceled.",
+        "planDetails": "Canceled subscription details:",
+        "planName": "Plan: {planName}",
+        "status": "Status: {status}",
+        "seats": "Seats: {seats}",
+        "price": "Price: {price}",
+        "limits": "Limits: {limits}",
+        "canceledAt": "Canceled on: {canceledAt}",
+        "periodEnd": "Access until: {periodEnd}",
+        "reactivateInfo": "You can reactivate your subscription anytime from your dashboard.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "subscriptionDeleted": {
+        "subject": "Your {planName} subscription has been deleted",
+        "preview": "Your {planName} subscription has been permanently deleted.",
+        "title": "Subscription Deleted",
+        "message": "Your {planName} subscription has been permanently deleted.",
+        "planDetails": "Deleted subscription details:",
+        "planName": "Plan: {planName}",
+        "status": "Status: {status}",
+        "seats": "Seats: {seats}",
+        "price": "Price: {price}",
+        "limits": "Limits: {limits}",
+        "deletedAt": "Deleted on: {deletedAt}",
+        "accessLost": "Your access to premium features has been revoked.",
+        "resubscribeInfo": "You can subscribe again anytime from your dashboard.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "notification": {
+        "subject": "Notification - {title}",
+        "preview": "You have received a new notification",
+        "additionalInfo": "This notification was automatically generated by the system.",
+        "timestamp": "Sent on {date}",
+        "footer": {
+          "greeting": "Best regards,",
+          "signature": "The SaaS Mike Codeur team",
+          "unsubscribe": "You can modify your notification preferences in your account settings."
+        }
+      }
+    },
+    "admin": {
+      "userCreated": {
+        "subject": "New user created",
+        "preview": "A new user has signed up on the platform.",
+        "title": "New User",
+        "userInfo": "A new user has signed up:",
+        "viewUser": "View User",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "userDeleted": {
+        "subject": "User deleted",
+        "preview": "A user has been deleted from the platform.",
+        "title": "User Deleted",
+        "userInfo": "The following user has been deleted:",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "systemAlert": {
+        "subject": "System Alert",
+        "preview": "A system alert has been triggered.",
+        "title": "System Alert",
+        "alertMessage": "A system alert has been triggered:",
+        "viewDetails": "View Details",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "organizationInvitation": {
+        "subject": "Invitation to join {teamName}",
+        "preview": "{invitedByUsername} invites you to join {teamName}",
+        "title": "Organization Invitation",
+        "hello": "Hello,",
+        "invitationMessage": "{invitedByUsername} ({invitedByEmail}) invites you to join the organization {teamName}.",
+        "acceptInvitation": "To accept this invitation, please click on the following link:",
+        "clickToAccept": "Accept invitation",
+        "expirationWarning": "This link will expire in 24 hours.",
+        "ignoreMessage": "If you did not initiate this request, you can ignore this email.",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      },
+      "internal": {
+        "subject": "Internal email",
+        "preview": "Internal system email",
+        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+      }
+    }
+  },
+  "PrivacyPage": {
+    "title": "Privacy Policy",
+    "description": "Privacy policy page",
+    "sections": {
+      "privacyPolicy": {
+        "title": "Privacy Policy",
+        "description": "Your privacy is important to us. This privacy policy describes the types of information that [Company Name] (\"we\", \"our\", \"us\") may collect from you or that you provide to us when you use our service, and how we use, protect, and disclose such information. By using the service, you agree to the collection and use of information in accordance with this policy."
+      },
+      "collectedInformation": {
+        "title": "Information Collected",
+        "description": "We may collect different types of information when you use our service, including:",
+        "contents": [
+          "Personal identification information such as your name, email address, phone number, and billing information when you register to use our service.",
+          "Business information such as company name, address, and other financial information necessary for managing your finances.",
+          "Sports activity information such as types of activities performed, duration and intensity of exercise."
+        ]
+      },
+      "informationUsage": {
+        "title": "Use of Information",
+        "description": "We use the information we collect to:",
+        "contents": [
+          "Provide, maintain, and improve our service.",
+          "Personalize your experience and respond to your individual needs.",
+          "Process your financial transactions and provide you with financial tracking.",
+          "Track and analyze usage trends and user preferences.",
+          "Send you administrative information such as account alerts, service updates, or service-related communications."
+        ]
+      },
+      "informationProtection": {
+        "title": "Information Protection",
+        "description": "The security of your information is important to us. We implement appropriate security measures to protect information against unauthorized access, alteration, disclosure, or destruction."
+      },
+      "dataRetention": {
+        "title": "Data Retention",
+        "description": "We retain your personal information for as long as necessary for the purposes for which it was collected and in accordance with legal requirements."
+      },
+      "policyChanges": {
+        "title": "Privacy Policy Changes",
+        "description": "We reserve the right to update or modify this privacy policy at any time. Any changes will be posted on this page with an updated revision date."
+      }
+    }
+  },
+  "Tasks": {
+    "board": {
+      "title": "Task Board",
+      "columns": {
+        "todo": "To Do",
+        "in_progress": "In Progress",
+        "done": "Done"
+      },
+      "empty": "No tasks",
+      "loading": "Loading tasks...",
+      "dragAndDrop": "Drag and drop tasks to change their status"
+    },
+    "card": {
+      "createdBy": "Created by",
+      "assignedTo": "Assigned to",
+      "dueDate": "Due date",
+      "createdAt": "Created on",
+      "status": {
+        "todo": "To Do",
+        "in_progress": "In Progress",
+        "done": "Done"
+      }
+    },
+    "actions": {
+      "create": "New Task",
+      "edit": "Edit Task",
+      "delete": "Delete Task",
+      "assign": "Assign",
+      "move": "Move",
+      "updateOrder": "Task order updated",
+      "orderUpdateError": "Error updating task order"
+    },
+    "form": {
+      "title": "Task Title",
+      "titlePlaceholder": "Enter task title",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter description (optional)",
+      "status": "Status",
+      "assignedTo": "Assigned to",
+      "dueDate": "Due date",
+      "save": "Save",
+      "cancel": "Cancel",
+      "creating": "Creating...",
+      "updating": "Updating...",
+      "createTitle": "Create a new task",
+      "createDescription": "Add a new task to your project. Fill in the information below.",
+      "titleRequired": "Title *",
+      "titleExample": "e.g. build the feature",
+      "descriptionDetail": "Describe the task in detail...",
+      "selectStatus": "Select a status",
+      "selectUser": "Select a user",
+      "unassigned": "Unassigned",
+      "createTask": "Create task",
+      "successTitle": "Success",
+      "errorTitle": "Error"
+    },
+    "messages": {
+      "createSuccess": "Task created successfully",
+      "updateSuccess": "Task updated successfully",
+      "deleteSuccess": "Task deleted successfully",
+      "createError": "Error creating task",
+      "updateError": "Error updating task",
+      "deleteError": "Error deleting task"
+    }
+  },
+  "BlogPage": {
+    "title": "Blog",
+    "description": "Discover our latest articles and insights on web development",
+    "meta": {
+      "title": "Blog - Articles and tutorials on web development",
+      "description": "Discover our articles on Next.js, React, TypeScript and the latest web development technologies."
+    },
+    "backToBlog": "Back to articles",
+    "share": "Share",
+    "readTime": "min read"
+  },
+  "BlogListPage": {
+    "title": "Articles",
+    "description": "Discover our latest articles and insights on web development",
+    "meta": {
+      "title": "Blog - Articles and tutorials on web development",
+      "description": "Discover our articles on Next.js, React, TypeScript and the latest web development technologies."
+    },
+    "noArticles": "No articles available yet.",
+    "noCategory": "Uncategorized",
+    "views": "views",
+    "likes": "likes",
+    "readMore": "Read more",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page",
+      "of": "of"
+    },
+    "category": {
+      "title": "Category: {category}",
+      "description": "All articles in the {category} category"
+    },
+    "paginationLabel": "Pagination"
+  },
+  "BlogPostPage": {
+    "meta": {
+      "title": "Blog - Articles and tutorials on web development"
+    },
+    "publishedOn": "Published on",
+    "updatedOn": "Updated on",
+    "share": "Share",
+    "comment": "Comment",
+    "author": "Author",
+    "writtenBy": "Written by",
+    "relatedArticles": "Related Articles",
+    "likeThanks": "Thanks for your like!"
+  },
+  "BlogLayout": {
+    "navigation": {
+      "title": "Navigation",
+      "allArticles": "All Articles",
+      "mdxArticles": "MDX Articles",
+      "admin": "Admin"
+    },
+    "categories": {
+      "title": "Categories"
+    },
+    "popular": {
+      "title": "Most Read",
+      "views": "views"
+    },
+    "hashtags": {
+      "title": "Popular Tags"
+    },
+    "newsletter": {
+      "title": "Newsletter",
+      "description": "Stay updated with our latest articles and web development news.",
+      "placeholder": "your.email@example.com",
+      "subscribe": "Subscribe",
+      "subscribing": "Subscribing...",
+      "success": "Successfully subscribed!",
+      "error": "An error occurred. Please try again.",
+      "privacy": "No spam, unsubscribe anytime"
+    },
+    "stats": {
+      "title": "Blog Stats",
+      "articles": "Articles",
+      "authors": "Authors",
+      "categories": "Categories",
+      "totalViews": "Total Views"
+    },
+    "cta": {
+      "badge": "Get Started",
+      "titleStart": "Ready to",
+      "titleHighlight": "get started",
+      "titleEnd": "?",
+      "description": "Join thousands of users building amazing things with our platform.",
+      "button": "Get Started Free",
+      "disclaimer": "No credit card required"
+    }
+  },
+  "WelcomeFollowUpEmail": {
+    "preview": "How are you getting on with your new platform?",
+    "title": "How are things going?",
+    "greeting": "Hello {name},",
+    "message": "It's been 24 hours since you joined our platform! We hope everything is going well and that you're starting to discover all the available features.",
+    "ctaButton": "Access my dashboard",
+    "tips": {
+      "title": "Here are some tips to get you started:",
+      "tip1": "Explore your dashboard to get an overview",
+      "tip2": "Configure your profile and preferences",
+      "tip3": "Don't hesitate to check out our documentation"
+    },
+    "support": "If you have any questions or need help, our support team is here to assist you. Just reply to this email!",
+    "footer": "You are receiving this email because you signed up on our platform with the address {email}."
+  },
+  "Credits": {
+    "page": {
+      "title": "Credits",
+      "description": "Manage your credits and buy additional packs"
+    },
+    "balance": {
+      "title": "Credit Balance",
+      "available": "Available Credits",
+      "usedThisPeriod": "Used This Month",
+      "monthlyAllocation": "Monthly Allocation",
+      "periodInfo": "Period from {start} to {end}",
+      "noSubscription": "No active subscription"
+    },
+    "activity": {
+      "title": "Recent Activity",
+      "noActivity": "No recent activity",
+      "justNow": "Just now",
+      "minutesAgo": "{count} min ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count} day(s) ago"
+    },
+    "graph": {
+      "title": "Daily Usage",
+      "noData": "No usage data for this period",
+      "credits": "{count} credits"
+    },
+    "sources": {
+      "plan": "Monthly Allocation",
+      "admin_grant": "Admin Bonus",
+      "usage": "Usage",
+      "pack": "Pack Purchase"
+    },
+    "packs": {
+      "title": "Buy Credits",
+      "description": "Top up your credits with our packs",
+      "credits": "{count} credits",
+      "popular": "Popular",
+      "bestValue": "Best Value",
+      "buy": "Buy",
+      "neverExpire": "Credits never expire",
+      "expiresIn": "Expires in {days} days"
+    },
+    "admin": {
+      "title": "Credit Management",
+      "description": "Grant credits to organizations",
+      "grant": {
+        "title": "Grant Credits",
+        "description": "Grant bonus credits to an organization",
+        "organizationId": "Organization ID",
+        "organizationIdPlaceholder": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "organizationIdDescription": "UUID of the organization to credit",
+        "amount": "Number of Credits",
+        "amountMax": "Maximum 10000 credits",
+        "reason": "Reason (optional)",
+        "reasonPlaceholder": "Welcome bonus, goodwill gesture...",
+        "expiration": "Expiration Date",
+        "expirationDescription": "Credits will expire after this date",
+        "submit": "Grant Credits",
+        "submitting": "Granting..."
+      }
+    },
+    "errors": {
+      "insufficientCredits": "Insufficient credits",
+      "packNotFound": "Pack not found",
+      "packNotConfigured": "This pack is not yet configured",
+      "purchaseFailed": "Error purchasing pack",
+      "unauthorized": "You are not authorized to perform this action"
+    },
+    "success": {
+      "creditsGranted": "Credits granted successfully",
+      "purchaseComplete": "Purchase completed successfully"
+    },
+    "tabs": {
+      "credits": "Credits",
+      "usage": "Usage",
+      "plans": "Plans"
+    },
+    "usage": {
+      "title": "Credits",
+      "description": "Manage your image generation credits",
+      "cardTitle": "Credits usage",
+      "period": "Period: {start} - {end}",
+      "creditsUsed": "Credits used",
+      "balance": "Balance: {count}",
+      "selectOrganization": "Please select an organization"
+    },
+    "subscription": {
+      "title": "Subscriptions",
+      "choosePlan": "Choose your plan",
+      "currentPlan": "Current plan",
+      "popular": "Popular"
+    }
+  },
+  "Affiliate": {
+    "page": {
+      "title": "Affiliate",
+      "description": "Share your link and earn a reward for every organization you bring in.",
+      "payoutNotice": "Rewards are paid manually by an administrator once the holding period has elapsed."
+    },
+    "link": {
+      "title": "Your referral link",
+      "description": "The ref belongs to you: it stays the same across all your organizations.",
+      "codeLabel": "Your ref",
+      "codePlaceholder": "your-name",
+      "codeHelp": "Lowercase letters, digits and hyphens, 32 characters max. Unique across the app.",
+      "save": "Save",
+      "saving": "Saving...",
+      "copy": "Copy"
+    },
+    "stats": {
+      "referredAccounts": "Referred accounts",
+      "waitingPeriod": "In holding period",
+      "waitingCount": "{count, plural, =0 {no reward} one {# reward} other {# rewards}}",
+      "commissionDue": "Commission due",
+      "totalPaid": "Total paid"
+    },
+    "validation": {
+      "codeMin": "The code must be at least 3 characters",
+      "codeMax": "The code cannot exceed 32 characters",
+      "codePattern": "Lowercase letters, digits and hyphens only"
+    },
+    "success": {
+      "codeSaved": "Ref saved",
+      "linkCopied": "Link copied"
+    },
+    "errors": {
+      "unauthorized": "Unauthorized",
+      "codeSaveFailed": "Could not save the ref"
+    },
+    "admin": {
+      "title": "Affiliates",
+      "description": "Commissions due and payouts for the affiliate program.",
+      "tableTitle": "{count, plural, =0 {No affiliate} one {# affiliate} other {# affiliates}}",
+      "columns": {
+        "code": "Ref",
+        "status": "Status",
+        "referred": "Referred",
+        "waiting": "Holding",
+        "due": "Due",
+        "paid": "Paid",
+        "actions": "Actions"
+      },
+      "empty": "No affiliate yet",
+      "markPaid": "Mark paid",
+      "markPaidTitle": "Record the payout",
+      "markPaidDescription": "Confirm you transferred {amount} to affiliate {code}. The record is final.",
+      "reference": "Transfer reference",
+      "referencePlaceholder": "TRF-2026-001",
+      "cancel": "Cancel",
+      "confirmPaid": "Confirm",
+      "recording": "Recording...",
+      "payoutRecorded": "Payout recorded",
+      "nothingDue": "No commission due for this affiliate",
+      "payoutFailed": "Could not record the payout",
+      "unauthorized": "Unauthorized",
+      "previous": "Previous",
+      "next": "Next"
+    }
+  },
+  "Pricing": {
+    "heading": "Simple, transparent pricing",
+    "subheading": "Choose the plan that's right for you and start creating beautiful code snippets for your emails",
+    "billing": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save": "Save 20%"
+    },
+    "badge": {
+      "currentPlan": "Current plan",
+      "mostPopular": "Most popular"
+    },
+    "plans": {
+      "free": {
+        "name": "Free",
+        "description": "Perfect for getting started"
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "Perfect for regular users"
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "description": "For large organizations"
+      },
+      "lifetime": {
+        "name": "Lifetime",
+        "description": "Perfect for long-term users"
+      }
+    },
+    "perMonth": "per month",
+    "perYear": "per year",
+    "oneTimePayment": "one-time payment",
+    "monthsFree": "✨ 2 months free",
+    "users": "Users:",
+    "perUser": "per user",
+    "cta": {
+      "getStarted": "Get started",
+      "subscribe": "Subscribe now",
+      "buyLifetime": "Buy Lifetime"
+    }
+  },
+  "ContactPage": {
+    "metadata": {
+      "title": "Contact",
+      "description": "Get in touch with us for any question or request."
+    },
+    "card": {
+      "title": "Contact us",
+      "description": "A question, a suggestion or need some help? We are here for you."
+    },
+    "success": {
+      "title": "Message sent!",
+      "cta": "Send another message",
+      "message": "Your message has been sent successfully. We will get back to you shortly."
+    },
+    "fields": {
+      "email": {
+        "label": "Email",
+        "placeholder": "your@email.com"
+      },
+      "subject": {
+        "label": "Subject",
+        "placeholder": "What is your message about"
+      },
+      "content": {
+        "label": "Message",
+        "placeholder": "Describe your request in detail..."
+      }
+    },
+    "submit": {
+      "idle": "Send message",
+      "pending": "Sending..."
+    },
+    "validation": {
+      "emailRequired": "Email is required",
+      "emailInvalid": "Please enter a valid email",
+      "subjectMin": "The subject must be at least 3 characters",
+      "subjectMax": "The subject must not exceed 255 characters",
+      "contentMin": "The message must be at least 10 characters",
+      "contentMax": "The message must not exceed 5000 characters"
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "server": "Something went wrong. Please try again later.",
+      "rateLimit": "Too many requests. Try again in {seconds} seconds.",
+      "allFieldsRequired": "All fields are required.",
+      "subjectRange": "The subject must be between 3 and 255 characters.",
+      "contentRange": "The message must be between 10 and 5000 characters.",
+      "emailInvalid": "Please enter a valid email."
+    }
+  },
+  "CheckoutPlans": {
+    "heading": "Choose your plan",
+    "subheading": "Pick the plan that fits your needs best",
+    "billing": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "discount": "-20%",
+      "monthsFree": "✨ 2 months free",
+      "perMonth": "per month",
+      "perYear": "per year",
+      "free": "free",
+      "users": "Users:",
+      "perUser": "per user"
+    },
+    "badge": {
+      "mostPopular": "Most popular",
+      "enterprise": "Enterprise"
+    },
+    "plans": {
+      "free": {
+        "name": "Free",
+        "description": "Perfect for getting started",
+        "cta": "Current plan",
+        "features": [
+          "Unlimited code snippets",
+          "5 saved snippets",
+          "Basic themes",
+          "Standard support"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "For regular users",
+        "features": [
+          "Unlimited code snippets",
+          "Unlimited saved snippets",
+          "Premium themes",
+          "Priority support",
+          "Custom syntax highlighting",
+          "Snippet organization"
+        ]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "description": "For large organizations",
+        "features": [
+          "Everything in Pro",
+          "Unlimited users",
+          "Dedicated 24/7 support",
+          "SSO and advanced security",
+          "Custom API",
+          "Team training included"
+        ]
+      }
+    },
+    "cta": {
+      "subscribePro": "Subscribe to Pro {period}",
+      "subscribeEnterprise": "Subscribe to Enterprise {period}",
+      "redirecting": "Redirecting..."
+    },
+    "toast": {
+      "error": "Error",
+      "redirecting": "Redirecting to payment...",
+      "errorPro": "Could not upgrade to Pro",
+      "errorEnterprise": "Could not upgrade to Enterprise"
+    },
+    "secureNotice": "You will be redirected to the secure payment page"
+  },
+  "Checkout": {
+    "success": {
+      "verifying": "Verifying your payment...",
+      "creatingSubscription": "Creating your subscription...",
+      "subscriptionCreated": "Your subscription was created successfully!",
+      "subscriptionError": "Could not create the subscription",
+      "unexpectedError": "Unexpected error while creating the subscription",
+      "paymentProcessed": "Your payment was processed successfully!",
+      "paymentCancelled": "The payment failed or was cancelled",
+      "failureTitle": "Payment failed",
+      "retry": "Try again",
+      "subscriptionTitle": "Subscription created!",
+      "paymentTitle": "Payment successful!",
+      "setupIntentId": "Setup Intent ID:",
+      "paymentId": "Payment ID:",
+      "goToDashboard": "Go to dashboard",
+      "returnHome": "Return home"
+    },
+    "reactStripe": {
+      "setupFailed": "Setup failed",
+      "setupFailedDescription": "Something went wrong while setting up the subscription",
+      "processing": "Setting up...",
+      "submit": "Set up subscription",
+      "emailRequired": "Email required",
+      "emailRequiredDescription": "Please enter your email address to continue",
+      "emailInvalid": "Invalid email",
+      "emailInvalidDescription": "Please enter a valid email address",
+      "guestIntro": "Please enter your email address to continue as a guest",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "your@email.com",
+      "creating": "Creating...",
+      "continueLabel": "Continue",
+      "subscriptionError": "Something went wrong while creating the subscription",
+      "creatingSubscription": "Creating subscription...",
+      "subscribeGuest": "Subscribe as a guest",
+      "subscribeStripe": "Subscribe with Stripe"
+    },
+    "recap": {
+      "lifetimeAccess": "Lifetime access",
+      "subtotal": "Subtotal:",
+      "discount": "Discount:",
+      "total": "Total",
+      "installmentsNotice": "You can pay in 3 or 2 installments"
+    },
+    "errors": {
+      "title": "Error",
+      "generic": "Something went wrong"
+    },
+    "page": {
+      "title": "Complete your purchase",
+      "testBannerLabel": "Test mode:",
+      "testBannerText": "Installment payments enabled",
+      "secureNotice": "Your payment is secure and encrypted",
+      "chooseMethod": "Choose your payment method below",
+      "clickButton": "Click the button below to complete your purchase",
+      "fillForm": "Fill in the form below to complete your purchase",
+      "paymentLinkGuestOnly": "The \"payment Link\" mode is reserved for signed-out users."
+    },
+    "installments": {
+      "title": "Complete your order",
+      "securedByStripe": "Payment secured by Stripe",
+      "splitPaymentDescription": "Payment in {plan}",
+      "noticeTitle": "Installment payment",
+      "noticeText": "Your first payment will be charged today, then the following payments will be debited automatically each month.",
+      "preparing": "Preparing payment...",
+      "payGuest": "Pay in {count} installments (Guest)",
+      "payStart": "Start payment in {count} installments",
+      "redirecting": "Redirecting to payment...",
+      "sessionError": "Could not create the payment session",
+      "unexpectedError": "An unexpected error occurred",
+      "selectorTitle": "Payment options",
+      "recurringNotice": "Subscriptions require a single payment",
+      "selectorDescription": "Choose your preferred payment method",
+      "noExtraFees": "No additional fees",
+      "firstPaymentToday": "First payment today",
+      "recommended": "Recommended",
+      "monthly": "Monthly",
+      "schedule": "Payment schedule:"
+    }
+  },
+  "ErrorPage": {
+    "title": "Something went wrong",
+    "description": "Sorry, an unexpected error occurred. Please try again or contact the administrator if the problem persists.",
+    "unknown": "Unknown error",
+    "retry": "Try again",
+    "backHome": "Back to home"
+  },
+  "NotAuthorizedPage": {
+    "title": "Unauthorized",
+    "description": "Sorry, you don't have permission to access this page. Please contact an administrator if you believe this is an error.",
+    "backHome": "Go to homepage"
+  },
+  "ThemeToggle": {
+    "label": "Toggle theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "DocsPage": {
+    "brand": "ShipSaaS",
+    "title": "Documentation",
+    "searchPlaceholder": "Search documentation...",
+    "searchLabel": "Search documentation",
+    "escKey": "Esc",
+    "comingSoon": "Content coming soon...",
+    "onThisPage": "On this page"
+  },
+  "PublicMobileMenu": {
+    "toggle": "Toggle menu",
+    "login": "Sign in",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "docs": "Docs",
+    "blog": "Blog"
+  },
+  "QuickFeedback": {
+    "trigger": "Send feedback",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Your message...",
+    "required": "Please enter a message",
+    "success": "Thanks for your feedback!",
+    "error": "Could not send your feedback"
+  },
+  "MdxContent": {
+    "invalidTweet": "Invalid tweet: could not extract the tweet ID",
+    "loadingTweet": "Loading tweet...",
+    "videoUnsupported": "Your browser does not support video playback.",
+    "viewFullscreen": "View fullscreen",
+    "openInExcalidraw": "Open in Excalidraw",
+    "defaultAlt": "Image"
+  },
+  "Invitations": {
+    "received": {
+      "title": "Received invitations",
+      "inviter": "Inviter",
+      "unknownInviter": "Unknown inviter",
+      "empty": "No invitation received",
+      "expires": "Expires:",
+      "acceptTitle": "Confirm acceptance",
+      "acceptDescription": "Are you sure you want to accept the invitation from {name}? You will join this organization as {role}.",
+      "accept": "Accept invitation",
+      "accepting": "Accepting...",
+      "rejectTitle": "Confirm rejection",
+      "rejectDescription": "Are you sure you want to reject the invitation from {name}? This action cannot be undone.",
+      "reject": "Reject invitation",
+      "rejecting": "Rejecting...",
+      "acceptSuccess": "Invitation accepted successfully",
+      "acceptError": "Could not accept the invitation",
+      "rejectSuccess": "Invitation rejected successfully",
+      "rejectError": "Could not reject the invitation"
+    },
+    "sent": {
+      "loading": "Loading invitations",
+      "loadingDescription": "Please wait while the invitations are loading...",
+      "loadError": "Could not load the invitations",
+      "cancelTitle": "Confirm cancellation",
+      "cancelSuccess": "Invitation cancelled successfully",
+      "cancelError": "Could not cancel the invitation",
+      "title": "Invitations sent by {organization}",
+      "empty": "No invitation sent",
+      "expires": "Expires:",
+      "cancelDescription": "Are you sure you want to cancel the invitation sent to {email}? This action cannot be undone.",
+      "cancel": "Confirm cancellation",
+      "canceling": "Cancelling..."
+    }
+  },
+  "Notifications": {
+    "empty": {
+      "title": "No notification",
+      "allRead": "All your notifications have been read.",
+      "none": "You have no notification at the moment."
+    },
+    "filter": {
+      "all": "All",
+      "unread": "Unread",
+      "allNotifications": "All notifications",
+      "unreadOnly": "Unread only",
+      "showing": "Showing: {value}"
+    },
+    "markAllAsRead": "Mark all as read",
+    "unread": "Unread",
+    "pagination": {
+      "showing": "Showing {start} to {end} of {total} notifications"
+    }
+  },
+  "Projects": {
+    "management": {
+      "title": "Project management",
+      "titleReactQuery": "Project management (React Query)",
+      "project": "Project",
+      "noDescription": "No description",
+      "loading": "Loading projects...",
+      "unknownError": "Unknown error",
+      "createdAt": "Created"
+    },
+    "toolbar": {
+      "searchPlaceholder": "Search a project...",
+      "show": "Show"
+    },
+    "form": {
+      "newProject": "New project",
+      "createTitle": "Create a new project",
+      "editTitle": "Edit project",
+      "deleteTitle": "Delete project",
+      "infoTitle": "Project information",
+      "nameLabel": "Project name",
+      "namePlaceholder": "My awesome project",
+      "descriptionLabel": "Description",
+      "descriptionOptionalLabel": "Description (optional)",
+      "descriptionPlaceholder": "Briefly describe this project...",
+      "create": "Create project",
+      "creating": "Creating...",
+      "update": "Update project",
+      "updating": "Updating...",
+      "saving": "Saving...",
+      "deleting": "Deleting...",
+      "createDescription": "Create a new project in the {organization} organization.",
+      "editDescription": "Edit the basic information of the project.",
+      "editDialogDescription": "Edit the project information below.",
+      "deleteDescription": "Are you sure you want to delete the project \"{name}\"? This action cannot be undone and will also delete every related task.",
+      "deleteDialogDescription": "Are you sure you want to delete the project {name}? This action is irreversible.",
+      "updateShort": "Update",
+      "createShort": "Create",
+      "descriptionShortPlaceholder": "Project description",
+      "namePlaceholderShort": "Project name"
+    },
+    "validation": {
+      "nameRequired": "The project name is required",
+      "organizationRequired": "The organization is required"
+    },
+    "errors": {
+      "generic": "Something went wrong",
+      "notAllowed": "You are not allowed to perform this action"
+    }
+  },
+  "Organization": {
+    "roles": {
+      "OWNER": "Owner",
+      "ADMIN": "Administrator",
+      "MEMBER": "Member"
+    },
+    "members": {
+      "title": "Members",
+      "tableTitle": "Organization members",
+      "avatar": "Avatar",
+      "action": "Action",
+      "pendingInvitation": "Pending invitation",
+      "expiredInvitation": "Expired invitation",
+      "loading": "Loading members...",
+      "editRole": "Edit role",
+      "editRoleTitle": "Edit {name}'s role",
+      "editRoleDescription": "Select the new role for this organization member.",
+      "selectRole": "Select a role",
+      "roleUpdated": "{name}'s role updated successfully",
+      "roleUpdateError": "Could not update the role",
+      "ownerImmutable": "The \"Owner\" role cannot be changed. Please contact the organization administrator.",
+      "updating": "Updating...",
+      "update": "Update",
+      "removeTitle": "Confirm removal",
+      "removeConfirm": "Do you really want to remove {name} from the organization?",
+      "removeSuccess": "Member removed",
+      "removeError": "Could not remove the member",
+      "removing": "Removing..."
+    },
+    "invite": {
+      "title": "Invite a team member",
+      "emailPlaceholder": "steve.wozniak@example.com",
+      "submit": "Invite",
+      "sending": "Sending...",
+      "success": "Member invited successfully",
+      "selectUser": "Please select a user",
+      "cancelTitle": "Confirm cancellation",
+      "cancelConfirm": "Do you really want to cancel the invitation for {email}?",
+      "cancelSuccess": "Invitation cancelled",
+      "cancelError": "Could not cancel the invitation",
+      "canceling": "Cancelling...",
+      "cancelAction": "Cancel invitation",
+      "addMember": "Add a member",
+      "description": "Enter the email address of the user you want to invite.",
+      "emailLabel": "Email address",
+      "selectedUser": "Selected user",
+      "change": "Change",
+      "selectRoleLabel": "Select role",
+      "adminDescription": "Invite users, update payment, and delete the team.",
+      "memberDescription": "Manage emails, domains, and webhooks."
+    },
+    "form": {
+      "namePlaceholder": "Organization name",
+      "slugPlaceholder": "organization-slug",
+      "descriptionPlaceholder": "Organization description",
+      "noImage": "No image",
+      "uploading": "Uploading...",
+      "updating": "Updating...",
+      "successTitle": "Success",
+      "errorTitle": "Error"
+    }
+  },
+  "Subscription": {
+    "heading": "Choose your plan",
+    "subheadingActive": "Change your subscription or switch plan",
+    "subheadingNew": "Select the plan that suits you",
+    "recap": "Plan \"{plan}\" ({seats, plural, one {# seat} other {# seats}}) - {billing} - {ending, select, yes {ends} other {renews}} on {date}{autoFree, select, yes {, automatic switch to free} other {}}",
+    "billing": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "save": "Save 17%",
+      "perYear": "year",
+      "perMonth": "month",
+      "monthsFree": "✨ 2 months free",
+      "perUser": "per user"
+    },
+    "badge": {
+      "current": "Current plan",
+      "endingOn": "Ends on {date}",
+      "futureFree": "Your future plan from {date}",
+      "popular": "Popular",
+      "modified": "Modified"
+    },
+    "nextBilling": "Next billing: {date}",
+    "seats": {
+      "label": "Number of seats",
+      "unit": "user(s)",
+      "priceNote": "Price adjusted to the number of users"
+    },
+    "trialNote": "Every plan includes a 14-day free trial. You can cancel at any time from this page.",
+    "actions": {
+      "startingFrom": "From {date}",
+      "downgradeFree": "Switch to free",
+      "canceling": "Cancelling...",
+      "restoring": "Restoring...",
+      "continuePlan": "Continue {plan}",
+      "updating": "Updating...",
+      "update": "Update",
+      "redirecting": "Redirecting...",
+      "switchTo": "Switch to {plan}"
+    },
+    "errors": {
+      "loadFailed": "Could not load the subscriptions",
+      "modeUnknown": "Could not determine the subscription mode",
+      "updateFailed": "Could not update the subscription",
+      "notOwner": "You are not the owner of the organization",
+      "cancelFailed": "Could not cancel the subscription",
+      "restoreFailed": "Could not restore the subscription",
+      "notOwnerOfThis": "You are not the owner of this organization"
+    },
+    "success": {
+      "redirecting": "Redirecting to payment...",
+      "canceled": "Subscription cancelled",
+      "restored": "Subscription restored successfully"
+    }
+  },
+  "Dashboard": {
+    "badge": "Customer area",
+    "heading": "Overview of your activity",
+    "subheading": "Track your revenue, your customers and your growth opportunities at a glance.",
+    "revenueTrend": "{trend} revenue vs last month",
+    "activeUsers": "{count} active users",
+    "lastPeak": "Last peak: {month} with {amount}",
+    "tabs": {
+      "overview": "Overview",
+      "analytics": "Analytics",
+      "reports": "Reports"
+    },
+    "metrics": {
+      "monthlyRevenue": "Monthly revenue",
+      "vsPreviousMonth": "{trend} vs previous month",
+      "averageTicket": "Average ticket",
+      "completedTransactions": "{count} completed transactions",
+      "newCustomers": "New customers",
+      "acquisitionCampaign": "Q2 acquisition campaign",
+      "cumulativeRevenue": "Cumulative revenue (6 months)",
+      "bestMonth": "Best month: {month}",
+      "salesVolume": "Sales volume",
+      "leadingProduct": "{product} is leading ({count} sales)",
+      "averageRevenuePerCustomer": "Average revenue / customer",
+      "basedOnCompleted": "Based on completed transactions",
+      "conversionRate": "Conversion rate",
+      "conversionDetail": "+3.2 pts since January"
+    },
+    "insights": {
+      "title": "Key insights",
+      "description": "Identify your growth levers and prioritize your actions.",
+      "topProduct": "Top product",
+      "topProductDetail": "{count} sales over 30 days",
+      "strongestGrowth": "Strongest growth",
+      "strongestGrowthDetail": "{amount} generated",
+      "conversionDetail": "High-performing multi-channel campaigns",
+      "averageBasket": "Average basket",
+      "averageBasketDetail": "Plan + add-on bundles on the rise"
+    },
+    "charts": {
+      "revenueTitle": "Monthly revenue",
+      "revenueDescription": "Recurring revenue breakdown over 6 months",
+      "salesTitle": "Sales breakdown",
+      "salesDescription": "Split by plans and add-ons",
+      "revenueLabel": "Revenue",
+      "salesLabel": "Sales"
+    },
+    "transactions": {
+      "title": "Recent transactions",
+      "description": "The last five customer operations",
+      "completed": "Completed",
+      "pending": "Pending"
+    },
+    "goals": {
+      "title": "Quarterly goals",
+      "description": "Tracking your strategic milestones",
+      "acquisition": "Acquisition",
+      "acquisitionDetail": "4,500 / 6,000 leads",
+      "retention": "Retention",
+      "retentionDetail": "2,700 / 3,000 active customers",
+      "revenue": "Revenue",
+      "revenueDetail": "650k / 1M €",
+      "satisfaction": "Customer satisfaction",
+      "satisfactionDetail": "Average rating 4.1 / 5"
+    },
+    "analytics": {
+      "marketingTitle": "Marketing performance",
+      "marketingDescription": "Channel and campaign breakdown for your next decisions.",
+      "marketingBody": "Add your custom reports here (e.g. CAC, LTV per channel, customer cohorts…).",
+      "pipelineTitle": "Sales pipeline",
+      "pipelineDescription": "Conversion by stage, deal value and forecast.",
+      "pipelineBody": "Plug in your CRM data to track your opportunities live."
+    },
+    "reports": {
+      "title": "Exportable reports",
+      "description": "Download your financial and marketing exports.",
+      "body": "Connect your automations (Notion, Looker, Google Sheets…) to feed your reporting."
+    }
+  },
+  "CreditsSimulator": {
+    "title": "AI credits simulator",
+    "description": "Test credit consumption against a fake AI API (1 credit per generation)",
+    "refresh": "Refresh",
+    "creditsBadge": "credits",
+    "promptTitle": "AI prompt",
+    "promptPlaceholder": "Enter your prompt here... (e.g. analyze the 2024 SaaS market trends)",
+    "cost": "Cost: <strong>1 credit</strong> per generation",
+    "costLabel": "Cost: 1 credit per generation",
+    "generating": "Generating...",
+    "generate": "Generate (-1 credit)",
+    "successTitle": "Generation succeeded",
+    "refundedTitle": "Error - Credits refunded",
+    "errorTitle": "Error",
+    "consoleTitle": "Credits console",
+    "eventsCount": "{count} events",
+    "noEvents": "No event yet...",
+    "logs": {
+      "initialized": "Simulator initialized",
+      "generating": "Generating: \"{prompt}…\"",
+      "success": "Generation succeeded",
+      "refund": "API error - Refund issued"
+    },
+    "toast": {
+      "promptRequired": "Please enter a prompt",
+      "done": "Generation completed!",
+      "refunded": "AI service error - Credits refunded",
+      "unknownError": "Unknown error",
+      "generationFailed": "The generation failed"
+    },
+    "help": {
+      "howTitle": "How it works",
+      "howBody": "Each generation consumes 1 credit. Credits are deducted before the API call.",
+      "errorsTitle": "Error handling",
+      "errorsBody": "~20% of requests fail. On error, credits are refunded automatically.",
+      "refundTitle": "Refunds",
+      "refundBody": "Refunds appear in the ledger with the \"Refund\" source."
+    }
+  },
+  "TeamPage": {
+    "membersTitle": "Team members",
+    "usageTitle": "Usage",
+    "detailsTitle": "Detailed information",
+    "uniqueId": "Unique identifier",
+    "slug": "Organization slug",
+    "lastUpdate": "Last update",
+    "notSet": "Not set",
+    "actionsTitle": "Actions",
+    "leave": "Leave the organization",
+    "leaveConfirm": "Are you sure you want to leave the {name} organization? This action is irreversible and you will lose access to all its resources.",
+    "leaving": "Leaving...",
+    "notFound": "Organization not found",
+    "leaveSuccess": "You have left the organization successfully",
+    "leaveError": "Could not leave the organization"
+  },
+  "Chat": {
+    "title": "AI chat",
+    "description": "Conversation with your local AI assistant (Ollama)",
+    "welcome": "Welcome to the AI chat",
+    "welcomeHint": "Ask me a question to start the conversation",
+    "thinking": "Thinking...",
+    "placeholder": "Type your message..."
+  },
+  "Organizations": {
+    "title": "My organizations",
+    "empty": "You don't have any organization yet.",
+    "createFirst": "Create your first organization",
+    "owner": "Owner",
+    "usage": "Usage",
+    "projects": "Projects",
+    "members": "Members",
+    "credits": "Credits",
+    "viewDetails": "View details",
+    "editTitle": "Edit organization",
+    "membersTitle": "Organization members",
+    "loadingMembers": "Loading members..."
+  },
+  "NotificationsPage": {
+    "title": "Notifications",
+    "description": "Stay informed about all your activities and important updates."
+  },
+  "AcceptInvitation": {
+    "title": "Organization invitation",
+    "subtitle": "You have been invited to join an organization",
+    "invitedBy": "Invited by",
+    "acceptSuccess": "Invitation accepted successfully",
+    "acceptError": "Could not accept the invitation",
+    "declineSuccess": "Invitation cancelled successfully",
+    "declineError": "Could not cancel the invitation"
+  },
+  "TeamSwitcher": {
+    "loading": "Loading...",
+    "noOrganization": "No organization",
+    "teams": "Teams",
+    "addTeam": "Add team",
+    "cannotCreate": "You cannot create an organization"
+  },
+  "ProjectsPages": {
+    "tasksTitle": "Task management",
+    "loadingTasks": "Loading tasks...",
+    "newTask": "New task"
+  },
+  "LimitReached": {
+    "currentUsage": "Current usage",
+    "upgradeNeeded": "Upgrade required"
+  },
+  "CreditsUi": {
+    "buy": "Buy credits",
+    "popular": "Popular",
+    "available": "Available credits",
+    "usedThisMonth": "Used this month",
+    "currentPeriod": "Current period",
+    "start": "Start:",
+    "end": "End:",
+    "noActivePeriod": "No active period",
+    "recentActivity": "Recent activity",
+    "noActivity": "No recent activity",
+    "selectOrganization": "Please select an organization",
+    "loadError": "Could not load the credits"
+  },
+  "TasksUi": {
+    "emptyColumn": "No task"
+  },
+  "AdminPlans": {
+    "management": {
+      "title": "Plan management",
+      "plan": "Plan",
+      "noDescription": "No description",
+      "searchPlaceholder": "Search a plan...",
+      "createdAt": "Created"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "free": "Free",
+      "oneTime": "One-time",
+      "recurring": "Recurring"
+    },
+    "form": {
+      "createTitle": "Create a new plan",
+      "createDescription": "Add a new subscription plan to the system.",
+      "editTitle": "Edit plan",
+      "editDescription": "Edit the plan information.",
+      "codePlaceholder": "free, pro, enterprise...",
+      "codeDescription": "Unique identifier of the plan",
+      "nameLabel": "Plan name",
+      "namePlaceholder": "Free, Pro, Enterprise...",
+      "nameDescription": "Displayed name of the plan",
+      "priceIdLabel": "Stripe price ID",
+      "priceIdPlaceholder": "price_1234567890",
+      "priceIdDescription": "Price identifier in Stripe",
+      "descriptionPlaceholder": "Plan description...",
+      "monthlyPrice": "Monthly price",
+      "monthlyPricePlaceholder": "9.99",
+      "yearlyPrice": "Yearly price",
+      "yearlyPricePlaceholder": "99.99",
+      "yearlyPriceIdLabel": "Yearly Stripe price ID",
+      "yearlyPriceIdPlaceholder": "price_1234567890_annual",
+      "yearlyPriceIdDescription": "Yearly price identifier in Stripe (optional)",
+      "currencyPlaceholder": "EUR",
+      "displayOrder": "Display order",
+      "recurringLabel": "Recurring subscription",
+      "recurringDescription": "Is this plan a recurring subscription?",
+      "creating": "Creating...",
+      "create": "Create plan",
+      "updating": "Updating...",
+      "update": "Update plan"
+    },
+    "limits": {
+      "title": "Limits",
+      "namePlaceholder": "Limit name"
+    },
+    "delete": {
+      "archiveTitle": "Archive plan",
+      "deleteTitle": "Permanently delete plan",
+      "archiveConfirm": "Are you sure you want to archive the {name} plan? It will be archived and no longer visible for new subscriptions.",
+      "deleteConfirm": "Are you sure you want to permanently delete the {name} plan? This action is irreversible and will permanently delete all related data.",
+      "permanentLabel": "Permanent deletion",
+      "permanentHint": "Check this box to permanently delete the plan instead of archiving it.",
+      "archiving": "Archiving...",
+      "archive": "Archive",
+      "deleting": "Deleting...",
+      "deletePermanently": "Delete permanently"
+    }
+  },
+  "AdminOrganizations": {
+    "title": "Organization management",
+    "organization": "Organization",
+    "noDescription": "No description",
+    "createdAt": "Created",
+    "searchPlaceholder": "Search by name, slug or description...",
+    "show": "Show",
+    "editTitle": "Edit organization",
+    "extraLimits": "Additional limits",
+    "saving": "Saving...",
+    "deleteTitle": "Confirm deletion",
+    "deleting": "Deleting...",
+    "cancelInvitation": "Cancel invitation",
+    "canceling": "Cancelling...",
+    "invitationCanceled": "Invitation cancelled",
+    "validation": {
+      "nameRequired": "The name is required",
+      "nameMax": "The name cannot exceed 100 characters",
+      "slugRequired": "The slug is required",
+      "slugMax": "The slug cannot exceed 50 characters"
+    },
+    "deleteConfirm": "Are you sure you want to delete the \"{name}\" organization? This action cannot be undone and will permanently delete all related data.",
+    "cancelInvitationConfirm": "Do you really want to delete the invitation for {email}?",
+    "cancelError": "Could not cancel the invitation"
+  },
+  "AdminUsers": {
+    "title": "User management",
+    "user": "User",
+    "createdAt": "Created",
+    "viewDetails": "View details",
+    "searchPlaceholder": "Search by name or email...",
+    "show": "Show",
+    "editTitle": "Edit user",
+    "deleteTitle": "Confirm deletion",
+    "deleting": "Deleting...",
+    "saving": "Saving...",
+    "settingsTitle": "User settings",
+    "fullName": "Full name",
+    "namePlaceholder": "User name",
+    "emailPlaceholder": "email@example.com",
+    "selectVisibility": "Select visibility",
+    "selectRole": "Select a role",
+    "banReason": "Ban reason",
+    "banReasonPlaceholder": "Explain the reason for the ban...",
+    "saveChanges": "Save changes",
+    "updateError": "Could not update the user",
+    "notSet": "Not set",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "projects": "Projects",
+    "members": "Members",
+    "status": {
+      "active": "Active",
+      "pending": "Pending"
+    },
+    "roles": {
+      "user": "User",
+      "admin": "Admin",
+      "super_admin": "Super Admin",
+      "moderator": "Moderator",
+      "redactor": "Editor"
+    },
+    "validation": {
+      "nameRequired": "The name is required",
+      "emailInvalid": "Invalid email",
+      "emailFormat": "Invalid email format",
+      "visibilityRequired": "Visibility is required"
+    },
+    "deleteConfirm": "Are you sure you want to delete the user {name}? This action cannot be undone.",
+    "personalInfo": "Personal information",
+    "systemInfo": "System information",
+    "moderation": "Moderation",
+    "emailVerified": "Email verified",
+    "emailVerifiedDescription": "The user has verified their email address",
+    "twoFactor": "2FA enabled",
+    "twoFactorDescription": "Two-factor authentication",
+    "banned": "Banned user",
+    "bannedDescription": "Deny access to the user",
+    "banExpires": "Ban expiration date",
+    "createdOn": "Created on",
+    "lastUpdate": "Last update",
+    "theme": "Theme",
+    "language": "Language",
+    "timezone": "Time zone",
+    "notifications": "Notifications",
+    "channel": "Channel",
+    "orgsAndUsage": "Organizations and usage"
+  },
+  "AdminBlog": {
+    "listTitle": "Post list",
+    "columns": {
+      "title": "Title",
+      "author": "Author",
+      "views": "Views",
+      "likes": "Likes",
+      "createdAt": "Created on"
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived",
+      "all": "All statuses"
+    },
+    "categories": {
+      "none": "No category",
+      "all": "All categories",
+      "placeholder": "Category"
+    },
+    "untitled": "Untitled",
+    "unknown": "Unknown",
+    "successTitle": "Success",
+    "errorTitle": "Error",
+    "searchPlaceholder": "Search in titles...",
+    "statusPlaceholder": "Status",
+    "show": "Show",
+    "editTitle": "Edit post",
+    "deleteTitle": "Confirm deletion",
+    "deleteConfirm": "Are you sure you want to delete this post? This will also delete all related translations. This action cannot be undone.",
+    "deleting": "Deleting...",
+    "saving": "Saving...",
+    "selectStatus": "Select a status",
+    "selectCategory": "Select a category",
+    "form": {
+      "generalConfig": "General configuration",
+      "hashtags": "Hashtags",
+      "selectHashtags": "Select hashtags",
+      "chooseHashtag": "Choose a hashtag...",
+      "addHashtag": "Add a new hashtag",
+      "hashtagPlaceholder": "e.g. react, javascript, web_dev (letters, digits, _)",
+      "allHashtagsSelected": "All hashtags are already selected",
+      "selectedHashtags": "Selected hashtags",
+      "hashtagTooShort": "The hashtag must contain at least 2 valid characters",
+      "files": "Files",
+      "translations": "Translations",
+      "addLanguage": "Add a language",
+      "titleRequired": "Title *",
+      "titlePlaceholder": "Article title",
+      "slugRequired": "Slug *",
+      "slugPlaceholder": "article-slug",
+      "slugDescription": "Article URL (generated automatically from the title)",
+      "descriptionPlaceholder": "Short description of the article",
+      "content": "Content",
+      "contentPlaceholder": "Full article content (Markdown supported)",
+      "seoMeta": "SEO meta",
+      "metaTitle": "Meta title",
+      "metaTitlePlaceholder": "Title for search engines",
+      "metaTitleHint": "Recommended: 50-60 characters",
+      "metaDescription": "Meta description",
+      "metaDescriptionPlaceholder": "Description for search engines",
+      "metaDescriptionHint": "Recommended: 150-160 characters",
+      "metaKeywords": "Meta keywords",
+      "metaKeywordsPlaceholder": "keywords, separated, by, commas",
+      "metaKeywordsHint": "Keywords separated by commas",
+      "create": "Create post",
+      "update": "Update",
+      "genericError": "Something went wrong",
+      "fileUploaded": "File uploaded:"
+    },
+    "dropzone": {
+      "prompt": "Drag & drop files here, or click to select files",
+      "active": "Drop the files here...",
+      "disabled": "Uploading files is disabled",
+      "linkCopied": "Link copied to clipboard",
+      "unknownSize": "Unknown size",
+      "unknownType": "Unknown type"
+    }
+  },
+  "AdminSubscriptions": {
+    "title": "Subscription management",
+    "reference": "Reference",
+    "seats": "Seats",
+    "start": "Start",
+    "end": "End",
+    "status": {
+      "active": "Active",
+      "canceled": "Cancelled",
+      "trialing": "Trial",
+      "past_due": "Past due",
+      "incomplete": "Incomplete"
+    },
+    "cancel": "Cancel subscription",
+    "canceling": "Cancelling...",
+    "reactivate": "Reactivate subscription",
+    "reactivating": "Reactivating...",
+    "confirmReactivate": "Confirm reactivation",
+    "customerId": "Customer ID",
+    "cancelConfirm": "Are you sure you want to cancel this subscription?",
+    "reactivateConfirm": "Are you sure you want to reactivate this subscription?",
+    "confirmCancel": "Confirm cancellation",
+    "reactivateShort": "Reactivate"
+  },
+  "AdminSubmissions": {
+    "title": "User submissions",
+    "subject": "Subject",
+    "date": "Date",
+    "viewDetail": "View detail",
+    "archive": "Archive",
+    "message": "Message",
+    "metadata": "Metadata",
+    "anonymous": "Anonymous",
+    "noEmail": "Email not provided",
+    "unread": "Unread",
+    "types": {
+      "contact": "Contact",
+      "feedback": "Feedback",
+      "support": "Support",
+      "all": "All types"
+    },
+    "filters": {
+      "all": "All",
+      "read": "Read",
+      "unread": "Unread",
+      "searchPlaceholder": "Search...",
+      "statusPlaceholder": "Status",
+      "typePlaceholder": "Type",
+      "show": "Show"
+    },
+    "read": "Read"
+  },
+  "AdminCredits": {
+    "grantTitle": "Grant credits",
+    "amountLabel": "Number of credits",
+    "amountPlaceholder": "100",
+    "amountHint": "Maximum 10000 credits",
+    "reasonLabel": "Reason (optional)",
+    "reasonPlaceholder": "Welcome bonus, goodwill gesture...",
+    "expiresAt": "Expiration date",
+    "submit": "Grant credits",
+    "submitting": "Granting...",
+    "successTitle": "Success",
+    "errorTitle": "Error",
+    "searchPlaceholder": "Search by name or email...",
+    "validation": {
+      "positive": "The amount must be positive",
+      "max": "The maximum amount is 10000 credits",
+      "organizationIdInvalid": "The organization ID is invalid"
+    },
+    "expiresHint": "The credits will expire after this date"
+  },
+  "AdminDashboard": {
+    "totalUsers": "Total users",
+    "totalOrganizations": "Total organizations",
+    "activeSubscriptions": "Active subscriptions",
+    "monthlyGrowth": "Monthly growth",
+    "newUsers": "New users (12 months)",
+    "newSubscriptions": "New subscriptions",
+    "users": "Users",
+    "organizations": "Organizations",
+    "subscriptions": "Subscriptions",
+    "insights": "Key insights",
+    "userPeak": "New user peak",
+    "bestSubscriptionMonth": "Best subscription month",
+    "topPlan": "Top plan",
+    "activePopulation": "Active population",
+    "twelveMonthProjection": "12-month projection",
+    "multiPlanBreakdown": "Multi-plan breakdown",
+    "monthlySignatureTracking": "Monthly signature tracking",
+    "mrrTotal": "Total MRR",
+    "mrrProjected": "Projected annual MRR",
+    "arpu": "Global ARPU",
+    "usersPerOrg": "{count} users per organization",
+    "activeSubscriptionsCount": "{count} active subscriptions",
+    "signatures": "{count} sign-ups",
+    "accountCreations": "{count} account creations",
+    "newThisMonth": "{count} new this month",
+    "countInMonth": "{count} in {month}",
+    "topPlanDetail": "{count} subscriptions • {mrr} ({share}% of MRR)",
+    "activeUsersCount": "{count} active users",
+    "totalUsersCount": "{count} users in total",
+    "topPlanShare": "{share}% generated by {plan}",
+    "creditsExpireAfter": "The credits will expire after this date"
+  },
+  "AdminPages": {
+    "dashboard": "Admin dashboard",
+    "settingsTitle": "Application settings",
+    "settingsDescription": "Configure the global application settings",
+    "settingsUpdateError": "Could not update the settings",
+    "emailsTitle": "Email testing",
+    "emailsDescription": "Test email templates by sending them to a specific address",
+    "emailConfigTitle": "Email test configuration",
+    "emailConfigDescription": "Select an email type and configure parameters",
+    "emailType": "Email type",
+    "selectEmail": "Select an email",
+    "selectEmailError": "Please select an email",
+    "missingFields": "Missing required fields: {fields}",
+    "parametersPreview": "Parameters preview",
+    "parametersPreviewDescription": "JSON preview of current parameters",
+    "newPost": "Create a new post",
+    "editPost": "Edit post",
+    "userDetails": "User details",
+    "creditsTitle": "Credit management",
+    "creditsDescription": "Grant credits to organizations",
+    "subscriptionSearchPlaceholder": "Search a subscription..."
+  },
+  "NotificationValidation": {
+    "create": {
+      "userId": {
+        "invalid": "The user ID must be a valid UUID."
+      },
+      "type": {
+        "required": "The notification type is required."
+      },
+      "title": {
+        "required": "The title is required.",
+        "maxLength": "The title must not exceed 255 characters."
+      },
+      "message": {
+        "required": "The message is required.",
+        "maxLength": "The message must not exceed 1000 characters."
+      }
+    },
+    "update": {
+      "id": {
+        "invalid": "The notification ID must be a valid UUID."
+      }
+    },
+    "markAsRead": {
+      "id": {
+        "invalid": "The notification ID must be a valid UUID."
+      }
+    }
+  }
+}

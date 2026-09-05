@@ -1,0 +1,97 @@
+---
+description:
+---
+
+# Architecture Rules
+
+## Principe général
+
+- **La navigation des données et des actions suit une architecture en couches stricte :**
+  1. **Présentation** (`src/app/`, `src/components/`)
+  2. **Façade** (`src/services/facades/`)
+  3. **Service** (`src/services/`)
+  4. **DAL (Data Access Layer)** (`src/app/dal/`)
+  5. **Persistance** (`src/db/repositories/`, `src/db/models/`)
+
+---
+
+## Règles détaillées
+
+### 1. Couche Présentation
+
+- **Utilise uniquement des types de domaine** (ex : `User`, `UserDTO` de `src/services/types/domain/`).
+- **N'a pas le droit d'appeler directement les services métier** ni les objets de la persistance.
+- **Pour les lectures (getters)** :  
+  Passe par la **DAL** (`src/app/dal/`), qui porte le cache de la lecture. Une donnée par
+  utilisateur n'est pas cachée : elle est streamée derrière un `<Suspense>`.
+- **Pour les mutations** :  
+  Utilise **exclusivement les Server Actions** (fonctions `"use server"`).
+- **Pour toute logique métier** :  
+  Passe par la **façade** (ex : `getUserByIdService` de `src/services/facades/user-service-facade.ts`).
+
+### 2. Couche DAL (Data Access Layer)
+
+- Sert à **mettre en cache** les accès aux données. Sous Cache Components (Next 16), le cache est une
+  propriété **de la fonction du DAL** : `'use cache'` + `cacheLife` + `cacheTag` pour les lectures
+  publiques, `unstable_cache` pour ce qui doit survivre aux déploiements, rien du tout pour les
+  données par utilisateur (qui passent par `<Suspense>`). `cache()` de React reste utilisé en plus,
+  pour dédupliquer dans une même requête.
+  Détail complet : `.claude/rules/01-presentation/rule-react-cache-next-cache.md`.
+- Transforme les entités de la persistance en **DTO** pour la présentation.
+- N'expose jamais directement les modèles Drizzle à la présentation.
+
+### 3. Couche Façade
+
+- Sert d'interface entre la présentation/DAL et les services métier.
+- Peut appliquer des interceptors (logs, audit, etc.).
+- Exemples :
+  - `getUserByIdService` dans `user-service-facade.ts`
+  - `getActiveSubscriptionsByUserEmailService` dans `subscription-service-facade.ts`
+
+### 4. Couche Service
+
+- Contient la **logique métier**.
+- Applique systématiquement :
+  - **Validation** (ex : Zod, dans `src/services/validation/`)
+  - **Autorisation** (ex : `canReadUser` dans `src/services/authorization/`)
+- Peut appeler les **repositories** de la persistance.
+
+### 5. Couche Persistance
+
+- Utilise **Drizzle ORM** pour la modélisation et l'accès aux données.
+- Définit les **types de modèle** (ex : `UserModel` dans `src/db/models/user-model.ts`).
+- Les repositories (`src/db/repositories/`) effectuent les requêtes SQL.
+
+### Dépendances à éviter
+
+- La présentation ne doit pas importer de modèles ni de types depuis
+  `src/db/models/` ou `src/db/repositories/`. Un type nécessaire à l'interface
+  appartient à `src/services/types/domain/`.
+- La présentation et les Server Actions ne doivent pas appeler directement un
+  service métier lorsqu'une façade existe.
+- Un service ne doit jamais importer sa façade ni la façade d'un autre
+  service. Les dépendances entre domaines passent par les fonctions de service
+  elles-mêmes afin de conserver le sens façade → service → persistance.
+
+---
+
+## Exemples Concrets
+
+- **Lecture d'un utilisateur dans la présentation** :  
+  `getUserByIdDal` (DAL) → `getUserByIdService` (façade/service) → `getUserByIdDao` (repository persistance)
+- **Mutation (update) d'un utilisateur** :  
+  Server Action → Façade → Service (validation + autorisation) → Repository
+
+---
+
+## Résumé
+
+- **Jamais d'accès direct** de la présentation à la persistance ou aux services.
+- **Toujours passer par la DAL pour les lectures** (avec cache).
+- **Toujours passer par les Server Actions pour les mutations**.
+- **La présentation utilise uniquement des types de domaine**.
+- **La persistance utilise uniquement des types Drizzle**.
+
+---
+
+**Respecter cette architecture garantit la maintenabilité, la sécurité et la performance de l'application.**

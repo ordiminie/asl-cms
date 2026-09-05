@@ -1,0 +1,326 @@
+---
+description: Couche de persistance - Gestion des données avec Drizzle ORM
+globs: src/db/**
+alwaysApply: false
+---
+
+# Couche de persistance - Gestion des données avec Drizzle ORM
+
+Vous êtes un expert en TypeScript, Node.js, Next.js App Router, React, Shadcn UI, Radix UI, et Tailwind.
+
+# Principes Clés
+
+- La **couche de persistance** gère toutes les interactions avec la base de données en utilisant **Drizzle ORM**
+- Utilise le **pattern Repository** avec des objets d'accès aux données (DAO)
+- Maintient les schémas de base de données et migrations dans `src/db/models/`
+- Sépare les types de domaine des types Drizzle pour découpler les couches
+
+# Organisation des Fichiers
+
+- `src/db/models/` → Définitions des schémas Drizzle
+- `src/db/repositories/` → Implémentations des DAO
+- `src/services/types/domain/` → Types de domaine isolés
+- `src/services/types/common-type.ts` → Types communs (pagination, etc.)
+
+# Définition des Schémas
+
+- Définir les tables en utilisant le constructeur de schéma Drizzle
+- Utiliser des enums pour les valeurs contraintes
+- Définir des relations appropriées entre les tables
+- Toujours importer les modèles relatifs avec des imports relatifs locaux
+- Toujours ajouter ce model a db.ts pour drizzle
+
+[db.ts](mdc:src/db/models/db.ts)
+
+```ts
+const db = drizzle(pool, {
+  schema: {
+    ...user,
+    ...subscription,
+    ...organization,
+  },
+})
+```
+
+Exemple de Schéma:
+
+- preferer le snake_case pour le nom des colonnes (ex : emailVerified: timestamp('email_verified'))
+  [user-model.ts](mdc:src/db/models/user-model.ts)
+
+```ts
+import {relations, sql} from 'drizzle-orm'
+import {
+  boolean,
+  integer,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core'
+
+// Définir les enums pour la sécurité des types
+export const userRoleEnum = pgEnum('user_role', ['user', 'admin', 'public'])
+export const userVisibilityEnum = pgEnum('user_visibility', [
+  'public',
+  'private',
+])
+
+// Définir le schéma de table
+export const users = pgTable('user', {
+  id: uuid('id')
+    .default(sql`uuid_generate_v4()`)
+    .primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  emailVerified: timestamp('email_verified', {mode: 'date'}),
+  createdAt: timestamp('created_at', {mode: 'date'}).defaultNow(),
+  updatedAt: timestamp('updated_at', {mode: 'date'}).defaultNow(),
+  image: text('image'),
+  role: userRoleEnum('role').default('user').notNull(),
+  password: text('password'),
+  visibility: userVisibilityEnum('visibility').default('private').notNull(),
+})
+
+// Définir les relations
+export const usersRelations = relations(users, ({one}) => ({
+  account: one(accounts, {
+    fields: [users.id],
+    references: [accounts.userId],
+  }),
+}))
+
+// Exporter les types Drizzle
+export type UserModel = typeof users.$inferSelect
+export type AddUserModel = typeof users.$inferInsert
+export type UpdateUserModel = typeof users.$inferInsert
+```
+
+# Pattern Repository
+
+- Utiliser des objets d'accès aux données (DAO) pour les opérations de base de données
+- Gérer la pagination et le filtrage
+- Implémenter des requêtes basées sur les rôles
+- Utiliser des transactions quand nécessaire
+- Nommer les fonctions avec le suffixe `Dao`
+
+Exemple de Repository:
+[user-repository.ts](mdc:src/db/repositories/user-repository.ts)
+
+```ts
+import {eq, sql} from 'drizzle-orm'
+import db from '@/db/models/db'
+import {
+  AddUserModel,
+  UpdateUserModel,
+  UserModel,
+  users,
+} from '@/db/models/user-model'
+import {PaginatedResponse, Pagination} from '@/services/types/common-type'
+
+// CRUD de base
+export const createUserDao = async (user: AddUserModel): Promise<UserModel> => {
+  const row = await db
+    .insert(users)
+    .values({email: user.email, name: user.name})
+    .returning()
+  return row[0]
+}
+
+export const getUserByIdDao = async (
+  uid: string
+): Promise<UserModel | undefined> => {
+  const row = await db.query.users.findFirst({
+    where: (user, {eq}) => eq(user.id, uid),
+  })
+  return row
+}
+
+export const updateUserByUidDao = async (
+  user: UpdateUserModel
+): Promise<void> => {
+  if (!user.id) {
+    throw new Error('User ID is required')
+  }
+  await db
+    .update(users)
+    .set({...user, updatedAt: new Date()})
+    .where(eq(users.id, user.id))
+}
+
+export const deleteUserByIdDao = async (uid: string): Promise<void> => {
+  await db.delete(users).where(eq(users.id, uid))
+}
+
+// Fonctions spécialisées
+export const getPublicUsersWithPaginationDao = async (
+  pagination: Pagination
+): Promise<PaginatedResponse<UserModel>> => {
+  const [rows, [{count}]] = await Promise.all([
+    db
+      .select()
+      .from(users)
+      .where(eq(users.visibility, 'public'))
+      .limit(pagination.limit)
+      .offset(pagination.offset),
+    db
+      .select({count: sql<number>`count(*)`})
+      .from(users)
+      .where(eq(users.visibility, 'public')),
+  ])
+
+  const page = Math.floor(pagination.offset / pagination.limit) + 1
+  const totalPages = Math.ceil(count / pagination.limit)
+
+  return {
+    data: rows.length === 0 ? [] : rows,
+    pagination: {
+      total: count,
+      page: page,
+      limit: pagination.limit,
+      totalPages: totalPages,
+    },
+  }
+}
+```
+
+# Configuration de Base de Données
+
+- Utiliser les variables d'environnement pour la connexion à la base de données
+- Configurer les paramètres du pool de connexions
+- Désactiver les connexions de base de données pendant les tests
+
+Exemple de Configuration:
+[db.ts](mdc:src/db/models/db.ts)
+
+```ts
+import {drizzle} from 'drizzle-orm/node-postgres'
+import {Pool} from 'pg'
+
+import {env} from '@/env'
+import * as user from './user-model'
+import * as subscription from './subscription-model'
+
+const pool = new Pool({
+  connectionString: env.DATABASE_URL,
+  max: 20, // Limite de connexions
+  idleTimeoutMillis: 30_000, // Timeout pour connexions inactives
+  connectionTimeoutMillis: 10_000,
+})
+
+const db = drizzle(pool, {
+  schema: {
+    ...user,
+    ...subscription,
+    // ... autres modèles
+  },
+})
+
+if (env.NODE_ENV === 'test') {
+  throw new Error('Database connections are not allowed during tests.')
+}
+
+export default db
+```
+
+# Types de Domaine
+
+- Les types de domaine isolent les types Drizzle des couches supérieures
+- Permettent d'évoluer indépendamment les schémas de base de données
+- Situés dans `src/services/types/domain/`
+
+Exemple de Types de Domaine:
+[user-types.ts](mdc:src/services/types/domain/user-types.ts)
+
+```ts
+import {Session} from 'better-auth'
+import {AddUserModel, UpdateUserModel, UserModel} from '@/db/models/user-model'
+
+// Types de domaine découplés des types Drizzle
+export type User = UserModel
+export type UserRoles = User['role']
+export type UserVisibility = User['visibility']
+
+// Types pour les opérations
+export type CreateUser = Pick<AddUserModel, 'email' | 'name' | 'password'>
+export type UpdateUser = {
+  id: string
+} & Partial<Omit<UpdateUserModel, 'id'>>
+
+// DTO = Data Transfer Object pour la présentation
+export type UserDTO = {
+  id: string
+  email: string
+  name?: string
+  role?: string
+  image?: string
+}
+
+// Types d'authentification
+export type AuthUser = {
+  session?: Session
+  user?: User
+  role: UserRoles
+}
+```
+
+Exemple de Types de Domaine imbriqué avec relations :
+
+- Nommé le type EntityRelationData : exemple UserOrganizationData
+  [organization-types.ts](mdc:src/services/types/domain/organization-types.ts)
+
+```ts
+//entity organisation
+export type Organization = OrganizationModel
+//entity user/organisation (la relation n/n) mais contenant que les ID
+export type UserOrganization = UserOrganizationModel
+//entity user/organisation (la relation n/n) mais contenant les entités complètes (utile pour le system de query drizzle)
+export type UserOrganizationData = UserOrganizationModel & {
+  user?: UserModel
+  organization?: OrganizationModel
+}
+```
+
+# Pagination Unifiée
+
+La structure de pagination suit un format standardisé pour tous les repositories :
+
+```typescript
+// Structure de pagination uniforme
+return {
+  data: rows.length === 0 ? [] : rows,
+  pagination: {
+    total: count, // ← Nombre total d'éléments
+    page: page, // ← Page actuelle
+    limit: pagination.limit, // ← Éléments par page
+    totalPages: totalPages, // ← Nombre total de pages
+  },
+}
+```
+
+**Calculs automatiques dans chaque fonction de pagination :**
+
+```typescript
+const page = Math.floor(pagination.offset / pagination.limit) + 1
+const totalPages = Math.ceil(count / pagination.limit)
+```
+
+Cette structure garantit :
+
+- **Cohérence** entre tous les repositories
+- **Compatibilité** avec React Query et Server Components
+- **Performance** avec calculs centralisés
+
+# Bonnes Pratiques
+
+- **Inférence de type TypeScript** : Utiliser l'inférence de type pour la sécurité
+- **Pagination appropriée** : Implémenter une pagination correcte pour les requêtes de liste
+- **Gestion d'erreurs** : Gérer les erreurs de base de données de manière appropriée
+- **Focus sur l'accès aux données** : Garder les repositories concentrés sur l'accès aux données uniquement
+- **Hiérarchies de rôles** : Utiliser des hiérarchies de rôles pour le contrôle d'accès
+- **Isolation des modèles** : Ne jamais exposer directement les modèles de base de données
+- **Tests avec TestContainers** : Tester les repositories avec TestContainers pour l'isolation
+- **Nommage cohérent** : Suffixer les fonctions DAO avec `Dao`
+- **Types de retour explicites** : Toujours typer explicitement les retours des fonctions DAO
+- **Gestion des timestamps** : Mettre à jour automatiquement `updatedAt` lors des modifications

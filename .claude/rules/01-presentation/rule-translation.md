@@ -1,0 +1,375 @@
+---
+description:
+paths: messages/*.json
+---
+
+# Règle Traductions - Next-intl
+
+## Vue d'ensemble
+
+Ce projet utilise **Next-intl** pour gérer les traductions internationales. Le système est organisé de manière hiérarchique pour faciliter la maintenance et la cohérence des traductions.
+
+Key Principles
+
+- Traduire toutes les langues
+
+## Architecture des Traductions
+
+### Organisation des Fichiers de Traduction
+
+Les traductions sont stockées dans le dossier `messages/` avec un fichier par langue :
+
+```
+messages/
+├── fr.json     # Français (langue par défaut)
+├── en.json     # Anglais
+└── es.json     # Espagnol
+```
+
+### Structure Hiérarchique des Clés
+
+L'organisation des clés suit une hiérarchie logique basée sur l'architecture de l'application :
+
+#### 1. **Pages** (Niveau principal)
+
+```json
+{
+  "HomePage": {
+    "title": "Page d'accueil",
+    "description": "Description de la page"
+  },
+  "AccountPage": {
+    "title": "Mon Compte",
+    "profile": { ... },
+    "security": { ... }
+  }
+}
+```
+
+#### 2. **Composants** (Niveau secondaire)
+
+```json
+{
+  "AccountPage": {
+    "EditUserProfileForm": {
+      "name": {
+        "label": "Nom",
+        "placeholder": "Votre nom"
+      },
+      "form": {
+        "save": "Enregistrer",
+        "updating": "Mise à jour..."
+      }
+    }
+  }
+}
+```
+
+#### 3. **Composants UI ShadCN** (Clé séparée)
+
+```json
+{
+  "ui": {
+    "fileInput": {
+      "title": "Sélectionner un fichier",
+      "description": "Glissez-déposez ou cliquez pour sélectionner"
+    },
+    "button": {
+      "submit": "Soumettre",
+      "cancel": "Annuler"
+    }
+  }
+}
+```
+
+## ⚠️ Le contrat `next/root-params`
+
+Sous Cache Components, next-intl ne peut pas lire la locale dans le contexte de requête : ça rendrait
+tout l'arbre dynamique. Elle vient de `next/root-params` (`src/i18n/request.ts`). Trois règles en
+découlent, chacune payée d'une régression :
+
+1. **`[locale]` doit rester un root param.** Ne jamais réintroduire de `layout.tsx` au-dessus de
+   `src/app/[locale]/` : `root-params` cesserait de fonctionner et **plus aucune route ne serait
+   prerendue**. C'est la différence entre 25 et 151 routes statiques sur ce boilerplate.
+   Vérifier avec `pnpm exec next typegen` puis `.next/types/root-params.d.ts`.
+2. **`root-params` n'existe pas dans les Server Actions ni les Route Handlers.** Il y jette
+   (« can only be called in the context of a route »). Le fallback sur le cookie `NEXT_LOCALE` est
+   obligatoire, et **paresseux** : il ne s'évalue que si `root-params` a échoué, donc jamais pendant
+   un prerender.
+3. **Ne pas déstructurer `requestLocale` dans la signature de `getRequestConfig`.** next-intl le
+   résout en amont via `headers()`, ce qui casse toute page portant `'use cache'`.
+
+⚠️ Ni le build ni les e2e n'attrapent une régression sur ce point : les Server Actions ne sont jamais
+prerendues. Après un changement d'i18n, lancer `pnpm start` et exercer un formulaire qui passe par
+une Server Action traduite, **en lisant le log du serveur en direct**.
+
+## Utilisation Côté Serveur vs Côté Client
+
+### Traductions Côté Serveur (Server Components)
+
+Utilisez `getTranslations` pour les Server Components :
+
+```tsx
+// src/app/[locale]/(app)/account/settings/page.tsx
+import {getTranslations} from 'next-intl/server'
+
+export default async function Page() {
+  const t = await getTranslations('AccountSettingsPage')
+
+  return (
+    <div>
+      <h1>{t('title')}</h1>
+      <p>{t('settings.description')}</p>
+    </div>
+  )
+}
+```
+
+**Avantages :**
+
+- Traductions rendues côté serveur (SEO optimisé)
+- Pas de bundle JavaScript supplémentaire
+- Performance optimale
+
+### Traductions Côté Client (Client Components)
+
+Utilisez `useTranslations` pour les Client Components :
+
+```tsx
+// src/components/features/user/edit-user-settings.tsx
+'use client'
+
+import {useTranslations} from 'next-intl'
+
+export function EditUserSettingsForm({user}: {user: User}) {
+  const t = useTranslations('AccountSettingsPage')
+
+  return (
+    <form>
+      <label>{t('appearance.theme.label')}</label>
+      <button type="submit">
+        {isSubmitting ? t('form.updating') : t('form.updateSettings')}
+      </button>
+    </form>
+  )
+}
+```
+
+**Avantages :**
+
+- Traductions dynamiques
+- Support des interactions utilisateur
+- Mise à jour en temps réel
+
+## Conventions de Nommage
+
+### Clés de Pages
+
+- **Format** : `{PageName}`
+- **Exemple** : `HomePage`, `AccountPage`, `TermsPage`
+
+### Clés de Composants
+
+- **Format** : `{PageName}.{ComponentName}`
+- **Exemple** : `AccountPage.EditUserProfileForm`
+
+### Clés de Composants UI
+
+- **Format** : `ui.{componentName}.{property}`
+- **Exemple** : `ui.fileInput.title`, `ui.button.submit`
+
+### Clés de Sections
+
+- **Format** : `{PageName}.{SectionName}`
+- **Exemple** : `AccountPage.profile`, `AccountPage.security`
+
+## Exemples Concrets
+
+### Page avec Sections
+
+```json
+{
+  "AccountPage": {
+    "title": "Mon Compte",
+    "profile": {
+      "title": "Profil",
+      "description": "Gérez vos informations personnelles"
+    },
+    "security": {
+      "title": "Sécurité",
+      "description": "Paramètres de sécurité de votre compte"
+    }
+  }
+}
+```
+
+### Composant avec Formulaires
+
+```json
+{
+  "AccountPage": {
+    "EditUserProfileForm": {
+      "name": {
+        "label": "Nom",
+        "placeholder": "Votre nom"
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "Votre email"
+      },
+      "form": {
+        "save": "Enregistrer",
+        "updating": "Mise à jour...",
+        "success": "Succès",
+        "error": "Erreur"
+      }
+    }
+  }
+}
+```
+
+### Composants UI ShadCN
+
+```json
+{
+  "ui": {
+    "fileUpload": {
+      "title": "Télécharger un fichier",
+      "description": "Glissez-déposez ou cliquez pour sélectionner",
+      "uploading": "Téléchargement en cours...",
+      "success": "Fichier téléchargé avec succès",
+      "error": "Erreur de téléchargement"
+    }
+  }
+}
+```
+
+## Bonnes Pratiques
+
+### 1. **Organisation Hiérarchique**
+
+- Commencez toujours par la page
+- Puis les sections principales
+- Enfin les composants spécifiques
+
+### 2. **Nommage Cohérent**
+
+- Utilisez des noms descriptifs
+- Évitez les abréviations
+- Maintenez la cohérence entre les langues
+
+### 3. **Séparation des Responsabilités**
+
+- Composants UI dans la clé `ui`
+- Composants métier dans la clé de la page
+- Messages d'erreur dans des sous-clés dédiées
+
+### 4. **Gestion des États**
+
+```json
+{
+  "form": {
+    "updating": "Mise à jour...",
+    "success": "Succès",
+    "error": "Erreur"
+  }
+}
+```
+
+### 5. **Messages d'Erreur**
+
+```json
+{
+  "errors": {
+    "loadSessions": "Impossible de charger les sessions",
+    "revokeSession": "Impossible de révoquer la session"
+  }
+}
+```
+
+## Utilisation dans le Code
+
+### Server Component
+
+```tsx
+// Récupération des traductions
+const t = await getTranslations('AccountPage')
+
+// Utilisation
+<h1>{t('title')}</h1>
+<p>{t('profile.description')}</p>
+```
+
+### Client Component
+
+```tsx
+// Récupération des traductions
+const t = useTranslations('AccountPage.EditUserProfileForm')
+
+// Utilisation
+<label>{t('name.label')}</label>
+<button>{t('form.save')}</button>
+```
+
+### Composant UI
+
+```tsx
+// Récupération des traductions UI
+const t = useTranslations('ui.fileUpload')
+
+// Utilisation
+<div>{t('title')}</div>
+<p>{t('description')}</p>
+```
+
+## Gestion des Pluriels
+
+Next-intl supporte les pluriels avec ICU MessageFormat :
+
+```json
+{
+  "sessionCount": "{count, plural, =0 {Aucune session active} one {# session active} other {# sessions actives}}"
+}
+```
+
+## Validation des Traductions
+
+### Vérification de Complétude
+
+- Assurez-vous que toutes les clés existent dans toutes les langues
+- Utilisez des outils de validation pour détecter les clés manquantes
+
+### Tests de Traduction
+
+```tsx
+// Test de présence des clés
+expect(t('form.save')).toBeDefined()
+expect(t('form.updating')).toBeDefined()
+```
+
+## Maintenance
+
+### Ajout de Nouvelles Langues
+
+1. Créer le fichier `messages/{locale}.json`
+2. Copier la structure depuis `fr.json`
+3. Traduire toutes les valeurs
+4. Ajouter la locale dans la configuration Next-intl
+
+### Ajout de Nouvelles Clés
+
+1. Ajouter la clé dans `fr.json`
+2. Ajouter la clé dans tous les autres fichiers de langue
+3. Utiliser la clé dans le code
+4. Tester dans toutes les langues
+
+## Résumé
+
+- **Organisation** : Pages → Sections → Composants → UI
+- **Server Components** : `getTranslations` pour le rendu côté serveur
+- **Client Components** : `useTranslations` pour les interactions
+- **Composants UI** : Clé `ui` séparée pour la réutilisabilité
+- **Conventions** : Nommage hiérarchique et cohérent
+- **Maintenance** : Validation et tests réguliers
+
+Cette organisation garantit une maintenance facile et une cohérence des traductions dans toute l'application.

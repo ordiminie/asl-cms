@@ -1,0 +1,341 @@
+---
+title: 'API Keys & Bearer Tokens'
+description: 'Generate API keys and use bearer tokens for programmatic access to your application'
+keywords: 'ShipSaaS, API keys, authentication tokens, API security, programmatic access, API authentication'
+---
+
+API Keys and Bearer Tokens allow programmatic access to your application. Perfect for integrations, mobile apps, and automated scripts.
+
+<Callout type="success">
+  **Perfect for:** Third-party integrations, mobile apps, CI/CD scripts, and automated workflows.
+</Callout>
+
+## How to Activate
+
+<Steps>
+<Step title="Enable token management">
+  ```bash
+  # Enable API key management in user settings
+  NEXT_PUBLIC_BETTER_AUTH_TOKEN_MANAGEMENT=true
+  ```
+</Step>
+
+<Step title="That's it!">
+  API key management automatically appears in user settings at `/[locale]/account/api-keys`.
+
+  <Image src="/docs/04/api-key-list.png" alt="API keys management interface" />
+</Step>
+</Steps>
+
+## Types of Authentication Tokens
+
+<Tabs defaultValue="api-keys">
+  <Tab value="api-keys" label="🔑 API Keys">
+    **Long-lived tokens for applications**
+
+    **Characteristics:**
+    - Custom names and descriptions
+    - Long expiration (or no expiration)
+    - User-managed (create/delete anytime)
+    - Perfect for server-to-server communication
+
+    **Best for:** Backend integrations, scheduled jobs, third-party services
+  </Tab>
+
+  <Tab value="bearer-tokens" label="🎫 Bearer Tokens">
+    **JWT tokens for temporary access**
+
+    **Characteristics:**
+    - Short-lived (configurable expiration)
+    - Stateless JWT format
+    - Include user permissions and metadata
+    - Automatically refresh-able
+
+    **Best for:** Mobile apps, SPAs, temporary access, session-based auth
+  </Tab>
+</Tabs>
+
+## Managing API Keys
+
+### Creating API Keys
+
+<Steps>
+<Step title="Go to API Keys page">
+  User visits `/[locale]/account/api-keys` in their account settings.
+</Step>
+
+<Step title="Create new API key">
+  Click "Generate New API Key" button.
+</Step>
+
+<Step title="Configure the key">
+  - **Name:** Give it a descriptive name (e.g., "Mobile App", "CI/CD Pipeline")
+  - **Description:** Optional notes about usage
+  - **Expiration:** Set expiration date or leave indefinite
+</Step>
+
+<Step title="Copy and store securely">
+  API key is generated and displayed **once only**. User must copy and store it securely.
+
+  <Image src="/docs/04/APIkay-generate.png" alt="API key creation interface" width={600} />
+</Step>
+</Steps>
+
+<Callout type="warning">
+  **Important:** API keys are shown only once during creation. If lost, the key must be deleted and recreated.
+</Callout>
+
+### API Key Management Features
+
+**User can:**
+- **View all keys** - See name, creation date, last used
+- **Delete keys** - Instantly revoke access
+- **Edit metadata** - Update name and description
+- **Track usage** - See when each key was last used
+
+**Security features:**
+- Keys are hashed in database
+- Usage tracking with timestamps
+- Instant revocation capability
+- Rate limiting per key
+
+**API Key Generation Interface:**
+<Image src="/docs/04/api-key.png" alt="Generate new API key interface" width={400} />
+
+## Using Tokens for API Access
+
+### API Key Authentication
+
+<Tabs defaultValue="curl">
+  <Tab value="curl" label="cURL">
+    ```bash
+    # Using API key in Authorization header
+    curl -H "Authorization: Bearer your-api-key-here" \
+         https://yourdomain.com/api/protected-endpoint
+
+    # Alternative: Using API key header
+    curl -H "X-API-Key: your-api-key-here" \
+         https://yourdomain.com/api/protected-endpoint
+    ```
+  </Tab>
+
+  <Tab value="javascript" label="JavaScript">
+    ```javascript
+    // Using fetch with API key
+    const response = await fetch('/api/protected-endpoint', {
+      headers: {
+        'Authorization': 'Bearer your-api-key-here',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+    ```
+  </Tab>
+
+  <Tab value="python" label="Python">
+    ```python
+    import requests
+
+    headers = {
+        'Authorization': 'Bearer your-api-key-here',
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.get('https://yourdomain.com/api/protected-endpoint',
+                          headers=headers)
+    data = response.json()
+    ```
+  </Tab>
+</Tabs>
+
+### Bearer Token Authentication
+
+Bearer tokens are typically obtained through login and used for subsequent API calls:
+
+```javascript
+// 1. Login to get bearer token
+const loginResponse = await fetch('/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, password })
+});
+
+const { token } = await loginResponse.json();
+
+// 2. Use bearer token for API calls
+const apiResponse = await fetch('/api/user/profile', {
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+## Better Auth Integration
+
+The token system uses Better Auth's `apiKey` and `bearer` plugins:
+
+### API Key Plugin
+```typescript
+// In src/lib/better-auth/auth.ts
+apiKey() // Enables API key generation and management
+```
+
+### Bearer Plugin
+```typescript
+// In src/lib/better-auth/auth.ts
+bearer() // Enables JWT bearer token support
+```
+
+### Token Validation
+```typescript
+// Example API route protection
+import { auth } from '@/lib/better-auth/auth'
+
+export async function GET(request: Request) {
+  const session = await auth.api.getSession({ headers: request.headers })
+
+  if (!session) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
+  // API logic here
+  return Response.json({ data: 'protected data' })
+}
+```
+
+## Security Best Practices
+
+<Callout type="info">
+  **Built-in security features:**
+  - API keys are securely hashed in database
+  - Rate limiting prevents abuse
+  - Usage tracking for audit trails
+  - Instant revocation capability
+</Callout>
+
+### For Developers
+
+**API Key Security:**
+- Store keys in environment variables, never in code
+- Use different keys for different environments (dev/prod)
+- Rotate keys regularly
+- Delete unused keys immediately
+
+**Bearer Token Security:**
+- Tokens have automatic expiration
+- Store securely (httpOnly cookies for web, keychain for mobile)
+- Implement refresh token logic
+- Never log tokens in application logs
+
+### For Users
+
+**Key Management:**
+- Use descriptive names for tracking
+- Delete keys for decommissioned applications
+- Monitor usage regularly
+- Report suspicious activity
+
+## API Endpoints
+
+The boilerplate includes standard API endpoints for token management:
+
+```typescript
+// Token management endpoints
+POST /api/auth/api-key/create    // Create new API key
+GET  /api/auth/api-key/list      // List user's API keys
+DELETE /api/auth/api-key/revoke  // Delete specific key
+
+// Bearer token endpoints
+POST /api/auth/login             // Get bearer token via login
+POST /api/auth/refresh           // Refresh bearer token
+POST /api/auth/logout            // Invalidate bearer token
+```
+
+## Common Issues & Solutions
+
+<Callout type="error">
+  **"Invalid API key" error?**
+
+  - Check key is correctly copied (no extra spaces)
+  - Verify key hasn't been deleted or expired
+  - Ensure proper Authorization header format
+  - Check if key has required permissions
+</Callout>
+
+<Callout type="warning">
+  **"Token expired" error?**
+
+  - Bearer tokens have limited lifespan
+  - Implement automatic token refresh
+  - Check system clock synchronization
+  - Use refresh tokens for long-running apps
+</Callout>
+
+<Callout type="info">
+  **API key management not visible?**
+
+  - Verify `NEXT_PUBLIC_BETTER_AUTH_TOKEN_MANAGEMENT=true`
+  - Check user has permission to generate keys
+  - Restart server after environment changes
+  - Ensure user is logged in and verified
+</Callout>
+
+## Testing Checklist
+
+<Steps>
+<Step title="Test API key creation">
+  1. Go to `/[locale]/account/api-keys`
+  2. Create new API key with custom name
+  3. Copy key and verify it's only shown once
+  4. Test API call with new key
+</Step>
+
+<Step title="Test API key usage">
+  1. Make authenticated API call with key
+  2. Try invalid key (should get 401 error)
+  3. Test different API endpoints
+  4. Verify usage tracking updates
+</Step>
+
+<Step title="Test key management">
+  1. View list of all created keys
+  2. Delete unused key
+  3. Verify deleted key no longer works
+  4. Test key with expiration date
+</Step>
+</Steps>
+
+## Integration Examples
+
+### Mobile App Integration
+```javascript
+// Store API key securely in mobile app
+const API_KEY = await SecureStore.getItemAsync('api_key');
+
+const fetchUserData = async () => {
+  const response = await fetch('/api/user/profile', {
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  return response.json();
+};
+```
+
+### CI/CD Pipeline Integration
+```yaml
+# GitHub Actions example
+- name: Deploy with API
+  env:
+    API_KEY: ${{ secrets.API_KEY }}
+  run: |
+    curl -H "Authorization: Bearer $API_KEY" \
+         -X POST https://yourdomain.com/api/deploy
+```
+
+<Callout type="success">
+  **All working?** Your application now supports secure programmatic access via API keys and bearer tokens!
+</Callout>

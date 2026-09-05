@@ -1,0 +1,269 @@
+---
+title: 'Two-Factor Authentication (2FA)'
+description: 'Add extra security with TOTP apps and email codes for enhanced account protection'
+keywords: 'ShipSaaS, 2FA, two-factor authentication, TOTP, security, MFA, authentication security'
+---
+
+Two-Factor Authentication adds an extra security layer. Users need both their password AND a code from their phone or email to login.
+
+<Callout type="success">
+  **Perfect for:** High-security applications, protecting sensitive data, and meeting compliance requirements.
+</Callout>
+
+## How to Activate
+
+<Steps>
+<Step title="Enable 2FA in environment">
+  ```bash
+  # Enable 2FA feature
+  NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE=true
+
+  # Optional: Skip email verification when enabling 2FA
+  NEXT_PUBLIC_BETTER_AUTH_2FA_SKIP_VERIFICATION_ON_ENABLE=true
+
+  # Required for email codes
+  RESEND_API_KEY="re_your_resend_api_key"
+  EMAIL_FROM="noreply@yourdomain.com"
+  ```
+</Step>
+
+<Step title="That's it!">
+  2FA options automatically appear in user account settings at `/[locale]/account/settings`.
+
+  <Image src="/docs/04/2FA-enable.png" alt="2FA enable options in account settings" />
+</Step>
+</Steps>
+
+## Types of 2FA Available
+
+<Tabs defaultValue="totp">
+  <Tab value="totp" label="TOTP (Recommended)">
+    **Authenticator Apps:**
+    - Google Authenticator
+    - Microsoft Authenticator
+    - Authy
+    - 1Password
+
+    **How it works:**
+    - User scans QR code with app
+    - App generates 6-digit codes every 30 seconds
+    - User enters current code to login
+  </Tab>
+
+  <Tab value="otp" label="Email Codes">
+    **Email-based codes:**
+    - 6-digit codes sent via email
+    - 5-minute expiration
+    - Good backup option
+
+    **How it works:**
+    - User requests email code
+    - Code sent to registered email
+    - User enters code to login
+  </Tab>
+</Tabs>
+
+## How Users Set Up 2FA
+
+### Enabling TOTP (Authenticator App)
+
+<Steps>
+<Step title="Go to account settings">
+  User visits `/[locale]/account/settings` and finds the "Two-Factor Authentication" section.
+</Step>
+
+<Step title="Choose TOTP setup">
+  Click "Enable TOTP" button to start the setup process.
+    <Image src="/docs/04/2FA-enable.png" alt="TOTP setup with QR code interface"  />
+</Step>
+
+<Step title="Scan QR code">
+  - QR code is displayed on screen
+  - User scans with authenticator app
+  - App adds the account automatically
+
+  <Image src="/docs/04/2FA-qr-only.png" alt="TOTP setup with QR code interface"  />
+</Step>
+
+<Step title="Verify with first code">
+  User enters the 6-digit code from their app to confirm setup.
+</Step>
+
+<Step title="Save backup codes">
+  System generates recovery codes that user must save safely.
+
+  <Image src="/docs/04/2FA-token.png" alt="2FA backup codes generation interface" width={600} />
+</Step>
+</Steps>
+
+### Backup Recovery Codes
+
+<Callout type="warning">
+  **Important:** Recovery codes are generated when enabling 2FA. Users must save them securely - they're the only way to recover access if the authenticator app is lost.
+</Callout>
+
+**Recovery codes features:**
+- 10 single-use codes generated
+- Can be used instead of TOTP code
+- User can regenerate new codes anytime
+- Each code works only once
+
+## Login Process with 2FA
+
+### Standard Login Flow
+
+<Steps>
+<Step title="Enter email and password">
+  User starts with normal login at `/[locale]/login`.
+</Step>
+
+<Step title="Redirect to 2FA verification">
+  After successful password, user is redirected to `/[locale]/verify-request/totp`.
+</Step>
+
+<Step title="Enter 2FA code">
+  User enters 6-digit code from their authenticator app or email.
+</Step>
+
+<Step title="Complete login">
+  After valid code, user is logged in and redirected to dashboard.
+</Step>
+</Steps>
+
+### Recovery Process
+
+If user loses access to their authenticator app:
+
+<Steps>
+<Step title="Use recovery code">
+  On the 2FA verification page, click "Use recovery code instead".
+</Step>
+
+<Step title="Enter recovery code">
+  User enters one of their saved backup codes.
+</Step>
+
+<Step title="Access granted">
+  User is logged in and should immediately set up 2FA again.
+</Step>
+</Steps>
+
+## 2FA Management
+
+### User Settings Page
+
+**Location:** `/[locale]/account/settings`
+
+**Available options:**
+- **Enable TOTP** - Set up authenticator app
+- **Enable Email OTP** - Set up email codes
+- **View Recovery Codes** - Show/regenerate backup codes
+- **Disable 2FA** - Turn off two-factor authentication
+
+**2FA Management Interface:**
+<Image src="/docs/04/2FA-opt-totp.png" alt="Complete 2FA management interface"  />
+
+### Verification Pages
+
+The boilerplate includes dedicated verification pages:
+
+- `/[locale]/verify-request/totp` - Enter authenticator code
+- `/[locale]/verify-request/otp` - Enter email code
+- `/[locale]/verify-request/recovery` - Enter recovery code
+
+## Better Auth Configuration
+
+The 2FA feature uses Better Auth's `twoFactor` plugin:
+
+```typescript
+// In src/lib/better-auth/auth.ts
+twoFactor({
+  issuer: APP_ISSUER,
+  skipVerificationOnEnable: AuthAppConfig.skipVerificationOnEnable,
+  totpOptions: {},
+  otpOptions: {
+    period: 300, // 5 minutes expiration
+    sendOTP: async ({user, otp}) => {
+      const otpLink = `${env.NEXT_PUBLIC_APP_URL}/verify-request/otp?code=${otp}`
+      await createTypedNotificationService({
+        userId: user.id,
+        type: NotificationTypeConst.otp_code,
+        metadata: { otp, otpLink }
+      })
+    }
+  }
+})
+```
+
+## Security Best Practices
+
+<Callout type="info">
+  **Built-in security features:**
+  - TOTP codes change every 30 seconds
+  - Email codes expire in 5 minutes
+  - Recovery codes are single-use only
+  - Rate limiting prevents brute force attacks
+</Callout>
+
+**User recommendations:**
+- Use authenticator apps over email when possible
+- Save recovery codes in a secure location
+- Don't screenshot QR codes
+- Regenerate recovery codes if compromised
+
+## Common Issues & Solutions
+
+<Callout type="error">
+  **"Invalid code" errors?**
+
+  - Check device time is synchronized
+  - Try the next code (wait 30 seconds)
+  - Use recovery code if TOTP keeps failing
+  - Re-scan QR code in authenticator app
+</Callout>
+
+<Callout type="warning">
+  **Lost authenticator app?**
+
+  - Use saved recovery codes to login
+  - Disable and re-enable 2FA after login
+  - Generate new recovery codes
+  - Set up authenticator app again
+</Callout>
+
+<Callout type="info">
+  **Email codes not arriving?**
+
+  - Check `RESEND_API_KEY` is configured
+  - Verify email service is working
+  - Look in spam/junk folders
+  - Try requesting new code
+</Callout>
+
+## Testing Checklist
+
+<Steps>
+<Step title="Test TOTP setup">
+  1. Go to `/[locale]/account/settings`
+  2. Enable TOTP with authenticator app
+  3. Save recovery codes
+  4. Test login with TOTP code
+</Step>
+
+<Step title="Test recovery codes">
+  1. Login with email/password
+  2. Use recovery code instead of TOTP
+  3. Verify access is granted
+  4. Check code is marked as used
+</Step>
+
+<Step title="Test email OTP">
+  1. Enable email OTP in settings
+  2. Test login with email code
+  3. Verify 5-minute expiration works
+</Step>
+</Steps>
+
+<Callout type="success">
+  **All working?** Your users now have military-grade security with easy-to-use two-factor authentication!
+</Callout>

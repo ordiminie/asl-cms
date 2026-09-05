@@ -1,0 +1,394 @@
+---
+description:
+paths: **action**
+---
+
+# Sécurisation des Server Actions avec requireActionAuth()
+
+Guide complet pour sécuriser les Server Actions avec la fonction `requireActionAuth()` dans Next.js 16.
+
+## Principe de Sécurité
+
+Toute Server Action réservée à un utilisateur connecté ou réalisant une
+opération privilégiée DOIT appeler `requireActionAuth()` avant d'exécuter la
+logique métier, même si le service vérifie aussi les autorisations.
+
+Une Server Action peut être explicitement publique lorsque le parcours métier
+l'exige, par exemple pour un formulaire de contact, une inscription à la
+newsletter, une consultation de documentation ou un checkout invité. Cette
+exception doit rester volontaire et limitée : validation serveur stricte,
+limitation de débit lorsque l'action écrit ou déclenche un service externe, et
+aucune opération administrative ou privilégiée. Une action publique ne doit
+jamais créer ou modifier une ressource Stripe de catalogue, un rôle, un crédit,
+un paramètre d'application ou une ressource appartenant à un autre utilisateur.
+
+## Fonction requireActionAuth()
+
+La fonction [requireActionAuth()](src/app/dal/user-dal.ts) est définie dans le DAL et assure :
+
+- **Vérification de l'authentification** de l'utilisateur
+- **Vérification des rôles** (optionnel)
+- **Gestion des erreurs d'autorisation**
+- **Retour de l'utilisateur authentifié**
+
+```tsx
+// Définition dans user-dal.ts
+export async function requireActionAuth(options?: RequireAuthOptions) {
+  const user = await getAuthUser()
+
+  if (!user) {
+    throw new AuthorizationError('Utilisateur non authentifié')
+  }
+
+  if (
+    options?.roles &&
+    !hasRequiredRoles(user, options.roles as unknown as Roles[])
+  ) {
+    throw new AuthorizationError('Accès interdit')
+  }
+
+  return user
+}
+```
+
+## Patterns d'Utilisation
+
+### 1. Authentification Simple (Actions Utilisateur)
+
+Pour les actions où seule l'authentification est requise :
+
+**Référence : [user/action.ts](src/components/features/user/action.ts)**
+
+```tsx
+'use server'
+
+import {requireActionAuth} from '@/app/dal/user-dal'
+
+export async function updateUserAction(
+  prevState?: FormState,
+  formData?: FormData
+): Promise<FormState> {
+  // ✅ OBLIGATOIRE - Vérification d'authentification en premier
+  const user = await requireActionAuth()
+
+  if (!formData) {
+    return {success: false, message: 'Données invalides'}
+  }
+
+  // Logique métier seulement après authentification
+  try {
+    await updateUserService(validatedData)
+    revalidatePath('/account')
+    return {success: true, message: 'Profil mis à jour avec succès'}
+  } catch (error) {
+    return {success: false, message: 'Échec de la mise à jour'}
+  }
+}
+```
+
+### 2. Authentification avec Rôles (Actions Admin)
+
+Pour les actions nécessitant des rôles spécifiques :
+
+**Référence : [admin/users/actions.ts](src/app/[locale]/admin/users/actions.ts)**
+
+```tsx
+'use server'
+
+import {requireActionAuth} from '@/app/dal/user-dal'
+import {RoleConst} from '@/services/types/domain/auth-types'
+
+export async function updateUserAction(
+  userId: string,
+  prevState?: FormState,
+  formData?: FormData
+): Promise<FormState> {
+  // ✅ OBLIGATOIRE - Vérification avec rôles spécifiques
+  await requireActionAuth({
+    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+  })
+
+  if (!formData) {
+    return {success: false, message: 'Données invalides'}
+  }
+
+  // Logique métier pour admin seulement
+  try {
+    await updateUserService(userData)
+    revalidatePath('/admin/users')
+    return {success: true, message: 'Utilisateur mis à jour avec succès'}
+  } catch (error) {
+    return {success: false, message: 'Erreur lors de la mise à jour'}
+  }
+}
+```
+
+### 3. Actions avec Utilisateur Retourné
+
+Quand vous avez besoin des informations utilisateur :
+
+**Référence : [organization/action.ts](src/components/features/organization/action.ts)**
+
+```tsx
+'use server'
+
+import {requireActionAuth} from '@/app/dal/user-dal'
+
+export async function updateOrganizationAction(
+  prevState?: FormState,
+  formData?: FormData
+): Promise<FormState> {
+  // ✅ Récupération de l'utilisateur authentifié
+  const user = await requireActionAuth()
+
+  if (!user) {
+    return {success: false, message: 'Utilisateur non trouvé'}
+  }
+
+  // Utilisation des infos utilisateur dans la logique
+  try {
+    await updateOrganizationService({
+      ...validatedData,
+      updatedBy: user.id,
+    })
+    return {success: true, message: 'Organisation mise à jour'}
+  } catch (error) {
+    return {success: false, message: 'Échec de la mise à jour'}
+  }
+}
+```
+
+## Template Standard de Server Action Sécurisée
+
+```tsx
+'use server'
+
+import {revalidatePath} from 'next/cache'
+import {requireActionAuth} from '@/app/dal/user-dal'
+import {RoleConst} from '@/services/types/domain/auth-types'
+
+export type FormState = {
+  success: boolean
+  errors?: Array<{field: string; message: string}>
+  message?: string
+}
+
+export async function secureAction(
+  prevState?: FormState,
+  formData?: FormData
+): Promise<FormState> {
+  try {
+    // 1. SÉCURITÉ OBLIGATOIRE - Premier contrôle
+    const user = await requireActionAuth({
+      roles: [RoleConst.USER], // Optionnel selon les besoins
+    })
+
+    // 2. VALIDATION DES DONNÉES
+    if (!formData) {
+      return {success: false, message: 'Données invalides'}
+    }
+
+    // 3. VALIDATION ZOD
+    const validationResult = schema.safeParse(data)
+    if (!validationResult.success) {
+      return {
+        success: false,
+        message: 'Erreur de validation',
+        errors: validationResult.error.errors.map((err) => ({
+          field: err.path[0] as string,
+          message: err.message,
+        })),
+      }
+    }
+
+    // 4. LOGIQUE MÉTIER VIA FACADE
+    await serviceAction(validationResult.data)
+
+    // 5. REVALIDATION
+    revalidatePath('/target-path')
+
+    return {success: true, message: 'Action réussie'}
+  } catch (error) {
+    // 6. GESTION DES ERREURS D'AUTORISATION
+    if (error instanceof AuthorizationError) {
+      return {
+        success: false,
+        message: 'Accès non autorisé',
+      }
+    }
+
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Erreur inconnue',
+    }
+  }
+}
+```
+
+## Types d'Options Disponibles
+
+```tsx
+// Types pour requireActionAuth
+type RequireAuthOptions = {
+  roles?: Roles[] // Rôles requis (optionnel)
+}
+
+// Rôles disponibles
+enum RoleConst {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+}
+```
+
+## Règles Strictes à Respecter
+
+### ✅ À FAIRE
+
+1. **Toujours appeler `requireActionAuth()` en premier**
+
+```tsx
+export async function myAction() {
+  const user = await requireActionAuth() // ✅ PREMIER appel
+  // ... logique métier
+}
+```
+
+2. **Spécifier les rôles nécessaires**
+
+```tsx
+await requireActionAuth({
+  roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+}) // ✅ Rôles explicites
+```
+
+3. **Gérer les erreurs d'autorisation**
+
+```tsx
+try {
+  await requireActionAuth()
+} catch (error) {
+  if (error instanceof AuthorizationError) {
+    return {success: false, message: 'Accès refusé'}
+  }
+} // ✅ Gestion appropriée
+```
+
+### ❌ À ÉVITER
+
+1. **Ne jamais oublier la sécurisation**
+
+```tsx
+export async function myAction() {
+  // ❌ DANGER - Pas de vérification d'auth
+  await someService()
+}
+```
+
+2. **Ne pas vérifier après la logique métier**
+
+```tsx
+export async function myAction() {
+  await someService() // ❌ Logique avant sécurité
+  await requireActionAuth()
+}
+```
+
+3. **Ne pas ignorer les erreurs d'autorisation**
+
+```tsx
+try {
+  await requireActionAuth()
+} catch (error) {
+  // ❌ Ignorer l'erreur et continuer
+  console.log(error)
+}
+await unsecuredService() // ❌ DANGER
+```
+
+## Patterns Avancés
+
+### Action avec Vérifications Multiples
+
+```tsx
+export async function complexAction(resourceId: string) {
+  // 1. Auth globale
+  const user = await requireActionAuth({
+    roles: [RoleConst.USER],
+  })
+
+  // 2. Vérification spécifique à la ressource
+  const canAccess = await canAccessResource(user.id, resourceId)
+  if (!canAccess) {
+    return {success: false, message: 'Accès à la ressource refusé'}
+  }
+
+  // 3. Logique métier
+  // ...
+}
+```
+
+### Action avec Permissions Granulaires
+
+```tsx
+export async function updateResourceAction(resourceId: string) {
+  const user = await requireActionAuth()
+
+  // Vérification via service d'autorisation
+  const canUpdate = await canUpdateResource(user.id, resourceId)
+  if (!canUpdate) {
+    return {success: false, message: 'Permission insuffisante'}
+  }
+
+  // Logique métier
+  // ...
+}
+```
+
+## Gestion d'Erreurs Standardisée
+
+```tsx
+import {AuthorizationError} from '@/services/errors/authorization-error'
+
+export async function secureAction() {
+  try {
+    await requireActionAuth()
+    // logique métier
+  } catch (error) {
+    // Erreurs d'autorisation
+    if (error instanceof AuthorizationError) {
+      return {
+        success: false,
+        message: "Vous n'êtes pas autorisé à effectuer cette action",
+      }
+    }
+
+    // Autres erreurs
+    return {
+      success: false,
+      message: 'Une erreur inattendue est survenue',
+    }
+  }
+}
+```
+
+## Bonnes Pratiques
+
+1. **Sécurité en Premier** : Toujours `requireActionAuth()` avant toute logique
+2. **Rôles Explicites** : Spécifier clairement les rôles requis
+3. **Messages d'Erreur Clairs** : Retourner des messages utilisateur compréhensibles
+4. **Logging Approprié** : Logger les tentatives d'accès non autorisées
+5. **Tests de Sécurité** : Tester les scénarios d'accès refusé
+6. **Principe du Moindre Privilège** : Accorder uniquement les permissions nécessaires
+
+## Checklist de Sécurité Server Action
+
+- [ ] `requireActionAuth()` appelé en premier
+- [ ] Rôles appropriés spécifiés si nécessaire
+- [ ] Gestion des `AuthorizationError`
+- [ ] Validation des données après auth
+- [ ] Messages d'erreur appropriés
+- [ ] Revalidation des chemins concernés
+- [ ] Tests de sécurité implémentés
+
+Cette approche garantit que toutes les Server Actions sont correctement sécurisées et respectent les principes d'autorisation de l'application.

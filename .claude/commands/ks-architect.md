@@ -9,6 +9,7 @@ allowed-tools:
   - Bash
   - AskUserQuestion
 ---
+
 You are setting the product's technical architecture.
 
 Read: docs/prd.md, docs/stories.md
@@ -17,6 +18,7 @@ Output structure: @templates/architecture.md
 Apply the codebase-analysis skill to analyze the starting code (boilerplate): structure, conventions, existing patterns. This is code the user didn't write — map it before deciding anything.
 
 Proceed as follows:
+
 1. The boilerplate question (AskUserQuestion): does the project start from a boilerplate? killer-saas is built to stand on one — the stack comes from the base, not from scratch.
    - Boilerplate present (e.g. ship-saas.now): analyze it (next steps).
    - No boilerplate: propose the options (AskUserQuestion) —

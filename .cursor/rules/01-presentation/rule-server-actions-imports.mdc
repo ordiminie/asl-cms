@@ -1,0 +1,273 @@
+---
+description: 
+globs: **action**
+alwaysApply: false
+---
+
+# Server Actions - Règles d'Importation
+
+Cette rule définit ce que les Server Actions peuvent importer et les bonnes pratiques à suivre.
+
+## Règles Générales
+
+### ✅ AUTORISÉ - Importations Légitimes
+
+#### 1. Next.js Core et React
+
+```typescript
+'use server'
+
+// Next.js utilities et hooks
+import {redirect} from 'next/navigation'
+import {revalidatePath, revalidateTag} from 'next/cache'
+import {headers, cookies} from 'next/headers'
+import {notFound} from 'next/navigation'
+
+// React utilities (limité)
+import {cache} from 'react'
+```
+
+#### 2. Validation et Schémas
+
+```typescript
+'use server'
+
+// Schémas de validation Zod
+import {userFormSchema} from './user-form-validation'
+import {authLoginFormSchema} from '@/components/features/auth/auth-form-validation'
+
+// Zod pour validation supplémentaire
+import {z} from 'zod'
+```
+
+#### 3. Services et Façades (Architecture)
+
+```typescript
+'use server'
+
+// Services façades (couche d'abstraction)
+import {
+  getUserByEmailService,
+  createUserService,
+  updateUserService,
+} from '@/services/facades/user-service-facade'
+
+// Services d'authentification
+import {getAuthUser} from '@/services/authentication/auth-service'
+
+// Types de domaine
+import {UpdateUser, User} from '@/services/types/domain/user-types'
+```
+
+#### 4. Bibliothèques Externes (APIs)
+
+```typescript
+'use server'
+
+// APIs externes nécessaires (Stripe, etc.)
+import Stripe from 'stripe'
+
+// Auth providers
+import {signIn, signOut} from '@/lib/auth'
+
+// Utilitaires spécifiques
+import {isRedirectError} from 'next/dist/client/components/redirect-error'
+```
+
+#### 5. Variables d'Environnement
+
+```typescript
+'use server'
+import {env} from '@/env'
+
+// Configuration depuis variables d'environnement
+const stripeSecretKey = env.STRIPE_SECRET_KEY
+const databaseUrl = env.DATABASE_URL
+```
+
+### ❌ INTERDIT - Importations Prohibées
+
+```ts
+// ❌ INTERDIT - next/root-params
+import * as rootParams from 'next/root-params'
+// Jette dans une Server Action : « can only be called in the context of a route ».
+// La locale se lit via getTranslations, qui retombe sur le cookie NEXT_LOCALE.
+// Voir rule-translation.md, section « Le contrat next/root-params ».
+```
+
+#### 1. Composants React Client
+
+```typescript
+'use server'
+
+// ❌ INTERDIT - Composants UI
+import {Button} from '@/components/ui/button'
+import {Input} from '@/components/ui/input'
+import {Card} from '@/components/ui/card'
+
+// ❌ INTERDIT - Composants features client
+import {UserProfile} from '@/components/features/user/user-profile'
+```
+
+#### 2. Hooks React Client
+
+```typescript
+'use server'
+
+// ❌ INTERDIT - Hooks client-side
+import {useState, useEffect, useContext} from 'react'
+import {useForm} from 'react-hook-form'
+import {useActionState, useFormStatus} from 'react-dom'
+import {useTheme} from 'next-themes'
+import {toast} from 'sonner'
+```
+
+#### 3. APIs Browser/Client
+
+```typescript
+'use server'
+
+// ❌ INTERDIT - APIs du navigateur
+import {localStorage, sessionStorage} from 'web-apis'
+// ❌ INTERDIT - Document/Window
+import {document, window} from 'browser-globals'
+```
+
+#### 4. Accès Direct à la Persistance
+
+```typescript
+'use server'
+
+// ❌ INTERDIT - Repositories directs (contourne l'architecture)
+import {userRepository} from '@/db/repositories/user-repository'
+import {db} from '@/db/drizzle'
+
+// ❌ INTERDIT - Modèles Drizzle directs
+import {usersTable} from '@/db/models/user-model'
+```
+
+#### 5. Context Providers
+
+```typescript
+'use server'
+
+// ❌ INTERDIT - Providers React
+import {ThemeProvider} from '@/components/context/theme-provider'
+import {AuthProvider} from '@/components/context/auth-provider'
+```
+
+## Architecture à Respecter
+
+### Flow Recommandé pour Server Actions
+
+```typescript
+'use server'
+
+// 1. Validation (schémas Zod)
+import {userFormSchema} from './validation'
+
+// 2. Authentification
+import {getAuthUser} from '@/services/authentication/auth-service'
+
+// 3. Logique métier via façades
+import {updateUserService} from '@/services/facades/user-service-facade'
+
+// 4. Types de domaine
+import {UpdateUser} from '@/services/types/domain/user-types'
+
+// 5. Cache invalidation
+import {revalidatePath} from 'next/cache'
+
+export async function updateUserAction(formData: FormData) {
+  // Validation
+  const validation = userFormSchema.safeParse(data)
+
+  // Authentification
+  const user = await getAuthUser()
+
+  // Logique métier via service
+  await updateUserService(validatedData)
+
+  // Cache invalidation
+  revalidatePath('/profile')
+}
+```
+
+## Exemples de Bonnes Pratiques
+
+### ✅ Server Action Correcte
+
+```typescript
+'use server'
+
+import {revalidatePath} from 'next/cache'
+import {redirect} from 'next/navigation'
+
+import {getAuthUser} from '@/services/authentication/auth-service'
+import {updateUserService} from '@/services/facades/user-service-facade'
+import {UpdateUser} from '@/services/types/domain/user-types'
+
+import {userFormSchema} from './user-form-validation'
+
+export async function updateUserAction(formData: FormData) {
+  // Authentification
+  const user = await getAuthUser()
+  if (!user) {
+    redirect('/login')
+  }
+
+  // Validation
+  const validation = userFormSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+  })
+
+  if (!validation.success) {
+    return {success: false, errors: validation.error.errors}
+  }
+
+  // Logique métier
+  try {
+    await updateUserService(validation.data)
+    revalidatePath('/profile')
+    return {success: true}
+  } catch (error) {
+    return {success: false, message: 'Update failed'}
+  }
+}
+```
+
+### ❌ Server Action Incorrecte
+
+```typescript
+'use server'
+
+// ❌ Import de composant UI
+import {Button} from '@/components/ui/button'
+// ❌ Import de hook client
+import {useToast} from '@/components/hooks/use-toast'
+// ❌ Import direct repository
+import {userRepository} from '@/db/repositories/user-repository'
+
+export async function badUpdateUserAction(formData: FormData) {
+  // ❌ Accès direct à la base sans passer par les services
+  const user = await userRepository.findById(userId)
+
+  // ❌ Tentative d'utilisation d'APIs client
+  const toast = useToast() // Erreur !
+
+  return {success: true}
+}
+```
+
+## Résumé des Règles
+
+1. **Utilisez uniquement les façades** (`@/services/facades/`) pour la logique métier
+2. **Validez avec Zod** depuis des schémas dédiés
+3. **Authentifiez via** `@/services/authentication/auth-service`
+4. **Invalideez le cache** avec `revalidatePath` ou `revalidateTag`
+5. **Redirigez avec** `redirect` de Next.js
+6. **Évitez tout import** de composants UI, hooks client, ou accès direct à la persistance
+7. **Respectez l'architecture en couches** définie dans le projet
+
+Cette approche garantit la sécurité, la maintenabilité et la cohérence architecturale de vos Server Actions.

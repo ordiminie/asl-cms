@@ -1,0 +1,218 @@
+name: Preview Deployment
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    environment: Preview
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Rules alignment
+        run: pnpm check:rules
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Database
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+          # Auth
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: https://preview.example.com
+
+          # Email
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: noreply@example.com
+          EMAIL_TO: admin@example.com
+
+          # Logging
+          LOG_LEVEL: info
+
+          # Supabase
+          NEXT_PUBLIC_SUPABASE_URL: https://xxx.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_BUCKET: BUCKET-NAME
+
+          # File Upload
+          NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
+          NEXT_PUBLIC_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
+          STORAGE_TYPE: supabase
+
+          # Stripe
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+
+          # OAuth (optional)
+          GOOGLE_CLIENT_ID: ''
+          GOOGLE_CLIENT_SECRET: ''
+
+          # Environment
+          NEXT_PUBLIC_NODE_ENV: production
+
+          # Client vars
+          NEXT_PUBLIC_APP_URL: https://preview.example.com
+          NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE: EmbededForm
+          NEXT_PUBLIC_BILLING_MODE: organization
+
+      - name: Test
+        run: pnpm test --reporter=verbose
+        env:
+          # Database
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+          # Auth
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          BETTER_AUTH_URL: https://preview.example.com
+
+          # Email
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: noreply@example.com
+          EMAIL_TO: admin@example.com
+
+          # Logging
+          LOG_LEVEL: info
+
+          # Supabase
+          NEXT_PUBLIC_SUPABASE_URL: https://xxx.supabase.co
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_BUCKET: BUCKET-NAME
+
+          # File Upload
+          NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
+          NEXT_PUBLIC_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
+          STORAGE_TYPE: supabase
+
+          # Stripe
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+
+          # OAuth (optional)
+          GOOGLE_CLIENT_ID: ''
+          GOOGLE_CLIENT_SECRET: ''
+
+          # Environment
+          NEXT_PUBLIC_NODE_ENV: production
+
+          # Client vars
+          NEXT_PUBLIC_APP_URL: https://preview.example.com
+          NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE: EmbededForm
+          NEXT_PUBLIC_BILLING_MODE: organization
+
+      - name: Install Drizzle Kit
+        run: npm install -g drizzle-kit
+
+      - name: Run database migrations
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # Tests end-to-end sur le build de production, contre une base jetable.
+  # Les specs ECRIVENT en base (création de compte) et lisent le seed
+  # (user@gmail.com) : ne jamais les pointer sur la base de preview.
+  e2e:
+    runs-on: ubuntu-latest
+    environment: Preview
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      EMAIL_FROM: noreply@example.com
+      EMAIL_TO: admin@example.com
+      LOG_LEVEL: warn
+      NEXT_PUBLIC_SUPABASE_URL: https://xxx.supabase.co
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SUPABASE_BUCKET: BUCKET-NAME
+      NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
+      NEXT_PUBLIC_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
+      STORAGE_TYPE: supabase
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+      GOOGLE_CLIENT_ID: ''
+      GOOGLE_CLIENT_SECRET: ''
+      NEXT_PUBLIC_NODE_ENV: production
+      NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE: EmbededForm
+      NEXT_PUBLIC_BILLING_MODE: organization
+      NEXT_PUBLIC_AUTH_METHODS: credential,magiclink,google,apple,github
+      NEXT_PUBLIC_ENABLED_PAGES: organization,account,settings,subscription,notifications,admin,blog,docs,apikey,invitation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Prepare database
+        run: pnpm db:push && pnpm db:seed
+
+      # webServer de playwright.config.ts lance `pnpm build && pnpm start` quand CI=1
+      - name: Run e2e tests
+        run: pnpm test:e2e --project=chromium
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

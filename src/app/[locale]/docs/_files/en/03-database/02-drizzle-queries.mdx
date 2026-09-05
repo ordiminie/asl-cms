@@ -1,0 +1,637 @@
+---
+title: 'Drizzle Queries'
+description: 'Master advanced query patterns, relationships, and complex database operations with Drizzle ORM'
+keywords: "ShipSaaS, Drizzle queries, query builder, database relationships, pagination, transactions, aggregations, type-safe queries"
+order: 2
+---
+
+Learn how to write efficient and type-safe queries with Drizzle ORM. This guide covers everything from simple queries to complex joins and aggregations.
+
+## Query Builder vs Query API
+
+Drizzle ORM provides two main ways to write queries:
+
+### Query API (Recommended)
+
+**Simple and intuitive for most cases:**
+
+```typescript
+// Find user with relations
+const user = await db.query.users.findFirst({
+  where: (users, { eq }) => eq(users.id, userId),
+  with: {
+    members: {
+      with: { organization: true }
+    },
+    settings: true
+  }
+})
+
+// Find multiple records
+const posts = await db.query.posts.findMany({
+  where: (posts, { eq, gte }) => gte(posts.createdAt, startDate),
+  with: {
+    author: true,
+    category: true
+  },
+  limit: 10
+})
+```
+
+### Query Builder
+
+**More control for complex queries:**
+
+```typescript
+import { eq, and, or, desc, count, sql } from 'drizzle-orm'
+
+// Complex filtering
+const users = await db
+  .select()
+  .from(users)
+  .where(
+    and(
+      eq(users.active, true),
+      or(
+        eq(users.role, 'admin'),
+        eq(users.role, 'moderator')
+      )
+    )
+  )
+  .orderBy(desc(users.createdAt))
+```
+
+## Basic Query Patterns
+
+### Finding Single Records
+
+<Tabs defaultValue="byid">
+  <Tab value="byid" label="By ID">
+    ```typescript
+    // Query API
+    const user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.id, userId)
+    })
+
+    // Query Builder
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0])
+    ```
+  </Tab>
+  <Tab value="byemail" label="By Email">
+    ```typescript
+    // Find user by email
+    const user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.email, email)
+    })
+
+    // With error handling
+    const user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.email, email)
+    })
+    if (!user) {
+      throw new Error('User not found')
+    }
+    ```
+  </Tab>
+  <Tab value="conditions" label="Multiple Conditions">
+    ```typescript
+    // Active user with specific role
+    const user = await db.query.users.findFirst({
+      where: (users, { eq, and }) => and(
+        eq(users.email, email),
+        eq(users.active, true),
+        eq(users.role, 'admin')
+      )
+    })
+    ```
+  </Tab>
+</Tabs>
+
+### Finding Multiple Records
+
+```typescript
+// All active users
+const users = await db.query.users.findMany({
+  where: (users, { eq }) => eq(users.active, true)
+})
+
+// With limit and ordering
+const recentUsers = await db.query.users.findMany({
+  where: (users, { eq }) => eq(users.active, true),
+  orderBy: (users, { desc }) => desc(users.createdAt),
+  limit: 10
+})
+
+// Complex filtering
+const filteredUsers = await db.query.users.findMany({
+  where: (users, { eq, or, and, gte }) => and(
+    eq(users.active, true),
+    gte(users.createdAt, startDate),
+    or(
+      eq(users.role, 'admin'),
+      eq(users.role, 'moderator')
+    )
+  )
+})
+```
+
+## Working with Relationships
+
+### One-to-Many Relations
+
+```typescript
+// User with their organizations
+const user = await db.query.users.findFirst({
+  where: (users, { eq }) => eq(users.id, userId),
+  with: {
+    members: {
+      with: {
+        organization: true
+      }
+    }
+  }
+})
+
+// Organization with all members
+const org = await db.query.organizations.findFirst({
+  where: (orgs, { eq }) => eq(orgs.id, orgId),
+  with: {
+    members: {
+      with: {
+        user: {
+          columns: {
+            id: true,
+            name: true,
+            email: true
+            // Exclude sensitive fields
+          }
+        }
+      }
+    }
+  }
+})
+```
+
+### Many-to-Many Relations
+
+```typescript
+// Posts with hashtags (through junction table)
+const posts = await db.query.posts.findMany({
+  with: {
+    postHashtags: {
+      with: {
+        hashtag: true
+      }
+    }
+  }
+})
+
+// Access hashtags: posts[0].postHashtags.map(ph => ph.hashtag.name)
+```
+
+### Nested Relations
+
+```typescript
+// Deep nesting: Organization → Projects → Tasks
+const orgWithProjects = await db.query.organizations.findFirst({
+  where: (orgs, { eq }) => eq(orgs.id, orgId),
+  with: {
+    projects: {
+      with: {
+        tasks: {
+          where: (tasks, { eq }) => eq(tasks.status, 'active')
+        }
+      }
+    },
+    members: {
+      with: {
+        user: true
+      }
+    }
+  }
+})
+```
+
+## Advanced Query Patterns
+
+### Filtering Relations
+
+```typescript
+// User with only admin memberships
+const user = await db.query.users.findFirst({
+  where: (users, { eq }) => eq(users.id, userId),
+  with: {
+    members: {
+      where: (members, { eq }) => eq(members.role, 'admin'),
+      with: {
+        organization: true
+      }
+    }
+  }
+})
+
+// Posts with French translations only
+const posts = await db.query.posts.findMany({
+  with: {
+    postTranslations: {
+      where: (translations, { eq }) => eq(translations.language, 'fr')
+    }
+  }
+})
+```
+
+### Partial Field Selection
+
+```typescript
+// Select specific columns only
+const users = await db
+  .select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    // Exclude sensitive fields like password hash
+  })
+  .from(users)
+  .where(eq(users.active, true))
+
+// With Query API
+const user = await db.query.users.findFirst({
+  columns: {
+    id: true,
+    name: true,
+    email: true,
+    createdAt: true,
+    // password: false (exclude field)
+  },
+  where: (users, { eq }) => eq(users.id, userId)
+})
+```
+
+### Aggregations and Counting
+
+```typescript
+import { count, sum, avg, max, min } from 'drizzle-orm'
+
+// Count users by role
+const userCounts = await db
+  .select({
+    role: users.role,
+    count: count()
+  })
+  .from(users)
+  .groupBy(users.role)
+
+// Organization with member count
+const orgsWithCounts = await db
+  .select({
+    id: organizations.id,
+    name: organizations.name,
+    memberCount: count(members.id)
+  })
+  .from(organizations)
+  .leftJoin(members, eq(organizations.id, members.organizationId))
+  .groupBy(organizations.id)
+
+// Task statistics by project
+const taskStats = await db
+  .select({
+    projectId: tasks.projectId,
+    totalTasks: count(),
+    completedTasks: sum(
+      sql`CASE WHEN ${tasks.status} = 'completed' THEN 1 ELSE 0 END`
+    )
+  })
+  .from(tasks)
+  .groupBy(tasks.projectId)
+```
+
+### Search and Text Queries
+
+```typescript
+import { ilike, like } from 'drizzle-orm'
+
+// Case-insensitive search
+const users = await db.query.users.findMany({
+  where: (users, { ilike, or }) => or(
+    ilike(users.name, `%${searchTerm}%`),
+    ilike(users.email, `%${searchTerm}%`)
+  )
+})
+
+// Full-text search (PostgreSQL)
+const posts = await db
+  .select()
+  .from(posts)
+  .where(
+    sql`to_tsvector('english', ${posts.title} || ' ' || ${posts.content})
+        @@ plainto_tsquery('english', ${searchTerm})`
+  )
+```
+
+### Pagination Patterns
+
+```typescript
+// Offset-based pagination
+const getPaginatedUsers = async (page: number, limit: number) => {
+  const offset = (page - 1) * limit
+
+  const [data, totalCount] = await Promise.all([
+    db.query.users.findMany({
+      limit,
+      offset,
+      orderBy: (users, { desc }) => desc(users.createdAt)
+    }),
+    db.select({ count: count() }).from(users)
+  ])
+
+  return {
+    data,
+    pagination: {
+      page,
+      limit,
+      total: totalCount[0].count,
+      hasMore: offset + limit < totalCount[0].count
+    }
+  }
+}
+
+// Cursor-based pagination (better performance)
+const getCursorPaginatedPosts = async (cursor?: string, limit = 10) => {
+  const posts = await db.query.posts.findMany({
+    where: cursor
+      ? (posts, { lt }) => lt(posts.createdAt, new Date(cursor))
+      : undefined,
+    limit: limit + 1, // Get one extra to check if there are more
+    orderBy: (posts, { desc }) => desc(posts.createdAt)
+  })
+
+  const hasMore = posts.length > limit
+  if (hasMore) posts.pop() // Remove the extra record
+
+  return {
+    data: posts,
+    hasMore,
+    nextCursor: posts.length > 0
+      ? posts[posts.length - 1].createdAt.toISOString()
+      : null
+  }
+}
+```
+
+## Working with Transactions
+
+### Simple Transactions
+
+```typescript
+const transferProjectOwnership = async (projectId: string, newOwnerId: string) => {
+  return await db.transaction(async (tx) => {
+    // Update project owner
+    await tx
+      .update(projects)
+      .set({ ownerId: newOwnerId })
+      .where(eq(projects.id, projectId))
+
+    // Add new owner to organization if not already a member
+    await tx
+      .insert(members)
+      .values({
+        userId: newOwnerId,
+        organizationId: project.organizationId,
+        role: 'admin'
+      })
+      .onConflictDoNothing() // Ignore if already a member
+
+    // Log the transfer
+    await tx.insert(notifications).values({
+      userId: newOwnerId,
+      type: 'project_transfer',
+      message: `You are now the owner of project ${project.name}`
+    })
+  })
+}
+```
+
+### Error Handling in Transactions
+
+```typescript
+const createUserWithOrganization = async (userData: CreateUserType, orgData: CreateOrganizationType) => {
+  try {
+    return await db.transaction(async (tx) => {
+      const [user] = await tx
+        .insert(users)
+        .values(userData)
+        .returning()
+
+      const [organization] = await tx
+        .insert(organizations)
+        .values({
+          ...orgData,
+          ownerId: user.id
+        })
+        .returning()
+
+      await tx.insert(members).values({
+        userId: user.id,
+        organizationId: organization.id,
+        role: 'admin'
+      })
+
+      return { user, organization }
+    })
+  } catch (error: any) {
+    if (error.code === '23505') {
+      throw new Error('User with this email already exists')
+    }
+    throw new Error('Failed to create user and organization')
+  }
+}
+```
+
+## Raw SQL Queries
+
+For complex queries that are difficult with the query builder:
+
+```typescript
+import { sql } from 'drizzle-orm'
+
+// Complex analytics query
+const getUserStats = async (userId: string) => {
+  const result = await db.execute(sql`
+    SELECT
+      u.name,
+      u.email,
+      COUNT(DISTINCT o.id) as organization_count,
+      COUNT(DISTINCT p.id) as project_count,
+      COUNT(DISTINCT t.id) as task_count,
+      COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks
+    FROM users u
+    LEFT JOIN members m ON u.id = m.user_id
+    LEFT JOIN organizations o ON m.organization_id = o.id
+    LEFT JOIN projects p ON o.id = p.organization_id
+    LEFT JOIN tasks t ON p.id = t.project_id
+    WHERE u.id = ${userId}
+    GROUP BY u.id, u.name, u.email
+  `)
+
+  return result.rows[0]
+}
+
+// Use sql`` for complex expressions in regular queries
+const postsWithCommentCount = await db
+  .select({
+    id: posts.id,
+    title: posts.title,
+    commentCount: sql<number>`
+      (SELECT COUNT(*) FROM comments WHERE comments.post_id = ${posts.id})
+    `.as('comment_count')
+  })
+  .from(posts)
+```
+
+## Performance Optimization
+
+### Indexes and Query Planning
+
+```typescript
+// Use EXPLAIN to analyze query performance
+const explainQuery = async () => {
+  const result = await db.execute(sql`
+    EXPLAIN ANALYZE
+    SELECT * FROM users u
+    JOIN members m ON u.id = m.user_id
+    WHERE u.active = true
+  `)
+  console.log(result.rows)
+}
+```
+
+### Batch Operations
+
+```typescript
+// Insert multiple records efficiently
+const createMultipleUsers = async (usersData: CreateUserType[]) => {
+  // Batch insert (more efficient than individual inserts)
+  const users = await db
+    .insert(users)
+    .values(usersData)
+    .returning()
+
+  return users
+}
+
+// Update multiple records
+const updateMultipleUsers = async (userIds: string[], updateData: Partial<UpdateUserType>) => {
+  return await db
+    .update(users)
+    .set(updateData)
+    .where(inArray(users.id, userIds))
+    .returning()
+}
+```
+
+### Connection Pooling Usage
+
+```typescript
+// The db instance automatically uses connection pooling
+// No special configuration needed for queries
+
+// For long-running operations, consider using transactions
+// to ensure connection is properly managed
+const longRunningOperation = async () => {
+  return await db.transaction(async (tx) => {
+    // Multiple operations using the same connection
+    const users = await tx.query.users.findMany()
+    for (const user of users) {
+      await tx.update(users)
+        .set({ lastActive: new Date() })
+        .where(eq(users.id, user.id))
+    }
+  })
+}
+```
+
+## Query Best Practices
+
+### Type Safety
+
+```typescript
+// ✅ Use proper types
+const getUser = async (id: string): Promise<User | undefined> => {
+  return await db.query.users.findFirst({
+    where: (users, { eq }) => eq(users.id, id)
+  })
+}
+
+// ✅ Handle nullable results
+const user = await getUser(userId)
+if (!user) {
+  throw new Error('User not found')
+}
+```
+
+### Error Handling
+
+```typescript
+// ✅ Catch and handle specific database errors
+const createUser = async (userData: CreateUserType) => {
+  try {
+    return await db.insert(users).values(userData).returning()
+  } catch (error: any) {
+    switch (error.code) {
+      case '23505': // Unique violation
+        throw new Error('User already exists')
+      case '23503': // Foreign key violation
+        throw new Error('Referenced record not found')
+      default:
+        throw new Error('Database error')
+    }
+  }
+}
+```
+
+### Efficient Relations
+
+```typescript
+// ✅ Load only needed relations
+const user = await db.query.users.findFirst({
+  where: (users, { eq }) => eq(users.id, userId),
+  with: {
+    settings: true // Only load if needed
+    // Don't load heavy relations unnecessarily
+  }
+})
+
+// ❌ Avoid loading unnecessary data
+const user = await db.query.users.findFirst({
+  where: (users, { eq }) => eq(users.id, userId),
+  with: {
+    members: {
+      with: {
+        organization: {
+          with: {
+            projects: {
+              with: {
+                tasks: true // This could be thousands of records!
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+})
+```
+
+<Callout type="success">
+  Drizzle ORM provides excellent TypeScript support and performance. Use the Query API for most cases, and fall back to the Query Builder or raw SQL for complex operations.
+</Callout>
+
+## Next Steps
+
+- **[Migration Workflow](/docs/database/migrations-workflow)** - Learn how to manage schema changes
+- **[Drizzle Studio](/docs/database/drizzle-studio)** - Use the database management GUI

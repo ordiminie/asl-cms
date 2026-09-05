@@ -6,6 +6,7 @@ allowed-tools:
   - Grep
   - Bash
 ---
+
 # ks-status — Where the project stands
 
 Derive the state from the files — never guess. Bash is for read-only git queries here.

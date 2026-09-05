@@ -1,0 +1,262 @@
+---
+description: 
+globs: src/services/authorization/**
+alwaysApply: false
+---
+
+# Système de Rôles Globaux et Rôles Organisationnels
+
+## Vue d'ensemble
+
+Le projet utilise un **système de rôles à deux niveaux** :
+
+1. **Rôles globaux** : Permissions système générales
+2. **Rôles organisationnels** : Permissions fines dans le contexte d'une organisation
+
+Cette architecture permet une gestion flexible des permissions avec une hiérarchie claire entre les niveaux d'accès.
+
+## Rôles Globaux
+
+### Définition
+
+Les rôles globaux sont définis dans [auth-types.ts](mdc:src/services/types/domain/auth-types.ts) et [user-types.ts](mdc:src/services/types/domain/user-types.ts).
+
+### Hiérarchie des Rôles Globaux
+
+```typescript
+export const RoleConst = {
+  PUBLIC: 'public' as Roles,
+  USER: 'user' as Roles,
+  REDACTOR: 'redactor' as Roles,
+  MODERATOR: 'moderator' as Roles,
+  ADMIN: 'admin' as Roles,
+  SUPER_ADMIN: 'super_admin' as Roles,
+} as const
+
+export const roleHierarchy = [
+  'public',
+  'user',
+  'redactor',
+  'moderator',
+  'admin',
+  'super_admin',
+] satisfies Roles[]
+```
+
+#### 1. **PUBLIC/GUEST** (`public`)
+
+- **Utilisateurs non authentifiés**
+- **Permissions limitées** : Lecture de certains logs, profils publics
+- **Usage** : Visiteurs du site
+
+#### 2. **USER** (`user`)
+
+- **Utilisateurs standard authentifiés**
+- **Permissions de base** : Gestion de son profil, création d'organisations
+- **Particularité** : Utilise les **rôles organisationnels** pour des permissions fines
+
+#### 3. **ADMIN** (`admin`)
+
+- **Administrateurs système**
+- **Permissions étendues** : Gestion de tous les utilisateurs, organisations, subscriptions
+- **Bypass** : Peut outrepasser les permissions organisationnelles
+
+#### 4. **SUPER_ADMIN** (`super_admin`)
+
+- **Super administrateurs**
+- **Permissions complètes** : Accès total à toutes les ressources (`MANAGE ALL`)
+- **Bypass** : Outrepasse tous les contrôles d'autorisation
+
+## Rôles Organisationnels
+
+### Définition
+
+Les rôles organisationnels sont définis dans [organization-types.ts](mdc:src/services/types/domain/organization-types.ts).
+
+```typescript
+export const UserOrganizationRoleConst = {
+  OWNER: 'OWNER',
+  ADMIN: 'ADMIN',
+  MEMBER: 'MEMBER',
+} as const
+```
+
+### Hiérarchie des Rôles Organisationnels
+
+#### 1. **OWNER**
+
+- **Propriétaire de l'organisation**
+- **Permissions** : `MANAGE` sur toutes les ressources de l'organisation
+  - Organisation : Création, lecture, modification, suppression
+  - Utilisateurs : Gestion complète des membres
+  - Subscriptions : Gestion complète
+- **Restrictions** : Aucune dans le contexte de son organisation
+
+#### 2. **ADMIN**
+
+- **Administrateur de l'organisation**
+- **Permissions** :
+  - Organisation : Lecture et modification (pas suppression)
+  - Utilisateurs : Lecture et modification des membres
+  - Subscriptions : Gestion complète (`MANAGE`)
+- **Restrictions** : Ne peut pas supprimer l'organisation
+
+#### 3. **MEMBER**
+
+- **Membre standard de l'organisation**
+- **Permissions** : `READ` uniquement
+  - Organisation : Lecture seule
+  - Utilisateurs : Lecture des autres membres
+  - Subscriptions : Lecture des subscriptions de l'organisation
+- **Restrictions** : Aucune permission de modification
+
+## Architecture d'Autorisation
+
+### Logique de Résolution des Permissions
+
+Le système utilise l'ordre de priorité suivant dans [authorization-service.ts](mdc:src/services/authorization/authorization-service.ts) :
+
+```typescript
+export function defineAbilitiesFor(
+  user?: User,
+  orgContext?: OrganizationContext
+) {
+  // 1. SUPER_ADMIN → Permissions complètes
+  if (user.roles?.includes(RoleConst.SUPER_ADMIN)) {
+    return buildSuperAdminAbilities()
+  }
+
+  // 2. ADMIN → Permissions étendues (bypass organisationnel)
+  if (user.roles?.includes(RoleConst.ADMIN)) {
+    return buildAdminAbilities()
+  }
+
+  // 3. USER → Permissions de base + rôles organisationnels
+  if (user.roles?.includes(RoleConst.USER)) {
+    return buildUserAbilities(user, orgContext)
+  }
+
+  // 4. GUEST → Permissions minimales
+  return buildGuestAbilities()
+}
+```
+
+### Contexte Organisationnel
+
+```typescript
+export interface OrganizationContext {
+  organizationId: string // Organisation courante
+}
+```
+
+- **Sans contexte** : Seules les permissions globales s'appliquent
+- **Avec contexte** : Les rôles organisationnels s'ajoutent aux permissions de base
+
+## Exemples d'Usage
+
+### Service avec Autorisation Organisationnelle
+
+```typescript
+// Exemple dans organization-service.ts
+export const updateOrganizationService = async (data: UpdateOrganization) => {
+  const granted = await canUpdateOrganization(data.id)
+  if (!granted) {
+    throw new AuthorizationError()
+  }
+  return await updateOrganizationDao(data)
+}
+```
+
+### Vérification des Permissions
+
+```typescript
+// Vérification avec contexte organisationnel
+const orgContext: OrganizationContext = {organizationId: 'org-123'}
+const canUpdate = userCanOnResource(
+  user,
+  ActionsConst.UPDATE,
+  SubjectsConst.ORGANIZATION,
+  {id: organizationId},
+  orgContext
+)
+```
+
+## Fonctions Utilitaires
+
+### Vérification des Rôles Organisationnels
+
+```typescript
+// Dans authorization-service.ts
+export function getUserRoleInOrganization(
+  user: User,
+  orgId: string
+): OrganizationRole | undefined
+export function isOrganizationOwner(user: User, orgId: string): boolean
+export function isOrganizationAdmin(user: User, orgId: string): boolean
+export function hasOrganizationRole(
+  user: User,
+  orgId: string,
+  role: OrganizationRole
+): boolean
+```
+
+## Bonnes Pratiques
+
+### ✅ À Faire
+
+- **Toujours vérifier les autorisations** avant les opérations métier
+- **Utiliser le contexte organisationnel** pour les permissions fines
+- **Respecter la hiérarchie** : ADMIN/SUPER_ADMIN globaux peuvent bypass
+- **Tester tous les scénarios** : OWNER, ADMIN, MEMBER, non-membre
+
+### ❌ À Éviter
+
+- **Mélanger les niveaux** de rôles dans la logique
+- **Oublier le contexte organisationnel** pour les USER
+- **Hard-coder les permissions** au lieu d'utiliser les fonctions d'autorisation
+
+## Tests
+
+### Pattern de Tests par Rôle
+
+```typescript
+describe('[ORGANIZATION OWNER] Service', () => {
+  beforeEach(() => {
+    const userOwner = {
+      ...userTest,
+      organizations: [
+        {
+          userId: userTest.id,
+          organizationId: 'org-123',
+          role: UserOrganizationRoleConst.OWNER,
+        },
+      ],
+    }
+    setupAuthUserMocked(userOwner)
+  })
+
+  it('should allow full management', async () => {
+    // Test permissions OWNER
+  })
+})
+```
+
+### Scénarios de Test Essentiels
+
+1. **ADMIN global** : Peut tout faire
+2. **ORGANIZATION OWNER** : Permissions complètes dans son org
+3. **ORGANIZATION ADMIN** : Permissions limitées (pas de suppression)
+4. **ORGANIZATION MEMBER** : Lecture seule
+5. **USER non-membre** : Pas d'accès organisationnel
+6. **GUEST** : Accès minimal
+
+## Intégration
+
+Le système s'intègre avec :
+
+- **CASL** pour la gestion des permissions
+- **Services métier** pour les vérifications d'autorisation
+- **DAL** pour les données utilisateur avec rôles
+- **Organisation Authorization** dans [organization-authorization.ts](mdc:src/services/authorization/organization-authorization.ts)
+
+Cette architecture garantit une **sécurité robuste** et une **flexibilité maximale** pour la gestion des permissions multi-niveaux.

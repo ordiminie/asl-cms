@@ -1,0 +1,206 @@
+import {z} from 'zod'
+
+import {REFERRAL_TRACKING_MODES} from './lib/helper/referral-helper'
+import {
+  StripeCheckoutType,
+  StripeCheckoutTypeSchema,
+} from './lib/stripe/stripe-types'
+import {BillingModes} from './services/types/domain/subscription-types'
+
+// Schémas redéfinis ici pour éviter la dépendance circulaire
+export const AuthMethodSchema = z.enum([
+  'credential',
+  'magiclink',
+  'google',
+  'apple',
+  'github',
+])
+export type AuthMethod = z.infer<typeof AuthMethodSchema>
+
+export const EnabledPageSchema = z.enum([
+  'none',
+  'blog',
+  'docs',
+  'apikey',
+  'organization',
+  'invitation',
+  'account',
+  'settings',
+  'subscription',
+  'notifications',
+  'admin',
+])
+export type EnabledPage = z.infer<typeof EnabledPageSchema>
+
+export const EnabledPagesSchema = z
+  .string()
+  .optional()
+  .transform((val) =>
+    val ? val.split(',').map((page) => page.trim() as EnabledPage) : []
+  )
+  .pipe(z.array(EnabledPageSchema))
+
+export const TrustedOriginsSchema = z
+  .string()
+  .optional()
+  .transform((val) =>
+    val && val.trim() !== ''
+      ? val
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean)
+      : ['http://localhost:3000']
+  )
+  .pipe(z.array(z.string().url()))
+
+// Schémas des variables serveur (accessibles côté serveur seulement)
+export const serverSchema = {
+  // Base de données
+  DATABASE_URL: z.string().url(),
+  // Connexions Postgres ouvertes PAR INSTANCE. Le défaut 1 vise le serverless
+  // (Vercel), où chaque instance ouvre son propre pool : le total vaut
+  // `max × instances` et doit rester sous la limite du pooler. Sur un serveur
+  // long-running (VM, conteneur), ce défaut est au contraire trop bas — lire
+  // docs/database-pool.md, qui traite les deux cas.
+  DATABASE_POOL_MAX: z.coerce.number().int().positive().default(1),
+
+  // Upload des sourcemaps vers Sentry au build. Absent = build normal, mais
+  // stacks minifiées côté Sentry. Contrairement au DSN, c'est un secret.
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+
+  // Authentification
+  BETTER_AUTH_SECRET: z.string().min(1),
+  BETTER_AUTH_URL: z.string().url(),
+  BETTER_AUTH_TRUSTED_ORIGINS: TrustedOriginsSchema,
+
+  // Email
+  RESEND_API_KEY: z.string().min(1),
+  EMAIL_FROM: z.string().email().default('onboarding@resend.dev'),
+  EMAIL_TO: z.string().email().default('onboarding@resend.dev'),
+
+  // Logging
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+
+  // Supabase (serveur)
+
+  SUPABASE_ANON_KEY: z.string().min(1),
+
+  STORAGE_TYPE: z.string().optional(),
+
+  // Stripe (serveur)
+  STRIPE_SECRET_KEY: z.string().min(1),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1),
+
+  // OAuth (optionnel)
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+
+  // Chat AI (serveur seulement - sécurisé)
+  CHAT_PROVIDER: z.enum(['ollama', 'openai', 'anthropic']).default('ollama'),
+  OLLAMA_BASE_URL: z.string().url().default('http://localhost:11434'),
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+
+  // Mailchimp Newsletter
+  MAILCHIMP_API_KEY: z.string().optional(),
+  MAILCHIMP_SERVER_PREFIX: z.string().optional(),
+  MAILCHIMP_AUDIENCE_ID: z.string().optional(),
+}
+
+// Schémas des variables client (exposées au client)
+export const clientSchema = {
+  // URL de l'application
+  NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
+
+  // Suivi des erreurs (Sentry). Entièrement optionnel : sans DSN, le SDK n'est
+  // jamais initialisé et le boilerplate se comporte comme s'il n'était pas
+  // installé — voir docs/sentry.md.
+  // Le DSN n'est pas un secret : il part dans le bundle navigateur par
+  // conception, et n'autorise que l'envoi d'événements.
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+
+  // Tailwind
+  NEXT_PUBLIC_MAX_FILE_SIZE: z
+    .string()
+    .default('5242880')
+    .transform((val) => Number(val)),
+
+  // Upload de fichiers
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_BUCKET: z.string().min(1),
+  NEXT_PUBLIC_ALLOWED_MIME_TYPES: z.string().min(1),
+
+  // Stripe (client)
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().min(1),
+  NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE: StripeCheckoutTypeSchema.default(
+    'EmbededForm' as StripeCheckoutType
+  ),
+
+  // Better Auth (client)
+  NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: z
+    .string()
+    .default('true')
+    .transform((val) => val === 'true'),
+  NEXT_PUBLIC_BETTER_AUTH_2FA_SKIP_VERIFICATION_ON_ENABLE: z
+    .string()
+    .default('true')
+    .transform((val) => val === 'true'),
+  NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE: z
+    .string()
+    .default('true')
+    .transform((val) => val === 'true'),
+  NEXT_PUBLIC_BETTER_AUTH_TOKEN_MANAGEMENT: z
+    .string()
+    .default('true')
+    .transform((val) => val === 'true'),
+  NEXT_PUBLIC_BETTER_AUTH_CHANGE_PASSWORD: z
+    .string()
+    .default('true')
+    .transform((val) => val === 'true'),
+  NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL: z
+    .string()
+    .default('true')
+    .transform((val) => val === 'true'),
+
+  // API URL (optionnel)
+  NEXT_PUBLIC_API_URL: z.string().url().optional(),
+  NEXT_PUBLIC_BILLING_MODE: z
+    .enum([BillingModes.USER, BillingModes.ORGANIZATION])
+    .default(BillingModes.ORGANIZATION),
+
+  /**
+   * Achat sans compte. Mode BONUS, désactivé par défaut : à `false` le produit
+   * se comporte exactement comme sans lui, un visiteur non connecté étant
+   * envoyé s'inscrire. Un seul endroit du code le lit — le CTA de la vitrine
+   * tarifaire — donc le remettre à `false` suffit à le retirer entièrement.
+   */
+  NEXT_PUBLIC_GUEST_CHECKOUT_ENABLED: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true'),
+
+  // Attribution d'affiliation : voir REFERRAL_TRACKING_MODES pour le detail.
+  // 'cookie' pose un traceur soumis a consentement en UE ; 'code-only' n'en
+  // pose aucun et s'appuie sur le code saisi a l'inscription.
+  NEXT_PUBLIC_AFFILIATE_TRACKING: z
+    .enum(REFERRAL_TRACKING_MODES)
+    .default('cookie'),
+
+  // Méthodes d'authentification
+  NEXT_PUBLIC_AUTH_METHODS: z
+    .string()
+    .default('credential,magiclink,google')
+    .transform((val) =>
+      val.split(',').map((method) => method.trim() as AuthMethod)
+    ),
+
+  // Pages optionnelles activées
+  NEXT_PUBLIC_ENABLED_PAGES: EnabledPagesSchema,
+
+  // Google Analytics
+  NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: z.string().optional(),
+  // Environnement
+  NEXT_PUBLIC_NODE_ENV: z
+    .enum(['development', 'test', 'production'])
+    .default('development'),
+}

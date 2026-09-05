@@ -1,0 +1,24 @@
+import appSettingsServiceInterceptor from './interceptors/app-settings-service-logger-interceptor'
+
+export const getAllAppSettingsService =
+  appSettingsServiceInterceptor.getAllAppSettingsService
+export const getAppSettingsGroupedByCategoryService =
+  appSettingsServiceInterceptor.getAppSettingsGroupedByCategoryService
+export const getAppSettingsByCategoryService =
+  appSettingsServiceInterceptor.getAppSettingsByCategoryService
+export const getAppSettingByKeyService =
+  appSettingsServiceInterceptor.getAppSettingByKeyService
+export const getSettingValueService =
+  appSettingsServiceInterceptor.getSettingValueService
+export const getBooleanSettingService =
+  appSettingsServiceInterceptor.getBooleanSettingService
+export const getStringSettingService =
+  appSettingsServiceInterceptor.getStringSettingService
+export const getNumberSettingService =
+  appSettingsServiceInterceptor.getNumberSettingService
+export const createAppSettingService =
+  appSettingsServiceInterceptor.createAppSettingService
+export const updateAppSettingService =
+  appSettingsServiceInterceptor.updateAppSettingService
+export const bulkUpdateAppSettingsService =
+  appSettingsServiceInterceptor.bulkUpdateAppSettingsService

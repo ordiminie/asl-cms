@@ -1,0 +1,22 @@
+{
+  "worktree": {
+    "baseRef": "head",
+    "bgIsolation": "none"
+  },
+  "permissions": {
+    "allow": ["Bash(git worktree:*)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm exec tsx .claude/hooks/post-edit-fix.ts"
+          }
+        ]
+      }
+    ]
+  }
+}

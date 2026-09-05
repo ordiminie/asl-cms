@@ -1,0 +1,14 @@
+import userSubmissionServiceInterceptor from './interceptors/user-submission-service-logger-interceptor'
+
+export const createUserSubmissionService =
+  userSubmissionServiceInterceptor.createUserSubmissionService
+export const getAllUserSubmissionsService =
+  userSubmissionServiceInterceptor.getAllUserSubmissionsService
+export const getUserSubmissionByIdService =
+  userSubmissionServiceInterceptor.getUserSubmissionByIdService
+export const markAsReadService =
+  userSubmissionServiceInterceptor.markAsReadService
+export const archiveUserSubmissionService =
+  userSubmissionServiceInterceptor.archiveUserSubmissionService
+export const getUnreadSubmissionsCountService =
+  userSubmissionServiceInterceptor.getUnreadSubmissionsCountService

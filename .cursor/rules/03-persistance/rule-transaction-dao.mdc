@@ -1,0 +1,135 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+# Transactions dans les Repositories DAO
+
+## Principes Clés
+
+- Les transactions garantissent l'atomicité des opérations multiples
+- Utiliser le suffixe `TxnDao` pour les fonctions transactionnelles
+- Toujours utiliser le système transactionnel de Drizzle
+- Gérer les rollbacks automatiquement
+
+## Structure d'une Transaction
+
+```typescript
+export const createUserAndOrganizationTxnDao = async (
+  userData: AddUserModel,
+  organizationData: AddOrganizationModel
+): Promise<{user: User; organizationId: string}> => {
+  return await db.transaction(async (tx) => {
+    // 1. Opérations dans la transaction
+    const [newUser] = await tx.insert(users)...
+    const [newOrganization] = await tx.insert(organizations)...
+
+    // 2. Relations dans la même transaction
+    await tx.insert(userOrganizations)...
+
+    // 3. Retour des données créées
+    return {user: {...}, organizationId: ...}
+  })
+}
+```
+
+## Bonnes Pratiques
+
+1. **Nommage**
+   - Suffixer les fonctions transactionnelles avec `TxnDao`
+   - Exemple : `createUserAndOrganizationTxnDao`
+
+2. **Utilisation du Transaction Manager**
+   - Utiliser `db.transaction()` pour créer une transaction
+   - Utiliser l'objet `tx` fourni pour toutes les opérations
+   - Ne pas mélanger `db` et `tx` dans la même transaction
+
+3. **Gestion des Erreurs**
+   - Les erreurs déclenchent automatiquement un rollback
+   - Pas besoin de gérer manuellement le rollback
+   - Les erreurs sont propagées naturellement
+
+4. **Ordre des Opérations**
+   - Créer d'abord les entités principales
+   - Créer ensuite les relations
+   - Retourner les données créées
+
+5. **Types de Retour**
+   - Toujours typer explicitement le retour
+   - Inclure toutes les données nécessaires
+   - Éviter les retours partiels
+
+## Exemple Complet
+
+[user-repository.ts](mdc:src/db/repositories/user-repository.ts)
+
+```typescript
+export const createUserAndOrganizationTxnDao = async (
+  userData: AddUserModel,
+  organizationData: AddOrganizationModel
+): Promise<{user: User; organizationId: string}> => {
+  return await db.transaction(async (tx) => {
+    // 1. Créer l'utilisateur
+    const [newUser] = await tx
+      .insert(users)
+      .values({
+        email: userData.email,
+        name: userData.name,
+        password: userData.password,
+        visibility: userData.visibility,
+      })
+      .returning()
+
+    // 2. Créer l'organisation
+    const [newOrganization] = await tx
+      .insert(organizations)
+      .values({
+        name: organizationData.name,
+        slug: organizationData.slug,
+        description: organizationData.description,
+        image: organizationData.image,
+      })
+      .returning()
+
+    // 3. Créer la relation
+    await tx.insert(userOrganizations).values({
+      userId: newUser.id,
+      organizationId: newOrganization.id,
+      role: UserOrganizationRoleConst.OWNER,
+    })
+
+    // 4. Retourner les données
+    return {
+      user: {
+        ...newUser,
+        roles: [],
+        organizations: [],
+      },
+      organizationId: newOrganization.id,
+    }
+  })
+}
+```
+
+## Points d'Attention
+
+1. **Performance**
+   - Garder les transactions aussi courtes que possible
+   - Éviter les opérations lourdes dans les transactions
+   - Limiter le nombre d'opérations par transaction
+
+2. **Concurrence**
+   - Les transactions sont isolées
+   - Éviter les deadlocks
+   - Utiliser des timeouts appropriés
+
+3. **Maintenance**
+   - Documenter les dépendances entre opérations
+   - Tester les cas d'erreur
+   - Vérifier les rollbacks
+
+4. **Sécurité**
+   - Valider les données avant la transaction
+   - Utiliser des types stricts
+   - Gérer les permissions

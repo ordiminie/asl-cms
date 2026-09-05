@@ -1,0 +1,33 @@
+import emailServiceInterceptor from './interceptors/email-service-logger-interceptor'
+
+// ===== SERVICES EMAIL =====
+export const sendEmailService = emailServiceInterceptor.sendEmailService
+export const sendOrganizationInvitationService =
+  emailServiceInterceptor.sendOrganizationInvitation
+export const sendMagicLinkEmailService =
+  emailServiceInterceptor.sendMagicLinkEmailService
+export const sendVerificationEmailService =
+  emailServiceInterceptor.sendVerificationEmailService
+export const sendSimpleEmailService =
+  emailServiceInterceptor.sendSimpleEmailService
+export const sendResetPasswordLinkEmailService =
+  emailServiceInterceptor.sendResetPasswordLinkEmailService
+export const sendOTPEmailService = emailServiceInterceptor.sendOTPEmailService
+export const sendEmailChangeEmailVerificationService =
+  emailServiceInterceptor.sendEmailChangeEmailVerificationService
+export const sendSubscriptionCompletedEmailService =
+  emailServiceInterceptor.sendSubscriptionCompletedEmailService
+export const sendSubscriptionUpdatedEmailService =
+  emailServiceInterceptor.sendSubscriptionUpdatedEmailService
+export const sendSubscriptionCanceledEmailService =
+  emailServiceInterceptor.sendSubscriptionCanceledEmailService
+export const sendSubscriptionDeletedEmailService =
+  emailServiceInterceptor.sendSubscriptionDeletedEmailService
+export const sendNotificationEmailService =
+  emailServiceInterceptor.sendNotificationEmailService
+export const sendWelcomeFollowUpEmailService =
+  emailServiceInterceptor.sendWelcomeFollowUpEmailService
+export const sendInternalEmailService =
+  emailServiceInterceptor.sendInternalEmailService
+export const sendAdminInternalEmailService =
+  emailServiceInterceptor.sendAdminInternalEmailService

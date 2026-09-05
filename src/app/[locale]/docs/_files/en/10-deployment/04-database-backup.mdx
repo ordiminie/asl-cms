@@ -1,0 +1,188 @@
+---
+title: Database Backup & Restore
+description: Use the included backup and restore scripts to create database snapshots and restore to specific points in time
+keywords: 'ShipSaaS, database backup, data backup, backup strategy, disaster recovery, data protection, backup automation'
+---
+
+The boilerplate includes ready-to-use scripts for database backup and restore operations.
+
+## Backup Script
+
+**Create database backups using the included script:**
+
+### Backup Usage
+
+```bash
+# Backup production database
+./db_backup.sh env=prod
+
+# Backup development database
+./db_backup.sh env=dev
+```
+
+### How it works
+
+**The script (`db_backup.sh`):**
+1. Loads environment variables from `.env.production` or `.env.development`
+2. Shows confirmation with database URL for safety
+3. Creates backup directory `~/backup/sql/`
+4. Generates backup file with timestamp: `backup_prod_2024-12-01_14-30-25.dump`
+5. Uses `pg_dump` with custom format for efficient compression
+
+**Backup file naming:**
+- `backup_prod_YYYY-MM-DD_HH-MM-SS.dump` - Production backups
+- `backup_dev_YYYY-MM-DD_HH-MM-SS.dump` - Development backups
+
+### Backup Example
+
+```bash
+./db_backup.sh env=prod
+
+# Output:
+# Environnement: prod
+# Base de données: postgres://user:pass@host:5432/db
+# Continuer la sauvegarde? (yes/no): yes
+# ... pg_dump output ...
+# Sauvegarde terminée pour l'environnement prod. fichier ~/backup/sql/backup_prod_2024-12-01_14-30-25.dump créé.
+```
+
+## Restore Script
+
+**Restore database from backup files:**
+
+### Restore Usage
+
+```bash
+# Restore to development database
+./db_restore.sh env=dev ~/backup/sql/backup_prod_2024-12-01_14-30-25.dump
+
+# Restore to production database (requires manual edit)
+./db_restore.sh env=prod ~/backup/sql/backup_prod_2024-12-01_14-30-25.dump
+```
+
+### Safety Features
+
+**Production protection:**
+- Production restore is **disabled by default**
+- Requires commenting out safety line 28 in `db_restore.sh`
+- Shows confirmation before proceeding
+
+**Complete database reset:**
+- Drops existing schemas (public and drizzle)
+- Recreates schemas from scratch
+- Restores all data from backup file
+- Configures proper search_path
+
+### Restore Example
+
+```bash
+./db_restore.sh env=dev ~/backup/sql/backup_prod_2024-12-01_14-30-25.dump
+
+# Output:
+# Environnement: dev
+# Base de données: postgres://localhost:5432/saas_dev
+# Fichier dump: ~/backup/sql/backup_prod_2024-12-01_14-30-25.dump
+# Vous êtes sur le point de restaurer la base de données dans l'environnement 'dev'.
+# Cela écrasera toutes les données existantes !
+# Voulez-vous continuer ? (yes/no): yes
+# Suppression des tables existantes...
+# Restauration en cours...
+# ... pg_restore output ...
+# Configuration du search_path...
+# Restauration terminée avec succès.
+```
+
+## Common Use Cases
+
+### Regular Backups
+
+**Schedule regular backups:**
+
+```bash
+# Create weekly production backup
+./db_backup.sh env=prod
+
+# Create daily development backup
+./db_backup.sh env=dev
+```
+
+**Backup before major changes:**
+```bash
+# Before deploying new features
+./db_backup.sh env=prod
+
+# Before running migrations
+./db_backup.sh env=dev
+```
+
+### Point-in-Time Recovery
+
+**Restore to specific point in time:**
+
+1. **List available backups:**
+   ```bash
+   ls -la ~/backup/sql/
+   # backup_prod_2024-12-01_09-00-00.dump  # Morning backup
+   # backup_prod_2024-12-01_14-30-25.dump  # Afternoon backup
+   # backup_prod_2024-12-01_21-00-00.dump  # Evening backup
+   ```
+
+2. **Choose closest backup to desired time:**
+   ```bash
+   # Restore to 14:30 state
+   ./db_restore.sh env=dev ~/backup/sql/backup_prod_2024-12-01_14-30-25.dump
+   ```
+
+### Copy Production to Development
+
+**Sync development with production data:**
+
+```bash
+# 1. Backup production
+./db_backup.sh env=prod
+
+# 2. Restore to development
+./db_restore.sh env=dev ~/backup/sql/backup_prod_2024-12-01_14-30-25.dump
+```
+
+### Testing and Debugging
+
+**Create test environment with production data:**
+
+```bash
+# Backup current state
+./db_backup.sh env=dev
+
+# Restore production data for testing
+./db_restore.sh env=dev ~/backup/sql/backup_prod_2024-12-01_14-30-25.dump
+
+# Test your changes...
+
+# Restore original development data
+./db_restore.sh env=dev ~/backup/sql/backup_dev_2024-12-01_13-00-00.dump
+```
+
+## Backup Management
+
+### Storage Location
+
+**Backups are stored in:**
+- `~/backup/sql/backup_prod_*.dump` - Production backups
+- `~/backup/sql/backup_dev_*.dump` - Development backups
+
+### File Cleanup
+
+**Manage backup storage:**
+
+```bash
+# List backups by date
+ls -lt ~/backup/sql/
+
+# Remove old backups (manually)
+rm ~/backup/sql/backup_dev_2024-11-*.dump
+
+# Keep only last 10 backups
+ls -t ~/backup/sql/backup_prod_*.dump | tail -n +11 | xargs rm
+```
+
+The backup and restore scripts provide a simple, reliable way to manage your database snapshots and recover to any point in time when needed.

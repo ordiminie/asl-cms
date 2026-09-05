@@ -1,0 +1,1160 @@
+---
+title: Service Testing
+description: Business logic testing, authorization validation, and integration testing patterns for service layer components
+keywords: 'ShipSaaS, service testing, business logic testing, service layer tests, API testing, service mocks'
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
+import { Callout } from 'fumadocs-ui/components/callout'
+
+
+Comprehensive testing for business logic, authorization validation, and service layer integration patterns.
+
+## Overview
+
+The service layer contains the **core business logic** of your application, making it critical to test thoroughly. Service tests focus on:
+
+- **Business Logic Validation** - Ensure operations work correctly
+- **Authorization Testing** - Verify RBAC permissions are enforced
+- **Integration Testing** - Test service dependencies and interactions
+- **Error Handling** - Validate proper error responses
+
+<Callout type="info">
+**Service Layer Focus:** Test business rules, not implementation details. Services should work correctly regardless of how the underlying database or external APIs function.
+</Callout>
+
+## Testing Architecture
+
+Service tests follow a **3-layer mocking strategy** that isolates business logic:
+
+<Tabs items={['Mocking Strategy', 'Test Structure', 'Authorization Patterns']}>
+
+<Tab value="Mocking Strategy">
+**Layer Isolation Pattern:**
+```typescript
+// 1. Mock Repository Layer (Data Access)
+vi.mock('@/db/repositories/user-repository', () => ({
+  getUserByIdDao: vi.fn(),
+  createUserSettingsDao: vi.fn(),
+  updateUserSettingsDao: vi.fn(),
+}))
+
+// 2. Mock External Services
+vi.mock('@/services/facades/subscription-service-facade', () => ({
+  getActivePlansForBetterAuthService: vi.fn(),
+}))
+
+// 3. Mock Authentication
+import { setupAuthUserMocked } from './helper-service-test'
+```
+
+**Benefits:**
+- **Fast Execution** - No database or network calls
+- **Predictable Results** - Controlled test data
+- **Focused Testing** - Only tests business logic
+- **Independent Tests** - No external dependencies
+</Tab>
+
+<Tab value="Test Structure">
+**Service Test Organization:**
+```
+src/services/
+├── __tests__/
+│   ├── helper-service-test.ts      # 🔧 Test utilities
+│   ├── user-service.test.ts        # 👤 User business logic
+│   ├── organization-service.test.ts # 🏢 Organization operations
+│   ├── subscription-service.test.ts # 💳 Payment logic
+│   └── notification-service.test.ts # 📧 Notification handling
+└── authorization/__tests__/
+    └── casl-authorization-service.test.ts # 🔐 RBAC testing
+```
+
+**Test Categories:**
+- **CRUD Operations** - Create, read, update, delete functionality
+- **Business Rules** - Domain-specific validation logic
+- **Permission Checks** - Role-based access control
+- **Error Scenarios** - Invalid input and failure handling
+</Tab>
+
+<Tab value="Authorization Patterns">
+**RBAC Testing Pattern:**
+```typescript
+describe('[getUserById] Authorization Tests', () => {
+  it('[USER] should access own profile', async () => {
+    setupAuthUserMocked(userTest)
+    const result = await getUserByIdService(userTest.id)
+    expect(result).toEqual(userTest)
+  })
+
+  it('[USER] should reject private profiles of others', async () => {
+    setupAuthUserMocked(userTest)
+    await expect(
+      getUserByIdService(differentUserId)
+    ).rejects.toThrow('Accès non autorisé')
+  })
+
+  it('[ADMIN] should access any user profile', async () => {
+    const adminUser = { ...userTest, role: RoleConst.ADMIN }
+    setupAuthUserMocked(adminUser)
+    const result = await getUserByIdService(differentUserId)
+    expect(result).toBeDefined()
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Core Testing Patterns
+
+Essential patterns used across all service tests:
+
+<Tabs items={['Setup & Mocking', 'Authorization Testing', 'Error Handling', 'Business Logic']}>
+
+<Tab value="Setup & Mocking">
+**Test Setup Pattern:**
+```typescript
+// src/services/__tests__/user-service.test.ts
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { setupAuthUserMocked } from './helper-service-test'
+import * as userRepository from '@/db/repositories/user-repository'
+import { getUserByIdService } from '../user-service'
+
+const userTest = {
+  id: 'ae760f8e-4aa6-4d71-a4c8-344429b7ae21',
+  name: 'Test User',
+  email: 'test@example.com',
+  role: RoleConst.USER,
+  emailVerified: true,
+  visibility: 'private',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+} satisfies User
+
+describe('User Service Tests', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(userTest)
+  })
+})
+```
+
+**Mock Helper Utility:**
+```typescript
+// src/services/__tests__/helper-service-test.ts
+export const setupAuthUserMocked = async (user?: User | undefined) => {
+  return vi.mocked(getAuthUser).mockImplementation(async () => {
+    if (!user) return
+    return user
+  })
+}
+```
+</Tab>
+
+<Tab value="Authorization Testing">
+**Role-Based Test Scenarios:**
+```typescript
+describe('[createUserSettings] Authorization', () => {
+  it('[USER] should create settings for own account', async () => {
+    setupAuthUserMocked(userTest)
+    vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(userTest)
+
+    const result = await createUserSettingsService(userTest.id, settings)
+    expect(result).toEqual(settings)
+    expect(userRepository.createUserSettingsDao).toHaveBeenCalledTimes(1)
+  })
+
+  it('[USER] should reject creating settings for others', async () => {
+    setupAuthUserMocked(userTest)
+    vi.mocked(userRepository.getUserByIdDao).mockResolvedValue({
+      ...userTest,
+      id: differentUserId,
+    })
+
+    await expect(
+      createUserSettingsService(differentUserId, settings)
+    ).rejects.toThrow(AuthorizationError)
+  })
+})
+```
+
+**Permission Matrix Testing:**
+```typescript
+// Test different role combinations
+const testCases = [
+  { role: RoleConst.USER, canAccess: false },
+  { role: RoleConst.ADMIN, canAccess: true },
+  { role: RoleConst.SUPER_ADMIN, canAccess: true },
+]
+
+testCases.forEach(({ role, canAccess }) => {
+  it(`[${role}] should ${canAccess ? 'allow' : 'deny'} access`, async () => {
+    const user = { ...userTest, role }
+    setupAuthUserMocked(user)
+
+    if (canAccess) {
+      const result = await restrictedService()
+      expect(result).toBeDefined()
+    } else {
+      await expect(restrictedService()).rejects.toThrow(AuthorizationError)
+    }
+  })
+})
+```
+</Tab>
+
+<Tab value="Error Handling">
+**Error Scenario Testing:**
+```typescript
+describe('[searchUsersService] Error Handling', () => {
+  it('should throw error for short search terms', async () => {
+    await expect(searchUsersService('a')).rejects.toThrow(
+      'Le terme de recherche doit contenir au moins 2 caractères.'
+    )
+  })
+
+  it('should return empty array when no results', async () => {
+    vi.mocked(userRepository.searchUsersDao).mockResolvedValue([])
+    const result = await searchUsersService('nonexistent')
+    expect(result).toEqual([])
+  })
+
+  it('should handle database errors gracefully', async () => {
+    vi.mocked(userRepository.getUserByIdDao).mockRejectedValue(
+      new Error('Database connection failed')
+    )
+
+    await expect(getUserByIdService('user-123')).rejects.toThrow(
+      'Database connection failed'
+    )
+  })
+})
+```
+
+**Custom Error Classes:**
+```typescript
+import { AuthorizationError } from '../errors/authorization-error'
+import { ValidationError } from '../errors/validation-error'
+
+it('should throw AuthorizationError for unauthorized access', async () => {
+  setupAuthUserMocked(unauthorizedUser)
+
+  await expect(restrictedOperation()).rejects.toBeInstanceOf(AuthorizationError)
+})
+
+it('should throw ValidationError for invalid input', async () => {
+  const invalidData = { email: 'invalid-email' }
+
+  await expect(createUser(invalidData)).rejects.toBeInstanceOf(ValidationError)
+})
+```
+</Tab>
+
+<Tab value="Business Logic">
+**CRUD Operations Testing:**
+```typescript
+describe('[UserSettings] CRUD Operations', () => {
+  const userSettings = {
+    userId: currentAuthUserId,
+    theme: 'dark' as const,
+    language: 'fr' as const,
+    timezone: 'Europe/Paris',
+    enableEmailNotifications: true,
+    enablePushNotifications: true,
+    notificationChannel: 'both' as const,
+    emailDigest: true,
+    marketingEmails: false,
+  } satisfies UserSettings
+
+  describe('Create', () => {
+    it('should create user settings with valid data', async () => {
+      setupAuthUserMocked(userTest)
+      vi.mocked(userRepository.createUserSettingsDao).mockResolvedValue(userSettings)
+
+      const result = await createUserSettingsService(userTest.id, userSettings)
+
+      expect(result).toEqual(userSettings)
+      expect(userRepository.createUserSettingsDao).toHaveBeenCalledWith(
+        userTest.id,
+        userSettings
+      )
+    })
+  })
+
+  describe('Update', () => {
+    it('should update user settings with partial data', async () => {
+      setupAuthUserMocked(userTest)
+      const updates = { theme: 'light' as const, language: 'en' as const }
+
+      await updateUserSettingsService(updates)
+
+      expect(userRepository.upsertUserSettingsDao).toHaveBeenCalledWith(
+        userTest.id,
+        expect.objectContaining(updates)
+      )
+    })
+  })
+
+  describe('Delete', () => {
+    it('should delete user settings', async () => {
+      setupAuthUserMocked(userTest)
+
+      await deleteUserSettingsService(userTest.id)
+
+      expect(userRepository.deleteUserSettingsByUserIdDao).toHaveBeenCalledWith(
+        userTest.id
+      )
+    })
+  })
+})
+```
+
+**Complex Business Logic:**
+```typescript
+describe('[searchUsersService] Business Logic', () => {
+  it('should search by name', async () => {
+    const users = [
+      { ...userTest, name: 'Alice' },
+      { ...userTest, name: 'Alicia', email: 'alicia@example.com' },
+    ]
+    vi.mocked(userRepository.searchUsersDao).mockResolvedValue(users)
+
+    const result = await searchUsersService('Ali')
+    expect(result).toEqual(users)
+    expect(userRepository.searchUsersDao).toHaveBeenCalledWith('Ali', undefined)
+  })
+
+  it('should exclude organization members', async () => {
+    const users = [{ ...userTest, name: 'Charlie' }]
+    vi.mocked(userRepository.searchUsersDao).mockResolvedValue(users)
+
+    const result = await searchUsersService('Char', 'org-123')
+    expect(result).toEqual(users)
+    expect(userRepository.searchUsersDao).toHaveBeenCalledWith('Char', 'org-123')
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## CASL Authorization Testing
+
+Testing role-based access control with CASL abilities:
+
+<Tabs items={['Permission Testing', 'Resource-Based Tests', 'Role Hierarchy', 'Field Filtering']}>
+
+<Tab value="Permission Testing">
+**Basic Permission Tests:**
+```typescript
+// src/services/authorization/__tests__/casl-authorization-service.test.ts
+import { userCan, userCannot, defineAbilitiesFor } from '../authorization-service'
+import { ActionsConst, SubjectsConst } from '../casl-abilities'
+
+describe('CASL Abilities', () => {
+  const regularUser = {
+    id: 'user-123',
+    role: RoleConst.USER,
+    // ... other properties
+  }
+
+  const adminUser = {
+    id: 'admin-123',
+    role: RoleConst.ADMIN,
+    // ... other properties
+  }
+
+  describe('User Permissions', () => {
+    it('regular user can read subscriptions', () => {
+      expect(
+        userCan(regularUser, ActionsConst.READ, SubjectsConst.SUBSCRIPTION)
+      ).toBe(true)
+    })
+
+    it('regular user cannot delete users', () => {
+      expect(
+        userCan(regularUser, ActionsConst.DELETE, SubjectsConst.USER)
+      ).toBe(false)
+
+      expect(
+        userCannot(regularUser, ActionsConst.DELETE, SubjectsConst.USER)
+      ).toBe(true)
+    })
+  })
+
+  describe('Admin Permissions', () => {
+    it('admin can manage all users', () => {
+      expect(
+        userCan(adminUser, ActionsConst.MANAGE, SubjectsConst.USER)
+      ).toBe(true)
+    })
+
+    it('admin can perform all actions on subscriptions', () => {
+      expect(userCan(adminUser, ActionsConst.CREATE, SubjectsConst.SUBSCRIPTION)).toBe(true)
+      expect(userCan(adminUser, ActionsConst.READ, SubjectsConst.SUBSCRIPTION)).toBe(true)
+      expect(userCan(adminUser, ActionsConst.UPDATE, SubjectsConst.SUBSCRIPTION)).toBe(true)
+      expect(userCan(adminUser, ActionsConst.DELETE, SubjectsConst.SUBSCRIPTION)).toBe(true)
+    })
+  })
+})
+```
+
+**Guest User Testing:**
+```typescript
+describe('Guest (Unauthenticated) Permissions', () => {
+  const guestUser = undefined
+
+  it('can read public user profiles', () => {
+    const publicProfile = { id: 'user-123', visibility: 'public' }
+    expect(
+      userCanOnResource(guestUser, ActionsConst.READ, SubjectsConst.USER, publicProfile)
+    ).toBe(true)
+  })
+
+  it('cannot read private user profiles', () => {
+    const privateProfile = { id: 'user-123', visibility: 'private' }
+    expect(
+      userCanOnResource(guestUser, ActionsConst.READ, SubjectsConst.USER, privateProfile)
+    ).toBe(false)
+  })
+
+  it('cannot create users', () => {
+    expect(userCan(guestUser, ActionsConst.CREATE, SubjectsConst.USER)).toBe(false)
+  })
+})
+```
+</Tab>
+
+<Tab value="Resource-Based Tests">
+**Conditional Access Testing:**
+```typescript
+describe('userCanOnResource - Conditional Permissions', () => {
+  it('user can access own profile', () => {
+    const ownProfile = { id: regularUser.id, name: 'Own Profile' }
+    expect(
+      userCanOnResource(regularUser, ActionsConst.READ, SubjectsConst.USER, ownProfile)
+    ).toBe(true)
+  })
+
+  it('user can access public profiles', () => {
+    const publicProfile = { id: 'other-user', visibility: 'public' }
+    expect(
+      userCanOnResource(regularUser, ActionsConst.READ, SubjectsConst.USER, publicProfile)
+    ).toBe(true)
+  })
+
+  it('user cannot access private profiles of others', () => {
+    const privateProfile = { id: 'other-user', visibility: 'private' }
+    expect(
+      userCanOnResource(regularUser, ActionsConst.READ, SubjectsConst.USER, privateProfile)
+    ).toBe(false)
+  })
+
+  it('user can access own subscriptions', () => {
+    const ownSubscription = { id: 'sub-123', userId: regularUser.id }
+    expect(
+      userCanOnResource(regularUser, ActionsConst.READ, SubjectsConst.SUBSCRIPTION, ownSubscription)
+    ).toBe(true)
+  })
+
+  it('user cannot access other subscriptions', () => {
+    const otherSubscription = { id: 'sub-456', userId: 'other-user' }
+    expect(
+      userCanOnResource(regularUser, ActionsConst.READ, SubjectsConst.SUBSCRIPTION, otherSubscription)
+    ).toBe(false)
+  })
+})
+```
+
+**Organization-Based Permissions:**
+```typescript
+describe('Organization Permissions', () => {
+  it('organization member can access team resources', () => {
+    const orgResource = { id: 'project-123', organizationId: 'org-456' }
+    const orgMember = { ...regularUser, organizationId: 'org-456' }
+
+    expect(
+      userCanOnResource(orgMember, ActionsConst.READ, SubjectsConst.PROJECT, orgResource)
+    ).toBe(true)
+  })
+
+  it('non-member cannot access organization resources', () => {
+    const orgResource = { id: 'project-123', organizationId: 'org-456' }
+
+    expect(
+      userCanOnResource(regularUser, ActionsConst.READ, SubjectsConst.PROJECT, orgResource)
+    ).toBe(false)
+  })
+})
+```
+</Tab>
+
+<Tab value="Role Hierarchy">
+**Role Hierarchy Testing:**
+```typescript
+describe('Role-Based Permissions', () => {
+  const roles = [
+    { role: RoleConst.GUEST, level: 0 },
+    { role: RoleConst.USER, level: 1 },
+    { role: RoleConst.MODERATOR, level: 2 },
+    { role: RoleConst.ADMIN, level: 3 },
+    { role: RoleConst.SUPER_ADMIN, level: 4 },
+  ]
+
+  roles.forEach(({ role, level }) => {
+    describe(`${role} Role`, () => {
+      const userWithRole = { ...regularUser, role }
+
+      it('should have appropriate subscription permissions', () => {
+        const canRead = level >= 1 // USER and above
+        const canCreate = level >= 1 // USER and above
+        const canDelete = level >= 3 // ADMIN and above
+
+        expect(
+          userCan(userWithRole, ActionsConst.READ, SubjectsConst.SUBSCRIPTION)
+        ).toBe(canRead)
+
+        expect(
+          userCan(userWithRole, ActionsConst.CREATE, SubjectsConst.SUBSCRIPTION)
+        ).toBe(canCreate)
+
+        expect(
+          userCan(userWithRole, ActionsConst.DELETE, SubjectsConst.SUBSCRIPTION)
+        ).toBe(canDelete)
+      })
+
+      it('should have appropriate technical resource permissions', () => {
+        const canManage = level >= 3 // ADMIN and above
+
+        expect(
+          userCan(userWithRole, ActionsConst.MANAGE, SubjectsConst.TECHNICAL)
+        ).toBe(canManage)
+      })
+    })
+  })
+})
+```
+
+**Utility Function Testing:**
+```typescript
+describe('Authorization Utilities', () => {
+  describe('isUserAdmin', () => {
+    it('should return false for guest', () => {
+      expect(isUserAdmin(undefined)).toBe(false)
+    })
+
+    it('should return false for regular user', () => {
+      expect(isUserAdmin(regularUser)).toBe(false)
+    })
+
+    it('should return true for admin', () => {
+      expect(isUserAdmin(adminUser)).toBe(true)
+    })
+
+    it('should return true for super admin', () => {
+      const superAdmin = { ...adminUser, role: RoleConst.SUPER_ADMIN }
+      expect(isUserAdmin(superAdmin)).toBe(true)
+    })
+  })
+
+  describe('createUserAbility', () => {
+    it('should create same ability as defineAbilitiesFor', () => {
+      const ability1 = createUserAbility(regularUser)
+      const ability2 = defineAbilitiesFor(regularUser)
+
+      expect(ability1.can(ActionsConst.READ, SubjectsConst.USER))
+        .toBe(ability2.can(ActionsConst.READ, SubjectsConst.USER))
+      expect(ability1.can(ActionsConst.MANAGE, SubjectsConst.USER))
+        .toBe(ability2.can(ActionsConst.MANAGE, SubjectsConst.USER))
+    })
+  })
+})
+```
+</Tab>
+
+<Tab value="Field Filtering">
+**Data Filtering Based on Permissions:**
+```typescript
+describe('filterFields', () => {
+  it('should return data for authorized user', () => {
+    const userData = {
+      id: 'user-123',
+      name: 'John Doe',
+      email: 'john@test.com',
+      role: RoleConst.USER,
+    }
+
+    const filtered = filterFields(
+      regularUser,
+      ActionsConst.READ,
+      SubjectsConst.USER,
+      userData
+    )
+
+    expect(filtered).toEqual(userData)
+  })
+
+  it('should return empty object for unauthorized user', () => {
+    const userData = {
+      id: 'user-123',
+      name: 'John Doe',
+      email: 'john@test.com',
+    }
+
+    const filtered = filterFields(
+      undefined, // guest user
+      ActionsConst.UPDATE,
+      SubjectsConst.USER,
+      userData
+    )
+
+    expect(filtered).toEqual({})
+  })
+
+  it('should return data for admin user', () => {
+    const userData = {
+      id: 'user-123',
+      name: 'John Doe',
+      email: 'john@test.com',
+      role: RoleConst.USER,
+    }
+
+    const filtered = filterFields(
+      adminUser,
+      ActionsConst.READ,
+      SubjectsConst.USER,
+      userData
+    )
+
+    expect(filtered).toEqual(userData)
+  })
+
+  it('should handle sensitive field filtering', () => {
+    const sensitiveData = {
+      id: 'user-123',
+      name: 'John Doe',
+      email: 'john@test.com',
+      stripeCustomerId: 'cus_12345', // sensitive field
+      twoFactorSecret: 'SECRET123',  // sensitive field
+    }
+
+    // Regular user accessing own data
+    const ownFiltered = filterFields(
+      { ...regularUser, id: 'user-123' },
+      ActionsConst.READ,
+      SubjectsConst.USER,
+      sensitiveData
+    )
+    expect(ownFiltered).toEqual(sensitiveData)
+
+    // Different user accessing data
+    const otherFiltered = filterFields(
+      regularUser,
+      ActionsConst.READ,
+      SubjectsConst.USER,
+      sensitiveData
+    )
+    // Should exclude sensitive fields for other users
+    expect(otherFiltered).not.toHaveProperty('stripeCustomerId')
+    expect(otherFiltered).not.toHaveProperty('twoFactorSecret')
+  })
+})
+```
+
+**Complex Permission Scenarios:**
+```typescript
+describe('Complex Permission Scenarios', () => {
+  it('should handle nested resource permissions', () => {
+    const organizationResource = {
+      id: 'org-123',
+      name: 'Test Org',
+      projects: [
+        { id: 'proj-1', name: 'Project 1' },
+        { id: 'proj-2', name: 'Project 2' },
+      ]
+    }
+
+    const orgMember = { ...regularUser, organizationId: 'org-123', role: RoleConst.USER }
+    const orgAdmin = { ...regularUser, organizationId: 'org-123', role: RoleConst.ADMIN }
+
+    // Member can read org but not manage
+    expect(
+      userCanOnResource(orgMember, ActionsConst.READ, SubjectsConst.ORGANIZATION, organizationResource)
+    ).toBe(true)
+    expect(
+      userCanOnResource(orgMember, ActionsConst.MANAGE, SubjectsConst.ORGANIZATION, organizationResource)
+    ).toBe(false)
+
+    // Admin can manage org
+    expect(
+      userCanOnResource(orgAdmin, ActionsConst.MANAGE, SubjectsConst.ORGANIZATION, organizationResource)
+    ).toBe(true)
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Integration Testing Patterns
+
+Testing service interactions and external dependencies:
+
+<Tabs items={['Service Dependencies', 'External APIs', 'Error Propagation', 'Async Operations']}>
+
+<Tab value="Service Dependencies">
+**Service-to-Service Testing:**
+```typescript
+describe('Service Integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should integrate user and subscription services', async () => {
+    // Mock subscription service facade
+    vi.mocked(getActivePlansForBetterAuthService).mockResolvedValue([
+      { id: 'plan-1', name: 'Basic Plan', price: 999 }
+    ])
+
+    // Test user service calling subscription service
+    setupAuthUserMocked(userTest)
+    const userWithSubscriptions = await getUserWithSubscriptionsService(userTest.id)
+
+    expect(userWithSubscriptions.subscriptions).toHaveLength(1)
+    expect(getActivePlansForBetterAuthService).toHaveBeenCalledWith(userTest.id)
+  })
+
+  it('should handle service dependency failures', async () => {
+    // Mock service failure
+    vi.mocked(getActivePlansForBetterAuthService).mockRejectedValue(
+      new Error('Subscription service unavailable')
+    )
+
+    setupAuthUserMocked(userTest)
+
+    // Should handle gracefully or propagate appropriately
+    await expect(
+      getUserWithSubscriptionsService(userTest.id)
+    ).rejects.toThrow('Subscription service unavailable')
+  })
+})
+```
+
+**Facade Integration Testing:**
+```typescript
+// Test service facades work correctly
+describe('Service Facades', () => {
+  it('should expose simplified interface to app layer', async () => {
+    setupAuthUserMocked(userTest)
+    vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(userTest)
+
+    // Import facade function
+    const { getUserById } = await import('@/services/facades/user-service-facade')
+
+    const result = await getUserById(userTest.id)
+    expect(result).toEqual(userTest)
+  })
+
+  it('should handle facade errors consistently', async () => {
+    setupAuthUserMocked(userTest)
+    vi.mocked(userRepository.getUserByIdDao).mockRejectedValue(
+      new Error('Database error')
+    )
+
+    const { getUserById } = await import('@/services/facades/user-service-facade')
+
+    await expect(getUserById(userTest.id)).rejects.toThrow('Database error')
+  })
+})
+```
+</Tab>
+
+<Tab value="External APIs">
+**Mock External Services:**
+```typescript
+// Mock email service
+vi.mock('@/services/email/resend-email-service', () => ({
+  sendWelcomeEmail: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
+}))
+
+describe('External Service Integration', () => {
+  it('should send welcome email on user creation', async () => {
+    const emailService = await import('@/services/email/resend-email-service')
+    vi.mocked(emailService.sendWelcomeEmail).mockResolvedValue({ success: true })
+
+    setupAuthUserMocked(adminUser) // Admin can create users
+    const newUser = await createUserService({
+      name: 'New User',
+      email: 'new@example.com',
+      password: 'password123',
+    })
+
+    expect(emailService.sendWelcomeEmail).toHaveBeenCalledWith(
+      newUser.email,
+      newUser.name
+    )
+  })
+
+  it('should handle email service failures gracefully', async () => {
+    const emailService = await import('@/services/email/resend-email-service')
+    vi.mocked(emailService.sendWelcomeEmail).mockRejectedValue(
+      new Error('Email service down')
+    )
+
+    setupAuthUserMocked(adminUser)
+
+    // User creation should still succeed even if email fails
+    const newUser = await createUserService({
+      name: 'New User',
+      email: 'new@example.com',
+      password: 'password123',
+    })
+
+    expect(newUser.id).toBeDefined()
+    // But email error should be logged/handled appropriately
+    expect(emailService.sendWelcomeEmail).toHaveBeenCalled()
+  })
+})
+```
+
+**Stripe Integration Testing:**
+```typescript
+// Mock Stripe service
+vi.mock('@/services/payment/stripe-service', () => ({
+  createStripeCustomer: vi.fn(),
+  createSubscription: vi.fn(),
+  cancelSubscription: vi.fn(),
+}))
+
+describe('Payment Service Integration', () => {
+  it('should create Stripe customer on subscription', async () => {
+    const stripeService = await import('@/services/payment/stripe-service')
+    vi.mocked(stripeService.createStripeCustomer).mockResolvedValue({
+      id: 'cus_12345',
+      email: userTest.email,
+    })
+
+    setupAuthUserMocked(userTest)
+    const subscription = await createSubscriptionService({
+      userId: userTest.id,
+      planId: 'plan-basic',
+    })
+
+    expect(stripeService.createStripeCustomer).toHaveBeenCalledWith({
+      email: userTest.email,
+      name: userTest.name,
+      metadata: { userId: userTest.id },
+    })
+    expect(subscription.stripeCustomerId).toBe('cus_12345')
+  })
+})
+```
+</Tab>
+
+<Tab value="Error Propagation">
+**Error Handling Chains:**
+```typescript
+describe('Error Propagation', () => {
+  it('should propagate repository errors', async () => {
+    const dbError = new Error('Connection failed')
+    vi.mocked(userRepository.getUserByIdDao).mockRejectedValue(dbError)
+
+    setupAuthUserMocked(userTest)
+
+    await expect(getUserByIdService(userTest.id)).rejects.toThrow('Connection failed')
+  })
+
+  it('should transform errors appropriately', async () => {
+    // Database returns generic error
+    vi.mocked(userRepository.getUserByIdDao).mockRejectedValue(
+      new Error('Foreign key constraint')
+    )
+
+    setupAuthUserMocked(userTest)
+
+    // Service should transform to user-friendly error
+    await expect(getUserByIdService(userTest.id)).rejects.toThrow(
+      expect.stringMatching(/user.*not.*found|database.*error/i)
+    )
+  })
+
+  it('should handle authorization errors first', async () => {
+    setupAuthUserMocked(userTest)
+    vi.mocked(userRepository.getUserByIdDao).mockRejectedValue(
+      new Error('Database error')
+    )
+
+    // Authorization error should be checked before database access
+    await expect(
+      getUserByIdService(differentUserId) // Different user = auth error
+    ).rejects.toThrow(AuthorizationError)
+
+    // Database should not be called for unauthorized access
+    expect(userRepository.getUserByIdDao).not.toHaveBeenCalled()
+  })
+})
+```
+
+**Custom Error Classes:**
+```typescript
+import { AuthorizationError } from '../errors/authorization-error'
+import { ValidationError } from '../errors/validation-error'
+import { ServiceError } from '../errors/service-error'
+
+describe('Custom Error Handling', () => {
+  it('should throw ValidationError for invalid inputs', async () => {
+    const invalidUser = { email: 'not-an-email', name: '' }
+
+    await expect(createUserService(invalidUser)).rejects.toBeInstanceOf(ValidationError)
+  })
+
+  it('should throw AuthorizationError for permission denied', async () => {
+    setupAuthUserMocked(userTest) // Regular user
+
+    await expect(
+      deleteUserService(differentUserId) // Can't delete others
+    ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+
+  it('should throw ServiceError for business rule violations', async () => {
+    setupAuthUserMocked(userTest)
+
+    // Try to create duplicate subscription
+    await expect(
+      createSubscriptionService({ userId: userTest.id, planId: 'existing-plan' })
+    ).rejects.toBeInstanceOf(ServiceError)
+  })
+})
+```
+</Tab>
+
+<Tab value="Async Operations">
+**Async Service Testing:**
+```typescript
+describe('Async Operations', () => {
+  it('should handle concurrent operations', async () => {
+    setupAuthUserMocked(userTest)
+    vi.mocked(userRepository.updateUserSettingsDao).mockImplementation(
+      () => new Promise(resolve => setTimeout(() => resolve(userSettings), 100))
+    )
+
+    // Start multiple concurrent updates
+    const updates = [
+      updateUserSettingsService({ theme: 'dark' }),
+      updateUserSettingsService({ language: 'fr' }),
+      updateUserSettingsService({ timezone: 'Europe/Paris' }),
+    ]
+
+    // All should complete successfully
+    const results = await Promise.all(updates)
+    expect(results).toHaveLength(3)
+    results.forEach(result => expect(result).toBeDefined())
+  })
+
+  it('should handle operation timeouts', async () => {
+    setupAuthUserMocked(userTest)
+    vi.mocked(userRepository.getUserByIdDao).mockImplementation(
+      () => new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Operation timeout')), 5000)
+      )
+    )
+
+    // Should timeout appropriately
+    await expect(getUserByIdService(userTest.id)).rejects.toThrow('Operation timeout')
+  }, 6000) // Test timeout longer than operation
+
+  it('should handle partial failures in batch operations', async () => {
+    setupAuthUserMocked(adminUser) // Admin can batch create
+
+    const usersToCreate = [
+      { email: 'user1@test.com', name: 'User 1' },
+      { email: 'invalid-email', name: 'User 2' }, // Invalid
+      { email: 'user3@test.com', name: 'User 3' },
+    ]
+
+    const results = await batchCreateUsersService(usersToCreate)
+
+    expect(results.successful).toHaveLength(2)
+    expect(results.failed).toHaveLength(1)
+    expect(results.failed[0].error).toBeInstanceOf(ValidationError)
+  })
+})
+```
+
+**Event-Driven Testing:**
+```typescript
+// Mock event bus
+vi.mock('@/services/events/event-bus', () => ({
+  emit: vi.fn(),
+  on: vi.fn(),
+}))
+
+describe('Event-Driven Operations', () => {
+  it('should emit user created event', async () => {
+    const eventBus = await import('@/services/events/event-bus')
+    setupAuthUserMocked(adminUser)
+
+    const newUser = await createUserService({
+      name: 'New User',
+      email: 'new@example.com',
+      password: 'password123',
+    })
+
+    expect(eventBus.emit).toHaveBeenCalledWith('user.created', {
+      userId: newUser.id,
+      userEmail: newUser.email,
+      timestamp: expect.any(Date),
+    })
+  })
+
+  it('should handle event processing failures', async () => {
+    const eventBus = await import('@/services/events/event-bus')
+    vi.mocked(eventBus.emit).mockRejectedValue(new Error('Event bus down'))
+
+    setupAuthUserMocked(adminUser)
+
+    // User creation should still succeed even if event fails
+    const newUser = await createUserService({
+      name: 'New User',
+      email: 'new@example.com',
+      password: 'password123',
+    })
+
+    expect(newUser.id).toBeDefined()
+  })
+})
+```
+</Tab>
+
+</Tabs>
+
+## Running Service Tests
+
+Essential commands for service testing workflow:
+
+<Tabs items={['Development Commands', 'Debug Commands', 'CI/CD Commands']}>
+
+<Tab value="Development Commands">
+**Daily Testing Workflow:**
+```bash
+# Run all service tests
+pnpm test services/
+pnpm test src/services/__tests__/
+
+# Run specific service tests
+pnpm test user-service
+pnpm test authorization
+pnpm test src/services/__tests__/user-service.test.ts
+
+# Watch mode for active development
+pnpm test:watch services/
+pnpm test:watch src/services/__tests__/user-service.test.ts
+
+# Run with coverage
+pnpm test:coverage services/
+```
+
+**Interactive Development:**
+```bash
+# Open Vitest UI for service tests
+pnpm test:ui --root src/services
+
+# Run tests matching pattern
+pnpm test --grep="Authorization"
+pnpm test --grep="CRUD Operations"
+pnpm test --grep="\\[ADMIN\\]" # Test admin role specifically
+```
+</Tab>
+
+<Tab value="Debug Commands">
+**Debugging Service Tests:**
+```bash
+# Verbose output for debugging
+pnpm test services/ --reporter=verbose
+
+# Debug specific authorization tests
+DEBUG_TESTS=true pnpm test authorization-service
+
+# Run single test case for debugging
+pnpm test --grep="should throw AuthorizationError"
+```
+
+**Test Data Inspection:**
+```typescript
+// Add console.log in tests for debugging
+it('should debug user creation', async () => {
+  setupAuthUserMocked(userTest)
+
+  console.log('Auth user:', await getAuthUser())
+  console.log('Repository mock calls:', vi.mocked(userRepository.getUserByIdDao).mock.calls)
+
+  const result = await createUserService(userData)
+  console.log('Service result:', result)
+
+  expect(result.id).toBeDefined()
+})
+```
+</Tab>
+
+<Tab value="CI/CD Commands">
+**Production Testing:**
+```bash
+# Single run with coverage for CI
+pnpm test services/ --run --coverage
+
+# JSON output for CI systems
+pnpm test services/ --reporter=json --outputFile=test-results.json
+
+# JUnit XML for test reporting
+pnpm test services/ --reporter=junit --outputFile=junit.xml
+```
+
+**Performance Testing:**
+```bash
+# Run with performance monitoring
+pnpm test services/ --reporter=verbose --no-coverage
+
+# Test isolation verification
+pnpm test services/ --sequence.concurrent=false
+```
+</Tab>
+
+</Tabs>
+
+## Best Practices
+
+Service testing guidelines for maintainable, reliable tests:
+
+<Callout type="success">
+**Service Testing Philosophy:** Test business logic behavior, not implementation details. Services should work correctly regardless of underlying technology changes.
+</Callout>
+
+### Key Principles
+
+**1. Isolation & Mocking**
+- Mock all external dependencies (repositories, APIs, services)
+- Use consistent mocking patterns across tests
+- Clear mocks between tests to prevent pollution
+
+**2. Authorization First**
+- Test authorization before business logic
+- Cover all role combinations and permission scenarios
+- Use realistic test data that matches production constraints
+
+**3. Error Handling**
+- Test both success and failure scenarios
+- Verify error types and messages are appropriate
+- Ensure graceful degradation when external services fail
+
+**4. Business Logic Focus**
+- Test domain rules and constraints
+- Validate input/output transformations
+- Cover edge cases and boundary conditions
+
+**5. Realistic Test Data**
+- Use test data factories for consistency
+- Match production data patterns and constraints
+- Include edge cases in test data scenarios
+
+Ready to implement end-to-end testing? Continue with **[E2E Testing](/docs/testing/e2e-testing)** to test complete user workflows with Playwright.

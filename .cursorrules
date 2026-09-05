@@ -1,0 +1,145 @@
+# Cursors Rule – Directives Architecturales
+
+## Technologies Utilisées
+
+- **Next.js 15**  
+  Utilisation de l'**App Router** pour un rendu optimisé et performant.
+- **React 19**  
+  La gestion des références a évolué : il n'est plus nécessaire d'utiliser `forwardRef` et il suffit de passer la ref comme prop.
+- **ShadCN UI**  
+  Adoption de composants UI modernes et accessibles basés sur Radix UI.
+- **TypeScript**  
+  Typage strict pour un code robuste et maintenable.
+- **Tailwind CSS V4**  
+  Styling rapide et efficace avec une approche utility-first.
+- **PNPM**  
+  Utilisation de PNPM en priorité
+- **GIT** - Generate a concise Git commit message based on the staged diff.
+
+---
+
+## Organisation du Projet
+
+Le projet suit une architecture claire et modulaire, exploitant les meilleures pratiques de **Next.js 15** et **React 19**.
+
+### Structure des Dossiers
+
+```plaintext
+src/
+ ┣ app/
+    ├── (public)/ → Public routes
+    │   ├── page.tsx
+    │   └── layout.tsx
+    ├── (auth)/ → Authentication routes
+    │   ├── signin/
+    │   └── signup/
+    ├── (app)/ → Protected user routes
+    │   ├── account/
+    │   └── dashboard/
+    └── (admin)/ → Admin routes
+        └── users/
+ ┣ components/          # Composants réutilisables (ShadCN UI)
+ ┣ lib/                 # Fonctions utilitaires et helpers
+ ┣ bd/                  # Peristance layer
+ ┣ services/            # Services layer
+
+
+```
+
+## Détails des Modules
+
+- **`app/(public)/`**  
+  Gère les routes publiques (sans auth, generalement statiques).
+
+- **`app/(app)/`**  
+  Contient l'espace utilisateur protégé après connexion.
+
+- **`app/(auth)/`**  
+  Gère l'authentification avec **NextAuth** (login/register/logout).
+
+- **`app/api/`**  
+  Regroupe les routes API pour gérer les données (CRUD, authentification, etc.).
+
+- **`app/dal/`**  
+  Regroupe les DAL (Data Acess Layers)
+
+- **`/components/`**  
+  Stocke les composants et block **ShadCN** réutilisables.
+
+- **`/components/ui`**  
+  Stocke les composants UI **ShadCN** réutilisables.
+
+- **`/components/context`**  
+  Les composants de l'api contexte
+
+- **`/components/hooks`**  
+  Les hooks réutilisables
+
+- **`/lib/`**  
+  Contient les fonctions helpers et utilitaires (gestion des dates, formatage, etc.).
+
+## Code Generation Prerequisites
+
+Before generating ANY new code, you **MUST** complete these two verification steps:
+
+1. **Check Existing Codebase Patterns**
+   Find and analyze **at least three existing examples** of similar functionality in the codebase. Look for:
+   - Similar components, functions, or modules
+   - Existing patterns that solve comparable problems
+   - Code structure and conventions already in use
+
+   If no such examples exist, explicitly state that fact before proceeding.
+
+2. **Check .cursor/rules Directory**
+   Review the `.cursor/rules/` folder to verify if a predefined rule exists for the task at hand:
+   - Check `00-generals/` for general technical guidelines
+   - Check `01-presentation/` for UI/frontend patterns
+   - Check `02-services/` for business logic patterns
+   - Check `03-persistance/` for database patterns
+
+   If a rule exists, you **MUST** follow it exactly. If no rule exists, mention this before proposing a solution.
+
+**Until both verifications are complete, do NOT proceed with implementation.**
+Every new feature must be analyzed against existing rules and codebase patterns before any code is written. Always propose an implementation plan and wait for approval before coding.
+
+## Bonnes Pratiques
+
+1. **Utilisation exclusive de l'App Router**
+
+   - Utilisez uniquement le **App Router** (pas de dossier `pages/`).
+   - Exploitez les **Server Components** et **Server Actions** pour un rendu optimisé.
+
+2. **Gestion des Refs avec React 19**
+   - Dans React 19, il n'est plus nécessaire d'envelopper vos composants avec `forwardRef`.
+   - Passez simplement la `ref` comme prop :
+   ```tsx
+   const MyInput = (props) => {
+     return <input {...props} ref={props.ref} />
+   }
+   ```
+3. - **Utilisation de Drizzle ORM**
+
+- Utilisez **Drizzle ORM** pour une base de données typée et performante.
+- Support pour PostgreSQL, MySQL et SQLite avec schémas typés.
+
+4.  **Gestion des États avec Server Actions**
+
+- Remplacez les mutations d'état côté client par des actions exécutées côté serveur.
+
+```tsx
+"use server"  export async function createTask(data: FormData) {   const title = data.get("title");
+```
+
+5. **Utilisation des Composants ShadCN UI**
+
+- Exploitez les composants de **ShadCN UI** pour obtenir une interface moderne et accessible.
+- Exemple avec un composant Button :
+
+```tsx
+import {Button} from '@/components/ui/button'
+export default function Page() {
+  return <Button>Créer une tâche</Button>
+}
+```
+
+6. **Proposer un plan d'execution avant d'éxecuter meme en mode agent**
