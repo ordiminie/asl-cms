@@ -41,17 +41,25 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   être partagé dans un foyer ; le numéro de parcelle n'est pas unique par personne et se transmet à
   la vente. Toute clé de rattachement — stockage nominatif, rapprochement Pennylane, dédoublonnage
   d'import, export — s'indexe sur cette clé primaire. Voir `V5 §5.1`.
+- **Désinscription : elle ne couvre que les communications facultatives.** Un membre qui se
+  désinscrit cesse de recevoir les campagnes libres et les annonces d'actualité ; il continue de
+  recevoir les communications statutaires et contractuelles — convocation à l'AG, mise à disposition
+  d'une facture, relance d'impayé — auxquelles son appartenance à l'association l'engage. Le pied de
+  page de ces envois-là le dit explicitement. ⚠️ Doctrine posée par défaut au découpage : **à faire
+  confirmer par le conseil RGPD** en même temps que la règle de rétention (s12).
 - **Périmètre** : rien du cimetière du PRD ne devient une story. En particulier, aucun plan B de
   connexion pour les membres sans email — le publipostage PDF (s26) est la réponse produite.
 
 ## Dépendances externes bloquantes
 
-Trois réserves du devis conditionnent des stories précises. **Ne pas démarrer la story tant que la
-réserve n'est pas levée** ; les stories qui les contournent sont ordonnées avant.
+Cinq points en attente d'un retour extérieur conditionnent des stories précises (`PRD` Constraints,
+`V5` Annexe A). **Ne pas démarrer la story tant que le point n'est pas levé** ; les stories qui les
+contournent sont ordonnées avant.
 
 | Réserve | Bloque | Contournement prévu |
 | --- | --- | --- |
-| Accès API Pennylane + clé de rapprochement | s18, et le déclencheur de s27 | s17 livre l'interface et la saisie manuelle |
+| Accès API Pennylane + clé de rapprochement | s18 seule | s17 livre l'interface et la saisie manuelle ; s25 et s27 s'appuient dessus et ne sont pas bloquées |
+| Contenu détaillé des 4 modèles d'email et de leurs variables | la rédaction des modèles de s23, pas son code | livrer les modèles câblés avec un contenu provisoire marqué comme tel |
 | Fichier exemple des relevés d'eau (format imposé par Pennylane) | le parseur de s15 | aucun — s15 attend le fichier réel |
 | Accès ASL Community + validation statutaire du vote électronique | s31 en entier | aucun, mais le module n'est pas en doute : seul son fournisseur l'est (voir s31) |
 | Arbitrage RGPD sur la rétention des données d'un ex-propriétaire | la coupure d'accès de s12 | s12 livre le modèle daté sans purge |
@@ -71,7 +79,7 @@ réserve n'est pas levée** ; les stories qui les contournent sont ordonnées av
 
 ### Acceptance criteria
 
-- [ ] Créer une association depuis le back-office SuperAdmin (nom, slug, domaine, modules activés) produit un tenant utilisable immédiatement.
+- [ ] Créer une association depuis le back-office SuperAdmin (nom, slug, domaine, modules activés) produit un tenant sur lequel on peut immédiatement écrire et lire une donnée scopée, servi sur son domaine.
 - [ ] Chaque association porte un jeu de drapeaux d'activation de modules, persisté et modifiable depuis le back-office SuperAdmin ; deux associations peuvent avoir des drapeaux différents.
 - [ ] Une route rattachée à un module inactif, ou à une clé de module inconnue, répond 404 — pas un lien masqué, pas une page vide (vérifié sur une route de test rattachée à un module fictif).
 - [ ] Une requête authentifiée dans le tenant A ne retourne aucune donnée du tenant B, y compris en forgeant l'identifiant de la ressource (test d'accès croisé).
@@ -92,6 +100,12 @@ Risque (complexité 4) : le scoping n'est pas rétroactif. Cette story pose la c
 `organization_id` + policy RLS + helper de scoping) que **chaque story suivante applique** ; une
 convention mal posée ici se paie sur 36 stories. Faire trancher la forme exacte en `/ks-architect`
 avant `/ks-plan`.
+
+**Rôles : cette story s'appuie sur ceux du boilerplate, elle n'en crée aucun.** `admin` et
+`super_admin` existent déjà (`src/services/types/domain/auth-types.ts`), ainsi que les rôles
+d'organisation — c'est ce qui rend testables ici « le back-office SuperAdmin » et « une requête
+authentifiée ». Les rôles **propres à l'association** (Membre, Bureau, Président(e)) et le magic link
+arrivent en s03. Ne pas anticiper s03 ici, et ne pas redéfinir un système de rôles concurrent.
 
 Pièges : le boilerplate porte des notions Stripe/abonnement qui relèvent de la facturation
 **plateforme** (Zourite Studio ↔ association) — à ne jamais confondre avec la facturation membres
@@ -126,7 +140,7 @@ Cimetière : pas une base par tenant, base partagée + RLS.
 - [ ] Modifier un paramètre puis le relire renvoie la nouvelle valeur, sans redéploiement ni redémarrage.
 - [ ] Un paramètre jamais renseigné se lit à sa valeur par défaut déclarée au registre ; le renseigner puis le vider le ramène à cette même valeur par défaut.
 - [ ] Les valeurs de départ de La Fourche (`contact@asl-exemple.test`, responsable forage) se lisent depuis le tenant après exécution de son seed.
-- [ ] Un membre non-bureau qui accède à la page de réglages reçoit un refus.
+- [ ] Un utilisateur authentifié sans rôle administrateur qui accède à la page de réglages reçoit un refus, côté interface et côté serveur.
 
 ### Dependencies
 
@@ -136,6 +150,9 @@ s01
 
 Réf. `V5 §4.6`, `CDCT §4.6`. C'est le socle du critère de succès « aucune donnée propre à La Fourche
 codée en dur » : les stories s08, s10, s15, s20 et s27 lisent leurs adresses et seuils **ici**.
+
+Comme s01, cette story s'appuie sur le rôle `admin` du boilerplate ; le rôle Bureau propre à
+l'association arrive en s03 et resserrera l'accès sans changer cette page.
 
 **À vérifier en review, pas en test** : aucune de ces valeurs ne doit subsister en constante dans le
 code applicatif. C'est une propriété du diff, pas un comportement observable — la placer en critère
@@ -163,6 +180,9 @@ générique et la review vérifiable.
 - [ ] Le lien ouvre une session valide ; réutilisé une seconde fois, il est refusé avec un message compréhensible et un bouton pour en redemander un.
 - [ ] Un lien de plus de 4 heures est refusé avec le même message et le même bouton.
 - [ ] Une adresse email inconnue ne révèle pas si le compte existe (même écran, aucun email envoyé).
+- [ ] Le bureau envoie une invitation à un membre depuis sa fiche : le membre reçoit un email qui explique ce qu'est son espace, ce qu'il y trouvera, et porte un lien de connexion.
+- [ ] Le bureau voit sur la fiche si une invitation a été envoyée, quand, et si le membre s'est déjà connecté au moins une fois.
+- [ ] Inviter un membre sans adresse email est refusé avec un message expliquant qu'il relève du courrier (s26), et non par une erreur technique.
 - [ ] Les rôles Membre, Bureau, Président(e) et SuperAdmin existent et déterminent ce qui est visible après connexion ; un Membre n'atteint aucune page de back-office.
 - [ ] La session est scopée à l'association du membre : elle ne donne accès à aucune donnée d'un autre tenant.
 
@@ -176,8 +196,17 @@ Réf. `V5 §2, §3.2, §3.3`, `CDCT §2, §3.3`. Better Auth est déjà branché
 (`src/lib/better-auth/auth.ts`) et gère nativement le magic link : **configurer, ne pas réécrire**.
 La validité 4 h est contractuelle — c'est un paramètre, pas la valeur par défaut de la lib.
 
+**Le flux d'invitation est une des trois choses que la ligne du périmètre nomme** (« flux
+d'invitation, expiration et absence de mot de passe à éprouver auprès d'un public âgé ») : sans lui,
+la connexion serait purement *pull* et personne n'apprendrait qu'un espace existe. Cette story livre
+l'invitation **unitaire** ; l'invitation en masse des 300 membres au lancement est s38, qui a besoin
+des campagnes (s23) et du publipostage (s26).
+
 Public âgé et peu à l'aise : les messages d'erreur doivent être en français simple et proposer
 l'action de sortie (redemander un lien), jamais un code d'erreur. À traiter en `/ks-design`.
+
+Le suivi « invité / déjà connecté » n'est pas un confort : c'est ce qui permet au bureau de savoir
+qui relancer, et à s38 de mesurer l'adoption au lancement.
 
 Piège transport email : le boilerplate envoie via **Resend**, le produit part sur **Brevo**
 (contrainte PRD). C'est la première story qui envoie un email — elle doit passer par l'adaptateur
@@ -358,7 +387,8 @@ statiques). Voir `.claude/rules/01-presentation/rule-react-cache-next-cache.md`.
 - [ ] Un envoi invalide (email mal formé, message vide) affiche les erreurs par champ, n'enregistre rien et n'envoie aucun email.
 - [ ] Le bureau consulte en back-office la liste des messages reçus, triée par date, avec le détail de chaque message.
 - [ ] Changer l'adresse de notification dans les paramètres (s02) redirige le message suivant vers la nouvelle adresse.
-- [ ] Au-delà d'un nombre d'envois par adresse IP et par heure fixé en paramètre de tenant, une soumission supplémentaire est refusée avec un message explicite ; en deçà du seuil, elle passe.
+- [ ] Au-delà d'un nombre d'envois par heure et par visiteur fixé en paramètre de tenant, une soumission supplémentaire est refusée avec un message explicite ; en deçà du seuil, elle passe.
+- [ ] Le compteur repose sur une empreinte d'adresse IP hachée et purgée sous 24 h : aucune adresse IP en clair n'est écrite en base.
 
 ### Dependencies
 
@@ -373,6 +403,12 @@ Adresse par défaut = celle de la présidente, lue dans les paramètres du tenan
 
 Distinct du formulaire « Questions au bureau » de l'espace membre (s20), qui est identifié et routé
 par catégorie. Ne pas fusionner les deux modèles.
+
+**Ajout assumé au périmètre** : le limiteur de débit n'est demandé ni par le PRD ni par le CDC. Un
+formulaire public sans protection est une porte ouverte au spam, qui coûterait au bureau bénévole
+exactement le temps que le produit prétend lui rendre. Il est retenu, avec deux garde-fous : compteur
+sur empreinte hachée et purge sous 24 h, pour ne pas faire entrer un journal d'adresses IP — donnée
+personnelle sans règle de rétention — dans une story chiffrée 2. Rien à exporter en s36 de ce fait.
 
 Le boilerplate a `src/db/models/user-submission-model.ts` — vérifier s'il convient avant d'en créer
 un nouveau. Server Action : suivre `rule-safe-server-action` et `rule-form-front-and-back`
@@ -393,7 +429,7 @@ un nouveau. Server Action : suivre `rule-safe-server-action` et `rule-form-front
 
 - [ ] Publier une analyse (date, affiche, texte facultatif, PDF) la fait apparaître en tête de la page publique des analyses.
 - [ ] Le PDF se télécharge depuis la page publique sans authentification.
-- [ ] Le texte est facultatif : une publication sans texte s'affiche correctement.
+- [ ] Le texte est facultatif : une publication sans texte affiche la date, l'affiche et le lien du PDF, sans bloc vide ni libellé orphelin.
 - [ ] Le formulaire de saisie ne demande que les quatre champs (date, affiche, texte facultatif, PDF) et publie en une seule soumission, sans étape intermédiaire.
 - [ ] Les analyses sont listées par date décroissante et une analyse ne fuit pas vers une autre association.
 
@@ -522,6 +558,11 @@ vendue est le test qui compte — l'écrire en premier (`tdd-skill`).
 Résolution du propriétaire « au moment des faits » : prévoir dès maintenant la fonction qui, pour une
 parcelle et une date, retourne le propriétaire d'alors. s16, s17, s26 et s30 l'appellent toutes.
 
+**Frontière avec s03** : s03 possède le cycle de vie du compte de connexion (ouverture, fermeture,
+lien magique) ; s12 possède la fiche membre et son attribut « a une adresse email ». Le critère
+d'ouverture/fermeture ci-dessus **appelle** la capacité de s03, il ne la réimplémente pas. Une
+seconde implémentation de l'ouverture de compte dans s12 serait un défaut de review.
+
 Le marquage « joignable par courrier uniquement » est un **attribut du modèle membre, porté ici** et
 non par l'import (s13) : le bureau crée des fiches à la main tout au long de la vie de l'association
 — une parcelle vendue à un acquéreur sans email est le cas nominal, pas l'exception. C'est ce champ
@@ -559,7 +600,7 @@ multi-parcelles (s17/s18), le site n'agrège rien.
 
 ### Acceptance criteria
 
-- [ ] L'import se fait depuis le back-office, par téléversement du fichier : aucun script à lancer, aucun accès direct à la base, aucune ligne de code à écrire pour une nouvelle association.
+- [ ] L'import se fait depuis le back-office, par téléversement du fichier : le parcours complet (choisir l'association, déposer le fichier, lire le rapport) s'accomplit à l'écran, sans ligne de commande ni accès direct à la base.
 - [ ] Importer un fichier (nom, email, parcelle) crée les membres et leurs rattachements de parcelle dans le tenant visé.
 - [ ] Plusieurs lignes portant le même propriétaire produisent **un seul** compte avec plusieurs parcelles, pas plusieurs comptes.
 - [ ] Une ligne sans email crée le membre et sa parcelle, sans compte de connexion, et le marque comme joignable par courrier uniquement.
@@ -572,15 +613,18 @@ s12
 
 ### Agentic notes
 
-Réf. `PRD` (« Import initial des membres d'une association », complexité 2), `V5 §2`, `CDCT §2`.
+Réf. `PRD` (« Import initial des membres d'une association », complexité 3), `V5 §2`, `CDCT §2`.
 Import réalisé par le prestataire au démarrage, puis création unitaire par le bureau (couverte par
 s12).
 
-Risque (complexité 3, relevée de 2 en revue du découpage) : la **clé de dédoublonnage n'est pas
-tranchée**, et son mode de défaillance est grave — fusionner deux propriétaires distincts leur
+Risque (complexité 3, alignée avec le PRD) : la **clé de dédoublonnage n'est pas tranchée**, et son mode de défaillance est grave — fusionner deux propriétaires distincts leur
 donnerait accès aux documents et aux factures l'un de l'autre. Ce n'est pas un import anodin : c'est
 un import qui crée des identités. En cas d'ambiguïté, remonter au rapport pour arbitrage humain,
 jamais fusionner d'office.
+
+**À vérifier en review, pas en test** : qu'aucune étape du provisioning ne demande d'écrire du code.
+C'est une propriété du processus, pas un comportement observable — le critère testable est celui du
+parcours à l'écran.
 
 **Pourquoi un écran et non un script** : le critère de succès du PRD exige qu'une deuxième
 association soit provisionnée « sans écrire une ligne de code : uniquement configuration, activation
@@ -956,23 +1000,22 @@ n'est pas la page, c'est le DTO trop large réutilisé.
 
 ### Complexity
 
-4
+3
 
 ### Acceptance criteria
 
 - [ ] N'importe quel membre du bureau compose une campagne, choisit un des 4 modèles ou le mode libre, et l'envoie aux membres disposant d'une adresse email.
-- [ ] Deux cibles standard sont proposées à l'envoi : **tous les membres** et **les membres en impayé**. La cible « impayés » est calculée au moment de l'envoi à partir du service de facturation (s17), pas saisie à la main.
-- [ ] La cible « impayés » fonctionne avec la saisie manuelle des factures comme avec une implémentation externe : changer d'implémentation ne change pas la cible.
-- [ ] Le nombre de destinataires de la cible retenue est affiché avant l'envoi, en distinguant ceux qui ont un email de ceux qui n'en ont pas.
+- [ ] Le nombre de destinataires est affiché avant l'envoi, en distinguant ceux qui ont un email de ceux qui n'en ont pas.
 - [ ] Tout envoi, modèle ou campagne libre, porte le même habillage : en-tête au logo de l'association et pied de page avec mentions et lien de désinscription.
 - [ ] Les variables dynamiques (nom, parcelle, date) sont remplacées par les valeurs du destinataire ; une variable inconnue est signalée avant l'envoi, pas laissée telle quelle dans l'email reçu.
 - [ ] Un aperçu montre le rendu final avec les données d'un destinataire réel avant l'envoi définitif.
+- [ ] Suivre le lien de désinscription du pied de page enregistre le refus du membre, le lui confirme à l'écran en précisant ce qu'il continuera de recevoir, et se voit sur sa fiche côté bureau.
 - [ ] La campagne envoyée est archivée avec son contenu, sa cible et sa date, et consultable en back-office.
 - [ ] Une campagne d'une association ne peut pas cibler les membres d'une autre.
 
 ### Dependencies
 
-s02, s03, s12, s17
+s02, s03, s12
 
 ### Agentic notes
 
@@ -981,12 +1024,10 @@ publication de documents post-AG. **Leur contenu détaillé reste à rédiger av
 (`Annexe A`) — `/ks-research` vérifie s'il est disponible ; à défaut, livrer les modèles avec un
 contenu provisoire clairement marqué et les variables déjà câblées, la rédaction n'étant pas du code.
 
-Risque (complexité 4, relevée de 3 en revue du découpage) : la story groupe beaucoup — composition,
-4 modèles + mode libre, gabarit commun, moteur de variables, aperçu, archivage, **et** le calcul de la
-cible « impayés » depuis l'interface s17. Le PRD chiffre la *feature* « Campagnes email Brevo » à 3 ;
-la *story* vaut 4 parce qu'elle porte en plus les deux cibles standard, que le PRD suppose déjà
-acquises dans sa ligne « Groupes de destinataires ». Si le plan dépasse dix tâches, scinder le calcul
-de cible plutôt que d'étaler l'exécution.
+**Cette story envoie à tous les membres, et à eux seuls.** Le ciblage — cible « impayés » et groupes
+composés par le bureau — est livré par s25. La scission a été décidée en revue du découpage, la story
+groupant auparavant neuf critères. Conséquence pour le plan : le modèle « relance manuelle » existe
+ici, mais il n'atteint le sous-groupe impayés qu'une fois s25 livrée.
 
 Piège explicite du `CDCT §8.1` : **la campagne libre n'est pas un cas à part sans habillage**. Le
 gabarit commun (header/footer) enveloppe aussi bien les 4 modèles que le mode libre. Un agent qui
@@ -994,16 +1035,6 @@ traite la campagne libre comme un envoi brut rate la story.
 
 L'envoi de facture double celui de Pennylane (problème de délivrabilité connu), il ne le remplace
 pas.
-
-**Les deux cibles standard sont livrées ici, pas ailleurs.** `V5 §8.3` oppose les campagnes manuelles
-(tous les membres) aux relances (sous-groupe impayés) : le modèle « relance manuelle », l'un des 4
-modèles imposés, a besoin de la cible impayés pour exister. s25 ajoute des groupes composés à la
-main **au-delà** de ces deux cibles, s27 réutilise la même cible pour les relances automatiques —
-aucune des deux ne la fournit. C'est le trou relevé en revue du découpage.
-
-Le statut d'impayé vient du système de facturation, donc de **l'interface de s17** — jamais d'un
-appel direct à Pennylane. Passer par l'implémentation Pennylane (s18) rendrait la relance manuelle
-otage de la condition suspensive du devis, alors qu'elle doit fonctionner dès la saisie manuelle.
 
 Le gabarit commun (logo, mentions légales, adresse de désinscription) est alimenté par les
 paramètres du tenant (s02), pas par des constantes.
@@ -1063,38 +1094,56 @@ LWS avant de retenir un `setTimeout` en mémoire, qui ne satisfait aucun des deu
 
 ---
 
-## Story s25-groupes-destinataires — Composer un groupe de destinataires
+## Story s25-groupes-destinataires — Choisir la cible d'une campagne
 
-**En tant que** membre du bureau **je veux** définir mes propres groupes de destinataires
-**afin de** cibler une campagne au-delà de « tous » et « les impayés ».
+**En tant que** membre du bureau **je veux** choisir qui reçoit une campagne
+**afin de** relancer les seuls impayés, ou de m'adresser à un groupe que j'ai composé.
 
 ### Complexity
 
-2
+3
 
 ### Acceptance criteria
 
+- [ ] La cible « membres en impayé » est proposée à l'envoi d'une campagne, à côté de « tous les membres » (s23) ; elle est calculée au moment de l'envoi à partir du service de facturation (s17), jamais saisie à la main.
+- [ ] La cible « impayés » fonctionne avec la saisie manuelle des factures comme avec une implémentation externe : changer d'implémentation ne change pas la cible.
 - [ ] Le bureau crée un groupe nommé et y ajoute ou retire des membres depuis la liste des membres.
-- [ ] Un groupe est sélectionnable comme cible d'une campagne, à la place de « tous les membres ».
+- [ ] Un groupe est sélectionnable comme cible d'une campagne, à la place de « tous les membres » ou des impayés.
 - [ ] Le nombre de destinataires du groupe est affiché avant l'envoi, en distinguant ceux qui ont un email de ceux qui n'en ont pas.
 - [ ] Supprimer un groupe n'affecte ni les membres qu'il contenait ni les campagnes déjà envoyées.
+- [ ] Un membre désinscrit est retiré des cibles d'une campagne facultative et de son décompte, mais reste dans la cible d'une communication statutaire (convocation, facture, relance) — vérifié sur les deux cas.
 - [ ] Un groupe est propre à son association et n'est jamais visible d'une autre.
 
 ### Dependencies
 
-s23
+s17, s23
 
 ### Agentic notes
 
 Réf. `PRD` (« Groupes de destinataires personnalisés », inspiré de Lotisoft), `V5 §8.3` pour les deux
 cibles existantes.
 
+**Cette story possède le ciblage des campagnes**, sorti de s23 en revue du découpage : s23 envoyait à
+tous, et groupait neuf critères. `V5 §8.3` oppose les campagnes manuelles (tous les membres) aux
+relances (sous-groupe impayés) — le modèle « relance manuelle » de s23 a besoin de cette cible pour
+exister, et s27 réutilise le même calcul pour les relances automatiques.
+
+Le statut d'impayé vient du système de facturation, donc de **l'interface de s17** — jamais d'un appel
+direct à Pennylane. Passer par l'implémentation Pennylane (s18) rendrait la relance manuelle otage de
+la condition suspensive du devis, alors qu'elle doit fonctionner dès la saisie manuelle.
+
+La complexité 3 (contre 2 au PRD, qui ne chiffre que les groupes) tient à ce ciblage ajouté.
+
+La désinscription se filtre **ici**, au calcul de la cible, et pas au moment de l'envoi : c'est le
+seul endroit où les trois cibles (tous, impayés, groupe) passent, donc le seul où la règle ne peut
+pas être oubliée. La distinction facultatif / statutaire est une règle transverse, énoncée en tête de
+document.
+
 La distinction avec/sans email dans le décompte prépare s26 : un groupe est aussi la cible d'un
 publipostage papier, pas seulement d'un envoi email.
 
-Groupes composés à la main par le bureau, **en plus** des deux cibles standard livrées par s23 (tous
-les membres, membres en impayé) — cette story les complète, elle ne les remplace pas. C'est
-exactement le « au-delà des deux cibles actuelles » du PRD.
+Groupes composés à la main par le bureau, **en plus** des deux cibles standard (tous les membres,
+membres en impayé). C'est exactement le « au-delà des deux cibles actuelles » du PRD.
 
 Pas de segmentation dynamique par critère au-delà de ces deux cibles : ni le CDC ni le PRD ne la
 demandent, et elle ouvrirait un chantier de règles à maintenir.
@@ -1165,7 +1214,7 @@ sur le VPS LWS (2 vCore, 4 Go) — un moteur à navigateur headless y est un ris
 
 ### Dependencies
 
-s02, s17, s23, s24, s26
+s02, s17, s23, s24, s25, s26
 
 ### Agentic notes
 
@@ -1176,10 +1225,14 @@ de semaines, qui survit aux redéploiements), **idempotence** (un traitement rej
 renvoyer une relance déjà partie — un test explicite, pas une intention), et **ciblage** (le
 sous-groupe impayés est recalculé à chaque échéance, pas figé au lancement de la série).
 
-**Dépendance externe** : le champ Pennylane qui fait foi pour « impayé » et sa date n'est pas connu
-(`Annexe A`). La série de relances se conçoit contre l'interface de facturation de s17 ; avec la
-seule implémentation manuelle, la story est testable de bout en bout. Ne pas attendre s18 pour la
-livrer, mais ne pas coder de détection Pennylane spécifique ici.
+**Cette story n'est pas bloquée par la réserve Pennylane** — le tableau des réserves en tête de
+document ne bloque que s18. Le champ Pennylane qui fait foi pour « impayé » et sa date n'est pas
+connu (`Annexe A`), mais la série de relances se conçoit contre l'interface de facturation de s17 et
+la cible calculée par s25 : avec la seule saisie manuelle, la story est testable de bout en bout.
+Ne pas attendre s18 pour la livrer, et ne coder ici aucune détection Pennylane spécifique.
+
+Une relance d'impayé est une communication **contractuelle** : un membre désinscrit la reçoit quand
+même (règle transverse). Ne pas appliquer le filtre de désinscription ici.
 
 L'activation est un **paramètre de tenant** (s02) : comportement développé pour tous, activé au cas
 par cas. C'est explicitement demandé par le PRD.
@@ -1506,7 +1559,7 @@ stockage en contournant sa couche de cloisonnement.
 - [ ] La matrice par défaut reproduit exactement le comportement livré par les stories précédentes : sans modification, rien ne change.
 - [ ] Une story ultérieure qui introduit une action réservée la déclare, et cette action apparaît dans la matrice sans modification du code de la matrice (vérifié en enregistrant une action de test).
 - [ ] Les actions d'un module désactivé, ou d'un module non encore livré, n'apparaissent pas dans la matrice et n'y laissent pas de ligne orpheline.
-- [ ] Quand le module vote est actif, ses actions réservées à la présidente (résolutions, résultats, PV) sont présentes et réservées par défaut. **Quand s31 n'est pas encore livrée, ce critère est vide par construction** et se vérifie sur un module de test déclarant une action réservée — ce n'est pas un manque.
+- [ ] Un module de test déclarant une action réservée à la présidente la voit apparaître dans la matrice, réservée par défaut, et refusée aux autres rôles. (La vérification sur les actions réelles du vote appartient à s31, qui peut être livrée bien après.)
 - [ ] La configuration est propre à chaque association et ne fuit pas d'un tenant à l'autre.
 - [ ] Une configuration ne peut pas retirer à la présidente le droit de modifier la matrice elle-même (verrouillage anti-blocage).
 
@@ -1556,14 +1609,15 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 - [ ] La présidente déclenche un export complet et récupère une archive ZIP contenant : un fichier CSV par type de donnée tabulaire (membres, parcelles, relevés, factures, campagnes, signalements), un fichier JSON pour les contenus structurés, les fichiers d'origine des documents, et un `README` décrivant chaque fichier et ses colonnes.
 - [ ] Les CSV s'ouvrent sans erreur dans un tableur (encodage UTF-8, séparateur documenté dans le README) et le JSON est valide au parsing.
-- [ ] L'export contient les membres et parcelles avec leurs périodes, les relevés et factures, les contenus publiés, les documents, les campagnes, les signalements et les notes internes.
+- [ ] L'export contient **tout ce que le produit persiste pour l'association** : membres et parcelles avec leurs périodes, relevés d'eau, factures, contenus publiés (pages, actualités, fiches du bureau, analyses d'eau), documents partagés et nominatifs, campagnes et leurs statistiques, groupes de destinataires, signalements, messages de contact, questions au bureau, notes internes, petites annonces, chemins et portails de voirie, résolutions et résultats de vote, et les paramètres du tenant.
+- [ ] Un type de donnée persisté par une story et absent de l'archive fait échouer un test de complétude : l'inventaire des tables scopées par `organization_id` est comparé à l'inventaire des fichiers produits, et toute table non exportée doit être déclarée exclue avec son motif.
 - [ ] L'export ne contient **aucune** donnée d'une autre association (test d'isolation sur l'archive produite).
 - [ ] Un export individuel pour un membre donné produit ses seules données, au titre du droit d'accès.
 - [ ] L'export s'exécute en tâche de fond : la requête rend la main immédiatement, le site reste navigable pendant la génération, et la présidente est notifiée quand l'archive est prête.
 
 ### Dependencies
 
-s04, s05, s09, s10, s15, s17, s22, s23, s30
+s02, s04, s05, s06, s08, s09, s10, s12, s15, s17, s21, s22, s23, s25, s29, s30, s32, s33
 
 ### Agentic notes
 
@@ -1578,8 +1632,18 @@ L'action « déclencher un export » est une action réservée : elle se déclar
 matrice de permissions (s35), qui est extensible par construction — pas besoin de rouvrir s35.
 
 Sa liste de dépendances est longue **parce que c'est le sens de la story** : elle doit exporter tout
-ce que le produit stocke. Chaque story qui ajoute un type de donnée après celle-ci doit l'ajouter à
-l'export — le noter dans son plan.
+ce que le produit stocke. s31 (vote) n'y figure pas volontairement — le module est suspendu à une
+condition suspensive, et l'export ne doit pas en être otage ; ses résolutions et résultats entrent
+dans l'archive par le test de complétude dès que le module est livré.
+
+**Le test de complétude est le cœur de la story, pas l'énumération.** Une liste écrite à la main
+finit toujours par oublier un type de donnée — c'est exactement ce qui s'est produit en revue du
+découpage, où six types manquaient. Comparer l'inventaire des tables scopées par `organization_id`
+à l'inventaire des fichiers produits rend l'oubli impossible : toute table nouvelle casse le test
+tant qu'elle n'est pas soit exportée, soit déclarée exclue avec son motif.
+
+Chaque story qui ajoute un type de donnée après celle-ci doit l'ajouter à l'export — le noter dans
+son plan.
 
 Placée en dernier parce qu'elle doit couvrir **tout** ce qui existe. Corollaire : c'est aussi la
 story qui révèle une donnée oubliée par le scoping tenant. Traiter un échec du test d'isolation ici
@@ -1611,7 +1675,7 @@ d'une association **afin de** reproduire un problème signalé par le bureau san
 
 ### Dependencies
 
-s01, s03, s35
+s01, s03, s22, s35
 
 ### Agentic notes
 
@@ -1631,6 +1695,50 @@ acceptable sur des données personnelles.
 
 Ne pas confondre avec le changement de rôle d'un utilisateur (s35) : ici rien n'est modifié, c'est
 une lecture sous une autre identité.
+
+---
+
+## Story s38-lancement-invitations — Faire entrer les membres dans le service
+
+**En tant que** membre du bureau **je veux** annoncer le site à tous les propriétaires d'un seul geste
+**afin que** chacun sache qu'il a un espace — ou, à défaut, que le site existe.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Une campagne d'invitation part vers tous les membres disposant d'une adresse email, chaque destinataire recevant un lien de connexion qui lui est propre.
+- [ ] La même opération produit, pour les membres sans email, un publipostage PDF (s26) annonçant le site public et ses contenus consultables sans compte, sans promettre un accès qu'ils n'auront pas.
+- [ ] Aucun membre de la liste n'est omis des deux canaux : la somme des destinataires email et des courriers produits égale l'effectif de l'association.
+- [ ] Le bureau suit l'adoption : nombre d'invitations envoyées, nombre de membres s'étant connectés au moins une fois, liste des membres jamais connectés.
+- [ ] Relancer les membres jamais connectés renvoie une invitation à eux seuls, sans réinviter ceux qui se sont déjà connectés.
+- [ ] L'opération respecte l'envoi échelonné (s24) : au-delà du seuil du tenant, elle se scinde comme n'importe quelle campagne.
+
+### Dependencies
+
+s03, s13, s23, s24, s26
+
+### Agentic notes
+
+Réf. `PRD` (ligne « Connexion par lien magique » : « flux d'invitation […] à éprouver auprès d'un
+public âgé »), `V5 §2, §3.3`. Story créée en revue du découpage : les 37 stories précédentes
+livraient un service que **personne n'aurait su utiliser** — aucune ne disait comment 300
+propriétaires apprennent qu'ils ont un espace.
+
+**Le courrier des 100 sans email n'est pas une invitation** : ils n'ont pas de compte et n'en auront
+pas (cimetière du PRD — aucun plan B de connexion). Leur courrier annonce le site public, les
+analyses d'eau consultables sans compte, et rappelle que le bureau continue de les joindre par
+courrier. Promettre un accès dans ce courrier serait un défaut fonctionnel, pas une maladresse de
+rédaction.
+
+C'est le moment de vérité de l'angle n°2 du PRD : les deux populations reçoivent la même information
+au même moment, depuis le même outil, sans double saisie.
+
+Le lien de connexion propre à chaque destinataire est une variable de campagne d'un genre nouveau —
+elle porte un secret à usage unique. Ne pas la journaliser, ne pas la stocker dans l'archive de
+campagne (s23), ne pas la faire figurer dans l'export (s36).
 
 ---
 
@@ -1660,11 +1768,11 @@ une lecture sous une autre identité.
 | s20 | signalement-membre | 2 | s10, s12 | B |
 | s21 | questions-bureau | 2 | s02, s12 | B |
 | s22 | notes-internes-membre | 2 | s12 | B |
-| s23 | campagnes-email | 4 | s02, s03, s12, s17 | C |
+| s23 | campagnes-email | 3 | s02, s03, s12 | C |
 | s24 | envoi-echelonne | 3 | s02, s23 | C |
-| s25 | groupes-destinataires | 2 | s23 | C |
+| s25 | groupes-destinataires | 3 | s17, s23 | C |
 | s26 | publipostage-pdf | 3 | s12, s23 | C |
-| s27 | relances-impayes | 4 | s02, s17, s23, s24, s26 | C |
+| s27 | relances-impayes | 4 | s02, s17, s23, s24, s25, s26 | C |
 | s28 | stats-campagnes | 2 | s23, s24 | C |
 | s29 | documents-partages | 2 | s03, s12 | D |
 | s30 | documents-nominatifs | 4 | s12, s29 | D |
@@ -1673,20 +1781,23 @@ une lecture sous une autre identité.
 | s33 | petites-annonces | 3 | s12, s21 | F |
 | s34 | modeles-documents | 3 | s25, s26, s30 | F |
 | s35 | permissions-configurables | 4 | s03 | F |
-| s36 | export-donnees | 3 | s04, s05, s09, s10, s15, s17, s22, s23, s30 | F |
-| s37 | simulation-role | 2 | s01, s03, s35 | F |
+| s36 | export-donnees | 3 | s02, s04, s05, s06, s08, s09, s10, s12, s15, s17, s21, s22, s23, s25, s29, s30, s32, s33 | F |
+| s37 | simulation-role | 2 | s01, s03, s22, s35 | F |
+| s38 | lancement-invitations | 3 | s03, s13, s23, s24, s26 | F |
 
-**37 stories, aucune à 5.** Répartition : trois à 1, quinze à 2, treize à 3, six à 4.
-Les six stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s23 (volume
-de la story de campagnes), s27 (planification et idempotence des relances), s30 (cloisonnement
-physique des documents nominatifs), s35 (autorisation transverse) — portent chacune leur risque
-explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
-`/ks-plan`.
+**38 stories, aucune à 5.** Répartition : trois à 1, quatorze à 2, seize à 3, cinq à 4.
+Les cinq stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s27
+(planification et idempotence des relances), s30 (cloisonnement physique des documents nominatifs),
+s35 (autorisation transverse) — portent chacune leur risque explicité dans leurs notes agentiques,
+à trancher en `/ks-architect` ou `/ks-design` avant `/ks-plan`.
 
-Deux écarts assumés avec les scores du PRD, tous deux relevés en revue du découpage : s13 (3 contre 2
-au PRD, à cause de la clé de dédoublonnage non tranchée) et s23 (4 contre 3, la story portant en plus
-les deux cibles standard). Le PRD chiffre des *features*, ce tableau chiffre des *tranches livrables*
-— l'écart est documenté dans chaque story plutôt que lissé.
+Un seul écart avec les scores du PRD : s25 à 3 contre 2, parce que la story porte le calcul de la
+cible « impayés » en plus des groupes composés à la main. Le PRD chiffre des *features*, ce tableau
+chiffre des *tranches livrables* — l'écart est documenté dans la story plutôt que lissé.
+
+Deux stories ont été ajoutées en revue du découpage : s37 (simulation de rôle, sortie de s01) et s38
+(invitation des membres au lancement, qui n'était couverte par aucune story — le service existait
+sans que personne sache qu'il existe).
 
 **Ordre vs calendrier contractuel** : la GED (s29, s30) est placée **avant** le vote (s31), alors
 que le calendrier du devis annonce l'inverse (vote en décembre 2026, GED en janvier 2027). Arbitrage
