@@ -46,7 +46,7 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 ## Target users
 
 - **Visiteur** — futur acquéreur, riverain, curieux. Consulte le site public sans compte : présentation, actualités, analyses d'eau, contact, signalement de fuite.
-- **Membre propriétaire** — de quelques dizaines à ~300 par association. Souvent âgé, peu à l'aise avec l'informatique, présent une partie de l'année seulement. Se connecte rarement, pour une raison précise : sa facture, sa consommation, un document, une déclaration. **Environ un quart n'a pas d'adresse email** et reste joignable uniquement par courrier.
+- **Membre propriétaire** — de quelques dizaines à ~400 par association (La Fourche : 400 propriétaires, dont 300 avec adresse email et compte connectable, 100 joignables par courrier seulement — arbitrage du 6 septembre 2026). Souvent âgé, peu à l'aise avec l'informatique, présent une partie de l'année seulement. Se connecte rarement, pour une raison précise : sa facture, sa consommation, un document, une déclaration. **Environ un quart n'a pas d'adresse email** et reste joignable uniquement par courrier.
 - **Bureau** — 3 à 8 bénévoles élus, non techniciens, qui changent tous les quelques années. Ce sont eux qui font vivre le site : ils doivent pouvoir tout éditer sans intervention du prestataire. Leur temps est la ressource la plus rare du projet.
 - **Président(e)** — membre du bureau avec des prérogatives propres (aujourd'hui : résolutions de vote et publication des résultats/PV).
 - **SuperAdmin (Zourite Studio)** — support et débogage, simulation de rôle, non exposé aux associations.
@@ -65,7 +65,7 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 | Pages publiques + formulaire de contact archivé en BO | 2 | Formulaire, persistance, liste consultable, notification paramétrable. |
 | Bandeau d'alerte global | 1 | Activation / édition / désactivation par tout membre du bureau. |
 | SEO (sitemap, métadonnées, Search Console) | 2 | Réglages par tenant, pas de logique propre. |
-| Import initial des membres d'une association (liste nom / email / parcelle) | 2 | Provisioning d'un nouveau client : parseur, dédoublonnage des propriétaires multi-parcelles, fiches sans compte pour les membres sans email. Six associations à charger, pas une. |
+| Import initial des membres d'une association (liste nom / email / parcelle) | 3 | Provisioning d'un nouveau client : parseur, dédoublonnage des propriétaires multi-parcelles, fiches sans compte pour les membres sans email. Six associations à charger, pas une. La clé de dédoublonnage n'est pas tranchée et sa défaillance donnerait à deux propriétaires distincts accès aux données l'un de l'autre. |
 | Modèle membre ↔ parcelle **daté** | 4 | Cœur du modèle de données. L'historique est attaché à la parcelle au moment des faits : une vente ne transfère pas les factures et documents antérieurs. Ce n'est pas une simple clé étrangère. |
 | Coordonnées (profil membre) | 1 | CRUD sur ses propres données. |
 | Questions au bureau, catégories avec routage email | 2 | Modèle de catégories (max 10) réutilisable avec les petites annonces. |

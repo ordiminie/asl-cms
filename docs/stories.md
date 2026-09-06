@@ -72,7 +72,8 @@ réserve n'est pas levée** ; les stories qui les contournent sont ordonnées av
 ### Acceptance criteria
 
 - [ ] Créer une association depuis le back-office SuperAdmin (nom, slug, domaine, modules activés) produit un tenant utilisable immédiatement.
-- [ ] Les modules `vote`, `voirie` et `annonces` s'activent et se désactivent par association ; désactivé, le module n'apparaît ni en navigation ni en accès direct par URL (404, pas un lien masqué).
+- [ ] Chaque association porte un jeu de drapeaux d'activation de modules, persisté et modifiable depuis le back-office SuperAdmin ; deux associations peuvent avoir des drapeaux différents.
+- [ ] Une route rattachée à un module inactif, ou à une clé de module inconnue, répond 404 — pas un lien masqué, pas une page vide (vérifié sur une route de test rattachée à un module fictif).
 - [ ] Une requête authentifiée dans le tenant A ne retourne aucune donnée du tenant B, y compris en forgeant l'identifiant de la ressource (test d'accès croisé).
 - [ ] La policy RLS refuse la lecture inter-tenant même lorsque la couche applicative est court-circuitée (test au niveau repository).
 
@@ -100,6 +101,12 @@ vérifier le rôle utilisé par le pool (`docs/database-pool.md`).
 La simulation de rôle du SuperAdmin (`PRD`, Target users) est volontairement **hors de cette
 story** : c'est le besoin d'un autre utilisateur, livrable séparément (s37).
 
+**Cette story livre le mécanisme d'activation, pas les modules.** `vote`, `voirie` et `annonces`
+arrivent en s31, s32 et s33 — un critère qui les nommerait ici serait intestable au moment de la
+livraison et ferait doublon avec le critère « Le module se désactive par tenant » que chacune de ces
+trois stories porte déjà. La preuve se fait donc ici sur une route de test rattachée à un module
+fictif, et par module chez chacune des trois. Défaut relevé en revue du découpage.
+
 Cimetière : pas une base par tenant, base partagée + RLS.
 
 ---
@@ -116,9 +123,9 @@ Cimetière : pas une base par tenant, base partagée + RLS.
 ### Acceptance criteria
 
 - [ ] Une page de back-office liste les paramètres du tenant et permet de les modifier avec validation (email valide, seuil numérique, booléen).
-- [ ] La modification d'un paramètre est prise en compte sans redéploiement ni redémarrage, et l'ancienne valeur n'est plus utilisée au prochain envoi.
-- [ ] Un paramètre absent en base retombe sur sa valeur par défaut déclarée, jamais sur une constante dispersée dans le code.
-- [ ] Les valeurs de départ de La Fourche (`contact@asl-exemple.test`, responsable forage) sont chargées comme données de seed du tenant, pas comme littéraux dans le code applicatif.
+- [ ] Modifier un paramètre puis le relire renvoie la nouvelle valeur, sans redéploiement ni redémarrage.
+- [ ] Un paramètre jamais renseigné se lit à sa valeur par défaut déclarée au registre ; le renseigner puis le vider le ramène à cette même valeur par défaut.
+- [ ] Les valeurs de départ de La Fourche (`contact@asl-exemple.test`, responsable forage) se lisent depuis le tenant après exécution de son seed.
 - [ ] Un membre non-bureau qui accède à la page de réglages reçoit un refus.
 
 ### Dependencies
@@ -129,6 +136,10 @@ s01
 
 Réf. `V5 §4.6`, `CDCT §4.6`. C'est le socle du critère de succès « aucune donnée propre à La Fourche
 codée en dur » : les stories s08, s10, s15, s20 et s27 lisent leurs adresses et seuils **ici**.
+
+**À vérifier en review, pas en test** : aucune de ces valeurs ne doit subsister en constante dans le
+code applicatif. C'est une propriété du diff, pas un comportement observable — la placer en critère
+d'acceptation produirait un test invérifiable. Le critère testable est celui du défaut au registre.
 
 Le boilerplate a `src/db/models/app-settings-model.ts` — vérifier s'il est global ou scopable par
 organisation avant d'en créer un nouveau. Prévoir un registre typé des clés (nom, type, défaut,
@@ -249,7 +260,12 @@ s04
 
 ### Agentic notes
 
-Réf. `V5 §4.1` (mini-blog), `CDCT §4.1`. Mêmes briques que s04 (éditeur, stockage, cache) :
+Réf. `V5 §4.1` (mini-blog), `CDCT §4.1`. **Dérivation du PRD** : pas une ligne du tableau du
+périmètre, mais un contenu du CMS générique (ligne « CMS de pages génériques ») et un support du
+critère de succès « le bureau crée, modifie et publie une page, une actualité et une analyse d'eau
+sans aucune intervention du prestataire », qui nomme explicitement l'actualité.
+
+Mêmes briques que s04 (éditeur, stockage, cache) :
 réemployer les composants créés par s04 au lieu d'en dériver une variante.
 
 Modèle de contenu répétable — le troisième du produit avec les analyses d'eau (s09) et les fiches de
@@ -282,6 +298,9 @@ s04
 
 Réf. `V5 §4.1` (« organigramme et présentation de chaque membre, mis à jour dynamiquement »),
 `CDCT §4.1` — explicitement **pas une simple page statique** : sous-modèle listable et éditable.
+**Dérivation du PRD** : pas une ligne du tableau du périmètre, mais une exigence du « Why kill it »
+n°2 (« une vitrine publique éditable et référencée […] présentation du bureau ») et du critère
+« le bureau doit pouvoir tout éditer sans intervention du prestataire ».
 
 À ne pas confondre avec la fiche membre propriétaire (s12) ni avec la page « Contacts utiles », qui
 est du contenu CMS ordinaire (s04). Trois choses distinctes.
@@ -413,7 +432,7 @@ exposer un chemin devinable vers d'autres fichiers du tenant.
 - [ ] Le bureau fait passer un signalement de `signalé` à `en cours` puis à `résolu` ; chaque changement est horodaté et attribué à son auteur.
 - [ ] Les catégories de signalement (fuite, voirie, éclairage, nuisance…) sont administrables par le bureau, pas figées dans le code.
 - [ ] Modifier les adresses de notification dans les paramètres (s02) change les destinataires du signalement suivant.
-- [ ] Un signalement public reste anonyme : aucun compte n'est requis et aucune identité n'est déduite.
+- [ ] Un signalement public est enregistré sans lien vers un membre, même lorsque les coordonnées saisies correspondent exactement à celles d'un membre existant (aucun rapprochement automatique).
 
 ### Dependencies
 
@@ -536,7 +555,7 @@ multi-parcelles (s17/s18), le site n'agrège rien.
 
 ### Complexity
 
-2
+3
 
 ### Acceptance criteria
 
@@ -556,6 +575,12 @@ s12
 Réf. `PRD` (« Import initial des membres d'une association », complexité 2), `V5 §2`, `CDCT §2`.
 Import réalisé par le prestataire au démarrage, puis création unitaire par le bureau (couverte par
 s12).
+
+Risque (complexité 3, relevée de 2 en revue du découpage) : la **clé de dédoublonnage n'est pas
+tranchée**, et son mode de défaillance est grave — fusionner deux propriétaires distincts leur
+donnerait accès aux documents et aux factures l'un de l'autre. Ce n'est pas un import anodin : c'est
+un import qui crée des identités. En cas d'ambiguïté, remonter au rapport pour arbitrage humain,
+jamais fusionner d'office.
 
 **Pourquoi un écran et non un script** : le critère de succès du PRD exige qu'une deuxième
 association soit provisionnée « sans écrire une ligne de code : uniquement configuration, activation
@@ -931,7 +956,7 @@ n'est pas la page, c'est le DTO trop large réutilisé.
 
 ### Complexity
 
-3
+4
 
 ### Acceptance criteria
 
@@ -955,6 +980,13 @@ Réf. `V5 §8.1`, `CDCT §8.1`. Les 4 modèles : relance manuelle, facture dispo
 publication de documents post-AG. **Leur contenu détaillé reste à rédiger avec le bureau**
 (`Annexe A`) — `/ks-research` vérifie s'il est disponible ; à défaut, livrer les modèles avec un
 contenu provisoire clairement marqué et les variables déjà câblées, la rédaction n'étant pas du code.
+
+Risque (complexité 4, relevée de 3 en revue du découpage) : la story groupe beaucoup — composition,
+4 modèles + mode libre, gabarit commun, moteur de variables, aperçu, archivage, **et** le calcul de la
+cible « impayés » depuis l'interface s17. Le PRD chiffre la *feature* « Campagnes email Brevo » à 3 ;
+la *story* vaut 4 parce qu'elle porte en plus les deux cibles standard, que le PRD suppose déjà
+acquises dans sa ligne « Groupes de destinataires ». Si le plan dépasse dix tâches, scinder le calcul
+de cible plutôt que d'étaler l'exécution.
 
 Piège explicite du `CDCT §8.1` : **la campagne libre n'est pas un cas à part sans habillage**. Le
 gabarit commun (header/footer) enveloppe aussi bien les 4 modèles que le mode libre. Un agent qui
@@ -997,6 +1029,7 @@ l'intercepter, sinon s24 imposera de tout reprendre.
 - [ ] Le bureau voit l'état de la campagne (première part envoyée, seconde part programmée pour telle date) et le nombre de destinataires de chaque part.
 - [ ] Une campagne dont le nombre de destinataires est inférieur ou égal au seuil part en un seul envoi.
 - [ ] Le seuil est un paramètre de tenant : le porter à 500 fait partir en un seul envoi une campagne de 400 destinataires, sans redéploiement.
+- [ ] Une campagne dépassant deux fois le seuil est scindée en autant de parts quotidiennes que nécessaire, chacune sous le seuil, sans qu'aucune journée ne dépasse le quota.
 - [ ] Un redémarrage du serveur entre les deux parts ne perd pas la seconde part et ne la duplique pas.
 - [ ] Un destinataire ne reçoit jamais deux fois la même campagne, même si le traitement est relancé.
 
@@ -1011,6 +1044,11 @@ sans action du bureau »).
 
 Piège explicite : c'est une **logique de déclenchement**, pas une limite affichée à l'utilisateur.
 Un message « vous avez trop de destinataires » est un échec de la story.
+
+Le `V5 §8.2` ne décrit que le cas à deux jours parce que La Fourche compte 300 membres avec email.
+La règle générale — découper en parts quotidiennes toutes sous le seuil — couvre ce cas sans le
+contredire, et évite qu'une association plus grande parmi les cinq prospects dépasse silencieusement
+le quota. Ne pas coder « deux parts » en dur.
 
 Le seuil de 300 est le quota Brevo actuel : paramètre de tenant (s02), pas une constante — un autre
 client pourra avoir un autre plan.
@@ -1076,13 +1114,13 @@ demandent, et elle ouvrirait un chantier de règles à maintenir.
 
 - [ ] Depuis une campagne, le bureau génère un PDF unique contenant un courrier par membre sans adresse email de la cible.
 - [ ] Chaque courrier porte les variables du destinataire (nom, adresse postale, parcelle, date), issues du même contenu que la version email — sans ressaisie.
-- [ ] Le PDF est directement imprimable : un courrier par page, avec le bloc adresse positionné pour une enveloppe à fenêtre.
+- [ ] Le PDF est directement imprimable : format A4, un courrier par page, bloc adresse positionné pour une enveloppe à fenêtre DL (110 × 220 mm, fenêtre à gauche) — position vérifiée par un test sur les coordonnées du bloc dans le PDF généré.
 - [ ] Une cible sans aucun membre dépourvu d'email indique qu'il n'y a pas de courrier à produire, plutôt que de produire un PDF vide.
 - [ ] Un membre disposant d'un email n'apparaît pas dans le publipostage, et réciproquement : aucun membre de la cible n'est oublié des deux canaux.
 
 ### Dependencies
 
-s12, s13, s23
+s12, s23
 
 ### Agentic notes
 
@@ -1094,7 +1132,8 @@ complétude — email ∪ courrier = toute la cible, sans intersection ni oubli 
 l'angle : l'écrire en premier.
 
 Le marquage « joignable par courrier uniquement » vient du modèle membre (s12), que l'import (s13)
-se contente de renseigner. Ne pas déduire l'absence d'email d'une chaîne vide ambiguë : s'appuyer sur
+se contente de renseigner — d'où la dépendance sur s12 et non sur s13, qui ne fournit que des
+données de test. Ne pas déduire l'absence d'email d'une chaîne vide ambiguë : s'appuyer sur
 le champ explicite.
 
 Cimetière : ce n'est **pas** un plan B de connexion. Ces membres n'ont toujours pas de compte, et
@@ -1122,7 +1161,7 @@ sur le VPS LWS (2 vCore, 4 Go) — un moteur à navigateur headless y est un ris
 - [ ] Un membre ne reçoit jamais deux fois la même relance, même si le traitement est rejoué (idempotence vérifiée par un test).
 - [ ] Les relances ne ciblent que les membres en impayé ; aucun membre à jour n'en reçoit.
 - [ ] Une page de back-office liste, par impayé : nom du membre, numéro de parcelle, date de la facture, nombre et dates des relances déjà envoyées.
-- [ ] Les membres en impayé sans email apparaissent dans la page de suivi et sont orientés vers le publipostage, pas silencieusement ignorés.
+- [ ] Les membres en impayé sans email apparaissent dans la page de suivi, marqués « courrier », avec une action qui génère leur publipostage de relance (s26) ; ils ne sont ni relancés par email ni omis de la liste.
 
 ### Dependencies
 
@@ -1467,7 +1506,7 @@ stockage en contournant sa couche de cloisonnement.
 - [ ] La matrice par défaut reproduit exactement le comportement livré par les stories précédentes : sans modification, rien ne change.
 - [ ] Une story ultérieure qui introduit une action réservée la déclare, et cette action apparaît dans la matrice sans modification du code de la matrice (vérifié en enregistrant une action de test).
 - [ ] Les actions d'un module désactivé, ou d'un module non encore livré, n'apparaissent pas dans la matrice et n'y laissent pas de ligne orpheline.
-- [ ] Quand le module vote est actif, ses actions réservées à la présidente (résolutions, résultats, PV) sont présentes et réservées par défaut.
+- [ ] Quand le module vote est actif, ses actions réservées à la présidente (résolutions, résultats, PV) sont présentes et réservées par défaut. **Quand s31 n'est pas encore livrée, ce critère est vide par construction** et se vérifie sur un module de test déclarant une action réservée — ce n'est pas un manque.
 - [ ] La configuration est propre à chaque association et ne fuit pas d'un tenant à l'autre.
 - [ ] Une configuration ne peut pas retirer à la présidente le droit de modifier la matrice elle-même (verrouillage anti-blocage).
 
@@ -1515,7 +1554,8 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 ### Acceptance criteria
 
-- [ ] La présidente déclenche un export complet et récupère une archive dans un format ouvert et relisible, documentée par un fichier décrivant son contenu.
+- [ ] La présidente déclenche un export complet et récupère une archive ZIP contenant : un fichier CSV par type de donnée tabulaire (membres, parcelles, relevés, factures, campagnes, signalements), un fichier JSON pour les contenus structurés, les fichiers d'origine des documents, et un `README` décrivant chaque fichier et ses colonnes.
+- [ ] Les CSV s'ouvrent sans erreur dans un tableur (encodage UTF-8, séparateur documenté dans le README) et le JSON est valide au parsing.
 - [ ] L'export contient les membres et parcelles avec leurs périodes, les relevés et factures, les contenus publiés, les documents, les campagnes, les signalements et les notes internes.
 - [ ] L'export ne contient **aucune** donnée d'une autre association (test d'isolation sur l'archive produite).
 - [ ] Un export individuel pour un membre donné produit ses seules données, au titre du droit d'accès.
@@ -1523,7 +1563,7 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 ### Dependencies
 
-s22, s30
+s04, s05, s09, s10, s15, s17, s22, s23, s30
 
 ### Agentic notes
 
@@ -1536,6 +1576,10 @@ données personnelles le concernant, même si elles ne lui sont jamais montrées
 
 L'action « déclencher un export » est une action réservée : elle se déclare au registre de la
 matrice de permissions (s35), qui est extensible par construction — pas besoin de rouvrir s35.
+
+Sa liste de dépendances est longue **parce que c'est le sens de la story** : elle doit exporter tout
+ce que le produit stocke. Chaque story qui ajoute un type de donnée après celle-ci doit l'ajouter à
+l'export — le noter dans son plan.
 
 Placée en dernier parce qu'elle doit couvrir **tout** ce qui existe. Corollaire : c'est aussi la
 story qui révèle une donnée oubliée par le scoping tenant. Traiter un échec du test d'isolation ici
@@ -1572,7 +1616,9 @@ s01, s03, s35
 ### Agentic notes
 
 Réf. `PRD` (Target users : « SuperAdmin — support et débogage, simulation de rôle, non exposé aux
-associations »), `CDCT §2`.
+associations »), `CDCT §2`. **Dérivation du PRD** : pas une ligne du tableau du périmètre — la
+simulation de rôle y est décrite comme une capacité du rôle SuperAdmin, pas comme une feature
+vendue aux associations.
 
 Sortie de s01 en revue du découpage : s01 y groupait quatre valeurs distinctes, et la simulation
 répond au besoin d'un autre utilisateur. Placée après s35 pour que la simulation reflète la matrice
@@ -1604,7 +1650,7 @@ une lecture sous une autre identité.
 | s10 | signalements-publics | 3 | s02, s04 | A |
 | s11 | seo | 2 | s02, s04, s05, s09 | A |
 | s12 | membres-parcelles | 4 | s01, s03 | B |
-| s13 | import-initial-membres | 2 | s12 | B |
+| s13 | import-initial-membres | 3 | s12 | B |
 | s14 | coordonnees-membre | 1 | s12 | B |
 | s15 | import-releves-eau | 3 | s02, s12 | B |
 | s16 | historique-consommation | 2 | s15 | B |
@@ -1614,10 +1660,10 @@ une lecture sous une autre identité.
 | s20 | signalement-membre | 2 | s10, s12 | B |
 | s21 | questions-bureau | 2 | s02, s12 | B |
 | s22 | notes-internes-membre | 2 | s12 | B |
-| s23 | campagnes-email | 3 | s02, s03, s12, s17 | C |
+| s23 | campagnes-email | 4 | s02, s03, s12, s17 | C |
 | s24 | envoi-echelonne | 3 | s02, s23 | C |
 | s25 | groupes-destinataires | 2 | s23 | C |
-| s26 | publipostage-pdf | 3 | s12, s13, s23 | C |
+| s26 | publipostage-pdf | 3 | s12, s23 | C |
 | s27 | relances-impayes | 4 | s02, s17, s23, s24, s26 | C |
 | s28 | stats-campagnes | 2 | s23, s24 | C |
 | s29 | documents-partages | 2 | s03, s12 | D |
@@ -1627,14 +1673,20 @@ une lecture sous une autre identité.
 | s33 | petites-annonces | 3 | s12, s21 | F |
 | s34 | modeles-documents | 3 | s25, s26, s30 | F |
 | s35 | permissions-configurables | 4 | s03 | F |
-| s36 | export-donnees | 3 | s22, s30 | F |
+| s36 | export-donnees | 3 | s04, s05, s09, s10, s15, s17, s22, s23, s30 | F |
 | s37 | simulation-role | 2 | s01, s03, s35 | F |
 
-**37 stories, aucune à 5.** Répartition : trois à 1, seize à 2, treize à 3, cinq à 4.
-Les cinq stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s27
-(planification et idempotence des relances), s30 (cloisonnement physique des documents nominatifs),
-s35 (autorisation transverse) — portent chacune leur risque explicité dans leurs notes agentiques,
-à trancher en `/ks-architect` ou `/ks-design` avant `/ks-plan`.
+**37 stories, aucune à 5.** Répartition : trois à 1, quinze à 2, treize à 3, six à 4.
+Les six stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s23 (volume
+de la story de campagnes), s27 (planification et idempotence des relances), s30 (cloisonnement
+physique des documents nominatifs), s35 (autorisation transverse) — portent chacune leur risque
+explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
+`/ks-plan`.
+
+Deux écarts assumés avec les scores du PRD, tous deux relevés en revue du découpage : s13 (3 contre 2
+au PRD, à cause de la clé de dédoublonnage non tranchée) et s23 (4 contre 3, la story portant en plus
+les deux cibles standard). Le PRD chiffre des *features*, ce tableau chiffre des *tranches livrables*
+— l'écart est documenté dans chaque story plutôt que lissé.
 
 **Ordre vs calendrier contractuel** : la GED (s29, s30) est placée **avant** le vote (s31), alors
 que le calendrier du devis annonce l'inverse (vote en décembre 2026, GED en janvier 2027). Arbitrage
