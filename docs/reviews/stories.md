@@ -1,189 +1,176 @@
 # Revue du découpage en stories — ASL-CMS (Lp)
 
-> Revue en contexte neuf de `docs/stories.md` face à `docs/prd.md`, par le subagent
+> Revue en contexte neuf de `docs/stories.md` (40 stories) face à `docs/prd.md`, par le subagent
 > `stories-reviewer` (skill `stories-review` préchargée). Chaque constat est classé
 > critical / major / minor.
 >
-> **Septième passage** — 40 stories, PRD amendé (actualités, présentation du bureau, export
-> individuel, simulation de rôle chiffrés au périmètre). Reviewer neuf. Les deux majors du 6e
-> passage sont levés. **Un critical apparaît — et contrairement aux passages précédents, il ne vient
-> pas d'un correctif : c'est un trou d'origine, présent depuis le premier découpage, que six revues
-> n'avaient pas vu.**
+> **Huitième passage** — premier des deux passages de confirmation demandés. **Le critical du 7e
+> passage est levé** : la ligne « Publipostage PDF » repasse en ✅, l'adresse postale ayant un
+> producteur (s12 saisie bureau, s13 import). Quatre majors apparaissent, tous des trous d'origine
+> et non des régressions : trois données métier sans définition (prédicat « impayé », échéance de
+> facture, budget d'envoi quotidien) et une capacité absente (attribution des rôles).
 >
 > Document de cadrage : committé sur la branche par défaut, contrairement à
 > `docs/reviews/<id>.md` qui voyage avec sa branche de story.
 
 ## Couverture du périmètre
 
-**Tronc commun (33 lignes)**
+**Tronc commun — livré à toute association**
 
 | Feature du PRD (core loop) | Couverte par | OK ? |
 | --- | --- | --- |
-| CMS de pages génériques | s04 | ✅ |
-| Permissions par rôle configurables en BO | s36 | ✅ |
+| CMS de pages génériques (créer/modifier/publier/dépublier) | s04 | ✅ |
+| Permissions par rôle configurables en back-office | s36 | ⚠️ partiel — voir major #4 |
 | Connexion par lien magique (4 h) + flux d'invitation + suivi d'adoption | s03, s14, s40 | ✅ |
 | Pages publiques + formulaire de contact archivé en BO | s04, s08 | ✅ |
-| Limitation de débit des formulaires publics | s08 (livre), s10 (réutilise) | ✅ |
-| Actualités (mini-blog daté) | s05 | ✅ |
-| Présentation du bureau (fiches listables) | s06 | ✅ |
+| Limitation de débit des formulaires publics | s08 (réutilisé par s10) | ✅ |
+| Actualités de l'association (mini-blog daté) | s05 | ✅ |
+| Présentation du bureau (fiches listables et éditables) | s06 | ✅ |
 | Bandeau d'alerte global | s07 | ✅ |
 | SEO (sitemap, métadonnées, Search Console) | s11 | ✅ |
-| Import initial des membres | s13 | ✅ |
+| Import initial des membres d'une association | s13 | ✅ |
 | Modèle membre ↔ parcelle daté | s12 | ✅ |
-| Coordonnées (profil membre) | s15 | ⚠️ voir critical — self-service seulement |
-| Questions au bureau, catégories + routage | s22 (modèle en s10) | ✅ |
-| Notes internes **et historique** par membre | s23 | ⚠️ voir major #1 |
-| Import annuel des relevés d'eau + rapport email | s16 | ✅ |
-| Historique de consommation d'eau | s17 | ✅ |
-| Signalements catégories + statuts (public + membre) | s10, s21 | ✅ |
+| Coordonnées (profil membre) | s15 (+ saisie bureau en s12) | ✅ |
+| Questions au bureau, catégories avec routage email | s22 (modèle de catégories en s10) | ✅ |
+| Notes internes et historique par membre | s23 | ✅ |
+| Import annuel des relevés d'eau + rapport d'erreurs email | s16 | ✅ |
+| Historique de consommation d'eau par membre | s17 | ✅ |
+| Signalements avec catégories et statuts (public + membre) | s10, s21 | ✅ |
 | Publication des analyses d'eau | s09 | ✅ |
 | Documents partagés | s30 | ✅ |
-| Documents nominatifs, dossiers physiquement séparés | s31 | ✅ |
-| Campagnes email Brevo (4 modèles + libre, gabarit) | s24 | ✅ |
-| Envoi échelonné au-delà de 300 | s25 | ✅ |
-| Relances d'impayés (3 / 3-2-1 sem., activables) | s28 | ✅ |
-| Publipostage PDF pour les membres sans email | s27 | ❌ voir critical — donnée d'entrée sans producteur |
+| Documents nominatifs en dossiers physiquement séparés | s31 | ✅ |
+| Campagnes email Brevo (4 modèles + libre, gabarit commun) | s24 | ✅ |
+| Envoi échelonné au-delà de 300 destinataires | s25 | ⚠️ voir major #3 |
+| Relances d'impayés (3, à 3/2/1 semaines), activables par tenant | s28 | ⚠️ voir majors #1 et #2 |
+| Publipostage PDF pour les membres sans email | s27 | ✅ |
 | Groupes de destinataires personnalisés | s26 | ✅ |
 | Statistiques d'ouverture et de clic | s29 | ✅ |
 | Modèles de documents réutilisables | s35 | ✅ |
-| Facturation membres : interface + Pennylane | s18, s19 | ✅ |
+| Facturation membres : interface + implémentation Pennylane | s18, s19 | ⚠️ voir major #1 |
 | Redirection de paiement | s20 | ✅ |
-| Multi-tenant (Organization, config, RLS) | s01, s02 | ✅ |
-| Export individuel d'un membre (RGPD) | s38 | ✅ |
+| Multi-tenant (Organization, config par tenant, RLS Postgres) | s01, s02 | ✅ |
+| Export individuel d'un membre (droit d'accès RGPD) | s38 | ✅ |
 | Simulation de rôle SuperAdmin | s39 | ✅ |
 | Export et portabilité des données | s37 | ✅ |
 
-**Modules activables (3 lignes)**
+**Modules activables par tenant**
 
 | Feature du PRD | Couverte par | OK ? |
 | --- | --- | --- |
-| Vote : interface + ASL Community | s32 | ✅ |
+| Vote : interface + implémentation ASL Community | s32 | ✅ |
 | Voirie | s33 | ✅ |
 | Petites annonces entre membres | s34 | ✅ |
 
-- [x] Chaque ligne du tableau « Replicated (core loop) » a au moins une story nommée. Aucune ligne
-  n'est orpheline — **mais deux lignes (publipostage, notes internes) sont couvertes par une story
-  qui ne peut pas les livrer telles qu'écrites.**
+- [x] Chaque feature du tableau « Replicated (core loop) » est livrée par au moins une story —
+  **aucune ligne orpheline.** Trois lignes sont couvertes mais avec un trou fonctionnel à
+  l'intérieur (majors #1 à #4).
 
 ## Périmètre
 
-- [x] Aucune story ne réintroduit un item du cimetière. Vérifié ligne à ligne : électricité
-  (absente), logique de vote (s32 la refuse explicitement), traitement de paiement (s19 et s20
-  portent un test sur l'absence de champ bancaire), messagerie privée (s34 la refuse),
-  multi-immeubles / tantièmes (absents), plan B de connexion sans email (refusé en règle transverse,
-  s27 et s40), appels de fonds (absents), carte interactive (s33 impose l'image statique), vote temps
-  réel / procurations (s32), IA conversationnelle et classification IA (s31), Kanban (absent),
-  messagerie dédiée par association (s22 route vers des adresses existantes, ne crée pas de boîte),
-  base par tenant (s01 : base partagée + RLS), abstraction « ressource partagée » (s33 la refuse),
-  WordPress (s04 ne le mentionne que comme référence d'ergonomie).
-- [x] Aucune story ne sort du périmètre. Un seul étirement discutable : s35 (minor).
+- [x] Aucune story ne réintroduit un item du cimetière. Vérifié un par un : électricité / gaz
+  (absent), logique de vote (s32 la refuse explicitement), traitement des paiements (s20 + test de
+  schéma de s19), messagerie privée entre membres (s34 la refuse ; s22 est membre → bureau, pas
+  membre → membre), multi-immeubles / tantièmes (absent), plan B de connexion (s12, s27 et s40
+  répètent le refus), carte interactive (s33 : image statique), IA (s31, absente ailleurs), Kanban
+  (absent), messagerie dédiée par association (absente), base par tenant (s01 : partagée + RLS),
+  abstraction « ressource partagée » (s33 la refuse), WordPress (s04 + ADR 001).
+- [ ] Aucune story ne dépasse le périmètre — un ajout non traçable au PRD : la classification
+  *facultative / statutaire* et sa machinerie de désinscription (règle transverse + s24 + s26).
+  Défendable juridiquement, mais c'est une surface de configuration que le PRD n'a jamais demandée
+  (minor).
 
 ## Qualité des stories
 
-- [x] Chaque story est une tranche livrable de bout en bout : aucune story « poser la base de
-  données », « créer la couche API ». s01 est la plus large (tenant + routage domaine + drapeaux +
-  RLS) mais reste énoncée du point de vue d'un utilisateur avec un parcours vérifiable, et sa largeur
-  est argumentée dans ses notes.
-- [ ] Critères tous testables — voir les minors et le major #1.
-- [x] Notes agentiques présentes partout, riches (fichiers du boilerplate, pièges cache, adaptateurs
-  Brevo / stockage, cimetière rappelé story par story). **C'est la meilleure partie du document.**
-- [x] Complexité chiffrée partout, aucune 5, six 4 (s01, s12, s28, s31, s36, s37) portant chacune un
-  paragraphe « Risque (complexité 4) » explicite. Réserve sur s36 (major #2).
+- [x] Chaque story est une tranche livrable de bout en bout, pas une couche technique. Aucune story
+  « poser la base », « créer la couche API ». Les deux candidates les plus risquées — s01 (tenant +
+  routage domaine + drapeaux) et s03 (auth + rôles + registre d'actions) — encapsulent de
+  l'infrastructure dans une tranche visible par un utilisateur et argumentent le regroupement.
+  Accepté.
+- [ ] Chaque critère peut devenir un test — quatre critères ne le peuvent pas en l'état.
+- [x] Notes agentiques présentes et utiles. Constamment solides : chemins du boilerplate, pièges de
+  cache et de prerender, substitutions Supabase → local et Resend → Brevo, rappels du cimetière story
+  par story.
+- [x] Complexité chiffrée ; **aucune 5** ; les six 4 (s01, s12, s28, s31, s36, s37) énoncent chacune
+  leur risque dans un paragraphe dédié. Les deux écarts avec les scores du PRD (s26 3 contre 2, s37 4
+  contre 3) sont documentés plutôt que lissés.
 
 ## La liste dans son ensemble
 
-- [x] Ordre exécutable : les 40 listes de dépendances pointent toutes vers des ids strictement
-  inférieurs. Aucun cycle, aucune référence en avant dans les dépendances déclarées. Les deux pièges
-  classiques ont été traités et documentés (s03 → s12 → s03 cassé par s14 ; s24 qui n'attend pas s26
-  pour le filtre de désinscription).
-- [x] Ids `s01`…`s40`, format `s<numéro>-<slug>` respecté, uniques, slugs courts et stables.
-- [x] Pas de recouvrement : la propriété de chaque brique partagée est attribuée nommément
-  (catégories → s10 ; limiteur de débit → s08 ; ciblage → s26 ; moteur PDF → s27 ; export → s37
-  filtré par s38 ; invitation unitaire s14 vs masse s40).
+- [x] Ordre de dépendances exécutable. Les 40 listes ont été parcourues : chaque arête pointe vers un
+  id strictement inférieur, donc ni cycle ni référence en avant n'est structurellement possible. Les
+  renvois à l'intérieur des critères pointent aussi vers l'amont (s39 → s37 ; s36 et s37 évitent
+  délibérément s32).
+- [x] Ids bien formés (`s01`…`s40`), uniques, courts, stables, et cohérents entre les titres et le
+  tableau récapitulatif.
+- [x] Aucun recouvrement. Les cinq paires candidates sont chacune arbitrées par écrit avec un
+  propriétaire : coordonnées (s12 bureau / s15 self-service), signalements (s10 public / s21 membre),
+  catégories (propriété s10, réutilisée par s22 et s34), ciblage (s24 « tous » / s26 impayés et
+  groupes), export (s37 association / s38 membre), invitation (s14 unitaire / s40 masse).
 
 ## Constats
 
-### Critical
-
-- **critical — s27 / s40 (et s12, s13, s15) — l'adresse postale des membres sans compte n'a aucun
-  producteur.** s27 exige « Chaque courrier porte les variables du destinataire (nom, **adresse
-  postale**, parcelle, date) » et s40 exige « la somme des destinataires email et des courriers
-  produits égale l'effectif de l'association ». Or l'adresse postale n'apparaît que dans s15, dont le
-  critère est *« Un membre **connecté** modifie ses coordonnées »* — et les ~100 membres visés par le
-  publipostage n'ont, par construction, aucun compte (cimetière : aucun plan B de connexion). s12
-  n'énumère aucun champ de contact dans ses critères, s13 importe « nom, email, parcelle » (conforme
-  au PRD), et le seul critère du bureau sur les coordonnées est en lecture (« Le bureau **voit** les
-  coordonnées à jour »). **Aucune story ne donne au bureau la saisie ni la mise à jour des
-  coordonnées postales d'un membre.** Conséquence : le publipostage PDF — angle n°2 du PRD, ligne du
-  périmètre, et critère de succès explicite (« Une campagne produit un PDF de publipostage
-  exploitable pour les membres sans email, sans ressaisie ») — n'est pas livrable par ce découpage,
-  et le défaut n'apparaîtrait qu'à l'exécution de s27, huit stories après le point où il fallait le
-  corriger.
-
 ### Majors
 
-- **major — s23 — la moitié « historique des échanges » de la ligne de périmètre n'est ni spécifiée
-  ni produite.** Le PRD demande « notes privées **et historique des échanges** ». s23 a un critère
-  pour ajouter une note, puis un critère qui affiche « l'historique chronologique des notes **et des
-  échanges enregistrés** » — sans qu'aucun critère ne dise ce qu'est un échange, qui l'enregistre, ni
-  comment. Si l'intention est l'alimentation automatique par les questions (s22), les signalements
-  (s21) et les campagnes (s24), alors s23 ne peut pas la livrer : elle ne dépend que de s12 et est
-  ordonnée avant s24. Si l'intention est une saisie manuelle par le bureau, il manque le critère
-  correspondant. En l'état, ce critère n'est pas testable et la ligne de périmètre n'est couverte
-  qu'à moitié.
-- **major — s36 — la matrice suppose un registre d'actions que 35 stories antérieures n'ont aucune
-  obligation d'alimenter.** Les notes posent le principe : « Chaque story déclare les actions qu'elle
-  introduit ; la matrice les découvre » — et c'est ce principe qui justifie la liste de dépendances
-  courte (s03 seule) et le score 4. Mais **aucune des stories s01→s35 ne porte ce devoir**, ni en
-  critère, ni en note, et il ne figure pas dans les « Règles transverses à toutes les stories » en
-  tête de document. Le critère 3 de s36 revient donc à instrumenter rétroactivement l'autorisation de
-  tout le produit à l'intérieur d'une seule story — soit une story bien au-delà de 4, soit une
-  convention à poser dès s01/s03. Le filet « les tests d'autorisation antérieurs passent sans
-  modification » protège contre la régression, pas contre l'ampleur du travail.
+- **major — s18 (impact s20, s26, s28) — le prédicat « impayé » n'est défini nulle part.** s18
+  interdit de modéliser le statut en booléen ou en énumération fermée (« statuts remontés tels
+  quels »), et pourtant s20 (« Une facture déjà réglée n'affiche pas de bouton »), s26 (« La cible
+  "membres en impayé" … calculée à partir du service de facturation ») et s28 (« un membre en impayé
+  reçoit jusqu'à 3 relances ») consomment tous une dérivation binaire de ces statuts opaques. Aucune
+  story ne possède ce mappage, et la règle « paramétrable, jamais codé en dur » du PRD interdit qu'il
+  soit une constante implicite. Trois critères d'acceptation ne sont pas implémentables en l'état.
+- **major — s28 (impact s18) — le calendrier de relance n'a pas d'ancre.** « 3 relances espacées de
+  3, 2 puis 1 semaine » — comptées à partir de quelle date ? Le modèle de facture de s18 est (date,
+  objet, montant, statut), sans échéance, et les notes de s28 concèdent elles-mêmes que « le champ
+  Pennylane qui fait foi pour "impayé" et sa date n'est pas connu ». Le premier critère ne peut pas
+  devenir un test tant que s18 ne porte pas d'échéance.
+- **major — s25 — « sans qu'aucune journée ne dépasse le quota » promet plus que la story ne peut
+  tenir.** Le plafond Brevo de 300/jour est **par compte et par jour, tous envois confondus** :
+  invitations de s14, campagnes de s24, relances de s28, lancement de s40 — et potentiellement
+  plusieurs tenants sur le même compte Brevo. Scinder chaque campagne indépendamment ne borne pas le
+  total quotidien. Soit la story possède un budget d'envoi journalier et le dit dans un critère, soit
+  le critère doit être restreint à une campagne isolée.
+- **major — couverture (s03 / s36 / s39) — rien ne permet d'attribuer un rôle.** s03 dit que les
+  quatre rôles « sont attribuables à un utilisateur » sans écran ni propriétaire ; s36 ne livre que
+  la matrice rôle × action ; les notes de s39 renvoient à s36 pour « le changement de rôle d'un
+  utilisateur », que les critères de s36 ne livrent pas. Conséquence : après l'import de 400 membres
+  par s13, **aucune story ne dit comment le premier membre du Bureau ou la Présidente est
+  désigné(e)** — ce qui contredit le critère de succès « une deuxième association est provisionnée
+  sans écrire une ligne de code » et la persona Bureau qui « change tous les quelques années ».
+  Limite du critical : si l'on lit la ligne de périmètre « Permissions par rôle configurables en
+  back-office » comme incluant l'attribution utilisateur ↔ rôle, c'est une feature du périmètre non
+  couverte.
 
 ### Minors
 
-- **minor — s05, s06, s39, s40 — notes agentiques désynchronisées du PRD.** s05, s06 et s39
-  affirment « **Dérivation du PRD** : pas une ligne du tableau du périmètre », alors que le PRD
-  contient désormais ces lignes chiffrées. s40 dit que le suivi d'adoption « va un cran au-delà »,
-  alors que la ligne « Connexion par lien magique » l'inclut mot pour mot. Le périmètre a été mis à
-  jour après ces notes. Sans conséquence sur le découpage, mais une note qui dit « hors tableau »
-  invite un agent à traiter la story comme optionnelle.
-- **minor — s07 — critère partiellement invérifiable.** « l'affiche sur toutes les pages du site […]
-  **y compris celles ajoutées par les stories ultérieures** » : la partie future n'est pas testable à
-  la livraison. L'intention (poser le bandeau dans le gabarit commun) appartient aux notes, pas au
-  critère.
-- **minor — s03 — critère 5 vague.** « chacun des rôles […] accède **exactement aux pages qui lui
-  reviennent** » : à s03, presque aucune page n'existe. Seuls les deux exemples qui suivent sont
-  testables.
-- **minor — s37 — chiffrage et forme des critères.** (a) La liste de dépendances en compte 24, le
-  récapitulatif annonce « vingt-trois ». (b) Le critère 3 énumère une vingtaine de types de données
-  en une seule case à cocher : un critère = un test, ici c'est vingt. (c) « le site reste navigable
-  pendant la génération » n'est pas vérifiable de façon déterministe.
-- **minor — s39 — nouvelle table après s37 sans traitement dans l'export.** s39 trace chaque entrée
-  en simulation (identité, association, rôle, horodatage). Cette table est postérieure à s37, dont le
-  test de complétude casse sur toute table scopée non exportée ou non déclarée exclue. La note de s37
-  n'est reprise ni dans les critères ni dans les notes de s39.
-- **minor — s26 — critère 7 non observable.** « cette classification est une donnée de configuration
-  du tenant, **pas une constante du code** » : la seconde moitié est une propriété du diff. La forme
-  testable existe déjà au critère 9.
-- **minor — s10 — champ livré sans critère.** `email_destination` est porté par s10 « prévu pour
-  s22 » et explicitement inutilisé par les signalements. L'argument (éviter une migration) est
-  recevable, mais la charge de preuve retombe sur s22.
-- **minor — s35 — étirement à ancrer.** La ligne du PRD dit « convocation, PV, courrier type ». s35 y
-  ajoute la génération **en lot** avec **dépôt automatique dans les dossiers nominatifs**, qui n'est
-  écrit nulle part au périmètre. Composition naturelle de s26/s27/s31, mais qui mérite une phrase
-  d'ancrage.
+- **minor — s03** — le critère 7 se termine sur une propriété du code (« sans code d'autorisation
+  écrit à la main dans la page ») qui ne peut pas devenir un test. La convention du document (s02,
+  s13, s14) est de déplacer ce type d'énoncé en « à vérifier en review, pas en test ».
+- **minor — s40** — « sans promettre un accès qu'ils n'auront pas » (critère 2) est un jugement
+  éditorial, pas un test. s14 traite le point identique correctement, en le renvoyant à la review.
+- **minor — s40 vs s24 / s26** — « la somme des destinataires email et des courriers produits égale
+  l'effectif de l'association » ignore l'exclusion totale des désinscrits introduite par s24. La
+  nature de la campagne de lancement (facultative ou statutaire) n'est jamais énoncée : le critère de
+  complétude et la règle de désinscription peuvent se contredire.
+- **minor — s24 / s26 + règles transverses** — la classification facultative / statutaire est un
+  ajout au périmètre du PRD. Bien argumentée et marquée comme configuration, mais rien dans le
+  tableau ni dans le cimetière ne la couvre : à rattacher au PRD ou à reconnaître explicitement comme
+  un ajout.
+- **minor — s31** — la dépendance sur s30 n'est justifiée nulle part dans ses notes ; aucun de ses
+  critères ne concerne les documents partagés. Énoncer la réutilisation (route de service, adaptateur
+  de stockage) ou retirer l'arête.
+- **minor — tableau des réserves (en tête)** — il indique que l'absence de fichier exemple des
+  relevés « bloque le parseur de s16 ». Elle bloque aussi s17, et donc l'angle n°1 du PRD (la
+  ressource individuelle mesurée). La portée est sous-estimée dans le seul tableau qu'on consulte
+  avant de planifier.
+- **minor — s19** — le critère 3 (« le rapprochement … suit la clé retenue ») est paramétré sur un
+  arbitrage qui n'a pas eu lieu ; il ne peut pas devenir un test tant que la clé n'est pas choisie.
+  Acceptable vu la condition suspensive, mais la story devrait le dire.
+- **minor — s10** — la story livre `email_destination`, champ exercé par aucun de ses propres
+  critères (prouvé plus tard, en s22). Un champ livré non testé par sa story propriétaire ; la
+  justification (éviter une migration) est saine, mais s10 devrait porter au moins un critère dessus
+  ou énoncer que sa preuve vit en s22.
 
 ## Verdict
 
-Le découpage est d'une qualité inhabituelle : couverture nominale complète des 36 lignes du
-périmètre, cimetière défendu story par story, ordre de dépendances réellement exécutable, propriété
-de chaque brique partagée attribuée nommément, et des notes agentiques qui anticipent les pièges du
-boilerplate. Les défauts restants ne sont pas des oublis de surface : ce sont **deux données d'entrée
-sans producteur** (adresse postale, historique des échanges) et **une convention transverse non
-déclarée** (registre d'actions). La première rend inexécutable l'angle que le PRD désigne comme le
-plus différenciant.
-
-Max severity: critical
+Max severity: major
 Stories ready: no
