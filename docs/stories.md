@@ -172,7 +172,7 @@ Cimetière : pas une base par tenant, base partagée + RLS.
 - [ ] Une page de back-office liste les paramètres du tenant et permet de les modifier avec validation (email valide, seuil numérique, booléen).
 - [ ] Modifier un paramètre puis le relire renvoie la nouvelle valeur, sans redéploiement ni redémarrage.
 - [ ] Un paramètre jamais renseigné se lit à sa valeur par défaut déclarée au registre ; le renseigner puis le vider le ramène à cette même valeur par défaut.
-- [ ] Après exécution du seed du tenant La Fourche, la clé `contact.email` vaut `contact@asl-exemple.test` et la clé `forage.responsable.email` vaut `responsable-forage@asl-exemple.test`.
+- [ ] Le seed d'un tenant charge les valeurs déclarées dans son jeu de paramètres : après exécution, chaque clé déclarée se lit à sa valeur déclarée — vérifié sur un tenant de test, sans dépendre des données d'un client.
 - [ ] Un utilisateur authentifié sans rôle administrateur qui accède à la page de réglages reçoit un refus, côté interface et côté serveur.
 
 ### Dependencies
@@ -181,7 +181,12 @@ s01
 
 ### Agentic notes
 
-Réf. `V5 §4.6`, `CDCT §4.6`. C'est le socle du critère de succès « aucune donnée propre à La Fourche
+Réf. `V5 §4.6`, `CDCT §4.6`. Les valeurs de départ de La Fourche (`contact@asl-exemple.test` pour `contact.email`,
+`responsable-forage@asl-exemple.test` pour `forage.responsable.email`) sont des **données de seed de ce tenant**,
+pas des valeurs attendues par la suite de tests : lier les tests d'une story du tronc commun aux
+adresses d'un client donné les ferait échouer chez le suivant.
+
+C'est le socle du critère de succès « aucune donnée propre à La Fourche
 codée en dur » : les stories s08, s10, s17, s22 et s29 lisent leurs adresses et seuils **ici**.
 
 Comme s01, cette story s'appuie sur le rôle `admin` du boilerplate — d'où la persona neutre
@@ -512,6 +517,7 @@ exposer un chemin devinable vers d'autres fichiers du tenant.
 - [ ] Le bureau fait passer un signalement de `signalé` à `en cours` puis à `résolu` ; chaque changement est horodaté et attribué à son auteur.
 - [ ] Les catégories de signalement (fuite, voirie, éclairage, nuisance…) sont administrables par le bureau, pas figées dans le code, dans la limite de 10 ; la 11e est refusée avec un message explicite.
 - [ ] Supprimer une catégorie ne supprime pas les signalements déjà reçus dans cette catégorie.
+- [ ] Une catégorie peut porter une adresse de routage optionnelle : renseignée puis relue, elle revient inchangée ; laissée vide, elle se lit comme absente et non comme une chaîne vide.
 - [ ] Modifier les adresses de notification dans les paramètres (s02) change les destinataires du signalement suivant.
 - [ ] Un signalement public est enregistré sans lien vers un membre, même lorsque les coordonnées saisies correspondent exactement à celles d'un membre existant (aucun rapprochement automatique).
 - [ ] Le formulaire public est soumis à la même limitation de débit que le formulaire de contact (s08) : au-delà du seuil du tenant, une soumission supplémentaire est refusée avec un message explicite ; en deçà, elle passe.
@@ -541,10 +547,10 @@ avec leur propre domaine ; aucune des deux ne le réimplémente. La propriété 
 entre s10 et s23 en revue du découpage : elle est tranchée ici, au premier arrivé.
 
 Le champ `email_destination` n'est pas utilisé par les signalements, dont les destinataires viennent
-des paramètres du tenant (s02) : il est prévu pour s23. Le porter dès maintenant évite une migration
-— mais **aucun critère de cette story ne l'exerce** : sa preuve vit en s23, par le critère de
-routage. C'est assumé, et c'est la seule entorse du document au principe « une story teste ce qu'elle
-livre ».
+des paramètres du tenant (s02) : il est prévu pour s23. Le porter dès maintenant évite une migration, et
+le critère d'aller-retour ci-dessus le prouve **ici** : une story ne doit pas livrer un champ qu'elle
+ne teste pas, même quand son usage métier arrive plus tard. s23 en prouvera l'usage (le routage),
+cette story en prouve la persistance.
 
 Cette story livre la version **publique anonyme**. La version membre identifiée avec suivi de statut
 est s22 et réutilise ce modèle et ce workflow — concevoir le lien vers un membre comme nullable dès
@@ -744,7 +750,7 @@ Ne pas confondre avec l'import des relevés d'eau (s17), qui est annuel et d'un 
 
 ---
 
-## Story s14-attribuer-les-roles — Désigner les membres du bureau
+## Story s14-attribuer-roles — Désigner les membres du bureau
 
 **En tant qu'**administrateur d'une association **je veux** attribuer et retirer les rôles sur la
 fiche d'un membre **afin que** le bureau nouvellement élu puisse administrer le site sans moi.
@@ -789,7 +795,7 @@ quelqu'un, là on emprunte temporairement une vue pour déboguer.
 
 ---
 
-## Story s15-inviter-un-membre — Inviter un membre à rejoindre son espace
+## Story s15-inviter-membre — Inviter un membre à rejoindre son espace
 
 **En tant que** membre du bureau **je veux** envoyer à un membre son invitation à se connecter
 **afin qu'**il sache qu'il a un espace et puisse y entrer sans que j'aie à lui expliquer au téléphone.
@@ -1033,7 +1039,6 @@ tantième.
 
 - [ ] L'implémentation Pennylane s'active par configuration de tenant et remplace la saisie manuelle sans modification de l'interface membre.
 - [ ] Les factures du membre sont remontées avec leur statut Pennylane d'origine, y compris les statuts intermédiaires.
-- [ ] Le rapprochement entre un compte du site et une fiche client Pennylane suit la clé arbitrée avec le correspondant Pennylane (voir le tableau des réserves) ; ce critère ne devient testable qu'une fois cette clé choisie.
 - [ ] Un compte non rapproché est signalé au bureau plutôt que silencieusement vide.
 - [ ] Quand l'API fournit un PDF, un bouton de téléchargement le sert au membre.
 - [ ] Quand l'API n'en fournit pas, la ligne de facture indique explicitement que le PDF n'est pas disponible et n'affiche aucun bouton — jamais un lien mort.
@@ -1052,6 +1057,11 @@ tranchés. Quelle que soit la clé retenue, elle est stockée comme **attribut**
 côté de sa clé primaire — jamais à la place. Le rapprochement avec un système externe ne redéfinit
 pas l'identité interne, sinon un changement d'outil de facturation devient une migration d'identités. `/ks-research` vérifie d'abord que l'accès est fourni ; sinon la story attend et le bloc B
 continue sans elle grâce à s19.
+
+**Prérequis de `/ks-research`** : la clé de rapprochement entre un compte du site et une fiche client
+Pennylane (email ? n° de parcelle ? id client ?) doit être arbitrée avant que les critères de cette
+story ne soient écrits comme des tests. Tant qu'elle ne l'est pas, la story n'entre pas en `/ks-plan`
+— c'est un prérequis, pas une case à cocher.
 
 Implémentation d'une interface existante (s19), pas une refonte : si cette story touche à la
 présentation, le découpage a échoué.
@@ -1559,11 +1569,6 @@ L'accès passe par une route qui vérifie la session et le tenant avant de servi
 Stockage : adaptateur tranché en `/ks-architect` (stockage local sur le VPS, pas Supabase).
 Sauvegarde et volumétrie du VPS (100 Go) à prendre en compte dès cette story.
 
-La dépendance sur s31 n'est pas fonctionnelle mais technique : cette story réutilise la **route de
-service authentifiée** et l'adaptateur de stockage que s31 pose pour les documents partagés. C'est ce
-qui garantit qu'aucun fichier n'est servi par une URL publique devinable — la propriété la plus
-importante de s32.
-
 ---
 
 ## Story s32-documents-nominatifs — Accéder à ses documents personnels
@@ -1605,6 +1610,11 @@ profondeur : cloisonnement au niveau du stockage **en plus** de l'autorisation a
 qui implémente un filtre `WHERE member_id = ?` sur un répertoire commun a produit exactement ce que
 le CDC refuse. À trancher en `/ks-architect` (arborescence, nommage non devinable, droits) avant
 `/ks-plan`.
+
+La dépendance sur s31 n'est pas fonctionnelle mais technique : cette story réutilise la **route de
+service authentifiée** et l'adaptateur de stockage que s31 pose pour les documents partagés. C'est ce
+qui garantit qu'aucun fichier n'est servi par une URL publique devinable — la propriété la plus
+importante de cette story.
 
 Le critère de la parcelle vendue s'appuie sur la résolution datée de s12 : le document appartient au
 propriétaire **au moment des faits**.
@@ -1880,7 +1890,7 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 - [ ] La présidente déclenche un export complet et récupère une archive ZIP contenant : un fichier CSV par type de donnée tabulaire (membres, parcelles, relevés, factures, campagnes, signalements), un fichier JSON pour les contenus structurés, les fichiers d'origine des documents, et un `README` décrivant chaque fichier et ses colonnes.
 - [ ] Les CSV sont encodés en UTF-8 avec BOM, leur séparateur est celui documenté dans le README, chaque ligne porte le même nombre de colonnes que son en-tête, et le JSON est valide au parsing.
-- [ ] L'archive contient les **données membres** : membres, coordonnées, parcelles avec leurs périodes de propriété, relevés d'eau, factures, notes internes et échanges.
+- [ ] L'archive contient les **données membres** : membres, coordonnées, parcelles avec leurs périodes de propriété, relevés d'eau, factures, notes internes et échanges, état d'invitation et d'adoption, historique des attributions de rôle.
 - [ ] L'archive contient les **contenus publiés** : pages, actualités, fiches du bureau, analyses d'eau, bandeau d'alerte, chemins et portails de voirie, petites annonces.
 - [ ] L'archive contient les **documents** : partagés, nominatifs, et modèles de documents, avec leurs fichiers d'origine.
 - [ ] L'archive contient les **communications** : campagnes, leurs statistiques d'ouverture et de clic, leur état de planification, l'historique des relances, les groupes de destinataires.
@@ -1892,14 +1902,14 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 ### Dependencies
 
-s02, s04, s05, s06, s07, s08, s09, s10, s12, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37
+s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37
 
 ### Agentic notes
 
 Réf. `PRD` (« Export et portabilité des données », angle n°5 : « Pas de verrouillage »), RGPD (droit
 à la portabilité).
 
-Risque (complexité 4) : vingt-quatre dépendances, sept familles de contenu, exécution en tâche de
+Risque (complexité 4) : vingt-six dépendances, sept familles de contenu, exécution en tâche de
 fond avec notification, écriture en flux sur un VPS à 4 Go. Le harnais de complétude en a été sorti
 (s39) en revue du découpage — la story se lisait comme une 5 déjà scindée une fois (s40) mais pas
 assez. Ce qui reste est un moteur d'export et son archive, pas une traversée du produit.
@@ -2142,8 +2152,8 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s11 | seo | 2 | s02, s04, s05, s09 | A |
 | s12 | membres-parcelles | 4 | s01, s03 | B |
 | s13 | import-initial-membres | 3 | s12 | B |
-| s14 | attribuer-les-roles | 2 | s03, s12 | B |
-| s15 | inviter-un-membre | 2 | s02, s03, s12 | B |
+| s14 | attribuer-roles | 2 | s03, s12 | B |
+| s15 | inviter-membre | 2 | s02, s03, s12 | B |
 | s16 | coordonnees-membre | 1 | s12 | B |
 | s17 | import-releves-eau | 3 | s02, s12 | B |
 | s18 | historique-consommation | 2 | s17 | B |
@@ -2166,7 +2176,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s35 | petites-annonces | 3 | s10, s12 | F |
 | s36 | modeles-documents | 3 | s27, s28, s32 | F |
 | s37 | permissions-configurables | 4 | s03 | F |
-| s38 | export-donnees | 4 | s02, s04, s05, s06, s07, s08, s09, s10, s12, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37 | F |
+| s38 | export-donnees | 4 | s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37 | F |
 | s39 | completude-export | 2 | s38 | F |
 | s40 | export-membre | 2 | s12, s24, s38 | F |
 | s41 | simulation-role | 2 | s01, s03, s24, s37 | F |

@@ -60,6 +60,7 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 | Feature | Complexity (1-5) | Why this score |
 | --- | --- | --- |
 | CMS de pages génériques (créer / modifier / publier / dépublier) | 3 | Éditeur, cycle de publication, modèles de contenu répétables. Le bureau doit pouvoir tout faire seul. |
+| Attribution des rôles aux membres | 2 | Désigner la présidente et les 3 à 8 bénévoles du bureau depuis la fiche d'un membre, et leur retirer le rôle au renouvellement. Sans elle, une association provisionnée n'a personne pour l'administrer. Verrou anti-blocage : le dernier compte capable d'attribuer les rôles ne peut pas se les retirer. |
 | Permissions par rôle configurables en back-office | 4 | Autorisation transverse à tout le produit. CASL est présent dans le boilerplate, mais le rendre paramétrable par tenant reste structurant. |
 | Connexion par lien magique (validité 4 h) | 3 | Natif Better Auth, mais flux d'invitation, expiration et absence de mot de passe à éprouver auprès d'un public âgé. Le flux d'invitation inclut le suivi d'adoption au lancement — qui a été invité, qui s'est connecté — sans quoi le premier contact avec 400 propriétaires se ferait à l'aveugle. |
 | Pages publiques + formulaire de contact archivé en BO | 2 | Formulaire, persistance, liste consultable, notification paramétrable. |
@@ -81,12 +82,12 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 | Documents partagés (statuts, PV, ordres du jour) | 2 | Dossier commun, accès à tout membre authentifié. |
 | Documents nominatifs en dossiers **physiquement séparés** | 4 | Un dossier par membre, pas un filtre logique : l'objectif est d'exclure tout accès croisé même en cas de bug d'autorisation. |
 | Campagnes email Brevo (4 modèles + campagne libre, gabarit commun) | 3 | En-tête et pied de page communs, variables dynamiques, contenu des modèles à rédiger avec le bureau. |
-| Envoi échelonné au-delà de 300 destinataires | 3 | Scission automatique sur deux jours à coder dans le déclenchement, pas une limite affichée. |
+| Envoi échelonné au-delà de 300 destinataires | 4 | Scission automatique sur deux jours à coder dans le déclenchement, pas une limite affichée. Le quota Brevo étant par compte et par jour, la scission d'une campagne isolée ne suffit pas : il faut un budget quotidien d'envoi par association, décompté par tout email sortant — invitations, campagnes, relances, lancement — avec report au lendemain plutôt que perte. |
 | Relances d'impayés (jusqu'à 3, à 3/2/1 semaines), activables par tenant | 4 | Planification, idempotence, ciblage du sous-groupe impayés, activation en configuration. |
 | Publipostage PDF pour les membres sans email *(inspiré de Lotisoft)* | 3 | Une campagne génère un PDF à variables dynamiques, prêt à imprimer et poster. **Fait entrer dans le produit le quart de membres aujourd'hui hors système.** |
 | Groupes de destinataires personnalisés *(inspiré de Lotisoft)* | 2 | Au-delà des deux cibles actuelles (tous / impayés) : groupes composés par le bureau. |
 | Statistiques d'ouverture et de clic des campagnes *(inspiré de Lotisoft)* | 2 | Brevo les mesure déjà ; il s'agit de les restituer en back-office. |
-| Modèles de documents réutilisables *(inspiré de Lotisoft)* | 3 | Convocation, PV, courrier type — au-delà des modèles d'email. |
+| Modèles de documents réutilisables *(inspiré de Lotisoft)* | 3 | Convocation, PV, courrier type — au-delà des modèles d'email. Génération unitaire et **en lot** pour un groupe, avec dépôt dans les dossiers nominatifs : une convocation d'AG se produit pour tous les membres à la fois, la produire une par une serait inutilisable pour un bureau bénévole. |
 | Facturation membres : interface + implémentation Pennylane | 4 | Lecture seule : liste, statuts remontés tels quels (pas un booléen), téléchargement PDF si l'API le permet. Derrière une interface interchangeable, car toute ASL a besoin de la fonction mais pas forcément de Pennylane — une saisie manuelle doit rester possible. |
 | Redirection de paiement | 1 | Simple lien sortant. Aucune donnée bancaire ne transite ni n'est stockée. |
 | Multi-tenant (Organization, configuration par tenant, RLS Postgres) | 4 | Scoping de toutes les données métier, cloisonnement renforcé sur les tables sensibles, provisioning d'un nouveau client. |
