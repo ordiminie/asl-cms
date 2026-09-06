@@ -36,6 +36,11 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   utilisateur derrière `<Suspense>`, jamais de `logger` ni d'horloge dans un scope `'use cache'`.
 - **Tests** : `pnpm test --run` (jamais `pnpm test`, qui reste en watch). Migrations via
   `pnpm db:generate`, jamais de SQL écrit à la main.
+- **Identité d'un membre = clé primaire arbitraire**, jamais l'email ni le numéro de parcelle. Ces
+  deux valeurs sont des **attributs** : l'email peut être absent (100 membres sur 400), changer, ou
+  être partagé dans un foyer ; le numéro de parcelle n'est pas unique par personne et se transmet à
+  la vente. Toute clé de rattachement — stockage nominatif, rapprochement Pennylane, dédoublonnage
+  d'import, export — s'indexe sur cette clé primaire. Voir `V5 §5.1`.
 - **Périmètre** : rien du cimetière du PRD ne devient une story. En particulier, aucun plan B de
   connexion pour les membres sans email — le publipostage PDF (s26) est la réponse produite.
 
@@ -471,7 +476,7 @@ périodes de propriété **afin que** l'historique reste attaché au bon propri�
 
 ### Acceptance criteria
 
-- [ ] Le bureau crée un membre (identifiant autogénéré, indépendant du numéro de parcelle) et lui rattache une ou plusieurs parcelles avec une date de début de propriété.
+- [ ] Le bureau crée un membre (identifiant autogénéré, indépendant du numéro de parcelle **et** de l'email) et lui rattache une ou plusieurs parcelles avec une date de début de propriété.
 - [ ] Enregistrer une vente clôture la période de propriété du vendeur et ouvre celle de l'acquéreur, sans supprimer ni modifier la période close.
 - [ ] Une donnée datée d'avant la vente (relevé, facture, document) reste rattachée à l'ancien propriétaire et n'apparaît jamais chez le nouveau — vérifié par un test sur une parcelle vendue.
 - [ ] Une parcelle ne peut pas avoir deux propriétaires sur des périodes qui se chevauchent ; la tentative est refusée avec un message explicite.
@@ -493,6 +498,12 @@ vendue est le test qui compte — l'écrire en premier (`tdd-skill`).
 
 Résolution du propriétaire « au moment des faits » : prévoir dès maintenant la fonction qui, pour une
 parcelle et une date, retourne le propriétaire d'alors. s16, s17, s26 et s30 l'appellent toutes.
+
+L'identité du membre est une **clé primaire arbitraire** (`V5 §5.1`), et c'est elle que référencent
+toutes les autres tables. Ni l'email ni le numéro de parcelle ne sont une identité : le premier est
+absent chez 100 membres sur 400 et peut changer, le second se transmet à la vente — l'utiliser comme
+clé ferait justement transférer l'historique que le modèle daté sert à retenir. C'est le même
+raisonnement que pour la parcelle, appliqué à l'email.
 
 **Bloquant conformité** : la règle « accès coupé une fois la cotisation soldée, données conservées »
 (`V5 §5.1`) attend un arbitrage RGPD. Cette story livre **le modèle daté et la conservation** ; elle
@@ -541,6 +552,13 @@ volumétrie (s30) et la cible du publipostage (s26), pas le 300.
 
 Ce comptage ne dispense pas du regroupement : un propriétaire de plusieurs parcelles reste **une**
 fiche membre. Le critère de dédoublonnage porte sur les lignes du fichier, pas sur le total attendu.
+
+Piège du dédoublonnage : **l'email ne peut pas être la clé de regroupement**, puisque 100 lignes n'en
+ont pas et qu'un foyer peut en partager un. La clé de rapprochement des lignes du fichier est à
+trancher en `/ks-research` sur le fichier réel (nom + adresse ? identifiant fourni par le bureau ?),
+et elle reste une clé **d'import** : la fiche créée, elle, porte sa propre clé primaire arbitraire.
+Les cas ambigus doivent remonter au rapport pour arbitrage humain plutôt que d'être fusionnés
+d'office — fusionner deux propriétaires distincts leur donnerait accès aux documents l'un de l'autre.
 
 Le marquage « sans email » alimente directement le publipostage PDF (s26) — c'est ce champ qui
 réintègre le quart de membres aujourd'hui hors système (angle n°2 du PRD). Ne pas le traiter comme
@@ -728,7 +746,9 @@ s17
 
 Réf. `V5 §5.2`, `CDCT §5.2`, `Annexe A`. **Bloquée par une condition suspensive du devis** : accès
 API Pennylane **et** clé de rapprochement (email ? n° de parcelle ? id client Pennylane ?) non
-tranchés. `/ks-research` vérifie d'abord que l'accès est fourni ; sinon la story attend et le bloc B
+tranchés. Quelle que soit la clé retenue, elle est stockée comme **attribut** de la fiche membre, à
+côté de sa clé primaire — jamais à la place. Le rapprochement avec un système externe ne redéfinit
+pas l'identité interne, sinon un changement d'outil de facturation devient une migration d'identités. `/ks-research` vérifie d'abord que l'accès est fourni ; sinon la story attend et le bloc B
 continue sans elle grâce à s17.
 
 Implémentation d'une interface existante (s17), pas une refonte : si cette story touche à la
@@ -1176,7 +1196,7 @@ courrier (s26). Prévoir la marge de croissance.
 
 Corollaire à ne pas manquer : un dossier nominatif existe pour un membre **sans compte**. Le
 cloisonnement du stockage ne peut donc pas être indexé sur l'identifiant de connexion — il s'indexe
-sur la fiche membre.
+sur la **clé primaire de la fiche membre** (règle transverse), qui existe avec ou sans compte.
 
 Risque (complexité 4) : l'exigence n'est pas « filtrer à la lecture » mais **« exclure tout accès
 croisé même en cas de bug d'autorisation »** (`CDCT §7`). C'est une exigence de défense en
