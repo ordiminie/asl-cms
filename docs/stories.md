@@ -2192,17 +2192,17 @@ explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-d
 
 Deux écarts avec les scores du PRD, tous deux documentés dans la story concernée plutôt que lissés :
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
-main) et s38 à 4 contre 3 (vingt-quatre dépendances, tâche de fond, test de complétude qui inspecte le
-schéma). Le PRD chiffre des *features*, ce tableau chiffre des *tranches livrables*.
+main) et s38 à 4 contre 3 (vingt-six dépendances, sept familles de contenu, exécution en tâche de
+fond, écriture en flux sur un VPS à 4 Go). Le PRD chiffre des *features*, ce tableau chiffre des
+*tranches livrables*.
 
-Six stories ont été ajoutées en revue du découpage — dont s39 (garde-fou de complétude de l'export,
-sorti de s38) — — dont s14 (attribution des rôles : les rôles
-existaient, la matrice était prévue, mais rien ne permettait de désigner la présidente ni le bureau)
-— : s41 (simulation de rôle, sortie de s01), s42
+Six stories ont été ajoutées en revue du découpage : s14 (attribution des rôles — les rôles
+existaient et la matrice était prévue, mais rien ne permettait de désigner la présidente ni le
+bureau), s15 (invitation unitaire, sortie de s03 où elle créait une dépendance circulaire vers s12),
+s39 (garde-fou de complétude, sorti de s38), s40 (export individuel d'un membre, sorti de s38 qui
+portait deux valeurs utilisateur distinctes), s41 (simulation de rôle, sortie de s01) et s42
 (invitation des membres au lancement, qui n'était couverte par aucune story — le service existait
-sans que personne sache qu'il existe), s15 (invitation unitaire, sortie de s03 où elle créait une
-dépendance circulaire vers s12) et s40 (export individuel d'un membre, sorti de s38 qui portait deux
-valeurs utilisateur distinctes).
+sans que personne sache qu'il existe).
 
 **Ordre vs calendrier contractuel** : la GED (s31, s32) est placée **avant** le vote (s33), alors
 que le calendrier du devis annonce l'inverse (vote en décembre 2026, GED en janvier 2027). Arbitrage
