@@ -540,6 +540,7 @@ multi-parcelles (s17/s18), le site n'agrège rien.
 
 ### Acceptance criteria
 
+- [ ] L'import se fait depuis le back-office, par téléversement du fichier : aucun script à lancer, aucun accès direct à la base, aucune ligne de code à écrire pour une nouvelle association.
 - [ ] Importer un fichier (nom, email, parcelle) crée les membres et leurs rattachements de parcelle dans le tenant visé.
 - [ ] Plusieurs lignes portant le même propriétaire produisent **un seul** compte avec plusieurs parcelles, pas plusieurs comptes.
 - [ ] Une ligne sans email crée le membre et sa parcelle, sans compte de connexion, et le marque comme joignable par courrier uniquement.
@@ -552,8 +553,20 @@ s12
 
 ### Agentic notes
 
-Réf. `V5 §2`, `CDCT §2`. Import réalisé par le prestataire au démarrage, puis création unitaire par
-le bureau (couverte par s12).
+Réf. `PRD` (« Import initial des membres d'une association », complexité 2), `V5 §2`, `CDCT §2`.
+Import réalisé par le prestataire au démarrage, puis création unitaire par le bureau (couverte par
+s12).
+
+**Pourquoi un écran et non un script** : le critère de succès du PRD exige qu'une deuxième
+association soit provisionnée « sans écrire une ligne de code : uniquement configuration, activation
+de modules et chargement de sa liste de membres ». Un script maintenu par le prestataire et relancé à
+la main pour chaque client échouerait à ce critère — et il y a six associations à charger, pas une.
+C'est ce qui justifie de chiffrer cette story au périmètre plutôt que de la traiter en opération
+d'installation.
+
+Cette story pose le **motif d'import du produit** (téléversement, validation ligne à ligne, rapport
+d'erreurs, idempotence) que s15 réutilise pour les relevés d'eau. Le concevoir réutilisable ici
+évite deux implémentations divergentes ; c'est aussi pourquoi s13 est ordonnée avant s15.
 
 **Comptage tranché par le client le 6 septembre 2026** — la divergence entre `V5 §2` (300) et
 `V5 §3.3` (« 100 des 400 ») est levée : **400 propriétaires au total**, dont **300 avec une adresse
@@ -649,6 +662,10 @@ d'erreurs, idempotence) est indépendant du format et peut être conçu dès mai
 frontière de parsing isolée.
 
 Parseur de fichiers tabulaires : brique tierce assumée (`CDCT §1.1`), pas de développement maison.
+
+Réutiliser le motif d'import posé par s13 (téléversement en back-office, validation ligne à ligne,
+rapport d'erreurs, idempotence) : seules la grammaire du fichier et la cible changent. Un second
+mécanisme d'import serait une divergence, pas une spécialisation.
 
 Le rattachement daté est le point où le modèle de s12 se prouve : écrire le test « relevé importé
 pour une parcelle vendue en cours d'année » avant le code.

@@ -65,6 +65,7 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 | Pages publiques + formulaire de contact archivé en BO | 2 | Formulaire, persistance, liste consultable, notification paramétrable. |
 | Bandeau d'alerte global | 1 | Activation / édition / désactivation par tout membre du bureau. |
 | SEO (sitemap, métadonnées, Search Console) | 2 | Réglages par tenant, pas de logique propre. |
+| Import initial des membres d'une association (liste nom / email / parcelle) | 2 | Provisioning d'un nouveau client : parseur, dédoublonnage des propriétaires multi-parcelles, fiches sans compte pour les membres sans email. Six associations à charger, pas une. |
 | Modèle membre ↔ parcelle **daté** | 4 | Cœur du modèle de données. L'historique est attaché à la parcelle au moment des faits : une vente ne transfère pas les factures et documents antérieurs. Ce n'est pas une simple clé étrangère. |
 | Coordonnées (profil membre) | 1 | CRUD sur ses propres données. |
 | Questions au bureau, catégories avec routage email | 2 | Modèle de catégories (max 10) réutilisable avec les petites annonces. |
@@ -170,7 +171,7 @@ Signature septembre 2026 → fondations et site public (sept-oct) → espace mem
 
 **Le produit est un produit, pas un site**
 
-- Une deuxième association est provisionnée sans écrire une ligne de code : uniquement configuration et activation de modules.
+- Une deuxième association est provisionnée sans écrire une ligne de code : uniquement configuration, activation de modules et chargement de sa liste de membres.
 - Aucune donnée propre à La Fourche n'est codée en dur — vérifié par revue : adresses de notification, catégories, seuils, activation des relances.
 - Les modules Vote et Voirie se désactivent par tenant sans effet de bord sur le reste.
 
