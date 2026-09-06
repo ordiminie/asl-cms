@@ -94,7 +94,7 @@ contournent sont ordonnées avant.
 - [ ] Une requête entrante est rattachée à son association d'après le domaine appelé ; deux domaines servent deux tenants distincts, et un domaine inconnu répond 404.
 - [ ] Chaque association porte un jeu de drapeaux d'activation de modules, persisté et modifiable depuis le back-office SuperAdmin ; deux associations peuvent avoir des drapeaux différents.
 - [ ] Une route rattachée à un module inactif, ou à une clé de module inconnue, répond 404 — pas un lien masqué, pas une page vide (vérifié sur une route de test rattachée à un module fictif).
-- [ ] Le provisioning désigne l'**administrateur initial** de l'association par son adresse email : il reçoit son accès et peut ensuite administrer le site, sans nouvelle intervention du prestataire.
+- [ ] Le provisioning désigne l'**administrateur initial** de l'association par son adresse email : le compte existe, il est rattaché à ce tenant et à lui seul, et il porte les droits d'administration — vérifié en le chargeant et en exerçant une action réservée.
 - [ ] Une requête authentifiée dans le tenant A ne retourne aucune donnée du tenant B, y compris en forgeant l'identifiant de la ressource (test d'accès croisé).
 - [ ] La policy RLS refuse la lecture inter-tenant même lorsque la couche applicative est court-circuitée (test au niveau repository).
 
@@ -117,7 +117,7 @@ avant `/ks-plan`.
 Cette story est la plus large du découpage — création du tenant, routage par domaine, drapeaux de
 modules — et c'est assumé : les trois sont la même valeur vue de trois côtés (« une association a son
 site »), et les séparer produirait deux stories non livrables seules. La simulation de rôle, elle, en
-est bien sortie (s40) parce qu'elle répond au besoin d'un autre utilisateur.
+est bien sortie (s41) parce qu'elle répond au besoin d'un autre utilisateur.
 
 Le **routage par domaine** est livré ici et nulle part ailleurs : c'est lui qui rend testable
 « deux associations, deux sites », et le dernier critère de s11 (sitemap par domaine) s'appuie
@@ -139,8 +139,14 @@ L'administrateur initial est ce qui rend le critère de succès « une deuxième
 provisionnée sans écrire une ligne de code » réellement vrai : sans lui, l'association serait livrée
 sans personne pour l'administrer. La désignation des autres membres du bureau vient ensuite (s14).
 
+**Cette story crée le compte, elle ne le contacte pas.** L'envoi du lien de connexion appartient à
+s03, première story à envoyer un email et seule à connaître l'adaptateur d'envoi. Faire partir un
+email ici obligerait à un second chemin d'envoi que s03 devrait remplacer — référence en avant
+relevée en revue du découpage. Entre s01 et s03, l'administrateur initial se connecte par le
+mécanisme du boilerplate ; c'est assumé et temporaire.
+
 La simulation de rôle du SuperAdmin (`PRD`, Target users) est volontairement **hors de cette
-story** : c'est le besoin d'un autre utilisateur, livrable séparément (s40).
+story** : c'est le besoin d'un autre utilisateur, livrable séparément (s41).
 
 **Cette story livre le mécanisme d'activation, pas les modules.** `vote`, `voirie` et `annonces`
 arrivent en s33, s34 et s35 — un critère qui les nommerait ici serait intestable au moment de la
@@ -235,7 +241,7 @@ stories intermédiaires après coup — défaut relevé en revue du découpage.
 **Pour le reste, cette story ne livre que l'authentification et les rôles.** Le flux d'invitation, troisième chose
 que nomme la ligne du périmètre, opère sur la fiche membre — qui n'existe qu'en s12. Le placer ici
 obligerait à inventer une fiche membre avant s12, donc à créer le modèle en double que s12 s'interdit.
-Il est livré par s15 (invitation unitaire) et s41 (invitation de masse au lancement). Défaut relevé en
+Il est livré par s15 (invitation unitaire) et s42 (invitation de masse au lancement). Défaut relevé en
 revue du découpage, où ces critères créaient une dépendance circulaire s03 → s12 → s03.
 
 Public âgé et peu à l'aise : les messages d'erreur doivent être en français simple et proposer
@@ -778,7 +784,7 @@ La traçabilité n'est pas décorative : le bureau change tous les quelques ann�
 promu qui est ce qui permet de reconstituer une situation d'accès après coup. Elle entre dans
 l'export de s38 comme le reste.
 
-Ne pas confondre avec s40 (simulation de rôle) : ici on **change** durablement les droits de
+Ne pas confondre avec s41 (simulation de rôle) : ici on **change** durablement les droits de
 quelqu'un, là on emprunte temporairement une vue pour déboguer.
 
 ---
@@ -828,7 +834,7 @@ comportement observable — le critère testable est celui du paramètre de tena
 enrichira au fil des mises en ligne.
 
 L'état « connecté au moins une fois » n'est pas un confort : c'est ce qui permet au bureau de savoir
-qui relancer, et à s41 de mesurer l'adoption au lancement. Il se déduit de la première connexion
+qui relancer, et à s42 de mesurer l'adoption au lancement. Il se déduit de la première connexion
 réussie, pas d'un clic sur le lien — un lien cliqué par un antivirus n'est pas une connexion.
 
 Public âgé et peu à l'aise : la rédaction de l'email compte autant que le mécanisme. Elle se traite
@@ -1269,7 +1275,7 @@ l'intercepter, sinon s26 imposera de tout reprendre.
 
 ### Complexity
 
-3
+4
 
 ### Acceptance criteria
 
@@ -1278,7 +1284,7 @@ l'intercepter, sinon s26 imposera de tout reprendre.
 - [ ] Une campagne dont le nombre de destinataires est inférieur ou égal au seuil part en un seul envoi.
 - [ ] Le seuil est un paramètre de tenant : le porter à 500 fait partir en un seul envoi une campagne de 400 destinataires, sans redéploiement.
 - [ ] Une campagne dépassant deux fois le seuil est scindée en autant de parts quotidiennes que nécessaire, chacune sous le seuil.
-- [ ] Le seuil est un **budget quotidien d'envoi par association**, décompté par **tous** les emails sortants — invitations (s15), campagnes (s25), relances (s29), lancement (s41) — et pas seulement par les campagnes.
+- [ ] Le seuil est un **budget quotidien d'envoi par association**, décompté dans l'adaptateur d'envoi par **tout** email sortant qui le traverse, et pas seulement par les campagnes — vérifié avec un émetteur de test distinct des campagnes.
 - [ ] Un envoi qui dépasserait le budget du jour est reporté au lendemain plutôt que refusé ou perdu, et le bureau voit qu'il est en attente.
 - [ ] Un redémarrage du serveur entre les deux parts ne perd pas la seconde part et ne la duplique pas.
 - [ ] Un destinataire ne reçoit jamais deux fois la même campagne, même si le traitement est relancé.
@@ -1291,6 +1297,16 @@ s02, s25
 
 Réf. `V5 §8.2`, `CDCT §8.2`, et critère de succès du PRD (« automatiquement scindée sur deux jours,
 sans action du bureau »).
+
+Risque (complexité 4, relevée de 3 en revue du découpage) : la story cumule une **planification
+durable** qui survit au redémarrage, l'**idempotence par destinataire**, un **budget transverse**
+décompté dans l'adaptateur que toutes les autres stories traversent, et une **file de report** avec
+un état visible. C'est le trio qui vaut déjà un 4 à s29, plus le budget. Si le plan dépasse dix
+tâches, séparer le budget et la file de report de la scission de campagne sur deux jours.
+
+Le critère de budget se prouve sur l'**adaptateur d'envoi**, pas sur une énumération des émetteurs :
+s29 (relances) et s42 (lancement) sont livrées après cette story et ne pourraient pas servir de
+preuve. Chacune porte de son côté un critère affirmant qu'elle passe bien par l'adaptateur.
 
 Piège explicite : c'est une **logique de déclenchement**, pas une limite affichée à l'utilisateur.
 Un message « vous avez trop de destinataires » est un échec de la story.
@@ -1441,6 +1457,7 @@ sur le VPS LWS (2 vCore, 4 Go) — un moteur à navigateur headless y est un ris
 - [ ] Désactivée, aucune relance automatique ne part, et le reste des campagnes fonctionne normalement.
 - [ ] Une facture réglée entre deux relances interrompt la série ; aucune relance ultérieure ne part.
 - [ ] Un membre ne reçoit jamais deux fois la même relance, même si le traitement est rejoué (idempotence vérifiée par un test).
+- [ ] Les relances passent par l'adaptateur d'envoi et sont décomptées du budget quotidien du tenant (s26) : une relance qui dépasserait le budget est reportée, pas perdue.
 - [ ] Les relances ne ciblent que les membres en impayé au sens du prédicat de s19 ; aucun membre à jour, ni aucun membre dont le statut est en attente de classement, n'en reçoit.
 - [ ] Une page de back-office liste, par impayé : nom du membre, numéro de parcelle, date de la facture, nombre et dates des relances déjà envoyées.
 - [ ] Les membres en impayé sans email apparaissent dans la page de suivi, marqués « courrier », avec une action qui génère leur publipostage de relance (s28) ; ils ne sont ni relancés par email ni omis de la liste.
@@ -1870,7 +1887,6 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 - [ ] L'archive contient les **échanges entrants** : signalements, messages de contact, questions au bureau.
 - [ ] L'archive contient la **configuration** : paramètres du tenant et matrice de permissions.
 - [ ] Les données d'un module non livré ou désactivé (vote) ne font pas échouer l'export ; livré et actif, le module entre dans l'archive par le test de complétude ci-dessous, sans modification de cette story.
-- [ ] Un type de donnée persisté par une story et absent de l'archive fait échouer un test de complétude : l'inventaire des tables scopées par `organization_id` est comparé à l'inventaire des fichiers produits, et toute table non exportée doit être déclarée exclue avec son motif.
 - [ ] L'export ne contient **aucune** donnée d'une autre association (test d'isolation sur l'archive produite).
 - [ ] L'export s'exécute en tâche de fond : la requête qui le déclenche répond immédiatement sans attendre l'archive, une lecture concurrente sur le site répond pendant la génération, et la présidente est notifiée quand l'archive est prête.
 
@@ -1883,11 +1899,12 @@ s02, s04, s05, s06, s07, s08, s09, s10, s12, s17, s19, s23, s24, s25, s26, s27, 
 Réf. `PRD` (« Export et portabilité des données », angle n°5 : « Pas de verrouillage »), RGPD (droit
 à la portabilité).
 
-Risque (complexité 4) : la story a vingt-quatre dépendances, tourne en tâche de fond, produit une
-archive en flux sur un VPS à 4 Go, et porte un test de complétude qui inspecte le schéma. C'est la
-story qui révélera les oublis de scoping de toutes les autres.
+Risque (complexité 4) : vingt-quatre dépendances, sept familles de contenu, exécution en tâche de
+fond avec notification, écriture en flux sur un VPS à 4 Go. Le harnais de complétude en a été sorti
+(s39) en revue du découpage — la story se lisait comme une 5 déjà scindée une fois (s40) mais pas
+assez. Ce qui reste est un moteur d'export et son archive, pas une traversée du produit.
 
-L'**export individuel d'un membre** en est sorti (s39) en revue du découpage : deux valeurs, deux
+L'**export individuel d'un membre** en est sorti (s40) en revue du découpage : deux valeurs, deux
 utilisateurs, deux surfaces d'autorisation — la présidente exporte l'association, un membre exerce
 son droit d'accès. Les garder ensemble faisait de cette story une 5 déguisée en 4.
 
@@ -1903,11 +1920,11 @@ ce que le produit stocke. s33 (vote) n'y figure pas volontairement — le module
 condition suspensive, et l'export ne doit pas en être otage ; ses résolutions et résultats entrent
 dans l'archive par le test de complétude dès que le module est livré.
 
-**Le test de complétude est le cœur de la story, pas l'énumération.** Une liste écrite à la main
-finit toujours par oublier un type de donnée — c'est exactement ce qui s'est produit en revue du
-découpage, où six types manquaient. Comparer l'inventaire des tables scopées par `organization_id`
-à l'inventaire des fichiers produits rend l'oubli impossible : toute table nouvelle casse le test
-tant qu'elle n'est pas soit exportée, soit déclarée exclue avec son motif.
+**Une énumération écrite à la main finit toujours par oublier un type de donnée** — c'est exactement
+ce qui s'est produit en revue du découpage, où six types manquaient. C'est pourquoi le garde-fou
+mécanique qui rend l'oubli impossible fait l'objet d'une story propre (s39), livrée juste après :
+cette story-ci produit l'archive, celle-là garantit qu'elle ne rate rien, aujourd'hui comme dans
+trois ans.
 
 Chaque story qui ajoute un type de donnée après celle-ci doit l'ajouter à l'export — le noter dans
 son plan.
@@ -1922,7 +1939,48 @@ Générer en flux vers le disque, pas en mémoire.
 
 ---
 
-## Story s39-export-membre — Obtenir la copie de ses propres données
+## Story s39-completude-export — Garantir qu'aucune donnée n'échappe à l'export
+
+**En tant que** présidente **je veux** que l'export reste complet à mesure que le produit évolue
+**afin de** ne pas découvrir dans trois ans qu'une partie de nos données n'en sortait jamais.
+
+### Complexity
+
+2
+
+### Acceptance criteria
+
+- [ ] Un test compare l'inventaire des tables scopées par `organization_id` à l'inventaire des fichiers produits par l'export (s38), et échoue si une table n'est ni exportée ni déclarée exclue.
+- [ ] Le registre des exclusions porte, pour chaque table exclue, son motif ; une exclusion sans motif fait échouer le test.
+- [ ] Ajouter une table scopée sans toucher à l'export fait échouer ce test — vérifié en ajoutant une table de contrôle.
+- [ ] Le rapport d'échec nomme les tables fautives, de sorte que la story qui les a introduites soit identifiable sans lecture du schéma.
+
+### Dependencies
+
+s38
+
+### Agentic notes
+
+Réf. `PRD` (« Export complet dans un format ouvert », angle n°5 : « Pas de verrouillage ») et RGPD
+(portabilité).
+
+Sortie de s38 en revue du découpage : l'export d'un côté, sa garantie de complétude de l'autre. s38
+produisait déjà l'archive ; cette story empêche qu'elle se périme silencieusement à mesure que les
+stories suivantes ajoutent des tables.
+
+**C'est un garde-fou, pas un rapport.** Sa valeur est de rendre l'oubli impossible plutôt que
+détectable : un export incomplet ne se voit pas à l'usage — l'association ne sait pas ce qui manque —
+et c'est précisément ce qui rend l'argument anti-verrouillage du PRD vérifiable ou creux.
+
+Le motif d'exclusion est obligatoire par conception : une table peut légitimement ne pas être
+exportée (journal technique, cache), mais jamais sans que quelqu'un l'ait écrit.
+
+Ce test appartient à la suite exécutée en continu, pas à un contrôle manuel : il doit casser au
+moment où la table est ajoutée, pas au prochain export demandé par une présidente.
+
+---
+
+## Story s40-export-membre — Obtenir la copie de ses propres données
 
 **En tant que** membre propriétaire **je veux** obtenir une copie de toutes les données que
 l'association détient sur moi **afin d'**exercer mon droit d'accès.
@@ -1967,7 +2025,7 @@ quand il l'était, pas ce qui a suivi.
 
 ---
 
-## Story s40-simulation-role — Déboguer en se mettant à la place d'un utilisateur
+## Story s41-simulation-role — Déboguer en se mettant à la place d'un utilisateur
 
 **En tant que** SuperAdmin Zourite Studio **je veux** consulter le site avec le rôle d'un utilisateur
 d'une association **afin de** reproduire un problème signalé par le bureau sans lui demander ses accès.
@@ -2010,7 +2068,7 @@ une lecture sous une autre identité.
 
 ---
 
-## Story s41-lancement-invitations — Faire entrer les membres dans le service
+## Story s42-lancement-invitations — Faire entrer les membres dans le service
 
 **En tant que** membre du bureau **je veux** annoncer le site à tous les propriétaires d'un seul geste
 **afin que** chacun sache qu'il a un espace — ou, à défaut, que le site existe.
@@ -2027,7 +2085,7 @@ une lecture sous une autre identité.
 - [ ] Aucun membre de la liste n'est omis des deux canaux : la somme des destinataires email et des courriers produits égale l'effectif de l'association.
 - [ ] Le bureau suit l'adoption : nombre d'invitations envoyées, nombre de membres s'étant connectés au moins une fois, liste des membres jamais connectés.
 - [ ] Relancer les membres jamais connectés renvoie une invitation à eux seuls, sans réinviter ceux qui se sont déjà connectés.
-- [ ] L'opération respecte l'envoi échelonné (s26) : au-delà du seuil du tenant, elle se scinde comme n'importe quelle campagne.
+- [ ] L'opération passe par l'adaptateur d'envoi et respecte le budget quotidien du tenant (s26) : au-delà du seuil, elle se scinde et se reporte comme n'importe quel envoi.
 
 ### Dependencies
 
@@ -2096,7 +2154,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s23 | questions-bureau | 2 | s02, s10, s12 | B |
 | s24 | notes-internes-membre | 2 | s12 | B |
 | s25 | campagnes-email | 3 | s02, s03, s12 | C |
-| s26 | envoi-echelonne | 3 | s02, s25 | C |
+| s26 | envoi-echelonne | 4 | s02, s25 | C |
 | s27 | groupes-destinataires | 3 | s19, s25 | C |
 | s28 | publipostage-pdf | 3 | s12, s25 | C |
 | s29 | relances-impayes | 4 | s02, s19, s25, s26, s27, s28 | C |
@@ -2109,14 +2167,16 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s36 | modeles-documents | 3 | s27, s28, s32 | F |
 | s37 | permissions-configurables | 4 | s03 | F |
 | s38 | export-donnees | 4 | s02, s04, s05, s06, s07, s08, s09, s10, s12, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37 | F |
-| s39 | export-membre | 2 | s12, s24, s38 | F |
-| s40 | simulation-role | 2 | s01, s03, s24, s37 | F |
-| s41 | lancement-invitations | 3 | s03, s13, s15, s25, s26, s28 | F |
+| s39 | completude-export | 2 | s38 | F |
+| s40 | export-membre | 2 | s12, s24, s38 | F |
+| s41 | simulation-role | 2 | s01, s03, s24, s37 | F |
+| s42 | lancement-invitations | 3 | s03, s13, s15, s25, s26, s28 | F |
 
-**41 stories, aucune à 5.** Répartition : trois à 1, dix-sept à 2, quinze à 3, six à 4.
-Les six stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s29
-(planification et idempotence des relances), s32 (cloisonnement physique des documents nominatifs),
-s37 (autorisation transverse), s38 (traversée de tout le produit) — portent chacune leur risque
+**42 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quatorze à 3, sept à 4.
+Les sept stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s26
+(planification, budget transverse et file de report), s29 (planification et idempotence des
+relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
+s38 (moteur d'export et son archive) — portent chacune leur risque
 explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
 `/ks-plan`.
 
@@ -2125,12 +2185,13 @@ s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des g
 main) et s38 à 4 contre 3 (vingt-quatre dépendances, tâche de fond, test de complétude qui inspecte le
 schéma). Le PRD chiffre des *features*, ce tableau chiffre des *tranches livrables*.
 
-Cinq stories ont été ajoutées en revue du découpage — dont s14 (attribution des rôles : les rôles
+Six stories ont été ajoutées en revue du découpage — dont s39 (garde-fou de complétude de l'export,
+sorti de s38) — — dont s14 (attribution des rôles : les rôles
 existaient, la matrice était prévue, mais rien ne permettait de désigner la présidente ni le bureau)
-— : s40 (simulation de rôle, sortie de s01), s41
+— : s41 (simulation de rôle, sortie de s01), s42
 (invitation des membres au lancement, qui n'était couverte par aucune story — le service existait
 sans que personne sache qu'il existe), s15 (invitation unitaire, sortie de s03 où elle créait une
-dépendance circulaire vers s12) et s39 (export individuel d'un membre, sorti de s38 qui portait deux
+dépendance circulaire vers s12) et s40 (export individuel d'un membre, sorti de s38 qui portait deux
 valeurs utilisateur distinctes).
 
 **Ordre vs calendrier contractuel** : la GED (s31, s32) est placée **avant** le vote (s33), alors
