@@ -61,9 +61,11 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 | --- | --- | --- |
 | CMS de pages génériques (créer / modifier / publier / dépublier) | 3 | Éditeur, cycle de publication, modèles de contenu répétables. Le bureau doit pouvoir tout faire seul. |
 | Permissions par rôle configurables en back-office | 4 | Autorisation transverse à tout le produit. CASL est présent dans le boilerplate, mais le rendre paramétrable par tenant reste structurant. |
-| Connexion par lien magique (validité 4 h) | 3 | Natif Better Auth, mais flux d'invitation, expiration et absence de mot de passe à éprouver auprès d'un public âgé. |
+| Connexion par lien magique (validité 4 h) | 3 | Natif Better Auth, mais flux d'invitation, expiration et absence de mot de passe à éprouver auprès d'un public âgé. Le flux d'invitation inclut le suivi d'adoption au lancement — qui a été invité, qui s'est connecté — sans quoi le premier contact avec 400 propriétaires se ferait à l'aveugle. |
 | Pages publiques + formulaire de contact archivé en BO | 2 | Formulaire, persistance, liste consultable, notification paramétrable. |
 | Limitation de débit des formulaires publics | 1 | Un formulaire public sans protection est une porte ouverte au spam, qui coûte au bureau bénévole le temps que le produit prétend lui rendre. Compteur sur empreinte d'IP hachée, purgé sous 24 h : aucun journal d'adresses en clair, donc aucune donnée personnelle sans règle de rétention. |
+| Actualités de l'association (mini-blog daté) | 2 | Contenu répétable listé au CDC §4.1 et nommé dans les critères de succès. Réemploie l'éditeur et le cycle de publication du CMS. |
+| Présentation du bureau (fiches listables et éditables) | 2 | Explicitement pas une page statique : sous-modèle nom / rôle / photo / bio, réordonnable. C'est ce que « le bureau met à jour dynamiquement » exige à chaque renouvellement. |
 | Bandeau d'alerte global | 1 | Activation / édition / désactivation par tout membre du bureau. |
 | SEO (sitemap, métadonnées, Search Console) | 2 | Réglages par tenant, pas de logique propre. |
 | Import initial des membres d'une association (liste nom / email / parcelle) | 3 | Provisioning d'un nouveau client : parseur, dédoublonnage des propriétaires multi-parcelles, fiches sans compte pour les membres sans email. Six associations à charger, pas une. La clé de dédoublonnage n'est pas tranchée et sa défaillance donnerait à deux propriétaires distincts accès aux données l'un de l'autre. |
@@ -87,6 +89,8 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 | Facturation membres : interface + implémentation Pennylane | 4 | Lecture seule : liste, statuts remontés tels quels (pas un booléen), téléchargement PDF si l'API le permet. Derrière une interface interchangeable, car toute ASL a besoin de la fonction mais pas forcément de Pennylane — une saisie manuelle doit rester possible. |
 | Redirection de paiement | 1 | Simple lien sortant. Aucune donnée bancaire ne transite ni n'est stockée. |
 | Multi-tenant (Organization, configuration par tenant, RLS Postgres) | 4 | Scoping de toutes les données métier, cloisonnement renforcé sur les tables sensibles, provisioning d'un nouveau client. |
+| Export individuel d'un membre (droit d'accès RGPD) | 2 | Même machinerie que l'export d'association, filtrée sur un membre — mais autre utilisateur, autre surface d'autorisation, et doit fonctionner pour un membre sans compte, via le bureau. |
+| Simulation de rôle SuperAdmin (support et débogage) | 2 | Décrit aux Target users comme une capacité du SuperAdmin. Consulter le site avec les droits d'un rôle pour reproduire un incident, sans demander ses accès au bureau. Écritures tracées au SuperAdmin. |
 | Export et portabilité des données *(inspiré de Lotisoft)* | 3 | Export complet dans un format ouvert. Répond au droit à la portabilité RGPD et constitue un argument anti-verrouillage face aux concurrents. |
 
 **Modules activables par tenant**
