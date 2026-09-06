@@ -14,6 +14,14 @@ cahier des charges contractuel :
 - `docs/bases/cahier-des-charges-technique.md` (traduction technique interne) — cité `CDCT §x`
 - `docs/prd.md` (périmètre, angle, cimetière) et `docs/decisions/001-base-technique-cms.md`
 
+## Ordre des stories
+
+L'ordre des ids suit les **dépendances techniques**, pas le calendrier du devis. Là où les deux
+divergent, la dépendance l'emporte (arbitrage client du 6 septembre 2026) : les mois annoncés au
+devis sont des jalons de livraison, et le chiffrage calendaire a été établi avant le passage au
+développement agentique. Seul écart à ce jour : la GED passe avant le vote — détaillé en fin de
+document.
+
 ## Règles transverses à toutes les stories
 
 Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fois :
@@ -40,7 +48,7 @@ réserve n'est pas levée** ; les stories qui les contournent sont ordonnées av
 | --- | --- | --- |
 | Accès API Pennylane + clé de rapprochement | s18, et le déclencheur de s27 | s17 livre l'interface et la saisie manuelle |
 | Fichier exemple des relevés d'eau (format imposé par Pennylane) | le parseur de s15 | aucun — s15 attend le fichier réel |
-| Accès ASL Community + validation statutaire du vote électronique | s29 en entier | aucun — module activable, décalable |
+| Accès ASL Community + validation statutaire du vote électronique | s31 en entier | aucun — module activable, décalable |
 | Arbitrage RGPD sur la rétention des données d'un ex-propriétaire | la coupure d'accès de s12 | s12 livre le modèle daté sans purge |
 
 ---
@@ -484,7 +492,7 @@ tous les tests naïfs et casse silencieusement le jour de la première vente. Le
 vendue est le test qui compte — l'écrire en premier (`tdd-skill`).
 
 Résolution du propriétaire « au moment des faits » : prévoir dès maintenant la fonction qui, pour une
-parcelle et une date, retourne le propriétaire d'alors. s16, s17, s26 et s31 l'appellent toutes.
+parcelle et une date, retourne le propriétaire d'alors. s16, s17, s26 et s30 l'appellent toutes.
 
 **Bloquant conformité** : la règle « accès coupé une fois la cotisation soldée, données conservées »
 (`V5 §5.1`) attend un arbitrage RGPD. Cette story livre **le modèle daté et la conservation** ; elle
@@ -522,10 +530,17 @@ s12
 Réf. `V5 §2`, `CDCT §2`. Import réalisé par le prestataire au démarrage, puis création unitaire par
 le bureau (couverte par s12).
 
-**Point à vérifier avant de coder** : le nombre de comptes attendus diverge dans nos propres
-documents (300 au `V5 §2`, « 100 des 400 membres sans email » au `V5 §3.3`). Ce n'est pas qu'un
-chiffre : cela dit si la liste réelle contient des propriétaires à regrouper. Trancher sur le
-fichier réel en `/ks-research`, pas sur le document.
+**Comptage tranché par le client le 6 septembre 2026** — la divergence entre `V5 §2` (300) et
+`V5 §3.3` (« 100 des 400 ») est levée : **400 propriétaires au total**, dont **300 avec une adresse
+email** (fiche membre + compte connectable) et **100 sans** (fiche membre, aucun compte, joignables
+par courrier uniquement). L'import crée donc 400 fiches et 300 comptes.
+
+Les deux chiffres du CDC n'étaient pas contradictoires, ils comptaient deux choses différentes :
+les comptes d'un côté, les propriétaires de l'autre. C'est le total de 400 qui dimensionne la
+volumétrie (s30) et la cible du publipostage (s26), pas le 300.
+
+Ce comptage ne dispense pas du regroupement : un propriétaire de plusieurs parcelles reste **une**
+fiche membre. Le critère de dédoublonnage porte sur les lignes du fichier, pas sur le total attendu.
 
 Le marquage « sans email » alimente directement le publipostage PDF (s26) — c'est ce champ qui
 réintègre le quart de membres aujourd'hui hors système (angle n°2 du PRD). Ne pas le traiter comme
@@ -637,7 +652,7 @@ l'exactitude du calcul.
 
 Le critère d'autorisation croisée est un critère de succès explicite du PRD (« et à rien qui
 appartienne à un autre membre »). Il est vérifié ressource par ressource : ici, en s16, s18, s20,
-s22 et s31.
+s22 et s30.
 
 Piège cache : donnée par utilisateur — **jamais** de `'use cache'`. Lecture derrière `<Suspense>`
 avec le motif `'use cache: private'` du DAL décrit dans
@@ -931,6 +946,10 @@ Un message « vous avez trop de destinataires » est un échec de la story.
 Le seuil de 300 est le quota Brevo actuel : paramètre de tenant (s02), pas une constante — un autre
 client pourra avoir un autre plan.
 
+À savoir en test : La Fourche compte **exactement 300 membres avec email** (s13). La campagne « tous
+les membres » est donc pile au seuil — elle part en un seul envoi aujourd'hui, et bascule en deux
+parts dès le 301e membre. Le jeu de tests doit couvrir 300 et 301, pas seulement un cas large.
+
 Idempotence et persistance de la seconde part : la planification survit au redémarrage. Le
 boilerplate embarque Inngest (`docs/inngest.md`) — évaluer en `/ks-research` s'il tient sur le VPS
 LWS avant de retenir un `setTimeout` en mémoire, qui ne satisfait aucun des deux derniers critères.
@@ -1089,57 +1108,9 @@ bureau de conclure à tort que personne ne lit ses campagnes.
 
 ---
 
-# Bloc D — Vote (déc 2026)
+# Bloc D — Espace documentaire (janvier 2027 au contrat — avancé avant le vote)
 
-## Story s29-vote-asl-community — Voter à distance et publier les résultats
-
-**En tant que** présidente **je veux** ouvrir le vote à distance et publier résolutions, résultats et PV
-**afin que** les membres votent avant l'AG et consultent ensuite les décisions.
-
-### Complexity
-
-3
-
-### Acceptance criteria
-
-- [ ] Un membre connecté accède à l'espace de vote externe depuis son espace, quand le vote est ouvert.
-- [ ] La présidente saisit les résolutions soumises au vote et les publie ; les membres les consultent.
-- [ ] La présidente publie les résultats et le PV ; ils deviennent consultables par les membres.
-- [ ] Un membre du bureau qui n'est pas la présidente ne peut ni saisir une résolution ni publier de résultat ni de PV (test d'autorisation explicite).
-- [ ] Le module se désactive par tenant : désactivé, ni la page de vote ni les résolutions n'existent, et le reste du site est intact.
-- [ ] Le service de vote est appelé derrière une interface : changer de fournisseur ne demande aucune modification de la présentation (prouvé par un test doublant l'implémentation).
-
-### Dependencies
-
-s02, s12, s31
-
-### Agentic notes
-
-Réf. `V5 §6`, `CDCT §6`.
-
-**Bloquée par une condition suspensive du devis** : accès ASL Community confirmé par écrit **et**
-vérification que les statuts autorisent le vote électronique. `CDCT §6` est explicite — ne pas
-commencer avant la levée de la réserve. `/ks-research` commence par là. Le module étant activable,
-son décalage n'empêche aucune autre story.
-
-L'interface interchangeable est **stratégique**, pas cosmétique (angle n°6 du PRD) : ASL Community
-est simultanément fournisseur et concurrent partiel, et le vote par correspondance est à l'origine
-du projet. Internaliser un jour ne doit demander qu'une nouvelle implémentation.
-
-Cimetière : **aucune logique de vote** — ni dépouillement, ni quorum, ni procurations, ni émargement,
-ni synchronisation temps réel. Le site redirige et publie, point. Un agent qui commence à compter
-des voix est hors périmètre.
-
-Restriction présidente : c'est aujourd'hui la **seule** action réservée du produit. Elle est codée
-ici sur les rôles fixes de s03 ; s35 la rendra configurable sans la changer.
-
-Dépendance à s31 : le PV et les résultats sont des documents partagés, ils s'appuient sur la GED.
-
----
-
-# Bloc E — Espace documentaire (janv 2027)
-
-## Story s30-documents-partages — Consulter les documents de l'association
+## Story s29-documents-partages — Consulter les documents de l'association
 
 **En tant que** membre propriétaire **je veux** accéder aux statuts, PV et ordres du jour
 **afin de** retrouver les documents de l'association sans les demander au bureau.
@@ -1174,7 +1145,7 @@ Sauvegarde et volumétrie du VPS (100 Go) à prendre en compte dès cette story.
 
 ---
 
-## Story s31-documents-nominatifs — Accéder à ses documents personnels
+## Story s30-documents-nominatifs — Accéder à ses documents personnels
 
 **En tant que** membre propriétaire **je veux** accéder à mes documents nominatifs
 **afin de** récupérer ma facture et ma convocation sans risque qu'un autre membre les voie.
@@ -1194,12 +1165,18 @@ Sauvegarde et volumétrie du VPS (100 Go) à prendre en compte dès cette story.
 
 ### Dependencies
 
-s12, s30
+s12, s29
 
 ### Agentic notes
 
-Réf. `V5 §7.1`, `CDCT §7`. Volumétrie : une facture et une convocation par membre et par an, environ
-300 membres — prévoir la marge de croissance.
+Réf. `V5 §7.1`, `CDCT §7`. Volumétrie : une facture et une convocation par membre et par an sur
+**400 propriétaires** (comptage tranché en s13), soit ~800 documents nominatifs par an — et non 600 :
+les 100 membres sans email ont eux aussi des factures et des convocations, ils les reçoivent par
+courrier (s26). Prévoir la marge de croissance.
+
+Corollaire à ne pas manquer : un dossier nominatif existe pour un membre **sans compte**. Le
+cloisonnement du stockage ne peut donc pas être indexé sur l'identifiant de connexion — il s'indexe
+sur la fiche membre.
 
 Risque (complexité 4) : l'exigence n'est pas « filtrer à la lecture » mais **« exclure tout accès
 croisé même en cas de bug d'autorisation »** (`CDCT §7`). C'est une exigence de défense en
@@ -1215,6 +1192,55 @@ C'est le critère de succès n°1 du PRD (« et à rien qui appartienne à un au
 la plus exigeante. Prévoir la review en conséquence.
 
 Cimetière : pas de classification automatique des documents par IA.
+
+---
+
+# Bloc E — Vote (décembre 2026 au contrat — replacé après la GED, dont il dépend)
+
+## Story s31-vote-asl-community — Voter à distance et publier les résultats
+
+**En tant que** présidente **je veux** ouvrir le vote à distance et publier résolutions, résultats et PV
+**afin que** les membres votent avant l'AG et consultent ensuite les décisions.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Un membre connecté accède à l'espace de vote externe depuis son espace, quand le vote est ouvert.
+- [ ] La présidente saisit les résolutions soumises au vote et les publie ; les membres les consultent.
+- [ ] La présidente publie les résultats et le PV ; ils deviennent consultables par les membres.
+- [ ] Un membre du bureau qui n'est pas la présidente ne peut ni saisir une résolution ni publier de résultat ni de PV (test d'autorisation explicite).
+- [ ] Le module se désactive par tenant : désactivé, ni la page de vote ni les résolutions n'existent, et le reste du site est intact.
+- [ ] Le service de vote est appelé derrière une interface : changer de fournisseur ne demande aucune modification de la présentation (prouvé par un test doublant l'implémentation).
+
+### Dependencies
+
+s02, s12, s29
+
+### Agentic notes
+
+Réf. `V5 §6`, `CDCT §6`.
+
+**Bloquée par une condition suspensive du devis** : accès ASL Community confirmé par écrit **et**
+vérification que les statuts autorisent le vote électronique. `CDCT §6` est explicite — ne pas
+commencer avant la levée de la réserve. `/ks-research` commence par là. Le module étant activable,
+son décalage n'empêche aucune autre story.
+
+L'interface interchangeable est **stratégique**, pas cosmétique (angle n°6 du PRD) : ASL Community
+est simultanément fournisseur et concurrent partiel, et le vote par correspondance est à l'origine
+du projet. Internaliser un jour ne doit demander qu'une nouvelle implémentation.
+
+Cimetière : **aucune logique de vote** — ni dépouillement, ni quorum, ni procurations, ni émargement,
+ni synchronisation temps réel. Le site redirige et publie, point. Un agent qui commence à compter
+des voix est hors périmètre.
+
+Restriction présidente : c'est aujourd'hui la **seule** action réservée du produit. Elle est codée
+ici sur les rôles fixes de s03 ; s35 la rendra configurable sans la changer.
+
+Dépendance à s29 : le PV et les résultats sont publiés comme documents partagés — ils s'appuient
+sur la GED, qui est donc ordonnée avant. Les convocations, elles, sont nominatives (s30).
 
 ---
 
@@ -1314,13 +1340,13 @@ l'auteur choisit d'afficher dans son annonce, rien d'autre.
 
 - [ ] Le bureau crée un modèle de document avec des variables (nom, parcelle, date, association) et le retrouve dans une liste réutilisable.
 - [ ] Générer un document depuis un modèle pour un membre remplace les variables par ses valeurs et produit un fichier téléchargeable.
-- [ ] Une génération en lot pour un groupe (s25) produit un document par membre, déposable directement dans les dossiers nominatifs (s31).
+- [ ] Une génération en lot pour un groupe (s25) produit un document par membre, déposable directement dans les dossiers nominatifs (s30).
 - [ ] Une variable inconnue est signalée à l'enregistrement du modèle, pas laissée telle quelle dans le document produit.
 - [ ] Les modèles d'une association ne sont jamais visibles d'une autre.
 
 ### Dependencies
 
-s25, s26, s31
+s25, s26, s30
 
 ### Agentic notes
 
@@ -1331,7 +1357,7 @@ Réutiliser le moteur de variables et de génération PDF de s26 : c'est la mêm
 un document unitaire plutôt qu'à un publipostage. Si cette story réintroduit un second moteur, le
 découpage a échoué.
 
-Le dépôt en lot dans les dossiers nominatifs passe par le mécanisme de s31 — ne pas écrire dans le
+Le dépôt en lot dans les dossiers nominatifs passe par le mécanisme de s30 — ne pas écrire dans le
 stockage en contournant sa couche de cloisonnement.
 
 ---
@@ -1356,7 +1382,7 @@ stockage en contournant sa couche de cloisonnement.
 
 ### Dependencies
 
-s29
+s31
 
 ### Agentic notes
 
@@ -1399,7 +1425,7 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 ### Dependencies
 
-s22, s31
+s22, s30
 
 ### Agentic notes
 
@@ -1451,22 +1477,28 @@ Générer en flux vers le disque, pas en mémoire.
 | s26 | publipostage-pdf | 3 | s13, s23 | C |
 | s27 | relances-impayes | 4 | s17, s23, s24 | C |
 | s28 | stats-campagnes | 2 | s23, s24 | C |
-| s29 | vote-asl-community | 3 | s02, s12, s31 | D |
-| s30 | documents-partages | 2 | s03, s12 | E |
-| s31 | documents-nominatifs | 4 | s12, s30 | E |
+| s29 | documents-partages | 2 | s03, s12 | D |
+| s30 | documents-nominatifs | 4 | s12, s29 | D |
+| s31 | vote-asl-community | 3 | s02, s12, s29 | E |
 | s32 | module-voirie | 2 | s01, s04 | F |
 | s33 | petites-annonces | 3 | s12, s21 | F |
-| s34 | modeles-documents | 3 | s25, s26, s31 | F |
-| s35 | permissions-configurables | 4 | s29 | F |
-| s36 | export-donnees | 3 | s22, s31 | F |
+| s34 | modeles-documents | 3 | s25, s26, s30 | F |
+| s35 | permissions-configurables | 4 | s31 | F |
+| s36 | export-donnees | 3 | s22, s30 | F |
 
 **36 stories, aucune à 5.** Répartition : trois à 1, quinze à 2, treize à 3, cinq à 4.
 Les cinq stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s27
-(planification et idempotence des relances), s31 (cloisonnement physique des documents nominatifs),
+(planification et idempotence des relances), s30 (cloisonnement physique des documents nominatifs),
 s35 (autorisation transverse) — portent chacune leur risque explicité dans leurs notes agentiques,
 à trancher en `/ks-architect` ou `/ks-design` avant `/ks-plan`.
 
-**Écart d'ordre à noter** : s29 (vote) dépend de s31 (GED) pour la publication du PV, alors que le
-calendrier contractuel place le vote en décembre 2026 et la GED en janvier 2027. Deux issues
-possibles — avancer s30/s31, ou livrer s29 sans la publication du PV puis la compléter. À trancher
-avec le client, d'autant que s29 est de toute façon suspendue à la levée de la réserve ASL Community.
+**Ordre vs calendrier contractuel** : la GED (s29, s30) est placée **avant** le vote (s31), alors
+que le calendrier du devis annonce l'inverse (vote en décembre 2026, GED en janvier 2027). Arbitrage
+client du 6 septembre 2026 : la dépendance prime sur le jalon, le chiffrage calendaire ayant été
+établi avant le passage au développement agentique. Le vote publie son PV via les documents partagés
+plutôt que de se doter d'un stockage à lui — et il reste de toute façon suspendu à la levée de la
+réserve ASL Community.
+
+Les mois indiqués sur les blocs restent ceux du devis : ce sont des **jalons de livraison**, pas des
+contraintes d'ordonnancement. Les échéances contractuelles inchangées sont la recette (mars 2027) et
+la mise en production (mai 2027).

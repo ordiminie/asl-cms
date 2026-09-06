@@ -39,7 +39,11 @@ WordPress avait été envisagé pour une seule raison, légitime : offrir au bur
 
 **Comptes de départ** : import initial par le prestataire à partir d'une liste fournie par l'association (nom, email, parcelle). Le bureau peut ensuite créer un compte unitairement (email + rattachement à une fiche Pennylane).
 
-**⚠️ Point à clarifier avant le chiffrage de l'import initial** : le nombre exact de comptes à créer varie selon la source dans nos propres documents — `cahier-des-charges-fonctionnel_V4.md` indique « ~400 → 300 » (implique 300 comptes finaux après dédoublonnage), `cahier-des-charges-fonctionnel_V5.md` reprend 300 au §2 mais mentionne « 100 des 400 membres sans email » au §3.3. À vérifier avec la liste réelle transmise par le bureau avant l'import (300 comptes, ou 400 propriétaires historiques regroupés en moins de comptes uniques après application de la règle §5.1 ?).
+**✅ Comptage tranché (arbitrage client, 6 septembre 2026)** : **400 propriétaires au total**, dont **300 avec adresse email** (fiche membre + compte connectable) et **100 sans email** (fiche membre, aucun compte, joignables par courrier uniquement — cible du publipostage PDF). L'import initial crée donc **400 fiches membres et 300 comptes**.
+
+Les deux chiffres du `V5` n'étaient pas contradictoires : le §2 comptait les comptes, le §3.3 les propriétaires. C'est le **400** qui dimensionne la volumétrie GED (§7) et la cible du publipostage (§8), pas le 300.
+
+Reste valable indépendamment de ce comptage : la règle §5.1 (un propriétaire de plusieurs parcelles = **une** fiche membre) s'applique au dédoublonnage des lignes du fichier réel.
 
 ## 3. Fondations techniques
 
@@ -183,7 +187,6 @@ Bloquants ou quasi-bloquants pour certaines stories — à vérifier avant de d�
 
 | Point | Bloque | Détail |
 |---|---|---|
-| Nombre exact de comptes à importer (300 vs 400) | Story d'import initial des membres | Incohérence entre nos propres docs, voir §2 — à vérifier sur la liste réelle transmise |
 | Accès API Pennylane | §5.2, §5.3, §8.1 (récup factures) | Condition suspensive du devis, fourniture par le client |
 | Clé de rapprochement site ↔ Pennylane | §5.1, §5.2 | À définir en RDV Pennylane |
 | Format du fichier de relevés d'eau | §5.5 (parseur d'import) | Dépend du modèle imposé par Pennylane, exemple de fichier à obtenir |
