@@ -63,6 +63,7 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 | Permissions par rôle configurables en back-office | 4 | Autorisation transverse à tout le produit. CASL est présent dans le boilerplate, mais le rendre paramétrable par tenant reste structurant. |
 | Connexion par lien magique (validité 4 h) | 3 | Natif Better Auth, mais flux d'invitation, expiration et absence de mot de passe à éprouver auprès d'un public âgé. |
 | Pages publiques + formulaire de contact archivé en BO | 2 | Formulaire, persistance, liste consultable, notification paramétrable. |
+| Limitation de débit des formulaires publics | 1 | Un formulaire public sans protection est une porte ouverte au spam, qui coûte au bureau bénévole le temps que le produit prétend lui rendre. Compteur sur empreinte d'IP hachée, purgé sous 24 h : aucun journal d'adresses en clair, donc aucune donnée personnelle sans règle de rétention. |
 | Bandeau d'alerte global | 1 | Activation / édition / désactivation par tout membre du bureau. |
 | SEO (sitemap, métadonnées, Search Console) | 2 | Réglages par tenant, pas de logique propre. |
 | Import initial des membres d'une association (liste nom / email / parcelle) | 3 | Provisioning d'un nouveau client : parseur, dédoublonnage des propriétaires multi-parcelles, fiches sans compte pour les membres sans email. Six associations à charger, pas une. La clé de dédoublonnage n'est pas tranchée et sa défaillance donnerait à deux propriétaires distincts accès aux données l'un de l'autre. |
