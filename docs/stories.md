@@ -52,6 +52,12 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   rétention (s12) — elle est donc une donnée de configuration, pas une constante : si l'arbitrage la
   contredit, on change une valeur, pas du code. C'est la même prudence que s12, qui livre le modèle
   daté sans coder la purge.
+- **Registre d'actions** : toute story qui introduit une action soumise à autorisation la **déclare
+  au registre** créé par s03, avec les rôles qui l'exécutent par défaut. C'est ce registre que s36
+  transforme en matrice configurable ; sans cette discipline story par story, s36 devrait
+  instrumenter rétroactivement l'autorisation de tout le produit — ce qui la ferait passer de 4 à
+  bien davantage. Une action non déclarée est un défaut de review de la story qui l'introduit, pas de
+  s36.
 - **Périmètre** : rien du cimetière du PRD ne devient une story. En particulier, aucun plan B de
   connexion pour les membres sans email — le publipostage PDF (s27) est la réponse produite.
 
@@ -197,7 +203,9 @@ générique et la review vérifiable.
 - [ ] Le lien ouvre une session valide ; réutilisé une seconde fois, il est refusé avec un message compréhensible et un bouton pour en redemander un.
 - [ ] Un lien de plus de 4 heures est refusé avec le même message et le même bouton.
 - [ ] Une adresse email inconnue ne révèle pas si le compte existe (même écran, aucun email envoyé).
-- [ ] Après connexion, chacun des rôles Membre, Bureau, Président(e) et SuperAdmin accède exactement aux pages qui lui reviennent : un Membre reçoit un refus sur toute page de back-office, un Bureau y accède, et le refus vaut aussi bien en interface que sur l'appel serveur direct.
+- [ ] Les quatre rôles Membre, Bureau, Président(e) et SuperAdmin existent et sont attribuables à un utilisateur.
+- [ ] Un Membre reçoit un refus sur toute page de back-office, un Bureau y accède, et le refus vaut aussi bien en interface que sur l'appel serveur direct.
+- [ ] Une action soumise à autorisation se déclare au registre d'actions avec ses rôles par défaut ; une action déclarée est refusée à tout rôle absent de sa liste, sans code d'autorisation écrit à la main dans la page.
 - [ ] La session est scopée à l'association du membre : elle ne donne accès à aucune donnée d'un autre tenant.
 
 ### Dependencies
@@ -210,7 +218,13 @@ Réf. `V5 §2, §3.2, §3.3`, `CDCT §2, §3.3`. Better Auth est déjà branché
 (`src/lib/better-auth/auth.ts`) et gère nativement le magic link : **configurer, ne pas réécrire**.
 La validité 4 h est contractuelle — c'est un paramètre, pas la valeur par défaut de la lib.
 
-**Cette story ne livre que l'authentification et les rôles.** Le flux d'invitation, troisième chose
+**Cette story crée aussi le registre d'actions**, mécanisme minimal par lequel chaque story
+ultérieure déclare ce qu'elle rend autorisable (voir les règles transverses). Le registre est ici une
+simple déclaration avec rôles par défaut, sans écran ; s36 le transforme en matrice configurable par
+tenant. Le poser dès maintenant est ce qui évite à s36 d'avoir à instrumenter les trente-trois
+stories intermédiaires après coup — défaut relevé en revue du découpage.
+
+**Pour le reste, cette story ne livre que l'authentification et les rôles.** Le flux d'invitation, troisième chose
 que nomme la ligne du périmètre, opère sur la fiche membre — qui n'existe qu'en s12. Le placer ici
 obligerait à inventer une fiche membre avant s12, donc à créer le modèle en double que s12 s'interdit.
 Il est livré par s14 (invitation unitaire) et s40 (invitation de masse au lancement). Défaut relevé en
@@ -300,9 +314,8 @@ s04
 
 ### Agentic notes
 
-Réf. `V5 §4.1` (mini-blog), `CDCT §4.1`. **Dérivation du PRD** : pas une ligne du tableau du
-périmètre, mais un contenu du CMS générique (ligne « CMS de pages génériques ») et un support du
-critère de succès « le bureau crée, modifie et publie une page, une actualité et une analyse d'eau
+Réf. `V5 §4.1` (mini-blog), `CDCT §4.1`. Réf. `PRD`, ligne « Actualités de l'association (mini-blog daté) », complexité 2 — ajoutée au
+périmètre en revue du découpage. Elle sert aussi le critère de succès « le bureau crée, modifie et publie une page, une actualité et une analyse d'eau
 sans aucune intervention du prestataire », qui nomme explicitement l'actualité.
 
 Mêmes briques que s04 (éditeur, stockage, cache) :
@@ -338,9 +351,10 @@ s04
 
 Réf. `V5 §4.1` (« organigramme et présentation de chaque membre, mis à jour dynamiquement »),
 `CDCT §4.1` — explicitement **pas une simple page statique** : sous-modèle listable et éditable.
-**Dérivation du PRD** : pas une ligne du tableau du périmètre, mais une exigence du « Why kill it »
-n°2 (« une vitrine publique éditable et référencée […] présentation du bureau ») et du critère
-« le bureau doit pouvoir tout éditer sans intervention du prestataire ».
+Réf. `PRD`, ligne « Présentation du bureau (fiches listables et éditables) », complexité 2 — ajoutée
+au périmètre en revue du découpage, en appui du « Why kill it » n°2 (« une vitrine publique éditable
+et référencée ») et du critère « le bureau doit pouvoir tout éditer sans intervention du
+prestataire ».
 
 À ne pas confondre avec la fiche membre propriétaire (s12) ni avec la page « Contacts utiles », qui
 est du contenu CMS ordinaire (s04). Trois choses distinctes.
@@ -362,7 +376,7 @@ manuelle étant le choix de repli si la base membres n'existe pas encore à ce s
 
 ### Acceptance criteria
 
-- [ ] Activer le bandeau avec un message l'affiche sur toutes les pages du site, publiques comme authentifiées, y compris celles ajoutées par les stories ultérieures — il est posé dans le gabarit commun, pas page par page.
+- [ ] Activer le bandeau avec un message l'affiche sur toutes les pages du site existantes, publiques comme authentifiées.
 - [ ] Modifier le message met à jour le bandeau immédiatement, sans redéploiement.
 - [ ] Désactiver le bandeau le retire de toutes les pages.
 - [ ] N'importe quel membre du bureau peut l'activer, le modifier et le retirer, sans restriction supplémentaire.
@@ -375,6 +389,10 @@ s01, s03
 
 Réf. `V5 §4.2`, `CDCT §4.2`. Volontairement sans workflow : pas de validation, pas de programmation
 horaire, pas de niveaux de gravité — le CDC n'en demande pas.
+
+Le bandeau se pose dans le **gabarit commun**, pas page par page : c'est ce qui le fait apparaître
+sur les pages ajoutées par les stories ultérieures sans y revenir. Propriété de conception à vérifier
+en review — le critère, lui, ne porte que sur les pages existant à la livraison.
 
 Piège cache : le bandeau apparaît dans le layout de pages prerendues. Le rendre dynamique casserait
 le prerender de tout le site ; le mettre en `'use cache'` avec un `cacheTag` invalidé par
@@ -566,7 +584,9 @@ périodes de propriété **afin que** l'historique reste attaché au bon propri�
 - [ ] Une donnée datée d'avant la vente (relevé, facture, document) reste rattachée à l'ancien propriétaire et n'apparaît jamais chez le nouveau — vérifié par un test sur une parcelle vendue.
 - [ ] Une parcelle ne peut pas avoir deux propriétaires sur des périodes qui se chevauchent ; la tentative est refusée avec un message explicite.
 - [ ] Un membre possédant plusieurs parcelles est un seul compte, avec la liste de ses parcelles.
+- [ ] Le bureau saisit et met à jour les coordonnées d'un membre depuis sa fiche : adresse postale, téléphone, adresse email — y compris pour un membre qui n'a pas de compte.
 - [ ] Le bureau crée une fiche membre **sans adresse email** : la fiche existe, aucun compte de connexion n'est créé, et elle est marquée « joignable par courrier uniquement ».
+- [ ] Une fiche marquée « joignable par courrier uniquement » et dépourvue d'adresse postale est signalée comme incomplète dans la liste des membres : elle ne serait joignable par aucun canal.
 - [ ] Renseigner une adresse email sur une fiche « courrier uniquement » lui ouvre un compte connectable ; la retirer referme l'accès sans supprimer la fiche ni son historique.
 - [ ] Un membre ne voit que ses propres parcelles ; l'accès à la fiche d'un autre membre est refusé.
 
@@ -586,8 +606,17 @@ vendue est le test qui compte — l'écrire en premier (`tdd-skill`).
 Résolution du propriétaire « au moment des faits » : prévoir dès maintenant la fonction qui, pour une
 parcelle et une date, retourne le propriétaire d'alors. s17, s18, s27 et s31 l'appellent toutes.
 
+**L'adresse postale est produite ici, et nulle part ailleurs.** s15 ne couvre que le self-service
+d'un membre **connecté** — or les ~100 membres joignables par courrier n'ont, par construction, aucun
+compte. Sans saisie côté bureau, le publipostage de s27 n'aurait aucune adresse à imprimer : c'est le
+défaut relevé en revue du découpage, qui rendait inexécutable l'angle n°2 du PRD. Le critère de fiche
+incomplète est ce qui rend la lacune visible en s12 plutôt qu'en s27, quinze stories plus loin.
+
+**Frontière avec s15** : le bureau saisit et corrige les coordonnées de n'importe quel membre (ici) ;
+un membre connecté corrige les siennes (s15). Même modèle, deux points d'entrée — pas deux modèles.
+
 **Frontière avec s03** : s03 possède le cycle de vie du compte de connexion (ouverture, fermeture,
-lien magique) ; s12 possède la fiche membre et son attribut « a une adresse email ». Le critère
+lien magique) ; s12 possède la fiche membre, ses coordonnées et son attribut « a une adresse email ». Le critère
 d'ouverture/fermeture ci-dessus **appelle** la capacité de s03, il ne la réimplémente pas. Une
 seconde implémentation de l'ouverture de compte dans s12 serait un défaut de review.
 
@@ -629,7 +658,8 @@ multi-parcelles (s18/s19), le site n'agrège rien.
 ### Acceptance criteria
 
 - [ ] L'import se fait depuis le back-office, par téléversement du fichier : le parcours complet (choisir l'association, déposer le fichier, lire le rapport) s'accomplit à l'écran, sans ligne de commande ni accès direct à la base.
-- [ ] Importer un fichier (nom, email, parcelle) crée les membres et leurs rattachements de parcelle dans le tenant visé.
+- [ ] Importer un fichier (nom, adresse postale, email, parcelle) crée les membres, leurs coordonnées et leurs rattachements de parcelle dans le tenant visé.
+- [ ] Une ligne sans adresse postale ni email est rejetée et signalée dans le rapport : le membre ne serait joignable par aucun canal.
 - [ ] Plusieurs lignes portant le même propriétaire produisent **un seul** compte avec plusieurs parcelles, pas plusieurs comptes.
 - [ ] Une ligne sans email crée le membre et sa parcelle, sans compte de connexion, et le marque comme joignable par courrier uniquement.
 - [ ] Les lignes invalides sont rejetées ligne à ligne, listées dans un rapport, et n'empêchent pas l'import des lignes valides.
@@ -687,6 +717,11 @@ d'office — fusionner deux propriétaires distincts leur donnerait accès aux d
 Le marquage « joignable par courrier uniquement » est **défini en s12**, pas ici : l'import le
 renseigne pour les 100 lignes sans email, il ne l'invente pas. C'est ce champ qui réintègre le quart
 de membres aujourd'hui hors système (angle n°2 du PRD).
+
+**L'adresse postale fait partie du fichier d'import**, au même titre que le nom et la parcelle : sans
+elle, les 100 membres sans email entrent dans le produit sans aucun canal de contact, et le
+publipostage de s27 n'a rien à imprimer. Si le fichier réel transmis par le bureau ne la porte pas,
+c'est un point bloquant à remonter en `/ks-research`, pas une colonne à rendre facultative.
 
 Ne pas confondre avec l'import des relevés d'eau (s16), qui est annuel et d'un autre format.
 
@@ -773,6 +808,10 @@ l'autorisation, à écrire en test d'abord (tentative sur l'id d'un autre membre
 Le boilerplate a un formulaire de profil équivalent
 (`src/components/features/user/edit-user-profile.tsx`) : s'en inspirer plutôt que réinventer, en
 suivant `rule-form-front-and-back` et `rule-zod-client-server-internationalization`.
+
+Cette story ne couvre que le **self-service d'un membre connecté**. La saisie par le bureau — seule
+voie possible pour les membres sans compte — appartient à s12. Ne pas réimplémenter le formulaire :
+c'est le même modèle de coordonnées, vu depuis l'espace membre.
 
 Attention : changer l'email de contact ne doit pas changer silencieusement l'identifiant de
 connexion (s03) — trancher explicitement en `/ks-design` et écrire le test correspondant.
@@ -1031,8 +1070,9 @@ Réf. `V5 §5.7`, `CDCT §5.7`. Formulaire **distinct** du contact public (s08) 
 routé.
 
 **Le modèle de catégories est livré par s10**, qui en a besoin la première pour les signalements :
-cette story le **réutilise** avec son propre domaine et exploite son champ `email_destination`, déjà
-présent. Ne pas en écrire un second — `CDCT §5.8` demande explicitement un modèle commun plutôt que
+cette story le **réutilise** avec son propre domaine et exploite son champ `email_destination`, porté
+par s10 mais qu'aucun de ses critères n'exerce — c'est donc **ici** que ce champ est prouvé, par le
+critère de routage. Si s10 l'a mal modélisé, c'est cette story qui le révèle. Ne pas en écrire un second — `CDCT §5.8` demande explicitement un modèle commun plutôt que
 deux implémentations. s34 (petites annonces) fera de même.
 
 ---
@@ -1049,7 +1089,8 @@ deux implémentations. s34 (petites annonces) fera de même.
 ### Acceptance criteria
 
 - [ ] Le bureau ajoute une note datée et signée sur la fiche d'un membre, et la retrouve à la consultation suivante.
-- [ ] La fiche membre affiche l'historique chronologique des notes et des échanges enregistrés.
+- [ ] Le bureau consigne un échange avec un membre : date, canal (téléphone, courrier, en personne, email), et résumé libre.
+- [ ] La fiche membre affiche notes et échanges dans un fil chronologique unique, chaque entrée portant son auteur, sa date et son type.
 - [ ] Un membre n'a **aucun** accès à ses notes internes ni à celles d'un autre : ni page, ni API, ni export (test d'autorisation explicite).
 - [ ] Une note peut être modifiée ou supprimée par le bureau, l'auteur et la date de dernière modification restant visibles.
 
@@ -1061,6 +1102,16 @@ s12
 
 Réf. `PRD` (« Notes internes et historique par membre », inspiré de Lotisoft), `V5 §2` (continuité du
 bureau).
+
+**Un « échange » est une saisie manuelle du bureau**, pas une agrégation automatique : un bénévole
+note qu'il a appelé M. X le 12 mars et ce qui s'est dit. C'est ce que demande la ligne du périmètre —
+« assure la continuité quand le bureau change » — et c'est la seule lecture livrable ici, la story
+étant ordonnée avant les questions (s22), les campagnes (s24) et n'ayant que s12 en dépendance.
+
+Alimenter ce fil automatiquement depuis les signalements, les questions ou les campagnes serait une
+extension : ni le PRD ni le CDC ne la demandent, et elle imposerait une convention transverse à une
+dizaine de stories. Si le besoin apparaît à l'usage, il fera l'objet d'une story propre — ne pas
+l'improviser ici.
 
 **Sensible RGPD** : ce sont des notes sur des personnes physiques, écrites par des bénévoles. Deux
 conséquences pour l'implémentation : l'étanchéité côté membre est un test, pas une intention ; et
@@ -1202,7 +1253,7 @@ LWS avant de retenir un `setTimeout` en mémoire, qui ne satisfait aucun des deu
 - [ ] Un groupe est sélectionnable comme cible d'une campagne, à la place de « tous les membres » ou des impayés.
 - [ ] Le nombre de destinataires du groupe est affiché avant l'envoi, en distinguant ceux qui ont un email de ceux qui n'en ont pas.
 - [ ] Supprimer un groupe n'affecte ni les membres qu'il contenait ni les campagnes déjà envoyées.
-- [ ] Chaque modèle et chaque campagne porte une nature, `facultative` ou `statutaire`, et cette classification est une donnée de configuration du tenant, pas une constante du code.
+- [ ] Chaque modèle et chaque campagne porte une nature, `facultative` ou `statutaire`, lue dans la configuration du tenant.
 - [ ] Un membre désinscrit, exclu de tout envoi depuis s24, est **réintégré** dans les cibles d'une campagne `statutaire` et reste exclu des `facultative` — vérifié sur les deux cas.
 - [ ] L'écran de confirmation de désinscription précise désormais ce que le membre continuera de recevoir, d'après la classification.
 - [ ] Reclasser un modèle change le comportement au prochain envoi, sans redéploiement.
@@ -1631,6 +1682,12 @@ s26, s27, s31
 Réf. `PRD` (« Modèles de documents réutilisables », inspiré de Lotisoft) : convocation, PV, courrier
 type — **au-delà des modèles d'email** (s24), qui restent un système distinct.
 
+**Ancrage de la génération en lot** : la ligne du PRD nomme « convocation, PV, courrier type ». Or
+une convocation d'AG est par nature produite pour tous les membres à la fois et déposée dans leurs
+dossiers nominatifs — la produire une par une la rendrait inutilisable pour un bureau bénévole. Le
+lot n'est donc pas une extension mais la forme d'usage de la ligne du périmètre, obtenue en composant
+s26 (cibles), s27 (moteur PDF) et s31 (dossiers nominatifs) sans rien inventer.
+
 Réutiliser le moteur de variables et de génération PDF de s27 : c'est la même mécanique appliquée à
 un document unitaire plutôt qu'à un publipostage. Si cette story réintroduit un second moteur, le
 découpage a échoué.
@@ -1664,8 +1721,9 @@ stockage en contournant sa couche de cloisonnement.
 
 s03
 
-*(Couplage volontairement lâche : la matrice se nourrit du registre d'actions, pas des stories qui les
-déclarent. Elle n'a donc aucune dépendance de feature — voir les notes.)*
+*(Couplage volontairement lâche : la matrice se nourrit du registre d'actions créé en s03 et alimenté
+par chaque story au titre des règles transverses, pas des stories elles-mêmes. Elle n'a donc aucune
+dépendance de feature — voir les notes.)*
 
 ### Agentic notes
 
@@ -1676,8 +1734,10 @@ Risque (complexité 4) : autorisation **transverse à tout le produit**. Placée
 matrice se dérive d'actions réelles, existantes et testées, et non l'inverse. La coder trop tôt
 aurait produit une abstraction devinée.
 
-**La matrice est alimentée par un registre d'actions, elle ne dépend d'aucune story de feature.**
-Chaque story déclare les actions qu'elle introduit ; la matrice les découvre. C'est ce qui permet à
+**La matrice est alimentée par le registre d'actions créé en s03**, que chaque story alimente au fur
+et à mesure (règle transverse en tête de document). Cette story n'instrumente donc rien
+rétroactivement : elle lit un registre déjà rempli et lui ajoute la configuration par tenant et
+l'écran. C'est ce qui la maintient à 4 et lui permet de ne dépendre d'aucune story de feature. C'est ce qui permet à
 s37 d'ajouter « déclencher l'export » après coup, et au module vote d'apparaître quand il est livré
 sans que cette story l'attende. Faire dépendre la matrice d'une feature précise — le vote en
 particulier, suspendu à une condition suspensive du devis — rendrait une feature du tronc commun
@@ -1711,11 +1771,16 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 - [ ] La présidente déclenche un export complet et récupère une archive ZIP contenant : un fichier CSV par type de donnée tabulaire (membres, parcelles, relevés, factures, campagnes, signalements), un fichier JSON pour les contenus structurés, les fichiers d'origine des documents, et un `README` décrivant chaque fichier et ses colonnes.
 - [ ] Les CSV sont encodés en UTF-8 avec BOM, leur séparateur est celui documenté dans le README, chaque ligne porte le même nombre de colonnes que son en-tête, et le JSON est valide au parsing.
-- [ ] L'export contient **tout ce que le produit persiste pour l'association** : membres et parcelles avec leurs périodes, relevés d'eau, factures, contenus publiés (pages, actualités, fiches du bureau, analyses d'eau, bandeau d'alerte), documents partagés et nominatifs, modèles de documents, campagnes avec leurs statistiques d'ouverture et de clic et leur état de planification, historique des relances envoyées, groupes de destinataires, signalements, messages de contact, questions au bureau, notes internes, petites annonces, chemins et portails de voirie, la configuration de la matrice de permissions, et les paramètres du tenant.
+- [ ] L'archive contient les **données membres** : membres, coordonnées, parcelles avec leurs périodes de propriété, relevés d'eau, factures, notes internes et échanges.
+- [ ] L'archive contient les **contenus publiés** : pages, actualités, fiches du bureau, analyses d'eau, bandeau d'alerte, chemins et portails de voirie, petites annonces.
+- [ ] L'archive contient les **documents** : partagés, nominatifs, et modèles de documents, avec leurs fichiers d'origine.
+- [ ] L'archive contient les **communications** : campagnes, leurs statistiques d'ouverture et de clic, leur état de planification, l'historique des relances, les groupes de destinataires.
+- [ ] L'archive contient les **échanges entrants** : signalements, messages de contact, questions au bureau.
+- [ ] L'archive contient la **configuration** : paramètres du tenant et matrice de permissions.
 - [ ] Les données d'un module non livré ou désactivé (vote) ne font pas échouer l'export ; livré et actif, le module entre dans l'archive par le test de complétude ci-dessous, sans modification de cette story.
 - [ ] Un type de donnée persisté par une story et absent de l'archive fait échouer un test de complétude : l'inventaire des tables scopées par `organization_id` est comparé à l'inventaire des fichiers produits, et toute table non exportée doit être déclarée exclue avec son motif.
 - [ ] L'export ne contient **aucune** donnée d'une autre association (test d'isolation sur l'archive produite).
-- [ ] L'export s'exécute en tâche de fond : la requête rend la main immédiatement, le site reste navigable pendant la génération, et la présidente est notifiée quand l'archive est prête.
+- [ ] L'export s'exécute en tâche de fond : la requête qui le déclenche répond immédiatement sans attendre l'archive, une lecture concurrente sur le site répond pendant la génération, et la présidente est notifiée quand l'archive est prête.
 
 ### Dependencies
 
@@ -1825,6 +1890,7 @@ d'une association **afin de** reproduire un problème signalé par le bureau san
 - [ ] Une bannière permanente signale la simulation en cours et permet d'en sortir depuis n'importe quelle page.
 - [ ] La simulation respecte la matrice de permissions configurée pour l'association simulée (s36), pas les droits par défaut.
 - [ ] Chaque entrée en simulation est tracée avec l'identité du SuperAdmin, l'association, le rôle et l'horodatage.
+- [ ] Cette trace est soit incluse dans l'export d'association (s37), soit déclarée exclue avec son motif : le test de complétude de s37 continue de passer.
 - [ ] Aucun rôle association ne peut déclencher une simulation ; la fonction n'est pas exposée aux associations.
 - [ ] Une action d'écriture faite en simulation est attribuée dans l'historique au SuperAdmin, pas au rôle simulé.
 
@@ -1835,9 +1901,8 @@ s01, s03, s23, s36
 ### Agentic notes
 
 Réf. `PRD` (Target users : « SuperAdmin — support et débogage, simulation de rôle, non exposé aux
-associations »), `CDCT §2`. **Dérivation du PRD** : pas une ligne du tableau du périmètre — la
-simulation de rôle y est décrite comme une capacité du rôle SuperAdmin, pas comme une feature
-vendue aux associations.
+associations »), `CDCT §2`, et ligne « Simulation de rôle SuperAdmin (support et débogage) » du périmètre, complexité
+2 — ajoutée en revue du découpage. Capacité interne à Zourite Studio, non exposée aux associations.
 
 Sortie de s01 en revue du découpage : s01 y groupait quatre valeurs distinctes, et la simulation
 répond au besoin d'un autre utilisateur. Placée après s36 pour que la simulation reflète la matrice
@@ -1888,9 +1953,9 @@ analyses d'eau consultables sans compte, et rappelle que le bureau continue de l
 courrier. Promettre un accès dans ce courrier serait un défaut fonctionnel, pas une maladresse de
 rédaction.
 
-**Dérivation du PRD** : la ligne « Connexion par lien magique » nomme le flux d'invitation ; le
-suivi d'adoption (décomptes, liste des jamais connectés, réinvitation ciblée) va un cran au-delà. Il
-est retenu parce que le critère de succès « les membres sans email reçoivent la même information que
+La ligne « Connexion par lien magique » du périmètre nomme le flux d'invitation **et** son suivi
+d'adoption (« qui a été invité, qui s'est connecté »), précisé en revue du découpage. Il est retenu
+parce que le critère de succès « les membres sans email reçoivent la même information que
 les autres » n'est vérifiable qu'en sachant qui a reçu quoi — sans ce suivi, le lancement serait un
 envoi à l'aveugle sur la population que le PRD désigne comme la plus fragile.
 
@@ -1960,7 +2025,7 @@ explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-d
 
 Deux écarts avec les scores du PRD, tous deux documentés dans la story concernée plutôt que lissés :
 s26 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
-main) et s37 à 4 contre 3 (vingt-trois dépendances, tâche de fond, test de complétude qui inspecte le
+main) et s37 à 4 contre 3 (vingt-quatre dépendances, tâche de fond, test de complétude qui inspecte le
 schéma). Le PRD chiffre des *features*, ce tableau chiffre des *tranches livrables*.
 
 Quatre stories ont été ajoutées en revue du découpage : s39 (simulation de rôle, sortie de s01), s40

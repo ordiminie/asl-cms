@@ -68,7 +68,7 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 | Présentation du bureau (fiches listables et éditables) | 2 | Explicitement pas une page statique : sous-modèle nom / rôle / photo / bio, réordonnable. C'est ce que « le bureau met à jour dynamiquement » exige à chaque renouvellement. |
 | Bandeau d'alerte global | 1 | Activation / édition / désactivation par tout membre du bureau. |
 | SEO (sitemap, métadonnées, Search Console) | 2 | Réglages par tenant, pas de logique propre. |
-| Import initial des membres d'une association (liste nom / email / parcelle) | 3 | Provisioning d'un nouveau client : parseur, dédoublonnage des propriétaires multi-parcelles, fiches sans compte pour les membres sans email. Six associations à charger, pas une. La clé de dédoublonnage n'est pas tranchée et sa défaillance donnerait à deux propriétaires distincts accès aux données l'un de l'autre. |
+| Import initial des membres d'une association (liste nom / adresse postale / email / parcelle) | 3 | Provisioning d'un nouveau client : parseur, dédoublonnage des propriétaires multi-parcelles, fiches sans compte pour les membres sans email. Six associations à charger, pas une. La clé de dédoublonnage n'est pas tranchée et sa défaillance donnerait à deux propriétaires distincts accès aux données l'un de l'autre. |
 | Modèle membre ↔ parcelle **daté** | 4 | Cœur du modèle de données. L'historique est attaché à la parcelle au moment des faits : une vente ne transfère pas les factures et documents antérieurs. Ce n'est pas une simple clé étrangère. |
 | Coordonnées (profil membre) | 1 | CRUD sur ses propres données. |
 | Questions au bureau, catégories avec routage email | 2 | Modèle de catégories (max 10) réutilisable avec les petites annonces. |
