@@ -48,6 +48,7 @@ Principe : **config par défaut, divergence de comportement (Strategy) réservé
 ## Catalogue de modules (périmètre pressenti)
 
 **Socle transverse**
+
 - Site public / CMS — pages éditables (système de pages générique, pas un gabarit par page), contact avec archivage des messages en BO, bandeau d'alerte gérable par tout membre du bureau, page « Contacts utiles » (annuaire d'information alimenté par le bureau), actualités ; sert aussi d'assembleur pour des blocs publics fournis par d'autres modules (ex. résultats d'analyses d'eau, formulaire de signalement de fuite)
 - Espace membres & Auth — comptes, connexion par lien magique e-mail (validité 4 h, pas de plan B pour les membres sans email), mise à jour coordonnées, questions au bureau avec routage par catégorie
 - Espace documentaire (GED) — accès par profil, **dossier physiquement séparé par membre** pour les documents nominatifs (pas un simple filtre logique), dossier commun pour les documents partagés (PV, statuts, convocations…)
@@ -55,15 +56,18 @@ Principe : **config par défaut, divergence de comportement (Strategy) réservé
 - SEO — réglages de tenant (méta, sitemap), pas un module à logique propre
 
 **Intégrations tierces**
+
 - **Facturation membres** — lecture seule (liste des factures, **statuts remontés tels quels, y compris intermédiaires — pas un booléen payé/impayé**, historique depuis l'année de création du site, pas de rétroactivité). Facture consolidée par membre produite par le prestataire comptable, pas agrégée par le site. Paiement 100% délégué : simple lien de redirection vers le prestataire (Pennylane pour La Fourche). Aucune donnée bancaire ne transite par le système — hors périmètre DSP2/PCI.
 - Vote en ligne (AG) — renvoi vers ASL Community, publication des résolutions, des résultats et du PV ; aucune logique de vote (dépouillement, quorum, procurations) développée ici
 - Communication — campagnes e-mail (Brevo) : 4 modèles prêts à l'emploi + un mode campagne libre, tous dans un habillage commun (en-tête association, pied de page légal + désinscription) ; scission automatique des envois au-delà de 300 destinataires (plafond Brevo) ; relances d'impayés automatiques, activables par tenant
 
 **Modules domaine (indépendants, pas de tronc commun forcé)**
+
 - **Module Eau** — ressource individuelle par propriétaire, mesurée, facturable, sujette à restriction/coupure, relevés de consommation importés annuellement par le bureau, déclaration de fuite avec suivi de statut (public anonyme ou membre identifié), publication de résultats d'analyses
 - **Module Voirie** — ressource collective portée par le bureau, identification des voies/chemins/portails avec statut et message libre, suivi de travaux/rénovation, pas de volet individuel ni de facturation associée. **Confirmé utile par le bureau de La Fourche : développé et inclus sans surcoût pour ce client** (hors devis)
 
 **Facturation plateforme (vous ↔ association, distincte de la facturation membres)**
+
 - Couvre développement initial, maintenance annuelle ([montant masqué]/an), développements spécifiques au fil de l'eau.
 - Ne concerne jamais les propriétaires/membres, uniquement la relation Zourite Studio ↔ association.
 - Couvert nativement par le système d'abonnement Stripe intégré à ShipSaaS (facturation SaaS → Organization) — pas de développement nécessaire, seulement du paramétrage de plans.

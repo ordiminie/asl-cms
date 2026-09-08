@@ -4,10 +4,10 @@ Les fichiers `s000-*.md` et `s001-*.md` de ce dossier **n'appartiennent pas à A
 
 **Règle : ne jamais les implémenter, ni les traiter comme des stories du projet.** Leurs identifiants (`s000`, `s001`) appartiennent à la numérotation de l'auteur du boilerplate ; la nôtre commencera à `s01` dans `docs/stories.md`, qui reste à générer via `/ks-stories`.
 
-| Fichier | Ce que c'est | Statut réel |
-|---|---|---|
-| `s000-cache-components-migration.md` | Migration du boilerplate vers le système de cache de Next.js 16 | **Déjà fait.** C'est la documentation du `cacheComponents: true` de `next.config.ts` et des `'use cache'` présents dans `src/`. Plan associé : `docs/plans/cache-components-migration.md`, 39/39 tâches cochées. |
-| `s001-affiliate-system.md` | Système de parrainage avec commissions pour le boilerplate (`ROADMAP.md` → « Admin - Affiliates ») | **Non commencé, et hors périmètre ASL-CMS.** Une association syndicale libre n'a pas de programme d'affiliation. Si l'auteur du boilerplate le développe, il arrivera par `git merge upstream/main`. |
+| Fichier                              | Ce que c'est                                                                                       | Statut réel                                                                                                                                                                                                      |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `s000-cache-components-migration.md` | Migration du boilerplate vers le système de cache de Next.js 16                                    | **Déjà fait.** C'est la documentation du `cacheComponents: true` de `next.config.ts` et des `'use cache'` présents dans `src/`. Plan associé : `docs/plans/cache-components-migration.md`, 39/39 tâches cochées. |
+| `s001-affiliate-system.md`           | Système de parrainage avec commissions pour le boilerplate (`ROADMAP.md` → « Admin - Affiliates ») | **Non commencé, et hors périmètre ASL-CMS.** Une association syndicale libre n'a pas de programme d'affiliation. Si l'auteur du boilerplate le développe, il arrivera par `git merge upstream/main`.             |
 
 ## À quoi ils servent quand même
 

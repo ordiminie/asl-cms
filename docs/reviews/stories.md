@@ -17,87 +17,87 @@
 Parcours ligne à ligne des tableaux « Replicated (core loop) » du PRD (34 tronc commun + 3 modules
 = 37 features).
 
-| Feature du PRD (core loop) | Couverte par | OK ? |
-| --- | --- | --- |
-| CMS de pages génériques | s04 | ✅ |
-| Permissions par rôle configurables en BO | s37 (registre posé en s03) | ✅ |
-| Connexion par lien magique (4 h) + flux d'invitation + suivi d'adoption | s03 (auth) + s15 (invitation unitaire) + s41 (masse + adoption) | ✅ |
-| Pages publiques + formulaire de contact archivé en BO | s04 + s08 | ✅ |
-| Limitation de débit des formulaires publics | s08 (livré) + s10 (réutilisé) | ✅ |
-| Actualités (mini-blog daté) | s05 | ✅ |
-| Présentation du bureau (fiches listables) | s06 | ✅ |
-| Désinscription et classification des communications | s25 (lien + exclusion) + s27 (classification / réintégration) | ✅ |
-| Bandeau d'alerte global | s07 | ✅ |
-| SEO (sitemap, métadonnées, Search Console) | s11 | ✅ |
-| Import initial des membres | s13 | ✅ |
-| Modèle membre ↔ parcelle daté | s12 | ✅ |
-| Coordonnées (profil membre) | s16 (self-service) + s12 (bureau) | ✅ |
-| Questions au bureau, catégories avec routage email | s23 (modèle de catégories en s10) | ✅ |
-| Notes internes et historique par membre | s24 | ✅ |
-| Import annuel des relevés d'eau + rapport email | s17 | ✅ |
-| Historique de consommation d'eau par membre | s18 | ✅ |
-| Signalements avec catégories et statuts (public + membre) | s10 + s22 | ✅ |
-| Publication des analyses d'eau | s09 | ✅ |
-| Documents partagés | s31 | ✅ |
-| Documents nominatifs en dossiers physiquement séparés | s32 | ✅ |
-| Campagnes email Brevo (4 modèles + libre, gabarit commun) | s25 | ✅ |
-| Envoi échelonné au-delà de 300 | s26 | ✅ |
-| Relances d'impayés (3, activables) | s29 | ✅ |
-| Publipostage PDF | s28 | ✅ |
-| Groupes de destinataires personnalisés | s27 | ✅ |
-| Statistiques d'ouverture et de clic | s30 | ✅ |
-| Modèles de documents réutilisables | s36 | ✅ |
-| Facturation membres : interface + Pennylane | s19 (interface + manuel) + s20 (Pennylane) | ✅ |
-| Redirection de paiement | s21 | ✅ |
-| Multi-tenant (Organization, config par tenant, RLS) | s01 + s02 | ✅ |
-| Export individuel d'un membre (droit d'accès) | s39 | ✅ |
-| Simulation de rôle SuperAdmin | s40 | ✅ |
-| Export et portabilité des données | s38 | ✅ |
-| Module Vote (interface + ASL Community) | s33 | ✅ |
-| Module Voirie | s34 | ✅ |
-| Module Petites annonces | s35 | ✅ |
+| Feature du PRD (core loop)                                              | Couverte par                                                    | OK ? |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------- | ---- |
+| CMS de pages génériques                                                 | s04                                                             | ✅   |
+| Permissions par rôle configurables en BO                                | s37 (registre posé en s03)                                      | ✅   |
+| Connexion par lien magique (4 h) + flux d'invitation + suivi d'adoption | s03 (auth) + s15 (invitation unitaire) + s41 (masse + adoption) | ✅   |
+| Pages publiques + formulaire de contact archivé en BO                   | s04 + s08                                                       | ✅   |
+| Limitation de débit des formulaires publics                             | s08 (livré) + s10 (réutilisé)                                   | ✅   |
+| Actualités (mini-blog daté)                                             | s05                                                             | ✅   |
+| Présentation du bureau (fiches listables)                               | s06                                                             | ✅   |
+| Désinscription et classification des communications                     | s25 (lien + exclusion) + s27 (classification / réintégration)   | ✅   |
+| Bandeau d'alerte global                                                 | s07                                                             | ✅   |
+| SEO (sitemap, métadonnées, Search Console)                              | s11                                                             | ✅   |
+| Import initial des membres                                              | s13                                                             | ✅   |
+| Modèle membre ↔ parcelle daté                                           | s12                                                             | ✅   |
+| Coordonnées (profil membre)                                             | s16 (self-service) + s12 (bureau)                               | ✅   |
+| Questions au bureau, catégories avec routage email                      | s23 (modèle de catégories en s10)                               | ✅   |
+| Notes internes et historique par membre                                 | s24                                                             | ✅   |
+| Import annuel des relevés d'eau + rapport email                         | s17                                                             | ✅   |
+| Historique de consommation d'eau par membre                             | s18                                                             | ✅   |
+| Signalements avec catégories et statuts (public + membre)               | s10 + s22                                                       | ✅   |
+| Publication des analyses d'eau                                          | s09                                                             | ✅   |
+| Documents partagés                                                      | s31                                                             | ✅   |
+| Documents nominatifs en dossiers physiquement séparés                   | s32                                                             | ✅   |
+| Campagnes email Brevo (4 modèles + libre, gabarit commun)               | s25                                                             | ✅   |
+| Envoi échelonné au-delà de 300                                          | s26                                                             | ✅   |
+| Relances d'impayés (3, activables)                                      | s29                                                             | ✅   |
+| Publipostage PDF                                                        | s28                                                             | ✅   |
+| Groupes de destinataires personnalisés                                  | s27                                                             | ✅   |
+| Statistiques d'ouverture et de clic                                     | s30                                                             | ✅   |
+| Modèles de documents réutilisables                                      | s36                                                             | ✅   |
+| Facturation membres : interface + Pennylane                             | s19 (interface + manuel) + s20 (Pennylane)                      | ✅   |
+| Redirection de paiement                                                 | s21                                                             | ✅   |
+| Multi-tenant (Organization, config par tenant, RLS)                     | s01 + s02                                                       | ✅   |
+| Export individuel d'un membre (droit d'accès)                           | s39                                                             | ✅   |
+| Simulation de rôle SuperAdmin                                           | s40                                                             | ✅   |
+| Export et portabilité des données                                       | s38                                                             | ✅   |
+| Module Vote (interface + ASL Community)                                 | s33                                                             | ✅   |
+| Module Voirie                                                           | s34                                                             | ✅   |
+| Module Petites annonces                                                 | s35                                                             | ✅   |
 
 - [x] Chaque feature du tableau « Replicated (core loop) » est livrée par au moins une story —
-  **37/37, aucun trou.**
+      **37/37, aucun trou.**
 
 ## Périmètre
 
 - [x] Aucune story ne réintroduit un item du cimetière. Les 16 entrées ont été vérifiées ; chacune
-  des risquées est activement clôturée par un critère ou une note (s21 teste l'absence de tout champ
-  de moyen de paiement dans le schéma ; s33 interdit tout dépouillement ; s34 conserve l'image
-  statique ; s35 interdit la messagerie privée ; s28 et s41 affirment que le courrier n'est **pas**
-  un plan B de connexion ; s01 confirme base partagée + RLS ; s32 exclut la classification IA).
+      des risquées est activement clôturée par un critère ou une note (s21 teste l'absence de tout champ
+      de moyen de paiement dans le schéma ; s33 interdit tout dépouillement ; s34 conserve l'image
+      statique ; s35 interdit la messagerie privée ; s28 et s41 affirment que le courrier n'est **pas**
+      un plan B de connexion ; s01 confirme base partagée + RLS ; s32 exclut la classification IA).
 - [ ] Aucune story ne dépasse le périmètre — trois étirements réels quoique bien argumentés : le
-  budget d'envoi quotidien de s26, la génération en lot de s36, et s14 (attribution des rôles) qui
-  n'a aucune ligne au PRD.
+      budget d'envoi quotidien de s26, la génération en lot de s36, et s14 (attribution des rôles) qui
+      n'a aucune ligne au PRD.
 
 ## Qualité des stories
 
 - [x] Chaque story est une tranche livrable de bout en bout — aucune story « poser la base »,
-  « créer la couche API ». s19/s20 et s25/s26/s27 se scindent selon des lignes de valeur, pas de
-  couches. s01 est la plus proche de l'infrastructure mais livre une capacité SuperAdmin réelle.
+      « créer la couche API ». s19/s20 et s25/s26/s27 se scindent selon des lignes de valeur, pas de
+      couches. s01 est la plus proche de l'infrastructure mais livre une capacité SuperAdmin réelle.
 - [ ] Chaque critère peut devenir un test — un critère se déclare lui-même non testable (s20 #3), un
-  autre énumère des stories non livrées (s26 #6), un champ est livré sans critère qui l'exerce (s10,
-  auto-déclaré).
+      autre énumère des stories non livrées (s26 #6), un champ est livré sans critère qui l'exerce (s10,
+      auto-déclaré).
 - [x] Notes agentiques présentes et utiles — constamment solides : chemins du boilerplate, pièges de
-  cache, pièges des adaptateurs de stockage et d'email, séparations explicites « à vérifier en
-  review, pas en test ». **Meilleure partie de ce découpage.**
+      cache, pièges des adaptateurs de stockage et d'email, séparations explicites « à vérifier en
+      review, pas en test ». **Meilleure partie de ce découpage.**
 - [ ] Complexité chiffrée ; aucune 5 non scindée ; chaque 4 énonce son risque — aucune 5, et les six
-  4 (s01, s12, s29, s32, s37, s38) énoncent leur risque. Mais deux scores paraissent faux, en sens
-  inverses (s26 sous-évaluée, s38 possiblement une 5).
+      4 (s01, s12, s29, s32, s37, s38) énoncent leur risque. Mais deux scores paraissent faux, en sens
+      inverses (s26 sous-évaluée, s38 possiblement une 5).
 
 ## La liste dans son ensemble
 
 - [x] Ordre de dépendances exécutable — les 41 listes ont été vérifiées : chaque dépendance déclarée
-  pointe vers un id strictement inférieur. Aucun cycle. La circularité s03 → s12 → s03 signalée
-  auparavant est réellement résolue par l'extraction de s15.
+      pointe vers un id strictement inférieur. Aucun cycle. La circularité s03 → s12 → s03 signalée
+      auparavant est réellement résolue par l'extraction de s15.
 - [x] Ids bien formés, uniques et stables — `s01`..`s41`, tous en `s<numéro>-<slug>`, kebab-case,
-  aucun doublon.
+      aucun doublon.
 - [x] Aucun recouvrement — les paires risquées sont chacune clôturées par un énoncé de propriété :
-  s08/s23 (deux modèles de contact), s12/s16 (coordonnées, deux points d'entrée), s10/s22 (un seul
-  modèle de signalement), s10/s23/s35 (un seul modèle de catégories, propriété s10), s25/s27
-  (ciblage), s28/s36 (un seul moteur PDF), s38/s39 (deux utilisateurs d'export), s14/s37/s40
-  (attribuer vs configurer vs emprunter).
+      s08/s23 (deux modèles de contact), s12/s16 (coordonnées, deux points d'entrée), s10/s22 (un seul
+      modèle de signalement), s10/s23/s35 (un seul modèle de catégories, propriété s10), s25/s27
+      (ciblage), s28/s36 (un seul moteur PDF), s38/s39 (deux utilisateurs d'export), s14/s37/s40
+      (attribuer vs configurer vs emprunter).
 
 ## Constats
 

@@ -52,13 +52,13 @@ La dernière commande **va s'arrêter sur des conflits** : c'est attendu et norm
 
 Fichiers en conflit attendus, tous à la racine :
 
-| Fichier | Nature du conflit | Résolution |
-|---|---|---|
-| `AGENTS.md` | Le tien porte les règles **de processus** (pipeline killer-saas, gates, TDD). Celui de ShipSaaS porte les **conventions de code** (couches, DAL, facades, repositories). | Fusionner : garder la structure killer-saas et injecter les conventions ShipSaaS dans la section `## Technical conventions`, aujourd'hui vide (`<< IP Mike: ... >>`). |
-| `CLAUDE.md` | Le tien fait une ligne (`@AGENTS.md`). Celui de ShipSaaS détaille commandes et conventions. | Garder le renvoi `@AGENTS.md` — puisque AGENTS.md absorbe les deux. |
-| `.gitignore` | Deux listes à concaténer. | Union des deux, sans doublons. |
-| `README.md` | Celui du boilerplate décrit le boilerplate. | Réécrire pour asl-cms. |
-| `.claude/` | Tes subagents (`implementer`, `reviewer`, `stories-reviewer`) vs d'éventuels fichiers ShipSaaS. | Conserver les tiens, ajouter les siens s'il y en a. |
+| Fichier      | Nature du conflit                                                                                                                                                        | Résolution                                                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENTS.md`  | Le tien porte les règles **de processus** (pipeline killer-saas, gates, TDD). Celui de ShipSaaS porte les **conventions de code** (couches, DAL, facades, repositories). | Fusionner : garder la structure killer-saas et injecter les conventions ShipSaaS dans la section `## Technical conventions`, aujourd'hui vide (`<< IP Mike: ... >>`). |
+| `CLAUDE.md`  | Le tien fait une ligne (`@AGENTS.md`). Celui de ShipSaaS détaille commandes et conventions.                                                                              | Garder le renvoi `@AGENTS.md` — puisque AGENTS.md absorbe les deux.                                                                                                   |
+| `.gitignore` | Deux listes à concaténer.                                                                                                                                                | Union des deux, sans doublons.                                                                                                                                        |
+| `README.md`  | Celui du boilerplate décrit le boilerplate.                                                                                                                              | Réécrire pour asl-cms.                                                                                                                                                |
+| `.claude/`   | Tes subagents (`implementer`, `reviewer`, `stories-reviewer`) vs d'éventuels fichiers ShipSaaS.                                                                          | Conserver les tiens, ajouter les siens s'il y en a.                                                                                                                   |
 
 Le dossier `.claude/rules/` du boilerplate **est la source de vérité** des conventions de code : c'est là que les subagents `implementer` et `reviewer` doivent chercher, en partant de `.claude/rules/RULES-INDEX.md`. Le dossier `.cursor/rules/` n'en contient que des copies générées pour Cursor — à conserver, mais **jamais à éditer directement**.
 
@@ -69,7 +69,6 @@ Dis-moi simplement « les conflits sont là » et je les traite.
 ## Phase 3 — Installer et démarrer (conteneur)
 
 > ✅ **Fait le 5 septembre 2026.** Trois pièges rencontrés, tous corrigés dans le dépôt — lire les encadrés ci-dessous avant de refaire l'opération sur une autre machine.
-
 
 ```bash
 docker compose run --rm --service-ports dev     # depuis PowerShell
@@ -84,11 +83,11 @@ pnpm init:env          # assistant interactif ; sinon : cp env.example .env.loca
 
 > **Piège 3 — trois fichiers d'environnement, pas un.** `pnpm init:env` produit `.env.local`, mais le boilerplate lit `.env.<NODE_ENV>` **en dur** (`src/db/scripts/env.ts`). Il en faut donc trois, non commités (`.env*` est ignoré) :
 >
-> | Fichier | Lu par |
-> |---|---|
-> | `.env.local` | Next.js (`pnpm dev`, `pnpm build`) |
-> | `.env.development` | scripts Drizzle (`db:push`, `db:seed`, `db:migrate`) |
-> | `.env.test` | Vitest (`vitest.config.ts`) et Playwright (`playwright.config.ts`) |
+> | Fichier            | Lu par                                                             |
+> | ------------------ | ------------------------------------------------------------------ |
+> | `.env.local`       | Next.js (`pnpm dev`, `pnpm build`)                                 |
+> | `.env.development` | scripts Drizzle (`db:push`, `db:seed`, `db:migrate`)               |
+> | `.env.test`        | Vitest (`vitest.config.ts`) et Playwright (`playwright.config.ts`) |
 >
 > `.env.local` et `.env.development` sont des copies à garder en phase. `.env.test` pointe sur une base **séparée** `asl_cms_test` : Playwright impose son `DATABASE_URL` au serveur sous test, donc sans base dédiée les tests écraseraient les données de développement. Cette base est créée automatiquement par `docker/db-init/02-test-database.sql` sur un volume neuf ; sur un volume existant : `PGPASSWORD=asl psql -h db -U asl -d asl_cms -c "CREATE DATABASE asl_cms_test OWNER asl"`.
 
@@ -119,7 +118,6 @@ Le site est alors sur **http://localhost:3000** depuis le navigateur Windows (le
 > ✅ **Fait le 5 septembre 2026** : `pnpm test` → 451 tests passés, 8 ignorés, 23 fichiers de test, aucun échec. `pnpm dev` sert le site sur http://localhost:3000.
 >
 > `pnpm test:e2e` n'a pas été lancé : Playwright doit d'abord télécharger ses navigateurs (`pnpm exec playwright install`), ce qui demande aussi des dépendances système dans l'image. À traiter séparément.
-
 
 ```bash
 pnpm test          # Vitest : la suite du boilerplate doit passer

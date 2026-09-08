@@ -51,6 +51,7 @@ Décisions actées : pas d'abstraction générique "ressource partagée" fusionn
 **Questions au bureau — tranchées.** Les questions ouvertes des versions V3/V4 (multi-parcelles, méthode de création des comptes, droits sur le bandeau d'alerte, destinataires des notifications de fuite, format de publication des analyses d'eau, nom de domaine, statuts de facture, format et fréquence des relevés, expiration des annonces, accès ASL Community, saisie des résolutions de vote, utilité du module Voirie, émetteurs de campagnes email, modèles de mail) ont toutes reçu une réponse du bureau, intégrée dans la V5 et dans le cahier technique. Notamment : comptes créés par import d'une liste fournie ; bandeau d'alerte ouvert à tout le bureau ; campagnes email ouvertes à tout le bureau ; résolutions et résultats de vote réservés à la présidente ; 4 modèles d'email + un mode campagne libre ; relevés d'eau importés 1×/an ; pas d'expiration automatique des annonces ; module Voirie confirmé.
 
 **Points encore ouverts / bloquants** (détail et stories impactées dans `cahier-des-charges-technique.md` §11) :
+
 - Nombre exact de comptes à importer (300 vs 400) — à vérifier sur la liste réelle.
 - Accès API Pennylane, clé de rapprochement compte site ↔ fiche Pennylane, exemple de facturation (détection des impayés), format du fichier de relevés d'eau — à obtenir en RDV Pennylane.
 - Accès ASL Community + validation statutaire du vote électronique — condition suspensive, module vote non démarrable.
@@ -73,15 +74,17 @@ Hors périmètre explicite, inchangé : DB par tenant, abstraction Eau/Voirie fu
 ## Communication / go-to-market
 
 Stratégie de "build in public" à deux canaux distincts :
+
 - **LinkedIn**, au nom de Zourite Studio ("agence web & IA"), couvrant tous les projets (ASL-CMS/Lp, Nelia l'agent SEO, un site Payload CMS) — objectif crédibilité, réseau pro web/IA, et prospection indirecte.
 - **Facebook**, au nom de la marque produit — objectif prospection directe des 5 autres ASL et au-delà, contenu produit ciblé niche copro de vacances (site public, intranet, vote, chat...).
 
 **Nom commercial : "Lp"** (provisoire, retenu le 2026-08-25). Décision issue d'un brainstorm couvrant plusieurs pistes :
-- *Riverain(s)* — sens le plus juste (évoque à la fois l'eau et la voirie/route), mais écarté car trop connoté urbain/permis de construire dans l'usage courant.
-- *Estivant(s)* — écarté, vocabulaire trop rare/administratif, peu utilisé au quotidien.
-- *Cabanon* — écarté : dans l'Hérault (siège de La Fourche à Vias), "cabanisation" désigne les constructions illégales sur terrain protégé, sujet de lutte administrative active — connotation négative locale à éviter.
-- *Domaine* / *MonDomaine* — écarté : mondomaine.fr est déjà un registrar de noms de domaine connu, confusion quasi garantie avec "nom de domaine" auprès d'une audience tech (LinkedIn).
-- *Hameau*, *Terrena*, *MonTerrain*, *Terracoop*, *Terralien* — alternatives explorées mais non retenues à ce stade.
+
+- _Riverain(s)_ — sens le plus juste (évoque à la fois l'eau et la voirie/route), mais écarté car trop connoté urbain/permis de construire dans l'usage courant.
+- _Estivant(s)_ — écarté, vocabulaire trop rare/administratif, peu utilisé au quotidien.
+- _Cabanon_ — écarté : dans l'Hérault (siège de La Fourche à Vias), "cabanisation" désigne les constructions illégales sur terrain protégé, sujet de lutte administrative active — connotation négative locale à éviter.
+- _Domaine_ / _MonDomaine_ — écarté : mondomaine.fr est déjà un registrar de noms de domaine connu, confusion quasi garantie avec "nom de domaine" auprès d'une audience tech (LinkedIn).
+- _Hameau_, _Terrena_, _MonTerrain_, _Terracoop_, _Terralien_ — alternatives explorées mais non retenues à ce stade.
 - **Lp retenu** : [justification du nom et vérification de marque masquées]
 - Entre elles (Mève/Claude), "asl-cms" reste le nom de code interne/dev.
 - [vérification de marque masquée]

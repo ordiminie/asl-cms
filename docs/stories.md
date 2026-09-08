@@ -46,8 +46,8 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   recevoir les communications statutaires et contractuelles — convocation à l'AG, mise à disposition
   d'une facture, relance d'impayé — auxquelles son appartenance à l'association l'engage. Le pied de
   page de ces envois-là le dit explicitement.
-  ⚠️ **Ce qui est acquis et ce qui ne l'est pas** : le *mécanisme* est certain et se code (une nature
-  par modèle, un filtre au calcul de la cible en s27). La *classification* de chaque modèle est une
+  ⚠️ **Ce qui est acquis et ce qui ne l'est pas** : le _mécanisme_ est certain et se code (une nature
+  par modèle, un filtre au calcul de la cible en s27). La _classification_ de chaque modèle est une
   doctrine posée par défaut, **à faire confirmer par le conseil RGPD** en même temps que la règle de
   rétention (s12) — elle est donc une donnée de configuration, pas une constante : si l'arbitrage la
   contredit, on change une valeur, pas du code. C'est la même prudence que s12, qui livre le modèle
@@ -67,13 +67,13 @@ Cinq points en attente d'un retour extérieur conditionnent des stories précise
 `V5` Annexe A). **Ne pas démarrer la story tant que le point n'est pas levé** ; les stories qui les
 contournent sont ordonnées avant.
 
-| Réserve | Bloque | Contournement prévu |
-| --- | --- | --- |
-| Accès API Pennylane + clé de rapprochement | s20 seule | s19 livre l'interface et la saisie manuelle ; s27 et s29 s'appuient dessus et ne sont pas bloquées |
-| Contenu détaillé des 4 modèles d'email et de leurs variables | la rédaction des modèles de s25, pas son code | livrer les modèles câblés avec un contenu provisoire marqué comme tel |
-| Fichier exemple des relevés d'eau (format imposé par Pennylane) | le parseur de s17, et par ricochet s18 (historique de consommation) — donc l'angle n°1 du PRD | aucun — s17 attend le fichier réel |
-| Accès ASL Community + validation statutaire du vote électronique | s33 en entier | aucun, mais le module n'est pas en doute : seul son fournisseur l'est (voir s33) |
-| Arbitrage RGPD sur la rétention des données d'un ex-propriétaire | la coupure d'accès de s12 | s12 livre le modèle daté sans purge |
+| Réserve                                                          | Bloque                                                                                        | Contournement prévu                                                                                |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Accès API Pennylane + clé de rapprochement                       | s20 seule                                                                                     | s19 livre l'interface et la saisie manuelle ; s27 et s29 s'appuient dessus et ne sont pas bloquées |
+| Contenu détaillé des 4 modèles d'email et de leurs variables     | la rédaction des modèles de s25, pas son code                                                 | livrer les modèles câblés avec un contenu provisoire marqué comme tel                              |
+| Fichier exemple des relevés d'eau (format imposé par Pennylane)  | le parseur de s17, et par ricochet s18 (historique de consommation) — donc l'angle n°1 du PRD | aucun — s17 attend le fichier réel                                                                 |
+| Accès ASL Community + validation statutaire du vote électronique | s33 en entier                                                                                 | aucun, mais le module n'est pas en doute : seul son fournisseur l'est (voir s33)                   |
+| Arbitrage RGPD sur la rétention des données d'un ex-propriétaire | la coupure d'accès de s12                                                                     | s12 livre le modèle daté sans purge                                                                |
 
 ---
 
@@ -1003,8 +1003,8 @@ L'implémentation Pennylane est s20 et ne doit rien changer ici.
 Piège de conception : ne pas modéliser le statut en booléen ni en énumération fermée déduite des
 seuls statuts connus aujourd'hui — Pennylane en remonte davantage, et ils doivent passer tels quels.
 
-**Deux notions à ne pas confondre, et c'est cette story qui les tient** : le *statut* est opaque et
-affiché tel quel ; le *prédicat « impayé »* est une dérivation, déclarée en configuration de tenant.
+**Deux notions à ne pas confondre, et c'est cette story qui les tient** : le _statut_ est opaque et
+affiché tel quel ; le _prédicat « impayé »_ est une dérivation, déclarée en configuration de tenant.
 s21 (bouton de paiement), s27 (cible « impayés ») et s29 (relances) consomment ce prédicat et ne
 doivent jamais réinterpréter un statut eux-mêmes — sinon trois lectures divergentes du même fait, et
 une valeur codée en dur que la règle transverse interdit. Défaut relevé en revue du découpage, où le
@@ -1840,9 +1840,9 @@ stockage en contournant sa couche de cloisonnement.
 
 s03
 
-*(Couplage volontairement lâche : la matrice se nourrit du registre d'actions créé en s03 et alimenté
+_(Couplage volontairement lâche : la matrice se nourrit du registre d'actions créé en s03 et alimenté
 par chaque story au titre des règles transverses, pas des stories elles-mêmes. Elle n'a donc aucune
-dépendance de feature — voir les notes.)*
+dépendance de feature — voir les notes.)_
 
 ### Agentic notes
 
@@ -2137,50 +2137,50 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 
 # Récapitulatif — ordre et dépendances
 
-| Id | Story | Cx | Dépend de | Bloc |
-| --- | --- | --- | --- | --- |
-| s01 | provisionner-association | 4 | — | A |
-| s02 | parametres-association | 2 | s01 | A |
-| s03 | connexion-lien-magique | 3 | s01 | A |
-| s04 | pages-cms | 3 | s01, s03 | A |
-| s05 | actualites | 2 | s04 | A |
-| s06 | presentation-bureau | 2 | s04 | A |
-| s07 | bandeau-alerte | 1 | s01, s03 | A |
-| s08 | formulaire-contact | 2 | s02, s04 | A |
-| s09 | analyses-eau | 2 | s04 | A |
-| s10 | signalements-publics | 3 | s02, s04, s08 | A |
-| s11 | seo | 2 | s02, s04, s05, s09 | A |
-| s12 | membres-parcelles | 4 | s01, s03 | B |
-| s13 | import-initial-membres | 3 | s12 | B |
-| s14 | attribuer-roles | 2 | s03, s12 | B |
-| s15 | inviter-membre | 2 | s02, s03, s12 | B |
-| s16 | coordonnees-membre | 1 | s12 | B |
-| s17 | import-releves-eau | 3 | s02, s12 | B |
-| s18 | historique-consommation | 2 | s17 | B |
-| s19 | factures-liste | 3 | s12 | B |
-| s20 | factures-pennylane | 3 | s19 | B |
-| s21 | redirection-paiement | 1 | s02, s19 | B |
-| s22 | signalement-membre | 2 | s10, s12 | B |
-| s23 | questions-bureau | 2 | s02, s10, s12 | B |
-| s24 | notes-internes-membre | 2 | s12 | B |
-| s25 | campagnes-email | 3 | s02, s03, s12 | C |
-| s26 | envoi-echelonne | 4 | s02, s25 | C |
-| s27 | groupes-destinataires | 3 | s19, s25 | C |
-| s28 | publipostage-pdf | 3 | s12, s25 | C |
-| s29 | relances-impayes | 4 | s02, s19, s25, s26, s27, s28 | C |
-| s30 | stats-campagnes | 2 | s25, s26 | C |
-| s31 | documents-partages | 2 | s03, s12 | D |
-| s32 | documents-nominatifs | 4 | s12, s31 | D |
-| s33 | vote-asl-community | 3 | s02, s12, s31 | E |
-| s34 | module-voirie | 2 | s01, s04 | F |
-| s35 | petites-annonces | 3 | s10, s12 | F |
-| s36 | modeles-documents | 3 | s27, s28, s32 | F |
-| s37 | permissions-configurables | 4 | s03 | F |
-| s38 | export-donnees | 4 | s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37 | F |
-| s39 | completude-export | 2 | s38 | F |
-| s40 | export-membre | 2 | s12, s24, s38 | F |
-| s41 | simulation-role | 2 | s01, s03, s24, s37 | F |
-| s42 | lancement-invitations | 3 | s03, s13, s15, s25, s26, s28 | F |
+| Id  | Story                     | Cx  | Dépend de                                                                                                                        | Bloc |
+| --- | ------------------------- | --- | -------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| s01 | provisionner-association  | 4   | —                                                                                                                                | A    |
+| s02 | parametres-association    | 2   | s01                                                                                                                              | A    |
+| s03 | connexion-lien-magique    | 3   | s01                                                                                                                              | A    |
+| s04 | pages-cms                 | 3   | s01, s03                                                                                                                         | A    |
+| s05 | actualites                | 2   | s04                                                                                                                              | A    |
+| s06 | presentation-bureau       | 2   | s04                                                                                                                              | A    |
+| s07 | bandeau-alerte            | 1   | s01, s03                                                                                                                         | A    |
+| s08 | formulaire-contact        | 2   | s02, s04                                                                                                                         | A    |
+| s09 | analyses-eau              | 2   | s04                                                                                                                              | A    |
+| s10 | signalements-publics      | 3   | s02, s04, s08                                                                                                                    | A    |
+| s11 | seo                       | 2   | s02, s04, s05, s09                                                                                                               | A    |
+| s12 | membres-parcelles         | 4   | s01, s03                                                                                                                         | B    |
+| s13 | import-initial-membres    | 3   | s12                                                                                                                              | B    |
+| s14 | attribuer-roles           | 2   | s03, s12                                                                                                                         | B    |
+| s15 | inviter-membre            | 2   | s02, s03, s12                                                                                                                    | B    |
+| s16 | coordonnees-membre        | 1   | s12                                                                                                                              | B    |
+| s17 | import-releves-eau        | 3   | s02, s12                                                                                                                         | B    |
+| s18 | historique-consommation   | 2   | s17                                                                                                                              | B    |
+| s19 | factures-liste            | 3   | s12                                                                                                                              | B    |
+| s20 | factures-pennylane        | 3   | s19                                                                                                                              | B    |
+| s21 | redirection-paiement      | 1   | s02, s19                                                                                                                         | B    |
+| s22 | signalement-membre        | 2   | s10, s12                                                                                                                         | B    |
+| s23 | questions-bureau          | 2   | s02, s10, s12                                                                                                                    | B    |
+| s24 | notes-internes-membre     | 2   | s12                                                                                                                              | B    |
+| s25 | campagnes-email           | 3   | s02, s03, s12                                                                                                                    | C    |
+| s26 | envoi-echelonne           | 4   | s02, s25                                                                                                                         | C    |
+| s27 | groupes-destinataires     | 3   | s19, s25                                                                                                                         | C    |
+| s28 | publipostage-pdf          | 3   | s12, s25                                                                                                                         | C    |
+| s29 | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                                     | C    |
+| s30 | stats-campagnes           | 2   | s25, s26                                                                                                                         | C    |
+| s31 | documents-partages        | 2   | s03, s12                                                                                                                         | D    |
+| s32 | documents-nominatifs      | 4   | s12, s31                                                                                                                         | D    |
+| s33 | vote-asl-community        | 3   | s02, s12, s31                                                                                                                    | E    |
+| s34 | module-voirie             | 2   | s01, s04                                                                                                                         | F    |
+| s35 | petites-annonces          | 3   | s10, s12                                                                                                                         | F    |
+| s36 | modeles-documents         | 3   | s27, s28, s32                                                                                                                    | F    |
+| s37 | permissions-configurables | 4   | s03                                                                                                                              | F    |
+| s38 | export-donnees            | 4   | s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37 | F    |
+| s39 | completude-export         | 2   | s38                                                                                                                              | F    |
+| s40 | export-membre             | 2   | s12, s24, s38                                                                                                                    | F    |
+| s41 | simulation-role           | 2   | s01, s03, s24, s37                                                                                                               | F    |
+| s42 | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                                     | F    |
 
 **42 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quatorze à 3, sept à 4.
 Les sept stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s26
@@ -2193,8 +2193,8 @@ explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-d
 Deux écarts avec les scores du PRD, tous deux documentés dans la story concernée plutôt que lissés :
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
 main) et s38 à 4 contre 3 (vingt-six dépendances, sept familles de contenu, exécution en tâche de
-fond, écriture en flux sur un VPS à 4 Go). Le PRD chiffre des *features*, ce tableau chiffre des
-*tranches livrables*.
+fond, écriture en flux sur un VPS à 4 Go). Le PRD chiffre des _features_, ce tableau chiffre des
+_tranches livrables_.
 
 Six stories ont été ajoutées en revue du découpage : s14 (attribution des rôles — les rôles
 existaient et la matrice était prévue, mais rien ne permettait de désigner la présidente ni le

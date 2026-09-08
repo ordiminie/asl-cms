@@ -31,21 +31,25 @@ Le besoin d'ergonomie qui motivait WordPress n'est pas abandonné : il est requa
 ## Consequences
 
 **Ce qui devient plus simple**
+
 - Un seul runtime, un seul déploiement, une seule base — cohérent avec un VPS unique et un contrat de maintenance modeste.
 - Le multi-tenant (`organization_id` + RLS Postgres), l'auth magic link (Better Auth) et la facturation plateforme (Stripe) sont réutilisés tels quels, sans pont ni redéveloppement.
 - Tout le code applicatif passe par le pipeline killer-saas : TDD, review anti-hallucination, gate avant ship. Rien d'important ne se joue dans de la configuration de plugins non testable.
 - Surface de sécurité réduite : pas d'écosystème de plugins tiers à surveiller et à mettre à jour.
 
 **Ce qui devient plus difficile**
+
 - Le back-office éditorial est à construire : édition de pages, gestion des médias, aperçu avant publication, contenus répétables (analyses d'eau, actualités, membres du bureau, chemins et portails). C'est un coût de développement réel, qui n'existerait pas avec WordPress.
 - L'ergonomie devient un risque produit à part entière : si le bureau ne s'approprie pas le BO, la promesse « gérer le site sans le prestataire » tombe, quel que soit le reste.
 
 **À surveiller**
+
 - Traiter l'ergonomie du back-office comme un objectif explicite de `/ks-design-system`, pas comme un sous-produit des écrans d'admin.
 - Ne pas reconstruire un CMS généraliste : viser le strict nécessaire au périmètre (système de pages générique + quelques modèles de contenu répétables), et n'élargir que sur besoin avéré.
 - Éditeur de texte riche et gestion des médias : deux briques où une bibliothèque tierce mature est probablement préférable à du maison — arbitrage à faire en `/ks-architect`.
 - Si un besoin éditorial nettement plus lourd apparaît (chez un futur tenant, par exemple), rouvrir la piste d'un CMS headless Node par un nouvel ADR — pas WordPress.
 
 **Portée documentaire**
+
 - La convention de préfixe `zs-` visait des plugins WordPress : sans objet. La convention de nommage des modules est fixée par `/ks-architect`.
 - Décision répercutée dans `docs/bases/cahier-des-charges-technique.md` §1.1, `docs/bases/brief-produit-asl-cms.md` (section « Base technique ») et `docs/bases/synthese-asl-cms-projetc.md` (section « Le produit »).

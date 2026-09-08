@@ -51,8 +51,8 @@ La livraison n° 1 a fixé le système et il fait autorité. Rappel de ce qui co
 195 eau · 150 pins · 255 lac · 40 tuile · 300 bruyère · 95 genêt. Lightness et chroma figés.
 Jamais sur un bouton, jamais porteur unique d'une information.
 
-**Typographie** : *Source Serif 4* (titres) · *Public Sans* (texte et interface) ·
-*JetBrains Mono* (index de compteur, parcelles, montants). Texte courant 17 px en privé,
+**Typographie** : _Source Serif 4_ (titres) · _Public Sans_ (texte et interface) ·
+_JetBrains Mono_ (index de compteur, parcelles, montants). Texte courant 17 px en privé,
 18 px en public. Plancher 15 px pour les métadonnées.
 
 **Règles** : aucune information portée par la seule couleur · icône + libellé, jamais l'icône
@@ -92,10 +92,10 @@ cas à part dépourvu d'habillage.
 Point souvent manqué, et juridiquement structurant. Les communications se divisent en deux
 natures :
 
-| Nature | Exemples | Pied de page |
-| --- | --- | --- |
-| **Facultative** | actualité, campagne libre | **Lien de désinscription** obligatoire |
-| **Statutaire** | convocation à l'AG, mise à disposition d'une facture, relance d'impayé | **Pas de désinscription** — mais une phrase qui explique pourquoi cet envoi continue malgré une désinscription |
+| Nature          | Exemples                                                               | Pied de page                                                                                                   |
+| --------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Facultative** | actualité, campagne libre                                              | **Lien de désinscription** obligatoire                                                                         |
+| **Statutaire**  | convocation à l'AG, mise à disposition d'une facture, relance d'impayé | **Pas de désinscription** — mais une phrase qui explique pourquoi cet envoi continue malgré une désinscription |
 
 Un membre désinscrit cesse de recevoir les premières et **continue** de recevoir les secondes.
 Le pied doit le dire clairement, sans que le membre se sente piégé.
