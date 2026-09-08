@@ -159,6 +159,9 @@ chaque écran appartient à sa story et à son `/ks-design`.
 - [ ] Le provisioning désigne l'**administrateur initial** de l'association par son adresse email : le compte existe, il est rattaché à ce tenant et à lui seul, et il porte les droits d'administration — vérifié en le chargeant et en exerçant une action réservée.
 - [ ] Une requête authentifiée dans le tenant A ne retourne aucune donnée du tenant B, y compris en forgeant l'identifiant de la ressource (test d'accès croisé).
 - [ ] La policy RLS refuse la lecture inter-tenant même lorsque la couche applicative est court-circuitée (test au niveau repository).
+- [ ] Les cinq sous-systèmes écartés par l'ADR 009 — chat IA, crédits, affiliation, projets/tâches, newsletter Mailchimp — ont disparu de l'arbre de travail : leurs tables ne sont plus dans le schéma Drizzle, la suite de tests passe sans elles, et `pnpm knip` ne signale pas d'orphelin issu du retrait.
+- [ ] Aucune table métier restante n'est dépourvue de policy RLS : toute table portant `organization_id` en a une, et les tables exemptées sont exactement celles listées dans `docs/architecture.md`.
+- [ ] `rule-react-query.md` et `rule-seed-usersroles-and-organization.md` ne renvoient plus à `projects`, retiré : elles pointent vers un domaine ASL-CMS réellement présent, et `pnpm check:rules` passe.
 
 ### Dependencies
 
@@ -215,6 +218,25 @@ arrivent en s33, s34 et s35 — un critère qui les nommerait ici serait intesta
 livraison et ferait doublon avec le critère « Le module se désactive par tenant » que chacune de ces
 trois stories porte déjà. La preuve se fait donc ici sur une route de test rattachée à un module
 fictif, et par module chez chacune des trois. Défaut relevé en revue du découpage.
+
+**Le retrait des sous-systèmes du boilerplate appartient à cette story**, et l'ADR 009 le dit
+nommément : « Le retrait est exécuté dans s01 ». La raison n'est pas le ménage — c'est que s01 doit
+donner une policy RLS à chaque table métier, et que le moyen le moins cher d'en donner une à
+`credit_ledger` est de ne pas avoir `credit_ledger`. Sans ce retrait, s01 livre une dizaine de tables
+dormantes à équiper ou à exempter, et 42 stories les traverseront en revue.
+
+Le coût réel n'est pas dans les fichiers supprimés mais dans ceux qui restent : **44 fichiers
+conservés référencent ces sous-systèmes**, dont `src/services/authorization/casl-abilities.ts`
+(`Project`, `Task`, `Credit`, `Affiliate` y sont des sujets CASL, utilisés dans une quinzaine de
+règles) et `src/lib/better-auth/auth.ts` (le hook Stripe `onSubscriptionComplete` appelle un service
+de crédits). `src/db/scripts/seed.ts` est du SQL brut à réécrire en partie. La table des chemins de
+l'ADR 009 est **incomplète** : elle omet `src/app/dal/task-dal.ts` et `src/components/features/tasks/`.
+
+⚠️ `rule-react-query.md` et `rule-seed-usersroles-and-organization.md` citent `projects` comme
+implémentation de référence. **Les mettre à jour dans le commit du retrait**, sinon elles pointent
+vers des fichiers absents — l'ADR 009 en fait une tâche explicite de s01, pas un détail de nettoyage.
+`docs/architecture.md` demande par ailleurs à s01 de désigner le remplaçant de `createProjectService`
+comme modèle canonique de la couche service.
 
 Cimetière : pas une base par tenant, base partagée + RLS.
 
