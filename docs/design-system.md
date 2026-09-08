@@ -354,6 +354,20 @@ shadcn `src/components/ui/<nom>.tsx`. Chaque état correspond à une story.
 
 ### 2.3 `<AlertBanner />` — trois niveaux
 
+> ⚠️ **Arbitrage ouvert — ne pas trancher avant `/ks-design s07`.** Cette spécification dépasse le
+> périmètre tel qu'il est écrit aujourd'hui. Le PRD porte « Bandeau d'alerte global » en complexité 1
+> — « activation / édition / désactivation par tout membre du bureau » — et les notes de s07 disent
+> explicitement « pas de niveaux de gravité, le CDC n'en demande pas ». Le design system, lui, en
+> décrit trois, dont un non refermable.
+>
+> Les deux positions se défendent : le CDC contractuel ne demande rien de tel, mais « une eau impropre
+> à la consommation n'est pas une préférence d'affichage » est un argument sérieux pour une ASL dont
+> l'objet est l'eau. **Élargir s07 est une décision de périmètre**, qui passerait par `docs/prd.md`.
+>
+> En attendant, s07 livre un bandeau à un seul niveau, et cette section décrit une extension
+> documentée, pas un attendu de la V1. Le trio de tokens `warning` reste utile dans tous les cas :
+> la deuxième relance de s29 en dépend aussi (§1.1). Relevé en revue du découpage (F-10).
+
 ```
 id · level: "info" | "warning" | "critical" · message (280 car. max)
 link?: {label, href} · endsAt?: Date · publishedAt · publishedBy

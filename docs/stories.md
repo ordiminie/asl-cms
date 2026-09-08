@@ -586,7 +586,15 @@ s01, s03
 ### Agentic notes
 
 Réf. `V5 §4.2`, `CDCT §4.2`. Volontairement sans workflow : pas de validation, pas de programmation
-horaire, pas de niveaux de gravité — le CDC n'en demande pas.
+horaire.
+
+⚠️ **Niveaux de gravité : arbitrage ouvert, à trancher en `/ks-design`, pas en `/ks-plan`.** Le CDC
+n'en demande pas et le PRD porte cette ligne en complexité 1, d'où le parti pris d'origine — un seul
+niveau. Mais le design system §2.3 en spécifie trois, dont un **non refermable**, avec un argument
+qui n'est pas décoratif pour une ASL dont l'objet est l'eau : « une eau impropre à la consommation
+n'est pas une préférence d'affichage ». Les critères ci-dessus n'exercent qu'un seul niveau ;
+livrer les trois serait un élargissement de périmètre, qui passerait d'abord par `docs/prd.md`.
+Ne pas choisir en silence à l'implémentation. Relevé en revue du découpage (F-10).
 
 Le bandeau se pose dans le **gabarit commun**, pas page par page : c'est ce qui le fait apparaître
 sur les pages ajoutées par les stories ultérieures sans y revenir. Propriété de conception à vérifier
@@ -2075,20 +2083,20 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 - [ ] L'archive contient les **communications** : campagnes, leurs statistiques d'ouverture et de clic, leur état de planification, l'historique des relances, les groupes de destinataires.
 - [ ] L'archive contient les **échanges entrants** : signalements, messages de contact, questions au bureau.
 - [ ] L'archive contient la **configuration** : paramètres du tenant et matrice de permissions.
-- [ ] Les données d'un module non livré ou désactivé (vote) ne font pas échouer l'export ; livré et actif, le module entre dans l'archive par le test de complétude ci-dessous, sans modification de cette story.
+- [ ] Les données d'un module non livré ou désactivé (vote) ne font pas échouer l'export. Réciproquement, le mécanisme est **piloté par l'inventaire des tables scopées**, et non par une liste écrite à la main : un module livré et actif entre dans l'archive sans modification de cette story — propriété que le test de complétude de **s39** vérifie mécaniquement, et qui n'est donc pas testable ici.
 - [ ] L'export ne contient **aucune** donnée d'une autre association (test d'isolation sur l'archive produite).
 - [ ] L'export s'exécute en tâche de fond : la requête qui le déclenche répond immédiatement sans attendre l'archive, une lecture concurrente sur le site répond pendant la génération, et la présidente est notifiée quand l'archive est prête.
 
 ### Dependencies
 
-s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37
+s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37
 
 ### Agentic notes
 
 Réf. `PRD` (« Export et portabilité des données », angle n°5 : « Pas de verrouillage »), RGPD (droit
 à la portabilité).
 
-Risque (complexité 4) : vingt-six dépendances, sept familles de contenu, exécution en tâche de
+Risque (complexité 4) : vingt-quatre dépendances, sept familles de contenu, exécution en tâche de
 fond avec notification, écriture en flux sur un VPS à 4 Go. Le harnais de complétude en a été sorti
 (s39) en revue du découpage — la story se lisait comme une 5 déjà scindée une fois (s40) mais pas
 assez. Ce qui reste est un moteur d'export et son archive, pas une traversée du produit.
@@ -2105,9 +2113,14 @@ L'action « déclencher un export » est une action réservée : elle se déclar
 matrice de permissions (s37), qui est extensible par construction — pas besoin de rouvrir s37.
 
 Sa liste de dépendances est longue **parce que c'est le sens de la story** : elle doit exporter tout
-ce que le produit stocke. s33 (vote) n'y figure pas volontairement — le module est suspendu à une
-condition suspensive, et l'export ne doit pas en être otage ; ses résolutions et résultats entrent
-dans l'archive par le test de complétude dès que le module est livré.
+ce que le produit stocke. **Aucun des trois modules activables n'y figure** — ni s33 (vote), ni s34
+(voirie), ni s35 (petites annonces). Le traitement est désormais uniforme, alors que s34 et s35 y
+étaient en dur pendant que s33 en était exclue : une incohérence relevée en revue du découpage
+(F-13). Le raisonnement qui excluait s33 vaut pour les trois — un module activable peut être
+désactivé chez un tenant, et l'export ne doit être otage d'aucun. Leurs données entrent dans
+l'archive par le test de complétude de s39 dès que le module est livré, sans rouvrir cette story.
+C'est cohérent avec le critère 8, et c'est ce qui ramène la story de vingt-six dépendances à
+vingt-quatre.
 
 **Une énumération écrite à la main finit toujours par oublier un type de donnée** — c'est exactement
 ce qui s'est produit en revue du découpage, où six types manquaient. C'est pourquoi le garde-fou
@@ -2229,13 +2242,13 @@ d'une association **afin de** reproduire un problème signalé par le bureau san
 - [ ] Une bannière permanente signale la simulation en cours et permet d'en sortir depuis n'importe quelle page.
 - [ ] La simulation respecte la matrice de permissions configurée pour l'association simulée (s37), pas les droits par défaut.
 - [ ] Chaque entrée en simulation est tracée avec l'identité du SuperAdmin, l'association, le rôle et l'horodatage.
-- [ ] Cette trace est soit incluse dans l'export d'association (s38), soit déclarée exclue avec son motif : le test de complétude de s38 continue de passer.
+- [ ] Cette trace est soit incluse dans l'export d'association (s38), soit **déclarée au registre des exclusions avec son motif** : le test de complétude de s39 continue de passer.
 - [ ] Aucun rôle association ne peut déclencher une simulation ; la fonction n'est pas exposée aux associations.
 - [ ] Une action d'écriture faite en simulation est attribuée dans l'historique au SuperAdmin, pas au rôle simulé.
 
 ### Dependencies
 
-s01, s03, s24, s37
+s01, s03, s24, s37, s38, s39
 
 ### Agentic notes
 
@@ -2316,51 +2329,51 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 
 # Récapitulatif — ordre et dépendances
 
-| Id  | Story                     | Cx  | Dépend de                                                                                                                        | Bloc |
-| --- | ------------------------- | --- | -------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| s00 | application-design-system | 3   | —                                                                                                                                | A    |
-| s01 | provisionner-association  | 4   | —                                                                                                                                | A    |
-| s02 | parametres-association    | 3   | s01                                                                                                                              | A    |
-| s03 | connexion-lien-magique    | 3   | s01                                                                                                                              | A    |
-| s04 | pages-cms                 | 4   | s01, s02, s03                                                                                                                    | A    |
-| s05 | actualites                | 2   | s04                                                                                                                              | A    |
-| s06 | presentation-bureau       | 2   | s04                                                                                                                              | A    |
-| s07 | bandeau-alerte            | 1   | s01, s03                                                                                                                         | A    |
-| s08 | formulaire-contact        | 2   | s02, s04                                                                                                                         | A    |
-| s09 | analyses-eau              | 2   | s04                                                                                                                              | A    |
-| s10 | signalements-publics      | 3   | s02, s04, s08                                                                                                                    | A    |
-| s11 | seo                       | 2   | s02, s04, s05, s09                                                                                                               | A    |
-| s12 | membres-parcelles         | 4   | s01, s03                                                                                                                         | B    |
-| s13 | import-initial-membres    | 3   | s12                                                                                                                              | B    |
-| s14 | attribuer-roles           | 2   | s03, s12                                                                                                                         | B    |
-| s15 | inviter-membre            | 2   | s02, s03, s12                                                                                                                    | B    |
-| s16 | coordonnees-membre        | 1   | s12                                                                                                                              | B    |
-| s17 | import-releves-eau        | 3   | s02, s12                                                                                                                         | B    |
-| s18 | historique-consommation   | 2   | s17                                                                                                                              | B    |
-| s19 | factures-liste            | 3   | s12                                                                                                                              | B    |
-| s20 | factures-pennylane        | 3   | s19                                                                                                                              | B    |
-| s21 | redirection-paiement      | 1   | s02, s19                                                                                                                         | B    |
-| s22 | signalement-membre        | 2   | s10, s12                                                                                                                         | B    |
-| s23 | questions-bureau          | 2   | s02, s10, s12                                                                                                                    | B    |
-| s24 | notes-internes-membre     | 2   | s12                                                                                                                              | B    |
-| s25 | campagnes-email           | 3   | s02, s03, s12                                                                                                                    | C    |
-| s26 | envoi-echelonne           | 4   | s02, s25                                                                                                                         | C    |
-| s27 | groupes-destinataires     | 3   | s19, s25                                                                                                                         | C    |
-| s28 | publipostage-pdf          | 3   | s12, s25                                                                                                                         | C    |
-| s29 | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                                     | C    |
-| s30 | stats-campagnes           | 2   | s25, s26                                                                                                                         | C    |
-| s31 | documents-partages        | 2   | s03, s12                                                                                                                         | D    |
-| s32 | documents-nominatifs      | 4   | s12, s31                                                                                                                         | D    |
-| s33 | vote-asl-community        | 3   | s02, s12, s31                                                                                                                    | E    |
-| s34 | module-voirie             | 2   | s01, s04                                                                                                                         | F    |
-| s35 | petites-annonces          | 3   | s10, s12                                                                                                                         | F    |
-| s36 | modeles-documents         | 3   | s27, s28, s32                                                                                                                    | F    |
-| s37 | permissions-configurables | 4   | s03                                                                                                                              | F    |
-| s38 | export-donnees            | 4   | s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s34, s35, s36, s37 | F    |
-| s39 | completude-export         | 2   | s38                                                                                                                              | F    |
-| s40 | export-membre             | 2   | s12, s24, s38                                                                                                                    | F    |
-| s41 | simulation-role           | 2   | s01, s03, s24, s37                                                                                                               | F    |
-| s42 | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                                     | F    |
+| Id  | Story                     | Cx  | Dépend de                                                                                                              | Bloc |
+| --- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------- | ---- |
+| s00 | application-design-system | 3   | —                                                                                                                      | A    |
+| s01 | provisionner-association  | 4   | —                                                                                                                      | A    |
+| s02 | parametres-association    | 3   | s01                                                                                                                    | A    |
+| s03 | connexion-lien-magique    | 3   | s01                                                                                                                    | A    |
+| s04 | pages-cms                 | 4   | s01, s02, s03                                                                                                          | A    |
+| s05 | actualites                | 2   | s04                                                                                                                    | A    |
+| s06 | presentation-bureau       | 2   | s04                                                                                                                    | A    |
+| s07 | bandeau-alerte            | 1   | s01, s03                                                                                                               | A    |
+| s08 | formulaire-contact        | 2   | s02, s04                                                                                                               | A    |
+| s09 | analyses-eau              | 2   | s04                                                                                                                    | A    |
+| s10 | signalements-publics      | 3   | s02, s04, s08                                                                                                          | A    |
+| s11 | seo                       | 2   | s02, s04, s05, s09                                                                                                     | A    |
+| s12 | membres-parcelles         | 4   | s01, s03                                                                                                               | B    |
+| s13 | import-initial-membres    | 3   | s12                                                                                                                    | B    |
+| s14 | attribuer-roles           | 2   | s03, s12                                                                                                               | B    |
+| s15 | inviter-membre            | 2   | s02, s03, s12                                                                                                          | B    |
+| s16 | coordonnees-membre        | 1   | s12                                                                                                                    | B    |
+| s17 | import-releves-eau        | 3   | s02, s12                                                                                                               | B    |
+| s18 | historique-consommation   | 2   | s17                                                                                                                    | B    |
+| s19 | factures-liste            | 3   | s12                                                                                                                    | B    |
+| s20 | factures-pennylane        | 3   | s19                                                                                                                    | B    |
+| s21 | redirection-paiement      | 1   | s02, s19                                                                                                               | B    |
+| s22 | signalement-membre        | 2   | s10, s12                                                                                                               | B    |
+| s23 | questions-bureau          | 2   | s02, s10, s12                                                                                                          | B    |
+| s24 | notes-internes-membre     | 2   | s12                                                                                                                    | B    |
+| s25 | campagnes-email           | 3   | s02, s03, s12                                                                                                          | C    |
+| s26 | envoi-echelonne           | 4   | s02, s25                                                                                                               | C    |
+| s27 | groupes-destinataires     | 3   | s19, s25                                                                                                               | C    |
+| s28 | publipostage-pdf          | 3   | s12, s25                                                                                                               | C    |
+| s29 | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                           | C    |
+| s30 | stats-campagnes           | 2   | s25, s26                                                                                                               | C    |
+| s31 | documents-partages        | 2   | s03, s12                                                                                                               | D    |
+| s32 | documents-nominatifs      | 4   | s12, s31                                                                                                               | D    |
+| s33 | vote-asl-community        | 3   | s02, s12, s31                                                                                                          | E    |
+| s34 | module-voirie             | 2   | s01, s04                                                                                                               | F    |
+| s35 | petites-annonces          | 3   | s10, s12                                                                                                               | F    |
+| s36 | modeles-documents         | 3   | s27, s28, s32                                                                                                          | F    |
+| s37 | permissions-configurables | 4   | s03                                                                                                                    | F    |
+| s38 | export-donnees            | 4   | s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37 | F    |
+| s39 | completude-export         | 2   | s38                                                                                                                    | F    |
+| s40 | export-membre             | 2   | s12, s24, s38                                                                                                          | F    |
+| s41 | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                           | F    |
+| s42 | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                           | F    |
 
 **43 stories, aucune à 5.** Répartition : trois à 1, dix-sept à 2, quinze à 3, huit à 4.
 s00 est une **story de socle assumée, hors du tableau de périmètre du PRD** : elle ne livre aucune
