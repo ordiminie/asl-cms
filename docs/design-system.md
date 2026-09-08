@@ -795,20 +795,26 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 
 ### Les autres
 
-| Domaine   | Manque                                                                                                                                     | Story    |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| Email     | **Version texte brut** de chaque modèle — exigée par les filtres anti-spam, à écrire en même temps que le HTML                             | s25      |
-| Email     | **Journal des envois par membre** (quoi, quand, ouvert ou non) — nécessaire au bureau pour savoir qui relancer par courrier                | s30, s29 |
-| Papier    | Composant de **prévisualisation PDF paginée** en back-office                                                                               | s28, s36 |
-| Papier    | **Suivi du courrier** — un envoi papier n'a ni ouverture ni clic : le journal doit accepter un statut saisi à la main (« posté le 12/09 ») | s28      |
-| Papier    | **Retours de courrier (PND)** — où le bureau les note, et ce que devient le membre concerné                                                | s28, s12 |
-| Blocs     | **Visionneuse de galerie** — `dialog` couvre la coquille, pas la navigation entre images (flèches, balayage, compteur « 3 sur 10 »)        | s04      |
-| Blocs     | **Bloc « analyses d'eau » dédié** ou réemploi du bloc PDF — à trancher                                                                     | s09      |
-| Édition   | Les **cinq aperçus miniatures** du sélecteur de blocs (dessins à maintenir avec la charte)                                                 | s04      |
-| Connexion | **Erreur du service d'email** à l'envoi du lien, avec le téléphone du bureau en repli                                                      | s03      |
-| Connexion | **Changement d'adresse email par le membre** : lui-même (avec validation de la nouvelle) ou via le bureau ?                                | s16      |
-| Connexion | **Lien cliqué après suppression du compte** par le bureau                                                                                  | s03, s14 |
-| Relevé    | **Relevé en série hors ligne** (s17) : stockage local avec synchronisation, ou simple tolérance aux coupures ?                             | s17      |
+| Domaine   | Manque                                                                                                                                                                                                                                               | Story         |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| Email     | **Version texte brut** de chaque modèle — exigée par les filtres anti-spam, à écrire en même temps que le HTML                                                                                                                                       | s25           |
+| Email     | **Journal des envois par membre** (quoi, quand, ouvert ou non) — nécessaire au bureau pour savoir qui relancer par courrier                                                                                                                          | s30, s29      |
+| Papier    | Composant de **prévisualisation PDF paginée** en back-office                                                                                                                                                                                         | s28, s36      |
+| Papier    | **Suivi du courrier** — un envoi papier n'a ni ouverture ni clic : le journal doit accepter un statut saisi à la main (« posté le 12/09 »)                                                                                                           | s28           |
+| Papier    | **Retours de courrier (PND)** — où le bureau les note, et ce que devient le membre concerné                                                                                                                                                          | s28, s12      |
+| Blocs     | **Visionneuse de galerie** — `dialog` couvre la coquille, pas la navigation entre images (flèches, balayage, compteur « 3 sur 10 »)                                                                                                                  | s04           |
+| Blocs     | **Bloc « analyses d'eau » dédié** ou réemploi du bloc PDF — à trancher                                                                                                                                                                               | s09           |
+| Édition   | Les **cinq aperçus miniatures** du sélecteur de blocs (dessins à maintenir avec la charte)                                                                                                                                                           | s04           |
+| Connexion | **Erreur du service d'email** à l'envoi du lien, avec le téléphone du bureau en repli                                                                                                                                                                | s03           |
+| Connexion | **Changement d'adresse email par le membre** : lui-même (avec validation de la nouvelle) ou via le bureau ?                                                                                                                                          | s16           |
+| Connexion | **Lien cliqué après suppression du compte** par le bureau                                                                                                                                                                                            | s03, s14      |
+| Relevé    | **Relevé en série hors ligne** (s17) : stockage local avec synchronisation, ou simple tolérance aux coupures ?                                                                                                                                       | s17           |
+| Tenant    | **Sélecteur de teintes prédéfinies + aperçu immédiat** — signalé dès la livraison n° 1, jamais spécifié. Les six teintes existent (§1.2), l'écran qui les fait choisir non. **C'est le seul manque qui touche le bloc A**                            | s02           |
+| Tenant    | **Favicon et icônes d'application par association** — aucune couverture. Un produit multi-tenant où six sites partagent un favicon se voit tout de suite. À dériver du logo, ou du monogramme quand il n'y a pas de logo (§1.8)                      | s02, s11      |
+| SEO       | **Image de partage social (Open Graph)** — aucune couverture, alors que s11 demande les métadonnées. Quel gabarit, quelles dimensions, que met-on dessus quand l'association n'a pas d'image ?                                                       | s11           |
+| Divers    | **Page 404** — évoquée dans la livraison n° 1 (« renvoie vers l'accueil, les actualités et le contact »), jamais maquettée                                                                                                                           | s11           |
+| Divers    | **Photo manquante sur une fiche du bureau** — le composant `avatar` a un repli, mais aucune convention n'est posée : initiales, silhouette, ou rien ?                                                                                                | s06           |
+| Technique | **Échelle de `z-index`** — seules deux valeurs sont posées (`PreviewBar` 50, `ImpersonationBar` 60). Avec trois bandes persistantes, les dialogues, les popovers, les tiroirs et les toasts, une échelle explicite évite les conflits au cas par cas | s04, s07, s41 |
 
 ### Point d'implémentation à vérifier
 
