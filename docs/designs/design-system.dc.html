@@ -1443,9 +1443,9 @@ const mono = JetBrains_Mono(&#123;
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:18px">
 
       <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
-        <div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 12px/1 ui-monospace,monospace;background:var(--destructive);color:#fff;border-radius:4px;padding:5px 7px">P0</span><h3 style="font-family:'Source Serif 4',serif;font-size:21px;font-weight:600;margin:0">Connexion &amp; première connexion</h3></div>
-        <p style="margin:0;font-size:17px;line-height:1.55">Un champ email + mot de passe ne suffit pas : <strong>un quart des membres n’a pas d’email</strong>. Prévoir l’activation par identifiant de parcelle + code reçu par courrier, et un mot de passe oublié qui n’exige pas d’email.</p>
-        <div style="font-size:16px;line-height:1.6;color:var(--muted-fg)">États : identifiants faux (3e essai → aide téléphonique du bureau) · compte non activé · lien expiré.<br>Composants : <code>form</code> <code>input</code> <code>alert</code>. <strong>Manque</strong> : champ code à 6 caractères.</div>
+        <div style="display:flex;align-items:baseline;gap:10px"><span style="font:600 12px/1 ui-monospace,monospace;background:var(--destructive);color:#fff;border-radius:4px;padding:5px 7px">P0</span><h3 style="font-family:'Source Serif 4',serif;font-size:21px;font-weight:600;margin:0">Connexion par lien magique</h3></div>
+        <p style="margin:0;font-size:17px;line-height:1.55">Pas de mot de passe, pas d’inscription libre : le membre saisit son adresse, reçoit un lien valable <strong>4 heures</strong>, clique, il est connecté. Les 100 membres sans email ne sont pas un plan B à concevoir : ils relèvent du publipostage papier.</p>
+        <div style="font-size:16px;line-height:1.6;color:var(--muted-fg)">Parcours complet et états spécifiés dans le second document, lot 6 : saisie, « consultez votre boîte mail », lien expiré, adresse inconnue, déjà connecté, déconnexion.</div>
       </div>
 
       <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:22px 24px;display:flex;flex-direction:column;gap:10px">
@@ -1501,146 +1501,28 @@ const mono = JetBrains_Mono(&#123;
         <p style="margin:0;font-size:17px;line-height:1.55">Les impayés reprennent le patron de gestion avec une action de relance groupée (email + courrier). Les comptes du bureau gèrent les rôles et la transmission lors des élections — <strong>un bureau change tous les quelques années, la reprise doit être un écran, pas un appel au prestataire</strong>. Le 404 renvoie vers l’accueil, les actualités et le contact.</p>
       </div>
     </div>
-    <p style="margin:0;max-width:860px;font-size:16px;line-height:1.6;color:var(--muted-fg)">Trois manques structurels s’ajoutent à la liste du §14 : le champ code d’activation, la barre d’aperçu, et le champ relevé chiffré. Ils sont spécifiés en entier au §18.</p>
+    <p style="margin:0;max-width:860px;font-size:16px;line-height:1.6;color:var(--muted-fg)">Deux manques structurels de la liste du §14 sont spécifiés en entier au §18 : la barre d’aperçu et le champ relevé chiffré. Les deux derniers — liste réordonnable et sélecteur de bloc — le sont dans le second document (lot 5), avec les médias email et papier.</p>
   </section>
 
   <section style="display:flex;flex-direction:column;gap:26px">
     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
-      <h2 style="font-family:'Source Serif 4',Georgia,serif;font-weight:600;font-size:28px;margin:0">18 · Les trois composants manquants — spécification complète</h2>
+      <h2 style="font-family:'Source Serif 4',Georgia,serif;font-weight:600;font-size:28px;margin:0">18 · Les composants manquants — spécification complète</h2>
       <span style="font-size:15px;color:var(--muted-fg)">tous les états, l’API et le clavier : prêt à implémenter</span>
     </div>
     <p style="margin:0;max-width:880px;font-size:17px;line-height:1.6;color:var(--muted-fg)">Chacun se construit sur les 37 composants existants — aucune dépendance nouvelle. Les noms de fichiers suivent la convention shadcn (<code>components/ui/&lt;nom&gt;.tsx</code>), les mesures sont en tokens Tailwind, et chaque état visible ci-dessous correspond à une story.</p>
 
-    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:30px 32px;display:flex;flex-direction:column;gap:26px">
+    <div style="background:oklch(0.985 0.003 250);border:1px dashed var(--input);border-radius:12px;padding:26px 28px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+          <h3 style="font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;margin:0;color:var(--muted-fg)"><s>&lt;CodeInput /&gt;</s> — retiré du livrable</h3>
+          <span style="font:600 12px/1 ui-monospace,monospace;background:var(--muted-fg);color:#fff;border-radius:4px;padding:5px 7px">écarté</span>
+        </div>
+        <p style="margin:0;max-width:880px;font-size:17px;line-height:1.6;color:var(--muted-fg)">Le champ de code d’activation reposait sur un plan B de connexion pour les membres sans email. Ce plan B <strong>n’existe pas</strong> : ces 100 membres n’ont aucun compte, et la réponse produit à leur situation est le <strong>publipostage papier</strong>. La connexion se fait uniquement par lien magique, sans mot de passe. Voir le périmètre interdit du brief n° 2, les écrans de connexion (lot 6) et le publipostage (lot 2) dans le second document.</p>
+      </div>
+
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:30px 32px;display:flex;flex-direction:column;gap:26px">
       <div>
         <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-          <h3 style="font-family:'Source Serif 4',serif;font-size:24px;font-weight:600;margin:0">18.1 — <code style="font-size:20px">&lt;CodeInput /&gt;</code></h3>
-          <span style="font:600 12px/1 ui-monospace,monospace;background:var(--destructive);color:#fff;border-radius:4px;padding:5px 7px">P0</span>
-          <span style="font-size:16px;color:var(--muted-fg)">code d’activation reçu par courrier · <code>components/ui/code-input.tsx</code></span>
-        </div>
-        <p style="margin:0;max-width:880px;font-size:17px;line-height:1.6">Six caractères alphanumériques, saisis par un lecteur âgé qui recopie un courrier papier. Grandes cases (56 × 64), pas de découpage en deux groupes, majuscules forcées, collage accepté en une fois. C’est la seule porte d’entrée des 94 membres sans email.</p>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:20px">
-        <div>
-          <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px">Vide (au chargement) · le premier champ a le focus</div>
-          <label style="display:block;font-size:16px;font-weight:500;margin-bottom:8px">Code d’activation</label>
-          <div style="display:flex;gap:10px;margin-bottom:8px">
-            <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;outline:2px solid var(--ring);outline-offset:2px"></div>
-            <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px"></div>
-            <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px"></div>
-            <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px"></div>
-            <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px"></div>
-            <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px"></div>
-          </div>
-          <div style="font-size:16px;color:var(--muted-fg)">Il figure en haut à droite du courrier envoyé par le bureau. Les majuscules et les minuscules sont équivalentes.</div>
-        </div>
-
-        <div style="display:flex;gap:34px;flex-wrap:wrap">
-          <div>
-            <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px">En cours de saisie</div>
-            <div style="display:flex;gap:10px">
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,Menlo,monospace">K</div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,Menlo,monospace">7</div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,Menlo,monospace">B</div>
-              <div style="width:56px;height:64px;border:2px solid var(--primary);border-radius:8px;outline:2px solid var(--ring);outline-offset:2px;display:flex;align-items:center;justify-content:center"><span style="width:2px;height:30px;background:var(--fg)"></span></div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px"></div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px"></div>
-            </div>
-          </div>
-          <div>
-            <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px">Complet · vérification</div>
-            <div style="display:flex;gap:10px;align-items:center">
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;background:var(--muted);display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace;color:var(--muted-fg)">K</div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;background:var(--muted);display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace;color:var(--muted-fg)">7</div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;background:var(--muted);display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace;color:var(--muted-fg)">B</div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;background:var(--muted);display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace;color:var(--muted-fg)">2</div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;background:var(--muted);display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace;color:var(--muted-fg)">R</div>
-              <div style="width:56px;height:64px;border:1px solid var(--input);border-radius:8px;background:var(--muted);display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace;color:var(--muted-fg)">9</div>
-              <span style="font-size:17px;color:var(--muted-fg);margin-left:6px">Vérification…</span>
-            </div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:34px;flex-wrap:wrap">
-          <div>
-            <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px">Erreur · 1er et 2e essai</div>
-            <div style="display:flex;gap:10px;margin-bottom:10px">
-              <div style="width:56px;height:64px;border:2px solid var(--destructive);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace">K</div>
-              <div style="width:56px;height:64px;border:2px solid var(--destructive);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace">7</div>
-              <div style="width:56px;height:64px;border:2px solid var(--destructive);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace">B</div>
-              <div style="width:56px;height:64px;border:2px solid var(--destructive);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace">2</div>
-              <div style="width:56px;height:64px;border:2px solid var(--destructive);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace">R</div>
-              <div style="width:56px;height:64px;border:2px solid var(--destructive);border-radius:8px;display:flex;align-items:center;justify-content:center;font:600 28px/1 ui-monospace,monospace">9</div>
-            </div>
-            <div style="border:1px solid oklch(0.86 0.10 27);background:oklch(0.96 0.03 27);border-radius:8px;padding:14px 16px;font-size:17px;line-height:1.5;color:oklch(0.36 0.13 27);max-width:420px"><strong>Ce code ne correspond à aucun compte.</strong> Vérifiez le courrier : le chiffre 0 et la lettre O ne sont jamais utilisés.</div>
-          </div>
-          <div>
-            <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px">3e essai · secours humain</div>
-            <div style="border:1px solid var(--border);background:var(--muted);border-radius:8px;padding:18px 20px;max-width:420px;font-size:17px;line-height:1.55">
-              <strong style="display:block;margin-bottom:6px">Besoin d’aide pour vous connecter ?</strong>
-              Le bureau peut réactiver votre compte et vous renvoyer un courrier.
-              <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-                <span style="font:600 16px/1 'Public Sans',sans-serif;background:var(--primary);color:#fff;border-radius:8px;padding:15px 18px">Demander un nouveau code</span>
-                <span style="font:500 16px/1 'Public Sans',sans-serif;border:1px solid var(--input);border-radius:8px;padding:15px 18px">04 00 00 00 00</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px">Succès · puis choix du mot de passe</div>
-          <div style="border:1px solid oklch(0.86 0.06 150);background:oklch(0.96 0.04 150);border-radius:8px;padding:16px 18px;font-size:17px;line-height:1.5;color:oklch(0.32 0.07 150);max-width:560px"><strong>Code reconnu — bonjour Colette Andrieu.</strong> Choisissez maintenant un mot de passe pour vos prochaines visites.</div>
-        </div>
-
-        <div>
-          <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:12px">Mobile · 402 px — les cases rétrécissent à 48 px, jamais moins</div>
-          <div style="width:402px;border:1px solid var(--border);border-radius:12px;padding:20px 18px;background:#fff;flex:none">
-            <label style="display:block;font-size:16px;font-weight:500;margin-bottom:8px">Code d’activation</label>
-            <div style="display:flex;gap:6px">
-              <div style="flex:1;height:60px;border:1px solid var(--input);border-radius:8px;outline:2px solid var(--ring);outline-offset:2px"></div>
-              <div style="flex:1;height:60px;border:1px solid var(--input);border-radius:8px"></div>
-              <div style="flex:1;height:60px;border:1px solid var(--input);border-radius:8px"></div>
-              <div style="flex:1;height:60px;border:1px solid var(--input);border-radius:8px"></div>
-              <div style="flex:1;height:60px;border:1px solid var(--input);border-radius:8px"></div>
-              <div style="flex:1;height:60px;border:1px solid var(--input);border-radius:8px"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;border-top:1px solid var(--border);padding-top:22px">
-        <div>
-          <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:10px">API</div>
-          <div style="font:400 14px/1.75 ui-monospace,Menlo,monospace;color:oklch(0.30 0.015 250)">length = 6<br>value / onChange(v: string)<br>onComplete(v: string)<br>state: "idle" | "checking" | "error" | "success"<br>disabled · autoFocus = true<br>label · description · errorMessage<br>alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"</div>
-        </div>
-        <div>
-          <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:10px">Comportement</div>
-          <ul style="margin:0;padding-left:18px;font-size:16px;line-height:1.6">
-            <li>Une seule case reçoit le focus ; la frappe avance, <code>Backspace</code> recule.</li>
-            <li>Collage d’un code complet réparti sur les six cases ; espaces et tirets ignorés.</li>
-            <li>Minuscules converties en majuscules à la volée.</li>
-            <li>0/O et 1/I/l exclus de l’alphabet <em>et</em> tolérés en saisie (mappés).</li>
-            <li>Vérification déclenchée à la 6e case, sans bouton.</li>
-            <li>Erreur : les cases restent remplies et sélectionnées — jamais de vidage silencieux.</li>
-          </ul>
-        </div>
-        <div>
-          <div style="font:600 12px/1 ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-fg);margin-bottom:10px">Accessibilité &amp; tokens</div>
-          <ul style="margin:0;padding-left:18px;font-size:16px;line-height:1.6">
-            <li>Un seul <code>&lt;input&gt;</code> réel, <code>inputMode="text"</code>, <code>autoComplete="one-time-code"</code> ; les cases sont décoratives.</li>
-            <li><code>aria-describedby</code> sur la description, message d’erreur en <code>role="alert"</code>.</li>
-            <li>Cases <code>rounded-md</code>, bordure <code>input</code> → <code>primary</code> au focus, <code>destructive</code> en erreur.</li>
-            <li>Pas d’animation de secousse (public âgé, préférence réduite).</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:30px 32px;display:flex;flex-direction:column;gap:26px">
-      <div>
-        <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-          <h3 style="font-family:'Source Serif 4',serif;font-size:24px;font-weight:600;margin:0">18.2 — <code style="font-size:20px">&lt;PreviewBar /&gt;</code></h3>
+          <h3 style="font-family:'Source Serif 4',serif;font-size:24px;font-weight:600;margin:0">18.1 — <code style="font-size:20px">&lt;PreviewBar /&gt;</code></h3>
           <span style="font:600 12px/1 ui-monospace,monospace;background:var(--destructive);color:#fff;border-radius:4px;padding:5px 7px">P0</span>
           <span style="font-size:16px;color:var(--muted-fg)">barre d’aperçu persistante · <code>components/ui/preview-bar.tsx</code></span>
         </div>
@@ -1748,7 +1630,7 @@ const mono = JetBrains_Mono(&#123;
     <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:30px 32px;display:flex;flex-direction:column;gap:26px">
       <div>
         <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-          <h3 style="font-family:'Source Serif 4',serif;font-size:24px;font-weight:600;margin:0">18.3 — <code style="font-size:20px">&lt;MeterInput /&gt;</code></h3>
+          <h3 style="font-family:'Source Serif 4',serif;font-size:24px;font-weight:600;margin:0">18.2 — <code style="font-size:20px">&lt;MeterInput /&gt;</code></h3>
           <span style="font:600 12px/1 ui-monospace,monospace;background:oklch(0.55 0.13 70);color:#fff;border-radius:4px;padding:5px 7px">P1</span>
           <span style="font-size:16px;color:var(--muted-fg)">relevé de compteur chiffré · <code>components/ui/meter-input.tsx</code></span>
         </div>
@@ -1858,7 +1740,7 @@ const mono = JetBrains_Mono(&#123;
       </div>
     </div>
 
-    <p style="margin:0;max-width:880px;font-size:16px;line-height:1.6;color:var(--muted-fg)">Reste à trancher pour être complet côté développement : le format exact du code d’activation imprimé sur les courriers, et si le relevé en série doit fonctionner totalement hors ligne (stockage local + synchronisation) ou seulement tolérer les coupures.</p>
+    <p style="margin:0;max-width:880px;font-size:16px;line-height:1.6;color:var(--muted-fg)">Reste à trancher pour être complet côté développement : si le relevé en série doit fonctionner totalement hors ligne (stockage local + synchronisation) ou seulement tolérer les coupures.</p>
   </section>
 
 </div>
