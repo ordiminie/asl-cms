@@ -249,7 +249,7 @@ Cimetière : pas une base par tenant, base partagée + RLS.
 
 ### Complexity
 
-2
+3
 
 ### Acceptance criteria
 
@@ -258,6 +258,11 @@ Cimetière : pas une base par tenant, base partagée + RLS.
 - [ ] Un paramètre jamais renseigné se lit à sa valeur par défaut déclarée au registre ; le renseigner puis le vider le ramène à cette même valeur par défaut.
 - [ ] Le seed d'un tenant charge les valeurs déclarées dans son jeu de paramètres : après exécution, chaque clé déclarée se lit à sa valeur déclarée — vérifié sur un tenant de test, sans dépendre des données d'un client.
 - [ ] Un utilisateur authentifié sans rôle administrateur qui accède à la page de réglages reçoit un refus, côté interface et côté serveur.
+- [ ] L'administrateur téléverse le **logo** de son association ; il s'affiche sur le site public et dans le back-office, et le remplacer met à jour les deux sans redéploiement.
+- [ ] L'administrateur choisit la **teinte d'accent** de son association **dans la liste des six teintes validées**, jamais au sélecteur libre ; la couleur retenue s'applique au site public après rechargement.
+- [ ] Deux associations aux réglages différents servent bien deux logos et deux teintes distincts — vérifié sur les deux domaines (test d'isolation visuelle).
+- [ ] Une association qui n'a rien choisi reste lisible : logo absent remplacé par le nom de l'association, teinte par défaut appliquée. Aucun écran cassé faute de personnalisation.
+- [ ] Le **favicon** servi dépend de l'association appelée, et non d'un fichier unique du dépôt.
 
 ### Dependencies
 
@@ -285,6 +290,25 @@ Le boilerplate a `src/db/models/app-settings-model.ts` — vérifier s'il est gl
 organisation avant d'en créer un nouveau. Prévoir un registre typé des clés (nom, type, défaut,
 description) plutôt qu'un `Record<string, string>` libre : c'est ce registre qui rend la page de BO
 générique et la review vérifiable.
+
+**L'identité visuelle d'une association tient en deux variables, et pas une de plus** : un logo et
+une teinte. Le design system est catégorique (§1.2) : `--accent-hue` est la **seule** variable de
+tenant, lightness et chroma restent figés, et le bureau choisit **dans une liste de six teintes
+validées** (195 eau, 150 pins, 255 lac, 40 tuile, 300 bruyère, 95 genêt) — jamais au sélecteur libre,
+pour qu'aucun bureau ne puisse produire un site illisible. Ne pas ouvrir un `<input type="color">`.
+
+⚠️ **Le logo n'est pas un paramètre comme les autres** : c'est un fichier, pas une valeur de
+`organization_setting`. Il passe par le stockage disque du VPS (ADR 004), pas par la table de
+réglages. La teinte, elle, est bien un paramètre.
+
+⚠️ **L'injection de la teinte est un point ouvert du design system** (§1.2). La livraison propose
+`attr()` typé en CSS, dont le support est inégal — **à vérifier avant de s'en remettre à elle**. Le
+repli sûr est un style en ligne posé par le serveur sur `<html>` à partir du tenant résolu (ADR 003) :
+`style={{'--accent-hue': hue}}`. Les tokens sont déjà en place dans `src/app/globals.css`.
+
+Le favicon suit le même chemin que le logo : servi par tenant, résolu depuis le domaine appelé. C'est
+ce qui rend vrai « une deuxième association est provisionnée sans écrire une ligne de code » — six
+sites partageant le favicon du boilerplate se voient à la première visite.
 
 ---
 
@@ -2240,7 +2264,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | --- | ------------------------- | --- | -------------------------------------------------------------------------------------------------------------------------------- | ---- |
 | s00 | application-design-system | 3   | —                                                                                                                                | A    |
 | s01 | provisionner-association  | 4   | —                                                                                                                                | A    |
-| s02 | parametres-association    | 2   | s01                                                                                                                              | A    |
+| s02 | parametres-association    | 3   | s01                                                                                                                              | A    |
 | s03 | connexion-lien-magique    | 3   | s01                                                                                                                              | A    |
 | s04 | pages-cms                 | 3   | s01, s03                                                                                                                         | A    |
 | s05 | actualites                | 2   | s04                                                                                                                              | A    |
@@ -2282,7 +2306,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s41 | simulation-role           | 2   | s01, s03, s24, s37                                                                                                               | F    |
 | s42 | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                                     | F    |
 
-**43 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, sept à 4.
+**43 stories, aucune à 5.** Répartition : trois à 1, dix-sept à 2, seize à 3, sept à 4.
 s00 (application du design system) a été ajoutée **après** `/ks-stories-review` : le verdict de
 `docs/reviews/stories.md` porte sur les 42 autres et ne la couvre pas.
 Les sept stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s26
