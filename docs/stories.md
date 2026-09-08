@@ -79,6 +79,63 @@ contournent sont ordonnées avant.
 
 # Bloc A — Fondations et site public (sept-oct 2026)
 
+## Story s00-application-design-system — Habiller le produit aux couleurs d'ASL-CMS
+
+**En tant que** membre du bureau **je veux** un produit qui ait l'apparence et les codes d'ASL-CMS
+**afin de** ne pas devoir déchiffrer une interface générique conçue pour un autre métier.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] `src/app/globals.css` ne porte que les tokens de `docs/design-system.md` §1.1 : aucune valeur du thème `stone` du boilerplate ne subsiste, et `--accent-hue` est la seule variable dont dépend la couleur d'une association.
+- [ ] Le produit ne rend qu'en thème clair : aucune classe `.dark` n'est posée sur le document, aucune classe `dark:` ne subsiste dans les composants, et les bascules de thème ont disparu de l'interface.
+- [ ] Les trois familles du §1.3 sont chargées par `next/font` et exposées en `--font-sans`, `--font-serif` et `--font-mono` ; aucun `var()` de police ne pointe vers une variable non définie.
+- [ ] Les conventions d'usage du §2.1 sont vérifiables à l'écran sur au moins un exemple de chaque famille : bouton `default` à 48 px, champ de formulaire à 48 px (56 sous 640 px), ligne de tableau à 56 px, texte courant à 17-18 px.
+- [ ] Les cibles et contrastes du §1.5 sont respectés sur les écrans repris, contour de champ compris (3:1, WCAG 1.4.11).
+- [ ] Un manque du design system rencontré pendant la reprise est **consigné comme gap** dans `docs/design-system.md`, jamais comblé par une valeur inventée ; la liste des gaps ouverts est à jour en fin de story.
+
+### Dependencies
+
+Aucune. Préalable à toutes les stories porteuses d'écran : chacune compose ensuite avec un socle
+déjà habillé, au lieu de reprendre l'apparence écran par écran.
+
+### Agentic notes
+
+Réf. `docs/design-system.md` (le §1.1 s'intitule « feuille à copier dans `src/app/globals.css` »),
+`docs/designs/design-system.dc.html` pour le rendu, et l'ADR 001 qui fait du back-office le risque
+produit n°1.
+
+**Le design system a été écrit contre l'inventaire exact du dépôt.** Ses « 37 du socle » sont les 37
+fichiers de `src/components/ui/` ; 36 y sont nommés avec leurs conventions, le seul non couvert est
+`vapour-text-effect`, une fioriture décorative du boilerplate. Cette story **applique des conventions
+à des composants existants, elle n'en crée aucun**.
+
+⚠️ **Les six composants du §2.2 ne sont pas construits ici.** Le design system l'écrit : « Chaque état
+correspond à une story ». `<AlertBanner />` appartient à s07, `<MeterInput />` à s17/s18,
+`<ImpersonationBar />` à s41, et `<PreviewBar />`, `<SortableList />`, `<BlockPicker />` à s04. Les
+sortir ici serait anticiper leurs stories et livrer des états intestables au moment de la livraison.
+
+**Ne pas toucher au thème sombre à moitié.** Retirer le bloc `.dark` de `globals.css` sans neutraliser
+`next-themes` laisse 157 classes `dark:`, réparties dans 34 composants, s'appliquer par-dessus des
+tokens clairs dès que le système de l'utilisateur est en sombre — un rendu mixte, pire que l'état de
+départ. Le drapeau `forcedTheme` du fournisseur et le nettoyage des classes vont ensemble.
+
+**Piège des polices** : la feuille du §1.1 fait pointer `--font-sans` vers `--font-public-sans`, or
+aucune police n'est chargée dans le dépôt (`next/font` en est absent). Copier ces lignes avant de
+charger les polices rend les déclarations `font-family` invalides, sans erreur visible.
+
+`pnpm dev` ne recharge pas à chaud dans le conteneur de développement : le dépôt est un montage 9p
+depuis un disque Windows et les événements de fichiers ne traversent pas. Prévoir un redémarrage du
+serveur à chaque vérification visuelle, ou déplacer le dépôt sur le système de fichiers Linux.
+
+Cimetière : pas de refonte des écrans eux-mêmes. Cette story habille le socle ; la composition de
+chaque écran appartient à sa story et à son `/ks-design`.
+
+---
+
 ## Story s01-provisionner-association — Provisionner une association
 
 **En tant que** SuperAdmin Zourite Studio **je veux** créer une association et activer ses modules
@@ -2139,6 +2196,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 
 | Id  | Story                     | Cx  | Dépend de                                                                                                                        | Bloc |
 | --- | ------------------------- | --- | -------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| s00 | application-design-system | 3   | —                                                                                                                                | A    |
 | s01 | provisionner-association  | 4   | —                                                                                                                                | A    |
 | s02 | parametres-association    | 2   | s01                                                                                                                              | A    |
 | s03 | connexion-lien-magique    | 3   | s01                                                                                                                              | A    |
@@ -2182,7 +2240,9 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s41 | simulation-role           | 2   | s01, s03, s24, s37                                                                                                               | F    |
 | s42 | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                                     | F    |
 
-**42 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quatorze à 3, sept à 4.
+**43 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, sept à 4.
+s00 (application du design system) a été ajoutée **après** `/ks-stories-review` : le verdict de
+`docs/reviews/stories.md` porte sur les 42 autres et ne la couvre pas.
 Les sept stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s26
 (planification, budget transverse et file de report), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
