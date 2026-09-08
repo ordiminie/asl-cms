@@ -371,14 +371,15 @@ Les quatre rôles sont ici **fixes** ; les rendre configurables en back-office e
 
 ---
 
-## Story s04-pages-cms — Publier une page du site
+## Story s04-pages-cms — Publier une page du site et la rendre atteignable
 
-**En tant que** membre du bureau **je veux** créer, modifier, publier et dépublier une page
-**afin de** faire vivre le site sans intervention du prestataire.
+**En tant que** membre du bureau **je veux** créer, modifier, publier et dépublier une page, et
+décider où elle apparaît dans la navigation **afin de** faire vivre le site sans intervention du
+prestataire.
 
 ### Complexity
 
-3
+4
 
 ### Acceptance criteria
 
@@ -391,10 +392,14 @@ Les quatre rôles sont ici **fixes** ; les rendre configurables en back-office e
 - [ ] Une page est une **liste ordonnée de blocs typés**, pas un champ de texte unique : le bureau insère un bloc à un rang précis, en change l'ordre, et le rendu public respecte cet ordre après rechargement.
 - [ ] Le réordonnancement est atteignable **sans glisser-déposer** — au clavier seul, l'ordre obtenu est le même qu'à la souris.
 - [ ] Un type de bloc inconnu dans une page enregistrée ne casse pas le rendu : la page s'affiche, le bloc est ignoré et signalé au bureau.
+- [ ] Le bureau compose le **menu du site public** : ajouter une entrée pointant vers une page, la retirer, en changer l'ordre. Le menu rendu au visiteur reflète cet ordre.
+- [ ] Une page publiée mais absente du menu reste atteignable par son URL ; une entrée de menu pointant vers une page dépubliée ou supprimée **ne s'affiche pas** au visiteur, sans casser le rendu du menu.
+- [ ] Le bureau modifie le contenu du **pied de page** ; la modification est visible sur toutes les pages publiques.
+- [ ] Le menu et le pied de page sont **scopés au tenant** : deux associations servent deux navigations distinctes sur leurs domaines respectifs.
 
 ### Dependencies
 
-s01, s03
+s01, s02, s03
 
 ### Agentic notes
 
@@ -430,7 +435,19 @@ contre `src/services/file-service.ts` tel quel sans avoir vérifié ce point.
 
 Piège cache : le rendu public est caché (`'use cache'` + `cacheTag`), la publication doit invalider
 avec `updateTag` — le bureau doit voir son changement immédiatement, pas au bout d'un délai de
-revalidation.
+revalidation. **Le menu est caché lui aussi**, et il est rendu sur _toutes_ les pages publiques :
+son `cacheTag` doit être invalidé à chaque changement de menu **et** à chaque
+publication/dépublication de page, sinon une entrée pointe vers une page disparue.
+
+**La navigation est livrée ici et nulle part ailleurs.** Sans elle, une page publiée n'est
+atteignable qu'en tapant son URL, et le critère de succès du PRD « le bureau crée, modifie et publie
+une page sans intervention du prestataire » n'est pas tenu. s34 s'appuie déjà dessus : « désactivé,
+la page n'existe pas et aucune navigation n'y renvoie ». Défaut relevé en revue du découpage (F-06).
+
+Périmètre de la navigation, à ne pas élargir : **une seule profondeur de menu**, pas de sous-menus
+déroulants — le public visé est âgé et peu à l'aise avec l'informatique, et un menu à plusieurs
+niveaux est précisément ce qu'il ne faut pas lui demander de manipuler. L'en-tête porte le logo et la
+teinte de l'association, tous deux fournis par s02 : ne pas les recoder ici.
 
 ---
 
@@ -2266,7 +2283,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s01 | provisionner-association  | 4   | —                                                                                                                                | A    |
 | s02 | parametres-association    | 3   | s01                                                                                                                              | A    |
 | s03 | connexion-lien-magique    | 3   | s01                                                                                                                              | A    |
-| s04 | pages-cms                 | 3   | s01, s03                                                                                                                         | A    |
+| s04 | pages-cms                 | 4   | s01, s02, s03                                                                                                                    | A    |
 | s05 | actualites                | 2   | s04                                                                                                                              | A    |
 | s06 | presentation-bureau       | 2   | s04                                                                                                                              | A    |
 | s07 | bandeau-alerte            | 1   | s01, s03                                                                                                                         | A    |
@@ -2306,10 +2323,12 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s41 | simulation-role           | 2   | s01, s03, s24, s37                                                                                                               | F    |
 | s42 | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                                     | F    |
 
-**43 stories, aucune à 5.** Répartition : trois à 1, dix-sept à 2, seize à 3, sept à 4.
+**43 stories, aucune à 5.** Répartition : trois à 1, dix-sept à 2, quinze à 3, huit à 4.
 s00 (application du design system) a été ajoutée **après** `/ks-stories-review` : le verdict de
 `docs/reviews/stories.md` porte sur les 42 autres et ne la couvre pas.
-Les sept stories à 4 — s01 (isolation multi-tenant), s12 (modèle membre↔parcelle daté), s26
+Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
+blocs typés, réordonnancement accessible et navigation du site), s12 (modèle membre↔parcelle
+daté), s26
 (planification, budget transverse et file de report), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
 s38 (moteur d'export et son archive) — portent chacune leur risque
