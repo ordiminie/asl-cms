@@ -364,6 +364,9 @@ Les quatre rôles sont ici **fixes** ; les rendre configurables en back-office e
 - [ ] L'insertion d'une image dans une page l'enregistre dans le stockage de fichiers et l'affiche dans le rendu public.
 - [ ] Un slug déjà utilisé dans la même association est refusé avec un message de champ ; deux associations peuvent avoir le même slug.
 - [ ] Un membre non-bureau ne peut ni créer ni modifier de page.
+- [ ] Une page est une **liste ordonnée de blocs typés**, pas un champ de texte unique : le bureau insère un bloc à un rang précis, en change l'ordre, et le rendu public respecte cet ordre après rechargement.
+- [ ] Le réordonnancement est atteignable **sans glisser-déposer** — au clavier seul, l'ordre obtenu est le même qu'à la souris.
+- [ ] Un type de bloc inconnu dans une page enregistrée ne casse pas le rendu : la page s'affiche, le bloc est ignoré et signalé au bureau.
 
 ### Dependencies
 
@@ -382,8 +385,20 @@ et modèle dédié ; les pages CMS et les actualités (s05) doivent rester deux 
 `type` fourre-tout.
 
 Éditeur de texte riche : brique tierce assumée (`CDCT §1.1`), pas de développement maison.
-Référence d'ergonomie visée : éditeur de pages type WordPress/Payload — c'est l'exigence qui a
+Référence d'ergonomie visée : éditeur de pages type WordPress — c'est l'exigence qui a
 justifié d'écarter WordPress, elle se paie en `/ks-design`.
+
+**Une page est une liste ordonnée de blocs typés, pas un champ markdown** (ADR 007) : Milkdown pour
+le texte riche, @dnd-kit pour l'ordre, tous deux déjà dans les dépendances. Le rendu public des cinq
+blocs est décrit au §4 du design system. C'est cette story qui livre `<SortableList />` et
+`<BlockPicker />` (design system §2.2, §2.4, §2.5) ; `<PreviewBar />` sert le critère d'aperçu du
+brouillon. Ne pas laisser proliférer les types de blocs : un besoin non couvert est un « design
+system gap » à remonter, jamais à combler en freestyle.
+
+⚠️ **Le glisser-déposer n'est pas le chemin obligatoire** (§2.4). Le public visé est âgé et peu à
+l'aise avec l'informatique, et un réordonnancement uniquement à la souris exclut le clavier comme
+l'écran tactile imprécis. Prévoir des commandes « monter / descendre » explicites, le glisser-déposer
+venant en plus.
 
 Piège stockage : le boilerplate uploade vers **Supabase**, le VPS LWS impose un stockage local
 (contrainte PRD). Passer par l'adaptateur de stockage tranché en `/ks-architect` ; ne pas coder
