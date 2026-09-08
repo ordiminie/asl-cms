@@ -26,6 +26,11 @@ document.
 
 Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fois :
 
+- **Socle habillé** : toute story porteuse d'écran s'exécute **après s00** et compose avec le design
+  system déjà appliqué au socle. Elle ne reprend ni les tokens, ni les polices, ni les conventions
+  d'usage des composants de `src/components/ui/` : ces choix sont faits une fois, en s00. Un écran
+  qui redéfinit une couleur, une taille de cible ou un rayon est un échec de review. La dépendance
+  n'est pas répétée dans la colonne « Dépend de » de chaque story — elle vaut ici, pour toutes.
 - **Multi-tenant** : toute table métier créée après s01 porte `organization_id`, est couverte par une
   policy RLS, et sa story prouve l'isolation par un test d'accès croisé entre deux tenants.
 - **Rien de propre à La Fourche en dur** : adresses de notification, catégories, seuils, activation
@@ -79,10 +84,19 @@ contournent sont ordonnées avant.
 
 # Bloc A — Fondations et site public (sept-oct 2026)
 
-## Story s00-application-design-system — Habiller le produit aux couleurs d'ASL-CMS
+## Story s00-application-design-system — Habiller le socle aux couleurs d'ASL-CMS
 
-**En tant que** membre du bureau **je veux** un produit qui ait l'apparence et les codes d'ASL-CMS
-**afin de** ne pas devoir déchiffrer une interface générique conçue pour un autre métier.
+⚠️ **Story de socle, volontairement hors du tableau de périmètre du PRD.** Elle ne livre aucune
+valeur observable par un utilisateur de l'association : à sa livraison, aucun écran d'ASL-CMS
+n'existe encore, et ce qu'elle rhabille est le boilerplate. C'est une **couche transverse assumée**,
+pas une tranche de produit, et c'est la seule du découpage. La revue du découpage l'avait relevé
+(F-01) ; l'arbitrage est de la garder, en contrepartie d'une **surface énumérée** — sans quoi
+« fini » serait indécidable (F-02).
+
+**En tant qu'**équipe Zourite Studio **je veux** que le socle porte l'identité visuelle d'ASL-CMS
+avant le premier écran **afin que** chaque story porteuse d'écran compose avec un socle déjà habillé,
+au lieu de reprendre l'apparence écran par écran — et que le bureau ne découvre jamais une interface
+à moitié générique.
 
 ### Complexity
 
@@ -90,23 +104,34 @@ contournent sont ordonnées avant.
 
 ### Acceptance criteria
 
-- [ ] `src/app/globals.css` ne porte que les tokens de `docs/design-system.md` §1.1 : aucune valeur du thème `stone` du boilerplate ne subsiste, et `--accent-hue` est la seule variable dont dépend la couleur d'une association.
-- [ ] Le produit ne rend qu'en thème clair : aucune classe `.dark` n'est posée sur le document, aucune classe `dark:` ne subsiste dans les composants, et les bascules de thème ont disparu de l'interface.
-- [ ] Les trois familles du §1.3 sont chargées par `next/font` et exposées en `--font-sans`, `--font-serif` et `--font-mono` ; aucun `var()` de police ne pointe vers une variable non définie.
-- [ ] Les conventions d'usage du §2.1 sont vérifiables à l'écran sur au moins un exemple de chaque famille : bouton `default` à 48 px, champ de formulaire à 48 px (56 sous 640 px), ligne de tableau à 56 px, texte courant à 17-18 px.
-- [ ] Les cibles et contrastes du §1.5 sont respectés sur les écrans repris, contour de champ compris (3:1, WCAG 1.4.11).
-- [ ] Un manque du design system rencontré pendant la reprise est **consigné comme gap** dans `docs/design-system.md`, jamais comblé par une valeur inventée ; la liste des gaps ouverts est à jour en fin de story.
+Chaque critère nomme sa portée : c'est l'énumération de la surface, et rien au-delà n'appartient à
+cette story.
+
+- [ ] **`src/app/globals.css`** ne porte que les tokens de `docs/design-system.md` §1.1 : aucune valeur du thème `stone` du boilerplate ne subsiste, les trois tokens `warning` sont présents, `--radius` vaut `0.5rem` et `--accent-hue` est la seule variable dont dépend la couleur d'une association.
+- [ ] **Le bloc `.dark` a disparu de `globals.css`** et `next-themes` ne pose plus la classe `.dark` sur le document, quel que soit le réglage système du visiteur.
+- [ ] **Les 31 fichiers de `src/` portant des classes `dark:`** n'en portent plus. Les 3 autres — `features/chat/message-content.tsx`, `features/credits/credit-activity-timeline.tsx`, `features/admin/credits/organization-search.tsx` — sont **hors périmètre** : s01 les supprime avec leurs sous-systèmes (ADR 009).
+- [ ] **Les bascules de thème ont disparu de l'interface** : `src/components/theme-toggle.tsx` et ses points d'appel dans `nav-user.tsx` et `nav-user-admin.tsx`. Aucun écran ne propose plus de choisir un thème.
+- [ ] **Les gabarits d'email conservent leur mode sombre** (design system §5.2) : aucune classe ni media query sombre n'est retirée de `src/lib/emails/`. L'abandon ne vaut que pour le web.
+- [ ] **Les trois familles du §1.3 sont chargées par `next/font`** et exposées en `--font-sans`, `--font-serif`, `--font-mono` ; aucun `var()` de police ne pointe vers une variable non définie, et le texte rendu utilise bien ces familles.
+- [ ] **Les conventions d'usage du §2.1 sont appliquées aux composants de `src/components/ui/`** et vérifiables à l'écran : bouton `default` à 48 px, champ de formulaire à 48 px (56 sous 640 px), ligne de tableau à 56 px, texte courant à 17-18 px.
+- [ ] **Les cibles et contrastes du §1.5** sont respectés sur les écrans du socle repris, contour de champ compris (3:1, WCAG 1.4.11).
+- [ ] **`.claude/rules/01-presentation/rule-mdx-rendering.md`** ne demande plus de vérifier « en clair et en sombre » : la règle est mise à jour dans le même commit, et `pnpm check:rules` passe.
+- [ ] **`docs/architecture.md`** ne justifie plus l'opt-out de `docs/[...slug]` par la lecture de `x-theme` : ce motif tombe avec le dual-theme Shiki.
+- [ ] Aucun manque du design system n'est comblé par une valeur inventée : les gaps rencontrés sont **consignés** dans `docs/design-system.md`, et la liste est à jour en fin de story.
 
 ### Dependencies
 
-Aucune. Préalable à toutes les stories porteuses d'écran : chacune compose ensuite avec un socle
-déjà habillé, au lieu de reprendre l'apparence écran par écran.
+Aucune — elle s'exécute en premier, et c'est ce qui donne son sens à son identifiant.
+
+Elle est en revanche **préalable à toute story porteuse d'écran** : la règle est posée une fois pour
+toutes dans « Règles transverses à toutes les stories » plutôt que répétée dans la colonne
+« Dépend de » de trente-cinq stories, qui deviendrait illisible. Défaut relevé en revue (F-03).
 
 ### Agentic notes
 
-Réf. `docs/design-system.md` (le §1.1 s'intitule « feuille à copier dans `src/app/globals.css` »),
-`docs/designs/design-system.dc.html` pour le rendu, et l'ADR 001 qui fait du back-office le risque
-produit n°1.
+Réf. `docs/design-system.md` (le §1.1 s'intitule « feuille à copier dans `src/app/globals.css` », le
+§10 énumère les dettes de socle), `docs/designs/design-system.dc.html` pour le rendu, et l'ADR 001
+qui fait du back-office le risque produit n°1.
 
 **Le design system a été écrit contre l'inventaire exact du dépôt.** Ses « 37 du socle » sont les 37
 fichiers de `src/components/ui/` ; 36 y sont nommés avec leurs conventions, le seul non couvert est
@@ -123,18 +148,32 @@ Ils étaient six : `<MeterInput />` a été retiré du design system (arbitrage 
 et le seul chemin est l'import de s17. Ne pas le réintroduire : ses règles de validation vivent déjà
 dans le critère 2 de s17 (index en régression, doublon, valeur non numérique, parcelle inconnue).
 
-**Ne pas toucher au thème sombre à moitié.** Retirer le bloc `.dark` de `globals.css` sans neutraliser
-`next-themes` laisse 157 classes `dark:`, réparties dans 34 composants, s'appliquer par-dessus des
-tokens clairs dès que le système de l'utilisateur est en sombre — un rendu mixte, pire que l'état de
-départ. Le drapeau `forcedTheme` du fournisseur et le nettoyage des classes vont ensemble.
+**Ne pas toucher au thème sombre à moitié.** Retirer le bloc `.dark` de `globals.css` sans
+neutraliser `next-themes` laisse 157 classes `dark:` s'appliquer par-dessus des tokens clairs dès que
+le système de l'utilisateur est en sombre — un rendu mixte, pire que l'état de départ. Le drapeau
+`forcedTheme` du fournisseur et le nettoyage des classes vont ensemble.
+
+⚠️ **L'exception email est structurante** (§5.2) : le mode sombre disparaît du web, **pas de
+l'email**, certains clients l'imposant. Un nettoyage trop zélé de `src/lib/emails/` casserait le
+rendu des campagnes de s25 chez une partie des destinataires.
 
 **Piège des polices** : la feuille du §1.1 fait pointer `--font-sans` vers `--font-public-sans`, or
 aucune police n'est chargée dans le dépôt (`next/font` en est absent). Copier ces lignes avant de
 charger les polices rend les déclarations `font-family` invalides, sans erreur visible.
 
+**Le recouvrement avec s01 se règle par la portée, pas par l'ordre.** s01 supprime cinq
+sous-systèmes (ADR 009), dont trois fichiers portant des classes `dark:`. Ils sont exclus des
+critères ci-dessus : les reprendre serait rhabiller du code que la story suivante efface. Défaut
+relevé en revue (F-07).
+
 `pnpm dev` ne recharge pas à chaud dans le conteneur de développement : le dépôt est un montage 9p
 depuis un disque Windows et les événements de fichiers ne traversent pas. Prévoir un redémarrage du
 serveur à chaque vérification visuelle, ou déplacer le dépôt sur le système de fichiers Linux.
+
+L'identifiant `s00` déroge à la règle « nos ids commencent à s01 » d'AGENTS.md, et voisine avec les
+`s000-*` / `s001-*` hérités du boilerplate dans `docs/research/`. Choix assumé : renuméroter
+décalerait 42 stories et invaliderait `docs/reviews/stories.md` ainsi que les branches déjà poussées.
+Relevé en revue (F-11).
 
 Cimetière : pas de refonte des écrans eux-mêmes. Cette story habille le socle ; la composition de
 chaque écran appartient à sa story et à son `/ks-design`.
@@ -2324,8 +2363,10 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s42 | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                                     | F    |
 
 **43 stories, aucune à 5.** Répartition : trois à 1, dix-sept à 2, quinze à 3, huit à 4.
-s00 (application du design system) a été ajoutée **après** `/ks-stories-review` : le verdict de
-`docs/reviews/stories.md` porte sur les 42 autres et ne la couvre pas.
+s00 est une **story de socle assumée, hors du tableau de périmètre du PRD** : elle ne livre aucune
+valeur observable par un utilisateur de l'association, et c'est la seule du découpage dans ce cas.
+Sa surface est énumérée dans ses critères, et elle est préalable à toute story porteuse d'écran
+(voir « Règles transverses »).
 Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
 blocs typés, réordonnancement accessible et navigation du site), s12 (modèle membre↔parcelle
 daté), s26
