@@ -113,10 +113,15 @@ fichiers de `src/components/ui/` ; 36 y sont nommés avec leurs conventions, le 
 `vapour-text-effect`, une fioriture décorative du boilerplate. Cette story **applique des conventions
 à des composants existants, elle n'en crée aucun**.
 
-⚠️ **Les six composants du §2.2 ne sont pas construits ici.** Le design system l'écrit : « Chaque état
-correspond à une story ». `<AlertBanner />` appartient à s07, `<MeterInput />` à s17/s18,
-`<ImpersonationBar />` à s41, et `<PreviewBar />`, `<SortableList />`, `<BlockPicker />` à s04. Les
-sortir ici serait anticiper leurs stories et livrer des états intestables au moment de la livraison.
+⚠️ **Les cinq composants du §2.2 ne sont pas construits ici.** Le design system l'écrit : « Chaque
+état correspond à une story ». `<AlertBanner />` appartient à s07, `<ImpersonationBar />` à s41, et
+`<PreviewBar />`, `<SortableList />`, `<BlockPicker />` à s04. Les sortir ici serait anticiper leurs
+stories et livrer des états intestables au moment de la livraison.
+
+Ils étaient six : `<MeterInput />` a été retiré du design system (arbitrage client du 8 septembre
+2026). Il n'y a **pas de saisie manuelle des relevés d'eau** — la saisie est en masse, par tableur,
+et le seul chemin est l'import de s17. Ne pas le réintroduire : ses règles de validation vivent déjà
+dans le critère 2 de s17 (index en régression, doublon, valeur non numérique, parcelle inconnue).
 
 **Ne pas toucher au thème sombre à moitié.** Retirer le bloc `.dark` de `globals.css` sans neutraliser
 `next-themes` laisse 157 classes `dark:`, réparties dans 34 composants, s'appliquer par-dessus des
