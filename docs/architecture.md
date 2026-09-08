@@ -219,7 +219,7 @@ Trois exigences pèsent plus lourd que les autres :
 
 1. **Le back-office est le risque produit n°1.** L'ADR 001 l'a écrit en écartant WordPress : si le bureau
    ne s'approprie pas le BO, la promesse tombe, quel que soit le reste. La référence d'ergonomie visée est
-   celle d'un éditeur de pages type WordPress/Payload. Le critère de recette est sans échappatoire — un
+   celle d'un éditeur de pages type WordPress. Le critère de recette est sans échappatoire — un
    membre du bureau, seul devant l'écran, crée et publie une page, une actualité et une analyse d'eau.
 2. **Le public visé est âgé et peu à l'aise avec l'informatique**, et se connecte rarement, pour une
    raison précise. Cibles larges, contrastes francs, libellés explicites, aucun jargon, aucun parcours
