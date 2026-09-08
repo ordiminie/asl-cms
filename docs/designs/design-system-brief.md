@@ -11,7 +11,7 @@
 
 ## 1. Le produit
 
-**ASL-CMS** (nom commercial provisoire : *Lp*) — plateforme SaaS multi-tenant pour les
+**ASL-CMS** (nom commercial provisoire : _Lp_) — plateforme SaaS multi-tenant pour les
 **associations syndicales libres de terrains de vacances** en France. Un client signé
 (ASL La Fourche, 400 propriétaires), cinq prospects au profil identique. Chaque association
 a **son propre nom de domaine et son propre site**.
@@ -31,13 +31,13 @@ Le produit a **deux faces** :
 
 ## 2. Les gens
 
-| Qui | Combien | Ce qu'il faut retenir |
-| --- | --- | --- |
-| **Visiteur** | — | Futur acquéreur, riverain, curieux. Aucun compte. Cherche une information précise. |
+| Qui                     | Combien     | Ce qu'il faut retenir                                                                                                                                                                                                                    |
+| ----------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Visiteur**            | —           | Futur acquéreur, riverain, curieux. Aucun compte. Cherche une information précise.                                                                                                                                                       |
 | **Membre propriétaire** | jusqu'à 400 | **Souvent âgé, peu à l'aise avec l'informatique.** Présent une partie de l'année seulement. Se connecte **rarement**, pour une raison précise : sa facture, sa consommation, un document. Environ un quart n'a **aucune adresse email**. |
-| **Bureau** | 3 à 8 | Bénévoles élus, **non techniciens**, qui changent tous les quelques années. Ce sont eux qui font vivre le site. **Leur temps est la ressource la plus rare du projet.** |
-| **Présidente** | 1 | Membre du bureau avec quelques actions réservées. |
-| **SuperAdmin** | interne | Support et débogage. Non exposé aux associations, ergonomie non prioritaire. |
+| **Bureau**              | 3 à 8       | Bénévoles élus, **non techniciens**, qui changent tous les quelques années. Ce sont eux qui font vivre le site. **Leur temps est la ressource la plus rare du projet.**                                                                  |
+| **Présidente**          | 1           | Membre du bureau avec quelques actions réservées.                                                                                                                                                                                        |
+| **SuperAdmin**          | interne     | Support et débogage. Non exposé aux associations, ergonomie non prioritaire.                                                                                                                                                             |
 
 ## 3. Ce que le design doit rendre vrai
 
@@ -46,9 +46,9 @@ Quatre exigences, par ordre d'importance. Les deux premières sont contractuelle
 1. **Le bureau publie sans le prestataire.** Critère de recette, mesuré en conditions réelles :
    un membre du bureau, **seul devant l'écran**, crée et publie une page, une actualité et une
    analyse d'eau. S'il n'y arrive pas, le produit a échoué, quel que soit le reste.
-   La référence d'ergonomie visée est celle d'un éditeur de pages type **WordPress / Payload**.
+   La référence d'ergonomie visée est celle d'un éditeur de pages type **WordPress**.
 2. **Un membre accède à ses données, et à rien qui appartienne à un autre.** Ce qui est
-   personnel doit se *voir* comme personnel.
+   personnel doit se _voir_ comme personnel.
 3. **La lisibilité prime sur l'élégance.** Public âgé : contrastes francs, corps de texte
    généreux, cibles cliquables larges, libellés explicites, aucun jargon. Pas d'interaction au
    survol seul, pas d'information portée par la seule couleur.
@@ -70,12 +70,12 @@ sans que cela vire au décoratif.
 ## 5. Contraintes techniques — le format de sortie
 
 Le produit est bâti sur **Tailwind CSS 4** et **shadcn/ui (style `new-york`)**, avec des
-variables CSS en **OKLCH** et un mode clair et sombre. La sortie doit s'exprimer **dans ce
+variables CSS en **OKLCH** et un mode clair uniquement (pas sombre). La sortie doit s'exprimer **dans ce
 vocabulaire**, sinon elle n'est pas implémentable.
 
 ### Tokens de couleur — noms imposés
 
-Ne pas inventer de nouveaux noms. Fournir une valeur pour chacun, **en clair et en sombre** :
+Ne pas inventer de nouveaux noms. Fournir une valeur pour chacun, **en clair** :
 
 ```
 background / foreground        card / card-foreground
@@ -111,7 +111,7 @@ de token à corriger, pas à reprendre.
 ### Composants disponibles
 
 Le système doit **composer avec ces 37 composants**, déjà présents. Un besoin qu'ils ne
-couvrent pas est un *manque à signaler*, pas un composant à inventer.
+couvrent pas est un _manque à signaler_, pas un composant à inventer.
 
 `alert` `alert-dialog` `avatar` `badge` `breadcrumb` `button` `card` `chart` `checkbox`
 `code-block` `collapsible` `command` `dialog` `dropdown-menu` `file-upload` `form` `input`
@@ -130,6 +130,8 @@ dans le design.
 d'accent**, et rien d'autre. Le reste de la palette est commun. C'est ce qui permet à chaque
 site de paraître « le sien » sans qu'aucun bureau bénévole ne puisse produire un site illisible.
 
+> > ok c'est confirmé
+
 **Conséquence pour la conception** : la couleur d'accent est une **variable**. Le système doit
 rester lisible et cohérent quelle que soit sa teinte, et ne jamais dépendre d'elle pour porter
 une information. Fournir la palette avec une couleur d'accent de référence, et indiquer les
@@ -137,7 +139,7 @@ règles d'usage qui la rendent interchangeable.
 
 ## 7. Écrans à concevoir, par ordre de priorité
 
-1. **Back-office — éditeur de page en blocs.** *Le plus important.* Une page est une liste
+1. **Back-office — éditeur de page en blocs.** _Le plus important._ Une page est une liste
    ordonnée de blocs typés (texte riche, image + légende, document PDF, galerie, encart),
    réordonnables par glisser-déposer, avec aperçu avant publication et cycle
    brouillon → publié → dépublié. C'est l'écran dont dépend le critère de recette.
@@ -158,6 +160,8 @@ deux jeux de tokens, et le rendu de documentation lit le thème actif.
 
 Si le mode sombre est abandonné, le dire — cela réduit de moitié la vérification visuelle de
 42 stories, pour un public qui ne le réclame pas.
+
+> > oui on abandonne le thème sombre, ce type de public ne l'utilise jamais.
 
 ## 9. Ce que j'attends en retour
 
