@@ -32,10 +32,8 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   habillé : elle ne reprend ni les tokens, ni les polices, ni les conventions d'usage des composants
   de `src/components/ui/`. Un écran qui redéfinit une couleur, une taille de cible ou un rayon est un
   échec de review. Ce n'est pas une dépendance de story, donc rien n'apparaît dans la colonne
-  « Dépend de » — c'est l'état du dépôt au moment où s01 démarre. **Le `/ks-research` de s01 vérifie
-  cet état d'entrée avant toute autre chose** : `grep -rl 'dark:' src/` et `grep -rl 'next-themes' src/`
-  ne doivent rien retourner. Un socle habillé à moitié est pire que pas habillé du tout — 125 classes
-  `dark:` par-dessus des tokens clairs — et rien d'autre dans le découpage ne l'attraperait.
+  « Dépend de » — c'est l'état du dépôt au moment où s01 démarre, et c'est le `/ks-research` de s01
+  qui le vérifie (voir ses notes).
 - **Multi-tenant** : toute table métier créée après s01 porte `organization_id`, est couverte par une
   policy RLS, et sa story prouve l'isolation par un test d'accès croisé entre deux tenants.
 - **Rien de propre à La Fourche en dur** : adresses de notification, catégories, seuils, activation
@@ -121,6 +119,14 @@ Réf. `CDCT §1`, `PRD` (Multi-tenant, complexité 4) et `docs/decisions/001-bas
 Le boilerplate fournit déjà `src/db/models/organization-model.ts` et `src/services/organization-service.ts` :
 **partir de l'existant, ne pas créer un second modèle de tenant**. Analyser d'abord avec la skill
 `codebase-analysis`.
+
+**Première story du découpage, elle vérifie l'état d'entrée du socle.** Le `/ks-research` de s01
+commence par là, avant toute autre chose : `grep -rl 'dark:' src/` et `grep -rl 'next-themes' src/` ne
+doivent rien retourner. Le travail de socle est conduit hors pipeline
+(`docs/adaptation-socle-design-system.md`) et un socle habillé à moitié est pire que pas habillé du
+tout — 125 classes `dark:` par-dessus des tokens clairs. Rien d'autre dans le découpage ne
+l'attraperait : la règle transverse « Socle habillé » sanctionne une story qui redéclare des tokens,
+pas un socle jamais fait.
 
 Risque (complexité 4) : le scoping n'est pas rétroactif. Cette story pose la convention (colonne
 `organization_id` + policy RLS + helper de scoping) que **chaque story suivante applique** ; une
@@ -1222,7 +1228,7 @@ tantième.
 
 ### Dependencies
 
-s19
+s02, s19
 
 ### Agentic notes
 
@@ -1820,7 +1826,7 @@ Cimetière : pas de classification automatique des documents par IA.
 - [ ] La présidente saisit les résolutions soumises au vote et les publie ; les membres les consultent.
 - [ ] La présidente publie les résultats et le PV ; ils deviennent consultables par les membres.
 - [ ] Un membre du bureau qui n'est pas la présidente ne peut ni saisir une résolution ni publier de résultat ni de PV (test d'autorisation explicite).
-- [ ] Le module se désactive par tenant : désactivé, ni la page de vote ni les résolutions n'existent, et le reste du site est intact.
+- [ ] Le module se désactive par tenant : désactivé, ni la page de vote ni les résolutions n'existent, **aucun point d'entrée n'y renvoie** depuis l'espace membre, et le reste du site est intact.
 - [ ] Le service de vote est appelé derrière une interface : changer de fournisseur ne demande aucune modification de la présentation (prouvé par un test doublant l'implémentation).
 
 ### Dependencies
@@ -2350,7 +2356,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s17  | import-releves-eau        | 3   | s02, s12                                                                                                                     | B    |
 | s18  | historique-consommation   | 2   | s17                                                                                                                          | B    |
 | s19  | factures-liste            | 3   | s02, s12                                                                                                                     | B    |
-| s20  | factures-pennylane        | 3   | s19                                                                                                                          | B    |
+| s20  | factures-pennylane        | 3   | s02, s19                                                                                                                     | B    |
 | s21  | redirection-paiement      | 1   | s02, s19                                                                                                                     | B    |
 | s22  | signalement-membre        | 2   | s10, s12                                                                                                                     | B    |
 | s23  | questions-bureau          | 2   | s02, s10, s12                                                                                                                | B    |
