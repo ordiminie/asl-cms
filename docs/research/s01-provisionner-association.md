@@ -4,6 +4,13 @@
 > Next 16.3.0 / React 19.2.8 / Better Auth 1.7.1 / Drizzle 0.45.2.
 > Aucune ligne de code écrite. Les affirmations ci-dessous ont toutes été ouvertes ou exécutées ;
 > ce qui n'a pas pu l'être est en « Questions ouvertes », pas deviné.
+>
+> **Révision du 2026-09-09.** La branche a été mise à jour depuis `main` (25 commits, dont plusieurs
+> passages de revue du découpage qui ont modifié s01) et un piège a été ajouté — §8, l'état d'entrée
+> du socle, dont la vérification exigée par la story est devenue caduque. **Le reste du document n'a
+> pas été recontrôlé contre le dépôt à cette date** : il vaut pour le 8 septembre, sur un `main` que
+> le travail de socle n'a pas encore touché. Les mesures de code de s01 (RLS, retrait ADR 009,
+> routage) ne sont pas concernées par ce travail, qui n'a porté que sur l'apparence.
 
 ## Story cible
 
@@ -312,6 +319,44 @@ Components. Rappel de la règle : le `Host` se lit **hors** du scope caché et s
 - `pnpm knip` est configuré (`knip.json`) et l'ADR 009 demande de le passer après retrait.
 - `pnpm check:rules` vérifie l'alignement `.claude/rules` ↔ `.cursor/rules` et une liste de
   `STALE_PATTERNS` (`scripts/check-rules.ts`) — à faire tourner après mise à jour des deux règles.
+
+### 8. ⚠️ La vérification d'état d'entrée exigée par la story est caduque
+
+Les notes agentiques de s01 imposent, **avant toute autre chose** :
+
+> `grep -rl 'dark:' src/` et `grep -rl 'next-themes' src/` ne doivent rien retourner.
+
+Mesuré le 9 septembre 2026 : **34 fichiers** portent `dark:`, **8** importent `next-themes`.
+
+Ce n'est **pas** le socle à moitié habillé que la story redoute. C'est une décision renversée :
+[ADR 012](../decisions/012-mode-sombre-conserve.md) acte que **le mode sombre est conservé**. Le
+retrait traversait la base de données (enum `theme_type`, colonne `user.theme`, SQL brut de
+`seed.ts` dont dépend la suite e2e), le proxy, les tests et trois règles, pour rhabiller un socle
+dont aucun écran ASL-CMS n'existe encore. `docs/design-system.md` a été corrigé en conséquence à
+trois endroits.
+
+**Ces deux greps ne doivent donc plus jamais retourner zéro.** Trois textes restent à réécrire, et
+aucun ne l'a été :
+
+- les notes agentiques de s01 dans `docs/stories.md`, qui portent le grep ;
+- la règle transverse « Socle habillé » de `docs/stories.md`, qui annonce encore « retrait du thème
+  sombre » ;
+- `docs/adaptation-socle-design-system.md`, que ces deux textes citent comme cahier des charges et
+  qui décrit un programme abandonné.
+
+Le **fond** de la règle « Socle habillé » reste valide — une story ne redéclare ni token, ni police,
+ni taille de cible. Seul son critère mécanique est faux.
+
+⚠️ **Point de séquencement, à trancher avant `/ks-plan`.** Le travail de socle est livré sur
+`chore/adaptation-socle-design-system`, **non fusionnée dans `main`** à ce jour. Ce que s01 trouvera
+dans l'arbre dépend donc de l'ordre de fusion : sur `main` aujourd'hui, ni les polices, ni les
+nouveaux tokens, ni les mesures des composants ne sont présents. Ce n'est pas une dépendance de
+story au sens du découpage, mais c'en est une en pratique pour toute story porteuse d'écran.
+
+Enfin, un héritage de ce travail concerne s01 sans lui appartenir : les classes `dark:` en dur du
+boilerplate n'ont pas été écrites pour la nouvelle palette. `src/components/ui/file-upload.tsx`
+recode toute sa surface sombre en `neutral-*` et l'ignore. Non corrigées, à trier écran par écran —
+inventaire consigné dans l'ADR 012.
 
 ## Questions ouvertes
 
