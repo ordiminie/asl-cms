@@ -32,7 +32,10 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   habillé : elle ne reprend ni les tokens, ni les polices, ni les conventions d'usage des composants
   de `src/components/ui/`. Un écran qui redéfinit une couleur, une taille de cible ou un rayon est un
   échec de review. Ce n'est pas une dépendance de story, donc rien n'apparaît dans la colonne
-  « Dépend de » — c'est l'état du dépôt au moment où s01 démarre.
+  « Dépend de » — c'est l'état du dépôt au moment où s01 démarre. **Le `/ks-research` de s01 vérifie
+  cet état d'entrée avant toute autre chose** : `grep -rl 'dark:' src/` et `grep -rl 'next-themes' src/`
+  ne doivent rien retourner. Un socle habillé à moitié est pire que pas habillé du tout — 125 classes
+  `dark:` par-dessus des tokens clairs — et rien d'autre dans le découpage ne l'attraperait.
 - **Multi-tenant** : toute table métier créée après s01 porte `organization_id`, est couverte par une
   policy RLS, et sa story prouve l'isolation par un test d'accès croisé entre deux tenants.
 - **Rien de propre à La Fourche en dur** : adresses de notification, catégories, seuils, activation
@@ -121,7 +124,7 @@ Le boilerplate fournit déjà `src/db/models/organization-model.ts` et `src/serv
 
 Risque (complexité 4) : le scoping n'est pas rétroactif. Cette story pose la convention (colonne
 `organization_id` + policy RLS + helper de scoping) que **chaque story suivante applique** ; une
-convention mal posée ici se paie sur 36 stories. Faire trancher la forme exacte en `/ks-architect`
+convention mal posée ici se paie sur 42 stories. Faire trancher la forme exacte en `/ks-architect`
 avant `/ks-plan`.
 
 **Le score reste à 4 après l'ajout du retrait ADR 009, et c'est un choix, pas un oubli** (C-06) :
@@ -257,7 +260,7 @@ réglages. La teinte, elle, est bien un paramètre.
 ⚠️ **L'injection de la teinte est un point ouvert du design system** (§1.2). La livraison propose
 `attr()` typé en CSS, dont le support est inégal — **à vérifier avant de s'en remettre à elle**. Le
 repli sûr est un style en ligne posé par le serveur sur `<html>` à partir du tenant résolu (ADR 003) :
-`style={{'--accent-hue': hue}}`. Les tokens sont déjà en place dans `src/app/globals.css`.
+`style={{'--accent-hue': hue}}`. Les tokens sont en place dans `src/app/globals.css` **à l'issue du travail de socle** (`docs/adaptation-socle-design-system.md`) — ils n'y sont pas dans le dépôt tel quel.
 
 Le favicon suit le même chemin que le logo : servi par tenant, résolu depuis le domaine appelé. C'est
 ce qui rend vrai « une deuxième association est provisionnée sans écrire une ligne de code » — six
@@ -301,7 +304,7 @@ main en doublon du registre. C'est une propriété du diff, pas un comportement 
 **Cette story crée aussi le registre d'actions**, mécanisme minimal par lequel chaque story
 ultérieure déclare ce qu'elle rend autorisable (voir les règles transverses). Le registre est ici une
 simple déclaration avec rôles par défaut, sans écran ; s37 le transforme en matrice configurable par
-tenant. Le poser dès maintenant est ce qui évite à s37 d'avoir à instrumenter les trente-trois
+tenant. Le poser dès maintenant est ce qui évite à s37 d'avoir à instrumenter les trente-quatre
 stories intermédiaires après coup — défaut relevé en revue du découpage.
 
 **Pour le reste, cette story ne livre que l'authentification et les rôles.** Le flux d'invitation, troisième chose
@@ -1161,7 +1164,7 @@ cachée prenant un `memberId` en argument : un appelant pourrait demander les do
 
 ### Dependencies
 
-s12
+s02, s12
 
 ### Agentic notes
 
@@ -1918,7 +1921,7 @@ Données de seed disponibles : la liste des chemins et portails de La Fourche fi
 - [ ] Une annonce acceptée apparaît sur la page des annonces, triée par catégorie puis par date, visible des seuls membres connectés.
 - [ ] Les catégories sont administrables par le bureau, dans la limite de 10 ; les cinq catégories de départ sont fournies en seed.
 - [ ] Une annonce reste en ligne jusqu'à suppression manuelle par son auteur ou par le bureau — aucune expiration automatique.
-- [ ] Le module se désactive par tenant : désactivé, ni la page ni le formulaire de soumission n'existent.
+- [ ] Le module se désactive par tenant : désactivé, ni la page ni le formulaire de soumission n'existent, et **aucun point d'entrée n'y renvoie** dans l'espace membre — pas un lien grisé, pas une entrée vide.
 
 ### Dependencies
 
@@ -2287,12 +2290,12 @@ une lecture sous une autre identité.
 
 ### Dependencies
 
-s03, s13, s15, s25, s26, s28
+s03, s13, s15, s25, s26, s27, s28
 
 ### Agentic notes
 
 Réf. `PRD` (ligne « Connexion par lien magique » : « flux d'invitation […] à éprouver auprès d'un
-public âgé »), `V5 §2, §3.3`. Story créée en revue du découpage : les 37 stories précédentes
+public âgé »), `V5 §2, §3.3`. Story créée en revue du découpage : les 42 stories précédentes
 livraient un service que **personne n'aurait su utiliser** — aucune ne disait comment 300
 propriétaires apprennent qu'ils ont un espace.
 
@@ -2346,7 +2349,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s16  | coordonnees-membre        | 1   | s12                                                                                                                          | B    |
 | s17  | import-releves-eau        | 3   | s02, s12                                                                                                                     | B    |
 | s18  | historique-consommation   | 2   | s17                                                                                                                          | B    |
-| s19  | factures-liste            | 3   | s12                                                                                                                          | B    |
+| s19  | factures-liste            | 3   | s02, s12                                                                                                                     | B    |
 | s20  | factures-pennylane        | 3   | s19                                                                                                                          | B    |
 | s21  | redirection-paiement      | 1   | s02, s19                                                                                                                     | B    |
 | s22  | signalement-membre        | 2   | s10, s12                                                                                                                     | B    |
@@ -2369,7 +2372,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s39  | completude-export         | 2   | s38                                                                                                                          | F    |
 | s40  | export-membre             | 2   | s12, s24, s38                                                                                                                | F    |
 | s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                 | F    |
-| s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                                 | F    |
+| s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s27, s28                                                                                            | F    |
 
 **43 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quatorze à 3, huit à 4.
 **Une seule story est hors du tableau de périmètre du PRD** : s39, garde-fou de non-régression de
@@ -2382,7 +2385,7 @@ préparation du socle, et la tenir dans le pipeline coûtait plus qu'elle ne rap
 passages de revue consécutifs y ont buté. Elle est conduite hors killer-saas ; l'inventaire mesuré du
 travail vit dans `docs/adaptation-socle-design-system.md`, et la contrainte qu'elle imposait aux
 stories d'écran reste, en règle transverse « Socle habillé ».
-Sa surface est énumérée dans ses critères, et elle est préalable à toute story porteuse d'écran
+Sa surface est énumérée dans le tableau mesuré de `docs/adaptation-socle-design-system.md`, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
 Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
 blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
@@ -2393,7 +2396,7 @@ s38 (moteur d'export et son archive) — portent chacune leur risque
 explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
 `/ks-plan`.
 
-Deux écarts avec les scores du PRD, tous deux documentés dans la story concernée plutôt que lissés :
+Trois écarts avec les scores du PRD, tous documentés dans la story concernée plutôt que lissés — le troisième étant s04, à 4 contre 3, que le modèle en blocs typés de l'ADR 007 porte au-dessus du chiffrage du PRD :
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
 main) et s38 à 4 contre 3 (vingt-cinq dépendances, six familles de contenu, exécution en tâche de
 fond, écriture en flux sur un VPS à 4 Go). Le PRD chiffre des _features_, ce tableau chiffre des
