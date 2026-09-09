@@ -26,11 +26,13 @@ document.
 
 Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fois :
 
-- **Socle habillé** : toute story porteuse d'écran s'exécute **après s00** et compose avec le design
-  system déjà appliqué au socle. Elle ne reprend ni les tokens, ni les polices, ni les conventions
-  d'usage des composants de `src/components/ui/` : ces choix sont faits une fois, en s00. Un écran
-  qui redéfinit une couleur, une taille de cible ou un rayon est un échec de review. La dépendance
-  n'est pas répétée dans la colonne « Dépend de » de chaque story — elle vaut ici, pour toutes.
+- **Socle habillé** : l'application du design system au boilerplate — tokens, polices, retrait du
+  thème sombre — est un **préalable au découpage, conduit hors du pipeline killer-saas** (voir
+  `docs/adaptation-socle-design-system.md`). Toute story porteuse d'écran compose avec ce socle déjà
+  habillé : elle ne reprend ni les tokens, ni les polices, ni les conventions d'usage des composants
+  de `src/components/ui/`. Un écran qui redéfinit une couleur, une taille de cible ou un rayon est un
+  échec de review. Ce n'est pas une dépendance de story, donc rien n'apparaît dans la colonne
+  « Dépend de » — c'est l'état du dépôt au moment où s01 démarre.
 - **Multi-tenant** : toute table métier créée après s01 porte `organization_id`, est couverte par une
   policy RLS, et sa story prouve l'isolation par un test d'accès croisé entre deux tenants.
 - **Rien de propre à La Fourche en dur** : adresses de notification, catégories, seuils, activation
@@ -84,110 +86,6 @@ contournent sont ordonnées avant.
 
 # Bloc A — Fondations et site public (sept-oct 2026)
 
-## Story s00-application-design-system — Habiller le socle aux couleurs d'ASL-CMS
-
-⚠️ **Story transverse assumée, hors du tableau de périmètre du PRD.** Elle ne livre aucune valeur
-observable par un utilisateur de l'association : ce qu'elle rhabille est le boilerplate. Ce n'est pas
-une correction du défaut relevé en revue (F-01), c'est une **dérogation consciente**, bornée à une
-story. s39 est le second cas — deux stories transverses sur quarante-quatre.
-
-**Son sujet est étroit : le thème.** Appliquer les tokens du design system, charger les polices,
-retirer le thème sombre du boilerplate — dans le CSS, mais aussi partout où le mécanisme s'étend :
-le proxy, le rendu Shiki, les graphiques, et la préférence exposée à l'utilisateur. Rien d'autre.
-
-Les passages successifs de revue l'avaient élargie à onze sujets et à des énumérations de fichiers
-écrites à la main — dont l'une s'est révélée fausse contre le dépôt (D-01). **Chaque critère
-ci-dessous est décidable, et la plupart par une seule commande** : c'est ce qui rend « fini »
-vérifiable sans rien avoir à énumérer ni à maintenir. Trois critères (1, 6, 8) demandent une
-vérification à l'écran, et le disent.
-
-**En tant qu'**équipe Zourite Studio **je veux** que le socle porte l'identité visuelle d'ASL-CMS
-avant le premier écran **afin que** chaque story porteuse d'écran compose avec un socle déjà habillé,
-au lieu de reprendre l'apparence écran par écran.
-
-### Complexity
-
-3
-
-### Acceptance criteria
-
-Chaque critère se vérifie par la commande qu'il porte. Les nombres entre parenthèses sont l'état du
-dépôt au moment de l'écriture — ils situent le travail, ils ne font pas partie du contrat.
-
-- [ ] `src/app/globals.css` porte les tokens du design system §1.1 : `--radius` vaut `0.5rem`, les trois tokens `warning` sont définis, et `--accent-hue` est la seule variable dont dépend la couleur d'une association. (aujourd'hui : `--radius: 0.625rem`, aucun token `warning`, pas d'`--accent-hue`)
-- [ ] `grep -rl 'dark:' src/` ne retourne aucun fichier. (34)
-- [ ] `grep -nE '\.dark|@custom-variant dark' src/app/globals.css` ne retourne aucune ligne — le bloc `.dark`, les règles Shiki sombres et la variante Tailwind sont partis ensemble. (4 lignes)
-- [ ] `grep -rl 'theme-toggle' src/` ne retourne aucun fichier, et `src/components/theme-toggle.tsx` n'existe plus. (3 fichiers l'importent)
-- [ ] `grep -rl 'next-themes' src/` ne retourne aucun fichier : plus de fournisseur, plus de `setTheme`, et **la préférence de thème disparaît des réglages utilisateur**. Un compte existant dont `settings.theme` valait `dark` s'affiche en clair, sans erreur. (8 fichiers, dont `user-preferences-sync.tsx` qui applique la préférence au chargement)
-- [ ] Les trois familles du §1.3 sont chargées par `next/font` et exposées en `--font-sans`, `--font-serif`, `--font-mono` ; aucun `var()` de police ne pointe vers une variable non définie, et le texte rendu utilise bien ces familles. (`next/font` est aujourd'hui absent de `src/`)
-- [ ] `git diff main...feature/s00 --stat -- src/lib/emails/ docs/design-system.md` ne touche ni `src/lib/emails/` ni le §5.2 : **l'abandon du mode sombre ne vaut que pour le web**, et la spécification email survit au nettoyage. Attention à la prémisse — `src/lib/emails/` ne contient aujourd'hui **aucune** occurrence de `dark` sur ses 15 fichiers : il n'y a pas de mode sombre existant à préserver, c'est la **spécification** du §5.2 qu'on protège d'un nettoyage trop zélé, pas du code. (Le diff se prend contre la branche de base, pas contre HEAD : après le commit unique de la story, `git diff --stat` seul serait vide quoi qu'il arrive.)
-- [ ] Les **quatre mesures** du §2.1 sont vérifiables à l'écran sur les composants de `src/components/ui/` : bouton `default` à 48 px, champ de formulaire à 48 px (56 sous 640 px), ligne de tableau à 56 px, texte courant à 17-18 px — contour de champ au contraste 3:1 du **§1.4** (WCAG 1.4.11) compris. Ces quatre mesures, et rien d'autre du §2.1 : ses autres conventions gouvernent la **composition d'un écran** (« un seul bouton `default` par écran », « `tabs` : 4 maximum, jamais côté membre », « rien d'important ne passe par un toast ») et ne sont pas satisfiables par un composant — elles appartiennent à la story de chaque écran.
-- [ ] `grep -nE 'theme|prefers-color-scheme' src/proxy.ts` ne retourne aucune ligne : plus de cookie `theme`, plus de reniflage de `sec-ch-prefers-color-scheme`, plus d'en-tête `x-theme`. (11 lignes aujourd'hui ; `x-theme` est **produit et consommé nulle part** — il est déjà mort)
-- [ ] La préférence de thème n'est plus exposée : `grep -rl 'theme' src/services/ src/components/features/user/ src/components/features/admin/users/` ne retourne aucun fichier hors `__tests__`. (5 aujourd'hui : validation, server action, réglages utilisateur, fiche admin, schéma de formulaire). **La colonne `theme` et l'enum `theme_type` restent en base**, dormants — leur retrait appartient à s01, qui génère déjà une migration.
-- [ ] Plus aucun rendu à deux thèmes : `src/components/mdx-content.tsx` ne déclare plus `themes: {light, dark}` pour Shiki (ligne 46 aujourd'hui) et `src/components/ui/chart.tsx` ne génère plus de règle `.dark` (ligne 9 aujourd'hui).
-- [ ] `pnpm check:rules` passe et `grep -rlE 'en sombre|x-theme' .claude/rules/` ne retourne aucun fichier : plus aucune **règle active** ne demande de vérifier « en clair et en sombre » ni ne justifie un opt-out par la lecture du thème. `docs/plans/` et `docs/migrations/` sont hors périmètre — ce sont les archives historiques du boilerplate, pas des règles.
-
-### Dependencies
-
-Aucune — elle s'exécute en premier, et c'est ce qui donne son sens à son identifiant.
-
-Elle est **préalable à toute story porteuse d'écran**. La règle est posée une fois dans « Règles
-transverses à toutes les stories » plutôt que répétée trente-cinq fois, et rattachée au graphe par
-l'arête `s01 → s00` : comme toute story remonte à s01, s00 est un prédécesseur global pour un
-ordonnanceur qui ne lit que le récapitulatif.
-
-### Agentic notes
-
-Réf. `docs/design-system.md` (le §1.1 s'intitule « feuille à copier dans `src/app/globals.css` », le
-§10 énumère les dettes de socle), `docs/designs/design-system.dc.html` pour le rendu.
-
-**Cette story applique des conventions à des composants existants, elle n'en crée aucun.** Le design
-system a été écrit contre l'inventaire exact du dépôt : ses « 37 du socle » sont les 37 fichiers de
-`src/components/ui/`. Les cinq composants du §2.2 ne sont **pas** construits ici — `<AlertBanner />`
-appartient à s07, `<ImpersonationBar />` à s41, `<PreviewBar />`, `<SortableList />` et
-`<BlockPicker />` à s04. Les sortir ici serait livrer des états intestables.
-
-Ils étaient six : `<MeterInput />` a été retiré du design system (arbitrage client du 8 septembre
-2026). Il n'y a **pas de saisie manuelle des relevés d'eau** — le seul chemin est l'import de s17. Ne
-pas le réintroduire : ses règles de validation vivent déjà dans le critère 2 de s17.
-
-⚠️ **Ne pas toucher au thème sombre à moitié.** Retirer le bloc `.dark` de `globals.css` sans
-neutraliser `next-themes` laisse les classes `dark:` s'appliquer par-dessus des tokens clairs dès que
-le système de l'utilisateur est en sombre — un rendu mixte, pire que l'état de départ. C'est pourquoi
-les critères 2 à 5 forment un tout : quatre commandes, un seul changement. La préférence utilisateur
-persistée est le maillon qu'on oublie — elle survit en base à la suppression du sélecteur.
-
-⚠️ **L'exception email est structurante** (§5.2) : le mode sombre disparaît du web, **pas de
-l'email**, certains clients l'imposant. Un nettoyage trop zélé de `src/lib/emails/` casserait le
-rendu des campagnes de s25 chez une partie des destinataires. D'où un critère qui exige un diff vide.
-
-**Piège des polices** : la feuille du §1.1 fait pointer `--font-sans` vers `--font-public-sans`, or
-aucune police n'est chargée dans le dépôt. Copier ces lignes avant de charger les polices rend les
-déclarations `font-family` invalides, **sans erreur visible**.
-
-**Le recouvrement avec s01 se règle par la portée.** s01 supprime cinq sous-systèmes (ADR 009), dont
-des fichiers portant des classes `dark:`. Les prédicats ci-dessus s'évaluent sur `src/` tel qu'il est
-au moment de l'exécution : si s00 passe en premier, elle les nettoie avec le reste, et s01 les
-supprime ensuite — nettoyer du code qui sera effacé coûte moins cher que de maintenir une liste
-d'exclusions qui se périme. C'est le renoncement délibéré à l'énumération qui avait produit D-01.
-
-Aucun manque du design system ne se comble par une valeur inventée — c'est une règle de dépôt
-(`AGENTS.md`, section Design), pas un critère de cette story : un garde-fou toujours
-vrai quand rien n'est rencontré ne se teste pas.
-
-`pnpm dev` ne recharge pas à chaud dans le conteneur de développement : le dépôt est un montage 9p
-depuis un disque Windows et les événements de fichiers ne traversent pas. Prévoir un redémarrage du
-serveur à chaque vérification visuelle, ou déplacer le dépôt sur le système de fichiers Linux.
-
-L'identifiant `s00` déroge à « nos ids commencent à s01 » et voisine avec les `s000-*` / `s001-*`
-hérités du boilerplate dans `docs/research/`. Choix assumé : renuméroter décalerait 43 stories.
-`AGENTS.md` autorise désormais explicitement ce genre de dérogation.
-
-Cimetière : pas de refonte des écrans eux-mêmes. Cette story habille le socle ; la composition de
-chaque écran appartient à sa story et à son `/ks-design`.
-
----
-
 ## Story s01-provisionner-association — Provisionner une association
 
 **En tant que** SuperAdmin Zourite Studio **je veux** créer une association et activer ses modules
@@ -208,16 +106,11 @@ chaque écran appartient à sa story et à son `/ks-design`.
 - [ ] La policy RLS refuse la lecture inter-tenant même lorsque la couche applicative est court-circuitée (test au niveau repository).
 - [ ] Les cinq sous-systèmes écartés par l'ADR 009 — chat IA, crédits, affiliation, projets/tâches, newsletter Mailchimp — ont disparu de l'arbre de travail : leurs tables ne sont plus dans le schéma Drizzle, la suite de tests passe sans elles, et `pnpm knip` ne signale pas d'orphelin issu du retrait.
 - [ ] Aucune table métier restante n'est dépourvue de policy RLS : toute table portant `organization_id` en a une, et les tables exemptées sont exactement celles listées dans `docs/architecture.md`.
-- [ ] La colonne `theme` et l'enum `theme_type` ont disparu du schéma Drizzle et de la base, dans la même migration que les tables retirées : s00 avait cessé de les exposer, cette story les supprime. Un compte existant survit à la migration.
 - [ ] `rule-react-query.md` et `rule-seed-usersroles-and-organization.md` ne renvoient plus à `projects`, retiré : elles pointent vers un domaine ASL-CMS réellement présent, et `pnpm check:rules` passe.
 
 ### Dependencies
 
-s00 — et c'est la **seule arête qui rattache s00 au graphe**. s01 est porteuse d'écran (le back-office
-SuperAdmin), elle tombe donc sous la règle transverse « Socle habillé ». Comme toute autre story
-remonte à s01 par ses propres dépendances, cette arête unique suffit à rendre s00 préalable à tout le
-découpage **pour un ordonnanceur qui lit le tableau**, sans répéter « s00 » sur trente-cinq lignes.
-Défaut relevé en revue (C-09) : le préalable était normatif dans le texte, absent du graphe.
+Aucune. Première story du projet.
 
 ### Agentic notes
 
@@ -278,12 +171,6 @@ arrivent en s33, s34 et s35 — un critère qui les nommerait ici serait intesta
 livraison et ferait doublon avec le critère « Le module se désactive par tenant » que chacune de ces
 trois stories porte déjà. La preuve se fait donc ici sur une route de test rattachée à un module
 fictif, et par module chez chacune des trois. Défaut relevé en revue du découpage.
-
-**La colonne `theme` voyage avec cette migration.** s00 retire tout le code du thème — proxy,
-sélecteur, préférence exposée — mais s'arrête au bord de la base pour ne pas emporter une migration
-dans une story de CSS. La colonne reste donc dormante entre s00 et s01, et c'est ici qu'elle tombe,
-dans la migration que le retrait ADR 009 impose de toute façon. Ne pas la traiter à part : une
-seconde migration pour une colonne serait du bruit dans l'historique.
 
 **Le retrait des sous-systèmes du boilerplate appartient à cette story**, et l'ADR 009 le dit
 nommément : « Le retrait est exécuté dans s01 ». La raison n'est pas le ménage — c'est que s01 doit
@@ -2246,12 +2133,11 @@ Générer en flux vers le disque, pas en mémoire.
 
 ## Story s39-completude-export — Garantir qu'aucune donnée n'échappe à l'export
 
-⚠️ **Story transverse, comme s00.** Elle ne livre aucun comportement observable par un utilisateur :
-c'est un garde-fou de non-régression qui compare deux inventaires. Sa valeur est réelle — sans lui,
-l'export de s38 se périme silencieusement à chaque table ajoutée — mais ce n'est pas une tranche de
-produit, et elle aurait pu rester un critère de s38. Elle en a été sortie parce que s38 se lisait
-comme une 5. Relevé en revue du découpage (C-08), qui corrigeait l'affirmation de s00 « seule du
-découpage dans ce cas » : elles sont deux.
+⚠️ **Seule story transverse du découpage.** Elle ne livre aucun comportement observable par un
+utilisateur : c'est un garde-fou de non-régression qui compare deux inventaires. Sa valeur est réelle
+— sans lui, l'export de s38 se périme silencieusement à chaque table ajoutée — mais ce n'est pas une
+tranche de produit, et elle aurait pu rester un critère de s38. Elle en a été sortie parce que s38 se
+lisait comme une 5. Dérogation assumée et bornée à cette story.
 
 **En tant que** présidente **je veux** que l'export reste complet à mesure que le produit évolue
 **afin de** ne pas découvrir dans trois ans qu'une partie de nos données n'en sortait jamais.
@@ -2441,8 +2327,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 
 | Id   | Story                     | Cx  | Dépend de                                                                                                                    | Bloc |
 | ---- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------- | ---- |
-| s00  | application-design-system | 3   | —                                                                                                                            | A    |
-| s01  | provisionner-association  | 4   | s00                                                                                                                          | A    |
+| s01  | provisionner-association  | 4   | —                                                                                                                            | A    |
 | s02  | parametres-association    | 3   | s01                                                                                                                          | A    |
 | s03  | connexion-lien-magique    | 3   | s01                                                                                                                          | A    |
 | s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                                | A    |
@@ -2486,11 +2371,17 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                 | F    |
 | s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                                 | F    |
 
-**44 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, huit à 4.
-s00 est une **story de socle assumée, hors du tableau de périmètre du PRD** : elle ne livre aucune
-valeur observable par un utilisateur de l'association. Elle n'est pas seule dans ce cas — s39 est un
-garde-fou de non-régression et relève de la même catégorie (C-08). Deux stories transverses sur
-quarante-quatre, chacune justifiée dans son en-tête.
+**43 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quatorze à 3, huit à 4.
+**Une seule story est hors du tableau de périmètre du PRD** : s39, garde-fou de non-régression de
+l'export, qui ne livre aucune valeur observable par un utilisateur de l'association. Dérogation
+justifiée dans son en-tête.
+
+L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
+du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
+préparation du socle, et la tenir dans le pipeline coûtait plus qu'elle ne rapportait : quatre
+passages de revue consécutifs y ont buté. Elle est conduite hors killer-saas ; l'inventaire mesuré du
+travail vit dans `docs/adaptation-socle-design-system.md`, et la contrainte qu'elle imposait aux
+stories d'écran reste, en règle transverse « Socle habillé ».
 Sa surface est énumérée dans ses critères, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
 Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
