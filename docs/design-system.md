@@ -20,7 +20,9 @@
 **Décisions fondatrices**
 
 - **Personnalisation par association = logo + une teinte d'accent**, rien d'autre.
-- **Mode sombre abandonné** — un seul jeu de tokens. Conséquences en fin de document.
+- **Mode sombre conservé** — deux jeux de tokens ([ADR 012](decisions/012-mode-sombre-conserve.md)).
+  La première version de ce document actait l'abandon ; l'arbitrage du 9 septembre 2026 l'a renversé.
+  Le jeu sombre vit dans `docs/designs/Design system - sombre.dc.html`. Voir §10.
 - **Aucun plan B de connexion pour les membres sans email.** Ils n'ont aucun compte : la
   réponse produit à leur situation est le **publipostage papier**. La livraison n° 1 proposait
   un `<CodeInput />` d'activation par courrier ; il a été **retiré au second tour**.
@@ -594,7 +596,8 @@ photos. Bloc PDF : bouton pleine largeur sous le titre. **Texte long : aucune tr
 
 ### 5.2 Mode sombre forcé (Outlook, Gmail Android)
 
-Le mode sombre est abandonné côté web, mais **certains clients l'imposent** :
+Le web a désormais son propre mode sombre (ADR 012), mais l'email reste un cas à part :
+**certains clients l'imposent**, sans rapport avec le thème choisi sur le site.
 
 - **Doit rester lisible** : texte du corps, libellé du bouton, URL en clair, pied de page — donc
   en encre sur blanc, jamais en gris clair sur gris.
@@ -853,19 +856,28 @@ Le support de l'`attr()` typé pour l'injection de la teinte de tenant (§1.2) �
 Ces dettes sont ouvertes par les décisions du design system. Elles appartiennent à la story qui
 applique le système au boilerplate.
 
-### L'abandon du mode sombre
+### ~~L'abandon du mode sombre~~ — décision renversée, voir ADR 012
 
-1. `src/app/globals.css` porte un bloc `.dark` complet, à retirer ; `next-themes` et le sélecteur
-   de thème deviennent sans objet.
-2. `.claude/rules/01-presentation/rule-mdx-rendering.md` impose de vérifier chaque modification
-   « en clair et en sombre ». **Cette règle doit être mise à jour** dans le même commit, sinon
-   elle réclame une vérification impossible.
-3. `docs/architecture.md` liste `docs/[...slug]` parmi les routes bloquantes assumées **au motif
-   qu'elle lit `x-theme` pour la coloration Shiki**. Ce motif tombe : la route peut redevenir
-   prerendable et le dual-theme Shiki se simplifie.
+> **Ce paragraphe est caduc.** Le mode sombre est **conservé** : arbitrage du 9 septembre 2026,
+> acté par [ADR 012](decisions/012-mode-sombre-conserve.md). Le retrait traversait la base de
+> données, le proxy, les tests et trois règles pour rhabiller un socle dont aucun écran ASL-CMS
+> n'existe encore. Les décisions fondatrices en tête de document sont amendées d'autant : il y a
+> **deux** jeux de tokens, pas un.
+>
+> Conséquences pratiques :
+>
+> - `src/app/globals.css` garde son bloc `.dark`, désormais aligné sur
+>   `docs/designs/Design system - sombre.dc.html`. `next-themes` et le sélecteur de thème restent.
+> - `.claude/rules/01-presentation/rule-mdx-rendering.md` garde sa consigne de vérifier « en clair
+>   et en sombre » : elle redevient exacte, il n'y a rien à y corriger.
+> - Le point n° 3 de la version précédente était **faux indépendamment de ce revirement** :
+>   `docs/architecture.md` ne mentionne `x-theme` nulle part (grep : zéro occurrence), et
+>   `src/app/[locale]/docs/[...slug]/page.tsx` ne porte plus d'`instant = false`.
+> - **Toute livraison de conception doit fournir deux jeux de tokens.** Un manque du jeu sombre
+>   se signale ici, il ne se dérive pas en silence — le trio `warning` est dans ce cas.
 
-⚠️ **Exception** : le mode sombre disparaît du web, mais **pas de l'email** — certains clients
-l'imposent. Voir §5.2.
+⚠️ **L'exception email reste vraie**, et pour une autre raison : certains clients de messagerie
+imposent le mode sombre quoi que fasse le web. Voir §5.2.
 
 ### Ce qui change dans le socle
 
