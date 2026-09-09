@@ -7,24 +7,29 @@
 
 **Sources** — deux livraisons Claude Design, fusionnées ici.
 
-| Quoi                                          | Où                                                                                                                                                                                                                                              |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Brief n° 1 — le système                       | `docs/designs/design-system-brief.md`                                                                                                                                                                                                           |
-| Brief n° 2 — médias transverses et manques    | `docs/designs/design-system-brief-2.md`                                                                                                                                                                                                         |
-| Livraison n° 1 — source éditable              | `docs/designs/design-system.dc.html` (§1 à §18)                                                                                                                                                                                                 |
-| Livraison n° 1 — rendu ouvrable au navigateur | `docs/designs/design-system-mockups.html` ⚠️ **périmé sur un point** : ce rendu n'a pas été régénéré après la correction du second tour et affiche encore `<CodeInput />` comme s'il faisait partie du livrable. La source `.dc.html` fait foi. |
-| Livraison n° 2 — source éditable              | `docs/designs/design-system-media.dc.html` (§19 à §25)                                                                                                                                                                                          |
-| Livraison n° 2 — rendu ouvrable au navigateur | `docs/designs/design-system-media-mockups.html`                                                                                                                                                                                                 |
-| Socle                                         | boilerplate ship-saas : Tailwind 4, shadcn/ui `new-york`, icônes lucide                                                                                                                                                                         |
+| Quoi                                          | Où                                                                                                                                                                                                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Brief n° 1 — le système                       | `docs/designs/design-system-brief.md`                                                                                                                                                                                                                |
+| Brief n° 2 — médias transverses et manques    | `docs/designs/design-system-brief-2.md`                                                                                                                                                                                                              |
+| Livraison n° 1 — source éditable              | `docs/designs/design-system.dc.html` (§1 à §18) ⚠️ **périmé sur un point** : affiche encore `<MeterInput />`, retiré depuis (§2.2). Sur ce point, **c'est le présent document qui fait foi**, pas la source de livraison.                            |
+| Livraison n° 1 — rendu ouvrable au navigateur | `docs/designs/design-system-mockups.html` ⚠️ **périmé sur deux points** : ce rendu n'a pas été régénéré après la correction du second tour et affiche encore `<CodeInput />`, ni après le retrait de `<MeterInput />`. Le présent document fait foi. |
+| Livraison n° 2 — source éditable              | `docs/designs/design-system-media.dc.html` (§19 à §25)                                                                                                                                                                                               |
+| Livraison n° 2 — rendu ouvrable au navigateur | `docs/designs/design-system-media-mockups.html`                                                                                                                                                                                                      |
+| Socle                                         | boilerplate ship-saas : Tailwind 4, shadcn/ui `new-york`, icônes lucide                                                                                                                                                                              |
 
 **Décisions fondatrices**
 
 - **Personnalisation par association = logo + une teinte d'accent**, rien d'autre.
-- **Mode sombre abandonné** — un seul jeu de tokens. Conséquences en fin de document.
+- **Mode sombre conservé** — deux jeux de tokens ([ADR 012](decisions/012-mode-sombre-conserve.md)).
+  La première version de ce document actait l'abandon ; l'arbitrage du 9 septembre 2026 l'a renversé.
+  Le jeu sombre vit dans `docs/designs/Design system - sombre.dc.html`. Voir §10.
 - **Aucun plan B de connexion pour les membres sans email.** Ils n'ont aucun compte : la
   réponse produit à leur situation est le **publipostage papier**. La livraison n° 1 proposait
   un `<CodeInput />` d'activation par courrier ; il a été **retiré au second tour**.
 - **Aucun mot de passe** : connexion par lien magique seul, valable 4 heures.
+- **Aucune saisie manuelle des relevés d'eau** : la saisie est **en masse, par tableur**, et le seul
+  chemin est l'import Excel/CSV de s17. La livraison n° 1 proposait un `<MeterInput />` de relevé au
+  compteur parcelle par parcelle ; il a été **retiré** (arbitrage client du 8 septembre 2026, §2.2).
 
 ---
 
@@ -315,7 +320,7 @@ dans les deux cas.
 | Composant                                                                    | Usage imposé                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `button`                                                                     | Variantes `default` `outline` `secondary` `destructive` `link`. Tailles `sm` 40 px (**jamais côté membre**), `default` 48 px, `lg` 56 px. **Un seul bouton `default` par écran** ; les autres en `outline`. Libellés à l'infinitif explicite : « Publier la page », pas « OK ». Chargement : libellé remplacé, bouton désactivé, **largeur conservée**. |
-| `form` `label` `input` `textarea` `select` `checkbox` `radio-group` `switch` | Une colonne, un champ par ligne. Libellé au-dessus, toujours visible. Champs 48 px (56 mobile), texte 17-18 px. « Facultatif » écrit en clair, **jamais d'astérisque**. Validation au _blur_ puis à la soumission (sauf `MeterInput`). 2-3 options courtes → `radio-group`. `switch` réservé aux réglages à effet immédiat, avec libellé d'état.        |
+| `form` `label` `input` `textarea` `select` `checkbox` `radio-group` `switch` | Une colonne, un champ par ligne. Libellé au-dessus, toujours visible. Champs 48 px (56 mobile), texte 17-18 px. « Facultatif » écrit en clair, **jamais d'astérisque**. Validation au _blur_ puis à la soumission. 2-3 options courtes → `radio-group`. `switch` réservé aux réglages à effet immédiat, avec libellé d'état.                            |
 | `table` `pagination` `badge`                                                 | Lignes 56 px, texte 17 px, en-tête sur `muted` en 15 px / 600. Zébrure `oklch(0.99 0.002 250)`. **Une seule action par ligne, en clair.** Chiffres en `font-mono` + `tabular-nums`. 25 lignes par page (**10 sous 640 px**), « Précédent / Suivant » écrits, **jamais de défilement infini**. `badge` = statut, jamais une action.                      |
 | `alert` `sonner` `toast` `alert-dialog` `dialog` `sheet`                     | **Rien d'important ne passe par un toast.** `sonner` réservé aux confirmations sans conséquence, 6 s. Erreur, échec de publication, donnée perdue → `alert` ancré dans la page. `alert-dialog` uniquement pour l'irréversible, le bouton nommant l'acte. `dialog` ≤ 2 champs. `sheet` pour tiroirs mobiles et aperçu, jamais empilé.                    |
 | `sidebar` `breadcrumb` `tabs` `card` `separator` `scroll-area`               | `sidebar` : **back-office uniquement**, deux groupes (« Le site », « L'association »), item actif = fond `sidebar-accent` **+ libellé en 600**. `breadcrumb` dès le 2ᵉ niveau du back-office. `tabs` : 4 maximum, **jamais côté membre**. `card` : bordure 1px sans ombre par défaut. `scroll-area` jamais imbriquée.                                   |
@@ -326,21 +331,44 @@ dans les deux cas.
 | `command` `popover` `tooltip` `collapsible`                                  | `command` : back-office seulement. `tooltip` **jamais porteur d'information indispensable**. `collapsible` jamais pour cacher du contenu public.                                                                                                                                                                                                        |
 | `avatar` `code-block` `dropdown-menu` `separator`                            | Reste du socle, sans convention propre au-delà des règles générales.                                                                                                                                                                                                                                                                                    |
 
-### 2.2 Les six à construire
+### 2.2 Les cinq à construire
 
 Tous se montent **sur les 37 existants, sans dépendance nouvelle**, et suivent la convention
 shadcn `src/components/ui/<nom>.tsx`. Chaque état correspond à une story.
 
-| Composant              | Prio   | Rôle et contraintes clés                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ---------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<PreviewBar />`       | **P0** | Aperçu avant publication. `status: draft \| dirty \| live \| publishing \| error \| unpublished`. Fond sombre `oklch(0.24 0.02 250)` **hors palette de contenu**. Sticky 68 px (104 mobile). L'erreur s'affiche en 2ᵉ ligne de la barre, **jamais en toast**. Point d'état **+ libellé écrit** : jamais la couleur seule.                                                                                                         |
-| `<AlertBanner />`      | **P0** | Bandeau d'alerte global, au-dessus de l'en-tête public, **pousse la page, ne la recouvre pas**. Voir §2.3.                                                                                                                                                                                                                                                                                                                        |
-| `<SortableList />`     | **P0** | Réordonnancement des blocs. Voir §2.4 — la contrainte d'accessibilité y est structurante.                                                                                                                                                                                                                                                                                                                                         |
-| `<BlockPicker />`      | **P0** | Insertion d'un bloc à un rang précis. Voir §2.5.                                                                                                                                                                                                                                                                                                                                                                                  |
-| `<MeterInput />`       | **P1** | Relevé de compteur : rappelle l'index précédent, calcule la consommation à la frappe, **avertit au-delà de 4× la moyenne** (bloque jusqu'à confirmation, **garde la valeur**), **refuse un index en recul**. Cas particuliers : non relevé (motif), nouveau compteur, premier relevé. Saisie conservée localement — une coupure réseau au fond d'un chemin ne perd rien. `Entrée` = enregistrer et passer à la parcelle suivante. |
-| `<ImpersonationBar />` | **P1** | Simulation de rôle SuperAdmin. Voir §2.6.                                                                                                                                                                                                                                                                                                                                                                                         |
+> **`<MeterInput />` a été retiré** (arbitrage client du 8 septembre 2026). Il supposait une saisie
+> de relevé au compteur, parcelle par parcelle, sur le terrain. **Il n'y a pas de saisie manuelle des
+> relevés : la saisie est en masse, par tableur.** Le seul chemin est donc l'import Excel/CSV de s17,
+> et aucune story ne portait ce composant — la revue du découpage l'avait relevé (F-08).
+>
+> Ses règles de validation, elles, restent nécessaires et vivent déjà **côté import** : le critère 2
+> de s17 rejette ligne à ligne la parcelle inconnue, la valeur non numérique, l'**index en
+> régression** et le doublon, avec rapport d'erreurs par email. Ne pas réintroduire le composant pour
+> récupérer ces règles : elles ont un propriétaire.
+
+| Composant              | Prio   | Rôle et contraintes clés                                                                                                                                                                                                                                                                                                  |
+| ---------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<PreviewBar />`       | **P0** | Aperçu avant publication. `status: draft \| dirty \| live \| publishing \| error \| unpublished`. Fond sombre `oklch(0.24 0.02 250)` **hors palette de contenu**. Sticky 68 px (104 mobile). L'erreur s'affiche en 2ᵉ ligne de la barre, **jamais en toast**. Point d'état **+ libellé écrit** : jamais la couleur seule. |
+| `<AlertBanner />`      | **P0** | Bandeau d'alerte global, au-dessus de l'en-tête public, **pousse la page, ne la recouvre pas**. Voir §2.3.                                                                                                                                                                                                                |
+| `<SortableList />`     | **P0** | Réordonnancement des blocs. Voir §2.4 — la contrainte d'accessibilité y est structurante.                                                                                                                                                                                                                                 |
+| `<BlockPicker />`      | **P0** | Insertion d'un bloc à un rang précis. Voir §2.5.                                                                                                                                                                                                                                                                          |
+| `<ImpersonationBar />` | **P1** | Simulation de rôle SuperAdmin. Voir §2.6.                                                                                                                                                                                                                                                                                 |
 
 ### 2.3 `<AlertBanner />` — trois niveaux
+
+> ⚠️ **Arbitrage ouvert — ne pas trancher avant `/ks-design s07`.** Cette spécification dépasse le
+> périmètre tel qu'il est écrit aujourd'hui. Le PRD porte « Bandeau d'alerte global » en complexité 1
+> — « activation / édition / désactivation par tout membre du bureau » — et les notes de s07 disent
+> explicitement « pas de niveaux de gravité, le CDC n'en demande pas ». Le design system, lui, en
+> décrit trois, dont un non refermable.
+>
+> Les deux positions se défendent : le CDC contractuel ne demande rien de tel, mais « une eau impropre
+> à la consommation n'est pas une préférence d'affichage » est un argument sérieux pour une ASL dont
+> l'objet est l'eau. **Élargir s07 est une décision de périmètre**, qui passerait par `docs/prd.md`.
+>
+> En attendant, s07 livre un bandeau à un seul niveau, et cette section décrit une extension
+> documentée, pas un attendu de la V1. Le trio de tokens `warning` reste utile dans tous les cas :
+> la deuxième relance de s29 en dépend aussi (§1.1). Relevé en revue du découpage (F-10).
 
 ```
 id · level: "info" | "warning" | "critical" · message (280 car. max)
@@ -568,7 +596,8 @@ photos. Bloc PDF : bouton pleine largeur sous le titre. **Texte long : aucune tr
 
 ### 5.2 Mode sombre forcé (Outlook, Gmail Android)
 
-Le mode sombre est abandonné côté web, mais **certains clients l'imposent** :
+Le web a désormais son propre mode sombre (ADR 012), mais l'email reste un cas à part :
+**certains clients l'imposent**, sans rapport avec le thème choisi sur le site.
 
 - **Doit rester lisible** : texte du corps, libellé du bouton, URL en clair, pied de page — donc
   en encre sur blanc, jamais en gris clair sur gris.
@@ -827,19 +856,28 @@ Le support de l'`attr()` typé pour l'injection de la teinte de tenant (§1.2) �
 Ces dettes sont ouvertes par les décisions du design system. Elles appartiennent à la story qui
 applique le système au boilerplate.
 
-### L'abandon du mode sombre
+### ~~L'abandon du mode sombre~~ — décision renversée, voir ADR 012
 
-1. `src/app/globals.css` porte un bloc `.dark` complet, à retirer ; `next-themes` et le sélecteur
-   de thème deviennent sans objet.
-2. `.claude/rules/01-presentation/rule-mdx-rendering.md` impose de vérifier chaque modification
-   « en clair et en sombre ». **Cette règle doit être mise à jour** dans le même commit, sinon
-   elle réclame une vérification impossible.
-3. `docs/architecture.md` liste `docs/[...slug]` parmi les routes bloquantes assumées **au motif
-   qu'elle lit `x-theme` pour la coloration Shiki**. Ce motif tombe : la route peut redevenir
-   prerendable et le dual-theme Shiki se simplifie.
+> **Ce paragraphe est caduc.** Le mode sombre est **conservé** : arbitrage du 9 septembre 2026,
+> acté par [ADR 012](decisions/012-mode-sombre-conserve.md). Le retrait traversait la base de
+> données, le proxy, les tests et trois règles pour rhabiller un socle dont aucun écran ASL-CMS
+> n'existe encore. Les décisions fondatrices en tête de document sont amendées d'autant : il y a
+> **deux** jeux de tokens, pas un.
+>
+> Conséquences pratiques :
+>
+> - `src/app/globals.css` garde son bloc `.dark`, désormais aligné sur
+>   `docs/designs/Design system - sombre.dc.html`. `next-themes` et le sélecteur de thème restent.
+> - `.claude/rules/01-presentation/rule-mdx-rendering.md` garde sa consigne de vérifier « en clair
+>   et en sombre » : elle redevient exacte, il n'y a rien à y corriger.
+> - Le point n° 3 de la version précédente était **faux indépendamment de ce revirement** :
+>   `docs/architecture.md` ne mentionne `x-theme` nulle part (grep : zéro occurrence), et
+>   `src/app/[locale]/docs/[...slug]/page.tsx` ne porte plus d'`instant = false`.
+> - **Toute livraison de conception doit fournir deux jeux de tokens.** Un manque du jeu sombre
+>   se signale ici, il ne se dérive pas en silence — le trio `warning` est dans ce cas.
 
-⚠️ **Exception** : le mode sombre disparaît du web, mais **pas de l'email** — certains clients
-l'imposent. Voir §5.2.
+⚠️ **L'exception email reste vraie**, et pour une autre raison : certains clients de messagerie
+imposent le mode sombre quoi que fasse le web. Voir §5.2.
 
 ### Ce qui change dans le socle
 
