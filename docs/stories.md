@@ -89,9 +89,15 @@ contournent sont ordonnées avant.
 ⚠️ **Story de socle, volontairement hors du tableau de périmètre du PRD.** Elle ne livre aucune
 valeur observable par un utilisateur de l'association : à sa livraison, aucun écran d'ASL-CMS
 n'existe encore, et ce qu'elle rhabille est le boilerplate. C'est une **couche transverse assumée**,
-pas une tranche de produit, et c'est la seule du découpage. La revue du découpage l'avait relevé
-(F-01) ; l'arbitrage est de la garder, en contrepartie d'une **surface énumérée** — sans quoi
-« fini » serait indécidable (F-02).
+pas une tranche de produit. La revue du découpage l'avait relevé (F-01) ; l'arbitrage humain est de
+la garder, en contrepartie d'une **surface énumérée** — sans quoi « fini » serait indécidable (F-02).
+
+**Ce n'est pas une correction de F-01, c'est une dérogation consciente** (C-07) : à la livraison de
+s00, aucun écran d'ASL-CMS n'existe et ce qui est rhabillé appartient au boilerplate. La nature du
+défaut est inchangée ; ce qui change est qu'il est borné à une story et doté d'un critère de sortie
+décidable. **Et s00 n'est pas seule de son espèce** (C-08) : s39 est un garde-fou de non-régression,
+qui ne livre pas davantage de comportement observable. Deux stories transverses sur quarante-quatre,
+chacune justifiée dans son en-tête.
 
 **En tant qu'**équipe Zourite Studio **je veux** que le socle porte l'identité visuelle d'ASL-CMS
 avant le premier écran **afin que** chaque story porteuse d'écran compose avec un socle déjà habillé,
@@ -113,11 +119,11 @@ cette story.
 - [ ] **Les bascules de thème ont disparu de l'interface** : `src/components/theme-toggle.tsx` et ses points d'appel dans `nav-user.tsx` et `nav-user-admin.tsx`. Aucun écran ne propose plus de choisir un thème.
 - [ ] **Les gabarits d'email conservent leur mode sombre** (design system §5.2) : aucune classe ni media query sombre n'est retirée de `src/lib/emails/`. L'abandon ne vaut que pour le web.
 - [ ] **Les trois familles du §1.3 sont chargées par `next/font`** et exposées en `--font-sans`, `--font-serif`, `--font-mono` ; aucun `var()` de police ne pointe vers une variable non définie, et le texte rendu utilise bien ces familles.
-- [ ] **Les conventions d'usage du §2.1 sont appliquées aux composants de `src/components/ui/`** et vérifiables à l'écran : bouton `default` à 48 px, champ de formulaire à 48 px (56 sous 640 px), ligne de tableau à 56 px, texte courant à 17-18 px.
-- [ ] **Les cibles et contrastes du §1.5** sont respectés sur les écrans du socle repris, contour de champ compris (3:1, WCAG 1.4.11).
+- [ ] **Les quatre mesures du §2.1 sont appliquées aux composants de `src/components/ui/`** et vérifiables à l'écran : bouton `default` à 48 px, champ de formulaire à 48 px (56 sous 640 px), ligne de tableau à 56 px, texte courant à 17-18 px. Le critère porte sur ces quatre mesures et sur rien d'autre : les règles du §2.1 qui gouvernent la **composition d'un écran** — « un seul bouton `default` par écran », « rien d'important ne passe par un toast », « `tabs` : 4 maximum, jamais côté membre », « jamais de défilement infini » — ne sont pas satisfiables par un composant et appartiennent à la story de chaque écran.
+- [ ] **Les cibles et contrastes du §1.5** — contour de champ compris (3:1, WCAG 1.4.11) — sont vérifiés sur les **six écrans de référence du socle** : `(auth)/login`, `(app)/dashboard`, `(app)/account/settings`, `(app)/account/organizations`, `admin/users`, `(public)/pricing`. Ces six couvrent les quatre groupes de routes et les quatre familles de composants mesurées au critère précédent ; les 46 autres pages reprises composent avec les mêmes composants et n'ont pas à être parcourues une à une.
 - [ ] **`.claude/rules/01-presentation/rule-mdx-rendering.md`** ne demande plus de vérifier « en clair et en sombre » : la règle est mise à jour dans le même commit, et `pnpm check:rules` passe.
 - [ ] **`docs/architecture.md`** ne justifie plus l'opt-out de `docs/[...slug]` par la lecture de `x-theme` : ce motif tombe avec le dual-theme Shiki.
-- [ ] Aucun manque du design system n'est comblé par une valeur inventée : les gaps rencontrés sont **consignés** dans `docs/design-system.md`, et la liste est à jour en fin de story.
+- [ ] La story se termine par une **déclaration explicite** sur les manques du design system, dans `docs/design-system.md` §10 : soit « aucun gap rencontré », soit la liste des gaps consignés. Aucun manque n'est comblé par une valeur inventée. L'absence de déclaration vaut échec du critère — c'est ce qui le rend décidable, là où « aucune valeur inventée » seul reste vrai par défaut.
 
 ### Dependencies
 
@@ -166,6 +172,20 @@ sous-systèmes (ADR 009), dont trois fichiers portant des classes `dark:`. Ils s
 critères ci-dessus : les reprendre serait rhabiller du code que la story suivante efface. Défaut
 relevé en revue (F-07).
 
+**La surface d'écrans est bornée de la même façon.** `src/app/[locale]/` compte **65 pages** ; **13
+relèvent des sous-systèmes de l'ADR 009** et sont hors périmètre — `(app)/chat`,
+`(app)/account/affiliate`, `(app)/account/billing/credit`, `(app)/account/billing/usage`,
+`(app)/team/[slug]/credits-simulator`, `(app)/team/[slug]/react-query`, les cinq pages de
+`(app)/team/[slug]/projects/`, `admin/affiliates` et `admin/credits`. Restent **52 pages reprises**.
+Les parcourir une à une n'aurait pas de sens : elles composent avec les mêmes 37 composants de
+`src/components/ui/`, que les critères couvrent déjà. Six d'entre elles servent donc d'**écrans de
+référence** pour la vérification visuelle, choisis pour couvrir les quatre groupes de routes
+(`(auth)`, `(app)`, `admin`, `(public)`) et les quatre familles mesurées. Un défaut trouvé sur un
+septième écran est un défaut de composant, pas un écran oublié.
+
+`(public)/pricing_old` est du code mort du boilerplate qu'aucune story ne retire à ce jour ; il est
+compté dans les 52 faute de décision contraire. Le signaler en `/ks-plan` plutôt que de le rhabiller.
+
 `pnpm dev` ne recharge pas à chaud dans le conteneur de développement : le dépôt est un montage 9p
 depuis un disque Windows et les événements de fichiers ne traversent pas. Prévoir un redémarrage du
 serveur à chaque vérification visuelle, ou déplacer le dépôt sur le système de fichiers Linux.
@@ -204,7 +224,11 @@ chaque écran appartient à sa story et à son `/ks-design`.
 
 ### Dependencies
 
-Aucune. Première story du projet.
+s00 — et c'est la **seule arête qui rattache s00 au graphe**. s01 est porteuse d'écran (le back-office
+SuperAdmin), elle tombe donc sous la règle transverse « Socle habillé ». Comme toute autre story
+remonte à s01 par ses propres dépendances, cette arête unique suffit à rendre s00 préalable à tout le
+découpage **pour un ordonnanceur qui lit le tableau**, sans répéter « s00 » sur trente-cinq lignes.
+Défaut relevé en revue (C-09) : le préalable était normatif dans le texte, absent du graphe.
 
 ### Agentic notes
 
@@ -217,6 +241,14 @@ Risque (complexité 4) : le scoping n'est pas rétroactif. Cette story pose la c
 `organization_id` + policy RLS + helper de scoping) que **chaque story suivante applique** ; une
 convention mal posée ici se paie sur 36 stories. Faire trancher la forme exacte en `/ks-architect`
 avant `/ks-plan`.
+
+**Le score reste à 4 après l'ajout du retrait ADR 009, et c'est un choix, pas un oubli** (C-06) :
+s02 et s04 ont été re-chiffrées en grossissant, pas s01. La raison est que le retrait ajoute du
+**volume mécanique et outillé** — `pnpm knip` nomme les orphelins, `pnpm check:rules` nomme les
+règles cassées, la suite de tests nomme ce qui reste accroché — là où les re-chiffrages de s02 et s04
+sanctionnaient du **risque conceptuel** (identité par tenant, modèle en blocs typés). Un 4 mesure ici
+le risque de la convention de scoping, qui n'a pas bougé. Si `/ks-architect` conclut autrement, le
+retrait se sort en story propre plutôt que de porter s01 à 5 — le découpage n'a aucune 5.
 
 Cette story est la plus large du découpage — création du tenant, routage par domaine, drapeaux de
 modules — et c'est assumé : les trois sont la même valeur vue de trois côtés (« une association a son
@@ -410,11 +442,10 @@ Les quatre rôles sont ici **fixes** ; les rendre configurables en back-office e
 
 ---
 
-## Story s04-pages-cms — Publier une page du site et la rendre atteignable
+## Story s04-pages-cms — Publier une page du site
 
-**En tant que** membre du bureau **je veux** créer, modifier, publier et dépublier une page, et
-décider où elle apparaît dans la navigation **afin de** faire vivre le site sans intervention du
-prestataire.
+**En tant que** membre du bureau **je veux** créer, modifier, publier et dépublier une page composée
+de blocs **afin de** faire vivre le site sans intervention du prestataire.
 
 ### Complexity
 
@@ -431,10 +462,6 @@ prestataire.
 - [ ] Une page est une **liste ordonnée de blocs typés**, pas un champ de texte unique : le bureau insère un bloc à un rang précis, en change l'ordre, et le rendu public respecte cet ordre après rechargement.
 - [ ] Le réordonnancement est atteignable **sans glisser-déposer** — au clavier seul, l'ordre obtenu est le même qu'à la souris.
 - [ ] Un type de bloc inconnu dans une page enregistrée ne casse pas le rendu : la page s'affiche, le bloc est ignoré et signalé au bureau.
-- [ ] Le bureau compose le **menu du site public** : ajouter une entrée pointant vers une page, la retirer, en changer l'ordre. Le menu rendu au visiteur reflète cet ordre.
-- [ ] Une page publiée mais absente du menu reste atteignable par son URL ; une entrée de menu pointant vers une page dépubliée ou supprimée **ne s'affiche pas** au visiteur, sans casser le rendu du menu.
-- [ ] Le bureau modifie le contenu du **pied de page** ; la modification est visible sur toutes les pages publiques.
-- [ ] Le menu et le pied de page sont **scopés au tenant** : deux associations servent deux navigations distinctes sur leurs domaines respectifs.
 
 ### Dependencies
 
@@ -474,19 +501,90 @@ contre `src/services/file-service.ts` tel quel sans avoir vérifié ce point.
 
 Piège cache : le rendu public est caché (`'use cache'` + `cacheTag`), la publication doit invalider
 avec `updateTag` — le bureau doit voir son changement immédiatement, pas au bout d'un délai de
-revalidation. **Le menu est caché lui aussi**, et il est rendu sur _toutes_ les pages publiques :
-son `cacheTag` doit être invalidé à chaque changement de menu **et** à chaque
-publication/dépublication de page, sinon une entrée pointe vers une page disparue.
+revalidation. La publication et la dépublication d'une page devront **aussi** invalider le `cacheTag`
+du menu, mais celui-ci n'existe qu'en s04b : cette story pose l'invalidation de la page, s04b y
+raccroche la sienne.
 
-**La navigation est livrée ici et nulle part ailleurs.** Sans elle, une page publiée n'est
-atteignable qu'en tapant son URL, et le critère de succès du PRD « le bureau crée, modifie et publie
-une page sans intervention du prestataire » n'est pas tenu. s34 s'appuie déjà dessus : « désactivé,
-la page n'existe pas et aucune navigation n'y renvoie ». Défaut relevé en revue du découpage (F-06).
+**La navigation du site public n'est pas ici : elle est en s04b.** Cette story livre une page
+atteignable par son URL — ce que le PRD reconnaît explicitement comme un état valide (« une page
+publiée hors menu reste atteignable par son URL »). La composer dans un menu est l'incrément suivant,
+livrable seul. Les deux étaient empilées ici ; la revue du découpage l'a relevé (C-01), après que la
+correction de F-06 eut rangé le travail orphelin de la navigation dans la story la plus proche au
+lieu de lui donner la sienne.
 
-Périmètre de la navigation, à ne pas élargir : **une seule profondeur de menu**, pas de sous-menus
-déroulants — le public visé est âgé et peu à l'aise avec l'informatique, et un menu à plusieurs
-niveaux est précisément ce qu'il ne faut pas lui demander de manipuler. L'en-tête porte le logo et la
-teinte de l'association, tous deux fournis par s02 : ne pas les recoder ici.
+Risque (complexité 4) : c'est le back-office éditorial, risque produit n°1 de l'ADR 001, et la story
+tient au-dessus du 3 chiffré par le PRD pour une raison précise — le modèle en blocs typés de
+l'ADR 007. Trois briques neuves s'y rencontrent (Milkdown, @dnd-kit, l'adaptateur de stockage) et
+trois composants du design system §2.2 y naissent (`<PreviewBar />`, `<SortableList />`,
+`<BlockPicker />`). Les deux pièges qui coûtent le plus cher sont ci-dessus : le glisser-déposer
+non obligatoire et le stockage local. Faire trancher l'adaptateur de stockage en `/ks-architect`
+avant `/ks-plan`.
+
+---
+
+## Story s04b-navigation-publique — Composer la navigation du site public
+
+⚠️ **Identifiant intercalé, dérogation assumée à `AGENTS.md`.** La navigation appartient au tronc
+commun et se livre juste après s04 ; lui donner l'id `s43` l'aurait placée en dernier et aurait rendu
+fausse la règle « l'ordre des ids suit les dépendances ». Renuméroter s05–s42 décalait 38 stories.
+La règle d'`AGENTS.md` a été amendée en conséquence : un suffixe lettre est autorisé pour intercaler.
+Conséquence pratique : `/ks-plan s04` ne résout pas (deux correspondances de préfixe), il faut taper
+`s04b` ou le slug — l'agent liste et s'arrête, il ne se trompe pas de story.
+
+**En tant que** membre du bureau **je veux** décider où mes pages apparaissent dans le menu et ce que
+dit le pied de page **afin que** le visiteur trouve le site sans connaître les URL.
+
+### Complexity
+
+2
+
+### Acceptance criteria
+
+- [ ] Le bureau compose le **menu du site public** : ajouter une entrée pointant vers une page, la retirer, en changer l'ordre. Le menu rendu au visiteur reflète cet ordre.
+- [ ] Une page publiée mais absente du menu reste atteignable par son URL ; une entrée de menu pointant vers une page dépubliée ou supprimée **ne s'affiche pas** au visiteur, sans casser le rendu du menu.
+- [ ] Le bureau modifie le contenu du **pied de page** ; la modification est visible sur toutes les pages publiques.
+- [ ] Le menu et le pied de page sont **scopés au tenant** : deux associations servent deux navigations distinctes sur leurs domaines respectifs.
+- [ ] Publier ou dépublier une page depuis s04 met le menu à jour **sans délai de revalidation** : le visiteur suivant ne voit jamais une entrée pointant vers une page disparue.
+- [ ] Une entrée de menu porte sa **propre visibilité**, indépendante de l'état de publication de sa page cible : le bureau masque une entrée sans dépublier la page ni retirer l'entrée, et la réaffiche telle quelle. Une page publiée dont l'entrée est masquée reste atteignable par son URL.
+- [ ] Un membre non-bureau ne peut modifier ni le menu ni le pied de page.
+
+### Dependencies
+
+s04
+
+### Agentic notes
+
+Réf. `V5 §3.1`, `CDCT §3.1`, `PRD` (« Navigation du site public », complexité 2). Cette ligne du
+périmètre était orpheline au dixième passage de revue, puis absorbée par s04 au onzième ; elle a
+enfin sa story (C-01).
+
+Périmètre à ne pas élargir : **une seule profondeur de menu**, pas de sous-menus déroulants — le
+public visé est âgé et peu à l'aise avec l'informatique, et un menu à plusieurs niveaux est
+précisément ce qu'il ne faut pas lui demander de manipuler.
+
+**L'en-tête, précisément.** Le PRD nomme trois choses éditables — « menu, en-tête, pied de page ».
+Le menu et le pied de page sont des critères ci-dessus. L'**en-tête** n'est pas éditable librement :
+ce qu'il porte d'association est le logo et la teinte, **tous deux fournis par s02**, et il ne se
+recode pas ici. C'est un écart à la lettre du PRD, assumé et non un oubli (C-05) : rendre l'en-tête
+éditable au-delà du logo et de la teinte serait un élargissement de périmètre, donc une décision de
+`/ks-prd`. Cette story compose la navigation dans un en-tête déjà habillé.
+
+Les trois attributs d'entrée que le PRD nomme — « ordre des entrées, page cible, visibilité » — sont
+en revanche tous les trois servis : les deux premiers par le critère 1, le troisième par le critère 6,
+ajouté pour cela.
+
+Piège cache, et c'est le seul vrai risque de la story : **le menu est rendu sur _toutes_ les pages
+publiques**, donc caché lui aussi (`'use cache'` + `cacheTag`). Son tag doit être invalidé par
+`updateTag` à deux endroits — au changement de menu, et à la publication ou dépublication d'une page
+en s04. C'est une **invalidation croisée entre deux `cacheTag`** : l'oublier côté s04 est le défaut
+qui produit une entrée de menu vers une page 404, et il ne se voit pas en développement, où le cache
+est froid.
+
+s34 s'appuie sur cette story : « désactivé, la page n'existe pas et aucune navigation n'y renvoie ».
+Un module désactivé ne doit pas laisser d'entrée de menu morte.
+
+Cimetière : pas de menu par rôle ni de navigation conditionnelle au membre connecté — le menu public
+est le même pour tous. La navigation du back-office n'est pas du contenu : elle appartient au socle.
 
 ---
 
@@ -588,13 +686,17 @@ s01, s03
 Réf. `V5 §4.2`, `CDCT §4.2`. Volontairement sans workflow : pas de validation, pas de programmation
 horaire.
 
-⚠️ **Niveaux de gravité : arbitrage ouvert, à trancher en `/ks-design`, pas en `/ks-plan`.** Le CDC
-n'en demande pas et le PRD porte cette ligne en complexité 1, d'où le parti pris d'origine — un seul
-niveau. Mais le design system §2.3 en spécifie trois, dont un **non refermable**, avec un argument
-qui n'est pas décoratif pour une ASL dont l'objet est l'eau : « une eau impropre à la consommation
-n'est pas une préférence d'affichage ». Les critères ci-dessus n'exercent qu'un seul niveau ;
-livrer les trois serait un élargissement de périmètre, qui passerait d'abord par `docs/prd.md`.
-Ne pas choisir en silence à l'implémentation. Relevé en revue du découpage (F-10).
+⚠️ **Niveaux de gravité : arbitrage ouvert, propriétaire unique — `/ks-prd`.** Le CDC n'en demande
+pas et le PRD porte cette ligne en complexité 1, d'où le parti pris d'origine — un seul niveau. Mais
+le design system §2.3 en spécifie trois, dont un **non refermable**, avec un argument qui n'est pas
+décoratif pour une ASL dont l'objet est l'eau : « une eau impropre à la consommation n'est pas une
+préférence d'affichage ». Les critères ci-dessus n'exercent qu'un seul niveau.
+
+Passer à trois est un **élargissement de périmètre**, donc une décision de `/ks-prd` — et de lui
+seul. Une version antérieure de cette note l'attribuait simultanément à `/ks-design` et à `docs/prd.md` ;
+`/ks-design` ne peut pas à la fois décider et ne pas décider (C-10). `/ks-design` reçoit l'arbitrage
+déjà tranché et le met en forme. Ne pas choisir en silence à l'implémentation. Relevé en revue du
+découpage (F-10, puis C-10).
 
 Le bandeau se pose dans le **gabarit commun**, pas page par page : c'est ce qui le fait apparaître
 sur les pages ajoutées par les stories ultérieures sans y revenir. Propriété de conception à vérifier
@@ -1897,7 +1999,7 @@ sur la GED, qui est donc ordonnée avant. Les convocations, elles, sont nominati
 
 ### Dependencies
 
-s01, s04
+s01, s04, s04b
 
 ### Agentic notes
 
@@ -2078,7 +2180,7 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 - [ ] La présidente déclenche un export complet et récupère une archive ZIP contenant : un fichier CSV par type de donnée tabulaire (membres, parcelles, relevés, factures, campagnes, signalements), un fichier JSON pour les contenus structurés, les fichiers d'origine des documents, et un `README` décrivant chaque fichier et ses colonnes.
 - [ ] Les CSV sont encodés en UTF-8 avec BOM, leur séparateur est celui documenté dans le README, chaque ligne porte le même nombre de colonnes que son en-tête, et le JSON est valide au parsing.
 - [ ] L'archive contient les **données membres** : membres, coordonnées, parcelles avec leurs périodes de propriété, relevés d'eau, factures, notes internes et échanges, état d'invitation et d'adoption, historique des attributions de rôle.
-- [ ] L'archive contient les **contenus publiés** : pages, actualités, fiches du bureau, analyses d'eau, bandeau d'alerte, chemins et portails de voirie, petites annonces.
+- [ ] L'archive contient les **contenus publiés du tronc commun** : pages, actualités, fiches du bureau, analyses d'eau, bandeau d'alerte. Les contenus des trois modules activables — vote, voirie, petites annonces — ne sont **délibérément pas énumérés ici** : ils entrent dans l'archive par le mécanisme du critère 8 dès que le module est livré et actif, et leur présence est vérifiée par le test de complétude de s39. Un agent qui code cette liste en dur reproduit exactement le défaut que le critère 8 interdit.
 - [ ] L'archive contient les **documents** : partagés, nominatifs, et modèles de documents, avec leurs fichiers d'origine.
 - [ ] L'archive contient les **communications** : campagnes, leurs statistiques d'ouverture et de clic, leur état de planification, l'historique des relances, les groupes de destinataires.
 - [ ] L'archive contient les **échanges entrants** : signalements, messages de contact, questions au bureau.
@@ -2142,6 +2244,13 @@ Générer en flux vers le disque, pas en mémoire.
 ---
 
 ## Story s39-completude-export — Garantir qu'aucune donnée n'échappe à l'export
+
+⚠️ **Story transverse, comme s00.** Elle ne livre aucun comportement observable par un utilisateur :
+c'est un garde-fou de non-régression qui compare deux inventaires. Sa valeur est réelle — sans lui,
+l'export de s38 se périme silencieusement à chaque table ajoutée — mais ce n'est pas une tranche de
+produit, et elle aurait pu rester un critère de s38. Elle en a été sortie parce que s38 se lisait
+comme une 5. Relevé en revue du découpage (C-08), qui corrigeait l'affirmation de s00 « seule du
+découpage dans ce cas » : elles sont deux.
 
 **En tant que** présidente **je veux** que l'export reste complet à mesure que le produit évolue
 **afin de** ne pas découvrir dans trois ans qu'une partie de nos données n'en sortait jamais.
@@ -2329,59 +2438,62 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 
 # Récapitulatif — ordre et dépendances
 
-| Id  | Story                     | Cx  | Dépend de                                                                                                              | Bloc |
-| --- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------- | ---- |
-| s00 | application-design-system | 3   | —                                                                                                                      | A    |
-| s01 | provisionner-association  | 4   | —                                                                                                                      | A    |
-| s02 | parametres-association    | 3   | s01                                                                                                                    | A    |
-| s03 | connexion-lien-magique    | 3   | s01                                                                                                                    | A    |
-| s04 | pages-cms                 | 4   | s01, s02, s03                                                                                                          | A    |
-| s05 | actualites                | 2   | s04                                                                                                                    | A    |
-| s06 | presentation-bureau       | 2   | s04                                                                                                                    | A    |
-| s07 | bandeau-alerte            | 1   | s01, s03                                                                                                               | A    |
-| s08 | formulaire-contact        | 2   | s02, s04                                                                                                               | A    |
-| s09 | analyses-eau              | 2   | s04                                                                                                                    | A    |
-| s10 | signalements-publics      | 3   | s02, s04, s08                                                                                                          | A    |
-| s11 | seo                       | 2   | s02, s04, s05, s09                                                                                                     | A    |
-| s12 | membres-parcelles         | 4   | s01, s03                                                                                                               | B    |
-| s13 | import-initial-membres    | 3   | s12                                                                                                                    | B    |
-| s14 | attribuer-roles           | 2   | s03, s12                                                                                                               | B    |
-| s15 | inviter-membre            | 2   | s02, s03, s12                                                                                                          | B    |
-| s16 | coordonnees-membre        | 1   | s12                                                                                                                    | B    |
-| s17 | import-releves-eau        | 3   | s02, s12                                                                                                               | B    |
-| s18 | historique-consommation   | 2   | s17                                                                                                                    | B    |
-| s19 | factures-liste            | 3   | s12                                                                                                                    | B    |
-| s20 | factures-pennylane        | 3   | s19                                                                                                                    | B    |
-| s21 | redirection-paiement      | 1   | s02, s19                                                                                                               | B    |
-| s22 | signalement-membre        | 2   | s10, s12                                                                                                               | B    |
-| s23 | questions-bureau          | 2   | s02, s10, s12                                                                                                          | B    |
-| s24 | notes-internes-membre     | 2   | s12                                                                                                                    | B    |
-| s25 | campagnes-email           | 3   | s02, s03, s12                                                                                                          | C    |
-| s26 | envoi-echelonne           | 4   | s02, s25                                                                                                               | C    |
-| s27 | groupes-destinataires     | 3   | s19, s25                                                                                                               | C    |
-| s28 | publipostage-pdf          | 3   | s12, s25                                                                                                               | C    |
-| s29 | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                           | C    |
-| s30 | stats-campagnes           | 2   | s25, s26                                                                                                               | C    |
-| s31 | documents-partages        | 2   | s03, s12                                                                                                               | D    |
-| s32 | documents-nominatifs      | 4   | s12, s31                                                                                                               | D    |
-| s33 | vote-asl-community        | 3   | s02, s12, s31                                                                                                          | E    |
-| s34 | module-voirie             | 2   | s01, s04                                                                                                               | F    |
-| s35 | petites-annonces          | 3   | s10, s12                                                                                                               | F    |
-| s36 | modeles-documents         | 3   | s27, s28, s32                                                                                                          | F    |
-| s37 | permissions-configurables | 4   | s03                                                                                                                    | F    |
-| s38 | export-donnees            | 4   | s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37 | F    |
-| s39 | completude-export         | 2   | s38                                                                                                                    | F    |
-| s40 | export-membre             | 2   | s12, s24, s38                                                                                                          | F    |
-| s41 | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                           | F    |
-| s42 | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                           | F    |
+| Id   | Story                     | Cx  | Dépend de                                                                                                              | Bloc |
+| ---- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------- | ---- |
+| s00  | application-design-system | 3   | —                                                                                                                      | A    |
+| s01  | provisionner-association  | 4   | s00                                                                                                                    | A    |
+| s02  | parametres-association    | 3   | s01                                                                                                                    | A    |
+| s03  | connexion-lien-magique    | 3   | s01                                                                                                                    | A    |
+| s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                          | A    |
+| s04b | navigation-publique       | 2   | s04                                                                                                                    | A    |
+| s05  | actualites                | 2   | s04                                                                                                                    | A    |
+| s06  | presentation-bureau       | 2   | s04                                                                                                                    | A    |
+| s07  | bandeau-alerte            | 1   | s01, s03                                                                                                               | A    |
+| s08  | formulaire-contact        | 2   | s02, s04                                                                                                               | A    |
+| s09  | analyses-eau              | 2   | s04                                                                                                                    | A    |
+| s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                          | A    |
+| s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                     | A    |
+| s12  | membres-parcelles         | 4   | s01, s03                                                                                                               | B    |
+| s13  | import-initial-membres    | 3   | s12                                                                                                                    | B    |
+| s14  | attribuer-roles           | 2   | s03, s12                                                                                                               | B    |
+| s15  | inviter-membre            | 2   | s02, s03, s12                                                                                                          | B    |
+| s16  | coordonnees-membre        | 1   | s12                                                                                                                    | B    |
+| s17  | import-releves-eau        | 3   | s02, s12                                                                                                               | B    |
+| s18  | historique-consommation   | 2   | s17                                                                                                                    | B    |
+| s19  | factures-liste            | 3   | s12                                                                                                                    | B    |
+| s20  | factures-pennylane        | 3   | s19                                                                                                                    | B    |
+| s21  | redirection-paiement      | 1   | s02, s19                                                                                                               | B    |
+| s22  | signalement-membre        | 2   | s10, s12                                                                                                               | B    |
+| s23  | questions-bureau          | 2   | s02, s10, s12                                                                                                          | B    |
+| s24  | notes-internes-membre     | 2   | s12                                                                                                                    | B    |
+| s25  | campagnes-email           | 3   | s02, s03, s12                                                                                                          | C    |
+| s26  | envoi-echelonne           | 4   | s02, s25                                                                                                               | C    |
+| s27  | groupes-destinataires     | 3   | s19, s25                                                                                                               | C    |
+| s28  | publipostage-pdf          | 3   | s12, s25                                                                                                               | C    |
+| s29  | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                           | C    |
+| s30  | stats-campagnes           | 2   | s25, s26                                                                                                               | C    |
+| s31  | documents-partages        | 2   | s03, s12                                                                                                               | D    |
+| s32  | documents-nominatifs      | 4   | s12, s31                                                                                                               | D    |
+| s33  | vote-asl-community        | 3   | s02, s12, s31                                                                                                          | E    |
+| s34  | module-voirie             | 2   | s01, s04, s04b                                                                                                         | F    |
+| s35  | petites-annonces          | 3   | s10, s12                                                                                                               | F    |
+| s36  | modeles-documents         | 3   | s27, s28, s32                                                                                                          | F    |
+| s37  | permissions-configurables | 4   | s03                                                                                                                    | F    |
+| s38  | export-donnees            | 4   | s02, s04, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37 | F    |
+| s39  | completude-export         | 2   | s38                                                                                                                    | F    |
+| s40  | export-membre             | 2   | s12, s24, s38                                                                                                          | F    |
+| s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                           | F    |
+| s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s28                                                                                           | F    |
 
-**43 stories, aucune à 5.** Répartition : trois à 1, dix-sept à 2, quinze à 3, huit à 4.
+**44 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, huit à 4.
 s00 est une **story de socle assumée, hors du tableau de périmètre du PRD** : elle ne livre aucune
-valeur observable par un utilisateur de l'association, et c'est la seule du découpage dans ce cas.
+valeur observable par un utilisateur de l'association. Elle n'est pas seule dans ce cas — s39 est un
+garde-fou de non-régression et relève de la même catégorie (C-08). Deux stories transverses sur
+quarante-quatre, chacune justifiée dans son en-tête.
 Sa surface est énumérée dans ses critères, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
 Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
-blocs typés, réordonnancement accessible et navigation du site), s12 (modèle membre↔parcelle
+blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
 daté), s26
 (planification, budget transverse et file de report), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
@@ -2391,7 +2503,7 @@ explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-d
 
 Deux écarts avec les scores du PRD, tous deux documentés dans la story concernée plutôt que lissés :
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
-main) et s38 à 4 contre 3 (vingt-six dépendances, sept familles de contenu, exécution en tâche de
+main) et s38 à 4 contre 3 (vingt-quatre dépendances, sept familles de contenu, exécution en tâche de
 fond, écriture en flux sur un VPS à 4 Go). Le PRD chiffre des _features_, ce tableau chiffre des
 _tranches livrables_.
 

@@ -67,6 +67,7 @@ One feature = one Research → Design → Plan → Execute → Review → Ship c
 ## Story ids and branches
 
 - Every story has an id: `s<number>-<short-slug>` (e.g. `s01-submit-testimonial`). It is assigned in docs/stories.md and reused verbatim everywhere: `docs/research/<id>.md`, `docs/plans/<id>.md`, `docs/reviews/<id>.md`, branch `feature/<id>`.
+- **Intercalating a story is allowed**: a single lowercase letter may be appended to the number (`s04b-navigation-publique`) to place a story between two existing ones without renumbering the rest. Use it only when the id must carry the execution order — appending the story at the end of the numbering is otherwise preferred, because a lettered id shares a prefix with its neighbour and the fuzzy resolver will refuse to guess between them (it lists and stops; it never picks the wrong story). Type the full id or the slug for those. `s00` is a legacy deviation of the same kind, documented in its own story.
 - All work on a story happens on `feature/<id>`, branched from the default branch. Never commit story work to the default branch.
 - The story diff = `git diff <default-branch>...feature/<id>`. That is what the review judges.
 - A command that receives a fuzzy story name resolves it against docs/stories.md; if there is no unambiguous match, it lists the available stories and stops.
