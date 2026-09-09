@@ -32,78 +32,142 @@
   ---break---
 */
 :root {
+  --radius: 0.5rem;
+
+  /* surfaces & texte */
   --background: oklch(1 0 0);
-  --foreground: oklch(0.147 0.004 49.25);
-  --card: oklch(0.985 0 0);
-  --card-foreground: oklch(0.147 0.004 49.25);
+  --foreground: oklch(0.22 0.015 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.015 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.147 0.004 49.25);
-  --primary: oklch(0.216 0.006 56.043);
-  --primary-foreground: oklch(0.985 0.001 106.423);
-  --secondary: oklch(0.97 0.001 106.424);
-  --secondary-foreground: oklch(0.216 0.006 56.043);
-  --muted: oklch(0.97 0.001 106.424);
-  --muted-foreground: oklch(0.553 0.013 58.071);
-  --accent: oklch(0.97 0.001 106.424);
-  --accent-foreground: oklch(0.216 0.006 56.043);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --link: oklch(0.52 0.17 255);
-  --border: oklch(0.923 0.003 48.717);
-  --input: oklch(0.923 0.003 48.717);
-  --ring: oklch(0.869 0.005 56.366);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0.001 106.423);
-  --sidebar-foreground: oklch(0.147 0.004 49.25);
-  --sidebar-primary: oklch(0.216 0.006 56.043);
-  --sidebar-primary-foreground: oklch(0.985 0.001 106.423);
-  --sidebar-accent: oklch(0.97 0.001 106.424);
-  --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
-  --sidebar-border: oklch(0.923 0.003 48.717);
-  --sidebar-ring: oklch(0.869 0.005 56.366);
+  --popover-foreground: oklch(0.22 0.015 250);
+  --muted: oklch(0.972 0.005 240);
+  --muted-foreground: oklch(0.45 0.02 245);
+  --border: oklch(0.9 0.008 245);
+  --input: oklch(0.66 0.014 245);
+  --ring: oklch(0.55 0.11 235);
+
+  /* actions & intentions */
+  --primary: oklch(0.35 0.06 240);
+  --primary-foreground: oklch(0.985 0.003 240);
+  --secondary: oklch(0.965 0.006 240);
+  --secondary-foreground: oklch(0.3 0.02 245);
+  --destructive: oklch(0.48 0.17 27);
+  --destructive-foreground: oklch(0.99 0.01 27);
+  --link: oklch(0.45 0.13 250);
+
+  /*
+    Les variantes `-ink` sont la couleur prise EN TEXTE sur le fond de page,
+    distincte du `-foreground` qui est l'encre posee SUR l'aplat. Le document
+    sombre les introduit en les marquant « dark only » ; en clair, `primary` et
+    `destructive` tiennent deja ce role sur blanc, d'ou le renvoi. Cet
+    appariement clair est deduit, pas ecrit : a confirmer au design system.
+  */
+  --primary-ink: var(--primary);
+  --destructive-ink: var(--destructive);
+
+  /* avertissement — bandeau d'alerte niveau 2, deuxième relance */
+  --warning: oklch(0.94 0.06 75);
+  --warning-border: oklch(0.72 0.12 70);
+  --warning-foreground: oklch(0.3 0.08 60);
+
+  /* accent = couleur de l'association ; SEULE la teinte varie */
+  --accent-hue: 195;
+  --accent: oklch(0.958 0.024 var(--accent-hue));
+  --accent-foreground: oklch(0.38 0.08 var(--accent-hue));
+  --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+  --accent-border: oklch(0.88 0.045 var(--accent-hue));
+
+  /* graphiques */
+  --chart-1: oklch(0.55 0.1 195);
+  --chart-2: oklch(0.45 0.09 250);
+  --chart-3: oklch(0.58 0.09 145);
+  --chart-4: oklch(0.62 0.1 85);
+  --chart-5: oklch(0.5 0.1 300);
+
+  /* barre latérale du back-office */
+  --sidebar: oklch(0.985 0.004 250);
+  --sidebar-foreground: oklch(0.26 0.015 250);
+  --sidebar-primary: oklch(0.35 0.06 240);
+  --sidebar-primary-foreground: oklch(0.985 0.003 240);
+  --sidebar-accent: oklch(0.93 0.012 245);
+  --sidebar-accent-foreground: oklch(0.26 0.02 245);
+  --sidebar-border: oklch(0.91 0.008 245);
+  --sidebar-ring: oklch(0.55 0.11 235);
 }
 /*
   ---break---
 */
+/*
+  Thème sombre — dérivé mécaniquement du jeu clair du §1.1 : mêmes teintes,
+  mêmes chromas, luminosités inversées. Le design system ne documente qu'un jeu
+  clair ; ces valeurs ne sont donc validées par aucun document, seulement par la
+  mesure des contrastes (texte >= 4.5:1, contour de champ >= 3:1, WCAG 1.4.11).
+  --radius n'est pas redéfini : il ne dépend pas du thème.
+*/
 .dark {
-  --background: oklch(0.147 0.004 49.25);
-  --foreground: oklch(0.985 0.001 106.423);
-  --card: oklch(0.195 0.004 49.25);
-  --card-foreground: oklch(0.985 0.001 106.423);
-  --popover: oklch(0.147 0.004 49.25);
-  --popover-foreground: oklch(0.985 0.001 106.423);
-  --primary: oklch(0.985 0.001 106.423);
-  --primary-foreground: oklch(0.216 0.006 56.043);
-  --secondary: oklch(0.268 0.007 34.298);
-  --secondary-foreground: oklch(0.985 0.001 106.423);
-  --muted: oklch(0.268 0.007 34.298);
-  --muted-foreground: oklch(0.709 0.01 56.259);
-  --accent: oklch(0.268 0.007 34.298);
-  --accent-foreground: oklch(0.985 0.001 106.423);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --link: oklch(0.75 0.14 245);
-  --border: oklch(0.268 0.007 34.298);
-  --input: oklch(0.268 0.007 34.298);
-  --ring: oklch(0.553 0.013 58.071);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.216 0.006 56.043);
-  --sidebar-foreground: oklch(0.985 0.001 106.423);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0.001 106.423);
-  --sidebar-accent: oklch(0.268 0.007 34.298);
-  --sidebar-accent-foreground: oklch(0.985 0.001 106.423);
-  --sidebar-border: oklch(0.268 0.007 34.298);
-  --sidebar-ring: oklch(0.553 0.013 58.071);
+  /* surfaces & texte */
+  --background: oklch(0.215 0.009 255);
+  --foreground: oklch(0.94 0.006 250);
+  --card: oklch(0.215 0.009 255);
+  --card-foreground: oklch(0.94 0.006 250);
+  --popover: oklch(0.215 0.009 255);
+  --popover-foreground: oklch(0.94 0.006 250);
+  --muted: oklch(0.255 0.009 250);
+  --muted-foreground: oklch(0.72 0.015 248);
+  --border: oklch(0.33 0.01 250);
+  --input: oklch(0.52 0.016 250);
+  --ring: oklch(0.7 0.12 235);
+
+  /* actions & intentions */
+  --primary: oklch(0.5 0.14 255);
+  --primary-foreground: oklch(0.985 0.003 240);
+  --primary-ink: oklch(0.8 0.1 255);
+  --secondary: oklch(0.27 0.01 250);
+  --secondary-foreground: oklch(0.9 0.008 250);
+  --destructive: oklch(0.58 0.19 27);
+  --destructive-foreground: oklch(0.98 0.01 27);
+  --destructive-ink: oklch(0.74 0.16 27);
+  --link: oklch(0.8 0.1 250);
+
+  /*
+    Le document sombre ne couvre pas le trio `warning` (le §1.1 ne le definit
+    qu'en clair). Ces trois valeurs sont donc DERIVEES, pas validees par la
+    conception : c'est un manque du design system, a combler, jamais a etendre
+    par analogie. Sans elles, le bandeau d'alerte garderait son jaune pale de
+    theme clair sur une page sombre.
+  */
+  --warning: oklch(0.3 0.05 75);
+  --warning-border: oklch(0.6 0.11 70);
+  --warning-foreground: oklch(0.93 0.05 80);
+
+  /*
+    `--accent-hue` n'est volontairement PAS redeclare ici, contrairement au
+    document : il est injecte par le serveur sur <html> pour le tenant courant
+    (§1.2). Le redeclarer le figerait a 195 des que le theme sombre est actif,
+    `.dark` et le selecteur de tenant ayant la meme specificite.
+  */
+  --accent: oklch(0.275 0.035 var(--accent-hue));
+  --accent-foreground: oklch(0.84 0.075 var(--accent-hue));
+  --accent-solid: oklch(0.64 0.11 var(--accent-hue));
+  --accent-border: oklch(0.4 0.055 var(--accent-hue));
+
+  /* graphiques */
+  --chart-1: oklch(0.66 0.11 195);
+  --chart-2: oklch(0.62 0.12 250);
+  --chart-3: oklch(0.68 0.11 145);
+  --chart-4: oklch(0.74 0.12 85);
+  --chart-5: oklch(0.64 0.12 300);
+
+  /* barre laterale du back-office */
+  --sidebar: oklch(0.19 0.009 255);
+  --sidebar-foreground: oklch(0.93 0.006 250);
+  --sidebar-primary: oklch(0.5 0.14 255);
+  --sidebar-primary-foreground: oklch(0.985 0.003 240);
+  --sidebar-accent: oklch(0.3 0.014 250);
+  --sidebar-accent-foreground: oklch(0.92 0.01 250);
+  --sidebar-border: oklch(0.32 0.01 250);
+  --sidebar-ring: oklch(0.7 0.12 235);
 }
 /*
   ---break---
@@ -117,27 +181,30 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-ink: var(--primary-ink);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-solid: var(--accent-solid);
+  --color-accent-border: var(--accent-border);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-link: var(--link);
+  --color-destructive-ink: var(--destructive-ink);
+  --color-warning: var(--warning);
+  --color-warning-border: var(--warning-border);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-link: var(--link);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -146,7 +213,16 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-source-serif), Georgia, 'Times New Roman', serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
 }
+
 /*
   ---break---
 */

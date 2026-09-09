@@ -1,4 +1,5 @@
 import {GoogleAnalytics} from '@next/third-parties/google'
+import {JetBrains_Mono, Public_Sans, Source_Serif_4} from 'next/font/google'
 import {NextIntlClientProvider} from 'next-intl'
 import {setRequestLocale} from 'next-intl/server'
 import NextTopLoader from 'nextjs-toploader'
@@ -6,6 +7,27 @@ import React, {ReactNode} from 'react'
 
 import {AppProviders} from '@/components/context/app-providers'
 import {env} from '@/env'
+
+const sans = Public_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-public-sans',
+})
+
+const serif = Source_Serif_4({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '600', '700'],
+  variable: '--font-source-serif',
+})
+
+const mono = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '500'],
+  variable: '--font-jetbrains-mono',
+})
 
 type Props = {
   children: ReactNode
@@ -18,8 +40,13 @@ export default async function BaseLayout({children, locale}: Props) {
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <body>
-        <NextTopLoader showSpinner={false} color="#2563eb" height={3} />
+      <body
+        className={`${sans.variable} ${serif.variable} ${mono.variable} bg-background text-foreground font-sans text-[17px] leading-[1.6] antialiased`}
+      >
+        {/* La barre de progression est peinte hors de la cascade CSS : elle ne
+            peut pas lire var(--primary). #2C3F63 est la jumelle hexadecimale
+            canonique de `primary` (design-system §5.3). */}
+        <NextTopLoader showSpinner={false} color="#2C3F63" height={3} />
         <NextIntlClientProvider>
           <AppProviders>{children}</AppProviders>
         </NextIntlClientProvider>
