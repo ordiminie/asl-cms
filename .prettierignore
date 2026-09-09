@@ -5,3 +5,9 @@ build
 /src/app/\[locale\]/(public)/docs/_files/**/*.mdx
 /src/app/*/docs/_files/**/*.mdx
 pnpm-lock.yaml
+
+# Copies generees depuis .claude/rules/ par `pnpm check:rules`.
+# Les formater les fait diverger de la regle canonique : check:rules et
+# prettier se contredisaient sur ces fichiers, qui oscillaient a chaque
+# `format:fix` / `check:rules --fix`.
+.cursor/rules/
