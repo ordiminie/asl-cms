@@ -91,11 +91,15 @@ observable par un utilisateur de l'association : ce qu'elle rhabille est le boil
 une correction du défaut relevé en revue (F-01), c'est une **dérogation consciente**, bornée à une
 story. s39 est le second cas — deux stories transverses sur quarante-quatre.
 
-**Son sujet est étroit : le CSS.** Appliquer les tokens du design system, charger les polices,
-retirer le thème sombre du boilerplate. Rien d'autre. Les passages successifs de revue l'avaient
-élargie à onze sujets et à des énumérations de fichiers écrites à la main — dont l'une s'est révélée
-fausse contre le dépôt (D-01). **Chaque critère ci-dessous est une commande**, pas une description de
-surface : c'est ce qui rend « fini » décidable sans rien avoir à énumérer ni à maintenir.
+**Son sujet est étroit : le thème.** Appliquer les tokens du design system, charger les polices,
+retirer le thème sombre du boilerplate — dans le CSS, mais aussi partout où le mécanisme s'étend :
+le proxy, le rendu Shiki, les graphiques, et la préférence exposée à l'utilisateur. Rien d'autre.
+
+Les passages successifs de revue l'avaient élargie à onze sujets et à des énumérations de fichiers
+écrites à la main — dont l'une s'est révélée fausse contre le dépôt (D-01). **Chaque critère
+ci-dessous est décidable, et la plupart par une seule commande** : c'est ce qui rend « fini »
+vérifiable sans rien avoir à énumérer ni à maintenir. Trois critères (1, 6, 8) demandent une
+vérification à l'écran, et le disent.
 
 **En tant qu'**équipe Zourite Studio **je veux** que le socle porte l'identité visuelle d'ASL-CMS
 avant le premier écran **afin que** chaque story porteuse d'écran compose avec un socle déjà habillé,
@@ -116,8 +120,11 @@ dépôt au moment de l'écriture — ils situent le travail, ils ne font pas par
 - [ ] `grep -rl 'theme-toggle' src/` ne retourne aucun fichier, et `src/components/theme-toggle.tsx` n'existe plus. (3 fichiers l'importent)
 - [ ] `grep -rl 'next-themes' src/` ne retourne aucun fichier : plus de fournisseur, plus de `setTheme`, et **la préférence de thème disparaît des réglages utilisateur**. Un compte existant dont `settings.theme` valait `dark` s'affiche en clair, sans erreur. (8 fichiers, dont `user-preferences-sync.tsx` qui applique la préférence au chargement)
 - [ ] Les trois familles du §1.3 sont chargées par `next/font` et exposées en `--font-sans`, `--font-serif`, `--font-mono` ; aucun `var()` de police ne pointe vers une variable non définie, et le texte rendu utilise bien ces familles. (`next/font` est aujourd'hui absent de `src/`)
-- [ ] `git diff --stat src/lib/emails/` est **vide** : le mode sombre des gabarits d'email est intact (§5.2). L'abandon ne vaut que pour le web.
-- [ ] Les quatre mesures du §2.1 sont vérifiables à l'écran sur les composants de `src/components/ui/` : bouton `default` à 48 px, champ de formulaire à 48 px (56 sous 640 px), ligne de tableau à 56 px, texte courant à 17-18 px — contour de champ au contraste 3:1 du §1.5 (WCAG 1.4.11) compris.
+- [ ] `git diff main...feature/s00 --stat -- src/lib/emails/ docs/design-system.md` ne touche ni `src/lib/emails/` ni le §5.2 : **l'abandon du mode sombre ne vaut que pour le web**, et la spécification email survit au nettoyage. Attention à la prémisse — `src/lib/emails/` ne contient aujourd'hui **aucune** occurrence de `dark` sur ses 15 fichiers : il n'y a pas de mode sombre existant à préserver, c'est la **spécification** du §5.2 qu'on protège d'un nettoyage trop zélé, pas du code. (Le diff se prend contre la branche de base, pas contre HEAD : après le commit unique de la story, `git diff --stat` seul serait vide quoi qu'il arrive.)
+- [ ] Les **quatre mesures** du §2.1 sont vérifiables à l'écran sur les composants de `src/components/ui/` : bouton `default` à 48 px, champ de formulaire à 48 px (56 sous 640 px), ligne de tableau à 56 px, texte courant à 17-18 px — contour de champ au contraste 3:1 du **§1.4** (WCAG 1.4.11) compris. Ces quatre mesures, et rien d'autre du §2.1 : ses autres conventions gouvernent la **composition d'un écran** (« un seul bouton `default` par écran », « `tabs` : 4 maximum, jamais côté membre », « rien d'important ne passe par un toast ») et ne sont pas satisfiables par un composant — elles appartiennent à la story de chaque écran.
+- [ ] `grep -nE 'theme|prefers-color-scheme' src/proxy.ts` ne retourne aucune ligne : plus de cookie `theme`, plus de reniflage de `sec-ch-prefers-color-scheme`, plus d'en-tête `x-theme`. (11 lignes aujourd'hui ; `x-theme` est **produit et consommé nulle part** — il est déjà mort)
+- [ ] La préférence de thème n'est plus exposée : `grep -rl 'theme' src/services/ src/components/features/user/ src/components/features/admin/users/` ne retourne aucun fichier hors `__tests__`. (5 aujourd'hui : validation, server action, réglages utilisateur, fiche admin, schéma de formulaire). **La colonne `theme` et l'enum `theme_type` restent en base**, dormants — leur retrait appartient à s01, qui génère déjà une migration.
+- [ ] Plus aucun rendu à deux thèmes : `src/components/mdx-content.tsx` ne déclare plus `themes: {light, dark}` pour Shiki (ligne 46 aujourd'hui) et `src/components/ui/chart.tsx` ne génère plus de règle `.dark` (ligne 9 aujourd'hui).
 - [ ] `pnpm check:rules` passe et `grep -rlE 'en sombre|x-theme' .claude/rules/` ne retourne aucun fichier : plus aucune **règle active** ne demande de vérifier « en clair et en sombre » ni ne justifie un opt-out par la lecture du thème. `docs/plans/` et `docs/migrations/` sont hors périmètre — ce sont les archives historiques du boilerplate, pas des règles.
 
 ### Dependencies
@@ -164,8 +171,8 @@ au moment de l'exécution : si s00 passe en premier, elle les nettoie avec le re
 supprime ensuite — nettoyer du code qui sera effacé coûte moins cher que de maintenir une liste
 d'exclusions qui se périme. C'est le renoncement délibéré à l'énumération qui avait produit D-01.
 
-Aucun manque du design system ne se comble par une valeur inventée — c'est une **règle transverse**
-(voir « Règles transverses » et `AGENTS.md`), pas un critère de cette story : un garde-fou toujours
+Aucun manque du design system ne se comble par une valeur inventée — c'est une règle de dépôt
+(`AGENTS.md`, section Design), pas un critère de cette story : un garde-fou toujours
 vrai quand rien n'est rencontré ne se teste pas.
 
 `pnpm dev` ne recharge pas à chaud dans le conteneur de développement : le dépôt est un montage 9p
@@ -201,6 +208,7 @@ chaque écran appartient à sa story et à son `/ks-design`.
 - [ ] La policy RLS refuse la lecture inter-tenant même lorsque la couche applicative est court-circuitée (test au niveau repository).
 - [ ] Les cinq sous-systèmes écartés par l'ADR 009 — chat IA, crédits, affiliation, projets/tâches, newsletter Mailchimp — ont disparu de l'arbre de travail : leurs tables ne sont plus dans le schéma Drizzle, la suite de tests passe sans elles, et `pnpm knip` ne signale pas d'orphelin issu du retrait.
 - [ ] Aucune table métier restante n'est dépourvue de policy RLS : toute table portant `organization_id` en a une, et les tables exemptées sont exactement celles listées dans `docs/architecture.md`.
+- [ ] La colonne `theme` et l'enum `theme_type` ont disparu du schéma Drizzle et de la base, dans la même migration que les tables retirées : s00 avait cessé de les exposer, cette story les supprime. Un compte existant survit à la migration.
 - [ ] `rule-react-query.md` et `rule-seed-usersroles-and-organization.md` ne renvoient plus à `projects`, retiré : elles pointent vers un domaine ASL-CMS réellement présent, et `pnpm check:rules` passe.
 
 ### Dependencies
@@ -270,6 +278,12 @@ arrivent en s33, s34 et s35 — un critère qui les nommerait ici serait intesta
 livraison et ferait doublon avec le critère « Le module se désactive par tenant » que chacune de ces
 trois stories porte déjà. La preuve se fait donc ici sur une route de test rattachée à un module
 fictif, et par module chez chacune des trois. Défaut relevé en revue du découpage.
+
+**La colonne `theme` voyage avec cette migration.** s00 retire tout le code du thème — proxy,
+sélecteur, préférence exposée — mais s'arrête au bord de la base pour ne pas emporter une migration
+dans une story de CSS. La colonne reste donc dormante entre s00 et s01, et c'est ici qu'elle tombe,
+dans la migration que le retrait ADR 009 impose de toute façon. Ne pas la traiter à part : une
+seconde migration pour une colonne serait du bruit dans l'historique.
 
 **Le retrait des sous-systèmes du boilerplate appartient à cette story**, et l'ADR 009 le dit
 nommément : « Le retrait est exécuté dans s01 ». La raison n'est pas le ménage — c'est que s01 doit
@@ -543,12 +557,13 @@ Périmètre à ne pas élargir : **une seule profondeur de menu**, pas de sous-m
 public visé est âgé et peu à l'aise avec l'informatique, et un menu à plusieurs niveaux est
 précisément ce qu'il ne faut pas lui demander de manipuler.
 
-**L'en-tête, précisément.** Le PRD nomme trois choses éditables — « menu, en-tête, pied de page ».
-Le menu et le pied de page sont des critères ci-dessus. L'**en-tête** n'est pas éditable librement :
-ce qu'il porte d'association est le logo et la teinte, **tous deux fournis par s02**, et il ne se
-recode pas ici. C'est un écart à la lettre du PRD, assumé et non un oubli (C-05) : rendre l'en-tête
-éditable au-delà du logo et de la teinte serait un élargissement de périmètre, donc une décision de
-`/ks-prd`. Cette story compose la navigation dans un en-tête déjà habillé.
+**L'en-tête, précisément.** Le PRD nomme deux choses éditables — « menu et pied de page » — et ce
+sont les critères ci-dessus. Il l'a nommé trois un temps, en incluant l'en-tête ; la ligne a été
+corrigée (D-04) parce qu'aucune story ne le livrait et qu'aucun document ne définissait ce qu'un
+en-tête éditable serait au-delà du logo et de la teinte. **Il n'y a donc plus d'écart à déclarer.**
+Ce que l'en-tête porte d'association — logo et teinte — vient de s02 et ne se recode pas ici : cette
+story compose la navigation dans un en-tête déjà habillé. Le rendre éditable davantage serait un
+élargissement de périmètre, donc une décision de `/ks-prd`.
 
 Les trois attributs d'entrée que le PRD nomme — « ordre des entrées, page cible, visibilité » — sont
 en revanche tous les trois servis : les deux premiers par le critère 1, le troisième par le critère 6,
@@ -1251,7 +1266,7 @@ cachée prenant un `memberId` en argument : un appelant pourrait demander les do
 - [ ] Un membre connecté voit ses factures (date, objet, montant, statut) triées par date décroissante.
 - [ ] Le statut est affiché tel qu'il est fourni par la source, y compris les statuts intermédiaires — jamais réduit à payé/impayé.
 - [ ] Une facture porte une **date d'échéance**, distincte de sa date d'émission ; c'est elle qui datera les relances (s29).
-- [ ] La configuration du tenant désigne lesquels des statuts de la source valent « impayé » ; le prédicat qui en découle est le **seul** point du produit qui tranche « impayé ».
+- [ ] La configuration du tenant désigne lesquels des statuts de la source valent « impayé » ; le prédicat « impayé » qui en découle est lisible et testable depuis cette story.
 - [ ] Un statut jamais vu (nouvelle valeur côté source) n'est **pas** considéré comme réglé par défaut : il est signalé au bureau comme à classer, et la facture reste hors de la cible des relances tant qu'il ne l'est pas.
 - [ ] Un membre ne voit aucune facture d'un autre membre, y compris en forgeant l'identifiant (test d'autorisation croisée).
 - [ ] Le bureau saisit et met à jour manuellement une facture pour un membre, et le membre la voit apparaître.
@@ -2179,7 +2194,7 @@ s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24,
 Réf. `PRD` (« Export et portabilité des données », angle n°5 : « Pas de verrouillage »), RGPD (droit
 à la portabilité).
 
-Risque (complexité 4) : vingt-cinq dépendances, sept familles de contenu, exécution en tâche de
+Risque (complexité 4) : vingt-cinq dépendances, six familles de contenu, exécution en tâche de
 fond avec notification, écriture en flux sur un VPS à 4 Go. Le harnais de complétude en a été sorti
 (s39) en revue du découpage — la story se lisait comme une 5 déjà scindée une fois (s40) mais pas
 assez. Ce qui reste est un moteur d'export et son archive, pas une traversée du produit.
@@ -2202,7 +2217,7 @@ ce que le produit stocke. **Aucun des trois modules activables n'y figure** — 
 (F-13). Le raisonnement qui excluait s33 vaut pour les trois — un module activable peut être
 désactivé chez un tenant, et l'export ne doit être otage d'aucun. Leurs données entrent dans
 l'archive par le test de complétude de s39 dès que le module est livré, sans rouvrir cette story.
-C'est cohérent avec le critère 8. Les trois modules retirés ramenaient la story de vingt-six
+C'est cohérent avec le critère 8. Les trois modules retirés ramenaient la story de vingt-sept
 dépendances à vingt-quatre ; la scission de s04 en a rendu une — s04b, productrice du menu et du
 pied de page (D-02) — d'où vingt-cinq.
 
@@ -2489,7 +2504,7 @@ explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-d
 
 Deux écarts avec les scores du PRD, tous deux documentés dans la story concernée plutôt que lissés :
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
-main) et s38 à 4 contre 3 (vingt-cinq dépendances, sept familles de contenu, exécution en tâche de
+main) et s38 à 4 contre 3 (vingt-cinq dépendances, six familles de contenu, exécution en tâche de
 fond, écriture en flux sur un VPS à 4 Go). Le PRD chiffre des _features_, ce tableau chiffre des
 _tranches livrables_.
 
