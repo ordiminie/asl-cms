@@ -5,6 +5,8 @@ import {
   CreateMember,
   CreateOrganization,
   Organization,
+  ORGANIZATION_MODULES,
+  OrganizationModule,
   OrganizationRole,
   UpdateOrganization,
 } from '../types/domain/organization-types'
@@ -71,4 +73,47 @@ export const organizationUuidSchema = z.string().uuid({
 
 export const userUuidSchema = z.string().uuid({
   message: "L'identifiant utilisateur n'est pas valide.",
+})
+
+/**
+ * Un domaine, pas une URL : ni schema, ni chemin, ni port. La casse est
+ * abaissee ici pour que la colonne unique porte une seule forme du meme
+ * domaine (ADR 003 : un domaine par association).
+ */
+export const organizationDomainSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(4, {message: "Le domaine n'est pas valide."})
+  .max(253, {message: 'Le domaine est trop long.'})
+  .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/, {
+    message:
+      "Le domaine n'est pas valide. Attendu : asl-lafourche.fr, sans https:// ni chemin.",
+  })
+
+export const organizationModuleSchema = z.enum(
+  ORGANIZATION_MODULES as [OrganizationModule, ...OrganizationModule[]],
+  {
+    message: "Cette cle de module n'existe pas.",
+  }
+) satisfies z.Schema<OrganizationModule>
+
+/**
+ * Provisionner une association : nom, identifiant court, domaine, modules
+ * actifs et adresse de l'administrateur initial. L'administrateur est designe
+ * **par email** — jamais par un identifiant existant, puisque son compte peut
+ * ne pas exister encore.
+ */
+export const provisionOrganizationServiceSchema =
+  baseOrganizationServiceSchema.extend({
+    domain: organizationDomainSchema,
+    adminEmail: z.string().trim().toLowerCase().email({
+      message: "L'adresse email de l'administrateur n'est pas valide.",
+    }),
+    enabledModules: z.array(organizationModuleSchema).default([]),
+  })
+
+export const updateOrganizationModulesServiceSchema = z.object({
+  organizationId: organizationUuidSchema,
+  enabledModules: z.array(organizationModuleSchema),
 })

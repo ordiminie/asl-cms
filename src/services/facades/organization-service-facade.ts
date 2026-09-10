@@ -53,3 +53,11 @@ export const getAdminUserOrganizationsWithUsageService =
   organizationServiceInterceptor.getAdminUserOrganizationsWithUsageService
 export const searchOrganizationsForAdminService =
   organizationServiceInterceptor.searchOrganizationsForAdminService
+
+// PROVISIONING (s01)
+export const getOrganizationByDomainService =
+  organizationServiceInterceptor.getOrganizationByDomainService
+export const provisionOrganizationService =
+  organizationServiceInterceptor.provisionOrganizationService
+export const updateOrganizationModulesService =
+  organizationServiceInterceptor.updateOrganizationModulesService

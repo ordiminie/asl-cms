@@ -9,7 +9,6 @@ import {
   getAuthUser,
 } from '../authentication/auth-service'
 import {getMembersAndInvitationsService} from '../organization-service'
-import {getProjectsByOrganizationService} from '../project-service'
 import {
   checkSubscriptionLimitService,
   getPlanByCodeService,
@@ -83,7 +82,7 @@ export const canUpdateSubscription = async (
 
 /**
  * 🎯 Vérification des limites d'abonnement (DAL → Service)
- * @param limitType - Type de limite à vérifier (USERS, PROJECTS, STORAGE)
+ * @param limitType - Type de limite à vérifier (USERS, STORAGE)
  * @param referenceId - ID de référence (userId ou organizationId selon BILLING_MODE)
  * @param requestedAmount - Nombre d'éléments demandés (défaut: 1)
  */
@@ -119,11 +118,6 @@ export const checkSubscriptionLimit = async (
   }
   let currentUsage = 0
   switch (limitType) {
-    case LimitTypeConst.PROJECTS: {
-      const projects = await getProjectsByOrganizationService(referenceId) //todo
-      currentUsage = projects.length
-      break
-    }
     case LimitTypeConst.USERS: {
       const members = await getMembersAndInvitationsService(referenceId) //todo attention en billingmodeuser
       currentUsage = members.length

@@ -590,3 +590,157 @@ export const searchOrganizationsForAdminService = async (
 
   return await searchOrganizationsWithMemberEmailsDao(searchTerm.trim(), 10)
 }
+
+// ========================================
+// PROVISIONING (s01)
+// ========================================
+
+import {
+  getOrganizationByDomainDao,
+  updateOrganizationModulesDao,
+} from '@/db/repositories/organization-repository'
+import {
+  createUserDao,
+  getUserByEmailDao,
+} from '@/db/repositories/user-repository'
+
+import {canProvisionOrganization} from './authorization/organization-authorization'
+import {
+  Organization,
+  OrganizationModule,
+} from './types/domain/organization-types'
+import {
+  organizationDomainSchema,
+  provisionOrganizationServiceSchema,
+  updateOrganizationModulesServiceSchema,
+} from './validation/organization-validation'
+
+export type ProvisionOrganization = {
+  name: string
+  slug: string
+  domain: string
+  adminEmail: string
+  enabledModules: OrganizationModule[]
+}
+
+export type ProvisionedOrganization = {
+  organization: Organization
+  adminUserId: string
+  /** Vrai quand s01 a du creer le compte ; faux quand il existait deja. */
+  adminAccountCreated: boolean
+}
+
+/**
+ * Resout l'association servie par un domaine (ADR 003).
+ *
+ * **Sans controle d'autorisation, et c'est deliberé** : cette lecture repond a
+ * « quel site sert ce domaine », question posee a chaque requete **avant**
+ * toute session — c'est elle qui determine le tenant. Le nom et l'identifiant
+ * d'une association sont publics par construction, puisque son site l'est.
+ */
+export const getOrganizationByDomainService = async (
+  domain: string
+): Promise<Organization | undefined> => {
+  const parsed = organizationDomainSchema.safeParse(domain)
+  if (!parsed.success) {
+    return undefined
+  }
+
+  return await getOrganizationByDomainDao(parsed.data)
+}
+
+/**
+ * Provisionne une association : le tenant, ses modules, et son administrateur
+ * initial designe **par email**.
+ *
+ * Modele canonique de la couche service (`docs/architecture.md`) : l'ordre est
+ * `safeParse` -> `can*` -> repository. Les fonctions plus anciennes de ce
+ * fichier font l'inverse ; ne pas les recopier.
+ *
+ * s01 **n'envoie aucun email** : le lien de connexion appartient a s03, seule
+ * story a connaitre l'adaptateur Brevo. Un second chemin d'envoi ici devrait
+ * etre remplace par s03.
+ */
+export const provisionOrganizationService = async (
+  params: ProvisionOrganization
+): Promise<ProvisionedOrganization> => {
+  const parsed = provisionOrganizationServiceSchema.safeParse(params)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const granted = await canProvisionOrganization()
+  if (!granted) {
+    throw new AuthorizationError(
+      'Seul le SuperAdmin Zourite Studio peut provisionner une association'
+    )
+  }
+
+  const {name, slug, domain, adminEmail, enabledModules} = parsed.data
+
+  const occupant = await getOrganizationByDomainDao(domain)
+  if (occupant) {
+    throw new ValidationError(
+      `Ce domaine sert déjà l'association « ${occupant.name} ». Un domaine ne peut servir qu'une association.`
+    )
+  }
+
+  const organization = await createOrganizationDao({
+    name,
+    slug,
+    domain,
+    enabledModules,
+  })
+
+  const existingAdmin = await getUserByEmailDao(adminEmail)
+  const admin =
+    existingAdmin ??
+    (await createUserDao({
+      email: adminEmail,
+      // Le nom est obligatoire en base et s01 ne le demande pas : l'adresse en
+      // tient lieu jusqu'a ce que l'administrateur complete son profil.
+      name: adminEmail,
+    }))
+
+  await createOrganizationMemberDao({
+    userId: admin.id,
+    organizationId: organization.id,
+    role: UserOrganizationRoleConst.OWNER,
+    createdAt: new Date(),
+  })
+
+  return {
+    organization,
+    adminUserId: admin.id,
+    adminAccountCreated: !existingAdmin,
+  }
+}
+
+/**
+ * Active ou desactive les modules d'une association (ADR 010). Les cles sont
+ * validees contre l'enumere : une cle inconnue est refusee, jamais persistee.
+ */
+export const updateOrganizationModulesService = async (
+  organizationId: string,
+  enabledModules: OrganizationModule[]
+): Promise<void> => {
+  const parsed = updateOrganizationModulesServiceSchema.safeParse({
+    organizationId,
+    enabledModules,
+  })
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const granted = await canProvisionOrganization()
+  if (!granted) {
+    throw new AuthorizationError(
+      'Seul le SuperAdmin Zourite Studio peut activer un module'
+    )
+  }
+
+  await updateOrganizationModulesDao(
+    parsed.data.organizationId,
+    parsed.data.enabledModules
+  )
+}

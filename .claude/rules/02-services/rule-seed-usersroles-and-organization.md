@@ -184,8 +184,12 @@ pnpm run db:seed
 
 Ce jeu de test est conçu pour valider :
 
-- ✅ **Couche Service** : Validation et autorisation ([project-authorization.ts](src/services/authorization/project-authorization.ts))
-- ✅ **Couche DAL** : Cache et transformation des données ([project-dal.ts](src/app/dal/project-dal.ts))
-- ✅ **Couche Présentation** : Affichage conditionnel des composants ([projects-management.tsx](src/components/features/projects/projects-management.tsx))
+- ✅ **Couche Service** : Validation et autorisation ([organization-authorization.ts](src/services/authorization/organization-authorization.ts))
+- ✅ **Couche DAL** : Cache et transformation des données ([organization-dal.ts](src/app/dal/organization-dal.ts))
+- ✅ **Couche Présentation** : Affichage conditionnel des composants ([organizations-management.tsx](src/components/features/admin/organizations/organizations-management.tsx))
+
+> Le domaine cité était `projects`, retiré par l'ADR 009 dans s01. `organization` le remplace : c'est
+> le seul domaine du dépôt qui traverse les cinq couches et porte des rôles d'organisation, donc
+> celui sur lequel ce jeu de test se vérifie réellement.
 
 Utilisez ce jeu de test pour valider end-to-end votre système d'autorisation multi-niveaux !

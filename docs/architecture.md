@@ -81,14 +81,21 @@ Présentation → Façade → Service (validation + autorisation) → Repository
 - **Lectures** : par le DAL, qui porte le cache et transforme en DTO. **Mutations** : par Server Action.
 - Un service **n'importe jamais sa façade** ni celle d'un autre service.
 - Tout service applique, dans cet ordre : `safeParse` Zod → `AuthorizationError` si le `can*` refuse →
-  appel du repository. Le modèle canonique est `createProjectService` dans `src/services/project-service.ts`
-  — **il disparaît avec l'ADR 009 ; s01 doit désigner son remplaçant** et mettre à jour les règles qui le citent.
+  appel du repository. Le modèle canonique est **`provisionOrganizationService` dans
+  `src/services/organization-service.ts`** (désigné par s01 en remplacement de `createProjectService`,
+  parti avec l'ADR 009). ⚠️ Les fonctions **plus anciennes** du même fichier, `createOrganizationService`
+  en tête, font l'inverse — autorisation puis validation. C'est l'écart du boilerplate, pas la
+  convention : ne pas les recopier.
 - Détail complet : `.claude/rules/00-generals/rule-architecture.md`.
 
 ### Multi-tenant — la convention qui engage 42 stories
 
 - Toute table métier porte `organization_id`, est couverte par une policy RLS **forcée**, et sa story
   prouve l'isolation par un test d'accès croisé entre deux tenants (ADR 002).
+- **Une seule exception, et elle est bornée** : `member` et `invitation` portent `organization_id`
+  sans être des données métier — c'est le **plan identité**, exempté par l'ADR 014 parce que sa
+  lecture principale précède la résolution du tenant. Aucune table métier future n'hérite de cette
+  exemption. Le classement complet des 20 tables est plus bas, section « Data model ».
 - Les repositories appellent `getDb()`, **jamais `db` directement** : `getDb()` retourne la transaction
   du scope de tenant courant s'il y en a un.
 - Tout chemin serveur touchant une table métier s'exécute dans `withTenant(organizationId, ...)`.
@@ -151,7 +158,12 @@ Le code nouveau s'ajoute **en fin de fichier**.
 ## Data model
 
 Le boilerplate fournit `user`, `session`, `account`, `organization`, `member`, `invitation`,
-`verification` (Better Auth), `app_settings`, `notification`, `post`, `files`, plus les tables Stripe.
+`verification` (Better Auth), `app_settings`, `notifications`, `posts`, plus les tables Stripe
+(`subscription`, `subscription_plan`).
+
+⚠️ **Il n'y a pas de table `files`.** Ce document la listait ; `src/db/repositories/files-repository.ts`
+est en réalité un adaptateur de stockage objet, pas un repository Drizzle. Aucune policy RLS n'a donc
+à la couvrir. L'ADR 004 remplace ce stockage par le disque du VPS, derrière le même factory.
 
 Entités ajoutées par ASL-CMS, par domaine :
 
@@ -180,9 +192,49 @@ Entités ajoutées par ASL-CMS, par domaine :
 - **Autorisation** — `action_registry` : le registre des actions soumises à autorisation, que chaque
   story alimente et que s37 transforme en matrice configurable.
 
-Tables **sans** `organization_id`, donc sans policy — toute addition à cette liste se justifie en revue :
-`user`, `session`, `account`, `verification`, `app_settings` (réglages de plateforme), et les tables de
-migration Drizzle.
+### Classement RLS des 20 tables du schéma
+
+Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
+Les 20 tables du schéma après le retrait ADR 009 sont donc toutes classées, sans reste. Toute
+addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
+
+**Scopée par une policy RLS forcée** — 1 table
+
+| Table              | Pourquoi                                                                                                                                                    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_submissions` | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé. |
+
+**Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
+répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**
+qu'un tenant soit connu. — 9 tables
+
+| Table                                        | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user`, `session`, `account`, `verification` | Tables Better Auth, sans `organization_id`. Une identité n'appartient pas à un tenant.                                                                                                                                                                                                                                                                                                       |
+| `apikey`, `two_factor`, `user_settings`      | Rattachées à `user_id`, jamais à une association. Scopées par utilisateur, pas par tenant.                                                                                                                                                                                                                                                                                                   |
+| `member`, `invitation`                       | **Le pivot identité ↔ tenant** (ADR 014). Elles portent `organization_id` mais leur lecture principale est inter-tenant par construction : le `customSession` de Better Auth charge toutes les organisations d'un utilisateur à chaque requête. Sous policy, l'inscription et la session ne fonctionnent plus — mesuré. Isolation applicative (CASL) ; risque résiduel nommé dans l'ADR 014. |
+
+**Plan plateforme — exemptées** : ce sont les données de Zourite Studio sur ses clients, pas les
+données d'un client. — 4 tables
+
+| Table                               | Pourquoi                                                                                                                                                                                                                                                                    |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app_settings`                      | Réglages de la plateforme. Les réglages **par association** vivent dans `organization_setting` (ADR 010), qui sera scopée.                                                                                                                                                  |
+| `organization`                      | **C'est le tenant.** Elle ne porte pas `organization_id` par nature, et sa lecture par domaine précède toute résolution de tenant (ADR 003).                                                                                                                                |
+| `subscription`, `subscription_plan` | Abonnement **plateforme** Stripe. `subscription` se rattache au tenant par `reference_id` (`text`, polymorphe Better Auth) : une policy sur `organization_id` ne la verrait pas. À ne jamais confondre avec la facturation des membres (Pennylane, ADR 011, lecture seule). |
+
+**Contenu du socle, pas encore rattaché à un tenant — exemptées en attendant leur story** : elles ne
+portent aujourd'hui **aucune** colonne de rattachement, et aucun contenu d'association n'y est écrit.
+La story qui les met en service leur ajoute `organization_id` **et** sa policy, comme toute table
+métier. — 6 tables
+
+| Table                                                                   | Story qui les scope                                                                                 |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `posts`, `posts_translation`, `categories`, `hashtags`, `post_hashtags` | Base des actualités : c'est la story « actualités » qui les rattache au tenant.                     |
+| `notifications`                                                         | Rattachée à `user_id`. Une notification d'association demandera `organization_id`, donc une policy. |
+
+Enfin, les tables de migration Drizzle (`drizzle.__drizzle_migrations`) sont hors périmètre : elles
+n'appartiennent à aucun tenant et ne sont écrites que par le rôle propriétaire.
 
 ## Integration points
 

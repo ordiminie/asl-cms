@@ -37,3 +37,12 @@ export const userTestAdmin = {
   twoFactorEnabled: false,
   stripeCustomerId: 'cus_1234567890',
 } satisfies User
+
+/**
+ * SuperAdmin Zourite Studio. C'est le seul role qui provisionne une
+ * association (s01, critere 1) : ADMIN ne suffit pas, et les tests le prouvent.
+ */
+export const userTestSuperAdmin = {
+  ...userTestAdmin,
+  role: RoleConst.SUPER_ADMIN,
+} satisfies User

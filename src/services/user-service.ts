@@ -1,8 +1,6 @@
 import {getLocale} from 'next-intl/server'
 
-import {grantCreditsTxnDao} from '@/db/repositories/credit-ledger-repository'
 import {generateUniqueSlug} from '@/db/repositories/organization-repository'
-import {getPlanByCodeDao} from '@/db/repositories/subscription-repository'
 import {
   createUserDao,
   createUserRoleAndOrganizationTxnDao,
@@ -35,7 +33,6 @@ import {
 import {Pagination, SupportedLanguage} from './types/common-type'
 import {RoleConst} from './types/domain/auth-types'
 import {CreateOrganization} from './types/domain/organization-types'
-import {PlanConst} from './types/domain/subscription-types'
 import {
   CreateUser,
   CreateUserFromStripe,
@@ -139,25 +136,6 @@ export const createOrganizationForUserService = async (email: string) => {
     user.id,
     organizationData
   )
-
-  // Allouer les crédits initiaux du plan FREE
-  if (result.organizationId) {
-    try {
-      const freePlan = await getPlanByCodeDao(PlanConst.FREE)
-      const limits = freePlan?.limits as Record<string, number> | null
-      const initialCredits = limits?.credits ?? 0
-
-      if (initialCredits > 0) {
-        await grantCreditsTxnDao({
-          organizationId: result.organizationId,
-          amount: initialCredits,
-          reason: 'Initial FREE plan allocation',
-        })
-      }
-    } catch (error) {
-      logger.error('Failed to allocate initial credits:', error)
-    }
-  }
 
   return result
 }

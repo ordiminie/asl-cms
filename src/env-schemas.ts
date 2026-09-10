@@ -1,6 +1,5 @@
 import {z} from 'zod'
 
-import {REFERRAL_TRACKING_MODES} from './lib/helper/referral-helper'
 import {
   StripeCheckoutType,
   StripeCheckoutTypeSchema,
@@ -57,6 +56,12 @@ export const TrustedOriginsSchema = z
 export const serverSchema = {
   // Base de données
   DATABASE_URL: z.string().url(),
+  // Connexion des migrations et du seed : le rôle PROPRIÉTAIRE des objets.
+  // `DATABASE_URL` pointe, lui, sur le rôle applicatif `asl_app` — ni
+  // propriétaire ni `BYPASSRLS`, donc réellement soumis aux policies (ADR 002).
+  // Optionnelle pour ne pas casser un environnement à un seul rôle : le
+  // résolveur (`src/db/scripts/db-url.ts`) retombe alors sur `DATABASE_URL`.
+  DATABASE_MIGRATION_URL: z.string().url().optional(),
   // Connexions Postgres ouvertes PAR INSTANCE. Le défaut 1 vise le serverless
   // (Vercel), où chaque instance ouvre son propre pool : le total vaut
   // `max × instances` et doit rester sous la limite du pooler. Sur un serveur
@@ -94,17 +99,6 @@ export const serverSchema = {
   // OAuth (optionnel)
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
-
-  // Chat AI (serveur seulement - sécurisé)
-  CHAT_PROVIDER: z.enum(['ollama', 'openai', 'anthropic']).default('ollama'),
-  OLLAMA_BASE_URL: z.string().url().default('http://localhost:11434'),
-  OPENAI_API_KEY: z.string().optional(),
-  ANTHROPIC_API_KEY: z.string().optional(),
-
-  // Mailchimp Newsletter
-  MAILCHIMP_API_KEY: z.string().optional(),
-  MAILCHIMP_SERVER_PREFIX: z.string().optional(),
-  MAILCHIMP_AUDIENCE_ID: z.string().optional(),
 }
 
 // Schémas des variables client (exposées au client)
@@ -178,13 +172,6 @@ export const clientSchema = {
     .string()
     .default('false')
     .transform((val) => val === 'true'),
-
-  // Attribution d'affiliation : voir REFERRAL_TRACKING_MODES pour le detail.
-  // 'cookie' pose un traceur soumis a consentement en UE ; 'code-only' n'en
-  // pose aucun et s'appuie sur le code saisi a l'inscription.
-  NEXT_PUBLIC_AFFILIATE_TRACKING: z
-    .enum(REFERRAL_TRACKING_MODES)
-    .default('cookie'),
 
   // Méthodes d'authentification
   NEXT_PUBLIC_AUTH_METHODS: z

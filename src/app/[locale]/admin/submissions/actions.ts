@@ -2,6 +2,7 @@
 
 import {revalidatePath} from 'next/cache'
 
+import {withCurrentTenant} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {
   archiveUserSubmissionService,
@@ -21,7 +22,10 @@ export async function markAsReadAction(id: string): Promise<FormState> {
   })
 
   try {
-    await markAsReadService(id)
+    // Scope de tenant obligatoire : la policy RLS de `user_submissions`
+    // refuse la mise a jour d'une ligne d'un autre tenant, et n'en voit
+    // aucune hors scope.
+    await withCurrentTenant(async () => markAsReadService(id))
 
     revalidatePath('/admin/submissions')
     return {
@@ -44,7 +48,7 @@ export async function archiveSubmissionAction(id: string): Promise<FormState> {
   })
 
   try {
-    await archiveUserSubmissionService(id)
+    await withCurrentTenant(async () => archiveUserSubmissionService(id))
 
     revalidatePath('/admin/submissions')
     return {

@@ -65,12 +65,13 @@ export const PlanConst = {
   FREE: 'free' as SubscriptionPlan,
 } as const
 
-// Types pour les limites d'abonnement
-export type LimitType = 'projects' | 'storage' | 'users'
+// Types pour les limites d'abonnement.
+// `projects` et `credits` sont partis avec l'ADR 009 : le mecanisme de limites
+// reste, ses cles suivent le perimetre reel.
+export type LimitType = 'storage' | 'users'
 
 // Constantes pour les limites
 export const LimitTypeConst = {
-  PROJECTS: 'projects' as LimitType,
   STORAGE: 'storage' as LimitType,
   USERS: 'users' as LimitType,
 } as const
@@ -86,13 +87,6 @@ export type LimitConfig = {
 
 // Configuration des limites disponibles
 export const AVAILABLE_LIMITS: LimitConfig[] = [
-  {
-    key: 'projects',
-    label: 'Projets',
-    unit: 'projets',
-    icon: '📁',
-    description: 'Nombre de projets maximum',
-  },
   {
     key: 'storage',
     label: 'Stockage',

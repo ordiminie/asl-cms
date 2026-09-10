@@ -20,7 +20,8 @@ services:
       # Sous PowerShell la variable est USERPROFILE, pas HOME :
       # - ${USERPROFILE}/.ssh:/home/dev/.ssh:ro
     environment:
-      DATABASE_URL: postgres://asl:asl@db:5432/asl_cms
+      DATABASE_URL: postgres://asl_app:asl_app@db:5432/asl_cms
+      DATABASE_MIGRATION_URL: postgres://asl:asl@db:5432/asl_cms
       # Force le store pnpm sur le volume ci-dessus (variable lue par pnpm).
       npm_config_store_dir: /home/dev/.pnpm-store
     ports:

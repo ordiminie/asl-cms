@@ -3,7 +3,6 @@
 import {
   Building2,
   CreditCard,
-  Handshake,
   Key,
   type LucideIcon,
   Mail,
@@ -72,11 +71,6 @@ export function NavApplication({
       title: t('account.invitations'),
       url: '/account/invitations',
       icon: Mail,
-    },
-    {
-      title: t('account.affiliate'),
-      url: '/account/affiliate',
-      icon: Handshake,
     },
   ]
 

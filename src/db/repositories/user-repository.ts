@@ -8,7 +8,6 @@ import {
   session,
   user as users,
 } from '@/db/models/auth-model'
-import db from '@/db/models/db'
 import {AddOrganizationModel} from '@/db/models/organization-model'
 import {
   AddUserModel,
@@ -19,6 +18,7 @@ import {
   userSettings,
   UserSettingsModel,
 } from '@/db/models/user-model'
+import {getDb} from '@/db/tenant-scope'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 import {UserOrganizationRoleConst} from '@/services/types/domain/auth-types'
 import {User} from '@/services/types/domain/user-types'
@@ -29,7 +29,7 @@ export type UpdateSessionModel = typeof session.$inferInsert
 
 // CRUD
 export const createUserDao = async (user: AddUserModel) => {
-  const row = await db
+  const row = await getDb()
     .insert(users)
     .values({email: user.email, name: user.name})
     .returning()
@@ -39,7 +39,7 @@ export const createUserDao = async (user: AddUserModel) => {
 export const getUserByIdDao = async (
   uid: string
 ): Promise<User | undefined> => {
-  const row = await db.query.user.findFirst({
+  const row = await getDb().query.user.findFirst({
     where: (user, {eq}) => eq(user.id, uid),
     with: {
       members: {
@@ -67,14 +67,14 @@ export const getUserByIdDao = async (
 }
 
 export const deleteUserByIdDao = async (uid: string) => {
-  await db.delete(users).where(eq(users.id, uid))
+  await getDb().delete(users).where(eq(users.id, uid))
 }
 
 // Extra
 export const getUserByEmailDao = async (
   email: string
 ): Promise<User | undefined> => {
-  const row = await db.query.user.findFirst({
+  const row = await getDb().query.user.findFirst({
     where: (user, {eq}) => eq(user.email, email.toLowerCase()),
     with: {
       members: {
@@ -103,7 +103,7 @@ export const getUserByEmailDao = async (
 export const getUserByStripeCustomerIdDao = async (
   stripeCustomerId: string
 ): Promise<User | undefined> => {
-  const row = await db.query.user.findFirst({
+  const row = await getDb().query.user.findFirst({
     where: (user, {eq}) => eq(user.stripeCustomerId, stripeCustomerId),
     with: {
       members: {
@@ -145,14 +145,14 @@ export const getAllUsersWithPaginationDao = async (
 
   // Récupérer les utilisateurs de base
   const [baseUsers, [{count}]] = await Promise.all([
-    db
+    getDb()
       .select()
       .from(users)
       .where(searchCondition)
       .limit(pagination.limit)
       .offset(pagination.offset)
       .orderBy(sql`${users.createdAt} DESC`),
-    db
+    getDb()
       .select({count: sql<number>`count(*)`})
       .from(users)
       .where(searchCondition),
@@ -186,7 +186,7 @@ export const updateUserSafeByUidDao = async (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const {id, email, emailVerified, createdAt, ...rest} = user
   rest.updatedAt = new Date()
-  await db
+  await getDb()
     .update(users)
     .set({...rest})
     .where(eq(users.id, uid))
@@ -196,7 +196,7 @@ export const createUserRoleAndOrganizationTxnDao = async (
   userId: string,
   organizationData: AddOrganizationModel
 ): Promise<{user: User; organizationId: string; organizationSlug: string}> => {
-  return await db.transaction(async (tx) => {
+  return await getDb().transaction(async (tx) => {
     // 1. Récupérer l'utilisateur existant
     const existingUser = await tx.query.user.findFirst({
       where: eq(users.id, userId),
@@ -248,7 +248,7 @@ export const searchUsersDao = async (
 ): Promise<UserModel[]> => {
   let whereClause: any
   if (excludeOrganizationId) {
-    const userOrgs = await db
+    const userOrgs = await getDb()
       .select({userId: member.userId})
       .from(member)
       .where(eq(member.organizationId, excludeOrganizationId))
@@ -267,7 +267,7 @@ export const searchUsersDao = async (
       or(ilike(fields.name, `%${query}%`), ilike(fields.email, `%${query}%`))
   }
 
-  const rows = await db.query.user.findMany({
+  const rows = await getDb().query.user.findMany({
     where: whereClause,
     columns: {
       id: true,
@@ -293,7 +293,7 @@ export const searchUsersDao = async (
  * Vérifie si un email existe déjà dans la base de données
  */
 export const isEmailExistsDao = async (email: string): Promise<boolean> => {
-  const user = await db.query.user.findFirst({
+  const user = await getDb().query.user.findFirst({
     where: eq(users.email, email),
   })
   return !!user
@@ -303,14 +303,14 @@ export const isEmailExistsDao = async (email: string): Promise<boolean> => {
 export const createUserSettingsDao = async (
   settings: AddUserSettingsModel
 ): Promise<UserSettingsModel> => {
-  const [row] = await db.insert(userSettings).values(settings).returning()
+  const [row] = await getDb().insert(userSettings).values(settings).returning()
   return row
 }
 
 export const getUserSettingsByUserIdDao = async (
   userId: string
 ): Promise<UserSettingsModel | undefined> => {
-  const row = await db.query.userSettings.findFirst({
+  const row = await getDb().query.userSettings.findFirst({
     where: (settings, {eq}) => eq(settings.userId, userId),
   })
   return row
@@ -322,7 +322,7 @@ export const updateUserSettingsByUserIdDao = async (
 ): Promise<void> => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const {userId: _, ...rest} = settings
-  await db
+  await getDb()
     .update(userSettings)
     .set({...rest, updatedAt: new Date()})
     .where(eq(userSettings.userId, userId))
@@ -331,7 +331,7 @@ export const updateUserSettingsByUserIdDao = async (
 export const deleteUserSettingsByUserIdDao = async (
   userId: string
 ): Promise<void> => {
-  await db.delete(userSettings).where(eq(userSettings.userId, userId))
+  await getDb().delete(userSettings).where(eq(userSettings.userId, userId))
 }
 
 // Fonction utilitaire pour créer ou mettre à jour les paramètres
@@ -355,7 +355,7 @@ export const upsertUserSettingsDao = async (
 export const getUsersByOrganizationDao = async (
   organizationId: string
 ): Promise<UserModel[]> => {
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: users.id,
       name: users.name,
@@ -389,7 +389,7 @@ export const getUsersByOrganizationDao = async (
 export const hasPasswordCredentialDao = async (
   userId: string
 ): Promise<boolean> => {
-  const rows = await db
+  const rows = await getDb()
     .select({id: account.id})
     .from(account)
     .where(and(eq(account.userId, userId), isNotNull(account.password)))

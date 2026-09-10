@@ -8,6 +8,8 @@ import {
   AddOrganizationModel,
   MemberModel,
   OrganizationModel,
+  OrganizationModuleEnumModel,
+  organizationModuleValues,
   OrganizationRoleEnumModel,
   UpdateOrganizationModel,
 } from '@/db/models/organization-model'
@@ -72,3 +74,13 @@ export type OrganizationSearchResult = {
   logo: string | null
   memberEmails: string[]
 }
+
+/**
+ * Cle de module activable par association (ADR 010). Type de domaine : la
+ * presentation et les helpers passent par ici, jamais par l'enumere Drizzle.
+ */
+export type OrganizationModule = OrganizationModuleEnumModel
+
+/** Les cles connues. Une cle absente de cette liste est inactive, par regle. */
+export const ORGANIZATION_MODULES: readonly OrganizationModule[] =
+  organizationModuleValues

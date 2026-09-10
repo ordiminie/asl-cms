@@ -3,6 +3,7 @@
 
 import pg from 'pg'
 
+import {resolveMigrationUrl} from './db-url'
 import initDotEnv, {maskDbUrl} from './env'
 
 initDotEnv()
@@ -14,25 +15,20 @@ const STRIPE_PRICE_IDS = {
   ENTREPRISE_MONTHLY: 'price_1SnvcGEHimv7LwBYGVsTWzYx',
   ENTREPRISE_YEARLY: 'price_1SnvclEHimv7LwBYHHa8wpTd',
   LIFETIME: 'price_1Snvh3EHimv7LwBYb8ph8vrH',
-  // Credit Packs (one-time payments)
-  CREDIT_PACK_10: 'price_1SnxbyEHimv7LwBYznUE0U3p',
-  CREDIT_PACK_50: 'price_1SnxJQEHimv7LwBY9mndKqmY',
-  CREDIT_PACK_150: 'price_1Snxd6EHimv7LwBYS3dX77xT',
 } as const
 
 const seed = async () => {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('Do not use in production')
   }
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not defined')
-  }
-  const client = new pg.Client({
-    connectionString: process.env.DATABASE_URL,
-  })
+  // Le seed écrit dans toutes les tables, y compris celles couvertes par une
+  // policy RLS : il s'exécute donc sous le rôle propriétaire, comme les
+  // migrations, et non sous le rôle applicatif (ADR 002).
+  const connectionString = resolveMigrationUrl(process.env)
+  const client = new pg.Client({connectionString})
 
   console.log('⏳ Checking connexion ...')
-  console.log(`🗄️  URL : ${maskDbUrl(process.env.DATABASE_URL)}`)
+  console.log(`🗄️  URL : ${maskDbUrl(connectionString)}`)
 
   await client.connect()
 
@@ -66,9 +62,9 @@ const seed = async () => {
         NULL,
         'Free',
         'Idéal pour débuter',
-        '{"projects": 1, "storage": 1, "organizationMembers": 2, "credits": 5}',
+        '{"storage": 1, "organizationMembers": 2}',
         NULL,
-        '["1 utilisateur", "1 projet", "1 GB stockage", "50 crédits/mois", "Support communautaire"]',
+        '["1 utilisateur", "1 GB stockage", "Support communautaire"]',
         0,
         0,
         'EUR',
@@ -85,9 +81,9 @@ const seed = async () => {
         '${STRIPE_PRICE_IDS.PRO_YEARLY}',
         'Pro',
         'Parfait pour les équipes en croissance',
-        '{"projects": 2, "storage": 10, "organizationMembers": 3, "credits": 500}',
+        '{"storage": 10, "organizationMembers": 3}',
         NULL,
-        '["Jusqu''à 5 utilisateurs", "2 projets", "10 GB stockage", "500 crédits/mois", "Support prioritaire", "Intégrations avancées"]',
+        '["Jusqu''à 5 utilisateurs", "10 GB stockage", "Support prioritaire", "Intégrations avancées"]',
         29,
         249,
         'EUR',
@@ -104,9 +100,9 @@ const seed = async () => {
         '${STRIPE_PRICE_IDS.ENTREPRISE_YEARLY}',
         'Enterprise',
         'Pour les grandes organisations',
-        '{"projects": 3, "storage": 50, "organizationMembers": 5, "credits": 2000}',
+        '{"storage": 50, "organizationMembers": 5}',
         NULL,
-        '["Utilisateurs illimités", "3 projets", "50 GB stockage", "2000 crédits/mois", "Support 24/7", "SSO & sécurité avancée"]',
+        '["Utilisateurs illimités", "50 GB stockage", "Support 24/7", "SSO & sécurité avancée"]',
         99,
         990,
         'EUR',
@@ -123,72 +119,15 @@ const seed = async () => {
         NULL,
         'Lifetime',
         'Pour les longues durées',
-        '{"projects": 20, "storage": 50, "credits": 5000}',
+        '{"storage": 50}',
         '{"days": 14}',
-        '["Introduction Course / Components", "PRO: Complete Email Integration Guide", "PRO: All Features Access", "PRO: Code Review Sessions", "PRO: 100% Money Back Guarantee", "20 projets", "50 GB stockage", "5000 crédits/mois"]',
+        '["Introduction Course / Components", "PRO: Complete Email Integration Guide", "PRO: All Features Access", "PRO: Code Review Sessions", "PRO: 100% Money Back Guarantee", "50 GB stockage"]',
         70,
         NULL,
         'EUR',
         false,
         'active',
         4,
-        NOW(),
-        NOW()
-      ),
-      -- Credit Pack 10 tokens
-      (
-        '10tokens',
-        '${STRIPE_PRICE_IDS.CREDIT_PACK_10}',
-        NULL,
-        '10 crédits',
-        'Pack de 10 crédits',
-        '{"credits": 10}',
-        NULL,
-        '["10 crédits", "Pas d''expiration", "Usage immédiat"]',
-        2.99,
-        NULL,
-        'USD',
-        false,
-        'active',
-        10,
-        NOW(),
-        NOW()
-      ),
-      -- Credit Pack 50 tokens
-      (
-        '50tokens',
-        '${STRIPE_PRICE_IDS.CREDIT_PACK_50}',
-        NULL,
-        '50 crédits',
-        'Pack de 50 crédits - Populaire',
-        '{"credits": 50}',
-        NULL,
-        '["50 crédits", "Pas d''expiration", "Usage immédiat", "Économisez 13%"]',
-        12.99,
-        NULL,
-        'USD',
-        false,
-        'active',
-        11,
-        NOW(),
-        NOW()
-      ),
-      -- Credit Pack 150 tokens
-      (
-        '150tokens',
-        '${STRIPE_PRICE_IDS.CREDIT_PACK_150}',
-        NULL,
-        '150 crédits',
-        'Pack de 150 crédits - Meilleure valeur',
-        '{"credits": 150}',
-        NULL,
-        '["150 crédits", "Pas d''expiration", "Usage immédiat", "Économisez 22%"]',
-        34.99,
-        NULL,
-        'USD',
-        false,
-        'active',
-        12,
         NOW(),
         NOW()
       )
@@ -320,13 +259,21 @@ const seed = async () => {
   `)
 
   // 3. Insérer les organisations
+  //
+  // Les deux premières portent un DOMAINE, et ce n'est pas décoratif : le
+  // tenant vient du domaine appelé (ADR 003), donc sans domaine aucune
+  // organisation ne sert de site et rien n'est lisible en local. `localhost`
+  // et `127.0.0.1` sont deux `Host` distincts pointant sur le même serveur :
+  // c'est ce qui permet à `e2e/tenant-isolation.spec.ts` de prouver que deux
+  // domaines servent deux tenants sans toucher /etc/hosts (Chromium interdit
+  // de surcharger l'en-tête Host).
   await client.query(`
-    INSERT INTO "organization" (name, slug, description, logo, created_at, updated_at)
+    INSERT INTO "organization" (name, slug, description, logo, domain, enabled_modules, created_at, updated_at)
     VALUES
-      ('TechCorp Solutions', 'techcorp-solutions', 'Une entreprise de développement logiciel innovante', 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400', NOW(), NOW()),
-      ('Marketing Pro', 'marketing-pro', 'Agence de marketing digital et communication', 'https://images.unsplash.com/photo-1553484771-371a605b060b?w=400', NOW(), NOW()),
-      ('Acme Corp.', 'acme-corp', 'Startup innovante en technologie', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400', NOW(), NOW()),
-      ('Evil Corp.', 'evil-corp', 'Entreprise de cybersécurité', 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400', NOW(), NOW())
+      ('TechCorp Solutions', 'techcorp-solutions', 'Une entreprise de développement logiciel innovante', 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400', 'localhost', '{voirie}', NOW(), NOW()),
+      ('Marketing Pro', 'marketing-pro', 'Agence de marketing digital et communication', 'https://images.unsplash.com/photo-1553484771-371a605b060b?w=400', '127.0.0.1', '{}', NOW(), NOW()),
+      ('Acme Corp.', 'acme-corp', 'Startup innovante en technologie', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400', NULL, '{}', NOW(), NOW()),
+      ('Evil Corp.', 'evil-corp', 'Entreprise de cybersécurité', 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=400', NULL, '{}', NOW(), NOW())
     ON CONFLICT (slug) DO NOTHING;
   `)
 
@@ -383,63 +330,6 @@ const seed = async () => {
       
       -- Note: user-isolated@gmail.com n'est dans aucune organisation (test isolation)
     ON CONFLICT (organization_id, user_id) DO NOTHING;
-  `)
-
-  // 5. Insérer des projets pour tester les permissions
-  await client.query(`
-    INSERT INTO "project" (name, description, "organization_id", "created_by")
-    SELECT 
-      project_data.name,
-      project_data.description,
-      o.id as "organization_id",
-      u.id as "created_by"
-    FROM (
-      VALUES 
-        -- 1 projet pour TechCorp Solutions
-        ('Plateforme E-commerce', 'Développement d''une plateforme de vente en ligne moderne avec Next.js', 'techcorp-solutions', 'user-owner@gmail.com'),
-        
-        -- 2 projets pour Marketing Pro
-        ('Campagne Digitale 2024', 'Stratégie marketing complète pour les réseaux sociaux', 'marketing-pro', 'user-admin@gmail.com'),
-        ('Site Web Corporate', 'Refonte complète du site vitrine de l''entreprise', 'marketing-pro', 'admin-owner@gmail.com'),
-        
-        -- 0 projet pour Acme Corp (comme demandé - vide)
-        
-        -- 1 projet pour Evil Corp
-        ('Audit Sécurité', 'Audit complet de la sécurité informatique', 'evil-corp', 'user@gmail.com')
-    ) AS project_data(name, description, org_slug, creator_email)
-    JOIN "organization" o ON o.slug = project_data.org_slug
-    JOIN "user" u ON u.email = project_data.creator_email
-    ON CONFLICT DO NOTHING;
-  `)
-
-  // 6. Insérer des tâches pour tester différents états de projets
-  await client.query(`
-    INSERT INTO "task" (title, description, status, "due_date", "project_id", "organization_id", "created_by")
-    SELECT 
-      task_data.title,
-      task_data.description,
-      task_data.status::task_status,
-      task_data.due_date::timestamp,
-      p.id as "project_id",
-      p."organization_id",
-      u.id as "created_by"
-    FROM (
-      VALUES 
-        -- 2 tâches pour TechCorp - Plateforme E-commerce
-        ('Configuration Next.js', 'Mise en place de l''architecture Next.js avec TypeScript', 'done', '2024-09-15', 'Plateforme E-commerce', 'user-owner@gmail.com'),
-        ('Intégration Stripe', 'Implémentation du système de paiement avec Stripe', 'in_progress', '2024-12-01', 'Plateforme E-commerce', 'user@gmail.com'),
-        
-        -- 1 tâche pour Marketing Pro - Campagne Digitale
-        ('Création des visuels', 'Design des bannières pour les réseaux sociaux', 'todo', '2024-11-15', 'Campagne Digitale 2024', 'user-admin@gmail.com'),
-        
-        -- 0 tâche pour Marketing Pro - Site Web Corporate (pas de VALUES pour ce projet)
-        
-        -- 1 tâche pour Evil Corp - Audit Sécurité  
-        ('Scan des vulnérabilités', 'Analyse complète des failles de sécurité', 'in_progress', '2024-10-30', 'Audit Sécurité', 'user@gmail.com')
-    ) AS task_data(title, description, status, due_date, project_name, creator_email)
-    JOIN "project" p ON p.name = task_data.project_name
-    JOIN "user" u ON u.email = task_data.creator_email
-    ON CONFLICT DO NOTHING;
   `)
 
   // 7. Insérer des catégories de blog
@@ -565,7 +455,6 @@ const seed = async () => {
       VALUES 
         -- Notifications pour user@gmail.com (utilisateur multi-organisations)
         ('user@gmail.com', 'organization_invitation', 'Nouvelle invitation', 'Vous avez été invité à rejoindre Evil Corp en tant que propriétaire.', '{"organization": "evil-corp", "role": "owner"}', 'true', '7'),
-        ('user@gmail.com', 'project_created', 'Projet Audit Sécurité', 'Votre projet Audit Sécurité a été créé dans Evil Corp.', '{"project_id": "uuid", "organization": "evil-corp"}', 'false', '3'),
         ('user@gmail.com', 'security_alert', 'Connexion suspecte détectée', 'Une tentative de connexion depuis un nouvel appareil a été détectée.', '{"ip": "192.168.1.100", "device": "Chrome/Linux"}', 'false', '1'),
         
         -- Notifications pour admin@gmail.com (admin global)
@@ -573,7 +462,6 @@ const seed = async () => {
         ('admin@gmail.com', 'user_banned', 'Utilisateur suspendu', 'Utilisateur test@spam.com a été suspendu pour violation des conditions.', '{"banned_user": "test@spam.com", "reason": "spam"}', 'true', '6'),
         
         -- Notifications pour user-admin@gmail.com 
-        ('user-admin@gmail.com', 'project_created', 'Campagne Digitale créée', 'Votre projet Campagne Digitale 2024 a été créé dans Marketing Pro.', '{"project_id": "uuid", "organization": "marketing-pro"}', 'false', '4'),
         ('user-admin@gmail.com', 'subscription_updated', 'Plan mis à jour', 'Votre organisation a migré vers le plan Pro.', '{"old_plan": "free", "new_plan": "pro"}', 'true', '8'),
         
         -- Notifications pour user-owner@gmail.com
@@ -581,7 +469,7 @@ const seed = async () => {
         ('user-owner@gmail.com', 'subscription_created', 'Abonnement créé', 'Votre abonnement Pro a été activé pour TechCorp Solutions.', '{"plan": "pro", "organization": "techcorp-solutions"}', 'true', '10'),
         
         -- Notifications système pour superadmin@gmail.com
-        ('superadmin@gmail.com', 'system', 'Rapport hebdomadaire', 'Rapport activité de la plateforme - 45 nouveaux utilisateurs cette semaine.', '{"new_users": 45, "active_projects": 127, "revenue": 2340}', 'false', '1'),
+        ('superadmin@gmail.com', 'system', 'Rapport hebdomadaire', 'Rapport activité de la plateforme - 45 nouveaux utilisateurs cette semaine.', '{"new_users": 45, "revenue": 2340}', 'false', '1'),
         ('superadmin@gmail.com', 'security_alert', 'Tentatives de piratage', 'Plusieurs tentatives de connexion suspectes détectées sur le système.', '{"attempts": 23, "blocked_ips": ["1.2.3.4", "5.6.7.8"]}', 'false', '2'),
         
         -- Notifications pour user-member@gmail.com
@@ -592,7 +480,6 @@ const seed = async () => {
         ('moderator-member@gmail.com', 'subscription_canceled', 'Abonnement annulé', 'Votre abonnement a été annulé. Vous garderez accès jusqu''au 30 novembre.', '{"plan": "pro", "access_until": "2024-11-30"}', 'false', '3'),
         
         -- Notifications anciennes (lues) pour tester l'historique
-        ('user@gmail.com', 'project_updated', 'Tâche terminée', 'La tâche Configuration Next.js a été marquée comme terminée.', '{"task": "Configuration Next.js", "project": "Plateforme E-commerce"}', 'true', '20'),
         ('admin@gmail.com', 'user_unbanned', 'Utilisateur réactivé', 'Utilisateur previously-banned@test.com a été réactivé.', '{"unbanned_user": "previously-banned@test.com"}', 'true', '30')
     ) AS notif_data(user_email, type, title, message, metadata, read, days_ago)
     JOIN "user" u ON u.email = notif_data.user_email
@@ -622,44 +509,46 @@ const seed = async () => {
     ON CONFLICT (key) DO NOTHING;
   `)
 
-  // 12. Insérer le barème du programme d'affiliation
-  // Montants d'exemple : chaque SaaS bâti sur ce boilerplate remplace cette
-  // table par le sien. Rien n'est codé en dur dans le code applicatif.
+  // 12. Insérer des soumissions, une par tenant
+  //
+  // `user_submissions` est la table métier couverte par la policy RLS (ADR 002,
+  // ADR 014) : c'est sur elle que l'accès croisé se prouve, et il faut donc une
+  // ligne de chaque côté. Le seed pose `app.bypass_rls` parce que
+  // FORCE ROW LEVEL SECURITY soumet aussi le propriétaire des tables : sans
+  // cette porte, l'insertion serait refusée dès que le rôle du seed n'est plus
+  // superuser.
+  await client.query(`SET app.bypass_rls = 'on';`)
   await client.query(`
-    INSERT INTO "affiliate_program_reward" (
-      "plan_code",
-      "bounty_cents",
-      "currency",
-      "hold_days",
-      "is_active"
-    )
-    VALUES
-      ('pro', 5000, 'USD', 30, true),
-      ('enterprise', 15000, 'USD', 30, true),
-      ('lifetime', 10000, 'USD', 30, true)
-    ON CONFLICT (plan_code) DO NOTHING;
+    INSERT INTO "user_submissions" (organization_id, email, type, subject, message, metadata, read, archived, created_at, updated_at)
+    SELECT
+      o.id,
+      submission_data.email,
+      submission_data.type::submission_type,
+      submission_data.subject,
+      submission_data.message,
+      '{"source": "seed"}'::jsonb,
+      false,
+      false,
+      NOW(),
+      NOW()
+    FROM (VALUES
+      ('techcorp-solutions', 'proprietaire-a@example.test', 'contact', 'Lampadaire cassé rue des Tilleuls', 'Le lampadaire ne fonctionne plus depuis une semaine.'),
+      ('marketing-pro', 'proprietaire-b@example.test', 'contact', 'Portail du lotissement bloqué', 'Le portail ne se referme plus.')
+    ) AS submission_data(organization_slug, email, type, subject, message)
+    JOIN "organization" o ON o.slug = submission_data.organization_slug
+    ON CONFLICT DO NOTHING;
   `)
+  await client.query(`SET app.bypass_rls = 'off';`)
 
   const end = Date.now()
 
   console.log('✅ Seed inserted in', end - start, 'ms')
   console.log('')
   console.log('💎 Plans de subscription créés :')
-  console.log('🔹 FREE : 1 projet, 1 GB stockage, 50 crédits/mois (€0)')
-  console.log(
-    '🔹 PRO : 2 projets, 10 GB stockage, 500 crédits/mois (€29/mois, €249/an)'
-  )
-  console.log(
-    '🔹 ENTERPRISE : 3 projets, 50 GB stockage, 2000 crédits/mois (€99/mois, €990/an)'
-  )
-  console.log(
-    '🔹 LIFETIME : 20 projets, 50 GB stockage, 5000 crédits/mois (€70 unique, 14j trial)'
-  )
-  console.log('')
-  console.log("🎁 Barème d'affiliation créé (exemple, à adapter par SaaS) :")
-  console.log('🔹 PRO : 50 USD, carence 30 jours')
-  console.log('🔹 ENTERPRISE : 150 USD, carence 30 jours')
-  console.log('🔹 LIFETIME : 100 USD, carence 30 jours')
+  console.log('🔹 FREE : 1 GB stockage (€0)')
+  console.log('🔹 PRO : 10 GB stockage (€29/mois, €249/an)')
+  console.log('🔹 ENTERPRISE : 50 GB stockage (€99/mois, €990/an)')
+  console.log('🔹 LIFETIME : 50 GB stockage (€70 unique, 14j trial)')
   console.log('')
   console.log('📊 Jeu de test créé avec succès :')
   console.log(
@@ -671,18 +560,6 @@ const seed = async () => {
   )
   console.log('🔹 Cas de chevauchement : admin-owner, moderator-member')
   console.log('🔹 Utilisateur isolé : user-isolated (aucune organisation)')
-  console.log('')
-  console.log('📝 Projets et tâches créés par organisation :')
-  console.log('🔹 TechCorp Solutions : 1 projet (2 tâches)')
-  console.log('  └─ Plateforme E-commerce: Configuration ✅ + Intégration 🔄')
-  console.log('🔹 Marketing Pro : 2 projets (1 tâche total)')
-  console.log('  ├─ Campagne Digitale: Création visuels 📋')
-  console.log('  └─ Site Web Corporate: 0 tâche (vide)')
-  console.log('🔹 Acme Corp : 0 projet (vide pour tests)')
-  console.log('🔹 Evil Corp : 1 projet (1 tâche)')
-  console.log('  └─ Audit Sécurité: Scan vulnérabilités 🔄')
-  console.log('')
-  console.log('📊 Statuts des tâches : ✅ Done | 🔄 In Progress | 📋 Todo')
   console.log('')
   console.log('📝 Articles de blog créés :')
   console.log('🔹 2 catégories : Tech et Tutorial')
@@ -698,9 +575,9 @@ const seed = async () => {
   )
   console.log('')
   console.log('🔔 Notifications de test créées :')
-  console.log('🔹 22 notifications réparties sur tous les utilisateurs')
+  console.log('🔹 19 notifications réparties sur tous les utilisateurs')
   console.log(
-    '🔹 Types : system, project_*, subscription_*, organization_*, payment_*, security_alert, user_*'
+    '🔹 Types : system, subscription_*, organization_*, payment_*, security_alert, user_*'
   )
   console.log('🔹 Métadonnées typées pour chaque type de notification')
   console.log(

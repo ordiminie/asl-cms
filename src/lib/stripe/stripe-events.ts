@@ -1,6 +1,5 @@
 import Stripe from 'stripe'
 
-import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {
   getUserByEmailDao,
   hasPasswordCredentialDao,
@@ -8,17 +7,8 @@ import {
 } from '@/db/repositories/user-repository'
 import {logger} from '@/lib/logger'
 import {
-  recordBountyForPaidInvoiceService,
-  refundBountyByPaymentIntentService,
-} from '@/services/facades/affiliate-service-facade'
-import {
-  allocateMonthlyCreditsService,
-  completeCreditPackPurchaseService,
-} from '@/services/facades/credit-service-facade'
-import {
   createSubscriptionFromStripeService,
   getBillingContext,
-  getPlanByCodeService,
   getSubscriptionByUserIdService,
   updateSubscriptionForWebhookService,
 } from '@/services/facades/subscription-service-facade'
@@ -72,21 +62,6 @@ export async function onStripeEvent(event: Stripe.Event) {
           await handleInstallmentCheckoutSessionCompleted(session)
         }
 
-        // CAS : Achat de pack de crédits (one-time payment, pas de subscription)
-        // EARLY RETURN pour éviter que Better Auth essaie de traiter comme subscription
-        const isCreditPackCheckout = session.metadata?.type === 'credit_pack'
-        if (isCreditPackCheckout) {
-          logger.info('💳 Traitement achat pack de crédits')
-          try {
-            await handleCreditPackPurchase(session)
-            logger.info('✅ Credit pack traité - skip Better Auth processing')
-          } catch (error) {
-            logger.error('❌ Erreur achat pack de crédits:', error)
-          }
-          // Early return: pas de subscription à traiter pour les credit packs
-          return
-        }
-
         // En cas de besoin de traiter le workflow complet
         // si oui supprimer metadata.referenceId de la session.checkout pour eviter un double traitement par better auth
         //await handleFullCheckoutSessionCompleted(event)
@@ -98,7 +73,6 @@ export async function onStripeEvent(event: Stripe.Event) {
         //https://github.com/better-auth/better-auth/issues/2087
         //https://github.com/better-auth/better-auth/blob/main/packages/stripe/src/hooks.ts#L42-L43
         logger.info('🔄 Traitement customer.subscription.updated')
-        // Note: L'allocation des crédits est gérée par Better Auth onSubscriptionUpdate
         logger.info('✅ customer.subscription.updated traité')
         break
       }
@@ -111,55 +85,6 @@ export async function onStripeEvent(event: Stripe.Event) {
 
       case 'invoice.paid': {
         logger.info('💰 Invoice paid:', event.data.object.id)
-        const invoice = event.data.object as Stripe.Invoice
-
-        // Allouer les crédits mensuels si c'est une subscription récurrente
-        const subscriptionId = (
-          invoice as unknown as {subscription?: string | null}
-        ).subscription
-        if (subscriptionId) {
-          try {
-            await handleInvoicePaidCreditAllocation(invoice)
-          } catch (error) {
-            logger.error('❌ Erreur allocation crédits mensuels:', error)
-          }
-        }
-
-        try {
-          await handleInvoicePaidAffiliateBounty(invoice)
-        } catch (error) {
-          logger.error('❌ Erreur prime affiliation:', error)
-        }
-        break
-      }
-
-      case 'charge.refunded': {
-        logger.info('↩️ Charge refunded:', event.data.object.id)
-        const charge = event.data.object as Stripe.Charge
-
-        try {
-          await voidAffiliateBountyForPayment(
-            charge.payment_intent,
-            `stripe_refund:${charge.id}`
-          )
-        } catch (error) {
-          logger.error('❌ Erreur remboursement prime affiliation:', error)
-        }
-        break
-      }
-
-      case 'charge.dispute.created': {
-        logger.info('⚖️ Dispute created:', event.data.object.id)
-        const dispute = event.data.object as Stripe.Dispute
-
-        try {
-          await voidAffiliateBountyForPayment(
-            dispute.payment_intent,
-            `stripe_dispute:${dispute.id}`
-          )
-        } catch (error) {
-          logger.error('❌ Erreur litige prime affiliation:', error)
-        }
         break
       }
 
@@ -179,8 +104,7 @@ export async function onStripeEvent(event: Stripe.Event) {
   } catch (error) {
     logger.error('❌ Erreur dans onEvent Stripe:', error)
     // Re-throw pour les events critiques afin que Stripe retry au lieu
-    // d'avaler silencieusement : credit pack purchase + subscription deleted
-    // (qui declenche la compensation du solde negatif fantome).
+    // d'avaler silencieusement.
     if (isCriticalStripeEvent(event)) {
       throw error
     }
@@ -188,22 +112,13 @@ export async function onStripeEvent(event: Stripe.Event) {
 }
 
 function isCriticalStripeEvent(event: Stripe.Event): boolean {
-  // customer.subscription.deleted declenche la compensation du solde negatif
-  // fantome (hook Better Auth onSubscriptionDeleted). Si on swallow l'erreur,
-  // le user reste a -N jusqu'au cron de nuit (filet de secours).
-  if (event.type === 'customer.subscription.deleted') {
-    return true
-  }
   if (event.type !== 'checkout.session.completed') {
     return false
   }
   const session = event.data.object as Stripe.Checkout.Session
   // Le checkout maison (invité compris) crée le compte, l'organisation et
   // recolle l'abonnement : une erreur doit faire rejouer Stripe.
-  return (
-    session.metadata?.type === 'credit_pack' ||
-    session.metadata?.source === 'custom_checkout'
-  )
+  return session.metadata?.source === 'custom_checkout'
 }
 
 /**
@@ -935,234 +850,4 @@ async function createInstallmentSubscription(
     )
     throw error
   }
-}
-
-// ===================================
-// 🎯 CREDIT SYSTEM : FONCTIONS SPÉCIALISÉES
-// ===================================
-// Note: L'allocation des crédits est maintenant gérée par Better Auth callbacks
-// (onSubscriptionComplete et onSubscriptionUpdate dans auth.ts)
-
-/**
- * 🎯 Allocation des crédits mensuels lors du paiement invoice
- * @deprecated Utiliser les callbacks Better Auth (onSubscriptionComplete/onSubscriptionUpdate)
- */
-async function handleInvoicePaidCreditAllocation(
-  invoice: Stripe.Invoice
-): Promise<void> {
-  logger.info('💳 Traitement allocation crédits mensuels...')
-
-  const subscriptionId = (invoice as unknown as {subscription?: string | null})
-    .subscription as string
-  if (!subscriptionId) {
-    logger.info('📋 Pas de subscription - skip allocation crédits')
-    return
-  }
-
-  try {
-    // Récupérer les détails de la subscription Stripe
-    const stripeSubscription = (await stripeClient.subscriptions.retrieve(
-      subscriptionId
-    )) as Stripe.Subscription
-
-    // Récupérer le referenceId (organizationId en mode ORGANIZATION)
-    const referenceId = stripeSubscription.metadata?.referenceId
-    if (!referenceId) {
-      logger.warn('⚠️ Pas de referenceId dans subscription metadata - skip')
-      return
-    }
-
-    // Récupérer le plan pour obtenir les crédits mensuels
-    const planCode = stripeSubscription.metadata?.plan
-    if (!planCode) {
-      logger.warn('⚠️ Pas de plan dans subscription metadata - skip')
-      return
-    }
-
-    const plan = await getPlanByCodeService(planCode)
-    if (!plan) {
-      logger.warn(`⚠️ Plan ${planCode} non trouvé - skip`)
-      return
-    }
-
-    const planLimits = plan.limits as Record<string, number> | undefined
-    const monthlyCredits = planLimits?.credits ?? 0
-
-    if (monthlyCredits === 0) {
-      logger.info(`📋 Plan ${planCode} n'a pas de crédits mensuels - skip`)
-      return
-    }
-
-    // Récupérer les overrides de l'organisation
-    const organization = await getOrganizationByIdDao(referenceId)
-    const limitOverrides = organization?.limitOverrides as
-      Record<string, number> | undefined
-    const overrideCredits = limitOverrides?.credits ?? 0
-
-    // Calculer les dates de période (API version 2025-11-17)
-    const subData = stripeSubscription as unknown as {
-      current_period_start: number
-      current_period_end: number
-    }
-    const periodStart = new Date(subData.current_period_start * 1000)
-    const periodEnd = new Date(subData.current_period_end * 1000)
-
-    // Allouer les crédits
-    await allocateMonthlyCreditsService({
-      stripeSubscriptionId: subscriptionId,
-      organizationId: referenceId,
-      periodStart,
-      periodEnd,
-      monthlyCredits,
-      overrideCredits: overrideCredits > 0 ? overrideCredits : undefined,
-    })
-
-    logger.info('✅ Crédits mensuels alloués avec succès:', {
-      organizationId: referenceId,
-      monthlyCredits,
-      overrideCredits,
-      periodStart: periodStart.toISOString(),
-      periodEnd: periodEnd.toISOString(),
-    })
-  } catch (error) {
-    logger.error('❌ Erreur allocation crédits:', error)
-    throw error
-  }
-}
-
-/**
- * 🎯 Gestion de l'achat d'un pack de crédits
- */
-async function handleCreditPackPurchase(
-  session: Stripe.Checkout.Session
-): Promise<void> {
-  logger.info('💳 Traitement achat pack de crédits...')
-
-  const metadata = session.metadata || {}
-  const organizationId = metadata.organizationId
-  const packId = metadata.packId
-  const creditsFromMetadata = metadata.credits
-    ? parseInt(metadata.credits)
-    : null
-
-  if (!organizationId) {
-    logger.error('❌ organizationId manquant dans metadata')
-    throw new Error('organizationId manquant pour achat pack')
-  }
-
-  if (!packId) {
-    logger.error('❌ packId manquant dans metadata')
-    throw new Error('packId manquant pour achat pack')
-  }
-
-  // Récupérer le plan depuis la DB
-  const plan = await getPlanByCodeService(packId)
-  if (!plan) {
-    logger.error(`❌ Pack ${packId} non trouvé`)
-    throw new Error(`Pack ${packId} non trouvé`)
-  }
-
-  // Extraire les crédits du plan ou utiliser ceux de metadata
-  const planLimits = plan.limits as {credits?: number} | null
-  const credits = creditsFromMetadata ?? planLimits?.credits ?? 0
-
-  // Compléter l'achat
-  await completeCreditPackPurchaseService({
-    organizationId,
-    packId,
-    credits,
-    stripeSessionId: session.id,
-    expiresInDays: undefined,
-  })
-
-  logger.info('✅ Pack de crédits acheté avec succès:', {
-    organizationId,
-    packId,
-    credits,
-    sessionId: session.id,
-  })
-}
-
-/**
- * Enregistre la prime d'affiliation d'une facture réellement encaissée.
- *
- * Deux filtres portent la correction du calcul :
- * - `amount_paid > 0`, qui écarte les factures d'essai. Stripe renvoie bien un
- *   `payment_status: 'paid'` pour un essai à zéro, s'y fier verserait une prime
- *   sur un client qui n'a jamais payé.
- * - l'identifiant de facture comme clé d'idempotence, qui rend l'opération sûre
- *   au rejeu — Stripe ne garantit ni l'unicité ni l'ordre de livraison.
- */
-async function handleInvoicePaidAffiliateBounty(
-  invoice: Stripe.Invoice
-): Promise<void> {
-  const amountPaid = invoice.amount_paid ?? 0
-  if (amountPaid <= 0) {
-    logger.info('🎁 Facture à zéro (essai) - pas de prime affiliation')
-    return
-  }
-
-  const subscriptionId = (invoice as unknown as {subscription?: string | null})
-    .subscription as string | undefined
-  if (!subscriptionId) return
-
-  const stripeSubscription = (await stripeClient.subscriptions.retrieve(
-    subscriptionId
-  )) as Stripe.Subscription
-
-  const referenceId = stripeSubscription.metadata?.referenceId
-  const planCode = stripeSubscription.metadata?.plan
-  if (!referenceId || !planCode) {
-    logger.warn('⚠️ Metadata subscription incomplètes - skip prime affiliation')
-    return
-  }
-
-  const payment = invoice.payments?.data[0]?.payment?.payment_intent
-  const paymentIntentId = typeof payment === 'string' ? payment : payment?.id
-
-  const result = await recordBountyForPaidInvoiceService({
-    organizationId: referenceId,
-    planCode,
-    sourceId: invoice.id as string,
-    amountPaidCents: amountPaid,
-    stripeSubscriptionId: subscriptionId,
-    stripePaymentIntentId: paymentIntentId,
-  })
-
-  logger.info('🎁 Prime affiliation traitée', {
-    invoiceId: invoice.id,
-    created: result.created,
-    reason: result.reason,
-  })
-}
-
-/**
- * Annule la prime rattachée à un paiement remboursé ou contesté.
- *
- * Un litige est traité comme un remboursement : l'argent est susceptible de
- * repartir, et un chargeback arrive jusqu'à 120 jours après la transaction,
- * donc bien au-delà de toute carence raisonnable. Si le litige est finalement
- * gagné, un administrateur régularise — c'est le sens d'un ledger append-only,
- * on ajoute une écriture plutôt que d'en réécrire une.
- */
-async function voidAffiliateBountyForPayment(
-  paymentIntent: string | Stripe.PaymentIntent | null,
-  reason: string
-): Promise<void> {
-  const paymentIntentId =
-    typeof paymentIntent === 'string' ? paymentIntent : paymentIntent?.id
-  if (!paymentIntentId) {
-    logger.info('⚖️ Pas de payment intent - skip annulation prime')
-    return
-  }
-
-  const handled = await refundBountyByPaymentIntentService(
-    paymentIntentId,
-    reason
-  )
-
-  logger.info('↩️ Annulation prime affiliation traitée', {
-    paymentIntentId,
-    handled,
-  })
 }

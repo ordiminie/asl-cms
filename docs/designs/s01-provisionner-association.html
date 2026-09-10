@@ -1,0 +1,1107 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maquette — s01 Provisionner une association</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ==================================================================
+         TOKENS — copiés de docs/design-system.md §1.1 et de src/app/globals.css
+         Aucune valeur inventée. Deux jeux, comme l'exige l'ADR 012.
+         ================================================================== */
+      :root {
+        --radius: 0.5rem;
+
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.22 0.015 250);
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0.22 0.015 250);
+        --muted: oklch(0.972 0.005 240);
+        --muted-foreground: oklch(0.45 0.02 245);
+        --border: oklch(0.9 0.008 245);
+        --input: oklch(0.66 0.014 245);
+        --ring: oklch(0.55 0.11 235);
+
+        --primary: oklch(0.35 0.06 240);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.965 0.006 240);
+        --secondary-foreground: oklch(0.3 0.02 245);
+        --destructive: oklch(0.48 0.17 27);
+        --destructive-foreground: oklch(0.99 0.01 27);
+        --link: oklch(0.45 0.13 250);
+
+        --warning: oklch(0.94 0.06 75);
+        --warning-border: oklch(0.72 0.12 70);
+        --warning-foreground: oklch(0.3 0.08 60);
+
+        /* teinte de l'association — 195 par défaut (§1.2) */
+        --accent-hue: 195;
+        --accent: oklch(0.958 0.024 var(--accent-hue));
+        --accent-foreground: oklch(0.38 0.08 var(--accent-hue));
+        --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+        --accent-border: oklch(0.88 0.045 var(--accent-hue));
+
+        --sidebar: oklch(0.985 0.004 250);
+        --sidebar-foreground: oklch(0.26 0.015 250);
+        --sidebar-accent: oklch(0.93 0.012 245);
+        --sidebar-accent-foreground: oklch(0.26 0.02 245);
+        --sidebar-border: oklch(0.91 0.008 245);
+
+        --font-sans: 'Public Sans', system-ui, sans-serif;
+        --font-serif: 'Source Serif 4', Georgia, serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+      }
+
+      :root[data-theme='dark'] {
+        --background: oklch(0.215 0.009 255);
+        --foreground: oklch(0.94 0.006 250);
+        --card: oklch(0.215 0.009 255);
+        --card-foreground: oklch(0.94 0.006 250);
+        --muted: oklch(0.255 0.009 250);
+        --muted-foreground: oklch(0.72 0.015 248);
+        --border: oklch(0.33 0.01 250);
+        --input: oklch(0.52 0.016 250);
+        --ring: oklch(0.7 0.12 235);
+
+        --primary: oklch(0.5 0.14 255);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.27 0.01 250);
+        --secondary-foreground: oklch(0.9 0.008 250);
+        --destructive: oklch(0.58 0.19 27);
+        --destructive-foreground: oklch(0.98 0.01 27);
+        --link: oklch(0.8 0.1 250);
+
+        --warning: oklch(0.3 0.05 75);
+        --warning-border: oklch(0.6 0.11 70);
+        --warning-foreground: oklch(0.93 0.05 80);
+
+        --accent: oklch(0.275 0.035 var(--accent-hue));
+        --accent-foreground: oklch(0.84 0.075 var(--accent-hue));
+        --accent-solid: oklch(0.64 0.11 var(--accent-hue));
+        --accent-border: oklch(0.4 0.055 var(--accent-hue));
+
+        --sidebar: oklch(0.19 0.009 255);
+        --sidebar-foreground: oklch(0.93 0.006 250);
+        --sidebar-accent: oklch(0.3 0.014 250);
+        --sidebar-accent-foreground: oklch(0.92 0.01 250);
+        --sidebar-border: oklch(0.32 0.01 250);
+      }
+
+      /* ==================================================================
+         PRIMITIVES — échelle d'espacement à 8 valeurs (§1.4), rien hors échelle
+         1=4 2=8 3=12 4=16 6=24 8=32 12=48 16=64
+         ================================================================== */
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: 17px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      h1,
+      h2 {
+        font-family: var(--font-serif);
+        text-wrap: pretty;
+        margin: 0;
+      }
+      h1 {
+        font-size: 34px;
+        font-weight: 600;
+        line-height: 1.15;
+        letter-spacing: -0.005em;
+      }
+      h2 {
+        font-size: 26px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      h3 {
+        font-family: var(--font-sans);
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.3;
+        margin: 0;
+      }
+      .meta {
+        font-size: 15px;
+        color: var(--muted-foreground);
+        line-height: 1.5;
+      }
+      .overline {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .data {
+        font-family: var(--font-mono);
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+      }
+      a {
+        color: var(--link);
+        text-decoration: underline;
+      }
+
+      /* focus — jamais outline:none (§1.5) */
+      :where(a, button, input, [tabindex]):focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+
+      /* ---- Shell de démonstration de la maquette ---- */
+      .doc {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 32px 24px 64px;
+      }
+      .doc-head {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 24px;
+        margin-bottom: 32px;
+      }
+      .doc-note {
+        background: var(--warning);
+        border: 1px solid var(--warning-border);
+        color: var(--warning-foreground);
+        border-radius: var(--radius);
+        padding: 16px 24px;
+        margin: 24px 0 0;
+        font-size: 17px;
+      }
+      .screen {
+        margin-top: 48px;
+      }
+      .screen-label {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .frame {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        background: var(--background);
+      }
+
+      /* ---- Back-office : barre latérale 248px (§1.6) ---- */
+      .bo {
+        display: grid;
+        grid-template-columns: 248px 1fr;
+        min-height: 620px;
+      }
+      .bo-side {
+        background: var(--sidebar);
+        color: var(--sidebar-foreground);
+        border-right: 1px solid var(--sidebar-border);
+        padding: 24px 12px;
+      }
+      .bo-brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px 24px;
+      }
+      .bo-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .bo-nav a {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0 12px;
+        border-radius: var(--radius);
+        text-decoration: none;
+        color: var(--sidebar-foreground);
+        font-size: 17px;
+      }
+      .bo-nav a[aria-current='page'] {
+        background: var(--sidebar-accent);
+        color: var(--sidebar-accent-foreground);
+        font-weight: 600;
+      }
+      .bo-main {
+        padding: 24px 32px 48px;
+        min-width: 0;
+      }
+      .crumb {
+        font-size: 15px;
+        color: var(--muted-foreground);
+        margin-bottom: 16px;
+      }
+      .crumb a {
+        color: var(--muted-foreground);
+      }
+
+      /* ---- Card (§2.1 : bordure 1px, sans ombre) ---- */
+      .card {
+        background: var(--card);
+        color: var(--card-foreground);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        margin-bottom: 32px;
+      }
+      .card > header {
+        margin-bottom: 24px;
+      }
+      .card > header .meta {
+        margin-top: 4px;
+      }
+
+      /* ---- Formulaire (§3.1) : une colonne, libellé au-dessus 16px/500 ---- */
+      .field {
+        margin-bottom: 12px;
+      }
+      .field + .field {
+        margin-top: 12px;
+      }
+      label {
+        display: block;
+        font-size: 16px;
+        font-weight: 500;
+        line-height: 1.4;
+        margin-bottom: 8px;
+      }
+      .opt {
+        color: var(--muted-foreground);
+        font-weight: 400;
+      }
+      input[type='text'],
+      input[type='email'] {
+        display: block;
+        width: 100%;
+        height: 48px;
+        padding: 0 12px;
+        font-family: inherit;
+        font-size: 17px;
+        color: var(--foreground);
+        background: var(--background);
+        border: 1px solid var(--input);
+        border-radius: var(--radius);
+      }
+      .hint {
+        font-size: 15px;
+        color: var(--muted-foreground);
+        margin-top: 8px;
+        line-height: 1.5;
+      }
+      .prefixed {
+        display: flex;
+        align-items: stretch;
+      }
+      .prefixed .pfx {
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        border: 1px solid var(--input);
+        border-right: 0;
+        border-radius: var(--radius) 0 0 var(--radius);
+        font-family: var(--font-mono);
+        font-size: 15px;
+        white-space: nowrap;
+      }
+      .prefixed input {
+        border-radius: 0 var(--radius) var(--radius) 0;
+      }
+
+      /* état d'erreur : bordure destructive 2px + message sous le champ (§3.1) */
+      .field.is-error input {
+        border: 2px solid var(--destructive);
+      }
+      .err {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        margin-top: 8px;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--destructive);
+      }
+
+      /* ---- Alert ancrée (§2.1 : jamais un toast pour une erreur) ---- */
+      .alert {
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--destructive);
+        border-radius: var(--radius);
+        padding: 16px 24px;
+        margin-bottom: 32px;
+        background: var(--card);
+      }
+      .alert.is-ok {
+        border-left-color: var(--accent-solid);
+      }
+      .alert h3 {
+        margin-bottom: 8px;
+      }
+      .alert ul {
+        margin: 8px 0 0;
+        padding-left: 24px;
+      }
+      .alert li {
+        margin-top: 4px;
+      }
+
+      /* ---- Boutons (§2.1) : default 48px, un seul `default` par écran ---- */
+      .actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 48px;
+        min-width: 44px;
+        padding: 0 24px;
+        font-family: inherit;
+        font-size: 17px;
+        font-weight: 600;
+        line-height: 1;
+        border-radius: var(--radius);
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition:
+          background-color 120ms,
+          border-color 120ms;
+      }
+      .btn-default {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .btn-outline {
+        background: transparent;
+        color: var(--secondary-foreground);
+        border-color: var(--input);
+      }
+      .btn[aria-disabled='true'] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      /* ---- Checkbox (écran A : rien d'immédiat, donc case à cocher) ---- */
+      .checks {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .check {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        min-height: 44px;
+        padding: 8px;
+        margin: -8px;
+        border-radius: var(--radius);
+      }
+      .box {
+        flex: 0 0 auto;
+        width: 22px;
+        height: 22px;
+        margin-top: 2px;
+        border: 1px solid var(--input);
+        border-radius: 4px;
+        background: var(--background);
+        display: grid;
+        place-items: center;
+        color: var(--primary-foreground);
+      }
+      .box[data-checked='true'] {
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+      .check .lbl {
+        font-size: 17px;
+        font-weight: 500;
+      }
+
+      /* ---- Switch (écran B : réglage à effet immédiat + libellé d'état) ---- */
+      .rows {
+        display: flex;
+        flex-direction: column;
+      }
+      .row {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 0;
+        border-top: 1px solid var(--border);
+      }
+      .row:first-child {
+        border-top: 0;
+      }
+      .row-txt {
+        min-width: 0;
+      }
+      .row-ctl {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 0 0 auto;
+      }
+      .state {
+        font-size: 16px;
+        font-weight: 500;
+        min-width: 92px;
+        text-align: right;
+      }
+      .state[data-on='false'] {
+        color: var(--muted-foreground);
+      }
+      .sw {
+        position: relative;
+        width: 48px;
+        height: 28px;
+        border-radius: 999px;
+        background: var(--muted);
+        border: 1px solid var(--input);
+        flex: 0 0 auto;
+      }
+      .sw::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: var(--background);
+        border: 1px solid var(--input);
+        transition: left 120ms;
+      }
+      .sw[data-on='true'] {
+        background: var(--primary);
+        border-color: var(--primary);
+      }
+      .sw[data-on='true']::after {
+        left: 23px;
+        border-color: var(--primary);
+      }
+      /* cible tactile de 44px sans changer la taille dessinée */
+      .sw-hit {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+      }
+
+      /* ---- Monogramme (§1.8) : le cas au provisioning, sans logo ---- */
+      .mono {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 auto;
+        border-radius: var(--radius);
+        background: var(--accent-solid);
+        /* `primary-foreground` vaut oklch(0.985 0.003 240) dans LES DEUX jeux de
+           tokens : c'est le seul quasi-blanc stable en clair comme en sombre.
+           `background` ne conviendrait pas — il devient sombre en thème sombre.
+           ⚠️ Le contraste des lettres sur `accent-solid` n'est pas spécifié par
+           le design system : manque signalé dans le .md, pas tranché ici. */
+        color: var(--primary-foreground);
+        font-family: var(--font-serif);
+        font-size: 18px;
+        font-weight: 600;
+        display: grid;
+        place-items: center;
+        letter-spacing: 0.02em;
+      }
+      .mono-34 {
+        width: 34px;
+        height: 34px;
+        font-size: 15px;
+      }
+      .mono-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--muted);
+        color: var(--muted-foreground);
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .sep {
+        height: 1px;
+        background: var(--border);
+        border: 0;
+        margin: 32px 0;
+      }
+
+      /* ---- Aperçu 404 (rendu, pas conçu ici : manque §9 → s11) ---- */
+      .nf {
+        border: 1px dashed var(--border);
+        border-radius: var(--radius);
+        padding: 48px 24px;
+        text-align: center;
+        color: var(--muted-foreground);
+      }
+
+      @media (max-width: 1023px) {
+        .bo {
+          grid-template-columns: 1fr;
+        }
+        .bo-side {
+          display: none;
+        }
+        .bo-main {
+          padding: 24px 18px 48px;
+        }
+        .row {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .state {
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="doc">
+      <header class="doc-head">
+        <p class="overline">Maquette de référence · story s01</p>
+        <h1>Provisionner une association</h1>
+        <p class="meta" style="margin-top: 8px">
+          Deux écrans du back-office SuperAdmin Zourite Studio. Tokens et
+          composants issus exclusivement de
+          <code>docs/design-system.md</code>. Basse fidélité&nbsp;: cette page
+          communique la mise en page et les états, elle
+          <strong>ne se copie pas en production</strong>.
+        </p>
+        <div class="doc-note">
+          <strong>Bascule de thème</strong> — l'ADR 012 conserve le mode sombre,
+          donc cette livraison fournit les deux jeux de tokens. Pour voir le jeu
+          sombre&nbsp;: poser <code>data-theme="dark"</code> sur
+          <code>&lt;html&gt;</code>.
+        </div>
+      </header>
+
+      <!-- =============================================================
+           ÉCRAN A — Provisionner une association
+           ============================================================= -->
+      <section class="screen">
+        <div class="screen-label">
+          <h2>Écran A — Provisionner une association</h2>
+          <span class="data">/admin/organizations/new</span>
+        </div>
+        <p class="meta" style="margin: 0 0 16px">
+          Critères 1, 3 et 5. <strong>Une page, pas un dialogue</strong>&nbsp;:
+          le design system limite <code>dialog</code> à deux champs (§2.1), et
+          il y en a cinq. Le dialogue d'édition existant du socle reste en
+          place&nbsp;; il ne sert pas de patron ici.
+        </p>
+
+        <div class="frame">
+          <div class="bo">
+            <nav class="bo-side" aria-label="Administration">
+              <div class="bo-brand">
+                <span class="mono mono-34" aria-hidden="true">ZS</span>
+                <strong style="font-size: 17px">Zourite Studio</strong>
+              </div>
+              <div class="bo-nav">
+                <a href="#">Tableau de bord</a>
+                <a href="#" aria-current="page">Associations</a>
+                <a href="#">Utilisateurs</a>
+                <a href="#">Abonnements</a>
+              </div>
+            </nav>
+
+            <main class="bo-main">
+              <nav class="crumb" aria-label="Fil d'Ariane">
+                <a href="#">Associations</a> › Provisionner
+              </nav>
+              <h1>Provisionner une association</h1>
+              <p class="meta" style="margin: 8px 0 32px; max-width: 68ch">
+                L'association disposera d'un site isolé dès l'enregistrement.
+                Ces réglages restent modifiables ensuite.
+              </p>
+
+              <form>
+                <!-- Carte 1 -->
+                <section class="card">
+                  <header>
+                    <h3>L'association</h3>
+                    <p class="meta">
+                      Le domaine détermine le site servi&nbsp;: deux domaines,
+                      deux associations.
+                    </p>
+                  </header>
+
+                  <div class="field">
+                    <label for="a-nom">Nom de l'association</label>
+                    <input
+                      id="a-nom"
+                      type="text"
+                      value="ASL La Fourche"
+                      autocomplete="off"
+                    />
+                    <p class="hint">
+                      Tel qu'il apparaîtra sur le site public et dans les
+                      courriers.
+                    </p>
+                  </div>
+
+                  <div class="field">
+                    <label for="a-slug">Identifiant court</label>
+                    <div class="prefixed">
+                      <span class="pfx" aria-hidden="true">/</span>
+                      <input
+                        id="a-slug"
+                        type="text"
+                        class="data"
+                        value="asl-la-fourche"
+                      />
+                    </div>
+                    <p class="hint">
+                      Lettres minuscules et tirets. Proposé d'après le nom,
+                      modifiable.
+                    </p>
+                  </div>
+
+                  <div class="field">
+                    <label for="a-dom">Domaine du site</label>
+                    <input
+                      id="a-dom"
+                      type="text"
+                      class="data"
+                      value="asl-lafourche.fr"
+                    />
+                    <p class="hint">
+                      Un domaine par association. Un domaine inconnu ne sert
+                      aucun site.
+                    </p>
+                  </div>
+
+                  <hr class="sep" />
+
+                  <div class="mono-row">
+                    <span class="mono" aria-hidden="true">LF</span>
+                    <div>
+                      <p style="margin: 0; font-weight: 500">
+                        Monogramme provisoire
+                      </p>
+                      <p class="meta" style="margin: 4px 0 0">
+                        Deux lettres tirées du nom, sur la teinte par défaut. Le
+                        bureau téléversera son logo depuis ses réglages.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- Carte 2 -->
+                <section class="card">
+                  <header>
+                    <h3>Administrateur de l'association</h3>
+                    <p class="meta">
+                      La personne qui administrera le site. Elle sera le seul
+                      compte d'administration à la création.
+                    </p>
+                  </header>
+
+                  <div class="field">
+                    <label for="a-mail">Adresse email</label>
+                    <input
+                      id="a-mail"
+                      type="email"
+                      value="presidence@asl-lafourche.fr"
+                    />
+                    <p class="hint">
+                      Le compte est créé et rattaché à cette association
+                      seulement.
+                    </p>
+                  </div>
+
+                  <div
+                    class="doc-note"
+                    style="margin-top: 24px; font-size: 16px"
+                  >
+                    <strong>Aucun message ne part maintenant.</strong>
+                    Prévenez cette personne vous-même&nbsp;: l'envoi automatique
+                    du lien de connexion n'est pas encore en service.
+                  </div>
+                </section>
+
+                <!-- Carte 3 -->
+                <section class="card">
+                  <header>
+                    <h3>Modules</h3>
+                    <p class="meta">
+                      Un module désactivé n'existe pas pour cette
+                      association&nbsp;: ses pages sont introuvables, et rien
+                      dans la navigation n'y renvoie.
+                    </p>
+                  </header>
+
+                  <div class="checks" role="group" aria-label="Modules activés">
+                    <label class="check" for="m-vote">
+                      <input
+                        id="m-vote"
+                        type="checkbox"
+                        style="position: absolute; opacity: 0"
+                      />
+                      <span class="box" data-checked="false" aria-hidden="true"
+                        >✓</span
+                      >
+                      <span>
+                        <span class="lbl">Vote en ligne</span>
+                        <span
+                          class="hint"
+                          style="display: block; margin-top: 4px"
+                          >Consultations et résolutions votées à distance.</span
+                        >
+                      </span>
+                    </label>
+
+                    <label class="check" for="m-voirie">
+                      <input
+                        id="m-voirie"
+                        type="checkbox"
+                        style="position: absolute; opacity: 0"
+                      />
+                      <span class="box" data-checked="true" aria-hidden="true"
+                        >✓</span
+                      >
+                      <span>
+                        <span class="lbl">Voirie</span>
+                        <span
+                          class="hint"
+                          style="display: block; margin-top: 4px"
+                          >État des chemins et des portails.</span
+                        >
+                      </span>
+                    </label>
+
+                    <label class="check" for="m-annonces">
+                      <input
+                        id="m-annonces"
+                        type="checkbox"
+                        style="position: absolute; opacity: 0"
+                      />
+                      <span class="box" data-checked="true" aria-hidden="true"
+                        >✓</span
+                      >
+                      <span>
+                        <span class="lbl">Petites annonces</span>
+                        <span
+                          class="hint"
+                          style="display: block; margin-top: 4px"
+                          >Annonces publiées entre membres.</span
+                        >
+                      </span>
+                    </label>
+                  </div>
+                </section>
+
+                <div class="actions">
+                  <button type="submit" class="btn btn-default">
+                    Provisionner l'association
+                  </button>
+                  <button type="button" class="btn btn-outline">Annuler</button>
+                </div>
+              </form>
+            </main>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================
+           ÉCRAN A — états
+           ============================================================= -->
+      <section class="screen">
+        <div class="screen-label">
+          <h2>Écran A — états</h2>
+        </div>
+
+        <div class="frame">
+          <div style="padding: 32px">
+            <p class="overline">Erreur de validation</p>
+            <p class="meta" style="margin: 4px 0 16px">
+              Résumé ancré en tête de formulaire avec liens d'ancrage, plus
+              bordure <code>destructive</code> 2&nbsp;px et message sous chaque
+              champ fautif (§3.1). L'erreur ne disparaît pas seule et ne passe
+              jamais par un toast.
+            </p>
+
+            <div class="alert" role="alert">
+              <h3>L'association n'a pas été créée.</h3>
+              <p style="margin: 0">
+                Deux champs demandent une correction.
+                <strong>Rien n'est perdu&nbsp;:</strong> vos autres saisies sont
+                conservées.
+              </p>
+              <ul>
+                <li><a href="#b-dom">Domaine du site</a></li>
+                <li><a href="#b-mail">Adresse email</a></li>
+              </ul>
+            </div>
+
+            <div class="card">
+              <div class="field is-error">
+                <label for="b-dom">Domaine du site</label>
+                <input
+                  id="b-dom"
+                  type="text"
+                  class="data"
+                  value="asl-lafourche.fr"
+                />
+                <p class="err">
+                  <span aria-hidden="true">▲</span>
+                  <span
+                    >Ce domaine sert déjà l'association « ASL Les Hauts ». Un
+                    domaine ne peut servir qu'une association.</span
+                  >
+                </p>
+              </div>
+
+              <div class="field is-error" style="margin-top: 24px">
+                <label for="b-mail">Adresse email</label>
+                <input id="b-mail" type="email" value="presidence@" />
+                <p class="err">
+                  <span aria-hidden="true">▲</span>
+                  <span>Cette adresse est incomplète.</span>
+                </p>
+              </div>
+            </div>
+
+            <hr class="sep" />
+
+            <p class="overline">Enregistrement en cours</p>
+            <p class="meta" style="margin: 4px 0 16px">
+              Libellé remplacé, bouton désactivé,
+              <strong>largeur conservée</strong> (§2.1). Pas de
+              <code>skeleton</code>&nbsp;: il est interdit sur un formulaire
+              (§2.1).
+            </p>
+            <div class="actions">
+              <button class="btn btn-default" aria-disabled="true">
+                Provisionnement…
+              </button>
+              <button class="btn btn-outline" aria-disabled="true">
+                Annuler
+              </button>
+            </div>
+
+            <hr class="sep" />
+
+            <p class="overline">Succès</p>
+            <p class="meta" style="margin: 4px 0 16px">
+              Ce qui a eu lieu <em>et où le vérifier</em> (§3.2). Affiché à
+              l'arrivée sur la fiche de l'association, pas en toast.
+            </p>
+            <div class="alert is-ok" role="status">
+              <h3>ASL La Fourche est provisionnée.</h3>
+              <p style="margin: 0">
+                Son site répond à
+                <a href="#" class="data">asl-lafourche.fr</a>. Le compte
+                <span class="data">presidence@asl-lafourche.fr</span> peut
+                l'administrer.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================
+           ÉCRAN B — Modules d'une association
+           ============================================================= -->
+      <section class="screen">
+        <div class="screen-label">
+          <h2>Écran B — Modules d'une association</h2>
+          <span class="data">/admin/organizations/[id]/edit</span>
+        </div>
+        <p class="meta" style="margin: 0 0 16px">
+          Critère 3, volet « modifiable ». Une carte de plus sur la page
+          d'édition qui existe déjà. Ici les réglages sont
+          <strong>à effet immédiat</strong>, donc <code>switch</code> avec
+          libellé d'état écrit (§2.1) — jamais la position du curseur seule.
+        </p>
+
+        <div class="frame">
+          <div style="padding: 32px">
+            <nav class="crumb" aria-label="Fil d'Ariane">
+              <a href="#">Associations</a> › <a href="#">ASL La Fourche</a> ›
+              Modifier
+            </nav>
+
+            <div
+              class="mono-row"
+              style="margin-bottom: 32px; justify-content: space-between"
+            >
+              <div class="mono-row">
+                <span class="mono" aria-hidden="true">LF</span>
+                <div>
+                  <h1 style="font-size: 26px">ASL La Fourche</h1>
+                  <p class="meta" style="margin: 4px 0 0">
+                    <span class="data">asl-lafourche.fr</span>
+                  </p>
+                </div>
+              </div>
+              <span class="badge">2 modules sur 3</span>
+            </div>
+
+            <section class="card">
+              <header>
+                <h3>Modules</h3>
+                <p class="meta">
+                  Désactiver un module rend ses pages introuvables pour cette
+                  association. Les contenus déjà saisis sont conservés.
+                </p>
+              </header>
+
+              <div class="rows">
+                <div class="row">
+                  <div class="row-txt">
+                    <p style="margin: 0; font-weight: 500">Vote en ligne</p>
+                    <p class="hint" style="margin-top: 4px">
+                      Consultations et résolutions votées à distance.
+                    </p>
+                  </div>
+                  <div class="row-ctl">
+                    <span class="state" data-on="false">Désactivé</span>
+                    <span class="sw-hit"
+                      ><span
+                        class="sw"
+                        data-on="false"
+                        role="switch"
+                        aria-checked="false"
+                        aria-label="Vote en ligne"
+                        tabindex="0"
+                      ></span
+                    ></span>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="row-txt">
+                    <p style="margin: 0; font-weight: 500">Voirie</p>
+                    <p class="hint" style="margin-top: 4px">
+                      État des chemins et des portails.
+                    </p>
+                  </div>
+                  <div class="row-ctl">
+                    <span class="state" data-on="true">Activé</span>
+                    <span class="sw-hit"
+                      ><span
+                        class="sw"
+                        data-on="true"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Voirie"
+                        tabindex="0"
+                      ></span
+                    ></span>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="row-txt">
+                    <p style="margin: 0; font-weight: 500">Petites annonces</p>
+                    <p class="hint" style="margin-top: 4px">
+                      Annonces publiées entre membres.
+                    </p>
+                  </div>
+                  <div class="row-ctl">
+                    <span class="state" data-on="true">Activé</span>
+                    <span class="sw-hit"
+                      ><span
+                        class="sw"
+                        data-on="true"
+                        role="switch"
+                        aria-checked="true"
+                        aria-label="Petites annonces"
+                        tabindex="0"
+                      ></span
+                    ></span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <p class="overline">Échec d'un basculement</p>
+            <p class="meta" style="margin: 4px 0 16px">
+              Ancré dans la carte, à côté du module concerné. Le curseur revient
+              à son état réel&nbsp;: il ne reste jamais dans un état que la base
+              n'a pas enregistré.
+            </p>
+            <div class="alert" role="alert">
+              <h3>Le module « Voirie » n'a pas été désactivé.</h3>
+              <p style="margin: 0">
+                L'enregistrement a échoué.
+                <strong>Rien n'a changé&nbsp;:</strong> le module reste activé.
+                Réessayez.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============================================================
+           HORS PÉRIMÈTRE — ce que cette maquette ne conçoit pas
+           ============================================================= -->
+      <section class="screen">
+        <div class="screen-label">
+          <h2>Hors périmètre de cette maquette</h2>
+        </div>
+        <div class="frame">
+          <div style="padding: 32px">
+            <p class="meta" style="margin: 0 0 24px; max-width: 68ch">
+              Les critères 2 et 4 exigent un <strong>404</strong> pour un
+              domaine inconnu et pour une route de module inactif. L'écran 404
+              est un <strong>manque déclaré</strong> du design system (§9,
+              rattaché à s11)&nbsp;: il n'est <strong>pas conçu ici</strong>.
+              s01 se branche sur la page introuvable existante du socle.
+            </p>
+            <div class="nf">
+              <p class="overline" style="margin: 0 0 8px">
+                Page introuvable — non maquettée
+              </p>
+              <p style="margin: 0">
+                Rendu par le socle. Gabarit à concevoir en s11.
+              </p>
+            </div>
+            <p class="meta" style="margin: 24px 0 0; max-width: 68ch">
+              Également hors périmètre&nbsp;: le choix de la teinte d'accent et
+              le téléversement du logo (s02 — la teinte est un manque déclaré du
+              design system), le favicon par association (s02/s11), les écrans
+              des trois modules eux-mêmes (s33, s34, s35), et la simulation de
+              rôle (s41).
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

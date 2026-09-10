@@ -1,10 +1,9 @@
 import {and, desc, eq, not, or, sql} from 'drizzle-orm'
 
+import {getDb} from '@/db/tenant-scope'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 
 import {member} from '../models/auth-model'
-import db from '../models/db'
-import {projects} from '../models/project-model'
 import type {
   SubscriptionAddModel,
   SubscriptionModel,
@@ -12,19 +11,15 @@ import type {
   SubscriptionPlanModel,
 } from '../models/subscription-model'
 import {subscription, subscriptionPlan} from '../models/subscription-model'
-import {
-  getBalanceDao,
-  getCurrentCreditPeriodDao,
-} from './credit-ledger-repository'
 import {getOrganizationByIdDao} from './organization-repository'
 
 export const createSubscriptionDao = async (values: SubscriptionAddModel) => {
-  const [row] = await db.insert(subscription).values(values).returning()
+  const [row] = await getDb().insert(subscription).values(values).returning()
   return row
 }
 
 export const getSubscriptionByIdDao = async (id: string) => {
-  const [row] = await db
+  const [row] = await getDb()
     .select()
     .from(subscription)
     .where(eq(subscription.id, id))
@@ -35,7 +30,7 @@ export const updateSubscriptionDao = async (
   id: string,
   values: Partial<SubscriptionAddModel>
 ) => {
-  const [row] = await db
+  const [row] = await getDb()
     .update(subscription)
     .set({
       ...values,
@@ -51,7 +46,7 @@ export const isPlanExistDao = async (
   plan: SubscriptionModel['plan'],
   seats: number
 ): Promise<boolean> => {
-  const [row] = await db
+  const [row] = await getDb()
     .select({id: subscription.id})
     .from(subscription)
     .where(
@@ -70,7 +65,7 @@ export const isPlanAndStripeSubscriptionExistDao = async (
   referenceId: string,
   plan: SubscriptionModel['plan']
 ): Promise<boolean> => {
-  const [row] = await db
+  const [row] = await getDb()
     .select({id: subscription.id})
     .from(subscription)
     .where(
@@ -95,7 +90,7 @@ export const isActivePlanExistDao = async (
   plan: SubscriptionModel['plan'],
   seats: number
 ): Promise<boolean> => {
-  const [row] = await db
+  const [row] = await getDb()
     .select({id: subscription.id})
     .from(subscription)
     .where(
@@ -117,7 +112,7 @@ export const isActivePlanExistDao = async (
 export const getActiveSubscriptionsByStripeCustomerIdDao = async (
   stripeCustomerId: string
 ) => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(subscription)
     .where(
@@ -136,7 +131,7 @@ export const getActiveSubscriptionsByStripeCustomerIdDao = async (
 
 // Fonctions de commodité qui utilisent userId (referenceId) au lieu de stripeCustomerId
 export const getSubscriptionByUserIdDao = async (userId: string) => {
-  const row = await db
+  const row = await getDb()
     .select()
     .from(subscription)
     .where(eq(subscription.referenceId, userId))
@@ -144,7 +139,7 @@ export const getSubscriptionByUserIdDao = async (userId: string) => {
 }
 
 export const getActiveSubscriptionsByUserIdDao = async (userId: string) => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(subscription)
     .where(
@@ -167,7 +162,7 @@ export const initSubscriptionDao = async (params: {
   referenceId?: string
   stripeCustomerId?: string
 }): Promise<string> => {
-  const [row] = await db
+  const [row] = await getDb()
     .insert(subscription)
     .values({
       plan: params.plan,
@@ -194,7 +189,10 @@ export const initSubscriptionDao = async (params: {
 export const createPlanDao = async (
   values: SubscriptionPlanAddModel
 ): Promise<SubscriptionPlanModel> => {
-  const [row] = await db.insert(subscriptionPlan).values(values).returning()
+  const [row] = await getDb()
+    .insert(subscriptionPlan)
+    .values(values)
+    .returning()
   return row
 }
 
@@ -204,7 +202,7 @@ export const createPlanDao = async (
 export const getPlanByIdDao = async (
   id: string
 ): Promise<SubscriptionPlanModel | undefined> => {
-  const row = await db.query.subscriptionPlan.findFirst({
+  const row = await getDb().query.subscriptionPlan.findFirst({
     where: (plan, {eq}) => eq(plan.id, id),
   })
   return row
@@ -216,7 +214,7 @@ export const getPlanByIdDao = async (
 export const getPlanByCodeDao = async (
   name: string
 ): Promise<SubscriptionPlanModel | undefined> => {
-  const row = await db.query.subscriptionPlan.findFirst({
+  const row = await getDb().query.subscriptionPlan.findFirst({
     where: (plan, {eq}) => eq(plan.code, name),
   })
   return row
@@ -228,7 +226,7 @@ export const getPlanByCodeDao = async (
 export const getPlanByPriceIdDao = async (
   priceId: string
 ): Promise<SubscriptionPlanModel | undefined> => {
-  const row = await db.query.subscriptionPlan.findFirst({
+  const row = await getDb().query.subscriptionPlan.findFirst({
     where: (plan, {eq, or}) =>
       or(eq(plan.priceId, priceId), eq(plan.annualDiscountPriceId, priceId)),
   })
@@ -239,7 +237,7 @@ export const getPlanByPriceIdDao = async (
  * Obtenir tous les plans actifs
  */
 export const getActivePlansDao = async (): Promise<SubscriptionPlanModel[]> => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(subscriptionPlan)
     .where(eq(subscriptionPlan.status, 'active'))
@@ -267,14 +265,14 @@ export const getPlansWithPaginationDao = async (
   }
 
   const [rows, [{count}]] = await Promise.all([
-    db
+    getDb()
       .select()
       .from(subscriptionPlan)
       .where(searchCondition)
       .orderBy(subscriptionPlan.displayOrder)
       .limit(pagination.limit)
       .offset(pagination.offset),
-    db
+    getDb()
       .select({count: sql<number>`count(*)`})
       .from(subscriptionPlan)
       .where(searchCondition),
@@ -301,7 +299,7 @@ export const updatePlanDao = async (
   id: string,
   values: Partial<SubscriptionPlanAddModel>
 ): Promise<SubscriptionPlanModel> => {
-  const [row] = await db
+  const [row] = await getDb()
     .update(subscriptionPlan)
     .set({
       ...values,
@@ -317,7 +315,7 @@ export const updatePlanDao = async (
  * Supprimer un plan (soft delete en passant le statut à 'deprecated')
  */
 export const softDeletePlanDao = async (id: string): Promise<void> => {
-  await db
+  await getDb()
     .update(subscriptionPlan)
     .set({
       status: 'deprecated',
@@ -330,14 +328,14 @@ export const softDeletePlanDao = async (id: string): Promise<void> => {
  * Supprimer définitivement un plan
  */
 export const deletePlanDao = async (id: string): Promise<void> => {
-  await db.delete(subscriptionPlan).where(eq(subscriptionPlan.id, id))
+  await getDb().delete(subscriptionPlan).where(eq(subscriptionPlan.id, id))
 }
 
 /**
  * Vérifier si un plan existe par nom
  */
 export const isPlanNameExistDao = async (name: string): Promise<boolean> => {
-  const [row] = await db
+  const [row] = await getDb()
     .select({id: subscriptionPlan.id})
     .from(subscriptionPlan)
     .where(eq(subscriptionPlan.code, name))
@@ -350,7 +348,7 @@ export const isPlanNameExistDao = async (name: string): Promise<boolean> => {
  * Vérifier si un priceId existe déjà
  */
 export const isPriceIdExistDao = async (priceId: string): Promise<boolean> => {
-  const [row] = await db
+  const [row] = await getDb()
     .select({id: subscriptionPlan.id})
     .from(subscriptionPlan)
     .where(
@@ -368,7 +366,7 @@ export const isPriceIdExistDao = async (priceId: string): Promise<boolean> => {
  * Obtenir toutes les subscriptions actives pour les calculs MRR
  */
 export const getAllActiveSubscriptionsDao = async () => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(subscription)
     .where(
@@ -400,7 +398,7 @@ export const getNewSubscriptionsThisMonthDao = async () => {
     59
   )
 
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(subscription)
     .where(
@@ -422,7 +420,7 @@ export const getNewSubscriptionsThisMonthDao = async () => {
  * Obtenir la croissance des subscriptions par mois (12 derniers mois)
  */
 export const getSubscriptionGrowthByMonthDao = async () => {
-  const result = await db
+  const result = await getDb()
     .select({
       month: sql<string>`TO_CHAR(${subscription.createdAt}, 'YYYY-MM')`,
       count: sql<number>`COUNT(*)::int`,
@@ -468,14 +466,14 @@ export const getSubscriptionsWithPaginationDao = async (
   }
 
   const [rows, [{count}]] = await Promise.all([
-    db
+    getDb()
       .select()
       .from(subscription)
       .where(searchCondition)
       .orderBy(desc(subscription.createdAt))
       .limit(pagination.limit)
       .offset(pagination.offset),
-    db
+    getDb()
       .select({count: sql<number>`count(*)`})
       .from(subscription)
       .where(searchCondition),
@@ -500,16 +498,12 @@ export const getSubscriptionsWithPaginationDao = async (
 // ========================================
 
 export interface PlanLimits {
-  projects: number | null
   storage: number | null
   users: number | null
-  credits: number | null
 }
 
 export interface AdminUsageStats {
-  projects: number
   users: number
-  credits: number
   plan: string
   limits: PlanLimits
   periodStart: Date | null
@@ -519,7 +513,7 @@ export interface AdminUsageStats {
 export const getActiveSubscriptionsOrFreePlanDao = async (
   referenceId: string
 ) => {
-  const subscriptions = await db
+  const subscriptions = await getDb()
     .select()
     .from(subscription)
     .where(
@@ -534,7 +528,7 @@ export const getActiveSubscriptionsOrFreePlanDao = async (
     .orderBy(desc(subscription.createdAt))
 
   if (subscriptions.length === 0) {
-    const freePlan = await db.query.subscriptionPlan.findFirst({
+    const freePlan = await getDb().query.subscriptionPlan.findFirst({
       where: (plan, {eq}) => eq(plan.code, 'free'),
     })
 
@@ -556,7 +550,7 @@ export const getActiveSubscriptionsOrFreePlanDao = async (
 
   const subsWithLimits = await Promise.all(
     subscriptions.map(async (sub) => {
-      const plan = await db.query.subscriptionPlan.findFirst({
+      const plan = await getDb().query.subscriptionPlan.findFirst({
         where: (p, {eq}) => eq(p.code, sub.plan),
       })
       return {
@@ -569,21 +563,10 @@ export const getActiveSubscriptionsOrFreePlanDao = async (
   return subsWithLimits
 }
 
-export const getCurrentProjectsUsageDao = async (
-  organizationId: string
-): Promise<number> => {
-  const [{count}] = await db
-    .select({count: sql<number>`count(*)`})
-    .from(projects)
-    .where(eq(projects.organizationId, organizationId))
-
-  return count
-}
-
 export const getCurrentMembersUsageDao = async (
   organizationId: string
 ): Promise<number> => {
-  const [{count}] = await db
+  const [{count}] = await getDb()
     .select({count: sql<number>`count(*)`})
     .from(member)
     .where(eq(member.organizationId, organizationId))
@@ -594,22 +577,14 @@ export const getCurrentMembersUsageDao = async (
 export const getAdminUsageStatsDao = async (
   organizationId: string
 ): Promise<AdminUsageStats> => {
-  const [projectsCount, membersCount, creditsBalance, organization] =
-    await Promise.all([
-      getCurrentProjectsUsageDao(organizationId),
-      getCurrentMembersUsageDao(organizationId),
-      getBalanceDao(organizationId),
-      getOrganizationByIdDao(organizationId),
-    ])
+  const [membersCount, organization] = await Promise.all([
+    getCurrentMembersUsageDao(organizationId),
+    getOrganizationByIdDao(organizationId),
+  ])
 
   const subscriptions =
     await getActiveSubscriptionsOrFreePlanDao(organizationId)
   const activeSubscription = subscriptions[0]
-
-  const period = await getCurrentCreditPeriodDao(organizationId, {
-    periodStart: activeSubscription?.periodStart ?? null,
-    periodEnd: activeSubscription?.periodEnd ?? null,
-  })
 
   const planLimits = activeSubscription?.limits as Record<string, number> | null
   const limitOverrides = organization?.limitOverrides as
@@ -624,20 +599,15 @@ export const getAdminUsageStatsDao = async (
   }
 
   return {
-    projects: projectsCount,
     users: membersCount,
-    credits: creditsBalance,
     plan: activeSubscription?.plan || 'free',
     limits: {
-      projects: getEffectiveLimit(
-        planLimits?.projects,
-        limitOverrides?.projects
-      ),
       storage: getEffectiveLimit(planLimits?.storage, limitOverrides?.storage),
       users: getEffectiveLimit(planLimits?.users, limitOverrides?.users),
-      credits: getEffectiveLimit(planLimits?.credits, limitOverrides?.credits),
     },
-    periodStart: period.periodStart,
-    periodEnd: period.periodEnd,
+    // La periode venait du registre de credits, retire avec l'ADR 009 : elle
+    // vient desormais de l'abonnement lui-meme, sa source d'origine.
+    periodStart: activeSubscription?.periodStart ?? null,
+    periodEnd: activeSubscription?.periodEnd ?? null,
   }
 }

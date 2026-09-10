@@ -4,17 +4,15 @@ import {sql} from 'drizzle-orm'
 import {drizzle} from 'drizzle-orm/node-postgres'
 import pg from 'pg'
 
+import {resolveMigrationUrl} from './db-url'
 import initDotEnv from './env'
 
 initDotEnv()
 
 const runClean = async () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not defined')
-  }
-
+  // DDL destructif : role proprietaire, comme les migrations (ADR 002).
   const client = new pg.Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: resolveMigrationUrl(process.env),
   })
 
   await client.connect()

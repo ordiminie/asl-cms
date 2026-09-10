@@ -6,6 +6,7 @@ import {drizzle} from 'drizzle-orm/node-postgres'
 import pg from 'pg'
 
 import initDotEnv from './env'
+import {assertApplicationRolePrivileges} from './role-privileges'
 
 initDotEnv()
 
@@ -28,6 +29,24 @@ const checkConnexion = async () => {
   const end = Date.now()
 
   console.log('✅ Connexion checked in', end - start, 'ms')
+
+  // La connexion ne prouve rien de l'isolation : un role SUPERUSER ou
+  // BYPASSRLS repond « SELECT 1 » aussi bien qu'un role contraint, et rend
+  // toutes les policies inertes sans le dire (ADR 002). C'est ici qu'on le
+  // constate, parce que c'est le seul script lance sur chaque environnement.
+  const privileges = await db.execute<{
+    rolname: string
+    rolsuper: boolean
+    rolbypassrls: boolean
+  }>(sql`
+    select rolname, rolsuper, rolbypassrls
+    from pg_roles
+    where rolname = current_user
+  `)
+
+  assertApplicationRolePrivileges(privileges.rows[0])
+
+  console.log('✅ Role applicatif soumis a la RLS')
 
   process.exit(0)
 }

@@ -4,6 +4,7 @@ import {headers} from 'next/headers'
 import {getTranslations} from 'next-intl/server'
 import {RateLimiterMemory} from 'rate-limiter-flexible'
 
+import {getCurrentTenantDal, withCurrentTenant} from '@/app/dal/tenant-dal'
 import {createUserSubmissionService} from '@/services/facades/user-submission-service-facade'
 
 export type ContactFormState = {
@@ -84,17 +85,31 @@ export async function submitContactAction(
     }
   }
 
+  // Le tenant vient du domaine appele (ADR 003). Sans lui, la policy RLS de
+  // `user_submissions` refuserait la ligne : mieux vaut le dire que d'echouer
+  // en base.
+  const tenant = await getCurrentTenantDal()
+  if (!tenant) {
+    return {
+      success: false,
+      message: t('errors.server'),
+    }
+  }
+
   try {
-    await createUserSubmissionService({
-      email,
-      type: 'contact',
-      subject,
-      message: content,
-      metadata: {
-        source: 'contact-page',
-        ip: ip || undefined,
-      },
-    })
+    await withCurrentTenant(async () =>
+      createUserSubmissionService({
+        email,
+        organizationId: tenant.id,
+        type: 'contact',
+        subject,
+        message: content,
+        metadata: {
+          source: 'contact-page',
+          ip: ip || undefined,
+        },
+      })
+    )
 
     return {
       success: true,

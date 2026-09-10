@@ -1,5 +1,6 @@
 'use server'
 
+import {getCurrentTenantDal, withCurrentTenant} from '@/app/dal/tenant-dal'
 import {getAuthUser} from '@/services/authentication/auth-service'
 import {createUserSubmissionService} from '@/services/facades/user-submission-service-facade'
 
@@ -14,17 +15,30 @@ export async function createQuickFeedbackAction(message: string) {
       }
     }
 
-    await createUserSubmissionService({
-      userId: user.id,
-      type: 'feedback',
-      subject: 'Quick Feedback',
-      message,
-      metadata: {
-        source: 'quick-feedback-button',
-        sourceUrl:
-          typeof window !== 'undefined' ? window.location.href : undefined,
-      },
-    })
+    // Le tenant vient du domaine appele (ADR 003) : sans lui, la policy RLS de
+    // `user_submissions` refuserait la ligne.
+    const tenant = await getCurrentTenantDal()
+    if (!tenant) {
+      return {
+        success: false,
+        message: "Erreur lors de l'envoi du feedback",
+      }
+    }
+
+    await withCurrentTenant(async () =>
+      createUserSubmissionService({
+        userId: user.id,
+        organizationId: tenant.id,
+        type: 'feedback',
+        subject: 'Quick Feedback',
+        message,
+        metadata: {
+          source: 'quick-feedback-button',
+          sourceUrl:
+            typeof window !== 'undefined' ? window.location.href : undefined,
+        },
+      })
+    )
 
     return {
       success: true,
