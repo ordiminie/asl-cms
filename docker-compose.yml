@@ -24,6 +24,11 @@ services:
       DATABASE_MIGRATION_URL: postgres://asl:asl@db:5432/asl_cms
       # Force le store pnpm sur le volume ci-dessus (variable lue par pnpm).
       npm_config_store_dir: /home/dev/.pnpm-store
+      # Token GitHub utilisé par /ks-ship (pousser la branche, ouvrir la PR).
+      # La valeur vient du fichier .env à la racine, jamais commité (.gitignore).
+      # Absent, la variable reste vide : le conteneur démarre normalement, seul
+      # /ks-ship échouera au moment du push.
+      GH_TOKEN: ${GH_TOKEN:-}
     ports:
       - '3000:3000'
     working_dir: /workspace
