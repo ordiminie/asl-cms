@@ -1,0 +1,141 @@
+name: CI
+
+# Vérifie chaque pull request vers main : qualité, tests unitaires, tests e2e
+# sur le build de production. Ne déploie rien et ne lit aucun secret.
+on:
+  pull_request:
+    branches: [main]
+  # Lancement manuel depuis l'onglet Actions, par exemple sur main.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Valeurs FACTICES, volontairement en clair : la base est jetable et aucun
+# service externe (Stripe, Resend, Supabase) n'est réellement appelé, comme en
+# local avec .env.test. Ne jamais remplacer par de vraies clés : les journaux
+# d'un dépôt public sont publics.
+env:
+  DATABASE_URL: postgresql://asl_app:asl_app@localhost:5432/test
+  DATABASE_MIGRATION_URL: postgresql://test:test@localhost:5432/test
+  BETTER_AUTH_SECRET: ci-uniquement-pas-un-secret-base-jetable
+  BETTER_AUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+  RESEND_API_KEY: re_factice_ci
+  EMAIL_FROM: noreply@example.com
+  EMAIL_TO: admin@example.com
+  SUPABASE_ANON_KEY: factice-ci
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_BUCKET: asl-cms-ci
+  STRIPE_SECRET_KEY: sk_test_factice_ci
+  STRIPE_WEBHOOK_SECRET: whsec_factice_ci
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_factice_ci
+  NEXT_PUBLIC_STRIPE_CHECKOUT_TYPE: EmbededForm
+  NEXT_PUBLIC_BILLING_MODE: organization
+  NEXT_PUBLIC_AUTH_METHODS: credential,magiclink
+  NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: 'false'
+  NEXT_PUBLIC_ENABLED_PAGES: blog,docs,apikey,organization,invitation,account,settings,subscription,notifications,admin
+  NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
+  NEXT_PUBLIC_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/gif,application/pdf
+  NEXT_PUBLIC_NODE_ENV: production
+  LOG_LEVEL: warn
+
+jobs:
+  qualite:
+    name: Lint, règles, tests unitaires
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Sans `version` : pnpm lit le champ packageManager du package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm check:rules
+      # --run obligatoire : sans lui Vitest reste en mode watch.
+      - run: pnpm test --run
+
+  e2e:
+    name: Tests e2e (build de production)
+    runs-on: ubuntu-latest
+    # Réglages d'authentification pour lesquels les specs e2e ont été écrites
+    # (job e2e de preview.yml) : boutons Google/Apple attendus, et vérification
+    # d'email active, sinon l'inscription ouvre le tableau de bord qui appelle
+    # Stripe avec la clé factice.
+    env:
+      NEXT_PUBLIC_AUTH_METHODS: credential,magiclink,google,apple,github
+      NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: 'true'
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+
+      # Le service postgres ne joue pas docker/db-init/ : extensions et rôle
+      # applicatif (ni superuser ni BYPASSRLS, ADR 002) sont créés ici, avant
+      # les migrations, pour que les ALTER DEFAULT PRIVILEGES s'appliquent.
+      - name: Rôle applicatif et extensions
+        run: |
+          PGPASSWORD=test psql -h localhost -U test -d test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+          CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'asl_app') THEN
+              CREATE ROLE asl_app LOGIN PASSWORD 'asl_app' NOSUPERUSER NOCREATEDB
+                NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+            END IF;
+          END
+          $$;
+          GRANT CONNECT ON DATABASE test TO asl_app;
+          GRANT USAGE ON SCHEMA public TO asl_app;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO asl_app;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO asl_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE test IN SCHEMA public
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO asl_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE test IN SCHEMA public
+            GRANT USAGE, SELECT ON SEQUENCES TO asl_app;
+          SQL
+
+      # db:migrate et non db:push : push ne lit pas drizzle/migrations/ et les
+      # policies RLS ne seraient jamais créées.
+      - run: pnpm db:migrate && pnpm db:seed
+      # Échoue si le rôle applicatif contourne la RLS : les tests d'isolation
+      # passeraient alors sans rien prouver.
+      - run: pnpm db:check
+
+      # Avec CI=true, playwright.config.ts lance `pnpm build && pnpm start`.
+      - run: pnpm test:e2e --project=chromium
+
+      - name: Rapport Playwright en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
