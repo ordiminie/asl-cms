@@ -2,7 +2,7 @@ import {sql} from 'drizzle-orm'
 
 import {user as users} from '@/db/models/auth-model'
 import {organization as organizations} from '@/db/models/auth-model'
-import db from '@/db/models/db'
+import {getDb} from '@/db/tenant-scope'
 
 export type AdminStatsData = {
   totalUsers: number
@@ -14,7 +14,7 @@ export type AdminStatsData = {
 // ===== STATISTIQUES TOTALES =====
 
 export const getTotalUsersDao = async (): Promise<number> => {
-  const [{totalUsers}] = await db
+  const [{totalUsers}] = await getDb()
     .select({totalUsers: sql<string>`count(*)`})
     .from(users)
 
@@ -22,7 +22,7 @@ export const getTotalUsersDao = async (): Promise<number> => {
 }
 
 export const getTotalOrganizationsDao = async (): Promise<number> => {
-  const [{totalOrganizations}] = await db
+  const [{totalOrganizations}] = await getDb()
     .select({totalOrganizations: sql<string>`count(*)`})
     .from(organizations)
 
@@ -34,7 +34,7 @@ export const getTotalOrganizationsDao = async (): Promise<number> => {
 export const getUserGrowthDataDao = async (): Promise<
   {month: string; count: number}[]
 > => {
-  const userGrowthData = await db
+  const userGrowthData = await getDb()
     .select({
       month: sql<string>`to_char(date_trunc('month', ${users.createdAt}), 'YYYY-MM')`,
       count: sql<string>`count(*)`,
@@ -54,7 +54,7 @@ export const getUserGrowthDataDao = async (): Promise<
 export const getOrganizationGrowthDataDao = async (): Promise<
   {month: string; count: number}[]
 > => {
-  const organizationGrowthData = await db
+  const organizationGrowthData = await getDb()
     .select({
       month: sql<string>`to_char(date_trunc('month', ${organizations.createdAt}), 'YYYY-MM')`,
       count: sql<string>`count(*)`,

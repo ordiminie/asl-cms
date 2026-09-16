@@ -2405,7 +2405,62 @@
     },
     "deleteConfirm": "Êtes-vous sûr de vouloir supprimer l'organisation « {name} » ? Cette action ne peut pas être annulée et supprimera définitivement toutes les données associées.",
     "cancelInvitationConfirm": "Voulez-vous vraiment supprimer l'invitation pour {email} ?",
-    "cancelError": "Erreur lors de l'annulation"
+    "cancelError": "Erreur lors de l'annulation",
+    "provision": {
+      "title": "Provisionner une association",
+      "breadcrumbHome": "Administration",
+      "breadcrumbOrganizations": "Organisations",
+      "breadcrumbCurrent": "Nouvelle association",
+      "associationCardTitle": "L'association",
+      "nameLabel": "Nom de l'association",
+      "nameHelp": "Tel qu'il apparaîtra sur son site.",
+      "slugLabel": "Identifiant court",
+      "slugHelp": "Sert aux adresses internes. Lettres minuscules, chiffres et tirets.",
+      "domainLabel": "Domaine",
+      "domainHelp": "Le domaine qui servira son site, sans https:// ni chemin. Exemple : asl-lafourche.fr",
+      "adminCardTitle": "Administrateur de l'association",
+      "adminEmailLabel": "Adresse email",
+      "adminEmailHelp": "Le compte est créé s'il n'existe pas encore.",
+      "modulesCardTitle": "Modules",
+      "modulesHelp": "Aucun module n'est activé par défaut : un module s'active par décision.",
+      "monogramLabel": "Aperçu du monogramme",
+      "noticeTitle": "Rien n'est envoyé pour l'instant",
+      "noticeBody": "L'envoi automatique du lien de connexion n'est pas encore en service : prévenez l'administrateur vous-même.",
+      "submit": "Provisionner l'association",
+      "submitting": "Provisionnement…",
+      "cancel": "Annuler",
+      "errorTitle": "L'association n'a pas été provisionnée",
+      "errorKeepsInput": "Rien n'est perdu : vos autres saisies sont conservées.",
+      "successTitle": "Association provisionnée",
+      "successBody": "{name} est provisionnée. Son site répond à {domain}. Le compte {email} peut l'administrer.",
+      "newOrganization": "Nouvelle association",
+      "validation": {
+        "nameMin": "Le nom doit contenir au moins 2 caractères.",
+        "nameMax": "Le nom ne peut pas dépasser 100 caractères.",
+        "slugPattern": "Lettres minuscules, chiffres et tirets seulement.",
+        "domainPattern": "Un domaine seul, sans https:// ni chemin.",
+        "adminEmailInvalid": "Cette adresse email n'est pas valide."
+      }
+    },
+    "modules": {
+      "cardTitle": "Modules",
+      "badge": "{active} modules sur {total}",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "saving": "Enregistrement…",
+      "errorTitle": "Le module « {module} » n'a pas été modifié",
+      "errorBody": "Rien n'a changé : le module reste dans son état précédent.",
+      "keys": {
+        "vote": "Vote en ligne",
+        "voirie": "Voirie",
+        "annonces": "Petites annonces"
+      },
+      "descriptions": {
+        "vote": "Consultations et votes en ligne des membres.",
+        "voirie": "Signalements et suivi de la voirie du lotissement.",
+        "annonces": "Petites annonces entre membres."
+      }
+    }
   },
   "AdminUsers": {
     "title": "Gestion des utilisateurs",

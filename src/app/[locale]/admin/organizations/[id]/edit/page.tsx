@@ -1,4 +1,4 @@
-import {Coins, FolderKanban, Users, Zap} from 'lucide-react'
+import {Users, Zap} from 'lucide-react'
 import {notFound} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
@@ -7,6 +7,7 @@ import {
   getOrganizationPermissions,
   getOrganizationUsageDal,
 } from '@/app/dal/organization-dal'
+import {OrganizationModulesCard} from '@/components/features/admin/organizations/organization-modules-card'
 import {withAuthAdmin} from '@/components/features/auth/with-auth'
 import {EditOrganizationForm} from '@/components/features/organization/edit-organization-form'
 import OrganizationMembersTable from '@/components/features/organization/organization-members-table'
@@ -58,6 +59,13 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
       </div>
 
       <div className="mx-auto mt-12">
+        <OrganizationModulesCard
+          organizationId={organization.id}
+          enabledModules={organization.enabledModules}
+        />
+      </div>
+
+      <div className="mx-auto mt-12">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -71,26 +79,7 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <FolderKanban className="h-4 w-4" />
-                    {tOrgs('projects')}
-                  </span>
-                  <span className="font-medium">
-                    {formatUsage(usage.projects, usage.limits.projects)}
-                  </span>
-                </div>
-                <Progress
-                  value={getUsagePercent(usage.projects, usage.limits.projects)}
-                  className="h-2"
-                  indicatorClassName={getProgressColor(
-                    usage.projects,
-                    usage.limits.projects
-                  )}
-                />
-              </div>
+            <div className="grid grid-cols-1 gap-6">
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground flex items-center gap-2">
@@ -107,23 +96,6 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
                   indicatorClassName={getProgressColor(
                     usage.users,
                     usage.limits.users
-                  )}
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <Coins className="h-4 w-4" />
-                    {tOrgs('credits')}
-                  </span>
-                  <span className="font-medium">{usage.credits}</span>
-                </div>
-                <Progress
-                  value={getUsagePercent(usage.credits, usage.limits.credits)}
-                  className="h-2"
-                  indicatorClassName={getProgressColor(
-                    usage.credits,
-                    usage.limits.credits
                   )}
                 />
               </div>

@@ -91,7 +91,14 @@ export default function OrganizationsManagement({
   return (
     <Card className="border-0 sm:border">
       <CardHeader className="px-4 sm:px-6">
-        <CardTitle>{t('title')}</CardTitle>
+        <div className="flex items-center justify-between gap-4">
+          <CardTitle>{t('title')}</CardTitle>
+          <Button asChild>
+            <Link href="/admin/organizations/new">
+              {t('provision.newOrganization')}
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <OrganizationsToolbar

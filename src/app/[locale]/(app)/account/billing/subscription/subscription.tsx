@@ -2,7 +2,6 @@
 
 import {Subscription} from '@better-auth/stripe'
 import {Calendar, CheckCircle} from 'lucide-react'
-import Link from 'next/link'
 import {useLocale, useTranslations} from 'next-intl'
 import React, {useEffect, useState} from 'react'
 import {toast} from 'sonner'
@@ -30,7 +29,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {Switch} from '@/components/ui/switch'
-import {Tabs, TabsList, TabsTrigger} from '@/components/ui/tabs'
 import {authClient} from '@/lib/better-auth/auth-client'
 import {AvailablePlan} from '@/lib/stripe/stripe-types'
 
@@ -77,7 +75,6 @@ export default function SubscriptionPage({
 }: SubscriptionPageProps) {
   const t = useTranslations('Subscription')
   const tCommon = useTranslations('Common')
-  const tCredits = useTranslations('Credits')
   const locale = useLocale()
   const {referenceId} = useOrganization()
   const {isOwner} = useOrganizationRole()
@@ -511,21 +508,6 @@ export default function SubscriptionPage({
 
   return (
     <div className="space-y-6">
-      {/* Tabs Navigation */}
-      <Tabs defaultValue="plans" className="w-fit">
-        <TabsList>
-          <TabsTrigger value="credits" asChild>
-            <Link href="/account/billing/credit">
-              {tCredits('tabs.credits')}
-            </Link>
-          </TabsTrigger>
-          <TabsTrigger value="usage" asChild>
-            <Link href="/account/billing/usage">{tCredits('tabs.usage')}</Link>
-          </TabsTrigger>
-          <TabsTrigger value="plans">{tCredits('tabs.plans')}</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       {/* Header */}
       <div className="flex flex-col space-y-2 text-center">
         <h1 className="text-3xl font-bold">{t('heading')}</h1>

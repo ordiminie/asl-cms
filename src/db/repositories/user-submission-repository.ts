@@ -1,11 +1,11 @@
 import {and, count, desc, eq, ilike, or, sql} from 'drizzle-orm'
 
-import db from '@/db/models/db'
 import {
   AddUserSubmissionModel,
   UserSubmissionModel,
   userSubmissions,
 } from '@/db/models/user-submission-model'
+import {getDb} from '@/db/tenant-scope'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 import {
   UserSubmissionFilters,
@@ -15,14 +15,14 @@ import {
 export const createUserSubmissionDao = async (
   data: AddUserSubmissionModel
 ): Promise<UserSubmissionModel> => {
-  const row = await db.insert(userSubmissions).values(data).returning()
+  const row = await getDb().insert(userSubmissions).values(data).returning()
   return row[0]
 }
 
 export const getUserSubmissionByIdDao = async (
   id: string
 ): Promise<UserSubmissionWithUser | undefined> => {
-  const row = await db.query.userSubmissions.findFirst({
+  const row = await getDb().query.userSubmissions.findFirst({
     where: (userSubmissions, {eq}) => eq(userSubmissions.id, id),
     with: {
       user: {
@@ -71,7 +71,7 @@ export const getAllUserSubmissionsWithPaginationDao = async (
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-  const rows = await db.query.userSubmissions.findMany({
+  const rows = await getDb().query.userSubmissions.findMany({
     where: whereClause,
     orderBy: [desc(userSubmissions.createdAt)],
     limit,
@@ -88,7 +88,7 @@ export const getAllUserSubmissionsWithPaginationDao = async (
     },
   })
 
-  const [totalResult] = await db
+  const [totalResult] = await getDb()
     .select({count: count()})
     .from(userSubmissions)
     .where(whereClause)
@@ -109,7 +109,7 @@ export const getAllUserSubmissionsWithPaginationDao = async (
 }
 
 export const getUnreadSubmissionsCountDao = async (): Promise<number> => {
-  const [result] = await db
+  const [result] = await getDb()
     .select({count: count()})
     .from(userSubmissions)
     .where(
@@ -122,7 +122,7 @@ export const getUnreadSubmissionsCountDao = async (): Promise<number> => {
 export const markUserSubmissionAsReadDao = async (
   id: string
 ): Promise<UserSubmissionModel | undefined> => {
-  const row = await db
+  const row = await getDb()
     .update(userSubmissions)
     .set({read: true, updatedAt: sql`now()`})
     .where(eq(userSubmissions.id, id))
@@ -134,7 +134,7 @@ export const markUserSubmissionAsReadDao = async (
 export const archiveUserSubmissionDao = async (
   id: string
 ): Promise<UserSubmissionModel | undefined> => {
-  const row = await db
+  const row = await getDb()
     .update(userSubmissions)
     .set({archived: true, updatedAt: sql`now()`})
     .where(eq(userSubmissions.id, id))

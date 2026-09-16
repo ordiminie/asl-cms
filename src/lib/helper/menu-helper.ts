@@ -12,16 +12,9 @@ export interface MenuItem {
   }>
 }
 
-export interface ProjectItem {
-  name: string
-  url: string
-  icon: LucideIcon
-}
-
 export interface MenuData {
   adminNavMain: MenuItem[]
   navMain: MenuItem[]
-  projects: ProjectItem[]
 }
 
 // Fonction principale pour construire le menu - simple et claire

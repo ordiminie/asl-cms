@@ -1,6 +1,6 @@
 import {eq} from 'drizzle-orm'
 
-import db from '@/db/models/db'
+import {getDb} from '@/db/tenant-scope'
 
 import {
   AddAppSettingModel,
@@ -12,13 +12,13 @@ import {
 export type SettingCategory = (typeof settingCategoryEnum.enumValues)[number]
 
 export const getAllAppSettingsDao = async (): Promise<AppSettingModel[]> => {
-  return await db.select().from(appSettings)
+  return await getDb().select().from(appSettings)
 }
 
 export const getAppSettingsByCategoryDao = async (
   category: SettingCategory
 ): Promise<AppSettingModel[]> => {
-  return await db
+  return await getDb()
     .select()
     .from(appSettings)
     .where(eq(appSettings.category, category))
@@ -27,7 +27,7 @@ export const getAppSettingsByCategoryDao = async (
 export const getAppSettingByKeyDao = async (
   key: string
 ): Promise<AppSettingModel | undefined> => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(appSettings)
     .where(eq(appSettings.key, key))
@@ -37,7 +37,7 @@ export const getAppSettingByKeyDao = async (
 export const upsertAppSettingDao = async (
   setting: AddAppSettingModel
 ): Promise<AppSettingModel> => {
-  const rows = await db
+  const rows = await getDb()
     .insert(appSettings)
     .values(setting)
     .onConflictDoUpdate({
@@ -61,7 +61,7 @@ export const updateAppSettingValueDao = async (
   value: string,
   updatedBy?: string
 ): Promise<AppSettingModel | undefined> => {
-  const rows = await db
+  const rows = await getDb()
     .update(appSettings)
     .set({
       value,
@@ -74,6 +74,8 @@ export const updateAppSettingValueDao = async (
 }
 
 export const deleteAppSettingDao = async (key: string): Promise<boolean> => {
-  const result = await db.delete(appSettings).where(eq(appSettings.key, key))
+  const result = await getDb()
+    .delete(appSettings)
+    .where(eq(appSettings.key, key))
   return (result.rowCount || 0) > 0
 }

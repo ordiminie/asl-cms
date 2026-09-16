@@ -1,12 +1,12 @@
 import {and, count, desc, eq} from 'drizzle-orm'
 
-import db from '@/db/models/db'
 import {
   AddNotificationModel,
   NotificationModel,
   notifications,
   UpdateNotificationModel,
 } from '@/db/models/notification-model'
+import {getDb} from '@/db/tenant-scope'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 
 // CRUD operations
@@ -17,7 +17,10 @@ import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 export const createNotificationDao = async (
   notification: AddNotificationModel
 ): Promise<NotificationModel> => {
-  const row = await db.insert(notifications).values(notification).returning()
+  const row = await getDb()
+    .insert(notifications)
+    .values(notification)
+    .returning()
   return row[0]
 }
 
@@ -27,7 +30,7 @@ export const createNotificationDao = async (
 export const getNotificationByIdDao = async (
   id: string
 ): Promise<NotificationModel | undefined> => {
-  const row = await db.query.notifications.findFirst({
+  const row = await getDb().query.notifications.findFirst({
     where: (notifications, {eq}) => eq(notifications.id, id),
     with: {
       user: true,
@@ -46,7 +49,7 @@ export const getNotificationsByUserIdDao = async (
   const {limit, offset} = pagination
 
   // Récupérer les notifications avec pagination
-  const rows = await db.query.notifications.findMany({
+  const rows = await getDb().query.notifications.findMany({
     where: (notifications, {eq}) => eq(notifications.userId, userId),
     orderBy: [desc(notifications.createdAt)],
     limit,
@@ -54,7 +57,7 @@ export const getNotificationsByUserIdDao = async (
   })
 
   // Compter le total
-  const [totalResult] = await db
+  const [totalResult] = await getDb()
     .select({count: count()})
     .from(notifications)
     .where(eq(notifications.userId, userId))
@@ -85,7 +88,7 @@ export const getUnreadNotificationsByUserIdDao = async (
   const {limit, offset} = pagination
 
   // Récupérer les notifications non lues avec pagination
-  const rows = await db.query.notifications.findMany({
+  const rows = await getDb().query.notifications.findMany({
     where: (notifications, {eq, and}) =>
       and(eq(notifications.userId, userId), eq(notifications.read, false)),
     orderBy: [desc(notifications.createdAt)],
@@ -94,7 +97,7 @@ export const getUnreadNotificationsByUserIdDao = async (
   })
 
   // Compter le total des notifications non lues
-  const [totalResult] = await db
+  const [totalResult] = await getDb()
     .select({count: count()})
     .from(notifications)
     .where(and(eq(notifications.userId, userId), eq(notifications.read, false)))
@@ -121,7 +124,7 @@ export const getUnreadNotificationsByUserIdDao = async (
 export const countUnreadNotificationsByUserIdDao = async (
   userId: string
 ): Promise<number> => {
-  const [result] = await db
+  const [result] = await getDb()
     .select({count: count()})
     .from(notifications)
     .where(and(eq(notifications.userId, userId), eq(notifications.read, false)))
@@ -135,7 +138,7 @@ export const countUnreadNotificationsByUserIdDao = async (
 export const markNotificationAsReadDao = async (
   id: string
 ): Promise<NotificationModel | undefined> => {
-  const row = await db
+  const row = await getDb()
     .update(notifications)
     .set({read: true})
     .where(eq(notifications.id, id))
@@ -150,7 +153,7 @@ export const markNotificationAsReadDao = async (
 export const markAllNotificationsAsReadDao = async (
   userId: string
 ): Promise<number> => {
-  const result = await db
+  const result = await getDb()
     .update(notifications)
     .set({read: true})
     .where(and(eq(notifications.userId, userId), eq(notifications.read, false)))
@@ -162,7 +165,9 @@ export const markAllNotificationsAsReadDao = async (
  * Supprimer une notification
  */
 export const deleteNotificationDao = async (id: string): Promise<boolean> => {
-  const result = await db.delete(notifications).where(eq(notifications.id, id))
+  const result = await getDb()
+    .delete(notifications)
+    .where(eq(notifications.id, id))
 
   return (result.rowCount || 0) > 0
 }
@@ -173,7 +178,7 @@ export const deleteNotificationDao = async (id: string): Promise<boolean> => {
 export const deleteReadNotificationsByUserIdDao = async (
   userId: string
 ): Promise<number> => {
-  const result = await db
+  const result = await getDb()
     .delete(notifications)
     .where(and(eq(notifications.userId, userId), eq(notifications.read, true)))
 
@@ -187,7 +192,7 @@ export const updateNotificationDao = async (
   id: string,
   data: Partial<UpdateNotificationModel>
 ): Promise<NotificationModel | undefined> => {
-  const row = await db
+  const row = await getDb()
     .update(notifications)
     .set(data)
     .where(eq(notifications.id, id))

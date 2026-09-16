@@ -6,15 +6,16 @@ import {
   organization as organizations,
   user,
 } from '@/db/models/auth-model'
-import db from '@/db/models/db'
 import {
   AddMemberModel,
   AddOrganizationModel,
   MemberModel,
   OrganizationModel,
+  OrganizationModuleEnumModel,
   OrganizationRoleEnumModel,
   UpdateOrganizationModel,
 } from '@/db/models/organization-model'
+import {getDb} from '@/db/tenant-scope'
 import {generateSlug} from '@/lib/helper/common-helper'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 import {
@@ -57,14 +58,17 @@ export const generateUniqueSlug = async (name: string): Promise<string> => {
 export const createOrganizationDao = async (
   organization: AddOrganizationModel
 ): Promise<OrganizationModel> => {
-  const row = await db.insert(organizations).values(organization).returning()
+  const row = await getDb()
+    .insert(organizations)
+    .values(organization)
+    .returning()
   return row[0]
 }
 
 export const getOrganizationByIdDao = async (
   id: string
 ): Promise<OrganizationModel | undefined> => {
-  const row = await db.query.organization.findFirst({
+  const row = await getDb().query.organization.findFirst({
     where: (organization, {eq}) => eq(organization.id, id),
   })
   return row
@@ -73,7 +77,7 @@ export const getOrganizationByIdDao = async (
 export const getOrganizationBySlugDao = async (
   slug: string
 ): Promise<OrganizationModel | undefined> => {
-  const row = await db.query.organization.findFirst({
+  const row = await getDb().query.organization.findFirst({
     where: (organization, {eq}) => eq(organization.slug, slug),
   })
   return row
@@ -85,27 +89,29 @@ export const updateOrganizationDao = async (
   if (!organization.id) {
     throw new Error('Organization ID is required')
   }
-  await db
+  await getDb()
     .update(organizations)
     .set({...organization, updatedAt: new Date()})
     .where(eq(organizations.id, organization.id))
 }
 
 export const deleteOrganizationDao = async (id: string): Promise<void> => {
-  await db.delete(organizations).where(eq(organizations.id, id))
+  await getDb().delete(organizations).where(eq(organizations.id, id))
 }
 
 export const getOrganizationsDao = async (
   pagination: Pagination
 ): Promise<PaginatedResponse<OrganizationModel>> => {
   const [rows, [{count}]] = await Promise.all([
-    db
+    getDb()
       .select()
       .from(organizations)
       .limit(pagination.limit)
       .offset(pagination.offset)
       .orderBy(organizations.createdAt),
-    db.select({count: sql<number>`count(*)`}).from(organizations),
+    getDb()
+      .select({count: sql<number>`count(*)`})
+      .from(organizations),
   ])
 
   const page = Math.floor(pagination.offset / pagination.limit) + 1
@@ -139,14 +145,14 @@ export const getAllOrganizationsWithPaginationDao = async (
 
   // Récupérer les organisations avec recherche
   const [rows, [{count}]] = await Promise.all([
-    db
+    getDb()
       .select()
       .from(organizations)
       .where(searchCondition)
       .limit(pagination.limit)
       .offset(pagination.offset)
       .orderBy(sql`${organizations.createdAt} DESC`),
-    db
+    getDb()
       .select({count: sql<number>`count(*)`})
       .from(organizations)
       .where(searchCondition),
@@ -171,7 +177,7 @@ export const getAllOrganizationsWithPaginationDao = async (
 export const createOrganizationMemberDao = async (
   userOrganization: AddMemberModel
 ): Promise<MemberModel> => {
-  const row = await db.insert(member).values(userOrganization).returning()
+  const row = await getDb().insert(member).values(userOrganization).returning()
   return row[0]
 }
 
@@ -179,7 +185,7 @@ export const getUserOrganizationDao = async (
   userId: string,
   organizationId: string
 ): Promise<MemberModel | undefined> => {
-  const row = await db.query.member.findFirst({
+  const row = await getDb().query.member.findFirst({
     where: (userOrg, {eq, and}) =>
       and(
         eq(userOrg.userId, userId),
@@ -194,7 +200,7 @@ export const updateUserOrganizationRoleDao = async (
   organizationId: string,
   role: OrganizationRoleEnumModel
 ): Promise<void> => {
-  await db
+  await getDb()
     .update(member)
     .set({role})
     .where(
@@ -206,7 +212,7 @@ export const deleteUserOrganizationDao = async (
   userId: string,
   organizationId: string
 ): Promise<void> => {
-  await db
+  await getDb()
     .delete(member)
     .where(
       and(eq(member.userId, userId), eq(member.organizationId, organizationId))
@@ -216,7 +222,7 @@ export const deleteUserOrganizationDao = async (
 // ===== REQUÊTES SPÉCIALISÉES =====
 
 export const getMembersDao = async (userId: string): Promise<MemberModel[]> => {
-  const rows = await db.query.member.findMany({
+  const rows = await getDb().query.member.findMany({
     where: (member, {eq}) => eq(member.userId, userId),
     with: {
       organization: true,
@@ -228,7 +234,7 @@ export const getMembersDao = async (userId: string): Promise<MemberModel[]> => {
 export const getOrganizationMembersDao = async (
   organizationId: string
 ): Promise<MemberData[]> => {
-  const rows = await db.query.member.findMany({
+  const rows = await getDb().query.member.findMany({
     where: (userOrg, {eq}) => eq(userOrg.organizationId, organizationId),
     with: {
       user: true,
@@ -240,7 +246,7 @@ export const getOrganizationMembersDao = async (
 export const getOrganizationsByUserIdDao = async (
   userId: string
 ): Promise<(OrganizationModel & {role: OrganizationRoleEnumModel})[]> => {
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: organizations.id,
       name: organizations.name,
@@ -251,6 +257,8 @@ export const getOrganizationsByUserIdDao = async (
       createdAt: organizations.createdAt,
       updatedAt: organizations.updatedAt,
       limitOverrides: organizations.limitOverrides,
+      domain: organizations.domain,
+      enabledModules: organizations.enabledModules,
       role: member.role,
     })
     .from(organizations)
@@ -264,7 +272,7 @@ export const getOrganizationsByUserIdDao = async (
 export const getInvitationMembersDao = async (
   organizationId: string
 ): Promise<(Invitation & {user: UserModel | null})[]> => {
-  const rows = await db.query.invitation.findMany({
+  const rows = await getDb().query.invitation.findMany({
     where: (invitation, {eq, and}) =>
       and(
         eq(invitation.organizationId, organizationId),
@@ -277,7 +285,7 @@ export const getInvitationMembersDao = async (
 
   const invitationsWithUsers = await Promise.all(
     rows.map(async (invitation) => {
-      const user = await db.query.user.findFirst({
+      const user = await getDb().query.user.findFirst({
         where: (user, {eq}) => eq(user.email, invitation.email),
       })
       return {
@@ -294,7 +302,7 @@ export const getUserRoleInOrganizationDao = async (
   userId: string,
   organizationId: string
 ): Promise<OrganizationRoleEnumModel | null> => {
-  const row = await db.query.member.findFirst({
+  const row = await getDb().query.member.findFirst({
     where: (userOrg, {eq, and}) =>
       and(
         eq(userOrg.userId, userId),
@@ -313,7 +321,7 @@ export const getUserInvitationsDao = async (
 ): Promise<
   (Invitation & {organization: OrganizationModel; inviter: UserModel})[]
 > => {
-  const rows = await db.query.invitation.findMany({
+  const rows = await getDb().query.invitation.findMany({
     where: (invitation, {eq, and}) => {
       const conditions = [eq(invitation.email, userEmail)]
       if (status) {
@@ -333,13 +341,13 @@ export const getUserInvitationsDao = async (
 export const deleteUserInvitationsDao = async (
   userId: string
 ): Promise<void> => {
-  await db.delete(invitation).where(eq(invitation.inviterId, userId))
+  await getDb().delete(invitation).where(eq(invitation.inviterId, userId))
 }
 
 export const deleteInvitationByIdDao = async (
   invitationId: string
 ): Promise<void> => {
-  await db.delete(invitation).where(eq(invitation.id, invitationId))
+  await getDb().delete(invitation).where(eq(invitation.id, invitationId))
 }
 
 // ===== ADMIN SEARCH =====
@@ -358,7 +366,7 @@ export const searchOrganizationsWithMemberEmailsDao = async (
 ): Promise<OrganizationWithMembersSearchResult[]> => {
   const searchPattern = `%${searchTerm}%`
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: organizations.id,
       name: organizations.name,
@@ -386,4 +394,29 @@ export const searchOrganizationsWithMemberEmailsDao = async (
     .limit(limit)
 
   return rows
+}
+
+/**
+ * Resout l'association servie par un domaine (ADR 003). La colonne est unique,
+ * donc au plus une ligne. Le domaine est attendu **normalise** (minuscules,
+ * sans port) : c'est `normalizeTenantHost` qui s'en charge, en amont.
+ */
+export const getOrganizationByDomainDao = async (
+  domain: string
+): Promise<OrganizationModel | undefined> => {
+  const row = await getDb().query.organization.findFirst({
+    where: (organization, {eq}) => eq(organization.domain, domain),
+  })
+  return row
+}
+
+/** Remplace les drapeaux de modules d'une association (ADR 010). */
+export const updateOrganizationModulesDao = async (
+  organizationId: string,
+  enabledModules: OrganizationModuleEnumModel[]
+): Promise<void> => {
+  await getDb()
+    .update(organizations)
+    .set({enabledModules, updatedAt: new Date()})
+    .where(eq(organizations.id, organizationId))
 }

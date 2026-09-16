@@ -1,15 +1,6 @@
 'use client'
 
-import {
-  BookOpen,
-  Bot,
-  Frame,
-  Map,
-  PieChart,
-  Settings2,
-  SquareTerminal,
-  Wallet,
-} from 'lucide-react'
+import {BookOpen, Bot, Settings2, SquareTerminal, Wallet} from 'lucide-react'
 import {useTranslations} from 'next-intl'
 import * as React from 'react'
 
@@ -17,7 +8,6 @@ import {useAuth} from '@/components/context/auth-provider'
 import {useOrganization} from '@/components/context/organization-provider'
 import {NavAdmin} from '@/components/features/layouts/sidebar/nav-admin'
 import {NavMain} from '@/components/features/layouts/sidebar/nav-main'
-import {NavProjects} from '@/components/features/layouts/sidebar/nav-projects'
 import {NavUser} from '@/components/features/layouts/sidebar/nav-user'
 import {TeamSwitcher} from '@/components/team-switcher'
 import {
@@ -114,10 +104,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
               title: t('projects.dashboard'),
               url: '/dashboard',
             },
-            {
-              title: t('projects.projects'),
-              url: '/team/{{orgSlug}}/projects',
-            },
           ],
         },
         {
@@ -125,14 +111,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           url: '#',
           icon: Wallet,
           items: [
-            {
-              title: t('billing.credits'),
-              url: '/account/billing/credit',
-            },
-            {
-              title: t('billing.usage'),
-              url: '/account/billing/usage',
-            },
             ...(isPageEnabled(PagesConst.SUBSCRIPTION)
               ? [
                   {
@@ -141,10 +119,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
                   },
                 ]
               : []),
-            {
-              title: t('billing.creditsSimulator'),
-              url: '/team/{{orgSlug}}/credits-simulator',
-            },
           ],
         },
         {
@@ -152,10 +126,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           url: '#',
           icon: Bot,
           items: [
-            {
-              title: 'Chat Llama3',
-              url: '/chat',
-            },
             {
               title: t('models.explorer'),
               url: '#',
@@ -190,23 +160,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           ],
         },
       ],
-      projects: [
-        {
-          name: t('projectsList.designEngineering'),
-          url: '#',
-          icon: Frame,
-        },
-        {
-          name: t('projectsList.salesMarketing'),
-          url: '#',
-          icon: PieChart,
-        },
-        {
-          name: t('projectsList.travel'),
-          url: '#',
-          icon: Map,
-        },
-      ],
     }),
     [t]
   )
@@ -239,7 +192,6 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <NavAdmin adminItems={translatedMenuData.adminNavMain} />
         )}
         <NavMain items={menuItems} />
-        <NavProjects projects={translatedMenuData.projects} />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user || undefined} />

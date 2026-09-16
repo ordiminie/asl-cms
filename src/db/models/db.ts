@@ -3,14 +3,11 @@ import {Pool} from 'pg'
 
 import {env} from '@/env'
 
-import * as affiliate from './affiliate-model'
 import * as appSettings from './app-settings-model'
 import * as auth from './auth-model'
-import * as creditLedger from './credit-ledger-model'
 import * as notification from './notification-model'
 import * as organization from './organization-model'
 import * as post from './post-model'
-import * as project from './project-model'
 import * as subscription from './subscription-model'
 import * as user from './user-model'
 import * as userSubmission from './user-submission-model'
@@ -29,13 +26,10 @@ const pool = new Pool({
 
 const db = drizzle(pool, {
   schema: {
-    ...affiliate,
     ...appSettings,
     ...auth,
-    ...creditLedger,
     ...user,
     ...organization,
-    ...project,
     ...subscription,
     ...notification,
     ...post,

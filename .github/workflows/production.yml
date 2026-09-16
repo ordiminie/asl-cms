@@ -127,3 +127,15 @@ jobs:
         run: pnpm db:migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Role proprietaire (ADR 002). Secret absent = retombee sur
+          # DATABASE_URL, comportement anterieur inchange.
+          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+
+      # Garde-fou de l'echec silencieux (ADR 002) : si le secret DATABASE_URL
+      # pointe encore sur un role SUPERUSER ou BYPASSRLS, les policies de
+      # tenant sont posees et INERTES, et rien d'autre ne le signale.
+      # `db:check` echoue alors, avant tout deploiement.
+      - name: Verify application role is subject to RLS
+        run: pnpm db:check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

@@ -27,9 +27,13 @@ src/app/api/
 ### Référence aux fichiers du système d'authentification
 
 - [api-auth.ts](src/lib/api-auth.ts) : Fonctions d'authentification
-- [projects/route.ts](src/app/api/projects/route.ts) : Exemple de routes statiques
-- [projects/[id]/route.ts](src/app/api/projects/[id]/route.ts) : Exemple de routes dynamiques
-- [projects/by-token/route.ts](src/app/api/projects/by-token/route.ts) : Exemple d'authentification par token
+
+⚠️ **Il n'y a plus d'exemple de route API gardée dans le dépôt.** Les trois routes citées ici
+(`/api/projects`, `/api/projects/[id]`, `/api/projects/by-token`) sont parties avec l'ADR 009. Les
+gabarits ci-dessous restent la référence, mais ils ne sont plus adossés à du code vivant : la
+première route API gardée d'ASL-CMS devra être citée ici. `src/lib/api-auth.ts` est conservé — c'est
+le seul endroit du dépôt qui rende de vrais 401 et 403, les pages étant bornées à 200 sous Cache
+Components (ADR 013).
 
 ## Conventions RESTful CRUD
 

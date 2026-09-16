@@ -15,6 +15,27 @@
       "when": 1787481119985,
       "tag": "0001_fast_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789033960081,
+      "tag": "0002_clever_jack_flag",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789035029533,
+      "tag": "0003_huge_misty_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789035075964,
+      "tag": "0004_rls_tenant_isolation",
+      "breakpoints": true
     }
   ]
 }

@@ -148,19 +148,51 @@ export const twoFactor = pgTable('two_factor', {
   lockedUntil: timestamp('locked_until', {mode: 'date'}),
 })
 
+/**
+ * Cles de modules activables par association (ADR 010).
+ *
+ * Un enumere, jamais un champ libre : une cle inconnue ne peut pas etre
+ * stockee, et le helper de controle la traite comme inactive. Les ecrans de
+ * ces modules arrivent en s33 (vote), s34 (voirie) et s35 (annonces).
+ */
+export const organizationModuleEnum = pgEnum('organization_module', [
+  'vote',
+  'voirie',
+  'annonces',
+])
+
 // Table des organisations
 export const organization = pgTable('organization', {
   id: uuid('id')
     .default(sql`uuid_generate_v4()`)
     .primaryKey(),
   name: text('name').notNull(),
-  slug: text('slug').unique(),
+  slug: text('slug').notNull().unique(),
   description: text('description'),
   createdAt: timestamp('created_at', {mode: 'date'}).defaultNow(),
   updatedAt: timestamp('updated_at', {mode: 'date'}).defaultNow(),
   logo: text('logo'),
   metadata: text('metadata'),
   limitOverrides: json('limit_overrides').$type<Record<string, number>>(),
+  /**
+   * Domaine servant le site de l'association (ADR 003). Un domaine par
+   * association, d'ou la contrainte d'unicite — qui porte deja son index.
+   *
+   * Volontairement NULLABLE : le socle cree une organisation a chaque
+   * inscription (`createUserRoleAndOrganizationTxnDao`), sans domaine. Un
+   * NOT NULL casserait l'inscription et la suite e2e. Une organisation sans
+   * domaine ne sert simplement aucun site.
+   */
+  domain: text('domain').unique(),
+  /**
+   * Modules actifs de l'association. Tableau d'enumere, pas de booleens ni de
+   * JSON libre : c'est ce qui rend la cle inconnue impossible a persister.
+   * Aucun module actif par defaut — un module s'active par decision.
+   */
+  enabledModules: organizationModuleEnum('enabled_modules')
+    .array()
+    .notNull()
+    .default(sql`'{}'::organization_module[]`),
 })
 
 export const organizationRoleEnum = pgEnum('organization_role', [

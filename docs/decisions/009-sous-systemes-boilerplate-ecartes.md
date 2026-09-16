@@ -37,6 +37,70 @@ Le retrait est exécuté **dans s01**, et non dans une story dédiée : s01 est 
 
 Précéder toute récupération de `git fetch upstream`. Les chemins ci-dessus sont ceux du retrait ; les fichiers satellites (interceptors, tests, pages d'admin, entrées de menu, traductions) se retrouvent par `git ls-tree -r --name-only upstream/main | grep -i <sous-système>`.
 
+### Complément écrit par s01 — les chemins que la table ci-dessus ne nommait pas
+
+⚠️ **La table ci-dessus ne nommait que 46 des 109 chemins réellement retirés.** Le filet qu'elle
+proposait (`git ls-tree … | grep -i <sous-système>`) ne rattrape **ni `tasks` ni `referral`**, dont le
+nom ne contient aucun des cinq motifs. Sans ce complément, une récupération V2 ramènerait un
+sous-système incomplet et silencieusement cassé. Mesuré et retiré le 2026-09-10 :
+
+**Chat IA** — `src/components/ui/code-block.tsx` (doublon de `src/components/features/docs/code-block.tsx`,
+qui reste), dépendance `react-markdown` devenue orpheline.
+
+**Projets / tâches** — au-delà des chemins nommés :
+`src/app/[locale]/(app)/team/[slug]/projects/` (7 fichiers),
+`src/app/[locale]/(app)/team/[slug]/react-query/` (page de démonstration),
+`src/components/features/projects/react-query/` (4),
+`src/components/features/projects/{projects-pagination,projects-skeleton,projects-toolbar}.tsx`,
+`src/lib/api/projects-api.ts`, `src/components/hooks/client/project-client.ts`,
+`src/components/features/layouts/sidebar/nav-projects.tsx`,
+`src/services/types/domain/project-types.ts`,
+`src/services/facades/interceptors/project-service-logger-interceptor.ts`,
+et **les tâches, jamais nommées** : `src/app/dal/task-dal.ts` +
+`src/components/features/tasks/` (5 fichiers : `task-board`, `task-card`, `task-column`,
+`create-task-modal`, `task-form-validation`). Dépendances `@dnd-kit/*` devenues orphelines mais
+**conservées** : l'ADR 007 les réutilise pour l'ordre des blocs de contenu.
+
+**Crédits** — `src/app/[locale]/(app)/account/billing/credit/` (3),
+`src/app/[locale]/(app)/account/billing/usage/` (page de graphe de consommation, nom sans motif),
+`src/app/[locale]/(app)/team/[slug]/credits-simulator/` (3),
+`src/app/[locale]/admin/credits/` (2), `src/components/features/admin/credits/` (2),
+`src/services/authorization/credit-authorization.ts`,
+`src/services/types/domain/credit-types.ts`, `src/services/validation/credit-validation.ts`,
+`src/services/facades/interceptors/credit-service-logger-interceptor.ts`,
+`src/lib/__tests__/credit-period-helper.test.ts`.
+
+**Affiliation** — `src/app/[locale]/(app)/account/affiliate/` (4),
+`src/app/[locale]/admin/affiliates/` (3), `src/components/features/admin/affiliates/` (1),
+`src/services/types/domain/affiliate-types.ts`, `src/services/validation/affiliate-validation.ts`,
+`src/services/facades/interceptors/affiliate-service-logger-interceptor.ts`,
+`src/services/__tests__/stripe-affiliate-webhook.test.ts`,
+et **le parrainage, jamais nommé** : `src/lib/helper/referral-helper.ts`,
+`referral-helper.server.ts`, `referral-helper.test.ts`. Le parrainage part **entièrement** — garder
+un cookie de parrainage posé pour une table `referral` absente serait un bug, pas un statu quo. Il
+était câblé dans du code conservé : `src/proxy.ts`, `src/env-schemas.ts`
+(`NEXT_PUBLIC_AFFILIATE_TRACKING`, retirée), `src/lib/better-auth/auth.ts`
+(`attributeReferralOnSignUp`), `src/app/[locale]/(auth)/action.ts`, `auth-form-validation.ts` et le
+champ « code de parrainage » du formulaire d'inscription.
+
+**Newsletter Mailchimp** — `src/components/features/blog/newsletter-inline.tsx`,
+`src/app/[locale]/(public)/blog/actions.ts`,
+`src/services/facades/interceptors/newsletter-service-logger-interceptor.ts`.
+Dépendances `@mailchimp/mailchimp_marketing` et `@types/mailchimp__mailchimp_marketing` devenues
+orphelines, **non retirées de `package.json` par s01** : un changement de dépendance sort du
+périmètre de ses dix critères.
+
+**Ce que le retrait a coûté en code conservé**, pour mémoire : `casl-abilities.ts` (4 sujets, 17
+règles), `better-auth/auth.ts` (hooks crédits + parrainage + newsletter), `stripe-events.ts`
+(allocation de crédits, primes d'affiliation, remboursements et litiges), `seed.ts` (blocs `project`,
+`task`, barème d'affiliation, packs de crédits, limites `projects`/`credits`),
+`subscription-repository.ts` (`AdminUsageStats` et `PlanLimits` amputés de `projects` et `credits`,
+période désormais lue sur l'abonnement), `subscription-types.ts` (`LimitType` réduit à
+`storage | users`), `user-service.ts` (allocation initiale de crédits), `inngest/functions.ts`
+(2 crons), `menu-helper.ts`, les 4 fichiers de `sidebar/`, `subscription-authorization.ts`,
+et les écrans d'usage (`team/[slug]`, `account/organizations`, `admin/organizations/[id]/edit`,
+`user-detail-form`) qui perdent leurs colonnes « Projets » et « Crédits ».
+
 **Conservé** : Stripe (facturation plateforme Zourite Studio ↔ association), `post` (base des actualités s05), `file`, `notification`, `organization`, `user`, `app_settings`, ainsi que toute l'infrastructure transverse — Better Auth, CASL, Sentry, logger, i18n, Drizzle.
 
 ## Considered options

@@ -1,7 +1,7 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
-import {ArrowLeft, Building2, Calendar, Shield, User, Zap} from 'lucide-react'
+import {ArrowLeft, Building2, Calendar, Shield, User} from 'lucide-react'
 import Link from 'next/link'
 import {useLocale, useTranslations} from 'next-intl'
 import {useState} from 'react'
@@ -598,32 +598,6 @@ export default function UserDetailForm({
                   </div>
 
                   <div className="space-y-3">
-                    <div>
-                      <div className="mb-1 flex items-center gap-2 text-sm">
-                        <Zap className="h-3 w-3" />
-                        <span className="text-muted-foreground">
-                          {t('projects')}
-                        </span>
-                        <span className="ml-auto">
-                          {formatUsage(
-                            org.usage.projects,
-                            org.usage.limits.projects
-                          )}
-                        </span>
-                      </div>
-                      <Progress
-                        value={getUsagePercent(
-                          org.usage.projects,
-                          org.usage.limits.projects
-                        )}
-                        className="h-1.5"
-                        indicatorClassName={getProgressColor(
-                          org.usage.projects,
-                          org.usage.limits.projects
-                        )}
-                      />
-                    </div>
-
                     <div>
                       <div className="mb-1 flex items-center gap-2 text-sm">
                         <User className="h-3 w-3" />

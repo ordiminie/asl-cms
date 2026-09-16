@@ -6,7 +6,16 @@ description:
 
 ## Vue d'ensemble
 
-Cette règle définit comment implémenter React Query dans notre application Next.js 16 avec TypeScript, en suivant les patterns établis pour la gestion des projets.
+Cette règle définit comment implémenter React Query dans notre application Next.js 16 avec
+TypeScript.
+
+⚠️ **L'implémentation de référence a disparu du dépôt.** Elle était le domaine `projects`, retiré
+par l'ADR 009 dans s01. Ce qui subsiste et vit encore : `src/components/context/query-provider.tsx`,
+`src/components/context/app-providers.tsx` et `src/lib/api/api-client.ts`. Les gabarits ci-dessous
+restent la convention à suivre, mais **aucun n'est adossé à du code vivant** : ils sont écrits sur
+une entité générique (`entity`), et le premier domaine ASL-CMS qui utilisera React Query devra être
+cité ici. Rappel du cadre : la voie par défaut du projet est **RSC + DAL + Server Actions** ; React
+Query ne se justifie que pour une liste réellement interactive côté client.
 
 ## Architecture React Query
 
@@ -18,7 +27,7 @@ src/
 │   ├── context/
 │   │   └── query-provider.tsx          # Configuration React Query
 │   ├── hooks/client/
-│   │   └── entity-client.ts           # Hooks React Query par entité
+│   │   └── entity-client.ts           # Hooks React Query par entité (à créer)
 │   └── features/entity/
 │       ├── entity-management.tsx   # Composant principal
 │       ├── create-entity-dialog.tsx # Dialog création
@@ -121,8 +130,6 @@ export async function apiClient<T>(
 
 ### API spécifique par entité
 
-Référence : [projects-api.ts](src/lib/api/projects-api.ts)
-
 ```typescript
 // Types de réponse standardisés
 export interface ApiResponse<T> {
@@ -166,8 +173,6 @@ export const entityApi = {
 ## Hooks React Query Pattern
 
 ### Structure des Query Keys
-
-Référence : [project-client.ts](src/components/hooks/client/project-client.ts)
 
 ```typescript
 // Hiérarchie de clés pour invalidation précise
@@ -259,8 +264,6 @@ export function useUpdateEntity() {
 
 ### Composant principal de gestion
 
-Référence : [projects-management-react-query.tsx](src/components/features/projects/react-query/projects-management-react-query.tsx)
-
 ```typescript
 export function EntityManagementReactQuery({ organization, searchParams }: Props) {
   const searchStore = use(searchParams)
@@ -301,8 +304,6 @@ export function EntityManagementReactQuery({ organization, searchParams }: Props
 ```
 
 ### Dialog de création
-
-Référence : [create-project-dialog-rq.tsx](src/components/features/projects/react-query/create-project-dialog-rq.tsx)
 
 ```typescript
 export function CreateEntityDialog({ organizationId, trigger }: Props) {
@@ -348,8 +349,6 @@ export function CreateEntityDialog({ organizationId, trigger }: Props) {
 
 ### Dialog d'édition
 
-Référence : [edit-project-dialog-rq.tsx](src/components/features/projects/react-query/edit-project-dialog-rq.tsx)
-
 ```typescript
 export function EditEntityDialog({ entity, onSave, isLoading }: Props) {
   const [open, setOpen] = useState(false)
@@ -391,8 +390,6 @@ export function EditEntityDialog({ entity, onSave, isLoading }: Props) {
 ```
 
 ### Dialog de suppression
-
-Référence : [delete-project-dialog-rq.tsx](src/components/features/projects/react-query/delete-project-dialog-rq.tsx)
 
 ```typescript
 export function DeleteEntityDialog({ entityId, entityName, onDelete, isLoading }: Props) {

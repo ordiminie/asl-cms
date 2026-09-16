@@ -2405,7 +2405,62 @@
     },
     "deleteConfirm": "¿Seguro que quieres eliminar la organización «{name}»? Esta acción no se puede deshacer y eliminará definitivamente todos los datos asociados.",
     "cancelInvitationConfirm": "¿Seguro que quieres eliminar la invitación para {email}?",
-    "cancelError": "No se ha podido cancelar la invitación"
+    "cancelError": "No se ha podido cancelar la invitación",
+    "provision": {
+      "title": "Aprovisionar una asociación",
+      "breadcrumbHome": "Administración",
+      "breadcrumbOrganizations": "Organizaciones",
+      "breadcrumbCurrent": "Nueva asociación",
+      "associationCardTitle": "La asociación",
+      "nameLabel": "Nombre de la asociación",
+      "nameHelp": "Tal como aparecerá en su sitio.",
+      "slugLabel": "Identificador corto",
+      "slugHelp": "Se usa en las direcciones internas. Minúsculas, cifras y guiones.",
+      "domainLabel": "Dominio",
+      "domainHelp": "El dominio que servirá su sitio, sin https:// ni ruta. Ejemplo: asl-lafourche.fr",
+      "adminCardTitle": "Administrador de la asociación",
+      "adminEmailLabel": "Correo electrónico",
+      "adminEmailHelp": "La cuenta se crea si todavía no existe.",
+      "modulesCardTitle": "Módulos",
+      "modulesHelp": "Ningún módulo está activado por defecto: un módulo se activa por decisión.",
+      "monogramLabel": "Vista previa del monograma",
+      "noticeTitle": "Por ahora no se envía nada",
+      "noticeBody": "El envío automático del enlace de acceso todavía no está en servicio: avisa tú mismo al administrador.",
+      "submit": "Aprovisionar la asociación",
+      "submitting": "Aprovisionando…",
+      "cancel": "Cancelar",
+      "errorTitle": "La asociación no se ha aprovisionado",
+      "errorKeepsInput": "No se pierde nada: se conservan tus otras entradas.",
+      "successTitle": "Asociación aprovisionada",
+      "successBody": "{name} está aprovisionada. Su sitio responde en {domain}. La cuenta {email} puede administrarla.",
+      "newOrganization": "Nueva asociación",
+      "validation": {
+        "nameMin": "El nombre debe tener al menos 2 caracteres.",
+        "nameMax": "El nombre no puede superar los 100 caracteres.",
+        "slugPattern": "Solo minúsculas, cifras y guiones.",
+        "domainPattern": "Un dominio solo, sin https:// ni ruta.",
+        "adminEmailInvalid": "Este correo electrónico no es válido."
+      }
+    },
+    "modules": {
+      "cardTitle": "Módulos",
+      "badge": "{active} de {total} módulos",
+      "enabled": "Activado",
+      "disabled": "Desactivado",
+      "saving": "Guardando…",
+      "errorTitle": "El módulo «{module}» no se ha modificado",
+      "errorBody": "Nada ha cambiado: el módulo mantiene su estado anterior.",
+      "keys": {
+        "vote": "Voto en línea",
+        "voirie": "Viales",
+        "annonces": "Anuncios"
+      },
+      "descriptions": {
+        "vote": "Consultas y votos en línea de los miembros.",
+        "voirie": "Avisos y seguimiento de los viales de la urbanización.",
+        "annonces": "Anuncios entre miembros."
+      }
+    }
   },
   "AdminUsers": {
     "title": "Gestión de usuarios",

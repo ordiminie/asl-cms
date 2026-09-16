@@ -1,18 +1,23 @@
 'use server'
 
-import {revalidatePath} from 'next/cache'
+import {revalidatePath, updateTag} from 'next/cache'
 
+import {TENANT_CACHE_TAG} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {MemberActionResult} from '@/components/features/organization/action'
+import {withRlsBypass} from '@/db/tenant-scope'
 import {canInviteToOrganization} from '@/services/authorization/organization-authorization'
 import {
   createOrganizationMemberService,
   deleteInvitationByIdService,
   deleteOrganizationService,
+  provisionOrganizationService,
+  updateOrganizationModulesService,
   updateOrganizationService,
 } from '@/services/facades/organization-service-facade'
 import {RoleConst} from '@/services/types/domain/auth-types'
 import {
+  OrganizationModule,
   OrganizationRole,
   OrganizationRoleConst,
 } from '@/services/types/domain/organization-types'
@@ -159,4 +164,109 @@ export async function deleteAdminMemberInvitationAction(
 
   revalidatePath(`/admin/organizations/${organizationId}/edit`)
   return {success: true, message: 'Invitation annulée'}
+}
+
+// ========================================
+// PROVISIONING (s01)
+// ========================================
+
+export type ProvisionFormState = {
+  success: boolean
+  errors?: Array<{field: string; message: string}>
+  message?: string
+  organizationId?: string
+  organizationName?: string
+  domain?: string
+  adminEmail?: string
+}
+
+/**
+ * Provisionne une association. Reservee au SuperAdmin Zourite Studio.
+ *
+ * `withRlsBypass()` est la porte que l'ADR 002 reserve nommement au
+ * provisioning : le tenant n'existe pas encore quand l'ecriture commence, donc
+ * aucun scope ne peut etre pose. Les tables touchees ici relevent du plan
+ * identite (ADR 014), et l'amorcage de lignes scopees passera par ce meme
+ * point d'entree.
+ *
+ * `updateTag` et non `revalidateTag` : le SuperAdmin doit voir son association
+ * repondre tout de suite, pas apres un rafraichissement en arriere-plan.
+ */
+export async function provisionOrganizationAction(
+  prevState?: ProvisionFormState,
+  formData?: FormData
+): Promise<ProvisionFormState> {
+  await requireActionAuth({
+    roles: [RoleConst.SUPER_ADMIN],
+  })
+
+  if (!formData) {
+    return {success: false, message: 'Données invalides'}
+  }
+
+  const name = (formData.get('name') as string) ?? ''
+  const slug = (formData.get('slug') as string) ?? ''
+  const domain = (formData.get('domain') as string) ?? ''
+  const adminEmail = (formData.get('adminEmail') as string) ?? ''
+  const enabledModules = formData.getAll('modules') as OrganizationModule[]
+
+  try {
+    const provisioned = await withRlsBypass(async () =>
+      provisionOrganizationService({
+        name,
+        slug,
+        domain,
+        adminEmail,
+        enabledModules,
+      })
+    )
+
+    updateTag(TENANT_CACHE_TAG)
+    revalidatePath('/admin/organizations')
+
+    return {
+      success: true,
+      organizationId: provisioned.organization.id,
+      organizationName: provisioned.organization.name,
+      domain: provisioned.organization.domain ?? domain,
+      adminEmail,
+    }
+  } catch (error) {
+    console.error('Erreur lors du provisioning:', error)
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'Une erreur est survenue',
+    }
+  }
+}
+
+/**
+ * Active ou desactive les modules d'une association (ADR 010). L'effet est
+ * immediat : le tag de resolution du tenant est invalide dans la foulee, sans
+ * quoi le drapeau resterait faux jusqu'a expiration du cache.
+ */
+export async function updateOrganizationModulesAction(
+  organizationId: string,
+  enabledModules: OrganizationModule[]
+): Promise<FormState> {
+  await requireActionAuth({
+    roles: [RoleConst.SUPER_ADMIN],
+  })
+
+  try {
+    await updateOrganizationModulesService(organizationId, enabledModules)
+
+    updateTag(TENANT_CACHE_TAG)
+    revalidatePath(`/admin/organizations/${organizationId}/edit`)
+
+    return {success: true}
+  } catch (error) {
+    console.error('Erreur lors du changement de module:', error)
+    return {
+      success: false,
+      message:
+        error instanceof Error ? error.message : 'Une erreur est survenue',
+    }
+  }
 }

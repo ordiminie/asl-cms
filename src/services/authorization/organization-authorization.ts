@@ -6,6 +6,7 @@ import {
 } from '@/services/authentication/auth-service'
 import {
   OrganizationContext,
+  RoleConst,
   UserOrganizationRoleConst,
 } from '@/services/types/domain/auth-types'
 
@@ -462,4 +463,19 @@ export const canUpdateOrganizationLimitOverrides =
  */
 export const canSearchOrganizationsForAdmin = async (): Promise<boolean> => {
   return isAuthAdmin()
+}
+
+/**
+ * Provisionner une association est un acte du **prestataire** Zourite Studio,
+ * pas de l'administration d'une association : seul le SUPER_ADMIN le peut
+ * (s01, critere 1 et 5).
+ *
+ * Le controle porte sur le role, et non sur CASL, parce que CASL ne peut pas
+ * exprimer la distinction ici : ADMIN porte deja `manage ORGANIZATION` et
+ * `manage TECHNICAL`, donc toute abilite existante l'autoriserait aussi.
+ */
+export const canProvisionOrganization = async (): Promise<boolean> => {
+  const authUser = await getAuthUser()
+
+  return authUser?.role === RoleConst.SUPER_ADMIN
 }

@@ -2405,7 +2405,62 @@
     },
     "deleteConfirm": "Are you sure you want to delete the \"{name}\" organization? This action cannot be undone and will permanently delete all related data.",
     "cancelInvitationConfirm": "Do you really want to delete the invitation for {email}?",
-    "cancelError": "Could not cancel the invitation"
+    "cancelError": "Could not cancel the invitation",
+    "provision": {
+      "title": "Provision an association",
+      "breadcrumbHome": "Administration",
+      "breadcrumbOrganizations": "Organizations",
+      "breadcrumbCurrent": "New association",
+      "associationCardTitle": "The association",
+      "nameLabel": "Association name",
+      "nameHelp": "As it will appear on its site.",
+      "slugLabel": "Short identifier",
+      "slugHelp": "Used for internal addresses. Lowercase letters, digits and dashes.",
+      "domainLabel": "Domain",
+      "domainHelp": "The domain that will serve its site, without https:// or a path. Example: asl-lafourche.fr",
+      "adminCardTitle": "Association administrator",
+      "adminEmailLabel": "Email address",
+      "adminEmailHelp": "The account is created if it does not exist yet.",
+      "modulesCardTitle": "Modules",
+      "modulesHelp": "No module is enabled by default: a module is enabled by decision.",
+      "monogramLabel": "Monogram preview",
+      "noticeTitle": "Nothing is sent for now",
+      "noticeBody": "Automatic sending of the sign-in link is not in service yet: tell the administrator yourself.",
+      "submit": "Provision the association",
+      "submitting": "Provisioning…",
+      "cancel": "Cancel",
+      "errorTitle": "The association was not provisioned",
+      "errorKeepsInput": "Nothing is lost: your other entries are kept.",
+      "successTitle": "Association provisioned",
+      "successBody": "{name} is provisioned. Its site answers at {domain}. The {email} account can administer it.",
+      "newOrganization": "New association",
+      "validation": {
+        "nameMin": "The name must be at least 2 characters long.",
+        "nameMax": "The name cannot exceed 100 characters.",
+        "slugPattern": "Lowercase letters, digits and dashes only.",
+        "domainPattern": "A bare domain, without https:// or a path.",
+        "adminEmailInvalid": "This email address is not valid."
+      }
+    },
+    "modules": {
+      "cardTitle": "Modules",
+      "badge": "{active} of {total} modules",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "saving": "Saving…",
+      "errorTitle": "The “{module}” module was not changed",
+      "errorBody": "Nothing changed: the module keeps its previous state.",
+      "keys": {
+        "vote": "Online vote",
+        "voirie": "Roads",
+        "annonces": "Classified ads"
+      },
+      "descriptions": {
+        "vote": "Online consultations and member votes.",
+        "voirie": "Reports and follow-up of the estate roads.",
+        "annonces": "Classified ads between members."
+      }
+    }
   },
   "AdminUsers": {
     "title": "User management",

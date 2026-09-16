@@ -149,6 +149,8 @@ describe('[ADMIN] File Service', () => {
       logo: null,
       metadata: null,
       limitOverrides: null,
+      domain: null,
+      enabledModules: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -310,6 +312,8 @@ describe('[ORGANIZATION OWNER] File Service', () => {
             logo: null,
             metadata: null,
             limitOverrides: null,
+            domain: null,
+            enabledModules: [],
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -327,6 +331,8 @@ describe('[ORGANIZATION OWNER] File Service', () => {
       logo: null,
       metadata: null,
       limitOverrides: null,
+      domain: null,
+      enabledModules: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     })

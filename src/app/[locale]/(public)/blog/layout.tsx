@@ -4,7 +4,6 @@ import {notFound} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 import React from 'react'
 
-import {NewsletterInline} from '@/components/features/blog/newsletter-inline'
 import {Button} from '@/components/ui/button'
 import {PagesConst} from '@/env'
 import {isPageEnabled} from '@/lib/utils'
@@ -51,10 +50,6 @@ export default async function BlogLayout({
               {t('cta.disclaimer')}
             </p>
           </div>
-        </section>
-
-        <section className="mt-12">
-          <NewsletterInline />
         </section>
       </div>
     </div>

@@ -132,6 +132,18 @@ jobs:
         run: pnpm db:migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # Role proprietaire (ADR 002). Secret absent = retombee sur
+          # DATABASE_URL, comportement anterieur inchange.
+          DATABASE_MIGRATION_URL: ${{ secrets.DATABASE_MIGRATION_URL }}
+
+      # Garde-fou de l'echec silencieux (ADR 002) : si le secret DATABASE_URL
+      # pointe encore sur un role SUPERUSER ou BYPASSRLS, les policies de
+      # tenant sont posees et INERTES, et rien d'autre ne le signale.
+      # `db:check` echoue alors, avant tout deploiement.
+      - name: Verify application role is subject to RLS
+        run: pnpm db:check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
   # Tests end-to-end sur le build de production, contre une base jetable.
   # Les specs ECRIVENT en base (création de compte) et lisent le seed
@@ -156,7 +168,11 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://test:test@localhost:5432/test
+      # L'application e2e tourne sous le role applicatif, soumis a la RLS :
+      # sans ca, les policies sont posees et sans effet, et le test
+      # d'isolation inter-tenant passerait sans rien prouver (ADR 002).
+      DATABASE_URL: postgresql://asl_app:asl_app@localhost:5432/test
+      DATABASE_MIGRATION_URL: postgresql://test:test@localhost:5432/test
       BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
       BETTER_AUTH_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -202,8 +218,39 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
+      # Le service postgres de la CI ne joue pas docker/db-init/ : extensions
+      # et role applicatif sont a creer ici. `organization.id` a pour defaut
+      # `uuid_generate_v4()`, donc sans uuid-ossp la premiere migration echoue.
+      # Les ALTER DEFAULT PRIVILEGES doivent preceder les migrations : ils ne
+      # valent que pour les tables creees APRES.
+      - name: Prepare database role and extensions
+        run: |
+          PGPASSWORD=test psql -h localhost -U test -d test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+          CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'asl_app') THEN
+              CREATE ROLE asl_app LOGIN PASSWORD 'asl_app' NOSUPERUSER NOCREATEDB
+                NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+            END IF;
+          END
+          $$;
+          GRANT CONNECT ON DATABASE test TO asl_app;
+          GRANT USAGE ON SCHEMA public TO asl_app;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO asl_app;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO asl_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE test IN SCHEMA public
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO asl_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE test IN SCHEMA public
+            GRANT USAGE, SELECT ON SEQUENCES TO asl_app;
+          SQL
+
+      # `db:push` (drizzle-kit push) NE LIT PAS drizzle/migrations/ : les
+      # policies RLS, generees par `generate --custom`, ne seraient jamais
+      # creees en CI. D'ou `db:migrate` ici.
       - name: Prepare database
-        run: pnpm db:push && pnpm db:seed
+        run: pnpm db:migrate && pnpm db:seed
 
       # webServer de playwright.config.ts lance `pnpm build && pnpm start` quand CI=1
       - name: Run e2e tests

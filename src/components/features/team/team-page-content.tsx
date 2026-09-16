@@ -1,6 +1,6 @@
 'use client'
 
-import {CalendarDays, Coins, FolderKanban, Users, Zap} from 'lucide-react'
+import {CalendarDays, Users, Zap} from 'lucide-react'
 import {useRouter} from 'next/navigation'
 import {useLocale, useTranslations} from 'next-intl'
 import {useEffect, useState} from 'react'
@@ -230,26 +230,7 @@ export function TeamPageContent({
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <FolderKanban className="h-4 w-4" />
-                  Projets
-                </span>
-                <span className="font-medium">
-                  {formatUsage(usage.projects, usage.limits.projects)}
-                </span>
-              </div>
-              <Progress
-                value={getUsagePercent(usage.projects, usage.limits.projects)}
-                className="h-2"
-                indicatorClassName={getProgressColor(
-                  usage.projects,
-                  usage.limits.projects
-                )}
-              />
-            </div>
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-2">
@@ -269,33 +250,10 @@ export function TeamPageContent({
                 )}
               />
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <Coins className="h-4 w-4" />
-                  Crédits
-                </span>
-                <span className="font-medium">{usage.credits}</span>
-              </div>
-              <Progress
-                value={getUsagePercent(usage.credits, usage.limits.credits)}
-                className="h-2"
-                indicatorClassName={getProgressColor(
-                  usage.credits,
-                  usage.limits.credits
-                )}
-              />
-            </div>
           </div>
           {usage.periodStart && usage.periodEnd && (
             <p className="text-muted-foreground mt-4 text-xs">
               Période: {formatDate(usage.periodStart)} -{' '}
-              {formatDate(usage.periodEnd)}
-            </p>
-          )}
-          {usage.periodEnd && (
-            <p className="text-muted-foreground text-xs">
-              Prochain renouvellement des crédits :{' '}
               {formatDate(usage.periodEnd)}
             </p>
           )}

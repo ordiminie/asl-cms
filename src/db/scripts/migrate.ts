@@ -6,15 +6,13 @@ import {drizzle} from 'drizzle-orm/node-postgres'
 import {migrate} from 'drizzle-orm/node-postgres/migrator'
 import pg from 'pg'
 
+import {resolveMigrationUrl} from './db-url'
 import initDotEnv from './env'
 initDotEnv()
 
 const runMigrate = async () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not defined')
-  }
   const client = new pg.Client({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: resolveMigrationUrl(process.env),
   })
 
   await client.connect()

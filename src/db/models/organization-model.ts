@@ -1,6 +1,12 @@
 import {relations} from 'drizzle-orm'
 
-import {member, organization, organizationRoleEnum, user} from './auth-model'
+import {
+  member,
+  organization,
+  organizationModuleEnum,
+  organizationRoleEnum,
+  user,
+} from './auth-model'
 
 // Relations pour organizations
 export const organizationsRelations = relations(organization, ({many}) => ({
@@ -33,3 +39,9 @@ export type AddMemberModel = typeof member.$inferInsert
 
 export type OrganizationRoleEnumModel =
   (typeof organizationRoleEnum.enumValues)[number]
+
+export type OrganizationModuleEnumModel =
+  (typeof organizationModuleEnum.enumValues)[number]
+
+/** Les cles de modules connues, dans l'ordre de l'enumere Postgres. */
+export const organizationModuleValues = organizationModuleEnum.enumValues

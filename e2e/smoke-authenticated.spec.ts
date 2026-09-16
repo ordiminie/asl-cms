@@ -28,16 +28,9 @@ const USER_ROUTES = [
   '/en/account/invitations',
   '/en/account/api-keys',
   '/en/account/billing/subscription',
-  '/en/account/billing/credit',
-  '/en/account/billing/usage',
 ]
 
-const TEAM_ROUTES = [
-  '/en/team/evil-corp',
-  '/en/team/evil-corp/projects',
-  '/en/team/evil-corp/projects/new',
-  '/en/team/evil-corp/credits-simulator',
-]
+const TEAM_ROUTES = ['/en/team/evil-corp']
 
 const ADMIN_ROUTES = [
   '/en/admin',
@@ -45,7 +38,6 @@ const ADMIN_ROUTES = [
   '/en/admin/organizations',
   '/en/admin/plans',
   '/en/admin/subscriptions',
-  '/en/admin/credits',
   '/en/admin/blog',
   '/en/admin/emails',
   '/en/admin/submissions',

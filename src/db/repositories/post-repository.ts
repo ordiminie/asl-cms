@@ -1,6 +1,5 @@
 import {and, eq, ilike, inArray, sql} from 'drizzle-orm'
 
-import db from '@/db/models/db'
 import {
   AddCategoryModel,
   AddHashtagsModel,
@@ -21,6 +20,7 @@ import {
   UpdateHashtagModel,
   UpdatePostModel,
 } from '@/db/models/post-model'
+import {getDb} from '@/db/tenant-scope'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
 import {
   CategoryFilters,
@@ -32,14 +32,14 @@ import {
 // ===== CRUD POSTS =====
 
 export const createPostDao = async (post: AddPostModel): Promise<PostModel> => {
-  const row = await db.insert(posts).values(post).returning()
+  const row = await getDb().insert(posts).values(post).returning()
   return row[0]
 }
 
 export const getPostByIdDao = async (
   postId: string
 ): Promise<PostModel | undefined> => {
-  const row = await db.query.posts.findFirst({
+  const row = await getDb().query.posts.findFirst({
     where: (post, {eq}) => eq(post.id, postId),
   })
   return row
@@ -48,7 +48,7 @@ export const getPostByIdDao = async (
 export const getPostByIdWithTranslationsDao = async (
   postId: string
 ): Promise<PostData | undefined> => {
-  const row = await db.query.posts.findFirst({
+  const row = await getDb().query.posts.findFirst({
     where: (post, {eq}) => eq(post.id, postId),
     with: {
       postTranslations: true,
@@ -60,7 +60,7 @@ export const getPostByIdWithTranslationsDao = async (
 export const getPostByIdWithRelationsDao = async (
   postId: string
 ): Promise<PostData | undefined> => {
-  const row = await db.query.posts.findFirst({
+  const row = await getDb().query.posts.findFirst({
     where: (post, {eq}) => eq(post.id, postId),
     with: {
       author: true,
@@ -90,14 +90,14 @@ export const updatePostByIdDao = async (
   if (!post.id) {
     throw new Error('Post ID is required')
   }
-  await db
+  await getDb()
     .update(posts)
     .set({...post, updatedAt: new Date()})
     .where(eq(posts.id, post.id))
 }
 
 export const deletePostByIdDao = async (postId: string): Promise<void> => {
-  await db.delete(posts).where(eq(posts.id, postId))
+  await getDb().delete(posts).where(eq(posts.id, postId))
 }
 
 // ===== CRUD POST TRANSLATIONS =====
@@ -105,14 +105,17 @@ export const deletePostByIdDao = async (postId: string): Promise<void> => {
 export const createPostTranslationDao = async (
   translation: AddPostsTranslationModel
 ): Promise<PostsTranslationModel> => {
-  const row = await db.insert(postsTranslation).values(translation).returning()
+  const row = await getDb()
+    .insert(postsTranslation)
+    .values(translation)
+    .returning()
   return row[0]
 }
 
 export const getPostTranslationByIdDao = async (
   translationId: string
 ): Promise<PostsTranslationModel | undefined> => {
-  const row = await db.query.postsTranslation.findFirst({
+  const row = await getDb().query.postsTranslation.findFirst({
     where: (translation, {eq}) => eq(translation.id, translationId),
   })
   return row
@@ -122,7 +125,7 @@ export const getPostTranslationByPostIdAndLanguageDao = async (
   postId: string,
   language: string
 ): Promise<PostsTranslationModel | undefined> => {
-  const row = await db.query.postsTranslation.findFirst({
+  const row = await getDb().query.postsTranslation.findFirst({
     where: (translation, {eq, and}) =>
       and(eq(translation.postId, postId), eq(translation.language, language)),
   })
@@ -132,7 +135,7 @@ export const getPostTranslationByPostIdAndLanguageDao = async (
 export const getPostTranslationsByPostIdDao = async (
   postId: string
 ): Promise<PostsTranslationModel[]> => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(postsTranslation)
     .where(eq(postsTranslation.postId, postId))
@@ -145,7 +148,7 @@ export const updatePostTranslationByIdDao = async (
   translationId: string,
   updates: Partial<Omit<PostsTranslationModel, 'id' | 'postId' | 'createdAt'>>
 ): Promise<void> => {
-  await db
+  await getDb()
     .update(postsTranslation)
     .set({...updates, updatedAt: new Date()})
     .where(eq(postsTranslation.id, translationId))
@@ -154,7 +157,7 @@ export const updatePostTranslationByIdDao = async (
 export const deletePostTranslationByIdDao = async (
   translationId: string
 ): Promise<void> => {
-  await db
+  await getDb()
     .delete(postsTranslation)
     .where(eq(postsTranslation.id, translationId))
 }
@@ -164,14 +167,14 @@ export const deletePostTranslationByIdDao = async (
 export const createCategoryDao = async (
   category: AddCategoryModel
 ): Promise<CategoryModel> => {
-  const row = await db.insert(categories).values(category).returning()
+  const row = await getDb().insert(categories).values(category).returning()
   return row[0]
 }
 
 export const getCategoryByIdDao = async (
   categoryId: string
 ): Promise<CategoryModel | undefined> => {
-  const row = await db.query.categories.findFirst({
+  const row = await getDb().query.categories.findFirst({
     where: (category, {eq}) => eq(category.id, categoryId),
   })
   return row
@@ -180,7 +183,7 @@ export const getCategoryByIdDao = async (
 export const getCategoryByNameDao = async (
   name: string
 ): Promise<CategoryModel | undefined> => {
-  const row = await db.query.categories.findFirst({
+  const row = await getDb().query.categories.findFirst({
     where: (category, {eq}) => eq(category.name, name),
   })
   return row
@@ -192,7 +195,7 @@ export const updateCategoryByIdDao = async (
   if (!category.id) {
     throw new Error('Category ID is required')
   }
-  await db
+  await getDb()
     .update(categories)
     .set({...category, updatedAt: new Date()})
     .where(eq(categories.id, category.id))
@@ -201,7 +204,7 @@ export const updateCategoryByIdDao = async (
 export const deleteCategoryByIdDao = async (
   categoryId: string
 ): Promise<void> => {
-  await db.delete(categories).where(eq(categories.id, categoryId))
+  await getDb().delete(categories).where(eq(categories.id, categoryId))
 }
 
 // ===== CRUD HASHTAGS =====
@@ -209,14 +212,14 @@ export const deleteCategoryByIdDao = async (
 export const createHashtagDao = async (
   hashtag: AddHashtagsModel
 ): Promise<HashtagsModel> => {
-  const row = await db.insert(hashtags).values(hashtag).returning()
+  const row = await getDb().insert(hashtags).values(hashtag).returning()
   return row[0]
 }
 
 export const getHashtagByIdDao = async (
   hashtagId: string
 ): Promise<HashtagsModel | undefined> => {
-  const row = await db.query.hashtags.findFirst({
+  const row = await getDb().query.hashtags.findFirst({
     where: (hashtag, {eq}) => eq(hashtag.id, hashtagId),
   })
   return row
@@ -225,7 +228,7 @@ export const getHashtagByIdDao = async (
 export const getHashtagByNameDao = async (
   name: string
 ): Promise<HashtagsModel | undefined> => {
-  const row = await db.query.hashtags.findFirst({
+  const row = await getDb().query.hashtags.findFirst({
     where: (hashtag, {eq}) => eq(hashtag.name, name),
   })
   return row
@@ -237,7 +240,7 @@ export const updateHashtagByIdDao = async (
   if (!hashtag.id) {
     throw new Error('Hashtag ID is required')
   }
-  await db
+  await getDb()
     .update(hashtags)
     .set({...hashtag, updatedAt: new Date()})
     .where(eq(hashtags.id, hashtag.id))
@@ -246,7 +249,7 @@ export const updateHashtagByIdDao = async (
 export const deleteHashtagByIdDao = async (
   hashtagId: string
 ): Promise<void> => {
-  await db.delete(hashtags).where(eq(hashtags.id, hashtagId))
+  await getDb().delete(hashtags).where(eq(hashtags.id, hashtagId))
 }
 
 // ===== CRUD POST HASHTAGS (RELATIONS) =====
@@ -254,14 +257,14 @@ export const deleteHashtagByIdDao = async (
 export const createPostHashtagDao = async (
   postHashtag: AddPostHashtagsModel
 ): Promise<PostHashtagsModel> => {
-  const row = await db.insert(postHashtags).values(postHashtag).returning()
+  const row = await getDb().insert(postHashtags).values(postHashtag).returning()
   return row[0]
 }
 
 export const getPostHashtagsByPostIdDao = async (
   postId: string
 ): Promise<PostHashtagsModel[]> => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(postHashtags)
     .where(eq(postHashtags.postId, postId))
@@ -273,7 +276,7 @@ export const deletePostHashtagDao = async (
   postId: string,
   hashtagId: string
 ): Promise<void> => {
-  await db
+  await getDb()
     .delete(postHashtags)
     .where(
       and(
@@ -286,7 +289,7 @@ export const deletePostHashtagDao = async (
 export const deleteAllPostHashtagsByPostIdDao = async (
   postId: string
 ): Promise<void> => {
-  await db.delete(postHashtags).where(eq(postHashtags.postId, postId))
+  await getDb().delete(postHashtags).where(eq(postHashtags.postId, postId))
 }
 
 export const upsertPostHashtags = async (
@@ -294,7 +297,7 @@ export const upsertPostHashtags = async (
   existingHashtagIds: string[] = [],
   newHashtagNames: string[] = []
 ): Promise<void> => {
-  await db.transaction(async (tx) => {
+  await getDb().transaction(async (tx) => {
     // 1. Supprimer toutes les associations existantes
     await tx.delete(postHashtags).where(eq(postHashtags.postId, postId))
 
@@ -368,14 +371,14 @@ export const getPostsWithPaginationDao = async (
     whereConditions.length > 0 ? and(...whereConditions) : undefined
 
   const [rows, [{count}]] = await Promise.all([
-    db
+    getDb()
       .select()
       .from(posts)
       .where(whereClause)
       .limit(pagination.limit)
       .offset(pagination.offset)
       .orderBy(posts.createdAt),
-    db
+    getDb()
       .select({count: sql<number>`count(*)`})
       .from(posts)
       .where(whereClause),
@@ -416,7 +419,7 @@ export const getPostsWithTranslationsAndPaginationDao = async (
 
   // Pour la recherche par titre, on doit utiliser un JOIN
   if (filters?.title) {
-    const postsWithTitle = await db
+    const postsWithTitle = await getDb()
       .select({postId: postsTranslation.postId})
       .from(postsTranslation)
       .where(ilike(postsTranslation.title, `%${filters.title}%`))
@@ -445,7 +448,7 @@ export const getPostsWithTranslationsAndPaginationDao = async (
     whereConditions.length > 0 ? and(...whereConditions) : undefined
 
   const [rows, [{count}]] = await Promise.all([
-    db.query.posts.findMany({
+    getDb().query.posts.findMany({
       where: whereClause,
       with: {
         author: true,
@@ -463,7 +466,7 @@ export const getPostsWithTranslationsAndPaginationDao = async (
       offset: pagination.offset,
       orderBy: (posts, {desc}) => [desc(posts.createdAt)],
     }),
-    db
+    getDb()
       .select({count: sql<number>`count(*)`})
       .from(posts)
       .where(whereClause),
@@ -498,7 +501,7 @@ export const getPostsWithTranslationsAndPaginationDao = async (
 export const getPostsByAuthorIdDao = async (
   authorId: string
 ): Promise<PostModel[]> => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(posts)
     .where(eq(posts.authorId, authorId))
@@ -510,7 +513,7 @@ export const getPostsByAuthorIdDao = async (
 export const getPostsByStatusDao = async (
   status: string
 ): Promise<PostModel[]> => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(posts)
     .where(eq(posts.status, status as 'draft' | 'published' | 'archived'))
@@ -522,7 +525,7 @@ export const getPostsByStatusDao = async (
 export const getPostsByCategoryIdDao = async (
   categoryId: string
 ): Promise<PostModel[]> => {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(posts)
     .where(eq(posts.categoryId, categoryId))
@@ -535,7 +538,7 @@ export const getPostBySlugAndLanguageDao = async (
   slug: string,
   language: string
 ): Promise<PostData | undefined> => {
-  const translation = await db.query.postsTranslation.findFirst({
+  const translation = await getDb().query.postsTranslation.findFirst({
     where: (translation, {eq, and}) =>
       and(eq(translation.slug, slug), eq(translation.language, language)),
     with: {
@@ -566,7 +569,7 @@ export const getPostBySlugAndLanguageDao = async (
 export const getAllPublishedPostSlugsDao = async (): Promise<
   {slug: string; language: string}[]
 > => {
-  const translations = await db
+  const translations = await getDb()
     .select({
       slug: postsTranslation.slug,
       language: postsTranslation.language,
@@ -581,7 +584,7 @@ export const getAllPublishedPostSlugsDao = async (): Promise<
 export const getPublishedPostBySlugDao = async (
   slug: string
 ): Promise<PostData | undefined> => {
-  const translation = await db.query.postsTranslation.findFirst({
+  const translation = await getDb().query.postsTranslation.findFirst({
     where: (translation, {eq}) => eq(translation.slug, slug),
     with: {
       post: {
@@ -627,14 +630,14 @@ export const getCategoriesWithPaginationDao = async (
     whereConditions.length > 0 ? and(...whereConditions) : undefined
 
   const [rows, [{count}]] = await Promise.all([
-    db
+    getDb()
       .select()
       .from(categories)
       .where(whereClause)
       .limit(pagination.limit)
       .offset(pagination.offset)
       .orderBy(categories.name),
-    db
+    getDb()
       .select({count: sql<number>`count(*)`})
       .from(categories)
       .where(whereClause),
@@ -655,7 +658,7 @@ export const getCategoriesWithPaginationDao = async (
 }
 
 export const getAllCategoriesDao = async (): Promise<CategoryModel[]> => {
-  const rows = await db.select().from(categories).orderBy(categories.name)
+  const rows = await getDb().select().from(categories).orderBy(categories.name)
   return rows
 }
 
@@ -675,14 +678,14 @@ export const getHashtagsWithPaginationDao = async (
     whereConditions.length > 0 ? and(...whereConditions) : undefined
 
   const [rows, [{count}]] = await Promise.all([
-    db
+    getDb()
       .select()
       .from(hashtags)
       .where(whereClause)
       .limit(pagination.limit)
       .offset(pagination.offset)
       .orderBy(hashtags.name),
-    db
+    getDb()
       .select({count: sql<number>`count(*)`})
       .from(hashtags)
       .where(whereClause),
@@ -703,7 +706,7 @@ export const getHashtagsWithPaginationDao = async (
 }
 
 export const getAllHashtagsDao = async (): Promise<HashtagsModel[]> => {
-  const rows = await db.select().from(hashtags).orderBy(hashtags.name)
+  const rows = await getDb().select().from(hashtags).orderBy(hashtags.name)
   return rows
 }
 
@@ -715,7 +718,7 @@ export const getPostStatsDao = async (): Promise<{
   draftPosts: number
   archivedPosts: number
 }> => {
-  const [stats] = await db
+  const [stats] = await getDb()
     .select({
       totalPosts: sql<number>`count(*)`,
       publishedPosts: sql<number>`count(*) filter (where status = 'published')`,
@@ -728,21 +731,21 @@ export const getPostStatsDao = async (): Promise<{
 }
 
 export const incrementPostLikeDao = async (postId: string): Promise<void> => {
-  await db
+  await getDb()
     .update(posts)
     .set({nbLike: sql`${posts.nbLike} + 1`})
     .where(eq(posts.id, postId))
 }
 
 export const decrementPostLikeDao = async (postId: string): Promise<void> => {
-  await db
+  await getDb()
     .update(posts)
     .set({nbLike: sql`${posts.nbLike} - 1`})
     .where(eq(posts.id, postId))
 }
 
 export const incrementPostViewDao = async (postId: string): Promise<void> => {
-  await db
+  await getDb()
     .update(posts)
     .set({nbView: sql`${posts.nbView} + 1`})
     .where(eq(posts.id, postId))
@@ -756,7 +759,7 @@ export const updatePostsStatusDao = async (
 ): Promise<void> => {
   if (postIds.length === 0) return
 
-  await db
+  await getDb()
     .update(posts)
     .set({
       status: status as 'draft' | 'published' | 'archived',
@@ -768,7 +771,7 @@ export const updatePostsStatusDao = async (
 export const deletePostsDao = async (postIds: string[]): Promise<void> => {
   if (postIds.length === 0) return
 
-  await db.transaction(async (tx) => {
+  await getDb().transaction(async (tx) => {
     // Supprimer les relations hashtags
     await tx.delete(postHashtags).where(inArray(postHashtags.postId, postIds))
 
@@ -788,7 +791,7 @@ export const updatePostHashtagsDao = async (
   postId: string,
   hashtagIds: string[]
 ): Promise<void> => {
-  await db.transaction(async (tx) => {
+  await getDb().transaction(async (tx) => {
     // Supprimer tous les hashtags existants pour ce post
     await tx.delete(postHashtags).where(eq(postHashtags.postId, postId))
 
