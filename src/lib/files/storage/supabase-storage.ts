@@ -1,10 +1,8 @@
-import {FileObject} from '@supabase/storage-js'
-
 import {FileErrors} from '@/lib/files/errors'
 import {supabase} from '@/lib/files/supabaseClient'
 import {logger} from '@/lib/logger'
 
-import {StorageConfig, StorageOperations} from './types'
+import {StorageConfig, StorageOperations, StoredFile} from './types'
 
 const getFullPath = (config: StorageConfig, path: string): string => {
   return `${config.basePath}/${path}`
@@ -56,7 +54,7 @@ export const createSupabaseStorage = (
     }
   }
 
-  const list = async (path: string): Promise<FileObject[]> => {
+  const list = async (path: string): Promise<StoredFile[]> => {
     const fullPath = getFullPath(config, path)
     const {data, error} = await supabase.storage
       .from(config.bucket)
@@ -67,7 +65,11 @@ export const createSupabaseStorage = (
       throw FileErrors.LIST_FAILED(error.message)
     }
 
-    return data
+    return data.map((file) => ({
+      name: file.name,
+      size: file.metadata?.size ?? 0,
+      mimeType: file.metadata?.mimetype,
+    }))
   }
 
   return {

@@ -32,6 +32,8 @@ const tenant = {
   slug: 'asl-la-fourche',
   domain: 'asl-lafourche.fr',
   enabledModules: [],
+  logoKey: null,
+  faviconKey: null,
 }
 
 let ipCounter = 0

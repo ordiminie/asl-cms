@@ -2758,5 +2758,79 @@
         "invalid": "El ID de la notificación debe ser un UUID válido."
       }
     }
+  },
+  "BureauIdentityPage": {
+    "success": {
+      "logo": "Logotipo reemplazado. Visible en su sitio y en este espacio.",
+      "favicon": "Favicon reemplazado. Visible en la pestaña del navegador, en su sitio."
+    },
+    "errors": {
+      "notSaved": "Este archivo no se ha guardado.",
+      "formatRefused": "El formato {format} no se acepta.",
+      "formatUnknown": "Este formato de archivo no se reconoce.",
+      "tooLarge": "Pesa {size}, el límite es {limit}.",
+      "failed": "El envío no se ha completado.",
+      "kept": {
+        "logo": "Se conserva el logotipo actual.",
+        "favicon": "Se conserva el favicon actual."
+      },
+      "keptDefault": {
+        "logo": "Se sigue mostrando el monograma de la asociación.",
+        "favicon": "Se sigue mostrando el favicon por defecto."
+      },
+      "chooseFormat": {
+        "logo": "Elija un archivo PNG o WebP.",
+        "favicon": "Elija un archivo PNG o ICO."
+      },
+      "forbidden": "Esta acción está reservada a la junta de la asociación.",
+      "invalidData": "No se ha recibido ningún archivo. Elija un archivo."
+    },
+    "sizes": {
+      "megabytes": "{value, number} MB",
+      "kilobytes": "{value, number} KB"
+    },
+    "metadata": {
+      "title": "Identidad de la asociación"
+    },
+    "title": "Identidad de la asociación",
+    "intro": "El logotipo y el favicon aparecen en su sitio y en este espacio. Los cambios son visibles en cuanto se guardan.",
+    "breadcrumb": {
+      "association": "La asociación",
+      "identity": "Identidad"
+    },
+    "nav": {
+      "group": "La asociación",
+      "identity": "Identidad",
+      "menu": "Menú",
+      "openMenu": "Abrir el menú"
+    },
+    "cards": {
+      "logo": {
+        "title": "Logotipo",
+        "empty": "Todavía no hay logotipo: se muestra el monograma de la asociación en su lugar.",
+        "guidelines": "PNG o WebP, fondo transparente · al menos 512 px de lado · {limit} como máximo · de cuadrado a tres veces más ancho que alto"
+      },
+      "favicon": {
+        "title": "Favicon",
+        "description": "El pequeño icono que se muestra en la pestaña del navegador. Distinto del logotipo.",
+        "empty": "Todavía no hay favicon: el monograma de la asociación se muestra en la pestaña.",
+        "guidelines": "PNG o ICO · cuadrado recomendado, al menos 48 px de lado · {limit} como máximo",
+        "tabPreview": "Vista previa de la pestaña del navegador"
+      }
+    },
+    "upload": {
+      "choose": "Elegir un archivo",
+      "uploading": "Enviando…",
+      "progress": "Enviando {fileName}"
+    },
+    "denied": {
+      "title": "Esta página está reservada a la junta de la asociación",
+      "description": "Si cree que debería tener acceso, diríjase a un miembro de la junta.",
+      "back": "Volver al inicio"
+    }
+  },
+  "AssociationMark": {
+    "logoAlt": "Logotipo de la asociación {name}",
+    "monogramLabel": "Monograma de la asociación {name}"
   }
 }

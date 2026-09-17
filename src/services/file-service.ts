@@ -292,8 +292,8 @@ export const listFilesService = async (
   return files.map((file) => ({
     path: `${path}/${file.name}`,
     url: getFileUrl(`${path}/${file.name}`),
-    size: file.metadata?.size || 0,
-    type: file.metadata?.mimetype || '',
+    size: file.size,
+    type: file.mimeType ?? '',
     name: file.name,
   }))
 }

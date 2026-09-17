@@ -39,6 +39,8 @@ const provisionedOrganization = {
   slug: provisionParams.slug,
   domain: provisionParams.domain,
   enabledModules: provisionParams.enabledModules,
+  identityLogoKey: null,
+  identityFaviconKey: null,
   description: null,
   createdAt: new Date(),
   updatedAt: new Date(),

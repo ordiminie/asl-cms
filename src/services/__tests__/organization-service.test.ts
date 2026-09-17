@@ -100,6 +100,8 @@ describe('[ADMIN] CRUD : OrganizationService', () => {
     limitOverrides: null,
     domain: null,
     enabledModules: [],
+    identityLogoKey: null,
+    identityFaviconKey: null,
   }
 
   const createData: CreateOrganization = {
@@ -198,6 +200,8 @@ describe('[ORGANIZATION OWNER] CRUD : OrganizationService', () => {
     limitOverrides: null,
     domain: null,
     enabledModules: [],
+    identityLogoKey: null,
+    identityFaviconKey: null,
   }
 
   const updateData: UpdateOrganization = {
@@ -229,6 +233,8 @@ describe('[ORGANIZATION OWNER] CRUD : OrganizationService', () => {
             limitOverrides: null,
             domain: null,
             enabledModules: [],
+            identityLogoKey: null,
+            identityFaviconKey: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -269,6 +275,8 @@ describe('[ORGANIZATION ADMIN] CRUD : OrganizationService', () => {
     limitOverrides: null,
     domain: null,
     enabledModules: [],
+    identityLogoKey: null,
+    identityFaviconKey: null,
   }
 
   const updateData: UpdateOrganization = {
@@ -300,6 +308,8 @@ describe('[ORGANIZATION ADMIN] CRUD : OrganizationService', () => {
             limitOverrides: null,
             domain: null,
             enabledModules: [],
+            identityLogoKey: null,
+            identityFaviconKey: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -341,6 +351,8 @@ describe('[ORGANIZATION MEMBER] CRUD : OrganizationService', () => {
     limitOverrides: null,
     domain: null,
     enabledModules: [],
+    identityLogoKey: null,
+    identityFaviconKey: null,
   }
 
   const updateData: UpdateOrganization = {
@@ -372,6 +384,8 @@ describe('[ORGANIZATION MEMBER] CRUD : OrganizationService', () => {
             limitOverrides: null,
             domain: null,
             enabledModules: [],
+            identityLogoKey: null,
+            identityFaviconKey: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -422,6 +436,8 @@ describe('[USER NOT IN ORGANIZATION] CRUD : OrganizationService', () => {
     limitOverrides: null,
     domain: null,
     enabledModules: [],
+    identityLogoKey: null,
+    identityFaviconKey: null,
   }
 
   const createData: CreateOrganization = {
@@ -459,6 +475,8 @@ describe('[USER NOT IN ORGANIZATION] CRUD : OrganizationService', () => {
             limitOverrides: null,
             domain: null,
             enabledModules: [],
+            identityLogoKey: null,
+            identityFaviconKey: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -517,6 +535,8 @@ describe('[PUBLIC] OrganizationService', () => {
     limitOverrides: null,
     domain: null,
     enabledModules: [],
+    identityLogoKey: null,
+    identityFaviconKey: null,
   }
 
   const createData: CreateOrganization = {
@@ -561,6 +581,8 @@ describe('[ORGANIZATION MEMBER READ ACCESS] getOrganizationMembersService', () =
     limitOverrides: null,
     domain: null,
     enabledModules: [],
+    identityLogoKey: null,
+    identityFaviconKey: null,
   }
 
   beforeEach(() => {

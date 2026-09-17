@@ -151,6 +151,8 @@ describe('[ADMIN] File Service', () => {
       limitOverrides: null,
       domain: null,
       enabledModules: [],
+      identityLogoKey: null,
+      identityFaviconKey: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -314,6 +316,8 @@ describe('[ORGANIZATION OWNER] File Service', () => {
             limitOverrides: null,
             domain: null,
             enabledModules: [],
+            identityLogoKey: null,
+            identityFaviconKey: null,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -333,6 +337,8 @@ describe('[ORGANIZATION OWNER] File Service', () => {
       limitOverrides: null,
       domain: null,
       enabledModules: [],
+      identityLogoKey: null,
+      identityFaviconKey: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     })

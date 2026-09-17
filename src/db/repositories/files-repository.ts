@@ -1,8 +1,7 @@
-import {FileObject} from '@supabase/storage-js'
-
 import {FileErrors} from '@/lib/files/errors'
 import {getStorageConfig} from '@/lib/files/storage/env'
 import {createStorage} from '@/lib/files/storage/storage-factory'
+import {StoredFile} from '@/lib/files/storage/types'
 
 const {type, config} = getStorageConfig()
 const storage = createStorage(type, config)
@@ -28,7 +27,7 @@ export const uploadFilePost = async (
 
 export const listFilesbyPostId = async (
   postId: string
-): Promise<FileObject[]> => {
+): Promise<StoredFile[]> => {
   const path = `posts/${postId}`
   return await listFiles(path)
 }

@@ -2,6 +2,8 @@ import Link from 'next/link'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {PropsWithChildren} from 'react'
 
+import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {AssociationMark} from '@/components/features/association/association-mark'
 import PublicFooter from '@/components/features/layouts/public-footer'
 import {PublicMobileMenu} from '@/components/features/layouts/public-mobile-menu'
 import {LangToggle} from '@/components/lang-toggle'
@@ -10,6 +12,7 @@ import {Button} from '@/components/ui/button'
 import {PagesConst} from '@/env'
 import {routing} from '@/i18n/routing'
 import {isPageEnabled} from '@/lib/utils'
+import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 
 export async function generateMetadata({
   params,
@@ -30,15 +33,22 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
 }
 
-export default function PublicLayout({children}: PropsWithChildren) {
+export default async function PublicLayout({children}: PropsWithChildren) {
+  // Deja resolu par le layout [locale] (bloquant, ADR 003) : `cache()` dedoublonne.
+  const tenant = await requireCurrentTenantDal()
+
   return (
     <div className="flex h-screen flex-col">
       <header className="border-b">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex h-14 items-center justify-center">
             <div className="flex flex-1 items-center justify-start space-x-4">
-              <Link className="flex items-center space-x-2 font-bold" href="/">
-                <span>Home</span>
+              <Link className="flex items-center" href="/">
+                <AssociationMark
+                  name={tenant.name}
+                  logoVersion={getIdentityVersionFromKey(tenant.logoKey)}
+                  size="public"
+                />
               </Link>
               <Link
                 className="hidden items-center space-x-2 font-bold sm:flex"

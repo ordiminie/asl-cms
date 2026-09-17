@@ -92,6 +92,12 @@ export const serverSchema = {
 
   STORAGE_TYPE: z.string().optional(),
 
+  // Racine du stockage sur le disque du serveur (ADR 004, ADR 015) : logo et
+  // favicon des associations. Hors de `public/` : ces fichiers ne sont servis
+  // que par une route de l'application. Doit exister et etre accessible en
+  // ecriture ; sa sauvegarde releve de la mise en ligne.
+  LOCAL_STORAGE_ROOT: z.string().min(1),
+
   // Stripe (serveur)
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),

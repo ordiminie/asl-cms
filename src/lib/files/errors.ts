@@ -17,6 +17,12 @@ export const FileErrors = {
   DELETE_FAILED: (message: string) =>
     new FileError(message, 'DELETE_FAILED', 500),
   LIST_FAILED: (message: string) => new FileError(message, 'LIST_FAILED', 500),
+  INVALID_PATH: (path: string) =>
+    new FileError(
+      `Invalid storage path: ${JSON.stringify(path)}`,
+      'INVALID_PATH',
+      400
+    ),
   INVALID_FILE_TYPE: (type: string) =>
     new FileError(`Invalid file type: ${type}`, 'INVALID_FILE_TYPE', 400),
   FILE_TOO_LARGE: (size: number, maxSize: number) =>

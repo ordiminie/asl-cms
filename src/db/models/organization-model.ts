@@ -45,3 +45,6 @@ export type OrganizationModuleEnumModel =
 
 /** Les cles de modules connues, dans l'ordre de l'enumere Postgres. */
 export const organizationModuleValues = organizationModuleEnum.enumValues
+
+/** Les deux fichiers d'identite d'une association (ADR 015). */
+export type OrganizationIdentityKindModel = 'logo' | 'favicon'

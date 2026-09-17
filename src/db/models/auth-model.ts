@@ -193,6 +193,15 @@ export const organization = pgTable('organization', {
     .array()
     .notNull()
     .default(sql`'{}'::organization_module[]`),
+  /**
+   * Cles de stockage du logo et du favicon de l'association (ADR 015), sur
+   * l'adaptateur `local` : `{organizationId}/identity/{logo|favicon}-{uuid}.{ext}`.
+   * Nullables : une association sans logo affiche son monogramme, sans favicon
+   * recoit le favicon par defaut. Distinctes de `logo`, qui porte des URL lues
+   * par des ecrans du boilerplate.
+   */
+  identityLogoKey: text('identity_logo_key'),
+  identityFaviconKey: text('identity_favicon_key'),
 })
 
 export const organizationRoleEnum = pgEnum('organization_role', [

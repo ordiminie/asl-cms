@@ -31,6 +31,8 @@ env:
   SUPABASE_ANON_KEY: factice-ci
   NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
   NEXT_PUBLIC_SUPABASE_BUCKET: asl-cms-ci
+  # Répertoire jetable du runner pour le stockage disque (ADR 015).
+  LOCAL_STORAGE_ROOT: /tmp/asl-cms-storage
   STRIPE_SECRET_KEY: sk_test_factice_ci
   STRIPE_WEBHOOK_SECRET: whsec_factice_ci
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_factice_ci
