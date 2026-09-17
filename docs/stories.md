@@ -165,6 +165,9 @@ vérifier le rôle utilisé par le pool (`docs/database-pool.md`).
 L'administrateur initial est ce qui rend le critère de succès « une deuxième association est
 provisionnée sans écrire une ligne de code » réellement vrai : sans lui, l'association serait livrée
 sans personne pour l'administrer. La désignation des autres membres du bureau vient ensuite (s14).
+**Livré** : l'administrateur initial est créé avec le rôle d'association `owner`, soit Président(e)
+dans la correspondance des rôles de s03 — ce qui lui ouvre les réglages de s01b et s02 dès le
+provisioning.
 
 **Cette story crée le compte, elle ne le contacte pas.** L'envoi du lien de connexion appartient à
 s03, première story à envoyer un email et seule à connaître l'adaptateur d'envoi. Faire partir un
@@ -206,9 +209,9 @@ Cimetière : pas une base par tenant, base partagée + RLS.
 
 ## Story s01b-logo-association — Afficher le logo de son association
 
-**En tant que** présidente d'une association **je veux** téléverser son logo **afin que** le site
-public, le back-office et l'onglet du navigateur portent son identité, sans intervention du
-prestataire.
+**En tant que** membre du bureau d'une association **je veux** téléverser son logo et son favicon
+**afin que** le site public, le back-office et l'onglet du navigateur portent son identité, sans
+intervention du prestataire.
 
 ### Complexity
 
@@ -216,14 +219,14 @@ prestataire.
 
 ### Acceptance criteria
 
-- [ ] Depuis la page de réglages de son association, la présidente téléverse un logo ; il s'affiche sur le site public et dans le back-office, et le remplacer met à jour les deux sans redéploiement.
-- [ ] Un fichier refusé (type non autorisé ou taille dépassée) affiche une erreur explicite et laisse le logo en place inchangé.
+- [ ] Depuis la page de réglages de son association, un membre du bureau téléverse un logo ; il s'affiche sur le site public et dans le back-office, et le remplacer met à jour les deux sans redéploiement.
+- [ ] Un fichier refusé (type non autorisé ou taille dépassée) affiche une erreur explicite et laisse en place, inchangé, le fichier qu'il devait remplacer.
 - [ ] Le fichier est écrit sur le disque du serveur, sous un répertoire propre à l'association : deux associations qui téléversent un fichier de même nom obtiennent deux emplacements distincts, chacun sous le préfixe de son association.
-- [ ] Le logo est servi par une route de l'application, jamais depuis un dossier statique public : cette route ne sert que le logo de l'association du domaine appelé, et une demande portant sur le fichier d'une autre association ou sur un chemin forgé (remontée `../`, chemin absolu) ne rend aucun fichier.
+- [ ] Le logo et le favicon sont servis par une route de l'application, jamais depuis un dossier statique public : cette route ne sert que les fichiers d'identité de l'association du domaine appelé, et une demande portant sur le fichier d'une autre association ou sur un chemin forgé (remontée `../`, chemin absolu) ne rend aucun fichier.
 - [ ] Deux associations servent deux logos distincts — vérifié sur les deux domaines.
-- [ ] Le favicon servi dépend de l'association appelée, et non d'un fichier unique du dépôt ; une association sans logo reçoit un favicon par défaut.
+- [ ] Le **favicon est un fichier distinct du logo**, téléversé séparément depuis la même page : le favicon servi est celui de l'association du domaine appelé, jamais un fichier unique du dépôt ni une dérivation du logo, et une association qui n'en a pas téléversé reçoit un favicon par défaut. Deux associations servent deux favicons distincts — vérifié sur les deux domaines.
 - [ ] Une association sans logo reste lisible : son nom remplace le logo, sur le site public comme dans le back-office. Aucun écran cassé faute de logo.
-- [ ] Seuls la présidente (`owner`) de l'association du domaine appelé et le SuperAdmin accèdent à la page de réglages et téléversent un logo : tout autre utilisateur authentifié — membre, membre du bureau, présidente d'une autre association, administrateur global de la plateforme — reçoit un refus, côté interface et côté serveur.
+- [ ] Seuls les membres du bureau de l'association du domaine appelé — Bureau et Président(e) — et le SuperAdmin accèdent à la page de réglages et téléversent un logo ou un favicon : tout autre utilisateur authentifié — simple membre, bureau ou présidente d'une autre association, administrateur global de la plateforme — reçoit un refus, côté interface et côté serveur.
 
 ### Dependencies
 
@@ -234,6 +237,8 @@ s01
 Réf. ADR 004 (stockage sur le disque du serveur), ADR 003 (tenant par domaine), `docs/design-system.md`
 §1.2 (le logo est l'un des deux seuls éléments d'identité d'une association, avec la teinte portée par
 s02), et `docs/research/s02-parametres-association.md` pour l'état du code vérifié le 17 septembre 2026.
+Le PRD précise que « le logo et le favicon sont deux fichiers fournis par l'association » : le favicon
+n'est pas dérivé du logo (arbitrage du 17 septembre 2026, revue du découpage I-03).
 
 **Pourquoi cette story existe** : ajoutée le 17 septembre 2026 lors de la recherche de s02. Le
 stockage de fichiers décidé par l'ADR 004 n'était porté par **aucune** story, alors que s04, s09, s31
@@ -250,24 +255,36 @@ d'organisation** et fabrique des URL publiques Supabase ; `files-repository.ts` 
 **Ce que la story pose et que les suivantes réutilisent** : l'implémentation `local` derrière
 `createStorage` (contrat `StorageOperations` inchangé, `list` découplé du type Supabase),
 l'arborescence `{organizationId}/…` de l'ADR 004, et la route de lecture. La règle d'accès posée ici
-est **publique mais bornée** : le logo du tenant du domaine appelé, rien d'autre. s31 et s32 y
+est **publique mais bornée** : le logo et le favicon du tenant du domaine appelé, rien d'autre. s31 et s32 y
 ajouteront la lecture authentifiée des documents, sans changer l'adaptateur.
 
 **Emplacement du stockage** : le répertoire racine vient de la configuration validée par `@/env`,
 jamais d'un chemin codé en dur. Il est hors de `public/` et ignoré par git ; en développement, un
-dossier de la machine de développement. Sa sauvegarde n'est pas l'objet de cette story, mais elle
-devra être couverte avant l'import des vraies données (voir s13).
+dossier de la machine de développement. Sa sauvegarde n'est pas l'objet de cette story : elle revient à
+la story de mise en ligne, décidée le 17 septembre 2026 et à écrire avant s13 (voir la note de s13).
 
-**Accès — piège vérifié** : ni `withAuthAdmin` ni `requireActionAuth` (rôles **globaux** seulement),
-ni `canUpdateOrganization` tel quel (CASL l'accorde aussi à l'`admin` d'association et à l'`admin`
-global). Il faut un contrôle dédié : `owner` de l'association **du domaine appelé**, ou `super_admin`.
-La page **ne vit pas sous `/admin`**, qui est le back-office de la plateforme. Comptes du seed pour les
-tests sur `localhost` (TechCorp) : `user-owner@gmail.com` et `superadmin@gmail.com` acceptés ;
-`user@gmail.com`, `user-member@gmail.com` et `admin@gmail.com` refusés.
+**Accès** : le bureau édite, conformément au PRD (« le bureau doit pouvoir tout éditer sans
+intervention du prestataire » ; arbitrage du 17 septembre 2026, revue du découpage I-02). Avant s03,
+les rôles fonctionnels s'appuient sur les rôles d'association du boilerplate : Bureau = `admin`
+(renommé `board` en s03), Président(e) = `owner`, SuperAdmin = `super_admin` (rôle **global**).
 
-Comme s01, cette story s'appuie sur les rôles du boilerplate : « présidente » désigne le rôle
-d'association `owner`. s03 fait exister les quatre rôles fonctionnels et renomme le rôle Bureau
-(`admin` → `board`, décision du 17 septembre 2026) sans changer cette page.
+Piège vérifié : ni `withAuthAdmin` ni `requireActionAuth`, qui ne connaissent que les rôles
+**globaux**. `canUpdateOrganization` (CASL) accepte bien `admin` et `owner` d'association, **mais aussi
+l'`admin` global**, que la règle exclut : il faut un contrôle portant sur le rôle dans l'association
+**du domaine appelé**, ou `super_admin`. La page **ne vit pas sous `/admin`**, qui est le back-office de
+la plateforme. Comptes du seed, vérifiés en base le 17 septembre 2026 :
+
+- sur `127.0.0.1` (Marketing Pro) : `user-admin@gmail.com` (Bureau, global `user`) **accepté** ;
+- sur `localhost` (TechCorp) : `user-owner@gmail.com` (Présidente, global `user`) **accepté**,
+  `user@gmail.com` (Membre) **refusé**, `admin@gmail.com` (`admin` global, Membre) **refusé** ;
+- `superadmin@gmail.com` **accepté** sur les deux domaines.
+
+Éviter `admin@gmail.com` et `admin-owner@gmail.com` comme cas « accepté » : tous deux sont aussi
+`admin` global, ce qui brouille ce que le test prouve. **Le seed n'a aucun compte Bureau chez
+TechCorp** : à ajouter au plan si le test en a besoin.
+
+Les actions posées ici (téléverser le logo, téléverser le favicon) précèdent le registre des
+permissions de s03 : **s03 les y déclare** (revue du découpage I-01), sans changer cette page.
 
 **Favicon** : la documentation embarquée de Next.js 16
 (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/01-metadata/app-icons.md`)
@@ -276,15 +293,16 @@ Le favicon par association passe donc par les métadonnées `icons` ou une icôn
 fichier racine `src/app/favicon.ico` ne doit plus s'imposer à tous les domaines.
 
 `organization.logo` existe déjà (`text`, nullable) et contient aujourd'hui des URL externes (seed,
-formulaire d'organisation du boilerplate) : trancher au plan ce que la colonne porte désormais. La page
-de réglages naît ici avec sa section logo ; s02 y ajoute les paramètres et la teinte. Son emplacement
+formulaire d'organisation du boilerplate) : trancher au plan ce que la colonne porte désormais, et où
+vit la référence du favicon. La page de réglages naît ici avec sa section identité (logo, favicon) ; s02
+y ajoute les paramètres et la teinte. Son emplacement
 se décide en `/ks-design`.
 
 ---
 
 ## Story s02-parametres-association — Paramétrer son association
 
-**En tant que** présidente d'une association **je veux** modifier ses réglages
+**En tant que** membre du bureau d'une association **je veux** modifier ses réglages
 **afin de** ne dépendre du prestataire pour aucune adresse ni aucun seuil.
 
 ### Complexity
@@ -293,13 +311,13 @@ se décide en `/ks-design`.
 
 ### Acceptance criteria
 
-- [ ] La page de réglages de l'association liste les paramètres déclarés au registre et permet de les modifier, chaque valeur étant validée selon le type déclaré au registre. En s02, le registre ne déclare que les clés utilisées : l'adresse de contact, l'adresse du responsable forage et la teinte d'accent.
-- [ ] La validation du registre est prouvée pour chaque type qu'il sait porter — adresse email, nombre, booléen, choix dans une liste fermée —, y compris pour les types qu'aucune clé n'utilise encore : une valeur conforme est acceptée, une valeur non conforme est refusée avec un message explicite.
+- [ ] La page de réglages de l'association liste les paramètres déclarés au registre et permet de les modifier, chaque valeur étant validée selon le type déclaré au registre. En s02, le registre déclare l'adresse de contact et l'adresse du responsable forage (définies par `CDCT §4.6`, lues par s08 et s10) et la teinte d'accent.
+- [ ] La validation du registre est prouvée pour chaque type qu'il sait porter — adresse email, nombre, booléen, choix dans une liste fermée — : une valeur conforme est acceptée, une valeur non conforme est refusée avec un message explicite. Déclarer une clé d'un type existant ne demande aucune modification de la page — vérifié par une clé de test déclarée au registre de test.
 - [ ] Modifier un paramètre puis le relire renvoie la nouvelle valeur, sans redéploiement ni redémarrage.
 - [ ] Un paramètre jamais renseigné se lit à sa valeur par défaut déclarée au registre ; le renseigner puis le vider le ramène à cette même valeur par défaut.
 - [ ] Le seed d'un tenant charge les valeurs déclarées dans son jeu de paramètres : après exécution, chaque clé déclarée se lit à sa valeur déclarée — vérifié sur un tenant de test, sans dépendre des données d'un client.
-- [ ] Seuls la présidente (`owner`) de l'association du domaine appelé et le SuperAdmin modifient les paramètres : tout autre utilisateur authentifié reçoit un refus, côté interface et côté serveur.
-- [ ] La présidente choisit la **teinte d'accent** de son association **dans la liste des six teintes validées**, jamais au sélecteur libre ; la couleur retenue s'applique au site public après rechargement.
+- [ ] Seuls les membres du bureau de l'association du domaine appelé — Bureau et Président(e) — et le SuperAdmin modifient les paramètres : tout autre utilisateur authentifié reçoit un refus, côté interface et côté serveur.
+- [ ] Le bureau choisit la **teinte d'accent** de son association **dans la liste des six teintes validées**, jamais au sélecteur libre ; la couleur retenue s'applique au site public après rechargement.
 - [ ] Deux associations aux teintes différentes servent bien deux teintes distinctes — vérifié sur les deux domaines (test d'isolation visuelle).
 - [ ] Une association qui n'a pas choisi de teinte reçoit la teinte par défaut. Aucun écran cassé faute de personnalisation.
 
@@ -317,15 +335,17 @@ adresses d'un client donné les ferait échouer chez le suivant.
 C'est le socle du critère de succès « aucune donnée propre à La Fourche
 codée en dur » : les stories s08, s10, s17, s22 et s29 lisent leurs adresses et seuils **ici**.
 
-**Le registre grandit avec les besoins** (décision du 17 septembre 2026) : il ne déclare que les clés
-qu'une story utilise réellement. s26 y ajoutera son seuil d'envoi, s29 l'activation des relances, et
-ainsi de suite. Afficher en back-office des réglages qui ne font encore rien est exclu ; c'est
-pourquoi les types sans clé (nombre, booléen) se prouvent sur le registre et non sur la page.
+**Le registre grandit avec les besoins** (décision du 17 septembre 2026) : il déclare les clés que le
+cadrage définit déjà — les deux adresses de `CDCT §4.6`, qui sont la raison d'être de cette story et que
+s08 et s10 lisent — et la teinte ; les clés propres à une story arrivent avec elle (seuil d'envoi en s26,
+activation des relances en s29…). Aucune clé n'est déclarée pour démontrer un type : nombre et booléen
+se prouvent sur le registre et sa clé de test, pas par des réglages sans usage affichés en back-office.
+Les types viendront aussi avec leurs stories : texte libre (s15), URL (s21, s33), liste de statuts (s19).
 
-**Accès** : la page de réglages et son contrôle d'accès sont posés par s01b — seuls la présidente
-(`owner`) de l'association du domaine appelé et le SuperAdmin. s02 applique la même règle à la
-modification des paramètres. Comme s01b, cette story s'appuie sur les rôles du boilerplate ; s03 fait
-exister les quatre rôles fonctionnels sans changer cette page.
+**Accès** : la page de réglages et son contrôle d'accès sont posés par s01b — le bureau (Bureau et
+Président(e)) de l'association du domaine appelé, et le SuperAdmin, conformément au PRD. s02 applique la
+même règle à la modification des paramètres. L'action « modifier les paramètres » précède le registre
+des permissions : **s03 l'y déclare** (revue du découpage I-01).
 
 **À vérifier en review, pas en test** : aucune de ces valeurs ne doit subsister en constante dans le
 code applicatif. C'est une propriété du diff, pas un comportement observable — la placer en critère
@@ -369,11 +389,13 @@ repli sûr est un style en ligne posé par le serveur sur `<html>` à partir du 
 - [ ] Les quatre rôles Membre, Bureau, Président(e) et SuperAdmin existent et sont attribuables à un utilisateur.
 - [ ] Un Membre reçoit un refus sur toute page de back-office, un Bureau y accède, et le refus vaut aussi bien en interface que sur l'appel serveur direct.
 - [ ] Une action déclarée au registre avec ses rôles par défaut est refusée à tout rôle absent de cette liste, et autorisée aux autres — vérifié sur une action de test.
+- [ ] Les actions posées avant cette story — téléverser le logo et le favicon (s01b), modifier les paramètres de l'association (s02) — sont déclarées au registre avec pour rôles par défaut Bureau et Président(e) : un Membre y reçoit un refus et un Bureau y est autorisé, en interface comme sur l'appel serveur direct.
+- [ ] L'email de connexion porte en en-tête le logo de l'association du domaine appelé (s01b), ou son nom quand elle n'a pas de logo.
 - [ ] La session est scopée à l'association du membre : elle ne donne accès à aucune donnée d'un autre tenant.
 
 ### Dependencies
 
-s01
+s01, s01b
 
 ### Agentic notes
 
@@ -407,6 +429,19 @@ d'envoi tranché en `/ks-architect`, pas par un appel Resend en dur. Les emails 
 Cimetière : aucun plan B pour les membres sans email — pas de compte partagé, pas de code postal.
 
 Les quatre rôles sont ici **fixes** ; les rendre configurables en back-office est la story s37.
+
+**Correspondance des rôles** (décisions du 17 septembre 2026) : Membre, Bureau et Président(e) sont
+des rôles **d'association** (`member.role`), SuperAdmin un rôle **global** (`user.role`,
+`super_admin`). Le boilerplate nomme le Bureau `admin`, homonyme du rôle global `admin` de la
+plateforme, source de confusion avérée : cette story le **renomme `board`** (`member` et `owner`
+conservés pour Membre et Président(e)). Piège : le plugin `organization` de Better Auth
+(`src/lib/better-auth/auth.ts`) est configuré sans rôles personnalisés et suppose `owner`, `admin`,
+`member` ; le renommage impose d'y déclarer les rôles, en plus de la migration de l'énuméré
+`organization_role` et des usages de `UserOrganizationRoleConst` / `OrganizationRoleConst`.
+
+**Reprise des actions antérieures** : s01b et s02 passent avant le registre et contrôlent l'accès
+directement (bureau du domaine appelé ou SuperAdmin). Cette story les déclare au registre sans changer
+leur comportement, pour que s37 les trouve dans la matrice sans instrumentation rétroactive.
 
 ---
 
@@ -482,11 +517,11 @@ lieu de lui donner la sienne.
 
 Risque (complexité 4) : c'est le back-office éditorial, risque produit n°1 de l'ADR 001, et la story
 tient au-dessus du 3 chiffré par le PRD pour une raison précise — le modèle en blocs typés de
-l'ADR 007. Trois briques neuves s'y rencontrent (Milkdown, @dnd-kit, l'adaptateur de stockage) et
+l'ADR 007. Deux briques neuves s'y rencontrent (Milkdown, @dnd-kit), sur l'adaptateur de stockage posé par s01b, et
 trois composants du design system §2.2 y naissent (`<PreviewBar />`, `<SortableList />`,
 `<BlockPicker />`). Les deux pièges qui coûtent le plus cher sont ci-dessus : le glisser-déposer
-non obligatoire et le stockage local. Faire trancher l'adaptateur de stockage en `/ks-architect`
-avant `/ks-plan`.
+non obligatoire et le stockage local. L'adaptateur de stockage est tranché (ADR 004) et livré par
+s01b : vérifier en `/ks-research` qu'il couvre les images de blocs avant `/ks-plan`.
 
 ---
 
@@ -534,7 +569,7 @@ précisément ce qu'il ne faut pas lui demander de manipuler.
 sont les critères ci-dessus. Il l'a nommé trois un temps, en incluant l'en-tête ; la ligne a été
 corrigée (D-04) parce qu'aucune story ne le livrait et qu'aucun document ne définissait ce qu'un
 en-tête éditable serait au-delà du logo et de la teinte. **Il n'y a donc plus d'écart à déclarer.**
-Ce que l'en-tête porte d'association — logo et teinte — vient de s02 et ne se recode pas ici : cette
+Ce que l'en-tête porte d'association — logo (s01b) et teinte (s02) — ne se recode pas ici : cette
 story compose la navigation dans un en-tête déjà habillé. Le rendre éditable davantage serait un
 élargissement de périmètre, donc une décision de `/ks-prd`.
 
@@ -862,7 +897,7 @@ périodes de propriété **afin que** l'historique reste attaché au bon propri�
 
 - [ ] Le bureau crée un membre (identifiant autogénéré, indépendant du numéro de parcelle **et** de l'email) et lui rattache une ou plusieurs parcelles avec une date de début de propriété.
 - [ ] Enregistrer une vente clôture la période de propriété du vendeur et ouvre celle de l'acquéreur, sans supprimer ni modifier la période close.
-- [ ] Une donnée datée d'avant la vente (relevé, facture, document) reste rattachée à l'ancien propriétaire et n'apparaît jamais chez le nouveau — vérifié par un test sur une parcelle vendue.
+- [ ] Le propriétaire d'une parcelle se lit à une date donnée : pour une parcelle vendue, une date antérieure à la vente renvoie l'ancien propriétaire et une date postérieure le nouveau — vérifié par un test sur une parcelle vendue. Le rattachement des relevés (s18) et des documents (s32) s'appuie sur cette lecture datée et se vérifie dans ces stories, qui en portent le critère ; celui des factures se vérifie à la recherche de s19.
 - [ ] Une parcelle ne peut pas avoir deux propriétaires sur des périodes qui se chevauchent ; la tentative est refusée avec un message explicite.
 - [ ] Un membre possédant plusieurs parcelles est un seul compte, avec la liste de ses parcelles.
 - [ ] Le bureau saisit et met à jour les coordonnées d'un membre depuis sa fiche : adresse postale, téléphone, adresse email — y compris pour un membre qui n'a pas de compte.
@@ -956,6 +991,11 @@ Réf. `PRD` (« Import initial des membres d'une association », complexité 3),
 Import réalisé par le prestataire au démarrage, puis création unitaire par le bureau (couverte par
 s12).
 
+**Prérequis d'exploitation, hors de cette story** : avant d'importer les données réelles d'une
+association, la sauvegarde de la base **et** des fichiers du disque (s01b, ADR 004) doit être
+opérationnelle sur le serveur. Elle revient à la story de mise en ligne décidée le 17 septembre 2026,
+à écrire et à livrer avant s13 (revue du découpage I-12).
+
 Risque (complexité 3, alignée avec le PRD) : la **clé de dédoublonnage n'est pas tranchée**, et son mode de défaillance est grave — fusionner deux propriétaires distincts leur
 donnerait accès aux documents et aux factures l'un de l'autre. Ce n'est pas un import anodin : c'est
 un import qui crée des identités. En cas d'ambiguïté, remonter au rapport pour arbitrage humain,
@@ -1010,7 +1050,7 @@ Ne pas confondre avec l'import des relevés d'eau (s17), qui est annuel et d'un 
 
 ## Story s14-attribuer-roles — Désigner les membres du bureau
 
-**En tant qu'**administrateur d'une association **je veux** attribuer et retirer les rôles sur la
+**En tant que** membre du bureau d'une association **je veux** attribuer et retirer les rôles sur la
 fiche d'un membre **afin que** le bureau nouvellement élu puisse administrer le site sans moi.
 
 ### Complexity
@@ -1019,11 +1059,11 @@ fiche d'un membre **afin que** le bureau nouvellement élu puisse administrer le
 
 ### Acceptance criteria
 
-- [ ] Depuis la fiche d'un membre, un administrateur lui attribue le rôle Bureau ou Président(e), ou le lui retire ; le changement prend effet à la connexion suivante du membre concerné.
+- [ ] Depuis la fiche d'un membre, un membre du bureau (Bureau ou Président(e)) lui attribue le rôle Bureau ou Président(e), ou le lui retire ; le changement prend effet à la connexion suivante du membre concerné.
 - [ ] Un membre promu Bureau accède au back-office ; le même membre, rôle retiré, y reçoit un refus — vérifié en interface et sur l'appel serveur direct.
 - [ ] Une association a toujours au moins un compte capable d'attribuer les rôles : retirer le dernier est refusé avec un message explicite.
 - [ ] Chaque attribution et chaque retrait est tracé avec son auteur, sa date, le membre visé et le rôle.
-- [ ] Un administrateur ne peut attribuer de rôle qu'aux membres de sa propre association.
+- [ ] Un membre du bureau ne peut attribuer de rôle qu'aux membres de sa propre association.
 - [ ] Le rôle SuperAdmin n'est jamais attribuable depuis cet écran : il est interne à Zourite Studio.
 
 ### Dependencies
@@ -1040,7 +1080,7 @@ prévue (s37), mais **rien ne permettait d'attribuer un rôle à quelqu'un**. Ap
 membres, aucune story ne désignait la présidente ni les 3 à 8 bénévoles du bureau — l'association
 restait administrable par le seul compte initial créé au provisioning (s01).
 
-Le verrou du dernier administrateur est le pendant de celui de s37 sur la matrice : un bureau
+Le verrou du dernier compte capable d'attribuer les rôles est le pendant de celui de s37 sur la matrice : un bureau
 bénévole qui se retire ses propres droits n'a aucun moyen de revenir en arrière sans le prestataire.
 Ces deux verrous protègent le même scénario, à deux endroits différents.
 
@@ -1065,7 +1105,7 @@ quelqu'un, là on emprunte temporairement une vue pour déboguer.
 ### Acceptance criteria
 
 - [ ] Depuis la fiche d'un membre disposant d'une adresse email, le bureau déclenche l'envoi d'une invitation ; le membre reçoit un email portant un lien de connexion valide.
-- [ ] L'email d'invitation part par le même canal transactionnel que le lien magique (s03) et porte le nom de l'association, lu dans ses paramètres (s02).
+- [ ] L'email d'invitation part par le même canal transactionnel que le lien magique (s03), dont il reprend l'en-tête au logo de l'association (s01b, ou son nom à défaut), et porte le nom de l'association.
 - [ ] Le texte de l'invitation est un paramètre de tenant : le modifier change l'email suivant, sans redéploiement.
 - [ ] La fiche membre affiche l'état de l'invitation : jamais invité, invité le <date>, ou connecté au moins une fois le <date>.
 - [ ] Inviter un membre marqué « joignable par courrier uniquement » est refusé avec un message expliquant qu'il relève du courrier, et non par une erreur technique.
@@ -1091,8 +1131,8 @@ Une seconde implémentation du lien de connexion serait un défaut de review.
 
 **L'invitation est un email transactionnel, pas une campagne.** Elle emprunte le canal du lien
 magique (s03), pas le gabarit de campagne livré par s25 — qui arrive dix stories plus tard. Exiger ce
-gabarit ici obligerait à en inventer un en-tête provisoire, puis à le jeter : c'est la référence en
-avant relevée en revue du découpage. **À vérifier en review, pas en test** : que le texte par défaut n'énumère aucune fonctionnalité
+gabarit ici serait la référence en avant relevée en revue du découpage. L'en-tête au logo, lui, n'est
+pas provisoire : il est posé dès s03 sur le canal transactionnel, le logo existant depuis s01b. **À vérifier en review, pas en test** : que le texte par défaut n'énumère aucune fonctionnalité
 (factures, consommation, documents) livrée après cette story. C'est un jugement rédactionnel, pas un
 comportement observable — le critère testable est celui du paramètre de tenant, que le bureau
 enrichira au fil des mises en ligne.
@@ -1163,7 +1203,7 @@ connexion (s03) — trancher explicitement en `/ks-design` et écrire le test co
 
 ### Dependencies
 
-s02, s12
+s02, s12, s13
 
 ### Agentic notes
 
@@ -1455,7 +1495,7 @@ bureau).
 **Un « échange » est une saisie manuelle du bureau**, pas une agrégation automatique : un bénévole
 note qu'il a appelé M. X le 12 mars et ce qui s'est dit. C'est ce que demande la ligne du périmètre —
 « assure la continuité quand le bureau change » — et c'est la seule lecture livrable ici, la story
-étant ordonnée avant les questions (s23), les campagnes (s25) et n'ayant que s12 en dépendance.
+étant ordonnée avant les campagnes (s25) et n'ayant que s12 en dépendance.
 
 Alimenter ce fil automatiquement depuis les signalements, les questions ou les campagnes serait une
 extension : ni le PRD ni le CDC ne la demandent, et elle imposerait une convention transverse à une
@@ -1601,9 +1641,9 @@ possède un **budget**, décompté par l'adaptateur d'envoi que toutes les stori
 quota est partagé lui aussi et le budget doit être arbitré entre tenants. Un compte par association
 lève la question mais change le coût — c'est un arbitrage d'architecture, pas de story.
 
-Idempotence et persistance de la seconde part : la planification survit au redémarrage. Le
-boilerplate embarque Inngest (`docs/inngest.md`) — évaluer en `/ks-research` s'il tient sur le VPS
-LWS avant de retenir un `setTimeout` en mémoire, qui ne satisfait aucun des deux derniers critères.
+Idempotence et persistance de la seconde part : la planification survit au redémarrage. Inngest est
+écarté par l'ADR 006, qui retient une table `scheduled_job` et un cron système : s'y conformer. Un
+`setTimeout` en mémoire ne satisfait aucun des deux derniers critères.
 
 ---
 
@@ -1825,8 +1865,8 @@ L'accès passe par une route qui vérifie la session et le tenant avant de servi
 `<a href>` vers un chemin de stockage direct est un échec de review.
 
 Stockage : adaptateur `local` et route de lecture posés par s01b (ADR 004, pas Supabase) ; cette
-story y ajoute la lecture authentifiée.
-Sauvegarde et volumétrie du VPS (100 Go) à prendre en compte dès cette story.
+story y ajoute la lecture authentifiée. Volumétrie du VPS (100 Go) à prendre en compte dès cette
+story ; la sauvegarde des fichiers relève de la story de mise en ligne (voir la note de s13).
 
 ---
 
@@ -1871,7 +1911,7 @@ le CDC refuse. À trancher en `/ks-architect` (arborescence, nommage non devinab
 `/ks-plan`.
 
 La dépendance sur s31 n'est pas fonctionnelle mais technique : cette story réutilise la **route de
-service authentifiée** et l'adaptateur de stockage que s31 pose pour les documents partagés. C'est ce
+service authentifiée** que s31 pose pour les documents partagés, sur l'adaptateur de stockage de s01b. C'est ce
 qui garantit qu'aucun fichier n'est servi par une URL publique devinable — la propriété la plus
 importante de cette story.
 
@@ -2154,21 +2194,21 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 - [ ] L'archive contient les **documents** : partagés, nominatifs, et modèles de documents, avec leurs fichiers d'origine.
 - [ ] L'archive contient les **communications** : campagnes, leurs statistiques d'ouverture et de clic, leur état de planification, l'historique des relances, les groupes de destinataires.
 - [ ] L'archive contient les **échanges entrants** : signalements, messages de contact, questions au bureau.
-- [ ] L'archive contient la **configuration** : paramètres du tenant et matrice de permissions.
+- [ ] L'archive contient la **configuration** : paramètres du tenant, matrice de permissions, et les fichiers d'identité de l'association (logo et favicon, s01b).
 - [ ] Les données d'un module non livré ou désactivé (vote) ne font pas échouer l'export. Réciproquement, le mécanisme est **piloté par l'inventaire des tables scopées**, et non par une liste écrite à la main : un module livré et actif entre dans l'archive sans modification de cette story.
 - [ ] L'export ne contient **aucune** donnée d'une autre association (test d'isolation sur l'archive produite).
 - [ ] L'export s'exécute en tâche de fond : la requête qui le déclenche répond immédiatement sans attendre l'archive, une lecture concurrente sur le site répond pendant la génération, et la présidente est notifiée quand l'archive est prête.
 
 ### Dependencies
 
-s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37
+s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37
 
 ### Agentic notes
 
 Réf. `PRD` (« Export et portabilité des données », angle n°5 : « Pas de verrouillage »), RGPD (droit
 à la portabilité).
 
-Risque (complexité 4) : vingt-cinq dépendances, six familles de contenu, exécution en tâche de
+Risque (complexité 4) : vingt-six dépendances, six familles de contenu, exécution en tâche de
 fond avec notification, écriture en flux sur un VPS à 4 Go. Le harnais de complétude en a été sorti
 (s39) en revue du découpage — la story se lisait comme une 5 déjà scindée une fois (s40) mais pas
 assez. Ce qui reste est un moteur d'export et son archive, pas une traversée du produit.
@@ -2260,6 +2300,10 @@ et c'est précisément ce qui rend l'argument anti-verrouillage du PRD vérifiab
 Le motif d'exclusion est obligatoire par conception : une table peut légitimement ne pas être
 exportée (journal technique, cache), mais jamais sans que quelqu'un l'ait écrit.
 
+Limite connue : ce garde-fou compare des **tables**. Les fichiers posés sur le disque sous le
+répertoire d'une association (logo et favicon de s01b, documents de s31 et s32) y échappent ; leur
+présence dans l'archive est portée par les critères de s38, pas par ce test.
+
 Ce test appartient à la suite exécutée en continu, pas à un contrôle manuel : il doit casser au
 moment où la table est ajoutée, pas au prochain export demandé par une présidente.
 
@@ -2348,8 +2392,10 @@ corrompt les notes internes (s24) et l'historique des membres, et rend le débog
 d'une action du bureau. La traçabilité n'est pas un confort, c'est ce qui rend la fonction
 acceptable sur des données personnelles.
 
-Ne pas confondre avec le changement de rôle d'un utilisateur (s37) : ici rien n'est modifié, c'est
-une lecture sous une autre identité.
+Ne pas confondre avec l'attribution de rôles (s14) ni avec la matrice de permissions (s37) : ici aucun
+droit n'est modifié. La simulation consulte le site sous une autre identité ; une écriture faite
+pendant une simulation reste possible mais est attribuée au SuperAdmin (critère ci-dessus, PRD :
+« écritures tracées au SuperAdmin »).
 
 ---
 
@@ -2379,7 +2425,7 @@ s03, s13, s15, s25, s26, s27, s28
 ### Agentic notes
 
 Réf. `PRD` (ligne « Connexion par lien magique » : « flux d'invitation […] à éprouver auprès d'un
-public âgé »), `V5 §2, §3.3`. Story créée en revue du découpage : les 42 stories précédentes
+public âgé »), `V5 §2, §3.3`. Story créée en revue du découpage : les 43 stories précédentes
 livraient un service que **personne n'aurait su utiliser** — aucune ne disait comment 300
 propriétaires apprennent qu'ils ont un espace.
 
@@ -2412,52 +2458,52 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 
 # Récapitulatif — ordre et dépendances
 
-| Id   | Story                     | Cx  | Dépend de                                                                                                                    | Bloc |
-| ---- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------- | ---- |
-| s01  | provisionner-association  | 4   | —                                                                                                                            | A    |
-| s01b | logo-association          | 3   | s01                                                                                                                          | A    |
-| s02  | parametres-association    | 3   | s01, s01b                                                                                                                    | A    |
-| s03  | connexion-lien-magique    | 3   | s01                                                                                                                          | A    |
-| s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                                | A    |
-| s04b | navigation-publique       | 2   | s04                                                                                                                          | A    |
-| s05  | actualites                | 2   | s04                                                                                                                          | A    |
-| s06  | presentation-bureau       | 2   | s04                                                                                                                          | A    |
-| s07  | bandeau-alerte            | 1   | s01, s03                                                                                                                     | A    |
-| s08  | formulaire-contact        | 2   | s02, s04                                                                                                                     | A    |
-| s09  | analyses-eau              | 2   | s04                                                                                                                          | A    |
-| s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                                | A    |
-| s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                           | A    |
-| s12  | membres-parcelles         | 4   | s01, s03                                                                                                                     | B    |
-| s13  | import-initial-membres    | 3   | s12                                                                                                                          | B    |
-| s14  | attribuer-roles           | 2   | s03, s12                                                                                                                     | B    |
-| s15  | inviter-membre            | 2   | s02, s03, s12                                                                                                                | B    |
-| s16  | coordonnees-membre        | 1   | s12                                                                                                                          | B    |
-| s17  | import-releves-eau        | 3   | s02, s12                                                                                                                     | B    |
-| s18  | historique-consommation   | 2   | s17                                                                                                                          | B    |
-| s19  | factures-liste            | 3   | s02, s12                                                                                                                     | B    |
-| s20  | factures-pennylane        | 3   | s02, s19                                                                                                                     | B    |
-| s21  | redirection-paiement      | 1   | s02, s19                                                                                                                     | B    |
-| s22  | signalement-membre        | 2   | s10, s12                                                                                                                     | B    |
-| s23  | questions-bureau          | 2   | s02, s10, s12                                                                                                                | B    |
-| s24  | notes-internes-membre     | 2   | s12                                                                                                                          | B    |
-| s25  | campagnes-email           | 3   | s02, s03, s12                                                                                                                | C    |
-| s26  | envoi-echelonne           | 4   | s02, s25                                                                                                                     | C    |
-| s27  | groupes-destinataires     | 3   | s19, s25                                                                                                                     | C    |
-| s28  | publipostage-pdf          | 3   | s12, s25                                                                                                                     | C    |
-| s29  | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                                 | C    |
-| s30  | stats-campagnes           | 2   | s25, s26                                                                                                                     | C    |
-| s31  | documents-partages        | 2   | s01b, s03, s12                                                                                                               | D    |
-| s32  | documents-nominatifs      | 4   | s12, s31                                                                                                                     | D    |
-| s33  | vote-asl-community        | 3   | s02, s12, s31                                                                                                                | E    |
-| s34  | module-voirie             | 2   | s01, s04, s04b                                                                                                               | F    |
-| s35  | petites-annonces          | 3   | s10, s12                                                                                                                     | F    |
-| s36  | modeles-documents         | 3   | s27, s28, s32                                                                                                                | F    |
-| s37  | permissions-configurables | 4   | s03                                                                                                                          | F    |
-| s38  | export-donnees            | 4   | s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37 | F    |
-| s39  | completude-export         | 2   | s38                                                                                                                          | F    |
-| s40  | export-membre             | 2   | s12, s24, s38                                                                                                                | F    |
-| s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                 | F    |
-| s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s27, s28                                                                                            | F    |
+| Id   | Story                     | Cx  | Dépend de                                                                                                                          | Bloc |
+| ---- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| s01  | provisionner-association  | 4   | —                                                                                                                                  | A    |
+| s01b | logo-association          | 3   | s01                                                                                                                                | A    |
+| s02  | parametres-association    | 3   | s01, s01b                                                                                                                          | A    |
+| s03  | connexion-lien-magique    | 3   | s01, s01b                                                                                                                          | A    |
+| s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                                      | A    |
+| s04b | navigation-publique       | 2   | s04                                                                                                                                | A    |
+| s05  | actualites                | 2   | s04                                                                                                                                | A    |
+| s06  | presentation-bureau       | 2   | s04                                                                                                                                | A    |
+| s07  | bandeau-alerte            | 1   | s01, s03                                                                                                                           | A    |
+| s08  | formulaire-contact        | 2   | s02, s04                                                                                                                           | A    |
+| s09  | analyses-eau              | 2   | s04                                                                                                                                | A    |
+| s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                                      | A    |
+| s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                                 | A    |
+| s12  | membres-parcelles         | 4   | s01, s03                                                                                                                           | B    |
+| s13  | import-initial-membres    | 3   | s12                                                                                                                                | B    |
+| s14  | attribuer-roles           | 2   | s03, s12                                                                                                                           | B    |
+| s15  | inviter-membre            | 2   | s02, s03, s12                                                                                                                      | B    |
+| s16  | coordonnees-membre        | 1   | s12                                                                                                                                | B    |
+| s17  | import-releves-eau        | 3   | s02, s12, s13                                                                                                                      | B    |
+| s18  | historique-consommation   | 2   | s17                                                                                                                                | B    |
+| s19  | factures-liste            | 3   | s02, s12                                                                                                                           | B    |
+| s20  | factures-pennylane        | 3   | s02, s19                                                                                                                           | B    |
+| s21  | redirection-paiement      | 1   | s02, s19                                                                                                                           | B    |
+| s22  | signalement-membre        | 2   | s10, s12                                                                                                                           | B    |
+| s23  | questions-bureau          | 2   | s02, s10, s12                                                                                                                      | B    |
+| s24  | notes-internes-membre     | 2   | s12                                                                                                                                | B    |
+| s25  | campagnes-email           | 3   | s02, s03, s12                                                                                                                      | C    |
+| s26  | envoi-echelonne           | 4   | s02, s25                                                                                                                           | C    |
+| s27  | groupes-destinataires     | 3   | s19, s25                                                                                                                           | C    |
+| s28  | publipostage-pdf          | 3   | s12, s25                                                                                                                           | C    |
+| s29  | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                                       | C    |
+| s30  | stats-campagnes           | 2   | s25, s26                                                                                                                           | C    |
+| s31  | documents-partages        | 2   | s01b, s03, s12                                                                                                                     | D    |
+| s32  | documents-nominatifs      | 4   | s12, s31                                                                                                                           | D    |
+| s33  | vote-asl-community        | 3   | s02, s12, s31                                                                                                                      | E    |
+| s34  | module-voirie             | 2   | s01, s04, s04b                                                                                                                     | F    |
+| s35  | petites-annonces          | 3   | s10, s12                                                                                                                           | F    |
+| s36  | modeles-documents         | 3   | s27, s28, s32                                                                                                                      | F    |
+| s37  | permissions-configurables | 4   | s03                                                                                                                                | F    |
+| s38  | export-donnees            | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37 | F    |
+| s39  | completude-export         | 2   | s38                                                                                                                                | F    |
+| s40  | export-membre             | 2   | s12, s24, s38                                                                                                                      | F    |
+| s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                       | F    |
+| s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s27, s28                                                                                                  | F    |
 
 **44 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, huit à 4.
 **Une seule story est hors du tableau de périmètre du PRD** : s39, garde-fou de non-régression de
@@ -2481,11 +2527,14 @@ s38 (moteur d'export et son archive) — portent chacune leur risque
 explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
 `/ks-plan`.
 
-Trois écarts avec les scores du PRD, tous documentés dans la story concernée plutôt que lissés — le troisième étant s04, à 4 contre 3, que le modèle en blocs typés de l'ADR 007 porte au-dessus du chiffrage du PRD :
+Quatre écarts avec les scores du PRD, tous documentés dans la story concernée plutôt que lissés :
+s04 à 4 contre 3, que le modèle en blocs typés de l'ADR 007 porte au-dessus du chiffrage du PRD ;
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
-main) et s38 à 4 contre 3 (vingt-cinq dépendances, six familles de contenu, exécution en tâche de
-fond, écriture en flux sur un VPS à 4 Go). Le PRD chiffre des _features_, ce tableau chiffre des
-_tranches livrables_.
+main) ; s38 à 4 contre 3 (vingt-six dépendances, six familles de contenu, exécution en tâche de
+fond, écriture en flux sur un VPS à 4 Go) ; et l'identité visuelle, chiffrée 2 par le PRD, portée par
+s01b à 3 — le logo et le favicon y tirent le stockage de fichiers de l'ADR 004, que le PRD ne
+chiffrait pas — et, pour la teinte, par s02, dont le 3 couvre d'abord le registre de paramètres. Le
+PRD chiffre des _features_, ce tableau chiffre des _tranches livrables_.
 
 Sept stories ont été ajoutées en revue du découpage : s04b (navigation du site public, scindée hors
 de s04 qui empilait deux lignes de périmètre — premier id intercalé), s14 (attribution
