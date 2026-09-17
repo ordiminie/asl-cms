@@ -92,11 +92,14 @@ test.describe('Changement d’organisation', () => {
       .getByRole('button')
       .first()
     await expect(switcher).toBeVisible({timeout: 15_000})
-    // Le switcher affiche « Chargement... » tant que l'organisation active
+    // Le switcher affiche « Chargement... » (« Loading... » en anglais, langue
+    // de cette page) tant que l'organisation active
     // n'est pas résolue. Lire son texte à ce moment fait échouer la détection
     // de l'organisation courante, et on finit par cliquer sur celle qui est
     // déjà active — le handler sort alors sans rien faire.
-    await expect(switcher).not.toContainText('Chargement', {timeout: 15_000})
+    await expect(switcher).not.toContainText(/Chargement|Loading/, {
+      timeout: 15_000,
+    })
 
     const switcherLabel = await switcher.innerText()
 
