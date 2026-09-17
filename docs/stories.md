@@ -395,7 +395,7 @@ repli sûr est un style en ligne posé par le serveur sur `<html>` à partir du 
 
 ### Dependencies
 
-s01, s01b
+s01, s01b, s02
 
 ### Agentic notes
 
@@ -2463,7 +2463,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s01  | provisionner-association  | 4   | —                                                                                                                                  | A    |
 | s01b | logo-association          | 3   | s01                                                                                                                                | A    |
 | s02  | parametres-association    | 3   | s01, s01b                                                                                                                          | A    |
-| s03  | connexion-lien-magique    | 3   | s01, s01b                                                                                                                          | A    |
+| s03  | connexion-lien-magique    | 3   | s01, s01b, s02                                                                                                                     | A    |
 | s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                                      | A    |
 | s04b | navigation-publique       | 2   | s04                                                                                                                                | A    |
 | s05  | actualites                | 2   | s04                                                                                                                                | A    |
