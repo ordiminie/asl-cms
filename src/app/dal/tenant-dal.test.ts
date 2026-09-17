@@ -49,6 +49,8 @@ const tenant = {
   logo: null,
   metadata: null,
   limitOverrides: null,
+  identityLogoKey: null,
+  identityFaviconKey: null,
 }
 
 const withHost = (host: string) =>
@@ -68,6 +70,25 @@ describe('getTenantByDomainDal', () => {
 
     expect(resolved?.id).toBe(TENANT_ID)
     expect(headers).not.toHaveBeenCalled()
+  })
+
+  it('porte les cles des fichiers d identite quand l association en a (ADR 015)', async () => {
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue({
+      ...tenant,
+      identityLogoKey: `${TENANT_ID}/identity/logo-a.png`,
+      identityFaviconKey: `${TENANT_ID}/identity/favicon-b.ico`,
+    } as never)
+
+    const resolved = await getTenantByDomainDal('asl-lafourche.fr')
+
+    expect(resolved?.logoKey).toBe(`${TENANT_ID}/identity/logo-a.png`)
+    expect(resolved?.faviconKey).toBe(`${TENANT_ID}/identity/favicon-b.ico`)
+  })
+
+  it('rend des cles nulles quand l association n a ni logo ni favicon', async () => {
+    const resolved = await getTenantByDomainDal('asl-lafourche.fr')
+
+    expect(resolved).toMatchObject({logoKey: null, faviconKey: null})
   })
 })
 

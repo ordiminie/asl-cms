@@ -21,6 +21,10 @@ export type TenantDTO = {
   slug: string
   domain: string
   enabledModules: OrganizationModule[]
+  /** Cle de stockage du logo (ADR 015), `null` sans logo. */
+  logoKey: string | null
+  /** Cle de stockage du favicon (ADR 015), `null` sans favicon. */
+  faviconKey: string | null
 }
 
 /** Le tag d'invalidation. Le provisioning appelle `updateTag(TENANT_CACHE_TAG)`. */
@@ -52,6 +56,8 @@ export const getTenantByDomainDal = cache(
       slug: organization.slug,
       domain: organization.domain,
       enabledModules: organization.enabledModules,
+      logoKey: organization.identityLogoKey ?? null,
+      faviconKey: organization.identityFaviconKey ?? null,
     }
   }
 )

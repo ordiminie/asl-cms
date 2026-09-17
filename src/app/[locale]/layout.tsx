@@ -6,8 +6,12 @@ import {hasLocale} from 'next-intl'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import React from 'react'
 
-import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {
+  getCurrentTenantDal,
+  requireCurrentTenantDal,
+} from '@/app/dal/tenant-dal'
 import {routing} from '@/i18n/routing'
+import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 
 import BaseLayout from './base-layout'
 
@@ -54,11 +58,25 @@ export async function generateMetadata({
   // Configurer la locale avant getTranslations
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'LocaleLayout'})
+  const tenant = await getCurrentTenantDal()
 
   return {
     title: t('title'),
     description: t('description'),
+    icons: {icon: associationFaviconUrl(tenant?.faviconKey)},
   }
+}
+
+/**
+ * Le favicon de l'association du domaine appele (ADR 015) : toujours la route
+ * de l'application, versionnee quand un favicon a ete televerse. Sans favicon,
+ * la route sert le monogramme de l'association.
+ */
+const associationFaviconUrl = (faviconKey: string | null | undefined) => {
+  const version = getIdentityVersionFromKey(faviconKey)
+  return version
+    ? `/api/identity/favicon?v=${encodeURIComponent(version)}`
+    : '/api/identity/favicon'
 }
 
 /**

@@ -2758,5 +2758,79 @@
         "invalid": "The notification ID must be a valid UUID."
       }
     }
+  },
+  "BureauIdentityPage": {
+    "success": {
+      "logo": "Logo replaced. Visible on your site and in this space.",
+      "favicon": "Favicon replaced. Visible in the browser tab, on your site."
+    },
+    "errors": {
+      "notSaved": "This file was not saved.",
+      "formatRefused": "The {format} format is not accepted.",
+      "formatUnknown": "This file format is not recognised.",
+      "tooLarge": "It weighs {size}, the limit is {limit}.",
+      "failed": "The upload did not complete.",
+      "kept": {
+        "logo": "The current logo is kept.",
+        "favicon": "The current favicon is kept."
+      },
+      "keptDefault": {
+        "logo": "The association's monogram is still displayed.",
+        "favicon": "The default favicon is still displayed."
+      },
+      "chooseFormat": {
+        "logo": "Choose a PNG or WebP file.",
+        "favicon": "Choose a PNG or ICO file."
+      },
+      "forbidden": "This action is reserved for the association's board.",
+      "invalidData": "No file was received. Choose a file."
+    },
+    "sizes": {
+      "megabytes": "{value, number} MB",
+      "kilobytes": "{value, number} KB"
+    },
+    "metadata": {
+      "title": "Association identity"
+    },
+    "title": "Association identity",
+    "intro": "The logo and favicon appear on your site and in this space. Changes are visible as soon as they are saved.",
+    "breadcrumb": {
+      "association": "The association",
+      "identity": "Identity"
+    },
+    "nav": {
+      "group": "The association",
+      "identity": "Identity",
+      "menu": "Menu",
+      "openMenu": "Open the menu"
+    },
+    "cards": {
+      "logo": {
+        "title": "Logo",
+        "empty": "No logo yet: the association's monogram is displayed instead.",
+        "guidelines": "PNG or WebP, transparent background · at least 512 px wide · {limit} maximum · from square up to three times wider than tall"
+      },
+      "favicon": {
+        "title": "Favicon",
+        "description": "The small icon shown in the browser tab. Separate from the logo.",
+        "empty": "No favicon yet: the association's monogram is shown in the tab.",
+        "guidelines": "PNG or ICO · square recommended, at least 48 px wide · {limit} maximum",
+        "tabPreview": "Browser tab preview"
+      }
+    },
+    "upload": {
+      "choose": "Choose a file",
+      "uploading": "Uploading…",
+      "progress": "Uploading {fileName}"
+    },
+    "denied": {
+      "title": "This page is reserved for the association's board",
+      "description": "If you think you should have access, contact a board member.",
+      "back": "Back to home"
+    }
+  },
+  "AssociationMark": {
+    "logoAlt": "Logo of the association {name}",
+    "monogramLabel": "Monogram of the association {name}"
   }
 }

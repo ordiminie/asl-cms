@@ -2758,5 +2758,79 @@
         "invalid": "L'ID de la notification doit être un UUID valide."
       }
     }
+  },
+  "BureauIdentityPage": {
+    "success": {
+      "logo": "Logo remplacé. Visible sur votre site et dans cet espace.",
+      "favicon": "Favicon remplacé. Visible dans l'onglet du navigateur, sur votre site."
+    },
+    "errors": {
+      "notSaved": "Ce fichier n'a pas été enregistré.",
+      "formatRefused": "Le format {format} n'est pas accepté.",
+      "formatUnknown": "Ce format de fichier n'est pas reconnu.",
+      "tooLarge": "Il pèse {size}, la limite est {limit}.",
+      "failed": "L'envoi n'a pas abouti.",
+      "kept": {
+        "logo": "Le logo actuel est conservé.",
+        "favicon": "Le favicon actuel est conservé."
+      },
+      "keptDefault": {
+        "logo": "Le monogramme de l'association reste affiché.",
+        "favicon": "Le favicon par défaut reste affiché."
+      },
+      "chooseFormat": {
+        "logo": "Choisissez un fichier PNG ou WebP.",
+        "favicon": "Choisissez un fichier PNG ou ICO."
+      },
+      "forbidden": "Cette action est réservée au bureau de l'association.",
+      "invalidData": "Aucun fichier n'a été reçu. Choisissez un fichier."
+    },
+    "sizes": {
+      "megabytes": "{value, number} Mo",
+      "kilobytes": "{value, number} Ko"
+    },
+    "metadata": {
+      "title": "Identité de l'association"
+    },
+    "title": "Identité de l'association",
+    "intro": "Le logo et le favicon apparaissent sur votre site et dans cet espace. Les changements sont visibles dès l'enregistrement.",
+    "breadcrumb": {
+      "association": "L'association",
+      "identity": "Identité"
+    },
+    "nav": {
+      "group": "L'association",
+      "identity": "Identité",
+      "menu": "Menu",
+      "openMenu": "Ouvrir le menu"
+    },
+    "cards": {
+      "logo": {
+        "title": "Logo",
+        "empty": "Aucun logo pour l'instant : le monogramme de l'association est affiché à sa place.",
+        "guidelines": "PNG ou WebP, fond transparent · au moins 512 px de côté · {limit} maximum · du carré jusqu'à trois fois plus large que haut"
+      },
+      "favicon": {
+        "title": "Favicon",
+        "description": "La petite icône affichée dans l'onglet du navigateur. Distincte du logo.",
+        "empty": "Aucun favicon pour l'instant : le monogramme de l'association s'affiche dans l'onglet.",
+        "guidelines": "PNG ou ICO · carré conseillé, au moins 48 px de côté · {limit} maximum",
+        "tabPreview": "Aperçu de l'onglet du navigateur"
+      }
+    },
+    "upload": {
+      "choose": "Choisir un fichier",
+      "uploading": "Envoi en cours…",
+      "progress": "Envoi de {fileName}"
+    },
+    "denied": {
+      "title": "Cette page est réservée au bureau de l'association",
+      "description": "Si vous pensez devoir y accéder, adressez-vous à un membre du bureau.",
+      "back": "Revenir à l'accueil"
+    }
+  },
+  "AssociationMark": {
+    "logoAlt": "Logo de l'association {name}",
+    "monogramLabel": "Monogramme de l'association {name}"
   }
 }

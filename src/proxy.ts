@@ -8,8 +8,15 @@ import {stripLocalePrefix} from './lib/helper/locale-helper'
 
 const intlMiddleware = createMiddleware(routing)
 
-// Segments servis derrière une session : le groupe (app) et l'espace admin.
-const AUTHENTICATED_SEGMENTS = ['/account', '/admin', '/dashboard', '/team']
+// Segments servis derrière une session : le groupe (app), l'espace admin et
+// l'espace bureau de l'association (s01b).
+const AUTHENTICATED_SEGMENTS = [
+  '/account',
+  '/admin',
+  '/bureau',
+  '/dashboard',
+  '/team',
+]
 
 const localeOf = (pathname: string) => {
   const firstSegment = pathname.split('/')[1]

@@ -32,6 +32,8 @@ beforeEach(() => {
     slug: 'asl-la-fourche',
     domain: 'asl-lafourche.fr',
     enabledModules: [],
+    logoKey: null,
+    faviconKey: null,
   })
 })
 

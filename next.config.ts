@@ -43,6 +43,12 @@ const nextConfig: NextConfig = {
   experimental: {
     authInterrupts: true,
     taint: true,
+    // Le logo d'association est plafonne a 1 Mo (IDENTITY_MAX_BYTES) : sous la
+    // limite par defaut de 1 Mo, l'enveloppe multipart ferait rejeter la
+    // requete avant la validation, qui ne pourrait jamais rendre son message.
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
     // staleTimes survit à cacheComponents et alimente cacheLife.default.stale
     staleTimes: {
       dynamic: 30,

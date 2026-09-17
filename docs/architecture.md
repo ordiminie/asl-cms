@@ -165,10 +165,21 @@ Le boilerplate fournit `user`, `session`, `account`, `organization`, `member`, `
 est en réalité un adaptateur de stockage objet, pas un repository Drizzle. Aucune policy RLS n'a donc
 à la couvrir. L'ADR 004 remplace ce stockage par le disque du VPS, derrière le même factory.
 
+**État depuis s01b (ADR 015)** : l'adaptateur `local` existe (`src/lib/files/storage/local-storage.ts`),
+confiné sous `LOCAL_STORAGE_ROOT` (`@/env`), écriture par fichier temporaire puis renommage. Il ne sert
+pour l'instant **que le logo et le favicon** des associations ; blog, avatar et formulaire d'organisation
+du boilerplate restent sur Supabase jusqu'à leur story (s04, s31). Les clés sont générées par le serveur
+(`{organizationId}/identity/{logo|favicon}-{uuid}.{png|webp|ico}`), jamais tirées d'un nom fourni, et
+référencées sur `organization`. Lecture par `GET /api/identity/{logo|favicon}` : type énuméré, tenant
+du domaine appelé, clé lue en base — aucun chemin ne vient de la requête ; `?v=` (version tirée de la
+clé) autorise un cache long ; sans favicon, la route sert le monogramme de l'association.
+
 Entités ajoutées par ASL-CMS, par domaine :
 
-- **Tenancy** — `organization` étendue d'un **domaine unique indexé** (ADR 003) et de **drapeaux de
-  modules** typés (ADR 010) ; `organization_setting` en clé composite `(organization_id, key)`.
+- **Tenancy** — `organization` étendue d'un **domaine unique indexé** (ADR 003), de **drapeaux de
+  modules** typés (ADR 010) et des **clés de stockage du logo et du favicon** (`identity_logo_key`,
+  `identity_favicon_key`, nullables, ADR 015) ; `organization_setting` en clé composite
+  `(organization_id, key)`.
 - **Membres et parcelles** — `member_profile` (fiche membre, **existe sans compte** : 100 des 400
   propriétaires de La Fourche n'ont pas d'email), `parcel`, et surtout `parcel_ownership`, la relation
   **datée** membre ↔ parcelle. C'est le cœur du modèle : l'historique est attaché à la parcelle **au
@@ -220,7 +231,7 @@ données d'un client. — 4 tables
 | Table                               | Pourquoi                                                                                                                                                                                                                                                                    |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `app_settings`                      | Réglages de la plateforme. Les réglages **par association** vivent dans `organization_setting` (ADR 010), qui sera scopée.                                                                                                                                                  |
-| `organization`                      | **C'est le tenant.** Elle ne porte pas `organization_id` par nature, et sa lecture par domaine précède toute résolution de tenant (ADR 003).                                                                                                                                |
+| `organization`                      | **C'est le tenant.** Elle ne porte pas `organization_id` par nature, et sa lecture par domaine précède toute résolution de tenant (ADR 003). Ses colonnes `identity_logo_key` et `identity_favicon_key` (ADR 015) voyagent avec cette lecture et restent donc exemptées.    |
 | `subscription`, `subscription_plan` | Abonnement **plateforme** Stripe. `subscription` se rattache au tenant par `reference_id` (`text`, polymorphe Better Auth) : une policy sur `organization_id` ne la verrait pas. À ne jamais confondre avec la facturation des membres (Pennylane, ADR 011, lecture seule). |
 
 **Contenu du socle, pas encore rattaché à un tenant — exemptées en attendant leur story** : elles ne

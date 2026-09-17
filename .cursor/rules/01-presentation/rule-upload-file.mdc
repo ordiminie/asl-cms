@@ -14,9 +14,23 @@ Guide complet pour l'upload de fichiers et d'images dans l'architecture Next.js 
 
 **Client Components** → **Server Actions** → **Service Facades** → **Services** → **Repository**
 
+### Deux stockages coexistent (ADR 004, ADR 015)
+
+Supabase n'est plus la seule voie :
+
+- **Disque du serveur — adaptateur `local`** (`src/lib/files/storage/local-storage.ts`, racine
+  `LOCAL_STORAGE_ROOT` dans `@/env`). Sert aujourd'hui le **logo et le favicon** des associations
+  (s01b) : `replaceAssociationIdentityFileService`, lu par `GET /api/identity/{logo|favicon}`. C'est la
+  cible de l'ADR 004 pour tout nouveau flux de fichiers. Règles qui s'y appliquent : format jugé sur la
+  **signature binaire**, jamais sur l'extension ni le type déclaré ; clé **générée par le serveur**,
+  préfixée par l'organisation, sans nom fourni par l'utilisateur ; fichier servi par une route de
+  l'application avec `X-Content-Type-Options: nosniff`, jamais depuis `public/`.
+- **Supabase Storage** — flux hérités du boilerplate (blog, avatar, formulaire d'organisation), jusqu'à
+  leur story (s04, s31). Le reste de ce guide décrit ces flux.
+
 ### Technologies utilisées
 
-- **Supabase Storage** pour le stockage des fichiers
+- **Supabase Storage** pour le stockage des fichiers des flux hérités
 - **React Dropzone** pour l'interface de glisser-déposer
 - **Framer Motion** pour les animations
 - **FileUpload Component** personnalisé avec ShadCN UI

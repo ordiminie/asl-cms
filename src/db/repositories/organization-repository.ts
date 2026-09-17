@@ -10,6 +10,7 @@ import {
   AddMemberModel,
   AddOrganizationModel,
   MemberModel,
+  OrganizationIdentityKindModel,
   OrganizationModel,
   OrganizationModuleEnumModel,
   OrganizationRoleEnumModel,
@@ -259,6 +260,8 @@ export const getOrganizationsByUserIdDao = async (
       limitOverrides: organizations.limitOverrides,
       domain: organizations.domain,
       enabledModules: organizations.enabledModules,
+      identityLogoKey: organizations.identityLogoKey,
+      identityFaviconKey: organizations.identityFaviconKey,
       role: member.role,
     })
     .from(organizations)
@@ -418,5 +421,22 @@ export const updateOrganizationModulesDao = async (
   await getDb()
     .update(organizations)
     .set({enabledModules, updatedAt: new Date()})
+    .where(eq(organizations.id, organizationId))
+}
+
+/**
+ * Remplace la cle de stockage du logo ou du favicon d'une association
+ * (ADR 015). `null` retire la reference.
+ */
+export const updateOrganizationIdentityKeyDao = async (
+  organizationId: string,
+  kind: OrganizationIdentityKindModel,
+  key: string | null
+): Promise<void> => {
+  const reference =
+    kind === 'logo' ? {identityLogoKey: key} : {identityFaviconKey: key}
+  await getDb()
+    .update(organizations)
+    .set({...reference, updatedAt: new Date()})
     .where(eq(organizations.id, organizationId))
 }

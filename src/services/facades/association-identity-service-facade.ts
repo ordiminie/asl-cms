@@ -1,0 +1,8 @@
+import associationIdentityServiceInterceptor from './interceptors/association-identity-service-logger-interceptor'
+
+export const replaceAssociationIdentityFileService =
+  associationIdentityServiceInterceptor.replaceAssociationIdentityFileService
+export const readAssociationIdentityFileService =
+  associationIdentityServiceInterceptor.readAssociationIdentityFileService
+export const canManageAssociationIdentityService =
+  associationIdentityServiceInterceptor.canManageAssociationIdentityService
