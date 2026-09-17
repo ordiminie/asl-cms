@@ -204,9 +204,87 @@ Cimetière : pas une base par tenant, base partagée + RLS.
 
 ---
 
+## Story s01b-logo-association — Afficher le logo de son association
+
+**En tant que** présidente d'une association **je veux** téléverser son logo **afin que** le site
+public, le back-office et l'onglet du navigateur portent son identité, sans intervention du
+prestataire.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Depuis la page de réglages de son association, la présidente téléverse un logo ; il s'affiche sur le site public et dans le back-office, et le remplacer met à jour les deux sans redéploiement.
+- [ ] Un fichier refusé (type non autorisé ou taille dépassée) affiche une erreur explicite et laisse le logo en place inchangé.
+- [ ] Le fichier est écrit sur le disque du serveur, sous un répertoire propre à l'association : deux associations qui téléversent un fichier de même nom obtiennent deux emplacements distincts, chacun sous le préfixe de son association.
+- [ ] Le logo est servi par une route de l'application, jamais depuis un dossier statique public : cette route ne sert que le logo de l'association du domaine appelé, et une demande portant sur le fichier d'une autre association ou sur un chemin forgé (remontée `../`, chemin absolu) ne rend aucun fichier.
+- [ ] Deux associations servent deux logos distincts — vérifié sur les deux domaines.
+- [ ] Le favicon servi dépend de l'association appelée, et non d'un fichier unique du dépôt ; une association sans logo reçoit un favicon par défaut.
+- [ ] Une association sans logo reste lisible : son nom remplace le logo, sur le site public comme dans le back-office. Aucun écran cassé faute de logo.
+- [ ] Seuls la présidente (`owner`) de l'association du domaine appelé et le SuperAdmin accèdent à la page de réglages et téléversent un logo : tout autre utilisateur authentifié — membre, membre du bureau, présidente d'une autre association, administrateur global de la plateforme — reçoit un refus, côté interface et côté serveur.
+
+### Dependencies
+
+s01
+
+### Agentic notes
+
+Réf. ADR 004 (stockage sur le disque du serveur), ADR 003 (tenant par domaine), `docs/design-system.md`
+§1.2 (le logo est l'un des deux seuls éléments d'identité d'une association, avec la teinte portée par
+s02), et `docs/research/s02-parametres-association.md` pour l'état du code vérifié le 17 septembre 2026.
+
+**Pourquoi cette story existe** : ajoutée le 17 septembre 2026 lors de la recherche de s02. Le
+stockage de fichiers décidé par l'ADR 004 n'était porté par **aucune** story, alors que s04, s09, s31
+et s32 le supposent. Il est posé ici sur la **première valeur qui en a besoin**, le logo, plutôt
+qu'en story technique (précédent de `s00`, sortie du découpage). La ligne « identité visuelle » du
+périmètre est désormais portée par **s01b** (logo, favicon) et **s02** (teinte).
+
+**État d'entrée vérifié** : l'adaptateur `local` n'existe pas (`StorageType = 'supabase' | 's3'` dans
+`src/lib/files/storage/storage-factory.ts`, `STORAGE_TYPE` à `supabase` par défaut) ; aucune route ne
+sert de fichier ; `src/services/file-service.ts` construit des chemins **sans préfixe
+d'organisation** et fabrique des URL publiques Supabase ; `files-repository.ts` dépend du type
+`FileObject` de `@supabase/storage-js`.
+
+**Ce que la story pose et que les suivantes réutilisent** : l'implémentation `local` derrière
+`createStorage` (contrat `StorageOperations` inchangé, `list` découplé du type Supabase),
+l'arborescence `{organizationId}/…` de l'ADR 004, et la route de lecture. La règle d'accès posée ici
+est **publique mais bornée** : le logo du tenant du domaine appelé, rien d'autre. s31 et s32 y
+ajouteront la lecture authentifiée des documents, sans changer l'adaptateur.
+
+**Emplacement du stockage** : le répertoire racine vient de la configuration validée par `@/env`,
+jamais d'un chemin codé en dur. Il est hors de `public/` et ignoré par git ; en développement, un
+dossier de la machine de développement. Sa sauvegarde n'est pas l'objet de cette story, mais elle
+devra être couverte avant l'import des vraies données (voir s13).
+
+**Accès — piège vérifié** : ni `withAuthAdmin` ni `requireActionAuth` (rôles **globaux** seulement),
+ni `canUpdateOrganization` tel quel (CASL l'accorde aussi à l'`admin` d'association et à l'`admin`
+global). Il faut un contrôle dédié : `owner` de l'association **du domaine appelé**, ou `super_admin`.
+La page **ne vit pas sous `/admin`**, qui est le back-office de la plateforme. Comptes du seed pour les
+tests sur `localhost` (TechCorp) : `user-owner@gmail.com` et `superadmin@gmail.com` acceptés ;
+`user@gmail.com`, `user-member@gmail.com` et `admin@gmail.com` refusés.
+
+Comme s01, cette story s'appuie sur les rôles du boilerplate : « présidente » désigne le rôle
+d'association `owner`. s03 fait exister les quatre rôles fonctionnels et renomme le rôle Bureau
+(`admin` → `board`, décision du 17 septembre 2026) sans changer cette page.
+
+**Favicon** : la documentation embarquée de Next.js 16
+(`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/01-metadata/app-icons.md`)
+indique qu'un `favicon.ico` ne vit qu'à la racine de `/app` et **ne peut pas être généré par code**.
+Le favicon par association passe donc par les métadonnées `icons` ou une icône dynamique, et le
+fichier racine `src/app/favicon.ico` ne doit plus s'imposer à tous les domaines.
+
+`organization.logo` existe déjà (`text`, nullable) et contient aujourd'hui des URL externes (seed,
+formulaire d'organisation du boilerplate) : trancher au plan ce que la colonne porte désormais. La page
+de réglages naît ici avec sa section logo ; s02 y ajoute les paramètres et la teinte. Son emplacement
+se décide en `/ks-design`.
+
+---
+
 ## Story s02-parametres-association — Paramétrer son association
 
-**En tant qu'**administrateur d'une association **je veux** modifier ses réglages
+**En tant que** présidente d'une association **je veux** modifier ses réglages
 **afin de** ne dépendre du prestataire pour aucune adresse ni aucun seuil.
 
 ### Complexity
@@ -215,20 +293,19 @@ Cimetière : pas une base par tenant, base partagée + RLS.
 
 ### Acceptance criteria
 
-- [ ] Une page de back-office liste les paramètres du tenant et permet de les modifier avec validation (email valide, seuil numérique, booléen).
+- [ ] La page de réglages de l'association liste les paramètres déclarés au registre et permet de les modifier, chaque valeur étant validée selon le type déclaré au registre. En s02, le registre ne déclare que les clés utilisées : l'adresse de contact, l'adresse du responsable forage et la teinte d'accent.
+- [ ] La validation du registre est prouvée pour chaque type qu'il sait porter — adresse email, nombre, booléen, choix dans une liste fermée —, y compris pour les types qu'aucune clé n'utilise encore : une valeur conforme est acceptée, une valeur non conforme est refusée avec un message explicite.
 - [ ] Modifier un paramètre puis le relire renvoie la nouvelle valeur, sans redéploiement ni redémarrage.
 - [ ] Un paramètre jamais renseigné se lit à sa valeur par défaut déclarée au registre ; le renseigner puis le vider le ramène à cette même valeur par défaut.
 - [ ] Le seed d'un tenant charge les valeurs déclarées dans son jeu de paramètres : après exécution, chaque clé déclarée se lit à sa valeur déclarée — vérifié sur un tenant de test, sans dépendre des données d'un client.
-- [ ] Un utilisateur authentifié sans rôle administrateur qui accède à la page de réglages reçoit un refus, côté interface et côté serveur.
-- [ ] L'administrateur téléverse le **logo** de son association ; il s'affiche sur le site public et dans le back-office, et le remplacer met à jour les deux sans redéploiement.
-- [ ] L'administrateur choisit la **teinte d'accent** de son association **dans la liste des six teintes validées**, jamais au sélecteur libre ; la couleur retenue s'applique au site public après rechargement.
-- [ ] Deux associations aux réglages différents servent bien deux logos et deux teintes distincts — vérifié sur les deux domaines (test d'isolation visuelle).
-- [ ] Une association qui n'a rien choisi reste lisible : logo absent remplacé par le nom de l'association, teinte par défaut appliquée. Aucun écran cassé faute de personnalisation.
-- [ ] Le **favicon** servi dépend de l'association appelée, et non d'un fichier unique du dépôt.
+- [ ] Seuls la présidente (`owner`) de l'association du domaine appelé et le SuperAdmin modifient les paramètres : tout autre utilisateur authentifié reçoit un refus, côté interface et côté serveur.
+- [ ] La présidente choisit la **teinte d'accent** de son association **dans la liste des six teintes validées**, jamais au sélecteur libre ; la couleur retenue s'applique au site public après rechargement.
+- [ ] Deux associations aux teintes différentes servent bien deux teintes distinctes — vérifié sur les deux domaines (test d'isolation visuelle).
+- [ ] Une association qui n'a pas choisi de teinte reçoit la teinte par défaut. Aucun écran cassé faute de personnalisation.
 
 ### Dependencies
 
-s01
+s01, s01b
 
 ### Agentic notes
 
@@ -240,37 +317,37 @@ adresses d'un client donné les ferait échouer chez le suivant.
 C'est le socle du critère de succès « aucune donnée propre à La Fourche
 codée en dur » : les stories s08, s10, s17, s22 et s29 lisent leurs adresses et seuils **ici**.
 
-Comme s01, cette story s'appuie sur le rôle `admin` du boilerplate — d'où la persona neutre
-« administrateur » plutôt que « membre du bureau », ce rôle n'existant qu'à partir de s03. s03
-resserrera l'accès sans changer cette page.
+**Le registre grandit avec les besoins** (décision du 17 septembre 2026) : il ne déclare que les clés
+qu'une story utilise réellement. s26 y ajoutera son seuil d'envoi, s29 l'activation des relances, et
+ainsi de suite. Afficher en back-office des réglages qui ne font encore rien est exclu ; c'est
+pourquoi les types sans clé (nombre, booléen) se prouvent sur le registre et non sur la page.
+
+**Accès** : la page de réglages et son contrôle d'accès sont posés par s01b — seuls la présidente
+(`owner`) de l'association du domaine appelé et le SuperAdmin. s02 applique la même règle à la
+modification des paramètres. Comme s01b, cette story s'appuie sur les rôles du boilerplate ; s03 fait
+exister les quatre rôles fonctionnels sans changer cette page.
 
 **À vérifier en review, pas en test** : aucune de ces valeurs ne doit subsister en constante dans le
 code applicatif. C'est une propriété du diff, pas un comportement observable — la placer en critère
 d'acceptation produirait un test invérifiable. Le critère testable est celui du défaut au registre.
 
-Le boilerplate a `src/db/models/app-settings-model.ts` — vérifier s'il est global ou scopable par
-organisation avant d'en créer un nouveau. Prévoir un registre typé des clés (nom, type, défaut,
-description) plutôt qu'un `Record<string, string>` libre : c'est ce registre qui rend la page de BO
-générique et la review vérifiable.
+Le boilerplate a `src/db/models/app-settings-model.ts`, **global** (clé primaire `key` seule, vérifié) :
+l'ADR 010 prescrit une table `organization_setting` scopée tenant. Prévoir un registre typé des clés
+(nom, type, défaut, description) plutôt qu'un `Record<string, string>` libre : c'est ce registre qui
+rend la page de BO générique et la review vérifiable.
 
-**L'identité visuelle d'une association tient en deux variables, et pas une de plus** : un logo et
-une teinte. Le design system est catégorique (§1.2) : `--accent-hue` est la **seule** variable de
+**L'identité visuelle d'une association tient en deux variables, et pas une de plus** : un logo (s01b)
+et une teinte. Le design system est catégorique (§1.2) : `--accent-hue` est la **seule** variable de
 tenant, lightness et chroma restent figés, et le bureau choisit **dans une liste de six teintes
 validées** (195 eau, 150 pins, 255 lac, 40 tuile, 300 bruyère, 95 genêt) — jamais au sélecteur libre,
 pour qu'aucun bureau ne puisse produire un site illisible. Ne pas ouvrir un `<input type="color">`.
-
-⚠️ **Le logo n'est pas un paramètre comme les autres** : c'est un fichier, pas une valeur de
-`organization_setting`. Il passe par le stockage disque du VPS (ADR 004), pas par la table de
-réglages. La teinte, elle, est bien un paramètre.
+La teinte, elle, est bien un paramètre de `organization_setting`.
 
 ⚠️ **L'injection de la teinte est un point ouvert du design system** (§1.2). La livraison propose
 `attr()` typé en CSS, dont le support est inégal — **à vérifier avant de s'en remettre à elle**. Le
 repli sûr est un style en ligne posé par le serveur sur `<html>` à partir du tenant résolu (ADR 003) :
-`style={{'--accent-hue': hue}}`. Les tokens sont en place dans `src/app/globals.css` **à l'issue du travail de socle** (`docs/adaptation-socle-design-system.md`) — ils n'y sont pas dans le dépôt tel quel.
-
-Le favicon suit le même chemin que le logo : servi par tenant, résolu depuis le domaine appelé. C'est
-ce qui rend vrai « une deuxième association est provisionnée sans écrire une ligne de code » — six
-sites partageant le favicon du boilerplate se voient à la première visite.
+`style={{'--accent-hue': hue}}`. Les tokens sont en place dans `src/app/globals.css` (vérifié le
+17 septembre 2026).
 
 ---
 
@@ -387,8 +464,8 @@ l'écran tactile imprécis. Prévoir des commandes « monter / descendre » expl
 venant en plus.
 
 Piège stockage : le boilerplate uploade vers **Supabase**, le VPS LWS impose un stockage local
-(contrainte PRD). Passer par l'adaptateur de stockage tranché en `/ks-architect` ; ne pas coder
-contre `src/services/file-service.ts` tel quel sans avoir vérifié ce point.
+(contrainte PRD). Passer par l'adaptateur de stockage `local` posé par **s01b** (ADR 004) ; ne pas
+coder contre `src/services/file-service.ts` tel quel sans avoir vérifié ce point.
 
 Piège cache : le rendu public est caché (`'use cache'` + `cacheTag`), la publication doit invalider
 avec `updateTag` — le bureau doit voir son changement immédiatement, pas au bout d'un délai de
@@ -677,7 +754,7 @@ autant que de code — à éprouver en `/ks-design`.
 C'est un pilier de l'angle n°3 du PRD (contenu consultable **sans compte**) : la page ne doit jamais
 passer derrière l'authentification, même par héritage de layout.
 
-Stockage PDF : même adaptateur que s04 (pas Supabase, voir `/ks-architect`). Servir le PDF sans
+Stockage PDF : même adaptateur que s04, posé par s01b (pas Supabase, ADR 004). Servir le PDF sans
 exposer un chemin devinable vers d'autres fichiers du tenant.
 
 ---
@@ -1736,7 +1813,7 @@ bureau de conclure à tort que personne ne lit ses campagnes.
 
 ### Dependencies
 
-s03, s12
+s01b, s03, s12
 
 ### Agentic notes
 
@@ -1747,7 +1824,8 @@ Point de sécurité central : le fichier ne doit **jamais** être servi par une 
 L'accès passe par une route qui vérifie la session et le tenant avant de servir le contenu. Un
 `<a href>` vers un chemin de stockage direct est un échec de review.
 
-Stockage : adaptateur tranché en `/ks-architect` (stockage local sur le VPS, pas Supabase).
+Stockage : adaptateur `local` et route de lecture posés par s01b (ADR 004, pas Supabase) ; cette
+story y ajoute la lecture authentifiée.
 Sauvegarde et volumétrie du VPS (100 Go) à prendre en compte dès cette story.
 
 ---
@@ -2337,7 +2415,8 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | Id   | Story                     | Cx  | Dépend de                                                                                                                    | Bloc |
 | ---- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------- | ---- |
 | s01  | provisionner-association  | 4   | —                                                                                                                            | A    |
-| s02  | parametres-association    | 3   | s01                                                                                                                          | A    |
+| s01b | logo-association          | 3   | s01                                                                                                                          | A    |
+| s02  | parametres-association    | 3   | s01, s01b                                                                                                                    | A    |
 | s03  | connexion-lien-magique    | 3   | s01                                                                                                                          | A    |
 | s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                                | A    |
 | s04b | navigation-publique       | 2   | s04                                                                                                                          | A    |
@@ -2367,7 +2446,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s28  | publipostage-pdf          | 3   | s12, s25                                                                                                                     | C    |
 | s29  | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                                 | C    |
 | s30  | stats-campagnes           | 2   | s25, s26                                                                                                                     | C    |
-| s31  | documents-partages        | 2   | s03, s12                                                                                                                     | D    |
+| s31  | documents-partages        | 2   | s01b, s03, s12                                                                                                               | D    |
 | s32  | documents-nominatifs      | 4   | s12, s31                                                                                                                     | D    |
 | s33  | vote-asl-community        | 3   | s02, s12, s31                                                                                                                | E    |
 | s34  | module-voirie             | 2   | s01, s04, s04b                                                                                                               | F    |
@@ -2380,7 +2459,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                 | F    |
 | s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s27, s28                                                                                            | F    |
 
-**43 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quatorze à 3, huit à 4.
+**44 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, huit à 4.
 **Une seule story est hors du tableau de périmètre du PRD** : s39, garde-fou de non-régression de
 l'export, qui ne livre aucune valeur observable par un utilisateur de l'association. Dérogation
 justifiée dans son en-tête.
@@ -2409,7 +2488,7 @@ fond, écriture en flux sur un VPS à 4 Go). Le PRD chiffre des _features_, ce t
 _tranches livrables_.
 
 Sept stories ont été ajoutées en revue du découpage : s04b (navigation du site public, scindée hors
-de s04 qui empilait deux lignes de périmètre — la seule à porter un id intercalé), s14 (attribution
+de s04 qui empilait deux lignes de périmètre — premier id intercalé), s14 (attribution
 des rôles — les rôles
 existaient et la matrice était prévue, mais rien ne permettait de désigner la présidente ni le
 bureau), s15 (invitation unitaire, sortie de s03 où elle créait une dépendance circulaire vers s12),
@@ -2417,6 +2496,13 @@ s39 (garde-fou de complétude, sorti de s38), s40 (export individuel d'un membre
 portait deux valeurs utilisateur distinctes), s41 (simulation de rôle, sortie de s01) et s42
 (invitation des membres au lancement, qui n'était couverte par aucune story — le service existait
 sans que personne sache qu'il existe).
+
+**s01b a été ajoutée hors revue**, le 17 septembre 2026, lors de la recherche de s02 : le stockage de
+fichiers de l'ADR 004 n'était porté par aucune story alors que s04, s09, s31 et s32 le supposaient.
+Elle le pose sur la première valeur qui en a besoin — le logo et le favicon, sortis de s02 — et
+porte un id intercalé parce que s02 en dépend. Le critère de validation de s02 a été reformulé le
+même jour : le registre ne déclare que les clés utilisées, les autres types se prouvent sur le
+registre.
 
 **Ordre vs calendrier contractuel** : la GED (s31, s32) est placée **avant** le vote (s33), alors
 que le calendrier du devis annonce l'inverse (vote en décembre 2026, GED en janvier 2027). Arbitrage
