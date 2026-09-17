@@ -1,13 +1,6 @@
 /* eslint-disable no-restricted-properties -- une spec e2e tourne hors de
    l'application : le fichier env.ts typé n'y est pas chargé. */
-import {
-  APIRequestContext,
-  Browser,
-  expect,
-  Page,
-  Request,
-  test,
-} from '@playwright/test'
+import {APIRequestContext, Browser, expect, Page, test} from '@playwright/test'
 
 /**
  * Identité d'une association — s01b, critères 1 à 8.
@@ -62,6 +55,86 @@ const newSession = async (browser: Browser, base: string, email: string) => {
   return page
 }
 
+type CapturedAction = {
+  nextAction: string
+  contentType: string
+  body: string
+}
+
+/**
+ * Chromium n'expose pas le corps d'une requête qui transporte un fichier :
+ * `postDataBuffer()` y rend null, et le rejeu partirait sur un formulaire vide
+ * que le serveur ne sait pas lire. Le corps est donc capté dans la page, en
+ * enveloppant fetch avant le téléversement. À installer avant la navigation.
+ */
+const installActionCapture = async (page: Page) => {
+  await page.addInitScript(() => {
+    const store: {value: CapturedAction | null} = {value: null}
+    ;(window as unknown as {__actionCapture: typeof store}).__actionCapture =
+      store
+
+    const toBase64 = (bytes: Uint8Array) => {
+      let binary = ''
+      for (let index = 0; index < bytes.length; index += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(index, index + 8192))
+      }
+      return btoa(binary)
+    }
+
+    const original = window.fetch
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      try {
+        // Une copie sert la capture ; la requête envoyée reste intacte.
+        const copy =
+          input instanceof Request && !init?.body
+            ? input.clone()
+            : init?.body instanceof FormData
+              ? // Sans les en-têtes d'origine : la copie calcule sa propre
+                // frontière multipart, cohérente avec son corps.
+                new Request('http://capture.invalid', {
+                  method: 'POST',
+                  body: init.body,
+                })
+              : null
+        const nextAction =
+          copy &&
+          (new Headers(init?.headers).get('next-action') ??
+            copy.headers.get('next-action'))
+        if (copy && nextAction) {
+          store.value = {
+            nextAction,
+            contentType: copy.headers.get('content-type') ?? '',
+            body: toBase64(new Uint8Array(await copy.arrayBuffer())),
+          }
+        }
+      } catch {
+        // Une capture ratée ne doit jamais empêcher l'envoi réel.
+      }
+      return original(input, init)
+    }
+  })
+}
+
+/** Rend le corps capté, décodé, une fois l'appel d'action parti. */
+const readCapturedAction = async (page: Page) => {
+  const handle = await page.waitForFunction(
+    () =>
+      (window as unknown as {__actionCapture?: {value: CapturedAction | null}})
+        .__actionCapture?.value ?? null,
+    undefined,
+    {timeout: 15_000}
+  )
+  const captured = await handle.jsonValue()
+  if (!captured) {
+    throw new Error("Le corps de l'appel d'action n'a pas été capté")
+  }
+  return {
+    nextAction: captured.nextAction,
+    contentType: captured.contentType,
+    body: Buffer.from(captured.body, 'base64'),
+  }
+}
+
 const identityBytes = async (
   request: APIRequestContext,
   base: string,
@@ -82,14 +155,14 @@ const openIdentityPage = async (page: Page, base: string) => {
   ).toBeVisible({timeout: 15_000})
 }
 
-/** Téléverse un fichier et rend la requête de l'action serveur. */
+/** Téléverse un fichier et attend le départ de l'appel d'action serveur. */
 const uploadIdentityFile = async (
   page: Page,
   kind: 'logo' | 'favicon',
   name: string,
   mimeType: string,
   buffer: Buffer
-): Promise<Request> => {
+) => {
   const actionRequest = page.waitForRequest(
     (request) =>
       request.method() === 'POST' && Boolean(request.headers()['next-action'])
@@ -97,7 +170,7 @@ const uploadIdentityFile = async (
   await page
     .getByTestId(`identity-file-input-${kind}`)
     .setInputFiles({name, mimeType, buffer})
-  return await actionRequest
+  await actionRequest
 }
 
 test.describe.serial('s01b — identité de l’association', () => {
@@ -125,23 +198,18 @@ test.describe.serial('s01b — identité de l’association', () => {
     browser,
   }) => {
     const page = await newSession(browser, TENANT_A, 'user-owner@gmail.com')
+    await installActionCapture(page)
     await openIdentityPage(page, TENANT_A)
 
-    const firstRequest = await uploadIdentityFile(
-      page,
-      'logo',
-      'logo.png',
-      'image/png',
-      firstLogoA
-    )
-    capturedAction = {
-      nextAction: firstRequest.headers()['next-action'],
-      contentType: firstRequest.headers()['content-type'],
-      body: firstRequest.postDataBuffer() ?? Buffer.alloc(0),
-    }
+    await uploadIdentityFile(page, 'logo', 'logo.png', 'image/png', firstLogoA)
     await expect(page.getByText(/Logo remplacé/)).toBeVisible({
       timeout: 15_000,
     })
+    capturedAction = await readCapturedAction(page)
+    expect(capturedAction.body.byteLength).toBeGreaterThan(
+      firstLogoA.byteLength
+    )
+    expect(capturedAction.contentType).toContain('multipart/form-data')
 
     // Remplacer met à jour le site sans redéploiement.
     await openIdentityPage(page, TENANT_A)
