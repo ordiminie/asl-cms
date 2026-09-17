@@ -225,7 +225,7 @@ intervention du prestataire.
 - [ ] Le logo et le favicon sont servis par une route de l'application, jamais depuis un dossier statique public : cette route ne sert que les fichiers d'identité de l'association du domaine appelé, et une demande portant sur le fichier d'une autre association ou sur un chemin forgé (remontée `../`, chemin absolu) ne rend aucun fichier.
 - [ ] Deux associations servent deux logos distincts — vérifié sur les deux domaines.
 - [ ] Le **favicon est un fichier distinct du logo**, téléversé séparément depuis la même page : le favicon servi est celui de l'association du domaine appelé, jamais un fichier unique du dépôt ni une dérivation du logo, et une association qui n'en a pas téléversé reçoit un favicon par défaut. Deux associations servent deux favicons distincts — vérifié sur les deux domaines.
-- [ ] Une association sans logo reste lisible : son nom remplace le logo, sur le site public comme dans le back-office. Aucun écran cassé faute de logo.
+- [ ] Une association sans logo reste lisible : le monogramme de l'association — ses initiales — remplace le logo, son nom restant écrit à côté, sur le site public comme dans le back-office. Aucun écran cassé faute de logo.
 - [ ] Seuls les membres du bureau de l'association du domaine appelé — Bureau et Président(e) — et le SuperAdmin accèdent à la page de réglages et téléversent un logo ou un favicon : tout autre utilisateur authentifié — simple membre, bureau ou présidente d'une autre association, administrateur global de la plateforme — reçoit un refus, côté interface et côté serveur.
 
 ### Dependencies
