@@ -158,7 +158,12 @@ test.describe('critère 6 — le tenant A ne voit rien du tenant B', () => {
 
     await page.goto(`${TENANT_A}/en/admin/submissions`, {waitUntil: 'load'})
 
-    await expect(page.getByText(TENANT_A_SUBJECT)).toBeVisible()
+    // Au premier chargement à froid, le tableau existe un temps en deux copies
+    // masquées (streaming puis reprise React) : getByText les verrait toutes
+    // les deux, getByRole ne retient que la cellule réellement rendue.
+    await expect(page.getByRole('cell', {name: TENANT_A_SUBJECT})).toBeVisible({
+      timeout: 15_000,
+    })
     await expect(page.getByText(TENANT_B_SUBJECT)).toHaveCount(0)
   })
 
