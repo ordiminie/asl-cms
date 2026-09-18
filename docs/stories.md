@@ -55,7 +55,7 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   d'une facture, relance d'impayé — auxquelles son appartenance à l'association l'engage. Le pied de
   page de ces envois-là le dit explicitement.
   ⚠️ **Ce qui est acquis et ce qui ne l'est pas** : le _mécanisme_ est certain et se code (une nature
-  par modèle, un filtre au calcul de la cible en s27). La _classification_ de chaque modèle est une
+  par modèle, un filtre au calcul de la cible en s27b). La _classification_ de chaque modèle est une
   doctrine posée par défaut, **à faire confirmer par le conseil RGPD** en même temps que la règle de
   rétention (s12) — elle est donc une donnée de configuration, pas une constante : si l'arbitrage la
   contredit, on change une valeur, pas du code. C'est la même prudence que s12, qui livre le modèle
@@ -261,7 +261,7 @@ ajouteront la lecture authentifiée des documents, sans changer l'adaptateur.
 **Emplacement du stockage** : le répertoire racine vient de la configuration validée par `@/env`,
 jamais d'un chemin codé en dur. Il est hors de `public/` et ignoré par git ; en développement, un
 dossier de la machine de développement. Sa sauvegarde n'est pas l'objet de cette story : elle revient à
-s12b-mise-en-ligne, livrée avant s13.
+s12c-sauvegarde, livrée avant s13.
 
 **Accès** : le bureau édite, conformément au PRD (« le bureau doit pouvoir tout éditer sans
 intervention du prestataire » ; arbitrage du 17 septembre 2026, revue du découpage I-02). Avant s03,
@@ -392,6 +392,7 @@ repli sûr est un style en ligne posé par le serveur sur `<html>` à partir du 
 - [ ] Les actions posées avant cette story — téléverser le logo et le favicon (s01b), modifier les paramètres de l'association (s02) — sont déclarées au registre avec pour rôles par défaut Bureau et Président(e) : un Membre y reçoit un refus et un Bureau y est autorisé, en interface comme sur l'appel serveur direct.
 - [ ] L'email de connexion porte en en-tête le logo de l'association du domaine appelé (s01b), ou son nom quand elle n'a pas de logo.
 - [ ] La session est scopée à l'association du membre : elle ne donne accès à aucune donnée d'un autre tenant.
+- [ ] Le lien de connexion pointe vers le domaine de l'association à laquelle il donne accès, jamais vers une adresse de configuration unique : demandé sur le domaine de l'association A, il mène au domaine de A et y ouvre la session ; demandé sur celui de B, il mène à B — vérifié sur deux domaines.
 
 ### Dependencies
 
@@ -429,6 +430,16 @@ d'envoi tranché en `/ks-architect`, pas par un appel Resend en dur. Les emails 
 Cimetière : aucun plan B pour les membres sans email — pas de compte partagé, pas de code postal.
 
 Les quatre rôles sont ici **fixes** ; les rendre configurables en back-office est la story s37.
+
+**Piège multi-domaine** : `BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL` ne portent qu'une valeur,
+alors que chaque association a son domaine (ADR 003). Un lien construit sur cette valeur renvoie
+toutes les associations vers un seul domaine : la session s'ouvre sur le mauvais site, et le défaut
+ne se voit qu'en production, sur la deuxième association. Le domaine du lien se déduit de
+l'association, **lu en base**, et non de l'en-tête de la requête : s15 et s42 génèrent aussi ces
+liens, et s42 les envoie depuis une tâche différée, hors de toute requête. Les origines de confiance
+et le cookie de session de Better Auth doivent accepter chaque domaine d'association : à trancher
+en `/ks-research`, sur deux domaines locaux. Défaut relevé en revue du découpage (M6) ; s12b vérifie
+ensuite que le déploiement ne le défait pas.
 
 **Correspondance des rôles** (décisions du 17 septembre 2026) : Membre, Bureau et Président(e) sont
 des rôles **d'association** (`member.role`), SuperAdmin un rôle **global** (`user.role`,
@@ -750,7 +761,9 @@ en revue du découpage : un formulaire public sans protection est une porte ouve
 coûterait au bureau bénévole exactement le temps que le produit prétend lui rendre. Deux garde-fous
 imposés par le PRD : compteur sur empreinte hachée et purge sous 24 h, pour ne pas faire entrer un
 journal d'adresses IP — donnée personnelle sans règle de rétention — dans le produit. Rien à exporter
-en s38 de ce fait.
+en s38 de ce fait. Le planificateur de l'ADR 006 n'arrive qu'en s26 : la purge doit tenir ses 24 h
+sans lui, à trancher en `/ks-research`. Une purge déclenchée seulement par une nouvelle soumission ne
+suffit pas — sans trafic, les empreintes restent.
 
 Le boilerplate a `src/db/models/user-submission-model.ts` — vérifier s'il convient avant d'en créer
 un nouveau. Server Action : suivre `rule-safe-server-action` et `rule-form-front-and-back`
@@ -897,7 +910,7 @@ périodes de propriété **afin que** l'historique reste attaché au bon propri�
 
 - [ ] Le bureau crée un membre (identifiant autogénéré, indépendant du numéro de parcelle **et** de l'email) et lui rattache une ou plusieurs parcelles avec une date de début de propriété.
 - [ ] Enregistrer une vente clôture la période de propriété du vendeur et ouvre celle de l'acquéreur, sans supprimer ni modifier la période close.
-- [ ] Le propriétaire d'une parcelle se lit à une date donnée : pour une parcelle vendue, une date antérieure à la vente renvoie l'ancien propriétaire et une date postérieure le nouveau — vérifié par un test sur une parcelle vendue. Le rattachement des relevés (s18) et des documents (s32) s'appuie sur cette lecture datée et se vérifie dans ces stories, qui en portent le critère ; celui des factures se vérifie à la recherche de s19.
+- [ ] Le propriétaire d'une parcelle se lit à une date donnée : pour une parcelle vendue, une date antérieure à la vente renvoie l'ancien propriétaire et une date postérieure le nouveau — vérifié par un test sur une parcelle vendue. Le rattachement des relevés (s18) et des documents (s32) s'appuie sur cette lecture datée et se vérifie dans ces stories, qui en portent le critère ; celui des factures se vérifie en s19, qui en porte le critère.
 - [ ] Une parcelle ne peut pas avoir deux propriétaires sur des périodes qui se chevauchent ; la tentative est refusée avec un message explicite.
 - [ ] Un membre possédant plusieurs parcelles est un seul compte, avec la liste de ses parcelles.
 - [ ] Le bureau saisit et met à jour les coordonnées d'un membre depuis sa fiche : adresse postale, téléphone, adresse email — y compris pour un membre qui n'a pas de compte.
@@ -962,64 +975,139 @@ multi-parcelles (s19/s20), le site n'agrège rien.
 
 ---
 
-## Story s12b-mise-en-ligne — Mettre le site en ligne et le sauvegarder
+## Story s12b-mise-en-ligne — Mettre le site en ligne
 
-⚠️ **Story hors du tableau de périmètre du PRD.** Elle ne porte aucune ligne du tableau, mais le
-critère de succès « mise en production effective sur le VPS avant fin mai 2027 » (`PRD`, Success
-criteria) et la note de s13 la rendent obligatoire : on n'importe pas les données réelles de
-quatre cents propriétaires sur un serveur qui ne sait pas les restaurer. Décidée le 17 septembre
-2026, écrite pour lever le majeur M4 de la revue du découpage.
+⚠️ **Story hors du tableau de périmètre du PRD**, comme s12c qui la suit. Elle ne porte aucune ligne
+du tableau, mais le critère de succès « mise en production effective sur le VPS avant fin mai 2027 »
+(`PRD`, Success criteria) la rend obligatoire. Décidée le 17 septembre 2026, écrite pour lever le
+majeur M4 de la revue du découpage, puis séparée de la sauvegarde (s12c) par la revue suivante (M5).
 
-**En tant que** prestataire (SuperAdmin) **je veux** déployer l'application sur un VPS et en
-sauvegarder la base et les fichiers **afin que** chaque association soit servie sur son domaine et
-qu'aucune perte du serveur ne fasse disparaître ses données.
+**En tant que** prestataire (SuperAdmin) **je veux** déployer l'application sur un VPS **afin que**
+chaque association soit servie en HTTPS sur son propre domaine.
 
 ### Complexity
 
-4
+3
 
 ### Acceptance criteria
 
-- [ ] Sur le serveur déployé, le domaine d'une association provisionnée répond en HTTPS avec un certificat valide et sert le site de cette association ; un domaine inconnu répond 404 — vérifié par un test de fumée lancé contre l'URL déployée.
+- [ ] Sur le serveur déployé, le domaine d'une association provisionnée répond en HTTPS avec un certificat valide et sert le site de cette association ; un domaine inconnu répond 404 — vérifié par un test de fumée lancé contre l'URL déployée, sur deux domaines d'associations distinctes.
 - [ ] Une requête HTTP (non chiffrée) vers le domaine d'une association est redirigée vers HTTPS.
 - [ ] Déployer une nouvelle version applique les migrations en attente avant que la nouvelle version ne serve des requêtes ; une migration en échec interrompt le déploiement et laisse la version précédente en service.
 - [ ] Un redéploiement conserve les fichiers déjà téléversés : un logo envoyé avant le redéploiement est toujours servi après.
-- [ ] Ajouter le domaine d'une nouvelle association (certificat compris) se fait par configuration, sans modifier le code de l'application ; la procédure est écrite dans la documentation d'exploitation.
-- [ ] Une sauvegarde produit, pour un même horodatage, une copie de la base **et** une copie du répertoire de fichiers (`LOCAL_STORAGE_ROOT`).
-- [ ] La sauvegarde contient les lignes de **tous** les tenants : après restauration, le nombre de lignes de chaque table métier est identique à celui de la base d'origine, pour chacune des associations — vérifié par un test automatisé sur deux tenants.
-- [ ] Restaurer une sauvegarde sur une base vide et un répertoire vide rend une application dans laquelle chaque clé de fichier référencée en base (`identity_logo_key`, `identity_favicon_key`) désigne un fichier présent — vérifié par le même test.
-- [ ] La sauvegarde s'exécute sans intervention humaine, à une fréquence planifiée, et ne demande aucune confirmation interactive.
-- [ ] Chaque sauvegarde est copiée hors du serveur qui l'a produite ; la destination vient de la configuration, pas du code.
-- [ ] Les sauvegardes plus anciennes que la durée de conservation configurée sont supprimées, sur le serveur comme à destination ; la durée vient de la configuration.
-- [ ] Une sauvegarde en échec (base, fichiers ou copie distante) sort en erreur et déclenche un signal qui parvient au prestataire hors du serveur ; elle ne produit jamais une archive partielle présentée comme réussie.
+- [ ] Après l'ajout du domaine d'une nouvelle association dans la configuration du serveur, ce domaine répond en HTTPS avec un certificat valide et sert cette association — vérifié par le même test de fumée.
 - [ ] Aucun workflow du dépôt ne prétend déployer ce qu'il ne déploie pas : `production.yml` et `preview.yml`, restes du boilerplate, sont remplacés par le déploiement réel ou retirés.
 
 ### Dependencies
 
-s01, s01b
+s01, s01b, s03
 
 ### Agentic notes
 
 Réf. `PRD` (Constraints : hébergement ; Success criteria : mise en production), `ADR 001` (VPS
-unique infogéré par le prestataire), `ADR 002` (rôles et RLS), `ADR 003` (tenant par domaine),
-`ADR 004` (fichiers sur le disque, conséquences et points à vérifier), `ADR 015`.
+unique infogéré par le prestataire), `ADR 003` (tenant par domaine), `ADR 004` (fichiers sur le
+disque).
 
 **Écrite pour « un VPS », sans dépendre du fournisseur.** Le premier déploiement se fait sur le VPS
 personnel du prestataire, en environnement temporaire ; la production cible est le VPS LWS du
 contrat. L'infogérance est celle du prestataire dans les deux cas, ce que dit déjà l'ADR 001 : pas
 d'ADR nouveau pour l'hébergement. En revanche les choix techniques propres à cette story (mode de
-déploiement, reverse proxy et certificats, outil de copie distante) sont des décisions
-structurelles : un ADR chacun, ou un seul ADR de déploiement, tranché en `/ks-research`.
+déploiement, reverse proxy et certificats) sont des décisions structurelles : un ADR de déploiement,
+tranché en `/ks-research`.
 
-**Pas encore de domaine client** (réserve du CDCT, non bloquante). Le test de fumée tourne sur un
-sous-domaine d'un domaine du prestataire, ce que l'ADR 003 prévoit explicitement pour la recette :
+**Pas encore de domaine client** (réserve du CDCT, non bloquante). Le test de fumée tourne sur des
+sous-domaines d'un domaine du prestataire, ce que l'ADR 003 prévoit explicitement pour la recette :
 c'est un domaine comme un autre dans la table `organization`.
 
-Risque (complexité 4) : **une sauvegarde qui ne restaure pas ne se voit que le jour où on en a
+Risque (complexité 3) : quatre pièges d'exploitation, dont aucun ne se voit en développement.
+
+**Piège n°1 — le reverse proxy et l'en-tête `Host`.** Le tenant est résolu d'après le domaine appelé
+(ADR 003). Un proxy qui réécrit `Host` vers `localhost:3000` rend **toutes** les associations en 404,
+sans aucune erreur ailleurs. C'est pourquoi le test de fumée porte sur deux domaines.
+
+**Piège n°2 — le retour arrière d'une migration.** « Laisser la version précédente en service »
+suppose que la migration est appliquée **avant** la bascule et qu'un échec arrête tout avant elle.
+Une migration appliquée à moitié n'a pas de retour automatique : Drizzle n'écrit pas de migration
+descendante. Le déploiement s'arrête donc sur l'échec, avant la bascule, et la sauvegarde de s12c
+couvre le reste — ne pas promettre davantage.
+
+**Piège n°3 — les certificats sur plusieurs domaines.** Un domaine par association, et six
+associations à terme : le certificat de chaque domaine doit s'obtenir et se renouveler sans
+intervention manuelle. Un certificat unique listant tous les domaines oblige à le réémettre à chaque
+nouvelle association et casse tous les sites si un seul domaine échoue à la validation.
+
+**Piège n°4 — le build.** `production.yml` échoue aujourd'hui faute de secrets : sous Cache
+Components, le prerender traverse les façades. Où se fait le build (sur le serveur ou en CI), avec
+quelles variables, et comment le résultat arrive sur le serveur : à trancher en `/ks-research`, sans
+jamais committer un `.env`. Le `Dockerfile` et le `docker-compose.yml` du dépôt servent
+l'environnement de développement, pas la production (`docs/architecture.md`) : ne pas les réutiliser
+tels quels.
+
+**`BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL` sont mono-valeur**, alors que le produit sert plusieurs
+domaines. Le lien de connexion propre au domaine de chaque association est un critère de s03, livrée
+avant cette story : le déploiement ne doit pas le défaire. Ne pas figer ces variables sur le domaine
+du premier tenant comme si c'était le seul, et vérifier que le mécanisme retenu en s03 (origines de
+confiance, cookies) fonctionne sur le serveur réel pour les deux domaines du test de fumée.
+
+**`LOCAL_STORAGE_ROOT` vit hors du répertoire de l'application déployée**, sur un chemin qui survit
+aux redéploiements ; sinon chaque déploiement efface les fichiers, ce que le critère du logo
+détecte.
+
+**Le cron système des tâches planifiées.** s12c y ajoute les sauvegardes et s26 le déclencheur du
+planificateur de l'ADR 006. Cette story choisit **où** vivent ces planifications sur le serveur et
+le documente, pour que les deux suivantes n'aient pas à le chercher.
+
+**À vérifier en review, pas en test** : qu'ajouter un domaine ne demande aucune modification du code
+de l'application (c'est une propriété du diff), et que la procédure d'ajout d'un domaine et de
+déploiement est écrite dans la documentation d'exploitation (c'est une propriété de la
+documentation). Le critère testable est celui du nouveau domaine servi en HTTPS.
+
+**Hors de cette story** : la sauvegarde (s12c), la supervision applicative (Sentry reste tel quel),
+la montée de version du système du VPS.
+
+---
+
+## Story s12c-sauvegarde — Sauvegarder et restaurer les données
+
+⚠️ **Story hors du tableau de périmètre du PRD**, pour la même raison que s12b. s13 l'attend : on
+n'importe pas les données réelles de quatre cents propriétaires sur un serveur qui ne sait pas les
+restaurer.
+
+**En tant que** prestataire (SuperAdmin) **je veux** sauvegarder la base et les fichiers de toutes
+les associations **afin qu'**aucune perte du serveur ne fasse disparaître leurs données.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Une sauvegarde produit, pour un même horodatage, une copie de la base **et** une copie du répertoire de fichiers (`LOCAL_STORAGE_ROOT`).
+- [ ] La sauvegarde contient les lignes de **tous** les tenants : après restauration, le nombre de lignes de chaque table métier est identique à celui de la base d'origine, pour chacune des associations — vérifié par un test automatisé sur deux tenants.
+- [ ] Restaurer une sauvegarde sur une base vide et un répertoire vide rend une application dans laquelle **toute clé de fichier référencée en base** désigne un fichier présent — vérifié par le même test, sur l'inventaire des colonnes de clé de fichier décrit dans les notes.
+- [ ] La sauvegarde s'exécute sans intervention humaine, à une fréquence planifiée, et ne demande aucune confirmation interactive.
+- [ ] Chaque sauvegarde est copiée hors du serveur qui l'a produite ; la destination vient de la configuration, pas du code.
+- [ ] Les sauvegardes plus anciennes que la durée de conservation configurée sont supprimées, sur le serveur comme à destination ; la durée vient de la configuration.
+- [ ] Une sauvegarde en échec (base, fichiers ou copie distante) sort en erreur et ne produit jamais une archive partielle présentée comme réussie.
+- [ ] L'absence de sauvegarde réussie dans la fenêtre attendue déclenche une alerte reçue par le prestataire hors du serveur, par un canal qui ne dépend ni de l'application ni de son adaptateur d'envoi d'emails — que la sauvegarde ait échoué ou qu'elle ne se soit pas lancée du tout.
+
+### Dependencies
+
+s01b, s04, s09, s12b
+
+### Agentic notes
+
+Réf. `ADR 002` (rôles et RLS), `ADR 004` (conséquences et points à vérifier : « une restauration
+rendrait une base cohérente pointant vers des documents disparus »), `ADR 015`.
+
+Les choix techniques propres à cette story (rôle de sauvegarde, outil de copie distante, canal
+d'alerte) sont des décisions structurelles : un ADR, tranché en `/ks-research`.
+
+Risque (complexité 3) : **une sauvegarde qui ne restaure pas ne se voit que le jour où on en a
 besoin.** C'est pourquoi les critères portent sur la restauration et non sur la production d'un
 fichier. Le test de restauration est celui qui compte — l'écrire en premier (`tdd-skill`). Il se
 joue en CI sur le Postgres éphémère (`rule-ci-cd-devops`), pas sur la base de preview : seed, deux
-tenants, un logo par tenant, sauvegarde, restauration dans une base et un répertoire vides,
+tenants, des fichiers par tenant, sauvegarde, restauration dans une base et un répertoire vides,
 comparaison.
 
 **Piège n°1 — la RLS forcée et `pg_dump`.** `db_backup.sh` se connecte avec `DATABASE_URL`, donc
@@ -1038,21 +1126,21 @@ dump et la copie du répertoire laisse une clé orpheline. Ordre à retenir : ba
 ensuite — un fichier en trop est inoffensif, une clé sans fichier ne l'est pas. Le critère de
 restauration le vérifie.
 
-**Piège n°3 — le reverse proxy et l'en-tête `Host`.** Le tenant est résolu d'après le domaine appelé
-(ADR 003). Un proxy qui réécrit `Host` vers `localhost:3000` rend **toutes** les associations en 404,
-sans aucune erreur ailleurs. Le test de fumée sur deux domaines le détecte.
+**Inventaire des clés de fichier — pas une liste écrite dans le test.** À la livraison de cette
+story, trois familles de fichiers existent : l'identité (`identity_logo_key`, `identity_favicon_key`,
+s01b), les images de blocs de page (s04) et les PDF d'analyses d'eau (s09). Le test lit la liste des
+colonnes de clé de fichier à **un seul endroit** du code, que chaque story qui stocke des fichiers
+complète (s31, s32, s36) ; il échoue si une colonne listée n'existe pas. Une énumération recopiée
+dans le test finit par oublier une famille — c'est le défaut que s38 et s39 traitent pour l'export.
 
-**Piège n°4 — `BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL` sont mono-valeur**, alors que le produit sert
-plusieurs domaines. Cette story ne sert que les pages publiques et n'a pas à le résoudre, mais ne doit
-pas l'aggraver : ne pas figer ces variables sur le domaine du premier tenant comme si c'était le seul.
-Consigner le constat dans la recherche ; il reviendra à s03 (lien magique) et s15.
-
-**Piège n°5 — le build.** `production.yml` échoue aujourd'hui faute de secrets : sous Cache
-Components, le prerender traverse les façades. Où se fait le build (sur le serveur ou en CI), avec
-quelles variables, et comment le résultat arrive sur le serveur : à trancher en `/ks-research`, sans
-jamais committer un `.env`. Le `Dockerfile` et le `docker-compose.yml` du dépôt servent
-l'environnement de développement, pas la production (`docs/architecture.md`) : ne pas les réutiliser
-tels quels.
+**Piège n°3 — une alerte qui passe par ce qu'elle surveille.** L'application envoie ses emails par
+Brevo, derrière l'adaptateur de s03 et le budget quotidien par association de s26. L'alerte n'y
+passe pas : elle ne concerne aucune association, elle ne doit pas consommer leur budget, et elle doit
+partir même si l'application est tombée. Le critère vise une **absence de succès**, pas seulement un
+échec signalé, parce qu'un cron qui ne tourne plus ne produit aucune erreur — c'est le « silence »
+que l'ADR 006 redoute pour ses propres tâches. Un signal de vie envoyé à chaque succès vers un
+service externe, qui alerte quand il cesse d'arriver, couvre les deux cas ; le choix revient à
+`/ks-research`.
 
 **Ce qui existe et s'étend, sans dupliquer** : `db_backup.sh` et `db_restore.sh` ne couvrent que
 Postgres (ADR 004, conséquences). Le premier demande une confirmation au clavier et lit
@@ -1060,21 +1148,15 @@ Postgres (ADR 004, conséquences). Le premier demande une confirmation au clavie
 (`DATABASE_URL="dangerous"`) contre la restauration accidentelle de la production : le conserver
 sous une forme équivalente, la restauration sur la production doit rester un acte délibéré.
 
-**`LOCAL_STORAGE_ROOT` vit hors du répertoire de l'application déployée**, sur un chemin qui survit
-aux redéploiements ; sinon chaque déploiement efface les fichiers, ce que le critère du logo
-détecte. Même exigence pour les sauvegardes locales avant copie.
+Les sauvegardes locales, avant copie, vivent comme `LOCAL_STORAGE_ROOT` hors du répertoire de
+l'application déployée (voir s12b). La planification s'installe à l'endroit choisi et documenté par
+s12b.
 
-**Configuration d'exploitation, pas paramètre d'association.** Fréquence, destination distante et
-durée de conservation sont des réglages du serveur (`@/env` ou configuration du planificateur
-système), pas des lignes d'`organization_setting` : la règle « rien en dur » d'ADR 010 vise les
-valeurs propres à une association, et une sauvegarde couvre toutes les associations à la fois. Les
-identifiants de la destination distante sont des secrets.
-
-**Hors de cette story** : le planificateur `scheduled_job` de l'ADR 006 (mineur m4 de la revue du
-découpage, porté par la première story qui planifie une tâche métier) ; la supervision applicative
-(Sentry reste tel quel) ; la montée de version du système du VPS. Le cron système qui déclenchera les
-tâches de l'ADR 006 s'ajoutera au même endroit que celui des sauvegardes : documenter cet endroit ici,
-pour que la story qui l'ajoutera n'ait pas à le chercher.
+**Configuration d'exploitation, pas paramètre d'association.** Fréquence, destination distante,
+durée de conservation et fenêtre d'alerte sont des réglages du serveur (`@/env` ou configuration du
+planificateur système), pas des lignes d'`organization_setting` : la règle « rien en dur » d'ADR 010
+vise les valeurs propres à une association, et une sauvegarde couvre toutes les associations à la
+fois. Les identifiants de la destination distante sont des secrets.
 
 **À vérifier en review, pas en test** : qu'un exercice de restauration a été mené au moins une fois
 **sur le serveur réel** avant l'import de s13, et que la documentation d'exploitation en consigne la
@@ -1104,7 +1186,7 @@ automatisée en CI.
 
 ### Dependencies
 
-s12, s12b
+s12, s12c
 
 ### Agentic notes
 
@@ -1114,7 +1196,7 @@ s12).
 
 **Prérequis d'exploitation, hors de cette story** : avant d'importer les données réelles d'une
 association, la sauvegarde de la base **et** des fichiers du disque (s01b, ADR 004) doit être
-opérationnelle sur le serveur. Elle revient à s12b-mise-en-ligne, d'où la dépendance (revue du
+opérationnelle sur le serveur. Elle revient à s12c-sauvegarde, d'où la dépendance (revue du
 découpage I-12, puis M4).
 
 Risque (complexité 3, alignée avec le PRD) : la **clé de dédoublonnage n'est pas tranchée**, et son mode de défaillance est grave — fusionner deux propriétaires distincts leur
@@ -1248,7 +1330,8 @@ Placée ici, la story n'invente rien : le compte et le lien magique viennent de 
 l'attribut « a une adresse email » viennent de s12.
 
 **Elle n'implémente ni compte ni lien magique** : elle déclenche ceux de s03 depuis la fiche de s12.
-Une seconde implémentation du lien de connexion serait un défaut de review.
+Une seconde implémentation du lien de connexion serait un défaut de review. Le lien pointe donc vers
+le domaine de l'association du membre, comme en s03 : le vérifier sur deux associations.
 
 **L'invitation est un email transactionnel, pas une campagne.** Elle emprunte le canal du lien
 magique (s03), pas le gabarit de campagne livré par s25 — qui arrive dix stories plus tard. Exiger ce
@@ -1403,6 +1486,7 @@ cachée prenant un `memberId` en argument : un appelant pourrait demander les do
 - [ ] La configuration du tenant désigne lesquels des statuts de la source valent « impayé » ; le prédicat « impayé » qui en découle est lisible et testable depuis cette story.
 - [ ] Un statut jamais vu (nouvelle valeur côté source) n'est **pas** considéré comme réglé par défaut : il est signalé au bureau comme à classer, et la facture reste hors de la cible des relances tant qu'il ne l'est pas.
 - [ ] Un membre ne voit aucune facture d'un autre membre, y compris en forgeant l'identifiant (test d'autorisation croisée).
+- [ ] Une facture est rattachée au membre facturé (sa clé primaire), jamais à la parcelle : sur une parcelle vendue, les factures émises avant la vente restent visibles du vendeur et invisibles de l'acquéreur, et celles émises après la vente visibles de l'acquéreur seul — vérifié par un test sur une parcelle vendue.
 - [ ] Le bureau saisit et met à jour manuellement une facture pour un membre, et le membre la voit apparaître.
 - [ ] Le service de facturation est appelé derrière une interface : changer d'implémentation ne demande aucune modification de la présentation (prouvé par un test doublant l'implémentation).
 
@@ -1601,7 +1685,7 @@ deux implémentations. s35 (petites annonces) fera de même.
 - [ ] Le bureau ajoute une note datée et signée sur la fiche d'un membre, et la retrouve à la consultation suivante.
 - [ ] Le bureau consigne un échange avec un membre : date, canal (téléphone, courrier, en personne, email), et résumé libre.
 - [ ] La fiche membre affiche notes et échanges dans un fil chronologique unique, chaque entrée portant son auteur, sa date et son type.
-- [ ] Un membre n'a **aucun** accès à ses notes internes ni à celles d'un autre : ni page, ni API, ni export (test d'autorisation explicite).
+- [ ] Un membre n'a **aucun** accès à ses notes internes ni à celles d'un autre, ni par une page ni par un appel serveur côté membre (test d'autorisation explicite). Leur présence dans sa copie de données relève de s40.
 - [ ] Une note peut être modifiée ou supprimée par le bureau, l'auteur et la date de dernière modification restant visibles.
 
 ### Dependencies
@@ -1652,7 +1736,7 @@ n'est pas la page, c'est le DTO trop large réutilisé.
 - [ ] Les variables dynamiques (nom, parcelle, date) sont remplacées par les valeurs du destinataire ; une variable inconnue est signalée avant l'envoi, pas laissée telle quelle dans l'email reçu.
 - [ ] Un aperçu montre le rendu final avec les données d'un destinataire réel avant l'envoi définitif.
 - [ ] Suivre le lien de désinscription du pied de page enregistre le refus du membre, le lui confirme à l'écran, et se voit sur sa fiche côté bureau.
-- [ ] Un membre désinscrit est exclu de la cible de l'envoi suivant et de son décompte : le lien produit son effet dès cette story, sans attendre la classification de s27.
+- [ ] Un membre désinscrit est exclu de la cible de l'envoi suivant et de son décompte : le lien produit son effet dès cette story, sans attendre la classification de s27b.
 - [ ] La campagne envoyée est archivée avec son contenu, sa cible et sa date, et consultable en back-office.
 - [ ] Une campagne d'une association ne peut pas cibler les membres d'une autre.
 
@@ -1680,13 +1764,13 @@ L'envoi de facture double celui de Pennylane (problème de délivrabilité connu
 pas.
 
 **Le lien de désinscription produit son effet ici, pas plus tard.** Afficher un lien dont le filtrage
-n'arriverait qu'en s27 livrerait une promesse non tenue sur un sujet à charge réglementaire — défaut
+n'arriverait qu'en s27b livrerait une promesse non tenue sur un sujet à charge réglementaire — défaut
 relevé en revue du découpage. Cette story applique donc l'exclusion **totale** : un désinscrit ne
-reçoit plus rien. s27 introduit ensuite la distinction facultative / statutaire, qui le **réintègre**
+reçoit plus rien. s27b introduit ensuite la distinction facultative / statutaire, qui le **réintègre**
 dans les envois auxquels son appartenance à l'association l'engage. Sur-exclure temporairement est le
 sens sûr de l'erreur ; l'inverse ne l'est pas. Pour la même raison, l'écran de confirmation ne
 promet ici rien sur ce que le membre continuera de recevoir : cette phrase n'a de sens qu'une fois
-s27 livrée.
+s27b livrée.
 
 Le gabarit commun (logo, mentions légales, adresse de désinscription) est alimenté par les
 paramètres du tenant (s02), pas par des constantes.
@@ -1720,7 +1804,7 @@ l'intercepter, sinon s26 imposera de tout reprendre.
 
 ### Dependencies
 
-s02, s25
+s02, s12b, s25
 
 ### Agentic notes
 
@@ -1766,6 +1850,13 @@ Idempotence et persistance de la seconde part : la planification survit au redé
 écarté par l'ADR 006, qui retient une table `scheduled_job` et un cron système : s'y conformer. Un
 `setTimeout` en mémoire ne satisfait aucun des deux derniers critères.
 
+**Cette story pose le planificateur de l'ADR 006** : la table `scheduled_job`, la route interne
+authentifiée par secret partagé, et son déclenchement par le cron système, installé à l'endroit
+choisi et documenté par s12b. C'est la première story dont un critère exige une tâche durable ; s29
+et s38 le réutilisent sans en créer un second. Le compter dans le seuil de dix tâches ci-dessus : s'il
+fait déborder le plan, c'est lui qui part avec le budget et la file de report. Mineur m4 de la revue
+du découpage.
+
 ---
 
 ## Story s27-groupes-destinataires — Choisir la cible d'une campagne
@@ -1785,10 +1876,7 @@ Idempotence et persistance de la seconde part : la planification survit au redé
 - [ ] Un groupe est sélectionnable comme cible d'une campagne, à la place de « tous les membres » ou des impayés.
 - [ ] Le nombre de destinataires du groupe est affiché avant l'envoi, en distinguant ceux qui ont un email de ceux qui n'en ont pas.
 - [ ] Supprimer un groupe n'affecte ni les membres qu'il contenait ni les campagnes déjà envoyées.
-- [ ] Chaque modèle et chaque campagne porte une nature, `facultative` ou `statutaire`, lue dans la configuration du tenant.
-- [ ] Un membre désinscrit, exclu de tout envoi depuis s25, est **réintégré** dans les cibles d'une campagne `statutaire` et reste exclu des `facultative` — vérifié sur les deux cas.
-- [ ] L'écran de confirmation de désinscription précise désormais ce que le membre continuera de recevoir, d'après la classification.
-- [ ] Reclasser un modèle change le comportement au prochain envoi, sans redéploiement.
+- [ ] Un membre désinscrit (s25) est exclu des deux nouvelles cibles comme de « tous les membres » : l'exclusion se fait au calcul de la cible, quel qu'en soit le type.
 - [ ] Un groupe est propre à son association et n'est jamais visible d'une autre.
 
 ### Dependencies
@@ -1809,13 +1897,15 @@ Le statut d'impayé vient du système de facturation, donc de **l'interface de s
 direct à Pennylane. Passer par l'implémentation Pennylane (s20) rendrait la relance manuelle otage de
 la condition suspensive du devis, alors qu'elle doit fonctionner dès la saisie manuelle.
 
-La complexité 3 (contre 2 au PRD, qui ne chiffre que les groupes) tient à ce ciblage ajouté.
+La complexité 3 (contre 2 au PRD, qui ne chiffre que les groupes) tient à la cible « impayés » ajoutée
+aux groupes. La classification facultatif / statutaire, troisième sujet que la story portait
+auparavant, en a été sortie vers s27b en revue du découpage (m3) : elle est à elle seule une ligne du
+PRD notée 2.
 
-La désinscription se filtre au **calcul de la cible**, pas au moment de l'envoi : c'est le seul
-endroit où les trois cibles (tous, impayés, groupe) passent, donc le seul où la règle ne peut pas
-être oubliée. s25 y a posé l'exclusion totale ; cette story n'ajoute que la **réintégration** des
-désinscrits dans les envois statutaires, et l'applique aux deux nouvelles cibles. La distinction facultatif / statutaire est une règle transverse, énoncée en tête de
-document.
+**Le calcul de la cible est le point de passage unique** des trois cibles (tous, impayés, groupe).
+C'est là que s25 a posé l'exclusion des désinscrits, là que cette story l'étend aux deux nouvelles
+cibles, et là que s27b ajoutera la réintégration des désinscrits dans les envois statutaires. Un
+filtre posé ailleurs — à l'envoi, dans le gabarit — serait oublié par l'une des trois cibles.
 
 La distinction avec/sans email dans le décompte prépare s28 : un groupe est aussi la cible d'un
 publipostage papier, pas seulement d'un envoi email.
@@ -1825,6 +1915,51 @@ membres en impayé). C'est exactement le « au-delà des deux cibles actuelles �
 
 Pas de segmentation dynamique par critère au-delà de ces deux cibles : ni le CDC ni le PRD ne la
 demandent, et elle ouvrirait un chantier de règles à maintenir.
+
+---
+
+## Story s27b-nature-envois — Distinguer les envois facultatifs des envois statutaires
+
+**En tant que** membre désinscrit des campagnes **je veux** continuer à recevoir les convocations,
+factures et relances **afin de** ne pas manquer ce que mon appartenance à l'association m'impose de
+savoir, sans subir les envois facultatifs que j'ai refusés.
+
+### Complexity
+
+2
+
+### Acceptance criteria
+
+- [ ] Chaque modèle et chaque campagne porte une nature, `facultative` ou `statutaire`, lue dans la configuration du tenant.
+- [ ] Un membre désinscrit, exclu de tout envoi depuis s25, est **réintégré** dans les cibles d'une campagne `statutaire` et reste exclu des `facultative` — vérifié sur les trois cibles (tous, impayés, groupe) et sur les deux natures.
+- [ ] Le pied de page d'un envoi `statutaire` indique que le membre le reçoit malgré sa désinscription, parce que son appartenance à l'association l'y engage.
+- [ ] L'écran de confirmation de désinscription précise désormais ce que le membre continuera de recevoir, d'après la classification.
+- [ ] Reclasser un modèle change le comportement au prochain envoi, sans redéploiement.
+
+### Dependencies
+
+s25, s27
+
+### Agentic notes
+
+Réf. `PRD` (« Désinscription et classification des communications », complexité 2), règle
+transverse « Désinscription » en tête de document. Story sortie de s27 en revue du découpage (m3) :
+s27 portait trois sujets et onze critères pour une complexité de 3.
+
+**La réintégration se fait au calcul de la cible**, point de passage unique posé par s25 et étendu
+par s27 — pas à l'envoi. C'est le seul endroit où les trois cibles passent, donc le seul où la règle
+ne peut pas être oubliée.
+
+**Le mécanisme se code, la classification se configure.** La nature de chaque modèle est une doctrine
+posée par défaut, à faire confirmer par le conseil RGPD : c'est une donnée de configuration du
+tenant, jamais une constante. Valeurs par défaut suggérées, à trancher en `/ks-research` avec
+`V5 §8.1` : convocation AG, facture disponible et relance manuelle `statutaire` ; publication
+post-AG et campagne libre `facultative`.
+
+Sur-exclure est le sens sûr de l'erreur : un modèle sans nature connue se traite comme `facultative`,
+jamais l'inverse.
+
+Consommateurs : s29 (les relances sont statutaires) et s42 (le lancement est statutaire).
 
 ---
 
@@ -1893,7 +2028,7 @@ sur le VPS LWS (2 vCore, 4 Go) — un moteur à navigateur headless y est un ris
 
 ### Dependencies
 
-s02, s19, s25, s26, s27, s28
+s02, s19, s25, s26, s27, s27b, s28
 
 ### Agentic notes
 
@@ -1987,7 +2122,9 @@ L'accès passe par une route qui vérifie la session et le tenant avant de servi
 
 Stockage : adaptateur `local` et route de lecture posés par s01b (ADR 004, pas Supabase) ; cette
 story y ajoute la lecture authentifiée. Volumétrie du VPS (100 Go) à prendre en compte dès cette
-story ; la sauvegarde des fichiers relève de s12b-mise-en-ligne.
+story ; la sauvegarde des fichiers relève de s12c-sauvegarde. Déclarer la colonne de clé de fichier
+de cette story dans l'inventaire que lit le test de restauration de s12c, sans quoi un document
+perdu à la restauration passerait inaperçu.
 
 ---
 
@@ -2043,6 +2180,9 @@ C'est le critère de succès n°1 du PRD (« et à rien qui appartienne à un au
 la plus exigeante. Prévoir la review en conséquence.
 
 Cimetière : pas de classification automatique des documents par IA.
+
+Sauvegarde : déclarer la colonne de clé de fichier de cette story dans l'inventaire que lit le
+test de restauration de s12c (voir ses notes).
 
 ---
 
@@ -2234,6 +2374,9 @@ découpage a échoué.
 Le dépôt en lot dans les dossiers nominatifs passe par le mécanisme de s32 — ne pas écrire dans le
 stockage en contournant sa couche de cloisonnement.
 
+Sauvegarde : si un document généré est conservé, déclarer sa colonne de clé de fichier dans
+l'inventaire que lit le test de restauration de s12c.
+
 ---
 
 ## Story s37-permissions-configurables — Ajuster les droits par rôle
@@ -2311,7 +2454,7 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 - [ ] La présidente déclenche un export complet et récupère une archive ZIP contenant : un fichier CSV par type de donnée tabulaire (membres, parcelles, relevés, factures, campagnes, signalements), un fichier JSON pour les contenus structurés, les fichiers d'origine des documents, et un `README` décrivant chaque fichier et ses colonnes.
 - [ ] Les CSV sont encodés en UTF-8 avec BOM, leur séparateur est celui documenté dans le README, chaque ligne porte le même nombre de colonnes que son en-tête, et le JSON est valide au parsing.
 - [ ] L'archive contient les **données membres** : membres, coordonnées, parcelles avec leurs périodes de propriété, relevés d'eau, factures, notes internes et échanges, état d'invitation et d'adoption, historique des attributions de rôle.
-- [ ] L'archive contient les **contenus publiés du tronc commun** : pages, actualités, fiches du bureau, analyses d'eau, bandeau d'alerte, **entrées de menu et pied de page** (s04b). Les contenus des trois modules activables — vote, voirie, petites annonces — ne sont **délibérément pas énumérés ici** : ils entrent dans l'archive par le mécanisme du critère 8 dès que le module est livré et actif, et leur présence est vérifiée par le test de complétude de s39. Un agent qui code cette liste en dur reproduit exactement le défaut que le critère 8 interdit.
+- [ ] L'archive contient les **contenus publiés du tronc commun** : pages, actualités, fiches du bureau, analyses d'eau, bandeau d'alerte, **entrées de menu et pied de page** (s04b). Les contenus des trois modules activables — vote, voirie, petites annonces — ne sont **délibérément pas énumérés ici** : ils entrent dans l'archive par le mécanisme du critère 9 dès que le module est livré et actif, et leur présence est vérifiée par le test de complétude de s39. Un agent qui code cette liste en dur reproduit exactement le défaut que le critère 9 interdit.
 - [ ] L'archive contient les **documents** : partagés, nominatifs, et modèles de documents, avec leurs fichiers d'origine.
 - [ ] L'archive contient les **communications** : campagnes, leurs statistiques d'ouverture et de clic, leur état de planification, l'historique des relances, les groupes de destinataires.
 - [ ] L'archive contient les **échanges entrants** : signalements, messages de contact, questions au bureau.
@@ -2322,14 +2465,14 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 ### Dependencies
 
-s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37
+s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37
 
 ### Agentic notes
 
 Réf. `PRD` (« Export et portabilité des données », angle n°5 : « Pas de verrouillage »), RGPD (droit
 à la portabilité).
 
-Risque (complexité 4) : vingt-six dépendances, six familles de contenu, exécution en tâche de
+Risque (complexité 4) : vingt-sept dépendances, six familles de contenu, exécution en tâche de
 fond avec notification, écriture en flux sur un VPS à 4 Go. Le harnais de complétude en a été sorti
 (s39) en revue du découpage — la story se lisait comme une 5 déjà scindée une fois (s40) mais pas
 assez. Ce qui reste est un moteur d'export et son archive, pas une traversée du produit.
@@ -2338,9 +2481,9 @@ L'**export individuel d'un membre** en est sorti (s40) en revue du découpage : 
 utilisateurs, deux surfaces d'autorisation — la présidente exporte l'association, un membre exerce
 son droit d'accès. Les garder ensemble faisait de cette story une 5 déguisée en 4.
 
-Double usage assumé : argument commercial anti-verrouillage **et** conformité. L'export individuel
-répond au droit d'accès d'un membre — d'où l'inclusion des notes internes de s24, qui sont des
-données personnelles le concernant, même si elles ne lui sont jamais montrées dans l'interface.
+Double usage assumé : argument commercial anti-verrouillage **et** conformité (portabilité). Les
+notes internes de s24 y figurent parce qu'elles sont des données de l'association ; le droit d'accès
+d'un membre à celles qui le concernent relève de s40, qui réutilise ce moteur.
 
 L'action « déclencher un export » est une action réservée : elle se déclare au registre de la
 matrice de permissions (s37), qui est extensible par construction — pas besoin de rouvrir s37.
@@ -2352,11 +2495,12 @@ ce que le produit stocke. **Aucun des trois modules activables n'y figure** — 
 (F-13). Le raisonnement qui excluait s33 vaut pour les trois — un module activable peut être
 désactivé chez un tenant, et l'export ne doit être otage d'aucun. Leurs données entrent dans
 l'archive par le test de complétude de s39 dès que le module est livré, sans rouvrir cette story.
-C'est cohérent avec le critère 8. Les trois modules retirés ramenaient la story de vingt-sept
+C'est cohérent avec le critère 9. Les trois modules retirés ramenaient la story de vingt-sept
 dépendances à vingt-quatre ; la scission de s04 en a rendu une — s04b, productrice du menu et du
-pied de page (D-02) — d'où vingt-cinq.
+pied de page (D-02) — d'où vingt-cinq à l'époque. La liste ci-dessus fait foi : vingt-sept
+aujourd'hui, avec s01b et s27b.
 
-Le critère 8 énonce une propriété **du mécanisme**, pas du résultat d'un test local : c'est le
+Le critère 9 énonce une propriété **du mécanisme**, pas du résultat d'un test local : c'est le
 harnais de s39 qui la vérifie mécaniquement, une story plus loin. La clause qui le disait vivait dans
 le critère lui-même et le rendait à moitié intestable (D-06) ; elle est ici, à sa place.
 
@@ -2447,10 +2591,11 @@ l'association détient sur moi **afin d'**exercer mon droit d'accès.
 - [ ] Les données rattachées à une parcelle qu'il a vendue lui restent acquises pour la période où il en était propriétaire, et pas au-delà.
 - [ ] Le bureau peut produire cette même copie pour un membre qui en fait la demande par courrier, sans que ce membre ait de compte.
 - [ ] La demande et sa livraison sont tracées, avec leur date, pour prouver le respect du délai légal.
+- [ ] Cette trace est soit incluse dans l'export d'association (s38), soit **déclarée au registre des exclusions avec son motif** : le test de complétude de s39 continue de passer.
 
 ### Dependencies
 
-s12, s24, s38
+s12, s24, s38, s39
 
 ### Agentic notes
 
@@ -2538,15 +2683,16 @@ pendant une simulation reste possible mais est attribuée au SuperAdmin (critèr
 - [ ] Le bureau suit l'adoption : nombre d'invitations envoyées, nombre de membres s'étant connectés au moins une fois, liste des membres jamais connectés.
 - [ ] Relancer les membres jamais connectés renvoie une invitation à eux seuls, sans réinviter ceux qui se sont déjà connectés.
 - [ ] L'opération passe par l'adaptateur d'envoi et respecte le budget quotidien du tenant (s26) : au-delà du seuil, elle se scinde et se reporte comme n'importe quel envoi.
+- [ ] Un lien d'invitation envoyé par une part reportée au lendemain, donc hors de toute requête, pointe vers le domaine de l'association et y ouvre la session — vérifié sur deux associations.
 
 ### Dependencies
 
-s03, s13, s15, s25, s26, s27, s28
+s03, s13, s15, s25, s26, s27, s27b, s28
 
 ### Agentic notes
 
 Réf. `PRD` (ligne « Connexion par lien magique » : « flux d'invitation […] à éprouver auprès d'un
-public âgé »), `V5 §2, §3.3`. Story créée en revue du découpage : les 43 stories précédentes
+public âgé »), `V5 §2, §3.3`. Story créée en revue du découpage : les stories précédentes
 livraient un service que **personne n'aurait su utiliser** — aucune ne disait comment 300
 propriétaires apprennent qu'ils ont un espace.
 
@@ -2579,60 +2725,62 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 
 # Récapitulatif — ordre et dépendances
 
-| Id   | Story                     | Cx  | Dépend de                                                                                                                          | Bloc |
-| ---- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| s01  | provisionner-association  | 4   | —                                                                                                                                  | A    |
-| s01b | logo-association          | 3   | s01                                                                                                                                | A    |
-| s02  | parametres-association    | 3   | s01, s01b                                                                                                                          | A    |
-| s03  | connexion-lien-magique    | 3   | s01, s01b, s02                                                                                                                     | A    |
-| s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                                      | A    |
-| s04b | navigation-publique       | 2   | s04                                                                                                                                | A    |
-| s05  | actualites                | 2   | s04                                                                                                                                | A    |
-| s06  | presentation-bureau       | 2   | s04                                                                                                                                | A    |
-| s07  | bandeau-alerte            | 1   | s01, s03                                                                                                                           | A    |
-| s08  | formulaire-contact        | 2   | s02, s04                                                                                                                           | A    |
-| s09  | analyses-eau              | 2   | s04                                                                                                                                | A    |
-| s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                                      | A    |
-| s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                                 | A    |
-| s12  | membres-parcelles         | 4   | s01, s03                                                                                                                           | B    |
-| s12b | mise-en-ligne             | 4   | s01, s01b                                                                                                                          | B    |
-| s13  | import-initial-membres    | 3   | s12, s12b                                                                                                                          | B    |
-| s14  | attribuer-roles           | 2   | s03, s12                                                                                                                           | B    |
-| s15  | inviter-membre            | 2   | s02, s03, s12                                                                                                                      | B    |
-| s16  | coordonnees-membre        | 1   | s12                                                                                                                                | B    |
-| s17  | import-releves-eau        | 3   | s02, s12, s13                                                                                                                      | B    |
-| s18  | historique-consommation   | 2   | s17                                                                                                                                | B    |
-| s19  | factures-liste            | 3   | s02, s12                                                                                                                           | B    |
-| s20  | factures-pennylane        | 3   | s02, s19                                                                                                                           | B    |
-| s21  | redirection-paiement      | 1   | s02, s19                                                                                                                           | B    |
-| s22  | signalement-membre        | 2   | s10, s12                                                                                                                           | B    |
-| s23  | questions-bureau          | 2   | s02, s10, s12                                                                                                                      | B    |
-| s24  | notes-internes-membre     | 2   | s12                                                                                                                                | B    |
-| s25  | campagnes-email           | 3   | s02, s03, s12                                                                                                                      | C    |
-| s26  | envoi-echelonne           | 4   | s02, s25                                                                                                                           | C    |
-| s27  | groupes-destinataires     | 3   | s19, s25                                                                                                                           | C    |
-| s28  | publipostage-pdf          | 3   | s12, s25                                                                                                                           | C    |
-| s29  | relances-impayes          | 4   | s02, s19, s25, s26, s27, s28                                                                                                       | C    |
-| s30  | stats-campagnes           | 2   | s25, s26                                                                                                                           | C    |
-| s31  | documents-partages        | 2   | s01b, s03, s12                                                                                                                     | D    |
-| s32  | documents-nominatifs      | 4   | s12, s31                                                                                                                           | D    |
-| s33  | vote-asl-community        | 3   | s02, s12, s31                                                                                                                      | E    |
-| s34  | module-voirie             | 2   | s01, s04, s04b                                                                                                                     | F    |
-| s35  | petites-annonces          | 3   | s10, s12                                                                                                                           | F    |
-| s36  | modeles-documents         | 3   | s27, s28, s32                                                                                                                      | F    |
-| s37  | permissions-configurables | 4   | s03                                                                                                                                | F    |
-| s38  | export-donnees            | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s29, s30, s31, s32, s36, s37 | F    |
-| s39  | completude-export         | 2   | s38                                                                                                                                | F    |
-| s40  | export-membre             | 2   | s12, s24, s38                                                                                                                      | F    |
-| s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                       | F    |
-| s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s27, s28                                                                                                  | F    |
+| Id   | Story                     | Cx  | Dépend de                                                                                                                                | Bloc |
+| ---- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| s01  | provisionner-association  | 4   | —                                                                                                                                        | A    |
+| s01b | logo-association          | 3   | s01                                                                                                                                      | A    |
+| s02  | parametres-association    | 3   | s01, s01b                                                                                                                                | A    |
+| s03  | connexion-lien-magique    | 3   | s01, s01b, s02                                                                                                                           | A    |
+| s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                                            | A    |
+| s04b | navigation-publique       | 2   | s04                                                                                                                                      | A    |
+| s05  | actualites                | 2   | s04                                                                                                                                      | A    |
+| s06  | presentation-bureau       | 2   | s04                                                                                                                                      | A    |
+| s07  | bandeau-alerte            | 1   | s01, s03                                                                                                                                 | A    |
+| s08  | formulaire-contact        | 2   | s02, s04                                                                                                                                 | A    |
+| s09  | analyses-eau              | 2   | s04                                                                                                                                      | A    |
+| s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                                            | A    |
+| s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                                       | A    |
+| s12  | membres-parcelles         | 4   | s01, s03                                                                                                                                 | B    |
+| s12b | mise-en-ligne             | 3   | s01, s01b, s03                                                                                                                           | B    |
+| s12c | sauvegarde                | 3   | s01b, s04, s09, s12b                                                                                                                     | B    |
+| s13  | import-initial-membres    | 3   | s12, s12c                                                                                                                                | B    |
+| s14  | attribuer-roles           | 2   | s03, s12                                                                                                                                 | B    |
+| s15  | inviter-membre            | 2   | s02, s03, s12                                                                                                                            | B    |
+| s16  | coordonnees-membre        | 1   | s12                                                                                                                                      | B    |
+| s17  | import-releves-eau        | 3   | s02, s12, s13                                                                                                                            | B    |
+| s18  | historique-consommation   | 2   | s17                                                                                                                                      | B    |
+| s19  | factures-liste            | 3   | s02, s12                                                                                                                                 | B    |
+| s20  | factures-pennylane        | 3   | s02, s19                                                                                                                                 | B    |
+| s21  | redirection-paiement      | 1   | s02, s19                                                                                                                                 | B    |
+| s22  | signalement-membre        | 2   | s10, s12                                                                                                                                 | B    |
+| s23  | questions-bureau          | 2   | s02, s10, s12                                                                                                                            | B    |
+| s24  | notes-internes-membre     | 2   | s12                                                                                                                                      | B    |
+| s25  | campagnes-email           | 3   | s02, s03, s12                                                                                                                            | C    |
+| s26  | envoi-echelonne           | 4   | s02, s12b, s25                                                                                                                           | C    |
+| s27  | groupes-destinataires     | 3   | s19, s25                                                                                                                                 | C    |
+| s27b | nature-envois             | 2   | s25, s27                                                                                                                                 | C    |
+| s28  | publipostage-pdf          | 3   | s12, s25                                                                                                                                 | C    |
+| s29  | relances-impayes          | 4   | s02, s19, s25, s26, s27, s27b, s28                                                                                                       | C    |
+| s30  | stats-campagnes           | 2   | s25, s26                                                                                                                                 | C    |
+| s31  | documents-partages        | 2   | s01b, s03, s12                                                                                                                           | D    |
+| s32  | documents-nominatifs      | 4   | s12, s31                                                                                                                                 | D    |
+| s33  | vote-asl-community        | 3   | s02, s12, s31                                                                                                                            | E    |
+| s34  | module-voirie             | 2   | s01, s04, s04b                                                                                                                           | F    |
+| s35  | petites-annonces          | 3   | s10, s12                                                                                                                                 | F    |
+| s36  | modeles-documents         | 3   | s27, s28, s32                                                                                                                            | F    |
+| s37  | permissions-configurables | 4   | s03                                                                                                                                      | F    |
+| s38  | export-donnees            | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37 | F    |
+| s39  | completude-export         | 2   | s38                                                                                                                                      | F    |
+| s40  | export-membre             | 2   | s12, s24, s38, s39                                                                                                                       | F    |
+| s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                             | F    |
+| s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s27, s27b, s28                                                                                                  | F    |
 
-**45 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, neuf à 4.
-**Deux stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**47 stories, aucune à 5.** Répartition : trois à 1, dix-neuf à 2, dix-sept à 3, huit à 4.
+**Trois stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
-utilisateur de l'association ; et s12b, la mise en ligne et la sauvegarde, qu'exige le critère de
-succès « mise en production effective sur le VPS » et que s13 attend avant d'importer les données
-réelles.
+utilisateur de l'association ; s12b, la mise en ligne, qu'exige le critère de succès « mise en
+production effective sur le VPS » ; et s12c, la sauvegarde, que s13 attend avant d'importer les
+données réelles.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
@@ -2642,9 +2790,9 @@ travail vit dans `docs/adaptation-socle-design-system.md`, et la contrainte qu'e
 stories d'écran reste, en règle transverse « Socle habillé ».
 Sa surface est énumérée dans le tableau mesuré de `docs/adaptation-socle-design-system.md`, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
-Les neuf stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
+Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
 blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
-daté), s12b (sauvegarde restaurable sous RLS forcée), s26
+daté), s26
 (planification, budget transverse et file de report), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
 s38 (moteur d'export et son archive) — portent chacune leur risque
@@ -2654,7 +2802,7 @@ explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-d
 Quatre écarts avec les scores du PRD, tous documentés dans la story concernée plutôt que lissés :
 s04 à 4 contre 3, que le modèle en blocs typés de l'ADR 007 porte au-dessus du chiffrage du PRD ;
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
-main) ; s38 à 4 contre 3 (vingt-six dépendances, six familles de contenu, exécution en tâche de
+main) ; s38 à 4 contre 3 (vingt-sept dépendances, six familles de contenu, exécution en tâche de
 fond, écriture en flux sur un VPS à 4 Go) ; et l'identité visuelle, chiffrée 2 par le PRD, portée par
 s01b à 3 — le logo et le favicon y tirent le stockage de fichiers de l'ADR 004, que le PRD ne
 chiffrait pas — et, pour la teinte, par s02, dont le 3 couvre d'abord le registre de paramètres. Le
