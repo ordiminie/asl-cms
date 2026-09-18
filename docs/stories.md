@@ -261,7 +261,7 @@ ajouteront la lecture authentifiée des documents, sans changer l'adaptateur.
 **Emplacement du stockage** : le répertoire racine vient de la configuration validée par `@/env`,
 jamais d'un chemin codé en dur. Il est hors de `public/` et ignoré par git ; en développement, un
 dossier de la machine de développement. Sa sauvegarde n'est pas l'objet de cette story : elle revient à
-la story de mise en ligne, décidée le 17 septembre 2026 et à écrire avant s13 (voir la note de s13).
+s12b-mise-en-ligne, livrée avant s13.
 
 **Accès** : le bureau édite, conformément au PRD (« le bureau doit pouvoir tout éditer sans
 intervention du prestataire » ; arbitrage du 17 septembre 2026, revue du découpage I-02). Avant s03,
@@ -962,6 +962,127 @@ multi-parcelles (s19/s20), le site n'agrège rien.
 
 ---
 
+## Story s12b-mise-en-ligne — Mettre le site en ligne et le sauvegarder
+
+⚠️ **Story hors du tableau de périmètre du PRD.** Elle ne porte aucune ligne du tableau, mais le
+critère de succès « mise en production effective sur le VPS avant fin mai 2027 » (`PRD`, Success
+criteria) et la note de s13 la rendent obligatoire : on n'importe pas les données réelles de
+quatre cents propriétaires sur un serveur qui ne sait pas les restaurer. Décidée le 17 septembre
+2026, écrite pour lever le majeur M4 de la revue du découpage.
+
+**En tant que** prestataire (SuperAdmin) **je veux** déployer l'application sur un VPS et en
+sauvegarder la base et les fichiers **afin que** chaque association soit servie sur son domaine et
+qu'aucune perte du serveur ne fasse disparaître ses données.
+
+### Complexity
+
+4
+
+### Acceptance criteria
+
+- [ ] Sur le serveur déployé, le domaine d'une association provisionnée répond en HTTPS avec un certificat valide et sert le site de cette association ; un domaine inconnu répond 404 — vérifié par un test de fumée lancé contre l'URL déployée.
+- [ ] Une requête HTTP (non chiffrée) vers le domaine d'une association est redirigée vers HTTPS.
+- [ ] Déployer une nouvelle version applique les migrations en attente avant que la nouvelle version ne serve des requêtes ; une migration en échec interrompt le déploiement et laisse la version précédente en service.
+- [ ] Un redéploiement conserve les fichiers déjà téléversés : un logo envoyé avant le redéploiement est toujours servi après.
+- [ ] Ajouter le domaine d'une nouvelle association (certificat compris) se fait par configuration, sans modifier le code de l'application ; la procédure est écrite dans la documentation d'exploitation.
+- [ ] Une sauvegarde produit, pour un même horodatage, une copie de la base **et** une copie du répertoire de fichiers (`LOCAL_STORAGE_ROOT`).
+- [ ] La sauvegarde contient les lignes de **tous** les tenants : après restauration, le nombre de lignes de chaque table métier est identique à celui de la base d'origine, pour chacune des associations — vérifié par un test automatisé sur deux tenants.
+- [ ] Restaurer une sauvegarde sur une base vide et un répertoire vide rend une application dans laquelle chaque clé de fichier référencée en base (`identity_logo_key`, `identity_favicon_key`) désigne un fichier présent — vérifié par le même test.
+- [ ] La sauvegarde s'exécute sans intervention humaine, à une fréquence planifiée, et ne demande aucune confirmation interactive.
+- [ ] Chaque sauvegarde est copiée hors du serveur qui l'a produite ; la destination vient de la configuration, pas du code.
+- [ ] Les sauvegardes plus anciennes que la durée de conservation configurée sont supprimées, sur le serveur comme à destination ; la durée vient de la configuration.
+- [ ] Une sauvegarde en échec (base, fichiers ou copie distante) sort en erreur et déclenche un signal qui parvient au prestataire hors du serveur ; elle ne produit jamais une archive partielle présentée comme réussie.
+- [ ] Aucun workflow du dépôt ne prétend déployer ce qu'il ne déploie pas : `production.yml` et `preview.yml`, restes du boilerplate, sont remplacés par le déploiement réel ou retirés.
+
+### Dependencies
+
+s01, s01b
+
+### Agentic notes
+
+Réf. `PRD` (Constraints : hébergement ; Success criteria : mise en production), `ADR 001` (VPS
+unique infogéré par le prestataire), `ADR 002` (rôles et RLS), `ADR 003` (tenant par domaine),
+`ADR 004` (fichiers sur le disque, conséquences et points à vérifier), `ADR 015`.
+
+**Écrite pour « un VPS », sans dépendre du fournisseur.** Le premier déploiement se fait sur le VPS
+personnel du prestataire, en environnement temporaire ; la production cible est le VPS LWS du
+contrat. L'infogérance est celle du prestataire dans les deux cas, ce que dit déjà l'ADR 001 : pas
+d'ADR nouveau pour l'hébergement. En revanche les choix techniques propres à cette story (mode de
+déploiement, reverse proxy et certificats, outil de copie distante) sont des décisions
+structurelles : un ADR chacun, ou un seul ADR de déploiement, tranché en `/ks-research`.
+
+**Pas encore de domaine client** (réserve du CDCT, non bloquante). Le test de fumée tourne sur un
+sous-domaine d'un domaine du prestataire, ce que l'ADR 003 prévoit explicitement pour la recette :
+c'est un domaine comme un autre dans la table `organization`.
+
+Risque (complexité 4) : **une sauvegarde qui ne restaure pas ne se voit que le jour où on en a
+besoin.** C'est pourquoi les critères portent sur la restauration et non sur la production d'un
+fichier. Le test de restauration est celui qui compte — l'écrire en premier (`tdd-skill`). Il se
+joue en CI sur le Postgres éphémère (`rule-ci-cd-devops`), pas sur la base de preview : seed, deux
+tenants, un logo par tenant, sauvegarde, restauration dans une base et un répertoire vides,
+comparaison.
+
+**Piège n°1 — la RLS forcée et `pg_dump`.** `db_backup.sh` se connecte avec `DATABASE_URL`, donc
+avec `asl_app`, qui ne voit rien hors d'un scope de tenant (ADR 002). Et `FORCE ROW LEVEL SECURITY`
+s'applique **aussi au propriétaire des tables** : passer à `DATABASE_MIGRATION_URL` ne suffit pas
+forcément. Selon le rôle et les options, `pg_dump` échoue (`row_security` désactivé face à une policy
+qui s'applique) ou, pire, sort une sauvegarde **vide de toute ligne métier** — le « zéro résultat
+inexpliqué » d'AGENTS.md, version catastrophe. La même question se pose à la restauration : les
+insertions passent sous la policy. Trancher en `/ks-research` quel rôle sauvegarde et restaure
+(rôle dédié `BYPASSRLS`, ou porte `app.bypass_rls` posée pour la session), et le prouver par le
+critère de comptage sur deux tenants. Tout nouveau contournement de la RLS est un point d'arrêt de
+revue : le justifier dans l'ADR.
+
+**Piège n°2 — la base et les fichiers ne sont pas pris au même instant.** Un logo remplacé entre le
+dump et la copie du répertoire laisse une clé orpheline. Ordre à retenir : base d'abord, fichiers
+ensuite — un fichier en trop est inoffensif, une clé sans fichier ne l'est pas. Le critère de
+restauration le vérifie.
+
+**Piège n°3 — le reverse proxy et l'en-tête `Host`.** Le tenant est résolu d'après le domaine appelé
+(ADR 003). Un proxy qui réécrit `Host` vers `localhost:3000` rend **toutes** les associations en 404,
+sans aucune erreur ailleurs. Le test de fumée sur deux domaines le détecte.
+
+**Piège n°4 — `BETTER_AUTH_URL` et `NEXT_PUBLIC_APP_URL` sont mono-valeur**, alors que le produit sert
+plusieurs domaines. Cette story ne sert que les pages publiques et n'a pas à le résoudre, mais ne doit
+pas l'aggraver : ne pas figer ces variables sur le domaine du premier tenant comme si c'était le seul.
+Consigner le constat dans la recherche ; il reviendra à s03 (lien magique) et s15.
+
+**Piège n°5 — le build.** `production.yml` échoue aujourd'hui faute de secrets : sous Cache
+Components, le prerender traverse les façades. Où se fait le build (sur le serveur ou en CI), avec
+quelles variables, et comment le résultat arrive sur le serveur : à trancher en `/ks-research`, sans
+jamais committer un `.env`. Le `Dockerfile` et le `docker-compose.yml` du dépôt servent
+l'environnement de développement, pas la production (`docs/architecture.md`) : ne pas les réutiliser
+tels quels.
+
+**Ce qui existe et s'étend, sans dupliquer** : `db_backup.sh` et `db_restore.sh` ne couvrent que
+Postgres (ADR 004, conséquences). Le premier demande une confirmation au clavier et lit
+`.env.production` : inutilisable par un cron en l'état. Le second porte un garde-fou
+(`DATABASE_URL="dangerous"`) contre la restauration accidentelle de la production : le conserver
+sous une forme équivalente, la restauration sur la production doit rester un acte délibéré.
+
+**`LOCAL_STORAGE_ROOT` vit hors du répertoire de l'application déployée**, sur un chemin qui survit
+aux redéploiements ; sinon chaque déploiement efface les fichiers, ce que le critère du logo
+détecte. Même exigence pour les sauvegardes locales avant copie.
+
+**Configuration d'exploitation, pas paramètre d'association.** Fréquence, destination distante et
+durée de conservation sont des réglages du serveur (`@/env` ou configuration du planificateur
+système), pas des lignes d'`organization_setting` : la règle « rien en dur » d'ADR 010 vise les
+valeurs propres à une association, et une sauvegarde couvre toutes les associations à la fois. Les
+identifiants de la destination distante sont des secrets.
+
+**Hors de cette story** : le planificateur `scheduled_job` de l'ADR 006 (mineur m4 de la revue du
+découpage, porté par la première story qui planifie une tâche métier) ; la supervision applicative
+(Sentry reste tel quel) ; la montée de version du système du VPS. Le cron système qui déclenchera les
+tâches de l'ADR 006 s'ajoutera au même endroit que celui des sauvegardes : documenter cet endroit ici,
+pour que la story qui l'ajoutera n'ait pas à le chercher.
+
+**À vérifier en review, pas en test** : qu'un exercice de restauration a été mené au moins une fois
+**sur le serveur réel** avant l'import de s13, et que la documentation d'exploitation en consigne la
+date et la durée. C'est une propriété de l'exploitation ; le critère testable est la restauration
+automatisée en CI.
+
+---
+
 ## Story s13-import-initial-membres — Charger la liste des membres existants
 
 **En tant que** SuperAdmin **je veux** importer la liste des propriétaires fournie par l'association
@@ -983,7 +1104,7 @@ multi-parcelles (s19/s20), le site n'agrège rien.
 
 ### Dependencies
 
-s12
+s12, s12b
 
 ### Agentic notes
 
@@ -993,8 +1114,8 @@ s12).
 
 **Prérequis d'exploitation, hors de cette story** : avant d'importer les données réelles d'une
 association, la sauvegarde de la base **et** des fichiers du disque (s01b, ADR 004) doit être
-opérationnelle sur le serveur. Elle revient à la story de mise en ligne décidée le 17 septembre 2026,
-à écrire et à livrer avant s13 (revue du découpage I-12).
+opérationnelle sur le serveur. Elle revient à s12b-mise-en-ligne, d'où la dépendance (revue du
+découpage I-12, puis M4).
 
 Risque (complexité 3, alignée avec le PRD) : la **clé de dédoublonnage n'est pas tranchée**, et son mode de défaillance est grave — fusionner deux propriétaires distincts leur
 donnerait accès aux documents et aux factures l'un de l'autre. Ce n'est pas un import anodin : c'est
@@ -1866,7 +1987,7 @@ L'accès passe par une route qui vérifie la session et le tenant avant de servi
 
 Stockage : adaptateur `local` et route de lecture posés par s01b (ADR 004, pas Supabase) ; cette
 story y ajoute la lecture authentifiée. Volumétrie du VPS (100 Go) à prendre en compte dès cette
-story ; la sauvegarde des fichiers relève de la story de mise en ligne (voir la note de s13).
+story ; la sauvegarde des fichiers relève de s12b-mise-en-ligne.
 
 ---
 
@@ -2474,7 +2595,8 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                                      | A    |
 | s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                                 | A    |
 | s12  | membres-parcelles         | 4   | s01, s03                                                                                                                           | B    |
-| s13  | import-initial-membres    | 3   | s12                                                                                                                                | B    |
+| s12b | mise-en-ligne             | 4   | s01, s01b                                                                                                                          | B    |
+| s13  | import-initial-membres    | 3   | s12, s12b                                                                                                                          | B    |
 | s14  | attribuer-roles           | 2   | s03, s12                                                                                                                           | B    |
 | s15  | inviter-membre            | 2   | s02, s03, s12                                                                                                                      | B    |
 | s16  | coordonnees-membre        | 1   | s12                                                                                                                                | B    |
@@ -2505,10 +2627,12 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                       | F    |
 | s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s27, s28                                                                                                  | F    |
 
-**44 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, huit à 4.
-**Une seule story est hors du tableau de périmètre du PRD** : s39, garde-fou de non-régression de
-l'export, qui ne livre aucune valeur observable par un utilisateur de l'association. Dérogation
-justifiée dans son en-tête.
+**45 stories, aucune à 5.** Répartition : trois à 1, dix-huit à 2, quinze à 3, neuf à 4.
+**Deux stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
+utilisateur de l'association ; et s12b, la mise en ligne et la sauvegarde, qu'exige le critère de
+succès « mise en production effective sur le VPS » et que s13 attend avant d'importer les données
+réelles.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
@@ -2518,9 +2642,9 @@ travail vit dans `docs/adaptation-socle-design-system.md`, et la contrainte qu'e
 stories d'écran reste, en règle transverse « Socle habillé ».
 Sa surface est énumérée dans le tableau mesuré de `docs/adaptation-socle-design-system.md`, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
-Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
+Les neuf stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
 blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
-daté), s26
+daté), s12b (sauvegarde restaurable sous RLS forcée), s26
 (planification, budget transverse et file de report), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
 s38 (moteur d'export et son archive) — portent chacune leur risque
