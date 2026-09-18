@@ -1,160 +1,170 @@
-# Stories Review — ASL-CMS (Lp)
+# Revue du découpage : ASL-CMS (Lp)
 
-> Relecture à froid de `/workspace/docs/stories.md` (44 stories) par rapport à `/workspace/docs/prd.md`. Chaque problème est classé : critique, majeur ou mineur.
-> s01 est déjà livrée (`docs/reviews/s01-provisionner-association.md` : `Ship allowed: yes`). Je ne rediscute donc pas sa taille ni son contenu.
+> J'ai relu `/workspace/docs/stories.md` (47 stories) sans contexte préalable et je l'ai comparé à `/workspace/docs/prd.md`. Chaque problème est classé critique, majeur ou mineur.
+> s01 et s01b sont déjà livrées : je ne rediscute ni leur taille ni leur contenu.
+> Cette revue suit celle de `docs/reviews/stories.md`, qui avait relevé le majeur M7 et les mineurs m5, m8 à m15. Pour chacun, j'indique s'il est fermé, avec les lignes qui le prouvent. J'ai relu les stories modifiées (s03, s08, s12b, s12c, s15, s24, s26, s27b, s29, s34, s42) avec la même exigence que les autres.
+> La classification des envois du premier tenant (arbitrage du 18 septembre 2026, s27b l. 1986-2004) est une décision du product owner. Je l'enregistre telle quelle et je ne la rediscute pas : publication post-AG et campagne libre facultatives, campagne libre jamais envoyée à un désinscrit, invitation de lancement et sa relance statutaires.
 
-**En bref : aucun problème critique, quatre majeurs, cinq mineurs.** Toutes les lignes du périmètre sont couvertes et aucune story ne reprend un élément du cimetière. Les stories sont prêtes au sens de la règle. Je conseille quand même de corriger M3 avant `/ks-plan s03`, et M1 avant `/ks-plan s24`.
+**En bref : aucun critique, aucun majeur, six nouveaux mineurs.**
 
-## Perimeter coverage
+- M7 est fermé.
+- Les mineurs m8 à m15 sont fermés. m5 reste, pour mémoire.
+- Toutes les lignes du périmètre sont couvertes, aucune story ne reprend un élément du cimetière, aucune story n'est à 5 et il n'y a pas de cycle.
+- Les nouveaux mineurs sont surtout des effets de bord de la correction de M7 :
+  - la règle de s27b est testée en s42 mais pas en s29 (m16) ;
+  - le gabarit de l'email de lancement reste implicite (m17) ;
+  - s27b c1 annonce des types d'envoi livrés plus tard (m18).
 
-| PRD feature (core loop)                                         | Covered by                          | OK?                                  |
-| --------------------------------------------------------------- | ----------------------------------- | ------------------------------------ |
-| CMS de pages génériques                                         | s04                                 | ✅                                   |
-| Attribution des rôles aux membres (+ verrou anti-blocage)       | s14                                 | ✅                                   |
-| Permissions par rôle configurables en BO                        | s03 (registre), s37                 | ✅                                   |
-| Connexion par lien magique 4 h (+ invitation, suivi d'adoption) | s03, s15, s42                       | ✅                                   |
-| Pages publiques + formulaire de contact archivé en BO           | s04, s08                            | ✅                                   |
-| Navigation du site public (menu, pied de page)                  | s04b                                | ✅                                   |
-| Identité visuelle (logo, teinte, favicon, en-tête des emails)   | s01b, s02, s03 c9, s15 c2, s25 c3   | ✅                                   |
-| Limitation de débit des formulaires publics                     | s08 c5-c6, s10 c9                   | ✅                                   |
-| Actualités                                                      | s05                                 | ✅                                   |
-| Présentation du bureau                                          | s06                                 | ✅                                   |
-| Désinscription et classification des communications             | s25, s27                            | ✅                                   |
-| Bandeau d'alerte global                                         | s07                                 | ✅                                   |
-| SEO                                                             | s11                                 | ✅                                   |
-| Import initial des membres                                      | s13                                 | ✅ (voir M4)                         |
-| Modèle membre ↔ parcelle daté                                   | s12, s17, s18, s32                  | ✅ (factures non vérifiées, voir M2) |
-| Coordonnées (profil membre)                                     | s16 (+ saisie par le bureau en s12) | ✅                                   |
-| Questions au bureau, catégories routées                         | s23 (modèle en s10)                 | ✅                                   |
-| Notes internes et historique par membre                         | s24                                 | ✅                                   |
-| Import annuel des relevés d'eau + rapport par email             | s17                                 | ✅                                   |
-| Historique de consommation d'eau                                | s18                                 | ✅                                   |
-| Signalements (public anonyme + membre identifié)                | s10, s22                            | ✅                                   |
-| Publication des analyses d'eau                                  | s09                                 | ✅                                   |
-| Documents partagés                                              | s31                                 | ✅                                   |
-| Documents nominatifs physiquement séparés                       | s32                                 | ✅                                   |
-| Campagnes email Brevo (4 modèles + libre)                       | s25                                 | ✅                                   |
-| Envoi échelonné / budget quotidien                              | s26                                 | ✅                                   |
-| Relances d'impayés activables                                   | s29                                 | ✅                                   |
-| Publipostage PDF                                                | s28                                 | ✅                                   |
-| Groupes de destinataires                                        | s27                                 | ✅                                   |
-| Statistiques d'ouverture et de clic                             | s30                                 | ✅                                   |
-| Modèles de documents (unitaire + lot)                           | s36                                 | ✅                                   |
-| Facturation membres : interface + Pennylane                     | s19, s20                            | ✅                                   |
-| Redirection de paiement                                         | s21                                 | ✅                                   |
-| Multi-tenant                                                    | s01                                 | ✅                                   |
-| Export individuel d'un membre                                   | s40                                 | ✅                                   |
-| Simulation de rôle SuperAdmin                                   | s41                                 | ✅                                   |
-| Export et portabilité                                           | s38, s39                            | ✅                                   |
-| Module Vote (ASL Community)                                     | s33                                 | ✅                                   |
-| Module Voirie                                                   | s34                                 | ✅                                   |
-| Module Petites annonces                                         | s35                                 | ✅                                   |
+## Suivi de la revue précédente
 
-- [x] Chaque ligne du tableau « Replicated (core loop) » est livrée par au moins une story (37 lignes du tronc commun et 3 modules).
+| Constat                                                            | État             | Preuve                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M7 : nature des relances et du lancement fixée en dur              | **Fermé**        | s29, note l. 2096-2099 : « La cible des relances passe par le calcul de la cible de s27… découle de la nature configurée… ne pas contourner le filtre de désinscription ici, ni coder la nature en dur ». L'ancienne consigne « Ne pas appliquer le filtre » a disparu. s42 c3 (l. 2734) teste les deux natures, `statutaire` et `facultative`. s27b présente sa classification comme des « valeurs de seed, pas des constantes » (l. 1986-1997), ce qui concorde avec c1 (l. 1961) et c6 (l. 1966). La relance automatique et le lancement figurent au tableau (l. 1994-1995). Il reste une asymétrie entre s29 et s42, voir m16. |
+| m8 : inventaire de s12c incomplet                                  | **Fermé**        | La note nomme cinq familles, dont s05 et s06 (l. 1147-1151). s12c dépend désormais de s05 et s06 (l. 1114, l. 2798). s34 porte la consigne de déclaration (l. 2341-2342). La détection inverse est adoptée (l. 1153-1157), mais seulement dans les notes, voir m19.                                                                                                                                                                                                                                                                                                                                                                |
+| m9 : purge de s08 sans tâche périodique                            | **Fermé**        | s08 c7 (l. 753) : l'opération de purge peut être appelée seule. La note (l. 776-782) décrit les trois étapes. s12b c6 (l. 1015) planifie l'appel quotidien, et s12b dépend de s08 (l. 1020, l. 2797). Pas de cycle : s08 ne dépend que de s02 et s04.                                                                                                                                                                                                                                                                                                                                                                              |
+| m10 : s03 sous-notée                                               | **Fermé**        | Complexité 4 (l. 381). Les quatre risques et un seuil de scission sont nommés (l. 405-410). Le récapitulatif est à jour (l. 2786, l. 2846-2847) et la répartition est recalculée (l. 2831). Un seul effet de bord : le paragraphe des écarts avec le PRD, voir m20.                                                                                                                                                                                                                                                                                                                                                                |
+| m11 : s24 renvoyait le droit d'accès à s38                         | **Fermé**        | l. 1737-1738 : « au titre de la portabilité dans l'export d'association (s38), et au titre du droit d'accès dans la copie du membre (s40) ».                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| m12 : la règle de sûreté de s27b n'avait pas de critère            | **Fermé**        | s27b c2 (l. 1962) : « Un type d'envoi sans nature configurée se traite comme `facultative` ». La campagne libre est tranchée en c1 (l. 1961) : sa nature n'est pas choisie à la rédaction.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| m13 : s12b c6 en partie intestable                                 | **Fermé**        | Le critère devenu c7 (l. 1016) ne garde que la partie vérifiable. La partie qui relève du diff est passée en « À vérifier en review » (l. 1080-1081).                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| m14 : vérification de s15 sur deux domaines absente des critères   | **Fermé**        | s15 c8 (l. 1341) : « vérifié sur deux associations ».                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| m15 : scission conditionnelle de s26 non reportée sur le découpage | **Fermé**        | s26, note l. 1882-1886 : la scission se fait dans `docs/stories.md`, avec un nouvel id et la mise à jour des dépendances de s29, s30, s38 et s42. s03 applique la même règle (l. 408-410). Le paragraphe cite toutefois « Mineur m4 », voir m20.                                                                                                                                                                                                                                                                                                                                                                                   |
+| m5 : stories hors du tableau du PRD                                | **Pour mémoire** | Trois dérogations déclarées : s39, s12b et s12c (l. 996-999, l. 1090-1092, l. 2581-2585, l. 2832-2836).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
-## Scope
+## Couverture du périmètre
 
-- [x] Aucune story ne reprend un élément du cimetière. Les exclusions sont rappelées là où le risque existe : pas de logique de vote (s33), pas de moyen de paiement (s20, s21), pas de messagerie privée (s35), carte en image statique (s34), aucun plan B de connexion (s28, s42), pas de fusion Eau et Voirie (s34), sous-systèmes IA et Kanban retirés (s01).
-- [x] Aucune story ne sort du périmètre, à une exception déclarée : s39, story transverse (voir m5).
+| Ligne du PRD (core loop)                                        | Couverte par                                 | OK ? |
+| --------------------------------------------------------------- | -------------------------------------------- | ---- |
+| CMS de pages génériques                                         | s04                                          | ✅   |
+| Attribution des rôles (+ verrou anti-blocage)                   | s14                                          | ✅   |
+| Permissions par rôle configurables en BO                        | s03 (registre), s37                          | ✅   |
+| Connexion par lien magique 4 h (+ invitation, suivi d'adoption) | s03, s15, s42                                | ✅   |
+| Pages publiques + formulaire de contact archivé en BO           | s04, s08                                     | ✅   |
+| Navigation du site public (menu, pied de page)                  | s04b                                         | ✅   |
+| Identité visuelle (logo, teinte, favicon, en-tête des emails)   | s01b, s02, s03 c9, s15 c2, s25 c3            | ✅   |
+| Limitation de débit des formulaires publics                     | s08 c5-c7, s10 c9, s12b c6 (purge planifiée) | ✅   |
+| Actualités                                                      | s05                                          | ✅   |
+| Présentation du bureau                                          | s06                                          | ✅   |
+| Désinscription et classification des communications             | s25 c6-c7 (lien et exclusion), s27b (nature) | ✅   |
+| Bandeau d'alerte global                                         | s07                                          | ✅   |
+| SEO                                                             | s11                                          | ✅   |
+| Import initial des membres                                      | s13 (précédée de s12c)                       | ✅   |
+| Modèle membre ↔ parcelle daté                                   | s12, s17, s18, s19 c7, s32                   | ✅   |
+| Coordonnées (profil membre)                                     | s16 (+ saisie par le bureau en s12)          | ✅   |
+| Questions au bureau, catégories routées                         | s23 (modèle en s10)                          | ✅   |
+| Notes internes et historique par membre                         | s24                                          | ✅   |
+| Import annuel des relevés d'eau + rapport par email             | s17                                          | ✅   |
+| Historique de consommation d'eau                                | s18                                          | ✅   |
+| Signalements (public anonyme + membre identifié)                | s10, s22                                     | ✅   |
+| Publication des analyses d'eau                                  | s09                                          | ✅   |
+| Documents partagés                                              | s31                                          | ✅   |
+| Documents nominatifs physiquement séparés                       | s32                                          | ✅   |
+| Campagnes email Brevo (4 modèles + campagne libre)              | s25                                          | ✅   |
+| Envoi échelonné / budget quotidien                              | s26                                          | ✅   |
+| Relances d'impayés activables                                   | s29                                          | ✅   |
+| Publipostage PDF                                                | s28                                          | ✅   |
+| Groupes de destinataires                                        | s27                                          | ✅   |
+| Statistiques d'ouverture et de clic                             | s30                                          | ✅   |
+| Modèles de documents (unitaire + lot)                           | s36                                          | ✅   |
+| Facturation membres : interface + Pennylane                     | s19, s20                                     | ✅   |
+| Redirection de paiement                                         | s21                                          | ✅   |
+| Multi-tenant                                                    | s01                                          | ✅   |
+| Export individuel d'un membre                                   | s40                                          | ✅   |
+| Simulation de rôle SuperAdmin                                   | s41                                          | ✅   |
+| Export et portabilité                                           | s38, s39                                     | ✅   |
+| Module Vote (ASL Community)                                     | s33                                          | ✅   |
+| Module Voirie                                                   | s34                                          | ✅   |
+| Module Petites annonces                                         | s35                                          | ✅   |
 
-## Story quality
+- [x] Chaque ligne du tableau « Replicated (core loop) » est livrée par au moins une story : 37 lignes du tronc commun et 3 modules.
+- La classification de s27b (l. 1989-1997) est cohérente avec le PRD (l. 72). Convocation, facture et relance y sont statutaires, et la classification reste une donnée de configuration à faire confirmer par le conseil RGPD.
 
-- [ ] Chaque story est une tranche livrable de bout en bout : oui, sauf s39 (dérogation déclarée).
-- [ ] Chaque critère peut devenir un test : non. Le critère 4 de s24 (« ni export ») ne peut pas être testé à la livraison et contredit s40 (M1). Le rattachement daté des factures n'a aucun critère (M2).
-- [x] Les notes agentiques sont présentes et utiles. Certaines sont périmées dans s38 (m1).
-- [x] La complexité est notée, aucune story à 5, et les huit stories à 4 (s01, s04, s12, s26, s29, s32, s37, s38) expliquent leur risque. La répartition du récapitulatif est juste (3 / 18 / 15 / 8 = 44).
+## Périmètre
 
-## The list as a whole
+- [x] Aucune story ne reprend un élément du cimetière.
+  - s27b refuse explicitement une case « information obligatoire » sur la campagne libre (l. 2000-2002). Cela durcit la règle ; ça n'élargit rien.
+  - s42 ne promet toujours aucun accès aux membres sans email (l. 2755-2759).
+- [x] Aucune story ne dépasse le périmètre, sauf trois exceptions déclarées et justifiées : s39, s12b et s12c.
 
-- [ ] Ordre de dépendances exécutable : aucun cycle et aucune référence à une story ultérieure. En revanche, une dépendance manque (M3) et s13 attend une story qui n'existe pas (M4).
-- [x] Les ids sont bien formés, uniques et identiques entre les en-têtes et le récapitulatif. s01b et s04b utilisent le suffixe lettre autorisé par `AGENTS.md`.
-- [x] Pas de chevauchement réel. Les frontières sensibles sont écrites : s12/s16, s10/s23/s35, s15/s42, s25/s27, s01b/s02, s14/s37/s41.
+## Qualité des stories
 
-## Findings
+- [x] Chaque story est une tranche livrable de bout en bout, sauf les dérogations déclarées. Les ajouts de s08 (purge appelable seule) et de s12b (planification de la purge) restent rattachés à une valeur, et aucun n'est une couche technique isolée.
+- [ ] Chaque critère peut devenir un test : presque.
+  - Deux comportements testables ne vivent que dans les notes : la nature de la relance en s29 (m16) et la détection inverse en s12c (m19).
+  - s27b c1 énumère des types d'envoi qui n'existent pas encore au moment de sa livraison (m18).
+- [x] Les notes agentiques sont présentes et utiles. Celles de s27b donnent la classification et les deux arbitrages à ne pas « corriger ». Il reste quelques renvois et libellés périmés (m20, m21).
+- [x] La complexité est notée et aucune story n'est à 5. J'ai vérifié la répartition 3 / 19 / 16 / 9 = 47 story par story. Les neuf stories à 4 expliquent leur risque, et s03 et s26 portent un seuil de scission qui dit comment se reporter dans `docs/stories.md`.
 
-### Majeurs
+## La liste dans son ensemble
 
-**M1 — majeur — s24 c4 contre s40 c2 (et s24 note, s38 note) : deux critères se contredisent sur les notes internes.**
+- [x] Ordre de dépendances exécutable : pas de cycle, aucune dépendance vers une story postérieure.
+  - Nouvelles arêtes vérifiées : s12b → s08 ; s12c → s05, s06 ; s29 → s27b ; s42 → s27b. Toutes pointent vers des stories antérieures.
+  - En-têtes et récapitulatif concordent. s38 compte bien 27 dépendances (l. 2521, l. 2825).
+- [x] Les ids sont bien formés, uniques et identiques entre les en-têtes et le récapitulatif. Les ids intercalés (s01b, s04b, s12b, s12c, s27b) sont légitimes.
+- [x] Pas de chevauchement. La répartition entre s25 (exclusion totale), s27 (extension aux nouvelles cibles) et s27b (réintégration statutaire) est nette, et s29 et s42 consomment désormais la nature au lieu de la fixer.
 
-- Le critère 4 de s24 (l. 1483) dit : « Un membre n'a aucun accès à ses notes internes ni à celles d'un autre : ni page, ni API, **ni export** ».
-- Le critère 2 de s40 (l. 2324) dit : « La copie contient toutes les données le concernant, **y compris les notes internes écrites sur lui** ». La note de s24 (l. 1507) et celle de s38 (l. 2221) vont dans le même sens que s40.
-- Conséquence : le test de s40 fera tomber celui de s24, ou l'agent de s24 codera une exclusion que s40 devra défaire.
-- Ce « ni export » ne peut pas non plus être testé à la livraison de s24, puisque aucun export n'existe avant s38.
-- À corriger : limiter le critère de s24 à « ni page ni API côté membre ». Le contenu de la copie reste à s40.
-
-**M2 — majeur — s12 c3 et s19 : aucun critère ne vérifie que les factures restent rattachées à la bonne période de propriété.**
-
-- Le PRD dit : « une vente ne transfère pas les **factures** et documents antérieurs ».
-- Le critère 3 de s12 (l. 900) répartit la vérification : relevés en s18, documents en s32, et factures « à la **recherche** de s19 ». Une recherche n'est pas un test.
-- Aucun critère de s19 ni de s20 ne porte sur une parcelle vendue.
-- Relevés (s17 c4, s18 c4) et documents (s32 c4) ont leur test. Les factures n'en ont pas.
-- À corriger : ajouter un critère à s19. Soit le test de la parcelle vendue, soit un critère qui dit explicitement que la facture est rattachée à la personne facturée et non à la parcelle.
-
-**M3 — majeur — s03 : dépendance envers s02 non déclarée.**
-
-- Le critère 8 de s03 (l. 392) exige que l'action « modifier les paramètres de l'association (s02) » soit déclarée au registre, avec test en interface et côté serveur.
-- Or les dépendances (l. 398) et le récapitulatif (l. 2466) ne listent que `s01, s01b`. Pour le graphe déclaré, s02 et s03 pourraient se faire dans n'importe quel ordre. Dans ce cas, le critère 8 ne peut pas être testé.
-- L'ordre des numéros sauve l'exécution en série, pas le contrat de dépendances.
-- À corriger : ajouter `s02` aux dépendances de s03, dans la story et dans le récapitulatif. C'est la prochaine story après s02.
-
-**M4 — majeur — s13 (et s01b l. 264, s31 l. 1869) : s13 attend une story qui n'existe pas.**
-
-- La note de s13 (l. 994-997) exige que la sauvegarde de la base et des fichiers soit en place avant l'import des données réelles. Elle renvoie à « la story de mise en ligne décidée le 17 septembre 2026, **à écrire et à livrer avant s13** ».
-- Cette story n'est pas dans le découpage ni dans le récapitulatif.
-- La revue précédente (I-12) signalait qu'aucune story ne portait la sauvegarde. La correction a seulement renvoyé le point vers une story qui reste à écrire.
-- Sont bloquées : s13, puis s17, s18 (angle n°1 du PRD) et s42.
-- Pas critique, parce que ce n'est pas une ligne du tableau du PRD et que tout reste exécutable jusqu'à s12.
-- À corriger : écrire cette story, avec id, critères et place dans le récapitulatif, avant que s13 entre en `/ks-research`.
+## Constats
 
 ### Mineurs
 
-**m1 — mineur — s38 : numéros de critères et chiffres périmés.**
+**m16 : mineur : s29, le comportement d'un membre désinscrit face à la relance automatique n'a pas de critère.**
 
-- La note du critère 4 (l. 2193) et les notes (l. 2234, 2238) renvoient au « critère 8 » pour le mécanisme piloté par l'inventaire. C'est maintenant le **critère 9** (l. 2198) ; le critère 8 porte sur la configuration.
-- La note de risque parle de « vingt-six dépendances » (l. 2211, juste : 26 listées), mais la note l. 2236 conclut « d'où vingt-cinq ».
-- La phrase « L'export individuel répond au droit d'accès d'un membre — d'où l'inclusion des notes internes » (l. 2220-2222) date d'avant la séparation de s40.
-- Risque : un agent qui suit « critère 8 » regarde le mauvais critère.
+- La correction de M7 est portée par la note de s29 (l. 2096-2099), pas par un critère.
+- s42 c3 (l. 2734), lui, teste les deux natures sur un cas précis. s27b c3 (l. 1963) ne vérifie que les trois cibles de campagne, pas la série de relances de s29.
+- Un contournement du calcul de la cible dans s29, c'est-à-dire exactement le défaut de M7, passerait donc tous les tests.
+- À corriger : ajouter à s29 un critère symétrique de s42 c3. Un membre désinscrit en impayé reçoit la relance avec la nature `statutaire` (valeur du premier tenant) et ne la reçoit pas avec `facultative`.
 
-**m2 — mineur — s40 c6 : la trace de la demande n'a pas de critère d'export ou d'exclusion.**
+**m17 : mineur : s42, le gabarit de l'email de lancement reste implicite.**
 
-- s40 crée une donnée scopée : la trace de la demande et de sa livraison. Elle arrive après le garde-fou de s39.
-- s41 porte le critère attendu (c5 : exporter la trace ou la déclarer exclue avec son motif, pour que s39 continue de passer). s40 ne le porte pas.
-- Le test de s39 le détectera, mais le traitement de s40 et s41 n'est pas cohérent.
+- c3 (l. 2734) suppose qu'on peut se désinscrire « depuis l'email de lancement ». L'email porte donc le pied de page de s25, avec son lien de désinscription.
+- Comme le lancement est `statutaire`, s27b c4 (l. 1964) impose aussi la mention « reçu malgré la désinscription ».
+- Or la note (l. 2770-2771) dit que s42 réutilise l'invitation de s15, et s15 est explicitement un email transactionnel sans habillage de campagne (l. 1361-1363).
+- À corriger : écrire dans s42 que l'email de lancement porte l'habillage de s25 (lien de désinscription et mention statutaire de s27b), tout en reprenant le texte et le lien de s15.
 
-**m3 — mineur — s27 : trois sujets, onze critères, pour une complexité de 3.**
+**m18 : mineur : s27b c1 déclare la nature de types d'envoi livrés plus tard.**
 
-- s27 regroupe la cible « impayés », les groupes composés par le bureau et la classification facultatif / statutaire. La classification est à elle seule une ligne du PRD, notée 2.
-- La justification du 3 (l. 1691) ne parle que de la cible « impayés ». Elle oublie la classification.
-- Le document a scindé s25 parce qu'elle « groupait neuf critères » ; s27 en a onze.
-- À envisager : sortir la classification dans sa propre story, ou au minimum justifier le score en la comptant.
+- c1 (l. 1961) énumère « la relance automatique d'impayé (s29), l'invitation de lancement et sa relance (s42) ». Ces types d'envoi n'existent pas quand s27b est livrée.
+- Cela contredit la règle de s02 (l. 338-343), selon laquelle « les clés propres à une story arrivent avec elle ».
+- À corriger : soit dire explicitement que s27b déclare ces clés et leur seed avant leurs émetteurs (ce qui est testable sur la configuration seule), soit limiter c1 aux types de s25 et laisser s29 et s42 déclarer chacune la nature de leurs envois, avec le seed du tableau.
 
-**m4 — mineur — planificateur de l'ADR 006 (`scheduled_job` + cron) : personne n'est chargé de le mettre en place.**
+**m19 : mineur : s12c, la détection inverse ne vit que dans les notes.**
 
-- s26 (l. 1645) demande seulement de « s'y conformer ». s29 et le traitement en tâche de fond de s38 le supposent.
-- La purge sous 24 h de s08 c6 pourrait en être la première utilisatrice. Cela dépend de l'implémentation, qui relève de `/ks-plan`.
-- C'est le même type de trou que le stockage de fichiers avant l'ajout de s01b. Nommer la story qui le crée évite de le découvrir en recherche.
+- La convention qui rend une colonne de clé de fichier reconnaissable, et l'échec du test sur une colonne conforme absente de l'inventaire (l. 1153-1157), sont un comportement testable.
+- C'est ce comportement qui transforme un oubli en test rouge, mais c3 (l. 1105) ne vérifie que les colonnes inventoriées.
+- À corriger : en faire un critère, vérifié par une colonne de contrôle, sur le modèle de s39 c3 (l. 2598).
 
-**m5 — mineur — s39 : story transverse sans valeur visible pour un utilisateur.**
+**m20 : mineur : récapitulatif et libellés périmés.**
 
-- La dérogation est déclarée, limitée et justifiée. Je la note pour mémoire, comme la revue précédente (I-18).
+- Le paragraphe des écarts avec le PRD (l. 2856) en compte « quatre » : s04, s27, s38 et l'identité visuelle. Il omet s03, désormais à 4 alors que la ligne « Connexion par lien magique » est notée 3 au PRD (l. 65). La note de s03 justifie bien ce score (l. 405), mais le paragraphe n'a pas été mis à jour.
+- s26 (l. 1885-1886) attribue à un « Mineur m4 » la règle de report de la scission. Cette règle vient de m15 ; m4 portait sur le planificateur.
+- À corriger : « cinq écarts », en ajoutant s03, et « mineurs m4 et m15 ».
+
+**m21 : mineur : la règle transverse cite un type d'envoi qui n'existe pas.**
+
+- La l. 53 dit qu'un désinscrit cesse de recevoir « les campagnes libres et les annonces d'actualité ».
+- Aucune story n'envoie d'annonce d'actualité par email, et le tableau de s27b (l. 1989-1997) ne connaît pas ce type. Un agent qui lit la règle transverse pourrait l'inventer au `/ks-research` de s27b.
+- À corriger : retirer « annonces d'actualité », ou préciser qu'une telle annonce passe par la campagne libre.
+
+**m5 : mineur, pour mémoire : s39, s12b et s12c sont hors du tableau du PRD.**
+
+- Les trois dérogations sont déclarées, bornées et justifiées. Rien à corriger.
 
 ## Verdict
 
-Toutes les lignes du périmètre sont couvertes et aucune story ne reprend un élément du cimetière. Aucune dépendance n'est circulaire ni n'attend une story ultérieure, et aucune story n'est à 5. Les quatre problèmes majeurs sont des défauts précis et peu coûteux à corriger dans le markdown :
+Aucun problème critique :
 
-- la contradiction entre s24 et s40 ;
-- le rattachement daté des factures sans test ;
-- la dépendance s03 → s02 manquante ;
-- la story de mise en ligne à écrire avant s13.
+- toutes les lignes du périmètre sont couvertes ;
+- aucune story ne reprend un élément du cimetière ;
+- aucune story n'est à 5 ;
+- aucun cycle et aucune dépendance vers une story postérieure.
 
-Aucun ne concerne s02, la prochaine story du pipeline. Corriger M3 avant `/ks-plan s03`, M1 avant `/ks-plan s24`, M2 avant `/ks-plan s19` et M4 avant `/ks-research s13`.
+Le majeur M7 est fermé, avec les preuves ci-dessus, et les mineurs m8 à m15 aussi. Les six nouveaux mineurs se corrigent dans le markdown. Le plus utile est m16, à traiter avant `/ks-plan s29`. m18 et m21 sont à régler avant `/ks-research s27b`, et m17 avant `/ks-plan s42`. Aucun ne bloque s03, la prochaine story.
 
 Fichiers relus :
 
 - `/workspace/docs/prd.md`
 - `/workspace/docs/stories.md`
 - `/workspace/templates/stories-review-checklist.md`
-- `/workspace/docs/reviews/stories.md` (revue précédente, pour ne pas reposer des points réglés)
+- `/workspace/docs/reviews/stories.md` (revue précédente)
 
-Max severity: major
+Max severity: minor
 Stories ready: yes
