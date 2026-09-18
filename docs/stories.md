@@ -378,7 +378,7 @@ repli sûr est un style en ligne posé par le serveur sur `<html>` à partir du 
 
 ### Complexity
 
-3
+4
 
 ### Acceptance criteria
 
@@ -400,7 +400,16 @@ s01, s01b, s02
 
 ### Agentic notes
 
-Réf. `V5 §2, §3.2, §3.3`, `CDCT §2, §3.3`. Better Auth est déjà branché
+Réf. `V5 §2, §3.2, §3.3`, `CDCT §2, §3.3`.
+
+Risque (complexité 4, relevée de 3 en revue du découpage) : quatre sujets à risque se cumulent — le
+lien magique à 4 h, le renommage du rôle `admin` en `board` (plugin Better Auth, énuméré, constantes),
+la création du registre d'actions avec la reprise de s01b et s02, et la session sur plusieurs
+domaines. **Seuil de scission** : si le plan dépasse dix tâches, sortir d'abord la session
+multi-domaine, puis le renommage des rôles, chacun en story propre — la scission se fait alors dans
+`docs/stories.md`, avec un nouvel id et la mise à jour des dépendances, avant `/ks-plan`.
+
+Better Auth est déjà branché
 (`src/lib/better-auth/auth.ts`) et gère nativement le magic link : **configurer, ne pas réécrire**.
 La validité 4 h est contractuelle — c'est un paramètre, pas la valeur par défaut de la lib.
 
@@ -740,7 +749,8 @@ statiques). Voir `.claude/rules/01-presentation/rule-react-cache-next-cache.md`.
 - [ ] Le bureau consulte en back-office la liste des messages reçus, triée par date, avec le détail de chaque message.
 - [ ] Changer l'adresse de notification dans les paramètres (s02) redirige le message suivant vers la nouvelle adresse.
 - [ ] Au-delà d'un nombre d'envois par heure et par visiteur fixé en paramètre de tenant, une soumission supplémentaire est refusée avec un message explicite ; en deçà du seuil, elle passe.
-- [ ] Le compteur repose sur une empreinte d'adresse IP hachée et purgée sous 24 h : aucune adresse IP en clair n'est écrite en base.
+- [ ] Le compteur repose sur une empreinte d'adresse IP hachée : aucune adresse IP en clair n'est écrite en base.
+- [ ] Une opération de purge supprime toute empreinte de plus de 24 h et n'en touche aucune autre ; elle s'exécute à chaque soumission et peut être appelée seule, hors de toute soumission — vérifié par un test sur des empreintes de part et d'autre des 24 h.
 
 ### Dependencies
 
@@ -761,9 +771,15 @@ en revue du découpage : un formulaire public sans protection est une porte ouve
 coûterait au bureau bénévole exactement le temps que le produit prétend lui rendre. Deux garde-fous
 imposés par le PRD : compteur sur empreinte hachée et purge sous 24 h, pour ne pas faire entrer un
 journal d'adresses IP — donnée personnelle sans règle de rétention — dans le produit. Rien à exporter
-en s38 de ce fait. Le planificateur de l'ADR 006 n'arrive qu'en s26 : la purge doit tenir ses 24 h
-sans lui, à trancher en `/ks-research`. Une purge déclenchée seulement par une nouvelle soumission ne
-suffit pas — sans trafic, les empreintes restent.
+en s38 de ce fait.
+
+**Qui déclenche la purge.** Une purge déclenchée seulement par une nouvelle soumission ne suffit pas :
+sans trafic, les empreintes restent. Aucun déclencheur périodique n'existe encore — le cron système
+arrive en s12b, le planificateur de l'ADR 006 en s26. Mécanisme retenu, par étapes : cette story
+livre l'**opération de purge**, appelable seule (critère ci-dessus) et exécutée à chaque soumission ;
+**s12b** en planifie l'appel quotidien sur le serveur, avant toute mise en ligne publique ; s26 peut
+la reprendre dans `scheduled_job` sans changer l'opération. En développement, l'absence d'appel
+périodique est sans conséquence : aucune adresse réelle n'y passe.
 
 Le boilerplate a `src/db/models/user-submission-model.ts` — vérifier s'il convient avant d'en créer
 un nouveau. Server Action : suivre `rule-safe-server-action` et `rule-form-front-and-back`
@@ -996,11 +1012,12 @@ chaque association soit servie en HTTPS sur son propre domaine.
 - [ ] Déployer une nouvelle version applique les migrations en attente avant que la nouvelle version ne serve des requêtes ; une migration en échec interrompt le déploiement et laisse la version précédente en service.
 - [ ] Un redéploiement conserve les fichiers déjà téléversés : un logo envoyé avant le redéploiement est toujours servi après.
 - [ ] Après l'ajout du domaine d'une nouvelle association dans la configuration du serveur, ce domaine répond en HTTPS avec un certificat valide et sert cette association — vérifié par le même test de fumée.
-- [ ] Aucun workflow du dépôt ne prétend déployer ce qu'il ne déploie pas : `production.yml` et `preview.yml`, restes du boilerplate, sont remplacés par le déploiement réel ou retirés.
+- [ ] Sur le serveur déployé, la purge des empreintes des formulaires publics (s08) est appelée au moins une fois par jour sans intervention humaine : une empreinte de plus de 24 h ne survit pas à l'appel planifié suivant.
+- [ ] `production.yml` et `preview.yml`, restes du boilerplate, sont remplacés par le déploiement réel ou retirés du dépôt.
 
 ### Dependencies
 
-s01, s01b, s03
+s01, s01b, s03, s08
 
 ### Agentic notes
 
@@ -1053,14 +1070,15 @@ confiance, cookies) fonctionne sur le serveur réel pour les deux domaines du te
 aux redéploiements ; sinon chaque déploiement efface les fichiers, ce que le critère du logo
 détecte.
 
-**Le cron système des tâches planifiées.** s12c y ajoute les sauvegardes et s26 le déclencheur du
-planificateur de l'ADR 006. Cette story choisit **où** vivent ces planifications sur le serveur et
+**Le cron système des tâches planifiées.** Cette story y installe la purge quotidienne des empreintes
+de s08, s12c y ajoute les sauvegardes et s26 le déclencheur du planificateur de l'ADR 006. Cette story choisit **où** vivent ces planifications sur le serveur et
 le documente, pour que les deux suivantes n'aient pas à le chercher.
 
 **À vérifier en review, pas en test** : qu'ajouter un domaine ne demande aucune modification du code
 de l'application (c'est une propriété du diff), et que la procédure d'ajout d'un domaine et de
 déploiement est écrite dans la documentation d'exploitation (c'est une propriété de la
-documentation). Le critère testable est celui du nouveau domaine servi en HTTPS.
+documentation). Le critère testable est celui du nouveau domaine servi en HTTPS. De même, qu'aucun
+workflow restant ne prétende déployer ce qu'il ne déploie pas : c'est une propriété du diff.
 
 **Hors de cette story** : la sauvegarde (s12c), la supervision applicative (Sentry reste tel quel),
 la montée de version du système du VPS.
@@ -1093,7 +1111,7 @@ les associations **afin qu'**aucune perte du serveur ne fasse disparaître leurs
 
 ### Dependencies
 
-s01b, s04, s09, s12b
+s01b, s04, s05, s06, s09, s12b
 
 ### Agentic notes
 
@@ -1127,10 +1145,16 @@ ensuite — un fichier en trop est inoffensif, une clé sans fichier ne l'est pa
 restauration le vérifie.
 
 **Inventaire des clés de fichier — pas une liste écrite dans le test.** À la livraison de cette
-story, trois familles de fichiers existent : l'identité (`identity_logo_key`, `identity_favicon_key`,
-s01b), les images de blocs de page (s04) et les PDF d'analyses d'eau (s09). Le test lit la liste des
-colonnes de clé de fichier à **un seul endroit** du code, que chaque story qui stocke des fichiers
-complète (s31, s32, s36) ; il échoue si une colonne listée n'existe pas. Une énumération recopiée
+story, cinq familles de fichiers existent : l'identité (`identity_logo_key`, `identity_favicon_key`,
+s01b), les images de blocs de page (s04), l'image d'une actualité (s05), la photo d'une fiche du
+bureau (s06) et les PDF d'analyses d'eau (s09). Vérifier en `/ks-research` lesquelles ont leur propre
+colonne et lesquelles réutilisent celle de s04. Le test lit la liste des colonnes de clé de fichier à
+**un seul endroit** du code, que chaque story qui stocke des fichiers complète ensuite (s31, s32,
+s34, s36) ; il échoue si une colonne listée n'existe pas. **Détection inverse** : adopter une
+convention qui rend une colonne de clé de fichier reconnaissable dans le schéma (nommage ou
+type), à trancher en `/ks-research`, et faire échouer le test sur toute colonne qui suit la
+convention sans figurer à l'inventaire — c'est ce qui transforme l'oubli en test rouge, comme s39
+pour l'export. Une énumération recopiée
 dans le test finit par oublier une famille — c'est le défaut que s38 et s39 traitent pour l'export.
 
 **Piège n°3 — une alerte qui passe par ce qu'elle surveille.** L'application envoie ses emails par
@@ -1314,6 +1338,7 @@ quelqu'un, là on emprunte temporairement une vue pour déboguer.
 - [ ] Inviter un membre marqué « joignable par courrier uniquement » est refusé avec un message expliquant qu'il relève du courrier, et non par une erreur technique.
 - [ ] Réinviter un membre déjà invité est possible et remplace l'invitation précédente ; l'ancien lien cesse de fonctionner.
 - [ ] Le bureau d'une association ne peut inviter aucun membre d'une autre.
+- [ ] Le lien de l'invitation pointe vers le domaine de l'association du membre et y ouvre la session — vérifié sur deux associations.
 
 ### Dependencies
 
@@ -1331,7 +1356,7 @@ l'attribut « a une adresse email » viennent de s12.
 
 **Elle n'implémente ni compte ni lien magique** : elle déclenche ceux de s03 depuis la fiche de s12.
 Une seconde implémentation du lien de connexion serait un défaut de review. Le lien pointe donc vers
-le domaine de l'association du membre, comme en s03 : le vérifier sur deux associations.
+le domaine de l'association du membre, comme en s03 (critère dédié ci-dessus).
 
 **L'invitation est un email transactionnel, pas une campagne.** Elle emprunte le canal du lien
 magique (s03), pas le gabarit de campagne livré par s25 — qui arrive dix stories plus tard. Exiger ce
@@ -1709,7 +1734,8 @@ l'improviser ici.
 
 **Sensible RGPD** : ce sont des notes sur des personnes physiques, écrites par des bénévoles. Deux
 conséquences pour l'implémentation : l'étanchéité côté membre est un test, pas une intention ; et
-ces notes doivent être **incluses dans l'export de données** (s38) au titre du droit d'accès.
+ces notes doivent être **incluses dans l'export de données** : au titre de la portabilité dans l'export
+d'association (s38), et au titre du droit d'accès dans la copie du membre (s40).
 Le noter dans le plan de s38.
 
 Ne pas exposer ces notes dans une réponse d'API partagée avec la présentation membre — le risque
@@ -1854,7 +1880,9 @@ Idempotence et persistance de la seconde part : la planification survit au redé
 authentifiée par secret partagé, et son déclenchement par le cron système, installé à l'endroit
 choisi et documenté par s12b. C'est la première story dont un critère exige une tâche durable ; s29
 et s38 le réutilisent sans en créer un second. Le compter dans le seuil de dix tâches ci-dessus : s'il
-fait déborder le plan, c'est lui qui part avec le budget et la file de report. Mineur m4 de la revue
+fait déborder le plan, c'est lui qui part avec le budget et la file de report. La scission se fait
+alors dans `docs/stories.md`, avant `/ks-plan`, avec un nouvel id et la mise à jour des dépendances
+de s29, s30, s38 et s42 — jamais comme une story qui n'existerait que dans un plan. Mineur m4 de la revue
 du découpage.
 
 ---
@@ -2310,6 +2338,9 @@ explicite.
 Données de seed disponibles : la liste des chemins et portails de La Fourche figure dans
 `docs/Admin-MEL/ASL_LA_FOURCHE_Presentation.pdf` (support AG du 24/07/2026).
 
+Sauvegarde : déclarer la colonne de clé de fichier du plan des voiries dans l'inventaire que lit le
+test de restauration de s12c (voir ses notes).
+
 ---
 
 ## Story s35-petites-annonces — Publier une annonce entre membres
@@ -2752,7 +2783,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s01  | provisionner-association  | 4   | —                                                                                                                                        | A    |
 | s01b | logo-association          | 3   | s01                                                                                                                                      | A    |
 | s02  | parametres-association    | 3   | s01, s01b                                                                                                                                | A    |
-| s03  | connexion-lien-magique    | 3   | s01, s01b, s02                                                                                                                           | A    |
+| s03  | connexion-lien-magique    | 4   | s01, s01b, s02                                                                                                                           | A    |
 | s04  | pages-cms                 | 4   | s01, s02, s03                                                                                                                            | A    |
 | s04b | navigation-publique       | 2   | s04                                                                                                                                      | A    |
 | s05  | actualites                | 2   | s04                                                                                                                                      | A    |
@@ -2763,8 +2794,8 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                                            | A    |
 | s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                                       | A    |
 | s12  | membres-parcelles         | 4   | s01, s03                                                                                                                                 | B    |
-| s12b | mise-en-ligne             | 3   | s01, s01b, s03                                                                                                                           | B    |
-| s12c | sauvegarde                | 3   | s01b, s04, s09, s12b                                                                                                                     | B    |
+| s12b | mise-en-ligne             | 3   | s01, s01b, s03, s08                                                                                                                      | B    |
+| s12c | sauvegarde                | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
 | s13  | import-initial-membres    | 3   | s12, s12c                                                                                                                                | B    |
 | s14  | attribuer-roles           | 2   | s03, s12                                                                                                                                 | B    |
 | s15  | inviter-membre            | 2   | s02, s03, s12                                                                                                                            | B    |
@@ -2797,7 +2828,7 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s41  | simulation-role           | 2   | s01, s03, s24, s37, s38, s39                                                                                                             | F    |
 | s42  | lancement-invitations     | 3   | s03, s13, s15, s25, s26, s27, s27b, s28                                                                                                  | F    |
 
-**47 stories, aucune à 5.** Répartition : trois à 1, dix-neuf à 2, dix-sept à 3, huit à 4.
+**47 stories, aucune à 5.** Répartition : trois à 1, dix-neuf à 2, seize à 3, neuf à 4.
 **Trois stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12b, la mise en ligne, qu'exige le critère de succès « mise en
@@ -2812,7 +2843,8 @@ travail vit dans `docs/adaptation-socle-design-system.md`, et la contrainte qu'e
 stories d'écran reste, en règle transverse « Socle habillé ».
 Sa surface est énumérée dans le tableau mesuré de `docs/adaptation-socle-design-system.md`, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
-Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
+Les neuf stories à 4 — s01 (isolation multi-tenant), s03 (lien magique, renommage des rôles,
+registre d'actions et session multi-domaine), s04 (back-office éditorial : modèle en
 blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
 daté), s26
 (planification, budget transverse et file de report), s29 (planification et idempotence des
