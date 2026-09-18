@@ -1952,9 +1952,8 @@ ne peut pas être oubliée.
 
 **Le mécanisme se code, la classification se configure.** La nature de chaque modèle est une doctrine
 posée par défaut, à faire confirmer par le conseil RGPD : c'est une donnée de configuration du
-tenant, jamais une constante. Valeurs par défaut suggérées, à trancher en `/ks-research` avec
-`V5 §8.1` : convocation AG, facture disponible et relance manuelle `statutaire` ; publication
-post-AG et campagne libre `facultative`.
+tenant, jamais une constante. La nature de chaque modèle sera fournie par la prestataire au
+`/ks-research` de cette story : ne pas la déduire de `V5 §8.1` ni la proposer d'office.
 
 Sur-exclure est le sens sûr de l'erreur : un modèle sans nature connue se traite comme `facultative`,
 jamais l'inverse.
