@@ -50,7 +50,7 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   la vente. Toute clé de rattachement — stockage nominatif, rapprochement Pennylane, dédoublonnage
   d'import, export — s'indexe sur cette clé primaire. Voir `V5 §5.1`.
 - **Désinscription : elle ne couvre que les communications facultatives.** Un membre qui se
-  désinscrit cesse de recevoir les campagnes libres et les annonces d'actualité ; il continue de
+  désinscrit cesse de recevoir les envois facultatifs, dont les campagnes libres ; il continue de
   recevoir les communications statutaires et contractuelles — convocation à l'AG, mise à disposition
   d'une facture, relance d'impayé — auxquelles son appartenance à l'association l'engage. Le pied de
   page de ces envois-là le dit explicitement.
@@ -1103,6 +1103,7 @@ les associations **afin qu'**aucune perte du serveur ne fasse disparaître leurs
 - [ ] Une sauvegarde produit, pour un même horodatage, une copie de la base **et** une copie du répertoire de fichiers (`LOCAL_STORAGE_ROOT`).
 - [ ] La sauvegarde contient les lignes de **tous** les tenants : après restauration, le nombre de lignes de chaque table métier est identique à celui de la base d'origine, pour chacune des associations — vérifié par un test automatisé sur deux tenants.
 - [ ] Restaurer une sauvegarde sur une base vide et un répertoire vide rend une application dans laquelle **toute clé de fichier référencée en base** désigne un fichier présent — vérifié par le même test, sur l'inventaire des colonnes de clé de fichier décrit dans les notes.
+- [ ] Ajouter une colonne de clé de fichier qui suit la convention de nommage, sans la déclarer à l'inventaire, fait échouer ce test — vérifié en ajoutant une colonne de contrôle.
 - [ ] La sauvegarde s'exécute sans intervention humaine, à une fréquence planifiée, et ne demande aucune confirmation interactive.
 - [ ] Chaque sauvegarde est copiée hors du serveur qui l'a produite ; la destination vient de la configuration, pas du code.
 - [ ] Les sauvegardes plus anciennes que la durée de conservation configurée sont supprimées, sur le serveur comme à destination ; la durée vient de la configuration.
@@ -1153,8 +1154,8 @@ colonne et lesquelles réutilisent celle de s04. Le test lit la liste des colonn
 s34, s36) ; il échoue si une colonne listée n'existe pas. **Détection inverse** : adopter une
 convention qui rend une colonne de clé de fichier reconnaissable dans le schéma (nommage ou
 type), à trancher en `/ks-research`, et faire échouer le test sur toute colonne qui suit la
-convention sans figurer à l'inventaire — c'est ce qui transforme l'oubli en test rouge, comme s39
-pour l'export. Une énumération recopiée
+convention sans figurer à l'inventaire (critère dédié) — c'est ce qui transforme l'oubli en test
+rouge, comme s39 pour l'export. Une énumération recopiée
 dans le test finit par oublier une famille — c'est le défaut que s38 et s39 traitent pour l'export.
 
 **Piège n°3 — une alerte qui passe par ce qu'elle surveille.** L'application envoie ses emails par
@@ -1882,8 +1883,8 @@ choisi et documenté par s12b. C'est la première story dont un critère exige u
 et s38 le réutilisent sans en créer un second. Le compter dans le seuil de dix tâches ci-dessus : s'il
 fait déborder le plan, c'est lui qui part avec le budget et la file de report. La scission se fait
 alors dans `docs/stories.md`, avant `/ks-plan`, avec un nouvel id et la mise à jour des dépendances
-de s29, s30, s38 et s42 — jamais comme une story qui n'existerait que dans un plan. Mineur m4 de la revue
-du découpage.
+de s29, s30, s38 et s42 — jamais comme une story qui n'existerait que dans un plan. Mineurs m4
+(planificateur) et m15 (report de la scission) de la revue du découpage.
 
 ---
 
@@ -1958,7 +1959,7 @@ savoir, sans subir les envois facultatifs que j'ai refusés.
 
 ### Acceptance criteria
 
-- [ ] Chaque type d'envoi porte une nature, `facultative` ou `statutaire`, lue dans la configuration du tenant : les quatre modèles de s25, la campagne libre, la relance automatique d'impayé (s29), l'invitation de lancement et sa relance (s42). La campagne libre n'a pas de nature propre à chaque envoi : le bureau ne la choisit pas en rédigeant.
+- [ ] Chaque type d'envoi existant porte une nature, `facultative` ou `statutaire`, lue dans la configuration du tenant : les quatre modèles de s25 et la campagne libre. La campagne libre n'a pas de nature propre à chaque envoi : le bureau ne la choisit pas en rédigeant.
 - [ ] Un type d'envoi sans nature configurée se traite comme `facultative`.
 - [ ] Un membre désinscrit, exclu de tout envoi depuis s25, est **réintégré** dans les cibles d'une campagne `statutaire` et reste exclu des `facultative` — vérifié sur les trois cibles (tous, impayés, groupe) et sur les deux natures.
 - [ ] Le pied de page d'un envoi `statutaire` indique que le membre le reçoit malgré sa désinscription, parce que son appartenance à l'association l'y engage.
@@ -1986,15 +1987,15 @@ tenant, jamais une constante.
 **Classification du premier tenant** (arbitrage de la prestataire, 18 septembre 2026) — ce sont des
 valeurs de **seed**, pas des constantes, et elles restent à faire confirmer par le conseil RGPD :
 
-| Type d'envoi                                | Nature        |
-| ------------------------------------------- | ------------- |
-| Convocation à l'assemblée générale          | `statutaire`  |
-| Facture disponible dans l'espace membre     | `statutaire`  |
-| Relance manuelle (modèle de s25)            | `statutaire`  |
-| Relance automatique d'impayé (s29)          | `statutaire`  |
-| Invitation de lancement et sa relance (s42) | `statutaire`  |
-| Publication de documents après l'AG         | `facultative` |
-| Campagne libre                              | `facultative` |
+| Type d'envoi                                              | Nature        |
+| --------------------------------------------------------- | ------------- |
+| Convocation à l'assemblée générale                        | `statutaire`  |
+| Facture disponible dans l'espace membre                   | `statutaire`  |
+| Relance manuelle (modèle de s25)                          | `statutaire`  |
+| Relance automatique d'impayé — déclarée par s29           | `statutaire`  |
+| Invitation de lancement et sa relance — déclarées par s42 | `statutaire`  |
+| Publication de documents après l'AG                       | `facultative` |
+| Campagne libre                                            | `facultative` |
 
 Deux arbitrages à ne pas « corriger » : la publication post-AG est facultative, parce que les
 documents restent consultables dans l'espace documentaire ; et la campagne libre n'atteint **jamais**
@@ -2006,8 +2007,10 @@ reçoit quand même la relance, qui porte sur son accès au service.
 Sur-exclure est le sens sûr de l'erreur : un modèle sans nature connue se traite comme `facultative`,
 jamais l'inverse.
 
-Consommateurs : s29 et s42, qui lisent la nature de leurs envois dans cette configuration au lieu de
-la supposer.
+Les deux lignes « déclarée par » ne sont pas des clés de cette story : conformément à la règle de s02
+(« les clés propres à une story arrivent avec elle »), s29 et s42 déclarent chacune la nature de leurs
+envois dans ce mécanisme, avec la valeur de seed du tableau. Elles figurent ici pour que la
+classification du premier tenant se lise en un seul endroit.
 
 ---
 
@@ -2071,6 +2074,7 @@ sur le VPS LWS (2 vCore, 4 Go) — un moteur à navigateur headless y est un ris
 - [ ] Un membre ne reçoit jamais deux fois la même relance, même si le traitement est rejoué (idempotence vérifiée par un test).
 - [ ] Les relances passent par l'adaptateur d'envoi et sont décomptées du budget quotidien du tenant (s26) : une relance qui dépasserait le budget est reportée, pas perdue.
 - [ ] Les relances ne ciblent que les membres en impayé au sens du prédicat de s19 ; aucun membre à jour, ni aucun membre dont le statut est en attente de classement, n'en reçoit.
+- [ ] La relance automatique déclare sa nature dans le mécanisme de s27b, avec la valeur de seed `statutaire` pour le premier tenant. Avec la nature `statutaire`, un membre désinscrit en impayé reçoit la relance ; avec `facultative`, il ne la reçoit pas — vérifié sur les deux cas.
 - [ ] Une page de back-office liste, par impayé : nom du membre, numéro de parcelle, date de la facture, nombre et dates des relances déjà envoyées.
 - [ ] Les membres en impayé sans email apparaissent dans la page de suivi, marqués « courrier », avec une action qui génère leur publipostage de relance (s28) ; ils ne sont ni relancés par email ni omis de la liste.
 
@@ -2731,7 +2735,8 @@ pendant une simulation reste possible mais est attribuée au SuperAdmin (critèr
 
 - [ ] Une campagne d'invitation part vers tous les membres disposant d'une adresse email, chaque destinataire recevant un lien de connexion qui lui est propre.
 - [ ] La même opération produit, pour les membres sans email, un publipostage PDF (s28) annonçant le site public et ses contenus consultables sans compte.
-- [ ] La campagne de lancement et sa relance suivent la nature configurée en s27b : avec la nature `statutaire` (valeur du premier tenant), la relance atteint aussi un membre qui s'est désinscrit depuis l'email de lancement sans s'être connecté — vérifié sur ce cas ; avec `facultative`, elle l'exclut.
+- [ ] L'invitation de lancement et sa relance déclarent leur nature dans le mécanisme de s27b, avec la valeur de seed `statutaire` pour le premier tenant, et la suivent : avec la nature `statutaire` (valeur du premier tenant), la relance atteint aussi un membre qui s'est désinscrit depuis l'email de lancement sans s'être connecté — vérifié sur ce cas ; avec `facultative`, elle l'exclut.
+- [ ] L'email de lancement porte l'habillage commun des campagnes (s25) — en-tête au logo, pied de page avec lien de désinscription — et, avec la nature `statutaire`, la mention de s27b indiquant qu'il est reçu malgré une désinscription. Son texte et son lien de connexion sont ceux de l'invitation de s15.
 - [ ] Aucun membre de la liste n'est omis des deux canaux : la somme des destinataires email et des courriers produits égale l'effectif de l'association.
 - [ ] Le bureau suit l'adoption : nombre d'invitations envoyées, nombre de membres s'étant connectés au moins une fois, liste des membres jamais connectés.
 - [ ] Relancer les membres jamais connectés renvoie une invitation à eux seuls, sans réinviter ceux qui se sont déjà connectés.
@@ -2768,7 +2773,10 @@ C'est le moment de vérité de l'angle n°2 du PRD : les deux populations reçoi
 au même moment, depuis le même outil, sans double saisie.
 
 Elle réutilise le mécanisme d'invitation unitaire de s15, appliqué à une cible entière : ni second
-gabarit d'invitation, ni seconde génération de lien.
+gabarit d'invitation, ni seconde génération de lien. **Mais l'enveloppe change** : l'invitation
+unitaire de s15 est un email transactionnel sans habillage de campagne, alors que le lancement est un
+envoi de masse — il porte donc le gabarit commun de s25 et son lien de désinscription, obligatoire sur
+tout envoi de masse. Le texte et le lien de s15 s'insèrent dans ce gabarit.
 
 Le lien de connexion propre à chaque destinataire est une variable de campagne d'un genre nouveau —
 elle porte un secret à usage unique. Ne pas la journaliser, ne pas la stocker dans l'archive de
@@ -2853,8 +2861,9 @@ s38 (moteur d'export et son archive) — portent chacune leur risque
 explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
 `/ks-plan`.
 
-Quatre écarts avec les scores du PRD, tous documentés dans la story concernée plutôt que lissés :
-s04 à 4 contre 3, que le modèle en blocs typés de l'ADR 007 porte au-dessus du chiffrage du PRD ;
+Cinq écarts avec les scores du PRD, tous documentés dans la story concernée plutôt que lissés :
+s03 à 4 contre 3 (lien magique, renommage des rôles, registre d'actions et session sur plusieurs
+domaines) ; s04 à 4 contre 3, que le modèle en blocs typés de l'ADR 007 porte au-dessus du chiffrage du PRD ;
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
 main) ; s38 à 4 contre 3 (vingt-sept dépendances, six familles de contenu, exécution en tâche de
 fond, écriture en flux sur un VPS à 4 Go) ; et l'identité visuelle, chiffrée 2 par le PRD, portée par
@@ -2862,7 +2871,9 @@ s01b à 3 — le logo et le favicon y tirent le stockage de fichiers de l'ADR 00
 chiffrait pas — et, pour la teinte, par s02, dont le 3 couvre d'abord le registre de paramètres. Le
 PRD chiffre des _features_, ce tableau chiffre des _tranches livrables_.
 
-Sept stories ont été ajoutées en revue du découpage : s04b (navigation du site public, scindée hors
+Dix stories ont été ajoutées en revue du découpage : s12b (mise en ligne, qui manquait avant
+l'import des données réelles — majeur M4), s12c (sauvegarde, scindée hors de s12b),
+s27b (nature des envois, scindée hors de s27), s04b (navigation du site public, scindée hors
 de s04 qui empilait deux lignes de périmètre — premier id intercalé), s14 (attribution
 des rôles — les rôles
 existaient et la matrice était prévue, mais rien ne permettait de désigner la présidente ni le
