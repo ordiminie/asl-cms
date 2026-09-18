@@ -1930,7 +1930,8 @@ savoir, sans subir les envois facultatifs que j'ai refusés.
 
 ### Acceptance criteria
 
-- [ ] Chaque modèle et chaque campagne porte une nature, `facultative` ou `statutaire`, lue dans la configuration du tenant.
+- [ ] Chaque type d'envoi porte une nature, `facultative` ou `statutaire`, lue dans la configuration du tenant : les quatre modèles de s25, la campagne libre, la relance automatique d'impayé (s29), l'invitation de lancement et sa relance (s42). La campagne libre n'a pas de nature propre à chaque envoi : le bureau ne la choisit pas en rédigeant.
+- [ ] Un type d'envoi sans nature configurée se traite comme `facultative`.
 - [ ] Un membre désinscrit, exclu de tout envoi depuis s25, est **réintégré** dans les cibles d'une campagne `statutaire` et reste exclu des `facultative` — vérifié sur les trois cibles (tous, impayés, groupe) et sur les deux natures.
 - [ ] Le pied de page d'un envoi `statutaire` indique que le membre le reçoit malgré sa désinscription, parce que son appartenance à l'association l'y engage.
 - [ ] L'écran de confirmation de désinscription précise désormais ce que le membre continuera de recevoir, d'après la classification.
@@ -1952,13 +1953,33 @@ ne peut pas être oubliée.
 
 **Le mécanisme se code, la classification se configure.** La nature de chaque modèle est une doctrine
 posée par défaut, à faire confirmer par le conseil RGPD : c'est une donnée de configuration du
-tenant, jamais une constante. La nature de chaque modèle sera fournie par la prestataire au
-`/ks-research` de cette story : ne pas la déduire de `V5 §8.1` ni la proposer d'office.
+tenant, jamais une constante.
+
+**Classification du premier tenant** (arbitrage de la prestataire, 18 septembre 2026) — ce sont des
+valeurs de **seed**, pas des constantes, et elles restent à faire confirmer par le conseil RGPD :
+
+| Type d'envoi                                | Nature        |
+| ------------------------------------------- | ------------- |
+| Convocation à l'assemblée générale          | `statutaire`  |
+| Facture disponible dans l'espace membre     | `statutaire`  |
+| Relance manuelle (modèle de s25)            | `statutaire`  |
+| Relance automatique d'impayé (s29)          | `statutaire`  |
+| Invitation de lancement et sa relance (s42) | `statutaire`  |
+| Publication de documents après l'AG         | `facultative` |
+| Campagne libre                              | `facultative` |
+
+Deux arbitrages à ne pas « corriger » : la publication post-AG est facultative, parce que les
+documents restent consultables dans l'espace documentaire ; et la campagne libre n'atteint **jamais**
+un désinscrit, quel qu'en soit le sujet — pas de case « information obligatoire » à l'envoi, qui
+permettrait de contourner une désinscription. L'invitation de lancement est statutaire pour sa
+**relance** : un membre qui s'est désinscrit depuis l'email de lancement sans jamais se connecter
+reçoit quand même la relance, qui porte sur son accès au service.
 
 Sur-exclure est le sens sûr de l'erreur : un modèle sans nature connue se traite comme `facultative`,
 jamais l'inverse.
 
-Consommateurs : s29 (les relances sont statutaires) et s42 (le lancement est statutaire).
+Consommateurs : s29 et s42, qui lisent la nature de leurs envois dans cette configuration au lieu de
+la supposer.
 
 ---
 
@@ -2044,8 +2065,10 @@ connu (`Annexe A`), mais la série de relances se conçoit contre l'interface de
 la cible calculée par s27 : avec la seule saisie manuelle, la story est testable de bout en bout.
 Ne pas attendre s20 pour la livrer, et ne coder ici aucune détection Pennylane spécifique.
 
-Une relance d'impayé est une communication **contractuelle** : un membre désinscrit la reçoit quand
-même (règle transverse). Ne pas appliquer le filtre de désinscription ici.
+La cible des relances passe par le calcul de la cible de s27, comme toutes les autres. Qu'un membre
+désinscrit reçoive ou non une relance découle de la **nature configurée** de la relance automatique
+(s27b, `statutaire` pour le premier tenant) : ne pas contourner le filtre de désinscription ici, ni
+coder la nature en dur. Si le conseil RGPD reclasse la relance, on change une valeur, pas du code.
 
 L'activation est un **paramètre de tenant** (s02) : comportement développé pour tous, activé au cas
 par cas. C'est explicitement demandé par le PRD.
@@ -2677,7 +2700,7 @@ pendant une simulation reste possible mais est attribuée au SuperAdmin (critèr
 
 - [ ] Une campagne d'invitation part vers tous les membres disposant d'une adresse email, chaque destinataire recevant un lien de connexion qui lui est propre.
 - [ ] La même opération produit, pour les membres sans email, un publipostage PDF (s28) annonçant le site public et ses contenus consultables sans compte.
-- [ ] La campagne de lancement est de nature `statutaire` : elle atteint tous les membres, y compris ceux qui se seraient désinscrits, puisqu'elle porte l'information constitutive de leur accès.
+- [ ] La campagne de lancement et sa relance suivent la nature configurée en s27b : avec la nature `statutaire` (valeur du premier tenant), la relance atteint aussi un membre qui s'est désinscrit depuis l'email de lancement sans s'être connecté — vérifié sur ce cas ; avec `facultative`, elle l'exclut.
 - [ ] Aucun membre de la liste n'est omis des deux canaux : la somme des destinataires email et des courriers produits égale l'effectif de l'association.
 - [ ] Le bureau suit l'adoption : nombre d'invitations envoyées, nombre de membres s'étant connectés au moins une fois, liste des membres jamais connectés.
 - [ ] Relancer les membres jamais connectés renvoie une invitation à eux seuls, sans réinviter ceux qui se sont déjà connectés.
