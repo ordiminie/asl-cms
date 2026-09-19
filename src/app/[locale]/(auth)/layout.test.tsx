@@ -28,7 +28,9 @@ describe('AuthLayout — cadre des écrans de connexion', () => {
     const header = screen.getByRole('banner')
     expect(header).toHaveTextContent('ASL Les Pins')
     expect(
-      screen.getByRole('img', {name: /Monogramme de l.association ASL Les Pins/})
+      screen.getByRole('img', {
+        name: /Monogramme de l.association ASL Les Pins/,
+      })
     ).toBeInTheDocument()
     expect(screen.getByRole('main')).toHaveTextContent('contenu')
   })

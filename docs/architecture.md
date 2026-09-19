@@ -273,12 +273,12 @@ fournit toujours la version texte et confie le message au transport actif. **Auc
 un SDK de fournisseur** : `resend` n'est importé que par son adaptateur (un test le vérifie). Un échec
 d'envoi est une `EmailTransportError`, quel que soit le fournisseur.
 
-| `EMAIL_TRANSPORT` | Implémentation                                               | Usage                                    | Variable exigée   |
-| ----------------- | ------------------------------------------------------------ | ---------------------------------------- | ----------------- |
-| `brevo`           | `POST https://api.brevo.com/v3/smtp/email` par `fetch`       | **production** (doit y être déclaré)     | `BREVO_API_KEY`   |
-| `resend`          | SDK `resend`, isolé dans son adaptateur                      | secours, activable sans code (ADR 017)   | `RESEND_API_KEY`  |
-| `file`            | un JSON par message dans `EMAIL_OUTBOX_DIR` (temporaire sinon) | **défaut hors production**, CI, e2e      | —                 |
-| `memory`          | messages gardés en mémoire                                   | tests unitaires                          | —                 |
+| `EMAIL_TRANSPORT` | Implémentation                                                 | Usage                                  | Variable exigée  |
+| ----------------- | -------------------------------------------------------------- | -------------------------------------- | ---------------- |
+| `brevo`           | `POST https://api.brevo.com/v3/smtp/email` par `fetch`         | **production** (doit y être déclaré)   | `BREVO_API_KEY`  |
+| `resend`          | SDK `resend`, isolé dans son adaptateur                        | secours, activable sans code (ADR 017) | `RESEND_API_KEY` |
+| `file`            | un JSON par message dans `EMAIL_OUTBOX_DIR` (temporaire sinon) | **défaut hors production**, CI, e2e    | —                |
+| `memory`          | messages gardés en mémoire                                     | tests unitaires                        | —                |
 
 La clé d'un fournisseur n'est exigée que pour son propre transport (`get-email-transport.ts`) ; en
 production, l'absence de `EMAIL_TRANSPORT` est une erreur plutôt qu'un défaut silencieux. Les couleurs

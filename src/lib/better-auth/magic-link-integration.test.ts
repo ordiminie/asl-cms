@@ -1,3 +1,6 @@
+import {readFileSync} from 'node:fs'
+import path from 'node:path'
+
 import {betterAuth} from 'better-auth'
 import {memoryAdapter} from 'better-auth/adapters/memory'
 import {magicLink} from 'better-auth/plugins'
@@ -45,20 +48,20 @@ vi.mock('@/lib/stripe/stripe-utils', () => ({
   getFormattedPriceFromSubscription: vi.fn(),
   getSubscriptionDetails: vi.fn(),
 }))
-vi.mock('@/app/dal/tenant-dal', () => ({
-  getTenantByDomainDal: vi.fn(),
+vi.mock('@/services/facades/organization-service-facade', () => ({
+  getOrganizationByDomainService: vi.fn(),
 }))
-vi.mock('@/app/dal/association-settings-dal', () => ({
-  getAssociationSettingsDal: vi.fn(),
+vi.mock('@/services/facades/association-settings-service-facade', () => ({
+  getAssociationSettingsService: vi.fn(),
 }))
 vi.mock('@/services/notification-service', () => ({
   createTypedNotificationService: vi.fn(),
 }))
 
-import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
-import {getTenantByDomainDal} from '@/app/dal/tenant-dal'
 import {getUserByEmailDao} from '@/db/repositories/user-repository'
 import {logger} from '@/lib/logger'
+import {getAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
+import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
 import {createTypedNotificationService} from '@/services/notification-service'
 
 import {MAGIC_LINK_EXPIRES_IN_SECONDS} from './magic-link-constants'
@@ -68,15 +71,16 @@ const email = 'membre@exemple.test'
 const url =
   'https://asl-les-pins.test/api/auth/magic-link/verify?token=secret-token&callbackURL=%2Fdashboard'
 
-const tenant = (logoKey: string | null) => ({
-  id: 'org-1',
-  name: 'ASL Les Pins',
-  slug: 'asl-les-pins',
-  domain: 'asl-les-pins.test',
-  enabledModules: [],
-  logoKey,
-  faviconKey: null,
-})
+const tenant = (identityLogoKey: string | null) =>
+  ({
+    id: 'org-1',
+    name: 'ASL Les Pins',
+    slug: 'asl-les-pins',
+    domain: 'asl-les-pins.test',
+    enabledModules: [],
+    identityLogoKey,
+    identityFaviconKey: null,
+  }) as never
 
 const requestContext = (host = 'asl-les-pins.test') => ({
   headers: new Headers({host, 'x-forwarded-proto': 'https'}),
@@ -126,10 +130,10 @@ describe('sendMagicLink', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     memoryTransport.messages.length = 0
-    vi.mocked(getTenantByDomainDal).mockResolvedValue(
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(
       tenant('organizations/org-1/identity/logo-42.png')
     )
-    vi.mocked(getAssociationSettingsDal).mockResolvedValue({
+    vi.mocked(getAssociationSettingsService).mockResolvedValue({
       'identity.accent_hue': {
         value: 150,
         storedValue: '150',
@@ -152,8 +156,8 @@ describe('sendMagicLink', () => {
 
     await sendMagicLink({email, url}, requestContext())
 
-    expect(getTenantByDomainDal).toHaveBeenCalledWith('asl-les-pins.test')
-    expect(getAssociationSettingsDal).toHaveBeenCalledWith('org-1')
+    expect(getOrganizationByDomainService).toHaveBeenCalledWith('asl-les-pins.test')
+    expect(getAssociationSettingsService).toHaveBeenCalledWith('org-1')
     expect(memoryTransport.messages).toHaveLength(1)
     const [sent] = memoryTransport.messages
     expect(sent.to).toBe(email)
@@ -172,7 +176,7 @@ describe('sendMagicLink', () => {
 
   it('écrit le nom seul quand le logo est en WebP', async () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
-    vi.mocked(getTenantByDomainDal).mockResolvedValue(
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(
       tenant('organizations/org-1/identity/logo-42.webp')
     )
 
@@ -184,7 +188,7 @@ describe('sendMagicLink', () => {
 
   it('écrit le nom seul quand l’association n’a pas de logo', async () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
-    vi.mocked(getTenantByDomainDal).mockResolvedValue(tenant(null))
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
 
     await sendMagicLink({email, url}, requestContext())
 
@@ -205,7 +209,7 @@ describe('sendMagicLink', () => {
       }
     )
 
-    expect(getTenantByDomainDal).toHaveBeenCalledWith('asl-les-pins.test')
+    expect(getOrganizationByDomainService).toHaveBeenCalledWith('asl-les-pins.test')
     expect(htmlOf().querySelector('img')?.getAttribute('src')).toBe(
       'https://asl-les-pins.test/api/identity/logo?v=42'
     )
@@ -213,7 +217,7 @@ describe('sendMagicLink', () => {
 
   it('n’envoie rien sur un domaine qui ne sert aucune association', async () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
-    vi.mocked(getTenantByDomainDal).mockResolvedValue(undefined)
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(undefined)
 
     await sendMagicLink({email, url}, requestContext('inconnu.test'))
 
@@ -243,7 +247,7 @@ describe('sendMagicLink', () => {
     await sendMagicLink({email, url}, requestContext())
     vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
     await sendMagicLink({email, url}, requestContext())
-    vi.mocked(getTenantByDomainDal).mockResolvedValue(undefined)
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(undefined)
     await sendMagicLink({email, url}, requestContext('inconnu.test'))
 
     const structuredLogs = [
@@ -379,5 +383,16 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
     expect(isRedirectApiError(result.error)).toBe(true)
     expect(memoryDb.user).toHaveLength(0)
     expect(memoryDb.session).toHaveLength(0)
+  })
+})
+
+describe('couches — l’intégration Better Auth ne lit pas la DAL', () => {
+  it('n’importe rien de @/app/dal (cycle au build de production)', () => {
+    const source = readFileSync(
+      path.join(import.meta.dirname, 'magic-link-integration.ts'),
+      'utf8'
+    )
+
+    expect(source).not.toMatch(/['"]@\/app\/dal\//)
   })
 })

@@ -1,13 +1,14 @@
-import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
-import {getTenantByDomainDal, TenantDTO} from '@/app/dal/tenant-dal'
 import {getUserByEmailDao} from '@/db/repositories/user-repository'
 import {env} from '@/env'
 import type {MagicLinkEmailAssociation} from '@/lib/emails/magic-link-email'
 import {normalizeTenantHost} from '@/lib/helper/tenant-helper'
 import {logger} from '@/lib/logger'
+import {getAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
 import {sendMagicLinkEmailService} from '@/services/facades/email-service-facade'
+import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 import {getAccentHue} from '@/services/types/domain/association-settings-types'
+import type {Organization} from '@/services/types/domain/organization-types'
 
 import {MAGIC_LINK_EXPIRES_IN_SECONDS} from './magic-link-constants'
 
@@ -45,28 +46,40 @@ const requestOriginOf = (headers: Headers | undefined) => {
  * Le logo n'est montre dans l'email qu'en PNG (design system §1.8, §5.2) : un
  * WebP est mal rendu par plusieurs messageries, le nom seul le remplace.
  */
-const pngLogoUrlOf = (tenant: TenantDTO, origin: string | undefined) => {
-  const version = getIdentityVersionFromKey(tenant.logoKey)
-  if (!origin || !version || !tenant.logoKey?.endsWith('.png')) {
+const pngLogoUrlOf = (
+  organization: Organization,
+  origin: string | undefined
+) => {
+  const logoKey = organization.identityLogoKey
+  const version = getIdentityVersionFromKey(logoKey)
+  if (!origin || !version || !logoKey?.endsWith('.png')) {
     return undefined
   }
   return `${origin}/api/identity/logo?v=${encodeURIComponent(version)}`
 }
 
-/** L'association du domaine appele, telle que l'email la montre. */
+/**
+ * L'association du domaine appele, telle que l'email la montre. Lue par les
+ * facades de service, pas par la DAL : `src/lib` ne remonte pas vers la
+ * presentation, et l'import de la DAL fermait un cycle
+ * organization-service -> auth -> DAL -> organization-service qui cassait le
+ * build de production.
+ */
 const associationOfRequest = async (
   ctx?: MagicLinkRequestContext
 ): Promise<MagicLinkEmailAssociation | undefined> => {
   const {host, origin} = requestOriginOf(requestHeadersOf(ctx))
   const domain = normalizeTenantHost(host)
-  const tenant = domain ? await getTenantByDomainDal(domain) : undefined
-  if (!tenant) return undefined
+  const organization = domain
+    ? await getOrganizationByDomainService(domain)
+    : undefined
+  if (!organization?.domain) return undefined
 
-  const settings = await getAssociationSettingsDal(tenant.id)
-  const logoUrl = pngLogoUrlOf(tenant, origin)
+  const settings = await getAssociationSettingsService(organization.id)
+  const logoUrl = pngLogoUrlOf(organization, origin)
 
   return {
-    name: tenant.name,
+    name: organization.name,
     hue: getAccentHue(settings),
     ...(logoUrl ? {logoUrl} : {}),
   }

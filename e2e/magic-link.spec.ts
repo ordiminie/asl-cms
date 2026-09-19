@@ -56,8 +56,7 @@ type OutboxMessage = {
 test.use({locale: 'fr-FR'})
 
 const outboxDir = () =>
-  process.env.EMAIL_OUTBOX_DIR ??
-  path.join(os.tmpdir(), 'asl-cms-email-outbox')
+  process.env.EMAIL_OUTBOX_DIR ?? path.join(os.tmpdir(), 'asl-cms-email-outbox')
 
 const outboxFiles = (): Set<string> => {
   const dir = outboxDir()
@@ -118,10 +117,9 @@ const tenantAIdentity = () =>
 
     await client.query('begin')
     try {
-      await client.query(
-        `select set_config('app.organization_id', $1, true)`,
-        [id]
-      )
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        id,
+      ])
       const hue = await client.query<{value: string}>(
         `select value from organization_setting
           where organization_id = $1 and key = 'identity.accent_hue'`,
@@ -205,7 +203,9 @@ const requestKnownLink = async (page: Page) => {
 }
 
 const linkOf = (message: OutboxMessage) => {
-  const link = message.text.match(/https?:\/\/\S+\/magic-link\/verify\?\S+/)?.[0]
+  const link = message.text.match(
+    /https?:\/\/\S+\/magic-link\/verify\?\S+/
+  )?.[0]
   expect(link, 'la version texte porte l’URL en clair').toBeTruthy()
   return link as string
 }
@@ -231,7 +231,9 @@ test.describe('connexion par lien — s03', () => {
     const message = await requestKnownLink(page)
 
     // Critère 1 : écran d'attente explicite, conditionnel.
-    await expect(page.getByText(/Si l'adresse .* est enregistrée/)).toBeVisible()
+    await expect(
+      page.getByText(/Si l'adresse .* est enregistrée/)
+    ).toBeVisible()
 
     // Critère 6 : l'en-tête de l'association du domaine appelé.
     const identity = await tenantAIdentity()

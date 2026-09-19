@@ -140,7 +140,10 @@ export const sendMagicLinkEmailService = async ({
   association: MagicLinkEmailAssociation
 }) => {
   const t = await getTranslations('email.user.magicLink')
-  const values = {name: association.name, minutes: MAGIC_LINK_EXPIRES_IN_MINUTES}
+  const values = {
+    name: association.name,
+    minutes: MAGIC_LINK_EXPIRES_IN_MINUTES,
+  }
 
   await sendEmailService(
     {

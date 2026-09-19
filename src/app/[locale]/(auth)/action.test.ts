@@ -209,9 +209,7 @@ describe('requestMagicLinkAction', () => {
 
     expect(result).toEqual({
       status: 'invalid',
-      errors: [
-        {field: 'email', message: 'Auth.MagicLinkLogin.email.invalid'},
-      ],
+      errors: [{field: 'email', message: 'Auth.MagicLinkLogin.email.invalid'}],
     })
     expect(auth.api.signInMagicLink).not.toHaveBeenCalled()
   })
