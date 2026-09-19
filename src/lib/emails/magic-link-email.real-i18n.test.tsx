@@ -1,12 +1,6 @@
+// @vitest-environment jsdom
 import {render} from 'react-email'
-import {describe, expect, it, vi} from 'vitest'
-
-vi.mock('next-intl/server', async () => ({
-  getTranslations: vi.fn(
-    (await import('@/__tests__/translations-without-locale-cookie'))
-      .getTranslationsWithoutLocaleCookie
-  ),
-}))
+import {describe, expect, it} from 'vitest'
 
 import MagicLinkMail from './magic-link-email'
 
@@ -73,14 +67,16 @@ describe('MagicLinkMail — planche D', () => {
     const {doc} = await renderMail({name: 'ASL Les Pins', hue: 195})
 
     const links = [...doc.querySelectorAll('a')]
-    expect(links.every((link) => link.getAttribute('href') === URL_WITH_PARAMS))
-      .toBe(true)
+    expect(
+      links.every((link) => link.getAttribute('href') === URL_WITH_PARAMS)
+    ).toBe(true)
     const actions = links.filter(
       (link) => link.textContent?.trim() === 'Ouvrir mon espace'
     )
     expect(actions).toHaveLength(1)
-    expect(links.some((link) => link.textContent?.trim() === URL_WITH_PARAMS))
-      .toBe(true)
+    expect(
+      links.some((link) => link.textContent?.trim() === URL_WITH_PARAMS)
+    ).toBe(true)
     expect(doc.querySelector('button')).toBeNull()
   })
 

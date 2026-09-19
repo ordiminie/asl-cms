@@ -37,7 +37,6 @@ import {headers} from 'next/headers'
 import {redirect} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 
-import {getTranslationsWithoutLocaleCookie} from '@/__tests__/translations-without-locale-cookie'
 import {auth} from '@/lib/better-auth/auth'
 import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
 import {EmailTransportError} from '@/lib/emails/transport'
@@ -232,25 +231,25 @@ describe('requestMagicLinkAction', () => {
     expect(await tracked).toEqual({status: 'unavailable'})
   })
 
-  it('écrit l’erreur de champ dans la locale de la page, sans cookie de locale', async () => {
-    vi.mocked(getTranslations).mockImplementationOnce(
-      getTranslationsWithoutLocaleCookie as never
-    )
-
-    const result = await requestMagicLinkAction(
+  /**
+   * L'action demande ses libellés dans la locale de la page. Que next-intl les
+   * rende bien dans cette locale depuis une Server Action sans cookie est
+   * prouvé sur la vraie chaîne par `src/i18n/request.real-i18n.test.ts`.
+   */
+  it('traduit l’erreur de champ dans la locale de la page, pas celle du cookie', async () => {
+    await requestMagicLinkAction(
       {status: 'idle'},
-      requestFormData('pas-une-adresse', 'fr')
+      requestFormData('pas-une-adresse', 'es')
+    )
+    await requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('pas-une-adresse', 'de')
     )
 
-    expect(result).toEqual({
-      status: 'invalid',
-      errors: [
-        {
-          field: 'email',
-          message: "Cette adresse n'est pas valide. Exemple : nom@domaine.fr",
-        },
-      ],
-    })
+    expect(vi.mocked(getTranslations).mock.calls).toEqual([
+      [{locale: 'es', namespace: 'Auth.MagicLinkLogin'}],
+      [{locale: 'fr', namespace: 'Auth.MagicLinkLogin'}],
+    ])
   })
 
   it('rend une erreur de champ pour une adresse invalide, sans rien demander', async () => {

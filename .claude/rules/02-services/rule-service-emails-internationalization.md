@@ -130,6 +130,15 @@ français (s03, attrapé par l'e2e en CI, masqué en local par le cookie). Dans 
   `<Html lang={locale}>`. Un gabarit resté implicite rendrait un objet en français et un corps en
   anglais.
 
+⚠️ `getTranslations({locale, namespace})` ne marche **que parce que `src/i18n/request.ts` honore
+`params.locale`** : next-intl transmet la locale explicite à `getRequestConfig` puis utilise la
+locale et les messages que cette fonction **rend**. Un `request.ts` qui ignore `params.locale`
+rend la locale du cookie ou `defaultLocale`, et la locale explicite est perdue sans bruit. Ne pas
+retirer cette lecture ; ne pas non plus déstructurer `requestLocale` (voir le commentaire du
+fichier). La preuve est sur la vraie chaîne, sans double de `getTranslations` : les tests
+`*.real-i18n.test.*` (projet Vitest `i18n`) branchent l'entrée react-server de next-intl sur le
+vrai `request.ts`, dans une Server Action simulée sans cookie.
+
 Référence : l'email de connexion par lien (`requestMagicLinkAction` → `metadata.locale` de
 `signInMagicLink` → `sendMagicLink` → `sendMagicLinkEmailService` → `MagicLinkMail`). Les autres
 emails du boilerplate envoyés hors rendu de page gardent l'appel implicite tant que leur story ne les

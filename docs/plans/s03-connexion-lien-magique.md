@@ -32,8 +32,8 @@ Critères d'acceptation :
   (arbitrages du 2026-09-19, design validé).
 - Écrans, libellés et états : ceux de `docs/designs/s03-connexion-lien-magique.md`.
 - Contrat `EmailTransport` + implémentation Brevo (ADR 005). **Budget quotidien global de l'association : s26**, pas
-  ici. La **limitation des demandes de lien** (par adresse et par accès internet) est, elle, dans s03 : voir l'amendement
-  du 2026-09-19.
+  ici. La **limitation des demandes de lien** (3 par adresse et par jour, tâche 11) est, elle, dans s03 : voir
+  l'amendement du 2026-09-19.
 - Hors périmètre : rôles et registre (s03b), lien et session sur le domaine de chaque association (s03c).
 
 ### Décisions prises à ce plan (à confirmer à la validation)
@@ -107,8 +107,24 @@ pour **une règle plus simple**, qui remplace celle des tâches 10 (tâche 11) :
   300 envois/jour relèvent de **s26** ; le prestataire de secours sera désigné par le product owner à ce moment-là
   (Resend n'est pas retenu pour ce rôle).
 
-Les tâches 9 et 10 sont déjà faites (commits `2c8ea4d`, `8b1346f`) : l'amendement les inscrit au plan. La tâche 11 reste
-à faire.
+Les tâches 9 et 10 sont faites (commits `2c8ea4d`, `8b1346f`) : l'amendement les inscrit au plan. La tâche 11 est faite
+(`f988987`, `a83ac77`).
+
+**Correctif de locale de l'email de connexion (après la cinquième revue).** Sans changement de périmètre : c'est un
+défaut du comportement validé (critère « email dans la langue de la page »), vu en CI (`e2e/magic-link.spec.ts`). Depuis
+une Server Action, next-intl ne connaît pas la locale de la page : `root-params` n'y existe pas, et `request.ts`
+retombait sur le cookie `NEXT_LOCALE`, sinon sur `en`. La locale devient explicite de bout en bout :
+
+- formulaire (`useLocale()`, champ `locale`) → `requestMagicLinkAction`, qui la vérifie contre le routage
+  (`resolveSupportedLocale`, `fr` sinon, ADR 008) → `metadata.locale` de `signInMagicLink` → `sendMagicLink`, qui la
+  revérifie → `sendMagicLinkEmailService` et `MagicLinkMail` avec `getTranslations({locale, namespace})` et
+  `<Html lang>` ;
+- `src/i18n/request.ts` **honore la locale explicite** (`params.locale`, vérifiée par `hasLocale`) avant root-params,
+  cookie et locale par défaut, inchangés ; sans cela la locale explicite est perdue (constat critique de la cinquième
+  revue) ;
+- preuve sur la vraie chaîne : projet Vitest `i18n` (entrée react-server de next-intl + vrai `request.ts`, Server
+  Action simulée sans cookie) pour `request.ts`, le service, le gabarit et l'intégration Better Auth ; le double de
+  `getTranslations` qui prétendait reproduire `request.ts` est supprimé.
 
 ### Taille de la story
 
@@ -210,11 +226,17 @@ qu'elles n'ouvrent un nouveau périmètre fonctionnel.
   (+ snapshots), `src/db/repositories/rate-limit-repository.ts`, `src/services/rate-limit-service.ts` (+ test),
   `src/services/validation/rate-limit-validation.ts`, `src/services/facades/rate-limit-service-facade.ts` et son
   intercepteur, `src/lib/better-auth/magic-link-integration-imports.test.ts`
+- Tâche 11 : `drizzle/migrations/0010_long_baron_zemo.sql` (+ snapshot), `src/db/repositories/rate-limit-repository.test.ts`
+- Correctif de locale : `src/__tests__/setup-real-i18n.ts`, `src/i18n/request.real-i18n.test.ts`,
+  `src/services/__tests__/magic-link-email-service.real-i18n.test.tsx` ; `magic-link-integration.test.ts` et
+  `magic-link-email.test.tsx` renommés en `*.real-i18n.test.*` (vraie chaîne next-intl)
 
 **Modifiés**
 
 - `src/services/email-service.ts` (+ test), `src/lib/emails/magic-link-email.tsx`
 - `src/lib/better-auth/auth.ts`, `src/lib/better-auth/magic-link-integration.ts` (+ test)
+- Correctif de locale : `src/i18n/request.ts`, `src/lib/helper/locale-helper.ts` (+ test), `vitest.config.ts` (projet
+  `i18n`), `src/components/features/auth/magic-link-login.tsx`, `src/app/[locale]/(auth)/action.ts` (+ test)
 - `src/app/[locale]/(auth)/action.ts`, `src/app/[locale]/(auth)/layout.tsx`, `src/app/[locale]/(auth)/login/page.tsx`,
   `src/components/features/auth/forms/login.tsx`
 - `src/env-schemas.ts`, `src/env.ts`, `env.example`, `scripts/init-env.ts`
@@ -225,7 +247,8 @@ qu'elles n'ouvrent un nouveau périmètre fonctionnel.
 - `docs/architecture.md`, `docs/design-system.md`, `.claude/rules/02-services/rule-email-service.md`,
   `.claude/rules/02-services/rule-service-emails-internationalization.md`
 - `docs/plans/s03-connexion-lien-magique.md` (cases cochées au fil de l'eau)
-- Amendement : `src/services/types/domain/association-settings-types.ts` (deux réglages) et son test,
+- Amendement : `src/services/types/domain/association-settings-types.ts` (réglage
+  `login.link_requests_per_address_per_day`) et son test,
   `.cursor/rules/02-services/*.mdc` (régénérés par `pnpm check:rules:fix`)
 
 ## Test strategy

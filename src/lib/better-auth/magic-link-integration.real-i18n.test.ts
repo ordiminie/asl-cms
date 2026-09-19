@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import {betterAuth} from 'better-auth'
 import {memoryAdapter} from 'better-auth/adapters/memory'
 import {magicLink} from 'better-auth/plugins'
@@ -24,13 +25,6 @@ vi.mock('@/lib/logger', () => ({
 vi.mock('@/lib/emails/transport', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/emails/transport')>()),
   getEmailTransport: vi.fn(() => memoryTransport),
-}))
-vi.mock('next-intl/server', async () => ({
-  getTranslations: vi.fn(
-    (await import('@/__tests__/translations-without-locale-cookie'))
-      .getTranslationsWithoutLocaleCookie
-  ),
-  getLocale: vi.fn(async () => 'fr'),
 }))
 vi.mock('@/services/app-settings-service', () => ({
   getBooleanSettingService: vi.fn(async () => true),

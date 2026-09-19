@@ -20,15 +20,12 @@ vi.mock('@/lib/stripe/stripe-utils', () => ({
   getSubscriptionDetails: vi.fn(),
 }))
 
-import {getTranslations} from 'next-intl/server'
 import {Html, Text} from 'react-email'
 
-import {getTranslationsWithoutLocaleCookie} from '@/__tests__/translations-without-locale-cookie'
 import {EmailTransportError} from '@/lib/emails/transport'
 import {getEmailTransport} from '@/lib/emails/transport'
 import {
   sendEmailService,
-  sendMagicLinkEmailService,
   sendSimpleEmailService,
 } from '@/services/email-service'
 
@@ -70,7 +67,12 @@ describe('sendEmailService — tout envoi passe par EmailTransport', () => {
     )
 
     await sendEmailService(
-      {to: 'a@exemple.test', subject: 'Objet', text: 'Texte', react: template()},
+      {
+        to: 'a@exemple.test',
+        subject: 'Objet',
+        text: 'Texte',
+        react: template(),
+      },
       {recipientType: 'system'}
     )
 
@@ -102,54 +104,5 @@ describe('sendEmailService — tout envoi passe par EmailTransport', () => {
         {recipientType: 'system'}
       )
     ).rejects.toBeInstanceOf(EmailTransportError)
-  })
-})
-
-describe('sendMagicLinkEmailService — objet, pré-en-tête et version texte', () => {
-  const url =
-    'https://asl-les-pins.test/api/auth/magic-link/verify?token=abc&callbackURL=%2Fdashboard'
-
-  beforeEach(() => {
-    memoryTransport.messages.length = 0
-    vi.mocked(getEmailTransport).mockReturnValue(memoryTransport)
-    vi.mocked(getTranslations).mockImplementation(
-      getTranslationsWithoutLocaleCookie as never
-    )
-  })
-
-  it('envoie l’email de l’association par le transport', async () => {
-    await sendMagicLinkEmailService({
-      email: 'membre@exemple.test',
-      url,
-      association: {name: 'ASL Les Pins', hue: 195},
-      locale: 'fr',
-    })
-
-    expect(memoryTransport.messages).toHaveLength(1)
-    const [sent] = memoryTransport.messages
-    expect(sent.to).toBe('membre@exemple.test')
-    expect(sent.subject).toMatch(/ASL Les Pins — votre lien de connexion$/)
-    expect(sent.html).toContain('ASL Les Pins')
-    expect(sent.text).toContain(url)
-    expect(sent.text).toContain('20 minutes')
-    expect(sent.text).toContain('ASL Les Pins')
-    expect(sent.text).not.toContain('<strong>')
-  })
-
-  it('écrit objet, texte et HTML dans la locale reçue, même sans cookie de locale', async () => {
-    await sendMagicLinkEmailService({
-      email: 'membre@exemple.test',
-      url,
-      association: {name: 'ASL Les Pins', hue: 195},
-      locale: 'fr',
-    })
-
-    const [sent] = memoryTransport.messages
-    expect(sent.subject).toMatch(/ASL Les Pins — votre lien de connexion$/)
-    expect(sent.text).toContain('Votre lien de connexion')
-    expect(sent.text).toContain("Vous n'avez pas demandé ce lien ?")
-    expect(sent.html).toContain('Ouvrir mon espace')
-    expect(sent.html).toContain('lang="fr"')
-    expect(sent.subject).not.toMatch(/sign-in link/)
   })
 })

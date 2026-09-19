@@ -111,7 +111,10 @@ function RequestView({
 
   const onValid = async ({email}: FormValues) => {
     setUnavailable(false)
-    const result = await requestAction({status: 'idle'}, toFormData(email, locale))
+    const result = await requestAction(
+      {status: 'idle'},
+      toFormData(email, locale)
+    )
 
     if (result.status === 'sent') {
       onSent(email)
@@ -224,7 +227,10 @@ function SentView({
   const resend = async () => {
     setResending(true)
     setFeedback('none')
-    const result = await requestAction({status: 'idle'}, toFormData(email, locale))
+    const result = await requestAction(
+      {status: 'idle'},
+      toFormData(email, locale)
+    )
     setResending(false)
 
     if (result.status === 'sent') {
@@ -316,12 +322,12 @@ function SentView({
 function AuthCard({
   children,
   ...props
-}: {children: ReactNode; 'data-testid'?: string}) {
+}: {
+  children: ReactNode
+  'data-testid'?: string
+}) {
   return (
-    <Card
-      className="gap-5 px-4 py-4 shadow-none sm:px-8 sm:py-8"
-      {...props}
-    >
+    <Card className="gap-5 px-4 py-4 shadow-none sm:px-8 sm:py-8" {...props}>
       {children}
     </Card>
   )
