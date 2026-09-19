@@ -2418,6 +2418,8 @@
       "slugHelp": "Se usa en las direcciones internas. Minúsculas, cifras y guiones.",
       "domainLabel": "Dominio",
       "domainHelp": "El dominio que servirá su sitio, sin https:// ni ruta. Ejemplo: asl-lafourche.fr",
+      "contactEmailLabel": "Dirección de contacto de la asociación",
+      "contactEmailHelp": "Obligatoria. Recibe los mensajes del sitio y sirve de dirección predeterminada. La junta podrá cambiarla en sus ajustes.",
       "adminCardTitle": "Administrador de la asociación",
       "adminEmailLabel": "Correo electrónico",
       "adminEmailHelp": "La cuenta se crea si todavía no existe.",
@@ -2439,7 +2441,8 @@
         "nameMax": "El nombre no puede superar los 100 caracteres.",
         "slugPattern": "Solo minúsculas, cifras y guiones.",
         "domainPattern": "Un dominio solo, sin https:// ni ruta.",
-        "adminEmailInvalid": "Este correo electrónico no es válido."
+        "adminEmailInvalid": "Este correo electrónico no es válido.",
+        "contactEmailInvalid": "La dirección de contacto de la asociación es obligatoria. Ejemplo: contacto@dominio.es"
       }
     },
     "modules": {
@@ -2793,7 +2796,7 @@
       "title": "Identidad de la asociación"
     },
     "title": "Identidad de la asociación",
-    "intro": "El logotipo y el favicon aparecen en su sitio y en este espacio. Los cambios son visibles en cuanto se guardan.",
+    "intro": "El logotipo, el favicon y el tono aparecen en su sitio y en este espacio. Los cambios son visibles en cuanto se guardan.",
     "breadcrumb": {
       "association": "La asociación",
       "identity": "Identidad"
@@ -2802,7 +2805,8 @@
       "group": "La asociación",
       "identity": "Identidad",
       "menu": "Menú",
-      "openMenu": "Abrir el menú"
+      "openMenu": "Abrir el menú",
+      "settings": "Ajustes"
     },
     "cards": {
       "logo": {
@@ -2827,10 +2831,103 @@
       "title": "Esta página está reservada a la junta de la asociación",
       "description": "Si cree que debería tener acceso, diríjase a un miembro de la junta.",
       "back": "Volver al inicio"
+    },
+    "accentHue": {
+      "status": {
+        "default": "Todavía no se ha elegido ningún tono: se aplica el tono {name}, predeterminado.",
+        "applied": "Tono {name} aplicado.",
+        "pending": "Tono {name} seleccionado, aún no guardado."
+      },
+      "defaultBadge": "predeterminado",
+      "previewCaption": "Vista previa en su sitio",
+      "previewNav": {
+        "home": "Inicio",
+        "news": "Noticias",
+        "contact": "Contacto"
+      },
+      "previewNotice": "Corte de agua previsto el martes 14 de octubre, de 9 h a 12 h.",
+      "submit": "Guardar el tono",
+      "saving": "Guardando…",
+      "success": "Tono {name} guardado. Visible en su sitio y en este espacio.",
+      "errors": {
+        "notSaved": "El tono no se ha guardado.",
+        "kept": "El tono {name} sigue aplicado.",
+        "retry": "Inténtelo de nuevo en un momento."
+      }
     }
   },
   "AssociationMark": {
     "logoAlt": "Logotipo de la asociación {name}",
     "monogramLabel": "Monograma de la asociación {name}"
+  },
+  "AssociationSettings": {
+    "optional": "opcional",
+    "usesDefault": "Vacío: se aplica el valor predeterminado ({value}).",
+    "errors": {
+      "required": "Este ajuste es obligatorio: no puede quedar vacío.",
+      "invalidEmail": "Esta dirección no es válida. Ejemplo: nombre@dominio.es",
+      "invalidNumber": "Introduzca un número, en cifras, sin letras.",
+      "belowMin": "El valor es demasiado pequeño: el mínimo es {min}.",
+      "aboveMax": "El valor es demasiado grande: el máximo es {max}.",
+      "invalidBoolean": "Marque o desmarque la casilla de este ajuste.",
+      "invalidChoice": "Elija una de las opciones propuestas en la lista.",
+      "unknownKey": "Este ajuste no existe o ya no se ofrece."
+    },
+    "fields": {
+      "contactEmail": {
+        "label": "Dirección de contacto",
+        "help": "Obligatoria. Recibe los mensajes del formulario de contacto del sitio y los avisos. También es la dirección utilizada cuando otra dirección se deja vacía.",
+        "errors": {
+          "required": "La dirección de contacto es obligatoria: los mensajes van a ella cuando no hay otra dirección. La dirección {current} sigue vigente."
+        }
+      },
+      "forageEmail": {
+        "label": "Dirección del responsable del pozo",
+        "help": "Recibe los avisos de fuga, además de la dirección de contacto. Si se deja vacía, solo van a la dirección de contacto.",
+        "whenEmpty": "Vacía: los avisos de fuga van a {value}."
+      },
+      "accentHue": {
+        "label": "Tono",
+        "help": "El color de su asociación. Colorea el monograma, los filetes y los recuadros de su sitio. Los botones conservan su color."
+      }
+    },
+    "hues": {
+      "water": "Agua",
+      "pines": "Pinos",
+      "lake": "Lago",
+      "tile": "Teja",
+      "heather": "Brezo",
+      "broom": "Retama"
+    }
+  },
+  "BureauSettingsPage": {
+    "metadata": {
+      "title": "Ajustes de la asociación"
+    },
+    "title": "Ajustes de la asociación",
+    "intro": "Estos ajustes son propios de su asociación. Los cambios se aplican en cuanto se guardan.",
+    "breadcrumb": {
+      "association": "La asociación",
+      "settings": "Ajustes"
+    },
+    "cards": {
+      "notifications": {
+        "title": "Direcciones de notificación"
+      }
+    },
+    "submit": "Guardar los ajustes",
+    "saving": "Guardando…",
+    "choose": "Elegir…",
+    "success": "Ajustes guardados. Los próximos mensajes irán a estas direcciones.",
+    "summary": {
+      "title": "{count, plural, one {# ajuste no se ha guardado} other {# ajustes no se han guardado}}",
+      "kept": "Los valores introducidos se conservan en el formulario; no se guarda nada mientras quede un error."
+    },
+    "errors": {
+      "failed": "Los ajustes no se han guardado.",
+      "kept": "Las direcciones anteriores siguen vigentes.",
+      "forbidden": "Esta acción está reservada a la junta de la asociación.",
+      "invalidData": "No se ha recibido ningún ajuste. Recargue la página e inténtelo de nuevo."
+    }
   }
 }

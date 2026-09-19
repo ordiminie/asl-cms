@@ -2418,6 +2418,8 @@
       "slugHelp": "Sert aux adresses internes. Lettres minuscules, chiffres et tirets.",
       "domainLabel": "Domaine",
       "domainHelp": "Le domaine qui servira son site, sans https:// ni chemin. Exemple : asl-lafourche.fr",
+      "contactEmailLabel": "Adresse de contact de l'association",
+      "contactEmailHelp": "Obligatoire. Reçoit les messages du site et sert d'adresse par défaut. Le bureau pourra la changer dans ses réglages.",
       "adminCardTitle": "Administrateur de l'association",
       "adminEmailLabel": "Adresse email",
       "adminEmailHelp": "Le compte est créé s'il n'existe pas encore.",
@@ -2439,7 +2441,8 @@
         "nameMax": "Le nom ne peut pas dépasser 100 caractères.",
         "slugPattern": "Lettres minuscules, chiffres et tirets seulement.",
         "domainPattern": "Un domaine seul, sans https:// ni chemin.",
-        "adminEmailInvalid": "Cette adresse email n'est pas valide."
+        "adminEmailInvalid": "Cette adresse email n'est pas valide.",
+        "contactEmailInvalid": "L'adresse de contact de l'association est obligatoire. Exemple : contact@domaine.fr"
       }
     },
     "modules": {
@@ -2793,7 +2796,7 @@
       "title": "Identité de l'association"
     },
     "title": "Identité de l'association",
-    "intro": "Le logo et le favicon apparaissent sur votre site et dans cet espace. Les changements sont visibles dès l'enregistrement.",
+    "intro": "Le logo, le favicon et la teinte apparaissent sur votre site et dans cet espace. Les changements sont visibles dès l'enregistrement.",
     "breadcrumb": {
       "association": "L'association",
       "identity": "Identité"
@@ -2802,7 +2805,8 @@
       "group": "L'association",
       "identity": "Identité",
       "menu": "Menu",
-      "openMenu": "Ouvrir le menu"
+      "openMenu": "Ouvrir le menu",
+      "settings": "Réglages"
     },
     "cards": {
       "logo": {
@@ -2827,10 +2831,103 @@
       "title": "Cette page est réservée au bureau de l'association",
       "description": "Si vous pensez devoir y accéder, adressez-vous à un membre du bureau.",
       "back": "Revenir à l'accueil"
+    },
+    "accentHue": {
+      "status": {
+        "default": "Aucune teinte choisie pour l'instant : la teinte {name}, par défaut, est appliquée.",
+        "applied": "Teinte {name} appliquée.",
+        "pending": "Teinte {name} sélectionnée, pas encore enregistrée."
+      },
+      "defaultBadge": "par défaut",
+      "previewCaption": "Aperçu sur votre site",
+      "previewNav": {
+        "home": "Accueil",
+        "news": "Actualités",
+        "contact": "Contact"
+      },
+      "previewNotice": "Coupure d'eau prévue mardi 14 octobre, de 9 h à 12 h.",
+      "submit": "Enregistrer la teinte",
+      "saving": "Enregistrement…",
+      "success": "Teinte {name} enregistrée. Visible sur votre site et dans cet espace.",
+      "errors": {
+        "notSaved": "La teinte n'a pas été enregistrée.",
+        "kept": "La teinte {name} reste appliquée.",
+        "retry": "Réessayez dans un instant."
+      }
     }
   },
   "AssociationMark": {
     "logoAlt": "Logo de l'association {name}",
     "monogramLabel": "Monogramme de l'association {name}"
+  },
+  "AssociationSettings": {
+    "optional": "facultatif",
+    "usesDefault": "Vide : la valeur par défaut s'applique ({value}).",
+    "errors": {
+      "required": "Ce réglage est obligatoire : il ne peut pas rester vide.",
+      "invalidEmail": "Cette adresse n'est pas valide. Exemple : nom@domaine.fr",
+      "invalidNumber": "Saisissez un nombre, en chiffres, sans lettres.",
+      "belowMin": "La valeur est trop petite : le minimum est {min}.",
+      "aboveMax": "La valeur est trop grande : le maximum est {max}.",
+      "invalidBoolean": "Cochez ou décochez la case pour ce réglage.",
+      "invalidChoice": "Choisissez une des options proposées dans la liste.",
+      "unknownKey": "Ce réglage n'existe pas ou n'est plus proposé."
+    },
+    "fields": {
+      "contactEmail": {
+        "label": "Adresse de contact",
+        "help": "Obligatoire. Reçoit les messages du formulaire de contact du site et les signalements. C'est aussi l'adresse utilisée quand une autre adresse est laissée vide.",
+        "errors": {
+          "required": "L'adresse de contact est obligatoire : c'est vers elle que partent les messages quand aucune autre adresse n'est renseignée. L'adresse {current} reste en vigueur."
+        }
+      },
+      "forageEmail": {
+        "label": "Adresse du responsable forage",
+        "help": "Reçoit les signalements de fuite, en plus de l'adresse de contact. Laissée vide, ils ne partent que vers l'adresse de contact.",
+        "whenEmpty": "Vide : les signalements de fuite partent vers {value}."
+      },
+      "accentHue": {
+        "label": "Teinte",
+        "help": "La couleur de votre association. Elle colore le monogramme, les filets et les encarts de votre site. Les boutons gardent leur couleur."
+      }
+    },
+    "hues": {
+      "water": "Eau",
+      "pines": "Pins",
+      "lake": "Lac",
+      "tile": "Tuile",
+      "heather": "Bruyère",
+      "broom": "Genêt"
+    }
+  },
+  "BureauSettingsPage": {
+    "metadata": {
+      "title": "Réglages de l'association"
+    },
+    "title": "Réglages de l'association",
+    "intro": "Ces réglages sont propres à votre association. Les changements s'appliquent dès l'enregistrement.",
+    "breadcrumb": {
+      "association": "L'association",
+      "settings": "Réglages"
+    },
+    "cards": {
+      "notifications": {
+        "title": "Adresses de notification"
+      }
+    },
+    "submit": "Enregistrer les réglages",
+    "saving": "Enregistrement…",
+    "choose": "Choisir…",
+    "success": "Réglages enregistrés. Les prochains messages partiront vers ces adresses.",
+    "summary": {
+      "title": "{count, plural, one {# réglage n'a pas été enregistré} other {# réglages n'ont pas été enregistrés}}",
+      "kept": "Les valeurs saisies sont conservées dans le formulaire ; rien n'est enregistré tant qu'une erreur reste."
+    },
+    "errors": {
+      "failed": "Les réglages n'ont pas été enregistrés.",
+      "kept": "Les anciennes adresses restent en vigueur.",
+      "forbidden": "Cette action est réservée au bureau de l'association.",
+      "invalidData": "Aucun réglage n'a été reçu. Rechargez la page et réessayez."
+    }
   }
 }

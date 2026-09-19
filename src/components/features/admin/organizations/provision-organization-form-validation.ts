@@ -28,6 +28,7 @@ export const createProvisionOrganizationFormSchema = (
         t('validation.domainPattern')
       ),
     adminEmail: z.string().email(t('validation.adminEmailInvalid')),
+    contactEmail: z.string().trim().email(t('validation.contactEmailInvalid')),
   })
 
 export type ProvisionOrganizationFormValues = z.infer<

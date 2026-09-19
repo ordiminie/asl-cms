@@ -208,6 +208,7 @@ export async function provisionOrganizationAction(
   const slug = (formData.get('slug') as string) ?? ''
   const domain = (formData.get('domain') as string) ?? ''
   const adminEmail = (formData.get('adminEmail') as string) ?? ''
+  const contactEmail = (formData.get('contactEmail') as string) ?? ''
   const enabledModules = formData.getAll('modules') as OrganizationModule[]
 
   try {
@@ -217,6 +218,7 @@ export async function provisionOrganizationAction(
         slug,
         domain,
         adminEmail,
+        contactEmail,
         enabledModules,
       })
     )

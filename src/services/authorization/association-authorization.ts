@@ -10,14 +10,15 @@ const BOARD_ROLES: string[] = [
 ]
 
 /**
- * Gerer le logo et le favicon d'une association (s01b, critere 8) : le
- * SuperAdmin, ou le bureau de **cette** association — Bureau (`admin`) et
- * President(e) (`owner`).
+ * Gerer une association — son identite (s01b, critere 8) et ses parametres
+ * (s02, critere 7) : le SuperAdmin, ou le bureau de **cette** association —
+ * Bureau (`admin`) et President(e) (`owner`). Point d'accroche unique pour le
+ * registre des permissions de s03.
  *
  * Volontairement hors CASL : l'`admin` global y gere toutes les organisations,
  * et la story l'exclut.
  */
-export const canManageAssociationIdentity = (
+export const canManageAssociation = (
   user: User | undefined,
   organizationId: string
 ): boolean => {

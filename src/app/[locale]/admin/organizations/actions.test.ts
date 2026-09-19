@@ -47,6 +47,7 @@ const provisionForm = () => {
   formData.set('slug', 'asl-la-fourche')
   formData.set('domain', 'asl-lafourche.fr')
   formData.set('adminEmail', 'presidence@asl-lafourche.fr')
+  formData.set('contactEmail', 'contact@asl-provisionnee.test')
   formData.append('modules', 'voirie')
   formData.append('modules', 'vote')
   return formData
@@ -75,7 +76,7 @@ describe('provisionOrganizationAction', () => {
     })
   })
 
-  it('transmet les cinq champs du formulaire, modules cochés compris', async () => {
+  it('transmet les six champs du formulaire, modules cochés compris', async () => {
     const state = await provisionOrganizationAction(undefined, provisionForm())
 
     expect(state.success).toBe(true)
@@ -84,8 +85,27 @@ describe('provisionOrganizationAction', () => {
       slug: 'asl-la-fourche',
       domain: 'asl-lafourche.fr',
       adminEmail: 'presidence@asl-lafourche.fr',
+      contactEmail: 'contact@asl-provisionnee.test',
       enabledModules: ['voirie', 'vote'],
     })
+  })
+
+  it('sans adresse de contact, la transmet vide : le service refuse la creation', async () => {
+    const formData = provisionForm()
+    formData.delete('contactEmail')
+    vi.mocked(provisionOrganizationService).mockRejectedValue(
+      new Error(
+        "L'adresse de contact de l'association est obligatoire et doit être valide."
+      )
+    )
+
+    const state = await provisionOrganizationAction(undefined, formData)
+
+    expect(provisionOrganizationService).toHaveBeenCalledWith(
+      expect.objectContaining({contactEmail: ''})
+    )
+    expect(state.success).toBe(false)
+    expect(state.message).toContain('adresse de contact')
   })
 
   it('provisionne sans aucun module quand aucune case n est cochee', async () => {

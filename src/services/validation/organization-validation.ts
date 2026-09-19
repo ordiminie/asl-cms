@@ -110,6 +110,10 @@ export const provisionOrganizationServiceSchema =
     adminEmail: z.string().trim().toLowerCase().email({
       message: "L'adresse email de l'administrateur n'est pas valide.",
     }),
+    contactEmail: z.string().trim().email({
+      message:
+        "L'adresse de contact de l'association est obligatoire et doit être valide.",
+    }),
     enabledModules: z.array(organizationModuleSchema).default([]),
   })
 

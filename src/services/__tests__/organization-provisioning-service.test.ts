@@ -2,7 +2,9 @@ import {faker} from '@faker-js/faker'
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 import * as organizationRepository from '@/db/repositories/organization-repository'
+import * as organizationSettingRepository from '@/db/repositories/organization-setting-repository'
 import * as userRepository from '@/db/repositories/user-repository'
+import {withTenant} from '@/db/tenant-scope'
 
 import {AuthorizationError} from '../errors/authorization-error'
 import {
@@ -15,7 +17,22 @@ import {Organization} from '../types/domain/organization-types'
 import {setupAuthUserMocked} from './helper-service-test'
 import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
 
+const scope = vi.hoisted(() => ({current: undefined as string | undefined}))
+
 vi.mock('@/db/repositories/organization-repository')
+vi.mock('@/db/repositories/organization-setting-repository', () => ({
+  upsertOrganizationSettingsDao: vi.fn(),
+}))
+vi.mock('@/db/tenant-scope', () => ({
+  withTenant: vi.fn(async (organizationId: string, callback: () => unknown) => {
+    scope.current = organizationId
+    try {
+      return await callback()
+    } finally {
+      scope.current = undefined
+    }
+  }),
+}))
 vi.mock('@/db/repositories/user-repository', () => ({
   getUserByIdDao: vi.fn(),
   getUserByEmailDao: vi.fn(),
@@ -30,6 +47,7 @@ const provisionParams = {
   slug: 'asl-la-fourche',
   domain: 'asl-lafourche.fr',
   adminEmail: 'presidence@asl-lafourche.fr',
+  contactEmail: 'contact@asl-provisionnee.test',
   enabledModules: ['voirie' as const],
 }
 
@@ -61,6 +79,9 @@ beforeEach(() => {
     organizationRepository.createOrganizationMemberDao
   ).mockResolvedValue(undefined as never)
   vi.mocked(userRepository.getUserByEmailDao).mockResolvedValue(undefined)
+  vi.mocked(
+    organizationSettingRepository.upsertOrganizationSettingsDao
+  ).mockResolvedValue(undefined)
   vi.mocked(userRepository.createUserDao).mockResolvedValue({
     ...userTest,
     id: ADMIN_USER_ID,
@@ -159,6 +180,54 @@ describe('[SUPER_ADMIN] provisionOrganizationService', () => {
       provisionOrganizationService({
         ...provisionParams,
         adminEmail: 'pas-un-email',
+      })
+    ).rejects.toThrow()
+
+    expect(organizationRepository.createOrganizationDao).not.toHaveBeenCalled()
+  })
+
+  it('ecrit l adresse de contact sous le scope de la nouvelle association', async () => {
+    let scopeAtWrite: string | undefined
+    vi.mocked(
+      organizationSettingRepository.upsertOrganizationSettingsDao
+    ).mockImplementation(async () => {
+      scopeAtWrite = scope.current
+    })
+
+    await provisionOrganizationService(provisionParams)
+
+    expect(withTenant).toHaveBeenCalledWith(
+      ORGANIZATION_ID,
+      expect.any(Function)
+    )
+    expect(scopeAtWrite).toBe(ORGANIZATION_ID)
+    expect(
+      organizationSettingRepository.upsertOrganizationSettingsDao
+    ).toHaveBeenCalledWith([
+      expect.objectContaining({
+        organizationId: ORGANIZATION_ID,
+        key: 'contact.email',
+        value: provisionParams.contactEmail,
+      }),
+    ])
+  })
+
+  it('refuse une creation sans adresse de contact, avant tout acces base', async () => {
+    await expect(
+      provisionOrganizationService({...provisionParams, contactEmail: ''})
+    ).rejects.toThrow()
+
+    expect(organizationRepository.createOrganizationDao).not.toHaveBeenCalled()
+    expect(
+      organizationSettingRepository.upsertOrganizationSettingsDao
+    ).not.toHaveBeenCalled()
+  })
+
+  it('refuse une adresse de contact invalide, avant tout acces base', async () => {
+    await expect(
+      provisionOrganizationService({
+        ...provisionParams,
+        contactEmail: 'pas-une-adresse',
       })
     ).rejects.toThrow()
 

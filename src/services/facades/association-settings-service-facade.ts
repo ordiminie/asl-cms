@@ -1,0 +1,6 @@
+import associationSettingsServiceInterceptor from './interceptors/association-settings-service-logger-interceptor'
+
+export const getAssociationSettingsService =
+  associationSettingsServiceInterceptor.getAssociationSettingsService
+export const updateAssociationSettingsService =
+  associationSettingsServiceInterceptor.updateAssociationSettingsService

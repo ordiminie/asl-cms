@@ -6,12 +6,14 @@ import {hasLocale} from 'next-intl'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import React from 'react'
 
+import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {
   getCurrentTenantDal,
   requireCurrentTenantDal,
 } from '@/app/dal/tenant-dal'
 import {routing} from '@/i18n/routing'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
+import {getAccentHue} from '@/services/types/domain/association-settings-types'
 
 import BaseLayout from './base-layout'
 
@@ -41,9 +43,17 @@ export default async function LocaleLayout({
   // Consequence assumee, heritee de l'ADR 003 : lire le Host ici rend toute
   // page dependante de la requete, et **tout domaine servant l'application
   // doit etre provisionne**, back-office du prestataire compris.
-  await requireCurrentTenantDal()
+  const tenant = await requireCurrentTenantDal()
 
-  return <BaseLayout locale={locale}>{children}</BaseLayout>
+  // La teinte d'accent de l'association (s02), lue en cache par association ;
+  // la teinte par defaut quand elle n'en a pas choisi.
+  const accentHue = getAccentHue(await getAssociationSettingsDal(tenant.id))
+
+  return (
+    <BaseLayout locale={locale} accentHue={accentHue}>
+      {children}
+    </BaseLayout>
+  )
 }
 
 // Déplacer generateMetadata après le composant principal
