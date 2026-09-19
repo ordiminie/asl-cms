@@ -1,144 +1,128 @@
-# Revue : story s03-connexion-lien-magique (cinquième passe, après `082dc2a`)
+# Revue : story s03-connexion-lien-magique (sixième passe, après `3c4ef7a`)
 
 > Revue faite à contexte neuf. Chaque problème est classé critique, majeur ou mineur.
 >
-> **Diff relu** : `git diff main...feature/s03-connexion-lien-magique`, soit 10 commits. L'examen porte surtout sur `082dc2a` (15 fichiers, +348/−51) : la locale de l'email de connexion.
+> **Diff relu** : `git diff main...feature/s03-connexion-lien-magique`, 11 commits. L'examen porte sur `3c4ef7a` (15 fichiers, +403/−273), qui répond au constat critique de la cinquième passe.
 >
-> **Références** :
+> **Références** : `docs/plans/s03-connexion-lien-magique.md` (`validated: yes`), AGENTS.md, ADR 001 à 017 (dont 005, 008, 010, 016, 017), `docs/design-system.md`, `docs/designs/s03-connexion-lien-magique.md`.
 >
-> - `docs/plans/s03-connexion-lien-magique.md` (validated: yes) ;
-> - AGENTS.md et ADR 001 à 017, dont l'ADR 008 ;
-> - la quatrième passe (`4a4e4df`).
+> **Historique des passes** : 1ʳᵉ ship autorisé puis CI en échec (cycle d'import) ; 2ᵉ bloquée (`check:rules`) ; 3ᵉ autorisée avec trois majeurs sur la limitation ; 4ᵉ autorisée après simplification (3 demandes par adresse et par jour) puis CI en échec (email en anglais) ; 5ᵉ bloquée (le correctif de locale était sans effet).
 >
-> **Contexte** : l'e2e de la CI a échoué sur `e2e/magic-link.spec.ts:278`. L'objet de l'email était en anglais (« your sign-in link »). `082dc2a` rend la locale explicite de bout en bout pour corriger ce défaut.
->
-> **État de l'arbre** : le relecteur n'a rien modifié. `git status` est propre à la fin, et rien n'a changé sous `drizzle/migrations/meta`. La sonde décrite plus bas vit uniquement dans le scratchpad, hors du dépôt.
+> **État de l'arbre** : le relecteur n'a modifié aucun fichier suivi. `git status` est **propre** à la fin, et **rien n'a changé sous `drizzle/migrations/meta`**. La sonde décrite plus bas vit uniquement dans le scratchpad, hors du dépôt.
 
 ## Conformité au plan
 
-- [x] Les tâches 1 à 11 sont faites. Les passes précédentes l'ont établi, et `082dc2a` n'y touche pas.
-- [ ] **Le correctif `082dc2a` n'apparaît pas dans le plan.** Aucune tâche ni aucun amendement ne mentionne la locale explicite, la nouvelle forme de `sendMagicLinkEmailService` (paramètre `locale`) ou l'exception ajoutée à la règle. C'est un constat mineur de processus.
-- [x] Le correctif ne sort pas de son sujet. Il modifie le formulaire, l'action, l'intégration, le service, le gabarit, le helper, les tests et la règle.
+- [x] Tâches 1 à 11 cochées et faites (établi aux passes précédentes, inchangé ici).
+- [x] **Le plan dit maintenant le correctif de locale.** L'amendement « Correctif de locale de l'email de connexion (après la cinquième revue) » décrit la chaîne complète, la lecture de `params.locale` dans `request.ts` et la preuve sur la vraie chaîne. Le mineur de la cinquième passe est levé.
+- [x] Les phrases périmées sont corrigées : « limitation (par adresse et par accès internet) » → « 3 par adresse et par jour, tâche 11 » ; « la tâche 11 reste à faire » → « faite (`f988987`, `a83ac77`) » ; « deux réglages » → le réglage unique.
+- [x] « Files touched » complété (tâche 11 + correctif de locale : `setup-real-i18n.ts`, `request.real-i18n.test.ts`, `magic-link-email-service.real-i18n.test.tsx`, renommages, `vitest.config.ts`, `request.ts`, `locale-helper.ts`).
+- [ ] Reliquat minime : la **suppression** de `src/__tests__/translations-without-locale-cookie.ts` et la modification de `src/services/__tests__/email-service.test.tsx` ne figurent pas dans « Files touched » (la suppression est dite dans la prose de l'amendement). Sans conséquence.
+- [x] Aucune dérive : `3c4ef7a` ne touche que la locale, ses tests, la règle et le plan. Les deux seules retouches de `magic-link-login.tsx` sont du repli de lignes, sans changement de rendu.
 
 ## Anti-hallucination
 
-- [x] **Better Auth 1.7.1 accepte bien `metadata` et le transmet.** Vérifié dans `node_modules/better-auth/dist/plugins/magic-link/index.mjs` :
-  - l. 18 : `metadata: z.record(z.string(), z.any()).optional()` dans `signInMagicLinkBodySchema` ;
-  - l. 74 : `const { email, metadata } = ctx.body` ;
-  - l. 93-98 : `options.sendMagicLink({email, url, token, metadata}, ctx)`.
-  - Le type public (`index.d.mts:39`) déclare `metadata?: Record<string, any>`. Le test d'intégration réel (`magic-link-integration.test.ts`, via `localAuth.api.signInMagicLink` et le body `metadata`) le confirme.
-- [x] **`hasLocale` existe** (`use-intl/core`, réexporté par les entrées client et react-server de `next-intl`). `routing.locales` vaut bien `['en','fr','es']`.
-- [ ] **CRITIQUE : la locale explicite est ignorée par `src/i18n/request.ts`. Le correctif ne corrige donc pas le défaut que la CI a trouvé.**
-  - **Ce que fait next-intl 4.13.5.** Dans `dist/esm/development/server/react-server/getConfig.js`, `getTranslations({locale})` appelle `getConfig(locale)`. Celui-ci passe `{locale: localeOverride, requestLocale}` à la fonction de `getRequestConfig`, puis **utilise la `locale` et les `messages` que cette fonction rend**. Le type `GetRequestConfigParams` (`dist/types/server/react-server/getRequestConfig.d.ts`) le dit : la locale explicite « will be passed via `locale` to `getRequestConfig` **so you can use it** ». C'est au projet de la lire.
-  - **Ce que fait le projet.** `src/i18n/request.ts` (non modifié) ignore le paramètre : `getRequestConfig(async () => …)`. Il lit `rootParams.locale()`, qui lève dans une Server Action. Il retombe alors sur le cookie `NEXT_LOCALE`, sinon sur `routing.defaultLocale` (`en`), et rend `en` avec `messages/en.json`.
-  - **Vérifié par une sonde exécutée.** Vitest dans le scratchpad, avec la **vraie** entrée react-server de `next-intl/server`, `next-intl/config` aliasé sur le vrai `src/i18n/request.ts`, `next/root-params` qui lève (cas d'une Server Action) et des cookies vides :
+- [x] **La prémisse sur next-intl est cette fois exacte, vérifiée dans le code de la lib** (`next-intl@4.13.5`, `dist/esm/development/server/react-server/getConfig.js`) :
 
-    ```
-    getTranslations({locale: 'fr', namespace: 'email.user.magicLink'})('subject', …)
-    → "ASL — your sign-in link"
-    getTranslations({locale: 'es', …}) → "ASL — your sign-in link"
-    ```
+  ```js
+  const params = {
+    locale: localeOverride,
+    get requestLocale() { return localeOverride ? … : getRequestLocale() }
+  }
+  let result = getConfig(params)   // puis next-intl utilise result.locale / result.messages
+  ```
 
-  - **Conséquences.**
-    - L'email de connexion part toujours en anglais pour un navigateur neuf. L'objet, le texte et le corps sont tous touchés.
-    - Seul `<Html lang={locale}>` suit la locale, d'où un HTML `lang="fr"` au contenu anglais.
-    - L'erreur de champ serveur de `requestMagicLinkAction` est touchée de la même façon.
-    - L'e2e `magic-link.spec.ts:278` échouera de nouveau en CI.
-  - **Pourquoi les tests unitaires sont verts.** Ils ne passent jamais par `request.ts` : `getTranslations` y est remplacé par `getTranslationsWithoutLocaleCookie` (`src/__tests__/translations-without-locale-cookie.ts`). Ce double **affirme** reproduire `request.ts` (« Une locale explicite est servie telle quelle »), ce qui est faux pour le vrai `request.ts`. Le cas « sans locale → `defaultLocale` » est bien simulé. Le cas « locale explicite » est inventé. C'est un filet de sécurité halluciné.
-  - **Pistes de correction** (le relecteur ne corrige pas) :
-    - dans `request.ts`, lire `params.locale` d'abord (`getRequestConfig(async ({locale}) => …)`), vérifié par `hasLocale`, puis seulement root-params et le cookie. Déstructurer `locale` ne touche pas l'accesseur `requestLocale`, que le commentaire du fichier interdit de résoudre ;
-    - ajouter un test qui passe par le vrai `getTranslations` et le vrai `request.ts`, comme la sonde, et non par un double écrit à la main.
-- [x] Les commentaires et le message de commit décrivent fidèlement le chemin (formulaire → action → metadata → `sendMagicLink` → service → gabarit). Seule leur prémisse sur next-intl est fausse (voir ci-dessus).
+  `locale` est une **propriété simple**, `requestLocale` un **accesseur**. Déstructurer `{locale}` ne déclenche donc aucune lecture de la requête : la garde du commentaire de `request.ts` est respectée à la lettre.
 
-## Conformité aux règles
+- [x] **Le nouveau `src/i18n/request.ts` est correct et minimal** : branche explicite d'abord (`hasLocale(routing.locales, locale)`), puis la chaîne inchangée root-params → cookie `NEXT_LOCALE` → `defaultLocale` → `notFound()`. Aucune valeur non vérifiée n'atteint `import(\`../../messages/${locale}.json\`)`.
+- [x] **L'alias de test pointe sur des fichiers réels**, et sur ceux-là mêmes que la production utilise :
+  - `next-intl/server` → `node_modules/next-intl/dist/esm/development/server.react-server.js` (fichier présent, c'est bien l'entrée `react-server` déclarée par `exports` du paquet) ;
+  - `next-intl/config` → `src/i18n/request.ts`, exactement ce que fait le plugin en production (`dist/esm/development/plugin/getNextConfig.js` l. 39-52 : `./src/i18n/request.ts`, et l. 114 `'next-intl/config': resolveI18nPath(...)`). `next.config.ts` appelle bien `createNextIntlPlugin()` sans chemin.
+- [x] **Les tests ne peuvent pas passer « quoi qu'il arrive » — sonde exécutée.** Copie de `request.ts` dans le scratchpad, **privée de la branche explicite**, aliasée sur `next-intl/config`, même fichier de test, même setup :
 
-- [x] **Locale fournie par le client : validée des deux côtés, sans injection.**
-  - `resolveSupportedLocale` n'accepte qu'une `string` présente dans `routing.locales`. Sinon il rend `fr`.
-  - Les tests couvrent `'../fr'`, un tableau, `null`, `''` et un objet muni de `toString`.
-  - L'action valide la locale, puis `sendMagicLink` la revalide.
-  - Aucune valeur non vérifiée n'atteint `messages/${locale}.json`, puisque `request.ts` n'utilise même pas la locale. Aucune voie de plantage.
-  - La route HTTP `/sign-in/magic-link` reste fermée (`disabledPaths`) : `metadata` ne vient que de l'action.
-- [x] **Pas de régression d'énumération ni de timing.**
-  - La locale est résolue de façon synchrone avant la validation, de la même façon pour une adresse connue ou inconnue.
-  - `metadata` ne change aucune branche de `sendMagicLink` (domaine → quota → compte).
-  - Le plancher de 1,5 s est inchangé.
-- [x] **Garde sur les imports paresseux** : `magic-link-integration-imports.test.ts` reste vert. `locale-helper` n'importe que `next-intl` et `@/i18n/routing`, déjà importés par `src/proxy.ts`. Le build de production est vert.
-- [x] **ADR 008 et 010.** `PRODUCT_LOCALE = 'fr'` est cohérent avec l'ADR 008, et sa justification hors ADR 010 est écrite. `en` et `es` restent acceptés tant que le routage les sert, ce qui est cohérent (l'application de l'ADR 008 au routage est hors périmètre).
-- [ ] **Exception ajoutée à `rule-service-emails-internationalization.md` : cohérente dans son principe, fausse dans sa recette.** Elle présente `getTranslations({locale, namespace})` comme suffisant, alors que sans lecture de `params.locale` dans `request.ts` ce n'est pas le cas. Elle fait partie du constat critique : à corriger avec lui. `check:rules` passe, et la copie `.cursor` est alignée.
-- [x] Design system : aucun changement visuel. Le formulaire envoie un champ caché de plus, par `FormData`, sans nouveau composant.
+  ```
+  × traduit dans la locale explicite, depuis une Server Action sans cookie
+  × préfère la locale explicite au cookie NEXT_LOCALE
+  ✓ les 3 autres (cookie, locale non servie, root-params)
+  Tests  2 failed | 3 passed (5)
+  ```
+
+  Les deux cas qui fixent le critère tombent dès que `request.ts` ignore `params.locale` ; les cas de non-régression restent verts. Le filet est réel, pas un double.
+
+- [x] Le double halluciné `src/__tests__/translations-without-locale-cookie.ts` est **supprimé**, et plus aucune référence n'en subsiste dans `src/` (seule la revue précédente le cite, à titre d'historique).
+- [x] Le setup `src/__tests__/setup-real-i18n.ts` simule honnêtement le contexte du bug : `next/root-params` **jette** (« can only be called in the context of a route »), `cookies()` rend une boîte vide. C'est bien l'état d'un navigateur neuf en Server Action.
+- [x] Le message de commit décrit fidèlement ce que fait le diff, y compris la limite « le tableau des routes est identique ».
+
+## Conformité aux règles et aux ADR
+
+- [x] **ADR 008** : `resolveSupportedLocale` n'accepte qu'une `string` présente dans `routing.locales`, sinon `PRODUCT_LOCALE = 'fr'`. Validée par l'action **et** revalidée dans `sendMagicLink`. Rien d'imposé par le client n'atteint un chemin de fichier.
+- [x] **Pas de régression d'énumération ni de timing** : la locale est résolue avant toute branche, identiquement pour une adresse connue ou inconnue ; `metadata` n'ouvre aucune branche dans `sendMagicLink` (domaine → quota → compte) ; plancher de 1,5 s inchangé (`action.test.ts` le fixe toujours, horloge simulée). La route HTTP `/sign-in/magic-link` reste fermée (`disabledPaths`, `auth.ts:59`), donc `metadata` ne vient que de la server action.
+- [x] **Révocation, quota, disabledPaths intacts** : `revokeEarlierMagicLinks` (suppression des `verification` de l'adresse, `identifier != token`) et `consumeMagicLinkRequestQuotaService` (3/adresse/jour, réglage `login.link_requests_per_address_per_day`, défaut `3`, bornes 1–20) sont inchangés et couverts par le contrat Better Auth réel (adaptateur mémoire) dans `magic-link-integration.real-i18n.test.ts`.
+- [x] **Garde sur les imports paresseux** verte (`magic-link-integration-imports.test.ts`, incluse dans la suite complète).
+- [x] **Règle corrigée** : `rule-service-emails-internationalization.md` dit désormais que `getTranslations({locale, namespace})` ne fonctionne **que parce que** `request.ts` honore `params.locale`, interdit d'y toucher et renvoie aux tests `*.real-i18n.test.*`. `pnpm check:rules` : « Règles et documentation alignées sur le code » ; la copie `.cursor` ne diffère que par l'en-tête généré.
+- [x] **Design system / design s03** : `3c4ef7a` ne change aucun rendu. Aucune couleur brute, aucun `oklch`, aucun `style={{}}` ajouté dans le diff UI de la branche ; l'email garde ses hexadécimaux de `theme.ts` (exigés par §5).
+- Observation hors périmètre : `src/i18n/routing.ts` reste `['en','fr','es']` / `defaultLocale: 'en'`, alors que l'ADR 008 vise `['fr']` + `localePrefix: 'never'`. Le fichier **n'est pas dans le diff** (état hérité du boilerplate, application prévue ailleurs). Le code ajouté ici est cohérent avec l'ADR et deviendra simplement inerte le jour de son application.
 
 ## Tests et vérifications, lancés par le relecteur
 
-- [x] `pnpm test --run` : **69 fichiers passent, 2 sont ignorés ; 795 tests passent, 8 sont ignorés.** Code 0.
-- [x] `pnpm build` : exit 0, et `/sitemap.xml` est prérendu. Le seul avertissement Turbopack existait déjà.
+- [x] `pnpm test --run` : **71 fichiers passent, 2 ignorés ; 800 tests passent, 8 ignorés.** Code 0. (795 → 800 : les 5 cas de `request.real-i18n.test.ts`.)
+- [x] `pnpm vitest --run --project i18n` : **4 fichiers, 38 tests**, verts — vraie entrée react-server de next-intl sur le vrai `request.ts`.
+- [x] Sonde de falsification (scratchpad) : 2 échecs ciblés avec un `request.ts` altéré (voir ci-dessus).
+- [x] `pnpm build` : exit 0. Tableau des routes **2 ○ / 44 ◐ / 188 ƒ** ; `/sitemap.xml` et `/robots.txt` prérendus (○), les pages `(app)`, `modules/[module]`, `team/[slug]` toujours en ◐. Aucun prerender perdu : si `request.ts` était devenu dépendant de la requête, aucune route localisée ne resterait ◐. Seul avertissement Turbopack : « Dynamic filesystem access », préexistant.
 - [x] `pnpm exec tsc --noEmit` : 0 erreur.
-- [x] `pnpm lint` : 0 erreur. Le seul avertissement vient de `.remember/tmp/last-ndc.ts`, hors du diff.
-- [x] `pnpm check:rules` : « Règles et documentation alignées sur le code ».
-- [ ] `prettier --check` sur les fichiers de `082dc2a` : 5 fichiers en écart.
-  - Trois l'étaient déjà : `magic-link-login.test.tsx`, `magic-link-email.test.tsx` et `email-service.test.tsx`.
-  - `magic-link-login.tsx` et `magic-link-email.tsx` font partie des 8 déjà signalés. `082dc2a` y ajoute deux lignes de plus de 80 colonnes : `requestAction({status: 'idle'}, toFormData(email, locale))`.
-- [ ] **Les assertions ne fixent pas le critère réel.** Les nouveaux cas « sans cookie de locale » réussiraient avec l'implémentation actuelle, qui est cassée en production :
-  - `action.test.ts`, erreur de champ ;
-  - `magic-link-integration.test.ts`, « écrit l'email dans la locale de la page… » ;
-  - `email-service.test.tsx` et `magic-link-email.test.tsx`.
-
-  Ce point fait partie du constat critique.
-
-- [x] **Le `beforeAll` de préchauffage est légitime.** `sendMagicLink` charge ses façades par `import()` au premier appel (`loadServices`). Le préchauffage paie ce coût hors du délai de 5 s. La « promesse orpheline » décrite était la suite du dépassement de délai du test, pas une fuite du code de production. Une fois le module en cache, il n'y a plus d'appel pendant entre deux tests.
-- **E2E non exécutés** : le conteneur n'a pas Chromium. D'après l'analyse ci-dessus, `magic-link.spec.ts:278` devrait échouer de nouveau.
+- [x] `pnpm lint` : 0 erreur (1 avertissement dans `.remember/tmp/last-ndc.ts`, hors diff).
+- [x] `pnpm check:rules` : aligné.
+- [ ] `prettier . --check` : **9 fichiers en écart** — 5 sous `src` (`invalid-magic-link.test.tsx`, `magic-link-login.test.tsx`, `magic-link-email.tsx`, `brevo-transport.test.ts`, `get-email-transport.ts`) et 4 métadonnées Drizzle générées (`_journal.json`, `0008/0009/0010_snapshot.json`). Ces 9 fichiers appartiennent tous à la branche ; sur `main` le dépôt est propre. `pnpm format` n'est pas dans la CI ni dans la DoD du plan : reste mineur, mais le compte `src` est passé de 8 à 5 depuis la cinquième passe (`magic-link-login.tsx` réparé).
+- [x] **Les assertions fixent bien le critère.** `magic-link-email-service.real-i18n.test.tsx` vérifie objet, texte et `lang="fr"` **sans cookie de locale** en passant par le vrai `request.ts` ; `magic-link-integration.real-i18n.test.ts` couvre `metadata.locale = 'es'` → objet espagnol et `lang="es"`, et le repli `fr` pour `de`, absence de locale, ou objet muni de `toString`.
+- [x] **L'assertion de contrat de `action.test.ts` est significative** : `getTranslations.mock.calls` doit valoir exactement `[[{locale:'es', namespace:'Auth.MagicLinkLogin'}], [{locale:'fr', …}]]` — elle fixe à la fois le passage de la locale de la page et le repli ADR 008 sur `de`, et échouerait si l'action revenait à un `getTranslations('…')` implicite. Le reste du double de ce fichier (`${namespace}.${key}`) n'affirme plus rien sur la locale.
+- [x] **Aucun test restant ne s'appuie sur un double contredisant le réel** : les `vi.mock('next-intl/server')` de `magic-link-integration` et `magic-link-email` sont retirés par le renommage ; ceux qui subsistent ailleurs (métadonnées de layout, actions bureau/contact) se contentent d'échos de clés et ne prétendent rien sur la résolution de locale.
+- **E2E non exécutés** : pas de Chromium dans le conteneur (`~/.cache/ms-playwright` absent). L'analyse converge cette fois vers un succès : `e2e/magic-link.spec.ts` ouvre tous ses contextes en `fr-FR` (`test.use({locale:'fr-FR'})` et `freshPage`), la page se rend donc en `fr`, `useLocale()` alimente le champ caché, et la chaîne réelle rend le français — c'est exactement ce que prouve `magic-link-email-service.real-i18n.test.tsx`. Preuve définitive : la CI de la PR.
 
 ## Régressions
 
-- [x] `locale-helper.ts` est aussi importé par `src/proxy.ts`, `lang-toggle.tsx` et `user-preferences-sync.tsx`. L'ajout de `hasLocale` et `routing` n'y change rien, et le build et les tests sont verts.
-- [x] Le seul appelant de `sendMagicLinkEmailService` est `magic-link-integration.ts`. Le nouveau paramètre obligatoire `locale` est fourni, et `tsc` est vert.
-- **Pour mémoire, hors constat s03** : les autres emails envoyés hors rendu de page gardent l'appel implicite et partent aussi en anglais sans cookie. Ce sont la réinitialisation du mot de passe, la vérification, l'invitation d'organisation, le changement d'email, l'OTP et les emails Stripe. Le diff ne les aggrave pas, et la règle le dit.
+- [x] **Les autres appels `getTranslations({locale, …})` ne changent pas de résultat.** Ils sont tous dans des `generateMetadata` qui passent la locale du segment de route : la branche explicite rend la même locale que root-params rendait. Une locale de route invalide continue de finir en `notFound()` (elle échoue `hasLocale`, puis root-params la rend et la garde existante la rejette).
+- [x] Aucune lecture de requête ajoutée : dans la branche explicite, ni `rootParams.locale()` ni `cookies()` ne sont appelés — strictement moins de contexte de requête qu'avant, donc rien à craindre pour `'use cache'`.
+- [x] Déplacement de trois fichiers de test du projet `client`/`server` vers `i18n` : les `exclude` des deux premiers projets écartent bien `src/**/*.real-i18n.test.{ts,tsx}`, aucun test n'est exécuté deux fois ni perdu (73 fichiers collectés, suite verte).
+- [x] Le seul appelant de `sendMagicLinkEmailService` reste `magic-link-integration.ts`, qui fournit `locale` ; `tsc` vert.
+- Pour mémoire, hors constat s03 : les autres emails du boilerplate (`getLocale()` implicite dans `email-service.ts` et `user-service.ts`) partent toujours dans la locale du cookie, sinon `en`. Le diff ne les aggrave pas et la règle le dit.
 
 ## Constats
 
-### Nouveau (`082dc2a`)
+### Nouveaux (`3c4ef7a`)
 
-- **critique** — `src/i18n/request.ts` (non modifié), `src/services/email-service.ts:209`, `src/lib/emails/magic-link-email.tsx:71`, `src/app/[locale]/(auth)/action.ts:213` :
-  - `getTranslations({locale, namespace})` est sans effet, parce que `getRequestConfig` ignore `params.locale` et rend `en` depuis une Server Action sans cookie ;
-  - l'email de connexion reste en anglais, et l'échec CI n'est pas corrigé ;
-  - vérifié en exécutant le vrai next-intl 4.13.5 contre le vrai `request.ts`.
-- **critique (même cause, côté tests)** — `src/__tests__/translations-without-locale-cookie.ts` :
-  - ce double prétend reproduire `request.ts` mais honore la locale explicite, ce que le vrai `request.ts` ne fait pas ;
-  - les nouveaux tests « sans cookie de locale » sont donc un filet halluciné ;
-  - l'exception ajoutée à `rule-service-emails-internationalization.md` (et à sa copie `.cursor`) documente la même recette incomplète.
-- **mineur** — Le plan ne mentionne pas le correctif de locale : aucune tâche ou note d'amendement, ni les fichiers `locale-helper.ts` et `translations-without-locale-cookie.ts` dans « Files touched ».
-- **mineur** — Formatage : deux lignes de plus de 80 colonnes ajoutées dans `magic-link-login.tsx` (appels à `toFormData(email, locale)`), s'ajoutant au constat Prettier existant.
+- **mineur** — `vitest.config.ts` : l'alias `next-intl/server` vise un chemin **interne** au paquet (`dist/esm/development/server.react-server.js`), contournant les conditions d'export. C'est le seul moyen d'obtenir l'entrée react-server sous Vitest, et une rupture future se verrait tout de suite (module introuvable, pas de faux vert) ; à surveiller à chaque montée de version de next-intl. À noter aussi que la preuve porte sur la build _development_ de la lib, la production n'utilisant pas le même fichier — la résolution de locale y est identique.
+- **mineur** — « Files touched » du plan omet la suppression de `src/__tests__/translations-without-locale-cookie.ts` et la modification de `src/services/__tests__/email-service.test.tsx`.
+
+### Constat critique de la cinquième passe — **levé**
+
+- `src/i18n/request.ts` honore désormais `params.locale`, vérifiée par `hasLocale`, avant la chaîne inchangée ; le comportement est prouvé sur la vraie chaîne next-intl et la sonde montre que les tests tombent si on retire cette lecture. Les quatre actions demandées (lire `params.locale`, tester le chemin réel sans double, corriger la recette de la règle, amender le plan) sont faites.
 
 ### Constats des passes antérieures, toujours ouverts (mineurs)
 
 - **mineur** — Deux demandes concurrentes pour la même adresse peuvent se révoquer l'une l'autre (`revokeEarlierMagicLinks`).
-- **mineur** — La purge des compteurs ne s'exécute qu'à une demande ultérieure de la même association. Le « purgé sous 24 h » n'est donc pas strictement tenu (piste : `scheduled_job`, ADR 006).
-- **mineur** — Le registre n'a pas de `whenEmptyKey` pour `login.link_requests_per_address_per_day`.
-- **mineur** — 8 fichiers `src` du diff ne passent pas `prettier --check`.
+- **mineur** — La purge des compteurs ne s'exécute qu'à une demande ultérieure de la même association : le « purgé sous 24 h » n'est pas strictement tenu (piste : `scheduled_job`, ADR 006).
+- **mineur** — Le registre n'a pas de `whenEmptyKey` pour `login.link_requests_per_address_per_day` (vérifié : `default {value:'3'}`, bornes 1–20, pas de `whenEmptyKey`).
+- **mineur** — 9 fichiers de la branche ne passent pas `prettier --check` (5 sous `src`, 4 métadonnées Drizzle générées).
 - **mineur** — Le cadre de `(auth)/layout.tsx` dégrade `register`, `auth-error`, `verify-request/recovery` et `loading`.
-- **mineur** — `registerMagicLinkAction` est une impasse silencieuse avec `disableSignUp`, et elle consomme le quota.
-- **mineur** — `requestMagicLinkAction` ne vérifie pas `NEXT_PUBLIC_AUTH_METHODS.includes('magiclink')`.
+- **mineur** — `registerMagicLinkAction` reste une impasse silencieuse avec `disableSignUp`, et elle consomme le quota.
+- **mineur** — `requestMagicLinkAction` ne vérifie pas `env.NEXT_PUBLIC_AUTH_METHODS.includes('magiclink')`, là où `registerMagicLinkAction` le fait (`action.ts:425`).
 - **mineur** — Écart au plan dans `e2e/auth.spec.ts` : le test « login pages do not offer sign-up » en remplace un autre.
 - **mineur** — Test tautologique « même résultat, adresse connue ou non » (`action.test.ts`).
 - **mineur** — Expéditeur par défaut `onboarding@resend.dev`.
 - **mineur** — Code mort `magic_link` dans `notification-service.ts`.
 - **mineur** — Au renvoi, un résultat `invalid` affiche l'alerte « service en panne ».
-- **mineur n° 1** — Phrases périmées dans le plan : l. 35, l. 110-111, l. 228, et « Files touched » incomplet.
-- **mineur n° 2** — `0010_long_baron_zemo.sql:2` ajoute `day date NOT NULL` sans valeur par défaut. Cela ne touche qu'une base intermédiaire.
-- **mineur n° 3** — Trous de test : minuit en heure d'hiver et au changement d'heure ; scope tenant de la purge.
-- **mineur n° 4** — L'aide du réglage n'indique ni la valeur par défaut (3) ni le compromis accepté.
+- **mineur** — `0010_long_baron_zemo.sql` ajoute `day date NOT NULL` sans valeur par défaut : ne gêne qu'une base intermédiaire déjà peuplée.
+- **mineur** — Trous de test : minuit en heure d'hiver et au changement d'heure ; scope tenant de la purge.
+- **mineur** — L'aide du réglage n'indique ni la valeur par défaut (3) ni le compromis accepté.
 
 ## Verdict
 
-Le raccordement Better Auth est réel : `metadata` est accepté et transmis, et la locale est bien validée des deux côtés, sans voie d'injection ni régression d'énumération. Tests, build, `tsc`, lint et `check:rules` sont verts.
+Le défaut critique de la cinquième passe est réellement corrigé, et il est prouvé là où il fallait : par la vraie entrée react-server de next-intl branchée sur le vrai `src/i18n/request.ts`, dans le contexte exact qui a fait échouer la CI (Server Action, pas de root-params, pas de cookie). La sonde de falsification confirme que ces tests échouent dès que la lecture de `params.locale` disparaît — ce n'est plus un filet halluciné. Le double qui affirmait un comportement inexistant est supprimé, la règle dit maintenant la condition qui rend la recette vraie, et le plan porte l'amendement.
 
-Mais le correctif repose sur une hypothèse fausse sur next-intl. Une locale passée à `getTranslations` n'est prise en compte que si `src/i18n/request.ts` lit `params.locale`, et ce n'est pas le cas. Exécuté contre le vrai code, l'objet reste « your sign-in link » pour `fr` comme pour `es`. Les tests ne le voient pas parce qu'ils remplacent `request.ts` par un double qui fait ce que le vrai ne fait pas. Le défaut trouvé par la CI est intact, et l'e2e devrait échouer de nouveau.
+Le prerender ne régresse pas : la lecture de `params.locale` ne touche pas l'accesseur `requestLocale` (vérifié dans le code de next-intl), et le build rend toujours 44 routes en ◐, 2 en ○.
 
-À faire en mode correctif :
+Sécurité et comportement inchangés : locale validée des deux côtés contre `routing.locales` avec repli `fr`, même écran et même plancher pour une adresse connue ou inconnue, endpoint HTTP fermé, révocation et quota journalier intacts.
 
-1. Lire `params.locale` dans `request.ts`, avec `hasLocale`.
-2. Tester le chemin réel `getTranslations` → `request.ts`, sans double pour ce cas.
-3. Ajuster la recette de l'exception dans la règle.
-4. Amender le plan.
+Il ne reste que des mineurs, dont l'essentiel vient des passes précédentes : formatage Prettier, deux trous de test connus, fragilité assumée de l'alias Vitest. Le dernier point qui ne peut pas être tranché ici est l'e2e, faute de Chromium dans le conteneur : la CI de la PR doit rester le juge de paix.
 
-Max severity: critical
-Ship allowed: no
+Max severity: minor
+Ship allowed: yes
