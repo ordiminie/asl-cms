@@ -1,8 +1,10 @@
 'use client'
 
+import {zodResolver} from '@hookform/resolvers/zod'
 import {CircleAlert, CircleCheck} from 'lucide-react'
 import {useTranslations} from 'next-intl'
-import {FormEvent, ReactNode, useState} from 'react'
+import {ReactNode, useState} from 'react'
+import {Controller, FieldErrors, useForm, useWatch} from 'react-hook-form'
 
 import type {AssociationSettingsFormState} from '@/app/[locale]/(bureau)/bureau/reglages/actions'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
@@ -26,8 +28,14 @@ import {
   ChoiceSettingDefinition,
   NumberSettingDefinition,
   ResolvedAssociationSettings,
-  validateSettingsChanges,
 } from '@/services/types/domain/association-settings-types'
+
+import {
+  AssociationSettingsFormValues,
+  createAssociationSettingsFormSchema,
+  toSettingError,
+  toSettingFieldName,
+} from './association-settings-form-validation'
 
 export type AssociationSettingsSaveAction = (
   prevState: AssociationSettingsFormState | undefined,
@@ -41,12 +49,11 @@ type AssociationSettingsFormProps = {
   saveAction: AssociationSettingsSaveAction
 }
 
+/** Valeurs indexees par cle du registre. */
 type Values = Record<string, string>
-type FieldErrors = Record<string, AssociationSettingError>
 
 type Feedback =
   | {status: 'idle'}
-  | {status: 'saving'}
   | {status: 'success'; message: string}
   | {status: 'error'; message?: string; kept?: string}
 
@@ -55,7 +62,10 @@ const MAX_RADIO_OPTIONS = 3
 
 const fieldId = (key: string) => `setting-${key.replaceAll('.', '-')}`
 
-/** Valeur brute affichee dans le champ : la valeur renseignee, sinon rien. */
+/**
+ * Valeur affichee dans le champ : la valeur renseignee ; pour un booleen ou un
+ * choix, la valeur en vigueur (defaut compris), sinon rien.
+ */
 const initialValue = (
   definition: AssociationSettingDefinition,
   settings: ResolvedAssociationSettings
@@ -69,28 +79,86 @@ const initialValue = (
   return resolved?.storedValue ?? ''
 }
 
-const initialValues = (
+const initialFormValues = (
   definitions: readonly AssociationSettingDefinition[],
   settings: ResolvedAssociationSettings
-): Values =>
+): AssociationSettingsFormValues =>
   Object.fromEntries(
     definitions.map((definition) => [
-      definition.key,
+      toSettingFieldName(definition.key),
       initialValue(definition, settings),
     ])
   )
 
-const valuesToFormData = (values: Values): FormData => {
+const storedKeysOf = (
+  definitions: readonly AssociationSettingDefinition[],
+  settings: ResolvedAssociationSettings
+): ReadonlySet<string> =>
+  new Set(
+    definitions
+      .filter((definition) => {
+        const stored = settings[definition.key]?.storedValue
+        return stored !== null && stored !== undefined
+      })
+      .map((definition) => definition.key)
+  )
+
+/**
+ * Les modifications a envoyer, par cle du registre. Un parametre sans valeur
+ * enregistree que l'utilisateur n'a pas modifie n'est pas envoye : son defaut
+ * reste implicite, une ligne absente (ADR 016).
+ */
+const changesToSend = (
+  definitions: readonly AssociationSettingDefinition[],
+  values: AssociationSettingsFormValues,
+  baseline: AssociationSettingsFormValues,
+  storedKeys: ReadonlySet<string>
+): Values =>
+  Object.fromEntries(
+    definitions
+      .map((definition) => {
+        const name = toSettingFieldName(definition.key)
+        return [definition.key, values[name] ?? '', baseline[name]] as const
+      })
+      .filter(
+        ([key, value, initial]) => storedKeys.has(key) || value !== initial
+      )
+      .map(([key, value]) => [key, value])
+  )
+
+const changesToFormData = (changes: Values): FormData => {
   const formData = new FormData()
-  for (const [key, value] of Object.entries(values)) formData.set(key, value)
+  for (const [key, value] of Object.entries(changes)) formData.set(key, value)
   return formData
 }
+
+const nextStoredKeys = (
+  storedKeys: ReadonlySet<string>,
+  sent: Values
+): ReadonlySet<string> => {
+  const next = new Set(storedKeys)
+  for (const [key, value] of Object.entries(sent)) {
+    if (value.trim() === '') next.delete(key)
+    else next.add(key)
+  }
+  return next
+}
+
+const settingErrorOf = (
+  definition: AssociationSettingDefinition,
+  errors: FieldErrors<AssociationSettingsFormValues>
+): AssociationSettingError | undefined =>
+  toSettingError(
+    definition,
+    errors[toSettingFieldName(definition.key)]?.message
+  )
 
 /**
  * Formulaire des reglages d'une association (s02, ecran B), **genere par le
  * registre** : chaque definition s'affiche selon son type (planche C), sans
- * que le composant connaisse aucune cle. Validation au _blur_ puis a l'envoi,
- * avec les regles du registre, les memes que le serveur ; tout ou rien.
+ * que le composant connaisse aucune cle. react-hook-form + zod : le schema
+ * applique les regles du registre, les memes que le serveur ; validation au
+ * _blur_ puis a l'envoi ; tout ou rien.
  */
 export function AssociationSettingsForm({
   definitions,
@@ -98,8 +166,19 @@ export function AssociationSettingsForm({
   saveAction,
 }: AssociationSettingsFormProps) {
   const t = useTranslations('BureauSettingsPage')
-  const [values, setValues] = useState<Values>(() =>
-    initialValues(definitions, settings)
+  const form = useForm<AssociationSettingsFormValues>({
+    resolver: zodResolver(createAssociationSettingsFormSchema(definitions)),
+    defaultValues: initialFormValues(definitions, settings),
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
+    shouldFocusError: false,
+  })
+  const watchedValues = useWatch({control: form.control})
+  const [baseline, setBaseline] = useState<AssociationSettingsFormValues>(
+    () => initialFormValues(definitions, settings)
+  )
+  const [storedKeys, setStoredKeys] = useState(() =>
+    storedKeysOf(definitions, settings)
   )
   const [savedValues, setSavedValues] = useState<Values>(() =>
     Object.fromEntries(
@@ -109,62 +188,50 @@ export function AssociationSettingsForm({
       ])
     )
   )
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [showSummary, setShowSummary] = useState(false)
   const [feedback, setFeedback] = useState<Feedback>({status: 'idle'})
-  const isSaving = feedback.status === 'saving'
+  const {errors, isSubmitting} = form.formState
 
-  const validateField = (key: string, value: string) => {
-    const validation = validateSettingsChanges(definitions, {[key]: value})
-    setFieldErrors((current) => {
-      const next = {...current}
-      if (validation.valid) delete next[key]
-      else next[key] = validation.errors[key]
-      return next
-    })
-  }
-
-  const changeValue = (key: string, value: string) => {
-    setValues((current) => ({...current, [key]: value}))
-    if (fieldErrors[key]) validateField(key, value)
-  }
-
-  const applyResult = (result: AssociationSettingsFormState) => {
+  const applyResult = (
+    result: AssociationSettingsFormState,
+    values: AssociationSettingsFormValues,
+    sent: Values
+  ) => {
     if (result.success) {
-      setSavedValues(
-        Object.fromEntries(
-          Object.entries(values).map(([key, value]) => [key, value.trim()])
-        )
-      )
+      setSavedValues((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          Object.entries(sent).map(([key, value]) => [key, value.trim()])
+        ),
+      }))
+      setBaseline(values)
+      setStoredKeys((current) => nextStoredKeys(current, sent))
       setFeedback({status: 'success', message: result.message ?? ''})
       return
     }
     if (result.fieldErrors) {
-      setFieldErrors(result.fieldErrors)
+      for (const [key, error] of Object.entries(result.fieldErrors)) {
+        form.setError(toSettingFieldName(key), {
+          type: 'server',
+          message: error.code,
+        })
+      }
       setShowSummary(true)
-      setFeedback({status: 'idle'})
       return
     }
     setFeedback({status: 'error', message: result.message, kept: result.kept})
   }
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (isSaving) return
-
-    const validation = validateSettingsChanges(definitions, values)
-    if (!validation.valid) {
-      setFieldErrors(validation.errors)
-      setShowSummary(true)
-      setFeedback({status: 'idle'})
-      return
-    }
-
-    setFieldErrors({})
+  const onValid = async (values: AssociationSettingsFormValues) => {
     setShowSummary(false)
-    setFeedback({status: 'saving'})
+    setFeedback({status: 'idle'})
+    const sent = changesToSend(definitions, values, baseline, storedKeys)
     try {
-      applyResult(await saveAction(undefined, valuesToFormData(values)))
+      applyResult(
+        await saveAction(undefined, changesToFormData(sent)),
+        values,
+        sent
+      )
     } catch {
       setFeedback({
         status: 'error',
@@ -174,16 +241,25 @@ export function AssociationSettingsForm({
     }
   }
 
-  const erroredDefinitions = definitions.filter(
-    (definition) => fieldErrors[definition.key]
+  const onInvalid = () => {
+    setShowSummary(true)
+    setFeedback({status: 'idle'})
+  }
+
+  const erroredDefinitions = definitions.filter((definition) =>
+    settingErrorOf(definition, errors)
   )
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+    <form
+      onSubmit={form.handleSubmit(onValid, onInvalid)}
+      noValidate
+      className="flex flex-col gap-6"
+    >
       {showSummary && erroredDefinitions.length > 0 ? (
         <ErrorSummary definitions={erroredDefinitions} />
       ) : (
-        <FormFeedback feedback={feedback} />
+        !isSubmitting && <FormFeedback feedback={feedback} />
       )}
 
       <Card className="gap-4 px-4 py-4 shadow-none sm:px-6 sm:py-6">
@@ -196,16 +272,26 @@ export function AssociationSettingsForm({
         </CardHeader>
         <CardContent className="flex flex-col gap-6 px-0">
           {definitions.map((definition) => (
-            <SettingField
+            <Controller
               key={definition.key}
-              definition={definition}
-              value={values[definition.key] ?? ''}
-              error={fieldErrors[definition.key]}
-              currentValue={savedValues[definition.key] ?? ''}
-              defaultValue={effectiveDefault(definition, values, settings)}
-              disabled={isSaving}
-              onChange={(value) => changeValue(definition.key, value)}
-              onBlur={(value) => validateField(definition.key, value)}
+              control={form.control}
+              name={toSettingFieldName(definition.key)}
+              render={({field}) => (
+                <SettingField
+                  definition={definition}
+                  value={field.value ?? ''}
+                  error={settingErrorOf(definition, errors)}
+                  currentValue={savedValues[definition.key] ?? ''}
+                  defaultValue={effectiveDefault(
+                    definition,
+                    watchedValues,
+                    settings
+                  )}
+                  disabled={isSubmitting}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                />
+              )}
             />
           ))}
         </CardContent>
@@ -213,10 +299,10 @@ export function AssociationSettingsForm({
 
       <Button
         type="submit"
-        disabled={isSaving}
+        disabled={isSubmitting}
         className="h-14 w-full sm:h-12 sm:w-auto sm:min-w-64 sm:self-start"
       >
-        {isSaving ? t('saving') : t('submit')}
+        {isSubmitting ? t('saving') : t('submit')}
       </Button>
     </form>
   )
@@ -229,12 +315,13 @@ export function AssociationSettingsForm({
  */
 const effectiveDefault = (
   definition: AssociationSettingDefinition,
-  values: Values,
+  values: Partial<AssociationSettingsFormValues>,
   settings: ResolvedAssociationSettings
 ): string | undefined => {
   if (!definition.default) return undefined
   if ('fromKey' in definition.default) {
-    const typed = values[definition.default.fromKey]?.trim()
+    const typed =
+      values[toSettingFieldName(definition.default.fromKey)]?.trim()
     const stored = settings[definition.default.fromKey]?.value
     return (
       typed ||
@@ -253,7 +340,7 @@ type SettingFieldProps = {
   defaultValue?: string
   disabled: boolean
   onChange: (value: string) => void
-  onBlur: (value: string) => void
+  onBlur: () => void
 }
 
 function SettingField(props: SettingFieldProps) {
@@ -392,7 +479,7 @@ function TextControl({
       aria-describedby={describedBy}
       className={cn(invalidClass, className)}
       onChange={(event) => onChange(event.target.value)}
-      onBlur={(event) => onBlur(event.target.value)}
+      onBlur={onBlur}
     />
   )
 }

@@ -313,3 +313,54 @@ describe('AssociationSettingsForm — etats de la page « Reglages »', () => {
     ).toBe('STRONG')
   })
 })
+
+describe('AssociationSettingsForm — l absence de ligne reste le defaut (ADR 016)', () => {
+  it('n envoie pas un booleen ni un choix jamais renseignes que l on n a pas touches', async () => {
+    const saveAction = saved()
+    testRegistryForm(saveAction)
+
+    await submit()
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    const formData = vi.mocked(saveAction).mock.calls[0][1]
+    expect(formData.get('test.required_email')).toBe('secretariat@asl.test')
+    expect(formData.has('test.boolean')).toBe(false)
+    expect(formData.has('test.choice_few')).toBe(false)
+    expect(formData.has('test.choice_many')).toBe(false)
+  })
+
+  it('enregistre le retour a la valeur par defaut d un reglage enregistre entre-temps', async () => {
+    const saveAction = saved()
+    testRegistryForm(saveAction)
+    const checkbox = screen.getByRole('checkbox', {name: /Relances activées/})
+
+    await userEvent.click(checkbox)
+    await submit()
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    await userEvent.click(checkbox)
+    await submit()
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(saveAction).mock.calls[0][1].get('test.boolean')).toBe(
+      'true'
+    )
+    expect(vi.mocked(saveAction).mock.calls[1][1].get('test.boolean')).toBe(
+      'false'
+    )
+  })
+
+  it('vider une adresse facultative renseignee l envoie vide, pour supprimer sa ligne', async () => {
+    const saveAction = saved()
+    productionForm(saveAction, [
+      {key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT},
+      {key: FORAGE_EMAIL_SETTING_KEY, value: 'forage@asl-les-pins.test'},
+    ])
+
+    await userEvent.clear(forageField())
+    await submit()
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    const formData = vi.mocked(saveAction).mock.calls[0][1]
+    expect(formData.get(FORAGE_EMAIL_SETTING_KEY)).toBe('')
+  })
+})
