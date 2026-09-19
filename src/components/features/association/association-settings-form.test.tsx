@@ -213,6 +213,42 @@ describe('AssociationSettingsForm — etats de la page « Reglages »', () => {
     expect(forageField()).toHaveValue('forage@asl-les-pins')
   })
 
+  it('adresse invalide envoyee sans quitter le champ : rien ne bouge sous le clic, puis resume ancre', async () => {
+    const saveAction = saved()
+    productionForm(saveAction)
+    const button = screen.getByRole('button', {
+      name: 'Enregistrer les réglages',
+    })
+
+    const user = userEvent.setup()
+    await user.type(forageField(), 'forage@asl-les-pins')
+    // Presser le bouton ne doit rien afficher au-dessus de lui : un message
+    // apparu entre l'appui et le relachement deplace le bouton, et le clic
+    // se perd (CI e2e, critere 2).
+    await user.pointer({keys: '[MouseLeft>]', target: button})
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(
+      screen.queryByText(
+        "Cette adresse n'est pas valide. Exemple : nom@domaine.fr"
+      )
+    ).not.toBeInTheDocument()
+    await user.pointer({keys: '[/MouseLeft]', target: button})
+
+    expect(
+      await screen.findByText(
+        "Cette adresse n'est pas valide. Exemple : nom@domaine.fr"
+      )
+    ).toBeInTheDocument()
+    const summary = await screen.findByRole('alert')
+    expect(summary).toHaveTextContent("1 réglage n'a pas été enregistré")
+    expect(
+      within(summary).getByRole('link', {
+        name: 'Adresse du responsable forage',
+      })
+    ).toHaveAttribute('href', `#${forageField().id}`)
+    expect(saveAction).not.toHaveBeenCalled()
+  })
+
   it('adresse de contact videe : refusee, l adresse precedente reste en vigueur', async () => {
     const saveAction = saved()
     productionForm(saveAction)

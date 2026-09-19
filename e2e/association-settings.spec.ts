@@ -40,7 +40,7 @@ const HUE_KEY = 'identity.accent_hue'
 
 /** Le jeu de paramètres de test, tel que le seed le déclare. */
 const SEED = {
-  a: {contact: 'contact@techcorp-solutions.test', hue: '150'},
+  a: {contact: 'contact@techcorp-solutions.test', hue: '150', hueName: 'Pins'},
   b: {contact: 'contact@marketing-pro.test'},
 }
 
@@ -131,29 +131,6 @@ const storedSettings = async (organizationSlug: 'a' | 'b') =>
     return Object.fromEntries(rows.rows.map((row) => [row.key, row.value]))
   })
 
-/** Remet TechCorp au jeu de paramètres du seed : la spec est rejouable. */
-const restoreTenantASeed = async () =>
-  await withAppRoleClient(async (client) => {
-    const {a} = await tenantIds(client)
-    await inTenantScope(client, a, async () => {
-      for (const [key, value] of [
-        [CONTACT_KEY, SEED.a.contact],
-        [HUE_KEY, SEED.a.hue],
-      ]) {
-        await client.query(
-          `insert into organization_setting (organization_id, key, value)
-           values ($1, $2, $3)
-           on conflict (organization_id, key) do update set value = excluded.value`,
-          [a, key, value]
-        )
-      }
-      await client.query(
-        `delete from organization_setting where organization_id = $1 and key = $2`,
-        [a, FORAGE_KEY]
-      )
-    })
-  })
-
 const login = async (page: Page, base: string, email: string) => {
   await page.goto(`${base}/fr/login`)
   await expect(page.locator('form')).toBeVisible()
@@ -192,6 +169,40 @@ const saveSettings = async (page: Page) => {
   return await actionRequest
 }
 
+/**
+ * Remet TechCorp au jeu de paramètres du seed **par l'application** : la
+ * présidente enregistre les valeurs du seed, les actions serveur invalident le
+ * cache des paramètres (`updateTag`). Une écriture directe en base laisserait
+ * le serveur relire l'ancienne valeur en cache : la spec ne serait pas
+ * rejouable dans le même serveur (retry d'un groupe serial).
+ */
+const restoreTenantASeed = async (browser: Browser) => {
+  const page = await newSession(browser, TENANT_A, 'user-owner@gmail.com')
+
+  await openSettingsPage(page, TENANT_A)
+  await contactField(page).fill(SEED.a.contact)
+  await forageField(page).fill('')
+  await saveSettings(page)
+  await expect(page.getByText(SAVED)).toBeVisible({timeout: 15_000})
+
+  await page.goto(`${TENANT_A}${IDENTITY_PAGE}`, {waitUntil: 'load'})
+  await expect(
+    page.getByRole('heading', {level: 1, name: IDENTITY_TITLE})
+  ).toBeVisible({timeout: 15_000})
+  await page
+    .getByRole('radiogroup', {name: 'Teinte'})
+    .getByRole('radio', {name: new RegExp(SEED.a.hueName)})
+    .click()
+  await page.getByRole('button', {name: 'Enregistrer la teinte'}).click()
+  await expect(
+    page.getByText(
+      `Teinte ${SEED.a.hueName} enregistrée. Visible sur votre site et dans cet espace.`
+    )
+  ).toBeVisible({timeout: 15_000})
+
+  await page.close()
+}
+
 /** La teinte posée par le serveur sur `<html>`, lue sur une page publique. */
 const servedAccentHue = async (page: Page, base: string) => {
   await page.goto(`${base}${PUBLIC_PAGE}`, {waitUntil: 'load'})
@@ -207,8 +218,14 @@ test.describe.serial('s02 — paramètres de l’association', () => {
     body: Buffer
   }
 
-  test.afterAll(async () => {
-    await restoreTenantASeed()
+  // Avant le groupe : un retry repart du seed, même après un essai qui a
+  // modifié les adresses. Après : le serveur reste propre pour les autres specs.
+  test.beforeAll(async ({browser}) => {
+    await restoreTenantASeed(browser)
+  })
+
+  test.afterAll(async ({browser}) => {
+    await restoreTenantASeed(browser)
   })
 
   test('critère 6 — chaque tenant de test lit les valeurs de son jeu de paramètres', async ({

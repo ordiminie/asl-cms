@@ -3,7 +3,7 @@
 import {zodResolver} from '@hookform/resolvers/zod'
 import {CircleAlert, CircleCheck} from 'lucide-react'
 import {useTranslations} from 'next-intl'
-import {ReactNode, useState} from 'react'
+import {MouseEvent, ReactNode, useState} from 'react'
 import {Controller, FieldErrors, useForm, useWatch} from 'react-hook-form'
 
 import type {AssociationSettingsFormState} from '@/app/[locale]/(bureau)/bureau/reglages/actions'
@@ -174,8 +174,8 @@ export function AssociationSettingsForm({
     shouldFocusError: false,
   })
   const watchedValues = useWatch({control: form.control})
-  const [baseline, setBaseline] = useState<AssociationSettingsFormValues>(
-    () => initialFormValues(definitions, settings)
+  const [baseline, setBaseline] = useState<AssociationSettingsFormValues>(() =>
+    initialFormValues(definitions, settings)
   )
   const [storedKeys, setStoredKeys] = useState(() =>
     storedKeysOf(definitions, settings)
@@ -300,6 +300,7 @@ export function AssociationSettingsForm({
       <Button
         type="submit"
         disabled={isSubmitting}
+        onMouseDown={keepFocusUntilClick}
         className="h-14 w-full sm:h-12 sm:w-auto sm:min-w-64 sm:self-start"
       >
         {isSubmitting ? t('saving') : t('submit')}
@@ -307,6 +308,15 @@ export function AssociationSettingsForm({
     </form>
   )
 }
+
+/**
+ * Garde le focus dans le champ pendant l'appui sur « Enregistrer » : sinon le
+ * _blur_ valide le champ, son message s'affiche au-dessus du bouton et le
+ * deplace avant le relachement — le clic se perd et l'envoi n'a pas lieu.
+ * L'envoi valide de toute facon tous les champs.
+ */
+const keepFocusUntilClick = (event: MouseEvent<HTMLButtonElement>) =>
+  event.preventDefault()
 
 /**
  * La valeur qui s'applique quand le champ est vide : celle de la cle de
@@ -320,8 +330,7 @@ const effectiveDefault = (
 ): string | undefined => {
   if (!definition.default) return undefined
   if ('fromKey' in definition.default) {
-    const typed =
-      values[toSettingFieldName(definition.default.fromKey)]?.trim()
+    const typed = values[toSettingFieldName(definition.default.fromKey)]?.trim()
     const stored = settings[definition.default.fromKey]?.value
     return (
       typed ||
