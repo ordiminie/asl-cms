@@ -311,7 +311,7 @@ se décide en `/ks-design`.
 
 ### Acceptance criteria
 
-- [ ] La page de réglages de l'association liste les paramètres déclarés au registre et permet de les modifier, chaque valeur étant validée selon le type déclaré au registre. En s02, le registre déclare l'adresse de contact et l'adresse du responsable forage (définies par `CDCT §4.6`, lues par s08 et s10) et la teinte d'accent.
+- [ ] Le bureau modifie les paramètres déclarés au registre depuis le back-office de l'association, chaque valeur étant validée selon le type déclaré au registre. En s02, le registre déclare l'adresse de contact et l'adresse du responsable forage (définies par `CDCT §4.6`, lues par s08 et s10), modifiées dans la page de réglages de l'association, et la teinte d'accent, choisie dans la page « Identité » avec le logo et le favicon (arbitrage du 19 septembre 2026).
 - [ ] La validation du registre est prouvée pour chaque type qu'il sait porter — adresse email, nombre, booléen, choix dans une liste fermée — : une valeur conforme est acceptée, une valeur non conforme est refusée avec un message explicite. Déclarer une clé d'un type existant ne demande aucune modification de la page — vérifié par une clé de test déclarée au registre de test.
 - [ ] Modifier un paramètre puis le relire renvoie la nouvelle valeur, sans redéploiement ni redémarrage.
 - [ ] Un paramètre jamais renseigné se lit à sa valeur par défaut déclarée au registre ; le renseigner puis le vider le ramène à cette même valeur par défaut.
