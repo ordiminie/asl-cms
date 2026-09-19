@@ -1,12 +1,9 @@
 import {betterAuth} from 'better-auth'
 import {memoryAdapter} from 'better-auth/adapters/memory'
 import {magicLink} from 'better-auth/plugins'
-import {createTranslator} from 'next-intl'
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {beforeAll, beforeEach, describe, expect, it, vi} from 'vitest'
 
 import {createMemoryTransport} from '@/lib/emails/transport/memory-transport'
-
-import messages from '../../../messages/fr.json'
 
 const memoryTransport = createMemoryTransport()
 
@@ -28,9 +25,10 @@ vi.mock('@/lib/emails/transport', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/emails/transport')>()),
   getEmailTransport: vi.fn(() => memoryTransport),
 }))
-vi.mock('next-intl/server', () => ({
-  getTranslations: vi.fn(async (namespace: string) =>
-    createTranslator({locale: 'fr', messages, namespace: namespace as never})
+vi.mock('next-intl/server', async () => ({
+  getTranslations: vi.fn(
+    (await import('@/__tests__/translations-without-locale-cookie'))
+      .getTranslationsWithoutLocaleCookie
   ),
   getLocale: vi.fn(async () => 'fr'),
 }))
@@ -138,6 +136,16 @@ function containsSecret(
 }
 
 describe('sendMagicLink', () => {
+  /**
+   * `sendMagicLink` charge ses facades a l'appel : le premier test payait seul
+   * ce chargement (service d'email et tous ses gabarits), au-dela des 5 s par
+   * defaut sous la charge de la suite complete, et sa promesse orpheline
+   * envoyait ensuite un email dans le test suivant.
+   */
+  beforeAll(async () => {
+    await import('@/services/facades/email-service-facade')
+  }, 60_000)
+
   beforeEach(() => {
     vi.clearAllMocks()
     memoryTransport.messages.length = 0
@@ -185,6 +193,39 @@ describe('sendMagicLink', () => {
     expect(logo?.getAttribute('alt')).toBe('ASL Les Pins')
     expect(sent.html?.toLowerCase()).toContain('#e7f5ec')
     expect(createTypedNotificationService).not.toHaveBeenCalled()
+  })
+
+  it('écrit l’email dans la locale de la page de demande, sans cookie de locale', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+
+    await sendMagicLink(
+      {email, url, metadata: {locale: 'es'}},
+      requestContext()
+    )
+
+    const [sent] = memoryTransport.messages
+    expect(sent.subject).toMatch(/ASL Les Pins — su enlace de conexión$/)
+    expect(htmlOf().documentElement.getAttribute('lang')).toBe('es')
+  })
+
+  it('écrit en français sans locale transmise, ou avec une locale non servie (ADR 008)', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+
+    await sendMagicLink({email, url}, requestContext())
+    await sendMagicLink(
+      {email, url, metadata: {locale: 'de'}},
+      requestContext()
+    )
+    await sendMagicLink(
+      {email, url, metadata: {locale: {toString: () => 'en'}}},
+      requestContext()
+    )
+
+    expect(memoryTransport.messages).toHaveLength(3)
+    for (const sent of memoryTransport.messages) {
+      expect(sent.subject).toMatch(/ASL Les Pins — votre lien de connexion$/)
+      expect(sent.html).toContain('lang="fr"')
+    }
   })
 
   it('écrit le nom seul quand le logo est en WebP', async () => {
@@ -541,6 +582,23 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
     const result = await verify(mine)
     if (!isRedirectApiError(result.error)) throw new Error('no redirect')
     expect(result.error.headers.get('location')).toContain('/dashboard')
+  })
+
+  it('transmet la locale de la demande à l’email par les métadonnées du plugin', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
+    vi.mocked(getAssociationSettingsService).mockResolvedValue({})
+    const {localAuth} = setup([existingUser], {ourSender: true})
+
+    await localAuth.api.signInMagicLink({
+      headers: new Headers({host: 'localhost:3000'}),
+      body: {email, callbackURL: '/dashboard', metadata: {locale: 'fr'}},
+    })
+
+    expect(memoryTransport.messages).toHaveLength(1)
+    expect(memoryTransport.messages[0].subject).toMatch(
+      /ASL Les Pins — votre lien de connexion$/
+    )
   })
 
   it('au-delà du seuil du jour, Better Auth répond comme d’habitude, sans email', async () => {

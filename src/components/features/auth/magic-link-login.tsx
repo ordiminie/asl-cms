@@ -3,7 +3,7 @@
 import {zodResolver} from '@hookform/resolvers/zod'
 import {CircleAlert, CircleCheck, Mail} from 'lucide-react'
 import Link from 'next/link'
-import {useTranslations} from 'next-intl'
+import {useLocale, useTranslations} from 'next-intl'
 import {MouseEvent, ReactNode, useEffect, useState} from 'react'
 import {useForm} from 'react-hook-form'
 
@@ -35,9 +35,15 @@ const EMAIL_ERROR_ID = 'magic-link-email-error'
 
 const strong = (chunks: ReactNode) => <strong>{chunks}</strong>
 
-const toFormData = (email: string) => {
+/**
+ * La locale de la page accompagne l'adresse : l'action ne peut pas la lire
+ * elle-meme (seul le cookie `NEXT_LOCALE` lui parvient, absent d'un navigateur
+ * neuf) et l'email doit parler la langue de la page.
+ */
+const toFormData = (email: string, locale: string) => {
   const formData = new FormData()
   formData.set('email', email)
+  formData.set('locale', locale)
   return formData
 }
 
@@ -91,6 +97,7 @@ function RequestView({
   onSent: (email: string) => void
 }) {
   const t = useTranslations('Auth.MagicLinkLogin')
+  const locale = useLocale()
   const [unavailable, setUnavailable] = useState(false)
   const form = useForm<FormValues>({
     resolver: zodResolver(createMagicLinkRequestSchema(t)),
@@ -104,7 +111,7 @@ function RequestView({
 
   const onValid = async ({email}: FormValues) => {
     setUnavailable(false)
-    const result = await requestAction({status: 'idle'}, toFormData(email))
+    const result = await requestAction({status: 'idle'}, toFormData(email, locale))
 
     if (result.status === 'sent') {
       onSent(email)
@@ -207,6 +214,7 @@ function SentView({
   onCorrect: () => void
 }) {
   const t = useTranslations('Auth.MagicLinkLogin')
+  const locale = useLocale()
   const {secondsLeft, restart} = useResendCountdown()
   const [resending, setResending] = useState(false)
   const [feedback, setFeedback] = useState<'none' | 'resent' | 'unavailable'>(
@@ -216,7 +224,7 @@ function SentView({
   const resend = async () => {
     setResending(true)
     setFeedback('none')
-    const result = await requestAction({status: 'idle'}, toFormData(email))
+    const result = await requestAction({status: 'idle'}, toFormData(email, locale))
     setResending(false)
 
     if (result.status === 'sent') {

@@ -147,6 +147,7 @@ describe('MagicLinkLogin — écran B', () => {
     expect(action).toHaveBeenCalledOnce()
     const sentData = vi.mocked(action).mock.calls[0][1]
     expect(sentData.get('email')).toBe(ADDRESS)
+    expect(sentData.get('locale')).toBe('fr')
 
     const main = screen.getByTestId('magic-link-sent')
     expect(main).toHaveTextContent(
@@ -204,6 +205,7 @@ describe('MagicLinkLogin — écran B', () => {
 
     expect(action).toHaveBeenCalledTimes(2)
     expect(vi.mocked(action).mock.calls[1][1].get('email')).toBe(ADDRESS)
+    expect(vi.mocked(action).mock.calls[1][1].get('locale')).toBe('fr')
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Un nouveau lien a été envoyé, si l\'adresse est enregistrée.'
     )

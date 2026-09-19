@@ -17,6 +17,7 @@ import {auth, AuthAppConfig} from '@/lib/better-auth/auth'
 import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
 import {isEmailTransportError} from '@/lib/emails/transport'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
+import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
 import {logger} from '@/lib/logger'
 import {
   getUserByEmailService,
@@ -200,12 +201,16 @@ const waitUntil = async (deadline: number) => {
  * Le resultat est **le meme** pour une adresse connue ou non, et la reponse
  * dure au moins `MAGIC_LINK_REQUEST_MIN_DURATION_MS` dans les deux cas (§7).
  * Un echec d'envoi rend l'etat « service en panne », jamais une exception.
+ * La locale vient du formulaire, pas de next-intl : une Server Action ne lit
+ * que le cookie `NEXT_LOCALE`, absent d'un navigateur neuf. Verifiee contre le
+ * routage, francais sinon (ADR 008) ; `metadata` la porte jusqu'a l'email.
  */
 export async function requestMagicLinkAction(
   prevState: MagicLinkRequestState,
   formData: FormData
 ): Promise<MagicLinkRequestState> {
-  const t = await getTranslations('Auth.MagicLinkLogin')
+  const locale = resolveSupportedLocale(formData.get('locale'))
+  const t = await getTranslations({locale, namespace: 'Auth.MagicLinkLogin'})
 
   const validation = createMagicLinkRequestSchema(t).safeParse({
     email: formData.get('email')?.toString() ?? '',
@@ -229,6 +234,7 @@ export async function requestMagicLinkAction(
         email: validation.data.email,
         callbackURL: '/dashboard',
         errorCallbackURL: '/login/lien-invalide',
+        metadata: {locale},
       },
     })
     result = {status: 'sent'}

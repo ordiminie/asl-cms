@@ -1,12 +1,10 @@
-import {createTranslator} from 'next-intl'
 import {render} from 'react-email'
 import {describe, expect, it, vi} from 'vitest'
 
-import messages from '../../../messages/fr.json'
-
-vi.mock('next-intl/server', () => ({
-  getTranslations: vi.fn(async (namespace: string) =>
-    createTranslator({locale: 'fr', messages, namespace: namespace as never})
+vi.mock('next-intl/server', async () => ({
+  getTranslations: vi.fn(
+    (await import('@/__tests__/translations-without-locale-cookie'))
+      .getTranslationsWithoutLocaleCookie
   ),
 }))
 
@@ -21,12 +19,32 @@ const renderMail = async (association: {
   hue: 195 | 150 | 255 | 40 | 300 | 95
 }) => {
   const html = await render(
-    await MagicLinkMail({url: URL_WITH_PARAMS, association})
+    await MagicLinkMail({url: URL_WITH_PARAMS, association, locale: 'fr'})
   )
   return {html, doc: new DOMParser().parseFromString(html, 'text/html')}
 }
 
 describe('MagicLinkMail — planche D', () => {
+  it('parle la locale reçue, même sans cookie de locale', async () => {
+    const {doc} = await renderMail({name: 'ASL Les Pins', hue: 195})
+
+    expect(doc.documentElement.getAttribute('lang')).toBe('fr')
+    expect(doc.querySelector('h1')?.textContent).toBe('Votre lien de connexion')
+  })
+
+  it('déclare la langue de la locale reçue', async () => {
+    const html = await render(
+      await MagicLinkMail({
+        url: URL_WITH_PARAMS,
+        association: {name: 'ASL Les Pins', hue: 195},
+        locale: 'es',
+      })
+    )
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+
+    expect(doc.documentElement.getAttribute('lang')).toBe('es')
+  })
+
   it('affiche le logo en en-tête, avec le nom en texte alternatif', async () => {
     const {doc} = await renderMail({
       name: 'ASL Les Pins',

@@ -7,13 +7,15 @@ vi.mock('next/dist/client/components/redirect-error', () => ({
 vi.mock('next/headers', () => ({headers: vi.fn()}))
 vi.mock('next/navigation', () => ({redirect: vi.fn()}))
 vi.mock('next-intl/server', () => ({
-  getTranslations: vi.fn((namespace: string) =>
-    Promise.resolve((key: string) =>
+  getTranslations: vi.fn((argument: string | {namespace: string}) => {
+    const namespace =
+      typeof argument === 'string' ? argument : argument.namespace
+    return Promise.resolve((key: string) =>
       namespace === 'AuthActions.registerMagicLink'
         ? `registerMagicLink.${key}`
         : `${namespace}.${key}`
     )
-  ),
+  }),
 }))
 vi.mock('@/lib/logger', () => ({
   logger: {debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn()},
@@ -33,7 +35,9 @@ vi.mock('@/services/facades/user-service-facade', () => ({
 
 import {headers} from 'next/headers'
 import {redirect} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 
+import {getTranslationsWithoutLocaleCookie} from '@/__tests__/translations-without-locale-cookie'
 import {auth} from '@/lib/better-auth/auth'
 import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
 import {EmailTransportError} from '@/lib/emails/transport'
@@ -86,11 +90,15 @@ describe('registerMagicLinkAction', () => {
 })
 
 describe('requestMagicLinkAction', () => {
-  const requestFormData = (address: string) => {
+  const requestFormData = (address: string, locale?: string) => {
     const formData = new FormData()
     formData.set('email', address)
+    if (locale !== undefined) formData.set('locale', locale)
     return formData
   }
+
+  const requestedLocale = () =>
+    vi.mocked(auth.api.signInMagicLink).mock.calls[0][0]?.body.metadata?.locale
 
   const settle = async <T>(promise: Promise<T>) => {
     let settled = false
@@ -126,9 +134,32 @@ describe('requestMagicLinkAction', () => {
         email: 'membre@exemple.test',
         callbackURL: '/dashboard',
         errorCallbackURL: '/login/lien-invalide',
+        metadata: {locale: 'fr'},
       },
     })
     expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it('transmet à l’email la locale de la page de demande', async () => {
+    const pending = requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('membre@exemple.test', 'es')
+    )
+    await vi.runAllTimersAsync()
+    await pending
+
+    expect(requestedLocale()).toBe('es')
+  })
+
+  it('retombe sur fr pour une locale non servie (ADR 008)', async () => {
+    const pending = requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('membre@exemple.test', 'de')
+    )
+    await vi.runAllTimersAsync()
+    await pending
+
+    expect(requestedLocale()).toBe('fr')
   })
 
   it('rend le même résultat, adresse connue ou non', async () => {
@@ -199,6 +230,27 @@ describe('requestMagicLinkAction', () => {
     await vi.advanceTimersByTimeAsync(1)
 
     expect(await tracked).toEqual({status: 'unavailable'})
+  })
+
+  it('écrit l’erreur de champ dans la locale de la page, sans cookie de locale', async () => {
+    vi.mocked(getTranslations).mockImplementationOnce(
+      getTranslationsWithoutLocaleCookie as never
+    )
+
+    const result = await requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('pas-une-adresse', 'fr')
+    )
+
+    expect(result).toEqual({
+      status: 'invalid',
+      errors: [
+        {
+          field: 'email',
+          message: "Cette adresse n'est pas valide. Exemple : nom@domaine.fr",
+        },
+      ],
+    })
   })
 
   it('rend une erreur de champ pour une adresse invalide, sans rien demander', async () => {

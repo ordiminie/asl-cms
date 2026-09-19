@@ -23,6 +23,7 @@ import SubscriptionUpdatedMail from '@/lib/emails/subscription-updated-email'
 import {getEmailTransport} from '@/lib/emails/transport'
 import VerificationEmail from '@/lib/emails/verification-email'
 import WelcomeFollowUpEmail from '@/lib/emails/welcome-follow-up-email'
+import type {SupportedLocale} from '@/lib/helper/locale-helper'
 import {
   getFormattedPriceFromSubscription,
   getSubscriptionDetails,
@@ -189,19 +190,23 @@ export const sendOrganizationInvitation = async ({
 
 /**
  * Email de connexion (s03) : gabarit de l'association du domaine appele,
- * version texte complete (URL en clair). Ni l'URL ni le jeton ne sont
+ * version texte complete (URL en clair). La locale est **explicite** : envoye
+ * depuis une Server Action, l'email n'aurait sinon que le cookie `NEXT_LOCALE`
+ * pour la trouver, absent d'un navigateur neuf (email parti en anglais). Ni l'URL ni le jeton ne sont
  * journalises ; l'intercepteur de la facade n'en logge pas les arguments.
  */
 export const sendMagicLinkEmailService = async ({
   email,
   url,
   association,
+  locale,
 }: {
   email: string
   url: string
   association: MagicLinkEmailAssociation
+  locale: SupportedLocale
 }) => {
-  const t = await getTranslations('email.user.magicLink')
+  const t = await getTranslations({locale, namespace: 'email.user.magicLink'})
   const values = {
     name: association.name,
     minutes: MAGIC_LINK_EXPIRES_IN_MINUTES,
@@ -219,7 +224,7 @@ export const sendMagicLinkEmailService = async ({
       to: email,
       subject: t('subject', values),
       text,
-      react: MagicLinkMail({url, association}),
+      react: MagicLinkMail({url, association, locale}),
     },
     {recipientType: 'system'}
   )

@@ -1,6 +1,9 @@
 import {describe, expect, it} from 'vitest'
 
-import {stripLocalePrefix} from '@/lib/helper/locale-helper'
+import {
+  resolveSupportedLocale,
+  stripLocalePrefix,
+} from '@/lib/helper/locale-helper'
 
 describe('stripLocalePrefix', () => {
   it('retire le préfixe de locale déjà présent dans le chemin', () => {
@@ -43,5 +46,21 @@ describe('stripLocalePrefix', () => {
 
   it('laisse intact la racine quand la locale est vide', () => {
     expect(stripLocalePrefix('/', '')).toBe('/')
+  })
+})
+
+describe('resolveSupportedLocale', () => {
+  it('garde une locale servie par le routage', () => {
+    expect(resolveSupportedLocale('fr')).toBe('fr')
+    expect(resolveSupportedLocale('en')).toBe('en')
+  })
+
+  it('retombe sur fr (ADR 008) pour une locale absente ou non servie', () => {
+    expect(resolveSupportedLocale(undefined)).toBe('fr')
+    expect(resolveSupportedLocale(null)).toBe('fr')
+    expect(resolveSupportedLocale('')).toBe('fr')
+    expect(resolveSupportedLocale('de')).toBe('fr')
+    expect(resolveSupportedLocale('../fr')).toBe('fr')
+    expect(resolveSupportedLocale(['fr'])).toBe('fr')
   })
 })

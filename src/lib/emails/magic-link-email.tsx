@@ -14,6 +14,7 @@ import {
 } from 'react-email'
 
 import {MAGIC_LINK_EXPIRES_IN_MINUTES} from '@/lib/better-auth/magic-link-constants'
+import type {SupportedLocale} from '@/lib/helper/locale-helper'
 import type {AccentHue} from '@/services/types/domain/association-settings-types'
 
 import {EMAIL_COLORS, EMAIL_FONTS, getEmailAccent} from './theme'
@@ -29,6 +30,12 @@ export type MagicLinkEmailAssociation = {
 export type MagicLinkMailProps = {
   url: string
   association: MagicLinkEmailAssociation
+  /**
+   * Locale de la page de demande, explicite : dans une Server Action, la
+   * locale implicite de next-intl ne vient que du cookie `NEXT_LOCALE`, absent
+   * d'un navigateur neuf.
+   */
+  locale: SupportedLocale
 }
 
 const EMAIL_WIDTH = 600
@@ -59,8 +66,9 @@ const paragraphStyle: CSSProperties = {
 export default async function MagicLinkMail({
   url,
   association,
+  locale,
 }: MagicLinkMailProps) {
-  const t = await getTranslations('email.user.magicLink')
+  const t = await getTranslations({locale, namespace: 'email.user.magicLink'})
   const accent = getEmailAccent(association.hue)
   const values = {
     name: association.name,
@@ -68,7 +76,7 @@ export default async function MagicLinkMail({
   }
 
   return (
-    <Html lang="fr">
+    <Html lang={locale}>
       <Head />
       <Preview>{t('preview', values)}</Preview>
       <Body style={bodyStyle}>

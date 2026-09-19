@@ -1,6 +1,7 @@
 import {getUserByEmailDao} from '@/db/repositories/user-repository'
 import {env} from '@/env'
 import type {MagicLinkEmailAssociation} from '@/lib/emails/magic-link-email'
+import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
 import {normalizeTenantHost} from '@/lib/helper/tenant-helper'
 import {logger} from '@/lib/logger'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
@@ -13,6 +14,8 @@ type SendMagicLinkData = {
   email: string
   url: string
   token?: string
+  /** `body.metadata` de `signInMagicLink`, transmis tel quel par le plugin. */
+  metadata?: Record<string, unknown>
 }
 
 type VerificationWhere = {
@@ -162,10 +165,12 @@ const revokeEarlierMagicLinks = async (
  * d'email (plus de notification : un lien secret n'a rien a faire dans la
  * liste des notifications). Dans tous les cas, l'ecran reste le meme (ecran
  * B). Ni l'URL ni le jeton ne sont journalises. Un echec du transport remonte
- * a Better Auth.
+ * a Better Auth. L'email parle la locale de la page de demande, que l'action
+ * transmet par `metadata.locale` : verifiee contre le routage, francais sinon
+ * (ADR 008).
  */
 export async function sendMagicLink(
-  {email, url, token}: SendMagicLinkData,
+  {email, url, token, metadata}: SendMagicLinkData,
   ctx?: MagicLinkRequestContext
 ) {
   const services = await loadServices()
@@ -196,7 +201,12 @@ export async function sendMagicLink(
 
   const association = await emailAssociationOf(organization, origin, services)
   await revokeEarlierMagicLinks(email, token, ctx)
-  await services.sendMagicLinkEmailService({email, url, association})
+  await services.sendMagicLinkEmailService({
+    email,
+    url,
+    association,
+    locale: resolveSupportedLocale(metadata?.locale),
+  })
 }
 
 /** Options du plugin `magicLink` de Better Auth : configurer, pas reecrire. */

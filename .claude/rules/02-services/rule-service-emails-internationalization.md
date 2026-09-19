@@ -117,6 +117,24 @@ type ResetPasswordMailProps = {
 
 **Important** : Ne pas passer la `locale` en prop, utiliser directement `getTranslations()`.
 
+**Exception — email envoyé depuis une Server Action ou un Route Handler.** Là, `root-params`
+n'existe pas et `src/i18n/request.ts` retombe sur le cookie `NEXT_LOCALE`, sinon sur
+`routing.defaultLocale` (`en`) : un navigateur neuf reçoit un email en anglais sous une page en
+français (s03, attrapé par l'e2e en CI, masqué en local par le cookie). Dans ce cas la locale est
+**explicite de bout en bout** :
+
+- la page la fournit (`useLocale()` dans le formulaire, champ `locale` du `FormData`) ;
+- l'action la vérifie avec `resolveSupportedLocale` (`src/lib/helper/locale-helper.ts`) : une locale
+  que le routage ne sert pas devient `fr` (ADR 008), jamais un nom de fichier de messages ;
+- service **et** gabarit appellent `getTranslations({locale, namespace})`, et le gabarit pose
+  `<Html lang={locale}>`. Un gabarit resté implicite rendrait un objet en français et un corps en
+  anglais.
+
+Référence : l'email de connexion par lien (`requestMagicLinkAction` → `metadata.locale` de
+`signInMagicLink` → `sendMagicLink` → `sendMagicLinkEmailService` → `MagicLinkMail`). Les autres
+emails du boilerplate envoyés hors rendu de page gardent l'appel implicite tant que leur story ne les
+reprend pas.
+
 ## Implémentation des Services d'Email
 
 ### 1. Service avec Traductions
@@ -134,12 +152,14 @@ export const sendMagicLinkEmailService = async ({
   email,
   url,
   association,
+  locale, // explicite : envoye depuis une Server Action (voir l'exception plus haut)
 }: {
   email: string
   url: string
   association: MagicLinkEmailAssociation
+  locale: SupportedLocale
 }) => {
-  const t = await getTranslations('email.user.magicLink')
+  const t = await getTranslations({locale, namespace: 'email.user.magicLink'})
   const values = {
     name: association.name,
     minutes: MAGIC_LINK_EXPIRES_IN_MINUTES,
@@ -150,7 +170,7 @@ export const sendMagicLinkEmailService = async ({
       to: email,
       subject: t('subject', values), // Sujet traduit
       text: versionTexte, // Version texte complète, URL en clair comprise
-      react: MagicLinkMail({url, association}), // Composant avec traductions
+      react: MagicLinkMail({url, association, locale}), // Même locale que l'objet
     },
     {recipientType: 'system'}
   )
@@ -220,7 +240,8 @@ Chaque service d'email doit :
 ### 2. **Props Minimales**
 
 - Passez seulement les données nécessaires (url, token, etc.)
-- Ne passez pas la `locale` en prop
+- Ne passez pas la `locale` en prop, sauf pour un email envoyé hors rendu de page (voir l'exception
+  plus haut)
 - Utilisez `getTranslations()` directement dans le composant
 
 ### 3. **Structure des Traductions**
@@ -317,7 +338,7 @@ export const sendMagicLinkEmailService = async ({
 - **Composants** : `getTranslations('email.user.xxx')` directement
 - **Services** : `t('subject')` et `t('preview')` pour les métadonnées
 - **Structure** : `email.{user|admin}.{action}` pour les clés
-- **Props** : Minimales, sans `locale`
+- **Props** : Minimales, sans `locale` — sauf email envoyé depuis une Server Action ou un Route Handler
 - **Performance** : Rendu côté serveur avec next-intl
 
 Cette approche garantit des emails entièrement traduits et performants dans toute l'application.
