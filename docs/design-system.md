@@ -14,7 +14,7 @@
 | Livraison n° 1 — source éditable              | `docs/designs/design-system.dc.html` (§1 à §18) ⚠️ **périmé sur un point** : affiche encore `<MeterInput />`, retiré depuis (§2.2). Sur ce point, **c'est le présent document qui fait foi**, pas la source de livraison.                            |
 | Livraison n° 1 — rendu ouvrable au navigateur | `docs/designs/design-system-mockups.html` ⚠️ **périmé sur deux points** : ce rendu n'a pas été régénéré après la correction du second tour et affiche encore `<CodeInput />`, ni après le retrait de `<MeterInput />`. Le présent document fait foi. |
 | Livraison n° 2 — source éditable              | `docs/designs/design-system-media.dc.html` (§19 à §25)                                                                                                                                                                                               |
-| Livraison n° 2 — rendu ouvrable au navigateur | `docs/designs/design-system-media-mockups.html`                                                                                                                                                                                                      |
+| Livraison n° 2 — rendu ouvrable au navigateur | `docs/designs/design-system-media-mockups.html` ⚠️ **périmé sur un point** : annonce encore « SVG (préféré) » pour le logo. Le SVG est refusé depuis s01b (§1.8). Le présent document fait foi.                                                      |
 | Socle                                         | boilerplate ship-saas : Tailwind 4, shadcn/ui `new-york`, icônes lucide                                                                                                                                                                              |
 
 **Décisions fondatrices**
@@ -300,16 +300,34 @@ barre latérale repliée, avec `tooltip` **et** `aria-label`.
 | Email       | 36 px  | **PNG** (SVG non fiable en messagerie) |
 | Papier      | 34 px  | **monochrome**                         |
 
-**Ce que l'association fournit** : SVG (préféré) ou PNG transparent — **JPEG refusé** (fond blanc
-parasite). Ratio carré 1:1, jusqu'à 3:1 en largeur. ≥ 512 px de côté, ≤ 1 Mo. Rendu inscrit dans
-un carré de 44 px, sans rognage, garde de 2 px. La version monochrome du papier est dérivée
-automatiquement, **à valider**.
+**Ce que l'association fournit — deux fichiers distincts**, téléversés séparément (s01b) :
 
-**Sans logo — le cas au provisioning** : un **monogramme** de deux lettres tirées du nom
-(« La Fourche » → LF), en Source Serif 4 sur la teinte de l'association, et en noir sur blanc
-pour le papier. Jamais de logo générique ni de silhouette d'immeuble. Le bureau peut le
-remplacer à tout moment **sans qu'aucun écran ne change de mise en page** : le carré fait 44 px
-dans les deux cas.
+| Fichier | Formats acceptés                  | Dimensions                                         | Poids    |
+| ------- | --------------------------------- | -------------------------------------------------- | -------- |
+| Logo    | **PNG ou WebP**, fond transparent | carré 1:1 jusqu'à 3:1 en largeur, ≥ 512 px de côté | ≤ 1 Mo   |
+| Favicon | **PNG ou ICO**                    | carré conseillé, ≥ 48 px de côté                   | ≤ 200 Ko |
+
+- **SVG refusé** (arbitrage du 17 septembre 2026) : un SVG servi depuis le domaine de l'association
+  peut porter du script. La première version de ce document le disait « préféré » : c'est caduc.
+- **JPEG refusé** : fond blanc parasite. GIF refusé.
+- Le format est jugé sur la **signature binaire** du fichier, jamais sur son extension ni sur le type
+  annoncé par le navigateur (ADR 015). Les consignes du tableau sont écrites **avant** tout échec.
+
+Rendu inscrit dans un carré de 44 px, sans rognage, garde de 2 px. La version monochrome du papier
+est dérivée automatiquement, **à valider**.
+
+**Sans logo — le cas au provisioning** : un **monogramme**, en Source Serif 4 sur la teinte de
+l'association, et en noir sur blanc pour le papier. **Le nom reste écrit à côté** du carré. Jamais
+de logo générique ni de silhouette d'immeuble. Le bureau peut le remplacer à tout moment **sans
+qu'aucun écran ne change de mise en page** : le carré a la même taille dans les deux cas. Le
+composant qui le porte est `<AssociationMark />` (§2.7).
+
+**Règle des deux lettres** : les initiales des deux premiers mots du nom, en capitales, **en
+ignorant un « ASL » en tête**. Un nom d'un seul mot donne ses deux premières lettres. Aucun autre
+mot n'est ignoré : « La Fourche » → LF, « ASL Les Pins » → LP, « Bellevue » → BE.
+
+**Sans favicon** : le favicon par défaut est **le monogramme**, sur l'aplat `accent-solid` de la
+teinte. Tant que s02 ne rend pas la teinte paramétrable, c'est l'aplat de la teinte 195.
 
 ---
 
@@ -317,24 +335,28 @@ dans les deux cas.
 
 ### 2.1 Les 37 du socle — conventions d'usage
 
-| Composant                                                                    | Usage imposé                                                                                                                                                                                                                                                                                                                                            |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `button`                                                                     | Variantes `default` `outline` `secondary` `destructive` `link`. Tailles `sm` 40 px (**jamais côté membre**), `default` 48 px, `lg` 56 px. **Un seul bouton `default` par écran** ; les autres en `outline`. Libellés à l'infinitif explicite : « Publier la page », pas « OK ». Chargement : libellé remplacé, bouton désactivé, **largeur conservée**. |
-| `form` `label` `input` `textarea` `select` `checkbox` `radio-group` `switch` | Une colonne, un champ par ligne. Libellé au-dessus, toujours visible. Champs 48 px (56 mobile), texte 17-18 px. « Facultatif » écrit en clair, **jamais d'astérisque**. Validation au _blur_ puis à la soumission. 2-3 options courtes → `radio-group`. `switch` réservé aux réglages à effet immédiat, avec libellé d'état.                            |
-| `table` `pagination` `badge`                                                 | Lignes 56 px, texte 17 px, en-tête sur `muted` en 15 px / 600. Zébrure `oklch(0.99 0.002 250)`. **Une seule action par ligne, en clair.** Chiffres en `font-mono` + `tabular-nums`. 25 lignes par page (**10 sous 640 px**), « Précédent / Suivant » écrits, **jamais de défilement infini**. `badge` = statut, jamais une action.                      |
-| `alert` `sonner` `toast` `alert-dialog` `dialog` `sheet`                     | **Rien d'important ne passe par un toast.** `sonner` réservé aux confirmations sans conséquence, 6 s. Erreur, échec de publication, donnée perdue → `alert` ancré dans la page. `alert-dialog` uniquement pour l'irréversible, le bouton nommant l'acte. `dialog` ≤ 2 champs. `sheet` pour tiroirs mobiles et aperçu, jamais empilé.                    |
-| `sidebar` `breadcrumb` `tabs` `card` `separator` `scroll-area`               | `sidebar` : **back-office uniquement**, deux groupes (« Le site », « L'association »), item actif = fond `sidebar-accent` **+ libellé en 600**. `breadcrumb` dès le 2ᵉ niveau du back-office. `tabs` : 4 maximum, **jamais côté membre**. `card` : bordure 1px sans ombre par défaut. `scroll-area` jamais imbriquée.                                   |
-| `markdown-editor`                                                            | Le bloc « texte riche ». Barre réduite : gras, italique, titre 2, titre 3, liste, lien. **Pas de tableau, pas de code, pas de couleur de texte.**                                                                                                                                                                                                       |
-| `file-upload`                                                                | Zone de dépôt **et** bouton « Choisir un fichier ». Types et poids annoncés **avant** l'échec.                                                                                                                                                                                                                                                          |
-| `chart`                                                                      | Uniquement la consommation d'eau. **Barres, pas de courbe lissée** ; valeurs écrites sous les barres ; `chart-1` année courante, `chart-1` à 45 % pour l'historique.                                                                                                                                                                                    |
-| `progress` `skeleton`                                                        | `progress` : envoi de campagne et téléversement. `skeleton` : listes et tableaux, **jamais un formulaire**.                                                                                                                                                                                                                                             |
-| `command` `popover` `tooltip` `collapsible`                                  | `command` : back-office seulement. `tooltip` **jamais porteur d'information indispensable**. `collapsible` jamais pour cacher du contenu public.                                                                                                                                                                                                        |
-| `avatar` `code-block` `dropdown-menu` `separator`                            | Reste du socle, sans convention propre au-delà des règles générales.                                                                                                                                                                                                                                                                                    |
+| Composant                                                                    | Usage imposé                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `button`                                                                     | Variantes `default` `outline` `secondary` `destructive` `link`. Tailles `sm` 40 px (**jamais côté membre**), `default` 48 px, `lg` 56 px. **Un seul bouton `default` par écran** ; les autres en `outline`. Libellés à l'infinitif explicite : « Publier la page », pas « OK ». Chargement : libellé remplacé, bouton désactivé, **largeur conservée**.                                                                                             |
+| `form` `label` `input` `textarea` `select` `checkbox` `radio-group` `switch` | Une colonne, un champ par ligne. Libellé au-dessus, toujours visible. Champs 48 px (56 mobile), texte 17-18 px. « Facultatif » écrit en clair, **jamais d'astérisque**. Validation au _blur_ puis à la soumission. 2-3 options courtes → `radio-group`. `switch` réservé aux réglages à effet immédiat, avec libellé d'état.                                                                                                                        |
+| `table` `pagination` `badge`                                                 | Lignes 56 px, texte 17 px, en-tête sur `muted` en 15 px / 600. Zébrure `oklch(0.99 0.002 250)`. **Une seule action par ligne, en clair.** Chiffres en `font-mono` + `tabular-nums`. 25 lignes par page (**10 sous 640 px**), « Précédent / Suivant » écrits, **jamais de défilement infini**. `badge` = statut, jamais une action.                                                                                                                  |
+| `alert` `sonner` `toast` `alert-dialog` `dialog` `sheet`                     | **Rien d'important ne passe par un toast.** `sonner` réservé aux confirmations sans conséquence, 6 s. Erreur, échec de publication, donnée perdue → `alert` ancré dans la page. `alert-dialog` uniquement pour l'irréversible, le bouton nommant l'acte. `dialog` ≤ 2 champs. `sheet` pour tiroirs mobiles et aperçu, jamais empilé.                                                                                                                |
+| `sidebar` `breadcrumb` `tabs` `card` `separator` `scroll-area`               | `sidebar` : **back-office uniquement**, deux groupes à terme (« Le site », « L'association ») ; **un groupe n'apparaît qu'avec sa première page**, jamais vide (s01b n'a posé que « L'association » › « Identité »). Item actif = fond `sidebar-accent` **+ libellé en 600**. `breadcrumb` dès le 2ᵉ niveau du back-office. `tabs` : 4 maximum, **jamais côté membre**. `card` : bordure 1px sans ombre par défaut. `scroll-area` jamais imbriquée. |
+| `markdown-editor`                                                            | Le bloc « texte riche ». Barre réduite : gras, italique, titre 2, titre 3, liste, lien. **Pas de tableau, pas de code, pas de couleur de texte.**                                                                                                                                                                                                                                                                                                   |
+| `file-upload`                                                                | Zone de dépôt **et** bouton « Choisir un fichier ». Types et poids annoncés **avant** l'échec. **Au tactile, pas de zone de dépôt** : elle est masquée quand le pointeur n'est pas précis (`pointer: coarse`), il reste le bouton et les consignes.                                                                                                                                                                                                 |
+| `chart`                                                                      | Uniquement la consommation d'eau. **Barres, pas de courbe lissée** ; valeurs écrites sous les barres ; `chart-1` année courante, `chart-1` à 45 % pour l'historique.                                                                                                                                                                                                                                                                                |
+| `progress` `skeleton`                                                        | `progress` : envoi de campagne et téléversement. **Pas de pourcentage inventé** : un téléversement par Server Action ne rend aucun avancement, la barre y est **indéterminée**, accompagnée du nom du fichier (« Envoi de logo.png »). Un pourcentage seulement quand la source compte vraiment (emails envoyés sur le total). `skeleton` : listes et tableaux, **jamais un formulaire**.                                                           |
+| `command` `popover` `tooltip` `collapsible`                                  | `command` : back-office seulement. `tooltip` **jamais porteur d'information indispensable**. `collapsible` jamais pour cacher du contenu public.                                                                                                                                                                                                                                                                                                    |
+| `avatar` `code-block` `dropdown-menu` `separator`                            | Reste du socle, sans convention propre au-delà des règles générales.                                                                                                                                                                                                                                                                                                                                                                                |
 
 ### 2.2 Les cinq à construire
 
 Tous se montent **sur les 37 existants, sans dépendance nouvelle**, et suivent la convention
 shadcn `src/components/ui/<nom>.tsx`. Chaque état correspond à une story.
+
+> **Déjà construit hors de cette liste** : `<AssociationMark />` (s01b), l'identité de l'association.
+> Composant métier, pas primitive du socle : il vit dans `src/components/features/association/`.
+> Voir §2.7.
 
 > **`<MeterInput />` a été retiré** (arbitrage client du 8 septembre 2026). Il supposait une saisie
 > de relevé au compteur, parcelle par parcelle, sur le terrain. **Il n'y a pas de saisie manuelle des
@@ -464,6 +486,21 @@ startedAt · expiresAt · onExit() · onConfirmWrite(action) · writeGuard = tru
   `aria-live="assertive"`.
 - Les rayures sont décoratives : le texte « Simulation de rôle en cours » porte seul l'information.
 
+### 2.7 `<AssociationMark />` — le logo ou le monogramme, le nom toujours écrit
+
+Construit en s01b : `src/components/features/association/association-mark.tsx`. **Tout endroit qui
+montre l'identité de l'association passe par lui** ; ne pas recomposer un carré et un nom à la main.
+
+- **Deux tailles** : `public` (carré 44 px, nom en 20 px) et `backoffice` (carré 34 px, nom en 18 px),
+  §1.8. L'email et le papier ont leurs propres règles (§5, §6) et n'utilisent pas ce composant.
+- **Avec logo** : l'image, inscrite dans le carré sans rognage. **Sans logo** : le monogramme (règle
+  des deux lettres, §1.8) en Source Serif 4 / 600, texte `primary-foreground` sur `accent-solid`.
+- **Le nom est toujours écrit à côté**, en Source Serif 4 / 600, dans les deux cas.
+- Accessibilité : le logo porte l'`alt` « Logo de l'association {nom} », le monogramme un
+  `role="img"` annoncé « Monogramme de l'association {nom} ».
+- ⚠️ **Contraste du monogramme à vérifier pour les six teintes** (§1.2) : seule la teinte 195 a été
+  maquettée et vérifiée. À faire au plus tard par s02, qui rend la teinte choisissable.
+
 ---
 
 ## 3 · Patterns UI
@@ -476,12 +513,12 @@ formulaire avec liens d'ancrage. Validation au _blur_, puis à la soumission.
 
 ### 3.2 États — vide, chargement, erreur, succès
 
-| État           | Forme imposée                                                                                                                                                                                |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Vide**       | Ce qui manque **et l'action pour le combler** : « Aucune actualité pour l'instant. → Écrire la première »                                                                                    |
-| **Chargement** | `skeleton` sur listes et tableaux uniquement. Sur un bouton : libellé remplacé, largeur conservée.                                                                                           |
-| **Erreur**     | Ce qui s'est passé, **ce qui est perdu**, l'action suivante : « La page n'a pas pu être publiée. Le bloc "Image" n'a pas de fichier. **Rien n'est perdu.** » Ancrée, ne disparaît pas seule. |
-| **Succès**     | Ce qui a eu lieu et où le vérifier : « Page publiée. Visible à l'adresse /nouvel-acquereur. »                                                                                                |
+| État           | Forme imposée                                                                                                                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vide**       | Ce qui manque **et l'action pour le combler** : « Aucune actualité pour l'instant. → Écrire la première »                                                                                                                       |
+| **Chargement** | `skeleton` sur listes et tableaux uniquement. Sur un bouton : libellé remplacé, largeur conservée. Téléversement : `progress` indéterminée + nom du fichier (§2.1), l'aperçu actuel reste visible.                              |
+| **Erreur**     | Ce qui s'est passé, **ce qui est perdu**, l'action suivante : « La page n'a pas pu être publiée. Le bloc "Image" n'a pas de fichier. **Rien n'est perdu.** » Ancrée, ne disparaît pas seule.                                    |
+| **Succès**     | Ce qui a eu lieu et où le vérifier : « Page publiée. Visible à l'adresse /nouvel-acquereur. » Ancré comme l'erreur : `alert` **neutre** avec `CircleCheck` en `primary` — il n'y a pas de token « succès », pas de vert (§3.3). |
 
 ### 3.3 `primary` ou accent ?
 
@@ -839,7 +876,7 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Connexion | **Lien cliqué après suppression du compte** par le bureau                                                                                                                                                                                            | s03, s14      |
 | Relevé    | **Relevé en série hors ligne** (s17) : stockage local avec synchronisation, ou simple tolérance aux coupures ?                                                                                                                                       | s17           |
 | Tenant    | **Sélecteur de teintes prédéfinies + aperçu immédiat** — signalé dès la livraison n° 1, jamais spécifié. Les six teintes existent (§1.2), l'écran qui les fait choisir non. **C'est le seul manque qui touche le bloc A**                            | s02           |
-| Tenant    | **Favicon et icônes d'application par association** — aucune couverture. Un produit multi-tenant où six sites partagent un favicon se voit tout de suite. À dériver du logo, ou du monogramme quand il n'y a pas de logo (§1.8)                      | s02, s11      |
+| Tenant    | **Icônes d'application par association** (écran d'accueil mobile, manifeste) — aucune couverture. Le **favicon**, lui, est couvert depuis s01b : fichier distinct fourni par l'association, monogramme par défaut (§1.8)                             | s11           |
 | SEO       | **Image de partage social (Open Graph)** — aucune couverture, alors que s11 demande les métadonnées. Quel gabarit, quelles dimensions, que met-on dessus quand l'association n'a pas d'image ?                                                       | s11           |
 | Divers    | **Page 404** — évoquée dans la livraison n° 1 (« renvoie vers l'accueil, les actualités et le contact »), jamais maquettée                                                                                                                           | s11           |
 | Divers    | **Photo manquante sur une fiche du bureau** — le composant `avatar` a un repli, mais aucune convention n'est posée : initiales, silhouette, ou rien ?                                                                                                | s06           |
