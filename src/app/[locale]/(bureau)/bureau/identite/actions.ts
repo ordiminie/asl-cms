@@ -3,10 +3,12 @@
 import {updateTag} from 'next/cache'
 import {getTranslations} from 'next-intl/server'
 
+import {associationSettingsTag} from '@/app/dal/association-settings-dal'
 import {requireCurrentTenantDal, TENANT_CACHE_TAG} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {replaceAssociationIdentityFileService} from '@/services/facades/association-identity-service-facade'
+import {updateAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
 import {
   ASSOCIATION_IDENTITY_KINDS,
   AssociationIdentityKind,
@@ -15,6 +17,12 @@ import {
   DETECTED_FORMAT_LABELS,
   getIdentityVersionFromKey,
 } from '@/services/types/domain/association-identity-types'
+import {
+  ACCENT_HUE_SETTING_KEY,
+  AccentHue,
+  getAccentHueName,
+  isAccentHue,
+} from '@/services/types/domain/association-settings-types'
 
 export type AssociationIdentityFormState = {
   success: boolean
@@ -135,5 +143,65 @@ export async function replaceAssociationIdentityFileAction(
       return {success: false, kind, message: t('errors.forbidden')}
     }
     return notSavedState(t, kind, hasCurrentFile, t('errors.failed'))
+  }
+}
+
+export type AssociationAccentHueFormState = {
+  success: boolean
+  /** En cas de succes : la teinte enregistree. */
+  accentHue?: AccentHue
+  message?: string
+}
+
+/**
+ * Enregistre la teinte d'accent de l'association du domaine appele (s02),
+ * choisie dans la liste des six teintes validees. Meme contrat que les autres
+ * actions du bureau : controle d'acces dans le service, erreurs rendues comme
+ * resultat, invalidation de la lecture cachee des parametres au seul succes.
+ */
+export async function updateAssociationAccentHueAction(
+  _prevState?: AssociationAccentHueFormState,
+  formData?: FormData
+): Promise<AssociationAccentHueFormState> {
+  const t = await getTranslations('BureauIdentityPage')
+  const tSettings = await getTranslations('AssociationSettings')
+  const tenant = await requireCurrentTenantDal()
+
+  try {
+    await requireActionAuth()
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return {success: false, message: t('errors.forbidden')}
+    }
+    throw error
+  }
+
+  const hue = formData?.get('accentHue')
+  if (typeof hue !== 'string' || hue === '') {
+    return {success: false, message: t('accentHue.errors.notSaved')}
+  }
+
+  try {
+    const result = await updateAssociationSettingsService(tenant.id, {
+      [ACCENT_HUE_SETTING_KEY]: hue,
+    })
+    const accentHue = Number(hue)
+    if (result.status === 'rejected' || !isAccentHue(accentHue)) {
+      return {success: false, message: t('accentHue.errors.notSaved')}
+    }
+
+    updateTag(associationSettingsTag(tenant.id))
+    return {
+      success: true,
+      accentHue,
+      message: t('accentHue.success', {
+        name: tSettings(`hues.${getAccentHueName(accentHue)}`),
+      }),
+    }
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return {success: false, message: t('errors.forbidden')}
+    }
+    return {success: false, message: t('accentHue.errors.notSaved')}
   }
 }

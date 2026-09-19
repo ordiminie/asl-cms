@@ -4,12 +4,21 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/app/dal/tenant-dal', () => ({getCurrentTenantDal: vi.fn()}))
+vi.mock('@/app/dal/association-settings-dal', () => ({
+  getAssociationSettingsDal: vi.fn(),
+}))
 vi.mock('@/services/facades/association-identity-service-facade', () => ({
   readAssociationIdentityFileService: vi.fn(),
 }))
 
+import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {readAssociationIdentityFileService} from '@/services/facades/association-identity-service-facade'
+import {
+  ACCENT_HUE_SETTING_KEY,
+  ASSOCIATION_SETTINGS_REGISTRY,
+  resolveSettings,
+} from '@/services/types/domain/association-settings-types'
 
 import {GET} from './route'
 
@@ -44,9 +53,17 @@ const call = async (kind: string, query = '') =>
     params: Promise.resolve({kind}),
   })
 
+const HUES: Record<string, string | undefined> = {[PINS_ID]: '300'}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getCurrentTenantDal).mockResolvedValue(pins)
+  vi.mocked(getAssociationSettingsDal).mockImplementation(async (id) =>
+    resolveSettings(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      HUES[id] ? [{key: ACCENT_HUE_SETTING_KEY, value: HUES[id]}] : []
+    )
+  )
   vi.mocked(readAssociationIdentityFileService).mockImplementation(
     async (_organizationId, _kind, key) => ({
       content: new NodeBlob([`contenu:${key}`]) as unknown as Blob,
@@ -150,9 +167,23 @@ describe('GET /api/identity/[kind] — replis', () => {
     expect(response.headers.get('x-content-type-options')).toBe('nosniff')
     expect(svg).toMatch(/^<svg /)
     expect(svg).toContain('>LF</text>')
-    expect(svg).toContain('#17849B')
+    expect(svg).toContain('fill="oklch(0.55 0.1 195)"')
     expect(svg).not.toContain('<script')
     expect(readAssociationIdentityFileService).not.toHaveBeenCalled()
+  })
+
+  it('deux associations sans favicon, deux teintes de monogramme', async () => {
+    vi.mocked(getCurrentTenantDal).mockResolvedValue(
+      tenantOf(PINS_ID, 'ASL Les Pins', {})
+    )
+    const pinsSvg = await (await call('favicon')).text()
+    vi.mocked(getCurrentTenantDal).mockResolvedValue(fourche)
+    const fourcheSvg = await (await call('favicon')).text()
+
+    expect(pinsSvg).toContain('fill="oklch(0.55 0.1 300)"')
+    expect(fourcheSvg).toContain('fill="oklch(0.55 0.1 195)"')
+    expect(getAssociationSettingsDal).toHaveBeenCalledWith(PINS_ID)
+    expect(getAssociationSettingsDal).toHaveBeenCalledWith(FOURCHE_ID)
   })
 
   it('le monogramme echappe les caracteres speciaux du nom', async () => {

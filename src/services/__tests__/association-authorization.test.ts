@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
-import {canManageAssociationIdentity} from '../authorization/association-identity-authorization'
+import {canManageAssociation} from '../authorization/association-authorization'
 import {RoleConst, UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
@@ -26,9 +26,9 @@ const withMembership = (
   ],
 })
 
-describe('canManageAssociationIdentity — acces accordes', () => {
+describe('canManageAssociation — acces accordes', () => {
   it('[SUPER_ADMIN] accede sans appartenir a l association', () => {
-    expect(canManageAssociationIdentity(userTestSuperAdmin, ORG_ID)).toBe(true)
+    expect(canManageAssociation(userTestSuperAdmin, ORG_ID)).toBe(true)
   })
 
   it('[ORGANIZATION OWNER] la presidente de l association accede', () => {
@@ -38,7 +38,7 @@ describe('canManageAssociationIdentity — acces accordes', () => {
       UserOrganizationRoleConst.OWNER
     )
 
-    expect(canManageAssociationIdentity(user, ORG_ID)).toBe(true)
+    expect(canManageAssociation(user, ORG_ID)).toBe(true)
   })
 
   it('[ORGANIZATION ADMIN] le bureau de l association accede', () => {
@@ -48,13 +48,13 @@ describe('canManageAssociationIdentity — acces accordes', () => {
       UserOrganizationRoleConst.ADMIN
     )
 
-    expect(canManageAssociationIdentity(user, ORG_ID)).toBe(true)
+    expect(canManageAssociation(user, ORG_ID)).toBe(true)
   })
 })
 
-describe('canManageAssociationIdentity — refus', () => {
+describe('canManageAssociation — refus', () => {
   it('[PUBLIC] refuse un visiteur non connecte', () => {
-    expect(canManageAssociationIdentity(undefined, ORG_ID)).toBe(false)
+    expect(canManageAssociation(undefined, ORG_ID)).toBe(false)
   })
 
   it('[ORGANIZATION MEMBER] refuse un simple membre', () => {
@@ -64,11 +64,11 @@ describe('canManageAssociationIdentity — refus', () => {
       UserOrganizationRoleConst.MEMBER
     )
 
-    expect(canManageAssociationIdentity(user, ORG_ID)).toBe(false)
+    expect(canManageAssociation(user, ORG_ID)).toBe(false)
   })
 
   it('[USER NOT IN ORGANIZATION] refuse un utilisateur sans appartenance', () => {
-    expect(canManageAssociationIdentity(userTest, ORG_ID)).toBe(false)
+    expect(canManageAssociation(userTest, ORG_ID)).toBe(false)
   })
 
   it('[OTHER ORGANIZATION OWNER] refuse la presidente d une autre association', () => {
@@ -78,7 +78,7 @@ describe('canManageAssociationIdentity — refus', () => {
       UserOrganizationRoleConst.OWNER
     )
 
-    expect(canManageAssociationIdentity(user, ORG_ID)).toBe(false)
+    expect(canManageAssociation(user, ORG_ID)).toBe(false)
   })
 
   it('[OTHER ORGANIZATION ADMIN] refuse le bureau d une autre association', () => {
@@ -88,12 +88,12 @@ describe('canManageAssociationIdentity — refus', () => {
       UserOrganizationRoleConst.ADMIN
     )
 
-    expect(canManageAssociationIdentity(user, ORG_ID)).toBe(false)
+    expect(canManageAssociation(user, ORG_ID)).toBe(false)
   })
 
   it('[ADMIN] refuse l administrateur global sans role dans l association', () => {
     expect(userTestAdmin.role).toBe(RoleConst.ADMIN)
-    expect(canManageAssociationIdentity(userTestAdmin, ORG_ID)).toBe(false)
+    expect(canManageAssociation(userTestAdmin, ORG_ID)).toBe(false)
   })
 
   it('[ADMIN + MEMBER] refuse l administrateur global simple membre', () => {
@@ -103,6 +103,6 @@ describe('canManageAssociationIdentity — refus', () => {
       UserOrganizationRoleConst.MEMBER
     )
 
-    expect(canManageAssociationIdentity(user, ORG_ID)).toBe(false)
+    expect(canManageAssociation(user, ORG_ID)).toBe(false)
   })
 })

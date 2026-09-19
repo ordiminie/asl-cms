@@ -5,6 +5,7 @@ import pg from 'pg'
 
 import {resolveMigrationUrl} from './db-url'
 import initDotEnv, {maskDbUrl} from './env'
+import {TEST_TENANT_SETTINGS} from './tenant-settings-seed'
 
 initDotEnv()
 
@@ -538,6 +539,25 @@ const seed = async () => {
     JOIN "organization" o ON o.slug = submission_data.organization_slug
     ON CONFLICT DO NOTHING;
   `)
+
+  // 13. Parametres des tenants de test (s02, ADR 016)
+  //
+  // `organization_setting` est elle aussi sous RLS forcee : meme porte que
+  // ci-dessus. Les valeurs declarees ecrasent celles d'un run precedent, pour
+  // qu'apres le seed chaque cle se lise a sa valeur declaree (critere 6).
+  for (const setting of TEST_TENANT_SETTINGS) {
+    await client.query(
+      `
+      INSERT INTO "organization_setting" (organization_id, key, value, updated_at)
+      SELECT o.id, $2, $3, NOW()
+      FROM "organization" o
+      WHERE o.slug = $1
+      ON CONFLICT (organization_id, key)
+      DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = NULL;
+    `,
+      [setting.organizationSlug, setting.key, setting.value]
+    )
+  }
   await client.query(`SET app.bypass_rls = 'off';`)
 
   const end = Date.now()
@@ -592,6 +612,13 @@ const seed = async () => {
   console.log('🔹 email.communication_email : (empty)')
   console.log('🔹 general.maintenance_mode : false')
   console.log('🔹 general.maintenance_message : (empty)')
+  console.log('')
+  console.log('🏷️  Paramètres des associations de test :')
+  for (const setting of TEST_TENANT_SETTINGS) {
+    console.log(
+      `🔹 ${setting.organizationSlug} · ${setting.key} : ${setting.value}`
+    )
+  }
   console.log('')
 
   process.exit(0)

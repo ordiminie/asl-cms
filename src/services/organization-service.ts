@@ -599,12 +599,15 @@ import {
   getOrganizationByDomainDao,
   updateOrganizationModulesDao,
 } from '@/db/repositories/organization-repository'
+import {upsertOrganizationSettingsDao} from '@/db/repositories/organization-setting-repository'
 import {
   createUserDao,
   getUserByEmailDao,
 } from '@/db/repositories/user-repository'
+import {withTenant} from '@/db/tenant-scope'
 
 import {canProvisionOrganization} from './authorization/organization-authorization'
+import {CONTACT_EMAIL_SETTING_KEY} from './types/domain/association-settings-types'
 import {
   Organization,
   OrganizationModule,
@@ -620,6 +623,8 @@ export type ProvisionOrganization = {
   slug: string
   domain: string
   adminEmail: string
+  /** Adresse de contact de l'association : obligatoire (s02, critere 5). */
+  contactEmail: string
   enabledModules: OrganizationModule[]
 }
 
@@ -650,8 +655,8 @@ export const getOrganizationByDomainService = async (
 }
 
 /**
- * Provisionne une association : le tenant, ses modules, et son administrateur
- * initial designe **par email**.
+ * Provisionne une association : le tenant, ses modules, son administrateur
+ * initial designe **par email**, et son adresse de contact (s02).
  *
  * Modele canonique de la couche service (`docs/architecture.md`) : l'ordre est
  * `safeParse` -> `can*` -> repository. Les fonctions plus anciennes de ce
@@ -676,7 +681,8 @@ export const provisionOrganizationService = async (
     )
   }
 
-  const {name, slug, domain, adminEmail, enabledModules} = parsed.data
+  const {name, slug, domain, adminEmail, contactEmail, enabledModules} =
+    parsed.data
 
   const occupant = await getOrganizationByDomainDao(domain)
   if (occupant) {
@@ -708,6 +714,18 @@ export const provisionOrganizationService = async (
     role: UserOrganizationRoleConst.OWNER,
     createdAt: new Date(),
   })
+
+  // Parametre obligatoire sans defaut neutre (ADR 016) : saisi a la creation,
+  // ecrit sous le scope du nouveau tenant.
+  await withTenant(organization.id, () =>
+    upsertOrganizationSettingsDao([
+      {
+        organizationId: organization.id,
+        key: CONTACT_EMAIL_SETTING_KEY,
+        value: contactEmail,
+      },
+    ])
+  )
 
   return {
     organization,

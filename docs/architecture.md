@@ -95,7 +95,7 @@ Présentation → Façade → Service (validation + autorisation) → Repository
 - **Une seule exception, et elle est bornée** : `member` et `invitation` portent `organization_id`
   sans être des données métier — c'est le **plan identité**, exempté par l'ADR 014 parce que sa
   lecture principale précède la résolution du tenant. Aucune table métier future n'hérite de cette
-  exemption. Le classement complet des 20 tables est plus bas, section « Data model ».
+  exemption. Le classement complet des 21 tables est plus bas, section « Data model ».
 - Les repositories appellent `getDb()`, **jamais `db` directement** : `getDb()` retourne la transaction
   du scope de tenant courant s'il y en a un.
 - Tout chemin serveur touchant une table métier s'exécute dans `withTenant(organizationId, ...)`.
@@ -112,6 +112,13 @@ Présentation → Façade → Service (validation + autorisation) → Repository
 Adresses de notification, catégories, seuils, textes par défaut, activation des relances : tout va en
 paramètre d'association (ADR 010). Les valeurs du CDCT §4.6 sont des **valeurs de seed du premier
 tenant**, pas des constantes. Une valeur codée en dur est un échec de review.
+
+**Forme retenue par s02 (ADR 016, [`docs/decisions/016-registre-des-parametres-en-code.md`](decisions/016-registre-des-parametres-en-code.md))** :
+la définition d'un paramètre (type, obligatoire, défaut constant ou référence à une autre clé,
+libellés, page) vit dans un **registre typé dans le code**
+(`src/services/types/domain/association-settings-types.ts`) ; `organization_setting` ne stocke que
+les valeurs. Absence de ligne = défaut du registre. Lecture cachée par association
+(`getAssociationSettingsDal`, tag `association-settings:<id>`), invalidée par `updateTag`.
 
 Les **secrets** ne sont pas des paramètres : ils vivent dans `@/env` (validation Zod, `@t3-oss/env-nextjs`).
 `process.env` en accès direct est interdit par ESLint.
@@ -179,7 +186,7 @@ Entités ajoutées par ASL-CMS, par domaine :
 - **Tenancy** — `organization` étendue d'un **domaine unique indexé** (ADR 003), de **drapeaux de
   modules** typés (ADR 010) et des **clés de stockage du logo et du favicon** (`identity_logo_key`,
   `identity_favicon_key`, nullables, ADR 015) ; `organization_setting` en clé composite
-  `(organization_id, key)`.
+  `(organization_id, key)`, valeurs seules, définitions au registre du code (ADR 016).
 - **Membres et parcelles** — `member_profile` (fiche membre, **existe sans compte** : 100 des 400
   propriétaires de La Fourche n'ont pas d'email), `parcel`, et surtout `parcel_ownership`, la relation
   **datée** membre ↔ parcelle. C'est le cœur du modèle : l'historique est attaché à la parcelle **au
@@ -203,17 +210,18 @@ Entités ajoutées par ASL-CMS, par domaine :
 - **Autorisation** — `action_registry` : le registre des actions soumises à autorisation, que chaque
   story alimente et que s37 transforme en matrice configurable.
 
-### Classement RLS des 20 tables du schéma
+### Classement RLS des 21 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 20 tables du schéma après le retrait ADR 009 sont donc toutes classées, sans reste. Toute
+Les 21 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
-**Scopée par une policy RLS forcée** — 1 table
+**Scopée par une policy RLS forcée** — 2 tables
 
-| Table              | Pourquoi                                                                                                                                                    |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `user_submissions` | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé. |
+| Table                  | Pourquoi                                                                                                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_submissions`     | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé.                              |
+| `organization_setting` | Paramètres de l'association (adresses, teinte : ADR 010, ADR 016). Porte `organization_id`, policy `tenant_isolation` forcée (`0007`). Absence de ligne = valeur par défaut du registre. |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**
@@ -230,7 +238,7 @@ données d'un client. — 4 tables
 
 | Table                               | Pourquoi                                                                                                                                                                                                                                                                    |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app_settings`                      | Réglages de la plateforme. Les réglages **par association** vivent dans `organization_setting` (ADR 010), qui sera scopée.                                                                                                                                                  |
+| `app_settings`                      | Réglages de la plateforme. Les réglages **par association** vivent dans `organization_setting` (ADR 010, ADR 016), scopée ci-dessus.                                                                                                                                        |
 | `organization`                      | **C'est le tenant.** Elle ne porte pas `organization_id` par nature, et sa lecture par domaine précède toute résolution de tenant (ADR 003). Ses colonnes `identity_logo_key` et `identity_favicon_key` (ADR 015) voyagent avec cette lecture et restent donc exemptées.    |
 | `subscription`, `subscription_plan` | Abonnement **plateforme** Stripe. `subscription` se rattache au tenant par `reference_id` (`text`, polymorphe Better Auth) : une policy sur `organization_id` ne la verrait pas. À ne jamais confondre avec la facturation des membres (Pennylane, ADR 011, lecture seule). |
 

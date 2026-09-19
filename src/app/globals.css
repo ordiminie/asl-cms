@@ -169,6 +169,26 @@
   --sidebar-border: oklch(0.32 0.01 250);
   --sidebar-ring: oklch(0.7 0.12 235);
 }
+
+/*
+  Une teinte d'accent limitee a un sous-arbre (s02, carte « Teinte » : pastilles
+  et apercu). Les tokens d'accent sont calcules la ou ils sont declares : sur
+  <html>, ils figent la teinte du tenant. Un element qui pose sa propre
+  `--accent-hue` doit donc les redeclarer, avec les memes formules.
+*/
+[data-accent-hue-scope] {
+  --accent: oklch(0.958 0.024 var(--accent-hue));
+  --accent-foreground: oklch(0.38 0.08 var(--accent-hue));
+  --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+  --accent-border: oklch(0.88 0.045 var(--accent-hue));
+}
+
+.dark [data-accent-hue-scope] {
+  --accent: oklch(0.275 0.035 var(--accent-hue));
+  --accent-foreground: oklch(0.84 0.075 var(--accent-hue));
+  --accent-solid: oklch(0.64 0.11 var(--accent-hue));
+  --accent-border: oklch(0.4 0.055 var(--accent-hue));
+}
 /*
   ---break---
 */

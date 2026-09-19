@@ -17,6 +17,9 @@ vi.mock('@/app/dal/user-dal', () => ({requireActionAuth: vi.fn()}))
 vi.mock('@/services/facades/association-identity-service-facade', () => ({
   replaceAssociationIdentityFileService: vi.fn(),
 }))
+vi.mock('@/services/facades/association-settings-service-facade', () => ({
+  updateAssociationSettingsService: vi.fn(),
+}))
 
 import {updateTag} from 'next/cache'
 
@@ -24,8 +27,13 @@ import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {replaceAssociationIdentityFileService} from '@/services/facades/association-identity-service-facade'
+import {updateAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
+import {ACCENT_HUE_SETTING_KEY} from '@/services/types/domain/association-settings-types'
 
-import {replaceAssociationIdentityFileAction} from './actions'
+import {
+  replaceAssociationIdentityFileAction,
+  updateAssociationAccentHueAction,
+} from './actions'
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 const NEW_KEY = `${TENANT_ID}/identity/logo-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.png`
@@ -235,5 +243,116 @@ describe('replaceAssociationIdentityFileAction — fichier refuse', () => {
       message: 'errors.failed',
       kept: 'errors.kept.logo',
     })
+  })
+})
+
+const hueForm = (hue: string | null) => {
+  const formData = new FormData()
+  if (hue !== null) formData.set('accentHue', hue)
+  return formData
+}
+
+describe('updateAssociationAccentHueAction', () => {
+  beforeEach(() => {
+    vi.mocked(updateAssociationSettingsService).mockResolvedValue({
+      status: 'saved',
+    })
+  })
+
+  it('enregistre la teinte de l association du domaine appele, et elle seule', async () => {
+    const state = await updateAssociationAccentHueAction(
+      undefined,
+      hueForm('40')
+    )
+
+    expect(requireActionAuth).toHaveBeenCalled()
+    expect(updateAssociationSettingsService).toHaveBeenCalledWith(TENANT_ID, {
+      [ACCENT_HUE_SETTING_KEY]: '40',
+    })
+    expect(state).toEqual({
+      success: true,
+      accentHue: 40,
+      message: 'accentHue.success {"name":"hues.tile"}',
+    })
+  })
+
+  it('invalide la lecture cachee des parametres de cette association', async () => {
+    await updateAssociationAccentHueAction(undefined, hueForm('40'))
+
+    expect(updateTag).toHaveBeenCalledTimes(1)
+    expect(updateTag).toHaveBeenCalledWith(`association-settings:${TENANT_ID}`)
+  })
+
+  it('une teinte hors liste est refusee, sans invalider le cache', async () => {
+    vi.mocked(updateAssociationSettingsService).mockResolvedValue({
+      status: 'rejected',
+      errors: {[ACCENT_HUE_SETTING_KEY]: {code: 'invalidChoice'}},
+    })
+
+    const state = await updateAssociationAccentHueAction(
+      undefined,
+      hueForm('12')
+    )
+
+    expect(state).toEqual({
+      success: false,
+      message: 'accentHue.errors.notSaved',
+    })
+    expect(updateTag).not.toHaveBeenCalled()
+  })
+
+  it('refuse cote serveur un utilisateur hors du bureau', async () => {
+    vi.mocked(updateAssociationSettingsService).mockRejectedValue(
+      new AuthorizationError()
+    )
+
+    const state = await updateAssociationAccentHueAction(
+      undefined,
+      hueForm('40')
+    )
+
+    expect(state).toEqual({success: false, message: 'errors.forbidden'})
+    expect(updateTag).not.toHaveBeenCalled()
+  })
+
+  it('refuse sans session, sans appeler le service', async () => {
+    vi.mocked(requireActionAuth).mockRejectedValue(new AuthorizationError())
+
+    const state = await updateAssociationAccentHueAction(
+      undefined,
+      hueForm('40')
+    )
+
+    expect(state).toEqual({success: false, message: 'errors.forbidden'})
+    expect(updateAssociationSettingsService).not.toHaveBeenCalled()
+  })
+
+  it('une panne est rendue comme un resultat, jamais levee', async () => {
+    vi.mocked(updateAssociationSettingsService).mockRejectedValue(
+      new Error('connexion perdue')
+    )
+
+    const state = await updateAssociationAccentHueAction(
+      undefined,
+      hueForm('40')
+    )
+
+    expect(state).toEqual({
+      success: false,
+      message: 'accentHue.errors.notSaved',
+    })
+  })
+
+  it('refuse sans teinte, sans appeler le service', async () => {
+    const state = await updateAssociationAccentHueAction(
+      undefined,
+      hueForm(null)
+    )
+
+    expect(state).toEqual({
+      success: false,
+      message: 'accentHue.errors.notSaved',
+    })
+    expect(updateAssociationSettingsService).not.toHaveBeenCalled()
   })
 })

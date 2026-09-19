@@ -9,7 +9,7 @@ import {StorageOperations} from '@/lib/files/storage/types'
 import {logger} from '@/lib/logger'
 
 import {getAuthUser} from './authentication/auth-service'
-import {canManageAssociationIdentity} from './authorization/association-identity-authorization'
+import {canManageAssociation} from './authorization/association-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {NotFoundError} from './errors/not-found-error'
 import {
@@ -128,7 +128,7 @@ export const replaceAssociationIdentityFileService = async (
   }
 
   const authUser = await getAuthUser()
-  if (!canManageAssociationIdentity(authUser, parsed.data.organizationId)) {
+  if (!canManageAssociation(authUser, parsed.data.organizationId)) {
     throw new AuthorizationError(
       "Seul le bureau de l'association peut modifier son identité"
     )
@@ -217,5 +217,5 @@ export const canManageAssociationIdentityService = async (
   }
 
   const authUser = await getAuthUser()
-  return canManageAssociationIdentity(authUser, parsed.data)
+  return canManageAssociation(authUser, parsed.data)
 }

@@ -65,7 +65,13 @@ export function ProvisionOrganizationForm() {
 
   const form = useForm<ProvisionOrganizationFormValues>({
     resolver: zodResolver(createProvisionOrganizationFormSchema(t)),
-    defaultValues: {name: '', slug: '', domain: '', adminEmail: ''},
+    defaultValues: {
+      name: '',
+      slug: '',
+      domain: '',
+      adminEmail: '',
+      contactEmail: '',
+    },
   })
 
   const toggleModule = (moduleKey: string, checked: boolean) => {
@@ -85,6 +91,7 @@ export function ProvisionOrganizationForm() {
     formData.set('slug', values.slug)
     formData.set('domain', values.domain)
     formData.set('adminEmail', values.adminEmail)
+    formData.set('contactEmail', values.contactEmail)
     for (const moduleKey of enabledModules) {
       formData.append('modules', moduleKey)
     }
@@ -196,6 +203,21 @@ export function ProvisionOrganizationForm() {
                     <Input {...field} />
                   </FormControl>
                   <FormDescription>{t('domainHelp')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="contactEmail"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>{t('contactEmailLabel')}</FormLabel>
+                  <FormControl>
+                    <Input type="email" {...field} />
+                  </FormControl>
+                  <FormDescription>{t('contactEmailHelp')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

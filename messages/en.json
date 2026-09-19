@@ -2418,6 +2418,8 @@
       "slugHelp": "Used for internal addresses. Lowercase letters, digits and dashes.",
       "domainLabel": "Domain",
       "domainHelp": "The domain that will serve its site, without https:// or a path. Example: asl-lafourche.fr",
+      "contactEmailLabel": "Association contact address",
+      "contactEmailHelp": "Required. Receives the site's messages and serves as the default address. The board can change it in its settings.",
       "adminCardTitle": "Association administrator",
       "adminEmailLabel": "Email address",
       "adminEmailHelp": "The account is created if it does not exist yet.",
@@ -2439,7 +2441,8 @@
         "nameMax": "The name cannot exceed 100 characters.",
         "slugPattern": "Lowercase letters, digits and dashes only.",
         "domainPattern": "A bare domain, without https:// or a path.",
-        "adminEmailInvalid": "This email address is not valid."
+        "adminEmailInvalid": "This email address is not valid.",
+        "contactEmailInvalid": "The association's contact address is required. Example: contact@domain.com"
       }
     },
     "modules": {
@@ -2793,7 +2796,7 @@
       "title": "Association identity"
     },
     "title": "Association identity",
-    "intro": "The logo and favicon appear on your site and in this space. Changes are visible as soon as they are saved.",
+    "intro": "The logo, the favicon and the hue appear on your site and in this space. Changes are visible as soon as they are saved.",
     "breadcrumb": {
       "association": "The association",
       "identity": "Identity"
@@ -2802,7 +2805,8 @@
       "group": "The association",
       "identity": "Identity",
       "menu": "Menu",
-      "openMenu": "Open the menu"
+      "openMenu": "Open the menu",
+      "settings": "Settings"
     },
     "cards": {
       "logo": {
@@ -2827,10 +2831,103 @@
       "title": "This page is reserved for the association's board",
       "description": "If you think you should have access, contact a board member.",
       "back": "Back to home"
+    },
+    "accentHue": {
+      "status": {
+        "default": "No hue chosen yet: the default {name} hue is applied.",
+        "applied": "{name} hue applied.",
+        "pending": "{name} hue selected, not saved yet."
+      },
+      "defaultBadge": "default",
+      "previewCaption": "Preview on your site",
+      "previewNav": {
+        "home": "Home",
+        "news": "News",
+        "contact": "Contact"
+      },
+      "previewNotice": "Water cut planned on Tuesday 14 October, from 9 am to 12 pm.",
+      "submit": "Save the hue",
+      "saving": "Saving…",
+      "success": "{name} hue saved. Visible on your site and in this space.",
+      "errors": {
+        "notSaved": "The hue was not saved.",
+        "kept": "The {name} hue remains applied.",
+        "retry": "Try again in a moment."
+      }
     }
   },
   "AssociationMark": {
     "logoAlt": "Logo of the association {name}",
     "monogramLabel": "Monogram of the association {name}"
+  },
+  "AssociationSettings": {
+    "optional": "optional",
+    "usesDefault": "Empty: the default value applies ({value}).",
+    "errors": {
+      "required": "This setting is required: it cannot be left empty.",
+      "invalidEmail": "This address is not valid. Example: name@domain.com",
+      "invalidNumber": "Enter a number, in digits, without letters.",
+      "belowMin": "The value is too small: the minimum is {min}.",
+      "aboveMax": "The value is too large: the maximum is {max}.",
+      "invalidBoolean": "Tick or untick the box for this setting.",
+      "invalidChoice": "Choose one of the options offered in the list.",
+      "unknownKey": "This setting does not exist or is no longer offered."
+    },
+    "fields": {
+      "contactEmail": {
+        "label": "Contact address",
+        "help": "Required. Receives messages from the site's contact form and reports. It is also the address used when another address is left empty.",
+        "errors": {
+          "required": "The contact address is required: messages go to it when no other address is set. The address {current} remains in effect."
+        }
+      },
+      "forageEmail": {
+        "label": "Borehole manager address",
+        "help": "Receives leak reports, in addition to the contact address. Left empty, they only go to the contact address.",
+        "whenEmpty": "Empty: leak reports go to {value}."
+      },
+      "accentHue": {
+        "label": "Hue",
+        "help": "Your association's colour. It colours the monogram, rules and callouts of your site. Buttons keep their colour."
+      }
+    },
+    "hues": {
+      "water": "Water",
+      "pines": "Pines",
+      "lake": "Lake",
+      "tile": "Tile",
+      "heather": "Heather",
+      "broom": "Broom"
+    }
+  },
+  "BureauSettingsPage": {
+    "metadata": {
+      "title": "Association settings"
+    },
+    "title": "Association settings",
+    "intro": "These settings belong to your association. Changes apply as soon as they are saved.",
+    "breadcrumb": {
+      "association": "The association",
+      "settings": "Settings"
+    },
+    "cards": {
+      "notifications": {
+        "title": "Notification addresses"
+      }
+    },
+    "submit": "Save settings",
+    "saving": "Saving…",
+    "choose": "Choose…",
+    "success": "Settings saved. The next messages will go to these addresses.",
+    "summary": {
+      "title": "{count, plural, one {# setting was not saved} other {# settings were not saved}}",
+      "kept": "The values you entered are kept in the form; nothing is saved while an error remains."
+    },
+    "errors": {
+      "failed": "The settings were not saved.",
+      "kept": "The previous addresses remain in effect.",
+      "forbidden": "This action is reserved for the association's board.",
+      "invalidData": "No settings were received. Reload the page and try again."
+    }
   }
 }

@@ -1,3 +1,4 @@
+import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {getCurrentTenantDal, TenantDTO} from '@/app/dal/tenant-dal'
 import {renderAssociationMonogramSvg} from '@/lib/helper/association-monogram-svg'
 import {readAssociationIdentityFileService} from '@/services/facades/association-identity-service-facade'
@@ -6,6 +7,7 @@ import {
   AssociationIdentityKind,
   getIdentityVersionFromKey,
 } from '@/services/types/domain/association-identity-types'
+import {getAccentHue} from '@/services/types/domain/association-settings-types'
 
 const LONG_CACHE = 'public, max-age=31536000, immutable'
 const NO_LONG_CACHE = 'no-cache'
@@ -51,7 +53,7 @@ const readStoredFile = async (
  * Le type est un enumere, le tenant vient du domaine, la cle vient de la base :
  * aucun chemin n'est lu depuis la requete. Cache long seulement quand `?v=`
  * porte la version courante, pour qu'un remplacement s'affiche aussitot.
- * Sans favicon, le monogramme de l'association est genere.
+ * Sans favicon, le monogramme de l'association est genere, dans sa teinte.
  */
 export async function GET(
   request: Request,
@@ -83,8 +85,9 @@ export async function GET(
   }
 
   if (kind === 'favicon') {
+    const settings = await getAssociationSettingsDal(tenant.id)
     return identityResponse(
-      renderAssociationMonogramSvg(tenant.name),
+      renderAssociationMonogramSvg(tenant.name, getAccentHue(settings)),
       'image/svg+xml',
       NO_LONG_CACHE
     )
