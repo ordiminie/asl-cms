@@ -127,5 +127,40 @@ behaviour.
 No critical and no major issue. M1 and m4 are fixed with real code and tests. Everything left is minor, including
 m9, accepted by the user. The e2e spec was judged by reading only and must pass in CI on the PR.
 
+## Addendum — review of commit 6940bef, after the merge
+
+> Third fresh-context review by the `reviewer` subagent, 2026-09-19, on `git diff de9f7e5..6940bef`
+> (`fix(s02): le clic sur « Enregistrer » ne se perd plus, spec e2e rejouable`, 3 files, +93/−31). The first CI run
+> of PR 13 had failed (e2e criterion 2, and criterion 6 on retry); this commit fixed it, CI went green (run
+> 35444307518: unit 695 passed / 8 skipped, e2e 74 passed, no retry) and the PR was squash-merged (`7d03868`)
+> before this commit was reviewed. `git diff --quiet 6940bef 7d03868` is empty: what was reviewed is what is on
+> main. No corrective PR required.
+
+- **Root cause confirmed.** With `mode: 'onBlur'`, pressing « Enregistrer les réglages » blurs the field; the
+  field error renders above the button and pushes it down before mouseup; mousedown and mouseup land on different
+  elements, so the button gets no `click` and nothing is submitted. A slow press by a person can hit the same bug.
+- **Fix correct.** `onMouseDown={keepFocusUntilClick}` (`preventDefault`) only cancels the focus move; `click`
+  still fires; `handleSubmit` validates every field anyway. Accessibility checked: keyboard (Enter/Space do not go
+  through mousedown), screen readers (activation sends a click), touch (compatibility events fire after the finger
+  lifts), focus ring when tabbing unchanged, design system §1.5 respected (mousedown is not hover).
+- **No other form exposed:** the hue card has no blur validation (`type="button"` + `onClick`); the provisioning
+  form uses `mode: 'onSubmit'`; no other blur-validated form in `src`.
+- **The new unit test really reproduces the bug:** without the `onMouseDown` line it fails; with it, the 15 tests
+  of the file pass. Suite run by the reviewer: 695 passed, 8 skipped.
+- **e2e restore through the app** (`restoreTenantASeed`, settings and identity pages, so `updateTag` runs) in
+  `beforeAll` and `afterAll`; cross-tenant RLS checks kept. **m5 closed.**
+
+**Findings of this pass**
+
+- **p1 — minor** — `e2e/association-settings.spec.ts`: the new `beforeAll` writes tenant A's seed values through
+  the app before criterion 6 reads them, so for tenant A the criterion checks the restore, not `pnpm db:seed`.
+  Mitigated: tenant B is still read from the real seed, and `tenant-settings-seed.test.ts` unit-tests the seed data.
+- **p2 — minor, not a defect** — `association-settings-form.test.tsx`: the key assertion (no error between press
+  and release) is tied to this particular fix; jsdom does no layout, so another correct fix (e.g. reserving space
+  for the message) would fail it.
+- **m6, m7 — minor, still open** (see above).
+
+## Final verdict
+
 Max severity: minor
 Ship allowed: yes
