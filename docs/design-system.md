@@ -26,7 +26,9 @@
 - **Aucun plan B de connexion pour les membres sans email.** Ils n'ont aucun compte : la
   réponse produit à leur situation est le **publipostage papier**. La livraison n° 1 proposait
   un `<CodeInput />` d'activation par courrier ; il a été **retiré au second tour**.
-- **Aucun mot de passe** : connexion par lien magique seul, valable 4 heures.
+- **Lien magique d'abord** : les membres se connectent par lien magique, valable 20 minutes. Le mot de passe
+  existant est conservé, au moins pour le SuperAdmin ; le masquer aux autres rôles est souhaité si c'est simple
+  (arbitrage du 19 septembre 2026).
 - **Aucune saisie manuelle des relevés d'eau** : la saisie est **en masse, par tableur**, et le seul
   chemin est l'import Excel/CSV de s17. La livraison n° 1 proposait un `<MeterInput />` de relevé au
   compteur parcelle par parcelle ; il a été **retiré** (arbitrage client du 8 septembre 2026, §2.2).
@@ -827,17 +829,19 @@ date, campagne).
 
 ## 7 · La connexion — lien magique seul
 
-Pas de mot de passe, pas d'inscription libre : les comptes sont créés par le bureau. Le membre
-saisit son adresse, reçoit un lien valable **4 heures**, clique, il est connecté.
+Pas de mot de passe à retenir pour les membres, pas d'inscription libre : les comptes sont créés par le
+bureau. (Le mot de passe existant reste disponible, au moins pour le SuperAdmin — arbitrage du 19 septembre
+2026.) Le membre
+saisit son adresse, reçoit un lien valable **20 minutes**, clique, il est connecté. _(4 heures jusqu'à l'arbitrage du 19 septembre 2026.)_
 
-| Écran                               | Ce qui le caractérise                                                                                                                                                                                                                                                                    |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **1 · Saisie de l'adresse**         | Un seul champ. « Il n'y a **aucun mot de passe** à retenir. » Un encart bas de page : « Vous n'avez pas d'adresse email ? Les documents vous sont envoyés par **courrier** — appelez le bureau. »                                                                                        |
-| **2 · Consultez votre boîte mail**  | **L'écran le plus important.** Dit quoi faire, que le lien vaut 4 h, et **« Rien n'arrive ? »** en trois étapes numérotées (patienter, regarder les indésirables, vérifier l'adresse). « Renvoyer un lien » **désactivé 60 s avec compte à rebours écrit**. Puis le téléphone du bureau. |
-| **3 · Lien expiré ou déjà utilisé** | « **Vous n'avez rien fait de mal** : il suffit d'en demander un nouveau. » Explique que l'usage unique est ce qui protège l'espace.                                                                                                                                                      |
-| **4 · Adresse inconnue**            | Voir ci-dessous.                                                                                                                                                                                                                                                                         |
-| **5 · Déjà connecté**               | « Inutile de demander un nouveau lien : votre espace est ouvert. »                                                                                                                                                                                                                       |
-| **6 · Déconnexion**                 | « Vos documents restent disponibles… **Il n'y a pas de mot de passe à retrouver.** »                                                                                                                                                                                                     |
+| Écran                               | Ce qui le caractérise                                                                                                                                                                                                                                                                           |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1 · Saisie de l'adresse**         | Un seul champ. « Il n'y a **aucun mot de passe** à retenir. » Un encart bas de page : « Vous n'avez pas d'adresse email ? Les documents vous sont envoyés par **courrier** — appelez le bureau. »                                                                                               |
+| **2 · Consultez votre boîte mail**  | **L'écran le plus important.** Dit quoi faire, que le lien vaut 20 minutes, et **« Rien n'arrive ? »** en trois étapes numérotées (patienter, regarder les indésirables, vérifier l'adresse). « Renvoyer un lien » **désactivé 60 s avec compte à rebours écrit**. Puis le téléphone du bureau. |
+| **3 · Lien expiré ou déjà utilisé** | « **Vous n'avez rien fait de mal** : il suffit d'en demander un nouveau. » Explique que l'usage unique est ce qui protège l'espace.                                                                                                                                                             |
+| **4 · Adresse inconnue**            | Voir ci-dessous.                                                                                                                                                                                                                                                                                |
+| **5 · Déjà connecté**               | « Inutile de demander un nouveau lien : votre espace est ouvert. »                                                                                                                                                                                                                              |
+| **6 · Déconnexion**                 | « Vos documents restent disponibles… **Il n'y a pas de mot de passe à retrouver.** »                                                                                                                                                                                                            |
 
 **L'écran 4 — sécurité sans dureté.** Le message ne dit **jamais** « cette adresse est inconnue » :
 il dirait à un inconnu qui est adhérent. Il est donc **conditionnel** (« Si cette adresse est

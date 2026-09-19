@@ -259,7 +259,7 @@ n'appartiennent à aucun tenant et ne sont écrites que par le rôle propriétai
 
 | Intégration        | Rôle                                            | Forme                                     | Réserve                                           |
 | ------------------ | ----------------------------------------------- | ----------------------------------------- | ------------------------------------------------- |
-| **Better Auth**    | Lien magique 4 h, sessions, organisations       | Natif boilerplate                         | —                                                 |
+| **Better Auth**    | Lien magique 20 min, sessions, organisations    | Natif boilerplate                         | —                                                 |
 | **Brevo**          | Email transactionnel et campagnes, statistiques | Contrat `EmailTransport` (ADR 005)        | Contenu des 4 modèles à rédiger                   |
 | **Pennylane**      | Factures membres, lecture seule                 | Contrat `MemberBillingProvider` (ADR 011) | **Bloque s20** — accès API + clé de rapprochement |
 | **ASL Community**  | Vote en ligne                                   | Contrat `VoteProvider` (ADR 011)          | **Bloque s33** — accès + validation statutaire    |
