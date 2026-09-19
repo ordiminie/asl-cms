@@ -2918,6 +2918,14 @@
       "accentHue": {
         "label": "Hue",
         "help": "Your association's colour. It colours the monogram, rules and callouts of your site. Buttons keep their colour."
+      },
+      "linkRequestsPerAddress": {
+        "label": "Sign-in links per email address",
+        "help": "Maximum number of sign-in links sent to the same address in one hour. Beyond that, the person sees the same screen but no email is sent: this protects your members' inboxes and your association's sending quota."
+      },
+      "linkRequestsPerNetwork": {
+        "label": "Sign-in links per internet connection",
+        "help": "Number of link requests accepted in one hour from the same internet connection (the same router, for example), all addresses combined. Raise it before a meeting where many members sign in from the same room."
       }
     },
     "hues": {
@@ -2927,6 +2935,9 @@
       "tile": "Tile",
       "heather": "Heather",
       "broom": "Broom"
+    },
+    "units": {
+      "requestsPerHour": "requests per hour"
     }
   },
   "BureauSettingsPage": {

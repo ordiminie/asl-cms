@@ -39,12 +39,12 @@ soit le fournisseur : l'appelant décide de l'état à afficher, jamais de relan
 
 `getEmailTransport()` choisit l'implémentation selon `EMAIL_TRANSPORT` (`@/env`) :
 
-| `EMAIL_TRANSPORT` | Variable exigée  | Défaut                                  |
-| ----------------- | ---------------- | --------------------------------------- |
-| `brevo`           | `BREVO_API_KEY`  | à déclarer en production                |
-| `resend`          | `RESEND_API_KEY` | —                                       |
-| `file`            | —                | hors production ; `EMAIL_OUTBOX_DIR`    |
-| `memory`          | —                | —                                       |
+| `EMAIL_TRANSPORT` | Variable exigée  | Défaut                               |
+| ----------------- | ---------------- | ------------------------------------ |
+| `brevo`           | `BREVO_API_KEY`  | à déclarer en production             |
+| `resend`          | `RESEND_API_KEY` | —                                    |
+| `file`            | —                | hors production ; `EMAIL_OUTBOX_DIR` |
+| `memory`          | —                | —                                    |
 
 ## Structure des gabarits
 

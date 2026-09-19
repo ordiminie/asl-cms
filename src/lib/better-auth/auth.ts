@@ -21,7 +21,10 @@ import {
   getUserByStripeCustomerIdDao,
 } from '@/db/repositories/user-repository'
 import {env} from '@/env'
-import {magicLinkOptions} from '@/lib/better-auth/magic-link-integration'
+import {
+  MAGIC_LINK_DISABLED_HTTP_PATHS,
+  magicLinkOptions,
+} from '@/lib/better-auth/magic-link-integration'
 import {APP_ISSUER} from '@/lib/constants'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
@@ -53,6 +56,7 @@ export const AuthAppConfig = {
 // Source : https://github.com/better-auth/better-auth/issues/3233
 const options = {
   appName: APP_ISSUER,
+  disabledPaths: [...MAGIC_LINK_DISABLED_HTTP_PATHS],
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),

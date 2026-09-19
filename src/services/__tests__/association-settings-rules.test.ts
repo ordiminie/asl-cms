@@ -14,8 +14,11 @@ import {
   DEFAULT_ACCENT_HUE,
   FORAGE_EMAIL_SETTING_KEY,
   getAccentHue,
+  getMagicLinkRequestLimits,
   getSettingsForPage,
   hasSettingReferenceCycle,
+  MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY,
+  MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY,
   parseSettingValue,
   resolveSettings,
   validateSettingsChanges,
@@ -35,7 +38,7 @@ const testDefinition = (key: string) =>
   definitionOf(TEST_SETTINGS_REGISTRY, key)
 
 describe('registre de production', () => {
-  it('declare les trois cles de s02, avec leurs types et leur page', () => {
+  it('declare les cles de s02 et de s03, avec leurs types et leur page', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.map(({key, type, required, page}) => ({
         key,
@@ -62,7 +65,64 @@ describe('registre de production', () => {
         required: false,
         page: 'identity',
       },
+      {
+        key: MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  it('les seuils de demande de lien sont des entiers bornes, 5 et 30 par defaut', () => {
+    for (const [key, fallback] of [
+      [MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY, '5'],
+      [MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY, '30'],
+    ] as const) {
+      const definition = definitionOf(ASSOCIATION_SETTINGS_REGISTRY, key)
+      expect(definition, key).toMatchObject({
+        type: 'number',
+        integer: true,
+        min: 1,
+        default: {value: fallback},
+      })
+      expect(parseSettingValue(definition, '0'), key).toMatchObject({
+        valid: false,
+      })
+    }
+  })
+
+  it('chaque cle a son libelle et son aide dans les trois langues', () => {
+    for (const messages of [fr, en, es]) {
+      const namespace = messages.AssociationSettings as Record<string, unknown>
+      const lookup = (dotted: string) =>
+        dotted
+          .split('.')
+          .reduce<unknown>(
+            (node, part) =>
+              typeof node === 'object' && node !== null
+                ? (node as Record<string, unknown>)[part]
+                : undefined,
+            namespace
+          )
+      for (const definition of ASSOCIATION_SETTINGS_REGISTRY) {
+        const keys = [definition.labelKey, definition.helpKey]
+        if (definition.type === 'number' && definition.unitKey) {
+          keys.push(definition.unitKey)
+        }
+        for (const key of keys) {
+          expect(lookup(key), `${definition.key} ${key}`).toEqual(
+            expect.any(String)
+          )
+        }
+      }
+    }
   })
 
   it('l adresse de contact n a aucun defaut : elle est saisie au provisioning', () => {
@@ -134,7 +194,12 @@ describe('registre de production', () => {
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'settings').map(
         (definition) => definition.key
       )
-    ).toEqual([CONTACT_EMAIL_SETTING_KEY, FORAGE_EMAIL_SETTING_KEY])
+    ).toEqual([
+      CONTACT_EMAIL_SETTING_KEY,
+      FORAGE_EMAIL_SETTING_KEY,
+      MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY,
+      MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY,
+    ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
         (definition) => definition.key
@@ -422,5 +487,26 @@ describe('validateSettingsChanges — tout ou rien', () => {
       valid: false,
       errors: {'cle.inconnue': {code: 'unknownKey'}},
     })
+  })
+})
+
+describe('getMagicLinkRequestLimits — seuils de demande de lien', () => {
+  it('sans reglage, les defauts du registre', () => {
+    expect(
+      getMagicLinkRequestLimits(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+      )
+    ).toEqual({perAddress: 5, perNetwork: 30})
+  })
+
+  it('les valeurs renseignees par le bureau l emportent', () => {
+    expect(
+      getMagicLinkRequestLimits(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY, value: '2'},
+          {key: MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY, value: '80'},
+        ])
+      )
+    ).toEqual({perAddress: 2, perNetwork: 80})
   })
 })

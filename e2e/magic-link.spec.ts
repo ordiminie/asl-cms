@@ -31,6 +31,8 @@ const KNOWN_ADDRESS = 'user-owner@gmail.com'
 const TENANT_A_SLUG = 'techcorp-solutions'
 const TENANT_A_NAME = 'TechCorp Solutions'
 
+const ADDRESS_LIMIT_KEY = 'login.link_requests_per_address_per_hour'
+
 const SENT_TITLE = 'Consultez votre boîte mail'
 const INVALID_TITLE = 'Ce lien ne fonctionne plus'
 
@@ -103,6 +105,54 @@ const withClient = async <T>(
     await client.end()
   }
 }
+
+const tenantId = (client: Client, slug: string) =>
+  client
+    .query<{id: string}>(`select id from organization where slug = $1`, [slug])
+    .then((result) => result.rows[0].id)
+
+/** `callback` dans le scope de TechCorp, comme `withTenant()` (RLS forcée). */
+const inTenantA = <T>(callback: (client: Client, id: string) => Promise<T>) =>
+  withClient(async (client) => {
+    const id = await tenantId(client, TENANT_A_SLUG)
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        id,
+      ])
+      const result = await callback(client, id)
+      await client.query('commit')
+      return result
+    } catch (error) {
+      await client.query('rollback')
+      throw error
+    }
+  })
+
+/** Remet à zéro les demandes comptées de TechCorp : chaque essai part de rien. */
+const resetRateLimits = () =>
+  inTenantA((client, id) =>
+    client.query(`delete from rate_limit_event where organization_id = $1`, [
+      id,
+    ])
+  )
+
+/** Seuil par adresse de TechCorp ; `null` le ramène au défaut du registre. */
+const setAddressLimit = (value: string | null) =>
+  inTenantA((client, id) =>
+    value === null
+      ? client.query(
+          `delete from organization_setting
+            where organization_id = $1 and key = $2`,
+          [id, ADDRESS_LIMIT_KEY]
+        )
+      : client.query(
+          `insert into organization_setting (organization_id, key, value)
+           values ($1, $2, $3)
+           on conflict (organization_id, key) do update set value = excluded.value`,
+          [id, ADDRESS_LIMIT_KEY, value]
+        )
+  )
 
 /** Ce que l'email de TechCorp doit porter : logo PNG ou non, teinte. */
 const tenantAIdentity = () =>
@@ -224,6 +274,14 @@ const freshPage = async (browser: Browser) =>
   (await browser.newContext({locale: 'fr-FR'})).newPage()
 
 test.describe('connexion par lien — s03', () => {
+  // Un nouveau lien révoque le précédent de la même adresse : les essais qui
+  // demandent un lien pour l'adresse connue ne doivent pas se croiser.
+  test.describe.configure({mode: 'default'})
+
+  test.beforeEach(async () => {
+    await resetRateLimits()
+  })
+
   test('critères 1, 2 et 6 — lien reçu, session ouverte, rejeu refusé', async ({
     browser,
   }) => {
@@ -327,5 +385,88 @@ test.describe('connexion par lien — s03', () => {
     await expect(page).toHaveURL(/\/login\/lien-invalide/)
     expect(await userCount(unknown)).toBe(0)
     await page.context().close()
+  })
+
+  test('un nouveau lien révoque le précédent : seul le dernier ouvre une session', async ({
+    browser,
+  }) => {
+    const page = await freshPage(browser)
+    const first = linkOf(await requestKnownLink(page))
+    const second = linkOf(await requestKnownLink(page))
+
+    await page.goto(first)
+    await expectInvalidLinkScreen(page)
+
+    await page.goto(second)
+    await expect(page).toHaveURL(/\/dashboard/, {timeout: 15_000})
+    await page.context().close()
+  })
+
+  test('la demande de lien en HTTP direct est fermée', async ({request}) => {
+    const before = outboxFiles()
+
+    const response = await request.post(
+      `${TENANT_A}/api/auth/sign-in/magic-link`,
+      {
+        headers: {origin: TENANT_A},
+        data: {email: KNOWN_ADDRESS, callbackURL: '/dashboard'},
+      }
+    )
+
+    expect(response.status()).toBe(404)
+    expect(newMessagesTo(before, KNOWN_ADDRESS)).toHaveLength(0)
+  })
+
+  test('au-delà du seuil par adresse : même écran, aucun email', async ({
+    browser,
+  }) => {
+    await setAddressLimit('1')
+    try {
+      const page = await freshPage(browser)
+      await requestKnownLink(page)
+
+      const before = outboxFiles()
+      await requestLink(page, KNOWN_ADDRESS)
+      await expect(page.getByTestId('magic-link-sent')).toBeVisible()
+      expect(newMessagesTo(before, KNOWN_ADDRESS)).toHaveLength(0)
+      await page.context().close()
+    } finally {
+      await setAddressLimit(null)
+    }
+  })
+
+  test('les demandes comptées de A ne sortent ni ne s’écrivent depuis B', async () => {
+    await withClient(async (client) => {
+      const a = await tenantId(client, TENANT_A_SLUG)
+      const b = await tenantId(client, 'marketing-pro')
+      const scopeTo = (id: string) =>
+        client.query(`select set_config('app.organization_id', $1, true)`, [id])
+
+      await client.query('begin')
+      try {
+        await scopeTo(a)
+        await client.query(
+          `insert into rate_limit_event (organization_id, bucket, fingerprint)
+           values ($1, 'e2e', 'isolation')`,
+          [a]
+        )
+
+        await scopeTo(b)
+        const seenFromB = await client.query(
+          `select id from rate_limit_event where bucket = 'e2e'`
+        )
+        expect(seenFromB.rowCount).toBe(0)
+
+        await expect(
+          client.query(
+            `insert into rate_limit_event (organization_id, bucket, fingerprint)
+             values ($1, 'e2e', 'forge')`,
+            [a]
+          )
+        ).rejects.toThrow(/row-level security/i)
+      } finally {
+        await client.query('rollback')
+      }
+    })
   })
 })

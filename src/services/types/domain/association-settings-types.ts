@@ -120,6 +120,10 @@ export type AssociationSettingsChangesValidation =
 export const CONTACT_EMAIL_SETTING_KEY = 'contact.email'
 export const FORAGE_EMAIL_SETTING_KEY = 'forage.responsable.email'
 export const ACCENT_HUE_SETTING_KEY = 'identity.accent_hue'
+export const MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY =
+  'login.link_requests_per_address_per_hour'
+export const MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY =
+  'login.link_requests_per_network_per_hour'
 
 /**
  * Les six teintes d'accent validees (design system §1.2). Le bureau choisit
@@ -178,6 +182,32 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     labelKey: 'fields.accentHue.label',
     helpKey: 'fields.accentHue.help',
     page: 'identity',
+  },
+  {
+    key: MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '5'},
+    min: 1,
+    max: 100,
+    integer: true,
+    unitKey: 'units.requestsPerHour',
+    labelKey: 'fields.linkRequestsPerAddress.label',
+    helpKey: 'fields.linkRequestsPerAddress.help',
+    page: 'settings',
+  },
+  {
+    key: MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '30'},
+    min: 1,
+    max: 1000,
+    integer: true,
+    unitKey: 'units.requestsPerHour',
+    labelKey: 'fields.linkRequestsPerNetwork.label',
+    helpKey: 'fields.linkRequestsPerNetwork.help',
+    page: 'settings',
   },
 ]
 
@@ -394,3 +424,42 @@ export const getAccentHue = (
   const value = Number(settings[ACCENT_HUE_SETTING_KEY]?.value)
   return isAccentHue(value) ? value : DEFAULT_ACCENT_HUE
 }
+
+/** Seuils horaires de demande de lien de connexion (s03). */
+export type MagicLinkRequestLimits = {
+  /** Demandes acceptees par adresse email, par heure glissante. */
+  perAddress: number
+  /** Demandes acceptees par acces internet (IP), par heure glissante. */
+  perNetwork: number
+}
+
+const numberSettingOf = (
+  settings: ResolvedAssociationSettings,
+  key: string
+): number => {
+  const value = settings[key]?.value
+  if (typeof value === 'number') return value
+  const definition = findDefinition(ASSOCIATION_SETTINGS_REGISTRY, key)
+  const fallback =
+    definition?.default && 'value' in definition.default
+      ? Number(definition.default.value)
+      : Number.NaN
+  if (Number.isNaN(fallback)) {
+    throw new Error(`Parametre numerique sans defaut : ${key}`)
+  }
+  return fallback
+}
+
+/** Seuils en vigueur : valeur du bureau, sinon defaut du registre. */
+export const getMagicLinkRequestLimits = (
+  settings: ResolvedAssociationSettings
+): MagicLinkRequestLimits => ({
+  perAddress: numberSettingOf(
+    settings,
+    MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY
+  ),
+  perNetwork: numberSettingOf(
+    settings,
+    MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY
+  ),
+})

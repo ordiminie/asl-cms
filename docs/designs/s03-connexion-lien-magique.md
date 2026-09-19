@@ -124,6 +124,10 @@ Aucun composant nouveau au catalogue.
 | **Juste après l'envoi** | « Renvoyer un lien (disponible dans 45 s) » désactivé **60 s**, compte à rebours écrit, annoncé sans relecture à chaque seconde.              |
 | **Disponible**          | Bouton actif.                                                                                                                                 |
 | **Renvoyé**             | `alert` neutre : « Un nouveau lien a été envoyé, si l'adresse est enregistrée. Le précédent ne fonctionne plus. » ; compte à rebours relancé. |
+| _Seuil atteint_         | Pas d'état propre : même écran B, aucun email, le lien précédent reste valable (seuils horaires réglés par le bureau, page « Réglages »).     |
+
+« Le précédent ne fonctionne plus » est vrai : chaque lien envoyé révoque les liens encore en attente de la
+même adresse (correctif de revue, s03).
 
 **Écran C** : un seul état.
 

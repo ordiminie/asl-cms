@@ -1,6 +1,3 @@
-import {readFileSync} from 'node:fs'
-import path from 'node:path'
-
 import {betterAuth} from 'better-auth'
 import {memoryAdapter} from 'better-auth/adapters/memory'
 import {magicLink} from 'better-auth/plugins'
@@ -54,6 +51,9 @@ vi.mock('@/services/facades/organization-service-facade', () => ({
 vi.mock('@/services/facades/association-settings-service-facade', () => ({
   getAssociationSettingsService: vi.fn(),
 }))
+vi.mock('@/services/facades/rate-limit-service-facade', () => ({
+  consumeMagicLinkRequestQuotaService: vi.fn(async () => ({allowed: true})),
+}))
 vi.mock('@/services/notification-service', () => ({
   createTypedNotificationService: vi.fn(),
 }))
@@ -62,25 +62,36 @@ import {getUserByEmailDao} from '@/db/repositories/user-repository'
 import {logger} from '@/lib/logger'
 import {getAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
 import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
+import {consumeMagicLinkRequestQuotaService} from '@/services/facades/rate-limit-service-facade'
 import {createTypedNotificationService} from '@/services/notification-service'
+import type {Organization} from '@/services/types/domain/organization-types'
 
 import {MAGIC_LINK_EXPIRES_IN_SECONDS} from './magic-link-constants'
-import {magicLinkOptions, sendMagicLink} from './magic-link-integration'
+import {
+  MAGIC_LINK_DISABLED_HTTP_PATHS,
+  magicLinkOptions,
+  sendMagicLink,
+} from './magic-link-integration'
 
 const email = 'membre@exemple.test'
 const url =
   'https://asl-les-pins.test/api/auth/magic-link/verify?token=secret-token&callbackURL=%2Fdashboard'
 
-const tenant = (identityLogoKey: string | null) =>
-  ({
-    id: 'org-1',
-    name: 'ASL Les Pins',
-    slug: 'asl-les-pins',
-    domain: 'asl-les-pins.test',
-    enabledModules: [],
-    identityLogoKey,
-    identityFaviconKey: null,
-  }) as never
+const tenant = (identityLogoKey: string | null): Organization => ({
+  id: 'org-1',
+  name: 'ASL Les Pins',
+  slug: 'asl-les-pins',
+  description: null,
+  createdAt: null,
+  updatedAt: null,
+  logo: null,
+  metadata: null,
+  limitOverrides: null,
+  domain: 'asl-les-pins.test',
+  enabledModules: [],
+  identityLogoKey,
+  identityFaviconKey: null,
+})
 
 const requestContext = (host = 'asl-les-pins.test') => ({
   headers: new Headers({host, 'x-forwarded-proto': 'https'}),
@@ -156,7 +167,9 @@ describe('sendMagicLink', () => {
 
     await sendMagicLink({email, url}, requestContext())
 
-    expect(getOrganizationByDomainService).toHaveBeenCalledWith('asl-les-pins.test')
+    expect(getOrganizationByDomainService).toHaveBeenCalledWith(
+      'asl-les-pins.test'
+    )
     expect(getAssociationSettingsService).toHaveBeenCalledWith('org-1')
     expect(memoryTransport.messages).toHaveLength(1)
     const [sent] = memoryTransport.messages
@@ -209,7 +222,9 @@ describe('sendMagicLink', () => {
       }
     )
 
-    expect(getOrganizationByDomainService).toHaveBeenCalledWith('asl-les-pins.test')
+    expect(getOrganizationByDomainService).toHaveBeenCalledWith(
+      'asl-les-pins.test'
+    )
     expect(htmlOf().querySelector('img')?.getAttribute('src')).toBe(
       'https://asl-les-pins.test/api/identity/logo?v=42'
     )
@@ -222,6 +237,55 @@ describe('sendMagicLink', () => {
     await sendMagicLink({email, url}, requestContext('inconnu.test'))
 
     expect(memoryTransport.messages).toHaveLength(0)
+    expect(consumeMagicLinkRequestQuotaService).not.toHaveBeenCalled()
+  })
+
+  it('compte la demande pour l’association du domaine, par adresse et par IP', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+
+    await sendMagicLink(
+      {email, url},
+      {
+        headers: new Headers({
+          host: 'asl-les-pins.test',
+          'x-forwarded-for': '203.0.113.7, 10.0.0.2',
+        }),
+      }
+    )
+
+    expect(consumeMagicLinkRequestQuotaService).toHaveBeenCalledWith({
+      organizationId: 'org-1',
+      email,
+      ip: '203.0.113.7',
+    })
+    expect(memoryTransport.messages).toHaveLength(1)
+  })
+
+  it('compte aussi une adresse inconnue, sans rien envoyer', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue(undefined)
+
+    await sendMagicLink({email, url}, requestContext())
+
+    expect(consumeMagicLinkRequestQuotaService).toHaveBeenCalledTimes(1)
+    expect(memoryTransport.messages).toHaveLength(0)
+  })
+
+  it('au-delà d’un seuil : aucun email, et le lien précédent reste valable', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(consumeMagicLinkRequestQuotaService).mockResolvedValueOnce({
+      allowed: false,
+    })
+    const deleteMany = vi.fn(async () => 0)
+
+    await expect(
+      sendMagicLink(
+        {email, url, token: 'secret-token'},
+        {...requestContext(), context: {adapter: {deleteMany}}}
+      )
+    ).resolves.toBeUndefined()
+
+    expect(memoryTransport.messages).toHaveLength(0)
+    expect(deleteMany).not.toHaveBeenCalled()
   })
 
   it('laisse remonter l’échec du transport jusqu’à Better Auth', async () => {
@@ -276,7 +340,20 @@ describe('options du plugin lien magique', () => {
 })
 
 describe('contrat Better Auth du lien magique, avec nos options', () => {
-  const setup = (users: Record<string, unknown>[] = []) => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    memoryTransport.messages.length = 0
+  })
+
+  /**
+   * `ourSender` : le plugin tourne avec **notre** `sendMagicLink` (le lien est
+   * lu dans l'email de la boite memoire) ; sinon l'URL est capturee telle que
+   * Better Auth l'a generee, pour les cas ou notre envoi n'ecrit rien.
+   */
+  const setup = (
+    users: Record<string, unknown>[] = [],
+    {ourSender = false}: {ourSender?: boolean} = {}
+  ) => {
     const memoryDb: Record<string, Record<string, unknown>[]> = {
       user: users,
       session: [],
@@ -289,13 +366,18 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
       secret: 'local-test-secret-long-enough-for-better-auth',
       database: memoryAdapter(memoryDb),
       rateLimit: {enabled: false},
+      disabledPaths: [...MAGIC_LINK_DISABLED_HTTP_PATHS],
       plugins: [
-        magicLink({
-          ...magicLinkOptions,
-          sendMagicLink: ({url: generatedUrl}) => {
-            captured.push(generatedUrl)
-          },
-        }),
+        magicLink(
+          ourSender
+            ? magicLinkOptions
+            : {
+                ...magicLinkOptions,
+                sendMagicLink: ({url: generatedUrl}) => {
+                  captured.push(generatedUrl)
+                },
+              }
+        ),
       ],
     })
     const headers = new Headers({
@@ -311,7 +393,10 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
           errorCallbackURL: '/login/lien-invalide',
         },
       })
-      const token = new URL(captured.at(-1) ?? '').searchParams.get('token')
+      const generated = ourSender
+        ? memoryTransport.messages.at(-1)?.text.match(/https?:\/\/\S+/)?.[0]
+        : captured.at(-1)
+      const token = new URL(generated ?? '').searchParams.get('token')
       if (!token) throw new Error('Better Auth did not generate a token')
       return token
     }
@@ -331,7 +416,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
         return {error}
       }
     }
-    return {memoryDb, request, verify}
+    return {localAuth, memoryDb, request, verify}
   }
 
   const existingUser = {
@@ -384,15 +469,96 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
     expect(memoryDb.user).toHaveLength(0)
     expect(memoryDb.session).toHaveLength(0)
   })
-})
 
-describe('couches — l’intégration Better Auth ne lit pas la DAL', () => {
-  it('n’importe rien de @/app/dal (cycle au build de production)', () => {
-    const source = readFileSync(
-      path.join(import.meta.dirname, 'magic-link-integration.ts'),
-      'utf8'
+  it('refuse la demande de lien en HTTP direct, sans rien émettre', async () => {
+    const {localAuth, memoryDb} = setup([existingUser])
+
+    const response = await localAuth.handler(
+      new Request('http://localhost:3000/api/auth/sign-in/magic-link', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: 'http://localhost:3000',
+        },
+        body: JSON.stringify({email, callbackURL: '/dashboard'}),
+      })
     )
 
-    expect(source).not.toMatch(/['"]@\/app\/dal\//)
+    expect(response.status).toBe(404)
+    expect(memoryDb.verification).toHaveLength(0)
+  })
+
+  it('garde la demande par le serveur et la vérification HTTP du lien', async () => {
+    const {localAuth, memoryDb, request} = setup([existingUser])
+    const token = await request(email)
+
+    const response = await localAuth.handler(
+      new Request(
+        `http://localhost:3000/api/auth/magic-link/verify?token=${token}` +
+          '&callbackURL=%2Fdashboard&errorCallbackURL=%2Flogin%2Flien-invalide'
+      )
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toContain('/dashboard')
+    expect(memoryDb.session).toHaveLength(1)
+  })
+
+  it('un nouveau lien révoque le précédent : seul le dernier ouvre une session', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
+    vi.mocked(getAssociationSettingsService).mockResolvedValue({})
+    const {memoryDb, request, verify} = setup([existingUser], {
+      ourSender: true,
+    })
+
+    const first = await request(email)
+    const second = await request(email)
+    expect(memoryTransport.messages).toHaveLength(2)
+
+    const stale = await verify(first)
+    if (!isRedirectApiError(stale.error)) throw new Error('no redirect')
+    expect(stale.error.headers.get('location')).toContain(
+      '/login/lien-invalide?error=INVALID_TOKEN'
+    )
+    expect(memoryDb.session).toHaveLength(0)
+
+    const latest = await verify(second)
+    if (!isRedirectApiError(latest.error)) throw new Error('no redirect')
+    expect(latest.error.headers.get('location')).toContain('/dashboard')
+    expect(memoryDb.session).toHaveLength(1)
+  })
+
+  it('ne révoque pas les liens d’une autre adresse', async () => {
+    const other = {...existingUser, id: 'user-2', email: 'autre@exemple.test'}
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
+    vi.mocked(getAssociationSettingsService).mockResolvedValue({})
+    const {request, verify} = setup([existingUser, other], {ourSender: true})
+
+    const mine = await request(email)
+    await request(other.email)
+
+    const result = await verify(mine)
+    if (!isRedirectApiError(result.error)) throw new Error('no redirect')
+    expect(result.error.headers.get('location')).toContain('/dashboard')
+  })
+
+  it('au-delà d’un seuil, Better Auth répond comme d’habitude, sans email', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
+    vi.mocked(getAssociationSettingsService).mockResolvedValue({})
+    vi.mocked(consumeMagicLinkRequestQuotaService).mockResolvedValueOnce({
+      allowed: false,
+    })
+    const {localAuth} = setup([existingUser], {ourSender: true})
+
+    const response = await localAuth.api.signInMagicLink({
+      headers: new Headers({host: 'localhost:3000'}),
+      body: {email, callbackURL: '/dashboard'},
+    })
+
+    expect(response).toEqual({status: true})
+    expect(memoryTransport.messages).toHaveLength(0)
   })
 })

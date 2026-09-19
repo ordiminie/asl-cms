@@ -3,9 +3,6 @@ import {env} from '@/env'
 import type {MagicLinkEmailAssociation} from '@/lib/emails/magic-link-email'
 import {normalizeTenantHost} from '@/lib/helper/tenant-helper'
 import {logger} from '@/lib/logger'
-import {getAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
-import {sendMagicLinkEmailService} from '@/services/facades/email-service-facade'
-import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 import {getAccentHue} from '@/services/types/domain/association-settings-types'
 import type {Organization} from '@/services/types/domain/organization-types'
@@ -15,12 +12,27 @@ import {MAGIC_LINK_EXPIRES_IN_SECONDS} from './magic-link-constants'
 type SendMagicLinkData = {
   email: string
   url: string
+  token?: string
+}
+
+type VerificationWhere = {
+  field: 'identifier' | 'value'
+  value: string
+  operator?: 'eq' | 'ne'
 }
 
 /** Ce que `sendMagicLink` lit du contexte de requete de Better Auth. */
 type MagicLinkRequestContext = {
   headers?: Headers
   request?: Request
+  context?: {
+    adapter: {
+      deleteMany: (data: {
+        model: string
+        where: VerificationWhere[]
+      }) => Promise<number>
+    }
+  }
 }
 
 const requestHeadersOf = (ctx?: MagicLinkRequestContext) =>
@@ -59,23 +71,63 @@ const pngLogoUrlOf = (
 }
 
 /**
- * L'association du domaine appele, telle que l'email la montre. Lue par les
- * facades de service, pas par la DAL : `src/lib` ne remonte pas vers la
- * presentation, et l'import de la DAL fermait un cycle
- * organization-service -> auth -> DAL -> organization-service qui cassait le
- * build de production.
+ * Les facades de service, chargees **a l'appel** et jamais au chargement du
+ * module. `auth.ts` importe ce module ; or chaque facade charge son service,
+ * qui charge `auth-service`, qui charge `auth.ts`. Un import statique fermerait
+ * ce cycle, et `createServiceInterceptor` lit l'espace de noms du service des
+ * son chargement : selon l'ordre d'evaluation, une zone morte temporelle
+ * (`Cannot access '…' before initialization`) casse le build de production.
+ * L'import dynamique retire toute arete statique vers la couche service :
+ * le cycle n'existe plus, quel que soit l'ordre. Garde :
+ * `magic-link-integration-imports.test.ts` parcourt le graphe d'imports.
  */
-const associationOfRequest = async (
-  ctx?: MagicLinkRequestContext
-): Promise<MagicLinkEmailAssociation | undefined> => {
-  const {host, origin} = requestOriginOf(requestHeadersOf(ctx))
+const loadServices = async () => {
+  const [organizations, settings, emails, rateLimits] = await Promise.all([
+    import('@/services/facades/organization-service-facade'),
+    import('@/services/facades/association-settings-service-facade'),
+    import('@/services/facades/email-service-facade'),
+    import('@/services/facades/rate-limit-service-facade'),
+  ])
+  return {
+    getOrganizationByDomainService:
+      organizations.getOrganizationByDomainService,
+    getAssociationSettingsService: settings.getAssociationSettingsService,
+    sendMagicLinkEmailService: emails.sendMagicLinkEmailService,
+    consumeMagicLinkRequestQuotaService:
+      rateLimits.consumeMagicLinkRequestQuotaService,
+  }
+}
+
+type MagicLinkServices = Awaited<ReturnType<typeof loadServices>>
+
+/**
+ * IP du visiteur : premiere entree de `x-forwarded-for` (derriere le reverse
+ * proxy du VPS, meme convention que l'hote), sinon `x-real-ip`.
+ */
+const requestIpOf = (headers: Headers | undefined) =>
+  headers?.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+  headers?.get('x-real-ip')?.trim() ||
+  undefined
+
+/** L'association servie par le domaine appele, s'il en sert une. */
+const organizationOfRequest = async (
+  host: string | undefined,
+  services: MagicLinkServices
+) => {
   const domain = normalizeTenantHost(host)
   const organization = domain
-    ? await getOrganizationByDomainService(domain)
+    ? await services.getOrganizationByDomainService(domain)
     : undefined
-  if (!organization?.domain) return undefined
+  return organization?.domain ? organization : undefined
+}
 
-  const settings = await getAssociationSettingsService(organization.id)
+/** L'association telle que l'email la montre : nom, teinte, logo PNG. */
+const emailAssociationOf = async (
+  organization: Organization,
+  origin: string | undefined,
+  services: MagicLinkServices
+): Promise<MagicLinkEmailAssociation> => {
+  const settings = await services.getAssociationSettingsService(organization.id)
   const logoUrl = pngLogoUrlOf(organization, origin)
 
   return {
@@ -86,28 +138,73 @@ const associationOfRequest = async (
 }
 
 /**
- * Envoi du lien de connexion (s03). Adresse inconnue : **rien** — ni email ni
- * compte (`disableSignUp`). Adresse connue : l'email de l'association du
- * domaine appele, par le service d'email (plus de notification : un lien
- * secret n'a rien a faire dans la liste des notifications). Ni l'URL ni le
- * jeton ne sont journalises. Un echec du transport remonte a Better Auth.
+ * Revoque les liens encore en attente pour cette adresse, sauf celui qui part :
+ * seul le dernier lien envoye fonctionne (« Le precedent ne fonctionne plus »,
+ * ecran B). La table `verification` appartient a Better Auth : on la touche par
+ * **son** adaptateur, celui du contexte de l'appel, comme le plugin qui vient
+ * d'y ecrire la ligne. Format du plugin 1.7.1 : `identifier` = jeton en clair
+ * (`storeToken: 'plain'`, le defaut, que `magicLinkOptions` ne change pas) et
+ * `value` = `JSON.stringify({email, name})`, `name` absent sur nos demandes.
+ */
+const revokeEarlierMagicLinks = async (
+  email: string,
+  token: string | undefined,
+  ctx?: MagicLinkRequestContext
+) => {
+  if (!token || !ctx?.context) return
+  await ctx.context.adapter.deleteMany({
+    model: 'verification',
+    where: [
+      {field: 'value', value: JSON.stringify({email})},
+      {field: 'identifier', value: token, operator: 'ne'},
+    ],
+  })
+}
+
+/**
+ * Envoi du lien de connexion (s03). Chaque demande est d'abord comptee pour
+ * l'association du domaine appele, adresse connue ou non (seuils du bureau) :
+ * au-dela, rien ne part et le lien precedent reste valable. Adresse inconnue :
+ * **rien** — ni email ni compte (`disableSignUp`). Adresse connue : les liens
+ * precedents sont revoques, puis l'email de l'association part par le service
+ * d'email (plus de notification : un lien secret n'a rien a faire dans la
+ * liste des notifications). Dans tous les cas, l'ecran reste le meme (ecran
+ * B). Ni l'URL ni le jeton ne sont journalises. Un echec du transport remonte
+ * a Better Auth.
  */
 export async function sendMagicLink(
-  {email, url}: SendMagicLinkData,
+  {email, url, token}: SendMagicLinkData,
   ctx?: MagicLinkRequestContext
 ) {
-  const user = await getUserByEmailDao(email)
-  if (!user) return
+  const services = await loadServices()
+  const headers = requestHeadersOf(ctx)
+  const {host, origin} = requestOriginOf(headers)
 
-  const association = await associationOfRequest(ctx)
-  if (!association) {
+  const organization = await organizationOfRequest(host, services)
+  if (!organization) {
     logger.warn(
       '[MAGIC-LINK] Aucune association sur le domaine appele : lien non envoye'
     )
     return
   }
 
-  await sendMagicLinkEmailService({email, url, association})
+  const ip = requestIpOf(headers)
+  const {allowed} = await services.consumeMagicLinkRequestQuotaService({
+    organizationId: organization.id,
+    email,
+    ...(ip ? {ip} : {}),
+  })
+  if (!allowed) {
+    logger.warn('[MAGIC-LINK] Seuil de demandes atteint : lien non envoye')
+    return
+  }
+
+  const user = await getUserByEmailDao(email)
+  if (!user) return
+
+  const association = await emailAssociationOf(organization, origin, services)
+  await revokeEarlierMagicLinks(email, token, ctx)
+  await services.sendMagicLinkEmailService({email, url, association})
 }
 
 /** Options du plugin `magicLink` de Better Auth : configurer, pas reecrire. */
@@ -116,3 +213,15 @@ export const magicLinkOptions = {
   disableSignUp: true,
   sendMagicLink,
 }
+
+/**
+ * Routes HTTP de Better Auth fermees (`disabledPaths`). La demande de lien ne
+ * passe que par `requestMagicLinkAction` : en direct, elle contournerait le
+ * plancher de duree et la limitation de debit, et laisserait deviner si un
+ * compte existe. `disabledPaths` n'agit que sur le routeur HTTP :
+ * `auth.api.signInMagicLink`, appele par l'action, et `/magic-link/verify`,
+ * ouvert par le lien de l'email, restent en service.
+ */
+export const MAGIC_LINK_DISABLED_HTTP_PATHS: readonly string[] = [
+  '/sign-in/magic-link',
+]

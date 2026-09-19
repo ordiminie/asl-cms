@@ -22,7 +22,10 @@ describe('/login — écran A', () => {
     render(await LoginPage({params: Promise.resolve({locale: 'fr'})}))
 
     expect(
-      screen.getByRole('heading', {level: 1, name: 'Se connecter à votre espace'})
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Se connecter à votre espace',
+      })
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Adresse email')).toBeInTheDocument()
     expect(document.querySelector('input[type="password"]')).toBeNull()
