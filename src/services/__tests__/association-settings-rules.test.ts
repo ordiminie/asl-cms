@@ -14,8 +14,10 @@ import {
   DEFAULT_ACCENT_HUE,
   FORAGE_EMAIL_SETTING_KEY,
   getAccentHue,
+  getMagicLinkDailyRequestLimit,
   getSettingsForPage,
   hasSettingReferenceCycle,
+  MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
   parseSettingValue,
   resolveSettings,
   validateSettingsChanges,
@@ -35,7 +37,7 @@ const testDefinition = (key: string) =>
   definitionOf(TEST_SETTINGS_REGISTRY, key)
 
 describe('registre de production', () => {
-  it('declare les trois cles de s02, avec leurs types et leur page', () => {
+  it('declare les cles de s02 et de s03, avec leurs types et leur page', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.map(({key, type, required, page}) => ({
         key,
@@ -62,7 +64,67 @@ describe('registre de production', () => {
         required: false,
         page: 'identity',
       },
+      {
+        key: MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  it('le seuil de demande de lien est un entier de 1 a 20, 3 par defaut', () => {
+    const definition = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY
+    )
+    expect(MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY).toBe(
+      'login.link_requests_per_address_per_day'
+    )
+    expect(definition).toMatchObject({
+      type: 'number',
+      integer: true,
+      min: 1,
+      max: 20,
+      default: {value: '3'},
+    })
+    expect(parseSettingValue(definition, '0')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '21')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '2.5')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '20')).toMatchObject({valid: true})
+  })
+
+  it('les seuils horaires par adresse et par acces internet ont disparu', () => {
+    const keys = ASSOCIATION_SETTINGS_REGISTRY.map(({key}) => key)
+    expect(keys).not.toContain('login.link_requests_per_address_per_hour')
+    expect(keys).not.toContain('login.link_requests_per_network_per_hour')
+  })
+
+  it('chaque cle a son libelle et son aide dans les trois langues', () => {
+    for (const messages of [fr, en, es]) {
+      const namespace = messages.AssociationSettings as Record<string, unknown>
+      const lookup = (dotted: string) =>
+        dotted
+          .split('.')
+          .reduce<unknown>(
+            (node, part) =>
+              typeof node === 'object' && node !== null
+                ? (node as Record<string, unknown>)[part]
+                : undefined,
+            namespace
+          )
+      for (const definition of ASSOCIATION_SETTINGS_REGISTRY) {
+        const keys = [definition.labelKey, definition.helpKey]
+        if (definition.type === 'number' && definition.unitKey) {
+          keys.push(definition.unitKey)
+        }
+        for (const key of keys) {
+          expect(lookup(key), `${definition.key} ${key}`).toEqual(
+            expect.any(String)
+          )
+        }
+      }
+    }
   })
 
   it('l adresse de contact n a aucun defaut : elle est saisie au provisioning', () => {
@@ -134,7 +196,11 @@ describe('registre de production', () => {
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'settings').map(
         (definition) => definition.key
       )
-    ).toEqual([CONTACT_EMAIL_SETTING_KEY, FORAGE_EMAIL_SETTING_KEY])
+    ).toEqual([
+      CONTACT_EMAIL_SETTING_KEY,
+      FORAGE_EMAIL_SETTING_KEY,
+      MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
+    ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
         (definition) => definition.key
@@ -422,5 +488,25 @@ describe('validateSettingsChanges — tout ou rien', () => {
       valid: false,
       errors: {'cle.inconnue': {code: 'unknownKey'}},
     })
+  })
+})
+
+describe('getMagicLinkDailyRequestLimit — seuil de demande de lien', () => {
+  it('sans reglage, le defaut du registre : 3 par jour', () => {
+    expect(
+      getMagicLinkDailyRequestLimit(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+      )
+    ).toBe(3)
+  })
+
+  it('la valeur renseignee par le bureau l emporte', () => {
+    expect(
+      getMagicLinkDailyRequestLimit(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY, value: '7'},
+        ])
+      )
+    ).toBe(7)
   })
 })

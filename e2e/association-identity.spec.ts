@@ -39,7 +39,7 @@ const fileWith = (signature: number[], marker: string) =>
   ])
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login`)
+  await page.goto(`${base}/fr/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

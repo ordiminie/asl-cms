@@ -2,7 +2,7 @@ import {expect, test} from '@playwright/test'
 
 test.describe('Authentication', () => {
   test('should display login page', async ({page}) => {
-    await page.goto('/en/login')
+    await page.goto('/en/login/prestataire')
 
     // Check if login form is present
     await expect(page.locator('form')).toBeVisible()
@@ -37,14 +37,16 @@ test.describe('Authentication', () => {
     await expect(page.locator('input[name="confirmPassword"]')).toBeVisible()
   })
 
-  test('should navigate from login to register', async ({page}) => {
+  // s03 : ni l'écran de connexion par lien ni l'accès prestataire ne
+  // proposent l'inscription (pas d'inscription libre, design system §7).
+  test('login pages do not offer sign-up', async ({page}) => {
+    await page.goto('/en/login/prestataire')
+    await expect(page.locator('form')).toBeVisible()
+    await expect(page.locator('a[href="/register"]')).toHaveCount(0)
+
     await page.goto('/en/login')
-
-    // Click on register link (using href selector)
-    await page.click('a[href="/register"]')
-
-    // Should be on register page
-    await expect(page).toHaveURL(/\/en\/register/)
+    await expect(page.locator('input[type="email"]')).toBeVisible()
+    await expect(page.locator('a[href="/register"]')).toHaveCount(0)
   })
 
   test('should successfully register a new user', async ({page}) => {
@@ -121,7 +123,7 @@ test.describe('Authentication', () => {
   test('should successfully login with existing credentials', async ({
     page,
   }) => {
-    await page.goto('/en/login')
+    await page.goto('/en/login/prestataire')
 
     // Wait for the form to load
     await expect(page.locator('form')).toBeVisible()
@@ -186,7 +188,7 @@ test.describe('Authentication', () => {
   })
 
   test('should show error for invalid login credentials', async ({page}) => {
-    await page.goto('/en/login')
+    await page.goto('/en/login/prestataire')
 
     // Wait for the form to load
     await expect(page.locator('form')).toBeVisible()

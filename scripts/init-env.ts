@@ -65,7 +65,12 @@ function getVariableDescription(varName: string): string {
       'Secret pour Better Auth (généré automatiquement si vide)',
     BETTER_AUTH_URL: "URL de base de l'application",
     BETTER_AUTH_TRUSTED_ORIGINS: 'Origines de confiance pour Better Auth',
-    RESEND_API_KEY: "Clé API Resend pour l'envoi d'emails",
+    EMAIL_TRANSPORT:
+      "Transport d'envoi des emails (brevo en production, resend en secours, file en développement)",
+    BREVO_API_KEY: 'Clé API Brevo (exigée si EMAIL_TRANSPORT=brevo)',
+    RESEND_API_KEY: 'Clé API Resend (exigée si EMAIL_TRANSPORT=resend)',
+    EMAIL_OUTBOX_DIR:
+      'Répertoire de la boîte de sortie du transport file (temporaire si vide)',
     EMAIL_FROM: 'Adresse email expéditeur',
     EMAIL_TO: 'Adresse email destinataire par défaut',
     STRIPE_SECRET_KEY: 'Clé secrète Stripe',
@@ -106,6 +111,8 @@ function getVariableDescription(varName: string): string {
 }
 
 function getVariableType(varName: string): EnvVariable['type'] {
+  if (varName === 'EMAIL_TRANSPORT' || varName === 'EMAIL_OUTBOX_DIR')
+    return 'string'
   if (varName.includes('URL')) return 'url'
   if (varName.includes('EMAIL')) return 'email'
   if (varName.includes('SIZE')) return 'number'
@@ -124,6 +131,7 @@ function getVariableChoices(varName: string): string[] | undefined {
     LOG_LEVEL: ['info', 'debug', 'warn', 'error'],
     CHAT_PROVIDER: ['ollama', 'openai', 'anthropic'],
     STORAGE_TYPE: ['supabase', 'local'],
+    EMAIL_TRANSPORT: ['brevo', 'resend', 'file', 'memory'],
     NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: ['true', 'false'],
     NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE: ['true', 'false'],
     NEXT_PUBLIC_BETTER_AUTH_2FA_SKIP_VERIFICATION_ON_ENABLE: ['true', 'false'],
@@ -149,7 +157,10 @@ function getVariableChoices(varName: string): string[] | undefined {
 function getVariableExample(varName: string): string {
   const examples: Record<string, string> = {
     DATABASE_URL: 'postgres://user:password@localhost:5432/saas_db',
+    EMAIL_TRANSPORT: 'file',
+    BREVO_API_KEY: 'xkeysib-example_api_key_replace_with_real_one',
     RESEND_API_KEY: 're_example_api_key_replace_with_real_one',
+    EMAIL_OUTBOX_DIR: '/tmp/asl-cms-email-outbox',
     EMAIL_FROM: 'noreply@example.com',
     EMAIL_TO: 'admin@example.com',
     STRIPE_SECRET_KEY: 'sk_test_example_replace_with_real_stripe_key',
@@ -579,7 +590,12 @@ async function main(): Promise<void> {
       varName.includes('AUTH_METHODS')
     )
       return 'Authentification'
-    if (varName.includes('RESEND') || varName.includes('EMAIL')) return 'Email'
+    if (
+      varName.includes('RESEND') ||
+      varName.includes('BREVO') ||
+      varName.includes('EMAIL')
+    )
+      return 'Email'
     if (
       varName.includes('SUPABASE') ||
       varName.includes('STORAGE') ||

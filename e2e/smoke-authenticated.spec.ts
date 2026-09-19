@@ -66,7 +66,7 @@ const DEV_ONLY_ADVISORIES =
   /Next\.js encountered (the unstable value|uncached data)/
 
 const login = async (page: Page, email: string) => {
-  await page.goto('/en/login')
+  await page.goto('/en/login/prestataire')
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

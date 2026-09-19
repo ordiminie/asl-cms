@@ -21,7 +21,7 @@
 | Autorisation           | **CASL** (`@casl/ability`)                                                                                      | Rôles globaux + rôles d'organisation                  |
 | Validation             | **Zod 4**                                                                                                       | Client (RHF) _et_ serveur, schémas partagés           |
 | i18n                   | **next-intl**, locale unique `fr` sans préfixe                                                                  | ADR 008                                               |
-| Email                  | **Brevo**, derrière un contrat maison ; gabarits `react-email`                                                  | ADR 005 — remplace Resend                             |
+| Email                  | **Brevo**, derrière le contrat `EmailTransport` ; gabarits `react-email`                                        | ADR 005, ADR 017 — Resend en secours                  |
 | Fichiers               | Disque du **VPS**, via le factory de stockage existant                                                          | ADR 004 — remplace Supabase                           |
 | Tâches planifiées      | Table `scheduled_job` + cron système                                                                            | ADR 006 — remplace Inngest                            |
 | Facturation plateforme | **Stripe** (Zourite Studio ↔ association)                                                                       | Conservé du boilerplate                               |
@@ -267,6 +267,48 @@ n'appartiennent à aucun tenant et ne sont écrites que par le rôle propriétai
 | **Sentry**         | Erreurs serveur et client                       | Natif boilerplate                         | —                                                 |
 | **Search Console** | SEO (s11)                                       | Par tenant                                | —                                                 |
 
+**Le contrat d'envoi `EmailTransport`** (s03, ADR 005, ADR 017) — `src/lib/emails/transport/`. Tout email
+part par `sendEmailService` (`src/services/email-service.ts`), qui rend le gabarit `react-email` en HTML,
+fournit toujours la version texte et confie le message au transport actif. **Aucun code métier n'importe
+un SDK de fournisseur** : `resend` n'est importé que par son adaptateur (un test le vérifie). Un échec
+d'envoi est une `EmailTransportError`, quel que soit le fournisseur.
+
+| `EMAIL_TRANSPORT` | Implémentation                                                 | Usage                                  | Variable exigée  |
+| ----------------- | -------------------------------------------------------------- | -------------------------------------- | ---------------- |
+| `brevo`           | `POST https://api.brevo.com/v3/smtp/email` par `fetch`         | **production** (doit y être déclaré)   | `BREVO_API_KEY`  |
+| `resend`          | SDK `resend`, isolé dans son adaptateur                        | secours, activable sans code (ADR 017) | `RESEND_API_KEY` |
+| `file`            | un JSON par message dans `EMAIL_OUTBOX_DIR` (temporaire sinon) | **défaut hors production**, CI, e2e    | —                |
+| `memory`          | messages gardés en mémoire                                     | tests unitaires                        | —                |
+
+La clé d'un fournisseur n'est exigée que pour son propre transport (`get-email-transport.ts`) ; en
+production, l'absence de `EMAIL_TRANSPORT` est une erreur plutôt qu'un défaut silencieux. Les couleurs
+des emails vivent dans `src/lib/emails/theme.ts` (jumelles hexadécimales, design system §5.3).
+
+**La demande de lien de connexion** (s03) — `src/lib/better-auth/magic-link-integration.ts`. Elle ne
+passe que par `requestMagicLinkAction` (plancher de 1,5 s, même écran B quoi qu'il arrive) :
+
+- **`POST /api/auth/sign-in/magic-link` est fermé** (`disabledPaths` de Better Auth, qui n'agit que sur le
+  routeur HTTP). `auth.api.signInMagicLink`, appelé par l'action, et `GET /api/auth/magic-link/verify`,
+  ouvert par l'email, restent en service.
+- **Seul le dernier lien fonctionne** : avant l'envoi, les jetons en attente de la même adresse sont
+  supprimés de la table `verification`, par l'adaptateur de Better Auth reçu dans le contexte de l'appel
+  (la table et son format appartiennent à la bibliothèque).
+- **Limitation de débit : 3 demandes par adresse et par jour**, en base : table `rate_limit_event`
+  (`organization_id`, RLS forcée), une ligne par association, **empreinte HMAC-SHA256** de l'adresse en
+  minuscules (jamais en clair) et jour (Europe/Paris), avec le nombre de demandes du jour ; unicité sur les
+  trois. Le comptage est **atomique en une requête** (`insert … on conflict … do update set count = count + 1
+returning count`, sans verrou applicatif) ; le changement de jour remet le compteur à zéro sans tâche
+  planifiée, et les lignes des jours passés sont purgées à chaque demande. Une adresse inconnue est comptée
+  aussi. Le seuil est un **réglage de l'association** (registre, ADR 010 et 016 :
+  `login.link_requests_per_address_per_day`, défaut 3, de 1 à 20), modifiable dans « Réglages ». Au-delà :
+  aucun email, le lien précédent reste valable, et l'écran reste l'écran B. **Aucune limite par accès
+  internet** : aucune IP n'est lue (la première entrée de `x-forwarded-for` est fournie par le client).
+  Compromis accepté : un tiers peut épuiser les demandes du jour d'un membre, que l'écran B renvoie vers le
+  bureau. Le budget quotidien Brevo (et le transport de secours au-delà) reste l'affaire de s26.
+- **Aucun import statique de la couche service** dans l'intégration : `auth.ts` l'importe, et chaque façade
+  remonte à `auth.ts` par `auth-service`. Les façades sont chargées par `import()` à l'appel ;
+  `magic-link-integration-imports.test.ts` parcourt le graphe d'imports et échoue au premier cycle.
+
 **Contraintes structurantes**
 
 - **300 emails/jour, par compte Brevo.** Ce n'est pas une limite d'affichage : le budget quotidien
@@ -277,7 +319,9 @@ n'appartiennent à aucun tenant et ne sont écrites que par le rôle propriétai
 - Les statuts de facture Pennylane sont **transportés tels quels**, jamais réduits à un booléen.
 - Les formulaires publics sont limités en débit sur **empreinte d'IP hachée, purgée sous 24 h**. Le
   boilerplate utilise aujourd'hui `RateLimiterMemory` avec l'**IP en clair** (`src/app/[locale]/(public)/contact/actions.ts`) :
-  c'est à corriger, et le stockage en mémoire ne survit pas au redémarrage.
+  c'est à corriger, et le stockage en mémoire ne survit pas au redémarrage. Un compteur journalier en base
+  existe depuis s03 (`rate_limit_event`, `rate-limit-service.ts`, empreinte HMAC liée à l'usage) : s08 peut
+  s'y appuyer pour son propre usage.
 
 ## Design / UX
 
