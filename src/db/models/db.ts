@@ -7,6 +7,7 @@ import * as appSettings from './app-settings-model'
 import * as auth from './auth-model'
 import * as notification from './notification-model'
 import * as organization from './organization-model'
+import * as organizationSetting from './organization-setting-model'
 import * as post from './post-model'
 import * as subscription from './subscription-model'
 import * as user from './user-model'
@@ -30,6 +31,7 @@ const db = drizzle(pool, {
     ...auth,
     ...user,
     ...organization,
+    ...organizationSetting,
     ...subscription,
     ...notification,
     ...post,
