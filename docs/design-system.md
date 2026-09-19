@@ -717,6 +717,11 @@ Point structurant, et juridique autant que visuel.
 | **Facultative** | actualité, campagne libre                                                 | **Bouton de désinscription visible** — pas un lien perdu dans une ligne de 12 px  |
 | **Statutaire**  | convocation, mise à disposition de facture, relance, publication après AG | **Pas de désinscription**, mais une phrase qui explique pourquoi l'envoi continue |
 
+**Troisième cas — le transactionnel** (lien de connexion, s03) : ni désinscription ni renvoi aux
+préférences, puisque l'envoi répond à une demande de la personne elle-même. Le pied dit **pourquoi
+l'email arrive** : « Cet email vous est envoyé parce qu'une connexion a été demandée avec votre
+adresse sur le site de {nom}. » Fond `muted`, texte `muted-foreground`.
+
 **Le ton de la phrase statutaire est décisif** : elle dit _pourquoi_ (« vous êtes propriétaire
 d'une parcelle du domaine »), pas _que c'est comme ça_. **Interdit : « vous ne pouvez pas vous
 désinscrire ».** Le pied statutaire renvoie tout de même vers les préférences, pour que le membre
@@ -907,7 +912,7 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Blocs     | **Visionneuse de galerie** — `dialog` couvre la coquille, pas la navigation entre images (flèches, balayage, compteur « 3 sur 10 »)                                                                                                                  | s04           |
 | Blocs     | **Bloc « analyses d'eau » dédié** ou réemploi du bloc PDF — à trancher                                                                                                                                                                               | s09           |
 | Édition   | Les **cinq aperçus miniatures** du sélecteur de blocs (dessins à maintenir avec la charte)                                                                                                                                                           | s04           |
-| Connexion | **Erreur du service d'email** à l'envoi du lien, avec le téléphone du bureau en repli                                                                                                                                                                | s03           |
+| Connexion | **Téléphone du bureau** — demandé par les écrans de connexion (§7) et le lien magique, mais aucun réglage ne le porte. Depuis s03, les phrases se lisent sans numéro (« appelez le bureau de votre association ») ; le numéro viendra avec une clé dédiée du registre des paramètres | à désigner    |
 | Connexion | **Changement d'adresse email par le membre** : lui-même (avec validation de la nouvelle) ou via le bureau ?                                                                                                                                          | s16           |
 | Connexion | **Lien cliqué après suppression du compte** par le bureau                                                                                                                                                                                            | s03, s14      |
 | Relevé    | **Relevé en série hors ligne** (s17) : stockage local avec synchronisation, ou simple tolérance aux coupures ?                                                                                                                                       | s17           |

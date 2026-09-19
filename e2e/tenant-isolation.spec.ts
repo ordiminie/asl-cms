@@ -147,7 +147,7 @@ test.describe('critère 6 — le tenant A ne voit rien du tenant B', () => {
   test('le back-office ne montre que les soumissions du domaine appelé', async ({
     page,
   }) => {
-    await page.goto(`${TENANT_A}/en/login`)
+    await page.goto(`${TENANT_A}/en/login/prestataire`)
     await expect(page.locator('form')).toBeVisible()
     await page.fill('input[name="email"]', 'admin@gmail.com')
     await page.fill('input[name="password"]', PASSWORD)

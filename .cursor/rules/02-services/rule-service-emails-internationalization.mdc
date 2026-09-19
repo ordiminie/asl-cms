@@ -123,30 +123,36 @@ type ResetPasswordMailProps = {
 
 ### 1. Service avec Traductions
 
-Utilisez `getTranslations` dans les services pour traduire le subject et le text :
+Utilisez `getTranslations` dans les services pour traduire le sujet et la version texte. L'envoi
+passe par `sendEmailService`, qui confie le message au contrat `EmailTransport` (Brevo en
+production, Resend en secours — ADR 005, ADR 017) : **jamais d'appel direct à un fournisseur**. Voir
+[rule-email-service.md](rule-email-service.md).
 
 ```tsx
 // src/services/email-service.ts
 import {getTranslations} from 'next-intl/server'
-import {env} from '@/env'
 
 export const sendMagicLinkEmailService = async ({
   email,
   url,
+  association,
 }: {
   email: string
   url: string
+  association: MagicLinkEmailAssociation
 }) => {
-  const t = await getTranslations('email.user.verify')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
+  const t = await getTranslations('email.user.magicLink')
+  const values = {name: association.name, minutes: MAGIC_LINK_EXPIRES_IN_MINUTES}
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject'), // Subject traduit
-    from: fromEmail,
-    text: t('preview'), // Text traduit
-    react: MagicLinkMail({url}), // Composant avec traductions
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject', values), // Sujet traduit
+      text: versionTexte, // Version texte complète, URL en clair comprise
+      react: MagicLinkMail({url, association}), // Composant avec traductions
+    },
+    {recipientType: 'system'}
+  )
 }
 
 export const sendResetPasswordLinkEmailService = async ({
@@ -157,17 +163,21 @@ export const sendResetPasswordLinkEmailService = async ({
   url: string
 }) => {
   const t = await getTranslations('email.user.resetPassword')
-  const fromEmail = env.EMAIL_FROM ?? 'onboarding@resend.dev'
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject'),
-    from: fromEmail,
-    text: t('preview'),
-    react: ResetPasswordEmail({url}),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject'),
+      text: t('preview'),
+      react: ResetPasswordEmail({url}),
+    },
+    {recipientType: 'system'}
+  )
 }
 ```
+
+L'expéditeur est posé par `sendEmailService` (réglage d'application, sinon `EMAIL_FROM`) : un
+service n'a pas à le fournir.
 
 ### 2. Structure des Services
 

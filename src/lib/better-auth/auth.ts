@@ -21,7 +21,7 @@ import {
   getUserByStripeCustomerIdDao,
 } from '@/db/repositories/user-repository'
 import {env} from '@/env'
-import {sendMagicLink} from '@/lib/better-auth/magic-link-integration'
+import {magicLinkOptions} from '@/lib/better-auth/magic-link-integration'
 import {APP_ISSUER} from '@/lib/constants'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
@@ -143,9 +143,7 @@ const options = {
         },
       },
     }),
-    magicLink({
-      sendMagicLink,
-    }),
+    magicLink(magicLinkOptions),
     admin(),
     organization({
       invitationLimit: 10,

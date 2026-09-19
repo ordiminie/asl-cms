@@ -1,0 +1,3298 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maquette — s03 Se connecter sans mot de passe</title>
+
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;family=Source+Serif+4:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap"
+    />
+    <style>
+      body {
+        margin: 0;
+      }
+      .root {
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.22 0.015 250);
+        --card: oklch(1 0 0);
+        --muted: oklch(0.972 0.005 240);
+        --muted-foreground: oklch(0.45 0.02 245);
+        --border: oklch(0.9 0.008 245);
+        --input: oklch(0.66 0.014 245);
+        --ring: oklch(0.55 0.11 235);
+        --primary: oklch(0.35 0.06 240);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.965 0.006 240);
+        --secondary-foreground: oklch(0.3 0.02 245);
+        --destructive: oklch(0.48 0.17 27);
+        --link: oklch(0.45 0.13 250);
+        --accent: oklch(0.958 0.024 var(--accent-hue));
+        --accent-foreground: oklch(0.38 0.08 var(--accent-hue));
+        --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+        --accent-border: oklch(0.88 0.045 var(--accent-hue));
+        --sidebar: oklch(0.985 0.004 250);
+        --sidebar-foreground: oklch(0.26 0.015 250);
+        --sidebar-accent: oklch(0.93 0.012 245);
+        --sidebar-accent-foreground: oklch(0.26 0.02 245);
+        --sidebar-border: oklch(0.91 0.008 245);
+        --font-sans: 'Public Sans', 'Segoe UI', system-ui, sans-serif;
+        --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: 17px;
+        line-height: 1.6;
+        min-height: 100vh;
+      }
+      .root[data-theme='dark'] {
+        --background: oklch(0.215 0.009 255);
+        --foreground: oklch(0.94 0.006 250);
+        --card: oklch(0.215 0.009 255);
+        --muted: oklch(0.255 0.009 250);
+        --muted-foreground: oklch(0.72 0.015 248);
+        --border: oklch(0.33 0.01 250);
+        --input: oklch(0.52 0.016 250);
+        --ring: oklch(0.7 0.12 235);
+        --primary: oklch(0.5 0.14 255);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.27 0.01 250);
+        --secondary-foreground: oklch(0.9 0.008 250);
+        --destructive: oklch(0.58 0.19 27);
+        --link: oklch(0.8 0.1 250);
+        --accent: oklch(0.275 0.035 var(--accent-hue));
+        --accent-foreground: oklch(0.84 0.075 var(--accent-hue));
+        --accent-solid: oklch(0.64 0.11 var(--accent-hue));
+        --accent-border: oklch(0.4 0.055 var(--accent-hue));
+        --sidebar: oklch(0.19 0.009 255);
+        --sidebar-foreground: oklch(0.93 0.006 250);
+        --sidebar-accent: oklch(0.3 0.014 250);
+        --sidebar-accent-foreground: oklch(0.92 0.01 250);
+        --sidebar-border: oklch(0.32 0.01 250);
+      }
+      .hue {
+        --accent: oklch(0.958 0.024 var(--accent-hue));
+        --accent-foreground: oklch(0.38 0.08 var(--accent-hue));
+        --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+        --accent-border: oklch(0.88 0.045 var(--accent-hue));
+      }
+      [data-theme='dark'] .hue {
+        --accent: oklch(0.275 0.035 var(--accent-hue));
+        --accent-foreground: oklch(0.84 0.075 var(--accent-hue));
+        --accent-solid: oklch(0.64 0.11 var(--accent-hue));
+        --accent-border: oklch(0.4 0.055 var(--accent-hue));
+      }
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+      a {
+        color: var(--link);
+      }
+      a:hover {
+        color: var(--primary);
+      }
+      .overline {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+    </style>
+
+    <style>
+      .doc {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 48px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 48px;
+      }
+      .doc > header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .doc h1.doc-title {
+        font-family: var(--font-serif);
+        font-size: 34px;
+        font-weight: 600;
+        line-height: 1.15;
+      }
+      .doc .warn {
+        color: var(--muted-foreground);
+        max-width: 68ch;
+      }
+      .doc h2.page-title {
+        font-family: var(--font-serif);
+        font-size: 26px;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+      }
+      .boards {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 48px;
+        align-items: flex-start;
+      }
+      .board {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 100%;
+      }
+      .board figcaption {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .frame {
+        border: 1px solid var(--border);
+        overflow-x: auto;
+        max-width: 100%;
+      }
+      .frame div[style*='min-height: 100vh'] {
+        min-height: auto !important;
+      }
+      .toggle {
+        align-self: flex-start;
+        height: 48px;
+        padding: 0 16px;
+        border-radius: 8px;
+        border: 1px solid var(--input);
+        background: var(--background);
+        color: var(--foreground);
+        font: 600 16px var(--font-sans);
+        cursor: pointer;
+      }
+      .toggle:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="root" data-theme="light" style="--accent-hue: 195">
+      <div class="doc">
+        <header>
+          <h1 class="doc-title">s03 — Se connecter sans mot de passe</h1>
+          <p class="warn">
+            Référence visuelle, <strong>pas du code à copier</strong> :
+            l’Execute construit les écrans avec les vrais composants du socle et
+            l’email avec <code>react-email</code>. Validée par Marie-Ève le 19
+            septembre 2026. Canevas source :
+            <a href="https://claude.ai/artifact/2YC4RGWqGEoxE95ejuyp27"
+              >https://claude.ai/artifact/2YC4RGWqGEoxE95ejuyp27</a
+            >. Données fictives : « ASL Les Pins », monogramme LP,
+            m.durand@exemple.test.
+          </p>
+          <button
+            class="toggle"
+            type="button"
+            onclick="
+              const r = document.querySelector('.root')
+              r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'
+            "
+          >
+            Basculer clair / sombre
+          </button>
+        </header>
+        <section style="display: flex; flex-direction: column; gap: 24px">
+          <h2 class="page-title">Ordinateur</h2>
+          <div class="boards">
+            <figure class="board">
+              <figcaption>A · Saisie de l’adresse</figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      width: 1280px;
+                      min-height: 100vh;
+                      box-sizing: border-box;
+                      background: var(--muted);
+                      display: flex;
+                      flex-direction: column;
+                    "
+                  >
+                    <header
+                      style="
+                        padding: 24px 44px;
+                        background: var(--background);
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 12px;
+                          min-width: 0;
+                        "
+                      >
+                        <div
+                          role="img"
+                          aria-label="Monogramme de l’association ASL Les Pins"
+                          style="
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 8px;
+                            background: var(--accent-solid);
+                            color: var(--primary-foreground);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 18px;
+                            line-height: 1;
+                            letter-spacing: 0.02em;
+                            flex-shrink: 0;
+                          "
+                        >
+                          LP
+                        </div>
+                        <span
+                          style="
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 20px;
+                            line-height: 1.2;
+                            color: var(--foreground);
+                          "
+                          >ASL Les Pins</span
+                        >
+                      </div>
+                    </header>
+                    <main
+                      style="
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 16px;
+                        padding: 64px 24px;
+                      "
+                    >
+                      <div style="width: 440px; max-width: 100%">
+                        <section
+                          style="
+                            border: 1px solid var(--border);
+                            border-radius: 8px;
+                            background: var(--card);
+                            padding: 32px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 24px;
+                          "
+                        >
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <h1
+                              style="
+                                font-family: var(--font-serif);
+                                font-size: 34px;
+                                font-weight: 600;
+                                line-height: 1.15;
+                                text-wrap: pretty;
+                              "
+                            >
+                              Se connecter à votre espace
+                            </h1>
+                          </div>
+                          <p style="font-size: 17px; color: var(--foreground)">
+                            Saisissez votre adresse email : vous recevrez un
+                            lien pour ouvrir votre espace. Il n’y a
+                            <strong>aucun mot de passe</strong> à retenir.
+                          </p>
+
+                          <div
+                            id="email"
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 8px;
+                            "
+                          >
+                            <label
+                              style="
+                                font-size: 16px;
+                                font-weight: 500;
+                                line-height: 1.4;
+                              "
+                              >Adresse email</label
+                            >
+
+                            <div
+                              style="
+                                height: 48px;
+                                box-sizing: border-box;
+                                border: 1px solid var(--input);
+                                border-radius: 8px;
+                                padding: 0 12px;
+                                display: flex;
+                                align-items: center;
+                                font-size: 17px;
+                                background: var(--background);
+                              "
+                            ></div>
+                          </div>
+                          <div
+                            role="button"
+                            style="
+                              width: 100%;
+                              height: 48px;
+                              min-width: 212px;
+                              box-sizing: border-box;
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              gap: 8px;
+                              padding: 0 16px;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              font-size: 16px;
+                              background: var(--primary);
+                              color: var(--primary-foreground);
+                              border: 1px solid var(--primary);
+                            "
+                          >
+                            Recevoir mon lien de connexion
+                          </div>
+                          <div
+                            style="
+                              background: var(--muted);
+                              border-radius: 8px;
+                              padding: 12px 16px;
+                            "
+                          >
+                            <p
+                              style="font-size: 16px; color: var(--foreground)"
+                            >
+                              Vous n’avez pas d’adresse email ? Les documents
+                              vous sont envoyés par <strong>courrier</strong> —
+                              appelez le bureau au [téléphone du bureau —
+                              réglage à créer].
+                            </p>
+                          </div>
+                        </section>
+                      </div>
+                      <a
+                        href="#"
+                        style="font-size: 15px; color: var(--muted-foreground)"
+                        >Accès prestataire</a
+                      >
+                    </main>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>
+                A · États : erreur de saisie, chargement, service d’email en
+                panne
+              </figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      width: 560px;
+                      padding: 32px;
+                      box-sizing: border-box;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 40px;
+                      background: var(--muted);
+                    "
+                  >
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">Erreur de saisie</p>
+                      <section
+                        style="
+                          border: 1px solid var(--border);
+                          border-radius: 8px;
+                          background: var(--card);
+                          padding: 32px;
+                          display: flex;
+                          flex-direction: column;
+                          gap: 24px;
+                        "
+                      >
+                        <div
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                          "
+                        >
+                          <h1
+                            style="
+                              font-family: var(--font-serif);
+                              font-size: 34px;
+                              font-weight: 600;
+                              line-height: 1.15;
+                              text-wrap: pretty;
+                            "
+                          >
+                            Se connecter à votre espace
+                          </h1>
+                        </div>
+                        <p style="font-size: 17px; color: var(--foreground)">
+                          Saisissez votre adresse email : vous recevrez un lien
+                          pour ouvrir votre espace. Il n’y a
+                          <strong>aucun mot de passe</strong> à retenir.
+                        </p>
+
+                        <div
+                          id="email"
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 8px;
+                          "
+                        >
+                          <label
+                            style="
+                              font-size: 16px;
+                              font-weight: 500;
+                              line-height: 1.4;
+                            "
+                            >Adresse email</label
+                          >
+
+                          <div
+                            style="
+                              height: 48px;
+                              box-sizing: border-box;
+                              border: 2px solid var(--destructive);
+                              border-radius: 8px;
+                              padding: 0 11px;
+                              display: flex;
+                              align-items: center;
+                              font-size: 17px;
+                              background: var(--background);
+                            "
+                          >
+                            m.durand@exemple
+                          </div>
+                          <p
+                            style="
+                              display: flex;
+                              gap: 8px;
+                              align-items: flex-start;
+                              font-size: 16px;
+                              color: var(--destructive);
+                            "
+                          >
+                            <span style="display: flex; padding-top: 3px"
+                              ><svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.75"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                                style="flex-shrink: 0"
+                              >
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" x2="12" y1="8" y2="12"></line>
+                                <line
+                                  x1="12"
+                                  x2="12.01"
+                                  y1="16"
+                                  y2="16"
+                                ></line></svg></span
+                            >Cette adresse n’est pas valide. Exemple :
+                            nom@domaine.fr
+                          </p>
+                        </div>
+                        <div
+                          role="button"
+                          style="
+                            width: 100%;
+                            height: 48px;
+                            min-width: 212px;
+                            box-sizing: border-box;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                            padding: 0 16px;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            font-size: 16px;
+                            background: var(--primary);
+                            color: var(--primary-foreground);
+                            border: 1px solid var(--primary);
+                          "
+                        >
+                          Recevoir mon lien de connexion
+                        </div>
+                        <div
+                          style="
+                            background: var(--muted);
+                            border-radius: 8px;
+                            padding: 12px 16px;
+                          "
+                        >
+                          <p style="font-size: 16px; color: var(--foreground)">
+                            Vous n’avez pas d’adresse email ? Les documents vous
+                            sont envoyés par <strong>courrier</strong> — appelez
+                            le bureau au [téléphone du bureau — réglage à
+                            créer].
+                          </p>
+                        </div>
+                      </section>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">Chargement</p>
+                      <section
+                        style="
+                          border: 1px solid var(--border);
+                          border-radius: 8px;
+                          background: var(--card);
+                          padding: 32px;
+                          display: flex;
+                          flex-direction: column;
+                          gap: 24px;
+                        "
+                      >
+                        <div
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                          "
+                        >
+                          <h1
+                            style="
+                              font-family: var(--font-serif);
+                              font-size: 34px;
+                              font-weight: 600;
+                              line-height: 1.15;
+                              text-wrap: pretty;
+                            "
+                          >
+                            Se connecter à votre espace
+                          </h1>
+                        </div>
+                        <p style="font-size: 17px; color: var(--foreground)">
+                          Saisissez votre adresse email : vous recevrez un lien
+                          pour ouvrir votre espace. Il n’y a
+                          <strong>aucun mot de passe</strong> à retenir.
+                        </p>
+
+                        <div
+                          id="email"
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 8px;
+                          "
+                        >
+                          <label
+                            style="
+                              font-size: 16px;
+                              font-weight: 500;
+                              line-height: 1.4;
+                            "
+                            >Adresse email</label
+                          >
+
+                          <div
+                            style="
+                              height: 48px;
+                              box-sizing: border-box;
+                              border: 1px solid var(--input);
+                              border-radius: 8px;
+                              padding: 0 12px;
+                              display: flex;
+                              align-items: center;
+                              font-size: 17px;
+                              background: var(--background);
+                            "
+                          >
+                            m.durand@exemple.test
+                          </div>
+                        </div>
+                        <div
+                          role="button"
+                          style="
+                            width: 100%;
+                            height: 48px;
+                            min-width: 212px;
+                            box-sizing: border-box;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                            padding: 0 16px;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            font-size: 16px;
+                            background: var(--primary);
+                            color: var(--primary-foreground);
+                            border: 1px solid var(--primary);
+                            opacity: 0.5;
+                          "
+                        >
+                          Envoi en cours…
+                        </div>
+                        <div
+                          style="
+                            background: var(--muted);
+                            border-radius: 8px;
+                            padding: 12px 16px;
+                          "
+                        >
+                          <p style="font-size: 16px; color: var(--foreground)">
+                            Vous n’avez pas d’adresse email ? Les documents vous
+                            sont envoyés par <strong>courrier</strong> — appelez
+                            le bureau au [téléphone du bureau — réglage à
+                            créer].
+                          </p>
+                        </div>
+                      </section>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">Erreur du service d’email</p>
+                      <section
+                        style="
+                          border: 1px solid var(--border);
+                          border-radius: 8px;
+                          background: var(--card);
+                          padding: 32px;
+                          display: flex;
+                          flex-direction: column;
+                          gap: 24px;
+                        "
+                      >
+                        <div
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                          "
+                        >
+                          <h1
+                            style="
+                              font-family: var(--font-serif);
+                              font-size: 34px;
+                              font-weight: 600;
+                              line-height: 1.15;
+                              text-wrap: pretty;
+                            "
+                          >
+                            Se connecter à votre espace
+                          </h1>
+                        </div>
+                        <p style="font-size: 17px; color: var(--foreground)">
+                          Saisissez votre adresse email : vous recevrez un lien
+                          pour ouvrir votre espace. Il n’y a
+                          <strong>aucun mot de passe</strong> à retenir.
+                        </p>
+                        <div
+                          role="alert"
+                          style="
+                            border: 1px solid var(--destructive);
+                            border-radius: 12px;
+                            background: var(--card);
+                            padding: 12px 16px;
+                            display: flex;
+                            gap: 12px;
+                            align-items: flex-start;
+                          "
+                        >
+                          <span
+                            style="
+                              color: var(--destructive);
+                              display: flex;
+                              padding-top: 4px;
+                            "
+                            ><svg
+                              width="20"
+                              height="20"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.75"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                              style="flex-shrink: 0"
+                            >
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <line x1="12" x2="12" y1="8" y2="12"></line>
+                              <line
+                                x1="12"
+                                x2="12.01"
+                                y1="16"
+                                y2="16"
+                              ></line></svg
+                          ></span>
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 4px;
+                            "
+                          >
+                            <p
+                              style="
+                                font-size: 17px;
+                                font-weight: 600;
+                                color: var(--destructive);
+                              "
+                            >
+                              Le lien n’a pas pu être envoyé.
+                            </p>
+                            <p
+                              style="font-size: 17px; color: var(--foreground)"
+                            >
+                              <strong>Votre adresse n’est pas en cause.</strong>
+                              Réessayez dans quelques minutes, ou appelez le
+                              bureau au [téléphone du bureau — réglage à créer].
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          id="email"
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 8px;
+                          "
+                        >
+                          <label
+                            style="
+                              font-size: 16px;
+                              font-weight: 500;
+                              line-height: 1.4;
+                            "
+                            >Adresse email</label
+                          >
+
+                          <div
+                            style="
+                              height: 48px;
+                              box-sizing: border-box;
+                              border: 1px solid var(--input);
+                              border-radius: 8px;
+                              padding: 0 12px;
+                              display: flex;
+                              align-items: center;
+                              font-size: 17px;
+                              background: var(--background);
+                            "
+                          >
+                            m.durand@exemple.test
+                          </div>
+                        </div>
+                        <div
+                          role="button"
+                          style="
+                            width: 100%;
+                            height: 48px;
+                            min-width: 212px;
+                            box-sizing: border-box;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                            padding: 0 16px;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            font-size: 16px;
+                            background: var(--primary);
+                            color: var(--primary-foreground);
+                            border: 1px solid var(--primary);
+                          "
+                        >
+                          Recevoir mon lien de connexion
+                        </div>
+                        <div
+                          style="
+                            background: var(--muted);
+                            border-radius: 8px;
+                            padding: 12px 16px;
+                          "
+                        >
+                          <p style="font-size: 16px; color: var(--foreground)">
+                            Vous n’avez pas d’adresse email ? Les documents vous
+                            sont envoyés par <strong>courrier</strong> — appelez
+                            le bureau au [téléphone du bureau — réglage à
+                            créer].
+                          </p>
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>
+                B · Consultez votre boîte mail (aussi pour une adresse inconnue)
+              </figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      width: 1280px;
+                      min-height: 100vh;
+                      box-sizing: border-box;
+                      background: var(--muted);
+                      display: flex;
+                      flex-direction: column;
+                    "
+                  >
+                    <header
+                      style="
+                        padding: 24px 44px;
+                        background: var(--background);
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 12px;
+                          min-width: 0;
+                        "
+                      >
+                        <div
+                          role="img"
+                          aria-label="Monogramme de l’association ASL Les Pins"
+                          style="
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 8px;
+                            background: var(--accent-solid);
+                            color: var(--primary-foreground);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 18px;
+                            line-height: 1;
+                            letter-spacing: 0.02em;
+                            flex-shrink: 0;
+                          "
+                        >
+                          LP
+                        </div>
+                        <span
+                          style="
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 20px;
+                            line-height: 1.2;
+                            color: var(--foreground);
+                          "
+                          >ASL Les Pins</span
+                        >
+                      </div>
+                    </header>
+                    <main
+                      style="
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 16px;
+                        padding: 64px 24px;
+                      "
+                    >
+                      <div style="width: 440px; max-width: 100%">
+                        <section
+                          style="
+                            border: 1px solid var(--border);
+                            border-radius: 8px;
+                            background: var(--card);
+                            padding: 32px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 24px;
+                          "
+                        >
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <span style="color: var(--primary); display: flex"
+                              ><svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.75"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                                style="flex-shrink: 0"
+                              >
+                                <rect
+                                  width="20"
+                                  height="16"
+                                  x="2"
+                                  y="4"
+                                  rx="2"
+                                ></rect>
+                                <path
+                                  d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+                                ></path></svg
+                            ></span>
+                            <h1
+                              style="
+                                font-family: var(--font-serif);
+                                font-size: 34px;
+                                font-weight: 600;
+                                line-height: 1.15;
+                                text-wrap: pretty;
+                              "
+                            >
+                              Consultez votre boîte mail
+                            </h1>
+                          </div>
+                          <p style="font-size: 17px; color: var(--foreground)">
+                            <strong
+                              >Si l’adresse m.durand@exemple.test est
+                              enregistrée</strong
+                            >, un lien de connexion vient de lui être envoyé. Il
+                            est valable <strong>20 minutes</strong> et ne sert
+                            qu’une fois.
+                          </p>
+
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <h2 style="font-size: 20px; font-weight: 600">
+                              Rien n’arrive ?
+                            </h2>
+                            <ol
+                              style="
+                                list-style: none;
+                                margin: 0;
+                                padding: 0;
+                                display: flex;
+                                flex-direction: column;
+                                gap: 12px;
+                              "
+                            >
+                              <li style="display: flex; gap: 12px">
+                                <span
+                                  style="
+                                    flex-shrink: 0;
+                                    width: 28px;
+                                    height: 28px;
+                                    border-radius: 50%;
+                                    background: var(--secondary);
+                                    color: var(--secondary-foreground);
+                                    font-weight: 600;
+                                    font-size: 15px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                  "
+                                  >1</span
+                                ><span style="font-size: 17px"
+                                  >Patientez quelques minutes.</span
+                                >
+                              </li>
+                              <li style="display: flex; gap: 12px">
+                                <span
+                                  style="
+                                    flex-shrink: 0;
+                                    width: 28px;
+                                    height: 28px;
+                                    border-radius: 50%;
+                                    background: var(--secondary);
+                                    color: var(--secondary-foreground);
+                                    font-weight: 600;
+                                    font-size: 15px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                  "
+                                  >2</span
+                                ><span style="font-size: 17px"
+                                  >Regardez dans le dossier des courriers
+                                  indésirables.</span
+                                >
+                              </li>
+                              <li style="display: flex; gap: 12px">
+                                <span
+                                  style="
+                                    flex-shrink: 0;
+                                    width: 28px;
+                                    height: 28px;
+                                    border-radius: 50%;
+                                    background: var(--secondary);
+                                    color: var(--secondary-foreground);
+                                    font-weight: 600;
+                                    font-size: 15px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                  "
+                                  >3</span
+                                ><span style="font-size: 17px"
+                                  >Vérifiez l’adresse saisie :
+                                  m.durand@exemple.test —
+                                  <a href="#">Corriger l’adresse</a></span
+                                >
+                              </li>
+                            </ol>
+                          </div>
+                          <p
+                            style="
+                              font-size: 16px;
+                              color: var(--muted-foreground);
+                            "
+                          >
+                            Le bureau a peut-être enregistré une autre adresse
+                            pour vous. Ou aucune adresse n’est enregistrée pour
+                            votre parcelle : vous recevez alors vos documents
+                            par courrier, et c’est normal.
+                          </p>
+                          <div
+                            role="button"
+                            style="
+                              width: 100%;
+                              height: 48px;
+                              min-width: 212px;
+                              box-sizing: border-box;
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              gap: 8px;
+                              padding: 0 16px;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              font-size: 16px;
+                              background: var(--background);
+                              color: var(--foreground);
+                              border: 1px solid var(--input);
+                              opacity: 0.5;
+                            "
+                          >
+                            Renvoyer un lien (disponible dans 45 s)
+                          </div>
+                          <p
+                            style="
+                              font-size: 16px;
+                              color: var(--muted-foreground);
+                            "
+                          >
+                            Besoin d’aide ? Appelez le bureau au [téléphone du
+                            bureau — réglage à créer].
+                          </p>
+                        </section>
+                      </div>
+                    </main>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>
+                B · États : bouton disponible, lien renvoyé
+              </figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      width: 560px;
+                      padding: 32px;
+                      box-sizing: border-box;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 40px;
+                      background: var(--muted);
+                    "
+                  >
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">Bouton disponible (après 60 s)</p>
+                      <section
+                        style="
+                          border: 1px solid var(--border);
+                          border-radius: 8px;
+                          background: var(--card);
+                          padding: 32px;
+                          display: flex;
+                          flex-direction: column;
+                          gap: 24px;
+                        "
+                      >
+                        <div
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                          "
+                        >
+                          <span style="color: var(--primary); display: flex"
+                            ><svg
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.75"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                              style="flex-shrink: 0"
+                            >
+                              <rect
+                                width="20"
+                                height="16"
+                                x="2"
+                                y="4"
+                                rx="2"
+                              ></rect>
+                              <path
+                                d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+                              ></path></svg
+                          ></span>
+                          <h1
+                            style="
+                              font-family: var(--font-serif);
+                              font-size: 34px;
+                              font-weight: 600;
+                              line-height: 1.15;
+                              text-wrap: pretty;
+                            "
+                          >
+                            Consultez votre boîte mail
+                          </h1>
+                        </div>
+                        <p style="font-size: 17px; color: var(--foreground)">
+                          <strong
+                            >Si l’adresse m.durand@exemple.test est
+                            enregistrée</strong
+                          >, un lien de connexion vient de lui être envoyé. Il
+                          est valable <strong>20 minutes</strong> et ne sert
+                          qu’une fois.
+                        </p>
+
+                        <div
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                          "
+                        >
+                          <h2 style="font-size: 20px; font-weight: 600">
+                            Rien n’arrive ?
+                          </h2>
+                          <ol
+                            style="
+                              list-style: none;
+                              margin: 0;
+                              padding: 0;
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <li style="display: flex; gap: 12px">
+                              <span
+                                style="
+                                  flex-shrink: 0;
+                                  width: 28px;
+                                  height: 28px;
+                                  border-radius: 50%;
+                                  background: var(--secondary);
+                                  color: var(--secondary-foreground);
+                                  font-weight: 600;
+                                  font-size: 15px;
+                                  display: flex;
+                                  align-items: center;
+                                  justify-content: center;
+                                "
+                                >1</span
+                              ><span style="font-size: 17px"
+                                >Patientez quelques minutes.</span
+                              >
+                            </li>
+                            <li style="display: flex; gap: 12px">
+                              <span
+                                style="
+                                  flex-shrink: 0;
+                                  width: 28px;
+                                  height: 28px;
+                                  border-radius: 50%;
+                                  background: var(--secondary);
+                                  color: var(--secondary-foreground);
+                                  font-weight: 600;
+                                  font-size: 15px;
+                                  display: flex;
+                                  align-items: center;
+                                  justify-content: center;
+                                "
+                                >2</span
+                              ><span style="font-size: 17px"
+                                >Regardez dans le dossier des courriers
+                                indésirables.</span
+                              >
+                            </li>
+                            <li style="display: flex; gap: 12px">
+                              <span
+                                style="
+                                  flex-shrink: 0;
+                                  width: 28px;
+                                  height: 28px;
+                                  border-radius: 50%;
+                                  background: var(--secondary);
+                                  color: var(--secondary-foreground);
+                                  font-weight: 600;
+                                  font-size: 15px;
+                                  display: flex;
+                                  align-items: center;
+                                  justify-content: center;
+                                "
+                                >3</span
+                              ><span style="font-size: 17px"
+                                >Vérifiez l’adresse saisie :
+                                m.durand@exemple.test —
+                                <a href="#">Corriger l’adresse</a></span
+                              >
+                            </li>
+                          </ol>
+                        </div>
+                        <p
+                          style="
+                            font-size: 16px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          Le bureau a peut-être enregistré une autre adresse
+                          pour vous. Ou aucune adresse n’est enregistrée pour
+                          votre parcelle : vous recevez alors vos documents par
+                          courrier, et c’est normal.
+                        </p>
+                        <div
+                          role="button"
+                          style="
+                            width: 100%;
+                            height: 48px;
+                            min-width: 212px;
+                            box-sizing: border-box;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                            padding: 0 16px;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            font-size: 16px;
+                            background: var(--background);
+                            color: var(--foreground);
+                            border: 1px solid var(--input);
+                          "
+                        >
+                          Renvoyer un lien
+                        </div>
+                        <p
+                          style="
+                            font-size: 16px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          Besoin d’aide ? Appelez le bureau au [téléphone du
+                          bureau — réglage à créer].
+                        </p>
+                      </section>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">Lien renvoyé</p>
+                      <section
+                        style="
+                          border: 1px solid var(--border);
+                          border-radius: 8px;
+                          background: var(--card);
+                          padding: 32px;
+                          display: flex;
+                          flex-direction: column;
+                          gap: 24px;
+                        "
+                      >
+                        <div
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                          "
+                        >
+                          <span style="color: var(--primary); display: flex"
+                            ><svg
+                              width="24"
+                              height="24"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.75"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                              style="flex-shrink: 0"
+                            >
+                              <rect
+                                width="20"
+                                height="16"
+                                x="2"
+                                y="4"
+                                rx="2"
+                              ></rect>
+                              <path
+                                d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+                              ></path></svg
+                          ></span>
+                          <h1
+                            style="
+                              font-family: var(--font-serif);
+                              font-size: 34px;
+                              font-weight: 600;
+                              line-height: 1.15;
+                              text-wrap: pretty;
+                            "
+                          >
+                            Consultez votre boîte mail
+                          </h1>
+                        </div>
+                        <p style="font-size: 17px; color: var(--foreground)">
+                          <strong
+                            >Si l’adresse m.durand@exemple.test est
+                            enregistrée</strong
+                          >, un lien de connexion vient de lui être envoyé. Il
+                          est valable <strong>20 minutes</strong> et ne sert
+                          qu’une fois.
+                        </p>
+                        <div
+                          role="status"
+                          style="
+                            border: 1px solid var(--border);
+                            border-radius: 12px;
+                            background: var(--card);
+                            padding: 12px 16px;
+                            display: flex;
+                            gap: 12px;
+                            align-items: flex-start;
+                          "
+                        >
+                          <span
+                            style="
+                              color: var(--primary);
+                              display: flex;
+                              padding-top: 4px;
+                            "
+                            ><svg
+                              width="20"
+                              height="20"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="1.75"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              aria-hidden="true"
+                              style="flex-shrink: 0"
+                            >
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <path d="m9 12 2 2 4-4"></path></svg
+                          ></span>
+                          <p style="font-size: 17px; color: var(--foreground)">
+                            Un nouveau lien a été envoyé, si l’adresse est
+                            enregistrée. Le précédent ne fonctionne plus.
+                          </p>
+                        </div>
+                        <div
+                          style="
+                            display: flex;
+                            flex-direction: column;
+                            gap: 12px;
+                          "
+                        >
+                          <h2 style="font-size: 20px; font-weight: 600">
+                            Rien n’arrive ?
+                          </h2>
+                          <ol
+                            style="
+                              list-style: none;
+                              margin: 0;
+                              padding: 0;
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <li style="display: flex; gap: 12px">
+                              <span
+                                style="
+                                  flex-shrink: 0;
+                                  width: 28px;
+                                  height: 28px;
+                                  border-radius: 50%;
+                                  background: var(--secondary);
+                                  color: var(--secondary-foreground);
+                                  font-weight: 600;
+                                  font-size: 15px;
+                                  display: flex;
+                                  align-items: center;
+                                  justify-content: center;
+                                "
+                                >1</span
+                              ><span style="font-size: 17px"
+                                >Patientez quelques minutes.</span
+                              >
+                            </li>
+                            <li style="display: flex; gap: 12px">
+                              <span
+                                style="
+                                  flex-shrink: 0;
+                                  width: 28px;
+                                  height: 28px;
+                                  border-radius: 50%;
+                                  background: var(--secondary);
+                                  color: var(--secondary-foreground);
+                                  font-weight: 600;
+                                  font-size: 15px;
+                                  display: flex;
+                                  align-items: center;
+                                  justify-content: center;
+                                "
+                                >2</span
+                              ><span style="font-size: 17px"
+                                >Regardez dans le dossier des courriers
+                                indésirables.</span
+                              >
+                            </li>
+                            <li style="display: flex; gap: 12px">
+                              <span
+                                style="
+                                  flex-shrink: 0;
+                                  width: 28px;
+                                  height: 28px;
+                                  border-radius: 50%;
+                                  background: var(--secondary);
+                                  color: var(--secondary-foreground);
+                                  font-weight: 600;
+                                  font-size: 15px;
+                                  display: flex;
+                                  align-items: center;
+                                  justify-content: center;
+                                "
+                                >3</span
+                              ><span style="font-size: 17px"
+                                >Vérifiez l’adresse saisie :
+                                m.durand@exemple.test —
+                                <a href="#">Corriger l’adresse</a></span
+                              >
+                            </li>
+                          </ol>
+                        </div>
+                        <p
+                          style="
+                            font-size: 16px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          Le bureau a peut-être enregistré une autre adresse
+                          pour vous. Ou aucune adresse n’est enregistrée pour
+                          votre parcelle : vous recevez alors vos documents par
+                          courrier, et c’est normal.
+                        </p>
+                        <div
+                          role="button"
+                          style="
+                            width: 100%;
+                            height: 48px;
+                            min-width: 212px;
+                            box-sizing: border-box;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                            padding: 0 16px;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            font-size: 16px;
+                            background: var(--background);
+                            color: var(--foreground);
+                            border: 1px solid var(--input);
+                            opacity: 0.5;
+                          "
+                        >
+                          Renvoyer un lien (disponible dans 45 s)
+                        </div>
+                        <p
+                          style="
+                            font-size: 16px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          Besoin d’aide ? Appelez le bureau au [téléphone du
+                          bureau — réglage à créer].
+                        </p>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>C · Lien expiré ou déjà utilisé</figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      width: 1280px;
+                      min-height: 100vh;
+                      box-sizing: border-box;
+                      background: var(--muted);
+                      display: flex;
+                      flex-direction: column;
+                    "
+                  >
+                    <header
+                      style="
+                        padding: 24px 44px;
+                        background: var(--background);
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 12px;
+                          min-width: 0;
+                        "
+                      >
+                        <div
+                          role="img"
+                          aria-label="Monogramme de l’association ASL Les Pins"
+                          style="
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 8px;
+                            background: var(--accent-solid);
+                            color: var(--primary-foreground);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 18px;
+                            line-height: 1;
+                            letter-spacing: 0.02em;
+                            flex-shrink: 0;
+                          "
+                        >
+                          LP
+                        </div>
+                        <span
+                          style="
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 20px;
+                            line-height: 1.2;
+                            color: var(--foreground);
+                          "
+                          >ASL Les Pins</span
+                        >
+                      </div>
+                    </header>
+                    <main
+                      style="
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 16px;
+                        padding: 64px 24px;
+                      "
+                    >
+                      <div style="width: 440px; max-width: 100%">
+                        <section
+                          style="
+                            border: 1px solid var(--border);
+                            border-radius: 8px;
+                            background: var(--card);
+                            padding: 32px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 24px;
+                          "
+                        >
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <span style="color: var(--primary); display: flex"
+                              ><svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.75"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                                style="flex-shrink: 0"
+                              >
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline
+                                  points="12 6 12 12 16 14"
+                                ></polyline></svg
+                            ></span>
+                            <h1
+                              style="
+                                font-family: var(--font-serif);
+                                font-size: 34px;
+                                font-weight: 600;
+                                line-height: 1.15;
+                                text-wrap: pretty;
+                              "
+                            >
+                              Ce lien ne fonctionne plus
+                            </h1>
+                          </div>
+                          <p style="font-size: 17px; color: var(--foreground)">
+                            <strong>Vous n’avez rien fait de mal</strong> : il
+                            suffit d’en demander un nouveau.
+                          </p>
+                          <p
+                            style="
+                              font-size: 16px;
+                              color: var(--muted-foreground);
+                            "
+                          >
+                            Un lien de connexion ne sert qu’une fois et reste
+                            valable 20 minutes. C’est ce qui protège votre
+                            espace, même si quelqu’un d’autre ouvre votre boîte
+                            mail.
+                          </p>
+                          <div
+                            role="button"
+                            style="
+                              width: 100%;
+                              height: 48px;
+                              min-width: 212px;
+                              box-sizing: border-box;
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              gap: 8px;
+                              padding: 0 16px;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              font-size: 16px;
+                              background: var(--primary);
+                              color: var(--primary-foreground);
+                              border: 1px solid var(--primary);
+                            "
+                          >
+                            Recevoir un nouveau lien
+                          </div>
+                          <p
+                            style="
+                              font-size: 16px;
+                              color: var(--muted-foreground);
+                            "
+                          >
+                            Besoin d’aide ? Appelez le bureau au [téléphone du
+                            bureau — réglage à créer].
+                          </p>
+                        </section>
+                      </div>
+                    </main>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>
+                D · Email de connexion : avec logo, sans logo
+              </figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      padding: 32px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 40px;
+                      background: var(--background);
+                    "
+                  >
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">Avec logo</p>
+                      <div style="border: 1px solid var(--border)">
+                        <div
+                          style="
+                            width: 600px;
+                            background: #ffffff;
+                            font-family: Helvetica, Arial, sans-serif;
+                            color: #1b1e26;
+                            font-size: 17px;
+                            line-height: 1.6;
+                          "
+                        >
+                          <div
+                            style="
+                              padding: 12px 40px;
+                              border-bottom: 1px solid #dfe1e5;
+                              font-size: 14px;
+                              color: #52565e;
+                            "
+                          >
+                            <div>
+                              <strong style="color: #1b1e26">Objet :</strong>
+                              ASL Les Pins — votre lien de connexion
+                            </div>
+                            <div>
+                              Valable 20 minutes, pour une seule connexion.
+                              Aucun mot de passe à retenir.
+                            </div>
+                          </div>
+                          <table
+                            role="presentation"
+                            width="100%"
+                            cellpadding="0"
+                            cellspacing="0"
+                            style="
+                              background: #e8f5f8;
+                              border-bottom: 3px solid #17849b;
+                            "
+                          >
+                            <tr>
+                              <td style="padding: 16px 40px">
+                                <table
+                                  role="presentation"
+                                  cellpadding="0"
+                                  cellspacing="0"
+                                >
+                                  <tr>
+                                    <td style="padding-right: 12px">
+                                      <svg
+                                        width="36"
+                                        height="36"
+                                        viewBox="0 0 36 36"
+                                        aria-hidden="true"
+                                      >
+                                        <rect
+                                          width="36"
+                                          height="36"
+                                          rx="6"
+                                          fill="#FFFFFF"
+                                        />
+                                        <path
+                                          d="M18 5 L28 21 H22 L27 29 H9 L14 21 H8 Z"
+                                          fill="#2E7D52"
+                                        />
+                                        <rect
+                                          x="16.5"
+                                          y="29"
+                                          width="3"
+                                          height="4"
+                                          fill="#5E3421"
+                                        />
+                                      </svg>
+                                    </td>
+                                    <td
+                                      style="
+                                        font-family: Georgia, serif;
+                                        font-size: 20px;
+                                        font-weight: 600;
+                                        color: #185a66;
+                                      "
+                                    >
+                                      ASL Les Pins
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+                          <div
+                            style="
+                              padding: 32px 40px;
+                              display: flex;
+                              flex-direction: column;
+                              gap: 20px;
+                            "
+                          >
+                            <h1
+                              style="
+                                margin: 0;
+                                font-family: Georgia, serif;
+                                font-size: 24px;
+                                font-weight: 600;
+                                color: #1b1e26;
+                              "
+                            >
+                              Votre lien de connexion
+                            </h1>
+                            <p style="margin: 0">
+                              Bonjour, voici le lien pour ouvrir votre espace
+                              sur le site de l’ASL Les Pins. Il est valable
+                              <strong>20 minutes</strong> et ne sert qu’une
+                              fois.
+                            </p>
+                            <table
+                              role="presentation"
+                              cellpadding="0"
+                              cellspacing="0"
+                              style="margin: 8px auto 0"
+                            >
+                              <tr>
+                                <td
+                                  style="
+                                    background: #2c3f63;
+                                    border-radius: 8px;
+                                  "
+                                >
+                                  <a
+                                    href="#"
+                                    style="
+                                      display: inline-block;
+                                      padding: 16px 32px;
+                                      font-size: 19px;
+                                      font-weight: 700;
+                                      color: #ffffff;
+                                      text-decoration: none;
+                                    "
+                                    >Ouvrir mon espace</a
+                                  >
+                                </td>
+                              </tr>
+                            </table>
+                            <p
+                              style="
+                                margin: 0;
+                                text-align: center;
+                                font-size: 15px;
+                                word-break: break-all;
+                              "
+                            >
+                              <a href="#" style="color: #2b57a8"
+                                >https://asl-les-pins.test/api/auth/magic-link/verify?token=…</a
+                              >
+                            </p>
+                            <p
+                              style="margin: 0; font-size: 16px; color: #52565e"
+                            >
+                              Vous n’avez pas demandé ce lien ? Ignorez cet
+                              email : personne ne peut se connecter sans lui.
+                            </p>
+                          </div>
+                          <div
+                            style="
+                              background: #f6f7f8;
+                              padding: 16px 40px;
+                              font-size: 14px;
+                              color: #52565e;
+                            "
+                          >
+                            Cet email vous est envoyé parce qu’une connexion a
+                            été demandée avec votre adresse sur le site de l’ASL
+                            Les Pins.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">Sans logo : le nom seul</p>
+                      <div style="border: 1px solid var(--border)">
+                        <div
+                          style="
+                            width: 600px;
+                            background: #ffffff;
+                            font-family: Helvetica, Arial, sans-serif;
+                            color: #1b1e26;
+                            font-size: 17px;
+                            line-height: 1.6;
+                          "
+                        >
+                          <div
+                            style="
+                              padding: 12px 40px;
+                              border-bottom: 1px solid #dfe1e5;
+                              font-size: 14px;
+                              color: #52565e;
+                            "
+                          >
+                            <div>
+                              <strong style="color: #1b1e26">Objet :</strong>
+                              ASL Les Pins — votre lien de connexion
+                            </div>
+                            <div>
+                              Valable 20 minutes, pour une seule connexion.
+                              Aucun mot de passe à retenir.
+                            </div>
+                          </div>
+                          <table
+                            role="presentation"
+                            width="100%"
+                            cellpadding="0"
+                            cellspacing="0"
+                            style="
+                              background: #e8f5f8;
+                              border-bottom: 3px solid #17849b;
+                            "
+                          >
+                            <tr>
+                              <td style="padding: 16px 40px">
+                                <table
+                                  role="presentation"
+                                  cellpadding="0"
+                                  cellspacing="0"
+                                >
+                                  <tr>
+                                    <td
+                                      style="
+                                        font-family: Georgia, serif;
+                                        font-size: 20px;
+                                        font-weight: 600;
+                                        color: #185a66;
+                                      "
+                                    >
+                                      ASL Les Pins
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+                          <div
+                            style="
+                              padding: 32px 40px;
+                              display: flex;
+                              flex-direction: column;
+                              gap: 20px;
+                            "
+                          >
+                            <h1
+                              style="
+                                margin: 0;
+                                font-family: Georgia, serif;
+                                font-size: 24px;
+                                font-weight: 600;
+                                color: #1b1e26;
+                              "
+                            >
+                              Votre lien de connexion
+                            </h1>
+                            <p style="margin: 0">
+                              Bonjour, voici le lien pour ouvrir votre espace
+                              sur le site de l’ASL Les Pins. Il est valable
+                              <strong>20 minutes</strong> et ne sert qu’une
+                              fois.
+                            </p>
+                            <table
+                              role="presentation"
+                              cellpadding="0"
+                              cellspacing="0"
+                              style="margin: 8px auto 0"
+                            >
+                              <tr>
+                                <td
+                                  style="
+                                    background: #2c3f63;
+                                    border-radius: 8px;
+                                  "
+                                >
+                                  <a
+                                    href="#"
+                                    style="
+                                      display: inline-block;
+                                      padding: 16px 32px;
+                                      font-size: 19px;
+                                      font-weight: 700;
+                                      color: #ffffff;
+                                      text-decoration: none;
+                                    "
+                                    >Ouvrir mon espace</a
+                                  >
+                                </td>
+                              </tr>
+                            </table>
+                            <p
+                              style="
+                                margin: 0;
+                                text-align: center;
+                                font-size: 15px;
+                                word-break: break-all;
+                              "
+                            >
+                              <a href="#" style="color: #2b57a8"
+                                >https://asl-les-pins.test/api/auth/magic-link/verify?token=…</a
+                              >
+                            </p>
+                            <p
+                              style="margin: 0; font-size: 16px; color: #52565e"
+                            >
+                              Vous n’avez pas demandé ce lien ? Ignorez cet
+                              email : personne ne peut se connecter sans lui.
+                            </p>
+                          </div>
+                          <div
+                            style="
+                              background: #f6f7f8;
+                              padding: 16px 40px;
+                              font-size: 14px;
+                              color: #52565e;
+                            "
+                          >
+                            Cet email vous est envoyé parce qu’une connexion a
+                            été demandée avec votre adresse sur le site de l’ASL
+                            Les Pins.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>
+                D · Email : images bloquées, mode sombre forcé (simulation de la
+                messagerie)
+              </figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      padding: 32px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 40px;
+                      background: var(--background);
+                    "
+                  >
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">Images bloquées</p>
+                      <div style="border: 1px solid var(--border)">
+                        <div
+                          style="
+                            width: 600px;
+                            background: #ffffff;
+                            font-family: Helvetica, Arial, sans-serif;
+                            color: #1b1e26;
+                            font-size: 17px;
+                            line-height: 1.6;
+                          "
+                        >
+                          <div
+                            style="
+                              padding: 12px 40px;
+                              border-bottom: 1px solid #dfe1e5;
+                              font-size: 14px;
+                              color: #52565e;
+                            "
+                          >
+                            <div>
+                              <strong style="color: #1b1e26">Objet :</strong>
+                              ASL Les Pins — votre lien de connexion
+                            </div>
+                            <div>
+                              Valable 20 minutes, pour une seule connexion.
+                              Aucun mot de passe à retenir.
+                            </div>
+                          </div>
+                          <table
+                            role="presentation"
+                            width="100%"
+                            cellpadding="0"
+                            cellspacing="0"
+                            style="
+                              background: #e8f5f8;
+                              border-bottom: 3px solid #17849b;
+                            "
+                          >
+                            <tr>
+                              <td style="padding: 16px 40px">
+                                <table
+                                  role="presentation"
+                                  cellpadding="0"
+                                  cellspacing="0"
+                                >
+                                  <tr>
+                                    <td style="padding-right: 12px">
+                                      <div
+                                        style="
+                                          width: 36px;
+                                          height: 36px;
+                                          border: 1px dashed #8e939c;
+                                          font-family:
+                                            Helvetica, Arial, sans-serif;
+                                          font-size: 9px;
+                                          color: #52565e;
+                                          display: flex;
+                                          align-items: center;
+                                          justify-content: center;
+                                          text-align: center;
+                                        "
+                                      >
+                                        image<br />bloquée
+                                      </div>
+                                    </td>
+                                    <td
+                                      style="
+                                        font-family: Georgia, serif;
+                                        font-size: 20px;
+                                        font-weight: 600;
+                                        color: #185a66;
+                                      "
+                                    >
+                                      ASL Les Pins
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+                          <div
+                            style="
+                              padding: 32px 40px;
+                              display: flex;
+                              flex-direction: column;
+                              gap: 20px;
+                            "
+                          >
+                            <h1
+                              style="
+                                margin: 0;
+                                font-family: Georgia, serif;
+                                font-size: 24px;
+                                font-weight: 600;
+                                color: #1b1e26;
+                              "
+                            >
+                              Votre lien de connexion
+                            </h1>
+                            <p style="margin: 0">
+                              Bonjour, voici le lien pour ouvrir votre espace
+                              sur le site de l’ASL Les Pins. Il est valable
+                              <strong>20 minutes</strong> et ne sert qu’une
+                              fois.
+                            </p>
+                            <table
+                              role="presentation"
+                              cellpadding="0"
+                              cellspacing="0"
+                              style="margin: 8px auto 0"
+                            >
+                              <tr>
+                                <td
+                                  style="
+                                    background: #2c3f63;
+                                    border-radius: 8px;
+                                  "
+                                >
+                                  <a
+                                    href="#"
+                                    style="
+                                      display: inline-block;
+                                      padding: 16px 32px;
+                                      font-size: 19px;
+                                      font-weight: 700;
+                                      color: #ffffff;
+                                      text-decoration: none;
+                                    "
+                                    >Ouvrir mon espace</a
+                                  >
+                                </td>
+                              </tr>
+                            </table>
+                            <p
+                              style="
+                                margin: 0;
+                                text-align: center;
+                                font-size: 15px;
+                                word-break: break-all;
+                              "
+                            >
+                              <a href="#" style="color: #2b57a8"
+                                >https://asl-les-pins.test/api/auth/magic-link/verify?token=…</a
+                              >
+                            </p>
+                            <p
+                              style="margin: 0; font-size: 16px; color: #52565e"
+                            >
+                              Vous n’avez pas demandé ce lien ? Ignorez cet
+                              email : personne ne peut se connecter sans lui.
+                            </p>
+                          </div>
+                          <div
+                            style="
+                              background: #f6f7f8;
+                              padding: 16px 40px;
+                              font-size: 14px;
+                              color: #52565e;
+                            "
+                          >
+                            Cet email vous est envoyé parce qu’une connexion a
+                            été demandée avec votre adresse sur le site de l’ASL
+                            Les Pins.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <p class="overline">
+                        Mode sombre forcé (Outlook, Gmail Android)
+                      </p>
+                      <div style="border: 1px solid var(--border)">
+                        <div
+                          style="
+                            width: 600px;
+                            background: #1e1f22;
+                            font-family: Helvetica, Arial, sans-serif;
+                            color: #e8e8ea;
+                            font-size: 17px;
+                            line-height: 1.6;
+                          "
+                        >
+                          <div
+                            style="
+                              padding: 12px 40px;
+                              border-bottom: 1px solid #dfe1e5;
+                              font-size: 14px;
+                              color: #b9bbc0;
+                            "
+                          >
+                            <div>
+                              <strong style="color: #e8e8ea">Objet :</strong>
+                              ASL Les Pins — votre lien de connexion
+                            </div>
+                            <div>
+                              Valable 20 minutes, pour une seule connexion.
+                              Aucun mot de passe à retenir.
+                            </div>
+                          </div>
+                          <table
+                            role="presentation"
+                            width="100%"
+                            cellpadding="0"
+                            cellspacing="0"
+                            style="
+                              background: #1e1f22;
+                              border-bottom: 3px solid #3a3b40;
+                            "
+                          >
+                            <tr>
+                              <td style="padding: 16px 40px">
+                                <table
+                                  role="presentation"
+                                  cellpadding="0"
+                                  cellspacing="0"
+                                >
+                                  <tr>
+                                    <td style="padding-right: 12px">
+                                      <svg
+                                        width="36"
+                                        height="36"
+                                        viewBox="0 0 36 36"
+                                        aria-hidden="true"
+                                      >
+                                        <rect
+                                          width="36"
+                                          height="36"
+                                          rx="6"
+                                          fill="#FFFFFF"
+                                        />
+                                        <path
+                                          d="M18 5 L28 21 H22 L27 29 H9 L14 21 H8 Z"
+                                          fill="#2E7D52"
+                                        />
+                                        <rect
+                                          x="16.5"
+                                          y="29"
+                                          width="3"
+                                          height="4"
+                                          fill="#5E3421"
+                                        />
+                                      </svg>
+                                    </td>
+                                    <td
+                                      style="
+                                        font-family: Georgia, serif;
+                                        font-size: 20px;
+                                        font-weight: 600;
+                                        color: #e8e8ea;
+                                      "
+                                    >
+                                      ASL Les Pins
+                                    </td>
+                                  </tr>
+                                </table>
+                              </td>
+                            </tr>
+                          </table>
+                          <div
+                            style="
+                              padding: 32px 40px;
+                              display: flex;
+                              flex-direction: column;
+                              gap: 20px;
+                            "
+                          >
+                            <h1
+                              style="
+                                margin: 0;
+                                font-family: Georgia, serif;
+                                font-size: 24px;
+                                font-weight: 600;
+                                color: #e8e8ea;
+                              "
+                            >
+                              Votre lien de connexion
+                            </h1>
+                            <p style="margin: 0">
+                              Bonjour, voici le lien pour ouvrir votre espace
+                              sur le site de l’ASL Les Pins. Il est valable
+                              <strong>20 minutes</strong> et ne sert qu’une
+                              fois.
+                            </p>
+                            <table
+                              role="presentation"
+                              cellpadding="0"
+                              cellspacing="0"
+                              style="margin: 8px auto 0"
+                            >
+                              <tr>
+                                <td
+                                  style="
+                                    background: #2c3f63;
+                                    border-radius: 8px;
+                                  "
+                                >
+                                  <a
+                                    href="#"
+                                    style="
+                                      display: inline-block;
+                                      padding: 16px 32px;
+                                      font-size: 19px;
+                                      font-weight: 700;
+                                      color: #ffffff;
+                                      text-decoration: none;
+                                    "
+                                    >Ouvrir mon espace</a
+                                  >
+                                </td>
+                              </tr>
+                            </table>
+                            <p
+                              style="
+                                margin: 0;
+                                text-align: center;
+                                font-size: 15px;
+                                word-break: break-all;
+                              "
+                            >
+                              <a href="#" style="color: #8ab4f8"
+                                >https://asl-les-pins.test/api/auth/magic-link/verify?token=…</a
+                              >
+                            </p>
+                            <p
+                              style="margin: 0; font-size: 16px; color: #b9bbc0"
+                            >
+                              Vous n’avez pas demandé ce lien ? Ignorez cet
+                              email : personne ne peut se connecter sans lui.
+                            </p>
+                          </div>
+                          <div
+                            style="
+                              background: #2a2b2f;
+                              padding: 16px 40px;
+                              font-size: 14px;
+                              color: #b9bbc0;
+                            "
+                          >
+                            Cet email vous est envoyé parce qu’une connexion a
+                            été demandée avec votre adresse sur le site de l’ASL
+                            Les Pins.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </figure>
+          </div>
+        </section>
+        <section style="display: flex; flex-direction: column; gap: 24px">
+          <h2 class="page-title">Mobile (390 px)</h2>
+          <div class="boards">
+            <figure class="board">
+              <figcaption>A · Mobile — saisie</figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      width: 390px;
+                      min-height: 100vh;
+                      box-sizing: border-box;
+                      background: var(--muted);
+                      display: flex;
+                      flex-direction: column;
+                    "
+                  >
+                    <header
+                      style="
+                        padding: 16px;
+                        background: var(--background);
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 12px;
+                          min-width: 0;
+                        "
+                      >
+                        <div
+                          role="img"
+                          aria-label="Monogramme de l’association ASL Les Pins"
+                          style="
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 8px;
+                            background: var(--accent-solid);
+                            color: var(--primary-foreground);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 18px;
+                            line-height: 1;
+                            letter-spacing: 0.02em;
+                            flex-shrink: 0;
+                          "
+                        >
+                          LP
+                        </div>
+                        <span
+                          style="
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 20px;
+                            line-height: 1.2;
+                            color: var(--foreground);
+                          "
+                          >ASL Les Pins</span
+                        >
+                      </div>
+                    </header>
+                    <main
+                      style="
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 16px;
+                        padding: 24px 16px 48px;
+                      "
+                    >
+                      <div style="width: 100%; max-width: 100%">
+                        <section
+                          style="
+                            border: 1px solid var(--border);
+                            border-radius: 8px;
+                            background: var(--card);
+                            padding: 16px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 24px;
+                          "
+                        >
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <h1
+                              style="
+                                font-family: var(--font-serif);
+                                font-size: 28px;
+                                font-weight: 600;
+                                line-height: 1.15;
+                                text-wrap: pretty;
+                              "
+                            >
+                              Se connecter à votre espace
+                            </h1>
+                          </div>
+                          <p style="font-size: 17px; color: var(--foreground)">
+                            Saisissez votre adresse email : vous recevrez un
+                            lien pour ouvrir votre espace. Il n’y a
+                            <strong>aucun mot de passe</strong> à retenir.
+                          </p>
+
+                          <div
+                            id="email"
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 8px;
+                            "
+                          >
+                            <label
+                              style="
+                                font-size: 16px;
+                                font-weight: 500;
+                                line-height: 1.4;
+                              "
+                              >Adresse email</label
+                            >
+
+                            <div
+                              style="
+                                height: 56px;
+                                box-sizing: border-box;
+                                border: 1px solid var(--input);
+                                border-radius: 8px;
+                                padding: 0 12px;
+                                display: flex;
+                                align-items: center;
+                                font-size: 17px;
+                                background: var(--background);
+                              "
+                            ></div>
+                          </div>
+                          <div
+                            role="button"
+                            style="
+                              width: 100%;
+                              height: 56px;
+                              min-width: 212px;
+                              box-sizing: border-box;
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              gap: 8px;
+                              padding: 0 16px;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              font-size: 17px;
+                              background: var(--primary);
+                              color: var(--primary-foreground);
+                              border: 1px solid var(--primary);
+                            "
+                          >
+                            Recevoir mon lien de connexion
+                          </div>
+                          <div
+                            style="
+                              background: var(--muted);
+                              border-radius: 8px;
+                              padding: 12px 16px;
+                            "
+                          >
+                            <p
+                              style="font-size: 16px; color: var(--foreground)"
+                            >
+                              Vous n’avez pas d’adresse email ? Les documents
+                              vous sont envoyés par <strong>courrier</strong> —
+                              appelez le bureau au [téléphone du bureau —
+                              réglage à créer].
+                            </p>
+                          </div>
+                        </section>
+                      </div>
+                      <a
+                        href="#"
+                        style="font-size: 15px; color: var(--muted-foreground)"
+                        >Accès prestataire</a
+                      >
+                    </main>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>B · Mobile — consultez votre boîte mail</figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      width: 390px;
+                      min-height: 100vh;
+                      box-sizing: border-box;
+                      background: var(--muted);
+                      display: flex;
+                      flex-direction: column;
+                    "
+                  >
+                    <header
+                      style="
+                        padding: 16px;
+                        background: var(--background);
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 12px;
+                          min-width: 0;
+                        "
+                      >
+                        <div
+                          role="img"
+                          aria-label="Monogramme de l’association ASL Les Pins"
+                          style="
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 8px;
+                            background: var(--accent-solid);
+                            color: var(--primary-foreground);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 18px;
+                            line-height: 1;
+                            letter-spacing: 0.02em;
+                            flex-shrink: 0;
+                          "
+                        >
+                          LP
+                        </div>
+                        <span
+                          style="
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 20px;
+                            line-height: 1.2;
+                            color: var(--foreground);
+                          "
+                          >ASL Les Pins</span
+                        >
+                      </div>
+                    </header>
+                    <main
+                      style="
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 16px;
+                        padding: 24px 16px 48px;
+                      "
+                    >
+                      <div style="width: 100%; max-width: 100%">
+                        <section
+                          style="
+                            border: 1px solid var(--border);
+                            border-radius: 8px;
+                            background: var(--card);
+                            padding: 16px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 24px;
+                          "
+                        >
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <span style="color: var(--primary); display: flex"
+                              ><svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.75"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                                style="flex-shrink: 0"
+                              >
+                                <rect
+                                  width="20"
+                                  height="16"
+                                  x="2"
+                                  y="4"
+                                  rx="2"
+                                ></rect>
+                                <path
+                                  d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+                                ></path></svg
+                            ></span>
+                            <h1
+                              style="
+                                font-family: var(--font-serif);
+                                font-size: 28px;
+                                font-weight: 600;
+                                line-height: 1.15;
+                                text-wrap: pretty;
+                              "
+                            >
+                              Consultez votre boîte mail
+                            </h1>
+                          </div>
+                          <p style="font-size: 17px; color: var(--foreground)">
+                            <strong
+                              >Si l’adresse m.durand@exemple.test est
+                              enregistrée</strong
+                            >, un lien de connexion vient de lui être envoyé. Il
+                            est valable <strong>20 minutes</strong> et ne sert
+                            qu’une fois.
+                          </p>
+
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <h2 style="font-size: 20px; font-weight: 600">
+                              Rien n’arrive ?
+                            </h2>
+                            <ol
+                              style="
+                                list-style: none;
+                                margin: 0;
+                                padding: 0;
+                                display: flex;
+                                flex-direction: column;
+                                gap: 12px;
+                              "
+                            >
+                              <li style="display: flex; gap: 12px">
+                                <span
+                                  style="
+                                    flex-shrink: 0;
+                                    width: 28px;
+                                    height: 28px;
+                                    border-radius: 50%;
+                                    background: var(--secondary);
+                                    color: var(--secondary-foreground);
+                                    font-weight: 600;
+                                    font-size: 15px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                  "
+                                  >1</span
+                                ><span style="font-size: 17px"
+                                  >Patientez quelques minutes.</span
+                                >
+                              </li>
+                              <li style="display: flex; gap: 12px">
+                                <span
+                                  style="
+                                    flex-shrink: 0;
+                                    width: 28px;
+                                    height: 28px;
+                                    border-radius: 50%;
+                                    background: var(--secondary);
+                                    color: var(--secondary-foreground);
+                                    font-weight: 600;
+                                    font-size: 15px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                  "
+                                  >2</span
+                                ><span style="font-size: 17px"
+                                  >Regardez dans le dossier des courriers
+                                  indésirables.</span
+                                >
+                              </li>
+                              <li style="display: flex; gap: 12px">
+                                <span
+                                  style="
+                                    flex-shrink: 0;
+                                    width: 28px;
+                                    height: 28px;
+                                    border-radius: 50%;
+                                    background: var(--secondary);
+                                    color: var(--secondary-foreground);
+                                    font-weight: 600;
+                                    font-size: 15px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                  "
+                                  >3</span
+                                ><span style="font-size: 17px"
+                                  >Vérifiez l’adresse saisie :
+                                  m.durand@exemple.test —
+                                  <a href="#">Corriger l’adresse</a></span
+                                >
+                              </li>
+                            </ol>
+                          </div>
+                          <p
+                            style="
+                              font-size: 16px;
+                              color: var(--muted-foreground);
+                            "
+                          >
+                            Le bureau a peut-être enregistré une autre adresse
+                            pour vous. Ou aucune adresse n’est enregistrée pour
+                            votre parcelle : vous recevez alors vos documents
+                            par courrier, et c’est normal.
+                          </p>
+                          <div
+                            role="button"
+                            style="
+                              width: 100%;
+                              height: 56px;
+                              min-width: 212px;
+                              box-sizing: border-box;
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              gap: 8px;
+                              padding: 0 16px;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              font-size: 17px;
+                              background: var(--background);
+                              color: var(--foreground);
+                              border: 1px solid var(--input);
+                              opacity: 0.5;
+                            "
+                          >
+                            Renvoyer un lien (disponible dans 45 s)
+                          </div>
+                          <p
+                            style="
+                              font-size: 16px;
+                              color: var(--muted-foreground);
+                            "
+                          >
+                            Besoin d’aide ? Appelez le bureau au [téléphone du
+                            bureau — réglage à créer].
+                          </p>
+                        </section>
+                      </div>
+                    </main>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>C · Mobile — lien qui ne fonctionne plus</figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div
+                    style="
+                      width: 390px;
+                      min-height: 100vh;
+                      box-sizing: border-box;
+                      background: var(--muted);
+                      display: flex;
+                      flex-direction: column;
+                    "
+                  >
+                    <header
+                      style="
+                        padding: 16px;
+                        background: var(--background);
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      <div
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 12px;
+                          min-width: 0;
+                        "
+                      >
+                        <div
+                          role="img"
+                          aria-label="Monogramme de l’association ASL Les Pins"
+                          style="
+                            width: 44px;
+                            height: 44px;
+                            border-radius: 8px;
+                            background: var(--accent-solid);
+                            color: var(--primary-foreground);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 18px;
+                            line-height: 1;
+                            letter-spacing: 0.02em;
+                            flex-shrink: 0;
+                          "
+                        >
+                          LP
+                        </div>
+                        <span
+                          style="
+                            font-family: var(--font-serif);
+                            font-weight: 600;
+                            font-size: 20px;
+                            line-height: 1.2;
+                            color: var(--foreground);
+                          "
+                          >ASL Les Pins</span
+                        >
+                      </div>
+                    </header>
+                    <main
+                      style="
+                        flex: 1;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 16px;
+                        padding: 24px 16px 48px;
+                      "
+                    >
+                      <div style="width: 100%; max-width: 100%">
+                        <section
+                          style="
+                            border: 1px solid var(--border);
+                            border-radius: 8px;
+                            background: var(--card);
+                            padding: 16px;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 24px;
+                          "
+                        >
+                          <div
+                            style="
+                              display: flex;
+                              flex-direction: column;
+                              gap: 12px;
+                            "
+                          >
+                            <span style="color: var(--primary); display: flex"
+                              ><svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.75"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                aria-hidden="true"
+                                style="flex-shrink: 0"
+                              >
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline
+                                  points="12 6 12 12 16 14"
+                                ></polyline></svg
+                            ></span>
+                            <h1
+                              style="
+                                font-family: var(--font-serif);
+                                font-size: 28px;
+                                font-weight: 600;
+                                line-height: 1.15;
+                                text-wrap: pretty;
+                              "
+                            >
+                              Ce lien ne fonctionne plus
+                            </h1>
+                          </div>
+                          <p style="font-size: 17px; color: var(--foreground)">
+                            <strong>Vous n’avez rien fait de mal</strong> : il
+                            suffit d’en demander un nouveau.
+                          </p>
+                          <p
+                            style="
+                              font-size: 16px;
+                              color: var(--muted-foreground);
+                            "
+                          >
+                            Un lien de connexion ne sert qu’une fois et reste
+                            valable 20 minutes. C’est ce qui protège votre
+                            espace, même si quelqu’un d’autre ouvre votre boîte
+                            mail.
+                          </p>
+                          <div
+                            role="button"
+                            style="
+                              width: 100%;
+                              height: 56px;
+                              min-width: 212px;
+                              box-sizing: border-box;
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              gap: 8px;
+                              padding: 0 16px;
+                              border-radius: 8px;
+                              font-weight: 600;
+                              font-size: 17px;
+                              background: var(--primary);
+                              color: var(--primary-foreground);
+                              border: 1px solid var(--primary);
+                            "
+                          >
+                            Recevoir un nouveau lien
+                          </div>
+                          <p
+                            style="
+                              font-size: 16px;
+                              color: var(--muted-foreground);
+                            "
+                          >
+                            Besoin d’aide ? Appelez le bureau au [téléphone du
+                            bureau — réglage à créer].
+                          </p>
+                        </section>
+                      </div>
+                    </main>
+                  </div>
+                </div>
+              </div>
+            </figure>
+            <figure class="board">
+              <figcaption>D · Mobile — l’email sur un téléphone</figcaption>
+              <div class="frame">
+                <div class="hue" style="--accent-hue: 195">
+                  <div style="width: 390px; background: var(--background)">
+                    <div
+                      style="
+                        width: 390px;
+                        background: #ffffff;
+                        font-family: Helvetica, Arial, sans-serif;
+                        color: #1b1e26;
+                        font-size: 17px;
+                        line-height: 1.6;
+                      "
+                    >
+                      <div
+                        style="
+                          padding: 12px 24px;
+                          border-bottom: 1px solid #dfe1e5;
+                          font-size: 14px;
+                          color: #52565e;
+                        "
+                      >
+                        <div>
+                          <strong style="color: #1b1e26">Objet :</strong> ASL
+                          Les Pins — votre lien de connexion
+                        </div>
+                        <div>
+                          Valable 20 minutes, pour une seule connexion. Aucun
+                          mot de passe à retenir.
+                        </div>
+                      </div>
+                      <table
+                        role="presentation"
+                        width="100%"
+                        cellpadding="0"
+                        cellspacing="0"
+                        style="
+                          background: #e8f5f8;
+                          border-bottom: 3px solid #17849b;
+                        "
+                      >
+                        <tr>
+                          <td style="padding: 16px 24px">
+                            <table
+                              role="presentation"
+                              cellpadding="0"
+                              cellspacing="0"
+                            >
+                              <tr>
+                                <td style="padding-right: 12px">
+                                  <svg
+                                    width="36"
+                                    height="36"
+                                    viewBox="0 0 36 36"
+                                    aria-hidden="true"
+                                  >
+                                    <rect
+                                      width="36"
+                                      height="36"
+                                      rx="6"
+                                      fill="#FFFFFF"
+                                    />
+                                    <path
+                                      d="M18 5 L28 21 H22 L27 29 H9 L14 21 H8 Z"
+                                      fill="#2E7D52"
+                                    />
+                                    <rect
+                                      x="16.5"
+                                      y="29"
+                                      width="3"
+                                      height="4"
+                                      fill="#5E3421"
+                                    />
+                                  </svg>
+                                </td>
+                                <td
+                                  style="
+                                    font-family: Georgia, serif;
+                                    font-size: 20px;
+                                    font-weight: 600;
+                                    color: #185a66;
+                                  "
+                                >
+                                  ASL Les Pins
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                      <div
+                        style="
+                          padding: 32px 24px;
+                          display: flex;
+                          flex-direction: column;
+                          gap: 20px;
+                        "
+                      >
+                        <h1
+                          style="
+                            margin: 0;
+                            font-family: Georgia, serif;
+                            font-size: 24px;
+                            font-weight: 600;
+                            color: #1b1e26;
+                          "
+                        >
+                          Votre lien de connexion
+                        </h1>
+                        <p style="margin: 0">
+                          Bonjour, voici le lien pour ouvrir votre espace sur le
+                          site de l’ASL Les Pins. Il est valable
+                          <strong>20 minutes</strong> et ne sert qu’une fois.
+                        </p>
+                        <table
+                          role="presentation"
+                          cellpadding="0"
+                          cellspacing="0"
+                          style="margin: 8px auto 0"
+                        >
+                          <tr>
+                            <td style="background: #2c3f63; border-radius: 8px">
+                              <a
+                                href="#"
+                                style="
+                                  display: inline-block;
+                                  padding: 16px 32px;
+                                  font-size: 19px;
+                                  font-weight: 700;
+                                  color: #ffffff;
+                                  text-decoration: none;
+                                "
+                                >Ouvrir mon espace</a
+                              >
+                            </td>
+                          </tr>
+                        </table>
+                        <p
+                          style="
+                            margin: 0;
+                            text-align: center;
+                            font-size: 15px;
+                            word-break: break-all;
+                          "
+                        >
+                          <a href="#" style="color: #2b57a8"
+                            >https://asl-les-pins.test/api/auth/magic-link/verify?token=…</a
+                          >
+                        </p>
+                        <p style="margin: 0; font-size: 16px; color: #52565e">
+                          Vous n’avez pas demandé ce lien ? Ignorez cet email :
+                          personne ne peut se connecter sans lui.
+                        </p>
+                      </div>
+                      <div
+                        style="
+                          background: #f6f7f8;
+                          padding: 16px 24px;
+                          font-size: 14px;
+                          color: #52565e;
+                        "
+                      >
+                        Cet email vous est envoyé parce qu’une connexion a été
+                        demandée avec votre adresse sur le site de l’ASL Les
+                        Pins.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </figure>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

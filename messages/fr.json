@@ -774,16 +774,6 @@
       "submit": "Se connecter",
       "submitting": "Connexion en cours..."
     },
-    "MagicLinkForm": {
-      "email": {
-        "label": "Email",
-        "placeholder": "Entrez votre email"
-      },
-      "submit": "Envoyer le lien magique",
-      "submitting": "Envoi en cours...",
-      "checkEmail": "Vérifiez votre email",
-      "linkSent": "Un lien de connexion a été envoyé à votre adresse email."
-    },
     "messages": {
       "success": "Succès",
       "error": "Erreur",
@@ -987,6 +977,49 @@
         "success": "Succès",
         "error": "Erreur"
       }
+    },
+    "MagicLinkLogin": {
+      "title": "Se connecter à votre espace",
+      "intro": "Saisissez votre adresse email : vous recevrez un lien pour ouvrir votre espace. Il n'y a <strong>aucun mot de passe</strong> à retenir.",
+      "email": {
+        "label": "Adresse email",
+        "invalid": "Cette adresse n'est pas valide. Exemple : nom@domaine.fr"
+      },
+      "submit": "Recevoir mon lien de connexion",
+      "submitting": "Envoi en cours…",
+      "postal": "Vous n'avez pas d'adresse email ? Les documents vous sont envoyés par <strong>courrier</strong> — appelez le bureau de votre association.",
+      "unavailable": "Le lien n'a pas pu être envoyé. <strong>Votre adresse n'est pas en cause.</strong> Réessayez dans quelques minutes, ou appelez le bureau de votre association.",
+      "providerAccess": "Accès prestataire",
+      "sent": {
+        "title": "Consultez votre boîte mail",
+        "intro": "<strong>Si l'adresse {email} est enregistrée</strong>, un lien de connexion vient de lui être envoyé. Il est valable <strong>{minutes} minutes</strong> et ne sert qu'une fois.",
+        "nothingTitle": "Rien n'arrive ?",
+        "stepWait": "Patientez quelques minutes.",
+        "stepSpam": "Regardez dans le dossier des courriers indésirables.",
+        "stepCheck": "Vérifiez l'adresse saisie : {email} —",
+        "correct": "Corriger l'adresse",
+        "causes": "Le bureau a peut-être enregistré une autre adresse pour vous. Ou aucune adresse n'est enregistrée pour votre parcelle : vous recevez alors vos documents par courrier, et c'est normal.",
+        "resend": "Renvoyer un lien",
+        "resendIn": "Renvoyer un lien (disponible dans {seconds} s)",
+        "resent": "Un nouveau lien a été envoyé, si l'adresse est enregistrée. Le précédent ne fonctionne plus.",
+        "help": "Besoin d'aide ? Appelez le bureau de votre association."
+      }
+    },
+    "InvalidMagicLink": {
+      "metadata": {
+        "title": "Ce lien ne fonctionne plus"
+      },
+      "title": "Ce lien ne fonctionne plus",
+      "reassurance": "<strong>Vous n'avez rien fait de mal</strong> : il suffit d'en demander un nouveau.",
+      "explanation": "Un lien de connexion ne sert qu'une fois et reste valable {minutes} minutes. C'est ce qui protège votre espace, même si quelqu'un d'autre ouvre votre boîte mail.",
+      "action": "Recevoir un nouveau lien",
+      "help": "Besoin d'aide ? Appelez le bureau de votre association."
+    },
+    "ProviderLoginPage": {
+      "metadata": {
+        "title": "Accès prestataire",
+        "description": "Connexion par mot de passe"
+      }
     }
   },
   "AuthActions": {
@@ -1001,12 +1034,6 @@
         "expires": "Suspension levée le {date} à {time}",
         "permanent": "Cette suspension est permanente."
       }
-    },
-    "magicLink": {
-      "validationError": "Erreur de validation",
-      "userNotFound": "Aucun compte trouvé avec cet email",
-      "sendError": "Erreur lors de l'envoi du magic link",
-      "unexpectedError": "Une erreur est survenue lors de l'envoi du magic link"
     },
     "register": {
       "validationError": "Erreur de validation",
@@ -1051,12 +1078,14 @@
         "footer": "SaaS Mike Codeur Stripe Boilerplate"
       },
       "magicLink": {
-        "subject": "Votre lien de connexion magique",
-        "preview": "Vous avez demandé un lien magique pour vous connecter à votre compte.",
-        "title": "Connexion magique",
-        "clickToConnect": "Cliquez ici pour vous connecter",
-        "ignoreMessage": "Si vous n'avez pas demandé ce lien, veuillez ignorer cet email.",
-        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+        "subject": "{name} — votre lien de connexion",
+        "preview": "Valable {minutes} minutes, pour une seule connexion. Aucun mot de passe à retenir.",
+        "title": "Votre lien de connexion",
+        "intro": "Bonjour, voici le lien pour ouvrir votre espace sur le site de {name}. Il est valable <strong>{minutes} minutes</strong> et ne sert qu'une fois.",
+        "action": "Ouvrir mon espace",
+        "urlIntro": "Ouvrez ce lien pour vous connecter :",
+        "ignore": "Vous n'avez pas demandé ce lien ? Ignorez cet email : personne ne peut se connecter sans lui.",
+        "footer": "Cet email vous est envoyé parce qu'une connexion a été demandée avec votre adresse sur le site de {name}."
       },
       "resetPassword": {
         "subject": "Réinitialisation de votre mot de passe",

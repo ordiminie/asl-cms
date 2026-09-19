@@ -11,7 +11,6 @@ import {authLoginFormSchema} from '@/components/features/auth/auth-form-validati
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
-import {env} from '@/env'
 
 type LoginValidationError = {
   field: keyof z.infer<typeof authLoginFormSchema>
@@ -26,11 +25,6 @@ type LoginFormState = {
 
 export function CredentialForm() {
   const t = useTranslations('Auth.CredentialForm')
-  const tLogin = useTranslations('Auth.LoginForm')
-
-  const authMethods = env.NEXT_PUBLIC_AUTH_METHODS
-  const hasOtherMethods = authMethods.length > 1
-
   const [state, formAction] = useActionState<LoginFormState, FormData>(
     loginCredentialAction,
     {
@@ -46,13 +40,6 @@ export function CredentialForm() {
     <form action={formAction}>
       {error && <div className="mb-4 text-sm text-red-500">{error}</div>}
       <div className="grid gap-6">
-        {hasOtherMethods && (
-          <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
-            <span className="bg-background text-muted-foreground relative z-10 px-2">
-              {t('orContinueWith')}
-            </span>
-          </div>
-        )}
         <div className="grid gap-6">
           <div className="grid gap-3">
             <Label htmlFor="email">{t('email.label')}</Label>
@@ -86,12 +73,6 @@ export function CredentialForm() {
             />
           </div>
           <SubmitButton />
-        </div>
-        <div className="text-center text-sm">
-          {tLogin('noAccount')}{' '}
-          <Link href="/register" className="underline underline-offset-4">
-            {tLogin('signUpLink')}
-          </Link>
         </div>
       </div>
     </form>

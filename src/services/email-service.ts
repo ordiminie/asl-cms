@@ -1,18 +1,18 @@
 import {Subscription} from '@better-auth/stripe'
 import {getLocale, getTranslations} from 'next-intl/server'
-import {
-  type CreateEmailOptions,
-  type CreateEmailRequestOptions,
-  Resend,
-} from 'resend'
+import type {ReactNode} from 'react'
+import {render} from 'react-email'
 
 import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
 import {env} from '@/env'
+import {MAGIC_LINK_EXPIRES_IN_MINUTES} from '@/lib/better-auth/magic-link-constants'
 import AdminNotificationEmail from '@/lib/emails/admin-notification-email'
 import EmailChangeEmailVerification from '@/lib/emails/email-change-email-verification'
 import InternalEmail from '@/lib/emails/internal-email'
 import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization-link-email'
-import MagicLinkMail from '@/lib/emails/magic-link-email'
+import MagicLinkMail, {
+  type MagicLinkEmailAssociation,
+} from '@/lib/emails/magic-link-email'
 import NotificationEmail from '@/lib/emails/notification-email'
 import OtpEmail from '@/lib/emails/otp-email'
 import ResetPasswordEmail from '@/lib/emails/reset-password-email'
@@ -20,6 +20,7 @@ import SubscriptionCanceledMail from '@/lib/emails/subscription-canceled-email'
 import SubscriptionCompletedMail from '@/lib/emails/subscription-completed-email'
 import SubscriptionDeletedMail from '@/lib/emails/subscription-deleted-email'
 import SubscriptionUpdatedMail from '@/lib/emails/subscription-updated-email'
+import {getEmailTransport} from '@/lib/emails/transport'
 import VerificationEmail from '@/lib/emails/verification-email'
 import WelcomeFollowUpEmail from '@/lib/emails/welcome-follow-up-email'
 import {
@@ -33,8 +34,6 @@ import {
 } from './app-settings-service'
 import {getPlanByPriceIdService} from './subscription-service'
 import {AppSettingKeys} from './types/domain/app-settings-types'
-
-const resend = new Resend(env.RESEND_API_KEY)
 
 const DEFAULT_EMAIL_FROM = 'onboarding@resend.dev'
 
@@ -102,12 +101,29 @@ export const sendSimpleEmailService = async ({
   })
 }
 
-export interface SendEmailOptions extends CreateEmailRequestOptions {
+/**
+ * Un email a envoyer : la version texte est toujours fournie (design system
+ * §5), le gabarit `react` est rendu en HTML avant de partir.
+ */
+export type SendEmailPayload = {
+  to: string
+  subject: string
+  text: string
+  from?: string
+  react?: ReactNode | Promise<ReactNode>
+}
+
+export interface SendEmailOptions {
   recipientType?: EmailRecipientType
 }
 
+/**
+ * Point d'envoi unique du produit : tout email part par le contrat
+ * `EmailTransport` (ADR 005, ADR 017), jamais par un fournisseur directement.
+ * Un echec du transport remonte tel quel (`EmailTransportError`).
+ */
 export const sendEmailService = async (
-  payload: CreateEmailOptions,
+  payload: SendEmailPayload,
   options?: SendEmailOptions
 ) => {
   const recipientType = options?.recipientType ?? 'client'
@@ -117,24 +133,22 @@ export const sendEmailService = async (
     return
   }
 
-  if (env.NEXT_PUBLIC_NODE_ENV === 'development') {
-    payload.subject = `[DEV] ${payload.subject}`
-  }
+  const subject =
+    env.NEXT_PUBLIC_NODE_ENV === 'development'
+      ? `[DEV] ${payload.subject}`
+      : payload.subject
 
   const fromEmail = await getEmailFrom()
+  const template = payload.react ? await payload.react : undefined
+  const html = template ? await render(template) : undefined
 
-  const {error} = await resend.emails.send(
-    {
-      ...payload,
-      from: fromEmail,
-    },
-    options
-  )
-
-  if (error) {
-    console.error(error)
-    throw error
-  }
+  await getEmailTransport().send({
+    from: fromEmail,
+    to: payload.to,
+    subject,
+    text: payload.text,
+    ...(html ? {html} : {}),
+  })
 }
 
 interface SendOrganizationInvitationParams {
@@ -173,23 +187,39 @@ export const sendOrganizationInvitation = async ({
   })
 }
 
+/**
+ * Email de connexion (s03) : gabarit de l'association du domaine appele,
+ * version texte complete (URL en clair). Ni l'URL ni le jeton ne sont
+ * journalises ; l'intercepteur de la facade n'en logge pas les arguments.
+ */
 export const sendMagicLinkEmailService = async ({
   email,
   url,
+  association,
 }: {
   email: string
   url: string
+  association: MagicLinkEmailAssociation
 }) => {
   const t = await getTranslations('email.user.magicLink')
-  const fromEmail = await getEmailFrom()
+  const values = {
+    name: association.name,
+    minutes: MAGIC_LINK_EXPIRES_IN_MINUTES,
+  }
+  const text = [
+    t('title'),
+    t.markup('intro', {...values, strong: (chunks) => chunks}),
+    `${t('urlIntro')}\n${url}`,
+    t('ignore'),
+    t('footer', values),
+  ].join('\n\n')
 
   await sendEmailService(
     {
       to: email,
-      subject: t('subject'),
-      from: fromEmail,
-      text: t('preview'),
-      react: MagicLinkMail({url}),
+      subject: t('subject', values),
+      text,
+      react: MagicLinkMail({url, association}),
     },
     {recipientType: 'system'}
   )

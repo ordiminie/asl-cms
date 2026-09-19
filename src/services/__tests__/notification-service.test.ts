@@ -403,12 +403,9 @@ describe('[createTypedNotificationService] confidentialité magic-link', () => {
     await createTypedNotificationService(notification)
 
     expect(notificationRepository.createNotificationDao).toHaveBeenCalledOnce()
-    expect(sendMagicLinkEmailService).toHaveBeenCalledOnce()
-
-    vi.mocked(sendMagicLinkEmailService).mockRejectedValueOnce(
-      new Error(`provider refused ${magicUrl}`)
-    )
-    await createTypedNotificationService(notification)
+    // s03 : le lien de connexion part directement par le service d'email,
+    // avec l'association du domaine appele ; une notification n'en envoie plus.
+    expect(sendMagicLinkEmailService).not.toHaveBeenCalled()
 
     const emittedLogs = [
       ...vi.mocked(logger.debug).mock.calls,

@@ -21,7 +21,7 @@
 | Autorisation           | **CASL** (`@casl/ability`)                                                                                      | Rôles globaux + rôles d'organisation                  |
 | Validation             | **Zod 4**                                                                                                       | Client (RHF) _et_ serveur, schémas partagés           |
 | i18n                   | **next-intl**, locale unique `fr` sans préfixe                                                                  | ADR 008                                               |
-| Email                  | **Brevo**, derrière un contrat maison ; gabarits `react-email`                                                  | ADR 005 — remplace Resend                             |
+| Email                  | **Brevo**, derrière le contrat `EmailTransport` ; gabarits `react-email`                                        | ADR 005, ADR 017 — Resend en secours                  |
 | Fichiers               | Disque du **VPS**, via le factory de stockage existant                                                          | ADR 004 — remplace Supabase                           |
 | Tâches planifiées      | Table `scheduled_job` + cron système                                                                            | ADR 006 — remplace Inngest                            |
 | Facturation plateforme | **Stripe** (Zourite Studio ↔ association)                                                                       | Conservé du boilerplate                               |
@@ -266,6 +266,23 @@ n'appartiennent à aucun tenant et ne sont écrites que par le rôle propriétai
 | **Stripe**         | Abonnement plateforme Zourite ↔ association     | Natif boilerplate                         | Ne jamais confondre avec Pennylane                |
 | **Sentry**         | Erreurs serveur et client                       | Natif boilerplate                         | —                                                 |
 | **Search Console** | SEO (s11)                                       | Par tenant                                | —                                                 |
+
+**Le contrat d'envoi `EmailTransport`** (s03, ADR 005, ADR 017) — `src/lib/emails/transport/`. Tout email
+part par `sendEmailService` (`src/services/email-service.ts`), qui rend le gabarit `react-email` en HTML,
+fournit toujours la version texte et confie le message au transport actif. **Aucun code métier n'importe
+un SDK de fournisseur** : `resend` n'est importé que par son adaptateur (un test le vérifie). Un échec
+d'envoi est une `EmailTransportError`, quel que soit le fournisseur.
+
+| `EMAIL_TRANSPORT` | Implémentation                                               | Usage                                    | Variable exigée   |
+| ----------------- | ------------------------------------------------------------ | ---------------------------------------- | ----------------- |
+| `brevo`           | `POST https://api.brevo.com/v3/smtp/email` par `fetch`       | **production** (doit y être déclaré)     | `BREVO_API_KEY`   |
+| `resend`          | SDK `resend`, isolé dans son adaptateur                      | secours, activable sans code (ADR 017)   | `RESEND_API_KEY`  |
+| `file`            | un JSON par message dans `EMAIL_OUTBOX_DIR` (temporaire sinon) | **défaut hors production**, CI, e2e      | —                 |
+| `memory`          | messages gardés en mémoire                                   | tests unitaires                          | —                 |
+
+La clé d'un fournisseur n'est exigée que pour son propre transport (`get-email-transport.ts`) ; en
+production, l'absence de `EMAIL_TRANSPORT` est une erreur plutôt qu'un défaut silencieux. Les couleurs
+des emails vivent dans `src/lib/emails/theme.ts` (jumelles hexadécimales, design system §5.3).
 
 **Contraintes structurantes**
 

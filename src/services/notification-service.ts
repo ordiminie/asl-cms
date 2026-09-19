@@ -38,7 +38,6 @@ import {
 } from './errors/validation-error'
 import {
   sendEmailChangeEmailVerificationService,
-  sendMagicLinkEmailService,
   sendOrganizationInvitationService,
   sendOTPEmailService,
   sendResetPasswordLinkEmailService,
@@ -225,14 +224,6 @@ export const createNotificationService = async (
       ) {
         await sendEmailChangeEmailVerificationService({
           email: targetUser.email, // Send to current email for security
-          url: parsed.data.metadata.url,
-        })
-      } else if (
-        parsed.data.type === 'magic_link' &&
-        parsed.data.metadata?.url
-      ) {
-        await sendMagicLinkEmailService({
-          email: targetUser.email,
           url: parsed.data.metadata.url,
         })
       } else if (parsed.data.type === 'otp_code' && parsed.data.metadata?.otp) {
