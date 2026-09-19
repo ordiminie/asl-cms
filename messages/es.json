@@ -2919,13 +2919,9 @@
         "label": "Tono",
         "help": "El color de su asociación. Colorea el monograma, los filetes y los recuadros de su sitio. Los botones conservan su color."
       },
-      "linkRequestsPerAddress": {
+      "linkRequestsPerDay": {
         "label": "Enlaces de acceso por dirección de email",
-        "help": "Número máximo de enlaces de acceso enviados a una misma dirección en una hora. Más allá, la persona ve la misma pantalla pero no se envía ningún email: así se protegen los buzones de sus miembros y la cuota de envío de su asociación."
-      },
-      "linkRequestsPerNetwork": {
-        "label": "Enlaces de acceso por conexión a internet",
-        "help": "Número de solicitudes de enlace aceptadas en una hora desde una misma conexión a internet (un mismo router, por ejemplo), todas las direcciones incluidas. Auméntelo antes de una reunión en la que muchos miembros se conecten desde la misma sala."
+        "help": "Número máximo de enlaces de acceso enviados a una misma dirección en un día. Más allá, la persona ve la misma pantalla pero no se envía ningún email hasta el día siguiente: así se protegen los buzones de sus miembros y la cuota de envío de su asociación."
       }
     },
     "hues": {
@@ -2937,7 +2933,7 @@
       "broom": "Retama"
     },
     "units": {
-      "requestsPerHour": "solicitudes por hora"
+      "requestsPerDay": "solicitudes por día"
     }
   },
   "BureauSettingsPage": {

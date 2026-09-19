@@ -120,10 +120,8 @@ export type AssociationSettingsChangesValidation =
 export const CONTACT_EMAIL_SETTING_KEY = 'contact.email'
 export const FORAGE_EMAIL_SETTING_KEY = 'forage.responsable.email'
 export const ACCENT_HUE_SETTING_KEY = 'identity.accent_hue'
-export const MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY =
-  'login.link_requests_per_address_per_hour'
-export const MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY =
-  'login.link_requests_per_network_per_hour'
+export const MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY =
+  'login.link_requests_per_address_per_day'
 
 /**
  * Les six teintes d'accent validees (design system §1.2). Le bureau choisit
@@ -184,29 +182,16 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     page: 'identity',
   },
   {
-    key: MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY,
+    key: MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
     type: 'number',
     required: false,
-    default: {value: '5'},
+    default: {value: '3'},
     min: 1,
-    max: 100,
+    max: 20,
     integer: true,
-    unitKey: 'units.requestsPerHour',
-    labelKey: 'fields.linkRequestsPerAddress.label',
-    helpKey: 'fields.linkRequestsPerAddress.help',
-    page: 'settings',
-  },
-  {
-    key: MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY,
-    type: 'number',
-    required: false,
-    default: {value: '30'},
-    min: 1,
-    max: 1000,
-    integer: true,
-    unitKey: 'units.requestsPerHour',
-    labelKey: 'fields.linkRequestsPerNetwork.label',
-    helpKey: 'fields.linkRequestsPerNetwork.help',
+    unitKey: 'units.requestsPerDay',
+    labelKey: 'fields.linkRequestsPerDay.label',
+    helpKey: 'fields.linkRequestsPerDay.help',
     page: 'settings',
   },
 ]
@@ -425,14 +410,6 @@ export const getAccentHue = (
   return isAccentHue(value) ? value : DEFAULT_ACCENT_HUE
 }
 
-/** Seuils horaires de demande de lien de connexion (s03). */
-export type MagicLinkRequestLimits = {
-  /** Demandes acceptees par adresse email, par heure glissante. */
-  perAddress: number
-  /** Demandes acceptees par acces internet (IP), par heure glissante. */
-  perNetwork: number
-}
-
 const numberSettingOf = (
   settings: ResolvedAssociationSettings,
   key: string
@@ -450,16 +427,10 @@ const numberSettingOf = (
   return fallback
 }
 
-/** Seuils en vigueur : valeur du bureau, sinon defaut du registre. */
-export const getMagicLinkRequestLimits = (
+/**
+ * Demandes de lien de connexion acceptees par adresse et par jour (s03) :
+ * valeur du bureau, sinon defaut du registre.
+ */
+export const getMagicLinkDailyRequestLimit = (
   settings: ResolvedAssociationSettings
-): MagicLinkRequestLimits => ({
-  perAddress: numberSettingOf(
-    settings,
-    MAGIC_LINK_REQUESTS_PER_ADDRESS_SETTING_KEY
-  ),
-  perNetwork: numberSettingOf(
-    settings,
-    MAGIC_LINK_REQUESTS_PER_NETWORK_SETTING_KEY
-  ),
-})
+): number => numberSettingOf(settings, MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY)

@@ -1,60 +1,52 @@
-import {and, count, eq, gte, lt} from 'drizzle-orm'
+import {and, eq, lt, sql} from 'drizzle-orm'
 
-import {
-  AddRateLimitEventModel,
-  rateLimitEvent,
-} from '@/db/models/rate-limit-model'
+import {rateLimitEvent} from '@/db/models/rate-limit-model'
 import {getDb} from '@/db/tenant-scope'
 
-export type CountRateLimitEvents = {
+export type RateLimitCounterKey = {
   organizationId: string
-  bucket: string
   fingerprint: string
-  since: Date
+  /** Jour du compteur, `YYYY-MM-DD`. */
+  day: string
 }
 
 /**
- * Demandes comptees depuis `since` pour une empreinte. Sous RLS forcee : a
- * appeler dans `withTenant(organizationId, ...)`.
+ * Compte une demande et rend le total du jour, **en une seule requete** :
+ * insertion du compteur a 1, ou incrément s'il existe deja. Deux demandes
+ * simultanees ne peuvent pas lire le meme total. Sous RLS forcee : a appeler
+ * dans `withTenant(organizationId, ...)`.
  */
-export const countRateLimitEventsDao = async ({
+export const incrementRateLimitCounterDao = async ({
   organizationId,
-  bucket,
   fingerprint,
-  since,
-}: CountRateLimitEvents): Promise<number> => {
+  day,
+}: RateLimitCounterKey): Promise<number> => {
   const [row] = await getDb()
-    .select({total: count()})
-    .from(rateLimitEvent)
-    .where(
-      and(
-        eq(rateLimitEvent.organizationId, organizationId),
-        eq(rateLimitEvent.bucket, bucket),
-        eq(rateLimitEvent.fingerprint, fingerprint),
-        gte(rateLimitEvent.createdAt, since)
-      )
-    )
-  return row?.total ?? 0
+    .insert(rateLimitEvent)
+    .values({organizationId, fingerprint, day, count: 1})
+    .onConflictDoUpdate({
+      target: [
+        rateLimitEvent.organizationId,
+        rateLimitEvent.fingerprint,
+        rateLimitEvent.day,
+      ],
+      set: {count: sql`${rateLimitEvent.count} + 1`},
+    })
+    .returning({count: rateLimitEvent.count})
+  return row.count
 }
 
-export const addRateLimitEventsDao = async (
-  rows: AddRateLimitEventModel[]
-): Promise<void> => {
-  if (rows.length === 0) return
-  await getDb().insert(rateLimitEvent).values(rows)
-}
-
-/** Supprime les demandes anterieures a `before` (retention de 24 h). */
-export const purgeRateLimitEventsDao = async (
+/** Supprime les compteurs des jours anterieurs a `today` (`YYYY-MM-DD`). */
+export const purgeRateLimitCountersDao = async (
   organizationId: string,
-  before: Date
+  today: string
 ): Promise<void> => {
   await getDb()
     .delete(rateLimitEvent)
     .where(
       and(
         eq(rateLimitEvent.organizationId, organizationId),
-        lt(rateLimitEvent.createdAt, before)
+        lt(rateLimitEvent.day, today)
       )
     )
 }

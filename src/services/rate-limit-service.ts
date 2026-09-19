@@ -3,50 +3,54 @@ import 'server-only'
 import {createHmac} from 'node:crypto'
 
 import {
-  addRateLimitEventsDao,
-  countRateLimitEventsDao,
-  purgeRateLimitEventsDao,
+  incrementRateLimitCounterDao,
+  purgeRateLimitCountersDao,
 } from '@/db/repositories/rate-limit-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {env} from '@/env'
 
 import {getAssociationSettingsService} from './association-settings-service'
 import {ValidationParsedZodError} from './errors/validation-error'
-import {getMagicLinkRequestLimits} from './types/domain/association-settings-types'
+import {getMagicLinkDailyRequestLimit} from './types/domain/association-settings-types'
 import {magicLinkRequestQuotaServiceSchema} from './validation/rate-limit-validation'
 
-export const MAGIC_LINK_ADDRESS_BUCKET = 'magic_link.address'
-export const MAGIC_LINK_NETWORK_BUCKET = 'magic_link.network'
+/** Usage compte : separe les empreintes des futurs usages de la table. */
+const MAGIC_LINK_ADDRESS_PURPOSE = 'magic_link.address'
 
-/** Les seuils du bureau sont des nombres de demandes **par heure** glissante. */
-const QUOTA_WINDOW_MS = 60 * 60 * 1000
-/** Retention des empreintes (PRD : purge sous 24 h). */
-const RETENTION_MS = 24 * 60 * 60 * 1000
+/** Le jour du compteur est celui des associations servies (France). */
+const COUNTER_TIME_ZONE = 'Europe/Paris'
 
 export type MagicLinkRequestQuota = {
   organizationId: string
   email: string
-  /** IP de la requete ; absente, seul le seuil par adresse s'applique. */
-  ip?: string
 }
 
-type QuotaBucket = {bucket: string; fingerprint: string; limit: number}
-
 /**
- * Empreinte d'une valeur : HMAC-SHA256 par le secret du serveur, lie a
- * l'association et au seau. Ni l'adresse ni l'IP ne sont stockees en clair, et
- * deux associations ne peuvent pas rapprocher leurs empreintes.
+ * Empreinte d'une adresse : HMAC-SHA256 par le secret du serveur, lie a
+ * l'association et a l'usage. L'adresse n'est jamais stockee en clair, et deux
+ * associations ne peuvent pas rapprocher leurs empreintes.
  */
-const fingerprintOf = (organizationId: string, bucket: string, value: string) =>
+const fingerprintOf = (organizationId: string, value: string) =>
   createHmac('sha256', env.BETTER_AUTH_SECRET)
-    .update(`${organizationId}\n${bucket}\n${value}`)
+    .update(`${organizationId}\n${MAGIC_LINK_ADDRESS_PURPOSE}\n${value}`)
     .digest('hex')
 
+/** Le jour calendaire a Paris, `YYYY-MM-DD`. */
+const counterDayOf = (instant: Date) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: COUNTER_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instant)
+
 /**
- * Consomme une demande de lien de connexion (s03), par adresse **et** par
- * acces internet, aux seuils horaires reglables par le bureau
- * (`getMagicLinkRequestLimits`, ADR 010). Au-dela d'un seuil : `allowed:
- * false`, et la demande n'est pas comptee.
+ * Consomme une demande de lien de connexion (s03) : au plus N demandes par
+ * adresse et par jour (Europe/Paris), N reglable par le bureau
+ * (`getMagicLinkDailyRequestLimit`, ADR 010, 3 par defaut). Chaque demande est
+ * comptee par un incrément atomique, adresse connue ou non ; au-dela du seuil :
+ * `allowed: false`. Les compteurs des jours passes sont purges a chaque
+ * demande : le changement de jour remet a zero sans tache planifiee.
  *
  * **Sans controle d'autorisation, et c'est delibere** : la demande de lien est
  * faite par un visiteur anonyme. Appelee seulement par l'integration Better
@@ -59,58 +63,20 @@ export const consumeMagicLinkRequestQuotaService = async (
   if (!parsed.success) {
     throw new ValidationParsedZodError(parsed.error)
   }
-  const {organizationId, email, ip} = parsed.data
+  const {organizationId, email} = parsed.data
 
-  const limits = getMagicLinkRequestLimits(
+  const limit = getMagicLinkDailyRequestLimit(
     await getAssociationSettingsService(organizationId)
   )
-  const buckets: QuotaBucket[] = [
-    {
-      bucket: MAGIC_LINK_ADDRESS_BUCKET,
-      fingerprint: fingerprintOf(
-        organizationId,
-        MAGIC_LINK_ADDRESS_BUCKET,
-        email
-      ),
-      limit: limits.perAddress,
-    },
-    ...(ip
-      ? [
-          {
-            bucket: MAGIC_LINK_NETWORK_BUCKET,
-            fingerprint: fingerprintOf(
-              organizationId,
-              MAGIC_LINK_NETWORK_BUCKET,
-              ip
-            ),
-            limit: limits.perNetwork,
-          },
-        ]
-      : []),
-  ]
+  const day = counterDayOf(new Date())
 
-  const now = Date.now()
   return withTenant(organizationId, async () => {
-    await purgeRateLimitEventsDao(organizationId, new Date(now - RETENTION_MS))
-
-    const since = new Date(now - QUOTA_WINDOW_MS)
-    for (const {bucket, fingerprint, limit} of buckets) {
-      const used = await countRateLimitEventsDao({
-        organizationId,
-        bucket,
-        fingerprint,
-        since,
-      })
-      if (used >= limit) return {allowed: false}
-    }
-
-    await addRateLimitEventsDao(
-      buckets.map(({bucket, fingerprint}) => ({
-        organizationId,
-        bucket,
-        fingerprint,
-      }))
-    )
-    return {allowed: true}
+    await purgeRateLimitCountersDao(organizationId, day)
+    const count = await incrementRateLimitCounterDao({
+      organizationId,
+      fingerprint: fingerprintOf(organizationId, email),
+      day,
+    })
+    return {allowed: count <= limit}
   })
 }

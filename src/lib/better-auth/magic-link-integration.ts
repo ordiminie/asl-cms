@@ -100,15 +100,6 @@ const loadServices = async () => {
 
 type MagicLinkServices = Awaited<ReturnType<typeof loadServices>>
 
-/**
- * IP du visiteur : premiere entree de `x-forwarded-for` (derriere le reverse
- * proxy du VPS, meme convention que l'hote), sinon `x-real-ip`.
- */
-const requestIpOf = (headers: Headers | undefined) =>
-  headers?.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-  headers?.get('x-real-ip')?.trim() ||
-  undefined
-
 /** L'association servie par le domaine appele, s'il en sert une. */
 const organizationOfRequest = async (
   host: string | undefined,
@@ -163,8 +154,9 @@ const revokeEarlierMagicLinks = async (
 
 /**
  * Envoi du lien de connexion (s03). Chaque demande est d'abord comptee pour
- * l'association du domaine appele, adresse connue ou non (seuils du bureau) :
- * au-dela, rien ne part et le lien precedent reste valable. Adresse inconnue :
+ * l'association du domaine appele, adresse connue ou non (3 par adresse et par
+ * jour par defaut, reglage du bureau) : au-dela, rien ne part et le lien
+ * precedent reste valable. Aucune IP n'est lue. Adresse inconnue :
  * **rien** — ni email ni compte (`disableSignUp`). Adresse connue : les liens
  * precedents sont revoques, puis l'email de l'association part par le service
  * d'email (plus de notification : un lien secret n'a rien a faire dans la
@@ -188,14 +180,14 @@ export async function sendMagicLink(
     return
   }
 
-  const ip = requestIpOf(headers)
   const {allowed} = await services.consumeMagicLinkRequestQuotaService({
     organizationId: organization.id,
     email,
-    ...(ip ? {ip} : {}),
   })
   if (!allowed) {
-    logger.warn('[MAGIC-LINK] Seuil de demandes atteint : lien non envoye')
+    logger.warn(
+      '[MAGIC-LINK] Seuil de demandes du jour atteint : lien non envoye'
+    )
     return
   }
 

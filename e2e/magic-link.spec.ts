@@ -31,7 +31,7 @@ const KNOWN_ADDRESS = 'user-owner@gmail.com'
 const TENANT_A_SLUG = 'techcorp-solutions'
 const TENANT_A_NAME = 'TechCorp Solutions'
 
-const ADDRESS_LIMIT_KEY = 'login.link_requests_per_address_per_hour'
+const DAILY_LIMIT_KEY = 'login.link_requests_per_address_per_day'
 
 const SENT_TITLE = 'Consultez votre boîte mail'
 const INVALID_TITLE = 'Ce lien ne fonctionne plus'
@@ -129,7 +129,7 @@ const inTenantA = <T>(callback: (client: Client, id: string) => Promise<T>) =>
     }
   })
 
-/** Remet à zéro les demandes comptées de TechCorp : chaque essai part de rien. */
+/** Remet à zéro les compteurs du jour de TechCorp : chaque essai part de rien. */
 const resetRateLimits = () =>
   inTenantA((client, id) =>
     client.query(`delete from rate_limit_event where organization_id = $1`, [
@@ -137,21 +137,14 @@ const resetRateLimits = () =>
     ])
   )
 
-/** Seuil par adresse de TechCorp ; `null` le ramène au défaut du registre. */
-const setAddressLimit = (value: string | null) =>
+/** Ramène le seuil journalier de TechCorp au défaut du registre (3). */
+const resetDailyLimit = () =>
   inTenantA((client, id) =>
-    value === null
-      ? client.query(
-          `delete from organization_setting
-            where organization_id = $1 and key = $2`,
-          [id, ADDRESS_LIMIT_KEY]
-        )
-      : client.query(
-          `insert into organization_setting (organization_id, key, value)
-           values ($1, $2, $3)
-           on conflict (organization_id, key) do update set value = excluded.value`,
-          [id, ADDRESS_LIMIT_KEY, value]
-        )
+    client.query(
+      `delete from organization_setting
+        where organization_id = $1 and key = $2`,
+      [id, DAILY_LIMIT_KEY]
+    )
   )
 
 /** Ce que l'email de TechCorp doit porter : logo PNG ou non, teinte. */
@@ -417,25 +410,23 @@ test.describe('connexion par lien — s03', () => {
     expect(newMessagesTo(before, KNOWN_ADDRESS)).toHaveLength(0)
   })
 
-  test('au-delà du seuil par adresse : même écran, aucun email', async ({
+  test('4ᵉ demande du jour pour une adresse : même écran, aucun email', async ({
     browser,
   }) => {
-    await setAddressLimit('1')
-    try {
-      const page = await freshPage(browser)
-      await requestKnownLink(page)
+    await resetDailyLimit()
+    const page = await freshPage(browser)
+    await requestKnownLink(page)
+    await requestKnownLink(page)
+    await requestKnownLink(page)
 
-      const before = outboxFiles()
-      await requestLink(page, KNOWN_ADDRESS)
-      await expect(page.getByTestId('magic-link-sent')).toBeVisible()
-      expect(newMessagesTo(before, KNOWN_ADDRESS)).toHaveLength(0)
-      await page.context().close()
-    } finally {
-      await setAddressLimit(null)
-    }
+    const before = outboxFiles()
+    await requestLink(page, KNOWN_ADDRESS)
+    await expect(page.getByTestId('magic-link-sent')).toBeVisible()
+    expect(newMessagesTo(before, KNOWN_ADDRESS)).toHaveLength(0)
+    await page.context().close()
   })
 
-  test('les demandes comptées de A ne sortent ni ne s’écrivent depuis B', async () => {
+  test('les compteurs de A ne sortent ni ne s’écrivent depuis B', async () => {
     await withClient(async (client) => {
       const a = await tenantId(client, TENANT_A_SLUG)
       const b = await tenantId(client, 'marketing-pro')
@@ -446,21 +437,21 @@ test.describe('connexion par lien — s03', () => {
       try {
         await scopeTo(a)
         await client.query(
-          `insert into rate_limit_event (organization_id, bucket, fingerprint)
-           values ($1, 'e2e', 'isolation')`,
+          `insert into rate_limit_event (organization_id, fingerprint, day)
+           values ($1, 'e2e-isolation', current_date)`,
           [a]
         )
 
         await scopeTo(b)
         const seenFromB = await client.query(
-          `select id from rate_limit_event where bucket = 'e2e'`
+          `select id from rate_limit_event where fingerprint = 'e2e-isolation'`
         )
         expect(seenFromB.rowCount).toBe(0)
 
         await expect(
           client.query(
-            `insert into rate_limit_event (organization_id, bucket, fingerprint)
-             values ($1, 'e2e', 'forge')`,
+            `insert into rate_limit_event (organization_id, fingerprint, day)
+             values ($1, 'e2e-forge', current_date)`,
             [a]
           )
         ).rejects.toThrow(/row-level security/i)

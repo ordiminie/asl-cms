@@ -293,13 +293,18 @@ passe que par `requestMagicLinkAction` (plancher de 1,5 s, même écran B quoi q
 - **Seul le dernier lien fonctionne** : avant l'envoi, les jetons en attente de la même adresse sont
   supprimés de la table `verification`, par l'adaptateur de Better Auth reçu dans le contexte de l'appel
   (la table et son format appartiennent à la bibliothèque).
-- **Limitation de débit, par adresse et par accès internet** (IP), en base : table `rate_limit_event`
-  (`organization_id`, RLS forcée), une ligne par demande acceptée, **empreinte HMAC-SHA256** de l'adresse
-  ou de l'IP (jamais la valeur en clair), fenêtre d'une heure glissante, purge des lignes de plus de 24 h à
-  chaque demande. Les seuils sont des **réglages de l'association** (registre, ADR 010 et 016 :
-  `login.link_requests_per_address_per_hour`, défaut 5 ; `login.link_requests_per_network_per_hour`,
-  défaut 30), modifiables dans « Réglages ». Au-delà : aucun email, le lien précédent reste valable, et
-  l'écran reste l'écran B. Le budget quotidien Brevo reste l'affaire de s26.
+- **Limitation de débit : 3 demandes par adresse et par jour**, en base : table `rate_limit_event`
+  (`organization_id`, RLS forcée), une ligne par association, **empreinte HMAC-SHA256** de l'adresse en
+  minuscules (jamais en clair) et jour (Europe/Paris), avec le nombre de demandes du jour ; unicité sur les
+  trois. Le comptage est **atomique en une requête** (`insert … on conflict … do update set count = count + 1
+returning count`, sans verrou applicatif) ; le changement de jour remet le compteur à zéro sans tâche
+  planifiée, et les lignes des jours passés sont purgées à chaque demande. Une adresse inconnue est comptée
+  aussi. Le seuil est un **réglage de l'association** (registre, ADR 010 et 016 :
+  `login.link_requests_per_address_per_day`, défaut 3, de 1 à 20), modifiable dans « Réglages ». Au-delà :
+  aucun email, le lien précédent reste valable, et l'écran reste l'écran B. **Aucune limite par accès
+  internet** : aucune IP n'est lue (la première entrée de `x-forwarded-for` est fournie par le client).
+  Compromis accepté : un tiers peut épuiser les demandes du jour d'un membre, que l'écran B renvoie vers le
+  bureau. Le budget quotidien Brevo (et le transport de secours au-delà) reste l'affaire de s26.
 - **Aucun import statique de la couche service** dans l'intégration : `auth.ts` l'importe, et chaque façade
   remonte à `auth.ts` par `auth-service`. Les façades sont chargées par `import()` à l'appel ;
   `magic-link-integration-imports.test.ts` parcourt le graphe d'imports et échoue au premier cycle.
@@ -314,8 +319,9 @@ passe que par `requestMagicLinkAction` (plancher de 1,5 s, même écran B quoi q
 - Les statuts de facture Pennylane sont **transportés tels quels**, jamais réduits à un booléen.
 - Les formulaires publics sont limités en débit sur **empreinte d'IP hachée, purgée sous 24 h**. Le
   boilerplate utilise aujourd'hui `RateLimiterMemory` avec l'**IP en clair** (`src/app/[locale]/(public)/contact/actions.ts`) :
-  c'est à corriger, et le stockage en mémoire ne survit pas au redémarrage. Le mécanisme en base existe
-  depuis s03 (`rate_limit_event`, `rate-limit-service.ts`, seaux par usage) : s08 y ajoute son seau.
+  c'est à corriger, et le stockage en mémoire ne survit pas au redémarrage. Un compteur journalier en base
+  existe depuis s03 (`rate_limit_event`, `rate-limit-service.ts`, empreinte HMAC liée à l'usage) : s08 peut
+  s'y appuyer pour son propre usage.
 
 ## Design / UX
 

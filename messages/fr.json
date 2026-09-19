@@ -2919,13 +2919,9 @@
         "label": "Teinte",
         "help": "La couleur de votre association. Elle colore le monogramme, les filets et les encarts de votre site. Les boutons gardent leur couleur."
       },
-      "linkRequestsPerAddress": {
+      "linkRequestsPerDay": {
         "label": "Liens de connexion par adresse email",
-        "help": "Nombre de liens de connexion envoyés au plus à une même adresse en une heure. Au-delà, la personne voit le même écran mais aucun email ne part : cela protège la boîte de vos membres et le quota d'envoi de votre association."
-      },
-      "linkRequestsPerNetwork": {
-        "label": "Liens de connexion par accès internet",
-        "help": "Nombre de demandes de lien acceptées en une heure depuis un même accès internet (une même box, par exemple), toutes adresses confondues. Augmentez-le avant une réunion où beaucoup de membres se connectent depuis la même salle."
+        "help": "Nombre de liens de connexion envoyés au plus à une même adresse dans une journée. Au-delà, la personne voit le même écran mais aucun email ne part jusqu'au lendemain : cela protège la boîte de vos membres et le quota d'envoi de votre association."
       }
     },
     "hues": {
@@ -2937,7 +2933,7 @@
       "broom": "Genêt"
     },
     "units": {
-      "requestsPerHour": "demandes par heure"
+      "requestsPerDay": "demandes par jour"
     }
   },
   "BureauSettingsPage": {

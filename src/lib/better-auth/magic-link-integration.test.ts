@@ -240,7 +240,7 @@ describe('sendMagicLink', () => {
     expect(consumeMagicLinkRequestQuotaService).not.toHaveBeenCalled()
   })
 
-  it('compte la demande pour l’association du domaine, par adresse et par IP', async () => {
+  it('compte la demande pour l’association du domaine, par adresse seulement : aucune IP lue', async () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
 
     await sendMagicLink(
@@ -256,7 +256,6 @@ describe('sendMagicLink', () => {
     expect(consumeMagicLinkRequestQuotaService).toHaveBeenCalledWith({
       organizationId: 'org-1',
       email,
-      ip: '203.0.113.7',
     })
     expect(memoryTransport.messages).toHaveLength(1)
   })
@@ -270,7 +269,7 @@ describe('sendMagicLink', () => {
     expect(memoryTransport.messages).toHaveLength(0)
   })
 
-  it('au-delà d’un seuil : aucun email, et le lien précédent reste valable', async () => {
+  it('au-delà du seuil du jour : aucun email, et le lien précédent reste valable', async () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
     vi.mocked(consumeMagicLinkRequestQuotaService).mockResolvedValueOnce({
       allowed: false,
@@ -544,7 +543,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
     expect(result.error.headers.get('location')).toContain('/dashboard')
   })
 
-  it('au-delà d’un seuil, Better Auth répond comme d’habitude, sans email', async () => {
+  it('au-delà du seuil du jour, Better Auth répond comme d’habitude, sans email', async () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
     vi.mocked(getAssociationSettingsService).mockResolvedValue({})
