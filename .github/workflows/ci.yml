@@ -71,8 +71,8 @@ jobs:
   e2e:
     name: Tests e2e (build de production)
     runs-on: ubuntu-latest
-    # Réglages d'authentification pour lesquels les specs e2e ont été écrites
-    # (job e2e de preview.yml) : boutons Google/Apple attendus, et vérification
+    # Réglages d'authentification pour lesquels les specs e2e ont été écrites :
+    # boutons Google/Apple attendus, et vérification
     # d'email active, sinon l'inscription ouvre le tableau de bord qui appelle
     # Stripe avec la clé factice.
     env:

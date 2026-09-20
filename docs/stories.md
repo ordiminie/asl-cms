@@ -1083,7 +1083,7 @@ chaque association soit servie en HTTPS sur son propre domaine.
 - [ ] Un redéploiement conserve les fichiers déjà téléversés : un logo envoyé avant le redéploiement est toujours servi après.
 - [ ] Après l'ajout du domaine d'une nouvelle association dans la configuration du serveur, ce domaine répond en HTTPS avec un certificat valide et sert cette association — vérifié par le même test de fumée.
 - [ ] Sur le serveur déployé, la purge des empreintes des formulaires publics (s08) est appelée au moins une fois par jour sans intervention humaine : une empreinte de plus de 24 h ne survit pas à l'appel planifié suivant.
-- [ ] `production.yml` et `preview.yml`, restes du boilerplate, sont remplacés par le déploiement réel ou retirés du dépôt.
+- [ ] Aucun workflow du dépôt ne prétend déployer ce qu'il ne déploie pas. `production.yml` et `preview.yml`, restes du boilerplate, ont été **retirés le 2026-09-20** (Quick Fix, après la livraison de s03) : cette story pose le déploiement réel, elle n'a plus à les nettoyer.
 
 ### Dependencies
 
@@ -1123,7 +1123,7 @@ associations à terme : le certificat de chaque domaine doit s'obtenir et se ren
 intervention manuelle. Un certificat unique listant tous les domaines oblige à le réémettre à chaque
 nouvelle association et casse tous les sites si un seul domaine échoue à la validation.
 
-**Piège n°4 — le build.** `production.yml` échoue aujourd'hui faute de secrets : sous Cache
+**Piège n°4 — le build.** `production.yml` échouait faute de secrets, avant son retrait : sous Cache
 Components, le prerender traverse les façades. Où se fait le build (sur le serveur ou en CI), avec
 quelles variables, et comment le résultat arrive sur le serveur : à trancher en `/ks-research`, sans
 jamais committer un `.env`. Le `Dockerfile` et le `docker-compose.yml` du dépôt servent
