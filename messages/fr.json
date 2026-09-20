@@ -297,10 +297,6 @@
   "AccountPage": {
     "title": "Mon Compte",
     "description": "Gérez votre profil et vos paramètres de sécurité",
-    "profile": {
-      "title": "Profil",
-      "description": "Gérez vos informations personnelles"
-    },
     "security": {
       "title": "Sécurité",
       "description": "Gérez les paramètres de sécurité de votre compte, y compris l'authentification à deux facteurs, le changement de mot de passe et d'email."

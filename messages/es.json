@@ -297,10 +297,6 @@
   "AccountPage": {
     "title": "Mi Cuenta",
     "description": "Gestiona tu perfil y configuración de seguridad",
-    "profile": {
-      "title": "Perfil",
-      "description": "Gestiona tu información personal"
-    },
     "security": {
       "title": "Seguridad",
       "description": "Gestiona la configuración de seguridad de tu cuenta, incluyendo autenticación de dos factores, cambio de contraseña y email."

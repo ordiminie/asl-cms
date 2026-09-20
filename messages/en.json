@@ -297,10 +297,6 @@
   "AccountPage": {
     "title": "My Account",
     "description": "Manage your profile and security settings",
-    "profile": {
-      "title": "Profile",
-      "description": "Manage your personal information"
-    },
     "security": {
       "title": "Security",
       "description": "Manage your account security settings, including two-factor authentication, password and email changes."

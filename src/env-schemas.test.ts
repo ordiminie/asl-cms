@@ -49,6 +49,15 @@ describe('Variables d’environnement — plus aucune variable Supabase', () => 
     expect(parsed.success).toBe(true)
   })
 
+  it('demarre avec un STORAGE_TYPE herite du socle', () => {
+    const parsed = z.object(serverSchema).safeParse({
+      ...environmentWithoutSupabase(),
+      STORAGE_TYPE: 'supabase',
+    })
+
+    expect(parsed.error?.issues ?? []).toEqual([])
+  })
+
   it('configure le stockage sur le disque sans variable Supabase', () => {
     for (const variable of SUPABASE_VARIABLES) {
       delete process.env[variable]

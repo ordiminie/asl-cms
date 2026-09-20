@@ -169,7 +169,7 @@ export function FormWithUpload({entity}: {entity: EntityType}) {
 
 ## Server Actions d'Upload
 
-**Référence : [actions.ts](src/app/[locale]/(bureau)/bureau/identite/actions.ts)**
+**Référence : [actions.ts](<src/app/[locale]/(bureau)/bureau/identite/actions.ts>)**
 
 ### Template standard d'une Server Action d'upload
 

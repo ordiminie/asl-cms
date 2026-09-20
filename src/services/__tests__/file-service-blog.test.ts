@@ -102,6 +102,26 @@ describe('Fichiers du blog sur le disque du serveur', () => {
     ).toBe('image binaire')
   })
 
+  /*
+   * Le disque du serveur ne publie aucune adresse : la reference rendue est
+   * la cle de stockage, que servira plus tard une route de l'application
+   * (ADR 004). Ce test interdit qu'un lien de fournisseur revienne en douce.
+   */
+  it('rend la cle de stockage comme reference, jamais une adresse de fournisseur', async () => {
+    const file = new File(['image binaire'], 'schema.png', {type: 'image/png'})
+    await uploadFileService({file, path: `posts/${postId}/schema.png`})
+    const [listed] = await listFilesByPostIdService(postId)
+
+    const uploaded = await uploadFilePostService(
+      postId,
+      new File(['image binaire'], 'autre.png', {type: 'image/png'})
+    )
+
+    expect(listed.url).toBe(`posts/${postId}/schema.png`)
+    expect(uploaded.url).toBe(uploaded.path)
+    expect([uploaded.url, listed.url].join(' ')).not.toMatch(/:\/\//)
+  })
+
   it('supprime le fichier d’un article', async () => {
     const file = new File(['image binaire'], 'schema.png', {type: 'image/png'})
     const {path} = await uploadFilePostService(postId, file)
