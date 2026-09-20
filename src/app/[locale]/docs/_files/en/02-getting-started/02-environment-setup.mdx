@@ -38,7 +38,7 @@ Configure your application environment with either the recommended CLI tool or m
   1. **Database** - PostgreSQL connection
   2. **Authentication** - Better Auth settings
   3. **Email** - Resend integration
-  4. **Storage** - Supabase file storage
+  4. **Storage** - Server disk file storage
   5. **Stripe** - Payment processing
   6. **Pages & Features** - Enable/disable features
   7. **OAuth** - Social authentication providers
@@ -126,14 +126,13 @@ STRIPE_WEBHOOK_SECRET="whsec_..."
 3. Copy **Publishable** and **Secret** keys
 4. Setup webhook endpoint for real-time updates
 
-### Storage Configuration (Supabase)
+### Storage Configuration (server disk)
 
 ```bash
-# File storage (Optional)
-SUPABASE_URL="https://xxx.supabase.co"
-SUPABASE_ANON_KEY="your-anon-key"
-SUPABASE_BUCKET="your-bucket-name"
-STORAGE_TYPE="supabase"
+# File storage: a writable directory outside public/
+LOCAL_STORAGE_ROOT="/var/lib/asl-cms/files"
+# Optional: `local` is the only accepted value, and the default
+STORAGE_TYPE="local"
 ```
 
 ### Social Authentication (Optional)

@@ -3,7 +3,6 @@ import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
 
 import {getOrganizationPermissions} from '@/app/dal/organization-dal'
-import {EditOrganizationForm} from '@/components/features/organization/edit-organization-form'
 import OrganizationMembersTable from '@/components/features/organization/organization-members-table'
 import {getOrganizationByIdService} from '@/services/facades/organization-service-facade'
 
@@ -15,7 +14,7 @@ export default async function EditOrganizationPage({
   const t = await getTranslations('Organizations')
   const {id} = await params
   const organization = await getOrganizationByIdService(id)
-  const {canReadMembers, canManageMembers, canEdit} =
+  const {canReadMembers, canManageMembers} =
     await getOrganizationPermissions(id)
 
   if (!organization) {
@@ -31,10 +30,6 @@ export default async function EditOrganizationPage({
       </div>
 
       <div className="space-y-8">
-        <div>
-          <EditOrganizationForm organization={organization} canEdit={canEdit} />
-        </div>
-
         <div>
           <h3 className="mb-4 text-lg font-medium">{t('membersTitle')}</h3>
           {canReadMembers ? (

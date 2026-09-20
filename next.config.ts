@@ -28,11 +28,6 @@ const nextConfig: NextConfig = {
         hostname: 'images.unsplash.com',
         port: '',
       },
-      {
-        protocol: 'https',
-        hostname: 'your-project.supabase.co',
-        port: '',
-      },
     ],
   },
 

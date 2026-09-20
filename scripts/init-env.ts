@@ -75,9 +75,6 @@ function getVariableDescription(varName: string): string {
     EMAIL_TO: 'Adresse email destinataire par défaut',
     STRIPE_SECRET_KEY: 'Clé secrète Stripe',
     STRIPE_WEBHOOK_SECRET: 'Secret webhook Stripe',
-    NEXT_PUBLIC_SUPABASE_URL: 'URL du projet Supabase',
-    SUPABASE_ANON_KEY: 'Clé publique Supabase',
-    NEXT_PUBLIC_SUPABASE_BUCKET: 'Nom du bucket Supabase',
     GOOGLE_CLIENT_ID: 'ID client Google OAuth',
     GOOGLE_CLIENT_SECRET: 'Secret client Google OAuth',
     NEXT_PUBLIC_ENABLED_PAGES: 'Pages activées (séparées par des virgules)',
@@ -88,7 +85,7 @@ function getVariableDescription(varName: string): string {
     LOG_LEVEL: 'Niveau de logging (debug/info/warn/error)',
     NEXT_PUBLIC_ALLOWED_MIME_TYPES:
       'Types MIME autorisés (séparés par virgules)',
-    STORAGE_TYPE: 'Type de stockage utilisé',
+    STORAGE_TYPE: 'Type de stockage utilisé (local)',
     CHAT_PROVIDER: 'Fournisseur de chat IA',
     OLLAMA_BASE_URL: 'URL de base pour Ollama',
     OPENAI_API_KEY: 'Clé API OpenAI',
@@ -130,7 +127,7 @@ function getVariableChoices(varName: string): string[] | undefined {
     NEXT_PUBLIC_BILLING_MODE: ['organization', 'user'],
     LOG_LEVEL: ['info', 'debug', 'warn', 'error'],
     CHAT_PROVIDER: ['ollama', 'openai', 'anthropic'],
-    STORAGE_TYPE: ['supabase', 'local'],
+    STORAGE_TYPE: ['local'],
     EMAIL_TRANSPORT: ['brevo', 'resend', 'file', 'memory'],
     NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: ['true', 'false'],
     NEXT_PUBLIC_BETTER_AUTH_2FA_ENABLE: ['true', 'false'],
@@ -165,10 +162,6 @@ function getVariableExample(varName: string): string {
     EMAIL_TO: 'admin@example.com',
     STRIPE_SECRET_KEY: 'sk_test_example_replace_with_real_stripe_key',
     STRIPE_WEBHOOK_SECRET: 'whsec_example_replace_with_real_webhook_secret',
-    NEXT_PUBLIC_SUPABASE_URL: 'https://example-project.supabase.co',
-    SUPABASE_ANON_KEY:
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example_anon_key_replace_with_real',
-    NEXT_PUBLIC_SUPABASE_BUCKET: 'example-bucket',
     GOOGLE_CLIENT_ID: 'example-client-id.apps.googleusercontent.com',
     GOOGLE_CLIENT_SECRET: 'GOCSPX-example_client_secret_replace',
     NEXT_PUBLIC_ENABLED_PAGES: 'blog,docs,apikey,organization',
@@ -186,7 +179,7 @@ function getVariableExample(varName: string): string {
     NEXT_PUBLIC_BILLING_MODE: 'organization',
     NEXT_PUBLIC_NODE_ENV: 'development',
     LOG_LEVEL: 'info',
-    STORAGE_TYPE: 'supabase',
+    STORAGE_TYPE: 'local',
     CHAT_PROVIDER: 'ollama',
     OLLAMA_BASE_URL: 'http://localhost:11434',
     NEXT_PUBLIC_MAX_FILE_SIZE: '5242880',
@@ -238,7 +231,7 @@ function generateDefaultValue(varName: string): string {
   // Configuration technique
   if (varName === 'NEXT_PUBLIC_NODE_ENV') return 'development'
   if (varName === 'LOG_LEVEL') return 'info'
-  if (varName === 'STORAGE_TYPE') return 'supabase'
+  if (varName === 'STORAGE_TYPE') return 'local'
   if (varName === 'CHAT_PROVIDER') return 'ollama'
 
   // Tailles et limites
@@ -596,11 +589,7 @@ async function main(): Promise<void> {
       varName.includes('EMAIL')
     )
       return 'Email'
-    if (
-      varName.includes('SUPABASE') ||
-      varName.includes('STORAGE') ||
-      varName.includes('MIME')
-    )
+    if (varName.includes('STORAGE') || varName.includes('MIME'))
       return 'Stockage'
     if (varName.includes('STRIPE')) return 'Stripe'
     if (varName.includes('ENABLED_PAGES') || varName.includes('BILLING_MODE'))

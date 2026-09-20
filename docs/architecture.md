@@ -22,7 +22,7 @@
 | Validation             | **Zod 4**                                                                                                       | Client (RHF) _et_ serveur, schémas partagés           |
 | i18n                   | **next-intl**, locale unique `fr` sans préfixe                                                                  | ADR 008                                               |
 | Email                  | **Brevo**, derrière le contrat `EmailTransport` ; gabarits `react-email`                                        | ADR 005, ADR 017 — Resend en secours                  |
-| Fichiers               | Disque du **VPS**, via le factory de stockage existant                                                          | ADR 004 — remplace Supabase                           |
+| Fichiers               | Disque du **VPS**, seul adaptateur du factory de stockage                                                       | ADR 004 — Supabase retiré en s12a                     |
 | Tâches planifiées      | Table `scheduled_job` + cron système                                                                            | ADR 006 — remplace Inngest                            |
 | Facturation plateforme | **Stripe** (Zourite Studio ↔ association)                                                                       | Conservé du boilerplate                               |
 | Facturation membres    | **Pennylane**, derrière un contrat interchangeable                                                              | ADR 011 — sans rapport avec Stripe                    |
@@ -172,10 +172,12 @@ Le boilerplate fournit `user`, `session`, `account`, `organization`, `member`, `
 est en réalité un adaptateur de stockage objet, pas un repository Drizzle. Aucune policy RLS n'a donc
 à la couvrir. L'ADR 004 remplace ce stockage par le disque du VPS, derrière le même factory.
 
-**État depuis s01b (ADR 015)** : l'adaptateur `local` existe (`src/lib/files/storage/local-storage.ts`),
-confiné sous `LOCAL_STORAGE_ROOT` (`@/env`), écriture par fichier temporaire puis renommage. Il ne sert
-pour l'instant **que le logo et le favicon** des associations ; blog, avatar et formulaire d'organisation
-du boilerplate restent sur Supabase jusqu'à leur story (s04, s31). Les clés sont générées par le serveur
+**État depuis s12a** : l'adaptateur `local` (`src/lib/files/storage/local-storage.ts`) est le **seul
+stockage du produit**, confiné sous `LOCAL_STORAGE_ROOT` (`@/env`), écriture par fichier temporaire puis
+renommage. `createStorage` n'accepte plus que `'local'`, `STORAGE_TYPE` absente vaut `local`, les paquets
+et les variables Supabase ont quitté le dépôt, et un test de garde interdit tout import d'un SDK Supabase
+dans `src/`. Deux chaînes l'utilisent : le **logo et le favicon** des associations (s01b) et les fichiers
+d'article du blog d'administration hérité. Les clés d'identité sont générées par le serveur
 (`{organizationId}/identity/{logo|favicon}-{uuid}.{png|webp|ico}`), jamais tirées d'un nom fourni, et
 référencées sur `organization`. Lecture par `GET /api/identity/{logo|favicon}` : type énuméré, tenant
 du domaine appelé, clé lue en base — aucun chemin ne vient de la requête ; `?v=` (version tirée de la

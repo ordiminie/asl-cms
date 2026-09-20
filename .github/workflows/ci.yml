@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 # Valeurs FACTICES, volontairement en clair : la base est jetable et aucun
-# service externe (Stripe, Resend, Supabase) n'est réellement appelé, comme en
+# service externe (Stripe, Resend) n'est réellement appelé, comme en
 # local avec .env.test. Ne jamais remplacer par de vraies clés : les journaux
 # d'un dépôt public sont publics.
 env:
@@ -32,9 +32,6 @@ env:
   EMAIL_OUTBOX_DIR: /tmp/asl-cms-email-outbox
   EMAIL_FROM: noreply@example.com
   EMAIL_TO: admin@example.com
-  SUPABASE_ANON_KEY: factice-ci
-  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-  NEXT_PUBLIC_SUPABASE_BUCKET: asl-cms-ci
   # Répertoire jetable du runner pour le stockage disque (ADR 015).
   LOCAL_STORAGE_ROOT: /tmp/asl-cms-storage
   STRIPE_SECRET_KEY: sk_test_factice_ci

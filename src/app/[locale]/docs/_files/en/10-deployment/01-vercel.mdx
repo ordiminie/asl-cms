@@ -116,9 +116,7 @@ RESEND_API_KEY="re_your_api_key"
 EMAIL_FROM="noreply@yourdomain.com"
 
 # File Storage
-SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_ANON_KEY="your-anon-key"
-SUPABASE_BUCKET="your-bucket-name"
+LOCAL_STORAGE_ROOT="/var/lib/asl-cms/files"
 
 # Stripe Payment
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_live_..."
@@ -219,7 +217,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'your-project.supabase.co', // Your Supabase domain
+        hostname: 'cdn.yourdomain.com', // Remote image host, if any
       },
     ],
   },

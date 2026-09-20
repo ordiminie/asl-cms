@@ -96,10 +96,11 @@ export const serverSchema = {
   // Logging
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
-  // Supabase (serveur)
-
-  SUPABASE_ANON_KEY: z.string().min(1),
-
+  // Stockage des fichiers (ADR 004) : le disque du serveur est le seul
+  // adaptateur du produit ; `STORAGE_TYPE` absente vaut `local`. La valeur
+  // n'est pas restreinte ici, pour qu'un fichier d'environnement anterieur au
+  // retrait de Supabase n'empeche pas l'application de demarrer ; c'est
+  // `src/lib/files/storage/env.ts` qui la juge.
   STORAGE_TYPE: z.string().optional(),
 
   // Racine du stockage sur le disque du serveur (ADR 004, ADR 015) : logo et
@@ -136,8 +137,6 @@ export const clientSchema = {
     .transform((val) => Number(val)),
 
   // Upload de fichiers
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_BUCKET: z.string().min(1),
   NEXT_PUBLIC_ALLOWED_MIME_TYPES: z.string().min(1),
 
   // Stripe (client)

@@ -230,12 +230,6 @@ RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
 # Format: "re_xxxxxxxxxxxx"
 ```
 
-### File Storage (Supabase)
-```yaml
-SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-# Supabase anonymous/public key for storage access
-```
-
 ### Payment Processing (Stripe)
 ```yaml
 STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
@@ -262,12 +256,11 @@ NEXT_PUBLIC_APP_URL: https://preview.example.com
 EMAIL_FROM: noreply@example.com
 EMAIL_TO: admin@example.com
 
-# File storage
-SUPABASE_URL: https://xxx.supabase.co
-SUPABASE_BUCKET: BUCKET-NAME
+# File storage (server disk)
+LOCAL_STORAGE_ROOT: /var/lib/asl-cms/files
 NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
 ALLOWED_MIME_TYPES: image/jpeg,image/png,image/webp
-STORAGE_TYPE: supabase
+STORAGE_TYPE: local
 
 # Application settings
 NODE_ENV: production
@@ -356,12 +349,6 @@ Value: [32+ character random string]
 ```
 Name: RESEND_API_KEY
 Value: re_xxxxxxxxxxxx
-```
-
-**File Storage:**
-```
-Name: SUPABASE_ANON_KEY
-Value: [Supabase anonymous key]
 ```
 
 **Payment Processing:**

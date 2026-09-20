@@ -51,7 +51,9 @@ In Next.js 16 and React 19, sometimes we want client validation with React Hook 
 
 ### Basic Structure
 
-[edit-user-profile.tsx](src/components/features/user/edit-user-profile.tsx)
+> Le gabarit ci-dessous vient de `EditUserProfileForm`, écran hérité retiré en s12a. Exemple vivant du même patron :
+
+[edit-user-settings.tsx](src/components/features/user/edit-user-settings.tsx)
 
 ```tsx
 type FormValues = z.infer<typeof userFormSchema>

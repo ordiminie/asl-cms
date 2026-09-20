@@ -9,7 +9,6 @@ import {
 } from '@/app/dal/organization-dal'
 import {OrganizationModulesCard} from '@/components/features/admin/organizations/organization-modules-card'
 import {withAuthAdmin} from '@/components/features/auth/with-auth'
-import {EditOrganizationForm} from '@/components/features/organization/edit-organization-form'
 import OrganizationMembersTable from '@/components/features/organization/organization-members-table'
 import {Badge} from '@/components/ui/badge'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
@@ -25,7 +24,7 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
     getOrganizationUsageDal(id),
     getOrganizationPermissions(id),
   ])
-  const {canReadMembers, canManageMembers, canEdit} = permissions
+  const {canReadMembers, canManageMembers} = permissions
 
   if (!organization) {
     notFound()
@@ -55,7 +54,6 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
     <div className="space-y-6">
       <div>
         <h1 className="mb-8 text-2xl font-bold">{t('editTitle')}</h1>
-        <EditOrganizationForm organization={organization} canEdit={canEdit} />
       </div>
 
       <div className="mx-auto mt-12">

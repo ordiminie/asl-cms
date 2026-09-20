@@ -1,11 +1,11 @@
 ---
 title: 'File Management'
-description: 'Complete guide to file uploads and storage management with Supabase integration and entity-based organization'
-keywords: "ShipSaaS, file management, file uploads, Supabase Storage, React Dropzone, file upload component, storage management, entity-based storage"
+description: 'Complete guide to file uploads and storage management on the server disk, with entity-based organization'
+keywords: "ShipSaaS, file management, file uploads, local storage, React Dropzone, file upload component, storage management, entity-based storage"
 order: 3.5
 ---
 
-Complete file management system built with Supabase Storage, featuring entity-based organization, authorization controls, and specialized services for different file types.
+Complete file management system built on the server disk, featuring entity-based organization, authorization controls, and specialized services for different file types.
 
 ## Architecture Overview
 
@@ -13,25 +13,25 @@ Complete file management system built with Supabase Storage, featuring entity-ba
 **Client Components** → **Server Actions** → **Service Facades** → **Services** → **Repository**
 
 ### **Core Technologies**
-- **Supabase Storage** for file hosting and management
+- **Server disk (`local` adapter)** for file hosting and management
 - **React Dropzone** with drag & drop interface
 - **FileUpload Component** with ShadCN UI integration
 - **Framer Motion** for upload animations
 - **Zod Validation** for file type and size constraints
 
 <Callout type="info">
-The boilerplate implements a **storage factory pattern** supporting multiple providers. Supabase is implemented by default, with S3 adapter ready for production scaling.
+The application implements a **storage factory pattern**. The `local` adapter (server disk, ADR 004) is the only implemented provider and the default; the S3 branch is a placeholder that throws.
 </Callout>
 
 ## Quick Start
 
 <Steps>
-<Step title="Configure Supabase Storage">
+<Step title="Configure disk storage">
   ```bash
-  # Required environment variables
-  SUPABASE_URL=your_supabase_url
-  SUPABASE_ANON_KEY=your_anon_key
-  SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+  # Writable directory, outside public/
+  LOCAL_STORAGE_ROOT=/var/lib/asl-cms/files
+  # Optional: `local` is the only accepted value, and the default
+  STORAGE_TYPE=local
   ```
 </Step>
 
@@ -199,7 +199,7 @@ Explore specific aspects of the file management system:
 
 ### **Configuration**
 
-- **[Storage Configuration](/docs/file-management/storage-config)** - Supabase setup and storage factory pattern
+- **[Storage Configuration](/docs/file-management/storage-config)** - Disk setup and storage factory pattern
 - **[Authorization & Security](/docs/file-management/authorization)** - Access control and validation schemas
 
 ### **Examples**

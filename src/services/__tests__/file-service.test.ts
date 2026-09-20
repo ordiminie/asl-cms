@@ -1,54 +1,17 @@
-/* eslint-disable no-restricted-properties */
-// Mock global de l'environnement AVANT les imports
-process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
-process.env.SUPABASE_ANON_KEY = 'test-anon-key'
-process.env.STORAGE_TYPE = 'supabase'
-process.env.NEXT_PUBLIC_SUPABASE_BUCKET = 'test-bucket'
-
-// Mock du client Supabase
-vi.mock('@/lib/files/supabaseClient', () => ({
-  supabase: {
-    storage: {
-      from: vi.fn(() => ({
-        upload: vi.fn(),
-        download: vi.fn(),
-        remove: vi.fn(),
-        list: vi.fn(),
-      })),
-    },
-  },
-}))
-
-// Mock de la configuration de stockage
+/*
+ * Le stockage du produit est le disque du serveur (ADR 004) : la configuration
+ * simulee ici ne mentionne aucun service externe. Le chemin reel jusqu'au
+ * disque est couvert par `file-service-blog.test.ts`.
+ */
 vi.mock('@/lib/files/storage/env', () => ({
   getStorageConfig: () => ({
-    type: 'supabase',
+    type: 'local',
     config: {
-      bucket: 'test-bucket',
-      basePath: 'test',
-      maxFileSize: 5 * 1024 * 1024, // 5MB
+      bucket: 'files',
+      basePath: 'dev',
+      maxFileSize: 5 * 1024 * 1024,
       allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
     },
-  }),
-}))
-
-// Mock du factory de storage
-vi.mock('@/lib/files/storage/storage-factory', () => ({
-  createStorage: () => ({
-    upload: vi.fn().mockResolvedValue({path: 'test-path'}),
-    download: vi.fn().mockResolvedValue(new Blob(['test'])),
-    delete: vi.fn().mockResolvedValue(undefined),
-    list: vi.fn().mockResolvedValue([]),
-  }),
-}))
-
-// Mock des modules de stockage
-vi.mock('@/lib/files/storage/supabase-storage', () => ({
-  createSupabaseStorage: () => ({
-    upload: vi.fn().mockResolvedValue({path: 'test-path'}),
-    download: vi.fn().mockResolvedValue(new Blob(['test'])),
-    delete: vi.fn().mockResolvedValue(undefined),
-    list: vi.fn().mockResolvedValue([]),
   }),
 }))
 
@@ -90,28 +53,6 @@ vi.mock('@/db/repositories/organization-repository', () => ({
 
 import * as organizationRepository from '@/db/repositories/organization-repository'
 import * as userRepository from '@/db/repositories/user-repository'
-
-// Mock de la configuration de stockage
-vi.mock('@/lib/files/storage/env', () => ({
-  getStorageConfig: () => ({
-    config: {
-      maxFileSize: 5 * 1024 * 1024, // 5MB
-      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-      bucket: 'test-bucket',
-      basePath: 'uploads',
-    },
-  }),
-}))
-
-// Mock des erreurs de fichier
-vi.mock('@/lib/files/errors', () => ({
-  FileErrors: {
-    FILE_TOO_LARGE: (size: number, maxSize: number) =>
-      new Error(`File too large: ${size} > ${maxSize}`),
-    INVALID_FILE_TYPE: (type: string) =>
-      new Error(`Invalid file type: ${type}`),
-  },
-}))
 
 describe('[ADMIN] File Service', () => {
   const userId = faker.string.uuid()

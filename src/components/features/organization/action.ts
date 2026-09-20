@@ -10,16 +10,11 @@ import {
   canInviteToOrganization,
   checkMembersLimit,
 } from '@/services/authorization/organization-authorization'
-import {uploadImageForEntityService} from '@/services/facades/file-service-facade'
 import {
   createOrganizationMemberService,
   removeUserFromOrganizationService,
   updateOrganizationService,
 } from '@/services/facades/organization-service-facade'
-import {
-  EntityTypeConst,
-  FileCategoryConst,
-} from '@/services/types/domain/file-types'
 import {
   OrganizationRole,
   OrganizationRoleConst,
@@ -238,57 +233,6 @@ export async function removeUserFromOrganizationAction(
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Erreur inconnue',
-    }
-  }
-}
-
-export type UploadImageState = {
-  success: boolean
-  message?: string
-  imageUrl?: string
-}
-
-export async function uploadOrganizationImageAction(
-  prevState?: UploadImageState,
-  formData?: FormData
-): Promise<UploadImageState> {
-  const user = await requireActionAuth()
-  if (!user) {
-    return {success: false, message: 'Utilisateur non trouvé'}
-  }
-  if (!formData) {
-    return {success: false, message: 'Données invalides'}
-  }
-
-  const file = formData.get('file') as File
-  const organizationId = formData.get('organizationId') as string
-
-  if (!file || file.size === 0) {
-    return {success: false, message: 'Aucun fichier fourni'}
-  }
-
-  if (!organizationId) {
-    return {success: false, message: "ID d'organisation manquant"}
-  }
-
-  try {
-    const result = await uploadImageForEntityService({
-      file,
-      entityType: EntityTypeConst.ORGANIZATION,
-      entityId: organizationId,
-      category: FileCategoryConst.LOGO,
-    })
-
-    return {
-      success: true,
-      message: 'Image uploadée avec succès',
-      imageUrl: result.url,
-    }
-  } catch (error) {
-    console.error("Erreur lors de l'upload:", error)
-    return {
-      success: false,
-      message: "Impossible d'uploader l'image. Veuillez réessayer.",
     }
   }
 }
