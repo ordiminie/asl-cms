@@ -17,8 +17,9 @@ src/
 ├── components/features/admin/users/
 │   └── user-form-validation.ts          ← Schémas Zod avec traductions
 ├── components/features/user/
-│   ├── action.ts                        ← Server Actions avec validation
-│   └── edit-user-profile.tsx            ← Formulaire client avec validation
+│   └── action.ts                        ← Server Actions avec validation
+├── components/features/association/
+│   └── association-settings-form.tsx    ← Formulaire client avec validation
 └── messages/
     ├── fr.json                          ← Traductions françaises
     ├── en.json                          ← Traductions anglaises
@@ -110,7 +111,10 @@ export type UserFormSchemaType = z.infer<typeof userFormSchema>
 
 ### 2. Utilisation Côté Client
 
-**Référence : [edit-user-profile.tsx](src/components/features/user/edit-user-profile.tsx)**
+**Référence : [association-settings-form.tsx](src/components/features/association/association-settings-form.tsx)**
+
+> Le gabarit ci-dessous vient de `EditUserProfileForm`, écran hérité retiré en s12a ; le patron
+> reste celui à suivre.
 
 ```typescript
 'use client'

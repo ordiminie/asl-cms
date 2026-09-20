@@ -306,26 +306,6 @@
       "description": "Gestiona la configuración de seguridad de tu cuenta, incluyendo autenticación de dos factores, cambio de contraseña y email."
     },
     "EditUserProfileForm": {
-      "name": {
-        "label": "Nombre",
-        "placeholder": "Tu nombre"
-      },
-      "email": {
-        "label": "Email",
-        "placeholder": "Tu email"
-      },
-      "visibility": {
-        "label": "Visibilidad del perfil",
-        "placeholder": "Seleccionar visibilidad",
-        "public": "Público",
-        "private": "Privado"
-      },
-      "upload": {
-        "inProgress": "Subida en progreso...",
-        "success": "Imagen subida exitosamente",
-        "error": "Error en la subida",
-        "errorRetry": "No se pudo subir la imagen. Por favor intenta de nuevo."
-      },
       "form": {
         "save": "Guardar",
         "updating": "Actualizando...",
@@ -2081,16 +2061,6 @@
       "selectRoleLabel": "Seleccionar un rol",
       "adminDescription": "Invitar a usuarios, modificar el pago y eliminar el equipo.",
       "memberDescription": "Gestionar correos, dominios y webhooks."
-    },
-    "form": {
-      "namePlaceholder": "Nombre de la organización",
-      "slugPlaceholder": "slug-de-la-organizacion",
-      "descriptionPlaceholder": "Descripción de la organización",
-      "noImage": "Sin imagen",
-      "uploading": "Subiendo...",
-      "updating": "Actualizando...",
-      "successTitle": "Correcto",
-      "errorTitle": "Error"
     }
   },
   "Subscription": {

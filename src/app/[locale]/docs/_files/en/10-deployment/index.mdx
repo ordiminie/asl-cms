@@ -99,8 +99,7 @@ NEXT_PUBLIC_APP_URL="https://yourdomain.com"
 
 # These variables are validated at build time
 RESEND_API_KEY="re_..."
-SUPABASE_URL="https://..."
-SUPABASE_ANON_KEY="..."
+LOCAL_STORAGE_ROOT="/var/lib/asl-cms/files"
 STRIPE_SECRET_KEY="sk_..."
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_..."
 ```
@@ -162,7 +161,6 @@ cp .env.development .env.production
 DATABASE_URL                    # Production database connection
 BETTER_AUTH_SECRET             # Authentication secret key
 RESEND_API_KEY                 # Email service API key
-SUPABASE_ANON_KEY             # Supabase anonymous key for file storage
 STRIPE_SECRET_KEY             # Stripe secret key for payments
 STRIPE_WEBHOOK_SECRET         # Stripe webhook verification
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY  # Stripe public key (client-side)
@@ -172,7 +170,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY  # Stripe public key (client-side)
 - **BETTER_AUTH_URL**: Set to your production domain in workflow files
 - **NEXT_PUBLIC_APP_URL**: Your application's public URL
 - **Email settings**: EMAIL_FROM and EMAIL_TO configured in workflow
-- **File storage**: SUPABASE_URL and SUPABASE_BUCKET in workflow
+- **File storage**: LOCAL_STORAGE_ROOT in workflow
 - **OAuth**: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET if needed
 
 ## Vercel Integration

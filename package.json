@@ -80,8 +80,6 @@
     "@shikijs/rehype": "^4.4.2",
     "@stripe/react-stripe-js": "^6.8.0",
     "@stripe/stripe-js": "^9.13.0",
-    "@supabase/storage-js": "^2.112.2",
-    "@supabase/supabase-js": "^2.112.2",
     "@t3-oss/env-nextjs": "^0.13.11",
     "@tabler/icons-react": "^3.46.0",
     "@tanstack/react-query": "^5.101.4",

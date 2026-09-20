@@ -30,7 +30,6 @@ Error: Environment variable DATABASE_URL is not defined
 DATABASE_URL                    # ✅ Must exist
 BETTER_AUTH_SECRET             # ✅ Must exist
 RESEND_API_KEY                 # ✅ Must exist
-SUPABASE_ANON_KEY             # ✅ Must exist
 STRIPE_SECRET_KEY             # ✅ Must exist
 STRIPE_WEBHOOK_SECRET         # ✅ Must exist
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY # ✅ Must exist
@@ -470,34 +469,24 @@ switch (paymentIntent.status) {
 }
 ```
 
-## File Upload & Supabase Issues
+## File Upload Issues
 
 ### Storage Problems
 
 **Issue**: File uploads failing
 ```bash
 # Error:
-Supabase storage: Unauthorized
+Local upload error: EACCES: permission denied
 ```
 
-**Solution**: Check Supabase bucket policies
-```sql
--- In Supabase SQL Editor:
--- Allow authenticated users to upload files
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('your-bucket-name', 'Your Bucket', true);
+**Solution**: the storage root must exist and be writable by the application
+user, and must live outside `public/` (ADR 004).
 
--- Set bucket policy
-CREATE POLICY "Allow authenticated uploads"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'your-bucket-name');
+```bash
+LOCAL_STORAGE_ROOT=/var/lib/asl-cms/files
 
--- Allow public read access
-CREATE POLICY "Allow public reads"
-ON storage.objects FOR SELECT
-TO public
-USING (bucket_id = 'your-bucket-name');
+sudo mkdir -p /var/lib/asl-cms/files
+sudo chown -R app:app /var/lib/asl-cms/files
 ```
 
 **Issue**: File size limit exceeded
@@ -690,7 +679,7 @@ export async function GET() {
     }
 
     // File storage check
-    if (process.env.SUPABASE_URL) {
+    if (process.env.LOCAL_STORAGE_ROOT) {
       checks.checks.storage = { status: 'configured' }
     }
 

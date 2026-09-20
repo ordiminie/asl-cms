@@ -4,7 +4,6 @@ import {
   listFiles,
   uploadFile,
 } from '@/db/repositories/files-repository'
-import {env} from '@/env'
 import {FileErrors} from '@/lib/files/errors'
 import {getStorageConfig} from '@/lib/files/storage/env'
 
@@ -52,23 +51,15 @@ const generateFilePath = (
   return `${entityType}s/${entityId}/${timestamp}-${file.name}`
 }
 
-const getFileUrl = (path: string) => {
-  const baseUrl = env.NEXT_PUBLIC_SUPABASE_URL
-  const bucket = config.bucket
-
-  if (!baseUrl) {
-    console.error(
-      "NEXT_PUBLIC_SUPABASE_URL n'est pas définie dans les variables d'environnement"
-    )
-    throw new Error(
-      'Configuration manquante : NEXT_PUBLIC_SUPABASE_URL est requise'
-    )
-  }
-
-  // Ajouter le basePath pour l'URL publique
-  const fullPath = `${config.basePath}/${path}`
-  return `${baseUrl}/storage/v1/object/public/${bucket}/${fullPath}`
-}
+/**
+ * Reference publique d'un fichier stocke.
+ *
+ * Le stockage du produit est le disque du serveur (ADR 004) : aucun fichier
+ * n'y est joignable directement, il est servi par une route de l'application.
+ * Tant qu'aucune route ne sert les fichiers d'article, la cle de stockage
+ * tient lieu de reference.
+ */
+const getFileUrl = (path: string) => path
 
 /**
  * Upload un fichier avec génération automatique du chemin pour une entité

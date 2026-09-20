@@ -306,26 +306,6 @@
       "description": "Manage your account security settings, including two-factor authentication, password and email changes."
     },
     "EditUserProfileForm": {
-      "name": {
-        "label": "Name",
-        "placeholder": "Your name"
-      },
-      "email": {
-        "label": "Email",
-        "placeholder": "Your email"
-      },
-      "visibility": {
-        "label": "Profile Visibility",
-        "placeholder": "Select visibility",
-        "public": "Public",
-        "private": "Private"
-      },
-      "upload": {
-        "inProgress": "Upload in progress...",
-        "success": "Image uploaded successfully",
-        "error": "Upload error",
-        "errorRetry": "Unable to upload image. Please try again."
-      },
       "form": {
         "save": "Save",
         "updating": "Updating...",
@@ -2081,16 +2061,6 @@
       "selectRoleLabel": "Select role",
       "adminDescription": "Invite users, update payment, and delete the team.",
       "memberDescription": "Manage emails, domains, and webhooks."
-    },
-    "form": {
-      "namePlaceholder": "Organization name",
-      "slugPlaceholder": "organization-slug",
-      "descriptionPlaceholder": "Organization description",
-      "noImage": "No image",
-      "uploading": "Uploading...",
-      "updating": "Updating...",
-      "successTitle": "Success",
-      "errorTitle": "Error"
     }
   },
   "Subscription": {

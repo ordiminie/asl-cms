@@ -50,7 +50,7 @@ Critères d'acceptation :
 
 ## Tasks (ordered)
 
-1. [ ] **Le stockage par défaut devient le disque.** `src/lib/files/storage/env.ts` : `STORAGE_TYPE`
+1. [x] **Le stockage par défaut devient le disque.** `src/lib/files/storage/env.ts` : `STORAGE_TYPE`
        passe à `z.enum(['local']).default('local')`, `NEXT_PUBLIC_SUPABASE_BUCKET` et `baseUrl`
        sortent de `getStorageConfig()` (le `bucket` devient une constante du module, l'adaptateur
        `local` ne s'en sert pas pour résoudre ses chemins).
@@ -59,7 +59,7 @@ Critères d'acceptation :
        `'local'` rend un adaptateur, `'supabase'` n'est plus un type accepté (erreur de compilation
        couverte par un cas `@ts-expect-error`), `'s3'` lève toujours ; `getStorageConfig()` rend
        `type: 'local'` quand `STORAGE_TYPE` est absente.
-2. [ ] **Le blog hérité écrit sur le disque.** Aucune modification de
+2. [x] **Le blog hérité écrit sur le disque.** Aucune modification de
        `src/app/[locale]/admin/blog/actions.ts` ni de `src/services/file-service.ts` : ils passent
        par `files-repository.ts`, que la tâche 1 rebranche. Vérifier et corriger ce que la bascule
        casse dans `files-repository.ts` (validation de type MIME et de taille conservée) et dans
@@ -67,7 +67,7 @@ Critères d'acceptation :
        le mock de `@/lib/files/supabaseClient` (l. 9) ; un test d'envoi d'un fichier d'article
        vérifie que l'adaptateur `local` reçoit la clé attendue (`posts/<id>/<nom>`), et qu'un type
        MIME refusé ou un fichier trop gros lève avant toute écriture.
-3. [ ] **Retrait des deux écrans hérités.** Supprimer
+3. [x] **Retrait des deux écrans hérités.** Supprimer
        `src/components/features/organization/edit-organization-form.tsx`,
        `src/components/features/user/edit-user-profile.tsx`, leurs actions d'envoi d'image
        (`organization/action.ts:275`, `user/action.ts:193`) et les tests associés ; nettoyer les
@@ -77,7 +77,7 @@ Critères d'acceptation :
        **Ne pas toucher** `src/components/ui/file-upload.tsx`, utilisé par l'écran d'identité de s01b.
        **Tests** : tests de composant supprimés avec leurs écrans ; un test de page vérifie que
        `/account` rend toujours ses sections restantes.
-4. [ ] **Suppression du code Supabase et de ses paquets.** Supprimer
+4. [x] **Suppression du code Supabase et de ses paquets.** Supprimer
        `src/lib/files/storage/supabase-storage.ts`, `src/lib/files/supabaseClient.ts` et
        `src/lib/files/config.ts` (code mort établi par la recherche : `fileConfig` et `getBasePath`
        n'ont aucun importeur). Retirer `@supabase/supabase-js` et `@supabase/storage-js` de
@@ -85,7 +85,7 @@ Critères d'acceptation :
        `src/lib/files/storage/provider-imports.test.ts`, sur le gabarit de
        `src/lib/emails/transport/provider-imports.test.ts` — la liste des modules de `src/` important
        `@supabase/*` doit être **vide**. Écrit avant la suppression, donc rouge d'abord.
-5. [ ] **Retrait des variables.** `src/env-schemas.ts` et `src/env.ts` : `SUPABASE_ANON_KEY`,
+5. [x] **Retrait des variables.** `src/env-schemas.ts` et `src/env.ts` : `SUPABASE_ANON_KEY`,
        `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_BUCKET` disparaissent ;
        `NEXT_PUBLIC_MAX_FILE_SIZE` et `NEXT_PUBLIC_ALLOWED_MIME_TYPES` restent (la validation
        générique du blog s'en sert). Même retrait dans `env.example`, `scripts/init-env.ts`
@@ -93,7 +93,7 @@ Critères d'acceptation :
        `.github/workflows/ci.yml` (l. 35-37). Un environnement qui les définit encore est ignoré
        sans erreur, `@t3-oss/env-nextjs` n'ayant pas de mode strict ici. **Tests** : un test vérifie
        que `getStorageConfig()` fonctionne sans aucune variable Supabase dans `process.env`.
-6. [ ] **Documentation et règles.** `.claude/rules/01-presentation/rule-upload-file.md` : ne décrit
+6. [x] **Documentation et règles.** `.claude/rules/01-presentation/rule-upload-file.md` : ne décrit
        plus que l'adaptateur `local`, sans flux Supabase ni « jusqu'à leur story (s04, s31) » ;
        `pnpm check:rules:fix` pour réaligner les copies `.cursor`. `docs/stories.md` : la note de s16
        (l. ~1559) ne renvoie plus à `edit-user-profile.tsx` supprimé — lui substituer un écran

@@ -9,14 +9,9 @@ import {requireActionAuth} from '@/app/dal/user-dal'
 import {auth} from '@/lib/better-auth/auth'
 import {APP_NAME} from '@/lib/constants'
 import {isValidationParsedZodError} from '@/services/errors/validation-error'
-import {uploadImageForEntityService} from '@/services/facades/file-service-facade'
 import {updateUserService} from '@/services/facades/user-service-facade'
 import {updateUserSettingsService} from '@/services/facades/user-service-facade'
 import {createTypedNotificationService} from '@/services/notification-service'
-import {
-  EntityTypeConst,
-  FileCategoryConst,
-} from '@/services/types/domain/file-types'
 import {NotificationTypeConst} from '@/services/types/domain/notification-types'
 import {
   Language,
@@ -51,12 +46,6 @@ export type FormState<T = UserFormSchemaType> = {
   success: boolean
   errors?: ValidationError<T>[]
   message?: string
-}
-
-export type UploadImageState = {
-  success: boolean
-  message?: string
-  imageUrl?: string
 }
 
 export type TwoFactorState = {
@@ -166,48 +155,6 @@ export async function updateUserAction(
       }
     }
     return {success: false, message: t('form.updateFailed')}
-  }
-}
-
-export async function uploadProfileImageAction(
-  prevState?: UploadImageState,
-  formData?: FormData
-): Promise<UploadImageState> {
-  // Récupérer les traductions pour les messages d'upload
-  const t = await getTranslations('AccountPage.EditUserProfileForm')
-
-  const user = await requireActionAuth()
-  if (!user) {
-    return {success: false, message: t('form.userNotFound')}
-  }
-  if (!formData) {
-    return {success: false, message: t('form.invalidData')}
-  }
-
-  const file = formData.get('file') as File
-  if (!file || file.size === 0) {
-    return {success: false, message: t('upload.errorRetry')}
-  }
-
-  try {
-    const result = await uploadImageForEntityService({
-      file,
-      entityType: EntityTypeConst.USER,
-      entityId: user.id,
-      category: FileCategoryConst.PROFILE,
-    })
-
-    return {
-      success: true,
-      message: t('upload.success'),
-      imageUrl: result.url,
-    }
-  } catch (error) {
-    console.error("Erreur lors de l'upload:", error)
-    return {
-      success: false,
-      message: t('upload.errorRetry'),
-    }
   }
 }
 

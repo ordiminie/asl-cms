@@ -14,23 +14,29 @@ Guide complet pour l'upload de fichiers et d'images dans l'architecture Next.js 
 
 **Client Components** → **Server Actions** → **Service Facades** → **Services** → **Repository**
 
-### Deux stockages coexistent (ADR 004, ADR 015)
+### Un seul stockage : le disque du serveur (ADR 004, ADR 015)
 
-Supabase n'est plus la seule voie :
+L'adaptateur `local` (`src/lib/files/storage/local-storage.ts`, racine `LOCAL_STORAGE_ROOT` dans
+`@/env`) est **le seul stockage du produit** : `createStorage` n'accepte plus que `'local'`, et
+`STORAGE_TYPE` absente vaut `local` (s12a). Aucun module de `src/` n'importe de SDK de fournisseur —
+un test de garde le vérifie (`src/lib/files/storage/provider-imports.test.ts`).
 
-- **Disque du serveur — adaptateur `local`** (`src/lib/files/storage/local-storage.ts`, racine
-  `LOCAL_STORAGE_ROOT` dans `@/env`). Sert aujourd'hui le **logo et le favicon** des associations
-  (s01b) : `replaceAssociationIdentityFileService`, lu par `GET /api/identity/{logo|favicon}`. C'est la
-  cible de l'ADR 004 pour tout nouveau flux de fichiers. Règles qui s'y appliquent : format jugé sur la
-  **signature binaire**, jamais sur l'extension ni le type déclaré ; clé **générée par le serveur**,
-  préfixée par l'organisation, sans nom fourni par l'utilisateur ; fichier servi par une route de
-  l'application avec `X-Content-Type-Options: nosniff`, jamais depuis `public/`.
-- **Supabase Storage** — flux hérités du boilerplate (blog, avatar, formulaire d'organisation), jusqu'à
-  leur story (s04, s31). Le reste de ce guide décrit ces flux.
+Deux chaînes l'utilisent :
+
+- **Identité d'association** (s01b) : `replaceAssociationIdentityFileService`, lu par
+  `GET /api/identity/{logo|favicon}`. Elle construit son adaptateur elle-même, sans passer par
+  `getStorageConfig()`. Règles qui s'y appliquent : format jugé sur la **signature binaire**, jamais
+  sur l'extension ni le type déclaré ; clé **générée par le serveur**, préfixée par l'organisation,
+  sans nom fourni par l'utilisateur ; fichier servi par une route de l'application avec
+  `X-Content-Type-Options: nosniff`, jamais depuis `public/`.
+- **Fichiers d'article du blog d'administration** (hérité du boilerplate) : la chaîne générique
+  `file-service` → `files-repository` → adaptateur `local`, décrite par le reste de ce guide. Un
+  fichier stocké n'a **pas d'URL publique** : il est servi par une route de l'application, et
+  `FileResponse.url` porte la clé de stockage.
 
 ### Technologies utilisées
 
-- **Supabase Storage** pour le stockage des fichiers des flux hérités
+- **Disque du serveur** pour le stockage des fichiers
 - **React Dropzone** pour l'interface de glisser-déposer
 - **Framer Motion** pour les animations
 - **FileUpload Component** personnalisé avec ShadCN UI
@@ -83,7 +89,7 @@ export const ALLOWED_IMAGE_MIME_TYPES = [
 
 ## Pattern d'Implémentation Frontend
 
-**Référence : [edit-organization-form.tsx](mdc:src/components/features/organization/edit-organization-form.tsx)**
+**Référence : [association-identity-card.tsx](mdc:src/components/features/association/association-identity-card.tsx)**
 
 ### Template standard pour un formulaire avec upload
 
@@ -165,7 +171,7 @@ export function FormWithUpload({entity}: {entity: EntityType}) {
 
 ## Server Actions d'Upload
 
-**Référence : [action.ts](mdc:src/components/features/organization/action.ts)**
+**Référence : [actions.ts](mdc:src/app/[locale]/(bureau)/bureau/identite/actions.ts)**
 
 ### Template standard d'une Server Action d'upload
 
@@ -310,14 +316,17 @@ export type FileResponse = {
 }
 ```
 
-## Configuration Supabase Storage
+## Configuration du stockage sur disque
 
-### Variables d'environnement requises
+### Variables d'environnement
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_NEXT_PUBLIC_SUPABASE_URL
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# Racine du stockage, hors de public/, accessible en ecriture
+LOCAL_STORAGE_ROOT=/var/lib/asl-cms/files
+# Facultative : `local` est la seule valeur acceptee, et le defaut
+STORAGE_TYPE=local
+NEXT_PUBLIC_MAX_FILE_SIZE=5242880
+NEXT_PUBLIC_ALLOWED_MIME_TYPES=image/jpeg,image/png,image/gif,application/pdf
 ```
 
 ### Génération automatique des chemins
@@ -340,32 +349,13 @@ const generateFilePath = (
 
 ## Exemples d'Utilisation
 
-### Upload d'avatar utilisateur
+### Upload d'un fichier d'article
 
-**Référence : [edit-user-profile.tsx](mdc:src/components/features/user/edit-user-profile.tsx)**
-
-```tsx
-// Générera : "users/user-id/profile-timestamp.webp"
-const result = await uploadImageForEntityService({
-  file,
-  entityType: EntityTypeConst.USER,
-  entityId: user.id,
-  category: FileCategoryConst.PROFILE,
-})
-```
-
-### Upload de logo d'organisation
-
-**Référence : [edit-organization-form.tsx](mdc:src/components/features/organization/edit-organization-form.tsx)**
+**Référence : [file-dropzone.tsx](mdc:src/components/features/admin/blog/file-dropzone.tsx)**
 
 ```tsx
-// Générera : "organizations/org-id/logo-timestamp.png"
-const result = await uploadImageForEntityService({
-  file,
-  entityType: EntityTypeConst.ORGANIZATION,
-  entityId: organization.id,
-  category: FileCategoryConst.LOGO,
-})
+// Écrira sous : "<LOCAL_STORAGE_ROOT>/<basePath>/posts/post-id/image/timestamp-nom.png"
+const result = await uploadFilePostService(postId, file)
 ```
 
 ## Gestion des Erreurs
@@ -446,7 +436,7 @@ const [isUploading, setIsUploading] = useState(false)
 - ✅ Upload en arrière-plan sans bloquer l'interface
 - ✅ Validation immédiate côté client
 - ✅ Optimisation des images (WebP préféré)
-- ✅ Gestion du cache Supabase
+- ✅ Servir les fichiers par une route de l'application
 
 ## Checklist d'Implémentation
 

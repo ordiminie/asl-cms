@@ -66,8 +66,6 @@ export const env = createEnv({
     EMAIL_FROM: process.env.EMAIL_FROM,
     EMAIL_TO: process.env.EMAIL_TO,
     LOG_LEVEL: process.env.LOG_LEVEL,
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
-
     STORAGE_TYPE: process.env.STORAGE_TYPE,
     LOCAL_STORAGE_ROOT: process.env.LOCAL_STORAGE_ROOT,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
@@ -77,7 +75,6 @@ export const env = createEnv({
     NEXT_PUBLIC_NODE_ENV: process.env.NEXT_PUBLIC_NODE_ENV,
 
     // Variables client
-    NEXT_PUBLIC_SUPABASE_BUCKET: process.env.NEXT_PUBLIC_SUPABASE_BUCKET,
     NEXT_PUBLIC_ALLOWED_MIME_TYPES: process.env.NEXT_PUBLIC_ALLOWED_MIME_TYPES,
     NEXT_PUBLIC_MAX_FILE_SIZE: process.env.NEXT_PUBLIC_MAX_FILE_SIZE,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -105,7 +102,6 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLED_PAGES: process.env.NEXT_PUBLIC_ENABLED_PAGES,
     NEXT_PUBLIC_GOOGLE_ANALYTICS_ID:
       process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   },
 
   /*

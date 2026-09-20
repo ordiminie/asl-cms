@@ -306,26 +306,6 @@
       "description": "Gérez les paramètres de sécurité de votre compte, y compris l'authentification à deux facteurs, le changement de mot de passe et d'email."
     },
     "EditUserProfileForm": {
-      "name": {
-        "label": "Nom",
-        "placeholder": "Votre nom"
-      },
-      "email": {
-        "label": "Email",
-        "placeholder": "Votre email"
-      },
-      "visibility": {
-        "label": "Visibilité du profil",
-        "placeholder": "Sélectionner la visibilité",
-        "public": "Public",
-        "private": "Privé"
-      },
-      "upload": {
-        "inProgress": "Upload en cours...",
-        "success": "Image uploadée avec succès",
-        "error": "Erreur lors de l'upload",
-        "errorRetry": "Impossible d'uploader l'image. Veuillez réessayer."
-      },
       "form": {
         "save": "Enregistrer",
         "updating": "Mise à jour...",
@@ -2081,16 +2061,6 @@
       "selectRoleLabel": "Sélectionner un rôle",
       "adminDescription": "Inviter des utilisateurs, modifier le paiement et supprimer l'équipe.",
       "memberDescription": "Gérer les emails, les domaines et les webhooks."
-    },
-    "form": {
-      "namePlaceholder": "Nom de l'organisation",
-      "slugPlaceholder": "slug-de-lorganisation",
-      "descriptionPlaceholder": "Description de l'organisation",
-      "noImage": "Aucune image",
-      "uploading": "Upload en cours...",
-      "updating": "Mise à jour...",
-      "successTitle": "Succès",
-      "errorTitle": "Erreur"
     }
   },
   "Subscription": {

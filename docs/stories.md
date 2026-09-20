@@ -1555,8 +1555,8 @@ s12
 Réf. `V5 §5.4`, `CDCT §5.4`. CRUD simple sur ses propres données — la seule subtilité est
 l'autorisation, à écrire en test d'abord (tentative sur l'id d'un autre membre).
 
-Le boilerplate a un formulaire de profil équivalent
-(`src/components/features/user/edit-user-profile.tsx`) : s'en inspirer plutôt que réinventer, en
+Le dépôt a un formulaire équivalent
+(`src/components/features/user/edit-user-settings.tsx`) : s'en inspirer plutôt que réinventer, en
 suivant `rule-form-front-and-back` et `rule-zod-client-server-internationalization`.
 
 Cette story ne couvre que le **self-service d'un membre connecté**. La saisie par le bureau — seule
