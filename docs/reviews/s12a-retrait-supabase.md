@@ -1,115 +1,142 @@
-# Revue — Story s12a-retrait-supabase
+# Revue — Story s12a-retrait-supabase (deuxième passe)
 
-> Revue en contexte neuf. Chaque constat est classé critique / majeur / mineur.
-> Diff examiné : `git diff main...feature/s12a-retrait-supabase` (un commit, `7f40085`, 50 fichiers).
-> Références : `docs/plans/s12a-retrait-supabase.md` (validated: yes), `docs/research/s12a-retrait-supabase.md`, AGENTS.md, ADR 004, ADR 015, `docs/design-system.md`.
+> Revue en contexte neuf, après la passe de correction. Chaque constat est classé critique / majeur / mineur.
+> Diff examiné : `git diff main...feature/s12a-retrait-supabase` (deux commits : `7f40085` la story, `de0ebcb` la passe de correction, 52 fichiers).
+> Références : `docs/plans/s12a-retrait-supabase.md` (validated: yes), `docs/research/s12a-retrait-supabase.md`, AGENTS.md, ADR 004, ADR 015, `templates/review-checklist.md`.
+> Cette revue **remplace** le rapport de première passe committé dans `de0ebcb` ; les constats non traités y sont repris avec leur statut.
 
-**Verdict** : aucun problème critique ni majeur. Le critère 1 est prouvé par un vrai build de production sans les trois variables, le test de garde du critère 3 échoue bien quand un import `@supabase/*` revient (falsifié), et la suite e2e complète passe 81/81 sur le build de production. Neuf constats mineurs, dont deux à traiter avant la mise en ligne (`STORAGE_TYPE` hérité, `FileResponse.url` du blog).
+**Verdict** : aucun problème critique ni majeur. Les trois corrections demandées par la propriétaire du produit sont réellement faites, et faites comme annoncé. L'arbitrage « ignorer et utiliser le disque » est vérifié **sur la vraie chaîne `@/env`** : `supabase` hérité démarre et rend `local`, une valeur inconnue (`azure`) échoue bruyamment, rien ne choisit un stockage en silence. Le critère 1 est re-prouvé par un build de production sans les trois variables (330/330 pages, exit 0). Trois constats mineurs nouveaux, sept constats mineurs de la première passe encore ouverts (dont un renvoyé à s05).
 
-## Vérifications exécutées
+## Vérifications exécutées par le relecteur
 
-| Contrôle                                 | Résultat                                                                                                          |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `pnpm test --run`                        | **818 passed, 8 skipped, 75 fichiers** — exit 0                                                                   |
-| `pnpm lint`                              | 0 erreur (1 avertissement préexistant dans `.remember/tmp/last-ndc.ts`, hors diff)                                |
-| `pnpm check:rules`                       | « Règles et documentation alignées sur le code. »                                                                 |
-| `pnpm exec tsc --noEmit`                 | exit 0                                                                                                            |
-| `pnpm install --frozen-lockfile`         | exit 0, « Lockfile is up to date » ; `grep -c "@supabase/" pnpm-lock.yaml` = **0**                                |
-| `pnpm build` **sans variables Supabase** | exit 0, 330 pages statiques générées, **aucun échec de prerender** (les pages MDX `stripe-payments` sont passées) |
-| e2e Playwright, build de production      | **81/81 passed** (48,9 s)                                                                                         |
-| Falsification du test de garde           | **échoue bien** (voir plus bas)                                                                                   |
-| `git status` en fin de revue             | propre, **aucun fichier sous `drizzle/`**                                                                         |
+| Contrôle                                           | Résultat                                                                                                                 |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm test --run`                                  | **823 passed, 8 skipped** — 76 fichiers passés, 2 ignorés, **exit 0** (818 → 823 : les 5 tests ajoutés)                   |
+| `pnpm lint`                                        | 0 erreur ; 1 avertissement préexistant dans `.remember/tmp/last-ndc.ts` (non suivi, hors diff)                            |
+| `pnpm check:rules`                                 | « ✅ Règles et documentation alignées sur le code. » — exit 0                                                             |
+| `pnpm exec tsc --noEmit`                           | exit 0                                                                                                                   |
+| `pnpm install --frozen-lockfile`                   | exit 0, « Lockfile is up to date » ; `grep -c "@supabase" package.json pnpm-lock.yaml` = **0 et 0**                       |
+| `pnpm build` **sans les trois variables Supabase** | **exit 0**, `✓ Compiled successfully in 45s`, **330/330 pages** générées, aucun échec de prerender                        |
+| `pnpm format` (lecture seule)                      | 9 fichiers non formatés, **tous identiques à `main`** et hors diff (dette préexistante, dont `drizzle/migrations/meta/*`) |
+| Falsification `getFileUrl`                         | **échoue bien** (détail plus bas)                                                                                        |
+| Falsification d'un cas `storage/env`               | **échoue bien**                                                                                                          |
+| Falsification du test de garde `@supabase/*`       | **échoue bien** (re-vérifiée après la passe de correction)                                                               |
+| `git status` en fin de revue                       | **propre** ; aucun fichier sous `drizzle/`                                                                               |
 
 ### Comment l'absence des variables a été garantie pour le build
 
-1. `grep -l SUPABASE .env .env.local .env.development .env.test .env.production` → **aucun fichier** ne les contient ;
-2. `env | grep -i supabase` → **vide** dans le shell ;
-3. la commande a tout de même été lancée sous `env -u SUPABASE_ANON_KEY -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_BUCKET pnpm build`.
+1. `git ls-files | grep '^\.env'` → **aucun fichier d'environnement n'est suivi** ;
+2. `grep -l -i supabase .env .env.development .env.local .env.test` → **aucun** des quatre ne contient la chaîne ;
+3. `env | grep -i supabase` → **vide** dans le shell ;
+4. la commande a été lancée sous `env -u SUPABASE_ANON_KEY -u NEXT_PUBLIC_SUPABASE_URL -u NEXT_PUBLIC_SUPABASE_BUCKET pnpm build`.
 
-Le piège de la recherche est bien couvert : `files-repository.ts` construit son stockage **à l'import**, et les 330 pages générées traversent cette chaîne sans erreur.
+Aucun fichier d'environnement local ne définit non plus `STORAGE_TYPE` : le build a donc bien exercé le chemin « variable absente → `local` ». Aucune page n'a approché la limite des 60 s par page sur ce conteneur pendant ce build.
 
-### Falsification du test de garde (critère 3)
+## Vérification des trois corrections annoncées
 
-Sonde temporaire **non suivie** `src/zz-guard-probe-tmp.ts` contenant `import {createClient} from '@supabase/supabase-js'`, puis exécution du seul `provider-imports.test.ts` :
+### Constat 1 — un `.env` hérité démarre (corrigé, vérifié de bout en bout)
+
+`src/env-schemas.ts:104` est passé à `STORAGE_TYPE: z.string().optional()`, l'énuméré strict restant dans `src/lib/files/storage/env.ts:28` (`z.enum(['local']).default('local')`), alimenté par `withoutLegacyStorageType(env.STORAGE_TYPE)` qui ramène **la seule valeur `'supabase'`** à `undefined`.
+
+Les tests livrés mockent `@/env` : ils ne prouvent donc pas que `createEnv` lui-même accepte la valeur héritée. Le relecteur l'a prouvé avec une sonde **non suivie** (supprimée aussitôt) qui charge la vraie chaîne `@/env` → `storage/env` en faisant varier `process.env.STORAGE_TYPE` :
+
+- `STORAGE_TYPE=supabase` → `type: 'local'` ✅
+- `STORAGE_TYPE` absente → `type: 'local'` ✅
+- `STORAGE_TYPE=local` → `type: 'local'` ✅
+- `STORAGE_TYPE=azure` → **lève** au chargement du module ✅ (4/4 au vert)
+
+L'arbitrage est donc implémenté exactement comme décrit : aucun stockage n'est choisi en silence, et l'échec d'une valeur inconnue survient au chargement du module, bruyant et diagnosticable puisque le message Zod porte le chemin `STORAGE_TYPE`.
+
+**La relaxation n'affaiblit rien d'autre** : `STORAGE_TYPE` n'a qu'un seul consommateur dans tout le dépôt (`storage/env.ts`), le type passe de `'local' | undefined` à `string | undefined` sans autre répercussion (`tsc` vert), les autres entrées de `serverSchema` sont inchangées, et `emptyStringAsUndefined: true` fait tomber `STORAGE_TYPE=""` sur le défaut `local`. **Aucun appel à `logger`** n'a été ajouté dans le diff : le piège Cache Components des modules évalués à l'import n'est pas rouvert.
+
+### Constat 4 — clés orphelines (corrigé, parité recomptée)
+
+Comptage fait par le relecteur sur les trois fichiers :
+
+- **2004 clés feuilles** en `fr`, `en`, `es` — ensembles **strictement identiques** (0 manquante, 0 en trop dans chaque sens) ;
+- 2431 nœuds au total (le chiffre cité par le commit compte aussi les objets intermédiaires — les deux comptes sont cohérents) ;
+- `AccountPage.profile.*` : **absent des trois langues** ;
+- aucun consommateur restant dans `src/` ni dans `e2e/`.
+
+### Constat 9 (partiel) — contrat de `getFileUrl` (corrigé, falsifié)
+
+**Falsification** (aucun fichier suivi modifié) : copie non suivie de `file-service.ts` où `getFileUrl` rend `https://xyz.supabase.co/storage/v1/object/public/${path}`, plus une copie non suivie du test pointant dessus.
 
 ```
-- []
-+ [ "/workspace/src/zz-guard-probe-tmp.ts" ]
- ❯ src/lib/files/storage/provider-imports.test.ts:36:25   →  1 failed
+× rend la cle de stockage comme reference, jamais une adresse de fournisseur
+  Expected: "posts/<id>/schema.png"
+  Received: "https://xyz.supabase.co/storage/v1/object/public/files/posts/<id>/schema.png"
+  → 1 failed | 5 passed
 ```
 
-Sonde supprimée immédiatement, `git status` propre. Le garde-fou n'est pas décoratif.
+Seul le nouveau test tombe : il est bien la sentinelle, et les trois assertions se recoupent (clé exacte, `url === path`, absence de `://`).
 
-### e2e — résultat réel
-
-Chromium a pu être exécuté dans le conteneur (paquets `apt-get download` + `dpkg-deb -x` dans un sysroot utilisateur, `LD_LIBRARY_PATH` en chemins **absolus** — en relatif la bibliothèque n'est pas trouvée par le processus fils). Serveur de production (`pnpm start`) sur le port 3000, `DATABASE_URL` de `asl_cms_test` passée explicitement, `EMAIL_TRANSPORT=file`, plus les variables du job e2e de `ci.yml` au build **et** au démarrage.
-
-- **81/81 passed.**
-- Un premier essai sur le port 3100 a donné 6 échecs : tous s'expliquent par `NEXT_PUBLIC_APP_URL`/`BETTER_AUTH_URL` figés à `http://localhost:3000` au build. Artefact du harnais de revue, pas de la story.
-- **Flake annoncé sur `association-settings.spec.ts:487`** : **non reproduit**, 4 exécutions sur 4 au vert. Ce test ne touche aucune chaîne de fichiers : cette story n'en est pas une cause plausible.
+**Falsification d'un cas `storage/env`** : copie non suivie où le normaliseur avale _toute_ valeur inconnue — le cas « refuse bruyamment une valeur inconnue » échoue alors (1 failed | 2 passed). Le garde-fou contre le choix silencieux n'est pas décoratif.
 
 ## Conformité au plan
 
-- [x] Le code fait ce que le plan demande, et rien de plus. Les 6 tâches sont dans le diff :
-  1. `storage/env.ts` : `STORAGE_TYPE: z.enum(['local']).default('local')`, `NEXT_PUBLIC_SUPABASE_BUCKET` et `baseUrl` sortis, `bucket` devenu la constante de module `STORAGE_BUCKET = 'files'` ; `storage-factory.ts` : branche `'supabase'` et membre d'union retirés, `'s3'` conservé et levant toujours. Tests réécrits comme demandé, y compris le cas `@ts-expect-error`.
-  2. Blog hérité : ni `admin/blog/actions.ts` ni `files-repository.ts` ni `file-dal.ts` modifiés (diff vide sur ces trois fichiers), la bascule passe par la tâche 1. `file-service.test.ts` ne mocke plus `@/lib/files/supabaseClient`.
-  3. Les deux écrans supprimés, les deux actions d'envoi d'image supprimées, les trois pages nettoyées, les clés de traduction retirées dans fr/en/es (parité vérifiée : 2006 clés dans les trois fichiers). `src/components/ui/file-upload.tsx` **intact**.
-  4. `supabase-storage.ts`, `supabaseClient.ts`, `config.ts` supprimés ; les deux paquets hors de `package.json` et du lockfile ; `provider-imports.test.ts` calqué sur le gabarit des transports d'email.
-  5. Variables retirées de `env-schemas.ts`, `env.ts`, `env.example`, `scripts/init-env.ts` et `ci.yml`.
-  6. `rule-upload-file.md` réécrite, copies `.cursor` alignées, `docs/architecture.md`, note s16 de `docs/stories.md`, pages MDX du socle.
-- [x] La liste « À ne pas toucher » est respectée : `file-upload.tsx`, `association-identity-service.ts`, `local-storage.ts`, `storage/types.ts`, `drizzle/` — diff vide sur tous.
-- [x] Les 7 critères d'acceptation sont couverts.
-- Dérive au-delà du plan, assumée (D3) : `next.config.ts` (remotePattern `your-project.supabase.co` retiré) et trois fichiers de règles qui pointaient vers `edit-user-profile.tsx` supprimé. Dérive justifiée : sans elle, `check:rules` et les règles renverraient vers un fichier absent. Les quatre fichiers de remplacement cités existent, ouverts et vérifiés.
+- [x] Le code fait ce que le plan demande, et rien de plus. Les 6 tâches sont cochées et présentes dans le diff (vérification refaite fichier par fichier).
+- [x] La passe de correction **ne dérive pas** : elle touche exactement les trois constats demandés, plus le rapport de revue et un reformatage de lien markdown.
+- [x] La liste « À ne pas toucher » reste respectée : `file-upload.tsx`, `association-identity-service.ts`, `local-storage.ts`, `storage/types.ts`, `drizzle/` — diff vide sur tous.
+- [x] Les 7 critères d'acceptation sont couverts, et re-vérifiés **après** la passe de correction : build sans variables (1), pages nettoyées et `tsc` vert (2), test de garde falsifié (3), `--frozen-lockfile` et grep lockfile (4), variables absentes des 5 emplacements (5), `STORAGE_TYPE` absente → `local` prouvé sur la vraie chaîne (6), aucune règle ni page ne décrit plus un flux Supabase (7).
+- Tension avec l'ADR 004 (« Supabase et S3 restent des valeurs possibles du même énuméré ») : **non contradictoire**, le même ADR prévoit le retrait des dépendances Supabase, un énuméré ne peut pas conserver une valeur dont l'adaptateur a disparu, et l'arbitrage figure dans le plan validé. Le factory reste ouvert (`'s3'` conservé, levant toujours).
 
 ## Anti-hallucination
 
-- [x] Aucun import, appel ni clé de configuration inventé. Ouverts un par un : `createLocalStorage(config, rootDir)` (`local-storage.ts:48`), `StorageConfig` (`types.ts:1` — ne contient ni `baseUrl` ni champ supprimé), `getStorageConfig()` (`storage/env.ts:29`), les quatre variables d'environnement déclarées **et** câblées dans `runtimeEnv`, les messages d'erreur attendus par les tests, et les services du blog utilisés par le nouveau test.
-- [x] Les extraits de code recopiés dans les pages MDX correspondent **mot pour mot** au code réel après la story.
-- [x] Le nouveau `file-service-blog.test.ts` ne simule **rien** entre le service et le disque : il déplace la racine dans un répertoire temporaire et relit le fichier écrit. C'est la preuve réelle du rebranchement.
-- [ ] Un point « plausible mais pas tout à fait juste » : `getFileUrl()` qui rend la clé (constat 2), dont les deux consommateurs vivants n'ont pas été mesurés.
+- [x] Aucun import, appel ni clé de configuration inventé dans la passe de correction : `withoutLegacyStorageType`, `env.STORAGE_TYPE` (déclaré et câblé), les services du blog, `vi.hoisted` + `vi.resetModules` + import dynamique de `./env` (le rechargement par cas est nécessaire, la config étant résolue au chargement du module).
+- [x] Aucune valeur plausible-mais-fausse : la seule valeur héritée normalisée est `'supabase'`, la chaîne exacte que `scripts/init-env.ts` écrivait avant la story.
+- [x] Le code fait ce que le message de commit annonce — les trois points ont été re-testés indépendamment, pas crus sur parole.
 
 ## Conformité aux règles
 
-- [x] AGENTS.md : un seul commit de story portant recherche, plan et code ; `pnpm test --run` ; aucune valeur en dur nouvelle ; aucun `withRlsBypass` ; aucune migration.
-- [x] Aucun ADR contredit. L'ADR 004 prévoit explicitement le retrait des dépendances Supabase : sortir `'supabase'` de l'énuméré est son aboutissement, et le factory reste ouvert (`'s3'` conservé). ADR 015 : chaîne d'identité intacte, e2e verts.
-- [x] Design system : aucun composant ni token introduit, aucune mention des écrans retirés dans le document.
+- [x] AGENTS.md : `pnpm test --run` partout, aucune valeur métier en dur nouvelle, aucun `withRlsBypass`, aucune migration, aucun fichier `drizzle/` touché, Conventional Commits.
+- [x] Aucun ADR contredit. ADR 004 : la chaîne fichiers est entièrement sur le disque du serveur, les SDK ont quitté le dépôt, un test de garde le verrouille. ADR 015 : chaîne d'identité intacte.
+- [x] Story sans UI nouvelle : pas de `docs/designs/<id>` attendu, aucun composant ni token introduit.
+- [x] La retouche de `rule-upload-file.md` et de sa copie `.cursor` est **purement cosmétique** : l'échappement prettier d'une cible de lien contenant des parenthèses. Le fichier cible existe, les deux copies sont alignées, `check:rules` est vert.
 
 ## Tests
 
-- [x] Suite exécutée par le relecteur : 818 tests unitaires, 81 e2e.
-- [x] Les assertions tiennent les critères : `getStorageConfig().type === 'local'` sans variable ; garde falsifié ; écriture **relue sur le disque**, suppression vérifiée par `readdir`, refus de type MIME et de taille **sans rien écrire** ; page `/account` dont le test échouerait si le formulaire revenait.
-- [ ] Deux faiblesses : une assertion triviale dans `env-schemas.test.ts` et aucun test ne fixe le nouveau comportement de `getFileUrl()` (constats 8 et 9).
+- [x] Suite exécutée par le relecteur : **823 tests unitaires au vert**. Le delta de +5 correspond exactement aux tests ajoutés.
+- [x] Les assertions tiennent les critères, et trois d'entre elles ont été **falsifiées** plutôt que lues.
+- [ ] Deux faiblesses résiduelles, sans conséquence fonctionnelle : la couverture committée du constat 1 s'arrête au schéma et à un `@/env` mocké (N2), et une assertion de `account/page.test.tsx` s'est affaiblie mécaniquement (N3).
 
 ## Régressions
 
-- [x] Les pages qui montaient les écrans retirés rendent toujours — vérifié trois fois (test de page, `tsc`, e2e).
-- [x] Aucune clé de traduction orpheline référencée ; aucun appel à `upload.success` / `upload.errorRetry` ne subsiste.
-- [x] Chaîne d'identité s01b au vert ; `pnpm install --frozen-lockfile` et le build ne régressent pas.
+- [x] Rien de ce que la première passe avait vérifié n'a été re-cassé : test de garde toujours falsifiable, build sans les trois variables toujours vert, `--frozen-lockfile`, `tsc` et `check:rules` verts, critères 1 à 7 re-passés.
+- [x] Aucun chemin d'exécution utilisateur n'est modifié par la passe de correction : la relaxation ne s'applique qu'à la validation d'amorçage, la normalisation ne se déclenche que sur `STORAGE_TYPE=supabase` (absente du job e2e et des quatre fichiers `.env` locaux), et les deux clés retirées n'avaient plus aucun consommateur.
+- [x] **Le choix de ne pas relancer Playwright est justifié** — vérifié plutôt qu'accepté : les trois modifications sont soit inertes dans l'environnement e2e, soit strictement de test. Les 81/81 de la première passe portaient sur le même code applicatif, à ces trois modifications près.
 
 ## Constats
 
-1. **mineur** — `src/env-schemas.ts:101` : `STORAGE_TYPE: z.enum(['local']).optional()`. Un `.env` généré par `pnpm init:env` **avant** cette story contient `STORAGE_TYPE=supabase` : `@t3-oss/env-nextjs` refuse alors de démarrer. Le critère 5 promet qu'un environnement définissant encore les anciennes variables démarre sans erreur — vrai pour les trois variables Supabase, faux pour `STORAGE_TYPE`. Échec bruyant et diagnosticable, rien n'est déployé à ce jour. À corriger par `z.string().optional()` dans `env-schemas.ts` (l'énuméré strict restant dans `storage/env.ts`), ou par une note de mise en ligne.
-2. **mineur** — conséquence de D1 non mesurée : `FileResponse.url` porte désormais la clé de stockage, et deux consommateurs vivants s'en servent comme d'un lien. `file-image-preview-card.tsx:34` fait `<Image src={file.url}>`, et les boutons « copier le lien » (`file-image-preview-card.tsx:50`, `file-dropzone.tsx:258`) copient `posts/<id>/image/12345-schema.png` sous un toast « lien copié ». **Pas de plantage** : `listFilesService` remplit `type` depuis `StoredFile.mimeType`, que l'adaptateur `local` ne renseigne jamais, donc `isImage` est faux et la branche `<Image>` est morte. Reste que l'aperçu disparaît et que le bouton copie autre chose qu'un lien : la DoD « sans changement de comportement visible » n'est pas tout à fait tenue sur le blog hérité. À reprendre en s05 avec la route qui servira ces fichiers.
-3. **mineur** — arborescence ADR 004 : le blog écrit sous `dev/posts/<postId>/image/...`, **sans le préfixe `{organizationId}`** que l'ADR 004 désigne comme le mécanisme de séparation physique par tenant. Chemin hérité, non introduit par du code neuf, et le plan renvoie à s05 — mais `docs/architecture.md` annonce « Deux chaînes l'utilisent » sans dire que l'une n'est pas scopée tenant. À écrire noir sur blanc.
-4. **mineur** — clés de traduction orphelines laissées : `AccountPage.profile.title` et `AccountPage.profile.description` (fr/en/es) n'ont plus aucun consommateur. La tâche 3 demandait de retirer les clés devenues orphelines. (Celles sous `AccountPage.EditUserProfileForm.form/validation` restent légitimement utilisées par `updateUserAction`.)
-5. **mineur** — D4 : `updateUserAction` (`user/action.ts:77`) et `updateOrganizationAction` (`organization/action.ts:42`) n'ont plus **aucun importeur** (les homonymes de l'admin vivent ailleurs). Elles restent exportées d'un module `'use server'`, donc appelables comme point d'entrée sans interface. Pas de faille — `requireActionAuth()` puis autorisation de service — mais c'est de la surface morte.
-6. **mineur** — les deux pages d'édition d'organisation gardent le titre « Modifier… » alors qu'il ne reste que la table des membres. Accessoirement, le propriétaire d'une organisation perd son seul écran de renommage en self-service (l'admin garde le sien). Conforme à l'arbitrage du plan, à noter pour s02/s31.
-7. **mineur** — `docs/_files/en/10-deployment/01-vercel.mdx:119` conseille `LOCAL_STORAGE_ROOT="/var/lib/asl-cms/files"` sur Vercel, dont le système de fichiers est éphémère. Substitution mécaniquement cohérente, sémantiquement fausse. Page héritée du socle, à corriger ou à retirer.
-8. **mineur** — `provider-imports.test.ts:18` : la regex ne capte que `from '@supabase/…'` et `import('@supabase/…')`. Un import à effet de bord ou un `require()` passerait. Limite identique au gabarit dont il est copié.
-9. **mineur** — `env-schemas.test.ts:47` : le cas « ignore sans erreur un environnement qui les définit encore » passe trivialement, `z.object` retirant les clés inconnues ; il n'exerce pas `createEnv`. Aucun test ne fixe le nouveau `getFileUrl()` — le constat 2 serait passé inaperçu.
-10. **mineur (factuel, hors code)** — le rapport d'implémentation affirme que les trois variables ont été retirées de « `.env.test` (committed) ». C'est faux : `.gitignore:42` ignore `.env*` et aucun fichier d'environnement n'est suivi. L'état réel est bon, c'est la formulation qui était à corriger. Nit adjacent : `env.example` conserve `MAX_FILE_SIZE=5242880` alors que le schéma attend `NEXT_PUBLIC_MAX_FILE_SIZE` — incohérence préexistante, non corrigée par la story.
+### Nouveaux (passe de correction)
 
-## Fichiers clés
+- **N1 — mineur** — la tolérance de la valeur héritée n'est documentée **que dans le commentaire du code**. `docs/architecture.md:177`, `docs/_files/en/03a-file-management/03-storage-config.mdx:29` et `rule-upload-file.md:19` énoncent désormais une règle légèrement inexacte : un environnement portant `supabase` est accepté et ramené à `local`. L'extrait de `env.ts` recopié dans la page MDX n'est plus mot pour mot le fichier réel (il omet `withoutLegacyStorageType`). Une phrase à ajouter.
+- **N2 — mineur** — `storage/env.test.ts` mocke `@/env` et `env-schemas.test.ts:52` parse `z.object(serverSchema)` : **aucun test committé ne traverse `createEnv`**, c'est-à-dire l'objet qui refusait effectivement de démarrer avant la correction. Le comportement est bon (prouvé par sonde), mais la sentinelle committée s'arrête un cran avant la cause du constat 1.
+- **N3 — mineur (nit)** — `account/page.test.tsx:57` : `expect(screen.queryByText('Profil')).toBeNull()` est mécaniquement affaibli par le retrait des clés — le libellé n'existant plus, le mock de traduction rendrait `undefined` même si la carte revenait. `queryByLabelText('Nom')` tient toujours le critère.
 
-- `src/lib/files/storage/env.ts`, `src/lib/files/storage/storage-factory.ts`
-- `src/services/file-service.ts` (l. 62 : `const getFileUrl = (path: string) => path`)
-- `src/components/features/admin/blog/file-image-preview-card.tsx` (l. 34 et 50, consommateurs de `url`)
-- `src/env-schemas.ts` (l. 101, `STORAGE_TYPE`)
-- `src/lib/files/storage/provider-imports.test.ts`, `src/services/__tests__/file-service-blog.test.ts`
+### Points de procédure (hors code)
+
+- La branche porte **deux commits** au lieu du commit unique de story. Acceptable : c'est la forme normale d'une passe de correction après revue, et les commits sont écrasés à la fusion.
+- `docs/reviews/s12a-retrait-supabase.md` a été committé par la passe de correction, alors qu'AGENTS.md confie ce commit à `/ks-ship` ; le fichier portait encore le rapport de première passe. Le présent rapport le remplace avant `/ks-ship`.
+
+### Constats de première passe — statut
+
+| #   | Statut                                 | Rappel                                                                                                                                                                                     |
+| --- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | ✅ **corrigé et vérifié**              | `STORAGE_TYPE` hérité bloquait le démarrage                                                                                                                                                |
+| 2   | ⏭️ **reporté à s05** (toujours exact)  | `FileResponse.url` porte la clé de stockage ; les boutons « copier le lien » copient `posts/<id>/image/…`, l'aperçu `<Image>` reste une branche morte (`mimeType` jamais renseigné)         |
+| 3   | 🔓 **ouvert** (toujours exact)         | le blog écrit sous `dev/posts/<postId>/…`, **sans préfixe `{organizationId}`** ; à écrire noir sur blanc dans `docs/architecture.md`                                                        |
+| 4   | ✅ **corrigé et vérifié**              | clés `AccountPage.profile.*` retirées, parité 2004/2004/2004                                                                                                                               |
+| 5   | 🔓 **ouvert** (toujours exact)         | `updateUserAction` et `updateOrganizationAction` n'ont **aucun importeur** ; surface morte exportée d'un module `'use server'`, protégée par `requireActionAuth()`                          |
+| 6   | 🔓 **ouvert**                          | titre « Modifier… » sur deux pages réduites à la table des membres ; le propriétaire perd son écran de renommage en self-service (à reprendre en s02/s31)                                   |
+| 7   | 🔓 **ouvert** (toujours exact)         | `docs/_files/en/10-deployment/01-vercel.mdx:119` conseille `LOCAL_STORAGE_ROOT` sur Vercel, dont le disque est éphémère                                                                     |
+| 8   | 🔓 **ouvert**                          | `provider-imports.test.ts:18` ne capte que `from '@supabase/…'` et `import('@supabase/…')` ; un `require()` passerait (limite héritée du gabarit des transports d'email)                    |
+| 9   | ✅ **partiellement corrigé**           | le contrat de `getFileUrl()` est fixé et falsifiable ; la faiblesse d'assertion d'`env-schemas.test.ts` subsiste (reprise en N2)                                                            |
+| 10  | 🔓 **ouvert (factuel)**                | `env.example` conserve `MAX_FILE_SIZE=5242880` alors que le schéma attend `NEXT_PUBLIC_MAX_FILE_SIZE`. Incohérence préexistante                                                             |
 
 ## État final
 
-`git status` propre, aucun fichier suivi modifié, aucun fichier sous `drizzle/migrations/meta`. La sonde de falsification et le serveur de test ont été supprimés ou arrêtés.
+`git status` **propre**, aucun fichier suivi modifié, **aucun fichier sous `drizzle/migrations/meta`** (les 4 fichiers `drizzle/` signalés par `prettier --check` sont identiques à `main` : dette de formatage préexistante, hors story). Les sondes de falsification ont toutes été supprimées. Aucune commande d'écriture n'a été lancée.
 
 Max severity: minor
 Ship allowed: yes
