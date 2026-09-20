@@ -10,10 +10,15 @@ import {
   authLoginFormSchema,
   authMagicLinkFormSchema,
   authRegisterFormSchema,
+  createMagicLinkRequestSchema,
 } from '@/components/features/auth/auth-form-validation'
 import {AuthMethod, env} from '@/env'
 import {auth, AuthAppConfig} from '@/lib/better-auth/auth'
+import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
+import {isEmailTransportError} from '@/lib/emails/transport'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
+import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
+import {logger} from '@/lib/logger'
 import {
   getUserByEmailService,
   isEmailAvailableService,
@@ -178,77 +183,70 @@ export async function loginCredentialAction(
   }
 }
 
-export async function loginMagicLinkAction(
-  prevState: MagicLinkFormState,
-  formData: FormData
-): Promise<MagicLinkFormState> {
-  const t = await getTranslations('AuthActions.magicLink')
+export type MagicLinkRequestState =
+  | {status: 'idle'}
+  | {status: 'sent'}
+  | {status: 'invalid'; errors: {field: 'email'; message: string}[]}
+  | {status: 'unavailable'}
 
-  // Vérifier si magiclink est activé
-  if (!env.NEXT_PUBLIC_AUTH_METHODS.includes('magiclink')) {
+const waitUntil = async (deadline: number) => {
+  const remaining = deadline - Date.now()
+  if (remaining <= 0) return
+  await new Promise<void>((resolve) => setTimeout(resolve, remaining))
+}
+
+/**
+ * Demande d'un lien de connexion (s03, ecrans A et B).
+ *
+ * Le resultat est **le meme** pour une adresse connue ou non, et la reponse
+ * dure au moins `MAGIC_LINK_REQUEST_MIN_DURATION_MS` dans les deux cas (§7).
+ * Un echec d'envoi rend l'etat « service en panne », jamais une exception.
+ * La locale vient du formulaire, pas de next-intl : une Server Action ne lit
+ * que le cookie `NEXT_LOCALE`, absent d'un navigateur neuf. Verifiee contre le
+ * routage, francais sinon (ADR 008) ; `metadata` la porte jusqu'a l'email.
+ */
+export async function requestMagicLinkAction(
+  prevState: MagicLinkRequestState,
+  formData: FormData
+): Promise<MagicLinkRequestState> {
+  const locale = resolveSupportedLocale(formData.get('locale'))
+  const t = await getTranslations({locale, namespace: 'Auth.MagicLinkLogin'})
+
+  const validation = createMagicLinkRequestSchema(t).safeParse({
+    email: formData.get('email')?.toString() ?? '',
+  })
+  if (!validation.success) {
     return {
-      success: false,
-      message: 'Magic link authentication is not enabled',
+      status: 'invalid',
+      errors: validation.error.issues.map((issue) => ({
+        field: 'email',
+        message: issue.message,
+      })),
     }
   }
 
+  const deadline = Date.now() + MAGIC_LINK_REQUEST_MIN_DURATION_MS
+  let result: MagicLinkRequestState
   try {
-    // 1. Validation Server Zod des données du formulaire
-    const validationResult = authMagicLinkFormSchema.safeParse({
-      email: formData.get('email')?.toString().toLowerCase(),
-    })
-
-    if (!validationResult.success) {
-      const validationErrors: MagicLinkValidationError[] =
-        validationResult.error.issues.map((err) => ({
-          field: err.path[0] as keyof z.infer<typeof authMagicLinkFormSchema>,
-          message: err.message,
-        }))
-      return {
-        success: false,
-        message: t('validationError'),
-        errors: validationErrors,
-      }
-    }
-
-    const {email} = validationResult.data
-
-    // 2. Vérification de l'existence de l'utilisateur (optionnel)
-    const user = await getUserByEmailService(email)
-    if (!user) {
-      return {
-        success: false,
-        message: t('userNotFound'),
-      }
-    }
-
-    // 3. Envoi du magic link avec better auth
-    const response = await auth.api.signInMagicLink({
+    await auth.api.signInMagicLink({
       headers: await headers(),
       body: {
-        email,
+        email: validation.data.email,
         callbackURL: '/dashboard',
+        errorCallbackURL: '/login/lien-invalide',
+        metadata: {locale},
       },
     })
-
-    if (!response.status) {
-      return {
-        success: false,
-        message: t('sendError'),
-      }
-    }
-
-    redirect('/verify-request')
+    result = {status: 'sent'}
   } catch (error) {
-    if (isRedirectError(error)) {
-      throw error
-    }
-
-    return {
-      success: false,
-      message: t('unexpectedError'),
-    }
+    logger.error("[MAGIC-LINK] Echec de l'envoi du lien de connexion", {
+      reason: isEmailTransportError(error) ? 'transport' : 'unexpected',
+    })
+    result = {status: 'unavailable'}
   }
+
+  await waitUntil(deadline)
+  return result
 }
 
 /**

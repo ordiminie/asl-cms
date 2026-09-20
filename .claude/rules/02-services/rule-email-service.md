@@ -1,110 +1,88 @@
----
-description:
----
+# Service d'Email — contrat `EmailTransport` et React Email
 
-# Service d'Email avec Resend et React Email
+## Principe
 
-## Configuration
+**Tout email du produit part par le contrat `EmailTransport`** (ADR 005, ADR 017), jamais par un
+fournisseur appelé directement. Les gabarits sont écrits avec [React Email](https://react.email).
 
-Le service d'email utilise [Resend](https://resend.com) comme fournisseur d'emails et [React Email](https://react.email) pour les templates.
+- **Brevo** est le transport de **production** (API REST, sans SDK).
+- **Resend** est conservé comme transport de **secours**, activable par configuration (ADR 017).
+- `file` (boîte de sortie JSON) sert le développement, la CI et les e2e ; `memory` les tests unitaires.
 
-## Structure des Templates
+⚠️ **Aucun code métier n'importe un SDK de fournisseur.** `resend` n'est importé que par son
+adaptateur, `src/lib/emails/transport/resend-transport.ts` — un test le vérifie
+(`provider-imports.test.ts`). Un appel direct à un fournisseur est un défaut de revue.
 
-Les templates d'email sont stockés dans `src/lib/emails/` et utilisent les composants de `@react-email/components`.
+## Le contrat
 
-Exemple de template :
-[invitation-organization-link-email.tsx](src/lib/emails/invitation-organization-link-email.tsx)
+`src/lib/emails/transport/` :
 
-```tsx
-export type InvitationOrganizationLinkMailProps = {
-  invitedByUsername: string
-  invitedByEmail: string
-  teamName: string
-  inviteLink: string
+```ts
+export type EmailMessage = {
+  from: string // `adresse` ou `Nom <adresse>`
+  to: string
+  subject: string
+  html?: string
+  text: string // toujours fournie (design system §5)
 }
 
-export default function InvitationOrganizationLinkMail({
-  invitedByUsername,
-  invitedByEmail,
-  teamName,
-  inviteLink,
-}: InvitationOrganizationLinkMailProps) {
-  // Template React Email
-}
+export type EmailTransport = {send: (message: EmailMessage) => Promise<void>}
 ```
 
-## Service d'Envoi
+Un échec d'envoi lève une `EmailTransportError` (reconnue par `isEmailTransportError`), quel que
+soit le fournisseur : l'appelant décide de l'état à afficher, jamais de relancer ailleurs.
 
-Le service d'envoi d'email est défini dans [email-service.ts](src/services/email-service.ts).
+`getEmailTransport()` choisit l'implémentation selon `EMAIL_TRANSPORT` (`@/env`) :
 
-### Utilisation de Resend
+| `EMAIL_TRANSPORT` | Variable exigée  | Défaut                               |
+| ----------------- | ---------------- | ------------------------------------ |
+| `brevo`           | `BREVO_API_KEY`  | à déclarer en production             |
+| `resend`          | `RESEND_API_KEY` | —                                    |
+| `file`            | —                | hors production ; `EMAIL_OUTBOX_DIR` |
+| `memory`          | —                | —                                    |
+
+## Structure des gabarits
+
+Les gabarits sont dans `src/lib/emails/` et utilisent les composants de `react-email`. Règles du
+médium : design system §5 — 600 px, tables, styles en ligne, **couleurs hexadécimales importées de
+`src/lib/emails/theme.ts`** (jamais retapées dans un gabarit, jamais d'OKLCH ni de variable CSS),
+un bouton en table toujours doublé de l'URL en clair.
+
+Exemple : [magic-link-email.tsx](src/lib/emails/magic-link-email.tsx).
+
+## Service d'envoi
+
+Le point d'envoi unique est `sendEmailService` dans [email-service.ts](src/services/email-service.ts) :
+il rend le gabarit (`react`, élément ou promesse d'élément) en HTML et confie le message au
+transport actif.
 
 ```tsx
-import {env} from '@/env'
-
-const resend = new Resend(env.RESEND_API_KEY)
-
-export const sendEmailService = async (
-  payload: CreateEmailOptions,
-  options?: CreateEmailRequestOptions
-) => {
-  // Configuration et envoi
-}
-```
-
-### Envoi d'un Email avec Template React
-
-```tsx
-await sendEmailService({
-  to: email,
-  subject: "Sujet de l'email",
-  from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
-  text: "Version texte de l'email",
-  react: MonTemplateReact({
-    // Props du template
-  }),
-})
+await sendEmailService(
+  {
+    to: email,
+    subject: t('subject', values),
+    text: versionTexte, // obligatoire
+    react: MonGabarit({...props}),
+  },
+  {recipientType: 'system'}
+)
 ```
 
 ## Bonnes Pratiques
 
-1. **Templates React Email**
-   - Utiliser les composants de `@react-email/components`
-   - Échapper les apostrophes avec `&apos;`
+1. **Gabarits React Email**
+   - Utiliser les composants de `react-email`
+   - Couleurs de `theme.ts` uniquement
    - Définir un type TypeScript pour les props
-   - Inclure une version texte de l'email
+   - Toujours écrire la version texte (`text`)
 
-2. **Service d'Envoi**
-   - Toujours fournir une version texte (`text`)
-   - Utiliser la propriété `react` pour les templates React
-   - Gérer les erreurs d'envoi
-   - Préfixer les sujets en développement avec `[DEV]`
+2. **Service d'envoi**
+   - Passer par `sendEmailService` (ou un `send…EmailService` qui l'appelle), jamais par un transport
+     depuis le code métier
+   - Laisser remonter `EmailTransportError` jusqu'à l'appelant qui choisit l'état à afficher
+   - Les sujets sont préfixés `[DEV]` en développement
 
 3. **Sécurité**
-   - Ne jamais exposer la clé API Resend
+   - Ne jamais journaliser une URL de connexion ni un jeton
+   - Les clés des fournisseurs vivent dans `@/env`, jamais dans le code
    - Valider les entrées avant l'envoi
-   - Utiliser des variables d'environnement pour la configuration
-
-## Exemple Complet
-
-```tsx
-interface SendEmailParams {
-  email: string
-  // Autres paramètres
-}
-
-export const sendCustomEmail = async ({
-  email,
-  // Autres paramètres
-}: SendEmailParams) => {
-  await sendEmailService({
-    to: email,
-    subject: 'Sujet',
-    from: env.EMAIL_FROM ?? 'onboarding@resend.dev',
-    text: 'Version texte',
-    react: MonTemplateReact({
-      // Props
-    }),
-  })
-}
-```

@@ -26,6 +26,10 @@ env:
   BETTER_AUTH_URL: http://localhost:3000
   NEXT_PUBLIC_APP_URL: http://localhost:3000
   RESEND_API_KEY: re_factice_ci
+  # Aucun email ne part en CI : le transport fichier écrit chaque message dans
+  # une boîte de sortie jetable, que lit e2e/magic-link.spec.ts (ADR 005).
+  EMAIL_TRANSPORT: file
+  EMAIL_OUTBOX_DIR: /tmp/asl-cms-email-outbox
   EMAIL_FROM: noreply@example.com
   EMAIL_TO: admin@example.com
   SUPABASE_ANON_KEY: factice-ci

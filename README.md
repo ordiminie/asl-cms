@@ -171,16 +171,20 @@ Copiez la valeur générée dans votre fichier `.env` :
 AUTH_SECRET=votre_secret_généré
 ```
 
-## Configuration de Resend pour les emails
+## Configuration de l'envoi des emails
 
-Pour permettre l'envoi d'emails via Resend, vous devez configurer votre clé API :
+Tout email part par le contrat `EmailTransport` (ADR 005, ADR 017), choisi par `EMAIL_TRANSPORT` :
 
-1. Créez un compte sur [Resend](https://resend.com/) et obtenez votre clé API
+- `brevo` — **production** (à déclarer), avec `BREVO_API_KEY` ;
+- `resend` — secours, avec `RESEND_API_KEY` ;
+- `file` — **défaut hors production** : rien ne part, chaque email est écrit en JSON dans
+  `EMAIL_OUTBOX_DIR` (répertoire temporaire du système s'il est vide) ;
+- `memory` — tests unitaires.
 
-2. Ajoutez cette clé dans votre fichier `.env` :
-   ```
-   RESEND_API_KEY=votre_clé_api_resend
-   ```
+```
+EMAIL_TRANSPORT=brevo
+BREVO_API_KEY=votre_clé_api_brevo
+```
 
 First, run the development server:
 

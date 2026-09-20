@@ -774,16 +774,6 @@
       "submit": "Sign in",
       "submitting": "Signing in..."
     },
-    "MagicLinkForm": {
-      "email": {
-        "label": "Email",
-        "placeholder": "Enter your email"
-      },
-      "submit": "Send magic link",
-      "submitting": "Sending...",
-      "checkEmail": "Check your email",
-      "linkSent": "A login link has been sent to your email address."
-    },
     "messages": {
       "success": "Success",
       "error": "Error",
@@ -987,6 +977,49 @@
         "success": "Success",
         "error": "Error"
       }
+    },
+    "MagicLinkLogin": {
+      "title": "Sign in to your space",
+      "intro": "Enter your email address: you will receive a link to open your space. There is <strong>no password</strong> to remember.",
+      "email": {
+        "label": "Email address",
+        "invalid": "This address is not valid. Example: name@domain.com"
+      },
+      "submit": "Get my sign-in link",
+      "submitting": "Sending…",
+      "postal": "No email address? Documents are sent to you by <strong>post</strong> — call your association's board.",
+      "unavailable": "The link could not be sent. <strong>Your address is not the problem.</strong> Try again in a few minutes, or call your association's board.",
+      "providerAccess": "Service provider access",
+      "sent": {
+        "title": "Check your inbox",
+        "intro": "<strong>If the address {email} is registered</strong>, a sign-in link has just been sent to it. It is valid for <strong>{minutes} minutes</strong> and works only once.",
+        "nothingTitle": "Nothing arriving?",
+        "stepWait": "Wait a few minutes.",
+        "stepSpam": "Look in your spam folder.",
+        "stepCheck": "Check the address you entered: {email} —",
+        "correct": "Correct the address",
+        "causes": "The board may have registered another address for you. Or no address is registered for your plot: you then receive your documents by post, and that is normal.",
+        "resend": "Send another link",
+        "resendIn": "Send another link (available in {seconds} s)",
+        "resent": "A new link has been sent, if the address is registered. The previous one no longer works.",
+        "help": "Need help? Call your association's board."
+      }
+    },
+    "InvalidMagicLink": {
+      "metadata": {
+        "title": "This link no longer works"
+      },
+      "title": "This link no longer works",
+      "reassurance": "<strong>You did nothing wrong</strong>: just ask for a new one.",
+      "explanation": "A sign-in link works only once and stays valid for {minutes} minutes. That is what protects your space, even if someone else opens your mailbox.",
+      "action": "Get a new link",
+      "help": "Need help? Call your association's board."
+    },
+    "ProviderLoginPage": {
+      "metadata": {
+        "title": "Service provider access",
+        "description": "Password sign-in"
+      }
     }
   },
   "AuthActions": {
@@ -1001,12 +1034,6 @@
         "expires": "Suspension will be lifted on {date} at {time}",
         "permanent": "This suspension is permanent."
       }
-    },
-    "magicLink": {
-      "validationError": "Validation error",
-      "userNotFound": "No account found with this email",
-      "sendError": "Error sending magic link",
-      "unexpectedError": "An error occurred while sending the magic link"
     },
     "register": {
       "validationError": "Validation error",
@@ -1051,12 +1078,14 @@
         "footer": "SaaS Mike Codeur Stripe Boilerplate"
       },
       "magicLink": {
-        "subject": "Your magic link to sign in",
-        "preview": "You have requested a magic link to connect to your account.",
-        "title": "Magic Login",
-        "clickToConnect": "Click here to connect",
-        "ignoreMessage": "If you did not request this link, please ignore this email.",
-        "footer": "SaaS Mike Codeur Stripe Boilerplate"
+        "subject": "{name} — your sign-in link",
+        "preview": "Valid for {minutes} minutes, for a single sign-in. No password to remember.",
+        "title": "Your sign-in link",
+        "intro": "Hello, here is the link to open your space on the {name} website. It is valid for <strong>{minutes} minutes</strong> and works only once.",
+        "action": "Open my space",
+        "urlIntro": "Open this link to sign in:",
+        "ignore": "Didn't request this link? Ignore this email: no one can sign in without it.",
+        "footer": "You are receiving this email because a sign-in was requested with your address on the {name} website."
       },
       "resetPassword": {
         "subject": "Reset your password",
@@ -2889,6 +2918,10 @@
       "accentHue": {
         "label": "Hue",
         "help": "Your association's colour. It colours the monogram, rules and callouts of your site. Buttons keep their colour."
+      },
+      "linkRequestsPerDay": {
+        "label": "Sign-in links per email address",
+        "help": "Maximum number of sign-in links sent to the same address in one day. Beyond that, the person sees the same screen but no email is sent until the next day: this protects your members' inboxes and your association's sending quota."
       }
     },
     "hues": {
@@ -2898,6 +2931,9 @@
       "tile": "Tile",
       "heather": "Heather",
       "broom": "Broom"
+    },
+    "units": {
+      "requestsPerDay": "requests per day"
     }
   },
   "BureauSettingsPage": {

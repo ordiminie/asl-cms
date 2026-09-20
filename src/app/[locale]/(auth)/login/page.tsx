@@ -1,10 +1,9 @@
-import {GalleryVerticalEnd} from 'lucide-react'
 import {redirect} from 'next/navigation'
 import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
-import {LoginForm} from '@/components/features/auth/forms/login'
-import {APP_NAME} from '@/lib/constants'
+import {requestMagicLinkAction} from '@/app/[locale]/(auth)/action'
+import {MagicLinkLogin} from '@/components/features/auth/magic-link-login'
 import {getAuthUser} from '@/services/authentication/auth-service'
 
 export async function generateMetadata({
@@ -22,6 +21,10 @@ export async function generateMetadata({
   }
 }
 
+/**
+ * Connexion d'un membre (s03, ecrans A et B) : un lien recu par email, aucun
+ * mot de passe. Le formulaire par mot de passe vit a `/login/prestataire`.
+ */
 export default async function LoginPage({
   params,
 }: {
@@ -34,17 +37,6 @@ export default async function LoginPage({
   if (user) {
     redirect('/logout')
   }
-  return (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <a href="#" className="flex items-center gap-2 self-center font-medium">
-          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-            <GalleryVerticalEnd className="size-4" />
-          </div>
-          {APP_NAME}
-        </a>
-        <LoginForm />
-      </div>
-    </div>
-  )
+
+  return <MagicLinkLogin requestAction={requestMagicLinkAction} />
 }

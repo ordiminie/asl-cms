@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('next/dist/client/components/redirect-error', () => ({
@@ -7,9 +7,18 @@ vi.mock('next/dist/client/components/redirect-error', () => ({
 vi.mock('next/headers', () => ({headers: vi.fn()}))
 vi.mock('next/navigation', () => ({redirect: vi.fn()}))
 vi.mock('next-intl/server', () => ({
-  getTranslations: vi.fn(() =>
-    Promise.resolve((key: string) => `registerMagicLink.${key}`)
-  ),
+  getTranslations: vi.fn((argument: string | {namespace: string}) => {
+    const namespace =
+      typeof argument === 'string' ? argument : argument.namespace
+    return Promise.resolve((key: string) =>
+      namespace === 'AuthActions.registerMagicLink'
+        ? `registerMagicLink.${key}`
+        : `${namespace}.${key}`
+    )
+  }),
+}))
+vi.mock('@/lib/logger', () => ({
+  logger: {debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn()},
 }))
 vi.mock('@/lib/better-auth/auth', () => ({
   auth: {
@@ -26,11 +35,14 @@ vi.mock('@/services/facades/user-service-facade', () => ({
 
 import {headers} from 'next/headers'
 import {redirect} from 'next/navigation'
+import {getTranslations} from 'next-intl/server'
 
 import {auth} from '@/lib/better-auth/auth'
+import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
+import {EmailTransportError} from '@/lib/emails/transport'
 import {isEmailAvailableService} from '@/services/facades/user-service-facade'
 
-import {registerMagicLinkAction} from './action'
+import {registerMagicLinkAction, requestMagicLinkAction} from './action'
 
 const email = 'new-user@example.test'
 
@@ -73,5 +85,183 @@ describe('registerMagicLinkAction', () => {
       message: 'registerMagicLink.sendError',
     })
     expect(redirect).not.toHaveBeenCalled()
+  })
+})
+
+describe('requestMagicLinkAction', () => {
+  const requestFormData = (address: string, locale?: string) => {
+    const formData = new FormData()
+    formData.set('email', address)
+    if (locale !== undefined) formData.set('locale', locale)
+    return formData
+  }
+
+  const requestedLocale = () =>
+    vi.mocked(auth.api.signInMagicLink).mock.calls[0][0]?.body.metadata?.locale
+
+  const settle = async <T>(promise: Promise<T>) => {
+    let settled = false
+    const tracked = promise.then((value) => {
+      settled = true
+      return value
+    })
+    return {tracked, isSettled: () => settled}
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    vi.mocked(headers).mockResolvedValue(new Headers() as never)
+    vi.mocked(auth.api.signInMagicLink).mockResolvedValue({status: true})
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('demande le lien à Better Auth avec les URL de rappel des écrans', async () => {
+    const pending = requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData(' Membre@Exemple.test ')
+    )
+    await vi.runAllTimersAsync()
+    await pending
+
+    expect(auth.api.signInMagicLink).toHaveBeenCalledWith({
+      headers: expect.any(Headers),
+      body: {
+        email: 'membre@exemple.test',
+        callbackURL: '/dashboard',
+        errorCallbackURL: '/login/lien-invalide',
+        metadata: {locale: 'fr'},
+      },
+    })
+    expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it('transmet à l’email la locale de la page de demande', async () => {
+    const pending = requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('membre@exemple.test', 'es')
+    )
+    await vi.runAllTimersAsync()
+    await pending
+
+    expect(requestedLocale()).toBe('es')
+  })
+
+  it('retombe sur fr pour une locale non servie (ADR 008)', async () => {
+    const pending = requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('membre@exemple.test', 'de')
+    )
+    await vi.runAllTimersAsync()
+    await pending
+
+    expect(requestedLocale()).toBe('fr')
+  })
+
+  it('rend le même résultat, adresse connue ou non', async () => {
+    const known = requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('membre@exemple.test')
+    )
+    await vi.runAllTimersAsync()
+    const unknown = requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('inconnu@exemple.test')
+    )
+    await vi.runAllTimersAsync()
+
+    expect(await known).toEqual({status: 'sent'})
+    expect(await unknown).toEqual(await known)
+  })
+
+  it('dure au moins le plancher, que l’envoi soit instantané ou non', async () => {
+    expect(MAGIC_LINK_REQUEST_MIN_DURATION_MS).toBe(1500)
+
+    const {tracked, isSettled} = await settle(
+      requestMagicLinkAction(
+        {status: 'idle'},
+        requestFormData('inconnu@exemple.test')
+      )
+    )
+    await vi.advanceTimersByTimeAsync(MAGIC_LINK_REQUEST_MIN_DURATION_MS - 1)
+    expect(isSettled()).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    await tracked
+    expect(isSettled()).toBe(true)
+  })
+
+  it('attend l’envoi quand il dépasse le plancher', async () => {
+    vi.mocked(auth.api.signInMagicLink).mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => resolve({status: true}), 2000)
+        ) as never
+    )
+
+    const {tracked, isSettled} = await settle(
+      requestMagicLinkAction(
+        {status: 'idle'},
+        requestFormData('membre@exemple.test')
+      )
+    )
+    await vi.advanceTimersByTimeAsync(1999)
+    expect(isSettled()).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(await tracked).toEqual({status: 'sent'})
+  })
+
+  it('rend l’état « service en panne » sans lever quand le transport échoue', async () => {
+    vi.mocked(auth.api.signInMagicLink).mockRejectedValue(
+      new EmailTransportError('brevo', 'refus')
+    )
+
+    const {tracked, isSettled} = await settle(
+      requestMagicLinkAction(
+        {status: 'idle'},
+        requestFormData('membre@exemple.test')
+      )
+    )
+    await vi.advanceTimersByTimeAsync(MAGIC_LINK_REQUEST_MIN_DURATION_MS - 1)
+    expect(isSettled()).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+
+    expect(await tracked).toEqual({status: 'unavailable'})
+  })
+
+  /**
+   * L'action demande ses libellés dans la locale de la page. Que next-intl les
+   * rende bien dans cette locale depuis une Server Action sans cookie est
+   * prouvé sur la vraie chaîne par `src/i18n/request.real-i18n.test.ts`.
+   */
+  it('traduit l’erreur de champ dans la locale de la page, pas celle du cookie', async () => {
+    await requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('pas-une-adresse', 'es')
+    )
+    await requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('pas-une-adresse', 'de')
+    )
+
+    expect(vi.mocked(getTranslations).mock.calls).toEqual([
+      [{locale: 'es', namespace: 'Auth.MagicLinkLogin'}],
+      [{locale: 'fr', namespace: 'Auth.MagicLinkLogin'}],
+    ])
+  })
+
+  it('rend une erreur de champ pour une adresse invalide, sans rien demander', async () => {
+    const result = await requestMagicLinkAction(
+      {status: 'idle'},
+      requestFormData('pas-une-adresse')
+    )
+
+    expect(result).toEqual({
+      status: 'invalid',
+      errors: [{field: 'email', message: 'Auth.MagicLinkLogin.email.invalid'}],
+    })
+    expect(auth.api.signInMagicLink).not.toHaveBeenCalled()
   })
 })

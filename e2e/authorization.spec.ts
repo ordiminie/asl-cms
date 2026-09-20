@@ -13,7 +13,7 @@ import {expect, Page, test} from '@playwright/test'
  */
 
 const login = async (page: Page, email: string) => {
-  await page.goto('/en/login')
+  await page.goto('/en/login/prestataire')
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', 'Azerty123')

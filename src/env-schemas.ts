@@ -1,5 +1,6 @@
 import {z} from 'zod'
 
+import {EMAIL_TRANSPORT_NAMES} from './lib/emails/transport/email-transport'
 import {
   StripeCheckoutType,
   StripeCheckoutTypeSchema,
@@ -78,8 +79,17 @@ export const serverSchema = {
   BETTER_AUTH_URL: z.string().url(),
   BETTER_AUTH_TRUSTED_ORIGINS: TrustedOriginsSchema,
 
-  // Email
-  RESEND_API_KEY: z.string().min(1),
+  // Email (ADR 005, ADR 017) : tout envoi passe par le contrat
+  // `EmailTransport`. `brevo` en production ; `resend` en secours ; `file`
+  // (boite de sortie JSON, developpement et e2e) par defaut hors production ;
+  // `memory` pour les tests unitaires. La cle d'un fournisseur n'est exigee
+  // que pour son propre transport (controle dans `get-email-transport.ts`).
+  EMAIL_TRANSPORT: z.enum(EMAIL_TRANSPORT_NAMES).optional(),
+  BREVO_API_KEY: z.string().min(1).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  // Repertoire de la boite de sortie du transport `file` ; repertoire
+  // temporaire du systeme s'il est absent.
+  EMAIL_OUTBOX_DIR: z.string().min(1).optional(),
   EMAIL_FROM: z.string().email().default('onboarding@resend.dev'),
   EMAIL_TO: z.string().email().default('onboarding@resend.dev'),
 

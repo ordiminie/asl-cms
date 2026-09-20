@@ -40,3 +40,13 @@ export const authRegisterFormSchema = authLoginFormSchema
     message: 'Les mots de passe ne correspondent pas',
     path: ['confirmPassword'],
   })
+
+/**
+ * Demande d'un lien de connexion (s03) : l'adresse seule, sans espaces ni
+ * majuscules. Messages traduits (namespace `Auth.MagicLinkLogin`), partages
+ * par le formulaire et l'action.
+ */
+export const createMagicLinkRequestSchema = (t: (key: string) => string) =>
+  z.object({
+    email: z.string().trim().toLowerCase().email(t('email.invalid')),
+  })

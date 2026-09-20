@@ -19,8 +19,22 @@ import {routing} from './routing'
  * root-params a échoué, donc jamais pendant un prerender. Ne pas déstructurer
  * `requestLocale` dans la signature — next-intl le résout en amont via
  * `headers()`, ce qui casse toute page portant `'use cache'`.
+ *
+ * Une locale **explicite** (`getTranslations({locale, namespace})`) passe
+ * avant tout le reste : next-intl la transmet dans `params.locale` et utilise
+ * la locale que cette fonction rend. Sans elle, un email envoyé depuis une
+ * Server Action partirait dans la locale du cookie, sinon en `defaultLocale`,
+ * quelle que soit la page d'origine. Lire `locale` ne résout pas
+ * `requestLocale` : aucune lecture de la requête.
  */
-export default getRequestConfig(async () => {
+export default getRequestConfig(async ({locale}) => {
+  if (hasLocale(routing.locales, locale)) {
+    return {
+      locale,
+      messages: (await import(`../../messages/${locale}.json`)).default,
+    }
+  }
+
   let paramValue: string | undefined
 
   try {

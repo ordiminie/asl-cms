@@ -120,6 +120,8 @@ export type AssociationSettingsChangesValidation =
 export const CONTACT_EMAIL_SETTING_KEY = 'contact.email'
 export const FORAGE_EMAIL_SETTING_KEY = 'forage.responsable.email'
 export const ACCENT_HUE_SETTING_KEY = 'identity.accent_hue'
+export const MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY =
+  'login.link_requests_per_address_per_day'
 
 /**
  * Les six teintes d'accent validees (design system §1.2). Le bureau choisit
@@ -178,6 +180,19 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     labelKey: 'fields.accentHue.label',
     helpKey: 'fields.accentHue.help',
     page: 'identity',
+  },
+  {
+    key: MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '3'},
+    min: 1,
+    max: 20,
+    integer: true,
+    unitKey: 'units.requestsPerDay',
+    labelKey: 'fields.linkRequestsPerDay.label',
+    helpKey: 'fields.linkRequestsPerDay.help',
+    page: 'settings',
   },
 ]
 
@@ -394,3 +409,28 @@ export const getAccentHue = (
   const value = Number(settings[ACCENT_HUE_SETTING_KEY]?.value)
   return isAccentHue(value) ? value : DEFAULT_ACCENT_HUE
 }
+
+const numberSettingOf = (
+  settings: ResolvedAssociationSettings,
+  key: string
+): number => {
+  const value = settings[key]?.value
+  if (typeof value === 'number') return value
+  const definition = findDefinition(ASSOCIATION_SETTINGS_REGISTRY, key)
+  const fallback =
+    definition?.default && 'value' in definition.default
+      ? Number(definition.default.value)
+      : Number.NaN
+  if (Number.isNaN(fallback)) {
+    throw new Error(`Parametre numerique sans defaut : ${key}`)
+  }
+  return fallback
+}
+
+/**
+ * Demandes de lien de connexion acceptees par adresse et par jour (s03) :
+ * valeur du bureau, sinon defaut du registre.
+ */
+export const getMagicLinkDailyRequestLimit = (
+  settings: ResolvedAssociationSettings
+): number => numberSettingOf(settings, MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY)
