@@ -263,8 +263,26 @@ const expectInvalidLinkScreen = async (page: Page) => {
   await expect(again).toHaveAttribute('href', /\/login$/)
 }
 
-const freshPage = async (browser: Browser) =>
-  (await browser.newContext({locale: 'fr-FR'})).newPage()
+/**
+ * Chaque contexte sort par une adresse IP a lui, comme autant de membres sur
+ * leur propre connexion. Better Auth limite le debit de
+ * `/api/auth/magic-link/verify` **par IP** (seuil dans
+ * `magic-link-constants.ts`) ; sans cela toute la suite ouvre ses liens depuis
+ * la seule adresse de l'agent, et une suite un peu longue finit en 429 au lieu
+ * de la page attendue. Le seuil lui-meme est prouve en unitaire
+ * (`magic-link-integration.real-i18n.test.ts`), pas ici.
+ */
+let nextClientIp = 0
+const freshPage = async (browser: Browser) => {
+  nextClientIp += 1
+  const context = await browser.newContext({
+    locale: 'fr-FR',
+    extraHTTPHeaders: {
+      'x-forwarded-for': `198.51.100.${(nextClientIp % 250) + 1}`,
+    },
+  })
+  return context.newPage()
+}
 
 test.describe('connexion par lien — s03', () => {
   // Un nouveau lien révoque le précédent de la même adresse : les essais qui

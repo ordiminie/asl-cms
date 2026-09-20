@@ -126,6 +126,17 @@ retombait sur le cookie `NEXT_LOCALE`, sinon sur `en`. La locale devient explici
   Action simulée sans cookie) pour `request.ts`, le service, le gabarit et l'intégration Better Auth ; le double de
   `getTranslations` qui prétendait reproduire `request.ts` est supprimé.
 
+**Seuil de débit de l'ouverture du lien (après la sixième revue).** Sans changement de périmètre : défaut vu en CI
+(`e2e/magic-link.spec.ts`, essai 35475316261), où la vérification d'un lien répondait `429 Too many requests` au lieu
+d'ouvrir la session. Le plugin `magicLink` de Better Auth pose sa propre règle de débit HTTP sur ses deux routes
+(`/sign-in/magic-link`, déjà fermée, et `/magic-link/verify`, la seule ouverte) : **5 par minute et par IP** par défaut.
+Or elle compte par accès internet, qu'un foyer, le bureau ou un NAT partagent. Le jeton faisant 32 caractères tirés au
+hasard (~190 bits), la force brute n'est pas la menace : le compteur ne garde que du martèlement. Il passe donc à
+**30 par minute** (`MAGIC_LINK_VERIFY_RATE_LIMIT`, à côté de `MAGIC_LINK_EXPIRES_IN_SECONDS`), garde d'infrastructure et
+non réglage d'association (l'ADR 010 vise les valeurs métier). Prouvé en unitaire sur le vrai routeur HTTP de Better
+Auth (adaptateur mémoire, limiteur actif) ; la spec e2e donne en plus une IP propre à chaque contexte, comme autant de
+membres sur leur connexion, pour ne plus dépendre du seuil.
+
 ### Taille de la story
 
 **11 tâches**, au-dessus du seuil de dix : dépassement accepté, les tâches 9 à 11 corrigent la story livrée plutôt
@@ -237,6 +248,9 @@ qu'elles n'ouvrent un nouveau périmètre fonctionnel.
 - `src/lib/better-auth/auth.ts`, `src/lib/better-auth/magic-link-integration.ts` (+ test)
 - Correctif de locale : `src/i18n/request.ts`, `src/lib/helper/locale-helper.ts` (+ test), `vitest.config.ts` (projet
   `i18n`), `src/components/features/auth/magic-link-login.tsx`, `src/app/[locale]/(auth)/action.ts` (+ test)
+- Seuil de débit de l'ouverture du lien : `src/lib/better-auth/magic-link-constants.ts`,
+  `src/lib/better-auth/magic-link-integration.ts` (+ `magic-link-integration.real-i18n.test.ts`),
+  `e2e/magic-link.spec.ts`, `docs/architecture.md`
 - `src/app/[locale]/(auth)/action.ts`, `src/app/[locale]/(auth)/layout.tsx`, `src/app/[locale]/(auth)/login/page.tsx`,
   `src/components/features/auth/forms/login.tsx`
 - `src/env-schemas.ts`, `src/env.ts`, `env.example`, `scripts/init-env.ts`

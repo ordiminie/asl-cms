@@ -58,7 +58,10 @@ import {consumeMagicLinkRequestQuotaService} from '@/services/facades/rate-limit
 import {createTypedNotificationService} from '@/services/notification-service'
 import type {Organization} from '@/services/types/domain/organization-types'
 
-import {MAGIC_LINK_EXPIRES_IN_SECONDS} from './magic-link-constants'
+import {
+  MAGIC_LINK_EXPIRES_IN_SECONDS,
+  MAGIC_LINK_VERIFY_RATE_LIMIT,
+} from './magic-link-constants'
 import {
   MAGIC_LINK_DISABLED_HTTP_PATHS,
   magicLinkOptions,
@@ -371,6 +374,12 @@ describe('options du plugin lien magique', () => {
     expect(magicLinkOptions.disableSignUp).toBe(true)
     expect(magicLinkOptions.sendMagicLink).toBe(sendMagicLink)
   })
+
+  it('remplacent le seuil de débit par défaut du plugin (5 par minute)', () => {
+    expect(magicLinkOptions.rateLimit).toEqual(MAGIC_LINK_VERIFY_RATE_LIMIT)
+    expect(MAGIC_LINK_VERIFY_RATE_LIMIT.window).toBe(60)
+    expect(MAGIC_LINK_VERIFY_RATE_LIMIT.max).toBeGreaterThan(5)
+  })
 })
 
 describe('contrat Better Auth du lien magique, avec nos options', () => {
@@ -611,5 +620,109 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
 
     expect(response).toEqual({status: true})
     expect(memoryTransport.messages).toHaveLength(0)
+  })
+})
+
+/**
+ * La limitation de debit HTTP de Better Auth est active hors developpement :
+ * la production compte donc chaque appel a `/magic-link/verify`, par IP. Ces
+ * essais la font tourner pour de vrai, sur le routeur HTTP (le limiteur
+ * n'existe que la : `auth.api.*` ne le traverse pas).
+ */
+describe('limitation de débit de la vérification du lien', () => {
+  const existingUser = {
+    id: 'user-1',
+    name: 'Membre',
+    email,
+    emailVerified: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    memoryTransport.messages.length = 0
+  })
+
+  /**
+   * Chaque essai prend une IP a lui : le magasin memoire du limiteur est
+   * global au processus, et deux essais sur la meme IP se compteraient
+   * ensemble.
+   */
+  const setupLimited = (ip: string) => {
+    const memoryDb: Record<string, Record<string, unknown>[]> = {
+      user: [existingUser],
+      session: [],
+      account: [],
+      verification: [],
+    }
+    const captured: string[] = []
+    const localAuth = betterAuth({
+      baseURL: 'http://localhost:3000',
+      secret: 'local-test-secret-long-enough-for-better-auth',
+      database: memoryAdapter(memoryDb),
+      rateLimit: {enabled: true, storage: 'memory'},
+      disabledPaths: [...MAGIC_LINK_DISABLED_HTTP_PATHS],
+      plugins: [
+        magicLink({
+          ...magicLinkOptions,
+          sendMagicLink: ({url: generatedUrl}) => {
+            captured.push(generatedUrl)
+          },
+        }),
+      ],
+    })
+    const issueToken = async () => {
+      await localAuth.api.signInMagicLink({
+        headers: new Headers({host: 'localhost:3000'}),
+        body: {
+          email,
+          callbackURL: '/dashboard',
+          errorCallbackURL: '/login/lien-invalide',
+        },
+      })
+      const token = new URL(captured.at(-1) ?? '').searchParams.get('token')
+      if (!token) throw new Error('Better Auth did not generate a token')
+      return token
+    }
+    const verifyOverHttp = (token: string) =>
+      localAuth.handler(
+        new Request(
+          `http://localhost:3000/api/auth/magic-link/verify?token=${token}` +
+            '&callbackURL=%2Fdashboard&errorCallbackURL=%2Flogin%2Flien-invalide',
+          {headers: {'x-forwarded-for': ip}}
+        )
+      )
+    return {memoryDb, issueToken, verifyOverHttp}
+  }
+
+  it('laisse un accès internet partagé ouvrir un sixième lien dans la minute', async () => {
+    const {memoryDb, issueToken, verifyOverHttp} = setupLimited('203.0.113.10')
+    const token = await issueToken()
+
+    for (let index = 0; index < 5; index++) {
+      const earlier = await verifyOverHttp(`lien-deja-utilise-${index}`)
+      expect(earlier.status).toBe(302)
+    }
+
+    const response = await verifyOverHttp(token)
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toContain('/dashboard')
+    expect(memoryDb.session).toHaveLength(1)
+  })
+
+  it('arrête le martèlement au-delà du seuil configuré', async () => {
+    const {max} = MAGIC_LINK_VERIFY_RATE_LIMIT
+    const {verifyOverHttp} = setupLimited('203.0.113.11')
+
+    for (let index = 0; index < max; index++) {
+      const allowed = await verifyOverHttp(`lien-deja-utilise-${index}`)
+      expect(allowed.status).toBe(302)
+    }
+
+    const blocked = await verifyOverHttp('lien-de-trop')
+
+    expect(blocked.status).toBe(429)
   })
 })

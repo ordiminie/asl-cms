@@ -8,7 +8,10 @@ import {getIdentityVersionFromKey} from '@/services/types/domain/association-ide
 import {getAccentHue} from '@/services/types/domain/association-settings-types'
 import type {Organization} from '@/services/types/domain/organization-types'
 
-import {MAGIC_LINK_EXPIRES_IN_SECONDS} from './magic-link-constants'
+import {
+  MAGIC_LINK_EXPIRES_IN_SECONDS,
+  MAGIC_LINK_VERIFY_RATE_LIMIT,
+} from './magic-link-constants'
 
 type SendMagicLinkData = {
   email: string
@@ -213,6 +216,7 @@ export async function sendMagicLink(
 export const magicLinkOptions = {
   expiresIn: MAGIC_LINK_EXPIRES_IN_SECONDS,
   disableSignUp: true,
+  rateLimit: {...MAGIC_LINK_VERIFY_RATE_LIMIT},
   sendMagicLink,
 }
 

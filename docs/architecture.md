@@ -301,10 +301,21 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   planifiée, et les lignes des jours passés sont purgées à chaque demande. Une adresse inconnue est comptée
   aussi. Le seuil est un **réglage de l'association** (registre, ADR 010 et 016 :
   `login.link_requests_per_address_per_day`, défaut 3, de 1 à 20), modifiable dans « Réglages ». Au-delà :
-  aucun email, le lien précédent reste valable, et l'écran reste l'écran B. **Aucune limite par accès
-  internet** : aucune IP n'est lue (la première entrée de `x-forwarded-for` est fournie par le client).
+  aucun email, le lien précédent reste valable, et l'écran reste l'écran B. **Aucune limite de demande par
+  accès internet** : aucune IP n'est lue ici (la première entrée de `x-forwarded-for` est fournie par le
+  client) — l'ouverture du lien, elle, est limitée par IP côté Better Auth (point suivant).
   Compromis accepté : un tiers peut épuiser les demandes du jour d'un membre, que l'écran B renvoie vers le
   bureau. Le budget quotidien Brevo (et le transport de secours au-delà) reste l'affaire de s26.
+- **L'ouverture du lien est limitée par Better Auth, par IP : 30 par minute** (`rateLimit` passé à
+  `magicLink()`, `MAGIC_LINK_VERIFY_RATE_LIMIT` dans `magic-link-constants.ts`). Le plugin pose lui-même une
+  règle de débit sur ses deux routes, et son défaut — 5 par minute — ne garde en pratique que
+  `GET /api/auth/magic-link/verify`, la seule ouverte : au-delà, la page affiche le 429 de Better Auth au
+  lieu de l'écran attendu. Or cette règle compte **par adresse IP** : un foyer, le bureau de l'association
+  ou un accès partagé sortent tous par la même, et 5 par minute les bloquerait mutuellement. Le jeton fait
+  32 caractères tirés au hasard (~190 bits) : la force brute n'est pas la menace, le compteur ne garde que
+  du martèlement, d'où 30. C'est une **garde d'infrastructure**, pas un réglage d'association (l'ADR 010
+  vise les valeurs métier) ; le stockage est celui de Better Auth, en mémoire du processus, donc remis à
+  zéro à chaque redémarrage et propre à chaque instance.
 - **Aucun import statique de la couche service** dans l'intégration : `auth.ts` l'importe, et chaque façade
   remonte à `auth.ts` par `auth-service`. Les façades sont chargées par `import()` à l'appel ;
   `magic-link-integration-imports.test.ts` parcourt le graphe d'imports et échoue au premier cycle.
