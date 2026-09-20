@@ -2,6 +2,8 @@
 import {describe, expect, it} from 'vitest'
 import {z} from 'zod'
 
+import {env} from '@/env'
+
 import {clientSchema, serverSchema} from './env-schemas'
 import {getStorageConfig} from './lib/files/storage/env'
 
@@ -10,6 +12,14 @@ const SUPABASE_VARIABLES = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_BUCKET',
 ] as const
+
+/*
+ * Le chemin de base du stockage suit l'environnement reel : `prod` en
+ * production, `dev` ailleurs. L'attendu est derive de la meme source que le
+ * code, sinon le test ne passe que sur la machine qui l'a ecrit.
+ */
+const expectedBasePath =
+  env.NEXT_PUBLIC_NODE_ENV === 'production' ? 'prod' : 'dev'
 
 const environmentWithoutSupabase = () => {
   const values: Record<string, string | undefined> = {...process.env}
@@ -67,7 +77,7 @@ describe('Variables d’environnement — plus aucune variable Supabase', () => 
       type: 'local',
       config: {
         bucket: expect.any(String),
-        basePath: 'dev',
+        basePath: expectedBasePath,
         maxFileSize: expect.any(Number),
         allowedMimeTypes: expect.any(Array),
       },
