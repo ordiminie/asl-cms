@@ -1061,6 +1061,88 @@ multi-parcelles (s19/s20), le site n'agrège rien.
 
 ---
 
+## Story s12a-retrait-supabase — Se passer de Supabase
+
+⚠️ **Story hors du tableau de périmètre du PRD**, comme s12b et s12c. Elle ne porte aucune ligne du
+tableau, mais elle solde la seconde moitié d'une **contrainte explicite du PRD** : « le stockage de
+fichiers du boilerplate (Supabase) et l'email (Resend) devront être remplacés ». s03 a fermé le volet
+email (contrat `EmailTransport`), s01b a posé l'adaptateur `local` — mais rien ne **retirait**
+Supabase. Décidée le 2026-09-20, après la livraison de s03, en dressant la liste des paramétrages du
+premier déploiement.
+
+⚠️ **Identifiant intercalé, dérogation assumée** : `s12a` partage son préfixe avec s12, s12b et s12c
+sans dépendre de s12. L'id porte l'ordre d'exécution, pas une parenté. Conséquence connue
+(`AGENTS.md`) : un nom approximatif comme `s12` ne se résout plus tout seul — taper l'identifiant
+complet ou le slug.
+
+**En tant que** prestataire (SuperAdmin) **je veux** que l'application démarre et serve les fichiers
+sans compte Supabase **afin que** la mise en ligne ne dépende pas d'un service que le produit
+n'utilise plus.
+
+### Complexity
+
+2
+
+### Acceptance criteria
+
+- [ ] Le build de production démarre et sert le site d'une association **sans aucune variable Supabase définie** — vérifié en lançant le serveur avec ces variables absentes de l'environnement.
+- [ ] Les deux écrans d'envoi d'image hérités du boilerplate — logo d'organisation (`src/components/features/organization/`) et avatar d'utilisateur (`src/components/features/user/`) — sont **retirés** avec leurs actions et leurs tests : plus aucune route de l'application n'offre d'envoyer une image vers Supabase, et les parcours e2e existants passent toujours.
+- [ ] Aucun module de `src/` n'importe `@supabase/*` — vérifié par un test de garde, sur le modèle de `provider-imports.test.ts` pour les fournisseurs d'email.
+- [ ] Les paquets `@supabase/*` ne figurent plus ni dans `package.json` ni dans le lockfile, et `pnpm install --frozen-lockfile` passe.
+- [ ] Les variables `SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_BUCKET` ont disparu de `src/env-schemas.ts`, `src/env.ts`, `env.example`, `scripts/init-env.ts` et `.github/workflows/ci.yml` ; un environnement qui les définit encore démarre sans erreur (elles sont simplement ignorées).
+- [ ] Un `STORAGE_TYPE` absent donne l'adaptateur `local`, jamais `supabase`.
+- [ ] Aucune règle ni page de documentation ne décrit plus un flux de fichiers vers Supabase : `.claude/rules/01-presentation/rule-upload-file.md` et ses copies `.cursor` ne citent que l'adaptateur `local`, les notes de s16 ne renvoient plus à l'écran de coordonnées supprimé, et `pnpm check:rules` passe.
+
+### Dependencies
+
+s01b
+
+### Agentic notes
+
+**À livrer avant s12b** : la mise en ligne n'a pas à porter les variables d'un service que le produit
+n'utilise plus, et la checklist de déploiement s'en trouve raccourcie d'autant.
+
+Réf. `ADR 004` (fichiers sur le disque du VPS, en remplacement de Supabase Storage), `ADR 015`
+(fichiers d'identité), `.claude/rules/01-presentation/rule-upload-file.md`.
+
+**État d'entrée vérifié le 2026-09-20.** L'adaptateur `local` existe depuis s01b et sert le logo et
+le favicon des associations. Mais Supabase est toujours câblé, à trois endroits :
+
+- `src/env-schemas.ts` **exige** `SUPABASE_ANON_KEY` côté serveur, `NEXT_PUBLIC_SUPABASE_URL` et
+  `NEXT_PUBLIC_SUPABASE_BUCKET` côté client : sans elles, l'application refuse de démarrer, alors
+  qu'elle ne s'en sert plus pour son propre besoin ;
+- `src/lib/files/storage/env.ts` déclare `STORAGE_TYPE: z.enum(['supabase', 's3']).default('supabase')`,
+  et `src/db/repositories/files-repository.ts` construit son stockage à partir de cette valeur **au
+  chargement du module** ;
+- deux formulaires hérités appellent encore `uploadImageForEntityService` :
+  `src/components/features/organization/action.ts` (logo d'organisation) et
+  `src/components/features/user/action.ts` (avatar). Ce sont eux qui écriraient vers Supabase.
+
+**Le piège : rendre les variables facultatives ne suffit pas.** Sans les deux formulaires traités,
+l'échec se déplacerait simplement du démarrage vers l'envoi de fichier, où il se verrait plus tard et
+plus mal.
+
+**Arbitrage rendu le 2026-09-20 : les deux écrans partent.** Le logo d'organisation du boilerplate
+fait doublon avec l'identité d'association de s01b, réglée par le bureau ; l'avatar d'utilisateur
+n'apparaît dans aucune story du découpage. Les retirer supprime la dernière voie d'écriture vers
+Supabase au lieu de la déplacer. Conséquence à traiter dans la même story : les notes de **s16**
+citent `src/components/features/user/edit-user-profile.tsx` comme référence de l'écran de
+coordonnées — cette référence doit être remplacée, sans quoi s16 pointera vers un fichier absent
+quinze stories plus loin.
+
+**Ne pas déborder sur les stories de contenu.** s04 (pages du CMS) et s31 (documents partagés) posent
+leurs propres flux de fichiers sur l'adaptateur `local` : cette story ne les anticipe pas, elle
+retire seulement ce qui reste de Supabase.
+
+**Documentation du boilerplate.** Les pages MDX de `src/app/[locale]/docs/` décrivent encore la
+configuration Supabase. Elles appartiennent au socle hérité : les corriger ou les retirer est un
+choix à porter au plan, pas un oubli à constater en revue.
+
+**Vérification finale** : `pnpm lint`, `pnpm check:rules`, `pnpm test --run`, `pnpm build`, et la
+suite e2e, qui couvre déjà l'envoi du logo d'association par l'adaptateur `local`.
+
+---
+
 ## Story s12b-mise-en-ligne — Mettre le site en ligne
 
 ⚠️ **Story hors du tableau de périmètre du PRD**, comme s12c qui la suit. Elle ne porte aucune ligne
@@ -1083,11 +1165,10 @@ chaque association soit servie en HTTPS sur son propre domaine.
 - [ ] Un redéploiement conserve les fichiers déjà téléversés : un logo envoyé avant le redéploiement est toujours servi après.
 - [ ] Après l'ajout du domaine d'une nouvelle association dans la configuration du serveur, ce domaine répond en HTTPS avec un certificat valide et sert cette association — vérifié par le même test de fumée.
 - [ ] Sur le serveur déployé, la purge des empreintes des formulaires publics (s08) est appelée au moins une fois par jour sans intervention humaine : une empreinte de plus de 24 h ne survit pas à l'appel planifié suivant.
-- [ ] Aucun workflow du dépôt ne prétend déployer ce qu'il ne déploie pas. `production.yml` et `preview.yml`, restes du boilerplate, ont été **retirés le 2026-09-20** (Quick Fix, après la livraison de s03) : cette story pose le déploiement réel, elle n'a plus à les nettoyer.
 
 ### Dependencies
 
-s01, s01b, s03, s03c, s08
+s01, s01b, s03, s03c, s08, s12a
 
 ### Agentic notes
 
@@ -1123,7 +1204,10 @@ associations à terme : le certificat de chaque domaine doit s'obtenir et se ren
 intervention manuelle. Un certificat unique listant tous les domaines oblige à le réémettre à chaque
 nouvelle association et casse tous les sites si un seul domaine échoue à la validation.
 
-**Piège n°4 — le build.** `production.yml` échouait faute de secrets, avant son retrait : sous Cache
+**Piège n°4 — le build.** `production.yml` et `preview.yml`, restes du boilerplate qui ne déployaient
+rien, ont été **retirés du dépôt le 2026-09-20** (Quick Fix) : cette story n'a plus à les nettoyer,
+mais la revue vérifiera qu'aucun workflow restant ne prétend déployer ce qu'il ne déploie pas.
+`production.yml` échouait faute de secrets : sous Cache
 Components, le prerender traverse les façades. Où se fait le build (sur le serveur ou en CI), avec
 quelles variables, et comment le résultat arrive sur le serveur : à trancher en `/ks-research`, sans
 jamais committer un `.env`. Le `Dockerfile` et le `docker-compose.yml` du dépôt servent
@@ -2874,7 +2958,8 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                                            | A    |
 | s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                                       | A    |
 | s12  | membres-parcelles         | 4   | s01, s03, s03b                                                                                                                           | B    |
-| s12b | mise-en-ligne             | 3   | s01, s01b, s03, s03c, s08                                                                                                                | B    |
+| s12a | retrait-supabase          | 2   | s01b                                                                                                                                     | B    |
+| s12b | mise-en-ligne             | 3   | s01, s01b, s03, s03c, s08, s12a                                                                                                          | B    |
 | s12c | sauvegarde                | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
 | s13  | import-initial-membres    | 3   | s12, s12c                                                                                                                                | B    |
 | s14  | attribuer-roles           | 2   | s03b, s12                                                                                                                                | B    |
@@ -2908,12 +2993,13 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s41  | simulation-role           | 2   | s01, s03b, s24, s37, s38, s39                                                                                                            | F    |
 | s42  | lancement-invitations     | 3   | s03, s03c, s13, s15, s25, s26, s27, s27b, s28                                                                                            | F    |
 
-**49 stories, aucune à 5.** Répartition : trois à 1, dix-neuf à 2, dix-neuf à 3, huit à 4.
-**Trois stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**50 stories, aucune à 5.** Répartition : trois à 1, vingt à 2, dix-neuf à 3, huit à 4.
+**Quatre stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
-utilisateur de l'association ; s12b, la mise en ligne, qu'exige le critère de succès « mise en
-production effective sur le VPS » ; et s12c, la sauvegarde, que s13 attend avant d'importer les
-données réelles.
+utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
+remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
+« mise en production effective sur le VPS » ; et s12c, la sauvegarde, que s13 attend avant
+d'importer les données réelles.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
@@ -2967,6 +3053,13 @@ code. s03 garde le lien magique et l'adaptateur (3), **s03b** prend les rôles e
 que toute la suite en dépend : le registre est une règle transverse, et s12b, s15 et s42 supposent le
 lien propre au domaine. Le même jour, la durée du lien est passée de 4 heures à **20 minutes**, et la
 connexion par mot de passe est conservée, au moins pour le SuperAdmin.
+
+**s12a a été ajoutée hors revue**, le 2026-09-20, après la livraison de s03, en dressant la liste des
+paramétrages du premier déploiement : les variables Supabase sont encore exigées au démarrage et deux
+formulaires hérités écrivent encore vers ce stockage, alors que l'ADR 004 l'a remplacé. Elle porte un
+id intercalé parce que s12b en dépend. Le même jour, `production.yml` et `preview.yml`, qui ne
+déployaient rien et échouaient à chaque poussée sur `main`, ont été retirés en Quick Fix, et le
+critère correspondant de s12b a été supprimé.
 
 **Ordre vs calendrier contractuel** : la GED (s31, s32) est placée **avant** le vote (s33), alors
 que le calendrier du devis annonce l'inverse (vote en décembre 2026, GED en janvier 2027). Arbitrage
