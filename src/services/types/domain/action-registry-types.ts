@@ -43,6 +43,13 @@ export const isActionAllowedForRole = (
 export const ActionIdConst = {
   ASSOCIATION_IDENTITY_UPDATE: 'association.identity.update',
   ASSOCIATION_SETTINGS_UPDATE: 'association.settings.update',
+  /**
+   * Gerer une page du site (s04) : creer, modifier, publier, depublier. Une
+   * seule entree pour les quatre verbes, comme `ASSOCIATION_IDENTITY_UPDATE`
+   * couvre logo et favicon — rien dans les criteres de s04 ne distingue les
+   * roles entre ces verbes.
+   */
+  PAGE_MANAGE: 'page.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -52,6 +59,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.ASSOCIATION_SETTINGS_UPDATE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.PAGE_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]
