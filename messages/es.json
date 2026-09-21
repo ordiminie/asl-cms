@@ -2934,6 +2934,10 @@
       "invalidData": "No se ha recibido ningún ajuste. Recargue la página e inténtelo de nuevo."
     }
   },
+  "PublicCmsPage": {
+    "previewDraft": "Vista previa de la junta: esta página es un borrador, los visitantes no pueden verla.",
+    "previewUnpublished": "Vista previa de la junta: esta página está despublicada, los visitantes ya no pueden verla."
+  },
   "PreviewBar": {
     "draft": "Borrador",
     "dirty": "Cambios sin guardar",
@@ -3067,7 +3071,9 @@
       "invalidData": "Données invalides.",
       "slugTaken": "Ce slug est déjà utilisé par une autre page.",
       "fileTooLarge": "Ce fichier est trop lourd.",
-      "fileFormat": "Ce format de fichier n'est pas accepté."
+      "fileFormat": "Ce format de fichier n'est pas accepté.",
+      "createFailedTitle": "No se ha podido crear la página",
+      "createFailed": "No se ha perdido nada: no se ha añadido ninguna página. Inténtelo de nuevo en un momento."
     },
     "editor": {
       "metadataTitle": "Modifier une page",

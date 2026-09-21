@@ -1,9 +1,11 @@
 'use client'
 
+import {AlertCircle} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
-import {useTransition} from 'react'
+import {useState, useTransition} from 'react'
 
+import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Badge} from '@/components/ui/badge'
 import {Button} from '@/components/ui/button'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
@@ -18,11 +20,30 @@ import {
 import {cn} from '@/lib/utils'
 import {PageDTO} from '@/services/types/domain/page-types'
 
+/**
+ * Statut -> token du design system (§1.1), jamais une couleur choisie a la
+ * main. La correspondance est celle du mockup de la story
+ * (`docs/designs/s04-pages-cms.html`, ecran 1) :
+ *
+ * - brouillon -> `muted-foreground` : rien n'est en ligne, etat neutre ;
+ * - publiee -> `accent-solid` : la seule couleur vive de la liste ;
+ * - depubliee -> `warning-border` : un retrait volontaire, a remarquer.
+ *
+ * Il n'existe pas de token « succes » ni de vert dans ce systeme (§5) : le vert
+ * de la premiere version etait une invention.
+ */
 const STATUS_DOT_CLASS: Record<PageDTO['status'], string> = {
-  draft: 'bg-[oklch(0.72_0.14_75)]',
-  published: 'bg-[oklch(0.68_0.15_150)]',
-  unpublished: 'bg-[oklch(0.72_0.02_250)]',
+  draft: 'bg-muted-foreground',
+  published: 'bg-accent-solid',
+  unpublished: 'bg-warning-border',
 }
+
+/** Un `redirect()` de Next voyage avec un `digest` prefixe `NEXT_REDIRECT`. */
+const isNavigationSignal = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'digest' in error &&
+  String((error as {digest: unknown}).digest).startsWith('NEXT_REDIRECT')
 
 /**
  * Liste des pages du bureau (ecran 1 du design s04) : une seule action en
@@ -38,8 +59,28 @@ export function PagesList({
 }) {
   const t = useTranslations('BureauPagesPage')
   const [isPending, startTransition] = useTransition()
+  const [createError, setCreateError] = useState<string>()
 
-  const create = () => startTransition(() => createAction())
+  /**
+   * `createPageAction` peut echouer (au-dela de 50 slugs pris, elle leve).
+   * Sans ce rattrapage, l'echec partait en rejet non gere et le bouton restait
+   * muet : l'erreur s'ecrit dans la page, ancree, jamais en toast (§5).
+   *
+   * Le succes, lui, se termine par un `redirect()` vers l'editeur. La
+   * navigation est prise en charge par le routeur, mais si elle remontait ici
+   * sous forme d'erreur, ce n'est pas un echec : rien a afficher.
+   */
+  const create = () => {
+    setCreateError(undefined)
+    startTransition(async () => {
+      try {
+        await createAction()
+      } catch (error) {
+        if (isNavigationSignal(error)) return
+        setCreateError(t('errors.createFailed'))
+      }
+    })
+  }
 
   return (
     <div className="flex w-full flex-col gap-6 px-4 pt-6 pb-12 sm:px-8 sm:pt-8">
@@ -56,6 +97,14 @@ export function PagesList({
           {t('newPage.action')}
         </Button>
       </div>
+
+      {createError && (
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertTitle>{t('errors.createFailedTitle')}</AlertTitle>
+          <AlertDescription>{createError}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="border-0 sm:border">
         <CardHeader className="px-4 sm:px-6">

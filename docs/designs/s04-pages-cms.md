@@ -43,7 +43,7 @@ montre le statut `dirty` (« Modifications non enregistrées ») cumulé à l'é
 (« Échec de la publication… Rien n'est perdu »).
 
 Colonne de blocs — `<SortableList />` + `<BlockPicker />` — avec les 6 gabarits : Texte riche
-(`markdown-editor` restreint), Image + légende (zone de dépôt, alt obligatoire signalé, légende
+(éditeur à barre réduite, composant neuf — voir « Reused components »), Image + légende (zone de dépôt, alt obligatoire signalé, légende
 facultative écrite en clair), Document PDF **incomplet** (`alert` ancrée dans le bloc + zone de dépôt +
 titre obligatoire), Galerie (grille de vignettes avec alt par image), Encart (aperçu teinté
 `accent`/`accent-foreground` in situ), et un bloc de **type inconnu** grisé, sans édition possible,
@@ -80,7 +80,7 @@ gaps ci-dessous).
 (support.js / `<x-dc>` retirés, bascule clair-sombre réécrite en JS natif, aucune dépendance externe
 au runtime du canevas). 4 sections ancrées (`#s1`–`#s4`), desktop et mobile 390 px, bascule clair/sombre
 en tête de page. **NE PAS copier en production** : l'Execute construit l'écran avec les vrais
-composants du socle (`table`, `badge`, `alert-dialog`, `sheet`, `markdown-editor`, `file-upload`,
+composants du socle (`table`, `badge`, `alert-dialog`, `sheet`, `textarea`, `file-upload`,
 `skeleton`) et les trois composants P0 (`<PreviewBar />`, `<SortableList />`, `<BlockPicker />`) tels
 que spécifiés dans le brief — aucun ne doit être réinventé au-delà de cette spec. Données fictives :
 « Les Amis de l'Étang », pages « Qualité de l'eau » / « Adhérer à l'association » / « Fête de l'étang
@@ -89,10 +89,19 @@ que spécifiés dans le brief — aucun ne doit être réinventé au-delà de ce
 ## Reused components (from the design system)
 
 - `button` (un seul `default` par écran), `table`/`badge`, `alert`/`alert-dialog`/`sheet`,
-  `input`/`textarea`, `sidebar` (groupe « Le site » ajouté), `markdown-editor` restreint (gras,
-  italique, titre 2/3, liste, lien), `file-upload`, `skeleton` (liste seulement).
+  `input`/`textarea`, `sidebar` (groupe « Le site » ajouté), `file-upload`, `skeleton` (liste
+  seulement).
 - **Nouveaux composants P0 construits par cette story**, entièrement spécifiés dans le brief — aucun
   n'est inventé au-delà : `<PreviewBar />`, `<SortableList />`, `<BlockPicker />`.
+- **Éditeur du bloc texte riche — composant neuf, local à la story**, et non le `markdown-editor`
+  (Milkdown) du socle comme l'annonçait la première version de ce document :
+  `src/components/features/pages/blocks/restricted-markdown-editor.tsx`, un `textarea` surmonté des
+  six seules actions de la barre réduite (gras, italique, titre 2, titre 3, liste, lien). Raison en
+  ADR 019 : la barre GFM de Milkdown produit du markup (tableaux, code) que la sanitisation du rendu
+  public retire **sans le dire**, ce qui donnerait au bureau un WYSIWYG dont la mise en forme
+  disparaît à la publication. Ce n'est **pas un P0 du design system** : c'est un détail
+  d'implémentation local. Le promouvoir au catalogue de `docs/design-system.md` demanderait sa propre
+  décision de design system, hors périmètre de s04.
 
 ## States
 

@@ -121,8 +121,9 @@ page-validation.ts` (schémas `createPageServiceSchema`, `updatePageServiceSchem
        `association-settings-dal.ts`), `getPagesForBureauDal` non cachée (liste de gestion, par tenant).
        `updateTag(pageTag(organizationId, slug))` appelé dans les Server Actions de la tâche 8, après le
        succès de l'écriture (jamais avant), sur `createPageService`/`updatePageService` (le slug peut
-       changer) et sur `publishPageService`/`unpublishPageService`. Aucun appel à `logger` dans le scope
-       caché (Trap 7).
+       changer) et sur `publishPageService`/`unpublishPageService`. Aucun appel à `logger` **écrit** dans
+       le scope caché (Trap 7) — l'intercepteur de la façade, lui, logge : compromis hérité du gabarit,
+       voir la note de la Definition of Done.
        Pas de test unitaire direct (lecture derrière `'use cache'`, patron déjà établi) ; vérifié en revue
        de code + par la tâche 8 (le bureau voit son changement de statut immédiatement).
 
@@ -215,7 +216,11 @@ undoWindowMs=10000` ; boutons Monter/Descendre toujours visibles, premier élém
   sur `e2e/page-cms.spec.ts` (build de production, base éphémère).
 - `docs/architecture.md` reflète les deux nouvelles tables RLS (21 → 23) ; les deux ADR sont présents et
   non contredits par le code livré.
-- Aucun `console.log`/`logger` dans un scope `'use cache'` (`page-dal.ts`).
+- Aucun appel **écrit** à `console.log`/`logger` dans un scope `'use cache'` (`page-dal.ts`), ni aucune
+  autre lecture d'horloge ou de requête. ⚠️ Cela ne veut pas dire « aucun log » : la façade appelée dans
+  le scope caché passe par l'intercepteur de journalisation, qui logge. C'est un compromis **hérité**,
+  partagé avec `association-settings-dal.ts` dont ce DAL reprend le gabarit — s04 ne l'introduit ni ne le
+  résout, et le lever demanderait de revoir le patron façade/intercepteur pour tous les DAL cachés.
 - Une seule action au registre (`PAGE_MANAGE`) couvre les quatre verbes, aucun contrôle de rôle écrit à
   la main en doublon.
 - Revue (`/ks-review`) : aucun `withRlsBypass` introduit, aucune valeur en dur qui aurait dû être un

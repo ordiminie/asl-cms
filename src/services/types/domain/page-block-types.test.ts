@@ -1,3 +1,6 @@
+import {existsSync, readdirSync} from 'node:fs'
+import path from 'node:path'
+
 import {describe, expect, it} from 'vitest'
 
 import {
@@ -85,6 +88,59 @@ describe('slugs réservés (ADR 020)', () => {
       'modules',
     ]) {
       expect(RESERVED_PAGE_SLUGS).toContain(segment)
+    }
+  })
+
+  it('couvre les racines authentifiees et la route heritee des tarifs', () => {
+    for (const segment of ['account', 'dashboard', 'pricing_old']) {
+      expect(RESERVED_PAGE_SLUGS).toContain(segment)
+    }
+  })
+
+  /**
+   * Le garde-fou qui compte : la liste est confrontee au systeme de fichiers,
+   * pas a un echantillon ecrit a la main. Toute story qui ajoute un segment
+   * racine servi par `src/app/[locale]/` sans l'ajouter ici echoue ici, avant
+   * de se decouvrir en production (ADR 020).
+   */
+  it('couvre tout segment racine reellement servi par src/app/[locale]', () => {
+    const appRoot = path.resolve(import.meta.dirname, '../../../app/[locale]')
+
+    const collectServedSegments = (directory: string): string[] => {
+      const served: string[] = []
+
+      for (const entry of readdirSync(directory, {withFileTypes: true})) {
+        if (!entry.isDirectory()) continue
+
+        // Groupe de routes : transparent dans l'URL, ses enfants sont a la racine.
+        if (entry.name.startsWith('(')) {
+          served.push(
+            ...collectServedSegments(path.join(directory, entry.name))
+          )
+          continue
+        }
+
+        // Segment dynamique (`[slug]`) : ce n'est pas un nom reserve.
+        if (entry.name.startsWith('[')) continue
+
+        const segment = path.join(directory, entry.name)
+        const isServed =
+          existsSync(path.join(segment, 'page.tsx')) ||
+          existsSync(path.join(segment, 'route.ts'))
+        if (isServed) served.push(entry.name)
+      }
+
+      return served
+    }
+
+    const servedSegments = collectServedSegments(appRoot)
+
+    expect(servedSegments.length).toBeGreaterThan(5)
+    for (const segment of servedSegments) {
+      expect(
+        RESERVED_PAGE_SLUGS,
+        `le segment /${segment} est servi par le socle mais absent de RESERVED_PAGE_SLUGS`
+      ).toContain(segment)
     }
   })
 

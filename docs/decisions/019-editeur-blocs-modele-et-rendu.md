@@ -56,8 +56,19 @@ type.** Le rendu public passe par une fonction pure et synchrone, propre à s04
 - **Étendre `markdown-editor.tsx` (Milkdown + GFM) comme moteur de rendu public** — rejeté : ce
   composant est un éditeur client (`'use client'`), pas un renderer serveur cachable, et sa
   configuration actuelle expose tableaux, code et couleurs que le design system interdit pour le bloc
-  texte riche (Trap 4). Il reste la base de l'**éditeur** du bloc texte riche (restreint à sa barre
-  réduite), mais pas du rendu public.
+  texte riche (Trap 4).
+- **Dériver l'éditeur du bloc texte riche de `markdown-editor.tsx` (Milkdown), en masquant les outils
+  interdits** — rejeté aussi, et c'est le point où cet ADR s'écarte de son intuition de départ.
+  Milkdown est un WYSIWYG : ce que le bureau voit dans l'éditeur est censé être ce qu'il obtient. Or
+  sa barre GFM produit des tableaux et du code que le schéma de sanitisation de
+  `render-page-block.ts` retire **silencieusement** à la publication — le bureau composerait un
+  tableau, le verrait à l'écran, et il aurait disparu de la page publiée. Masquer des boutons ne
+  supprime ni le collage de markup riche, ni les raccourcis clavier, ni la sérialisation GFM. L'éditeur
+  du bloc texte riche est donc un **composant neuf, écrit pour cette story**
+  (`src/components/features/pages/blocks/restricted-markdown-editor.tsx`) : un `textarea` et six
+  actions de balisage (gras, italique, titre 2, titre 3, liste, lien) — exactement ce que le rendu
+  accepte, rien de plus. Il ne dérive pas de Milkdown et n'en hérite aucune configuration.
+  `markdown-editor.tsx` reste au blog hérité, intact.
 - **Une colonne par type de bloc (`image_url`, `pdf_title`, `gallery_images`…) sur `content_block`** —
   rejeté : contredit « liste ordonnée de blocs typés » en réintroduisant un schéma rigide par type,
   empêche d'ajouter un champ à un type sans migration, et complique le passage silencieux d'un type
@@ -88,5 +99,8 @@ type.** Le rendu public passe par une fonction pure et synchrone, propre à s04
 
 - Le dépôt d'une dépendance de sanitisation (`rehype-sanitize` ou équivalent) est un ajout de paquet :
   hors périmètre d'un Quick Fix, à documenter dans le commit de la story comme le reste des dépendances
-  nouvelles (`@dnd-kit`, `@milkdown/*` sont déjà présentes et inutilisées jusqu'à cette story — les
-  activer n'est pas un ajout de dépendance, seulement leur premier usage réel).
+  nouvelles (`@dnd-kit` est déjà présent et inutilisé jusqu'à cette story — l'activer n'est pas un ajout
+  de dépendance, seulement son premier usage réel).
+- `@milkdown/*` n'est toujours utilisé que par `markdown-editor.tsx`, lui-même appelé par le seul
+  formulaire d'article du blog d'administration (`post-form.tsx`). s04 n'en fait aucun usage : le
+  paquet ne doit pas être considéré comme « activé » par cette story.

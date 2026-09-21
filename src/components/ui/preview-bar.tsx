@@ -19,13 +19,28 @@ import {cn} from '@/lib/utils'
 export type PreviewBarStatus =
   'draft' | 'dirty' | 'live' | 'publishing' | 'error' | 'unpublished'
 
+/**
+ * Statut -> token du design system (§1.1), jamais une couleur choisie a la
+ * main. Meme correspondance que la liste des pages :
+ *
+ * - `draft` -> `muted-foreground` : rien n'est en ligne, etat neutre ;
+ * - `dirty` et `publishing` -> `warning-border` : un travail en suspens ;
+ * - `live` -> `accent-solid` : la couleur de l'association, seule teinte vive ;
+ * - `error` -> `destructive` ;
+ * - `unpublished` -> `warning-border` : un retrait volontaire, a remarquer.
+ *
+ * Il n'y a **pas** de token « succes » ni de vert dans ce systeme (§5) : le
+ * vert de la premiere version etait une invention. Trois statuts partagent donc
+ * la meme teinte — sans consequence, puisque le libelle est toujours ecrit a
+ * cote du point.
+ */
 const STATUS_DOT_CLASS: Record<PreviewBarStatus, string> = {
-  draft: 'bg-[oklch(0.72_0.14_75)]',
-  dirty: 'bg-[oklch(0.72_0.14_75)]',
-  live: 'bg-[oklch(0.68_0.15_150)]',
-  publishing: 'bg-[oklch(0.72_0.14_75)]',
-  error: 'bg-[oklch(0.62_0.19_25)]',
-  unpublished: 'bg-[oklch(0.72_0.02_250)]',
+  draft: 'bg-muted-foreground',
+  dirty: 'bg-warning-border',
+  live: 'bg-accent-solid',
+  publishing: 'bg-warning-border',
+  error: 'bg-destructive',
+  unpublished: 'bg-warning-border',
 }
 
 type PreviewBarProps = {

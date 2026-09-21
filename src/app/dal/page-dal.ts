@@ -25,8 +25,22 @@ export const pageTag = (organizationId: string, slug: string): string =>
 /**
  * Lecture cachee d'une page par son slug. Fonction **interne** : elle prend
  * l'identifiant de l'association en argument, et seuls les appelants ci-dessous
- * le fournissent — celui du domaine appele. Aucun appel a `logger` ici :
- * Winston horodate, ce qui est interdit en scope cache.
+ * le fournissent — celui du domaine appele.
+ *
+ * ⚠️ Ce scope `'use cache'` n'est pas exempt de journalisation, contrairement a
+ * ce qu'affirmait la premiere version de ce commentaire : la facade
+ * `getPageBySlugService` passe par l'intercepteur de journalisation, qui appelle
+ * `logger.info` / `logger.debug` — donc `new Date()` de Winston — a l'interieur
+ * du scope. Ce qui rend la chose tenable est la neutralisation du logger pendant
+ * le build (`src/lib/logger.ts`, `NEXT_PHASE=phase-production-build`), pas une
+ * absence d'appel. C'est un compromis **herite**, partage avec
+ * `association-settings-dal.ts` dont ce fichier reprend le gabarit : ni s04 ni
+ * ce commentaire ne l'introduisent, et le resoudre demanderait de revoir le
+ * patron facade/intercepteur pour tous les DAL caches — sa propre decision.
+ *
+ * Ce qui reste vrai et doit le rester : aucun appel direct a `logger` ecrit
+ * ici, et aucune autre lecture d'horloge ou de requete (`headers()`,
+ * `cookies()`, `Math.random()`) dans ce scope.
  */
 const readPageBySlugCached = cache(
   async (

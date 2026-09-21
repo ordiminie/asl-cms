@@ -87,6 +87,7 @@ export type StoredPageBlock = {
  * production.
  */
 export const RESERVED_PAGE_SLUGS: readonly string[] = [
+  'account',
   'admin',
   'annonces',
   'api',
@@ -95,11 +96,13 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   'bureau',
   'checkout',
   'contact',
+  'dashboard',
   'docs',
   'login',
   'logout',
   'modules',
   'pricing',
+  'pricing_old',
   'privacy',
   'register',
   'reset-password',
