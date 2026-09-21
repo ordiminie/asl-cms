@@ -7,9 +7,10 @@ import {
 import {withTenant} from '@/db/tenant-scope'
 
 import {getAuthUser} from './authentication/auth-service'
-import {canManageAssociation} from './authorization/association-authorization'
+import {canPerformAction} from './authorization/action-registry-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
+import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingError,
@@ -69,7 +70,13 @@ export const updateAssociationSettingsService = async (
   }
 
   const authUser = await getAuthUser()
-  if (!canManageAssociation(authUser, parsed.data.organizationId)) {
+  if (
+    !canPerformAction(
+      authUser,
+      parsed.data.organizationId,
+      ActionIdConst.ASSOCIATION_SETTINGS_UPDATE
+    )
+  ) {
     throw new AuthorizationError(
       "Seul le bureau de l'association peut modifier ses réglages"
     )

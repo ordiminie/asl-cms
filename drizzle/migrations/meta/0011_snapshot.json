@@ -1,6 +1,6 @@
 {
-  "id": "67b05dd9-5690-4f4c-9e29-542a39fd743d",
-  "prevId": "2f58d11c-ca67-42d2-9eee-5f6460c5b129",
+  "id": "c83db2e8-ae7a-4c1c-8f21-91d8b0945a7b",
+  "prevId": "52ff6675-250b-4e41-a142-f843d47f2971",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1477,38 +1477,32 @@
           "primaryKey": false,
           "notNull": true
         },
-        "bucket": {
-          "name": "bucket",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "fingerprint": {
           "name": "fingerprint",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
+        "day": {
+          "name": "day",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "default": 1
         }
       },
       "indexes": {
-        "rate_limit_event_lookup_idx": {
-          "name": "rate_limit_event_lookup_idx",
+        "rate_limit_event_counter_idx": {
+          "name": "rate_limit_event_counter_idx",
           "columns": [
             {
               "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "bucket",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1520,13 +1514,13 @@
               "nulls": "last"
             },
             {
-              "expression": "created_at",
+              "expression": "day",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2063,7 +2057,7 @@
     "public.organization_role": {
       "name": "organization_role",
       "schema": "public",
-      "values": ["admin", "member", "owner"]
+      "values": ["board", "member", "owner"]
     },
     "public.role_type": {
       "name": "role_type",

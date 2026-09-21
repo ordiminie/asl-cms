@@ -205,7 +205,7 @@ export const organization = pgTable('organization', {
 })
 
 export const organizationRoleEnum = pgEnum('organization_role', [
-  'admin',
+  'board',
   'member',
   'owner',
 ])

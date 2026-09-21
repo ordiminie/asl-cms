@@ -48,6 +48,7 @@ import {
   canUpdateSubscription,
 } from '@/services/authorization/subscription-authorization'
 import {PaginatedResponse, Pagination} from '@/services/types/common-type'
+import {UserOrganizationRoleConst} from '@/services/types/domain/auth-types'
 import {
   BillingModes,
   // Plans types
@@ -454,8 +455,11 @@ export async function canManageSubscription(
       (org) => org.organizationId === referenceId
     )
 
-    // User doit être OWNER ou ADMIN pour gérer les subscriptions
-    return userOrg?.role === 'owner' || userOrg?.role === 'admin'
+    // Seuls la présidence (owner) et le bureau (board) gèrent l'abonnement
+    return (
+      userOrg?.role === UserOrganizationRoleConst.OWNER ||
+      userOrg?.role === UserOrganizationRoleConst.ADMIN
+    )
   }
 
   return false

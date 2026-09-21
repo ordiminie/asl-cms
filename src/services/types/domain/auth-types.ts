@@ -34,10 +34,15 @@ export interface OrganizationContext {
   organizationId: string // Quelle org est active maintenant
 }
 
-// Constantes pour les rôles utilisateur dans une organisation
+/**
+ * Rôles d'une association (s03b). `ADMIN` porte la valeur `board` : c'est le
+ * Bureau de l'association, sans rapport avec le rôle **global** `admin` de la
+ * plateforme (`RoleConst.ADMIN`). La clé reste `ADMIN` pour limiter l'étendue
+ * du renommage ; seule la valeur en base a changé.
+ */
 export const UserOrganizationRoleConst = {
   OWNER: 'owner' satisfies OrganizationRoleEnumModel,
-  ADMIN: 'admin' satisfies OrganizationRoleEnumModel,
+  ADMIN: 'board' satisfies OrganizationRoleEnumModel,
   MEMBER: 'member' as OrganizationRoleEnumModel,
 } as const
 
