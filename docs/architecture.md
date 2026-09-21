@@ -209,8 +209,11 @@ Entités ajoutées par ASL-CMS, par domaine :
   à confirmer par le conseil RGPD — pas une constante.
 - **Documents** — `document` (partagé ou nominatif), le stockage nominatif étant **physiquement séparé
   par membre** (ADR 004).
-- **Autorisation** — `action_registry` : le registre des actions soumises à autorisation, que chaque
-  story alimente et que s37 transforme en matrice configurable.
+- **Autorisation** — ⚠️ pas une table : `action_registry` est un **module de code isomorphe**
+  (`src/services/types/domain/action-registry-types.ts`, ADR 018), sans écran ni migration. Chaque
+  story y déclare ses actions avec leurs rôles d'association par défaut ; `canPerformAction`
+  (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
+  ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
 ### Classement RLS des 21 tables du schéma
 

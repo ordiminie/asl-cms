@@ -101,7 +101,10 @@ describe('getAssociationSettingsService — lecture resolue', () => {
 describe('updateAssociationSettingsService — acces accordes', () => {
   it.each<[string, User]>([
     ['[ORGANIZATION OWNER] la presidente', withRole('owner')],
-    ['[ORGANIZATION ADMIN] le bureau', withRole('admin')],
+    [
+      '[ORGANIZATION ADMIN] le bureau',
+      withRole(UserOrganizationRoleConst.ADMIN),
+    ],
     ['[SUPER_ADMIN]', userTestSuperAdmin],
   ])('%s enregistre', async (_label, user) => {
     setupAuthUserMocked(user)
@@ -128,7 +131,10 @@ describe('updateAssociationSettingsService — refus d acces, sans aucun appel D
   it.each<[string, User | undefined]>([
     ['[PUBLIC]', undefined],
     ['[ORGANIZATION MEMBER]', withRole('member')],
-    ['[OTHER ORGANIZATION ADMIN]', withRole('admin', OTHER_ORG_ID)],
+    [
+      '[OTHER ORGANIZATION ADMIN]',
+      withRole(UserOrganizationRoleConst.ADMIN, OTHER_ORG_ID),
+    ],
     ['[OTHER ORGANIZATION OWNER]', withRole('owner', OTHER_ORG_ID)],
     ['[ADMIN] global', userTestAdmin],
   ])('%s est refuse', async (_label, user) => {

@@ -25,11 +25,15 @@ export type MemberData = MemberModel & {
 
 export type OrganizationRole = OrganizationRoleEnumModel
 
+/**
+ * Même remarque que `UserOrganizationRoleConst` (s03b) : la clé `admin` porte
+ * la valeur `board`, le Bureau de l'association — pas le rôle global `admin`.
+ */
 export const OrganizationRoleConst = {
-  admin: 'admin',
-  member: 'member',
-  owner: 'owner',
-} satisfies Record<OrganizationRole, string>
+  admin: 'board' satisfies OrganizationRole,
+  member: 'member' satisfies OrganizationRole,
+  owner: 'owner' satisfies OrganizationRole,
+} as const
 
 // Types pour les opérations
 export type CreateOrganization = AddOrganizationModel

@@ -287,18 +287,18 @@ const seed = async () => {
       CASE 
         -- admin@gmail.com dans 3 organisations avec rôles différents
         WHEN u.email = 'admin@gmail.com' AND o.slug = 'techcorp-solutions' THEN 'member'
-        WHEN u.email = 'admin@gmail.com' AND o.slug = 'marketing-pro' THEN 'admin'
+        WHEN u.email = 'admin@gmail.com' AND o.slug = 'marketing-pro' THEN 'board'
         WHEN u.email = 'admin@gmail.com' AND o.slug = 'acme-corp' THEN 'owner'
         
         -- user@gmail.com : Cas multi-organisations complexe
         -- MEMBER dans TechCorp, ADMIN dans Acme Corp, OWNER dans Evil Corp
         WHEN u.email = 'user@gmail.com' AND o.slug = 'techcorp-solutions' THEN 'member'
-        WHEN u.email = 'user@gmail.com' AND o.slug = 'acme-corp' THEN 'admin'
+        WHEN u.email = 'user@gmail.com' AND o.slug = 'acme-corp' THEN 'board'
         WHEN u.email = 'user@gmail.com' AND o.slug = 'evil-corp' THEN 'owner'
         
         -- Utilisateurs spécialisés par rôle organisationnel
         WHEN u.email = 'user-owner@gmail.com' AND o.slug = 'techcorp-solutions' THEN 'owner'
-        WHEN u.email = 'user-admin@gmail.com' AND o.slug = 'marketing-pro' THEN 'admin'
+        WHEN u.email = 'user-admin@gmail.com' AND o.slug = 'marketing-pro' THEN 'board'
         WHEN u.email = 'user-member@gmail.com' AND o.slug = 'acme-corp' THEN 'member'
         
         -- Cas de chevauchement (rôle global élevé + rôle org)

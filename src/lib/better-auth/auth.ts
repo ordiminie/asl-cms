@@ -25,6 +25,10 @@ import {
   MAGIC_LINK_DISABLED_HTTP_PATHS,
   magicLinkOptions,
 } from '@/lib/better-auth/magic-link-integration'
+import {
+  organizationAccessControl,
+  organizationRoles,
+} from '@/lib/better-auth/organization-roles'
 import {APP_ISSUER} from '@/lib/constants'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {BILLING_MODE} from '@/lib/helper/subscription-helper'
@@ -150,6 +154,8 @@ const options = {
     magicLink(magicLinkOptions),
     admin(),
     organization({
+      ac: organizationAccessControl,
+      roles: organizationRoles,
       invitationLimit: 10,
       membershipLimit: 10,
       allowUserToCreateOrganization: false,
@@ -360,8 +366,9 @@ function createAuthorizeReference() {
       if (BILLING_MODE === BillingModes.ORGANIZATION) {
         const org = await getOrganizationMembersService(referenceId)
         const member = org.find((m) => m.userId === user.id)
-        // Seuls owner et admin peuvent gérer les abonnements
-        return member?.role === 'owner' //|| member?.role === 'admin'
+        // Seule la présidence gère l'abonnement ici ; la branche du bureau
+        // (`board` depuis s03b) reste désactivée, comme avant le renommage.
+        return member?.role === 'owner' //|| member?.role === 'board'
       }
       return false
     }

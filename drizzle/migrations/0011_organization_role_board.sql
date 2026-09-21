@@ -1,0 +1,15 @@
+-- s03b : le role d'association « admin » devient « board » (Bureau).
+--
+-- SQL ecrit a la main, a la place du couple DROP TYPE / CREATE TYPE que
+-- drizzle-kit produit pour une valeur d'enumere modifiee : ce couple recree le
+-- type et recaste chaque ligne, ce qui echoue sur les lignes `member.role`
+-- valant encore 'admin'. Postgres sait renommer une valeur d'enumere en place,
+-- sans reecrire la table ni toucher aux lignes existantes.
+--
+-- Le fichier, son entree de journal et l'instantane `meta/0011_snapshot.json`
+-- restent ceux de `drizzle-kit generate --name=organization_role_board` : le
+-- prochain `db:generate` ne voit donc aucune difference a rattraper.
+--
+-- A ne pas confondre avec le role **global** `user.role = 'admin'` (plateforme,
+-- enumere `role`), qui n'est pas touche.
+ALTER TYPE "public"."organization_role" RENAME VALUE 'admin' TO 'board';

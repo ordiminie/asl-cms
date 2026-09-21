@@ -9,6 +9,7 @@ import {StorageOperations} from '@/lib/files/storage/types'
 import {logger} from '@/lib/logger'
 
 import {getAuthUser} from './authentication/auth-service'
+import {canPerformAction} from './authorization/action-registry-authorization'
 import {canManageAssociation} from './authorization/association-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {NotFoundError} from './errors/not-found-error'
@@ -16,6 +17,7 @@ import {
   ValidationError,
   ValidationParsedZodError,
 } from './errors/validation-error'
+import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   AssociationIdentityKind,
   AssociationIdentityValidation,
@@ -128,7 +130,13 @@ export const replaceAssociationIdentityFileService = async (
   }
 
   const authUser = await getAuthUser()
-  if (!canManageAssociation(authUser, parsed.data.organizationId)) {
+  if (
+    !canPerformAction(
+      authUser,
+      parsed.data.organizationId,
+      ActionIdConst.ASSOCIATION_IDENTITY_UPDATE
+    )
+  ) {
     throw new AuthorizationError(
       "Seul le bureau de l'association peut modifier son identité"
     )
