@@ -19,6 +19,25 @@ const flatKeys = (value: unknown, prefix = ''): string[] => {
 
 const catalogs = {en, es} as const
 
+const translatedNamespaces = ['PageBlocks', 'BureauPagesPage'] as const
+
+/**
+ * Deux libelles anglais coincident mot pour mot avec le francais : ce sont les
+ * traductions justes, pas des copies oubliees. Les nommer un par un garde la
+ * garde stricte sur les 79 autres valeurs.
+ */
+const identicalByTranslation = new Set([
+  'en:BureauPagesPage.title',
+  'en:BureauPagesPage.columns.actions',
+])
+
+const flatEntries = (value: unknown, prefix = ''): [string, unknown][] =>
+  typeof value !== 'object' || value === null
+    ? [[prefix, value]]
+    : Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
+        flatEntries(child, prefix ? `${prefix}.${key}` : key)
+      )
+
 describe('catalogues de messages des pages CMS (s04)', () => {
   for (const namespace of [
     'PublicCmsPage',
@@ -37,6 +56,49 @@ describe('catalogues de messages des pages CMS (s04)', () => {
           (catalog as Record<string, unknown>)[namespace]
         ).sort()
         expect(actual, `${namespace} incomplet en ${locale}`).toEqual(expected)
+      }
+    })
+  }
+
+  for (const namespace of translatedNamespaces) {
+    it(`${namespace} est reellement traduit en en et es, pas recopie du fr`, () => {
+      const french = flatEntries((fr as Record<string, unknown>)[namespace])
+      expect(french.length).toBeGreaterThan(0)
+
+      for (const [locale, catalog] of Object.entries(catalogs)) {
+        const translated = new Map(
+          flatEntries((catalog as Record<string, unknown>)[namespace])
+        )
+        const copied = french
+          .filter(
+            ([key, value]) =>
+              translated.get(key) === value &&
+              !identicalByTranslation.has(`${locale}:${namespace}.${key}`)
+          )
+          .map(([key]) => key)
+
+        expect(copied, `${namespace} recopie du francais en ${locale}`).toEqual(
+          []
+        )
+      }
+    })
+
+    it(`${namespace} garde les memes variables d'interpolation`, () => {
+      const placeholders = (value: unknown) =>
+        typeof value === 'string' ? (value.match(/{[^}]+}/g) ?? []).sort() : []
+
+      for (const [key, value] of flatEntries(
+        (fr as Record<string, unknown>)[namespace]
+      )) {
+        for (const [locale, catalog] of Object.entries(catalogs)) {
+          const translated = new Map(
+            flatEntries((catalog as Record<string, unknown>)[namespace])
+          )
+          expect(
+            placeholders(translated.get(key)),
+            `${namespace}.${key} en ${locale}`
+          ).toEqual(placeholders(value))
+        }
       }
     })
   }

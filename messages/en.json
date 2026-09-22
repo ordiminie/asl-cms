@@ -2975,124 +2975,124 @@
   "PageBlocks": {
     "types": {
       "text": {
-        "label": "Texte riche",
-        "description": "Un paragraphe, des titres, une liste, un lien."
+        "label": "Rich text",
+        "description": "A paragraph, headings, a list, a link."
       },
       "image": {
-        "label": "Image + légende",
-        "description": "Une photo, avec sa légende écrite en dessous."
+        "label": "Image + caption",
+        "description": "A photo, with its caption written underneath."
       },
       "pdf": {
-        "label": "Document PDF",
-        "description": "Un document à télécharger, sous un titre lisible."
+        "label": "PDF document",
+        "description": "A document to download, under a readable title."
       },
       "gallery": {
-        "label": "Galerie",
-        "description": "Plusieurs photos en grille."
+        "label": "Gallery",
+        "description": "Several photos laid out in a grid."
       },
       "callout": {
-        "label": "Encart",
-        "description": "Un court message mis en avant dans la page."
+        "label": "Callout",
+        "description": "A short message highlighted within the page."
       }
     },
     "text": {
-      "label": "Texte",
-      "placeholder": "Écrivez votre texte ici."
+      "label": "Text",
+      "placeholder": "Write your text here."
     },
     "image": {
-      "fileLabel": "Photo",
-      "uploading": "Dépôt du fichier en cours…",
-      "previewAlt": "Aperçu de la photo déposée",
-      "altLabel": "Texte alternatif",
-      "altRequired": "Obligatoire pour publier.",
-      "altHelp": "Décrit la photo pour qui ne la voit pas.",
-      "captionLabel": "Légende",
-      "captionHelp": "Facultatif.",
-      "missingFileTitle": "Ce bloc n'a pas de fichier.",
-      "missingFileHelp": "Il n'apparaît pas sur le site public tant qu'une photo n'est pas déposée."
+      "fileLabel": "Image",
+      "uploading": "Uploading the file…",
+      "previewAlt": "Preview of the uploaded photo",
+      "altLabel": "Alternative text",
+      "altRequired": "Required before publishing.",
+      "altHelp": "Describes the photo for anyone who cannot see it.",
+      "captionLabel": "Caption",
+      "captionHelp": "Optional.",
+      "missingFileTitle": "This block has no file.",
+      "missingFileHelp": "It does not appear on the public site until a photo is uploaded."
     },
     "pdf": {
-      "fileLabel": "Document PDF",
-      "fileHelp": "Format PDF, 10 Mo maximum.",
-      "deposited": "{name} déposé ({size} octets).",
-      "titleLabel": "Titre du document",
-      "titleRequired": "Obligatoire pour publier.",
-      "titleHelp": "C'est ce titre que voient les visiteurs, jamais le nom du fichier.",
-      "missingFileTitle": "Ce bloc n'a pas de fichier.",
-      "missingFileHelp": "Il n'apparaît pas sur le site public tant qu'un document n'est pas déposé."
+      "fileLabel": "PDF document",
+      "fileHelp": "PDF format, 10 MB maximum.",
+      "deposited": "{name} uploaded ({size} bytes).",
+      "titleLabel": "Document title",
+      "titleRequired": "Required before publishing.",
+      "titleHelp": "This is the title visitors see, never the file name.",
+      "missingFileTitle": "This block has no file.",
+      "missingFileHelp": "It does not appear on the public site until a document is uploaded."
     },
     "gallery": {
-      "fileLabel": "Photos",
-      "uploading": "Dépôt des fichiers en cours…",
-      "previewAlt": "Aperçu de la photo déposée",
-      "altLabel": "Texte alternatif de la photo {position}",
-      "altRequired": "Obligatoire pour publier.",
-      "remove": "Retirer cette photo"
+      "fileLabel": "Images",
+      "uploading": "Uploading the files…",
+      "previewAlt": "Preview of the uploaded photo",
+      "altLabel": "Alternative text for photo {position}",
+      "altRequired": "Required before publishing.",
+      "remove": "Remove this photo"
     },
     "callout": {
-      "titleLabel": "Titre de l'encart",
-      "titleOptional": "Facultatif.",
-      "textLabel": "Texte de l'encart",
-      "previewLabel": "Aperçu aux couleurs de votre association",
-      "help": "Pas de bouton dans un encart. Deux encarts qui se suivent ne sont pas recommandés."
+      "titleLabel": "Callout title",
+      "titleOptional": "Optional.",
+      "textLabel": "Callout text",
+      "previewLabel": "Preview in your association's colours",
+      "help": "No button inside a callout. Two callouts in a row are not recommended."
     },
     "unknown": {
-      "title": "Type de bloc inconnu ({type})",
-      "help": "Ce bloc est ignoré à l'affichage public. Vous pouvez seulement le supprimer."
+      "title": "Unknown block type ({type})",
+      "help": "This block is ignored on the public site. You can only delete it."
     }
   },
   "BureauPagesPage": {
     "metadata": {
-      "title": "Pages du site"
+      "title": "Website pages"
     },
     "title": "Pages",
-    "tableTitle": "Les pages de votre site",
-    "empty": "Aucune page pour l'instant. Créez la première avec « Nouvelle page ».",
-    "edit": "Modifier",
+    "tableTitle": "The pages of your website",
+    "empty": "No page yet. Create the first one with “New page”.",
+    "edit": "Edit",
     "columns": {
-      "title": "Titre",
-      "status": "Statut",
-      "updatedAt": "Dernière modification",
+      "title": "Title",
+      "status": "Status",
+      "updatedAt": "Last modified",
       "actions": "Actions"
     },
     "status": {
-      "draft": "Brouillon",
-      "published": "Publiée",
-      "unpublished": "Dépubliée"
+      "draft": "Draft",
+      "published": "Published",
+      "unpublished": "Unpublished"
     },
     "newPage": {
-      "action": "Nouvelle page",
-      "title": "Nouvelle page",
-      "slug": "nouvelle-page"
+      "action": "New page",
+      "title": "New page",
+      "slug": "new-page"
     },
     "errors": {
-      "forbidden": "Seul le bureau de l'association peut gérer les pages.",
-      "failed": "L'enregistrement a échoué. Rien n'est perdu : réessayez.",
-      "invalidData": "Données invalides.",
-      "slugTaken": "Ce slug est déjà utilisé par une autre page.",
-      "fileTooLarge": "Ce fichier est trop lourd.",
-      "fileFormat": "Ce format de fichier n'est pas accepté.",
+      "forbidden": "Only the association's board can manage the pages.",
+      "failed": "Saving failed. Nothing is lost: please try again.",
+      "invalidData": "Invalid data.",
+      "slugTaken": "This slug is already used by another page.",
+      "fileTooLarge": "This file is too large.",
+      "fileFormat": "This file format is not accepted.",
       "createFailedTitle": "The page could not be created",
       "createFailed": "Nothing is lost: no page was added. Try again in a moment."
     },
     "editor": {
-      "metadataTitle": "Modifier une page",
-      "back": "Retour aux pages",
-      "saveDraft": "Enregistrer le brouillon",
-      "preview": "Aperçu",
-      "publish": "Publier la page",
-      "unpublish": "Dépublier la page",
-      "unpublishConfirmTitle": "Dépublier « {title} » ?",
-      "unpublishConfirmHelp": "La page disparaît du site public. Son contenu est conservé : vous pourrez la republier à l'identique.",
-      "unpublishConfirmAction": "Dépublier la page",
-      "cancel": "Annuler",
-      "removeBlock": "Supprimer le bloc",
-      "settingsTitle": "Paramètres de la page",
-      "titleLabel": "Titre",
-      "slugLabel": "Adresse de la page",
-      "slugHelp": "La page sera visible à l’adresse /{slug}",
-      "slugTaken": "Ce slug est déjà utilisé par une autre page.",
-      "incomplete": "Publication impossible : les blocs {positions} attendent un texte alternatif ou un titre. Rien n'est perdu."
+      "metadataTitle": "Edit a page",
+      "back": "Back to the pages",
+      "saveDraft": "Save the draft",
+      "preview": "Preview",
+      "publish": "Publish the page",
+      "unpublish": "Unpublish the page",
+      "unpublishConfirmTitle": "Unpublish “{title}”?",
+      "unpublishConfirmHelp": "The page disappears from the public site. Its content is kept: you will be able to republish it unchanged.",
+      "unpublishConfirmAction": "Unpublish the page",
+      "cancel": "Cancel",
+      "removeBlock": "Delete the block",
+      "settingsTitle": "Page settings",
+      "titleLabel": "Title",
+      "slugLabel": "Page address",
+      "slugHelp": "The page will be visible at /{slug}",
+      "slugTaken": "This slug is already used by another page.",
+      "incomplete": "Cannot publish: blocks {positions} are still missing an alternative text or a title. Nothing is lost."
     }
   }
 }
