@@ -1,0 +1,4493 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maquette — s04 Pages CMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.22 0.015 250);
+        --card: oklch(1 0 0);
+        --muted: oklch(0.972 0.005 240);
+        --muted-foreground: oklch(0.45 0.02 245);
+        --border: oklch(0.9 0.008 245);
+        --input: oklch(0.66 0.014 245);
+        --ring: oklch(0.55 0.11 235);
+        --primary: oklch(0.35 0.06 240);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.965 0.006 240);
+        --destructive: oklch(0.48 0.17 27);
+        --link: oklch(0.45 0.13 250);
+        --warning: oklch(0.94 0.06 75);
+        --warning-border: oklch(0.72 0.12 70);
+        --warning-foreground: oklch(0.3 0.08 60);
+        --accent: oklch(0.958 0.024 195);
+        --accent-foreground: oklch(0.38 0.08 195);
+        --accent-solid: oklch(0.55 0.1 195);
+        --accent-border: oklch(0.88 0.045 195);
+        --sidebar: oklch(0.985 0.004 250);
+        --sidebar-foreground: oklch(0.26 0.015 250);
+        --sidebar-accent: oklch(0.93 0.012 245);
+        --sidebar-border: oklch(0.91 0.008 245);
+        --stripe: oklch(0.93 0.008 245);
+      }
+      [data-theme='dark'] {
+        --background: oklch(0.215 0.009 255);
+        --foreground: oklch(0.94 0.006 250);
+        --card: oklch(0.215 0.009 255);
+        --muted: oklch(0.255 0.009 250);
+        --muted-foreground: oklch(0.72 0.015 248);
+        --border: oklch(0.33 0.01 250);
+        --input: oklch(0.52 0.016 250);
+        --ring: oklch(0.7 0.12 235);
+        --primary: oklch(0.5 0.14 255);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.27 0.01 250);
+        --destructive: oklch(0.58 0.19 27);
+        --link: oklch(0.8 0.1 250);
+        --warning: oklch(0.3 0.05 75);
+        --warning-border: oklch(0.6 0.11 70);
+        --warning-foreground: oklch(0.93 0.05 80);
+        --accent: oklch(0.275 0.035 195);
+        --accent-foreground: oklch(0.84 0.075 195);
+        --accent-solid: oklch(0.64 0.11 195);
+        --accent-border: oklch(0.4 0.055 195);
+        --sidebar: oklch(0.19 0.009 255);
+        --sidebar-foreground: oklch(0.93 0.006 250);
+        --sidebar-accent: oklch(0.3 0.014 250);
+        --sidebar-border: oklch(0.32 0.01 250);
+        --stripe: oklch(0.3 0.01 250);
+      }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: 'Public Sans', system-ui, sans-serif;
+        font-size: 17px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      a {
+        color: var(--link);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      a:hover {
+        color: var(--accent-foreground);
+      }
+      button {
+        font-family: inherit;
+      }
+      :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+      table {
+        border-collapse: collapse;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-theme="light"
+      style="
+        background: var(--background);
+        color: var(--foreground);
+        min-height: 100vh;
+      "
+    >
+      <div
+        style="
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 24px;
+          background: var(--card);
+          border-bottom: 1px solid var(--border);
+        "
+      >
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span
+            style="
+              font-family: 'JetBrains Mono', monospace;
+              font-size: 12px;
+              font-weight: 600;
+              letter-spacing: 0.14em;
+              text-transform: uppercase;
+              color: var(--muted-foreground);
+            "
+            >s04 · pages-cms</span
+          >
+          <span style="font-size: 15px; color: var(--muted-foreground)"
+            >Maquette basse fidélité — desktop et mobile 390 px</span
+          >
+        </div>
+        <div
+          style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"
+        >
+          <a href="#s1" style="font-size: 15px">1 · Liste</a>
+          <a href="#s2" style="font-size: 15px">2 · Éditeur</a>
+          <a href="#s3" style="font-size: 15px">3 · Sélecteur</a>
+          <a href="#s4" style="font-size: 15px">4 · Rendu public</a>
+          <button
+            type="button"
+            onclick="toggleTheme()"
+            style="
+              min-height: 44px;
+              padding: 0 16px;
+              margin-left: 8px;
+              border: 1px solid var(--border);
+              background: var(--secondary);
+              color: var(--foreground);
+              border-radius: 8px;
+              font-size: 16px;
+              font-weight: 600;
+              cursor: pointer;
+            "
+          >
+            Thème : <span id="theme-label">clair</span>
+          </button>
+        </div>
+      </div>
+
+      <div
+        style="
+          display: flex;
+          flex-direction: column;
+          gap: 64px;
+          padding: 32px 24px 64px;
+          max-width: 1440px;
+          margin: 0 auto;
+        "
+      >
+        <!-- ÉCRAN 1 -->
+        <section
+          id="s1"
+          data-screen-label="1 Liste des pages"
+          style="display: flex; flex-direction: column; gap: 24px"
+        >
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span
+              style="
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--accent-foreground);
+              "
+              >écran 1 — bureau</span
+            >
+            <h2
+              style="
+                font-family: 'Source Serif 4', Georgia, serif;
+                font-size: 26px;
+                font-weight: 600;
+                margin: 0;
+              "
+            >
+              Liste des pages
+            </h2>
+          </div>
+
+          <div
+            style="
+              display: flex;
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              overflow: hidden;
+              background: var(--background);
+            "
+          >
+            <!-- sidebar (repère de continuité) -->
+            <nav
+              style="
+                width: 248px;
+                flex: 0 0 248px;
+                background: var(--sidebar);
+                color: var(--sidebar-foreground);
+                border-right: 1px solid var(--sidebar-border);
+                padding: 16px 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+              "
+            >
+              <div
+                style="
+                  display: flex;
+                  gap: 12px;
+                  align-items: center;
+                  padding: 0 4px;
+                "
+              >
+                <div
+                  style="
+                    width: 34px;
+                    height: 34px;
+                    flex: 0 0 34px;
+                    border-radius: 8px;
+                    background: var(--accent-solid);
+                    color: oklch(1 0 0);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: 'Source Serif 4', Georgia, serif;
+                    font-size: 17px;
+                    font-weight: 600;
+                  "
+                >
+                  AE
+                </div>
+                <span style="font-size: 17px; font-weight: 600"
+                  >Les Amis de l'Étang</span
+                >
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <span
+                  style="
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 14px;
+                    font-weight: 600;
+                    letter-spacing: 0.14em;
+                    text-transform: uppercase;
+                    color: var(--muted-foreground);
+                    padding: 8px 8px 4px;
+                  "
+                  >Le site</span
+                >
+                <a
+                  href="#s1"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    min-height: 44px;
+                    padding: 0 12px;
+                    border-radius: 8px;
+                    background: var(--sidebar-accent);
+                    font-weight: 600;
+                    text-decoration: none;
+                    color: var(--sidebar-foreground);
+                    font-size: 17px;
+                  "
+                  >Pages</a
+                >
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 4px">
+                <span
+                  style="
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 14px;
+                    font-weight: 600;
+                    letter-spacing: 0.14em;
+                    text-transform: uppercase;
+                    color: var(--muted-foreground);
+                    padding: 8px 8px 4px;
+                  "
+                  >L'association</span
+                >
+                <a
+                  href="#s1"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    min-height: 44px;
+                    padding: 0 12px;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    color: var(--sidebar-foreground);
+                    font-size: 17px;
+                  "
+                  >Identité</a
+                >
+                <a
+                  href="#s1"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    min-height: 44px;
+                    padding: 0 12px;
+                    border-radius: 8px;
+                    text-decoration: none;
+                    color: var(--sidebar-foreground);
+                    font-size: 17px;
+                  "
+                  >Réglages</a
+                >
+              </div>
+            </nav>
+
+            <div
+              style="
+                flex: 1 1 auto;
+                min-width: 0;
+                padding: 32px;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+                background: var(--background);
+              "
+            >
+              <div
+                style="
+                  display: flex;
+                  gap: 16px;
+                  align-items: center;
+                  justify-content: space-between;
+                  flex-wrap: wrap;
+                "
+              >
+                <h1
+                  style="
+                    font-family: 'Source Serif 4', Georgia, serif;
+                    font-size: 34px;
+                    font-weight: 600;
+                    margin: 0;
+                  "
+                >
+                  Pages
+                </h1>
+                <button
+                  type="button"
+                  style="
+                    min-height: 44px;
+                    padding: 0 20px;
+                    border: 1px solid var(--primary);
+                    background: var(--primary);
+                    color: var(--primary-foreground);
+                    border-radius: 8px;
+                    font-size: 17px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  Nouvelle page
+                </button>
+              </div>
+
+              <div
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  background: var(--card);
+                  overflow: hidden;
+                "
+              >
+                <table style="width: 100%">
+                  <thead>
+                    <tr style="background: var(--muted)">
+                      <th
+                        style="
+                          text-align: left;
+                          padding: 12px 16px;
+                          font-size: 15px;
+                          font-weight: 600;
+                          color: var(--muted-foreground);
+                          border-bottom: 1px solid var(--border);
+                        "
+                      >
+                        Titre
+                      </th>
+                      <th
+                        style="
+                          text-align: left;
+                          padding: 12px 16px;
+                          font-size: 15px;
+                          font-weight: 600;
+                          color: var(--muted-foreground);
+                          border-bottom: 1px solid var(--border);
+                          width: 160px;
+                        "
+                      >
+                        Statut
+                      </th>
+                      <th
+                        style="
+                          text-align: left;
+                          padding: 12px 16px;
+                          font-size: 15px;
+                          font-weight: 600;
+                          color: var(--muted-foreground);
+                          border-bottom: 1px solid var(--border);
+                          width: 220px;
+                        "
+                      >
+                        Dernière modification
+                      </th>
+                      <th
+                        style="
+                          text-align: right;
+                          padding: 12px 16px;
+                          font-size: 15px;
+                          font-weight: 600;
+                          color: var(--muted-foreground);
+                          border-bottom: 1px solid var(--border);
+                          width: 140px;
+                        "
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td
+                        style="
+                          padding: 16px;
+                          border-bottom: 1px solid var(--border);
+                        "
+                      >
+                        <div style="font-size: 17px; font-weight: 600">
+                          Qualité de l'eau
+                        </div>
+                        <div
+                          style="
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          /qualite-de-leau
+                        </div>
+                      </td>
+                      <td
+                        style="
+                          padding: 16px;
+                          border-bottom: 1px solid var(--border);
+                        "
+                      >
+                        <span
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 4px 12px;
+                            border-radius: 999px;
+                            background: var(--accent);
+                            color: var(--accent-foreground);
+                            border: 1px solid var(--accent-border);
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 12px;
+                            font-weight: 600;
+                            letter-spacing: 0.1em;
+                            text-transform: uppercase;
+                          "
+                          ><span
+                            style="
+                              width: 8px;
+                              height: 8px;
+                              border-radius: 999px;
+                              background: var(--accent-solid);
+                            "
+                          ></span
+                          >Publiée</span
+                        >
+                      </td>
+                      <td
+                        style="
+                          padding: 16px;
+                          border-bottom: 1px solid var(--border);
+                          font-size: 15px;
+                          color: var(--muted-foreground);
+                        "
+                      >
+                        12 septembre 2026, 14:20
+                      </td>
+                      <td
+                        style="
+                          padding: 16px;
+                          border-bottom: 1px solid var(--border);
+                          text-align: right;
+                        "
+                      >
+                        <a
+                          href="#s2"
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            min-height: 44px;
+                            font-size: 17px;
+                            font-weight: 600;
+                          "
+                          >Modifier</a
+                        >
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          padding: 16px;
+                          border-bottom: 1px solid var(--border);
+                        "
+                      >
+                        <div style="font-size: 17px; font-weight: 600">
+                          Adhérer à l'association
+                        </div>
+                        <div
+                          style="
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          /adherer
+                        </div>
+                      </td>
+                      <td
+                        style="
+                          padding: 16px;
+                          border-bottom: 1px solid var(--border);
+                        "
+                      >
+                        <span
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 4px 12px;
+                            border-radius: 999px;
+                            background: var(--muted);
+                            color: var(--muted-foreground);
+                            border: 1px solid var(--border);
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 12px;
+                            font-weight: 600;
+                            letter-spacing: 0.1em;
+                            text-transform: uppercase;
+                          "
+                          ><span
+                            style="
+                              width: 8px;
+                              height: 8px;
+                              border-radius: 999px;
+                              background: var(--muted-foreground);
+                            "
+                          ></span
+                          >Brouillon</span
+                        >
+                      </td>
+                      <td
+                        style="
+                          padding: 16px;
+                          border-bottom: 1px solid var(--border);
+                          font-size: 15px;
+                          color: var(--muted-foreground);
+                        "
+                      >
+                        9 septembre 2026, 09:05
+                      </td>
+                      <td
+                        style="
+                          padding: 16px;
+                          border-bottom: 1px solid var(--border);
+                          text-align: right;
+                        "
+                      >
+                        <a
+                          href="#s2"
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            min-height: 44px;
+                            font-size: 17px;
+                            font-weight: 600;
+                          "
+                          >Modifier</a
+                        >
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 16px">
+                        <div style="font-size: 17px; font-weight: 600">
+                          Fête de l'étang 2025
+                        </div>
+                        <div
+                          style="
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          /fete-2025
+                        </div>
+                      </td>
+                      <td style="padding: 16px">
+                        <span
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 4px 12px;
+                            border-radius: 999px;
+                            background: var(--warning);
+                            color: var(--warning-foreground);
+                            border: 1px solid var(--warning-border);
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 12px;
+                            font-weight: 600;
+                            letter-spacing: 0.1em;
+                            text-transform: uppercase;
+                          "
+                          ><span
+                            style="
+                              width: 8px;
+                              height: 8px;
+                              border-radius: 999px;
+                              background: var(--warning-border);
+                            "
+                          ></span
+                          >Dépubliée</span
+                        >
+                      </td>
+                      <td
+                        style="
+                          padding: 16px;
+                          font-size: 15px;
+                          color: var(--muted-foreground);
+                        "
+                      >
+                        2 août 2026, 18:44
+                      </td>
+                      <td style="padding: 16px; text-align: right">
+                        <a
+                          href="#s2"
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            min-height: 44px;
+                            font-size: 17px;
+                            font-weight: 600;
+                          "
+                          >Modifier</a
+                        >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(100%, 320px), 1fr)
+              );
+              gap: 24px;
+            "
+          >
+            <div
+              style="
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: var(--card);
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+              "
+            >
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >état — vide</span
+              >
+              <p style="margin: 0; font-size: 17px">
+                Aucune page pour l'instant. <a href="#s2">Créer la première</a>
+              </p>
+            </div>
+            <div
+              style="
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: var(--card);
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+              "
+            >
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >état — chargement (skeleton)</span
+              >
+              <div style="display: flex; flex-direction: column; gap: 12px">
+                <div
+                  style="
+                    height: 24px;
+                    border-radius: 8px;
+                    background: var(--muted);
+                    width: 70%;
+                  "
+                ></div>
+                <div
+                  style="
+                    height: 24px;
+                    border-radius: 8px;
+                    background: var(--muted);
+                    width: 90%;
+                  "
+                ></div>
+                <div
+                  style="
+                    height: 24px;
+                    border-radius: 8px;
+                    background: var(--muted);
+                    width: 55%;
+                  "
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <span
+              style="
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--muted-foreground);
+              "
+              >mobile 390 px</span
+            >
+            <div
+              style="
+                width: 390px;
+                max-width: 100%;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                background: var(--background);
+                padding: 18px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+              "
+            >
+              <h1
+                style="
+                  font-family: 'Source Serif 4', Georgia, serif;
+                  font-size: 34px;
+                  font-weight: 600;
+                  margin: 0;
+                "
+              >
+                Pages
+              </h1>
+              <button
+                type="button"
+                style="
+                  min-height: 56px;
+                  width: 100%;
+                  border: 1px solid var(--primary);
+                  background: var(--primary);
+                  color: var(--primary-foreground);
+                  border-radius: 8px;
+                  font-size: 17px;
+                  font-weight: 600;
+                  cursor: pointer;
+                "
+              >
+                Nouvelle page
+              </button>
+              <div
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  background: var(--card);
+                  padding: 16px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 12px;
+                "
+              >
+                <div>
+                  <div style="font-size: 17px; font-weight: 600">
+                    Qualité de l'eau
+                  </div>
+                  <div
+                    style="
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 15px;
+                      color: var(--muted-foreground);
+                    "
+                  >
+                    /qualite-de-leau
+                  </div>
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    justify-content: space-between;
+                  "
+                >
+                  <span style="font-size: 15px; color: var(--muted-foreground)"
+                    >Statut</span
+                  ><span
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      padding: 4px 12px;
+                      border-radius: 999px;
+                      background: var(--accent);
+                      color: var(--accent-foreground);
+                      border: 1px solid var(--accent-border);
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 12px;
+                      font-weight: 600;
+                      letter-spacing: 0.1em;
+                      text-transform: uppercase;
+                    "
+                    ><span
+                      style="
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 999px;
+                        background: var(--accent-solid);
+                      "
+                    ></span
+                    >Publiée</span
+                  >
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    justify-content: space-between;
+                  "
+                >
+                  <span style="font-size: 15px; color: var(--muted-foreground)"
+                    >Modifiée</span
+                  ><span style="font-size: 15px">12 sept. 2026</span>
+                </div>
+                <a
+                  href="#s2"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 56px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    text-decoration: none;
+                    font-size: 17px;
+                    font-weight: 600;
+                    color: var(--foreground);
+                  "
+                  >Modifier</a
+                >
+              </div>
+              <div
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 8px;
+                  background: var(--card);
+                  padding: 16px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 12px;
+                "
+              >
+                <div>
+                  <div style="font-size: 17px; font-weight: 600">
+                    Adhérer à l'association
+                  </div>
+                  <div
+                    style="
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 15px;
+                      color: var(--muted-foreground);
+                    "
+                  >
+                    /adherer
+                  </div>
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    justify-content: space-between;
+                  "
+                >
+                  <span style="font-size: 15px; color: var(--muted-foreground)"
+                    >Statut</span
+                  ><span
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      padding: 4px 12px;
+                      border-radius: 999px;
+                      background: var(--muted);
+                      color: var(--muted-foreground);
+                      border: 1px solid var(--border);
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 12px;
+                      font-weight: 600;
+                      letter-spacing: 0.1em;
+                      text-transform: uppercase;
+                    "
+                    ><span
+                      style="
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 999px;
+                        background: var(--muted-foreground);
+                      "
+                    ></span
+                    >Brouillon</span
+                  >
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    justify-content: space-between;
+                  "
+                >
+                  <span style="font-size: 15px; color: var(--muted-foreground)"
+                    >Modifiée</span
+                  ><span style="font-size: 15px">9 sept. 2026</span>
+                </div>
+                <a
+                  href="#s2"
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 56px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    text-decoration: none;
+                    font-size: 17px;
+                    font-weight: 600;
+                    color: var(--foreground);
+                  "
+                  >Modifier</a
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ÉCRAN 2 -->
+        <section
+          id="s2"
+          data-screen-label="2 Éditeur de page"
+          style="display: flex; flex-direction: column; gap: 24px"
+        >
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span
+              style="
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--accent-foreground);
+              "
+              >écran 2 — bureau · P0</span
+            >
+            <h2
+              style="
+                font-family: 'Source Serif 4', Georgia, serif;
+                font-size: 26px;
+                font-weight: 600;
+                margin: 0;
+              "
+            >
+              Éditeur de page
+            </h2>
+          </div>
+
+          <div
+            style="
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              overflow: hidden;
+              background: var(--background);
+            "
+          >
+            <!-- PreviewBar -->
+            <div
+              style="
+                background: oklch(0.24 0.02 250);
+                color: oklch(0.97 0.004 250);
+                padding: 0 24px;
+                min-height: 68px;
+                display: flex;
+                align-items: center;
+                gap: 24px;
+                flex-wrap: wrap;
+              "
+            >
+              <a
+                href="#s1"
+                style="
+                  color: oklch(0.97 0.004 250);
+                  text-decoration: none;
+                  font-size: 17px;
+                  font-weight: 600;
+                  display: inline-flex;
+                  align-items: center;
+                  min-height: 44px;
+                "
+                >← Toutes les pages</a
+              >
+              <span
+                style="
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 8px;
+                  padding: 4px 12px;
+                  border-radius: 999px;
+                  background: oklch(0.32 0.02 250);
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.1em;
+                  text-transform: uppercase;
+                "
+                ><span
+                  style="
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 999px;
+                    background: oklch(0.8 0.13 75);
+                  "
+                ></span
+                >Modifications non enregistrées</span
+              >
+              <div
+                style="
+                  margin-left: auto;
+                  display: flex;
+                  gap: 12px;
+                  align-items: center;
+                  padding: 12px 0;
+                "
+              >
+                <button
+                  type="button"
+                  style="
+                    min-height: 44px;
+                    padding: 0 16px;
+                    border: 1px solid oklch(0.45 0.02 250);
+                    background: transparent;
+                    color: oklch(0.97 0.004 250);
+                    border-radius: 8px;
+                    font-size: 17px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  Enregistrer le brouillon
+                </button>
+                <button
+                  type="button"
+                  style="
+                    min-height: 44px;
+                    padding: 0 16px;
+                    border: 1px solid oklch(0.45 0.02 250);
+                    background: transparent;
+                    color: oklch(0.97 0.004 250);
+                    border-radius: 8px;
+                    font-size: 17px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  Aperçu
+                </button>
+                <button
+                  type="button"
+                  style="
+                    min-height: 44px;
+                    padding: 0 20px;
+                    border: 1px solid var(--primary);
+                    background: var(--primary);
+                    color: var(--primary-foreground);
+                    border-radius: 8px;
+                    font-size: 17px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  Publier la page
+                </button>
+              </div>
+            </div>
+            <div
+              style="
+                background: oklch(0.2 0.02 250);
+                color: oklch(0.97 0.004 250);
+                padding: 12px 24px;
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                border-top: 1px solid oklch(0.32 0.02 250);
+              "
+            >
+              <span
+                style="
+                  width: 8px;
+                  height: 8px;
+                  border-radius: 999px;
+                  background: var(--destructive);
+                  flex: 0 0 8px;
+                "
+              ></span>
+              <span style="font-size: 17px"
+                >Échec de la publication — le serveur n'a pas répondu. Rien
+                n'est perdu : votre brouillon est enregistré. Réessayez dans un
+                instant.</span
+              >
+            </div>
+
+            <div style="display: flex; align-items: flex-start">
+              <div
+                style="
+                  flex: 1 1 auto;
+                  min-width: 0;
+                  padding: 24px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 0;
+                "
+              >
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 44px;
+                    border: 1px dashed var(--input);
+                    background: transparent;
+                    color: var(--muted-foreground);
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  + Insérer un bloc ici
+                </button>
+
+                <!-- bloc 1 : texte riche -->
+                <div
+                  style="
+                    margin: 12px 0;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      align-items: stretch;
+                      gap: 12px;
+                      border-bottom: 1px solid var(--border);
+                    "
+                  >
+                    <button
+                      type="button"
+                      aria-label="Déplacer le bloc"
+                      style="
+                        width: 44px;
+                        flex: 0 0 44px;
+                        border: 0;
+                        border-right: 1px solid var(--border);
+                        background: var(--muted);
+                        color: var(--muted-foreground);
+                        cursor: grab;
+                        font-size: 17px;
+                      "
+                    >
+                      ⋮⋮
+                    </button>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                        padding: 8px 0;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                      "
+                    >
+                      <span
+                        style="
+                          padding: 4px 12px;
+                          border-radius: 999px;
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.1em;
+                        "
+                        >1 SUR 6</span
+                      >
+                      <span
+                        style="
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                        "
+                        >Texte riche</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        padding: 8px 12px;
+                        flex-wrap: wrap;
+                      "
+                    >
+                      <button
+                        type="button"
+                        disabled="disabled"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          opacity: 0.6;
+                        "
+                      >
+                        ↑ Monter
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↓ Descendre
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--destructive);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ✕ Supprimer le bloc
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      padding: 16px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 12px;
+                    "
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        gap: 4px;
+                        flex-wrap: wrap;
+                        border: 1px solid var(--border);
+                        border-radius: 8px;
+                        padding: 4px;
+                        background: var(--muted);
+                      "
+                    >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        Gras
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          font-style: italic;
+                          cursor: pointer;
+                        "
+                      >
+                        Italique
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        Titre 2
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        Titre 3
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        Liste
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        Lien
+                      </button>
+                    </div>
+                    <div
+                      style="
+                        border: 1px solid var(--input);
+                        border-radius: 8px;
+                        padding: 16px;
+                        min-height: 120px;
+                        font-size: 17px;
+                        line-height: 1.6;
+                      "
+                    >
+                      <strong>L'étang de la Vallée</strong> est suivi chaque
+                      mois par les bénévoles de l'association. Les relevés sont
+                      publiés ici, accompagnés d'un commentaire du bureau.
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 44px;
+                    border: 1px dashed var(--input);
+                    background: transparent;
+                    color: var(--muted-foreground);
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  + Insérer un bloc ici
+                </button>
+
+                <!-- bloc 2 : image + légende -->
+                <div
+                  style="
+                    margin: 12px 0;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      align-items: stretch;
+                      gap: 12px;
+                      border-bottom: 1px solid var(--border);
+                    "
+                  >
+                    <button
+                      type="button"
+                      aria-label="Déplacer le bloc"
+                      style="
+                        width: 44px;
+                        flex: 0 0 44px;
+                        border: 0;
+                        border-right: 1px solid var(--border);
+                        background: var(--muted);
+                        color: var(--muted-foreground);
+                        cursor: grab;
+                        font-size: 17px;
+                      "
+                    >
+                      ⋮⋮
+                    </button>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                        padding: 8px 0;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                      "
+                    >
+                      <span
+                        style="
+                          padding: 4px 12px;
+                          border-radius: 999px;
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.1em;
+                        "
+                        >2 SUR 6</span
+                      >
+                      <span
+                        style="
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                        "
+                        >Image + légende</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        padding: 8px 12px;
+                        flex-wrap: wrap;
+                      "
+                    >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↑ Monter
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↓ Descendre
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--destructive);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ✕ Supprimer le bloc
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      padding: 16px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 16px;
+                    "
+                  >
+                    <div
+                      style="
+                        height: 180px;
+                        border-radius: 8px;
+                        border: 1px solid var(--border);
+                        background: repeating-linear-gradient(
+                          135deg,
+                          var(--stripe) 0 8px,
+                          transparent 8px 16px
+                        );
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                      "
+                    >
+                      <span
+                        style="
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          letter-spacing: 0.1em;
+                          text-transform: uppercase;
+                          color: var(--muted-foreground);
+                          background: var(--card);
+                          padding: 4px 12px;
+                          border-radius: 999px;
+                        "
+                        >photo de l'étang — 1600×900</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        max-width: 520px;
+                      "
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Texte alternatif</label
+                      >
+                      <input
+                        type="text"
+                        style="
+                          min-height: 48px;
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          padding: 0 12px;
+                          font-size: 17px;
+                          background: var(--background);
+                          color: var(--foreground);
+                        "
+                      />
+                      <span
+                        style="
+                          font-size: 15px;
+                          color: var(--warning-foreground);
+                          background: var(--warning);
+                          border: 1px solid var(--warning-border);
+                          border-radius: 8px;
+                          padding: 4px 8px;
+                          align-self: flex-start;
+                          display: inline-block;
+                          white-space: nowrap;
+                        "
+                        >Obligatoire pour publier</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        max-width: 520px;
+                      "
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Légende — Facultatif</label
+                      >
+                      <textarea
+                        rows="2"
+                        style="
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          padding: 12px;
+                          font-size: 17px;
+                          font-family: inherit;
+                          background: var(--background);
+                          color: var(--foreground);
+                        "
+                      >
+Relevé du 3 septembre, rive nord.</textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 44px;
+                    border: 1px dashed var(--input);
+                    background: transparent;
+                    color: var(--muted-foreground);
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  + Insérer un bloc ici
+                </button>
+
+                <!-- bloc 3 : PDF incomplet -->
+                <div
+                  style="
+                    margin: 12px 0;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      align-items: stretch;
+                      gap: 12px;
+                      border-bottom: 1px solid var(--border);
+                    "
+                  >
+                    <button
+                      type="button"
+                      aria-label="Déplacer le bloc"
+                      style="
+                        width: 44px;
+                        flex: 0 0 44px;
+                        border: 0;
+                        border-right: 1px solid var(--border);
+                        background: var(--muted);
+                        color: var(--muted-foreground);
+                        cursor: grab;
+                        font-size: 17px;
+                      "
+                    >
+                      ⋮⋮
+                    </button>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                        padding: 8px 0;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                      "
+                    >
+                      <span
+                        style="
+                          padding: 4px 12px;
+                          border-radius: 999px;
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.1em;
+                        "
+                        >3 SUR 6</span
+                      >
+                      <span
+                        style="
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                        "
+                        >Document PDF</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        padding: 8px 12px;
+                        flex-wrap: wrap;
+                      "
+                    >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↑ Monter
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↓ Descendre
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--destructive);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ✕ Supprimer le bloc
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      padding: 16px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 16px;
+                    "
+                  >
+                    <div
+                      style="
+                        border: 1px solid var(--warning-border);
+                        background: var(--warning);
+                        color: var(--warning-foreground);
+                        border-radius: 8px;
+                        padding: 16px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                      "
+                    >
+                      <span style="font-size: 17px"
+                        >Ce bloc n'a pas de fichier. Il n'apparaît pas sur le
+                        site public tant qu'un document n'est pas déposé.</span
+                      >
+                      <div style="display: flex; gap: 12px; flex-wrap: wrap">
+                        <button
+                          type="button"
+                          style="
+                            min-height: 44px;
+                            padding: 0 16px;
+                            border: 1px solid var(--warning-foreground);
+                            background: transparent;
+                            color: var(--warning-foreground);
+                            border-radius: 8px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                          "
+                        >
+                          Déposer le fichier
+                        </button>
+                        <button
+                          type="button"
+                          style="
+                            min-height: 44px;
+                            padding: 0 16px;
+                            border: 1px solid var(--warning-foreground);
+                            background: transparent;
+                            color: var(--warning-foreground);
+                            border-radius: 8px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                          "
+                        >
+                          Supprimer le bloc
+                        </button>
+                      </div>
+                    </div>
+                    <div
+                      style="
+                        border: 1px dashed var(--input);
+                        border-radius: 8px;
+                        padding: 24px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                        align-items: flex-start;
+                      "
+                    >
+                      <span style="font-size: 17px"
+                        >Déposez un fichier ici</span
+                      >
+                      <span
+                        style="font-size: 15px; color: var(--muted-foreground)"
+                        >PDF uniquement, 20 Mo maximum.</span
+                      >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 16px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        Choisir un fichier
+                      </button>
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        max-width: 520px;
+                      "
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Titre du document</label
+                      >
+                      <input
+                        type="text"
+                        value="Compte rendu de l'assemblée 2026"
+                        style="
+                          min-height: 48px;
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          padding: 0 12px;
+                          font-size: 17px;
+                          background: var(--background);
+                          color: var(--foreground);
+                        "
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 44px;
+                    border: 1px dashed var(--input);
+                    background: transparent;
+                    color: var(--muted-foreground);
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  + Insérer un bloc ici
+                </button>
+
+                <!-- bloc 4 : galerie -->
+                <div
+                  style="
+                    margin: 12px 0;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      align-items: stretch;
+                      gap: 12px;
+                      border-bottom: 1px solid var(--border);
+                    "
+                  >
+                    <button
+                      type="button"
+                      aria-label="Déplacer le bloc"
+                      style="
+                        width: 44px;
+                        flex: 0 0 44px;
+                        border: 0;
+                        border-right: 1px solid var(--border);
+                        background: var(--muted);
+                        color: var(--muted-foreground);
+                        cursor: grab;
+                        font-size: 17px;
+                      "
+                    >
+                      ⋮⋮
+                    </button>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                        padding: 8px 0;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                      "
+                    >
+                      <span
+                        style="
+                          padding: 4px 12px;
+                          border-radius: 999px;
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.1em;
+                        "
+                        >4 SUR 6</span
+                      >
+                      <span
+                        style="
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                        "
+                        >Galerie</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        padding: 8px 12px;
+                        flex-wrap: wrap;
+                      "
+                    >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↑ Monter
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↓ Descendre
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--destructive);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ✕ Supprimer le bloc
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      padding: 16px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 16px;
+                    "
+                  >
+                    <div
+                      style="
+                        border: 1px dashed var(--input);
+                        border-radius: 8px;
+                        padding: 16px;
+                        display: flex;
+                        gap: 12px;
+                        align-items: center;
+                        flex-wrap: wrap;
+                      "
+                    >
+                      <span style="font-size: 17px"
+                        >Déposez plusieurs images</span
+                      >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 16px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        Choisir des fichiers
+                      </button>
+                    </div>
+                    <div
+                      style="
+                        display: grid;
+                        grid-template-columns: repeat(
+                          auto-fill,
+                          minmax(160px, 1fr)
+                        );
+                        gap: 16px;
+                      "
+                    >
+                      <div
+                        style="display: flex; flex-direction: column; gap: 8px"
+                      >
+                        <div
+                          style="
+                            aspect-ratio: 1/1;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: repeating-linear-gradient(
+                              135deg,
+                              var(--stripe) 0 8px,
+                              transparent 8px 16px
+                            );
+                            position: relative;
+                            display: flex;
+                            align-items: flex-end;
+                            padding: 8px;
+                          "
+                        >
+                          <button
+                            type="button"
+                            style="
+                              min-height: 44px;
+                              padding: 0 12px;
+                              border: 1px solid var(--border);
+                              background: var(--card);
+                              color: var(--destructive);
+                              border-radius: 8px;
+                              font-size: 16px;
+                              font-weight: 600;
+                              cursor: pointer;
+                            "
+                          >
+                            ✕ Retirer
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Texte alternatif"
+                          style="
+                            min-height: 48px;
+                            border: 1px solid var(--input);
+                            border-radius: 8px;
+                            padding: 0 12px;
+                            font-size: 17px;
+                            background: var(--background);
+                            color: var(--foreground);
+                          "
+                        />
+                      </div>
+                      <div
+                        style="display: flex; flex-direction: column; gap: 8px"
+                      >
+                        <div
+                          style="
+                            aspect-ratio: 1/1;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: repeating-linear-gradient(
+                              135deg,
+                              var(--stripe) 0 8px,
+                              transparent 8px 16px
+                            );
+                            position: relative;
+                            display: flex;
+                            align-items: flex-end;
+                            padding: 8px;
+                          "
+                        >
+                          <button
+                            type="button"
+                            style="
+                              min-height: 44px;
+                              padding: 0 12px;
+                              border: 1px solid var(--border);
+                              background: var(--card);
+                              color: var(--destructive);
+                              border-radius: 8px;
+                              font-size: 16px;
+                              font-weight: 600;
+                              cursor: pointer;
+                            "
+                          >
+                            ✕ Retirer
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Texte alternatif"
+                          style="
+                            min-height: 48px;
+                            border: 1px solid var(--input);
+                            border-radius: 8px;
+                            padding: 0 12px;
+                            font-size: 17px;
+                            background: var(--background);
+                            color: var(--foreground);
+                          "
+                        />
+                      </div>
+                      <div
+                        style="display: flex; flex-direction: column; gap: 8px"
+                      >
+                        <div
+                          style="
+                            aspect-ratio: 1/1;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: repeating-linear-gradient(
+                              135deg,
+                              var(--stripe) 0 8px,
+                              transparent 8px 16px
+                            );
+                            position: relative;
+                            display: flex;
+                            align-items: flex-end;
+                            padding: 8px;
+                          "
+                        >
+                          <button
+                            type="button"
+                            style="
+                              min-height: 44px;
+                              padding: 0 12px;
+                              border: 1px solid var(--border);
+                              background: var(--card);
+                              color: var(--destructive);
+                              border-radius: 8px;
+                              font-size: 16px;
+                              font-weight: 600;
+                              cursor: pointer;
+                            "
+                          >
+                            ✕ Retirer
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Texte alternatif"
+                          style="
+                            min-height: 48px;
+                            border: 1px solid var(--input);
+                            border-radius: 8px;
+                            padding: 0 12px;
+                            font-size: 17px;
+                            background: var(--background);
+                            color: var(--foreground);
+                          "
+                        />
+                      </div>
+                    </div>
+                    <span
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                      >Un texte alternatif est demandé pour chaque image.</span
+                    >
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 44px;
+                    border: 1px dashed var(--input);
+                    background: transparent;
+                    color: var(--muted-foreground);
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  + Insérer un bloc ici
+                </button>
+
+                <!-- bloc 5 : encart -->
+                <div
+                  style="
+                    margin: 12px 0;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      align-items: stretch;
+                      gap: 12px;
+                      border-bottom: 1px solid var(--border);
+                    "
+                  >
+                    <button
+                      type="button"
+                      aria-label="Déplacer le bloc"
+                      style="
+                        width: 44px;
+                        flex: 0 0 44px;
+                        border: 0;
+                        border-right: 1px solid var(--border);
+                        background: var(--muted);
+                        color: var(--muted-foreground);
+                        cursor: grab;
+                        font-size: 17px;
+                      "
+                    >
+                      ⋮⋮
+                    </button>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                        padding: 8px 0;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                      "
+                    >
+                      <span
+                        style="
+                          padding: 4px 12px;
+                          border-radius: 999px;
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.1em;
+                        "
+                        >5 SUR 6</span
+                      >
+                      <span
+                        style="
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                        "
+                        >Encart</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        padding: 8px 12px;
+                        flex-wrap: wrap;
+                      "
+                    >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↑ Monter
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--foreground);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ↓ Descendre
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--destructive);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ✕ Supprimer le bloc
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      padding: 16px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 16px;
+                    "
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        max-width: 520px;
+                      "
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Titre — Facultatif</label
+                      >
+                      <input
+                        type="text"
+                        value="Baignade interdite jusqu'au 30 juin"
+                        style="
+                          min-height: 48px;
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          padding: 0 12px;
+                          font-size: 17px;
+                          background: var(--background);
+                          color: var(--foreground);
+                        "
+                      />
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        gap: 4px;
+                        flex-wrap: wrap;
+                        border: 1px solid var(--border);
+                        border-radius: 8px;
+                        padding: 4px;
+                        background: var(--muted);
+                      "
+                    >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        Gras
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          font-style: italic;
+                          cursor: pointer;
+                        "
+                      >
+                        Italique
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        Titre 2
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        Titre 3
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        Liste
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 0;
+                          background: transparent;
+                          color: var(--foreground);
+                          font-size: 16px;
+                          cursor: pointer;
+                        "
+                      >
+                        Lien
+                      </button>
+                    </div>
+                    <div
+                      style="
+                        border: 1px solid var(--accent-border);
+                        background: var(--accent);
+                        color: var(--accent-foreground);
+                        border-radius: 8px;
+                        padding: 24px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 8px;
+                      "
+                    >
+                      <span
+                        style="
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                        "
+                        >aperçu</span
+                      >
+                      <strong
+                        style="
+                          font-family: 'Source Serif 4', Georgia, serif;
+                          font-size: 20px;
+                        "
+                        >Baignade interdite jusqu'au 30 juin</strong
+                      >
+                      <span style="font-size: 17px"
+                        >Analyse en cours sur la rive sud. Les résultats seront
+                        publiés dès réception.</span
+                      >
+                    </div>
+                    <span
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                      >Pas de bouton dans un encart. Deux encarts qui se suivent
+                      ne sont pas recommandés.</span
+                    >
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 44px;
+                    border: 1px dashed var(--input);
+                    background: transparent;
+                    color: var(--muted-foreground);
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  + Insérer un bloc ici
+                </button>
+
+                <!-- bloc 6 : type inconnu -->
+                <div
+                  style="
+                    margin: 12px 0;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--muted);
+                    opacity: 0.85;
+                  "
+                >
+                  <div style="display: flex; align-items: stretch; gap: 12px">
+                    <div
+                      style="
+                        width: 44px;
+                        flex: 0 0 44px;
+                        border-right: 1px solid var(--border);
+                        background: var(--muted);
+                        color: var(--muted-foreground);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 17px;
+                      "
+                    >
+                      ⋮⋮
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex-wrap: wrap;
+                        padding: 12px 0;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                      "
+                    >
+                      <span
+                        style="
+                          padding: 4px 12px;
+                          border-radius: 999px;
+                          background: var(--card);
+                          color: var(--muted-foreground);
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.1em;
+                        "
+                        >6 SUR 6</span
+                      >
+                      <span
+                        style="font-size: 17px; color: var(--muted-foreground)"
+                        >Type de bloc inconnu (<span
+                          style="
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 15px;
+                          "
+                          >carte-interactive</span
+                        >) — ignoré à l'affichage public</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                        padding: 12px;
+                      "
+                    >
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--destructive);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ✕ Supprimer le bloc
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 44px;
+                    border: 1px solid var(--border);
+                    background: var(--secondary);
+                    color: var(--foreground);
+                    border-radius: 8px;
+                    font-size: 17px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    margin-top: 12px;
+                  "
+                >
+                  + Ajouter un bloc
+                </button>
+
+                <div
+                  aria-live="polite"
+                  style="
+                    margin-top: 16px;
+                    font-size: 15px;
+                    color: var(--muted-foreground);
+                    font-family: 'JetBrains Mono', monospace;
+                  "
+                >
+                  Annonce : « Image + légende, position 2 sur 6 »
+                </div>
+
+                <div
+                  style="
+                    margin-top: 12px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                    padding: 16px;
+                    display: flex;
+                    gap: 16px;
+                    align-items: center;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                  "
+                >
+                  <span style="font-size: 17px"
+                    >Bloc déplacé en position 2. Vous pouvez annuler pendant 10
+                    secondes.</span
+                  >
+                  <button
+                    type="button"
+                    style="
+                      min-height: 44px;
+                      padding: 0 16px;
+                      border: 1px solid var(--border);
+                      background: var(--secondary);
+                      color: var(--foreground);
+                      border-radius: 8px;
+                      font-size: 16px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    Annuler le déplacement
+                  </button>
+                </div>
+              </div>
+
+              <!-- panneau paramètres -->
+              <aside
+                style="
+                  width: 296px;
+                  flex: 0 0 296px;
+                  border-left: 1px solid var(--border);
+                  background: var(--card);
+                  padding: 24px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 24px;
+                  align-self: stretch;
+                "
+              >
+                <h3 style="font-size: 20px; font-weight: 600; margin: 0">
+                  Paramètres
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <label style="font-size: 16px; font-weight: 500">Titre</label>
+                  <input
+                    type="text"
+                    value="Qualité de l'eau"
+                    style="
+                      min-height: 48px;
+                      border: 1px solid var(--input);
+                      border-radius: 8px;
+                      padding: 0 12px;
+                      font-size: 18px;
+                      background: var(--background);
+                      color: var(--foreground);
+                    "
+                  />
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <label style="font-size: 16px; font-weight: 500">Slug</label>
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      border: 2px solid var(--destructive);
+                      border-radius: 8px;
+                      background: var(--background);
+                    "
+                  >
+                    <span
+                      style="
+                        padding: 0 8px 0 12px;
+                        font-family: 'JetBrains Mono', monospace;
+                        font-size: 17px;
+                        color: var(--muted-foreground);
+                      "
+                      >/</span
+                    >
+                    <input
+                      type="text"
+                      value="qualite-de-leau"
+                      style="
+                        min-height: 48px;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                        border: 0;
+                        background: transparent;
+                        color: var(--foreground);
+                        font-size: 17px;
+                        padding: 0 12px 0 0;
+                      "
+                    />
+                  </div>
+                  <span style="font-size: 15px; color: var(--destructive)"
+                    >Ce slug est déjà utilisé par une autre page</span
+                  >
+                  <span style="font-size: 15px; color: var(--muted-foreground)"
+                    >Utilisé dans l'adresse publique de la page.</span
+                  >
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <!-- mobile éditeur -->
+          <div style="display: flex; gap: 24px; flex-wrap: wrap">
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >mobile 390 px — éditeur</span
+              >
+              <div
+                style="
+                  width: 390px;
+                  max-width: 100%;
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--background);
+                  overflow: hidden;
+                "
+              >
+                <div
+                  style="
+                    background: oklch(0.24 0.02 250);
+                    color: oklch(0.97 0.004 250);
+                    min-height: 104px;
+                    padding: 12px 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                      gap: 12px;
+                    "
+                  >
+                    <a
+                      href="#s1"
+                      style="
+                        color: oklch(0.97 0.004 250);
+                        text-decoration: none;
+                        font-size: 17px;
+                        font-weight: 600;
+                        min-height: 44px;
+                        display: inline-flex;
+                        align-items: center;
+                      "
+                      >← Pages</a
+                    >
+                    <button
+                      type="button"
+                      style="
+                        min-height: 44px;
+                        padding: 0 12px;
+                        border: 1px solid oklch(0.45 0.02 250);
+                        background: transparent;
+                        color: oklch(0.97 0.004 250);
+                        border-radius: 8px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                      "
+                    >
+                      Paramètres de la page
+                    </button>
+                  </div>
+                  <span
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 12px;
+                      font-weight: 600;
+                      letter-spacing: 0.1em;
+                      text-transform: uppercase;
+                    "
+                    ><span
+                      style="
+                        width: 8px;
+                        height: 8px;
+                        border-radius: 999px;
+                        background: oklch(0.75 0.14 145);
+                      "
+                    ></span
+                    >Publiée</span
+                  >
+                </div>
+                <div
+                  style="
+                    padding: 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                  "
+                >
+                  <button
+                    type="button"
+                    style="
+                      width: 100%;
+                      min-height: 44px;
+                      border: 1px dashed var(--input);
+                      background: transparent;
+                      color: var(--muted-foreground);
+                      border-radius: 8px;
+                      font-size: 16px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    + Insérer un bloc ici
+                  </button>
+                  <div
+                    style="
+                      border: 1px solid var(--border);
+                      border-radius: 8px;
+                      background: var(--card);
+                    "
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        border-bottom: 1px solid var(--border);
+                        padding: 8px;
+                        flex-wrap: wrap;
+                      "
+                    >
+                      <div
+                        style="
+                          width: 44px;
+                          height: 44px;
+                          flex: 0 0 44px;
+                          border: 1px solid var(--border);
+                          border-radius: 8px;
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                        "
+                      >
+                        ⋮⋮
+                      </div>
+                      <span
+                        style="
+                          padding: 4px 12px;
+                          border-radius: 999px;
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.1em;
+                        "
+                        >1 SUR 6</span
+                      >
+                      <span
+                        style="
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          letter-spacing: 0.14em;
+                          text-transform: uppercase;
+                        "
+                        >Texte riche</span
+                      >
+                      <div style="display: flex; gap: 8px; width: 100%">
+                        <button
+                          type="button"
+                          disabled="disabled"
+                          style="
+                            flex: 1 1 0;
+                            min-height: 44px;
+                            border: 1px solid var(--border);
+                            background: var(--muted);
+                            color: var(--muted-foreground);
+                            border-radius: 8px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            opacity: 0.6;
+                          "
+                        >
+                          ↑ Monter
+                        </button>
+                        <button
+                          type="button"
+                          style="
+                            flex: 1 1 0;
+                            min-height: 44px;
+                            border: 1px solid var(--border);
+                            background: var(--card);
+                            color: var(--foreground);
+                            border-radius: 8px;
+                            font-size: 16px;
+                            font-weight: 600;
+                            cursor: pointer;
+                          "
+                        >
+                          ↓ Descendre
+                        </button>
+                      </div>
+                    </div>
+                    <div
+                      style="
+                        padding: 12px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                      "
+                    >
+                      <div
+                        style="
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          padding: 12px;
+                          min-height: 96px;
+                          font-size: 17px;
+                        "
+                      >
+                        L'étang de la Vallée est suivi chaque mois…
+                      </div>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          border: 1px solid var(--border);
+                          background: var(--card);
+                          color: var(--destructive);
+                          border-radius: 8px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        ✕ Supprimer le bloc
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    style="
+                      width: 100%;
+                      min-height: 56px;
+                      border: 1px solid var(--border);
+                      background: var(--secondary);
+                      color: var(--foreground);
+                      border-radius: 8px;
+                      font-size: 17px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    + Ajouter un bloc
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >mobile — paramètres en sheet</span
+              >
+              <div
+                style="
+                  width: 390px;
+                  max-width: 100%;
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--card);
+                  padding: 18px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                "
+              >
+                <div
+                  style="
+                    width: 64px;
+                    height: 4px;
+                    border-radius: 999px;
+                    background: var(--border);
+                    align-self: center;
+                  "
+                ></div>
+                <h3 style="font-size: 20px; font-weight: 600; margin: 0">
+                  Paramètres de la page
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <label style="font-size: 16px; font-weight: 500">Titre</label>
+                  <input
+                    type="text"
+                    value="Qualité de l'eau"
+                    style="
+                      min-height: 48px;
+                      border: 1px solid var(--input);
+                      border-radius: 8px;
+                      padding: 0 12px;
+                      font-size: 18px;
+                      background: var(--background);
+                      color: var(--foreground);
+                    "
+                  />
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <label style="font-size: 16px; font-weight: 500">Slug</label>
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      border: 1px solid var(--input);
+                      border-radius: 8px;
+                      background: var(--background);
+                    "
+                  >
+                    <span
+                      style="
+                        padding: 0 8px 0 12px;
+                        font-family: 'JetBrains Mono', monospace;
+                        font-size: 17px;
+                        color: var(--muted-foreground);
+                      "
+                      >/</span
+                    >
+                    <input
+                      type="text"
+                      value="qualite-de-leau"
+                      style="
+                        min-height: 48px;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                        border: 0;
+                        background: transparent;
+                        color: var(--foreground);
+                        font-size: 17px;
+                        padding: 0 12px 0 0;
+                      "
+                    />
+                  </div>
+                  <span style="font-size: 15px; color: var(--muted-foreground)"
+                    >Utilisé dans l'adresse publique de la page.</span
+                  >
+                </div>
+                <button
+                  type="button"
+                  style="
+                    min-height: 56px;
+                    border: 1px solid var(--border);
+                    background: var(--secondary);
+                    color: var(--foreground);
+                    border-radius: 8px;
+                    font-size: 17px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >dépublier — alert-dialog</span
+              >
+              <div
+                style="
+                  width: 390px;
+                  max-width: 100%;
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--card);
+                  padding: 24px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                "
+              >
+                <h3 style="font-size: 20px; font-weight: 600; margin: 0">
+                  Dépublier « Qualité de l'eau » ?
+                </h3>
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 17px;
+                    color: var(--muted-foreground);
+                  "
+                >
+                  La page disparaît du site public immédiatement. Rien n'est
+                  perdu : son contenu reste dans le back-office et vous pourrez
+                  la republier à l'identique.
+                </p>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap">
+                  <button
+                    type="button"
+                    style="
+                      flex: 1 1 0;
+                      min-height: 56px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      border-radius: 8px;
+                      font-size: 17px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    Conserver en ligne
+                  </button>
+                  <button
+                    type="button"
+                    style="
+                      flex: 1 1 0;
+                      min-height: 56px;
+                      border: 1px solid var(--destructive);
+                      background: var(--destructive);
+                      color: oklch(0.99 0 0);
+                      border-radius: 8px;
+                      font-size: 17px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    Dépublier
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ÉCRAN 3 -->
+        <section
+          id="s3"
+          data-screen-label="3 BlockPicker"
+          style="display: flex; flex-direction: column; gap: 24px"
+        >
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span
+              style="
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--accent-foreground);
+              "
+              >écran 3 — état de l'écran 2</span
+            >
+            <h2
+              style="
+                font-family: 'Source Serif 4', Georgia, serif;
+                font-size: 26px;
+                font-weight: 600;
+                margin: 0;
+              "
+            >
+              Sélecteur de bloc ouvert
+            </h2>
+          </div>
+          <div
+            style="
+              display: flex;
+              gap: 24px;
+              flex-wrap: wrap;
+              align-items: flex-start;
+            "
+          >
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >desktop — popover ancré au séparateur</span
+              >
+              <div
+                style="
+                  width: 520px;
+                  max-width: 100%;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+                "
+              >
+                <div
+                  style="
+                    width: 100%;
+                    min-height: 44px;
+                    border: 1px dashed var(--ring);
+                    border-radius: 8px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: var(--muted-foreground);
+                    font-size: 16px;
+                    font-weight: 600;
+                  "
+                >
+                  + Insérer un bloc ici
+                </div>
+                <div
+                  style="
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    background: var(--card);
+                    box-shadow: 0 12px 32px oklch(0 0 0 / 0.12);
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 8px;
+                      border: 1px solid var(--input);
+                      border-radius: 8px;
+                      padding: 0 12px;
+                    "
+                  >
+                    <span
+                      style="color: var(--muted-foreground); font-size: 17px"
+                      >⌕</span
+                    >
+                    <input
+                      type="text"
+                      placeholder="Rechercher un type de bloc"
+                      style="
+                        min-height: 48px;
+                        flex: 1 1 auto;
+                        min-width: 0;
+                        border: 0;
+                        background: transparent;
+                        color: var(--foreground);
+                        font-size: 17px;
+                      "
+                    />
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 4px">
+                    <button
+                      type="button"
+                      style="
+                        display: flex;
+                        gap: 16px;
+                        align-items: center;
+                        text-align: left;
+                        min-height: 44px;
+                        padding: 12px;
+                        border: 1px solid transparent;
+                        border-radius: 8px;
+                        background: var(--secondary);
+                        cursor: pointer;
+                        color: var(--foreground);
+                      "
+                    >
+                      <span
+                        style="
+                          width: 60px;
+                          height: 40px;
+                          flex: 0 0 60px;
+                          border-radius: 8px;
+                          border: 1px solid var(--border);
+                          background: repeating-linear-gradient(
+                            0deg,
+                            var(--stripe) 0 3px,
+                            transparent 3px 8px
+                          );
+                        "
+                      ></span>
+                      <span
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 4px;
+                          min-width: 0;
+                        "
+                        ><span style="font-size: 17px; font-weight: 600"
+                          >Texte riche</span
+                        ><span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Des paragraphes, des titres, des listes et des
+                          liens.</span
+                        ></span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      style="
+                        display: flex;
+                        gap: 16px;
+                        align-items: center;
+                        text-align: left;
+                        min-height: 44px;
+                        padding: 12px;
+                        border: 1px solid transparent;
+                        border-radius: 8px;
+                        background: transparent;
+                        cursor: pointer;
+                        color: var(--foreground);
+                      "
+                    >
+                      <span
+                        style="
+                          width: 60px;
+                          height: 40px;
+                          flex: 0 0 60px;
+                          border-radius: 8px;
+                          border: 1px solid var(--border);
+                          background: repeating-linear-gradient(
+                            135deg,
+                            var(--stripe) 0 6px,
+                            transparent 6px 12px
+                          );
+                        "
+                      ></span>
+                      <span
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 4px;
+                          min-width: 0;
+                        "
+                        ><span style="font-size: 17px; font-weight: 600"
+                          >Image + légende</span
+                        ><span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Une photo, avec une légende sous l'image.</span
+                        ></span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      style="
+                        display: flex;
+                        gap: 16px;
+                        align-items: center;
+                        text-align: left;
+                        min-height: 44px;
+                        padding: 12px;
+                        border: 1px solid transparent;
+                        border-radius: 8px;
+                        background: transparent;
+                        cursor: pointer;
+                        color: var(--foreground);
+                      "
+                    >
+                      <span
+                        style="
+                          width: 60px;
+                          height: 40px;
+                          flex: 0 0 60px;
+                          border-radius: 8px;
+                          border: 1px solid var(--border);
+                          background: var(--muted);
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 12px;
+                          font-weight: 600;
+                          color: var(--muted-foreground);
+                        "
+                        >PDF</span
+                      >
+                      <span
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 4px;
+                          min-width: 0;
+                        "
+                        ><span style="font-size: 17px; font-weight: 600"
+                          >Document PDF</span
+                        ><span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Un compte rendu ou un formulaire à télécharger.</span
+                        ></span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      style="
+                        display: flex;
+                        gap: 16px;
+                        align-items: center;
+                        text-align: left;
+                        min-height: 44px;
+                        padding: 12px;
+                        border: 1px solid transparent;
+                        border-radius: 8px;
+                        background: transparent;
+                        cursor: pointer;
+                        color: var(--foreground);
+                      "
+                    >
+                      <span
+                        style="
+                          width: 60px;
+                          height: 40px;
+                          flex: 0 0 60px;
+                          border-radius: 8px;
+                          border: 1px solid var(--border);
+                          display: grid;
+                          grid-template-columns: 1fr 1fr 1fr;
+                          gap: 2px;
+                          padding: 4px;
+                        "
+                        ><span style="background: var(--stripe)"></span
+                        ><span style="background: var(--stripe)"></span
+                        ><span style="background: var(--stripe)"></span
+                      ></span>
+                      <span
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 4px;
+                          min-width: 0;
+                        "
+                        ><span style="font-size: 17px; font-weight: 600"
+                          >Galerie</span
+                        ><span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Plusieurs photos en grille, agrandies au clic.</span
+                        ></span
+                      >
+                    </button>
+                    <button
+                      type="button"
+                      style="
+                        display: flex;
+                        gap: 16px;
+                        align-items: center;
+                        text-align: left;
+                        min-height: 44px;
+                        padding: 12px;
+                        border: 1px solid transparent;
+                        border-radius: 8px;
+                        background: transparent;
+                        cursor: pointer;
+                        color: var(--foreground);
+                      "
+                    >
+                      <span
+                        style="
+                          width: 60px;
+                          height: 40px;
+                          flex: 0 0 60px;
+                          border-radius: 8px;
+                          border: 1px solid var(--accent-border);
+                          background: var(--accent);
+                        "
+                      ></span>
+                      <span
+                        style="
+                          display: flex;
+                          flex-direction: column;
+                          gap: 4px;
+                          min-width: 0;
+                        "
+                        ><span style="font-size: 17px; font-weight: 600"
+                          >Encart</span
+                        ><span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Un message court, mis en avant aux couleurs de
+                          l'association.</span
+                        ></span
+                      >
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >mobile 390 px — sheet bas d'écran</span
+              >
+              <div
+                style="
+                  width: 390px;
+                  max-width: 100%;
+                  border: 1px solid var(--border);
+                  border-radius: 12px 12px 0 0;
+                  background: var(--card);
+                  padding: 18px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 12px;
+                "
+              >
+                <div
+                  style="
+                    width: 64px;
+                    height: 4px;
+                    border-radius: 999px;
+                    background: var(--border);
+                    align-self: center;
+                  "
+                ></div>
+                <h3 style="font-size: 20px; font-weight: 600; margin: 0">
+                  Insérer un bloc
+                </h3>
+                <button
+                  type="button"
+                  style="
+                    display: flex;
+                    gap: 12px;
+                    align-items: center;
+                    text-align: left;
+                    min-height: 56px;
+                    padding: 12px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                    cursor: pointer;
+                    color: var(--foreground);
+                  "
+                >
+                  <span
+                    style="
+                      width: 60px;
+                      height: 40px;
+                      flex: 0 0 60px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: repeating-linear-gradient(
+                        0deg,
+                        var(--stripe) 0 3px,
+                        transparent 3px 8px
+                      );
+                    "
+                  ></span>
+                  <span
+                    style="display: flex; flex-direction: column; min-width: 0"
+                    ><span style="font-size: 17px; font-weight: 600"
+                      >Texte riche</span
+                    ><span
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                      >Paragraphes, titres, listes, liens.</span
+                    ></span
+                  >
+                </button>
+                <button
+                  type="button"
+                  style="
+                    display: flex;
+                    gap: 12px;
+                    align-items: center;
+                    text-align: left;
+                    min-height: 56px;
+                    padding: 12px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                    cursor: pointer;
+                    color: var(--foreground);
+                  "
+                >
+                  <span
+                    style="
+                      width: 60px;
+                      height: 40px;
+                      flex: 0 0 60px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: repeating-linear-gradient(
+                        135deg,
+                        var(--stripe) 0 6px,
+                        transparent 6px 12px
+                      );
+                    "
+                  ></span>
+                  <span
+                    style="display: flex; flex-direction: column; min-width: 0"
+                    ><span style="font-size: 17px; font-weight: 600"
+                      >Image + légende</span
+                    ><span
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                      >Une photo et sa légende.</span
+                    ></span
+                  >
+                </button>
+                <button
+                  type="button"
+                  style="
+                    display: flex;
+                    gap: 12px;
+                    align-items: center;
+                    text-align: left;
+                    min-height: 56px;
+                    padding: 12px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                    cursor: pointer;
+                    color: var(--foreground);
+                  "
+                >
+                  <span
+                    style="
+                      width: 60px;
+                      height: 40px;
+                      flex: 0 0 60px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--muted);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 12px;
+                      font-weight: 600;
+                      color: var(--muted-foreground);
+                    "
+                    >PDF</span
+                  >
+                  <span
+                    style="display: flex; flex-direction: column; min-width: 0"
+                    ><span style="font-size: 17px; font-weight: 600"
+                      >Document PDF</span
+                    ><span
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                      >Un fichier à télécharger.</span
+                    ></span
+                  >
+                </button>
+                <button
+                  type="button"
+                  style="
+                    display: flex;
+                    gap: 12px;
+                    align-items: center;
+                    text-align: left;
+                    min-height: 56px;
+                    padding: 12px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                    cursor: pointer;
+                    color: var(--foreground);
+                  "
+                >
+                  <span
+                    style="
+                      width: 60px;
+                      height: 40px;
+                      flex: 0 0 60px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      display: grid;
+                      grid-template-columns: 1fr 1fr 1fr;
+                      gap: 2px;
+                      padding: 4px;
+                    "
+                    ><span style="background: var(--stripe)"></span
+                    ><span style="background: var(--stripe)"></span
+                    ><span style="background: var(--stripe)"></span
+                  ></span>
+                  <span
+                    style="display: flex; flex-direction: column; min-width: 0"
+                    ><span style="font-size: 17px; font-weight: 600"
+                      >Galerie</span
+                    ><span
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                      >Plusieurs photos en grille.</span
+                    ></span
+                  >
+                </button>
+                <button
+                  type="button"
+                  style="
+                    display: flex;
+                    gap: 12px;
+                    align-items: center;
+                    text-align: left;
+                    min-height: 56px;
+                    padding: 12px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--card);
+                    cursor: pointer;
+                    color: var(--foreground);
+                  "
+                >
+                  <span
+                    style="
+                      width: 60px;
+                      height: 40px;
+                      flex: 0 0 60px;
+                      border-radius: 8px;
+                      border: 1px solid var(--accent-border);
+                      background: var(--accent);
+                    "
+                  ></span>
+                  <span
+                    style="display: flex; flex-direction: column; min-width: 0"
+                    ><span style="font-size: 17px; font-weight: 600"
+                      >Encart</span
+                    ><span
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                      >Un message mis en avant.</span
+                    ></span
+                  >
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ÉCRAN 4 -->
+        <section
+          id="s4"
+          data-screen-label="4 Rendu public"
+          style="display: flex; flex-direction: column; gap: 24px"
+        >
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span
+              style="
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--accent-foreground);
+              "
+              >écran 4 — site public</span
+            >
+            <h2
+              style="
+                font-family: 'Source Serif 4', Georgia, serif;
+                font-size: 26px;
+                font-weight: 600;
+                margin: 0;
+              "
+            >
+              Rendu d'une page publiée
+            </h2>
+            <span style="font-size: 15px; color: var(--muted-foreground)"
+              >Corps de page seulement — en-tête et pied de page publics
+              existants, non redessinés (le bloc PDF sans fichier est simplement
+              omis).</span
+            >
+          </div>
+
+          <div
+            style="
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              background: var(--background);
+              padding: 48px;
+              display: flex;
+              flex-direction: column;
+              gap: 32px;
+              max-width: 900px;
+            "
+          >
+            <h1
+              style="
+                font-family: 'Source Serif 4', Georgia, serif;
+                font-size: 34px;
+                font-weight: 600;
+                margin: 0;
+              "
+            >
+              Qualité de l'eau
+            </h1>
+
+            <div style="display: flex; flex-direction: column; gap: 16px">
+              <h2
+                style="
+                  font-family: 'Source Serif 4', Georgia, serif;
+                  font-size: 26px;
+                  font-weight: 600;
+                  margin: 0;
+                "
+              >
+                Un suivi mensuel
+              </h2>
+              <p style="margin: 0; font-size: 18px; line-height: 1.65">
+                L'étang de la Vallée est suivi chaque mois par les bénévoles.
+                Les relevés sont publiés ici, accompagnés d'un commentaire du
+                bureau. <a href="#s4">Voir le protocole de prélèvement</a>.
+              </p>
+              <ul
+                style="
+                  margin: 0;
+                  padding-left: 24px;
+                  font-size: 18px;
+                  line-height: 1.65;
+                "
+              >
+                <li>Température et oxygène dissous, chaque mois.</li>
+                <li>Analyse bactériologique, deux fois par saison.</li>
+              </ul>
+            </div>
+
+            <figure
+              style="margin: 0; display: flex; flex-direction: column; gap: 8px"
+            >
+              <div
+                style="
+                  height: 360px;
+                  max-height: 520px;
+                  border-radius: 8px;
+                  border: 1px solid var(--border);
+                  background: repeating-linear-gradient(
+                    135deg,
+                    var(--stripe) 0 8px,
+                    transparent 8px 16px
+                  );
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                "
+              >
+                <span
+                  style="
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 12px;
+                    letter-spacing: 0.1em;
+                    text-transform: uppercase;
+                    color: var(--muted-foreground);
+                    background: var(--card);
+                    padding: 4px 12px;
+                    border-radius: 999px;
+                  "
+                  >photo rive nord — hauteur plafonnée 520 px</span
+                >
+              </div>
+              <figcaption
+                style="font-size: 15px; color: var(--muted-foreground)"
+              >
+                Relevé du 3 septembre, rive nord.
+              </figcaption>
+            </figure>
+
+            <div style="display: flex; flex-direction: column; gap: 16px">
+              <h3 style="font-size: 20px; font-weight: 600; margin: 0">
+                Photos de la campagne 2026
+              </h3>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(3, minmax(0, 1fr));
+                  gap: 16px;
+                "
+              >
+                <button
+                  type="button"
+                  style="
+                    aspect-ratio: 1/1;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: repeating-linear-gradient(
+                      135deg,
+                      var(--stripe) 0 8px,
+                      transparent 8px 16px
+                    );
+                    cursor: pointer;
+                  "
+                ></button>
+                <button
+                  type="button"
+                  style="
+                    aspect-ratio: 1/1;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: repeating-linear-gradient(
+                      135deg,
+                      var(--stripe) 0 8px,
+                      transparent 8px 16px
+                    );
+                    cursor: pointer;
+                  "
+                ></button>
+                <button
+                  type="button"
+                  style="
+                    aspect-ratio: 1/1;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: repeating-linear-gradient(
+                      135deg,
+                      var(--stripe) 0 8px,
+                      transparent 8px 16px
+                    );
+                    cursor: pointer;
+                  "
+                ></button>
+                <button
+                  type="button"
+                  style="
+                    aspect-ratio: 1/1;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: repeating-linear-gradient(
+                      135deg,
+                      var(--stripe) 0 8px,
+                      transparent 8px 16px
+                    );
+                    cursor: pointer;
+                  "
+                ></button>
+                <button
+                  type="button"
+                  style="
+                    aspect-ratio: 1/1;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: repeating-linear-gradient(
+                      135deg,
+                      var(--stripe) 0 8px,
+                      transparent 8px 16px
+                    );
+                    cursor: pointer;
+                  "
+                ></button>
+                <button
+                  type="button"
+                  style="
+                    aspect-ratio: 1/1;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: var(--muted);
+                    color: var(--foreground);
+                    font-size: 18px;
+                    font-weight: 600;
+                    cursor: pointer;
+                  "
+                >
+                  + 7
+                </button>
+              </div>
+            </div>
+
+            <div
+              style="
+                border: 1px solid var(--accent-border);
+                background: var(--accent);
+                color: var(--accent-foreground);
+                border-radius: 8px;
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+              "
+            >
+              <strong
+                style="
+                  font-family: 'Source Serif 4', Georgia, serif;
+                  font-size: 26px;
+                  font-weight: 600;
+                "
+                >Baignade interdite jusqu'au 30 juin</strong
+              >
+              <p style="margin: 0; font-size: 18px; line-height: 1.65">
+                Analyse en cours sur la rive sud. Les résultats seront publiés
+                dès réception.
+                <a href="#s4" style="color: var(--accent-foreground)"
+                  >Nous écrire</a
+                >.
+              </p>
+            </div>
+          </div>
+
+          <div
+            style="
+              display: flex;
+              gap: 24px;
+              flex-wrap: wrap;
+              align-items: flex-start;
+            "
+          >
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >galerie — dialog à l'ouverture</span
+              >
+              <div
+                style="
+                  width: 520px;
+                  max-width: 100%;
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--card);
+                  padding: 24px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                "
+              >
+                <div
+                  style="
+                    height: 280px;
+                    border-radius: 8px;
+                    border: 1px solid var(--border);
+                    background: repeating-linear-gradient(
+                      135deg,
+                      var(--stripe) 0 8px,
+                      transparent 8px 16px
+                    );
+                  "
+                ></div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 12px;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                  "
+                >
+                  <button
+                    type="button"
+                    style="
+                      min-height: 44px;
+                      padding: 0 16px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      border-radius: 8px;
+                      font-size: 17px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    ← Précédente
+                  </button>
+                  <button
+                    type="button"
+                    style="
+                      min-height: 44px;
+                      padding: 0 16px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      border-radius: 8px;
+                      font-size: 17px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    Suivante →
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <span
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >mobile 390 px — rendu public</span
+              >
+              <div
+                style="
+                  width: 390px;
+                  max-width: 100%;
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--background);
+                  padding: 0;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 24px;
+                  overflow: hidden;
+                "
+              >
+                <div
+                  style="
+                    padding: 18px 18px 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                  "
+                >
+                  <h1
+                    style="
+                      font-family: 'Source Serif 4', Georgia, serif;
+                      font-size: 34px;
+                      font-weight: 600;
+                      margin: 0;
+                    "
+                  >
+                    Qualité de l'eau
+                  </h1>
+                  <p style="margin: 0; font-size: 18px; line-height: 1.65">
+                    L'étang de la Vallée est suivi chaque mois par les
+                    bénévoles. Les relevés sont publiés ici, accompagnés d'un
+                    commentaire du bureau.
+                  </p>
+                </div>
+                <figure
+                  style="
+                    margin: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <div
+                    style="
+                      height: 200px;
+                      border-top: 1px solid var(--border);
+                      border-bottom: 1px solid var(--border);
+                      background: repeating-linear-gradient(
+                        135deg,
+                        var(--stripe) 0 8px,
+                        transparent 8px 16px
+                      );
+                    "
+                  ></div>
+                  <figcaption
+                    style="
+                      font-size: 15px;
+                      color: var(--muted-foreground);
+                      padding: 0 18px;
+                    "
+                  >
+                    Relevé du 3 septembre, rive nord.
+                  </figcaption>
+                </figure>
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <div
+                    style="
+                      aspect-ratio: 4/3;
+                      border-top: 1px solid var(--border);
+                      background: repeating-linear-gradient(
+                        135deg,
+                        var(--stripe) 0 8px,
+                        transparent 8px 16px
+                      );
+                    "
+                  ></div>
+                  <div
+                    style="
+                      aspect-ratio: 4/3;
+                      background: repeating-linear-gradient(
+                        135deg,
+                        var(--stripe) 0 8px,
+                        transparent 8px 16px
+                      );
+                    "
+                  ></div>
+                  <button
+                    type="button"
+                    style="
+                      min-height: 56px;
+                      margin: 0 18px;
+                      border: 1px solid var(--border);
+                      background: var(--muted);
+                      color: var(--foreground);
+                      border-radius: 8px;
+                      font-size: 18px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    + 11 photos
+                  </button>
+                </div>
+                <div
+                  style="
+                    padding: 0 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                  "
+                >
+                  <h3 style="font-size: 20px; font-weight: 600; margin: 0">
+                    Compte rendu de l'assemblée 2026
+                  </h3>
+                  <button
+                    type="button"
+                    style="
+                      width: 100%;
+                      min-height: 56px;
+                      border: 1px solid var(--border);
+                      background: var(--secondary);
+                      color: var(--foreground);
+                      border-radius: 8px;
+                      font-size: 18px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    Télécharger le PDF (1,4 Mo) — nouvel onglet
+                  </button>
+                </div>
+                <div
+                  style="
+                    margin: 0 18px 18px;
+                    border: 1px solid var(--accent-border);
+                    background: var(--accent);
+                    color: var(--accent-foreground);
+                    border-radius: 8px;
+                    padding: 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <strong
+                    style="
+                      font-family: 'Source Serif 4', Georgia, serif;
+                      font-size: 26px;
+                      font-weight: 600;
+                    "
+                    >Baignade interdite</strong
+                  >
+                  <p style="margin: 0; font-size: 18px; line-height: 1.65">
+                    Analyse en cours sur la rive sud.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <script>
+      function toggleTheme() {
+        var root = document.getElementById('root')
+        var label = document.getElementById('theme-label')
+        var isDark = root.getAttribute('data-theme') === 'dark'
+        root.setAttribute('data-theme', isDark ? 'light' : 'dark')
+        label.textContent = isDark ? 'clair' : 'sombre'
+      }
+    </script>
+  </body>
+</html>

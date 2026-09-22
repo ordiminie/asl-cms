@@ -119,7 +119,13 @@ test.describe('critère 2 — le tenant vient du domaine appelé', () => {
   test('une route qui n’existe pas rend, elle, un vrai 404', async ({page}) => {
     // Le cas de référence de l'ADR 013 : sans route correspondante, la
     // décision précède le premier octet.
-    const response = await page.goto(`${TENANT_A}/fr/does-not-exist`)
+    //
+    // ⚠️ Deux segments, et non un seul comme avant s04 : depuis l'ADR 020 les
+    // pages CMS sont servies à la racine (`/{slug}`), donc **tout** chemin à un
+    // seul segment trouve désormais une route. Un slug inconnu y rend un 200
+    // portant l'UI « Page non trouvée » (preuve dans `page-cms.spec.ts`) ; seul
+    // un chemin qu'aucune route ne peut matcher garde le vrai 404.
+    const response = await page.goto(`${TENANT_A}/fr/does-not-exist/nested`)
 
     expect(response?.status()).toBe(404)
   })

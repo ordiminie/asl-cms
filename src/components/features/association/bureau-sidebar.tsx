@@ -17,10 +17,19 @@ import {
 
 import {AssociationMark} from './association-mark'
 
-/** Les pages du groupe « L'association », dans l'ordre du design. */
-const ASSOCIATION_NAV_ITEMS = [
-  {href: '/bureau/identite', labelKey: 'identity'},
-  {href: '/bureau/reglages', labelKey: 'settings'},
+/** Les groupes de la barre laterale, dans l'ordre du design (s04 : « Le site » en tete). */
+const NAV_GROUPS = [
+  {
+    labelKey: 'siteGroup',
+    items: [{href: '/bureau/pages', labelKey: 'pages'}],
+  },
+  {
+    labelKey: 'group',
+    items: [
+      {href: '/bureau/identite', labelKey: 'identity'},
+      {href: '/bureau/reglages', labelKey: 'settings'},
+    ],
+  },
 ] as const
 
 /** Actif si la route courante est cette page, prefixe de langue ou non. */
@@ -33,9 +42,9 @@ type BureauSidebarProps = {
 }
 
 /**
- * Barre laterale de l'espace bureau (designs s01b et s02) : identite de
- * l'association en tete, groupe « L'association » › Identite, Reglages ; l'item
- * actif suit la route. Tiroir sur petit ecran.
+ * Barre laterale de l'espace bureau (designs s01b, s02 et s04) : identite de
+ * l'association en tete, puis « Le site » › Pages et « L'association » ›
+ * Identite, Reglages ; l'item actif suit la route. Tiroir sur petit ecran.
  */
 export function BureauSidebar({
   associationName,
@@ -54,32 +63,34 @@ export function BureauSidebar({
         />
       </SidebarHeader>
       <SidebarContent className="pt-6">
-        <SidebarGroup>
-          <SidebarGroupLabel className="font-mono text-xs font-semibold tracking-widest uppercase">
-            {t('group')}
-          </SidebarGroupLabel>
-          <SidebarMenu>
-            {ASSOCIATION_NAV_ITEMS.map(({href, labelKey}) => {
-              const isActive = isCurrentPage(pathname, href)
-              return (
-                <SidebarMenuItem key={href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    className="h-11 text-base data-[active=true]:font-semibold"
-                  >
-                    <Link
-                      href={href}
-                      aria-current={isActive ? 'page' : undefined}
+        {NAV_GROUPS.map((group) => (
+          <SidebarGroup key={group.labelKey}>
+            <SidebarGroupLabel className="font-mono text-xs font-semibold tracking-widest uppercase">
+              {t(group.labelKey)}
+            </SidebarGroupLabel>
+            <SidebarMenu>
+              {group.items.map(({href, labelKey}) => {
+                const isActive = isCurrentPage(pathname, href)
+                return (
+                  <SidebarMenuItem key={href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      className="h-11 text-base data-[active=true]:font-semibold"
                     >
-                      {t(labelKey)}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
+                      <Link
+                        href={href}
+                        aria-current={isActive ? 'page' : undefined}
+                      >
+                        {t(labelKey)}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
     </Sidebar>
   )

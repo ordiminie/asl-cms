@@ -2801,7 +2801,9 @@
       "identity": "Identidad",
       "menu": "Menú",
       "openMenu": "Abrir el menú",
-      "settings": "Ajustes"
+      "settings": "Ajustes",
+      "siteGroup": "El sitio",
+      "pages": "Páginas"
     },
     "cards": {
       "logo": {
@@ -2930,6 +2932,167 @@
       "kept": "Las direcciones anteriores siguen vigentes.",
       "forbidden": "Esta acción está reservada a la junta de la asociación.",
       "invalidData": "No se ha recibido ningún ajuste. Recargue la página e inténtelo de nuevo."
+    }
+  },
+  "PublicCmsPage": {
+    "previewDraft": "Vista previa de la junta: esta página es un borrador, los visitantes no pueden verla.",
+    "previewUnpublished": "Vista previa de la junta: esta página está despublicada, los visitantes ya no pueden verla."
+  },
+  "PreviewBar": {
+    "draft": "Borrador",
+    "dirty": "Cambios sin guardar",
+    "live": "Publicada",
+    "publishing": "Publicando…",
+    "error": "La última acción ha fallado",
+    "unpublished": "Despublicada"
+  },
+  "SortableList": {
+    "position": "{position} de {total}",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "dragHandle": "Mover {label}",
+    "moved": "{label}, posición {position} de {total}",
+    "undone": "Movimiento deshecho",
+    "undoBanner": "{label} se ha movido.",
+    "undoAction": "Deshacer el movimiento"
+  },
+  "BlockPicker": {
+    "insertHere": "Insertar un bloque aquí",
+    "append": "Añadir un bloque",
+    "searchPlaceholder": "Buscar un tipo de bloque",
+    "searchLabel": "Buscar un tipo de bloque",
+    "noResult": "Ningún tipo de bloque coincide."
+  },
+  "RestrictedMarkdownEditor": {
+    "bold": "Negrita",
+    "italic": "Cursiva",
+    "heading2": "Título 2",
+    "heading3": "Título 3",
+    "list": "Lista",
+    "link": "Enlace",
+    "help": "Solo negrita, cursiva, título 2, título 3, lista y enlace."
+  },
+  "PageBlocks": {
+    "types": {
+      "text": {
+        "label": "Texto enriquecido",
+        "description": "Un párrafo, títulos, una lista, un enlace."
+      },
+      "image": {
+        "label": "Imagen + pie de foto",
+        "description": "Una foto, con su pie de foto escrito debajo."
+      },
+      "pdf": {
+        "label": "Documento PDF",
+        "description": "Un documento para descargar, bajo un título legible."
+      },
+      "gallery": {
+        "label": "Galería",
+        "description": "Varias fotos dispuestas en cuadrícula."
+      },
+      "callout": {
+        "label": "Recuadro",
+        "description": "Un mensaje breve destacado dentro de la página."
+      }
+    },
+    "text": {
+      "label": "Texto",
+      "placeholder": "Escriba aquí su texto."
+    },
+    "image": {
+      "fileLabel": "Foto",
+      "uploading": "Subiendo el archivo…",
+      "previewAlt": "Vista previa de la foto subida",
+      "altLabel": "Texto alternativo",
+      "altRequired": "Obligatorio para publicar.",
+      "altHelp": "Describe la foto para quien no puede verla.",
+      "captionLabel": "Pie de foto",
+      "captionHelp": "Opcional.",
+      "missingFileTitle": "Este bloque no tiene archivo.",
+      "missingFileHelp": "No aparece en el sitio público mientras no se suba una foto."
+    },
+    "pdf": {
+      "fileLabel": "Documento PDF",
+      "fileHelp": "Formato PDF, 10 MB como máximo.",
+      "deposited": "{name} subido ({size} bytes).",
+      "titleLabel": "Título del documento",
+      "titleRequired": "Obligatorio para publicar.",
+      "titleHelp": "Este es el título que ven los visitantes, nunca el nombre del archivo.",
+      "missingFileTitle": "Este bloque no tiene archivo.",
+      "missingFileHelp": "No aparece en el sitio público mientras no se suba un documento."
+    },
+    "gallery": {
+      "fileLabel": "Fotos",
+      "uploading": "Subiendo los archivos…",
+      "previewAlt": "Vista previa de la foto subida",
+      "altLabel": "Texto alternativo de la foto {position}",
+      "altRequired": "Obligatorio para publicar.",
+      "remove": "Quitar esta foto"
+    },
+    "callout": {
+      "titleLabel": "Título del recuadro",
+      "titleOptional": "Opcional.",
+      "textLabel": "Texto del recuadro",
+      "previewLabel": "Vista previa con los colores de su asociación",
+      "help": "Sin botones dentro de un recuadro. No se recomienda poner dos recuadros seguidos."
+    },
+    "unknown": {
+      "title": "Tipo de bloque desconocido ({type})",
+      "help": "Este bloque se ignora en el sitio público. Solo puede eliminarlo."
+    }
+  },
+  "BureauPagesPage": {
+    "metadata": {
+      "title": "Páginas del sitio"
+    },
+    "title": "Páginas",
+    "tableTitle": "Las páginas de su sitio",
+    "empty": "Todavía no hay ninguna página. Cree la primera con «Nueva página».",
+    "edit": "Modificar",
+    "columns": {
+      "title": "Título",
+      "status": "Estado",
+      "updatedAt": "Última modificación",
+      "actions": "Acciones"
+    },
+    "status": {
+      "draft": "Borrador",
+      "published": "Publicada",
+      "unpublished": "Retirada"
+    },
+    "newPage": {
+      "action": "Nueva página",
+      "title": "Nueva página",
+      "slug": "nueva-pagina"
+    },
+    "errors": {
+      "forbidden": "Solo la junta directiva de la asociación puede gestionar las páginas.",
+      "failed": "No se ha podido guardar. No se ha perdido nada: inténtelo de nuevo.",
+      "invalidData": "Datos no válidos.",
+      "slugTaken": "Este slug ya lo utiliza otra página.",
+      "fileTooLarge": "Este archivo es demasiado pesado.",
+      "fileFormat": "Este formato de archivo no se acepta.",
+      "createFailedTitle": "No se ha podido crear la página",
+      "createFailed": "No se ha perdido nada: no se ha añadido ninguna página. Inténtelo de nuevo en un momento."
+    },
+    "editor": {
+      "metadataTitle": "Modificar una página",
+      "back": "Volver a las páginas",
+      "saveDraft": "Guardar el borrador",
+      "preview": "Vista previa",
+      "publish": "Publicar la página",
+      "unpublish": "Retirar la página",
+      "unpublishConfirmTitle": "¿Retirar «{title}»?",
+      "unpublishConfirmHelp": "La página desaparece del sitio público. Su contenido se conserva: podrá volver a publicarla tal cual.",
+      "unpublishConfirmAction": "Retirar la página",
+      "cancel": "Cancelar",
+      "removeBlock": "Eliminar el bloque",
+      "settingsTitle": "Ajustes de la página",
+      "titleLabel": "Título",
+      "slugLabel": "Dirección de la página",
+      "slugHelp": "La página será visible en la dirección /{slug}",
+      "slugTaken": "Este slug ya lo utiliza otra página.",
+      "incomplete": "No se puede publicar: los bloques {positions} esperan un texto alternativo o un título. No se ha perdido nada."
     }
   }
 }
