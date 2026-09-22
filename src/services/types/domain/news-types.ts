@@ -64,7 +64,14 @@ export type NewsPublicationResult =
 export type NewsUnpublicationResult = {status: 'unpublished'; news: NewsDTO}
 
 export type NewsImageUpload =
-  | {status: 'uploaded'; key: string; fileName: string; fileSize: number}
+  | {
+      status: 'uploaded'
+      key: string
+      fileName: string
+      fileSize: number
+      /** Adresse de l'actualite ecrite, pour invalider sa fiche. */
+      slug: string | null
+    }
   | {status: 'rejected'; reason: 'format'}
   | {status: 'rejected'; reason: 'size'; size: number; maxBytes: number}
 

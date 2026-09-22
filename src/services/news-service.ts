@@ -365,7 +365,7 @@ export const uploadNewsImageService = async (input: {
   }
 
   await requireNewsManager(parsed.data.organizationId)
-  await requireNews(parsed.data.organizationId, parsed.data.newsId)
+  const row = await requireNews(parsed.data.organizationId, parsed.data.newsId)
 
   const content = new Uint8Array(await input.file.arrayBuffer())
   const validation = validateContentFile('image', content)
@@ -397,6 +397,7 @@ export const uploadNewsImageService = async (input: {
     key,
     fileName: input.file.name,
     fileSize: content.length,
+    slug: row.slug,
   }
 }
 

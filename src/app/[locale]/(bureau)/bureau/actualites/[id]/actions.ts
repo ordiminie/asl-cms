@@ -104,11 +104,15 @@ export async function saveNewsDraftAction(
 /**
  * Publie l'actualite apres avoir enregistre l'etat courant du formulaire.
  *
- * L'invalidation suit **l'enregistrement**, pas le verdict de publication : le
- * bouton principal de l'editeur appelle cette action meme sur une actualite
- * deja publiee, et un refus de publication (titre ou texte alternatif manquant)
- * laisserait alors le site public servir l'ancien contenu jusqu'a l'expiration
- * du cache.
+ * **Deux ecritures, donc deux invalidations**, chacune apres son ecriture :
+ *
+ * - apres l'enregistrement, car le bouton principal de l'editeur appelle cette
+ *   action meme sur une actualite deja publiee, et un refus de publication
+ *   (titre ou texte alternatif manquant) laisserait sinon le site public servir
+ *   l'ancien contenu jusqu'a l'expiration du cache ;
+ * - apres le passage en `published`, car `updateTag` expire immediatement :
+ *   invalider avant l'ecriture du statut laisse une requete de visiteur recacher
+ *   l'etat non publie, que plus rien n'invaliderait.
  */
 export async function publishNewsAction(
   input: NewsInput
@@ -132,6 +136,8 @@ export async function publishNewsAction(
     if (published.status === 'rejected') {
       return {status: 'incomplete', issues: published.issues}
     }
+
+    invalidate(tenant.id, published.news.slug)
 
     return {
       status: 'published',
@@ -163,7 +169,13 @@ export async function unpublishNewsAction(input: {
   }
 }
 
-/** Depose l'image de l'actualite et rend sa cle de stockage. */
+/**
+ * Depose l'image de l'actualite et rend sa cle de stockage.
+ *
+ * Le depot ecrit `image_key` sur la ligne : il invalide donc lui aussi, sans
+ * quoi une actualite deja publiee continuerait a servir l'ancienne cle tant que
+ * le bureau ne reenregistre pas.
+ */
 export async function uploadNewsImageAction(
   formData: FormData
 ): Promise<NewsImageUploadState> {
@@ -192,6 +204,7 @@ export async function uploadNewsImageAction(
       }
     }
 
+    invalidate(tenant.id, result.slug)
     return {status: 'uploaded', key: result.key, fileName: result.fileName}
   } catch (error) {
     return {status: 'error', ...(await failure(error))}

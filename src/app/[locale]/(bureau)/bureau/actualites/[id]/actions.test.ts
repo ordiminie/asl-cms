@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {beforeEach, describe, expect, it, type Mock, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('next/cache', () => ({updateTag: vi.fn()}))
@@ -39,6 +39,26 @@ const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 const NEWS_ID = '33333333-3333-4333-8333-333333333333'
 const LIST_TAG = `news:${TENANT_ID}`
 const ITEM_TAG = `news:${TENANT_ID}:assemblee-generale`
+
+/**
+ * Ordre d'appel d'un double, dans la numerotation globale de Vitest : c'est ce
+ * qui permet de pinner **l'ordre** des invalidations, et pas seulement leur
+ * presence.
+ */
+const callOrderOf = (fn: unknown): number =>
+  (fn as Mock).mock.invocationCallOrder[0]
+
+/** Tags invalides strictement entre deux appels, dans l'ordre d'appel. */
+const tagsInvalidatedBetween = (after: number, before: number): string[] => {
+  const mock = vi.mocked(updateTag).mock
+  return mock.calls
+    .map((call, index) => ({
+      tag: call[0],
+      order: mock.invocationCallOrder[index],
+    }))
+    .filter(({order}) => order > after && order < before)
+    .map(({tag}) => tag)
+}
 
 const saved: NewsDTO = {
   id: NEWS_ID,
@@ -103,7 +123,7 @@ describe('saveNewsDraftAction', () => {
 })
 
 describe('publishNewsAction', () => {
-  it('enregistre, publie, puis invalide', async () => {
+  it("enregistre, invalide, publie, puis invalide de nouveau : l'invalidation suit chaque écriture réussie", async () => {
     const result = await publishNewsAction(input)
 
     expect(updateNewsService).toHaveBeenCalled()
@@ -114,6 +134,18 @@ describe('publishNewsAction', () => {
     expect(result.status).toBe('published')
     expect(updateTag).toHaveBeenCalledWith(LIST_TAG)
     expect(updateTag).toHaveBeenCalledWith(ITEM_TAG)
+
+    const savedAt = callOrderOf(updateNewsService)
+    const publishedAt = callOrderOf(publishNewsService)
+
+    expect(tagsInvalidatedBetween(savedAt, publishedAt)).toEqual([
+      LIST_TAG,
+      ITEM_TAG,
+    ])
+    expect(tagsInvalidatedBetween(publishedAt, Infinity)).toEqual([
+      LIST_TAG,
+      ITEM_TAG,
+    ])
   })
 
   it("rend les manques mais invalide quand même : l'enregistrement, lui, a réussi", async () => {
@@ -130,6 +162,9 @@ describe('publishNewsAction', () => {
     })
     expect(updateTag).toHaveBeenCalledWith(LIST_TAG)
     expect(updateTag).toHaveBeenCalledWith(ITEM_TAG)
+    expect(
+      tagsInvalidatedBetween(callOrderOf(updateNewsService), Infinity)
+    ).toEqual([LIST_TAG, ITEM_TAG])
   })
 
   it('une actualité déjà publiée dont la republication est refusée sert quand même le nouveau contenu', async () => {
@@ -165,8 +200,9 @@ describe('unpublishNewsAction', () => {
     const result = await unpublishNewsAction({newsId: NEWS_ID})
 
     expect(result.status).toBe('unpublished')
-    expect(updateTag).toHaveBeenCalledWith(LIST_TAG)
-    expect(updateTag).toHaveBeenCalledWith(ITEM_TAG)
+    expect(
+      tagsInvalidatedBetween(callOrderOf(unpublishNewsService), Infinity)
+    ).toEqual([LIST_TAG, ITEM_TAG])
   })
 
   it("n'invalide rien quand la dépublication échoue", async () => {
@@ -180,21 +216,40 @@ describe('unpublishNewsAction', () => {
 })
 
 describe('uploadNewsImageAction', () => {
-  it('dépose le fichier et rend sa clé', async () => {
+  const imageFormData = (): FormData => {
+    const formData = new FormData()
+    formData.append('newsId', NEWS_ID)
+    formData.append('file', new File(['x'], 'photo.png', {type: 'image/png'}))
+    return formData
+  }
+
+  it('dépose le fichier, rend sa clé, puis invalide la liste et la fiche', async () => {
     const key = `${TENANT_ID}/news/${NEWS_ID}/image-a.png`
     vi.mocked(uploadNewsImageService).mockResolvedValue({
       status: 'uploaded',
       key,
       fileName: 'photo.png',
       fileSize: 10,
+      slug: saved.slug,
     })
-    const formData = new FormData()
-    formData.append('newsId', NEWS_ID)
-    formData.append('file', new File(['x'], 'photo.png', {type: 'image/png'}))
 
-    const result = await uploadNewsImageAction(formData)
+    const result = await uploadNewsImageAction(imageFormData())
 
     expect(result).toEqual({status: 'uploaded', key, fileName: 'photo.png'})
+    expect(
+      tagsInvalidatedBetween(callOrderOf(uploadNewsImageService), Infinity)
+    ).toEqual([LIST_TAG, ITEM_TAG])
+  })
+
+  it("n'invalide rien quand le dépôt échoue", async () => {
+    vi.mocked(uploadNewsImageService).mockRejectedValue(
+      new AuthorizationError()
+    )
+
+    const result = await uploadNewsImageAction(imageFormData())
+
+    expect(result.status).toBe('error')
+    expect(updateTag).not.toHaveBeenCalled()
   })
 
   it('rend une erreur quand le format est refusé', async () => {
@@ -202,12 +257,10 @@ describe('uploadNewsImageAction', () => {
       status: 'rejected',
       reason: 'format',
     })
-    const formData = new FormData()
-    formData.append('newsId', NEWS_ID)
-    formData.append('file', new File(['x'], 'photo.png', {type: 'image/png'}))
 
-    const result = await uploadNewsImageAction(formData)
+    const result = await uploadNewsImageAction(imageFormData())
 
     expect(result.status).toBe('error')
+    expect(updateTag).not.toHaveBeenCalled()
   })
 })

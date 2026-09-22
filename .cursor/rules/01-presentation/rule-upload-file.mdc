@@ -34,7 +34,8 @@ Deux chaînes l'utilisent :
   **portées** (`pages`, `news` ; s06 et s09 y ajouteront la leur) et construit la clé
   `{organizationId}/{portée}/{ownerId}/{slotId}-{uuid}.{ext}` ; `readContentFileService` la sert par
   `GET /api/files/[...key]`, `/api/pages/files/[...key]` étant servie par **le même** gestionnaire
-  (chemin historique, à ne pas étendre). Un nouveau modèle déclare sa portée et sa colonne `…_key` —
+  mais **bornée à la portée `pages`** (chemin historique, à ne pas étendre : une clé d'actualité y
+  est refusée, un nouveau client passe par `/api/files`). Un nouveau modèle déclare sa portée et sa colonne `…_key` —
   il n'écrit ni validation de clé, ni route de lecture. Même discipline que l'identité : format jugé
   sur la **signature binaire**, clé générée par le serveur, `nosniff`, jamais de fichier servi depuis
   `public/`.

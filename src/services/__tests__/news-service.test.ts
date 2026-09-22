@@ -481,6 +481,34 @@ describe('uploadNewsImageService', () => {
     expect(updateNewsImageDao).toHaveBeenCalledWith(NEWS_ID, result.key)
   })
 
+  it("rend l'adresse de l'actualité, de quoi invalider sa fiche", async () => {
+    vi.mocked(getNewsByIdDao).mockResolvedValue(
+      newsRow({slug: 'assemblee-generale', title: 'Assemblée générale'})
+    )
+
+    const result = await uploadNewsImageService({
+      organizationId: ORG_ID,
+      newsId: NEWS_ID,
+      file: fileFrom(PNG_BYTES, 'photo.png', 'image/png'),
+    })
+
+    expect(result.status).toBe('uploaded')
+    if (result.status !== 'uploaded') return
+    expect(result.slug).toBe('assemblee-generale')
+  })
+
+  it("rend une adresse nulle tant que l'actualité n'en a pas", async () => {
+    const result = await uploadNewsImageService({
+      organizationId: ORG_ID,
+      newsId: NEWS_ID,
+      file: fileFrom(PNG_BYTES, 'photo.png', 'image/png'),
+    })
+
+    expect(result.status).toBe('uploaded')
+    if (result.status !== 'uploaded') return
+    expect(result.slug).toBeNull()
+  })
+
   it('refuse un fichier dont la signature ne correspond pas, sans écriture', async () => {
     const result = await uploadNewsImageService({
       organizationId: ORG_ID,

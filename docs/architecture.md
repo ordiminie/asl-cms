@@ -191,8 +191,10 @@ construit la clé `{organizationId}/{portée}/{ownerId}/{slotId}-{uuid}.{ext}` e
 lue dans une requête vit sous une portée enregistrée de l'association résolue par le domaine.
 La lecture publique est `GET /api/files/[...key]` (`readContentFileService`, sans autorisation et
 délibérément : ces fichiers s'affichent sur le site) ; `/api/pages/files/[...key]` reste servie par
-**le même** gestionnaire, pour ne casser aucune adresse déjà rendue — une implémentation, deux
-chemins, et tout nouveau client passe par `/api/files`. La validation reste celle de s04 : format
+**le même** gestionnaire, pour ne casser aucune adresse déjà rendue, mais **bornée à la portée
+`pages`** : ce chemin historique ne sert pas les fichiers d'actualité ni ceux des portées à venir,
+et tout nouveau client passe par `/api/files`. Une implémentation, deux chemins, une portée en
+moins sur l'ancien. La validation reste celle de s04 : format
 jugé sur la **signature binaire**, 5 Mo par image, 10 Mo par document, `X-Content-Type-Options:
 nosniff` et cache long `immutable` (la clé change à chaque remplacement).
 
