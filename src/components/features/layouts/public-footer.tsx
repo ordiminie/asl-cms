@@ -1,124 +1,36 @@
-import {cacheLife} from 'next/cache'
-import Link from 'next/link'
-import {getTranslations} from 'next-intl/server'
+import {getCurrentPublicSiteNavigationDal} from '@/app/dal/site-navigation-dal'
+import {renderPageBlock} from '@/lib/cms/render-page-block'
+import {PageBlockTypeConst} from '@/services/types/domain/page-block-types'
 
-import ImageTheme from '@/components/image-theme'
-import {PagesConst} from '@/env'
-import {APP_NAME} from '@/lib/constants'
-import {isPageEnabled} from '@/lib/utils'
-
-// L'année du copyright lit l'heure courante : sans cache, elle interdit le
-// prerender de toute page contenant le footer.
+/**
+ * Pied de page du site public (s04b, ecran 2) : le contenu unique ecrit par le
+ * bureau, rendu avec **les memes regles que le bloc « texte riche » des pages**
+ * (design system §4) — `renderPageBlock` est la seule porte de ce rendu, donc
+ * pas de second jeu de balises autorisees a maintenir.
+ *
+ * La lecture est scopee au tenant et cachee dans le DAL, sous
+ * `siteNavigationTag(organizationId)` : enregistrer le pied de page ou publier
+ * une page fait tomber ce tag, et la modification parait sans delai (criteres
+ * 3 et 5).
+ *
+ * Un contenu vide veut dire « aucun pied de page » : rien n'est rendu, pas une
+ * bande vide.
+ */
 export default async function PublicFooter() {
-  'use cache'
-  cacheLife('days')
+  const {footerContent} = await getCurrentPublicSiteNavigationDal()
 
-  const t = await getTranslations('HomePage')
+  const html = renderPageBlock({
+    type: PageBlockTypeConst.TEXT,
+    data: {markdown: footerContent},
+  })
+  if (!html) return null
 
   return (
     <footer className="border-border bg-background/80 mt-auto w-full border-t px-4 py-12 sm:px-6 md:px-8">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 text-left sm:grid-cols-2 md:grid-cols-4">
-        <div>
-          <div className="mb-4 flex items-center gap-2">
-            <ImageTheme
-              className="relative z-10"
-              src="/next.svg"
-              srcDark="/next-inverted.svg"
-              alt="App Logo"
-              width={28}
-              height={28}
-              priority
-            />
-            <span className="text-lg font-bold">{APP_NAME}</span>
-          </div>
-          <p className="text-muted-foreground mb-2 text-sm">
-            {t('footer.byMike')}
-          </p>
-          <p className="text-muted-foreground text-xs">
-            © {new Date().getFullYear()} {APP_NAME}.{' '}
-            {t('footer.allRightsReserved')}
-          </p>
-        </div>
-        <div>
-          <h4 className="mb-4 font-semibold">{t('footer.product.title')}</h4>
-          <ul className="space-y-3 text-sm">
-            <li>
-              <Link href="#features" className="hover:text-primary transition">
-                {t('footer.product.features')}
-              </Link>
-            </li>
-            <li>
-              <Link href="/pricing" className="hover:text-primary transition">
-                {t('footer.product.pricing')}
-              </Link>
-            </li>
-            <li>
-              <Link href="#" className="hover:text-primary transition">
-                {t('footer.product.demo')}
-              </Link>
-            </li>
-            <li>
-              <Link href="#" className="hover:text-primary transition">
-                {t('footer.product.updates')}
-              </Link>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="mb-4 font-semibold">{t('footer.resources.title')}</h4>
-          <ul className="space-y-3 text-sm">
-            {isPageEnabled(PagesConst.DOCS) && (
-              <li>
-                <Link href="/docs" className="hover:text-primary transition">
-                  {t('footer.resources.documentation')}
-                </Link>
-              </li>
-            )}
-            {isPageEnabled(PagesConst.BLOG) && (
-              <li>
-                <Link href="/blog" className="hover:text-primary transition">
-                  {t('footer.resources.blog')}
-                </Link>
-              </li>
-            )}
-            <li>
-              <Link href="/docs" className="hover:text-primary transition">
-                {t('footer.resources.support')}
-              </Link>
-            </li>
-            <li>
-              <Link href="#" className="hover:text-primary transition">
-                {t('footer.resources.api')}
-              </Link>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <h4 className="mb-4 font-semibold">{t('footer.legal.title')}</h4>
-          <ul className="space-y-3 text-sm">
-            <li>
-              <Link href="/terms" className="hover:text-primary transition">
-                {t('footer.legal.terms')}
-              </Link>
-            </li>
-            <li>
-              <Link href="/privacy" className="hover:text-primary transition">
-                {t('footer.legal.privacy')}
-              </Link>
-            </li>
-            <li>
-              <Link href="/contact" className="hover:text-primary transition">
-                {t('footer.legal.contact')}
-              </Link>
-            </li>
-            <li>
-              <Link href="#" className="hover:text-primary transition">
-                {t('footer.legal.careers')}
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </div>
+      <div
+        className="page-block mx-auto w-full max-w-[52rem] text-[17px] leading-[1.65]"
+        dangerouslySetInnerHTML={{__html: html}}
+      />
     </footer>
   )
 }

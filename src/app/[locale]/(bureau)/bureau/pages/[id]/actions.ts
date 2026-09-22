@@ -5,6 +5,7 @@ import {redirect} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 
 import {pageTag} from '@/app/dal/page-dal'
+import {siteNavigationTag} from '@/app/dal/site-navigation-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
@@ -167,6 +168,9 @@ export async function publishPageAction(input: {
 
     updateTag(pageTag(tenant.id, input.previousSlug))
     updateTag(pageTag(tenant.id, published.page.slug))
+    // Une entree de menu qui pointe vers cette page parait maintenant au
+    // visiteur (s04b, critere 5) : son tag doit tomber en meme temps.
+    updateTag(siteNavigationTag(tenant.id))
     return {
       status: 'published',
       page: {...saved.page, status: published.page.status},
@@ -192,6 +196,9 @@ export async function unpublishPageAction(input: {
     })
 
     updateTag(pageTag(tenant.id, input.slug))
+    // Symetrique de la publication : l'entree de menu qui pointe vers cette
+    // page doit disparaitre du rendu public sans delai (s04b, criteres 2 et 5).
+    updateTag(siteNavigationTag(tenant.id))
     return {
       status: 'unpublished',
       page: {...result.page, blocks: []},

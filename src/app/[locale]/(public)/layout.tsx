@@ -2,6 +2,7 @@ import Link from 'next/link'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {PropsWithChildren} from 'react'
 
+import {getCurrentPublicSiteNavigationDal} from '@/app/dal/site-navigation-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {AssociationMark} from '@/components/features/association/association-mark'
 import PublicFooter from '@/components/features/layouts/public-footer'
@@ -9,9 +10,7 @@ import {PublicMobileMenu} from '@/components/features/layouts/public-mobile-menu
 import {LangToggle} from '@/components/lang-toggle'
 import {ModeToggle} from '@/components/theme-toggle'
 import {Button} from '@/components/ui/button'
-import {PagesConst} from '@/env'
 import {routing} from '@/i18n/routing'
-import {isPageEnabled} from '@/lib/utils'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 
 export async function generateMetadata({
@@ -33,15 +32,25 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
 }
 
+/**
+ * Cadre du site public. La zone de navigation porte **le menu compose par le
+ * bureau** (s04b, ecran 2) : les entrees laissees visibles dont la page est
+ * publiee, dans leur ordre. Menu vide, aucune zone de navigation — pas de
+ * conteneur vide. Le tiroir mobile recoit exactement les memes entrees.
+ */
 export default async function PublicLayout({children}: PropsWithChildren) {
   // Deja resolu par le layout [locale] (bloquant, ADR 003) : `cache()` dedoublonne.
-  const tenant = await requireCurrentTenantDal()
+  const [tenant, {menu}, t] = await Promise.all([
+    requireCurrentTenantDal(),
+    getCurrentPublicSiteNavigationDal(),
+    getTranslations('PublicLayout'),
+  ])
 
   return (
     <div className="flex h-screen flex-col">
       <header className="border-b">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex h-14 items-center justify-center">
+          <div className="flex h-14 items-center justify-center">
             <div className="flex flex-1 items-center justify-start space-x-4">
               <Link className="flex items-center" href="/">
                 <AssociationMark
@@ -50,34 +59,21 @@ export default async function PublicLayout({children}: PropsWithChildren) {
                   size="public"
                 />
               </Link>
-              <Link
-                className="hidden items-center space-x-2 font-bold sm:flex"
-                href="/privacy"
-              >
-                <span>Privacy</span>
-              </Link>
-
-              <Link
-                className="hidden items-center space-x-2 font-bold sm:flex"
-                href="/terms"
-              >
-                <span>Terms</span>
-              </Link>
-              {isPageEnabled(PagesConst.DOCS) && (
-                <Link
-                  className="hidden items-center space-x-2 font-bold sm:flex"
-                  href="/docs"
+              {menu.length > 0 && (
+                <nav
+                  aria-label={t('menuLabel')}
+                  className="hidden items-center gap-4 sm:flex"
                 >
-                  <span>Docs</span>
-                </Link>
-              )}
-              {isPageEnabled(PagesConst.BLOG) && (
-                <Link
-                  className="hidden items-center space-x-2 font-bold sm:flex"
-                  href="/blog"
-                >
-                  <span>Blog</span>
-                </Link>
+                  {menu.map((entry) => (
+                    <Link
+                      key={entry.id}
+                      className="hover:text-primary text-[15px] transition"
+                      href={`/${entry.slug}`}
+                    >
+                      {entry.title}
+                    </Link>
+                  ))}
+                </nav>
               )}
             </div>
 
@@ -88,13 +84,13 @@ export default async function PublicLayout({children}: PropsWithChildren) {
                   <Link href="/login">Connexion</Link>
                 </Button>
                 <div className="sm:hidden">
-                  <PublicMobileMenu />
+                  <PublicMobileMenu entries={menu} />
                 </div>
 
                 <ModeToggle />
               </div>
             </div>
-          </nav>
+          </div>
         </div>
       </header>
 

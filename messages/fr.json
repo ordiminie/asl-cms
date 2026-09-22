@@ -87,7 +87,8 @@
   },
   "PublicLayout": {
     "title": "Page Publique",
-    "description": "Page Publique"
+    "description": "Page Publique",
+    "menuLabel": "Menu du site"
   },
   "AuthLayout": {
     "title": "Authentification",
@@ -2803,7 +2804,8 @@
       "openMenu": "Ouvrir le menu",
       "settings": "Réglages",
       "siteGroup": "Le site",
-      "pages": "Pages"
+      "pages": "Pages",
+      "navigation": "Navigation"
     },
     "cards": {
       "logo": {
@@ -3093,6 +3095,46 @@
       "slugHelp": "La page sera visible à l’adresse /{slug}",
       "slugTaken": "Ce slug est déjà utilisé par une autre page.",
       "incomplete": "Publication impossible : les blocs {positions} attendent un texte alternatif ou un titre. Rien n'est perdu."
+    }
+  },
+  "BureauNavigationPage": {
+    "metadata": {
+      "title": "Navigation du site"
+    },
+    "title": "Navigation du site",
+    "menu": {
+      "title": "Menu du site",
+      "empty": "Aucune entrée dans le menu.",
+      "emptyAction": "Ajouter une page",
+      "visible": "Visible",
+      "remove": "Retirer du menu",
+      "hiddenBecauseUnpublished": "Masquée sur le site public — la page n'est pas publiée",
+      "add": "Ajouter une entrée",
+      "searchLabel": "Rechercher une page",
+      "searchPlaceholder": "Rechercher une page…",
+      "noResult": "Aucune page à ajouter.",
+      "removedBanner": "Entrée « {title} » retirée du menu.",
+      "undo": "Annuler"
+    },
+    "footer": {
+      "title": "Pied de page",
+      "label": "Contenu du pied de page",
+      "help": "Affiché en bas de toutes les pages du site public.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "success": "Pied de page enregistré."
+    },
+    "status": {
+      "draft": "Brouillon",
+      "published": "Publiée",
+      "unpublished": "Dépubliée"
+    },
+    "errors": {
+      "title": "L'enregistrement a échoué",
+      "forbidden": "Seul le bureau de l'association peut modifier la navigation du site.",
+      "failed": "L'enregistrement a échoué. Rien n'est perdu : réessayez.",
+      "invalidData": "Données invalides.",
+      "alreadyInMenu": "Cette page est déjà dans le menu."
     }
   }
 }

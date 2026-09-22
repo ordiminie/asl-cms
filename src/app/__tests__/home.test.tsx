@@ -4,6 +4,9 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 import {render} from '@/__tests__/customRender'
 import Home from '@/app/[locale]/page'
 
+// Le pied de page lit desormais la navigation de l'association (s04b) : sa
+// chaine serveur doit etre neutralisee pour que ce fichier s'importe en jsdom.
+vi.mock('server-only', () => ({}))
 // Mock du composant ButtonConnexionDashboard pour les tests car c'est un RSC
 vi.mock('@/components/features/auth/button-connexion-dashboard', () => ({
   default: () => <button>Connexion Dashboard Mock</button>,

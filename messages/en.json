@@ -87,7 +87,8 @@
   },
   "PublicLayout": {
     "title": "Public Page",
-    "description": "Public Page"
+    "description": "Public Page",
+    "menuLabel": "Site menu"
   },
   "AuthLayout": {
     "title": "Authentication",
@@ -2803,7 +2804,8 @@
       "openMenu": "Open the menu",
       "settings": "Settings",
       "siteGroup": "The site",
-      "pages": "Pages"
+      "pages": "Pages",
+      "navigation": "Navigation"
     },
     "cards": {
       "logo": {
@@ -3093,6 +3095,46 @@
       "slugHelp": "The page will be visible at /{slug}",
       "slugTaken": "This slug is already used by another page.",
       "incomplete": "Cannot publish: blocks {positions} are still missing an alternative text or a title. Nothing is lost."
+    }
+  },
+  "BureauNavigationPage": {
+    "metadata": {
+      "title": "Site navigation"
+    },
+    "title": "Site navigation",
+    "menu": {
+      "title": "Site menu",
+      "empty": "No entry in the menu yet.",
+      "emptyAction": "Add a page",
+      "visible": "Visible",
+      "remove": "Remove from the menu",
+      "hiddenBecauseUnpublished": "Hidden on the public site — the page is not published",
+      "add": "Add an entry",
+      "searchLabel": "Search for a page",
+      "searchPlaceholder": "Search for a page…",
+      "noResult": "No page left to add.",
+      "removedBanner": "Entry “{title}” removed from the menu.",
+      "undo": "Undo"
+    },
+    "footer": {
+      "title": "Footer",
+      "label": "Footer content",
+      "help": "Shown at the bottom of every page of the public site.",
+      "save": "Save",
+      "saving": "Saving…",
+      "success": "Footer saved."
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "unpublished": "Unpublished"
+    },
+    "errors": {
+      "title": "Saving failed",
+      "forbidden": "Only the association board can change the site navigation.",
+      "failed": "Saving failed. Nothing is lost: please try again.",
+      "invalidData": "Invalid data.",
+      "alreadyInMenu": "This page is already in the menu."
     }
   }
 }
