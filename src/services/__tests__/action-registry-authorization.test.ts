@@ -1,7 +1,11 @@
 import {describe, expect, it} from 'vitest'
 
 import {canPerformAction} from '../authorization/action-registry-authorization'
-import {ActionIdConst} from '../types/domain/action-registry-types'
+import {
+  ACTION_REGISTRY,
+  ActionIdConst,
+  isActionAllowedForRole,
+} from '../types/domain/action-registry-types'
 import {RoleConst, UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
@@ -26,6 +30,51 @@ const withMembership = (
       createdAt: new Date(),
     },
   ],
+})
+
+/**
+ * Une seule entree couvre le menu **et** le pied de page (s04b, ADR 021) :
+ * rien dans les criteres ne distingue les deux, comme `PAGE_MANAGE` couvre ses
+ * quatre verbes.
+ */
+describe('SITE_NAVIGATION_MANAGE — navigation du site (s04b)', () => {
+  it('est declaree dans le registre', () => {
+    expect(
+      ACTION_REGISTRY.some(
+        (action) => action.id === ActionIdConst.SITE_NAVIGATION_MANAGE
+      )
+    ).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.SITE_NAVIGATION_MANAGE,
+        UserOrganizationRoleConst.ADMIN
+      )
+    ).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.SITE_NAVIGATION_MANAGE,
+        UserOrganizationRoleConst.OWNER
+      )
+    ).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.SITE_NAVIGATION_MANAGE,
+        UserOrganizationRoleConst.MEMBER
+      )
+    ).toBe(false)
+  })
 })
 
 describe('canPerformAction — acces accordes', () => {

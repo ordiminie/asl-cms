@@ -1,0 +1,1833 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maquette — s04b Navigation publique</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.22 0.015 250);
+        --card: oklch(1 0 0);
+        --muted: oklch(0.972 0.005 240);
+        --muted-foreground: oklch(0.45 0.02 245);
+        --border: oklch(0.9 0.008 245);
+        --input: oklch(0.66 0.014 245);
+        --ring: oklch(0.55 0.11 235);
+        --primary: oklch(0.35 0.06 240);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.965 0.006 240);
+        --destructive: oklch(0.48 0.17 27);
+        --link: oklch(0.45 0.13 250);
+        --warning: oklch(0.94 0.06 75);
+        --warning-border: oklch(0.72 0.12 70);
+        --warning-foreground: oklch(0.3 0.08 60);
+        --accent: oklch(0.958 0.024 195);
+        --accent-foreground: oklch(0.38 0.08 195);
+        --accent-solid: oklch(0.55 0.1 195);
+        --accent-border: oklch(0.88 0.045 195);
+      }
+      [data-theme='dark'] {
+        --background: oklch(0.215 0.009 255);
+        --foreground: oklch(0.94 0.006 250);
+        --card: oklch(0.215 0.009 255);
+        --muted: oklch(0.255 0.009 250);
+        --muted-foreground: oklch(0.72 0.015 248);
+        --border: oklch(0.33 0.01 250);
+        --input: oklch(0.52 0.016 250);
+        --ring: oklch(0.7 0.12 235);
+        --primary: oklch(0.5 0.14 255);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.27 0.01 250);
+        --destructive: oklch(0.58 0.19 27);
+        --link: oklch(0.8 0.1 250);
+        --warning: oklch(0.3 0.05 75);
+        --warning-border: oklch(0.6 0.11 70);
+        --warning-foreground: oklch(0.93 0.05 80);
+        --accent: oklch(0.275 0.035 195);
+        --accent-foreground: oklch(0.84 0.075 195);
+        --accent-solid: oklch(0.64 0.11 195);
+        --accent-border: oklch(0.4 0.055 195);
+      }
+      body {
+        margin: 0;
+        background: var(--background);
+        color: var(--foreground);
+        font-family: 'Public Sans', system-ui, sans-serif;
+        font-size: 17px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      a {
+        color: var(--link);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      button {
+        font-family: inherit;
+      }
+      :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .switch {
+        width: 40px;
+        height: 24px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        padding: 2px;
+        flex-shrink: 0;
+      }
+      .switch-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--card);
+      }
+      .switch-on {
+        background: var(--primary);
+        justify-content: flex-end;
+      }
+      .switch-off {
+        background: var(--border);
+        justify-content: flex-start;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-theme="light"
+      style="
+        background: var(--background);
+        color: var(--foreground);
+        min-height: 100vh;
+      "
+    >
+      <div
+        style="
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          align-items: center;
+          justify-content: space-between;
+          padding: 12px 24px;
+          background: var(--card);
+          border-bottom: 1px solid var(--border);
+        "
+      >
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <span
+            class="mono"
+            style="
+              font-size: 12px;
+              font-weight: 600;
+              letter-spacing: 0.14em;
+              text-transform: uppercase;
+              color: var(--muted-foreground);
+            "
+            >s04b · navigation-publique</span
+          >
+          <span style="font-size: 15px; color: var(--muted-foreground)"
+            >Maquette basse fidélité — desktop et mobile 390 px</span
+          >
+        </div>
+        <div
+          style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap"
+        >
+          <a href="#s1">1 · Bureau</a>
+          <a href="#s2">2 · Public</a>
+          <button
+            type="button"
+            id="theme-toggle"
+            onclick="toggleTheme()"
+            style="
+              min-height: 44px;
+              padding: 0 16px;
+              margin-left: 8px;
+              border: 1px solid var(--border);
+              background: var(--secondary);
+              color: var(--foreground);
+              border-radius: 8px;
+              font-size: 16px;
+              font-weight: 600;
+              cursor: pointer;
+            "
+          >
+            Thème : <span id="theme-label">clair</span>
+          </button>
+        </div>
+      </div>
+
+      <div
+        style="
+          display: flex;
+          flex-direction: column;
+          gap: 64px;
+          padding: 32px 24px 64px;
+          max-width: 1200px;
+          margin: 0 auto;
+        "
+      >
+        <!-- ============ ÉCRAN 1 — BUREAU ============ -->
+        <section
+          id="s1"
+          style="display: flex; flex-direction: column; gap: 24px"
+        >
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span
+              class="mono"
+              style="
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--accent-foreground);
+              "
+              >écran 1 — bureau</span
+            >
+            <h2
+              style="
+                font-family: 'Source Serif 4', Georgia, serif;
+                font-size: 26px;
+                font-weight: 600;
+                margin: 0;
+              "
+            >
+              Navigation du site
+            </h2>
+          </div>
+
+          <div style="max-width: 880px">
+            <h1
+              style="
+                font-family: 'Source Serif 4', Georgia, serif;
+                font-size: 34px;
+                font-weight: 600;
+                margin: 0 0 24px;
+              "
+            >
+              Navigation du site
+            </h1>
+
+            <div style="display: flex; flex-direction: column; gap: 24px">
+              <!-- CARD : MENU -->
+              <div
+                style="
+                  background: var(--card);
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  padding: 24px;
+                "
+              >
+                <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 16px">
+                  Menu du site
+                </h2>
+
+                <ul
+                  style="
+                    list-style: none;
+                    margin: 0 0 12px;
+                    padding: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <!-- ligne 1 -->
+                  <li
+                    style="
+                      display: flex;
+                      align-items: flex-start;
+                      gap: 12px;
+                      padding: 12px;
+                      border: 1px solid var(--border);
+                      border-radius: 8px;
+                    "
+                  >
+                    <div
+                      style="
+                        width: 44px;
+                        height: 44px;
+                        flex: 0 0 44px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: grab;
+                      "
+                      aria-hidden="true"
+                    >
+                      ⋮⋮
+                    </div>
+                    <span
+                      class="mono"
+                      style="
+                        flex-shrink: 0;
+                        font-size: 12px;
+                        color: var(--accent-foreground);
+                        background: var(--accent);
+                        border: 1px solid var(--accent-border);
+                        border-radius: 999px;
+                        padding: 4px 10px;
+                        margin-top: 2px;
+                      "
+                      >1 sur 4</span
+                    >
+                    <div
+                      style="
+                        flex: 1;
+                        min-width: 0;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        padding-top: 2px;
+                      "
+                    >
+                      <span style="font-size: 16px; font-weight: 500"
+                        >Qualité de l'eau</span
+                      >
+                      <span
+                        class="mono"
+                        style="font-size: 15px; color: var(--muted-foreground)"
+                        >Publiée</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        flex-wrap: wrap;
+                        justify-content: flex-end;
+                      "
+                    >
+                      <label
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 8px;
+                          cursor: pointer;
+                        "
+                      >
+                        <span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                            white-space: nowrap;
+                          "
+                          >Visible</span
+                        >
+                        <span class="switch switch-on"
+                          ><span class="switch-thumb"></span
+                        ></span>
+                      </label>
+                      <div style="display: flex; gap: 4px">
+                        <button
+                          type="button"
+                          disabled
+                          style="
+                            min-height: 44px;
+                            padding: 0 12px;
+                            border: 1px solid var(--border);
+                            background: var(--muted);
+                            color: var(--muted-foreground);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            opacity: 0.6;
+                          "
+                        >
+                          ▲ Monter
+                        </button>
+                        <button
+                          type="button"
+                          style="
+                            min-height: 44px;
+                            padding: 0 12px;
+                            border: 1px solid var(--border);
+                            background: var(--background);
+                            color: var(--foreground);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            cursor: pointer;
+                          "
+                        >
+                          ▼ Descendre
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--background);
+                          color: var(--destructive);
+                          border-radius: 6px;
+                          font-size: 14px;
+                          cursor: pointer;
+                          white-space: nowrap;
+                        "
+                      >
+                        ✕ Retirer du menu
+                      </button>
+                    </div>
+                  </li>
+                  <!-- ligne 2 -->
+                  <li
+                    style="
+                      display: flex;
+                      align-items: flex-start;
+                      gap: 12px;
+                      padding: 12px;
+                      border: 1px solid var(--border);
+                      border-radius: 8px;
+                    "
+                  >
+                    <div
+                      style="
+                        width: 44px;
+                        height: 44px;
+                        flex: 0 0 44px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: grab;
+                      "
+                      aria-hidden="true"
+                    >
+                      ⋮⋮
+                    </div>
+                    <span
+                      class="mono"
+                      style="
+                        flex-shrink: 0;
+                        font-size: 12px;
+                        color: var(--accent-foreground);
+                        background: var(--accent);
+                        border: 1px solid var(--accent-border);
+                        border-radius: 999px;
+                        padding: 4px 10px;
+                        margin-top: 2px;
+                      "
+                      >2 sur 4</span
+                    >
+                    <div
+                      style="
+                        flex: 1;
+                        min-width: 0;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        padding-top: 2px;
+                      "
+                    >
+                      <span style="font-size: 16px; font-weight: 500"
+                        >Adhérer à l'association</span
+                      >
+                      <span
+                        class="mono"
+                        style="font-size: 15px; color: var(--muted-foreground)"
+                        >Publiée</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        flex-wrap: wrap;
+                        justify-content: flex-end;
+                      "
+                    >
+                      <label
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 8px;
+                          cursor: pointer;
+                        "
+                      >
+                        <span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                            white-space: nowrap;
+                          "
+                          >Visible</span
+                        >
+                        <span class="switch switch-on"
+                          ><span class="switch-thumb"></span
+                        ></span>
+                      </label>
+                      <div style="display: flex; gap: 4px">
+                        <button
+                          type="button"
+                          style="
+                            min-height: 44px;
+                            padding: 0 12px;
+                            border: 1px solid var(--border);
+                            background: var(--background);
+                            color: var(--foreground);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            cursor: pointer;
+                          "
+                        >
+                          ▲ Monter
+                        </button>
+                        <button
+                          type="button"
+                          style="
+                            min-height: 44px;
+                            padding: 0 12px;
+                            border: 1px solid var(--border);
+                            background: var(--background);
+                            color: var(--foreground);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            cursor: pointer;
+                          "
+                        >
+                          ▼ Descendre
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--background);
+                          color: var(--destructive);
+                          border-radius: 6px;
+                          font-size: 14px;
+                          cursor: pointer;
+                          white-space: nowrap;
+                        "
+                      >
+                        ✕ Retirer du menu
+                      </button>
+                    </div>
+                  </li>
+                  <!-- ligne 3 -->
+                  <li
+                    style="
+                      display: flex;
+                      align-items: flex-start;
+                      gap: 12px;
+                      padding: 12px;
+                      border: 1px solid var(--border);
+                      border-radius: 8px;
+                    "
+                  >
+                    <div
+                      style="
+                        width: 44px;
+                        height: 44px;
+                        flex: 0 0 44px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: grab;
+                      "
+                      aria-hidden="true"
+                    >
+                      ⋮⋮
+                    </div>
+                    <span
+                      class="mono"
+                      style="
+                        flex-shrink: 0;
+                        font-size: 12px;
+                        color: var(--accent-foreground);
+                        background: var(--accent);
+                        border: 1px solid var(--accent-border);
+                        border-radius: 999px;
+                        padding: 4px 10px;
+                        margin-top: 2px;
+                      "
+                      >3 sur 4</span
+                    >
+                    <div
+                      style="
+                        flex: 1;
+                        min-width: 0;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        padding-top: 2px;
+                      "
+                    >
+                      <span style="font-size: 16px; font-weight: 500"
+                        >Fête de l'étang 2025</span
+                      >
+                      <span
+                        class="mono"
+                        style="font-size: 15px; color: var(--muted-foreground)"
+                        >Publiée</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        flex-wrap: wrap;
+                        justify-content: flex-end;
+                      "
+                    >
+                      <label
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 8px;
+                          cursor: pointer;
+                        "
+                      >
+                        <span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                            white-space: nowrap;
+                          "
+                          >Visible</span
+                        >
+                        <span class="switch switch-on"
+                          ><span class="switch-thumb"></span
+                        ></span>
+                      </label>
+                      <div style="display: flex; gap: 4px">
+                        <button
+                          type="button"
+                          style="
+                            min-height: 44px;
+                            padding: 0 12px;
+                            border: 1px solid var(--border);
+                            background: var(--background);
+                            color: var(--foreground);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            cursor: pointer;
+                          "
+                        >
+                          ▲ Monter
+                        </button>
+                        <button
+                          type="button"
+                          style="
+                            min-height: 44px;
+                            padding: 0 12px;
+                            border: 1px solid var(--border);
+                            background: var(--background);
+                            color: var(--foreground);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            cursor: pointer;
+                          "
+                        >
+                          ▼ Descendre
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--background);
+                          color: var(--destructive);
+                          border-radius: 6px;
+                          font-size: 14px;
+                          cursor: pointer;
+                          white-space: nowrap;
+                        "
+                      >
+                        ✕ Retirer du menu
+                      </button>
+                    </div>
+                  </li>
+                  <!-- ligne 4 : page en brouillon, masquée -->
+                  <li
+                    style="
+                      display: flex;
+                      align-items: flex-start;
+                      gap: 12px;
+                      padding: 12px;
+                      border: 1px solid var(--border);
+                      border-radius: 8px;
+                    "
+                  >
+                    <div
+                      style="
+                        width: 44px;
+                        height: 44px;
+                        flex: 0 0 44px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: grab;
+                      "
+                      aria-hidden="true"
+                    >
+                      ⋮⋮
+                    </div>
+                    <span
+                      class="mono"
+                      style="
+                        flex-shrink: 0;
+                        font-size: 12px;
+                        color: var(--accent-foreground);
+                        background: var(--accent);
+                        border: 1px solid var(--accent-border);
+                        border-radius: 999px;
+                        padding: 4px 10px;
+                        margin-top: 2px;
+                      "
+                      >4 sur 4</span
+                    >
+                    <div
+                      style="
+                        flex: 1;
+                        min-width: 0;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 4px;
+                        padding-top: 2px;
+                      "
+                    >
+                      <span style="font-size: 16px; font-weight: 500"
+                        >Compte-rendu AG 2025</span
+                      >
+                      <span
+                        class="mono"
+                        style="font-size: 15px; color: var(--muted-foreground)"
+                        >Brouillon</span
+                      >
+                      <span
+                        style="font-size: 15px; color: var(--muted-foreground)"
+                        >Masquée sur le site public — la page n'est pas
+                        publiée</span
+                      >
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        flex-wrap: wrap;
+                        justify-content: flex-end;
+                      "
+                    >
+                      <label
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 8px;
+                          cursor: pointer;
+                        "
+                      >
+                        <span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                            white-space: nowrap;
+                          "
+                          >Visible</span
+                        >
+                        <span class="switch switch-on"
+                          ><span class="switch-thumb"></span
+                        ></span>
+                      </label>
+                      <div style="display: flex; gap: 4px">
+                        <button
+                          type="button"
+                          style="
+                            min-height: 44px;
+                            padding: 0 12px;
+                            border: 1px solid var(--border);
+                            background: var(--background);
+                            color: var(--foreground);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            cursor: pointer;
+                          "
+                        >
+                          ▲ Monter
+                        </button>
+                        <button
+                          type="button"
+                          disabled
+                          style="
+                            min-height: 44px;
+                            padding: 0 12px;
+                            border: 1px solid var(--border);
+                            background: var(--muted);
+                            color: var(--muted-foreground);
+                            border-radius: 6px;
+                            font-size: 14px;
+                            opacity: 0.6;
+                          "
+                        >
+                          ▼ Descendre
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 44px;
+                          padding: 0 12px;
+                          border: 1px solid var(--border);
+                          background: var(--background);
+                          color: var(--destructive);
+                          border-radius: 6px;
+                          font-size: 14px;
+                          cursor: pointer;
+                          white-space: nowrap;
+                        "
+                      >
+                        ✕ Retirer du menu
+                      </button>
+                    </div>
+                  </li>
+                </ul>
+
+                <div style="position: relative; margin-bottom: 24px">
+                  <button
+                    type="button"
+                    style="
+                      min-height: 44px;
+                      padding: 0 20px;
+                      border: 1px solid var(--border);
+                      background: var(--background);
+                      color: var(--foreground);
+                      border-radius: 8px;
+                      font-size: 16px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    + Ajouter une entrée
+                  </button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <span
+                    class="mono"
+                    style="
+                      font-size: 12px;
+                      font-weight: 600;
+                      letter-spacing: 0.14em;
+                      text-transform: uppercase;
+                      color: var(--muted-foreground);
+                    "
+                    >état — sélecteur « + Ajouter une entrée » ouvert</span
+                  >
+                  <div
+                    style="
+                      max-width: 340px;
+                      border: 1px solid var(--border);
+                      border-radius: 12px;
+                      background: var(--card);
+                      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+                    "
+                  >
+                    <div
+                      class="mono"
+                      style="
+                        font-size: 12px;
+                        color: var(--muted-foreground);
+                        padding: 8px 12px;
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      RECHERCHER UNE PAGE
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                        padding: 10px 12px;
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      <div
+                        style="display: flex; flex-direction: column; gap: 2px"
+                      >
+                        <span style="font-size: 16px"
+                          >Historique de l'étang</span
+                        >
+                        <span
+                          class="mono"
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Publiée</span
+                        >
+                      </div>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 36px;
+                          padding: 0 14px;
+                          border: 1px solid var(--border);
+                          background: var(--background);
+                          color: var(--foreground);
+                          border-radius: 6px;
+                          font-size: 14px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                        padding: 10px 12px;
+                        border-bottom: 1px solid var(--border);
+                      "
+                    >
+                      <div
+                        style="display: flex; flex-direction: column; gap: 2px"
+                      >
+                        <span style="font-size: 16px">Contacts utiles</span>
+                        <span
+                          class="mono"
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Publiée</span
+                        >
+                      </div>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 36px;
+                          padding: 0 14px;
+                          border: 1px solid var(--border);
+                          background: var(--background);
+                          color: var(--foreground);
+                          border-radius: 6px;
+                          font-size: 14px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                        padding: 10px 12px;
+                      "
+                    >
+                      <div
+                        style="display: flex; flex-direction: column; gap: 2px"
+                      >
+                        <span style="font-size: 16px">Anciens tarifs 2023</span>
+                        <span
+                          class="mono"
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Dépubliée</span
+                        >
+                      </div>
+                      <button
+                        type="button"
+                        style="
+                          min-height: 36px;
+                          padding: 0 14px;
+                          border: 1px solid var(--border);
+                          background: var(--background);
+                          color: var(--foreground);
+                          border-radius: 6px;
+                          font-size: 14px;
+                          font-weight: 600;
+                          cursor: pointer;
+                        "
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CARD : PIED DE PAGE -->
+              <div
+                style="
+                  background: var(--card);
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  padding: 24px;
+                "
+              >
+                <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 16px">
+                  Pied de page
+                </h2>
+                <label
+                  style="
+                    display: block;
+                    font-size: 16px;
+                    font-weight: 500;
+                    margin-bottom: 8px;
+                  "
+                  >Contenu du pied de page</label
+                >
+                <div
+                  style="
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    overflow: hidden;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      gap: 4px;
+                      padding: 8px;
+                      background: var(--muted);
+                      border-bottom: 1px solid var(--border);
+                      flex-wrap: wrap;
+                    "
+                  >
+                    <span
+                      style="
+                        min-width: 32px;
+                        min-height: 32px;
+                        padding: 4px 8px;
+                        border: 1px solid var(--border);
+                        border-radius: 4px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                      "
+                      >B</span
+                    >
+                    <span
+                      style="
+                        min-width: 32px;
+                        min-height: 32px;
+                        padding: 4px 8px;
+                        border: 1px solid var(--border);
+                        border-radius: 4px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                      "
+                      ><i>I</i></span
+                    >
+                    <span
+                      style="
+                        min-width: 32px;
+                        min-height: 32px;
+                        padding: 4px 8px;
+                        border: 1px solid var(--border);
+                        border-radius: 4px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                      "
+                      >Titre 2</span
+                    >
+                    <span
+                      style="
+                        min-width: 32px;
+                        min-height: 32px;
+                        padding: 4px 8px;
+                        border: 1px solid var(--border);
+                        border-radius: 4px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                      "
+                      >Titre 3</span
+                    >
+                    <span
+                      style="
+                        min-width: 32px;
+                        min-height: 32px;
+                        padding: 4px 8px;
+                        border: 1px solid var(--border);
+                        border-radius: 4px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                      "
+                      >Liste</span
+                    >
+                    <span
+                      style="
+                        min-width: 32px;
+                        min-height: 32px;
+                        padding: 4px 8px;
+                        border: 1px solid var(--border);
+                        border-radius: 4px;
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                      "
+                      >Lien</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      padding: 16px;
+                      min-height: 100px;
+                      font-size: 17px;
+                      line-height: 1.6;
+                    "
+                  >
+                    <p style="margin: 0 0 12px">
+                      L'association <strong>Les Amis de l'Étang</strong> œuvre
+                      depuis 1987 pour la préservation de la qualité de l'eau et
+                      des espaces naturels du bassin.
+                    </p>
+                    <p style="margin: 0">
+                      Pour nous rejoindre ou nous contacter, consultez la page
+                      <a href="#s1">Adhérer à l'association</a>.
+                    </p>
+                  </div>
+                </div>
+                <p
+                  style="
+                    font-size: 15px;
+                    color: var(--muted-foreground);
+                    margin: 8px 0 16px;
+                  "
+                >
+                  Affiché en bas de toutes les pages du site public.
+                </p>
+                <div style="display: flex; justify-content: flex-end">
+                  <button
+                    type="button"
+                    style="
+                      min-width: 140px;
+                      min-height: 44px;
+                      padding: 0 24px;
+                      border: none;
+                      background: var(--primary);
+                      color: var(--primary-foreground);
+                      border-radius: 8px;
+                      font-size: 16px;
+                      font-weight: 600;
+                      cursor: pointer;
+                    "
+                  >
+                    Enregistrer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(100%, 340px), 1fr)
+              );
+              gap: 24px;
+            "
+          >
+            <div
+              style="
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: var(--card);
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+              "
+            >
+              <span
+                class="mono"
+                style="
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >état — menu vide</span
+              >
+              <p style="margin: 0; font-size: 17px">
+                Aucune entrée dans le menu. → <a href="#s1">Ajouter une page</a>
+              </p>
+            </div>
+            <div
+              style="
+                border: 1px solid var(--warning-border);
+                background: var(--warning);
+                color: var(--warning-foreground);
+                border-radius: 8px;
+                padding: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+              "
+            >
+              <span style="font-size: 15px"
+                >Entrée « Fête de l'étang 2025 » retirée du menu.</span
+              >
+              <button
+                type="button"
+                style="
+                  background: transparent;
+                  border: none;
+                  color: var(--warning-foreground);
+                  font-weight: 600;
+                  font-size: 15px;
+                  text-decoration: underline;
+                  cursor: pointer;
+                "
+              >
+                Annuler
+              </button>
+            </div>
+            <div
+              style="
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                background: var(--card);
+                padding: 24px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+              "
+            >
+              <span
+                class="mono"
+                style="
+                  font-size: 12px;
+                  font-weight: 600;
+                  letter-spacing: 0.14em;
+                  text-transform: uppercase;
+                  color: var(--muted-foreground);
+                "
+                >état — chargement (skeleton)</span
+              >
+              <div style="display: flex; flex-direction: column; gap: 12px">
+                <div
+                  style="
+                    height: 56px;
+                    border-radius: 8px;
+                    background: var(--muted);
+                  "
+                ></div>
+                <div
+                  style="
+                    height: 56px;
+                    border-radius: 8px;
+                    background: var(--muted);
+                  "
+                ></div>
+              </div>
+            </div>
+            <div
+              style="
+                border: 1px solid var(--warning-border);
+                background: var(--warning);
+                color: var(--warning-foreground);
+                border-radius: 8px;
+                padding: 16px;
+                font-size: 15px;
+              "
+            >
+              L'enregistrement a échoué. Réessayez.
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <span
+              class="mono"
+              style="
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--muted-foreground);
+              "
+              >mobile 390 px</span
+            >
+            <div
+              style="
+                width: 390px;
+                max-width: 100%;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                background: var(--background);
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+              "
+            >
+              <h1
+                style="
+                  font-family: 'Source Serif 4', Georgia, serif;
+                  font-size: 34px;
+                  font-weight: 600;
+                  margin: 0;
+                "
+              >
+                Navigation du site
+              </h1>
+              <div
+                style="
+                  background: var(--card);
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  padding: 16px;
+                "
+              >
+                <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 12px">
+                  Menu du site
+                </h2>
+                <div
+                  style="
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    margin-bottom: 12px;
+                  "
+                >
+                  <div
+                    style="
+                      border: 1px solid var(--border);
+                      border-radius: 8px;
+                      padding: 12px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 8px;
+                    "
+                  >
+                    <div
+                      style="display: flex; align-items: flex-start; gap: 12px"
+                    >
+                      <div
+                        style="
+                          width: 44px;
+                          height: 44px;
+                          flex: 0 0 44px;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                        "
+                        aria-hidden="true"
+                      >
+                        ⋮⋮
+                      </div>
+                      <div
+                        style="display: flex; flex-direction: column; gap: 2px"
+                      >
+                        <span
+                          class="mono"
+                          style="
+                            font-size: 12px;
+                            color: var(--accent-foreground);
+                            background: var(--accent);
+                            border: 1px solid var(--accent-border);
+                            border-radius: 999px;
+                            padding: 2px 8px;
+                            width: fit-content;
+                          "
+                          >1 sur 4</span
+                        >
+                        <span style="font-size: 16px; font-weight: 500"
+                          >Qualité de l'eau</span
+                        >
+                        <span
+                          class="mono"
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Publiée</span
+                        >
+                      </div>
+                    </div>
+                    <div
+                      style="
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 8px;
+                        padding-left: 56px;
+                      "
+                    >
+                      <label
+                        style="display: flex; align-items: center; gap: 8px"
+                        ><span
+                          style="
+                            font-size: 15px;
+                            color: var(--muted-foreground);
+                          "
+                          >Visible</span
+                        ><span class="switch switch-on"
+                          ><span class="switch-thumb"></span></span
+                      ></label>
+                    </div>
+                    <div style="display: flex; gap: 8px; padding-left: 56px">
+                      <button
+                        type="button"
+                        disabled
+                        style="
+                          flex: 1;
+                          min-height: 44px;
+                          border: 1px solid var(--border);
+                          background: var(--muted);
+                          color: var(--muted-foreground);
+                          border-radius: 6px;
+                          font-size: 14px;
+                          opacity: 0.6;
+                        "
+                      >
+                        ▲ Monter
+                      </button>
+                      <button
+                        type="button"
+                        style="
+                          flex: 1;
+                          min-height: 44px;
+                          border: 1px solid var(--border);
+                          background: var(--background);
+                          color: var(--foreground);
+                          border-radius: 6px;
+                          font-size: 14px;
+                        "
+                      >
+                        ▼ Descendre
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      style="
+                        min-height: 44px;
+                        border: 1px solid var(--border);
+                        background: var(--background);
+                        color: var(--destructive);
+                        border-radius: 6px;
+                        font-size: 14px;
+                        margin-left: 56px;
+                      "
+                    >
+                      ✕ Retirer du menu
+                    </button>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 56px;
+                    border: 1px solid var(--border);
+                    background: var(--background);
+                    color: var(--foreground);
+                    border-radius: 8px;
+                    font-size: 17px;
+                    font-weight: 600;
+                  "
+                >
+                  + Ajouter une entrée
+                </button>
+              </div>
+              <div
+                style="
+                  background: var(--card);
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  padding: 16px;
+                "
+              >
+                <h2 style="font-size: 20px; font-weight: 600; margin: 0 0 12px">
+                  Pied de page
+                </h2>
+                <div
+                  style="
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    padding: 12px;
+                    min-height: 80px;
+                    font-size: 17px;
+                    line-height: 1.6;
+                    margin-bottom: 12px;
+                  "
+                >
+                  L'étang de la Vallée…
+                  <em
+                    >(texte riche restreint, même barre que le bloc « texte
+                    riche »)</em
+                  >
+                </div>
+                <button
+                  type="button"
+                  style="
+                    width: 100%;
+                    min-height: 56px;
+                    border: none;
+                    background: var(--primary);
+                    color: var(--primary-foreground);
+                    border-radius: 8px;
+                    font-size: 17px;
+                    font-weight: 600;
+                  "
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ ÉCRAN 2 — SITE PUBLIC ============ -->
+        <section
+          id="s2"
+          style="display: flex; flex-direction: column; gap: 24px"
+        >
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <span
+              class="mono"
+              style="
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--accent-foreground);
+              "
+              >écran 2 — site public</span
+            >
+            <h2
+              style="
+                font-family: 'Source Serif 4', Georgia, serif;
+                font-size: 26px;
+                font-weight: 600;
+                margin: 0;
+              "
+            >
+              Menu et pied de page rendus
+            </h2>
+            <span style="font-size: 15px; color: var(--muted-foreground)"
+              >L'entrée « Compte-rendu AG 2025 » (brouillon) est absente :
+              simplement omise, pas affichée cassée.</span
+            >
+          </div>
+
+          <div
+            style="
+              border: 1px solid var(--border);
+              border-radius: 12px;
+              overflow: hidden;
+              background: var(--background);
+            "
+          >
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 20px 48px;
+                border-bottom: 1px solid var(--border);
+                background: var(--card);
+              "
+            >
+              <div style="display: flex; align-items: center; gap: 12px">
+                <div
+                  style="
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 999px;
+                    background: var(--accent-solid);
+                    color: var(--primary-foreground);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: 'Source Serif 4', Georgia, serif;
+                    font-weight: 600;
+                    font-size: 16px;
+                  "
+                >
+                  AE
+                </div>
+                <span
+                  style="
+                    font-family: 'Source Serif 4', Georgia, serif;
+                    font-size: 20px;
+                    font-weight: 600;
+                  "
+                  >Les Amis de l'Étang</span
+                >
+              </div>
+              <nav style="display: flex; gap: 32px">
+                <a href="#s2" style="font-size: 18px; text-decoration: none"
+                  >Qualité de l'eau</a
+                >
+                <a href="#s2" style="font-size: 18px; text-decoration: none"
+                  >Adhérer à l'association</a
+                >
+                <a href="#s2" style="font-size: 18px; text-decoration: none"
+                  >Fête de l'étang 2025</a
+                >
+              </nav>
+            </div>
+            <div style="padding: 48px">
+              <div
+                style="
+                  border: 1px dashed var(--border);
+                  border-radius: 8px;
+                  padding: 48px 24px;
+                  text-align: center;
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 13px;
+                  color: var(--muted-foreground);
+                "
+              >
+                CONTENU DE LA PAGE PUBLIQUE — hors périmètre de cet écran (voir
+                s04)
+              </div>
+            </div>
+            <div
+              style="
+                border-top: 1px solid var(--border);
+                background: var(--muted);
+                padding: 32px 48px;
+              "
+            >
+              <div style="max-width: 640px; font-size: 18px; line-height: 1.6">
+                <p style="margin: 0 0 12px">
+                  L'association <strong>Les Amis de l'Étang</strong> œuvre
+                  depuis 1987 pour la préservation de la qualité de l'eau et des
+                  espaces naturels du bassin.
+                </p>
+                <p style="margin: 0">
+                  Pour nous rejoindre ou nous contacter, consultez la page
+                  <a href="#s2">Adhérer à l'association</a>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style="
+              border: 1px solid var(--border);
+              border-radius: 8px;
+              background: var(--card);
+              padding: 24px;
+              max-width: 480px;
+            "
+          >
+            <span
+              class="mono"
+              style="
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--muted-foreground);
+              "
+              >état — menu vide côté public</span
+            >
+            <p style="margin: 12px 0 0; font-size: 17px">
+              Seul le logo/nom de l'association reste dans l'en-tête : aucune
+              zone de navigation visible, pas de conteneur vide.
+            </p>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <span
+              class="mono"
+              style="
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: var(--muted-foreground);
+              "
+              >mobile 390 px — tiroir de menu ouvert</span
+            >
+            <div
+              style="
+                width: 390px;
+                max-width: 100%;
+                border: 1px solid var(--border);
+                border-radius: 12px;
+                overflow: hidden;
+                background: var(--background);
+                position: relative;
+              "
+            >
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 16px;
+                  border-bottom: 1px solid var(--border);
+                  background: var(--card);
+                "
+              >
+                <div style="display: flex; align-items: center; gap: 12px">
+                  <div
+                    style="
+                      width: 40px;
+                      height: 40px;
+                      border-radius: 999px;
+                      background: var(--accent-solid);
+                      color: var(--primary-foreground);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-weight: 600;
+                      font-size: 16px;
+                    "
+                  >
+                    AE
+                  </div>
+                  <span
+                    style="
+                      font-family: 'Source Serif 4', Georgia, serif;
+                      font-size: 18px;
+                      font-weight: 600;
+                    "
+                    >Les Amis de l'Étang</span
+                  >
+                </div>
+                <button
+                  type="button"
+                  aria-label="Menu"
+                  style="
+                    width: 44px;
+                    height: 44px;
+                    border: 1px solid var(--border);
+                    border-radius: 8px;
+                    background: transparent;
+                  "
+                >
+                  ☰
+                </button>
+              </div>
+              <div
+                style="
+                  position: absolute;
+                  top: 0;
+                  right: 0;
+                  bottom: 0;
+                  width: 80%;
+                  background: var(--card);
+                  padding: 24px;
+                  display: flex;
+                  flex-direction: column;
+                  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
+                "
+              >
+                <div
+                  style="
+                    display: flex;
+                    justify-content: flex-end;
+                    margin-bottom: 12px;
+                  "
+                >
+                  <button
+                    type="button"
+                    aria-label="Fermer"
+                    style="
+                      width: 44px;
+                      height: 44px;
+                      border: none;
+                      background: transparent;
+                      font-size: 20px;
+                    "
+                  >
+                    ✕
+                  </button>
+                </div>
+                <a
+                  href="#s2"
+                  style="
+                    display: block;
+                    padding: 14px 8px;
+                    font-size: 18px;
+                    text-decoration: none;
+                    border-bottom: 1px solid var(--border);
+                  "
+                  >Qualité de l'eau</a
+                >
+                <a
+                  href="#s2"
+                  style="
+                    display: block;
+                    padding: 14px 8px;
+                    font-size: 18px;
+                    text-decoration: none;
+                    border-bottom: 1px solid var(--border);
+                  "
+                  >Adhérer à l'association</a
+                >
+                <a
+                  href="#s2"
+                  style="
+                    display: block;
+                    padding: 14px 8px;
+                    font-size: 18px;
+                    text-decoration: none;
+                    border-bottom: 1px solid var(--border);
+                  "
+                  >Fête de l'étang 2025</a
+                >
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      function toggleTheme() {
+        var root = document.getElementById('root')
+        var label = document.getElementById('theme-label')
+        var isDark = root.getAttribute('data-theme') === 'dark'
+        root.setAttribute('data-theme', isDark ? 'light' : 'dark')
+        label.textContent = isDark ? 'clair' : 'sombre'
+      }
+    </script>
+  </body>
+</html>

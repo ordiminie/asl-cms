@@ -12,21 +12,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {PagesConst} from '@/env'
-import {isPageEnabled} from '@/lib/utils'
+import {PublicMenuEntryDTO} from '@/services/types/domain/site-navigation-types'
 
-export function PublicMobileMenu() {
+/**
+ * Tiroir du site public sur petit ecran (s04b, ecran 2). Il porte **les memes
+ * entrees que la navigation d'ordinateur**, dans le meme ordre : une seule
+ * source, donc pas de divergence entre les deux tailles d'ecran. La connexion
+ * reste toujours accessible, menu vide compris.
+ */
+export function PublicMobileMenu({entries}: {entries: PublicMenuEntryDTO[]}) {
   const t = useTranslations('PublicMobileMenu')
-  const navItems = [
-    {href: '/privacy', label: t('privacy')},
-    {href: '/terms', label: t('terms')},
-    ...(isPageEnabled(PagesConst.DOCS)
-      ? [{href: '/docs', label: t('docs')}]
-      : []),
-    ...(isPageEnabled(PagesConst.BLOG)
-      ? [{href: '/blog', label: t('blog')}]
-      : []),
-  ]
 
   return (
     <DropdownMenu>
@@ -37,12 +32,12 @@ export function PublicMobileMenu() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {navItems.map((item) => (
-          <DropdownMenuItem key={item.href} asChild>
-            <Link href={item.href}>{item.label}</Link>
+        {entries.map((entry) => (
+          <DropdownMenuItem key={entry.id} asChild>
+            <Link href={`/${entry.slug}`}>{entry.title}</Link>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
+        {entries.length > 0 && <DropdownMenuSeparator />}
         <DropdownMenuItem asChild>
           <Link href="/login">{t('login')}</Link>
         </DropdownMenuItem>

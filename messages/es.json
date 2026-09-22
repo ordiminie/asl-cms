@@ -87,7 +87,8 @@
   },
   "PublicLayout": {
     "title": "Página Pública",
-    "description": "Página Pública"
+    "description": "Página Pública",
+    "menuLabel": "Menú del sitio"
   },
   "AuthLayout": {
     "title": "Autenticación",
@@ -2803,7 +2804,8 @@
       "openMenu": "Abrir el menú",
       "settings": "Ajustes",
       "siteGroup": "El sitio",
-      "pages": "Páginas"
+      "pages": "Páginas",
+      "navigation": "Navegación"
     },
     "cards": {
       "logo": {
@@ -3093,6 +3095,46 @@
       "slugHelp": "La página será visible en la dirección /{slug}",
       "slugTaken": "Este slug ya lo utiliza otra página.",
       "incomplete": "No se puede publicar: los bloques {positions} esperan un texto alternativo o un título. No se ha perdido nada."
+    }
+  },
+  "BureauNavigationPage": {
+    "metadata": {
+      "title": "Navegación del sitio"
+    },
+    "title": "Navegación del sitio",
+    "menu": {
+      "title": "Menú del sitio",
+      "empty": "Todavía no hay ninguna entrada en el menú.",
+      "emptyAction": "Añadir una página",
+      "visible": "Visible",
+      "remove": "Quitar del menú",
+      "hiddenBecauseUnpublished": "Oculta en el sitio público: la página no está publicada",
+      "add": "Añadir una entrada",
+      "searchLabel": "Buscar una página",
+      "searchPlaceholder": "Buscar una página…",
+      "noResult": "No queda ninguna página por añadir.",
+      "removedBanner": "Entrada «{title}» quitada del menú.",
+      "undo": "Deshacer"
+    },
+    "footer": {
+      "title": "Pie de página",
+      "label": "Contenido del pie de página",
+      "help": "Se muestra al final de todas las páginas del sitio público.",
+      "save": "Guardar",
+      "saving": "Guardando…",
+      "success": "Pie de página guardado."
+    },
+    "status": {
+      "draft": "Borrador",
+      "published": "Publicada",
+      "unpublished": "Despublicada"
+    },
+    "errors": {
+      "title": "No se ha podido guardar",
+      "forbidden": "Solo la junta de la asociación puede modificar la navegación del sitio.",
+      "failed": "No se ha podido guardar. No se ha perdido nada: inténtalo de nuevo.",
+      "invalidData": "Datos no válidos.",
+      "alreadyInMenu": "Esta página ya está en el menú."
     }
   }
 }

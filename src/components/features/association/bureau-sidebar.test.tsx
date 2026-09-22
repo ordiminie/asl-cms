@@ -34,6 +34,31 @@ describe('BureauSidebar — item actif selon la route', () => {
     )
   })
 
+  it('porte les deux items du groupe « Le site »', () => {
+    renderSidebarAt('/fr/bureau/pages')
+
+    expect(screen.getByRole('link', {name: 'Pages'})).toHaveAttribute(
+      'href',
+      '/bureau/pages'
+    )
+    expect(screen.getByRole('link', {name: 'Navigation'})).toHaveAttribute(
+      'href',
+      '/bureau/navigation'
+    )
+  })
+
+  it('sur la page Navigation, seul « Navigation » est actif', () => {
+    renderSidebarAt('/fr/bureau/navigation')
+
+    expect(screen.getByRole('link', {name: 'Navigation'})).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+    expect(screen.getByRole('link', {name: 'Pages'})).not.toHaveAttribute(
+      'aria-current'
+    )
+  })
+
   it('sur la page Identite, seul « Identite » est actif', () => {
     renderSidebarAt('/fr/bureau/identite')
 

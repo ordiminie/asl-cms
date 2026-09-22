@@ -50,6 +50,13 @@ export const ActionIdConst = {
    * roles entre ces verbes.
    */
   PAGE_MANAGE: 'page.manage',
+  /**
+   * Gerer la navigation du site (s04b, ADR 021) : composer le menu — ajouter,
+   * retirer, reordonner, basculer la visibilite d'une entree — et modifier le
+   * pied de page. Une seule entree pour les deux : rien dans les criteres de
+   * s04b ne distingue les roles entre le menu et le pied de page.
+   */
+  SITE_NAVIGATION_MANAGE: 'site.navigation.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -63,6 +70,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.PAGE_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.SITE_NAVIGATION_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

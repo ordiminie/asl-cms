@@ -1,0 +1,20 @@
+import siteNavigationServiceInterceptor from './interceptors/site-navigation-service-logger-interceptor'
+
+export const addMenuItemService =
+  siteNavigationServiceInterceptor.addMenuItemService
+export const canManageSiteNavigationService =
+  siteNavigationServiceInterceptor.canManageSiteNavigationService
+export const getPublicSiteNavigationService =
+  siteNavigationServiceInterceptor.getPublicSiteNavigationService
+export const getMenuItemsForBureauService =
+  siteNavigationServiceInterceptor.getMenuItemsForBureauService
+export const getSiteFooterService =
+  siteNavigationServiceInterceptor.getSiteFooterService
+export const removeMenuItemService =
+  siteNavigationServiceInterceptor.removeMenuItemService
+export const reorderMenuItemsService =
+  siteNavigationServiceInterceptor.reorderMenuItemsService
+export const saveSiteFooterService =
+  siteNavigationServiceInterceptor.saveSiteFooterService
+export const setMenuItemVisibilityService =
+  siteNavigationServiceInterceptor.setMenuItemVisibilityService
