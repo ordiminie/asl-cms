@@ -68,7 +68,7 @@ export default async function PublicNewsItemPage({params}: NewsItemParams) {
     <article className="mx-auto flex w-full max-w-[68ch] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
       {isPreview && (
         <p
-          className="bg-accent text-accent-foreground rounded-md px-4 py-3 text-[17px]"
+          className="bg-accent text-accent-foreground rounded-md px-4 py-3 text-[15px]"
           role="status"
         >
           {t(

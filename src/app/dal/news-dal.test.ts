@@ -16,14 +16,17 @@ vi.mock('@/services/facades/news-service-facade', () => ({
   getPublishedNewsPageService: vi.fn(),
 }))
 
+import {NotFoundError} from '@/services/errors/not-found-error'
 import {
   getNewsBySlugService,
+  getNewsItemForBureauService,
   getPublishedNewsPageService,
 } from '@/services/facades/news-service-facade'
 import {NewsDTO, NewsStatus} from '@/services/types/domain/news-types'
 
 import {
   getNewsBySlugForPreviewDal,
+  getNewsItemForBureauDal,
   getPublicNewsBySlugDal,
   getPublicNewsPageDal,
   newsImageUrl,
@@ -114,6 +117,31 @@ describe('getPublicNewsPageDal', () => {
 
     expect(getPublishedNewsPageService).toHaveBeenCalledWith(ORG_A, 2)
     expect(page.items).toHaveLength(1)
+  })
+})
+
+describe('getNewsItemForBureauDal', () => {
+  it("rend undefined quand l'actualité n'existe pas", async () => {
+    vi.mocked(getNewsItemForBureauService).mockRejectedValue(
+      new NotFoundError('Actualité introuvable')
+    )
+
+    expect(
+      await getNewsItemForBureauDal(
+        ORG_A,
+        '44444444-4444-4444-8444-444444444444'
+      )
+    ).toBeUndefined()
+  })
+
+  it('laisse remonter toute autre erreur, au lieu de la déguiser en 404', async () => {
+    vi.mocked(getNewsItemForBureauService).mockRejectedValue(
+      new Error('connexion à la base perdue')
+    )
+
+    await expect(
+      getNewsItemForBureauDal(ORG_A, '55555555-5555-4555-8555-555555555555')
+    ).rejects.toThrow('connexion à la base perdue')
   })
 })
 

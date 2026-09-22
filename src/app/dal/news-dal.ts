@@ -4,6 +4,7 @@ import {cacheLife, cacheTag} from 'next/cache'
 import {cache} from 'react'
 
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {NotFoundError} from '@/services/errors/not-found-error'
 import {
   canManageNewsService,
   getNewsBySlugService,
@@ -98,13 +99,24 @@ export const getNewsForBureauDal = cache(
     getNewsForBureauService(organizationId, page)
 )
 
-/** Une actualite du bureau, pour l'editeur. Non cachee, meme raison. */
+/**
+ * Une actualite du bureau, pour l'editeur. Non cachee, meme raison.
+ *
+ * Seule l'absence devient `undefined`, que l'appelant traduit en 404 : une
+ * panne de base ou un refus d'autorisation remonte, au lieu de s'afficher au
+ * bureau en « Actualite introuvable ».
+ */
 export const getNewsItemForBureauDal = cache(
   async (
     organizationId: string,
     newsId: string
   ): Promise<NewsDTO | undefined> =>
-    getNewsItemForBureauService(organizationId, newsId).catch(() => undefined)
+    getNewsItemForBureauService(organizationId, newsId).catch(
+      (error: unknown) => {
+        if (error instanceof NotFoundError) return undefined
+        throw error
+      }
+    )
 )
 
 /**

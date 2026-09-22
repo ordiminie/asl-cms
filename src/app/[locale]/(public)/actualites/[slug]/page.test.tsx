@@ -153,6 +153,25 @@ describe('/actualites/[slug] — brouillon', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/Aperçu/)
   })
 
+  it("reprend l'encart d'aperçu des pages de s04, sans variante", async () => {
+    vi.mocked(getPublicNewsBySlugDal).mockResolvedValue(undefined)
+    vi.mocked(canManageCurrentNewsDal).mockResolvedValue(true)
+    vi.mocked(getNewsBySlugForPreviewDal).mockResolvedValue(
+      newsOf({status: 'draft'})
+    )
+
+    await renderItem()
+
+    expect(screen.getByRole('status')).toHaveClass(
+      'bg-accent',
+      'text-accent-foreground',
+      'rounded-md',
+      'px-4',
+      'py-3',
+      'text-[15px]'
+    )
+  })
+
   it('un slug inconnu rend 404, même pour le bureau', async () => {
     vi.mocked(getPublicNewsBySlugDal).mockResolvedValue(undefined)
     vi.mocked(canManageCurrentNewsDal).mockResolvedValue(true)

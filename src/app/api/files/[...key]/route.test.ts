@@ -16,6 +16,7 @@ import {GET} from './route'
 
 const PINS_ID = '11111111-1111-4111-8111-111111111111'
 const NEWS_KEY = `${PINS_ID}/news/33333333-3333-4333-8333-333333333333/image-abc.png`
+const PAGES_KEY = `${PINS_ID}/pages/44444444-4444-4444-8444-444444444444/55555555-5555-4555-8555-555555555555-66666666-6666-4666-8666-666666666666.png`
 
 const pins = {
   id: PINS_ID,
@@ -73,7 +74,34 @@ describe('GET /api/files/[...key]', () => {
     expect(readContentFileService).not.toHaveBeenCalled()
   })
 
-  it('/api/pages/files est servie par le même gestionnaire', () => {
-    expect(legacyPagesGET).toBe(GET)
+  it('sert aussi un fichier de bloc de page', async () => {
+    const response = await call(PAGES_KEY)
+
+    expect(response.status).toBe(200)
+    expect(readContentFileService).toHaveBeenCalledWith(PINS_ID, PAGES_KEY)
+  })
+})
+
+/**
+ * Le chemin herite n'existe que pour les adresses de pages deja rendues
+ * (ADR 023) : il ne doit pas s'etendre aux autres portees.
+ */
+describe('GET /api/pages/files/[...key] — chemin hérité, portée `pages` seule', () => {
+  it('sert encore un fichier de bloc de page', async () => {
+    const response = await call(PAGES_KEY, legacyPagesGET)
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe(`contenu:${PAGES_KEY}`)
+    expect(readContentFileService).toHaveBeenCalledWith(PINS_ID, PAGES_KEY)
+  })
+
+  it("ignore une image d'actualité, servie par /api/files", async () => {
+    const legacy = await call(NEWS_KEY, legacyPagesGET)
+
+    expect(legacy.status).toBe(404)
+    expect(legacy.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(readContentFileService).not.toHaveBeenCalled()
+
+    expect((await call(NEWS_KEY)).status).toBe(200)
   })
 })

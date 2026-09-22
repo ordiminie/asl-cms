@@ -116,7 +116,7 @@ describe('publishNewsAction', () => {
     expect(updateTag).toHaveBeenCalledWith(ITEM_TAG)
   })
 
-  it('rend les manques sans invalider quand la publication est refusée', async () => {
+  it("rend les manques mais invalide quand même : l'enregistrement, lui, a réussi", async () => {
     vi.mocked(publishNewsService).mockResolvedValue({
       status: 'rejected',
       issues: ['missing_image_alt'],
@@ -128,6 +128,34 @@ describe('publishNewsAction', () => {
       status: 'incomplete',
       issues: ['missing_image_alt'],
     })
+    expect(updateTag).toHaveBeenCalledWith(LIST_TAG)
+    expect(updateTag).toHaveBeenCalledWith(ITEM_TAG)
+  })
+
+  it('une actualité déjà publiée dont la republication est refusée sert quand même le nouveau contenu', async () => {
+    vi.mocked(updateNewsService).mockResolvedValue({
+      status: 'saved',
+      news: {...saved, status: 'published', imageAlt: ''},
+    })
+    vi.mocked(publishNewsService).mockResolvedValue({
+      status: 'rejected',
+      issues: ['missing_image_alt'],
+    })
+
+    const result = await publishNewsAction(input)
+
+    expect(result.status).toBe('incomplete')
+    expect(updateTag).toHaveBeenCalledWith(LIST_TAG)
+    expect(updateTag).toHaveBeenCalledWith(ITEM_TAG)
+  })
+
+  it("n'invalide rien quand l'enregistrement lui-même échoue", async () => {
+    vi.mocked(updateNewsService).mockRejectedValue(new AuthorizationError())
+
+    const result = await publishNewsAction(input)
+
+    expect(result.status).toBe('error')
+    expect(publishNewsService).not.toHaveBeenCalled()
     expect(updateTag).not.toHaveBeenCalled()
   })
 })

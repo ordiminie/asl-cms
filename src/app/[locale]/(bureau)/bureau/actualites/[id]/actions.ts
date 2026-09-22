@@ -101,7 +101,15 @@ export async function saveNewsDraftAction(
   }
 }
 
-/** Publie l'actualite apres avoir enregistre l'etat courant du formulaire. */
+/**
+ * Publie l'actualite apres avoir enregistre l'etat courant du formulaire.
+ *
+ * L'invalidation suit **l'enregistrement**, pas le verdict de publication : le
+ * bouton principal de l'editeur appelle cette action meme sur une actualite
+ * deja publiee, et un refus de publication (titre ou texte alternatif manquant)
+ * laisserait alors le site public servir l'ancien contenu jusqu'a l'expiration
+ * du cache.
+ */
 export async function publishNewsAction(
   input: NewsInput
 ): Promise<NewsPublishState> {
@@ -115,6 +123,8 @@ export async function publishNewsAction(
       ...input,
     })
 
+    invalidate(tenant.id, saved.news.slug)
+
     const published = await publishNewsService({
       organizationId: tenant.id,
       newsId: input.newsId,
@@ -123,7 +133,6 @@ export async function publishNewsAction(
       return {status: 'incomplete', issues: published.issues}
     }
 
-    invalidate(tenant.id, published.news.slug)
     return {
       status: 'published',
       news: {...saved.news, status: published.news.status},
