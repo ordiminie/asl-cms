@@ -19,12 +19,25 @@ const flatKeys = (value: unknown, prefix = ''): string[] => {
 
 const catalogs = {en, es} as const
 
-const translatedNamespaces = ['PageBlocks', 'BureauPagesPage'] as const
+/**
+ * Les sept espaces de noms introduits par s04. La garde porte sur tous, pas
+ * seulement sur les deux plus gros : une chaine recopiee du francais s'etait
+ * glissee dans SortableList, hors du perimetre trop etroit de la garde.
+ */
+const translatedNamespaces = [
+  'PublicCmsPage',
+  'PreviewBar',
+  'SortableList',
+  'BlockPicker',
+  'RestrictedMarkdownEditor',
+  'PageBlocks',
+  'BureauPagesPage',
+] as const
 
 /**
  * Deux libelles anglais coincident mot pour mot avec le francais : ce sont les
  * traductions justes, pas des copies oubliees. Les nommer un par un garde la
- * garde stricte sur les 79 autres valeurs.
+ * garde stricte sur les 109 autres valeurs.
  */
 const identicalByTranslation = new Set([
   'en:BureauPagesPage.title',

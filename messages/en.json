@@ -2947,7 +2947,7 @@
     "unpublished": "Unpublished"
   },
   "SortableList": {
-    "position": "{position} sur {total}",
+    "position": "{position} of {total}",
     "moveUp": "Move up",
     "moveDown": "Move down",
     "dragHandle": "Move {label}",
