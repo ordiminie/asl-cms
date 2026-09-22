@@ -88,6 +88,15 @@ const tenant = (identityLogoKey: string | null): Organization => ({
   identityFaviconKey: null,
 })
 
+/** Origine de `asl-les-pins.test` : protocole et port de `BETTER_AUTH_URL`. */
+const tenantOrigin = 'http://asl-les-pins.test:3000'
+
+/** Compte membre de l'association du domaine appele (`org-1`). */
+const member = {
+  id: 'user-1',
+  organizations: [{organizationId: 'org-1'}],
+} as never
+
 const requestContext = (host = 'asl-les-pins.test') => ({
   headers: new Headers({host, 'x-forwarded-proto': 'https'}),
 })
@@ -168,7 +177,7 @@ describe('sendMagicLink', () => {
   })
 
   it('envoie par le transport l’email de l’association du domaine appelé', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
 
     await sendMagicLink({email, url}, requestContext())
 
@@ -180,12 +189,15 @@ describe('sendMagicLink', () => {
     const [sent] = memoryTransport.messages
     expect(sent.to).toBe(email)
     expect(sent.subject).toMatch(/ASL Les Pins — votre lien de connexion$/)
-    expect(sent.text).toContain(url)
+    expect(sent.text).toContain(
+      `${tenantOrigin}/api/auth/magic-link/verify?token=secret-token`
+    )
+    expect(sent.text).not.toContain(url)
 
     const doc = htmlOf()
     const logo = doc.querySelector('img')
     expect(logo?.getAttribute('src')).toBe(
-      'https://asl-les-pins.test/api/identity/logo?v=42'
+      `${tenantOrigin}/api/identity/logo?v=42`
     )
     expect(logo?.getAttribute('alt')).toBe('ASL Les Pins')
     expect(sent.html?.toLowerCase()).toContain('#e7f5ec')
@@ -193,7 +205,7 @@ describe('sendMagicLink', () => {
   })
 
   it('écrit l’email dans la locale de la page de demande, sans cookie de locale', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
 
     await sendMagicLink(
       {email, url, metadata: {locale: 'es'}},
@@ -206,7 +218,7 @@ describe('sendMagicLink', () => {
   })
 
   it('écrit en français sans locale transmise, ou avec une locale non servie (ADR 008)', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
 
     await sendMagicLink({email, url}, requestContext())
     await sendMagicLink(
@@ -226,7 +238,7 @@ describe('sendMagicLink', () => {
   })
 
   it('écrit le nom seul quand le logo est en WebP', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(
       tenant('organizations/org-1/identity/logo-42.webp')
     )
@@ -238,7 +250,7 @@ describe('sendMagicLink', () => {
   })
 
   it('écrit le nom seul quand l’association n’a pas de logo', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
 
     await sendMagicLink({email, url}, requestContext())
@@ -247,7 +259,7 @@ describe('sendMagicLink', () => {
   })
 
   it('lit le domaine derrière le proxy (x-forwarded-host)', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
 
     await sendMagicLink(
       {email, url},
@@ -264,12 +276,12 @@ describe('sendMagicLink', () => {
       'asl-les-pins.test'
     )
     expect(htmlOf().querySelector('img')?.getAttribute('src')).toBe(
-      'https://asl-les-pins.test/api/identity/logo?v=42'
+      `${tenantOrigin}/api/identity/logo?v=42`
     )
   })
 
   it('n’envoie rien sur un domaine qui ne sert aucune association', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(undefined)
 
     await sendMagicLink({email, url}, requestContext('inconnu.test'))
@@ -279,7 +291,7 @@ describe('sendMagicLink', () => {
   })
 
   it('compte la demande pour l’association du domaine, par adresse seulement : aucune IP lue', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
 
     await sendMagicLink(
       {email, url},
@@ -308,7 +320,7 @@ describe('sendMagicLink', () => {
   })
 
   it('au-delà du seuil du jour : aucun email, et le lien précédent reste valable', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     vi.mocked(consumeMagicLinkRequestQuotaService).mockResolvedValueOnce({
       allowed: false,
     })
@@ -326,7 +338,7 @@ describe('sendMagicLink', () => {
   })
 
   it('laisse remonter l’échec du transport jusqu’à Better Auth', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     const failing = {
       send: vi.fn(() => Promise.reject(new Error('provider refused'))),
     }
@@ -338,6 +350,111 @@ describe('sendMagicLink', () => {
     )
   })
 
+  describe('sur le domaine de l’association (s03c, ADR 022)', () => {
+    const pluginUrl =
+      'http://localhost:3000/api/auth/magic-link/verify?token=secret-token' +
+      '&callbackURL=%2Fdashboard&errorCallbackURL=%2Flogin%2Flien-invalide'
+    const originB = 'http://asso-b.test:3000'
+    const tenantB: Organization = {
+      ...tenant('organizations/org-b/identity/logo-7.png'),
+      id: 'org-b',
+      name: 'ASL B',
+      slug: 'asl-b',
+      domain: 'asso-b.test',
+    }
+    const memberOf = (...organizationIds: string[]) =>
+      ({
+        id: 'user-1',
+        organizations: organizationIds.map((organizationId) => ({
+          organizationId,
+        })),
+      }) as never
+    const sentLink = () => {
+      const [sent] = memoryTransport.messages
+      return new URL(sent.text.match(/https?:\/\/\S+/)?.[0] ?? '')
+    }
+
+    beforeEach(() => {
+      vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenantB)
+    })
+
+    it('envoie un lien sur l’origine de l’association, jeton inchangé', async () => {
+      vi.mocked(getUserByEmailDao).mockResolvedValue(memberOf('org-b'))
+
+      await sendMagicLink(
+        {email, url: pluginUrl},
+        requestContext('asso-b.test')
+      )
+
+      const link = sentLink()
+      expect(link.origin).toBe(originB)
+      expect(link.pathname).toBe('/api/auth/magic-link/verify')
+      expect(link.searchParams.get('token')).toBe('secret-token')
+    })
+
+    it('rend absolues sur l’association les adresses de retour', async () => {
+      vi.mocked(getUserByEmailDao).mockResolvedValue(memberOf('org-b'))
+
+      await sendMagicLink(
+        {email, url: pluginUrl},
+        requestContext('asso-b.test')
+      )
+
+      const link = sentLink()
+      expect(link.searchParams.get('callbackURL')).toBe(`${originB}/dashboard`)
+      expect(link.searchParams.get('errorCallbackURL')).toBe(
+        `${originB}/login/lien-invalide`
+      )
+    })
+
+    it('construit l’URL du logo sur l’origine de l’association', async () => {
+      vi.mocked(getUserByEmailDao).mockResolvedValue(memberOf('org-b'))
+
+      await sendMagicLink(
+        {email, url: pluginUrl},
+        {
+          headers: new Headers({
+            host: 'app:3000',
+            'x-forwarded-host': 'asso-b.test',
+            'x-forwarded-proto': 'https',
+          }),
+        }
+      )
+
+      expect(htmlOf().querySelector('img')?.getAttribute('src')).toBe(
+        `${originB}/api/identity/logo?v=7`
+      )
+    })
+
+    it('traite un non-membre comme une adresse inconnue, quota consommé', async () => {
+      vi.mocked(getUserByEmailDao).mockResolvedValue(memberOf('org-1'))
+      const deleteMany = vi.fn(async () => 0)
+
+      await sendMagicLink(
+        {email, url: pluginUrl, token: 'secret-token'},
+        {...requestContext('asso-b.test'), context: {adapter: {deleteMany}}}
+      )
+
+      expect(consumeMagicLinkRequestQuotaService).toHaveBeenCalledWith({
+        organizationId: 'org-b',
+        email,
+      })
+      expect(memoryTransport.messages).toHaveLength(0)
+      expect(deleteMany).not.toHaveBeenCalled()
+    })
+
+    it('traite un compte sans aucune association comme une adresse inconnue', async () => {
+      vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+
+      await sendMagicLink(
+        {email, url: pluginUrl},
+        requestContext('asso-b.test')
+      )
+
+      expect(memoryTransport.messages).toHaveLength(0)
+    })
+  })
+
   it('ne journalise ni URL ni jeton', async () => {
     const consoleLog = vi
       .spyOn(console, 'log')
@@ -346,7 +463,7 @@ describe('sendMagicLink', () => {
 
     vi.mocked(getUserByEmailDao).mockResolvedValue(undefined)
     await sendMagicLink({email, url}, requestContext())
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     await sendMagicLink({email, url}, requestContext())
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(undefined)
     await sendMagicLink({email, url}, requestContext('inconnu.test'))
@@ -548,7 +665,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
   })
 
   it('un nouveau lien révoque le précédent : seul le dernier ouvre une session', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
     vi.mocked(getAssociationSettingsService).mockResolvedValue({})
     const {memoryDb, request, verify} = setup([existingUser], {
@@ -574,7 +691,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
 
   it('ne révoque pas les liens d’une autre adresse', async () => {
     const other = {...existingUser, id: 'user-2', email: 'autre@exemple.test'}
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
     vi.mocked(getAssociationSettingsService).mockResolvedValue({})
     const {request, verify} = setup([existingUser, other], {ourSender: true})
@@ -588,7 +705,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
   })
 
   it('transmet la locale de la demande à l’email par les métadonnées du plugin', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
     vi.mocked(getAssociationSettingsService).mockResolvedValue({})
     const {localAuth} = setup([existingUser], {ourSender: true})
@@ -605,7 +722,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
   })
 
   it('au-delà du seuil du jour, Better Auth répond comme d’habitude, sans email', async () => {
-    vi.mocked(getUserByEmailDao).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
     vi.mocked(getOrganizationByDomainService).mockResolvedValue(tenant(null))
     vi.mocked(getAssociationSettingsService).mockResolvedValue({})
     vi.mocked(consumeMagicLinkRequestQuotaService).mockResolvedValueOnce({

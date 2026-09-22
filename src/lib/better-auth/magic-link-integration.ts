@@ -1,5 +1,4 @@
 import {getUserByEmailDao} from '@/db/repositories/user-repository'
-import {env} from '@/env'
 import type {MagicLinkEmailAssociation} from '@/lib/emails/magic-link-email'
 import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
 import {normalizeTenantHost} from '@/lib/helper/tenant-helper'
@@ -8,6 +7,11 @@ import {getIdentityVersionFromKey} from '@/services/types/domain/association-ide
 import {getAccentHue} from '@/services/types/domain/association-settings-types'
 import type {Organization} from '@/services/types/domain/organization-types'
 
+import {
+  associationOriginOf,
+  rebaseMagicLinkUrl,
+  requestHostOf,
+} from './association-origin'
 import {
   MAGIC_LINK_EXPIRES_IN_SECONDS,
   MAGIC_LINK_VERIFY_RATE_LIMIT,
@@ -45,32 +49,13 @@ const requestHeadersOf = (ctx?: MagicLinkRequestContext) =>
   ctx?.headers ?? ctx?.request?.headers
 
 /**
- * Hote et protocole de la requete : `x-forwarded-*` d'abord, derriere le
- * reverse proxy du VPS (meme ordre que `getCurrentTenantDal`).
- */
-const requestOriginOf = (headers: Headers | undefined) => {
-  const host =
-    headers?.get('x-forwarded-host')?.split(',')[0]?.trim() ??
-    headers?.get('host') ??
-    undefined
-  const protocol =
-    headers?.get('x-forwarded-proto')?.split(',')[0]?.trim() ??
-    new URL(env.BETTER_AUTH_URL).protocol.replace(':', '')
-
-  return {host, origin: host ? `${protocol}://${host}` : undefined}
-}
-
-/**
  * Le logo n'est montre dans l'email qu'en PNG (design system §1.8, §5.2) : un
  * WebP est mal rendu par plusieurs messageries, le nom seul le remplace.
  */
-const pngLogoUrlOf = (
-  organization: Organization,
-  origin: string | undefined
-) => {
+const pngLogoUrlOf = (organization: Organization, origin: string) => {
   const logoKey = organization.identityLogoKey
   const version = getIdentityVersionFromKey(logoKey)
-  if (!origin || !version || !logoKey?.endsWith('.png')) {
+  if (!version || !logoKey?.endsWith('.png')) {
     return undefined
   }
   return `${origin}/api/identity/logo?v=${encodeURIComponent(version)}`
@@ -121,7 +106,7 @@ const organizationOfRequest = async (
 /** L'association telle que l'email la montre : nom, teinte, logo PNG. */
 const emailAssociationOf = async (
   organization: Organization,
-  origin: string | undefined,
+  origin: string,
   services: MagicLinkServices
 ): Promise<MagicLinkEmailAssociation> => {
   const settings = await services.getAssociationSettingsService(organization.id)
@@ -162,11 +147,13 @@ const revokeEarlierMagicLinks = async (
  * Envoi du lien de connexion (s03). Chaque demande est d'abord comptee pour
  * l'association du domaine appele, adresse connue ou non (3 par adresse et par
  * jour par defaut, reglage du bureau) : au-dela, rien ne part et le lien
- * precedent reste valable. Aucune IP n'est lue. Adresse inconnue :
- * **rien** — ni email ni compte (`disableSignUp`). Adresse connue : les liens
+ * precedent reste valable. Aucune IP n'est lue. Adresse inconnue, ou compte
+ * sans appartenance a l'association du domaine (s03c) : **rien** — ni email
+ * ni compte (`disableSignUp`). Membre de l'association : les liens
  * precedents sont revoques, puis l'email de l'association part par le service
  * d'email (plus de notification : un lien secret n'a rien a faire dans la
- * liste des notifications). Dans tous les cas, l'ecran reste le meme (ecran
+ * liste des notifications), avec un lien rebase sur l'origine de
+ * l'association, lue en base (ADR 022). Dans tous les cas, l'ecran reste le meme (ecran
  * B). Ni l'URL ni le jeton ne sont journalises. Un echec du transport remonte
  * a Better Auth. L'email parle la locale de la page de demande, que l'action
  * transmet par `metadata.locale` : verifiee contre le routage, francais sinon
@@ -177,11 +164,11 @@ export async function sendMagicLink(
   ctx?: MagicLinkRequestContext
 ) {
   const services = await loadServices()
-  const headers = requestHeadersOf(ctx)
-  const {host, origin} = requestOriginOf(headers)
+  const host = requestHostOf(requestHeadersOf(ctx))
 
   const organization = await organizationOfRequest(host, services)
-  if (!organization) {
+  const origin = associationOriginOf(organization?.domain)
+  if (!organization || !origin) {
     logger.warn(
       '[MAGIC-LINK] Aucune association sur le domaine appele : lien non envoye'
     )
@@ -200,13 +187,13 @@ export async function sendMagicLink(
   }
 
   const user = await getUserByEmailDao(email)
-  if (!user) return
+  if (!user || !isMemberOf(user, organization)) return
 
   const association = await emailAssociationOf(organization, origin, services)
   await revokeEarlierMagicLinks(email, token, ctx)
   await services.sendMagicLinkEmailService({
     email,
-    url,
+    url: rebaseMagicLinkUrl(url, origin),
     association,
     locale: resolveSupportedLocale(metadata?.locale),
   })
@@ -231,3 +218,12 @@ export const magicLinkOptions = {
 export const MAGIC_LINK_DISABLED_HTTP_PATHS: readonly string[] = [
   '/sign-in/magic-link',
 ]
+
+/** Le compte appartient-il a l'association du domaine appele ? */
+const isMemberOf = (
+  user: {organizations?: {organizationId: string}[]},
+  organization: Organization
+) =>
+  (user.organizations ?? []).some(
+    (membership) => membership.organizationId === organization.id
+  )

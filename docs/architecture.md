@@ -328,6 +328,36 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   remonte à `auth.ts` par `auth-service`. Les façades sont chargées par `import()` à l'appel ;
   `magic-link-integration-imports.test.ts` parcourt le graphe d'imports et échoue au premier cycle.
 
+**Le lien et la session sur le domaine de l'association** (s03c, ADR 022) —
+`src/lib/better-auth/association-origin.ts`. Better Auth garde un `baseURL` **fixe** (`BETTER_AUTH_URL`) :
+
+- **Origine d'une association** : `associationOriginOf(organization.domain)` = `BETTER_AUTH_URL` dont le nom
+  d'hôte devient le domaine lu en base (protocole et port conservés, aucun en-tête lu : utilisable hors
+  requête, pour s15 et s42). `BETTER_AUTH_URL` ne désigne donc plus « le site » mais le **protocole et le
+  port de la plateforme** ; en production, HTTPS partout.
+- **Le lien est rebasé dans `sendMagicLink`** (`rebaseMagicLinkUrl`) : chemin et jeton gardés, origine de
+  l'association, `callbackURL` / `errorCallbackURL` / `newUserCallbackURL` absolus sur cette origine (une
+  adresse de retour vers une autre origine est ramenée à son chemin). Le logo de l'email est construit sur
+  la même origine.
+- **Non-membre = inconnu** : un compte sans appartenance à l'association du domaine appelé ne reçoit rien,
+  après le décompte du quota (la durée ne trahit rien) — même écran B.
+- **`trustedOrigins` est une fonction** (`trustedOriginsOf`) : la liste `BETTER_AUTH_TRUSTED_ORIGINS`, plus
+  l'origine de l'association servie par l'hôte de la requête, lue en base à chaque requête. Une nouvelle
+  association est reconnue sans redéploiement ; aucune origine à joker n'est produite (un domaine portant
+  `*` ou `?` n'a pas d'origine). Coût connu, à surveiller : une lecture d'association (et un passage par
+  l'intercepteur de la façade) par requête `/api/auth/*`, cookie ou non, et une seconde pour une requête
+  avec cookie hors `GET`/`HEAD`/`OPTIONS` (`validateOrigin` rappelle la fonction) — ADR 022.
+- **Cookie de session propre à l'hôte** : ni `domain`, ni `crossSubDomainCookies`. Il est posé par la réponse
+  de `/magic-link/verify`, servie par le domaine de l'association : une session ouverte sur A n'est jamais
+  envoyée à B.
+- **Client navigateur** (`auth-client.ts`) sans `baseURL` : Better Auth prend l'origine de la page.
+- **Reste connu** : les pages héritées du groupe `(app)` (`account/organizations`, `team/[slug]`,
+  `activeOrganizationId`) ne sont pas scopées au domaine — un membre de A et B connecté sur A peut y lire B.
+  Les liens OTP (2FA) et d'invitation (s15) sont encore construits sur `NEXT_PUBLIC_APP_URL`. **À vérifier
+  en s12b** : derrière le reverse proxy du VPS, `Host` et `x-forwarded-host` (Better Auth n'honore ce
+  dernier qu'avec `advanced.trustedProxyHeaders`, non activé) et le protocole résolu, dont dépend le
+  préfixe `__Secure-` du cookie lu par `src/proxy.ts`.
+
 **Contraintes structurantes**
 
 - **300 emails/jour, par compte Brevo.** Ce n'est pas une limite d'affichage : le budget quotidien
