@@ -9,19 +9,19 @@
 
 ## Vérifications exécutées par le relecteur
 
-| Contrôle                                           | Résultat                                                                                                                 |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Contrôle                                           | Résultat                                                                                                                  |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm test --run`                                  | **823 passed, 8 skipped** — 76 fichiers passés, 2 ignorés, **exit 0** (818 → 823 : les 5 tests ajoutés)                   |
 | `pnpm lint`                                        | 0 erreur ; 1 avertissement préexistant dans `.remember/tmp/last-ndc.ts` (non suivi, hors diff)                            |
 | `pnpm check:rules`                                 | « ✅ Règles et documentation alignées sur le code. » — exit 0                                                             |
-| `pnpm exec tsc --noEmit`                           | exit 0                                                                                                                   |
+| `pnpm exec tsc --noEmit`                           | exit 0                                                                                                                    |
 | `pnpm install --frozen-lockfile`                   | exit 0, « Lockfile is up to date » ; `grep -c "@supabase" package.json pnpm-lock.yaml` = **0 et 0**                       |
 | `pnpm build` **sans les trois variables Supabase** | **exit 0**, `✓ Compiled successfully in 45s`, **330/330 pages** générées, aucun échec de prerender                        |
 | `pnpm format` (lecture seule)                      | 9 fichiers non formatés, **tous identiques à `main`** et hors diff (dette préexistante, dont `drizzle/migrations/meta/*`) |
-| Falsification `getFileUrl`                         | **échoue bien** (détail plus bas)                                                                                        |
-| Falsification d'un cas `storage/env`               | **échoue bien**                                                                                                          |
-| Falsification du test de garde `@supabase/*`       | **échoue bien** (re-vérifiée après la passe de correction)                                                               |
-| `git status` en fin de revue                       | **propre** ; aucun fichier sous `drizzle/`                                                                               |
+| Falsification `getFileUrl`                         | **échoue bien** (détail plus bas)                                                                                         |
+| Falsification d'un cas `storage/env`               | **échoue bien**                                                                                                           |
+| Falsification du test de garde `@supabase/*`       | **échoue bien** (re-vérifiée après la passe de correction)                                                                |
+| `git status` en fin de revue                       | **propre** ; aucun fichier sous `drizzle/`                                                                                |
 
 ### Comment l'absence des variables a été garantie pour le build
 
@@ -121,18 +121,18 @@ Seul le nouveau test tombe : il est bien la sentinelle, et les trois assertions 
 
 ### Constats de première passe — statut
 
-| #   | Statut                                 | Rappel                                                                                                                                                                                     |
-| --- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | ✅ **corrigé et vérifié**              | `STORAGE_TYPE` hérité bloquait le démarrage                                                                                                                                                |
-| 2   | ⏭️ **reporté à s05** (toujours exact)  | `FileResponse.url` porte la clé de stockage ; les boutons « copier le lien » copient `posts/<id>/image/…`, l'aperçu `<Image>` reste une branche morte (`mimeType` jamais renseigné)         |
-| 3   | 🔓 **ouvert** (toujours exact)         | le blog écrit sous `dev/posts/<postId>/…`, **sans préfixe `{organizationId}`** ; à écrire noir sur blanc dans `docs/architecture.md`                                                        |
-| 4   | ✅ **corrigé et vérifié**              | clés `AccountPage.profile.*` retirées, parité 2004/2004/2004                                                                                                                               |
-| 5   | 🔓 **ouvert** (toujours exact)         | `updateUserAction` et `updateOrganizationAction` n'ont **aucun importeur** ; surface morte exportée d'un module `'use server'`, protégée par `requireActionAuth()`                          |
-| 6   | 🔓 **ouvert**                          | titre « Modifier… » sur deux pages réduites à la table des membres ; le propriétaire perd son écran de renommage en self-service (à reprendre en s02/s31)                                   |
-| 7   | 🔓 **ouvert** (toujours exact)         | `docs/_files/en/10-deployment/01-vercel.mdx:119` conseille `LOCAL_STORAGE_ROOT` sur Vercel, dont le disque est éphémère                                                                     |
-| 8   | 🔓 **ouvert**                          | `provider-imports.test.ts:18` ne capte que `from '@supabase/…'` et `import('@supabase/…')` ; un `require()` passerait (limite héritée du gabarit des transports d'email)                    |
-| 9   | ✅ **partiellement corrigé**           | le contrat de `getFileUrl()` est fixé et falsifiable ; la faiblesse d'assertion d'`env-schemas.test.ts` subsiste (reprise en N2)                                                            |
-| 10  | 🔓 **ouvert (factuel)**                | `env.example` conserve `MAX_FILE_SIZE=5242880` alors que le schéma attend `NEXT_PUBLIC_MAX_FILE_SIZE`. Incohérence préexistante                                                             |
+| #   | Statut                                | Rappel                                                                                                                                                                              |
+| --- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | ✅ **corrigé et vérifié**             | `STORAGE_TYPE` hérité bloquait le démarrage                                                                                                                                         |
+| 2   | ⏭️ **reporté à s05** (toujours exact) | `FileResponse.url` porte la clé de stockage ; les boutons « copier le lien » copient `posts/<id>/image/…`, l'aperçu `<Image>` reste une branche morte (`mimeType` jamais renseigné) |
+| 3   | 🔓 **ouvert** (toujours exact)        | le blog écrit sous `dev/posts/<postId>/…`, **sans préfixe `{organizationId}`** ; à écrire noir sur blanc dans `docs/architecture.md`                                                |
+| 4   | ✅ **corrigé et vérifié**             | clés `AccountPage.profile.*` retirées, parité 2004/2004/2004                                                                                                                        |
+| 5   | 🔓 **ouvert** (toujours exact)        | `updateUserAction` et `updateOrganizationAction` n'ont **aucun importeur** ; surface morte exportée d'un module `'use server'`, protégée par `requireActionAuth()`                  |
+| 6   | 🔓 **ouvert**                         | titre « Modifier… » sur deux pages réduites à la table des membres ; le propriétaire perd son écran de renommage en self-service (à reprendre en s02/s31)                           |
+| 7   | 🔓 **ouvert** (toujours exact)        | `docs/_files/en/10-deployment/01-vercel.mdx:119` conseille `LOCAL_STORAGE_ROOT` sur Vercel, dont le disque est éphémère                                                             |
+| 8   | 🔓 **ouvert**                         | `provider-imports.test.ts:18` ne capte que `from '@supabase/…'` et `import('@supabase/…')` ; un `require()` passerait (limite héritée du gabarit des transports d'email)            |
+| 9   | ✅ **partiellement corrigé**          | le contrat de `getFileUrl()` est fixé et falsifiable ; la faiblesse d'assertion d'`env-schemas.test.ts` subsiste (reprise en N2)                                                    |
+| 10  | 🔓 **ouvert (factuel)**               | `env.example` conserve `MAX_FILE_SIZE=5242880` alors que le schéma attend `NEXT_PUBLIC_MAX_FILE_SIZE`. Incohérence préexistante                                                     |
 
 ## État final
 
