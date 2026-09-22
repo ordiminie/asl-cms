@@ -37,11 +37,12 @@ Check that docs/design-system.md exists AND is non-empty.
 
 **Default path: Claude Design.** Unless $ARGUMENTS says `--agent` or `--gemini`, take the Claude Design path without asking.
 
-- `--claude-design` (default) — you write the brief, then open the Claude Design canvas yourself (Step 4)
+- `--claude-design` (default) — you write the brief, then hand it to the user to open the Claude Design canvas (Step 4) — see the note on the `design` skill below
 - `--agent` — you generate the design directly
 - `--gemini` — you write the brief, the user produces the screens in Gemini and brings back the result
 
 **Every screen comes in two versions: desktop and mobile (390 px)**, with the same content and the same states, following the design system's rules below 1 024 px (drawer, 56 px actions, 16 px margins…). Whatever the path, the brief asks for both and the mockup shows both. A screen delivered in one version only is incomplete.
+**Every scren comes in light and dark version**, with the same content and the same states, following the design system's rules. Whatever the path, the brief asks for both and the mockup shows both. A screen delivered in one version only is incomplete.
 
 ### Step 3 — Read the story
 
@@ -54,11 +55,11 @@ Read docs/stories.md, resolve the target story id (`s<number>-<slug>`) and isola
 - docs/designs/<id>.md (structure: @templates/design-screen.md)
 - docs/designs/<id>.html — a static HTML mockup of the screen, desktop and mobile, using EXCLUSIVELY the design system's tokens (colors, typography, spacing). Low fidelity. Goal: communicate layout + states, not be production code.
 
-**CLAUDE DESIGN path (default)** — you write the brief, then open the canvas yourself:
+**CLAUDE DESIGN path (default)** — you write the brief; the user opens the canvas:
 
 1. Write docs/designs/<id>-brief.md (structure: @templates/design-brief.md): every screen with layout, exact fields and actions, the four states, a **desktop and a mobile (390 px) version**, and the design system constraints COPIED IN (tokens — both light and dark sets, ADR 012 — components, do/don't) so the brief is self-contained. Out-of-scope stated. This file is a deliverable of this step — not a chat message.
-2. **Invoke the `design` skill yourself** (Claude Design's dedicated command, `/design`) with the brief and the previous story's mockup as visual reference. Don't stop to ask the user to carry the brief over. The canvas must hold both versions of every screen, all their states, and a light/dark toggle.
-3. Give the user the canvas link and **wait for their validation** on the canvas. Apply the requested changes to the canvas until they validate.
+2. **The `design` skill has `disable-model-invocation` — confirmed 2026-09-21 on s04.** The Skill tool refuses a model-initiated call outright (`cannot be invoked via the Skill tool ... reserved for explicit user invocation`) and explicitly forbids replicating its workflow another way. Don't attempt it, don't retry it, and don't imply you opened a canvas. Instead: stop here and give the user the exact command to type themselves: `/design docs/designs/<id>-brief.md`. This is a one-shot manual step, not a checkpoint to loop back on.
+3. Once the user has validated the result on the canvas, they tell you so and hand back the canvas URL (and export, if any). Apply any further requested changes to the canvas is on them; you resume at step 4.
 4. Once validated: record/normalize the mockup into docs/designs/<id>.html, and write docs/designs/<id>.md (structure: @templates/design-screen.md) describing the screen, pointing to the HTML and to the canvas URL, and noting the validation date.
 
 **GEMINI path** — you write the brief, the user produces the screens:
@@ -78,3 +79,5 @@ Timebox: defined enough to unblock the Plan, not pixel-perfect.
 docs/designs/<id>.html is a REFERENCE, not code to copy. In Execute, the screen is built with the boilerplate's real components. The mockup communicates intent (layout, states); it doesn't replace the component system and never gets pasted into production.
 
 End with: "Design ready (docs/designs/<id>.md + .html). Next step: /ks-plan <id>"
+
+On the CLAUDE DESIGN path, if you stop at step 2 (brief written, canvas not yet opened), end instead with: "Brief ready in docs/designs/<id>-brief.md. Run `/design docs/designs/<id>-brief.md` yourself to open the canvas, then tell me once you've validated it so I can finish the story's design doc."
