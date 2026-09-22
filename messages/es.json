@@ -2805,7 +2805,8 @@
       "settings": "Ajustes",
       "siteGroup": "El sitio",
       "pages": "Páginas",
-      "navigation": "Navegación"
+      "navigation": "Navegación",
+      "news": "Noticias"
     },
     "cards": {
       "logo": {
@@ -3136,5 +3137,97 @@
       "invalidData": "Datos no válidos.",
       "alreadyInMenu": "Esta página ya está en el menú."
     }
+  },
+  "BureauNewsPage": {
+    "metadata": {
+      "title": "Noticias"
+    },
+    "title": "Noticias",
+    "tableTitle": "Las noticias de su asociación",
+    "empty": "Todavía no hay noticias.",
+    "emptyAction": "Escribir la primera",
+    "edit": "Modificar",
+    "columns": {
+      "title": "Título",
+      "date": "Fecha",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "status": {
+      "draft": "Borrador",
+      "published": "Publicada",
+      "unpublished": "Despublicada"
+    },
+    "newNews": {
+      "action": "Nueva noticia"
+    },
+    "pagination": {
+      "position": "Página {page} de {total}",
+      "previous": "← Anterior",
+      "next": "Siguiente →"
+    },
+    "errors": {
+      "forbidden": "Solo la junta de la asociación puede gestionar las noticias.",
+      "failed": "No se pudo guardar. No se ha perdido nada: inténtelo de nuevo.",
+      "invalidData": "Datos no válidos.",
+      "fileTooLarge": "Este archivo es demasiado pesado.",
+      "fileFormat": "Este formato de archivo no se acepta.",
+      "createFailedTitle": "No se ha podido crear la noticia",
+      "createFailed": "No se ha perdido nada: no se añadió ninguna noticia. Inténtelo de nuevo en un momento."
+    },
+    "editor": {
+      "metadataTitle": "Modificar una noticia",
+      "back": "← Noticias",
+      "saveDraft": "Guardar el borrador",
+      "preview": "Vista previa",
+      "publish": "Publicar la noticia",
+      "update": "Guardar y actualizar",
+      "unpublish": "Despublicar",
+      "unpublishConfirmTitle": "¿Despublicar «{title}»?",
+      "unpublishConfirmHelp": "Desaparece del sitio y de la lista de noticias. Su contenido se conserva: podrá volver a publicarla.",
+      "unpublishConfirmAction": "Despublicar la noticia",
+      "cancel": "Cancelar",
+      "addressLabel": "Dirección en el sitio:",
+      "addressPending": "La dirección se fija al guardar por primera vez con un título.",
+      "titleLabel": "Título",
+      "titleHelp": "Aparece al principio de la noticia y en la lista del sitio.",
+      "dateLabel": "Fecha",
+      "dateHelp": "Ordena las noticias, de la más reciente a la más antigua.",
+      "imageLabel": "Imagen",
+      "imageOptional": "Opcional",
+      "imageHelp": "PNG, JPEG o WebP, 5 MB como máximo.",
+      "imageReplace": "Reemplazar la imagen",
+      "imageRemove": "Quitar la imagen",
+      "imageUploading": "Enviando {fileName}…",
+      "imagePreviewAlt": "Imagen de la noticia",
+      "altLabel": "Texto alternativo",
+      "altHelp": "Describa la imagen en una frase, para quienes no pueden verla.",
+      "contentLabel": "Contenido",
+      "contentPlaceholder": "Cuente la actualidad de la asociación…",
+      "publishedNotice": "Noticia publicada. Ya es visible en el sitio.",
+      "savedNotice": "Borrador guardado.",
+      "unpublishedNotice": "Noticia despublicada. Ha desaparecido del sitio.",
+      "issues": {
+        "missing_title": "Ponga un título a esta noticia para poder publicarla.",
+        "missing_image_alt": "Añada un texto alternativo a la imagen para publicar esta noticia."
+      }
+    }
+  },
+  "PublicNewsPage": {
+    "metadata": {
+      "title": "Noticias"
+    },
+    "title": "Noticias",
+    "empty": "Todavía no hay noticias.",
+    "read": "Leer la noticia",
+    "backToList": "← Todas las noticias",
+    "pagination": {
+      "label": "Páginas de noticias",
+      "position": "Página {page} de {total}",
+      "previous": "← Anterior",
+      "next": "Siguiente →"
+    },
+    "previewDraft": "Vista previa — esta noticia es un borrador. Los visitantes no la ven.",
+    "previewUnpublished": "Vista previa — esta noticia está despublicada. Los visitantes no la ven."
   }
 }

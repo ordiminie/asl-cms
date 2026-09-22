@@ -1,0 +1,17 @@
+import newsServiceInterceptor from './interceptors/news-service-logger-interceptor'
+
+export const canManageNewsService = newsServiceInterceptor.canManageNewsService
+export const createNewsDraftService =
+  newsServiceInterceptor.createNewsDraftService
+export const getNewsBySlugService = newsServiceInterceptor.getNewsBySlugService
+export const getNewsForBureauService =
+  newsServiceInterceptor.getNewsForBureauService
+export const getNewsItemForBureauService =
+  newsServiceInterceptor.getNewsItemForBureauService
+export const getPublishedNewsPageService =
+  newsServiceInterceptor.getPublishedNewsPageService
+export const publishNewsService = newsServiceInterceptor.publishNewsService
+export const unpublishNewsService = newsServiceInterceptor.unpublishNewsService
+export const updateNewsService = newsServiceInterceptor.updateNewsService
+export const uploadNewsImageService =
+  newsServiceInterceptor.uploadNewsImageService

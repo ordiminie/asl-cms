@@ -58,7 +58,16 @@ const fileUrl = (key: string): string =>
     .map((segment) => encodeURIComponent(segment))
     .join('/')}`
 
-const renderMarkdown = (markdown: string): string =>
+/**
+ * Rend du markdown restreint en HTML sanitise. **Un seul** schema de
+ * sanitisation pour tout le texte riche du produit (ADR 019, ADR 023) : le
+ * bloc texte d'une page de s04 et le contenu d'une actualite de s05 passent
+ * par cette fonction, jamais par une seconde liste de balises autorisees.
+ *
+ * Pure et synchrone, sans horloge ni requete : utilisable dans un scope
+ * `'use cache'`.
+ */
+export const renderRestrictedMarkdown = (markdown: string): string =>
   String(
     remark()
       .use(remarkHtml, {sanitize: RESTRICTED_SANITIZE_SCHEMA})
@@ -67,7 +76,7 @@ const renderMarkdown = (markdown: string): string =>
 
 const renderText = (markdown: string): string | null => {
   if (markdown.trim() === '') return null
-  const html = renderMarkdown(markdown)
+  const html = renderRestrictedMarkdown(markdown)
   return html === '' ? null : `<div class="page-block-text">${html}</div>`
 }
 
@@ -117,7 +126,7 @@ const renderGallery = (
 
 const renderCallout = (title: string, markdown: string): string | null => {
   const heading = title.trim() === '' ? '' : `<h2>${escapeHtml(title)}</h2>`
-  const body = markdown.trim() === '' ? '' : renderMarkdown(markdown)
+  const body = markdown.trim() === '' ? '' : renderRestrictedMarkdown(markdown)
 
   if (heading === '' && body === '') return null
 

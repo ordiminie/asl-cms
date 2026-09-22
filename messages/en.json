@@ -2805,7 +2805,8 @@
       "settings": "Settings",
       "siteGroup": "The site",
       "pages": "Pages",
-      "navigation": "Navigation"
+      "navigation": "Navigation",
+      "news": "News"
     },
     "cards": {
       "logo": {
@@ -3136,5 +3137,97 @@
       "invalidData": "Invalid data.",
       "alreadyInMenu": "This page is already in the menu."
     }
+  },
+  "BureauNewsPage": {
+    "metadata": {
+      "title": "News"
+    },
+    "title": "News",
+    "tableTitle": "Your association's news items",
+    "empty": "No news item yet.",
+    "emptyAction": "Write the first one",
+    "edit": "Edit",
+    "columns": {
+      "title": "Title",
+      "date": "Date",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "unpublished": "Unpublished"
+    },
+    "newNews": {
+      "action": "New news item"
+    },
+    "pagination": {
+      "position": "Page {page} of {total}",
+      "previous": "← Previous",
+      "next": "Next →"
+    },
+    "errors": {
+      "forbidden": "Only the association board can manage news items.",
+      "failed": "Saving failed. Nothing is lost: please try again.",
+      "invalidData": "Invalid data.",
+      "fileTooLarge": "This file is too large.",
+      "fileFormat": "This file format is not accepted.",
+      "createFailedTitle": "The news item could not be created",
+      "createFailed": "Nothing is lost: no news item was added. Try again in a moment."
+    },
+    "editor": {
+      "metadataTitle": "Edit a news item",
+      "back": "← News",
+      "saveDraft": "Save draft",
+      "preview": "Preview",
+      "publish": "Publish news item",
+      "update": "Save and update",
+      "unpublish": "Unpublish",
+      "unpublishConfirmTitle": "Unpublish “{title}”?",
+      "unpublishConfirmHelp": "It disappears from the website and from the news list. Its content is kept: you can publish it again.",
+      "unpublishConfirmAction": "Unpublish news item",
+      "cancel": "Cancel",
+      "addressLabel": "Address on the website:",
+      "addressPending": "The address is set the first time the item is saved with a title.",
+      "titleLabel": "Title",
+      "titleHelp": "It appears at the top of the news item and in the website list.",
+      "dateLabel": "Date",
+      "dateHelp": "It sorts news items, from the most recent to the oldest.",
+      "imageLabel": "Image",
+      "imageOptional": "Optional",
+      "imageHelp": "PNG, JPEG or WebP, 5 MB at most.",
+      "imageReplace": "Replace the image",
+      "imageRemove": "Remove the image",
+      "imageUploading": "Uploading {fileName}…",
+      "imagePreviewAlt": "News item image",
+      "altLabel": "Alternative text",
+      "altHelp": "Describe the image in one sentence, for people who cannot see it.",
+      "contentLabel": "Content",
+      "contentPlaceholder": "Tell the association's news…",
+      "publishedNotice": "News item published. It is visible on the website.",
+      "savedNotice": "Draft saved.",
+      "unpublishedNotice": "News item unpublished. It disappeared from the website.",
+      "issues": {
+        "missing_title": "Give this news item a title before publishing it.",
+        "missing_image_alt": "Add an alternative text to the image before publishing this news item."
+      }
+    }
+  },
+  "PublicNewsPage": {
+    "metadata": {
+      "title": "News"
+    },
+    "title": "News",
+    "empty": "No news item yet.",
+    "read": "Read the news item",
+    "backToList": "← All news items",
+    "pagination": {
+      "label": "News pages",
+      "position": "Page {page} of {total}",
+      "previous": "← Previous",
+      "next": "Next →"
+    },
+    "previewDraft": "Preview — this news item is a draft. Visitors cannot see it.",
+    "previewUnpublished": "Preview — this news item is unpublished. Visitors cannot see it."
   }
 }

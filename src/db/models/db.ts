@@ -7,6 +7,7 @@ import * as appSettings from './app-settings-model'
 import * as auth from './auth-model'
 import * as contentBlock from './content-block-model'
 import * as menuItem from './menu-item-model'
+import * as news from './news-model'
 import * as notification from './notification-model'
 import * as organization from './organization-model'
 import * as organizationSetting from './organization-setting-model'
@@ -41,6 +42,7 @@ const db = drizzle(pool, {
     ...page,
     ...contentBlock,
     ...menuItem,
+    ...news,
     ...userSubmission,
   },
 })
