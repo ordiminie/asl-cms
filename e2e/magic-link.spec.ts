@@ -25,7 +25,10 @@ import {Client} from 'pg'
 
 const PORT = process.env.PLAYWRIGHT_PORT ?? '3000'
 const TENANT_A = `http://localhost:${PORT}`
-const LOGIN_PAGE = `${TENANT_A}/fr/login`
+
+/** Marketing Pro dans le seed (voir tenant-isolation). */
+const TENANT_B = `http://127.0.0.1:${PORT}`
+const TENANT_B_SLUG = 'marketing-pro'
 
 const KNOWN_ADDRESS = 'user-owner@gmail.com'
 const TENANT_A_SLUG = 'techcorp-solutions'
@@ -111,10 +114,13 @@ const tenantId = (client: Client, slug: string) =>
     .query<{id: string}>(`select id from organization where slug = $1`, [slug])
     .then((result) => result.rows[0].id)
 
-/** `callback` dans le scope de TechCorp, comme `withTenant()` (RLS forcée). */
-const inTenantA = <T>(callback: (client: Client, id: string) => Promise<T>) =>
+/** `callback` dans le scope d'une association, comme `withTenant()` (RLS forcée). */
+const inTenant = <T>(
+  slug: string,
+  callback: (client: Client, id: string) => Promise<T>
+) =>
   withClient(async (client) => {
-    const id = await tenantId(client, TENANT_A_SLUG)
+    const id = await tenantId(client, slug)
     await client.query('begin')
     try {
       await client.query(`select set_config('app.organization_id', $1, true)`, [
@@ -129,13 +135,20 @@ const inTenantA = <T>(callback: (client: Client, id: string) => Promise<T>) =>
     }
   })
 
-/** Remet à zéro les compteurs du jour de TechCorp : chaque essai part de rien. */
-const resetRateLimits = () =>
-  inTenantA((client, id) =>
+/** `callback` dans le scope de TechCorp. */
+const inTenantA = <T>(callback: (client: Client, id: string) => Promise<T>) =>
+  inTenant(TENANT_A_SLUG, callback)
+
+/** Remet à zéro les compteurs du jour d'une association. */
+const resetRateLimitsOf = (slug: string) =>
+  inTenant(slug, (client, id) =>
     client.query(`delete from rate_limit_event where organization_id = $1`, [
       id,
     ])
   )
+
+/** Remet à zéro les compteurs du jour de TechCorp : chaque essai part de rien. */
+const resetRateLimits = () => resetRateLimitsOf(TENANT_A_SLUG)
 
 /** Ramène le seuil journalier de TechCorp au défaut du registre (3). */
 const resetDailyLimit = () =>
@@ -223,9 +236,18 @@ const ageToken = (token: string) =>
     )
   })
 
-const requestLink = async (page: Page, address: string) => {
-  await page.goto(LOGIN_PAGE)
-  await page.getByLabel('Adresse email').fill(address)
+const requestLink = async (
+  page: Page,
+  address: string,
+  origin: string = TENANT_A
+) => {
+  // Saisie avant l'hydratation = champ remis à vide par React, et le clic
+  // tombe sur « adresse non valide » : attendre que la page soit au repos.
+  await page.goto(`${origin}/fr/login`)
+  await page.waitForLoadState('networkidle')
+  const field = page.getByLabel('Adresse email')
+  await field.fill(address)
+  await expect(field).toHaveValue(address)
   await page
     .getByRole('button', {name: 'Recevoir mon lien de connexion'})
     .click()
@@ -234,16 +256,24 @@ const requestLink = async (page: Page, address: string) => {
   ).toBeVisible({timeout: 15_000})
 }
 
-/** Demande un lien pour l'adresse connue et rend le message reçu. */
-const requestKnownLink = async (page: Page) => {
+/** Demande un lien sur un domaine et rend le message reçu. */
+const requestLinkMessage = async (
+  page: Page,
+  address: string,
+  origin: string
+) => {
   const before = outboxFiles()
-  await requestLink(page, KNOWN_ADDRESS)
+  await requestLink(page, address, origin)
 
   await expect
-    .poll(() => newMessagesTo(before, KNOWN_ADDRESS).length, {timeout: 10_000})
+    .poll(() => newMessagesTo(before, address).length, {timeout: 10_000})
     .toBe(1)
-  return newMessagesTo(before, KNOWN_ADDRESS)[0]
+  return newMessagesTo(before, address)[0]
 }
+
+/** Demande un lien pour l'adresse connue et rend le message reçu. */
+const requestKnownLink = (page: Page) =>
+  requestLinkMessage(page, KNOWN_ADDRESS, TENANT_A)
 
 const linkOf = (message: OutboxMessage) => {
   const link = message.text.match(
@@ -476,6 +506,100 @@ test.describe('connexion par lien — s03', () => {
       } finally {
         await client.query('rollback')
       }
+    })
+  })
+
+  /**
+   * s03c — le lien et la session sur le domaine de l'association (ADR 022).
+   * Imbriqué dans s03 : un nouveau lien révoque le précédent de la même
+   * adresse, et `user-owner@gmail.com` sert aux deux groupes.
+   */
+  test.describe('lien et session sur le domaine de l’association — s03c', () => {
+    const sessionCookiesOn = async (page: Page, origin: string) =>
+      (await page.context().cookies(origin)).filter((cookie) =>
+        cookie.name.includes('session_token')
+      )
+
+    /** Ouvre le lien reçu sur `origin` et vérifie qu'il y ouvre la session. */
+    const expectSessionOn = async (
+      page: Page,
+      message: OutboxMessage,
+      origin: string,
+      otherOrigin: string
+    ) => {
+      const link = linkOf(message)
+      expect(link.startsWith(`${origin}/`)).toBe(true)
+      expect(new URL(link).searchParams.get('callbackURL')).toBe(
+        `${origin}/dashboard`
+      )
+
+      await page.goto(link)
+      await expect(page).toHaveURL(
+        new RegExp(`^${origin.replaceAll('.', '\\.')}/.*dashboard`),
+        {timeout: 15_000}
+      )
+      expect(await sessionCookiesOn(page, origin)).toHaveLength(1)
+      expect(await sessionCookiesOn(page, otherOrigin)).toHaveLength(0)
+    }
+
+    test.beforeEach(async () => {
+      await resetRateLimitsOf(TENANT_B_SLUG)
+    })
+
+    test('critère 1 — demandé sur B, le lien mène à B et y ouvre la session', async ({
+      browser,
+    }) => {
+      const page = await freshPage(browser)
+      const message = await requestLinkMessage(
+        page,
+        'user-admin@gmail.com',
+        TENANT_B
+      )
+
+      await expectSessionOn(page, message, TENANT_B, TENANT_A)
+      await page.context().close()
+    })
+
+    test('critère 1 — demandé sur A, le lien mène à A et y ouvre la session', async ({
+      browser,
+    }) => {
+      const page = await freshPage(browser)
+      const message = await requestLinkMessage(page, KNOWN_ADDRESS, TENANT_A)
+
+      await expectSessionOn(page, message, TENANT_A, TENANT_B)
+      await page.context().close()
+    })
+
+    test('critères 1 et 2 — membre des deux : chaque lien mène à son domaine, la session de A ne vaut rien sur B', async ({
+      browser,
+    }) => {
+      const address = 'admin@gmail.com'
+
+      const onA = await freshPage(browser)
+      const fromA = await requestLinkMessage(onA, address, TENANT_A)
+      await expectSessionOn(onA, fromA, TENANT_A, TENANT_B)
+
+      // Critère 2 : la session ouverte sur A n'ouvre pas l'espace de B.
+      await onA.goto(`${TENANT_B}/fr/bureau`)
+      await expect(onA).toHaveURL(`${TENANT_B}/fr/login`)
+      await onA.context().close()
+
+      const onB = await freshPage(browser)
+      const fromB = await requestLinkMessage(onB, address, TENANT_B)
+      await expectSessionOn(onB, fromB, TENANT_B, TENANT_A)
+      await onB.context().close()
+    })
+
+    test('non-membre de B : même écran, aucun email', async ({browser}) => {
+      const address = 'user@gmail.com'
+      const page = await freshPage(browser)
+      const before = outboxFiles()
+
+      await requestLink(page, address, TENANT_B)
+
+      await expect(page.getByTestId('magic-link-sent')).toBeVisible()
+      expect(newMessagesTo(before, address)).toHaveLength(0)
+      await page.context().close()
     })
   })
 })

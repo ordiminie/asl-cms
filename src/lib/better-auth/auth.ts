@@ -21,6 +21,7 @@ import {
   getUserByStripeCustomerIdDao,
 } from '@/db/repositories/user-repository'
 import {env} from '@/env'
+import {trustedOriginsOf} from '@/lib/better-auth/association-origin'
 import {
   MAGIC_LINK_DISABLED_HTTP_PATHS,
   magicLinkOptions,
@@ -267,7 +268,7 @@ const options = {
       onEvent: onStripeEvent,
     }),
   ],
-  trustedOrigins: env.BETTER_AUTH_TRUSTED_ORIGINS,
+  trustedOrigins: trustedOriginsOf,
   hooks: {
     after: createAuthRedirectMiddleware(),
   },

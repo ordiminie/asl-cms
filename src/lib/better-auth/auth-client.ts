@@ -25,8 +25,12 @@ export const AuthClientAppConfig = {
   changeEmail: env.NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL,
 } as const
 
+/**
+ * Sans `baseURL`, Better Auth prend l'origine de la page : le client parle au
+ * domaine de l'association consultee, qui porte le cookie de session
+ * (ADR 022).
+ */
 export const authClient = createAuthClient({
-  baseURL: env.NEXT_PUBLIC_APP_URL,
   plugins: [
     adminClient(),
     organizationClient({
