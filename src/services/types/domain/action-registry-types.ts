@@ -57,6 +57,12 @@ export const ActionIdConst = {
    * s04b ne distingue les roles entre le menu et le pied de page.
    */
   SITE_NAVIGATION_MANAGE: 'site.navigation.manage',
+  /**
+   * Gerer les actualites (s05, ADR 023) : creer, modifier, publier, depublier,
+   * deposer l'image. Une seule entree pour tous les verbes, sur le precedent de
+   * `PAGE_MANAGE`.
+   */
+  NEWS_MANAGE: 'news.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -74,6 +80,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.SITE_NAVIGATION_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.NEWS_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

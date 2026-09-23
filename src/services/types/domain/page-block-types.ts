@@ -1,5 +1,11 @@
 import {z} from 'zod'
 
+import {
+  buildContentFileKey,
+  ContentFileScopeConst,
+  isContentFileKeyAllowed,
+} from './content-file-types'
+
 /**
  * Blocs typés d'une page CMS (ADR 007, ADR 019).
  *
@@ -88,6 +94,7 @@ export type StoredPageBlock = {
  */
 export const RESERVED_PAGE_SLUGS: readonly string[] = [
   'account',
+  'actualites',
   'admin',
   'annonces',
   'api',
@@ -269,9 +276,9 @@ const PAGE_UUID_PATTERN =
 
 /**
  * Cle de stockage generee par le serveur :
- * `{organizationId}/pages/{pageId}/{blockId}-{uuid}.{ext}`. Les trois
- * identifiants sont des UUID verifies ; aucun nom fourni par l'utilisateur n'y
- * entre.
+ * `{organizationId}/pages/{pageId}/{blockId}-{uuid}.{ext}`. Enveloppe de la
+ * chaine de fichiers de contenu partagee (ADR 023) : la forme de la cle est
+ * inchangee depuis s04, octet pour octet.
  */
 export const buildPageBlockFileKey = (
   organizationId: string,
@@ -279,44 +286,26 @@ export const buildPageBlockFileKey = (
   blockId: string,
   format: PageFileFormat
 ): string => {
-  for (const id of [organizationId, pageId, blockId]) {
-    if (!PAGE_UUID_PATTERN.test(id)) {
-      throw new Error('Invalid identifier for a page block file key')
-    }
+  if (!PAGE_UUID_PATTERN.test(blockId)) {
+    throw new Error('Invalid identifier for a page block file key')
   }
 
-  return `${organizationId}/pages/${pageId}/${blockId}-${crypto.randomUUID()}.${format}`
-}
-
-/** Le format servi, relu depuis l'extension d'une cle deja validee. */
-export const getPageFileFormatFromKey = (
-  key: string
-): PageFileFormat | undefined => {
-  const extension = key.split('.').pop()?.toLowerCase()
-  return extension && extension in PAGE_FILE_CONTENT_TYPES
-    ? (extension as PageFileFormat)
-    : undefined
+  return buildContentFileKey(
+    organizationId,
+    ContentFileScopeConst.PAGES,
+    pageId,
+    blockId,
+    format
+  )
 }
 
 /**
- * Une cle lue dans une requete n'est servie que si elle vit sous le prefixe de
- * l'association resolue par le domaine, sans remontee de chemin ni extension
- * inconnue — contrairement a `file-service.ts`, qui prend le chemin tel quel.
+ * Une cle de fichier de page n'est servie que sous le prefixe
+ * `{organizationId}/pages/` de l'association resolue par le domaine.
+ * Enveloppe de `isContentFileKeyAllowed`, restreinte a la portee `pages`.
  */
 export const isPageBlockFileKeyAllowed = (
   organizationId: string,
   key: string
-): boolean => {
-  if (!PAGE_UUID_PATTERN.test(organizationId)) return false
-
-  const prefix = `${organizationId}/pages/`
-  if (!key.startsWith(prefix)) return false
-
-  const segments = key.split('/')
-  if (segments.some((segment) => segment === '' || segment === '..')) {
-    return false
-  }
-  if (key.includes('\0') || key.includes('\\')) return false
-
-  return Boolean(getPageFileFormatFromKey(key))
-}
+): boolean =>
+  isContentFileKeyAllowed(organizationId, key, [ContentFileScopeConst.PAGES])

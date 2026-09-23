@@ -183,6 +183,21 @@ référencées sur `organization`. Lecture par `GET /api/identity/{logo|favicon}
 du domaine appelé, clé lue en base — aucun chemin ne vient de la requête ; `?v=` (version tirée de la
 clé) autorise un cache long ; sans favicon, la route sert le monogramme de l'association.
 
+**Fichiers de contenu depuis s05** (ADR 023) : les fichiers déposés dans un contenu — blocs de page
+(s04), image d'actualité (s05), puis fiches du bureau et analyses d'eau — passent par **une seule**
+chaîne. Un module de domaine isomorphe
+(`src/services/types/domain/content-file-types.ts`) déclare les **portées** (`pages`, `news`),
+construit la clé `{organizationId}/{portée}/{ownerId}/{slotId}-{uuid}.{ext}` et vérifie qu'une clé
+lue dans une requête vit sous une portée enregistrée de l'association résolue par le domaine.
+La lecture publique est `GET /api/files/[...key]` (`readContentFileService`, sans autorisation et
+délibérément : ces fichiers s'affichent sur le site) ; `/api/pages/files/[...key]` reste servie par
+**le même** gestionnaire, pour ne casser aucune adresse déjà rendue, mais **bornée à la portée
+`pages`** : ce chemin historique ne sert pas les fichiers d'actualité ni ceux des portées à venir,
+et tout nouveau client passe par `/api/files`. Une implémentation, deux chemins, une portée en
+moins sur l'ancien. La validation reste celle de s04 : format
+jugé sur la **signature binaire**, 5 Mo par image, 10 Mo par document, `X-Content-Type-Options:
+nosniff` et cache long `immutable` (la clé change à chaque remplacement).
+
 Entités ajoutées par ASL-CMS, par domaine :
 
 - **Tenancy** — `organization` étendue d'un **domaine unique indexé** (ADR 003), de **drapeaux de
@@ -197,7 +212,9 @@ Entités ajoutées par ASL-CMS, par domaine :
 - **Identité** — la clé de rattachement d'un membre est **sa clé primaire arbitraire**. Jamais l'email
   (absent, changeant, partagé dans un foyer), jamais le numéro de parcelle (non unique, transmis à la vente).
   Vrai pour le stockage nominatif, le rapprochement Pennylane, le dédoublonnage d'import et l'export.
-- **Contenu** — `page` et `content_block` (ADR 007) ; `news`, `board_member`, `water_analysis`,
+- **Contenu** — `page` et `content_block` (ADR 007) ; `news` (s05, ADR 023 : titre, `published_on`,
+  `image_key` + `image_alt`, `content` markdown, `status`, slug stable fixé au premier enregistrement
+  titré), puis `board_member`, `water_analysis`,
   `alert_banner` comme modèles à champs fixes ; `category` **réutilisable** entre questions au bureau et
   petites annonces (max 10 par usage, avec email de routage optionnel).
 - **Eau** — `water_reading` (relevé annuel importé), rattaché à la parcelle et daté.
@@ -215,21 +232,29 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 24 tables du schéma
+### Classement RLS des 26 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 24 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `page` et `content_block` de s04, plus `menu_item` de s04b) sont donc toutes classées, sans reste. Toute
+Les 26 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
-**Scopée par une policy RLS forcée** — 5 tables
+Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
+drizzle-kit) : il lit les
+déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et échoue si une table
+manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
+`rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-| Table                  | Pourquoi                                                                                                                                                                                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `user_submissions`     | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé.                                                                                            |
-| `organization_setting` | Paramètres de l'association (adresses, teinte : ADR 010, ADR 016). Porte `organization_id`, policy `tenant_isolation` forcée (`0007`). Absence de ligne = valeur par défaut du registre.                                                               |
-| `page`                 | Pages du site public (ADR 007, ADR 020, s04). Porte `organization_id`, policy `tenant_isolation` forcée (`0013`). Slug unique **par association**, jamais globalement.                                                                                 |
-| `content_block`        | Blocs typés d'une page (ADR 019, s04). **Sans `organization_id`** : le tenant est celui de la page, et la policy `tenant_isolation` forcée (`0013`) joint `page` pour le retrouver — donc aucune colonne de tenant dupliquée à tenir cohérente.        |
-| `menu_item`            | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ». |
+**Scopée par une policy RLS forcée** — 7 tables
+
+| Table                  | Pourquoi                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_submissions`     | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé.                                                                                                                                                     |
+| `organization_setting` | Paramètres de l'association (adresses, teinte : ADR 010, ADR 016). Porte `organization_id`, policy `tenant_isolation` forcée (`0007`). Absence de ligne = valeur par défaut du registre.                                                                                                                        |
+| `rate_limit_event`     | Compteurs journaliers de la limitation de débit des formulaires publics (s03). Porte `organization_id`, policy `tenant_isolation` forcée (`0009`) : hors `withTenant`, aucun compteur ne se lit ni ne s'écrit. **Classée ici seulement en s05** — l'omission datait de s03, la policy, elle, n'a jamais manqué. |
+| `page`                 | Pages du site public (ADR 007, ADR 020, s04). Porte `organization_id`, policy `tenant_isolation` forcée (`0013`). Slug unique **par association**, jamais globalement.                                                                                                                                          |
+| `content_block`        | Blocs typés d'une page (ADR 019, s04). **Sans `organization_id`** : le tenant est celui de la page, et la policy `tenant_isolation` forcée (`0013`) joint `page` pour le retrouver — donc aucune colonne de tenant dupliquée à tenir cohérente.                                                                 |
+| `menu_item`            | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ».                                                          |
+| `news`                 | Actualités datées de l'association (ADR 023, s05). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0017`). Slug unique **par association**, nul tant que l'actualité n'a pas de titre.                                                                                              |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**
@@ -250,15 +275,13 @@ données d'un client. — 4 tables
 | `organization`                      | **C'est le tenant.** Elle ne porte pas `organization_id` par nature, et sa lecture par domaine précède toute résolution de tenant (ADR 003). Ses colonnes `identity_logo_key` et `identity_favicon_key` (ADR 015) voyagent avec cette lecture et restent donc exemptées.    |
 | `subscription`, `subscription_plan` | Abonnement **plateforme** Stripe. `subscription` se rattache au tenant par `reference_id` (`text`, polymorphe Better Auth) : une policy sur `organization_id` ne la verrait pas. À ne jamais confondre avec la facturation des membres (Pennylane, ADR 011, lecture seule). |
 
-**Contenu du socle, pas encore rattaché à un tenant — exemptées en attendant leur story** : elles ne
-portent aujourd'hui **aucune** colonne de rattachement, et aucun contenu d'association n'y est écrit.
-La story qui les met en service leur ajoute `organization_id` **et** sa policy, comme toute table
-métier. — 6 tables
+**Contenu du socle, hors produit ou pas encore rattaché à un tenant — exemptées** : elles ne portent
+aujourd'hui **aucune** colonne de rattachement, et aucun contenu d'association n'y est écrit. — 6 tables
 
-| Table                                                                   | Story qui les scope                                                                                 |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `posts`, `posts_translation`, `categories`, `hashtags`, `post_hashtags` | Base des actualités : c'est la story « actualités » qui les rattache au tenant.                     |
-| `notifications`                                                         | Rattachée à `user_id`. Une notification d'association demandera `organization_id`, donc une policy. |
+| Table                                                                   | Pourquoi exemptée                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts`, `posts_translation`, `categories`, `hashtags`, `post_hashtags` | **Blog hérité du boilerplate, hors produit** (ADR 023, qui remplace sur ce point « base des actualités » de l'ADR 009). Les actualités de s05 vivent dans `news`. `/blog`, `/admin/blog` et `sitemap.ts` lisent ces tables **hors de tout scope** : les scoper les viderait sans erreur. Leur retrait est l'affaire d'une story dédiée. |
+| `notifications`                                                         | Rattachée à `user_id`. Une notification d'association demandera `organization_id`, donc une policy.                                                                                                                                                                                                                                     |
 
 Enfin, les tables de migration Drizzle (`drizzle.__drizzle_migrations`) sont hors périmètre : elles
 n'appartiennent à aucun tenant et ne sont écrites que par le rôle propriétaire.

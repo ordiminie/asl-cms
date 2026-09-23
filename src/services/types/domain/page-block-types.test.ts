@@ -149,4 +149,8 @@ describe('slugs réservés (ADR 020)', () => {
     expect(isPageSlugReserved('BUREAU')).toBe(true)
     expect(isPageSlugReserved('qualite-de-leau')).toBe(false)
   })
+
+  it('réserve le segment des actualités (s05)', () => {
+    expect(isPageSlugReserved('actualites')).toBe(true)
+  })
 })

@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
-import {renderPageBlock} from './render-page-block'
+import {renderPageBlock, renderRestrictedMarkdown} from './render-page-block'
 
 describe('renderPageBlock — bloc texte riche', () => {
   it('rend les balises de la barre réduite', () => {
@@ -177,5 +177,37 @@ describe('renderPageBlock — robustesse (critère 9)', () => {
   it('rend null pour un bloc dont la donnée est hors forme, sans lever', () => {
     expect(renderPageBlock({type: 'image', data: null})).toBeNull()
     expect(renderPageBlock({type: 'text', data: {markdown: 42}})).toBeNull()
+  })
+})
+
+describe('renderRestrictedMarkdown — même sanitisation pour les actualités', () => {
+  it('garde les balises de la barre réduite', () => {
+    const html = renderRestrictedMarkdown(
+      '## Titre 2\n\n### Titre 3\n\nUn **gras** et un [lien](https://example.org).\n\n- premier\n'
+    )
+
+    expect(html).toContain('<h2>Titre 2</h2>')
+    expect(html).toContain('<h3>Titre 3</h3>')
+    expect(html).toContain('<strong>gras</strong>')
+    expect(html).toContain('<a href="https://example.org">lien</a>')
+    expect(html).toContain('<li>premier</li>')
+  })
+
+  it('retire script, style et tableau', () => {
+    const html = renderRestrictedMarkdown(
+      'Bonjour <script>alert(1)</script><style>p{color:red}</style>\n\n<table><tr><td>a</td></tr></table>\n\n<p style="color:red">rouge</p>'
+    )
+
+    expect(html).not.toContain('<script')
+    expect(html).not.toContain('<style')
+    expect(html).not.toContain('<table')
+    expect(html).not.toContain('style=')
+    expect(html).toContain('Bonjour')
+  })
+
+  it('neutralise un lien javascript:', () => {
+    const html = renderRestrictedMarkdown('[piège](javascript:alert(1))')
+
+    expect(html).not.toContain('javascript:')
   })
 })

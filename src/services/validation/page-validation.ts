@@ -60,8 +60,3 @@ export const uploadPageBlockFileServiceSchema = z.object({
   blockId: z.string().uuid(),
   kind: z.enum(['image', 'document']),
 })
-
-export const readPageBlockFileServiceSchema = z.object({
-  organizationId: pageOrganizationIdSchema,
-  key: z.string().min(1).max(512),
-})

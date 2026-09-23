@@ -2805,7 +2805,8 @@
       "settings": "Réglages",
       "siteGroup": "Le site",
       "pages": "Pages",
-      "navigation": "Navigation"
+      "navigation": "Navigation",
+      "news": "Actualités"
     },
     "cards": {
       "logo": {
@@ -3136,5 +3137,106 @@
       "invalidData": "Données invalides.",
       "alreadyInMenu": "Cette page est déjà dans le menu."
     }
+  },
+  "BureauNewsPage": {
+    "metadata": {
+      "title": "Actualités"
+    },
+    "title": "Actualités",
+    "tableTitle": "Les actualités de votre association",
+    "empty": "Aucune actualité pour l'instant.",
+    "emptyAction": "Écrire la première",
+    "edit": "Modifier",
+    "columns": {
+      "title": "Titre",
+      "date": "Date",
+      "status": "Statut",
+      "actions": "Actions"
+    },
+    "status": {
+      "draft": "Brouillon",
+      "published": "Publiée",
+      "unpublished": "Dépubliée"
+    },
+    "newNews": {
+      "action": "Nouvelle actualité"
+    },
+    "pagination": {
+      "position": "Page {page} sur {total}",
+      "previous": "← Précédent",
+      "next": "Suivant →"
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l'association peut gérer les actualités.",
+      "failed": "L'enregistrement a échoué. Rien n'est perdu : réessayez.",
+      "invalidData": "Données invalides.",
+      "fileTooLarge": "Ce fichier est trop lourd.",
+      "fileFormat": "Ce format de fichier n'est pas accepté.",
+      "createFailedTitle": "L'actualité n'a pas pu être créée",
+      "createFailed": "Rien n'est perdu : aucune actualité n'a été ajoutée. Réessayez dans un instant."
+    },
+    "editor": {
+      "metadataTitle": "Modifier une actualité",
+      "back": "← Actualités",
+      "saveDraft": "Enregistrer le brouillon",
+      "save": "Enregistrer les modifications",
+      "preview": "Aperçu",
+      "publish": "Publier l'actualité",
+      "update": "Enregistrer et mettre à jour",
+      "unpublish": "Dépublier",
+      "unpublishConfirmTitle": "Dépublier « {title} » ?",
+      "unpublishConfirmHelp": "Elle disparaît du site et de la liste des actualités. Son contenu est conservé : vous pourrez la republier.",
+      "unpublishConfirmAction": "Dépublier l'actualité",
+      "cancel": "Annuler",
+      "addressLabel": "Adresse sur le site :",
+      "addressPending": "L'adresse sera fixée au premier enregistrement avec un titre.",
+      "titleLabel": "Titre",
+      "titleHelp": "Il s'affiche en tête de l'actualité et dans la liste du site.",
+      "dateLabel": "Date",
+      "dateHelp": "Elle classe les actualités, de la plus récente à la plus ancienne.",
+      "imageLabel": "Image",
+      "imageOptional": "Facultatif",
+      "imageHelp": "PNG, JPEG ou WebP, 5 Mo au plus.",
+      "imageReplace": "Remplacer l'image",
+      "imageRemove": "Retirer l'image",
+      "imageUploading": "Envoi de {fileName} en cours…",
+      "imagePreviewAlt": "Image de l'actualité",
+      "altLabel": "Texte alternatif",
+      "altHelp": "Décrivez l'image en une phrase, pour les personnes qui ne la voient pas.",
+      "contentLabel": "Contenu",
+      "contentPlaceholder": "Racontez l'actualité de l'association…",
+      "publishedNotice": "Actualité publiée. Elle est visible sur le site.",
+      "savedNotice": "Brouillon enregistré.",
+      "savedPublishedNotice": "Modifications enregistrées. Elles sont sur le site.",
+      "unpublishedNotice": "Actualité dépubliée. Elle a disparu du site.",
+      "publishRefused": "La publication a été refusée : complétez les champs signalés ci-dessous.",
+      "updateRefused": "La mise à jour a été refusée : complétez les champs signalés ci-dessous.",
+      "saveRefused": "L'enregistrement a été refusé : complétez les champs signalés ci-dessous.",
+      "issues": {
+        "missing_title": "Donnez un titre à cette actualité pour pouvoir la publier.",
+        "missing_image_alt": "Ajoutez un texte alternatif à l’image pour publier cette actualité."
+      },
+      "publishedIssues": {
+        "missing_title": "Donnez un titre à cette actualité : elle est en ligne, et son titre s’affiche sur le site.",
+        "missing_image_alt": "Ajoutez un texte alternatif à l’image : l’actualité est en ligne, et ce texte la décrit à qui ne la voit pas."
+      }
+    }
+  },
+  "PublicNewsPage": {
+    "metadata": {
+      "title": "Actualités"
+    },
+    "title": "Actualités",
+    "empty": "Aucune actualité pour l'instant.",
+    "read": "Lire l'actualité",
+    "backToList": "← Toutes les actualités",
+    "pagination": {
+      "label": "Pages des actualités",
+      "position": "Page {page} sur {total}",
+      "previous": "← Précédent",
+      "next": "Suivant →"
+    },
+    "previewDraft": "Aperçu — cette actualité est un brouillon. Les visiteurs ne la voient pas.",
+    "previewUnpublished": "Aperçu — cette actualité est dépubliée. Les visiteurs ne la voient pas."
   }
 }

@@ -29,6 +29,16 @@ Deux chaînes l'utilisent :
   sur l'extension ni le type déclaré ; clé **générée par le serveur**, préfixée par l'organisation,
   sans nom fourni par l'utilisateur ; fichier servi par une route de l'application avec
   `X-Content-Type-Options: nosniff`, jamais depuis `public/`.
+- **Fichiers de contenu** (s04, s05 — ADR 023) : blocs de page et image d'actualité passent par
+  **une seule** chaîne partagée. `src/services/types/domain/content-file-types.ts` déclare les
+  **portées** (`pages`, `news` ; s06 et s09 y ajouteront la leur) et construit la clé
+  `{organizationId}/{portée}/{ownerId}/{slotId}-{uuid}.{ext}` ; `readContentFileService` la sert par
+  `GET /api/files/[...key]`, `/api/pages/files/[...key]` étant servie par **le même** gestionnaire
+  mais **bornée à la portée `pages`** (chemin historique, à ne pas étendre : une clé d'actualité y
+  est refusée, un nouveau client passe par `/api/files`). Un nouveau modèle déclare sa portée et sa colonne `…_key` —
+  il n'écrit ni validation de clé, ni route de lecture. Même discipline que l'identité : format jugé
+  sur la **signature binaire**, clé générée par le serveur, `nosniff`, jamais de fichier servi depuis
+  `public/`.
 - **Fichiers d'article du blog d'administration** (hérité du boilerplate) : la chaîne générique
   `file-service` → `files-repository` → adaptateur `local`, décrite par le reste de ce guide. Un
   fichier stocké n'a **pas d'URL publique** : il est servi par une route de l'application, et

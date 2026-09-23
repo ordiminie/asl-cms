@@ -1,0 +1,4526 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maquette — s05 Actualités</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      [data-theme='light'] {
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.22 0.015 250);
+        --card: oklch(1 0 0);
+        --muted: oklch(0.972 0.005 240);
+        --muted-foreground: oklch(0.45 0.02 245);
+        --border: oklch(0.9 0.008 245);
+        --input: oklch(0.66 0.014 245);
+        --ring: oklch(0.55 0.11 235);
+        --primary: oklch(0.35 0.06 240);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.965 0.006 240);
+        --secondary-foreground: oklch(0.3 0.02 245);
+        --destructive: oklch(0.48 0.17 27);
+        --link: oklch(0.45 0.13 250);
+        --accent: oklch(0.958 0.024 195);
+        --accent-foreground: oklch(0.38 0.08 195);
+        --accent-solid: oklch(0.55 0.1 195);
+        --accent-border: oklch(0.88 0.045 195);
+        --sidebar: oklch(0.985 0.004 250);
+        --sidebar-foreground: oklch(0.26 0.015 250);
+        --sidebar-accent: oklch(0.93 0.012 245);
+        --sidebar-border: oklch(0.91 0.008 245);
+      }
+      [data-theme='dark'] {
+        --background: oklch(0.215 0.009 255);
+        --foreground: oklch(0.94 0.006 250);
+        --card: oklch(0.215 0.009 255);
+        --muted: oklch(0.255 0.009 250);
+        --muted-foreground: oklch(0.72 0.015 248);
+        --border: oklch(0.33 0.01 250);
+        --input: oklch(0.52 0.016 250);
+        --ring: oklch(0.7 0.12 235);
+        --primary: oklch(0.5 0.14 255);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.27 0.01 250);
+        --secondary-foreground: oklch(0.9 0.008 250);
+        --destructive: oklch(0.58 0.19 27);
+        --link: oklch(0.8 0.1 250);
+        --accent: oklch(0.275 0.035 195);
+        --accent-foreground: oklch(0.84 0.075 195);
+        --accent-solid: oklch(0.64 0.11 195);
+        --accent-border: oklch(0.4 0.055 195);
+        --sidebar: oklch(0.19 0.009 255);
+        --sidebar-foreground: oklch(0.93 0.006 250);
+        --sidebar-accent: oklch(0.3 0.014 250);
+        --sidebar-border: oklch(0.33 0.01 250);
+      }
+
+      body {
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      .icon {
+        width: 20px;
+        height: 20px;
+        stroke-width: 1.75;
+        flex-shrink: 0;
+      }
+      ::selection {
+        background: oklch(0.88 0.045 195);
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+  Référence visuelle de la story s05-actualites — NE PAS copier en production.
+  Normalisée depuis l'export Claude Design (runtime du canevas retiré,
+  liaisons résolues, icônes lucide incluses en SVG, bascule clair/sombre en JS natif).
+-->
+    <div id="root" data-theme="light">
+      <div
+        style="
+          background: var(--background);
+          color: var(--foreground);
+          font-family: 'Public Sans', sans-serif;
+          min-height: 100vh;
+        "
+      >
+        <div
+          style="
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: var(--background);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+          "
+        >
+          <div style="display: flex; align-items: center; gap: 10px">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+              class="icon"
+              style="color: var(--accent-foreground); width: 22px; height: 22px"
+            >
+              <path
+                d="M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
+              />
+              <path
+                d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14"
+              />
+              <path d="M8 6v8" />
+            </svg>
+            <div
+              style="
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 12px;
+                font-weight: 600;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                color: var(--muted-foreground);
+              "
+            >
+              s05 · Actualités — maquette
+            </div>
+          </div>
+          <nav style="display: flex; gap: 8px; flex-wrap: wrap">
+            <a
+              href="#ecran-0"
+              style="
+                display: inline-flex;
+                align-items: center;
+                height: 36px;
+                padding: 0 14px;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                background: var(--card);
+                color: var(--foreground);
+                font-size: 13px;
+                font-weight: 600;
+                text-decoration: none;
+              "
+              >0 · Sidebar</a
+            >
+            <a
+              href="#ecran-1"
+              style="
+                display: inline-flex;
+                align-items: center;
+                height: 36px;
+                padding: 0 14px;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                background: var(--card);
+                color: var(--foreground);
+                font-size: 13px;
+                font-weight: 600;
+                text-decoration: none;
+              "
+              >1 · Liste (bureau)</a
+            >
+            <a
+              href="#ecran-2"
+              style="
+                display: inline-flex;
+                align-items: center;
+                height: 36px;
+                padding: 0 14px;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                background: var(--card);
+                color: var(--foreground);
+                font-size: 13px;
+                font-weight: 600;
+                text-decoration: none;
+              "
+              >2 · Éditer</a
+            >
+            <a
+              href="#ecran-3"
+              style="
+                display: inline-flex;
+                align-items: center;
+                height: 36px;
+                padding: 0 14px;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                background: var(--card);
+                color: var(--foreground);
+                font-size: 13px;
+                font-weight: 600;
+                text-decoration: none;
+              "
+              >3 · Liste (public)</a
+            >
+            <a
+              href="#ecran-4"
+              style="
+                display: inline-flex;
+                align-items: center;
+                height: 36px;
+                padding: 0 14px;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+                background: var(--card);
+                color: var(--foreground);
+                font-size: 13px;
+                font-weight: 600;
+                text-decoration: none;
+              "
+              >4 · Page actualité</a
+            >
+          </nav>
+          <button
+            type="button"
+            onclick="toggleTheme()"
+            style="
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              height: 40px;
+              padding: 0 16px;
+              border-radius: 8px;
+              border: 1px solid var(--border);
+              background: var(--card);
+              color: var(--foreground);
+              font-family: 'Public Sans', sans-serif;
+              font-size: 14px;
+              font-weight: 600;
+              cursor: pointer;
+            "
+          >
+            <span id="theme-icon"
+              ><svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.75"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                class="icon"
+                style="width: 16px; height: 16px"
+              >
+                <path
+                  d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"
+                /></svg></span
+            ><span id="theme-label">Sombre</span>
+          </button>
+        </div>
+
+        <div
+          style="
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 48px 24px 120px;
+            display: flex;
+            flex-direction: column;
+            gap: 80px;
+          "
+        >
+          <!-- ÉCRAN 0 -->
+          <section
+            id="ecran-0"
+            style="display: flex; flex-direction: column; gap: 16px"
+          >
+            <header
+              style="
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 16px;
+              "
+            >
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  letter-spacing: 0.04em;
+                "
+              >
+                ÉCRAN 0
+              </div>
+              <h2
+                style="
+                  font-family: 'Source Serif 4', serif;
+                  font-size: 22px;
+                  font-weight: 600;
+                  margin: 2px 0 0;
+                "
+              >
+                Repère de continuité — barre latérale (déjà livrée)
+              </h2>
+              <p
+                style="
+                  font-size: 15px;
+                  color: var(--muted-foreground);
+                  margin: 6px 0 0;
+                  max-width: 68ch;
+                "
+              >
+                Non redessinée. Montrée uniquement pour situer « Actualités »,
+                ajoutée au groupe « Le site », entre « Pages » et « Navigation
+                ».
+              </p>
+            </header>
+            <div
+              style="
+                width: 248px;
+                background: var(--sidebar);
+                border-right: 1px solid var(--sidebar-border);
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 1px 3px oklch(0 0 0 / 0.08);
+              "
+            >
+              <div
+                style="
+                  padding: 20px 16px;
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  border-bottom: 1px solid var(--sidebar-border);
+                "
+              >
+                <div
+                  style="
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 8px;
+                    background: var(--accent-solid);
+                    color: var(--primary-foreground);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-family: 'Source Serif 4', serif;
+                    font-weight: 700;
+                    font-size: 15px;
+                  "
+                >
+                  LA
+                </div>
+                <div
+                  style="
+                    color: var(--sidebar-foreground);
+                    font-weight: 600;
+                    font-size: 15px;
+                  "
+                >
+                  Les Amis de l'Étang
+                </div>
+              </div>
+              <div
+                style="
+                  padding: 16px 12px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 4px;
+                "
+              >
+                <div
+                  style="
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--muted-foreground);
+                    letter-spacing: 0.06em;
+                    text-transform: uppercase;
+                    padding: 0 10px;
+                    margin-bottom: 4px;
+                  "
+                >
+                  Le site
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    height: 40px;
+                    padding: 0 10px;
+                    border-radius: 8px;
+                    font-size: 15px;
+                    color: var(--sidebar-foreground);
+                  "
+                >
+                  Pages
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    height: 40px;
+                    padding: 0 10px;
+                    border-radius: 8px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    color: var(--sidebar-foreground);
+                    background: var(--sidebar-accent);
+                  "
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    class="icon"
+                    style="width: 18px; height: 18px"
+                  >
+                    <path
+                      d="M11 6a13 13 0 0 0 8.4-2.8A1 1 0 0 1 21 4v12a1 1 0 0 1-1.6.8A13 13 0 0 0 11 14H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
+                    />
+                    <path
+                      d="M6 14a12 12 0 0 0 2.4 7.2 2 2 0 0 0 3.2-2.4A8 8 0 0 1 10 14"
+                    />
+                    <path d="M8 6v8" /></svg
+                  >Actualités
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    height: 40px;
+                    padding: 0 10px;
+                    border-radius: 8px;
+                    font-size: 15px;
+                    color: var(--sidebar-foreground);
+                  "
+                >
+                  Navigation
+                </div>
+                <div
+                  style="
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--muted-foreground);
+                    letter-spacing: 0.06em;
+                    text-transform: uppercase;
+                    padding: 0 10px;
+                    margin: 12px 0 4px;
+                  "
+                >
+                  L'association
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    height: 40px;
+                    padding: 0 10px;
+                    border-radius: 8px;
+                    font-size: 15px;
+                    color: var(--sidebar-foreground);
+                  "
+                >
+                  Identité
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    height: 40px;
+                    padding: 0 10px;
+                    border-radius: 8px;
+                    font-size: 15px;
+                    color: var(--sidebar-foreground);
+                  "
+                >
+                  Réglages
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ÉCRAN 1 -->
+          <section
+            id="ecran-1"
+            style="display: flex; flex-direction: column; gap: 24px"
+          >
+            <header
+              style="
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 16px;
+              "
+            >
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  letter-spacing: 0.04em;
+                "
+              >
+                ÉCRAN 1 — BUREAU
+              </div>
+              <h2
+                style="
+                  font-family: 'Source Serif 4', serif;
+                  font-size: 22px;
+                  font-weight: 600;
+                  margin: 2px 0 0;
+                "
+              >
+                Liste des actualités
+              </h2>
+              <p
+                style="
+                  font-size: 15px;
+                  color: var(--muted-foreground);
+                  margin: 6px 0 0;
+                  max-width: 68ch;
+                "
+              >
+                Triée par date décroissante. Pagination 25 lignes/page
+                (tableau). États : succès, vide, chargement.
+              </p>
+            </header>
+
+            <div
+              style="
+                display: flex;
+                gap: 32px;
+                flex-wrap: wrap;
+                align-items: flex-start;
+              "
+            >
+              <div
+                style="
+                  flex: 1;
+                  min-width: 560px;
+                  max-width: 900px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                "
+              >
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                  "
+                >
+                  <h1
+                    style="
+                      font-family: 'Source Serif 4', serif;
+                      font-size: 28px;
+                      font-weight: 600;
+                      margin: 0;
+                      text-wrap: pretty;
+                    "
+                  >
+                    Actualités
+                  </h1>
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      height: 44px;
+                      padding: 0 18px;
+                      border-radius: 8px;
+                      border: none;
+                      background: var(--primary);
+                      color: var(--primary-foreground);
+                      font-size: 15px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                    "
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      class="icon"
+                      style="width: 18px; height: 18px"
+                    >
+                      <path d="M5 12h14" />
+                      <path d="M12 5v14" /></svg
+                    >Nouvelle actualité
+                  </button>
+                </div>
+
+                <div
+                  style="
+                    background: var(--card);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    overflow: hidden;
+                  "
+                >
+                  <table style="width: 100%; border-collapse: collapse">
+                    <thead>
+                      <tr style="border-bottom: 1px solid var(--border)">
+                        <th
+                          style="
+                            padding: 12px 16px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            color: var(--muted-foreground);
+                            text-transform: uppercase;
+                            letter-spacing: 0.04em;
+                            text-align: left;
+                          "
+                        >
+                          Titre
+                        </th>
+                        <th
+                          style="
+                            padding: 12px 16px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            color: var(--muted-foreground);
+                            text-transform: uppercase;
+                            letter-spacing: 0.04em;
+                            text-align: left;
+                            width: 130px;
+                          "
+                        >
+                          Date
+                        </th>
+                        <th
+                          style="
+                            padding: 12px 16px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            color: var(--muted-foreground);
+                            text-transform: uppercase;
+                            letter-spacing: 0.04em;
+                            text-align: left;
+                          "
+                        >
+                          Statut
+                        </th>
+                        <th
+                          style="
+                            padding: 12px 16px;
+                            font-size: 12px;
+                            font-weight: 600;
+                            color: var(--muted-foreground);
+                            text-transform: uppercase;
+                            letter-spacing: 0.04em;
+                            text-align: right;
+                            width: 100px;
+                          "
+                        >
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style="border-bottom: 1px solid var(--border)">
+                        <td
+                          style="
+                            padding: 14px 16px;
+                            font-size: 17px;
+                            font-weight: 600;
+                          "
+                        >
+                          Assemblée générale du 10 octobre
+                        </td>
+                        <td
+                          style="
+                            padding: 14px 16px;
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 15px;
+                            font-variant-numeric: tabular-nums;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          02/09/2026
+                        </td>
+                        <td style="padding: 14px 16px">
+                          <span
+                            style="
+                              display: inline-flex;
+                              align-items: center;
+                              gap: 6px;
+                              padding: 4px 10px 4px 8px;
+                              border-radius: 999px;
+                              background: var(--muted);
+                              font-size: 13px;
+                              font-weight: 600;
+                            "
+                          >
+                            <span
+                              style="
+                                width: 8px;
+                                height: 8px;
+                                border-radius: 999px;
+                                background: var(--accent-solid);
+                                display: inline-block;
+                              "
+                            ></span>
+                            Publiée
+                          </span>
+                        </td>
+                        <td style="padding: 14px 16px; text-align: right">
+                          <a
+                            href="#"
+                            style="
+                              color: var(--link);
+                              font-size: 15px;
+                              font-weight: 600;
+                              text-decoration: underline;
+                            "
+                            >Modifier</a
+                          >
+                        </td>
+                      </tr>
+
+                      <tr style="border-bottom: 1px solid var(--border)">
+                        <td
+                          style="
+                            padding: 14px 16px;
+                            font-size: 17px;
+                            font-weight: 600;
+                          "
+                        >
+                          Travaux sur la canalisation du chemin des Pins
+                        </td>
+                        <td
+                          style="
+                            padding: 14px 16px;
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 15px;
+                            font-variant-numeric: tabular-nums;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          18/08/2026
+                        </td>
+                        <td style="padding: 14px 16px">
+                          <span
+                            style="
+                              display: inline-flex;
+                              align-items: center;
+                              gap: 6px;
+                              padding: 4px 10px 4px 8px;
+                              border-radius: 999px;
+                              background: var(--muted);
+                              font-size: 13px;
+                              font-weight: 600;
+                            "
+                          >
+                            <span
+                              style="
+                                width: 8px;
+                                height: 8px;
+                                border-radius: 999px;
+                                background: var(--accent-solid);
+                                display: inline-block;
+                              "
+                            ></span>
+                            Publiée
+                          </span>
+                        </td>
+                        <td style="padding: 14px 16px; text-align: right">
+                          <a
+                            href="#"
+                            style="
+                              color: var(--link);
+                              font-size: 15px;
+                              font-weight: 600;
+                              text-decoration: underline;
+                            "
+                            >Modifier</a
+                          >
+                        </td>
+                      </tr>
+
+                      <tr style="border-bottom: 1px solid var(--border)">
+                        <td
+                          style="
+                            padding: 14px 16px;
+                            font-size: 17px;
+                            font-weight: 600;
+                          "
+                        >
+                          Résultats de l'analyse d'eau de juillet
+                        </td>
+                        <td
+                          style="
+                            padding: 14px 16px;
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 15px;
+                            font-variant-numeric: tabular-nums;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          29/07/2026
+                        </td>
+                        <td style="padding: 14px 16px">
+                          <span
+                            style="
+                              display: inline-flex;
+                              align-items: center;
+                              gap: 6px;
+                              padding: 4px 10px 4px 8px;
+                              border-radius: 999px;
+                              background: var(--muted);
+                              font-size: 13px;
+                              font-weight: 600;
+                            "
+                          >
+                            <span
+                              style="
+                                width: 8px;
+                                height: 8px;
+                                border-radius: 999px;
+                                background: var(--muted-foreground);
+                                display: inline-block;
+                              "
+                            ></span>
+                            Brouillon
+                          </span>
+                        </td>
+                        <td style="padding: 14px 16px; text-align: right">
+                          <a
+                            href="#"
+                            style="
+                              color: var(--link);
+                              font-size: 15px;
+                              font-weight: 600;
+                              text-decoration: underline;
+                            "
+                            >Modifier</a
+                          >
+                        </td>
+                      </tr>
+
+                      <tr style="border-bottom: 1px solid var(--border)">
+                        <td
+                          style="
+                            padding: 14px 16px;
+                            font-size: 17px;
+                            font-weight: 600;
+                          "
+                        >
+                          Fête de l'étang : merci à tous
+                        </td>
+                        <td
+                          style="
+                            padding: 14px 16px;
+                            font-family: 'JetBrains Mono', monospace;
+                            font-size: 15px;
+                            font-variant-numeric: tabular-nums;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          14/07/2026
+                        </td>
+                        <td style="padding: 14px 16px">
+                          <span
+                            style="
+                              display: inline-flex;
+                              align-items: center;
+                              gap: 6px;
+                              padding: 4px 10px 4px 8px;
+                              border-radius: 999px;
+                              background: var(--muted);
+                              font-size: 13px;
+                              font-weight: 600;
+                            "
+                          >
+                            <span
+                              style="
+                                width: 8px;
+                                height: 8px;
+                                border-radius: 999px;
+                                background: var(--destructive);
+                                display: inline-block;
+                              "
+                            ></span>
+                            Dépubliée
+                          </span>
+                        </td>
+                        <td style="padding: 14px 16px; text-align: right">
+                          <a
+                            href="#"
+                            style="
+                              color: var(--link);
+                              font-size: 15px;
+                              font-weight: 600;
+                              text-decoration: underline;
+                            "
+                            >Modifier</a
+                          >
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                  "
+                >
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 6px;
+                      height: 36px;
+                      padding: 0 12px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      font-size: 14px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                    "
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      class="icon"
+                      style="width: 16px; height: 16px"
+                    >
+                      <path d="m15 18-6-6 6-6" /></svg
+                    >Précédent
+                  </button>
+                  <span style="font-size: 14px; color: var(--muted-foreground)"
+                    >Page 1 sur 1</span
+                  >
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 6px;
+                      height: 36px;
+                      padding: 0 12px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      font-size: 14px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: not-allowed;
+                      opacity: 0.5;
+                    "
+                    disabled
+                  >
+                    Suivant<svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      class="icon"
+                      style="width: 16px; height: 16px"
+                    >
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div
+                style="
+                  flex: 0 0 260px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 24px;
+                "
+              >
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <div
+                    style="
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px;
+                      font-weight: 600;
+                      color: var(--muted-foreground);
+                      text-transform: uppercase;
+                    "
+                  >
+                    État — vide
+                  </div>
+                  <div
+                    style="
+                      background: var(--card);
+                      border: 1px solid var(--border);
+                      border-radius: 12px;
+                      padding: 32px 20px;
+                      text-align: center;
+                    "
+                  >
+                    <p
+                      style="
+                        font-size: 15px;
+                        color: var(--muted-foreground);
+                        margin: 0 0 8px;
+                      "
+                    >
+                      Aucune actualité pour l'instant.
+                    </p>
+                    <a
+                      href="#"
+                      style="
+                        color: var(--link);
+                        font-size: 15px;
+                        font-weight: 600;
+                        text-decoration: underline;
+                      "
+                      >→ Écrire la première</a
+                    >
+                  </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <div
+                    style="
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px;
+                      font-weight: 600;
+                      color: var(--muted-foreground);
+                      text-transform: uppercase;
+                    "
+                  >
+                    État — chargement
+                  </div>
+                  <div
+                    style="
+                      background: var(--card);
+                      border: 1px solid var(--border);
+                      border-radius: 12px;
+                      padding: 12px;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 10px;
+                    "
+                  >
+                    <div
+                      style="
+                        height: 20px;
+                        border-radius: 6px;
+                        background: var(--muted);
+                      "
+                    ></div>
+
+                    <div
+                      style="
+                        height: 20px;
+                        border-radius: 6px;
+                        background: var(--muted);
+                      "
+                    ></div>
+
+                    <div
+                      style="
+                        height: 20px;
+                        border-radius: 6px;
+                        background: var(--muted);
+                      "
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                "
+              >
+                Mobile 390 px — patron tableau → cartes empilées, 10/page
+              </div>
+              <div
+                style="
+                  width: 390px;
+                  background: var(--background);
+                  border: 1px solid var(--border);
+                  border-radius: 16px;
+                  padding: 16px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                "
+              >
+                <button
+                  style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    height: 56px;
+                    padding: 0 18px;
+                    border-radius: 8px;
+                    border: none;
+                    background: var(--primary);
+                    color: var(--primary-foreground);
+                    font-size: 15px;
+                    font-weight: 600;
+                    font-family: 'Public Sans', sans-serif;
+                    cursor: pointer;
+                    width: 100%;
+                    justify-content: center;
+                  "
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.75"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                    class="icon"
+                    style="width: 18px; height: 18px"
+                  >
+                    <path d="M5 12h14" />
+                    <path d="M12 5v14" /></svg
+                  >Nouvelle actualité
+                </button>
+
+                <div
+                  style="
+                    background: var(--card);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                  "
+                >
+                  <div style="font-size: 17px; font-weight: 600">
+                    Assemblée générale du 10 octobre
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 15px;
+                    "
+                  >
+                    <span style="color: var(--muted-foreground)">Date</span>
+                    <span
+                      style="
+                        font-family: 'JetBrains Mono', monospace;
+                        font-variant-numeric: tabular-nums;
+                      "
+                      >02/09/2026</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      font-size: 15px;
+                    "
+                  >
+                    <span style="color: var(--muted-foreground)">Statut</span>
+                    <span
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 4px 10px 4px 8px;
+                        border-radius: 999px;
+                        background: var(--muted);
+                        font-size: 13px;
+                        font-weight: 600;
+                      "
+                    >
+                      <span
+                        style="
+                          width: 8px;
+                          height: 8px;
+                          border-radius: 999px;
+                          background: var(--accent-solid);
+                          display: inline-block;
+                        "
+                      ></span>
+                      Publiée
+                    </span>
+                  </div>
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      height: 56px;
+                      padding: 0 18px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      font-size: 15px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                      width: 100%;
+                      justify-content: center;
+                    "
+                  >
+                    Modifier
+                  </button>
+                </div>
+
+                <div
+                  style="
+                    background: var(--card);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                  "
+                >
+                  <div style="font-size: 17px; font-weight: 600">
+                    Travaux sur la canalisation du chemin des Pins
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 15px;
+                    "
+                  >
+                    <span style="color: var(--muted-foreground)">Date</span>
+                    <span
+                      style="
+                        font-family: 'JetBrains Mono', monospace;
+                        font-variant-numeric: tabular-nums;
+                      "
+                      >18/08/2026</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      font-size: 15px;
+                    "
+                  >
+                    <span style="color: var(--muted-foreground)">Statut</span>
+                    <span
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 4px 10px 4px 8px;
+                        border-radius: 999px;
+                        background: var(--muted);
+                        font-size: 13px;
+                        font-weight: 600;
+                      "
+                    >
+                      <span
+                        style="
+                          width: 8px;
+                          height: 8px;
+                          border-radius: 999px;
+                          background: var(--accent-solid);
+                          display: inline-block;
+                        "
+                      ></span>
+                      Publiée
+                    </span>
+                  </div>
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      height: 56px;
+                      padding: 0 18px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      font-size: 15px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                      width: 100%;
+                      justify-content: center;
+                    "
+                  >
+                    Modifier
+                  </button>
+                </div>
+
+                <div
+                  style="
+                    background: var(--card);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                  "
+                >
+                  <div style="font-size: 17px; font-weight: 600">
+                    Résultats de l'analyse d'eau de juillet
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 15px;
+                    "
+                  >
+                    <span style="color: var(--muted-foreground)">Date</span>
+                    <span
+                      style="
+                        font-family: 'JetBrains Mono', monospace;
+                        font-variant-numeric: tabular-nums;
+                      "
+                      >29/07/2026</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      font-size: 15px;
+                    "
+                  >
+                    <span style="color: var(--muted-foreground)">Statut</span>
+                    <span
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 4px 10px 4px 8px;
+                        border-radius: 999px;
+                        background: var(--muted);
+                        font-size: 13px;
+                        font-weight: 600;
+                      "
+                    >
+                      <span
+                        style="
+                          width: 8px;
+                          height: 8px;
+                          border-radius: 999px;
+                          background: var(--muted-foreground);
+                          display: inline-block;
+                        "
+                      ></span>
+                      Brouillon
+                    </span>
+                  </div>
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      height: 56px;
+                      padding: 0 18px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      font-size: 15px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                      width: 100%;
+                      justify-content: center;
+                    "
+                  >
+                    Modifier
+                  </button>
+                </div>
+
+                <div
+                  style="
+                    background: var(--card);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                  "
+                >
+                  <div style="font-size: 17px; font-weight: 600">
+                    Fête de l'étang : merci à tous
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 15px;
+                    "
+                  >
+                    <span style="color: var(--muted-foreground)">Date</span>
+                    <span
+                      style="
+                        font-family: 'JetBrains Mono', monospace;
+                        font-variant-numeric: tabular-nums;
+                      "
+                      >14/07/2026</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      font-size: 15px;
+                    "
+                  >
+                    <span style="color: var(--muted-foreground)">Statut</span>
+                    <span
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        padding: 4px 10px 4px 8px;
+                        border-radius: 999px;
+                        background: var(--muted);
+                        font-size: 13px;
+                        font-weight: 600;
+                      "
+                    >
+                      <span
+                        style="
+                          width: 8px;
+                          height: 8px;
+                          border-radius: 999px;
+                          background: var(--destructive);
+                          display: inline-block;
+                        "
+                      ></span>
+                      Dépubliée
+                    </span>
+                  </div>
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      height: 56px;
+                      padding: 0 18px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      font-size: 15px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                      width: 100%;
+                      justify-content: center;
+                    "
+                  >
+                    Modifier
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ÉCRAN 2 -->
+          <section
+            id="ecran-2"
+            style="display: flex; flex-direction: column; gap: 24px"
+          >
+            <header
+              style="
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 16px;
+              "
+            >
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  letter-spacing: 0.04em;
+                "
+              >
+                ÉCRAN 2 — BUREAU
+              </div>
+              <h2
+                style="
+                  font-family: 'Source Serif 4', serif;
+                  font-size: 22px;
+                  font-weight: 600;
+                  margin: 2px 0 0;
+                "
+              >
+                Éditer une actualité
+              </h2>
+              <p
+                style="
+                  font-size: 15px;
+                  color: var(--muted-foreground);
+                  margin: 6px 0 0;
+                  max-width: 68ch;
+                "
+              >
+                Formulaire une colonne, 4 champs fixes. États montrés :
+                brouillon neuf, modifications+échec cumulés, publiée, boîte de
+                dépublication.
+              </p>
+              <p
+                style="
+                  font-size: 13px;
+                  background: var(--accent);
+                  color: var(--accent-foreground);
+                  border: 1px solid var(--accent-border);
+                  border-radius: 8px;
+                  padding: 8px 12px;
+                  margin: 12px 0 0;
+                  display: inline-block;
+                  max-width: 68ch;
+                "
+              >
+                <strong>Écart 2 (annoté)</strong> — champ date : aucun sélecteur
+                au socle. Proposition : <code>input</code> 48 px + icône
+                Calendar, sans calendrier déroulant.
+              </p>
+            </header>
+
+            <!-- État A: brouillon neuf -->
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                  letter-spacing: 0.04em;
+                "
+              >
+                État — brouillon neuf
+              </div>
+              <div
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  overflow: hidden;
+                "
+              >
+                <div
+                  style="
+                    background: oklch(0.24 0.02 250);
+                    color: oklch(0.96 0.005 250);
+                    padding: 0 20px;
+                    height: 68px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 16px;
+                  "
+                >
+                  <div style="display: flex; align-items: center; gap: 20px">
+                    <a
+                      href="#"
+                      style="
+                        color: oklch(0.9 0.01 250);
+                        font-size: 14px;
+                        font-weight: 600;
+                        text-decoration: none;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                      "
+                      ><svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                        class="icon"
+                        style="width: 16px; height: 16px"
+                      >
+                        <path d="m12 19-7-7 7-7" />
+                        <path d="M19 12H5" /></svg
+                      >Actualités</a
+                    >
+                    <span
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        font-size: 14px;
+                        font-weight: 600;
+                      "
+                      ><span
+                        style="
+                          width: 8px;
+                          height: 8px;
+                          border-radius: 999px;
+                          background: oklch(0.75 0.01 250);
+                          display: inline-block;
+                        "
+                      ></span
+                      >Brouillon</span
+                    >
+                  </div>
+                  <div style="display: flex; gap: 10px">
+                    <button
+                      style="
+                        height: 44px;
+                        padding: 0 16px;
+                        border-radius: 8px;
+                        border: 1px solid oklch(0.5 0.02 250);
+                        background: transparent;
+                        color: inherit;
+                        font-size: 14px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                      "
+                    >
+                      Enregistrer le brouillon
+                    </button>
+                    <button
+                      style="
+                        height: 44px;
+                        padding: 0 16px;
+                        border-radius: 8px;
+                        border: 1px solid oklch(0.5 0.02 250);
+                        background: transparent;
+                        color: inherit;
+                        font-size: 14px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                      "
+                    >
+                      Aperçu
+                    </button>
+                    <button
+                      style="
+                        height: 44px;
+                        padding: 0 18px;
+                        border-radius: 8px;
+                        border: none;
+                        background: var(--primary);
+                        color: var(--primary-foreground);
+                        font-size: 14px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                      "
+                    >
+                      Publier l'actualité
+                    </button>
+                  </div>
+                </div>
+                <div style="padding: 40px 24px; background: var(--background)">
+                  <div
+                    style="
+                      max-width: 68ch;
+                      margin: 0 auto;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 28px;
+                    "
+                  >
+                    <div
+                      style="
+                        font-size: 15px;
+                        color: var(--muted-foreground);
+                        font-family: 'JetBrains Mono', monospace;
+                      "
+                    >
+                      Adresse sur le site : /actualites/
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Titre</label
+                      >
+                      <input
+                        placeholder=""
+                        style="
+                          height: 48px;
+                          padding: 0 14px;
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          background: var(--card);
+                          color: var(--foreground);
+                          font-size: 17px;
+                        "
+                      />
+                      <div
+                        style="font-size: 14px; color: var(--muted-foreground)"
+                      >
+                        Le titre affiché dans la liste des actualités et en haut
+                        de la page.
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Date</label
+                      >
+                      <div style="position: relative; width: 220px">
+                        <input
+                          value="22/09/2026"
+                          style="
+                            width: 100%;
+                            height: 48px;
+                            padding: 0 44px 0 14px;
+                            border: 1px solid var(--input);
+                            border-radius: 8px;
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 17px;
+                            font-family: 'JetBrains Mono', monospace;
+                          "
+                        />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            position: absolute;
+                            right: 14px;
+                            top: 14px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M8 2v3" />
+                          <path d="M16 2v3" />
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                          <path d="M3 9h18" />
+                        </svg>
+                      </div>
+                      <div
+                        style="font-size: 14px; color: var(--muted-foreground)"
+                      >
+                        Les actualités sont classées de la plus récente à la
+                        plus ancienne selon cette date.
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Image
+                        <span
+                          style="
+                            font-weight: 400;
+                            color: var(--muted-foreground);
+                          "
+                          >— Facultatif</span
+                        ></label
+                      >
+                      <div
+                        style="
+                          border: 2px dashed var(--border);
+                          border-radius: 8px;
+                          padding: 32px;
+                          display: flex;
+                          flex-direction: column;
+                          align-items: center;
+                          gap: 10px;
+                          text-align: center;
+                        "
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="color: var(--muted-foreground)"
+                        >
+                          <path d="M12 3v12" />
+                          <path d="m17 8-5-5-5 5" />
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        </svg>
+                        <div
+                          style="
+                            font-size: 14px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          PNG, JPEG ou WebP, 5 Mo au plus.
+                        </div>
+                        <button
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            height: 44px;
+                            padding: 0 18px;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 15px;
+                            font-weight: 600;
+                            font-family: 'Public Sans', sans-serif;
+                            cursor: pointer;
+                          "
+                        >
+                          Choisir un fichier
+                        </button>
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Contenu</label
+                      >
+                      <div
+                        style="
+                          display: flex;
+                          gap: 4px;
+                          border: 1px solid var(--border);
+                          border-bottom: none;
+                          border-radius: 8px 8px 0 0;
+                          padding: 8px;
+                          background: var(--muted);
+                        "
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path
+                            d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"
+                          />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <line x1="19" x2="10" y1="4" y2="4" />
+                          <line x1="14" x2="5" y1="20" y2="20" />
+                          <line x1="15" x2="9" y1="4" y2="20" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M4 12h8" />
+                          <path d="M4 18V6" />
+                          <path d="M12 18V6" />
+                          <path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M4 12h8" />
+                          <path d="M4 18V6" />
+                          <path d="M12 18V6" />
+                          <path
+                            d="M17.5 10.5c1.7-1 3.5 0 3.5 1.5a2 2 0 0 1-2 2"
+                          />
+                          <path d="M17 17.5c2 1.5 4 .3 4-1.5a2 2 0 0 0-2-2" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M3 5h.01" />
+                          <path d="M3 12h.01" />
+                          <path d="M3 19h.01" />
+                          <path d="M8 5h13" />
+                          <path d="M8 12h13" />
+                          <path d="M8 19h13" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+                          <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+                          <line x1="8" x2="16" y1="12" y2="12" />
+                        </svg>
+                      </div>
+                      <textarea
+                        rows="12"
+                        style="
+                          border: 1px solid var(--border);
+                          border-radius: 0 0 8px 8px;
+                          padding: 14px;
+                          font-size: 17px;
+                          font-family: 'Public Sans', sans-serif;
+                          background: var(--card);
+                          color: var(--foreground);
+                          resize: vertical;
+                        "
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- État B: dirty + erreur -->
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                  letter-spacing: 0.04em;
+                "
+              >
+                État — modifications non enregistrées + échec de publication
+              </div>
+              <div
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  overflow: hidden;
+                "
+              >
+                <div
+                  style="
+                    background: oklch(0.24 0.02 250);
+                    color: oklch(0.96 0.005 250);
+                    display: flex;
+                    flex-direction: column;
+                  "
+                >
+                  <div
+                    style="
+                      padding: 0 20px;
+                      height: 68px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                      gap: 16px;
+                    "
+                  >
+                    <div style="display: flex; align-items: center; gap: 20px">
+                      <a
+                        href="#"
+                        style="
+                          color: oklch(0.9 0.01 250);
+                          font-size: 14px;
+                          font-weight: 600;
+                          text-decoration: none;
+                          display: flex;
+                          align-items: center;
+                          gap: 6px;
+                        "
+                        ><svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="width: 16px; height: 16px"
+                        >
+                          <path d="m12 19-7-7 7-7" />
+                          <path d="M19 12H5" /></svg
+                        >Actualités</a
+                      >
+                      <span
+                        style="
+                          display: flex;
+                          align-items: center;
+                          gap: 6px;
+                          font-size: 14px;
+                          font-weight: 600;
+                        "
+                        ><span
+                          style="
+                            width: 8px;
+                            height: 8px;
+                            border-radius: 999px;
+                            background: oklch(0.8 0.14 70);
+                            display: inline-block;
+                          "
+                        ></span
+                        >Modifications non enregistrées</span
+                      >
+                    </div>
+                    <div style="display: flex; gap: 10px">
+                      <button
+                        style="
+                          height: 44px;
+                          padding: 0 16px;
+                          border-radius: 8px;
+                          border: 1px solid oklch(0.5 0.02 250);
+                          background: transparent;
+                          color: inherit;
+                          font-size: 14px;
+                          font-weight: 600;
+                          font-family: 'Public Sans', sans-serif;
+                          cursor: pointer;
+                        "
+                      >
+                        Enregistrer le brouillon
+                      </button>
+                      <button
+                        style="
+                          height: 44px;
+                          padding: 0 16px;
+                          border-radius: 8px;
+                          border: 1px solid oklch(0.5 0.02 250);
+                          background: transparent;
+                          color: inherit;
+                          font-size: 14px;
+                          font-weight: 600;
+                          font-family: 'Public Sans', sans-serif;
+                          cursor: pointer;
+                        "
+                      >
+                        Aperçu
+                      </button>
+                      <button
+                        style="
+                          height: 44px;
+                          padding: 0 18px;
+                          border-radius: 8px;
+                          border: none;
+                          background: var(--primary);
+                          color: var(--primary-foreground);
+                          font-size: 14px;
+                          font-weight: 600;
+                          font-family: 'Public Sans', sans-serif;
+                          cursor: pointer;
+                          display: inline-flex;
+                          align-items: center;
+                        "
+                      >
+                        Publier l'actualité
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      padding: 8px 20px 12px;
+                      font-size: 14px;
+                      background: oklch(0.28 0.05 27);
+                      color: oklch(0.95 0.02 27);
+                    "
+                  >
+                    L'actualité n'a pas pu être publiée. L'image n'a pas de
+                    texte alternatif. Rien n'est perdu.
+                  </div>
+                </div>
+                <div style="padding: 40px 24px; background: var(--background)">
+                  <div
+                    style="
+                      max-width: 68ch;
+                      margin: 0 auto;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 28px;
+                    "
+                  >
+                    <div
+                      style="
+                        font-size: 15px;
+                        color: var(--muted-foreground);
+                        font-family: 'JetBrains Mono', monospace;
+                      "
+                    >
+                      Adresse sur le site :
+                      /actualites/resultats-de-lanalyse-deau-de-juillet
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Titre</label
+                      >
+                      <input
+                        value="Résultats de l'analyse d'eau de juillet"
+                        style="
+                          height: 48px;
+                          padding: 0 14px;
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          background: var(--card);
+                          color: var(--foreground);
+                          font-size: 17px;
+                        "
+                      />
+                      <div
+                        style="font-size: 14px; color: var(--muted-foreground)"
+                      >
+                        Le titre affiché dans la liste des actualités et en haut
+                        de la page.
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Date</label
+                      >
+                      <div style="position: relative; width: 220px">
+                        <input
+                          value="29/07/2026"
+                          style="
+                            width: 100%;
+                            height: 48px;
+                            padding: 0 44px 0 14px;
+                            border: 1px solid var(--input);
+                            border-radius: 8px;
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 17px;
+                            font-family: 'JetBrains Mono', monospace;
+                          "
+                        />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            position: absolute;
+                            right: 14px;
+                            top: 14px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M8 2v3" />
+                          <path d="M16 2v3" />
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                          <path d="M3 9h18" />
+                        </svg>
+                      </div>
+                      <div
+                        style="font-size: 14px; color: var(--muted-foreground)"
+                      >
+                        Les actualités sont classées de la plus récente à la
+                        plus ancienne selon cette date.
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Image
+                        <span
+                          style="
+                            font-weight: 400;
+                            color: var(--muted-foreground);
+                          "
+                          >— Facultatif</span
+                        ></label
+                      >
+                      <div
+                        style="
+                          width: 100%;
+                          height: 160px;
+                          border-radius: 8px;
+                          background: repeating-linear-gradient(
+                            45deg,
+                            var(--muted),
+                            var(--muted) 10px,
+                            var(--border) 10px,
+                            var(--border) 20px
+                          );
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 13px;
+                          color: var(--muted-foreground);
+                        "
+                      >
+                        image déposée — ag-2026.jpg
+                      </div>
+                      <div style="display: flex; gap: 10px">
+                        <button
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            height: 44px;
+                            padding: 0 18px;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 15px;
+                            font-weight: 600;
+                            font-family: 'Public Sans', sans-serif;
+                            cursor: pointer;
+                          "
+                        >
+                          Remplacer l'image
+                        </button>
+                        <button
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            height: 44px;
+                            padding: 0 18px;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 15px;
+                            font-weight: 600;
+                            font-family: 'Public Sans', sans-serif;
+                            cursor: pointer;
+                          "
+                        >
+                          Retirer l'image
+                        </button>
+                      </div>
+                      <div
+                        style="display: flex; flex-direction: column; gap: 6px"
+                      >
+                        <label style="font-size: 16px; font-weight: 500"
+                          >Texte alternatif</label
+                        >
+                        <input
+                          style="
+                            height: 48px;
+                            padding: 0 14px;
+                            border: 2px solid var(--destructive);
+                            border-radius: 8px;
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 17px;
+                          "
+                        />
+                        <div style="font-size: 14px; color: var(--destructive)">
+                          Ajoutez un texte alternatif pour publier.
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Contenu</label
+                      >
+                      <div
+                        style="
+                          display: flex;
+                          gap: 4px;
+                          border: 1px solid var(--border);
+                          border-bottom: none;
+                          border-radius: 8px 8px 0 0;
+                          padding: 8px;
+                          background: var(--muted);
+                        "
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path
+                            d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"
+                          />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <line x1="19" x2="10" y1="4" y2="4" />
+                          <line x1="14" x2="5" y1="20" y2="20" />
+                          <line x1="15" x2="9" y1="4" y2="20" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M4 12h8" />
+                          <path d="M4 18V6" />
+                          <path d="M12 18V6" />
+                          <path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M4 12h8" />
+                          <path d="M4 18V6" />
+                          <path d="M12 18V6" />
+                          <path
+                            d="M17.5 10.5c1.7-1 3.5 0 3.5 1.5a2 2 0 0 1-2 2"
+                          />
+                          <path d="M17 17.5c2 1.5 4 .3 4-1.5a2 2 0 0 0-2-2" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M3 5h.01" />
+                          <path d="M3 12h.01" />
+                          <path d="M3 19h.01" />
+                          <path d="M8 5h13" />
+                          <path d="M8 12h13" />
+                          <path d="M8 19h13" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+                          <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+                          <line x1="8" x2="16" y1="12" y2="12" />
+                        </svg>
+                      </div>
+                      <textarea
+                        rows="12"
+                        style="
+                          border: 1px solid var(--border);
+                          border-radius: 0 0 8px 8px;
+                          padding: 14px;
+                          font-size: 17px;
+                          font-family: 'Public Sans', sans-serif;
+                          background: var(--card);
+                          color: var(--foreground);
+                          resize: vertical;
+                        "
+                      >
+Les résultats de l'analyse d'eau du mois de juillet sont désormais disponibles...</textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- État C: publiée -->
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                  letter-spacing: 0.04em;
+                "
+              >
+                État — publiée
+              </div>
+              <div
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  overflow: hidden;
+                  position: relative;
+                "
+              >
+                <div
+                  style="
+                    background: oklch(0.24 0.02 250);
+                    color: oklch(0.96 0.005 250);
+                    padding: 0 20px;
+                    height: 68px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 16px;
+                  "
+                >
+                  <div style="display: flex; align-items: center; gap: 20px">
+                    <a
+                      href="#"
+                      style="
+                        color: oklch(0.9 0.01 250);
+                        font-size: 14px;
+                        font-weight: 600;
+                        text-decoration: none;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                      "
+                      ><svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                        class="icon"
+                        style="width: 16px; height: 16px"
+                      >
+                        <path d="m12 19-7-7 7-7" />
+                        <path d="M19 12H5" /></svg
+                      >Actualités</a
+                    >
+                    <span
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        font-size: 14px;
+                        font-weight: 600;
+                      "
+                      ><span
+                        style="
+                          width: 8px;
+                          height: 8px;
+                          border-radius: 999px;
+                          background: var(--accent-solid);
+                          display: inline-block;
+                        "
+                      ></span
+                      >Publiée</span
+                    >
+                  </div>
+                  <div style="display: flex; gap: 10px">
+                    <button
+                      style="
+                        height: 44px;
+                        padding: 0 16px;
+                        border-radius: 8px;
+                        border: 1px solid oklch(0.5 0.02 250);
+                        background: transparent;
+                        color: inherit;
+                        font-size: 14px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                      "
+                    >
+                      Dépublier
+                    </button>
+                    <button
+                      style="
+                        height: 44px;
+                        padding: 0 16px;
+                        border-radius: 8px;
+                        border: 1px solid oklch(0.5 0.02 250);
+                        background: transparent;
+                        color: inherit;
+                        font-size: 14px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                      "
+                    >
+                      Aperçu
+                    </button>
+                    <button
+                      style="
+                        height: 44px;
+                        padding: 0 18px;
+                        border-radius: 8px;
+                        border: none;
+                        background: var(--primary);
+                        color: var(--primary-foreground);
+                        font-size: 14px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                      "
+                    >
+                      Enregistrer et mettre à jour
+                    </button>
+                  </div>
+                </div>
+                <div style="padding: 40px 24px; background: var(--background)">
+                  <div
+                    style="
+                      max-width: 68ch;
+                      margin: 0 auto;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 20px;
+                    "
+                  >
+                    <div
+                      style="
+                        display: flex;
+                        gap: 10px;
+                        align-items: flex-start;
+                        background: var(--muted);
+                        border-radius: 8px;
+                        padding: 14px 16px;
+                      "
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                        class="icon"
+                        style="
+                          color: var(--primary);
+                          width: 20px;
+                          height: 20px;
+                          margin-top: 1px;
+                        "
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="m9 12 2 2 4-4" />
+                      </svg>
+                      <p style="margin: 0; font-size: 15px">
+                        Actualité publiée. Visible à l'adresse
+                        /actualites/assemblee-generale-du-10-octobre et en tête
+                        de la liste des actualités.
+                      </p>
+                    </div>
+                    <div
+                      style="
+                        font-size: 15px;
+                        color: var(--muted-foreground);
+                        font-family: 'JetBrains Mono', monospace;
+                      "
+                    >
+                      Adresse sur le site :
+                      /actualites/assemblee-generale-du-10-octobre
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Titre</label
+                      >
+                      <input
+                        value="Assemblée générale du 10 octobre"
+                        style="
+                          height: 48px;
+                          padding: 0 14px;
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          background: var(--card);
+                          color: var(--foreground);
+                          font-size: 17px;
+                        "
+                      />
+                      <div
+                        style="font-size: 14px; color: var(--muted-foreground)"
+                      >
+                        Le titre affiché dans la liste des actualités et en haut
+                        de la page.
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Date</label
+                      >
+                      <div style="position: relative; width: 220px">
+                        <input
+                          value="02/09/2026"
+                          style="
+                            width: 100%;
+                            height: 48px;
+                            padding: 0 44px 0 14px;
+                            border: 1px solid var(--input);
+                            border-radius: 8px;
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 17px;
+                            font-family: 'JetBrains Mono', monospace;
+                          "
+                        />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            position: absolute;
+                            right: 14px;
+                            top: 14px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M8 2v3" />
+                          <path d="M16 2v3" />
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                          <path d="M3 9h18" />
+                        </svg>
+                      </div>
+                      <div
+                        style="font-size: 14px; color: var(--muted-foreground)"
+                      >
+                        Les actualités sont classées de la plus récente à la
+                        plus ancienne selon cette date.
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 12px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Image
+                        <span
+                          style="
+                            font-weight: 400;
+                            color: var(--muted-foreground);
+                          "
+                          >— Facultatif</span
+                        ></label
+                      >
+                      <div
+                        style="
+                          width: 100%;
+                          height: 160px;
+                          border-radius: 8px;
+                          background: repeating-linear-gradient(
+                            45deg,
+                            var(--muted),
+                            var(--muted) 10px,
+                            var(--border) 10px,
+                            var(--border) 20px
+                          );
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          font-family: 'JetBrains Mono', monospace;
+                          font-size: 13px;
+                          color: var(--muted-foreground);
+                        "
+                      >
+                        assemblee-generale.jpg
+                      </div>
+                      <div style="display: flex; gap: 10px">
+                        <button
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            height: 44px;
+                            padding: 0 18px;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 15px;
+                            font-weight: 600;
+                            font-family: 'Public Sans', sans-serif;
+                            cursor: pointer;
+                          "
+                        >
+                          Remplacer l'image
+                        </button>
+                        <button
+                          style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            height: 44px;
+                            padding: 0 18px;
+                            border-radius: 8px;
+                            border: 1px solid var(--border);
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 15px;
+                            font-weight: 600;
+                            font-family: 'Public Sans', sans-serif;
+                            cursor: pointer;
+                          "
+                        >
+                          Retirer l'image
+                        </button>
+                      </div>
+                      <div
+                        style="display: flex; flex-direction: column; gap: 6px"
+                      >
+                        <label style="font-size: 16px; font-weight: 500"
+                          >Texte alternatif</label
+                        >
+                        <input
+                          value="Salle communale pendant l'assemblée générale 2025"
+                          style="
+                            height: 48px;
+                            padding: 0 14px;
+                            border: 1px solid var(--input);
+                            border-radius: 8px;
+                            background: var(--card);
+                            color: var(--foreground);
+                            font-size: 17px;
+                          "
+                        />
+                        <div
+                          style="
+                            font-size: 14px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          Décrivez l'image pour les personnes qui ne la voient
+                          pas. Obligatoire pour publier.
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      style="display: flex; flex-direction: column; gap: 6px"
+                    >
+                      <label style="font-size: 16px; font-weight: 500"
+                        >Contenu</label
+                      >
+                      <div
+                        style="
+                          display: flex;
+                          gap: 4px;
+                          border: 1px solid var(--border);
+                          border-bottom: none;
+                          border-radius: 8px 8px 0 0;
+                          padding: 8px;
+                          background: var(--muted);
+                        "
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path
+                            d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"
+                          />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <line x1="19" x2="10" y1="4" y2="4" />
+                          <line x1="14" x2="5" y1="20" y2="20" />
+                          <line x1="15" x2="9" y1="4" y2="20" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M4 12h8" />
+                          <path d="M4 18V6" />
+                          <path d="M12 18V6" />
+                          <path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M4 12h8" />
+                          <path d="M4 18V6" />
+                          <path d="M12 18V6" />
+                          <path
+                            d="M17.5 10.5c1.7-1 3.5 0 3.5 1.5a2 2 0 0 1-2 2"
+                          />
+                          <path d="M17 17.5c2 1.5 4 .3 4-1.5a2 2 0 0 0-2-2" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M3 5h.01" />
+                          <path d="M3 12h.01" />
+                          <path d="M3 19h.01" />
+                          <path d="M8 5h13" />
+                          <path d="M8 12h13" />
+                          <path d="M8 19h13" />
+                        </svg>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.75"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          class="icon"
+                          style="
+                            width: 18px;
+                            height: 18px;
+                            color: var(--muted-foreground);
+                          "
+                        >
+                          <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+                          <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+                          <line x1="8" x2="16" y1="12" y2="12" />
+                        </svg>
+                      </div>
+                      <textarea
+                        rows="12"
+                        style="
+                          border: 1px solid var(--border);
+                          border-radius: 0 0 8px 8px;
+                          padding: 14px;
+                          font-size: 17px;
+                          font-family: 'Public Sans', sans-serif;
+                          background: var(--card);
+                          color: var(--foreground);
+                          resize: vertical;
+                        "
+                      >
+L'assemblée générale annuelle se tiendra le 10 octobre à 18h30, salle communale...</textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- État D: alert-dialog dépublication -->
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                  letter-spacing: 0.04em;
+                "
+              >
+                État — boîte de dépublication ouverte
+              </div>
+              <div
+                style="
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  position: relative;
+                  background: oklch(0 0 0 / 0.35);
+                  padding: 60px 24px;
+                  display: flex;
+                  justify-content: center;
+                "
+              >
+                <div
+                  style="
+                    background: var(--card);
+                    border-radius: 12px;
+                    padding: 24px;
+                    max-width: 440px;
+                    width: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    box-shadow: 0 8px 24px oklch(0 0 0 / 0.2);
+                  "
+                >
+                  <h3 style="margin: 0; font-size: 18px; font-weight: 600">
+                    Dépublier « Assemblée générale du 10 octobre » ?
+                  </h3>
+                  <p
+                    style="
+                      margin: 0;
+                      font-size: 15px;
+                      color: var(--muted-foreground);
+                    "
+                  >
+                    Elle disparaît du site et de la liste des actualités. Son
+                    contenu est conservé : vous pourrez la republier.
+                  </p>
+                  <div
+                    style="display: flex; justify-content: flex-end; gap: 10px"
+                  >
+                    <button
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        height: 44px;
+                        padding: 0 18px;
+                        border-radius: 8px;
+                        border: 1px solid var(--border);
+                        background: var(--card);
+                        color: var(--foreground);
+                        font-size: 15px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                      "
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        height: 44px;
+                        padding: 0 18px;
+                        border-radius: 8px;
+                        border: none;
+                        background: var(--destructive);
+                        color: oklch(0.99 0.005 27);
+                        font-size: 15px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                      "
+                    >
+                      Dépublier l'actualité
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mobile -->
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                  letter-spacing: 0.04em;
+                "
+              >
+                Mobile 390 px — brouillon neuf, PreviewBar 104 px
+              </div>
+              <div
+                style="
+                  width: 390px;
+                  border: 1px solid var(--border);
+                  border-radius: 16px;
+                  overflow: hidden;
+                "
+              >
+                <div
+                  style="
+                    background: oklch(0.24 0.02 250);
+                    color: oklch(0.96 0.005 250);
+                    height: 104px;
+                    padding: 12px 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    justify-content: center;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                    "
+                  >
+                    <a
+                      href="#"
+                      style="
+                        color: oklch(0.9 0.01 250);
+                        font-size: 14px;
+                        font-weight: 600;
+                        text-decoration: none;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                      "
+                      ><svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                        class="icon"
+                        style="width: 16px; height: 16px"
+                      >
+                        <path d="m12 19-7-7 7-7" />
+                        <path d="M19 12H5" /></svg
+                      >Actualités</a
+                    >
+                    <span
+                      style="
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        font-size: 14px;
+                        font-weight: 600;
+                      "
+                      ><span
+                        style="
+                          width: 8px;
+                          height: 8px;
+                          border-radius: 999px;
+                          background: oklch(0.75 0.01 250);
+                          display: inline-block;
+                        "
+                      ></span
+                      >Brouillon</span
+                    >
+                  </div>
+                  <button
+                    style="
+                      height: 44px;
+                      padding: 0 18px;
+                      border-radius: 8px;
+                      border: none;
+                      background: var(--primary);
+                      color: var(--primary-foreground);
+                      font-size: 14px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                      display: inline-flex;
+                      align-items: center;
+                      width: 100%;
+                      justify-content: center;
+                    "
+                  >
+                    Publier l'actualité
+                  </button>
+                </div>
+                <div
+                  style="
+                    background: var(--background);
+                    padding: 20px 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 24px;
+                  "
+                >
+                  <div style="display: flex; gap: 8px">
+                    <button
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        height: 44px;
+                        padding: 0 18px;
+                        border-radius: 8px;
+                        border: 1px solid var(--border);
+                        background: var(--card);
+                        color: var(--foreground);
+                        font-size: 15px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                        width: 100%;
+                        justify-content: center;
+                      "
+                    >
+                      Enregistrer le brouillon
+                    </button>
+                    <button
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        height: 44px;
+                        padding: 0 18px;
+                        border-radius: 8px;
+                        border: 1px solid var(--border);
+                        background: var(--card);
+                        color: var(--foreground);
+                        font-size: 15px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                        width: 100%;
+                        justify-content: center;
+                      "
+                    >
+                      Aperçu
+                    </button>
+                  </div>
+                  <div
+                    style="
+                      font-size: 14px;
+                      color: var(--muted-foreground);
+                      font-family: 'JetBrains Mono', monospace;
+                    "
+                  >
+                    Adresse : /actualites/
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label style="font-size: 16px; font-weight: 500"
+                      >Titre</label
+                    >
+                    <input
+                      style="
+                        height: 56px;
+                        padding: 0 14px;
+                        border: 1px solid var(--input);
+                        border-radius: 8px;
+                        background: var(--card);
+                        color: var(--foreground);
+                        font-size: 17px;
+                      "
+                    />
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label style="font-size: 16px; font-weight: 500"
+                      >Date</label
+                    >
+                    <div style="position: relative">
+                      <input
+                        value="22/09/2026"
+                        style="
+                          width: 100%;
+                          height: 56px;
+                          padding: 0 44px 0 14px;
+                          border: 1px solid var(--input);
+                          border-radius: 8px;
+                          background: var(--card);
+                          color: var(--foreground);
+                          font-size: 17px;
+                          font-family: 'JetBrains Mono', monospace;
+                        "
+                      />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                        class="icon"
+                        style="
+                          position: absolute;
+                          right: 14px;
+                          top: 18px;
+                          color: var(--muted-foreground);
+                        "
+                      >
+                        <path d="M8 2v3" />
+                        <path d="M16 2v3" />
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path d="M3 9h18" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 6px">
+                    <label style="font-size: 16px; font-weight: 500"
+                      >Image — Facultatif</label
+                    >
+                    <div
+                      style="font-size: 14px; color: var(--muted-foreground)"
+                    >
+                      PNG, JPEG ou WebP, 5 Mo au plus.
+                    </div>
+                    <button
+                      style="
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        height: 56px;
+                        padding: 0 18px;
+                        border-radius: 8px;
+                        border: 1px solid var(--border);
+                        background: var(--card);
+                        color: var(--foreground);
+                        font-size: 15px;
+                        font-weight: 600;
+                        font-family: 'Public Sans', sans-serif;
+                        cursor: pointer;
+                        width: 100%;
+                        justify-content: center;
+                      "
+                    >
+                      Choisir un fichier
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ÉCRAN 3 -->
+          <section
+            id="ecran-3"
+            style="display: flex; flex-direction: column; gap: 24px"
+          >
+            <header
+              style="
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 16px;
+              "
+            >
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  letter-spacing: 0.04em;
+                "
+              >
+                ÉCRAN 3 — SITE PUBLIC · /actualites
+              </div>
+              <h2
+                style="
+                  font-family: 'Source Serif 4', serif;
+                  font-size: 22px;
+                  font-weight: 600;
+                  margin: 2px 0 0;
+                "
+              >
+                Liste des actualités
+              </h2>
+              <p
+                style="
+                  font-size: 15px;
+                  color: var(--muted-foreground);
+                  margin: 6px 0 0;
+                  max-width: 68ch;
+                "
+              >
+                En-tête et pied publics déjà livrés — bandeau neutre pour situer
+                seulement.
+              </p>
+              <p
+                style="
+                  font-size: 13px;
+                  background: var(--accent);
+                  color: var(--accent-foreground);
+                  border: 1px solid var(--accent-border);
+                  border-radius: 8px;
+                  padding: 8px 12px;
+                  margin: 12px 0 0;
+                  display: inline-block;
+                  max-width: 68ch;
+                "
+              >
+                <strong>Écarts annotés</strong> — 1 : vignette proposée 4:3,
+                ~160 px desktop, pleine largeur mobile (à valider). 3 :
+                pagination publique à 10/page (proposition, pas fixée par le
+                socle).
+              </p>
+            </header>
+
+            <div
+              style="
+                height: 56px;
+                background: var(--muted);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                padding: 0 20px;
+                font-size: 13px;
+                color: var(--muted-foreground);
+                font-family: 'JetBrains Mono', monospace;
+              "
+            >
+              en-tête public — déjà livré, non redessiné
+            </div>
+
+            <div
+              style="
+                max-width: 1200px;
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 32px;
+              "
+            >
+              <div
+                style="
+                  max-width: 68ch;
+                  margin: 0 auto;
+                  width: 100%;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 24px;
+                "
+              >
+                <h1
+                  style="
+                    font-family: 'Source Serif 4', serif;
+                    font-size: 34px;
+                    font-weight: 600;
+                    margin: 0;
+                    text-wrap: pretty;
+                  "
+                >
+                  Actualités
+                </h1>
+
+                <div
+                  style="
+                    border-bottom: 1px solid var(--border);
+                    padding-bottom: 24px;
+                    display: flex;
+                    gap: 20px;
+                    align-items: flex-start;
+                  "
+                >
+                  <div
+                    style="
+                      flex: 0 0 160px;
+                      width: 160px;
+                      aspect-ratio: 4/3;
+                      border-radius: 8px;
+                      background: repeating-linear-gradient(
+                        45deg,
+                        var(--muted),
+                        var(--muted) 10px,
+                        var(--border) 10px,
+                        var(--border) 20px
+                      );
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px;
+                      color: var(--muted-foreground);
+                      text-align: center;
+                    "
+                  >
+                    vignette 4:3
+                  </div>
+
+                  <div
+                    style="
+                      display: flex;
+                      flex-direction: column;
+                      gap: 6px;
+                      flex: 1;
+                    "
+                  >
+                    <div
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                    >
+                      2 septembre 2026
+                    </div>
+                    <h2
+                      style="
+                        font-family: 'Source Serif 4', serif;
+                        font-size: 26px;
+                        font-weight: 600;
+                        margin: 0;
+                        text-wrap: pretty;
+                      "
+                    >
+                      <a
+                        href="#"
+                        style="color: var(--foreground); text-decoration: none"
+                        >Assemblée générale du 10 octobre</a
+                      >
+                    </h2>
+                    <a
+                      href="#"
+                      style="
+                        color: var(--link);
+                        font-size: 15px;
+                        font-weight: 600;
+                        text-decoration: underline;
+                        margin-top: 4px;
+                      "
+                      >Lire l'actualité</a
+                    >
+                  </div>
+                </div>
+
+                <div
+                  style="
+                    border-bottom: 1px solid var(--border);
+                    padding-bottom: 24px;
+                    display: flex;
+                    gap: 20px;
+                    align-items: flex-start;
+                  "
+                >
+                  <div
+                    style="
+                      flex: 0 0 160px;
+                      width: 160px;
+                      aspect-ratio: 4/3;
+                      border-radius: 8px;
+                      background: repeating-linear-gradient(
+                        45deg,
+                        var(--muted),
+                        var(--muted) 10px,
+                        var(--border) 10px,
+                        var(--border) 20px
+                      );
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px;
+                      color: var(--muted-foreground);
+                      text-align: center;
+                    "
+                  >
+                    vignette 4:3
+                  </div>
+
+                  <div
+                    style="
+                      display: flex;
+                      flex-direction: column;
+                      gap: 6px;
+                      flex: 1;
+                    "
+                  >
+                    <div
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                    >
+                      18 août 2026
+                    </div>
+                    <h2
+                      style="
+                        font-family: 'Source Serif 4', serif;
+                        font-size: 26px;
+                        font-weight: 600;
+                        margin: 0;
+                        text-wrap: pretty;
+                      "
+                    >
+                      <a
+                        href="#"
+                        style="color: var(--foreground); text-decoration: none"
+                        >Travaux sur la canalisation du chemin des Pins</a
+                      >
+                    </h2>
+                    <a
+                      href="#"
+                      style="
+                        color: var(--link);
+                        font-size: 15px;
+                        font-weight: 600;
+                        text-decoration: underline;
+                        margin-top: 4px;
+                      "
+                      >Lire l'actualité</a
+                    >
+                  </div>
+                </div>
+
+                <div
+                  style="
+                    border-bottom: 1px solid var(--border);
+                    padding-bottom: 24px;
+                    display: flex;
+                    gap: 20px;
+                    align-items: flex-start;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      flex-direction: column;
+                      gap: 6px;
+                      flex: 1;
+                    "
+                  >
+                    <div
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                    >
+                      29 juillet 2026
+                    </div>
+                    <h2
+                      style="
+                        font-family: 'Source Serif 4', serif;
+                        font-size: 26px;
+                        font-weight: 600;
+                        margin: 0;
+                        text-wrap: pretty;
+                      "
+                    >
+                      <a
+                        href="#"
+                        style="color: var(--foreground); text-decoration: none"
+                        >Résultats de l'analyse d'eau de juillet</a
+                      >
+                    </h2>
+                    <a
+                      href="#"
+                      style="
+                        color: var(--link);
+                        font-size: 15px;
+                        font-weight: 600;
+                        text-decoration: underline;
+                        margin-top: 4px;
+                      "
+                      >Lire l'actualité</a
+                    >
+                  </div>
+                </div>
+
+                <div
+                  style="
+                    border-bottom: 1px solid var(--border);
+                    padding-bottom: 24px;
+                    display: flex;
+                    gap: 20px;
+                    align-items: flex-start;
+                  "
+                >
+                  <div
+                    style="
+                      flex: 0 0 160px;
+                      width: 160px;
+                      aspect-ratio: 4/3;
+                      border-radius: 8px;
+                      background: repeating-linear-gradient(
+                        45deg,
+                        var(--muted),
+                        var(--muted) 10px,
+                        var(--border) 10px,
+                        var(--border) 20px
+                      );
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px;
+                      color: var(--muted-foreground);
+                      text-align: center;
+                    "
+                  >
+                    vignette 4:3
+                  </div>
+
+                  <div
+                    style="
+                      display: flex;
+                      flex-direction: column;
+                      gap: 6px;
+                      flex: 1;
+                    "
+                  >
+                    <div
+                      style="font-size: 15px; color: var(--muted-foreground)"
+                    >
+                      14 juillet 2026
+                    </div>
+                    <h2
+                      style="
+                        font-family: 'Source Serif 4', serif;
+                        font-size: 26px;
+                        font-weight: 600;
+                        margin: 0;
+                        text-wrap: pretty;
+                      "
+                    >
+                      <a
+                        href="#"
+                        style="color: var(--foreground); text-decoration: none"
+                        >Fête de l'étang : merci à tous</a
+                      >
+                    </h2>
+                    <a
+                      href="#"
+                      style="
+                        color: var(--link);
+                        font-size: 15px;
+                        font-weight: 600;
+                        text-decoration: underline;
+                        margin-top: 4px;
+                      "
+                      >Lire l'actualité</a
+                    >
+                  </div>
+                </div>
+
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding-top: 8px;
+                  "
+                >
+                  <span style="color: var(--muted-foreground); font-size: 15px"
+                    >← Précédent</span
+                  >
+                  <span style="font-size: 14px; color: var(--muted-foreground)"
+                    >Page 1 sur 3</span
+                  >
+                  <a
+                    href="#"
+                    style="
+                      color: var(--link);
+                      font-size: 15px;
+                      font-weight: 600;
+                      text-decoration: underline;
+                    "
+                    >Suivant →</a
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 32px; flex-wrap: wrap">
+              <div
+                style="
+                  flex: 1;
+                  min-width: 300px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+                "
+              >
+                <div
+                  style="
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--muted-foreground);
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                  "
+                >
+                  État — vide
+                </div>
+                <div
+                  style="
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 48px 24px;
+                    text-align: center;
+                  "
+                >
+                  <p
+                    style="
+                      font-size: 15px;
+                      color: var(--muted-foreground);
+                      margin: 0;
+                    "
+                  >
+                    Aucune actualité pour l'instant.
+                  </p>
+                </div>
+              </div>
+              <div
+                style="
+                  flex: 1;
+                  min-width: 300px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+                "
+              >
+                <div
+                  style="
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: var(--muted-foreground);
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                  "
+                >
+                  État — page 2 (Précédent actif)
+                </div>
+                <div
+                  style="
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 20px 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                  "
+                >
+                  <a
+                    href="#"
+                    style="
+                      color: var(--link);
+                      font-size: 15px;
+                      font-weight: 600;
+                      text-decoration: underline;
+                    "
+                    >← Précédent</a
+                  >
+                  <span style="font-size: 14px; color: var(--muted-foreground)"
+                    >Page 2 sur 3</span
+                  >
+                  <a
+                    href="#"
+                    style="
+                      color: var(--link);
+                      font-size: 15px;
+                      font-weight: 600;
+                      text-decoration: underline;
+                    "
+                    >Suivant →</a
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                  letter-spacing: 0.04em;
+                "
+              >
+                Mobile 390 px — image pleine largeur au-dessus du titre
+              </div>
+              <div
+                style="
+                  width: 390px;
+                  background: var(--background);
+                  border: 1px solid var(--border);
+                  border-radius: 16px;
+                  padding: 18px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 20px;
+                "
+              >
+                <h1
+                  style="
+                    font-family: 'Source Serif 4', serif;
+                    font-size: 30px;
+                    font-weight: 600;
+                    margin: 0;
+                    text-wrap: pretty;
+                  "
+                >
+                  Actualités
+                </h1>
+
+                <div
+                  style="
+                    border-bottom: 1px solid var(--border);
+                    padding-bottom: 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <div
+                    style="
+                      width: 100%;
+                      aspect-ratio: 4/3;
+                      border-radius: 8px;
+                      background: repeating-linear-gradient(
+                        45deg,
+                        var(--muted),
+                        var(--muted) 10px,
+                        var(--border) 10px,
+                        var(--border) 20px
+                      );
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px;
+                      color: var(--muted-foreground);
+                    "
+                  >
+                    vignette pleine largeur
+                  </div>
+
+                  <div style="font-size: 15px; color: var(--muted-foreground)">
+                    2 septembre 2026
+                  </div>
+                  <h2
+                    style="
+                      font-family: 'Source Serif 4', serif;
+                      font-size: 22px;
+                      font-weight: 600;
+                      margin: 0;
+                      text-wrap: pretty;
+                    "
+                  >
+                    Assemblée générale du 10 octobre
+                  </h2>
+                  <a
+                    href="#"
+                    style="
+                      color: var(--link);
+                      font-size: 15px;
+                      font-weight: 600;
+                      text-decoration: underline;
+                    "
+                    >Lire l'actualité</a
+                  >
+                </div>
+
+                <div
+                  style="
+                    border-bottom: 1px solid var(--border);
+                    padding-bottom: 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <div
+                    style="
+                      width: 100%;
+                      aspect-ratio: 4/3;
+                      border-radius: 8px;
+                      background: repeating-linear-gradient(
+                        45deg,
+                        var(--muted),
+                        var(--muted) 10px,
+                        var(--border) 10px,
+                        var(--border) 20px
+                      );
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px;
+                      color: var(--muted-foreground);
+                    "
+                  >
+                    vignette pleine largeur
+                  </div>
+
+                  <div style="font-size: 15px; color: var(--muted-foreground)">
+                    18 août 2026
+                  </div>
+                  <h2
+                    style="
+                      font-family: 'Source Serif 4', serif;
+                      font-size: 22px;
+                      font-weight: 600;
+                      margin: 0;
+                      text-wrap: pretty;
+                    "
+                  >
+                    Travaux sur la canalisation du chemin des Pins
+                  </h2>
+                  <a
+                    href="#"
+                    style="
+                      color: var(--link);
+                      font-size: 15px;
+                      font-weight: 600;
+                      text-decoration: underline;
+                    "
+                    >Lire l'actualité</a
+                  >
+                </div>
+
+                <div
+                  style="
+                    border-bottom: 1px solid var(--border);
+                    padding-bottom: 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <div style="font-size: 15px; color: var(--muted-foreground)">
+                    29 juillet 2026
+                  </div>
+                  <h2
+                    style="
+                      font-family: 'Source Serif 4', serif;
+                      font-size: 22px;
+                      font-weight: 600;
+                      margin: 0;
+                      text-wrap: pretty;
+                    "
+                  >
+                    Résultats de l'analyse d'eau de juillet
+                  </h2>
+                  <a
+                    href="#"
+                    style="
+                      color: var(--link);
+                      font-size: 15px;
+                      font-weight: 600;
+                      text-decoration: underline;
+                    "
+                    >Lire l'actualité</a
+                  >
+                </div>
+
+                <div
+                  style="
+                    border-bottom: 1px solid var(--border);
+                    padding-bottom: 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                  "
+                >
+                  <div
+                    style="
+                      width: 100%;
+                      aspect-ratio: 4/3;
+                      border-radius: 8px;
+                      background: repeating-linear-gradient(
+                        45deg,
+                        var(--muted),
+                        var(--muted) 10px,
+                        var(--border) 10px,
+                        var(--border) 20px
+                      );
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px;
+                      color: var(--muted-foreground);
+                    "
+                  >
+                    vignette pleine largeur
+                  </div>
+
+                  <div style="font-size: 15px; color: var(--muted-foreground)">
+                    14 juillet 2026
+                  </div>
+                  <h2
+                    style="
+                      font-family: 'Source Serif 4', serif;
+                      font-size: 22px;
+                      font-weight: 600;
+                      margin: 0;
+                      text-wrap: pretty;
+                    "
+                  >
+                    Fête de l'étang : merci à tous
+                  </h2>
+                  <a
+                    href="#"
+                    style="
+                      color: var(--link);
+                      font-size: 15px;
+                      font-weight: 600;
+                      text-decoration: underline;
+                    "
+                    >Lire l'actualité</a
+                  >
+                </div>
+
+                <div style="display: flex; gap: 8px">
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      height: 56px;
+                      padding: 0 18px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      font-size: 15px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                      width: 100%;
+                      justify-content: center;
+                    "
+                  >
+                    ← Précédent
+                  </button>
+                  <button
+                    style="
+                      display: inline-flex;
+                      align-items: center;
+                      gap: 8px;
+                      height: 56px;
+                      padding: 0 18px;
+                      border-radius: 8px;
+                      border: 1px solid var(--border);
+                      background: var(--card);
+                      color: var(--foreground);
+                      font-size: 15px;
+                      font-weight: 600;
+                      font-family: 'Public Sans', sans-serif;
+                      cursor: pointer;
+                      width: 100%;
+                      justify-content: center;
+                    "
+                  >
+                    Suivant →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ÉCRAN 4 -->
+          <section
+            id="ecran-4"
+            style="display: flex; flex-direction: column; gap: 24px"
+          >
+            <header
+              style="
+                border-bottom: 1px solid var(--border);
+                padding-bottom: 16px;
+              "
+            >
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 12px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  letter-spacing: 0.04em;
+                "
+              >
+                ÉCRAN 4 — SITE PUBLIC · /actualites/{adresse}
+              </div>
+              <h2
+                style="
+                  font-family: 'Source Serif 4', serif;
+                  font-size: 22px;
+                  font-weight: 600;
+                  margin: 2px 0 0;
+                "
+              >
+                Page d'une actualité
+              </h2>
+              <p
+                style="
+                  font-size: 15px;
+                  color: var(--muted-foreground);
+                  margin: 6px 0 0;
+                  max-width: 68ch;
+                "
+              >
+                Article complet, sans troncature. Aperçu brouillon (bureau)
+                montré ; visiteur → 404 existante, non redessinée.
+              </p>
+            </header>
+
+            <div
+              style="
+                height: 56px;
+                background: var(--muted);
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                padding: 0 20px;
+                font-size: 13px;
+                color: var(--muted-foreground);
+                font-family: 'JetBrains Mono', monospace;
+              "
+            >
+              en-tête public — déjà livré, non redessiné
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                  letter-spacing: 0.04em;
+                "
+              >
+                Article publié — avec image
+              </div>
+              <article
+                style="
+                  max-width: 68ch;
+                  margin: 0 auto;
+                  width: 100%;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 20px;
+                "
+              >
+                <a
+                  href="#"
+                  style="
+                    color: var(--link);
+                    font-size: 15px;
+                    font-weight: 600;
+                    text-decoration: underline;
+                  "
+                  >← Toutes les actualités</a
+                >
+                <div style="font-size: 15px; color: var(--muted-foreground)">
+                  2 septembre 2026
+                </div>
+                <h1
+                  style="
+                    font-family: 'Source Serif 4', serif;
+                    font-size: 34px;
+                    font-weight: 600;
+                    margin: 0;
+                    text-wrap: pretty;
+                  "
+                >
+                  Assemblée générale du 10 octobre
+                </h1>
+                <figure style="margin: 0">
+                  <div
+                    style="
+                      width: 100%;
+                      max-height: 520px;
+                      aspect-ratio: 16/9;
+                      border-radius: 8px;
+                      background: repeating-linear-gradient(
+                        45deg,
+                        var(--muted),
+                        var(--muted) 10px,
+                        var(--border) 10px,
+                        var(--border) 20px
+                      );
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      font-family: 'JetBrains Mono', monospace;
+                      font-size: 13px;
+                      color: var(--muted-foreground);
+                    "
+                  >
+                    salle communale pendant l'assemblée générale 2025
+                  </div>
+                </figure>
+                <div
+                  style="
+                    font-size: 18px;
+                    line-height: 1.65;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                  "
+                >
+                  <p style="margin: 0">
+                    L'assemblée générale annuelle se tiendra le
+                    <strong>10 octobre à 18h30</strong>, salle communale. À
+                    l'ordre du jour : bilan financier, travaux de l'année et
+                    élection du nouveau bureau.
+                  </p>
+                  <h2
+                    style="
+                      font-family: 'Source Serif 4', serif;
+                      font-size: 24px;
+                      font-weight: 600;
+                      margin: 8px 0 0;
+                    "
+                  >
+                    Ordre du jour
+                  </h2>
+                  <ul style="margin: 0; padding-left: 22px">
+                    <li>Bilan financier 2025-2026</li>
+                    <li>Point sur les travaux de la canalisation</li>
+                    <li>Élection du bureau</li>
+                  </ul>
+                </div>
+              </article>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="
+                  font-family: 'JetBrains Mono', monospace;
+                  font-size: 11px;
+                  font-weight: 600;
+                  color: var(--muted-foreground);
+                  text-transform: uppercase;
+                  letter-spacing: 0.04em;
+                "
+              >
+                Aperçu d'un brouillon par le bureau — sans image (mobile 390 px)
+              </div>
+              <div
+                style="
+                  width: 390px;
+                  background: var(--background);
+                  border: 1px solid var(--border);
+                  border-radius: 16px;
+                  padding: 18px;
+                "
+              >
+                <article
+                  style="display: flex; flex-direction: column; gap: 16px"
+                >
+                  <div
+                    role="status"
+                    style="
+                      background: var(--accent);
+                      color: var(--accent-foreground);
+                      border-radius: 8px;
+                      padding: 12px 14px;
+                      font-size: 14px;
+                      font-weight: 600;
+                    "
+                  >
+                    Aperçu — cette actualité est un brouillon. Les visiteurs ne
+                    la voient pas.
+                  </div>
+                  <a
+                    href="#"
+                    style="
+                      color: var(--link);
+                      font-size: 15px;
+                      font-weight: 600;
+                      text-decoration: underline;
+                    "
+                    >← Toutes les actualités</a
+                  >
+                  <div style="font-size: 15px; color: var(--muted-foreground)">
+                    29 juillet 2026
+                  </div>
+                  <h1
+                    style="
+                      font-family: 'Source Serif 4', serif;
+                      font-size: 28px;
+                      font-weight: 600;
+                      margin: 0;
+                      text-wrap: pretty;
+                    "
+                  >
+                    Résultats de l'analyse d'eau de juillet
+                  </h1>
+                  <div style="font-size: 17px; line-height: 1.65">
+                    <p style="margin: 0">
+                      Les résultats de l'analyse d'eau du mois de juillet sont
+                      désormais disponibles. La qualité est conforme aux normes
+                      en vigueur sur l'ensemble des points de prélèvement.
+                    </p>
+                  </div>
+                </article>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <script>
+      var ICONS = {
+        sun: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="icon" style="width:16px;height:16px;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>',
+        moon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="icon" style="width:16px;height:16px;"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>',
+      }
+      function toggleTheme() {
+        var root = document.getElementById('root')
+        var isDark = root.getAttribute('data-theme') === 'dark'
+        root.setAttribute('data-theme', isDark ? 'light' : 'dark')
+        document.getElementById('theme-label').textContent = isDark
+          ? 'Sombre'
+          : 'Clair'
+        document.getElementById('theme-icon').innerHTML = isDark
+          ? ICONS.moon
+          : ICONS.sun
+      }
+    </script>
+  </body>
+</html>

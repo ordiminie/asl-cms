@@ -20,9 +20,10 @@ const flatKeys = (value: unknown, prefix = ''): string[] => {
 const catalogs = {en, es} as const
 
 /**
- * Les sept espaces de noms introduits par s04. La garde porte sur tous, pas
- * seulement sur les deux plus gros : une chaine recopiee du francais s'etait
- * glissee dans SortableList, hors du perimetre trop etroit de la garde.
+ * Les sept espaces de noms introduits par s04, plus les deux de s05. La garde
+ * porte sur tous, pas seulement sur les deux plus gros : une chaine recopiee du
+ * francais s'etait glissee dans SortableList, hors du perimetre trop etroit de
+ * la garde.
  */
 const translatedNamespaces = [
   'PublicCmsPage',
@@ -32,16 +33,22 @@ const translatedNamespaces = [
   'RestrictedMarkdownEditor',
   'PageBlocks',
   'BureauPagesPage',
+  'BureauNewsPage',
+  'PublicNewsPage',
 ] as const
 
 /**
- * Deux libelles anglais coincident mot pour mot avec le francais : ce sont les
+ * Six libelles anglais coincident mot pour mot avec le francais : ce sont les
  * traductions justes, pas des copies oubliees. Les nommer un par un garde la
- * garde stricte sur les 109 autres valeurs.
+ * garde stricte sur les 173 autres valeurs.
  */
 const identicalByTranslation = new Set([
   'en:BureauPagesPage.title',
   'en:BureauPagesPage.columns.actions',
+  'en:BureauNewsPage.columns.date',
+  'en:BureauNewsPage.columns.actions',
+  'en:BureauNewsPage.editor.dateLabel',
+  'en:BureauNewsPage.editor.imageLabel',
 ])
 
 const flatEntries = (value: unknown, prefix = ''): [string, unknown][] =>
@@ -56,6 +63,8 @@ describe('catalogues de messages des pages CMS (s04)', () => {
     'PublicCmsPage',
     'BureauPagesPage',
     'RestrictedMarkdownEditor',
+    'BureauNewsPage',
+    'PublicNewsPage',
   ] as const) {
     it(`${namespace} porte les memes cles en fr, en et es`, () => {
       const expected = flatKeys(

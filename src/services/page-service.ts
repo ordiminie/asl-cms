@@ -13,12 +13,11 @@ import {
   updatePageStatusDao,
 } from '@/db/repositories/page-repository'
 import {withTenant} from '@/db/tenant-scope'
-import {createStorage} from '@/lib/files/storage/storage-factory'
-import {StorageOperations} from '@/lib/files/storage/types'
 
 import {getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
 import {canManageAssociation} from './authorization/association-authorization'
+import {getContentFileStorage} from './content-file-service'
 import {AuthorizationError} from './errors/authorization-error'
 import {NotFoundError} from './errors/not-found-error'
 import {
@@ -28,11 +27,8 @@ import {
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   buildPageBlockFileKey,
-  getPageFileFormatFromKey,
-  isPageBlockFileKeyAllowed,
   isPageSlugReserved,
   PAGE_FILE_CONTENT_TYPES,
-  PAGE_FILE_MAX_BYTES,
   PageBlockData,
   pageBlockSchema,
   PageFileKind,
@@ -51,7 +47,6 @@ import {
   createPageServiceSchema,
   pageOrganizationIdSchema,
   pageStatusChangeServiceSchema,
-  readPageBlockFileServiceSchema,
   readPageBySlugServiceSchema,
   updatePageServiceSchema,
   uploadPageBlockFileServiceSchema,
@@ -390,18 +385,6 @@ export const canManagePagesService = async (
   return canManageAssociation(authUser, parsed.data)
 }
 
-/**
- * Stockage des fichiers de bloc : l'adaptateur `local` sous la racine de
- * `@/env` (ADR 015), meme patron que l'identite d'association.
- */
-const getPageFileStorage = (): StorageOperations =>
-  createStorage('local', {
-    bucket: 'pages',
-    basePath: '',
-    maxFileSize: Math.max(...Object.values(PAGE_FILE_MAX_BYTES)),
-    allowedMimeTypes: Object.values(PAGE_FILE_CONTENT_TYPES),
-  })
-
 export type PageBlockFileUpload =
   | {
       status: 'uploaded'
@@ -412,8 +395,6 @@ export type PageBlockFileUpload =
     }
   | {status: 'rejected'; reason: 'format'}
   | {status: 'rejected'; reason: 'size'; size: number; maxBytes: number}
-
-export type PageBlockFileContent = {content: Blob; contentType: string}
 
 /**
  * Depose le fichier d'un bloc (image ou document).
@@ -463,7 +444,7 @@ export const uploadPageBlockFileService = async (input: {
     parsed.data.blockId,
     validation.format
   )
-  await getPageFileStorage().upload(input.file, key)
+  await getContentFileStorage().upload(input.file, key)
 
   return {
     status: 'uploaded',
@@ -471,41 +452,5 @@ export const uploadPageBlockFileService = async (input: {
     fileName: input.file.name,
     fileSize: content.length,
     contentType: PAGE_FILE_CONTENT_TYPES[validation.format],
-  }
-}
-
-/**
- * Lit un fichier de bloc pour la route publique.
- *
- * **Sans controle d'autorisation, et c'est delibere** : ces fichiers
- * s'affichent sur le site public. En revanche la cle **vient de la requete**,
- * contrairement a l'identite d'association : elle est donc validee contre le
- * prefixe de l'association resolue par le domaine avant toute lecture. Une cle
- * hors de ce prefixe n'est pas servie.
- */
-export const readPageBlockFileService = async (
-  organizationId: string,
-  key: string
-): Promise<PageBlockFileContent> => {
-  const parsed = readPageBlockFileServiceSchema.safeParse({
-    organizationId,
-    key,
-  })
-  if (!parsed.success) {
-    throw new ValidationParsedZodError(parsed.error)
-  }
-
-  if (!isPageBlockFileKeyAllowed(parsed.data.organizationId, parsed.data.key)) {
-    throw new ValidationError('Clé de fichier de page invalide')
-  }
-
-  const format = getPageFileFormatFromKey(parsed.data.key)
-  if (!format) {
-    throw new ValidationError('Clé de fichier de page invalide')
-  }
-
-  return {
-    content: await getPageFileStorage().download(parsed.data.key),
-    contentType: PAGE_FILE_CONTENT_TYPES[format],
   }
 }
