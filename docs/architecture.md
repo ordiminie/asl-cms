@@ -198,6 +198,17 @@ moins sur l'ancien. La validation reste celle de s04 : format
 jugé sur la **signature binaire**, 5 Mo par image, 10 Mo par document, `X-Content-Type-Options:
 nosniff` et cache long `immutable` (la clé change à chaque remplacement).
 
+**Enveloppe d'une requête — décision du 23/09/2026.** Les plafonds par fichier ci-dessus ne servent à
+rien tant que l'enveloppe de la requête est plus basse : `next.config.ts` fixe
+`serverActions.bodySizeLimit: '2mb'`, donc **tout dépôt de plus de 2 Mo est refusé par Next avant
+d'atteindre la validation**, sans le message de poids. Défaut latent depuis s04 : aucun test ne dépose
+un fichier de cette taille. Les ordres de grandeur réels le rendent bloquant — une photo prise au
+téléphone pèse 2 à 5 Mo, un PDF d'analyse scanné en couleur jusqu'à 8 Mo — et s09 dépose **une affiche
+et un PDF dans la même soumission** (son critère 4 interdit le dépôt en deux temps). L'enveloppe passe
+donc à **16 Mo**, soit la somme des deux plafonds plus la marge des champs de formulaire. Le plafond
+écrit sous un champ de dépôt est toujours celui réellement appliqué, jamais l'enveloppe. À vérifier en
+même temps : la limite du serveur web devant l'application (s12b), qui a la sienne et tronque au-delà.
+
 Entités ajoutées par ASL-CMS, par domaine :
 
 - **Tenancy** — `organization` étendue d'un **domaine unique indexé** (ADR 003), de **drapeaux de

@@ -395,21 +395,29 @@ shadcn `src/components/ui/<nom>.tsx`. Chaque état correspond à une story.
 | `<BlockPicker />`      | **P0** | Insertion d'un bloc à un rang précis. Voir §2.5.                                                                                                                                                                                                                                                                          |
 | `<ImpersonationBar />` | **P1** | Simulation de rôle SuperAdmin. Voir §2.6.                                                                                                                                                                                                                                                                                 |
 
-### 2.3 `<AlertBanner />` — trois niveaux
+### 2.3 `<AlertBanner />` — un seul niveau
 
-> ⚠️ **Arbitrage ouvert — ne pas trancher avant `/ks-design s07`.** Cette spécification dépasse le
-> périmètre tel qu'il est écrit aujourd'hui. Le PRD porte « Bandeau d'alerte global » en complexité 1
-> — « activation / édition / désactivation par tout membre du bureau » — et les notes de s07 disent
-> explicitement « pas de niveaux de gravité, le CDC n'en demande pas ». Le design system, lui, en
-> décrit trois, dont un non refermable.
+> ✅ **Arbitrage rendu le 23/09/2026 : un seul niveau, non refermable par le visiteur.** Le bureau ne
+> veut qu'un bandeau, le CDC n'en demande pas davantage, et `docs/prd.md` porte désormais la décision.
+> C'est **ce que s07 livre**, et c'est la seule forme qu'une implémentation doit suivre.
 >
-> Les deux positions se défendent : le CDC contractuel ne demande rien de tel, mais « une eau impropre
-> à la consommation n'est pas une préférence d'affichage » est un argument sérieux pour une ASL dont
-> l'objet est l'eau. **Élargir s07 est une décision de périmètre**, qui passerait par `docs/prd.md`.
+> Le bandeau unique prend la palette `warning`, porte l'icône `AlertTriangle`, le mot « Alerte » écrit
+> et un filet de 2 px — les quatre signaux décrits plus bas valent pour lui aussi : **jamais la couleur
+> seule**. Il reste affiché tant que le bureau ne le retire pas : pas de fermeture par le visiteur,
+> donc pas de `localStorage`, pas d'identifiant de version, pas de `endsAt`.
 >
-> En attendant, s07 livre un bandeau à un seul niveau, et cette section décrit une extension
-> documentée, pas un attendu de la V1. Le trio de tokens `warning` reste utile dans tous les cas :
-> la deuxième relance de s29 en dépend aussi (§1.1). Relevé en revue du découpage (F-10).
+> **La suite de cette section décrit une extension documentée, hors périmètre V1** : les trois niveaux,
+> la fermeture pendant 24 h, la désactivation en un clic depuis n'importe quelle page et le rappel à
+> 48 h. Les rouvrir serait un élargissement de périmètre, qui repasserait par `docs/prd.md`. Le
+> raisonnement est conservé parce qu'il reste juste — « une eau impropre à la consommation n'est pas
+> une préférence d'affichage » — et parce que le bureau peut vouloir y revenir à l'usage.
+>
+> Le trio de tokens `warning` sert dans tous les cas : le bandeau unique l'utilise, et la deuxième
+> relance de s29 en dépend aussi (§1.1). ⚠️ Ses valeurs **sombres** sont dérivées et n'ont jamais été
+> validées à l'œil ; le bandeau en est le premier consommateur visible (planche P3 de
+> `docs/designs/design-system-gaps-brief.md`).
+
+#### Extension documentée — trois niveaux (hors périmètre V1)
 
 ```
 id · level: "info" | "warning" | "critical" · message (280 car. max)
