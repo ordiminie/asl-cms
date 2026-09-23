@@ -308,7 +308,13 @@ Trait 1.75, `currentColor` exclusivement.
 barre latérale repliée, avec `tooltip` **et** `aria-label`.
 
 **Vocabulaire figé** : `Droplet` eau · `FileText` document · `Receipt` facture · `Map` parcelle ·
-`Megaphone` actualité · `AlertTriangle` alerte · `Lock` personnel · `GripVertical` poignée de bloc.
+`Megaphone` actualité · `AlertTriangle` alerte · `Lock` personnel · `GripVertical` poignée de bloc ·
+`UsersRound` membres du bureau · `Inbox` messages reçus.
+
+Les deux dernières ont été arrêtées le 23/09/2026 (planche P11, §1.9). `UsersRound` plutôt que
+`UserRound`, parce que l'entrée liste plusieurs personnes, et plutôt que `Contact`, trop dense à
+20 px. `Inbox` plutôt que `Mail`, qui se confondrait avec les emails envoyés, et plutôt que
+`MessageSquare`, qui évoque une messagerie instantanée.
 
 ### 1.8 Le logo de l'association
 
@@ -347,6 +353,44 @@ mot n'est ignoré : « La Fourche » → LF, « ASL Les Pins » → LP, « Belle
 
 **Sans favicon** : le favicon par défaut est **le monogramme**, sur l'aplat `accent-solid` de la
 teinte. Tant que s02 ne rend pas la teinte paramétrable, c'est l'aplat de la teinte 195.
+
+---
+
+### 1.9 Tokens ajoutés et corrigés — planches du 23/09/2026
+
+Onze manques relevés pendant le design de s06 à s09 ont été portés sur le canevas et tranchés.
+Le brief est `docs/designs/design-system-gaps-brief.md`, les planches et les mesures de contraste
+sont dans `docs/designs/design-system-gaps.html`.
+
+| Token                | Clair                            | Sombre                            | Pour quoi                                               |
+| -------------------- | -------------------------------- | --------------------------------- | ------------------------------------------------------- |
+| `--table-stripe`     | `oklch(0.99 0.002 250)`          | `oklch(0.235 0.009 255)`          | zébrure des tableaux du bureau                          |
+| `--table-row-hover`  | `= --muted`                      | `oklch(0.29 0.012 250)`           | survol d'une ligne, distinct de la zébrure              |
+| `--overlay`          | `oklch(0.22 0.015 250 / 0.5)`    | `oklch(0.1 0.01 255 / 0.7)`       | voile d'un `dialog` ou d'un `alert-dialog`              |
+| `--destructive-text` | `oklch(0.48 0.17 27)`            | `oklch(0.68 0.17 27)`             | **texte** d'erreur, là où `--destructive` ne suffit pas |
+| `--warning-border`   | `oklch(0.6 0.13 65)` _(corrigé)_ | `oklch(0.6 0.11 70)` _(inchangé)_ | filet du bandeau d'alerte et des encarts ambrés         |
+| `body-strong-public` | Public Sans 18 px / 600 / 1,5    | idem                              | gras du texte public, hors titre                        |
+
+**Deux corrections, pas deux ajouts** — ce sont des mesures, pas des goûts :
+
+- **`--warning-border` clair** ne tenait que 2,09:1 sur son fond (2,53:1 sur la page). À
+  `oklch(0.6 0.13 65)` il remonte à 3,37:1 / 4,08:1. Son seul consommateur aujourd'hui est l'encart
+  de `provision-organization-form.tsx` ; le bandeau d'alerte de s07 sera le second.
+- **`--destructive` sombre** ne fait que 3,72:1 en texte : il reste la couleur des **bordures** et des
+  fonds, et le texte d'erreur passe à `--destructive-text`. En clair les deux valeurs coïncident.
+
+Le trio `warning` **sombre** est validé sans retouche (texte 11,14:1, filet 3,40:1) : c'était le
+doute ouvert par s07, il est levé.
+
+⚠️ **Ces valeurs ne sont pas encore dans `src/app/globals.css`.** Un document ne change pas une
+feuille de style : chaque token entre dans le code avec la story qui le consomme en premier — les
+deux corrections ci-dessus avec **s07**, `--destructive-text` avec **s08**, `--overlay` avec **s09**,
+la zébrure et le survol avec la première story qui touche un tableau du bureau. Le document de design
+de chacune porte la tâche.
+
+**Règles de forme arrêtées par les mêmes planches** (détail en §3.9) : épaisseur de bordure d'une
+alerte, compteur de caractères, champ date, portrait de personne, cadrage des images de contenu, deux
+badges sur une ligne. Les jumelles sombres des couleurs d'email sont en §5.2.
 
 ---
 
@@ -413,9 +457,9 @@ shadcn `src/components/ui/<nom>.tsx`. Chaque état correspond à une story.
 > une préférence d'affichage » — et parce que le bureau peut vouloir y revenir à l'usage.
 >
 > Le trio de tokens `warning` sert dans tous les cas : le bandeau unique l'utilise, et la deuxième
-> relance de s29 en dépend aussi (§1.1). ⚠️ Ses valeurs **sombres** sont dérivées et n'ont jamais été
-> validées à l'œil ; le bandeau en est le premier consommateur visible (planche P3 de
-> `docs/designs/design-system-gaps-brief.md`).
+> relance de s29 en dépend aussi (§1.1). Ses valeurs **sombres** ont été **validées le 23/09/2026**
+> (planche P3, texte 11,14:1, filet 3,40:1) — c'est la valeur **claire** de `--warning-border` qui a
+> dû être corrigée, voir §1.9. Le bandeau en est le premier consommateur visible.
 
 #### Extension documentée — trois niveaux (hors périmètre V1)
 
@@ -625,6 +669,44 @@ bureau, pour que les deux vues se lisent pareil.
 - [ ] Tout au clavier, focus visible partout (2.1.1, 2.4.7)
 - [ ] Un seul `h1` par page, hiérarchie sans saut de niveau
 
+### 3.9 Formes arrêtées par les planches du 23/09/2026
+
+Six règles de forme, tranchées sur le canevas en même temps que les tokens de §1.9. Planches et
+contre-exemples : `docs/designs/design-system-gaps.html`.
+
+**Résumé d'erreurs ancré** (complète §3.1) — `alert` `destructive`, **bordure 2 px**, `role="alert"`,
+cible de focus à la soumission : un titre en 700, puis la liste des liens d'ancrage vers chaque champ
+fautif. 2 px est **l'épaisseur unique de « quelque chose ne va pas »** : alerte, champ fautif, filet
+du bandeau d'alerte. Le message sous un champ est en 16 px / 500, couleur `--destructive-text`.
+
+**Compteur de caractères** — `meta` aligné à droite sous le champ, `tabular-nums`,
+`muted-foreground` en 400 **jusqu'au plafond inclus**. Au **dépassement seulement** : couleur
+`--destructive-text`, graisse 600, bordure du champ à 2 px, **et un message écrit** (« 17 caractères
+de trop. »). Colorer à l'approche transformerait un état normal en faute.
+
+**Champ date** — saisie au clavier seule, **pas de calendrier déroulant** : les dates saisies dans le
+produit sont proches d'aujourd'hui, et le champ est **pré-rempli à aujourd'hui**. Format `jj/mm/aaaa`,
+`inputmode="numeric"`, barres insérées à la frappe, JetBrains Mono 500 (17 px desktop, 18 px mobile),
+icône `Calendar` 20 px **décorative** en `muted-foreground`, jamais un bouton. 48 px desktop, 56 px
+sous 1 024 px. Quatre états : vide (placeholder `jj/mm/aaaa`), pré-rempli, en saisie (`--ring` + halo
+2 px), erreur (bordure 2 px + message).
+
+**Portrait de personne** — carré 1:1, `object-cover`, rayon 8 px, rendu à **128 px** en public
+desktop, **96 px** en public mobile, **56 px** dans une liste de back-office, **128 px** en aperçu de
+formulaire ; source de 400 px de côté au minimum. **Sans photo, les initiales** : Source Serif 4 600,
+taille = 0,375 × le côté, `muted-foreground` sur `muted` (6,84:1 en clair, 6,36:1 en sombre, mesurés).
+Deux lettres, prénom + nom — jamais `<AssociationMark />`, dont la règle ignore un « ASL » en tête :
+elle nomme une association, pas une personne. **Exception à §4** : sous 640 px le portrait **ne passe
+pas en pleine largeur**, il reste un carré de 96 px à gauche du nom.
+
+**Image de contenu** — largeur de la colonne de lecture (68 ch), ratio d'origine, **hauteur plafonnée
+à 520 px**. Au-delà du plafond l'image est **contenue et centrée sur un bandeau `muted`, jamais
+rognée** : une affiche doit rester lisible entière. Pas de hauteur minimale.
+
+**Deux badges sur une même entité** — sur **une seule ligne**, `gap` 8 px, retour à la ligne permis ;
+la ligne de tableau reste à 56 px. En carte mobile, les badges passent sous le titre. La variante
+empilée est écartée : 88 px de hauteur pour la même information.
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs
@@ -686,6 +768,25 @@ Le web a désormais son propre mode sombre (ADR 012), mais l'email reste un cas 
   `color:#ffffff !important` et un fond hérité en table.
 - Logo fourni en PNG transparent **et** en variante sur pastille blanche : une inversion ne doit
   pas l'effacer.
+
+**Jumelles sombres — arrêtées le 23/09/2026 (planche P9).** Tant qu'on subit l'inversion du client,
+le rendu est hors de contrôle : un fond forcé en sombre sous un bouton `#193E57` tombe à ≈ 1,6:1.
+Ces sept valeurs reprennent la main, servies par `@media (prefers-color-scheme: dark)` **et**
+`[data-ogsc]` (Outlook). Elles n'existent pas encore dans `src/lib/emails/theme.ts` : la story qui
+envoie le premier email concerné les y porte.
+
+| Clé          | Clair     | Sombre    | Contraste sombre         |
+| ------------ | --------- | --------- | ------------------------ |
+| `background` | `#FFFFFF` | `#171A1E` | —                        |
+| `text`       | `#151B21` | `#E8EBEF` | 14,69:1                  |
+| `textMuted`  | `#4C5760` | `#9DA6AE` | 7,07:1                   |
+| `rule`       | `#DFE1E5` | `#32363A` | —                        |
+| `buttonBg`   | `#193E57` | `#2063B0` | —                        |
+| `buttonText` | `#FFFFFF` | `#FFFFFF` | 6,05:1 — **blanc forcé** |
+| `link`       | `#00579A` | `#8CC3FC` | 9,43:1                   |
+
+Le bouton reste **toujours doublé de l'URL en clair** : c'est ce qui sauve l'envoi quand le client
+réécrit les couleurs malgré tout.
 
 ### 5.3 Table de transposition OKLCH → hexadécimal
 
@@ -918,7 +1019,7 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Papier    | **Suivi du courrier** — un envoi papier n'a ni ouverture ni clic : le journal doit accepter un statut saisi à la main (« posté le 12/09 »)                                                                                                                                           | s28           |
 | Papier    | **Retours de courrier (PND)** — où le bureau les note, et ce que devient le membre concerné                                                                                                                                                                                          | s28, s12      |
 | Blocs     | **Visionneuse de galerie** — `dialog` couvre la coquille, pas la navigation entre images (flèches, balayage, compteur « 3 sur 10 »)                                                                                                                                                  | s04           |
-| Blocs     | **Bloc « analyses d'eau » dédié** ou réemploi du bloc PDF — à trancher                                                                                                                                                                                                               | s09           |
+| Blocs     | ~~**Bloc « analyses d'eau » dédié** ou réemploi du bloc PDF~~ — **tranché le 23/09/2026** : ni l'un ni l'autre. Une analyse est un modèle à champs fixes (ADR 007) avec son écran de saisie et sa page publique ; le bloc PDF ne sait ni trier par date ni publier en une soumission | s09           |
 | Édition   | Les **cinq aperçus miniatures** du sélecteur de blocs (dessins à maintenir avec la charte)                                                                                                                                                                                           | s04           |
 | Connexion | **Téléphone du bureau** — demandé par les écrans de connexion (§7) et le lien magique, mais aucun réglage ne le porte. Depuis s03, les phrases se lisent sans numéro (« appelez le bureau de votre association ») ; le numéro viendra avec une clé dédiée du registre des paramètres | à désigner    |
 | Connexion | **Changement d'adresse email par le membre** : lui-même (avec validation de la nouvelle) ou via le bureau ?                                                                                                                                                                          | s16           |
@@ -927,7 +1028,7 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Tenant    | **Icônes d'application par association** (écran d'accueil mobile, manifeste) — aucune couverture. Le **favicon**, lui, est couvert depuis s01b : fichier distinct fourni par l'association, monogramme par défaut (§1.8)                                                             | s11           |
 | SEO       | **Image de partage social (Open Graph)** — aucune couverture, alors que s11 demande les métadonnées. Quel gabarit, quelles dimensions, que met-on dessus quand l'association n'a pas d'image ?                                                                                       | s11           |
 | Divers    | **Page 404** — évoquée dans la livraison n° 1 (« renvoie vers l'accueil, les actualités et le contact »), jamais maquettée                                                                                                                                                           | s11           |
-| Divers    | **Photo manquante sur une fiche du bureau** — le composant `avatar` a un repli, mais aucune convention n'est posée : initiales, silhouette, ou rien ?                                                                                                                                | s06           |
+| Divers    | ~~**Photo manquante sur une fiche du bureau**~~ — **tranché le 23/09/2026** : les initiales de la personne, jamais une silhouette ni le monogramme de l'association. Règle complète en §3.9                                                                                          | s06           |
 | Technique | **Échelle de `z-index`** — seules deux valeurs sont posées (`PreviewBar` 50, `ImpersonationBar` 60). Avec trois bandes persistantes, les dialogues, les popovers, les tiroirs et les toasts, une échelle explicite évite les conflits au cas par cas                                 | s04, s07, s41 |
 
 ### Point d'implémentation à vérifier
