@@ -18,7 +18,9 @@ import {
 import {NewsDTO, NewsPublicationError} from '@/services/types/domain/news-types'
 
 export type NewsSaveState =
-  {status: 'saved'; news: NewsDTO} | {status: 'error'; message: string}
+  | {status: 'saved'; news: NewsDTO}
+  | {status: 'incomplete'; issues: NewsPublicationError[]}
+  | {status: 'error'; message: string}
 
 export type NewsPublishState =
   | {status: 'published'; news: NewsDTO}
@@ -38,7 +40,8 @@ export type NewsInput = {
   publishedOn: string
   content: string
   imageAlt: string
-  removeImage: boolean
+  /** Cle du dernier depot, ou `null` si l'image a ete retiree. */
+  imageKey: string | null
 }
 
 const failure = async (error: unknown): Promise<{message: string}> => {
@@ -78,8 +81,9 @@ export async function createNewsAction(publishedOn: string): Promise<void> {
 }
 
 /**
- * Enregistre une actualite. N'exige jamais les champs « obligatoires pour
- * publier » : un brouillon incomplet s'enregistre.
+ * Enregistre une actualite. Un brouillon incomplet s'enregistre ; une
+ * actualite **deja publiee** doit rester complete, puisque l'enregistrer la
+ * republie aussitot. Un refus n'ecrit rien : rien a invalider.
  */
 export async function saveNewsDraftAction(
   input: NewsInput
@@ -93,6 +97,9 @@ export async function saveNewsDraftAction(
       organizationId: tenant.id,
       ...input,
     })
+    if (result.status === 'rejected') {
+      return {status: 'incomplete', issues: result.issues}
+    }
 
     invalidate(tenant.id, result.news.slug)
     return {status: 'saved', news: result.news}
@@ -126,6 +133,9 @@ export async function publishNewsAction(
       organizationId: tenant.id,
       ...input,
     })
+    if (saved.status === 'rejected') {
+      return {status: 'incomplete', issues: saved.issues}
+    }
 
     invalidate(tenant.id, saved.news.slug)
 
@@ -172,9 +182,10 @@ export async function unpublishNewsAction(input: {
 /**
  * Depose l'image de l'actualite et rend sa cle de stockage.
  *
- * Le depot ecrit `image_key` sur la ligne : il invalide donc lui aussi, sans
- * quoi une actualite deja publiee continuerait a servir l'ancienne cle tant que
- * le bureau ne reenregistre pas.
+ * **Rien a invalider** : le depot pose le fichier, il n'ecrit pas la ligne. La
+ * cle revient au formulaire, qui la garde jusqu'a l'enregistrement — sinon une
+ * actualite deja publiee servirait la nouvelle image avec l'ancien texte
+ * alternatif, ou sans aucun.
  */
 export async function uploadNewsImageAction(
   formData: FormData
@@ -204,7 +215,6 @@ export async function uploadNewsImageAction(
       }
     }
 
-    invalidate(tenant.id, result.slug)
     return {status: 'uploaded', key: result.key, fileName: result.fileName}
   } catch (error) {
     return {status: 'error', ...(await failure(error))}

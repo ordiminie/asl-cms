@@ -35,6 +35,7 @@ import {Progress} from '@/components/ui/progress'
 import {contentFileUrl} from '@/services/types/domain/content-file-types'
 import {
   NewsDTO,
+  NewsPublicationError,
   NewsPublicationErrorConst,
 } from '@/services/types/domain/news-types'
 
@@ -77,6 +78,7 @@ export function NewsEditor({
   const [imageKey, setImageKey] = useState(news.imageKey)
   const [uploadingName, setUploadingName] = useState<string>()
   const [isDirty, setIsDirty] = useState(false)
+  const [titleError, setTitleError] = useState<string>()
   const [altError, setAltError] = useState<string>()
   const [barError, setBarError] = useState<string>()
   const [notice, setNotice] = useState<string>()
@@ -96,7 +98,7 @@ export function NewsEditor({
     publishedOn,
     content,
     imageAlt,
-    removeImage: imageKey === null,
+    imageKey,
   })
 
   const applySaved = (next: NewsDTO, message: string) => {
@@ -111,9 +113,24 @@ export function NewsEditor({
   }
 
   const resetMessages = () => {
+    setTitleError(undefined)
     setAltError(undefined)
     setBarError(undefined)
     setNotice(undefined)
+  }
+
+  /**
+   * Un manque s'ecrit sous le champ qui le corrige — jamais seulement dans la
+   * barre, ou il faudrait deviner lequel remplir.
+   */
+  const applyIssues = (issues: readonly NewsPublicationError[]) => {
+    for (const issue of issues) {
+      if (issue === NewsPublicationErrorConst.MISSING_IMAGE_ALT) {
+        setAltError(t(`issues.${issue}`))
+      } else {
+        setTitleError(t(`issues.${issue}`))
+      }
+    }
   }
 
   const save = () => {
@@ -121,6 +138,7 @@ export function NewsEditor({
     startTransition(async () => {
       const result = await saveAction(payload())
       if (result.status === 'saved') applySaved(result.news, t('savedNotice'))
+      else if (result.status === 'incomplete') applyIssues(result.issues)
       else setBarError(result.message)
     })
   }
@@ -136,13 +154,7 @@ export function NewsEditor({
       }
 
       if (result.status === 'incomplete') {
-        for (const issue of result.issues) {
-          if (issue === NewsPublicationErrorConst.MISSING_IMAGE_ALT) {
-            setAltError(t(`issues.${issue}`))
-          } else {
-            setBarError(t(`issues.${issue}`))
-          }
-        }
+        applyIssues(result.issues)
         return
       }
 
@@ -267,12 +279,26 @@ export function NewsEditor({
             id={titleId}
             className="h-14 sm:h-12"
             value={title}
+            aria-invalid={titleError ? true : undefined}
+            aria-describedby={titleError ? `${titleId}-error` : undefined}
             onChange={(event) => {
               setTitle(event.target.value)
               setIsDirty(true)
             }}
           />
-          <p className="text-muted-foreground text-[14px]">{t('titleHelp')}</p>
+          {titleError ? (
+            <p
+              id={`${titleId}-error`}
+              className="text-destructive text-[14px]"
+              role="alert"
+            >
+              {titleError}
+            </p>
+          ) : (
+            <p className="text-muted-foreground text-[14px]">
+              {t('titleHelp')}
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col gap-2">

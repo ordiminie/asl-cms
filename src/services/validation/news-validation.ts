@@ -54,7 +54,12 @@ export const updateNewsServiceSchema = z.object({
   publishedOn: newsDateSchema,
   content: newsContentSchema,
   imageAlt: newsImageAltSchema,
-  removeImage: z.boolean().default(false),
+  /**
+   * Cle de l'image telle que le formulaire la rend : celle du dernier depot,
+   * ou `null` si le bureau a retire l'image. Sa forme est verifiee contre
+   * l'actualite par `isNewsImageKeyAllowed`, dans le service.
+   */
+  imageKey: z.string().min(1).nullable(),
 })
 
 export const newsStatusChangeServiceSchema = z.object({

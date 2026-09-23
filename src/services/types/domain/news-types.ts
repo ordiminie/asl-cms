@@ -1,5 +1,10 @@
 import {NewsModel} from '@/db/models/news-model'
 
+import {
+  ContentFileScopeConst,
+  isContentFileKeyAllowed,
+} from './content-file-types'
+
 /**
  * Types de domaine des actualites (s05, ADR 023). La presentation ne connait
  * que ceux-ci, jamais les modeles Drizzle.
@@ -55,7 +60,16 @@ export const NewsPublicationErrorConst = {
 export type NewsPublicationError =
   (typeof NewsPublicationErrorConst)[keyof typeof NewsPublicationErrorConst]
 
-export type NewsMutationResult = {status: 'saved'; news: NewsDTO}
+export type NewsSavedResult = {status: 'saved'; news: NewsDTO}
+
+/**
+ * Enregistrer une actualite **deja publiee**, c'est la republier aussitot :
+ * elle doit donc satisfaire les memes exigences qu'a la publication, faute de
+ * quoi le site public servirait un titre vide ou une image sans texte
+ * alternatif. Un brouillon, lui, garde le droit d'etre incomplet.
+ */
+export type NewsMutationResult =
+  NewsSavedResult | {status: 'rejected'; issues: NewsPublicationError[]}
 
 export type NewsPublicationResult =
   | {status: 'published'; news: NewsDTO}
@@ -64,16 +78,25 @@ export type NewsPublicationResult =
 export type NewsUnpublicationResult = {status: 'unpublished'; news: NewsDTO}
 
 export type NewsImageUpload =
-  | {
-      status: 'uploaded'
-      key: string
-      fileName: string
-      fileSize: number
-      /** Adresse de l'actualite ecrite, pour invalider sa fiche. */
-      slug: string | null
-    }
+  | {status: 'uploaded'; key: string; fileName: string; fileSize: number}
   | {status: 'rejected'; reason: 'format'}
   | {status: 'rejected'; reason: 'size'; size: number; maxBytes: number}
+
+/**
+ * Une cle d'image rendue par le formulaire n'est ecrite que si elle vit sous
+ * `{organisation}/news/{actualite}/` — donc sous une cle que le serveur a
+ * lui-meme generee au depot pour **cette** actualite. Le depot ne touche plus
+ * la ligne : c'est ici que la cle entre, et c'est donc ici qu'elle se verifie.
+ */
+export const isNewsImageKeyAllowed = (
+  organizationId: string,
+  newsId: string,
+  key: string
+): boolean =>
+  key.startsWith(
+    `${organizationId}/${ContentFileScopeConst.NEWS}/${newsId}/`
+  ) &&
+  isContentFileKeyAllowed(organizationId, key, [ContentFileScopeConst.NEWS])
 
 /** Nombre de pages d'une liste ; une liste vide a quand meme sa page 1. */
 export const countNewsPages = (total: number, pageSize: number): number =>

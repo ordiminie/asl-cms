@@ -81,6 +81,10 @@ Voir l'ADR 023 et les hypothèses du design.
      la configuration de `getPageFileStorage`.
    - Route `src/app/api/files/[...key]/route.ts`. `api/pages/files/[...key]/route.ts` réexporte le
      même `GET`. `readPageBlockFileService` délègue au service partagé.
+   - **Écart assumé, tranché en revue (passe 1, constat 5)** : le chemin hérité
+     `/api/pages/files` n'est pas le `GET` complet mais `createContentFileGET([PAGES])`, borné à la
+     portée `pages` — une clé d'actualité y est refusée avant tout appel au service. Aucune adresse
+     rendue par s04 ne change. Documenté dans `docs/architecture.md` (section fichiers de contenu).
    - **Tests** :
      - clé `news` construite et acceptée ;
      - refus d'une clé d'une autre association, d'une portée inconnue, avec `..`, avec un segment vide,

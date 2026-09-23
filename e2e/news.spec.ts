@@ -71,6 +71,26 @@ const withAppRoleClient = async <T>(
   }
 }
 
+/**
+ * Retire les actualités écrites par un test, par motif de titre.
+ *
+ * Chaque test qui publie nettoie derrière lui : sans ça, une exécution locale
+ * répétée empile les lignes et finit par pousser hors de la première page
+ * celles que la spec attend. La CI n'y est pas exposée — sa base est éphémère
+ * et seedée — mais une spec qui suppose une base neuve ne se relit pas deux
+ * fois de suite.
+ */
+const deleteNewsLike = async (...patterns: string[]) => {
+  await withAppRoleClient(async (client) => {
+    await client.query('begin')
+    await client.query(`select set_config('app.bypass_rls', 'on', true)`)
+    for (const pattern of patterns) {
+      await client.query(`delete from news where title like $1`, [pattern])
+    }
+    await client.query('commit')
+  })
+}
+
 const tenantIds = async (client: Client) => {
   const result = await client.query<{slug: string; id: string}>(
     `select slug, id from organization where slug in ('techcorp-solutions', 'marketing-pro')`
@@ -198,24 +218,41 @@ test.describe('Actualités — bureau et site public', () => {
     // Critères 1 et 2 : en tête de la liste publique, avec sa page dédiée.
     const visitor = await browser.newContext()
     const visitorPage = await visitor.newPage()
-    await visitorPage.goto(`${TENANT_A}${PUBLIC_NEWS_ROUTE}`, {
-      waitUntil: 'load',
-    })
-    const firstTitle = visitorPage.locator('li h2 a').first()
-    await expect(firstTitle).toHaveText(title, {timeout: 20_000})
+    try {
+      await visitorPage.goto(`${TENANT_A}${PUBLIC_NEWS_ROUTE}`, {
+        waitUntil: 'load',
+      })
+      const firstTitle = visitorPage.locator('li h2 a').first()
+      await expect(firstTitle).toHaveText(title, {timeout: 20_000})
 
-    await firstTitle.click()
-    await expect(
-      visitorPage.getByRole('heading', {level: 1, name: title})
-    ).toBeVisible({timeout: 20_000})
-    const article = visitorPage.locator('article')
-    await expect(article.getByText('1 juin 2031')).toBeVisible()
-    await expect(article.getByText('Ordre du jour')).toBeVisible()
-    await expect(
-      article.getByRole('img', {name: 'La mare au printemps'})
-    ).toBeVisible()
+      await firstTitle.click()
+      await expect(
+        visitorPage.getByRole('heading', {level: 1, name: title})
+      ).toBeVisible({timeout: 20_000})
+      const article = visitorPage.locator('article')
+      await expect(article.getByText('1 juin 2031')).toBeVisible()
+      await expect(article.getByText('Ordre du jour')).toBeVisible()
 
-    await visitor.close()
+      const image = article.getByRole('img', {name: 'La mare au printemps'})
+      await expect(image).toBeVisible()
+
+      // `getByRole('img')` passe aussi sur une image cassée : seul un appel à
+      // l'adresse rendue prouve l'aller-retour disque, du dépôt à /api/files.
+      const source = await image.getAttribute('src')
+      expect(source, "l'image doit porter une adresse").toBeTruthy()
+      const served = await visitorPage.request.get(
+        new URL(source as string, TENANT_A).toString()
+      )
+      expect(served.status()).toBe(200)
+      expect(served.headers()['content-type']).toContain('image/')
+      expect(
+        Buffer.from(await served.body()).equals(PNG_FIXTURE),
+        'les octets servis sont ceux du fichier déposé'
+      ).toBe(true)
+    } finally {
+      await deleteNewsLike(`${title}%`)
+      await visitor.close()
+    }
   })
 
   test('deux actualités paraissent de la plus récente à la plus ancienne', async ({
@@ -254,18 +291,7 @@ test.describe('Actualités — bureau et site public', () => {
       expect(listText.indexOf(older)).toBeGreaterThanOrEqual(0)
       expect(listText.indexOf(recent)).toBeLessThan(listText.indexOf(older))
     } finally {
-      // Les deux actualités sont retirées : sans ce nettoyage, chaque nouvelle
-      // exécution locale en empile deux de plus et finit par les pousser hors
-      // de la première page. En CI la base est neuve a chaque fois.
-      await withAppRoleClient(async (client) => {
-        await client.query('begin')
-        await client.query(`select set_config('app.bypass_rls', 'on', true)`)
-        await client.query(`delete from news where title in ($1, $2)`, [
-          recent,
-          older,
-        ])
-        await client.query('commit')
-      })
+      await deleteNewsLike(`${recent}%`, `${older}%`)
       await visitor.close()
     }
   })
@@ -289,19 +315,22 @@ test.describe('Actualités — bureau et site public', () => {
     const url = address.split(':')[1].trim()
     expect(url.startsWith('/actualites/')).toBe(true)
 
-    const renamed = `${title} (corrigé)`
-    await page.getByLabel('Titre', {exact: true}).fill(renamed)
-    await publish(page)
-    await expect(page.getByText(url)).toBeVisible()
-
     const visitor = await browser.newContext()
     const visitorPage = await visitor.newPage()
-    await visitorPage.goto(`${TENANT_A}/fr${url}`, {waitUntil: 'load'})
-    await expect(
-      visitorPage.getByRole('heading', {level: 1, name: renamed})
-    ).toBeVisible({timeout: 20_000})
+    try {
+      const renamed = `${title} (corrigé)`
+      await page.getByLabel('Titre', {exact: true}).fill(renamed)
+      await publish(page)
+      await expect(page.getByText(url)).toBeVisible()
 
-    await visitor.close()
+      await visitorPage.goto(`${TENANT_A}/fr${url}`, {waitUntil: 'load'})
+      await expect(
+        visitorPage.getByRole('heading', {level: 1, name: renamed})
+      ).toBeVisible({timeout: 20_000})
+    } finally {
+      await deleteNewsLike(`${title}%`)
+      await visitor.close()
+    }
   })
 
   test('un brouillon reste invisible pour le visiteur, en aperçu pour le bureau', async ({
@@ -411,14 +440,7 @@ test.describe('Actualités — pagination et isolation', () => {
       })
       await expect(page.getByText(oldest)).toBeVisible()
     } finally {
-      await withAppRoleClient(async (client) => {
-        await client.query('begin')
-        await client.query(`select set_config('app.bypass_rls', 'on', true)`)
-        await client.query(`delete from news where title like $1`, [
-          `${marker}%`,
-        ])
-        await client.query('commit')
-      })
+      await deleteNewsLike(`${marker}%`)
     }
   })
 
@@ -442,18 +464,20 @@ test.describe('Actualités — pagination et isolation', () => {
 
     const visitor = await browser.newContext()
     const visitorPage = await visitor.newPage()
+    try {
+      await visitorPage.goto(`${TENANT_B}${PUBLIC_NEWS_ROUTE}`, {
+        waitUntil: 'load',
+      })
+      await expect(visitorPage.getByText(title)).toBeHidden()
 
-    await visitorPage.goto(`${TENANT_B}${PUBLIC_NEWS_ROUTE}`, {
-      waitUntil: 'load',
-    })
-    await expect(visitorPage.getByText(title)).toBeHidden()
-
-    await visitorPage.goto(`${TENANT_B}/fr${url}`, {waitUntil: 'load'})
-    await expect(visitorPage.getByText(NOT_FOUND_TITLE)).toBeVisible({
-      timeout: 20_000,
-    })
-
-    await visitor.close()
+      await visitorPage.goto(`${TENANT_B}/fr${url}`, {waitUntil: 'load'})
+      await expect(visitorPage.getByText(NOT_FOUND_TITLE)).toBeVisible({
+        timeout: 20_000,
+      })
+    } finally {
+      await deleteNewsLike(`${title}%`)
+      await visitor.close()
+    }
   })
 
   test('la RLS refuse de lire l’actualité d’une association depuis le scope de l’autre', async () => {

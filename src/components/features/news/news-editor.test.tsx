@@ -108,7 +108,7 @@ describe('NewsEditor — publication refusée', () => {
     ).toBeInTheDocument()
   })
 
-  it("écrit le titre manquant dans la barre, sans toucher au champ d'image", async () => {
+  it('écrit le titre manquant sous le champ Titre', async () => {
     const publishAction = vi.fn(async () => ({
       status: 'incomplete' as const,
       issues: ['missing_title' as const],
@@ -120,10 +120,106 @@ describe('NewsEditor — publication refusée', () => {
     )
 
     await waitFor(() => expect(publishAction).toHaveBeenCalled())
+    expect(screen.getByLabelText('Titre')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    )
     expect(
       screen.getByText(
         'Donnez un titre à cette actualité pour pouvoir la publier.'
       )
     ).toBeInTheDocument()
+  })
+})
+
+describe('NewsEditor — enregistrement refusé sur une actualité publiée', () => {
+  it('écrit le titre manquant sous le champ Titre, comme à la publication', async () => {
+    const saveAction = vi.fn(async () => ({
+      status: 'incomplete' as const,
+      issues: ['missing_title' as const],
+    }))
+
+    render(editorOf(newsOf({status: 'published'}), {saveAction}))
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer le brouillon'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(screen.getByLabelText('Titre')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    )
+    expect(
+      screen.getByText(
+        'Donnez un titre à cette actualité pour pouvoir la publier.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it("écrit le texte alternatif manquant sous son champ, sans effacer l'image", async () => {
+    const saveAction = vi.fn(async () => ({
+      status: 'incomplete' as const,
+      issues: ['missing_image_alt' as const],
+    }))
+    const news = newsOf({
+      status: 'published',
+      imageKey: `${ORG_ID}/news/${NEWS_ID}/image-a.png`,
+    })
+
+    render(editorOf(news, {saveAction}))
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer le brouillon'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(screen.getByLabelText(/Texte alternatif/)).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    )
+  })
+})
+
+describe("NewsEditor — la clé déposée part à l'enregistrement", () => {
+  it('transmet la clé du dépôt, jamais un simple « retirer »', async () => {
+    const key = `${ORG_ID}/news/${NEWS_ID}/image-b.png`
+    const news = newsOf({imageKey: `${ORG_ID}/news/${NEWS_ID}/image-a.png`})
+    const saveAction = vi.fn(async () => ({status: 'saved', news}) as never)
+    const uploadAction = vi.fn(async () => ({
+      status: 'uploaded' as const,
+      key,
+      fileName: 'mare.png',
+    }))
+
+    render(editorOf(news, {saveAction, uploadAction}))
+    await userEvent.upload(
+      screen.getByLabelText("Remplacer l'image"),
+      new File(['x'], 'mare.png', {type: 'image/png'})
+    )
+    await waitFor(() => expect(uploadAction).toHaveBeenCalled())
+
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer le brouillon'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(saveAction).toHaveBeenCalledWith(
+      expect.objectContaining({imageKey: key})
+    )
+  })
+
+  it('rend une clé nulle quand le bureau retire l’image', async () => {
+    const news = newsOf({imageKey: `${ORG_ID}/news/${NEWS_ID}/image-a.png`})
+    const saveAction = vi.fn(async () => ({status: 'saved', news}) as never)
+
+    render(editorOf(news, {saveAction}))
+    await userEvent.click(screen.getByRole('button', {name: "Retirer l'image"}))
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer le brouillon'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(saveAction).toHaveBeenCalledWith(
+      expect.objectContaining({imageKey: null})
+    )
   })
 })

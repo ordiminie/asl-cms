@@ -26,7 +26,6 @@ vi.mock('@/db/repositories/news-repository', () => ({
   getPublishedNewsPageDao: vi.fn(),
   isNewsSlugTakenDao: vi.fn(),
   updateNewsDao: vi.fn(),
-  updateNewsImageDao: vi.fn(),
   updateNewsStatusDao: vi.fn(),
 }))
 vi.mock('@/lib/files/storage/storage-factory', () => ({
@@ -41,7 +40,6 @@ import {
   getPublishedNewsPageDao,
   isNewsSlugTakenDao,
   updateNewsDao,
-  updateNewsImageDao,
   updateNewsStatusDao,
 } from '@/db/repositories/news-repository'
 
@@ -113,9 +111,21 @@ const updateInput = (overrides: Record<string, unknown> = {}) => ({
   publishedOn: '2026-09-02',
   content: 'Merci à tous.',
   imageAlt: '',
-  removeImage: false,
+  imageKey: null,
   ...overrides,
 })
+
+/** Enregistre et rend la ligne : un refus fait echouer le test sur place. */
+const savedNewsOf = async (overrides: Record<string, unknown> = {}) => {
+  const result = await updateNewsService(updateInput(overrides))
+  if (result.status !== 'saved') {
+    throw new Error(`enregistrement refusé : ${result.issues.join(', ')}`)
+  }
+  return result.news
+}
+
+/** Les DAO qui ecrivent : un depot d'image n'en appelle aucun. */
+const writeDaos = () => [createNewsDao, updateNewsDao, updateNewsStatusDao]
 
 const allDaos = () => [
   createNewsDao,
@@ -124,7 +134,6 @@ const allDaos = () => [
   getNewsPageByOrganizationDao,
   isNewsSlugTakenDao,
   updateNewsDao,
-  updateNewsImageDao,
   updateNewsStatusDao,
 ]
 
@@ -144,10 +153,6 @@ beforeEach(() => {
   vi.mocked(updateNewsStatusDao).mockImplementation(async (newsId, status) => {
     expect(scope.current).toBe(ORG_ID)
     return newsRow({id: newsId, title: 'Titre', slug: 'titre', status})
-  })
-  vi.mocked(updateNewsImageDao).mockImplementation(async (newsId, imageKey) => {
-    expect(scope.current).toBe(ORG_ID)
-    return newsRow({id: newsId, imageKey})
   })
   vi.mocked(getNewsPageByOrganizationDao).mockResolvedValue({
     rows: [newsRow()],
@@ -291,9 +296,9 @@ describe('validation avant autorisation', () => {
 
 describe('adresse stable (critère 2)', () => {
   it('translittère le titre au premier enregistrement titré', async () => {
-    const result = await updateNewsService(updateInput())
+    const news = await savedNewsOf()
 
-    expect(result.news.slug).toBe('fete-de-l-etang-merci')
+    expect(news.slug).toBe('fete-de-l-etang-merci')
     expect(updateNewsDao).toHaveBeenCalledWith(
       NEWS_ID,
       expect.objectContaining({slug: 'fete-de-l-etang-merci'})
@@ -306,9 +311,9 @@ describe('adresse stable (critère 2)', () => {
         slug === 'fete-de-l-etang-merci' || slug === 'fete-de-l-etang-merci-2'
     )
 
-    const result = await updateNewsService(updateInput())
+    const news = await savedNewsOf()
 
-    expect(result.news.slug).toBe('fete-de-l-etang-merci-3')
+    expect(news.slug).toBe('fete-de-l-etang-merci-3')
     expect(isNewsSlugTakenDao).toHaveBeenCalledWith(
       ORG_ID,
       'fete-de-l-etang-merci'
@@ -326,20 +331,18 @@ describe('adresse stable (critère 2)', () => {
       ...input,
     }))
 
-    const result = await updateNewsService(
-      updateInput({title: 'Un tout autre titre'})
-    )
+    const news = await savedNewsOf({title: 'Un tout autre titre'})
 
-    expect(result.news.slug).toBe('fete-de-l-etang-merci')
+    expect(news.slug).toBe('fete-de-l-etang-merci')
     const [, written] = vi.mocked(updateNewsDao).mock.calls[0]
     expect(written).not.toHaveProperty('slug')
     expect(isNewsSlugTakenDao).not.toHaveBeenCalled()
   })
 
   it('laisse l’adresse vide tant que le titre est vide', async () => {
-    const result = await updateNewsService(updateInput({title: '  '}))
+    const news = await savedNewsOf({title: '  '})
 
-    expect(result.news.slug).toBeNull()
+    expect(news.slug).toBeNull()
     const [, written] = vi.mocked(updateNewsDao).mock.calls[0]
     expect(written).not.toHaveProperty('slug')
   })
@@ -353,6 +356,68 @@ describe('brouillon et publication', () => {
 
     const result = await updateNewsService(
       updateInput({title: '', imageAlt: ''})
+    )
+
+    expect(result.status).toBe('saved')
+  })
+
+  it('refuse de vider le titre d’une actualité publiée', async () => {
+    vi.mocked(getNewsByIdDao).mockResolvedValue(
+      newsRow({title: 'AG', slug: 'ag', status: 'published'})
+    )
+
+    const result = await updateNewsService(updateInput({title: '  '}))
+
+    expect(result).toEqual({status: 'rejected', issues: ['missing_title']})
+    expect(updateNewsDao).not.toHaveBeenCalled()
+  })
+
+  it('refuse une image sans texte alternatif sur une actualité publiée', async () => {
+    vi.mocked(getNewsByIdDao).mockResolvedValue(
+      newsRow({title: 'AG', slug: 'ag', status: 'published'})
+    )
+
+    const result = await updateNewsService(
+      updateInput({
+        imageKey: `${ORG_ID}/news/${NEWS_ID}/image-a.png`,
+        imageAlt: '  ',
+      })
+    )
+
+    expect(result).toEqual({
+      status: 'rejected',
+      issues: ['missing_image_alt'],
+    })
+    expect(updateNewsDao).not.toHaveBeenCalled()
+  })
+
+  it('enregistre une actualité publiée dès qu’elle reste complète', async () => {
+    vi.mocked(getNewsByIdDao).mockResolvedValue(
+      newsRow({title: 'AG', slug: 'ag', status: 'published'})
+    )
+
+    const result = await updateNewsService(
+      updateInput({
+        imageKey: `${ORG_ID}/news/${NEWS_ID}/image-a.png`,
+        imageAlt: 'La mare au printemps',
+      })
+    )
+
+    expect(result.status).toBe('saved')
+    expect(updateNewsDao).toHaveBeenCalledTimes(1)
+  })
+
+  it('un brouillon garde le droit au titre vide et à l’image sans alt', async () => {
+    vi.mocked(getNewsByIdDao).mockResolvedValue(
+      newsRow({status: 'draft', slug: 'ag'})
+    )
+
+    const result = await updateNewsService(
+      updateInput({
+        title: '',
+        imageKey: `${ORG_ID}/news/${NEWS_ID}/image-a.png`,
+        imageAlt: '',
+      })
     )
 
     expect(result.status).toBe('saved')
@@ -401,20 +466,41 @@ describe('brouillon et publication', () => {
     expect(updateNewsStatusDao).toHaveBeenCalledWith(NEWS_ID, 'published')
   })
 
-  it('retire l’image sur demande, et seulement sur demande', async () => {
+  it('écrit la clé déposée que le formulaire lui rend', async () => {
+    const key = `${ORG_ID}/news/${NEWS_ID}/image-a.png`
+
+    await updateNewsService(
+      updateInput({imageKey: key, imageAlt: 'La mare au printemps'})
+    )
+
+    expect(vi.mocked(updateNewsDao).mock.calls[0][1]).toMatchObject({
+      imageKey: key,
+      imageAlt: 'La mare au printemps',
+    })
+  })
+
+  it('retire l’image quand le formulaire ne rend plus de clé', async () => {
     const key = `${ORG_ID}/news/${NEWS_ID}/image-a.png`
     vi.mocked(getNewsByIdDao).mockResolvedValue(newsRow({imageKey: key}))
 
-    await updateNewsService(updateInput())
-    await updateNewsService(updateInput({removeImage: true}))
+    await updateNewsService(updateInput({imageKey: null, imageAlt: 'La mare'}))
 
-    expect(vi.mocked(updateNewsDao).mock.calls[0][1]).not.toHaveProperty(
-      'imageKey'
-    )
-    expect(vi.mocked(updateNewsDao).mock.calls[1][1]).toMatchObject({
+    expect(vi.mocked(updateNewsDao).mock.calls[0][1]).toMatchObject({
       imageKey: null,
       imageAlt: '',
     })
+  })
+
+  it.each([
+    ['une autre association', `${OTHER_ORG_ID}/news/${NEWS_ID}/image-a.png`],
+    ['une autre actualité', `${ORG_ID}/news/${OTHER_ORG_ID}/image-a.png`],
+    ['une autre portée', `${ORG_ID}/pages/${NEWS_ID}/image-a.png`],
+    ['une remontée de chemin', `${ORG_ID}/news/${NEWS_ID}/../x.png`],
+  ])('refuse une clé d’image venue de %s, sans rien écrire', async (_, key) => {
+    await expect(
+      updateNewsService(updateInput({imageKey: key}))
+    ).rejects.toThrow()
+    expect(updateNewsDao).not.toHaveBeenCalled()
   })
 })
 
@@ -478,12 +564,11 @@ describe('uploadNewsImageService', () => {
       new RegExp(`^${ORG_ID}/news/${NEWS_ID}/image-[0-9a-f-]+\\.png$`)
     )
     expect(storage.upload).toHaveBeenCalledTimes(1)
-    expect(updateNewsImageDao).toHaveBeenCalledWith(NEWS_ID, result.key)
   })
 
-  it("rend l'adresse de l'actualité, de quoi invalider sa fiche", async () => {
+  it("ne touche pas la ligne : la clé n'est écrite qu'à l'enregistrement", async () => {
     vi.mocked(getNewsByIdDao).mockResolvedValue(
-      newsRow({slug: 'assemblee-generale', title: 'Assemblée générale'})
+      newsRow({slug: 'assemblee-generale', title: 'AG', status: 'published'})
     )
 
     const result = await uploadNewsImageService({
@@ -492,21 +577,15 @@ describe('uploadNewsImageService', () => {
       file: fileFrom(PNG_BYTES, 'photo.png', 'image/png'),
     })
 
-    expect(result.status).toBe('uploaded')
-    if (result.status !== 'uploaded') return
-    expect(result.slug).toBe('assemblee-generale')
-  })
-
-  it("rend une adresse nulle tant que l'actualité n'en a pas", async () => {
-    const result = await uploadNewsImageService({
-      organizationId: ORG_ID,
-      newsId: NEWS_ID,
-      file: fileFrom(PNG_BYTES, 'photo.png', 'image/png'),
+    expect(result).toEqual({
+      status: 'uploaded',
+      key: expect.stringContaining(`${ORG_ID}/news/${NEWS_ID}/image-`),
+      fileName: 'photo.png',
+      fileSize: PNG_BYTES.length,
     })
-
-    expect(result.status).toBe('uploaded')
-    if (result.status !== 'uploaded') return
-    expect(result.slug).toBeNull()
+    for (const dao of writeDaos()) {
+      expect(dao).not.toHaveBeenCalled()
+    }
   })
 
   it('refuse un fichier dont la signature ne correspond pas, sans écriture', async () => {
@@ -518,7 +597,6 @@ describe('uploadNewsImageService', () => {
 
     expect(result).toEqual({status: 'rejected', reason: 'format'})
     expect(storage.upload).not.toHaveBeenCalled()
-    expect(updateNewsImageDao).not.toHaveBeenCalled()
   })
 
   it("refuse une actualité qui n'appartient pas à l'association", async () => {

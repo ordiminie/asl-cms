@@ -10,7 +10,6 @@ import {
   isNewsSlugTakenDao,
   NewsPageRows,
   updateNewsDao,
-  updateNewsImageDao,
   updateNewsStatusDao,
 } from '@/db/repositories/news-repository'
 import {withTenant} from '@/db/tenant-scope'
@@ -33,6 +32,7 @@ import {
 } from './types/domain/content-file-types'
 import {
   countNewsPages,
+  isNewsImageKeyAllowed,
   NEWS_BUREAU_PAGE_SIZE,
   NEWS_PUBLIC_PAGE_SIZE,
   NewsDTO,
@@ -40,7 +40,9 @@ import {
   NewsListPageDTO,
   NewsMutationResult,
   NewsPublicationResult,
+  NewsSavedResult,
   newsSlugCandidate,
+  NewsStatusConst,
   NewsUnpublicationResult,
   slugifyNewsTitle,
   validateNewsForPublication,
@@ -58,6 +60,7 @@ import {
 const MANAGE_DENIED =
   "Seul le bureau de l'association peut gérer les actualités"
 const NEWS_NOT_FOUND = 'Actualité introuvable'
+const IMAGE_KEY_REFUSED = "Cette image n'appartient pas à cette actualité"
 const NEWS_IMAGE_SLOT = 'image'
 const SLUG_MAX_ATTEMPTS = 50
 
@@ -134,7 +137,7 @@ const findFreeSlug = async (
 export const createNewsDraftService = async (input: {
   organizationId: string
   publishedOn: string
-}): Promise<NewsMutationResult> => {
+}): Promise<NewsSavedResult> => {
   const parsed = createNewsDraftServiceSchema.safeParse(input)
   if (!parsed.success) {
     throw new ValidationParsedZodError(parsed.error)
@@ -153,13 +156,19 @@ export const createNewsDraftService = async (input: {
 }
 
 /**
- * Enregistre une actualite. N'exige **jamais** les champs « obligatoires pour
- * publier » : un brouillon incomplet s'enregistre.
+ * Enregistre une actualite. Un brouillon incomplet s'enregistre : les champs
+ * « obligatoires pour publier » ne sont exiges que si l'actualite est **deja
+ * publiee**, car l'enregistrer la republie aussitot — sans quoi vider le titre
+ * ou remplacer l'image sans texte alternatif passerait en ligne.
  *
  * L'adresse est fixee au premier enregistrement qui porte un titre, puis
- * **jamais recalculee** (ADR 023) : un changement de titre garde l'URL. L'image
- * n'est jamais posee ici — seulement retiree sur demande ; une cle ne vient
- * que du depot, jamais d'une requete.
+ * **jamais recalculee** (ADR 023) : un changement de titre garde l'URL.
+ *
+ * L'image est **ecrite ici et nulle part ailleurs** : le depot se contente de
+ * poser le fichier et de rendre sa cle, que le formulaire garde jusqu'a
+ * l'enregistrement (meme chaine que les blocs de page de s04). La cle rendue
+ * est donc lue dans une requete : elle n'est ecrite que si elle appartient a
+ * cette actualite.
  */
 export const updateNewsService = async (input: {
   organizationId: string
@@ -168,18 +177,39 @@ export const updateNewsService = async (input: {
   publishedOn: string
   content: string
   imageAlt: string
-  removeImage?: boolean
+  imageKey: string | null
 }): Promise<NewsMutationResult> => {
   const parsed = updateNewsServiceSchema.safeParse(input)
   if (!parsed.success) {
     throw new ValidationParsedZodError(parsed.error)
   }
 
-  const {organizationId, newsId, title, publishedOn, content, imageAlt} =
-    parsed.data
+  const {
+    organizationId,
+    newsId,
+    title,
+    publishedOn,
+    content,
+    imageAlt,
+    imageKey,
+  } = parsed.data
   await requireNewsManager(organizationId)
 
+  if (
+    imageKey !== null &&
+    !isNewsImageKeyAllowed(organizationId, newsId, imageKey)
+  ) {
+    throw new ValidationError(IMAGE_KEY_REFUSED)
+  }
+
   const current = await requireNews(organizationId, newsId)
+
+  if (current.status === NewsStatusConst.PUBLISHED) {
+    const issues = validateNewsForPublication({title, imageKey, imageAlt})
+    if (issues.length > 0) {
+      return {status: 'rejected', issues}
+    }
+  }
 
   const slug =
     current.slug === null && title !== ''
@@ -191,9 +221,9 @@ export const updateNewsService = async (input: {
       title,
       publishedOn,
       content,
-      imageAlt: parsed.data.removeImage ? '' : imageAlt,
+      imageKey,
+      imageAlt: imageKey === null ? '' : imageAlt,
       ...(slug === undefined ? {} : {slug}),
-      ...(parsed.data.removeImage ? {imageKey: null} : {}),
     })
   )
 
@@ -347,12 +377,17 @@ export const getNewsBySlugService = async (
 }
 
 /**
- * Depose l'image d'une actualite et l'enregistre sur la ligne.
+ * Depose l'image d'une actualite et rend sa cle, **sans toucher a la ligne**.
+ *
+ * C'est l'enregistrement qui ecrit la cle (meme chaine que les fichiers de
+ * bloc de s04) : sinon, sur une actualite deja publiee, le site public
+ * servirait aussitot la nouvelle image avec l'ancien texte alternatif — ou
+ * sans aucun — alors que le bureau n'a encore rien valide.
  *
  * Ordre : `safeParse` -> controle d'acces -> l'actualite appartient bien a
- * cette association -> validation par **signature binaire** -> ecriture sous
- * une cle de portee `news` generee par le serveur. Un fichier refuse est rendu
- * comme un resultat, sans rien ecrire.
+ * cette association -> validation par **signature binaire** -> ecriture du
+ * fichier sous une cle de portee `news` generee par le serveur. Un fichier
+ * refuse est rendu comme un resultat, sans rien ecrire.
  */
 export const uploadNewsImageService = async (input: {
   organizationId: string
@@ -365,7 +400,7 @@ export const uploadNewsImageService = async (input: {
   }
 
   await requireNewsManager(parsed.data.organizationId)
-  const row = await requireNews(parsed.data.organizationId, parsed.data.newsId)
+  await requireNews(parsed.data.organizationId, parsed.data.newsId)
 
   const content = new Uint8Array(await input.file.arrayBuffer())
   const validation = validateContentFile('image', content)
@@ -388,16 +423,12 @@ export const uploadNewsImageService = async (input: {
     validation.format
   )
   await getContentFileStorage().upload(input.file, key)
-  await withTenant(parsed.data.organizationId, () =>
-    updateNewsImageDao(parsed.data.newsId, key)
-  )
 
   return {
     status: 'uploaded',
     key,
     fileName: input.file.name,
     fileSize: content.length,
-    slug: row.slug,
   }
 }
 

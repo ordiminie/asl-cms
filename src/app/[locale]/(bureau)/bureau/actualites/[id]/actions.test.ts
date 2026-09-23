@@ -80,7 +80,7 @@ const input = {
   publishedOn: '2026-10-10',
   content: 'Rendez-vous le 10 octobre.',
   imageAlt: '',
-  removeImage: false,
+  imageKey: null,
 }
 
 beforeEach(() => {
@@ -118,6 +118,18 @@ describe('saveNewsDraftAction', () => {
     const result = await saveNewsDraftAction(input)
 
     expect(result.status).toBe('error')
+    expect(updateTag).not.toHaveBeenCalled()
+  })
+
+  it("rend les manques d'une actualité publiée, sans rien invalider", async () => {
+    vi.mocked(updateNewsService).mockResolvedValue({
+      status: 'rejected',
+      issues: ['missing_title'],
+    })
+
+    const result = await saveNewsDraftAction(input)
+
+    expect(result).toEqual({status: 'incomplete', issues: ['missing_title']})
     expect(updateTag).not.toHaveBeenCalled()
   })
 })
@@ -184,6 +196,22 @@ describe('publishNewsAction', () => {
     expect(updateTag).toHaveBeenCalledWith(ITEM_TAG)
   })
 
+  it("n'invalide ni ne publie quand l'enregistrement est refusé", async () => {
+    vi.mocked(updateNewsService).mockResolvedValue({
+      status: 'rejected',
+      issues: ['missing_image_alt'],
+    })
+
+    const result = await publishNewsAction(input)
+
+    expect(result).toEqual({
+      status: 'incomplete',
+      issues: ['missing_image_alt'],
+    })
+    expect(publishNewsService).not.toHaveBeenCalled()
+    expect(updateTag).not.toHaveBeenCalled()
+  })
+
   it("n'invalide rien quand l'enregistrement lui-même échoue", async () => {
     vi.mocked(updateNewsService).mockRejectedValue(new AuthorizationError())
 
@@ -223,22 +251,19 @@ describe('uploadNewsImageAction', () => {
     return formData
   }
 
-  it('dépose le fichier, rend sa clé, puis invalide la liste et la fiche', async () => {
+  it("rend la clé sans rien invalider : le dépôt n'écrit pas la ligne", async () => {
     const key = `${TENANT_ID}/news/${NEWS_ID}/image-a.png`
     vi.mocked(uploadNewsImageService).mockResolvedValue({
       status: 'uploaded',
       key,
       fileName: 'photo.png',
       fileSize: 10,
-      slug: saved.slug,
     })
 
     const result = await uploadNewsImageAction(imageFormData())
 
     expect(result).toEqual({status: 'uploaded', key, fileName: 'photo.png'})
-    expect(
-      tagsInvalidatedBetween(callOrderOf(uploadNewsImageService), Infinity)
-    ).toEqual([LIST_TAG, ITEM_TAG])
+    expect(updateTag).not.toHaveBeenCalled()
   })
 
   it("n'invalide rien quand le dépôt échoue", async () => {

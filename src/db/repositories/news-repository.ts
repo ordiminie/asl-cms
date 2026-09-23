@@ -66,8 +66,8 @@ export const updateNewsDao = async (
     publishedOn: string
     content: string
     imageAlt: string
+    imageKey: string | null
     slug?: string
-    imageKey?: null
   }
 ): Promise<NewsModel> => {
   const [row] = await getDb()
@@ -85,18 +85,6 @@ export const updateNewsStatusDao = async (
   const [row] = await getDb()
     .update(news)
     .set({status, updatedAt: new Date()})
-    .where(eq(news.id, newsId))
-    .returning()
-  return row
-}
-
-export const updateNewsImageDao = async (
-  newsId: string,
-  imageKey: string
-): Promise<NewsModel> => {
-  const [row] = await getDb()
-    .update(news)
-    .set({imageKey, updatedAt: new Date()})
     .where(eq(news.id, newsId))
     .returning()
   return row
