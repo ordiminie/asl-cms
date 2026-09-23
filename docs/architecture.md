@@ -238,7 +238,8 @@ Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactem
 Les 26 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
-Le classement est tenu par un test (`src/db/models/rls-inventory.test.ts`) : il lit les
+Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
+drizzle-kit) : il lit les
 déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et échoue si une table
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.

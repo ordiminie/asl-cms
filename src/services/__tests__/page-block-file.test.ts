@@ -34,10 +34,7 @@ vi.mock('@/lib/files/storage/storage-factory', () => ({
 import {getPageByIdDao} from '@/db/repositories/page-repository'
 
 import {AuthorizationError} from '../errors/authorization-error'
-import {
-  readPageBlockFileService,
-  uploadPageBlockFileService,
-} from '../page-service'
+import {uploadPageBlockFileService} from '../page-service'
 import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
@@ -45,7 +42,6 @@ import {setupAuthUserMocked} from './helper-service-test'
 import {userTest} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
-const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
 const PAGE_ID = '33333333-3333-4333-8333-333333333333'
 const BLOCK_ID = '55555555-5555-4555-8555-555555555555'
 
@@ -86,7 +82,6 @@ beforeEach(() => {
     blocks: [],
   })
   storage.upload.mockResolvedValue(undefined)
-  storage.download.mockResolvedValue(new Blob([PNG_BYTES as BlobPart]))
 })
 
 describe('uploadPageBlockFileService', () => {
@@ -175,56 +170,5 @@ describe('uploadPageBlockFileService', () => {
       })
     ).rejects.toThrow()
     expect(storage.upload).not.toHaveBeenCalled()
-  })
-})
-
-describe('readPageBlockFileService', () => {
-  it('sert une clé du préfixe de l’association résolue', async () => {
-    const result = await readPageBlockFileService(
-      ORG_ID,
-      `${ORG_ID}/pages/${PAGE_ID}/${BLOCK_ID}-abc.png`
-    )
-
-    expect(result.contentType).toBe('image/png')
-    expect(storage.download).toHaveBeenCalledWith(
-      `${ORG_ID}/pages/${PAGE_ID}/${BLOCK_ID}-abc.png`
-    )
-  })
-
-  it('refuse une clé appartenant à une autre association', async () => {
-    await expect(
-      readPageBlockFileService(
-        ORG_ID,
-        `${OTHER_ORG_ID}/pages/${PAGE_ID}/${BLOCK_ID}-abc.png`
-      )
-    ).rejects.toThrow()
-    expect(storage.download).not.toHaveBeenCalled()
-  })
-
-  it('refuse une clé hors du dossier des pages', async () => {
-    await expect(
-      readPageBlockFileService(ORG_ID, `${ORG_ID}/identity/logo-abc.png`)
-    ).rejects.toThrow()
-    expect(storage.download).not.toHaveBeenCalled()
-  })
-
-  it('refuse une remontée de chemin', async () => {
-    await expect(
-      readPageBlockFileService(
-        ORG_ID,
-        `${ORG_ID}/pages/${PAGE_ID}/../../${OTHER_ORG_ID}/identity/logo.png`
-      )
-    ).rejects.toThrow()
-    expect(storage.download).not.toHaveBeenCalled()
-  })
-
-  it('refuse une extension que le produit ne sert pas', async () => {
-    await expect(
-      readPageBlockFileService(
-        ORG_ID,
-        `${ORG_ID}/pages/${PAGE_ID}/${BLOCK_ID}-abc.svg`
-      )
-    ).rejects.toThrow()
-    expect(storage.download).not.toHaveBeenCalled()
   })
 })

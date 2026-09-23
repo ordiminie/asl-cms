@@ -9,8 +9,6 @@ export const getPageForBureauService =
 export const getPagesForBureauService =
   pageServiceInterceptor.getPagesForBureauService
 export const publishPageService = pageServiceInterceptor.publishPageService
-export const readPageBlockFileService =
-  pageServiceInterceptor.readPageBlockFileService
 export const unpublishPageService = pageServiceInterceptor.unpublishPageService
 export const updatePageService = pageServiceInterceptor.updatePageService
 export const uploadPageBlockFileService =

@@ -62,6 +62,15 @@ Voir l'ADR 023 et les hypothèses du design.
   `['owner', 'board']`, sur le précédent de `PAGE_MANAGE`. `canManageAssociation` sert l'affichage.
 - **Hors périmètre** : suppression, extrait, menu, accueil, email (s25), SEO (s11), retrait du blog
   hérité.
+- **Accepté tel quel en revue (passe 5)** : le compte et la liste sont **deux portées cachées
+  distinctes sous un même tag**. Une écriture qui atterrit entre les deux lectures peut donc rendre,
+  pour une requête, une page 2 vide alors que le compte l'annonçait peuplée. Transitoire, sans
+  conséquence — la requête suivante est cohérente — et le coût d'une lecture atomique ne se justifie
+  pas ici. Ce n'est pas un défaut à rouvrir.
+- **Écart 8 du design délibérément non appliqué (passe 5)** : l'image pleine largeur en mobile sur
+  la page d'une actualité. La gouttière de l'article est celle de `(public)/[slug]/page.tsx`, livrée
+  en s04 ; la changer changerait la mise en page de s04, hors du périmètre de cette story. À
+  reprendre le jour où la gouttière des pages publiques sera revue, pas avant.
 
 ## Tasks (ordered)
 

@@ -3,7 +3,6 @@ import {z} from 'zod'
 import {
   buildContentFileKey,
   ContentFileScopeConst,
-  getContentFileFormatFromKey,
   isContentFileKeyAllowed,
 } from './content-file-types'
 
@@ -299,11 +298,6 @@ export const buildPageBlockFileKey = (
     format
   )
 }
-
-/** Le format servi, relu depuis l'extension d'une cle deja validee. */
-export const getPageFileFormatFromKey = (
-  key: string
-): PageFileFormat | undefined => getContentFileFormatFromKey(key)
 
 /**
  * Une cle de fichier de page n'est servie que sous le prefixe

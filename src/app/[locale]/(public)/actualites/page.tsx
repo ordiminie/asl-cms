@@ -48,7 +48,9 @@ export default async function PublicNewsListPage({
   ])
 
   const {page} = await searchParams
-  const requested = Number.parseInt(page ?? '1', 10)
+  // Strictement des chiffres : `Number.parseInt` accepterait `2abc` comme 2,
+  // et donnerait autant d'adresses distinctes pour une meme page.
+  const requested = /^\d+$/.test(page ?? '1') ? Number(page ?? '1') : Number.NaN
   if (Number.isNaN(requested) || requested < 1) {
     notFound()
   }

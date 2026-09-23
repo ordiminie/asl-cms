@@ -17,10 +17,7 @@ import {withTenant} from '@/db/tenant-scope'
 import {getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
 import {canManageAssociation} from './authorization/association-authorization'
-import {
-  getContentFileStorage,
-  readContentFileService,
-} from './content-file-service'
+import {getContentFileStorage} from './content-file-service'
 import {AuthorizationError} from './errors/authorization-error'
 import {NotFoundError} from './errors/not-found-error'
 import {
@@ -30,7 +27,6 @@ import {
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   buildPageBlockFileKey,
-  isPageBlockFileKeyAllowed,
   isPageSlugReserved,
   PAGE_FILE_CONTENT_TYPES,
   PageBlockData,
@@ -51,7 +47,6 @@ import {
   createPageServiceSchema,
   pageOrganizationIdSchema,
   pageStatusChangeServiceSchema,
-  readPageBlockFileServiceSchema,
   readPageBySlugServiceSchema,
   updatePageServiceSchema,
   uploadPageBlockFileServiceSchema,
@@ -401,8 +396,6 @@ export type PageBlockFileUpload =
   | {status: 'rejected'; reason: 'format'}
   | {status: 'rejected'; reason: 'size'; size: number; maxBytes: number}
 
-export type PageBlockFileContent = {content: Blob; contentType: string}
-
 /**
  * Depose le fichier d'un bloc (image ou document).
  *
@@ -460,32 +453,4 @@ export const uploadPageBlockFileService = async (input: {
     fileSize: content.length,
     contentType: PAGE_FILE_CONTENT_TYPES[validation.format],
   }
-}
-
-/**
- * Lit un fichier de bloc de page. Delegue a la chaine de fichiers de contenu
- * partagee (ADR 023), restreinte ici a la portee `pages`.
- *
- * **Sans controle d'autorisation, et c'est delibere** : ces fichiers
- * s'affichent sur le site public. La cle **vient de la requete** : elle est
- * validee contre le prefixe `{organizationId}/pages/` de l'association resolue
- * par le domaine avant toute lecture.
- */
-export const readPageBlockFileService = async (
-  organizationId: string,
-  key: string
-): Promise<PageBlockFileContent> => {
-  const parsed = readPageBlockFileServiceSchema.safeParse({
-    organizationId,
-    key,
-  })
-  if (!parsed.success) {
-    throw new ValidationParsedZodError(parsed.error)
-  }
-
-  if (!isPageBlockFileKeyAllowed(parsed.data.organizationId, parsed.data.key)) {
-    throw new ValidationError('Clé de fichier de page invalide')
-  }
-
-  return readContentFileService(parsed.data.organizationId, parsed.data.key)
 }

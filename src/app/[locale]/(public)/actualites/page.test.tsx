@@ -187,6 +187,20 @@ describe('/actualites — liste publique', () => {
     expect(getPublicNewsPageCountDal).not.toHaveBeenCalled()
   })
 
+  // `Number.parseInt` s'arrete au premier caractere qui n'est pas un chiffre :
+  // `2abc` deviendrait la page 2, et autant d'adresses distinctes pour une
+  // meme page. Le numero est lu strictement, ou pas du tout.
+  it('un numéro de page à rallonge est refusé, pas tronqué', async () => {
+    vi.mocked(getPublicNewsPageCountDal).mockResolvedValue(3)
+
+    for (const absurde of ['2abc', '1.5', ' 2', '+2', '2e1']) {
+      await expect(renderList(absurde)).rejects.toThrow('NEXT_NOT_FOUND')
+    }
+
+    expect(getPublicNewsPageDal).not.toHaveBeenCalled()
+    expect(getPublicNewsPageCountDal).not.toHaveBeenCalled()
+  })
+
   it('la page 1 d’une liste vide reste la liste vide, jamais un 404', async () => {
     vi.mocked(getPublicNewsPageCountDal).mockResolvedValue(1)
     vi.mocked(getPublicNewsPageDal).mockResolvedValue(listOf([], {total: 0}))
