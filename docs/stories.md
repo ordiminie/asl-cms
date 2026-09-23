@@ -780,7 +780,14 @@ s01, s03b
 Réf. `V5 §4.2`, `CDCT §4.2`. Volontairement sans workflow : pas de validation, pas de programmation
 horaire.
 
-⚠️ **Niveaux de gravité : arbitrage ouvert, propriétaire unique — `/ks-prd`.** Le CDC n'en demande
+✅ **Niveaux de gravité : arbitrage rendu le 23/09/2026 — un seul niveau, non refermable.** Le bureau
+ne veut qu'un bandeau. La décision est inscrite dans `docs/prd.md` et dans `docs/design-system.md`
+§2.3, qui décrit désormais le niveau unique et relègue les trois niveaux en extension documentée,
+hors périmètre V1. Les critères ci-dessous sont inchangés : ils n'exerçaient déjà qu'un seul niveau.
+Le raisonnement qui a mené là est conservé ci-dessous, parce qu'il reste valable si le bureau veut y
+revenir à l'usage.
+
+⚠️ **Historique de l'arbitrage — propriétaire unique, `/ks-prd`.** Le CDC n'en demande
 pas et le PRD porte cette ligne en complexité 1, d'où le parti pris d'origine — un seul niveau. Mais
 le design system §2.3 en spécifie trois, dont un **non refermable**, avec un argument qui n'est pas
 décoratif pour une ASL dont l'objet est l'eau : « une eau impropre à la consommation n'est pas une
