@@ -120,6 +120,22 @@ export const getNewsPageByOrganizationDao = async (input: {
     input.offset
   )
 
+/**
+ * Nombre d'actualites publiees, sans lire une seule ligne : il borne la
+ * pagination publique avant d'aller chercher la page demandee.
+ */
+export const countPublishedNewsDao = async (
+  organizationId: string
+): Promise<number> => {
+  const [{total}] = await getDb()
+    .select({total: count()})
+    .from(news)
+    .where(
+      and(eq(news.organizationId, organizationId), eq(news.status, 'published'))
+    )
+  return total
+}
+
 /** Liste publique : les actualites **publiees** seulement. */
 export const getPublishedNewsPageDao = async (input: {
   organizationId: string

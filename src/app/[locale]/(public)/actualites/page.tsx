@@ -4,7 +4,11 @@ import Link from 'next/link'
 import {notFound} from 'next/navigation'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
-import {getPublicNewsPageDal, newsImageUrl} from '@/app/dal/news-dal'
+import {
+  getPublicNewsPageCountDal,
+  getPublicNewsPageDal,
+  newsImageUrl,
+} from '@/app/dal/news-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {formatNewsDate} from '@/lib/cms/format-news-date'
 
@@ -49,12 +53,20 @@ export default async function PublicNewsListPage({
     notFound()
   }
 
-  const list = await getPublicNewsPageDal(tenant.id, requested)
-  // Une page hors bornes n'existe pas — sauf la page 1 d'une liste vide, qui
-  // affiche l'etat vide plutot qu'une erreur.
-  if (requested > list.totalPages) {
+  // Les bornes d'abord, la liste ensuite : la lecture de liste est cachee par
+  // numero de page, et le numero vient du visiteur. L'atteindre hors bornes
+  // creerait une entree de cache et deux requetes par numero essaye. Le
+  // compte, lui, ne depend que de l'association.
+  //
+  // Une page hors bornes n'existe pas — sauf la page 1 d'une liste vide, que
+  // `countNewsPages` compte toujours pour une : elle affiche l'etat vide
+  // plutot qu'une erreur.
+  const totalPages = await getPublicNewsPageCountDal(tenant.id)
+  if (requested > totalPages) {
     notFound()
   }
+
+  const list = await getPublicNewsPageDal(tenant.id, requested)
 
   return (
     <div className="mx-auto flex w-full max-w-[68ch] flex-col gap-8 px-4 pt-8 pb-16 sm:px-6">

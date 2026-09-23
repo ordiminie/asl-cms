@@ -2,6 +2,7 @@ import 'server-only'
 
 import {NewsModel} from '@/db/models/news-model'
 import {
+  countPublishedNewsDao,
   createNewsDao,
   getNewsByIdDao,
   getNewsBySlugDao,
@@ -352,6 +353,33 @@ export const getPublishedNewsPageService = async (
   )
 
   return toListPageDto(result, parsed.data.page, NEWS_PUBLIC_PAGE_SIZE)
+}
+
+/**
+ * Nombre de pages de la liste publique. Une liste vide en compte **une** : sa
+ * page 1 affiche l'etat vide, elle n'est pas introuvable.
+ *
+ * Il existe pour que la page publique borne le numero demande **avant** de
+ * lire la liste : la lecture de liste est cachee par numero de page, et un
+ * numero hors bornes y creerait une entree de cache par valeur essayee. Ce
+ * compte, lui, ne depend que de l'association.
+ *
+ * **Sans controle d'autorisation, et c'est delibere**, comme la liste
+ * elle-meme.
+ */
+export const getPublishedNewsPageCountService = async (
+  organizationId: string
+): Promise<number> => {
+  const parsed = newsOrganizationIdSchema.safeParse(organizationId)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const total = await withTenant(parsed.data, () =>
+    countPublishedNewsDao(parsed.data)
+  )
+
+  return countNewsPages(total, NEWS_PUBLIC_PAGE_SIZE)
 }
 
 /**

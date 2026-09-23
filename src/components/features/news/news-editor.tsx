@@ -120,26 +120,46 @@ export function NewsEditor({
   }
 
   /**
-   * Un manque s'ecrit sous le champ qui le corrige — jamais seulement dans la
-   * barre, ou il faudrait deviner lequel remplir.
+   * Une actualite deja en ligne ne se parle pas comme un brouillon : ce qu'on y
+   * enregistre part aussitot sur le site, et rien n'y « attend la publication ».
    */
-  const applyIssues = (issues: readonly NewsPublicationError[]) => {
+  const isLive = saved.status === 'published'
+
+  /**
+   * Un manque s'ecrit sous le champ qui le corrige — jamais seulement dans la
+   * barre, ou il faudrait deviner lequel remplir. La barre porte en plus le
+   * refus lui-meme : sans elle, un ecran refuse n'annonce nulle part qu'il a
+   * ete refuse.
+   */
+  const applyIssues = (
+    issues: readonly NewsPublicationError[],
+    refusal: string
+  ) => {
+    const group = isLive ? 'publishedIssues' : 'issues'
+
     for (const issue of issues) {
       if (issue === NewsPublicationErrorConst.MISSING_IMAGE_ALT) {
-        setAltError(t(`issues.${issue}`))
+        setAltError(t(`${group}.${issue}`))
       } else {
-        setTitleError(t(`issues.${issue}`))
+        setTitleError(t(`${group}.${issue}`))
       }
     }
+
+    setBarError(refusal)
   }
 
   const save = () => {
     resetMessages()
     startTransition(async () => {
       const result = await saveAction(payload())
-      if (result.status === 'saved') applySaved(result.news, t('savedNotice'))
-      else if (result.status === 'incomplete') applyIssues(result.issues)
-      else setBarError(result.message)
+      if (result.status === 'saved') {
+        applySaved(
+          result.news,
+          isLive ? t('savedPublishedNotice') : t('savedNotice')
+        )
+      } else if (result.status === 'incomplete') {
+        applyIssues(result.issues, t('saveRefused'))
+      } else setBarError(result.message)
     })
   }
 
@@ -154,7 +174,10 @@ export function NewsEditor({
       }
 
       if (result.status === 'incomplete') {
-        applyIssues(result.issues)
+        applyIssues(
+          result.issues,
+          isLive ? t('updateRefused') : t('publishRefused')
+        )
         return
       }
 
@@ -213,7 +236,7 @@ export function NewsEditor({
               disabled={isPending}
               onClick={save}
             >
-              {t('saveDraft')}
+              {isLive ? t('save') : t('saveDraft')}
             </Button>
             {saved.slug && (
               <Button asChild variant="outline" className="h-11">
@@ -222,7 +245,7 @@ export function NewsEditor({
                 </Link>
               </Button>
             )}
-            {saved.status === 'published' && (
+            {isLive && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button type="button" variant="outline" className="h-11">
@@ -253,7 +276,7 @@ export function NewsEditor({
               disabled={isPending}
               onClick={publish}
             >
-              {saved.status === 'published' ? t('update') : t('publish')}
+              {isLive ? t('update') : t('publish')}
             </Button>
           </>
         }

@@ -3179,6 +3179,7 @@
       "metadataTitle": "Edit a news item",
       "back": "← News",
       "saveDraft": "Save draft",
+      "save": "Save changes",
       "preview": "Preview",
       "publish": "Publish news item",
       "update": "Save and update",
@@ -3206,10 +3207,18 @@
       "contentPlaceholder": "Tell the association's news…",
       "publishedNotice": "News item published. It is visible on the website.",
       "savedNotice": "Draft saved.",
+      "savedPublishedNotice": "Changes saved. They are on the website.",
       "unpublishedNotice": "News item unpublished. It disappeared from the website.",
+      "publishRefused": "Publishing was refused: fill in the fields flagged below.",
+      "updateRefused": "The update was refused: fill in the fields flagged below.",
+      "saveRefused": "Saving was refused: fill in the fields flagged below.",
       "issues": {
         "missing_title": "Give this news item a title before publishing it.",
         "missing_image_alt": "Add an alternative text to the image before publishing this news item."
+      },
+      "publishedIssues": {
+        "missing_title": "Give this news item a title: it is online, and its title shows on the website.",
+        "missing_image_alt": "Add an alternative text to the image: the news item is online, and this text describes it to people who cannot see it."
       }
     }
   },

@@ -10,6 +10,7 @@ import {
   getNewsBySlugService,
   getNewsForBureauService,
   getNewsItemForBureauService,
+  getPublishedNewsPageCountService,
   getPublishedNewsPageService,
 } from '@/services/facades/news-service-facade'
 import {contentFileUrl} from '@/services/types/domain/content-file-types'
@@ -55,6 +56,29 @@ export const getPublicNewsPageDal = async (
   organizationId: string,
   page: number
 ): Promise<NewsListPageDTO> => readPublishedNewsPageCached(organizationId, page)
+
+/**
+ * Nombre de pages de la liste publique. Sa cle de cache ne depend **que** de
+ * l'association — pas du numero demande par le visiteur — et son tag est celui
+ * de la liste : les deux lectures s'invalident ensemble.
+ *
+ * C'est elle qui borne la pagination : la page publique refuse un numero hors
+ * bornes avant de toucher la lecture cachee par page, dont la cle, elle, suit
+ * ce que le visiteur ecrit dans l'adresse.
+ */
+const readPublishedNewsPageCountCached = cache(
+  async (organizationId: string): Promise<number> => {
+    'use cache'
+    cacheLife('hours')
+    cacheTag(newsListTag(organizationId))
+
+    return getPublishedNewsPageCountService(organizationId)
+  }
+)
+
+export const getPublicNewsPageCountDal = async (
+  organizationId: string
+): Promise<number> => readPublishedNewsPageCountCached(organizationId)
 
 const readNewsBySlugCached = cache(
   async (

@@ -232,22 +232,28 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 25 tables du schéma
+### Classement RLS des 26 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 25 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05) sont donc toutes classées, sans reste. Toute
+Les 26 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
-**Scopée par une policy RLS forcée** — 6 tables
+Le classement est tenu par un test (`src/db/models/rls-inventory.test.ts`) : il lit les
+déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et échoue si une table
+manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
+`rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-| Table                  | Pourquoi                                                                                                                                                                                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `user_submissions`     | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé.                                                                                            |
-| `organization_setting` | Paramètres de l'association (adresses, teinte : ADR 010, ADR 016). Porte `organization_id`, policy `tenant_isolation` forcée (`0007`). Absence de ligne = valeur par défaut du registre.                                                               |
-| `page`                 | Pages du site public (ADR 007, ADR 020, s04). Porte `organization_id`, policy `tenant_isolation` forcée (`0013`). Slug unique **par association**, jamais globalement.                                                                                 |
-| `content_block`        | Blocs typés d'une page (ADR 019, s04). **Sans `organization_id`** : le tenant est celui de la page, et la policy `tenant_isolation` forcée (`0013`) joint `page` pour le retrouver — donc aucune colonne de tenant dupliquée à tenir cohérente.        |
-| `menu_item`            | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ». |
-| `news`                 | Actualités datées de l'association (ADR 023, s05). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0017`). Slug unique **par association**, nul tant que l'actualité n'a pas de titre.                                     |
+**Scopée par une policy RLS forcée** — 7 tables
+
+| Table                  | Pourquoi                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_submissions`     | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé.                                                                                                                                                     |
+| `organization_setting` | Paramètres de l'association (adresses, teinte : ADR 010, ADR 016). Porte `organization_id`, policy `tenant_isolation` forcée (`0007`). Absence de ligne = valeur par défaut du registre.                                                                                                                        |
+| `rate_limit_event`     | Compteurs journaliers de la limitation de débit des formulaires publics (s03). Porte `organization_id`, policy `tenant_isolation` forcée (`0009`) : hors `withTenant`, aucun compteur ne se lit ni ne s'écrit. **Classée ici seulement en s05** — l'omission datait de s03, la policy, elle, n'a jamais manqué. |
+| `page`                 | Pages du site public (ADR 007, ADR 020, s04). Porte `organization_id`, policy `tenant_isolation` forcée (`0013`). Slug unique **par association**, jamais globalement.                                                                                                                                          |
+| `content_block`        | Blocs typés d'une page (ADR 019, s04). **Sans `organization_id`** : le tenant est celui de la page, et la policy `tenant_isolation` forcée (`0013`) joint `page` pour le retrouver — donc aucune colonne de tenant dupliquée à tenir cohérente.                                                                 |
+| `menu_item`            | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ».                                                          |
+| `news`                 | Actualités datées de l'association (ADR 023, s05). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0017`). Slug unique **par association**, nul tant que l'actualité n'a pas de titre.                                                                                              |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**

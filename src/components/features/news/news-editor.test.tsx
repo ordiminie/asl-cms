@@ -141,7 +141,7 @@ describe('NewsEditor — enregistrement refusé sur une actualité publiée', ()
 
     render(editorOf(newsOf({status: 'published'}), {saveAction}))
     await userEvent.click(
-      screen.getByRole('button', {name: 'Enregistrer le brouillon'})
+      screen.getByRole('button', {name: 'Enregistrer les modifications'})
     )
 
     await waitFor(() => expect(saveAction).toHaveBeenCalled())
@@ -151,7 +151,7 @@ describe('NewsEditor — enregistrement refusé sur une actualité publiée', ()
     )
     expect(
       screen.getByText(
-        'Donnez un titre à cette actualité pour pouvoir la publier.'
+        'Donnez un titre à cette actualité : elle est en ligne, et son titre s’affiche sur le site.'
       )
     ).toBeInTheDocument()
   })
@@ -168,7 +168,7 @@ describe('NewsEditor — enregistrement refusé sur une actualité publiée', ()
 
     render(editorOf(news, {saveAction}))
     await userEvent.click(
-      screen.getByRole('button', {name: 'Enregistrer le brouillon'})
+      screen.getByRole('button', {name: 'Enregistrer les modifications'})
     )
 
     await waitFor(() => expect(saveAction).toHaveBeenCalled())
@@ -176,6 +176,157 @@ describe('NewsEditor — enregistrement refusé sur une actualité publiée', ()
       'aria-invalid',
       'true'
     )
+  })
+})
+
+describe('NewsEditor — un refus est annoncé dans la barre', () => {
+  it('annonce la publication refusée, sans remplacer le message de champ', async () => {
+    const publishAction = vi.fn(async () => ({
+      status: 'incomplete' as const,
+      issues: ['missing_title' as const],
+    }))
+
+    render(editorOf(newsOf({title: '', slug: null}), {publishAction}))
+    await userEvent.click(
+      screen.getByRole('button', {name: "Publier l'actualité"})
+    )
+
+    await waitFor(() => expect(publishAction).toHaveBeenCalled())
+    expect(
+      screen.getByText(
+        'La publication a été refusée : complétez les champs signalés ci-dessous.'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Donnez un titre à cette actualité pour pouvoir la publier.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('annonce la mise à jour refusée sur une actualité en ligne', async () => {
+    const publishAction = vi.fn(async () => ({
+      status: 'incomplete' as const,
+      issues: ['missing_title' as const],
+    }))
+
+    render(editorOf(newsOf({status: 'published'}), {publishAction}))
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer et mettre à jour'})
+    )
+
+    await waitFor(() => expect(publishAction).toHaveBeenCalled())
+    expect(
+      screen.getByText(
+        'La mise à jour a été refusée : complétez les champs signalés ci-dessous.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it("annonce l'enregistrement refusé, et la barre passe en erreur", async () => {
+    const saveAction = vi.fn(async () => ({
+      status: 'incomplete' as const,
+      issues: ['missing_title' as const],
+    }))
+
+    const {container} = render(
+      editorOf(newsOf({status: 'published'}), {saveAction})
+    )
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer les modifications'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(
+      screen.getByText(
+        "L'enregistrement a été refusé : complétez les champs signalés ci-dessous."
+      )
+    ).toBeInTheDocument()
+    expect(container.querySelector('[data-status]')).toHaveAttribute(
+      'data-status',
+      'error'
+    )
+  })
+})
+
+describe('NewsEditor — les libellés suivent le statut', () => {
+  it('parle de brouillon tant que rien n’est en ligne', async () => {
+    const news = newsOf({status: 'draft'})
+    const saveAction = vi.fn(async () => ({status: 'saved', news}) as never)
+
+    render(editorOf(news, {saveAction}))
+    const button = screen.getByRole('button', {
+      name: 'Enregistrer le brouillon',
+    })
+    await userEvent.click(button)
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(screen.getByText('Brouillon enregistré.')).toBeInTheDocument()
+  })
+
+  it('parle de modifications en ligne pour une actualité publiée', async () => {
+    const news = newsOf({status: 'published'})
+    const saveAction = vi.fn(async () => ({status: 'saved', news}) as never)
+
+    render(editorOf(news, {saveAction}))
+    expect(
+      screen.queryByRole('button', {name: 'Enregistrer le brouillon'})
+    ).toBeNull()
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer les modifications'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(
+      screen.getByText('Modifications enregistrées. Elles sont sur le site.')
+    ).toBeInTheDocument()
+  })
+
+  it('ne parle pas de publication à venir quand l’actualité est déjà en ligne', async () => {
+    const saveAction = vi.fn(async () => ({
+      status: 'incomplete' as const,
+      issues: ['missing_title' as const],
+    }))
+
+    render(editorOf(newsOf({status: 'published'}), {saveAction}))
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer les modifications'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(
+      screen.getByText(
+        'Donnez un titre à cette actualité : elle est en ligne, et son titre s’affiche sur le site.'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        'Donnez un titre à cette actualité pour pouvoir la publier.'
+      )
+    ).toBeNull()
+  })
+
+  it("adresse le texte alternatif d'une actualité en ligne sans parler de publication", async () => {
+    const saveAction = vi.fn(async () => ({
+      status: 'incomplete' as const,
+      issues: ['missing_image_alt' as const],
+    }))
+    const news = newsOf({
+      status: 'published',
+      imageKey: `${ORG_ID}/news/${NEWS_ID}/image-a.png`,
+    })
+
+    render(editorOf(news, {saveAction}))
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer les modifications'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalled())
+    expect(
+      screen.getByText(
+        'Ajoutez un texte alternatif à l’image : l’actualité est en ligne, et ce texte la décrit à qui ne la voit pas.'
+      )
+    ).toBeInTheDocument()
   })
 })
 

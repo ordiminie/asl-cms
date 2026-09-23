@@ -13,13 +13,17 @@ vi.mock('@/services/facades/news-service-facade', () => ({
   getNewsBySlugService: vi.fn(),
   getNewsForBureauService: vi.fn(),
   getNewsItemForBureauService: vi.fn(),
+  getPublishedNewsPageCountService: vi.fn(),
   getPublishedNewsPageService: vi.fn(),
 }))
+
+import {cacheTag} from 'next/cache'
 
 import {NotFoundError} from '@/services/errors/not-found-error'
 import {
   getNewsBySlugService,
   getNewsItemForBureauService,
+  getPublishedNewsPageCountService,
   getPublishedNewsPageService,
 } from '@/services/facades/news-service-facade'
 import {NewsDTO, NewsStatus} from '@/services/types/domain/news-types'
@@ -28,6 +32,7 @@ import {
   getNewsBySlugForPreviewDal,
   getNewsItemForBureauDal,
   getPublicNewsBySlugDal,
+  getPublicNewsPageCountDal,
   getPublicNewsPageDal,
   newsImageUrl,
   newsItemTag,
@@ -117,6 +122,17 @@ describe('getPublicNewsPageDal', () => {
 
     expect(getPublishedNewsPageService).toHaveBeenCalledWith(ORG_A, 2)
     expect(page.items).toHaveLength(1)
+  })
+})
+
+describe('getPublicNewsPageCountDal', () => {
+  it('compte les pages de cette association, sous le tag de la liste', async () => {
+    vi.mocked(getPublishedNewsPageCountService).mockResolvedValue(2)
+
+    expect(await getPublicNewsPageCountDal(ORG_A)).toBe(2)
+    expect(getPublishedNewsPageCountService).toHaveBeenCalledWith(ORG_A)
+    expect(cacheTag).toHaveBeenCalledWith(newsListTag(ORG_A))
+    expect(getPublishedNewsPageService).not.toHaveBeenCalled()
   })
 })
 

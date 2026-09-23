@@ -42,6 +42,15 @@ Voir l'ADR 023 et les hypothèses du design.
   sans dépendance nouvelle (écart 2 du design).
 - **Image** : facultative. Si une image est posée, un texte alternatif non vide est exigé pour
   **publier**, jamais pour enregistrer le brouillon. Le titre est exigé pour publier.
+  - **Resserrement tranché en revue (passe 3)** : enregistrer une actualité **déjà publiée** exige
+    aussi le titre, et le texte alternatif si elle porte une image. L'enregistrement d'une actualité
+    en ligne met le site public à jour sans repasser par « Publier » : sans cette exigence, il y
+    poserait un `<h1>` vide ou une image sans description. Un brouillon, lui, s'enregistre toujours
+    incomplet.
+- **Classement RLS** : la tâche 8 annonçait 25 tables. Le décompte réel est **26**, et **7** tables
+  scopées : `rate_limit_event` (s03) manquait au classement de `docs/architecture.md` depuis s03.
+  Corrigé en passe 4, avec une garde (`src/db/models/rls-inventory.test.ts`) qui compare le
+  classement aux `pgTable` et aux migrations.
 - **Fichiers** : une portée `news` dans une chaîne de fichiers de contenu partagée. Route publique
   unique `/api/files/[...key]`, `/api/pages/files` servie par le même gestionnaire.
 - **URL publiques** : `/actualites?page=N` et `/actualites/{slug}`. `actualites` entre dans

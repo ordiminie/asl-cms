@@ -33,12 +33,16 @@ vi.mock('@/app/dal/tenant-dal', () => ({
   requireCurrentTenantDal: vi.fn(async () => ({id: 'org-1'})),
 }))
 vi.mock('@/app/dal/news-dal', () => ({
+  getPublicNewsPageCountDal: vi.fn(),
   getPublicNewsPageDal: vi.fn(),
   newsImageUrl: (key: string) => `/api/files/${key}`,
 }))
 
 import {render, screen} from '@/__tests__/customRender'
-import {getPublicNewsPageDal} from '@/app/dal/news-dal'
+import {
+  getPublicNewsPageCountDal,
+  getPublicNewsPageDal,
+} from '@/app/dal/news-dal'
 import {NewsDTO, NewsListPageDTO} from '@/services/types/domain/news-types'
 
 import PublicNewsListPage from './page'
@@ -80,6 +84,7 @@ const renderList = async (page?: string) =>
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(getPublicNewsPageCountDal).mockResolvedValue(1)
 })
 
 describe('/actualites — liste publique', () => {
@@ -135,6 +140,7 @@ describe('/actualites — liste publique', () => {
   })
 
   it('annonce la pagination, « Précédent » désactivé en page 1', async () => {
+    vi.mocked(getPublicNewsPageCountDal).mockResolvedValue(3)
     vi.mocked(getPublicNewsPageDal).mockResolvedValue(
       listOf([item()], {page: 1, total: 25, totalPages: 3})
     )
@@ -163,11 +169,32 @@ describe('/actualites — liste publique', () => {
     expect(screen.queryByRole('link')).toBeNull()
   })
 
-  it('une page hors bornes rend 404', async () => {
-    vi.mocked(getPublicNewsPageDal).mockResolvedValue(
-      listOf([], {page: 4, total: 11, totalPages: 2})
-    )
+  it('une page hors bornes rend 404 sans lire la liste cachée', async () => {
+    vi.mocked(getPublicNewsPageCountDal).mockResolvedValue(2)
 
     await expect(renderList('4')).rejects.toThrow('NEXT_NOT_FOUND')
+    // La lecture cachee est indexee sur le numero de page : l'atteindre avec
+    // un numero hors bornes laisserait un visiteur creer autant d'entrees de
+    // cache qu'il essaie de numeros.
+    expect(getPublicNewsPageDal).not.toHaveBeenCalled()
+  })
+
+  it('un numéro de page absurde ne touche aucune lecture', async () => {
+    await expect(renderList('0')).rejects.toThrow('NEXT_NOT_FOUND')
+    await expect(renderList('cache')).rejects.toThrow('NEXT_NOT_FOUND')
+
+    expect(getPublicNewsPageDal).not.toHaveBeenCalled()
+    expect(getPublicNewsPageCountDal).not.toHaveBeenCalled()
+  })
+
+  it('la page 1 d’une liste vide reste la liste vide, jamais un 404', async () => {
+    vi.mocked(getPublicNewsPageCountDal).mockResolvedValue(1)
+    vi.mocked(getPublicNewsPageDal).mockResolvedValue(listOf([], {total: 0}))
+
+    await renderList('1')
+
+    expect(
+      screen.getByText("Aucune actualité pour l'instant.")
+    ).toBeInTheDocument()
   })
 })

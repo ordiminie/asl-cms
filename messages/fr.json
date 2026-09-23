@@ -3179,6 +3179,7 @@
       "metadataTitle": "Modifier une actualité",
       "back": "← Actualités",
       "saveDraft": "Enregistrer le brouillon",
+      "save": "Enregistrer les modifications",
       "preview": "Aperçu",
       "publish": "Publier l'actualité",
       "update": "Enregistrer et mettre à jour",
@@ -3206,10 +3207,18 @@
       "contentPlaceholder": "Racontez l'actualité de l'association…",
       "publishedNotice": "Actualité publiée. Elle est visible sur le site.",
       "savedNotice": "Brouillon enregistré.",
+      "savedPublishedNotice": "Modifications enregistrées. Elles sont sur le site.",
       "unpublishedNotice": "Actualité dépubliée. Elle a disparu du site.",
+      "publishRefused": "La publication a été refusée : complétez les champs signalés ci-dessous.",
+      "updateRefused": "La mise à jour a été refusée : complétez les champs signalés ci-dessous.",
+      "saveRefused": "L'enregistrement a été refusé : complétez les champs signalés ci-dessous.",
       "issues": {
         "missing_title": "Donnez un titre à cette actualité pour pouvoir la publier.",
         "missing_image_alt": "Ajoutez un texte alternatif à l’image pour publier cette actualité."
+      },
+      "publishedIssues": {
+        "missing_title": "Donnez un titre à cette actualité : elle est en ligne, et son titre s’affiche sur le site.",
+        "missing_image_alt": "Ajoutez un texte alternatif à l’image : l’actualité est en ligne, et ce texte la décrit à qui ne la voit pas."
       }
     }
   },

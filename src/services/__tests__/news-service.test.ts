@@ -19,6 +19,7 @@ vi.mock('@/db/tenant-scope', () => ({
   }),
 }))
 vi.mock('@/db/repositories/news-repository', () => ({
+  countPublishedNewsDao: vi.fn(),
   createNewsDao: vi.fn(),
   getNewsByIdDao: vi.fn(),
   getNewsBySlugDao: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock('@/lib/files/storage/storage-factory', () => ({
 }))
 
 import {
+  countPublishedNewsDao,
   createNewsDao,
   getNewsByIdDao,
   getNewsBySlugDao,
@@ -50,6 +52,7 @@ import {
   getNewsBySlugService,
   getNewsForBureauService,
   getNewsItemForBureauService,
+  getPublishedNewsPageCountService,
   getPublishedNewsPageService,
   publishNewsService,
   unpublishNewsService,
@@ -547,6 +550,34 @@ describe('[PUBLIC] lectures du site, sans autorisation', () => {
   it('une adresse mal formée ne lit rien', async () => {
     expect(await getNewsBySlugService(ORG_ID, '../x')).toBeUndefined()
     expect(getNewsBySlugDao).not.toHaveBeenCalled()
+  })
+
+  it('compte les pages publiques sans lire la moindre ligne', async () => {
+    vi.mocked(countPublishedNewsDao).mockImplementation(
+      async (organizationId) => {
+        expect(scope.current).toBe(organizationId)
+        return 11
+      }
+    )
+
+    const pages = await getPublishedNewsPageCountService(ORG_ID)
+
+    expect(pages).toBe(2)
+    expect(countPublishedNewsDao).toHaveBeenCalledWith(ORG_ID)
+    expect(getPublishedNewsPageDao).not.toHaveBeenCalled()
+  })
+
+  it('une liste vide compte quand même une page', async () => {
+    vi.mocked(countPublishedNewsDao).mockResolvedValue(0)
+
+    expect(await getPublishedNewsPageCountService(ORG_ID)).toBe(1)
+  })
+
+  it("un identifiant d'association mal formé ne compte rien", async () => {
+    await expect(
+      getPublishedNewsPageCountService('pas-un-uuid')
+    ).rejects.toThrow()
+    expect(countPublishedNewsDao).not.toHaveBeenCalled()
   })
 })
 

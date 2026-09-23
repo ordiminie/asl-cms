@@ -8,6 +8,8 @@ export const getNewsForBureauService =
   newsServiceInterceptor.getNewsForBureauService
 export const getNewsItemForBureauService =
   newsServiceInterceptor.getNewsItemForBureauService
+export const getPublishedNewsPageCountService =
+  newsServiceInterceptor.getPublishedNewsPageCountService
 export const getPublishedNewsPageService =
   newsServiceInterceptor.getPublishedNewsPageService
 export const publishNewsService = newsServiceInterceptor.publishNewsService
