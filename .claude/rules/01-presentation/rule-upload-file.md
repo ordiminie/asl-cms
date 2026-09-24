@@ -27,9 +27,10 @@ Deux chaînes l'utilisent :
   sur l'extension ni le type déclaré ; clé **générée par le serveur**, préfixée par l'organisation,
   sans nom fourni par l'utilisateur ; fichier servi par une route de l'application avec
   `X-Content-Type-Options: nosniff`, jamais depuis `public/`.
-- **Fichiers de contenu** (s04, s05 — ADR 023) : blocs de page et image d'actualité passent par
+- **Fichiers de contenu** (s04, s05, s06 — ADR 023) : blocs de page, image d'actualité et photo de
+  fiche du bureau passent par
   **une seule** chaîne partagée. `src/services/types/domain/content-file-types.ts` déclare les
-  **portées** (`pages`, `news` ; s06 et s09 y ajouteront la leur) et construit la clé
+  **portées** (`pages`, `news`, `board` ; s09 y ajoutera la sienne) et construit la clé
   `{organizationId}/{portée}/{ownerId}/{slotId}-{uuid}.{ext}` ; `readContentFileService` la sert par
   `GET /api/files/[...key]`, `/api/pages/files/[...key]` étant servie par **le même** gestionnaire
   mais **bornée à la portée `pages`** (chemin historique, à ne pas étendre : une clé d'actualité y
@@ -37,6 +38,12 @@ Deux chaînes l'utilisent :
   il n'écrit ni validation de clé, ni route de lecture. Même discipline que l'identité : format jugé
   sur la **signature binaire**, clé générée par le serveur, `nosniff`, jamais de fichier servi depuis
   `public/`.
+  **Une image est redimensionnée à l'écriture** (ADR 024, s06) : `resizeToSquareWebp`
+  (`src/lib/files/resize-image.ts`) prend des octets et rend des octets, **après** la validation par
+  signature binaire et **avant** l'écriture — un fichier refusé n'est jamais décodé. L'original
+  n'est pas conservé : le fichier stocké est le fichier servi, et la clé porte le format `webp`.
+  Une photo de personne sort en carré de 512 px (`PORTRAIT_STORED_SIZE`), recadrée au centre, sans
+  métadonnée EXIF. Les images de blocs de s04 ne sont pas reprises.
 - **Fichiers d'article du blog d'administration** (hérité du boilerplate) : la chaîne générique
   `file-service` → `files-repository` → adaptateur `local`, décrite par le reste de ce guide. Un
   fichier stocké n'a **pas d'URL publique** : il est servi par une route de l'application, et

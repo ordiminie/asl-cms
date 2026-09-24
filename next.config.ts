@@ -38,11 +38,19 @@ const nextConfig: NextConfig = {
   experimental: {
     authInterrupts: true,
     taint: true,
-    // Le logo d'association est plafonne a 1 Mo (IDENTITY_MAX_BYTES) : sous la
-    // limite par defaut de 1 Mo, l'enveloppe multipart ferait rejeter la
-    // requete avant la validation, qui ne pourrait jamais rendre son message.
+    // Cette limite doit rester **au-dessus** du plus grand fichier que le
+    // produit accepte, enveloppe multipart comprise : au-dessous, Next rejette
+    // la requete AVANT toute validation, et le message « Il pese… » n'est
+    // jamais rendu — l'interface annonce une limite que le serveur ne laisse
+    // pas atteindre. Les plafonds sont CONTENT_FILE_MAX_BYTES : 5 Mo par image
+    // et 10 Mo par document (le bloc PDF de s04 televerse lui aussi par Server
+    // Action). 16 Mo couvre la somme des deux plus la marge des champs de
+    // formulaire — c'est la decision ecrite dans docs/architecture.md, que s09
+    // exige puisqu'il depose une affiche et un PDF dans la meme soumission. Un
+    // test de garde compare cette valeur au plus grand plafond
+    // (src/services/__tests__/board-member-service.test.ts).
     serverActions: {
-      bodySizeLimit: '2mb',
+      bodySizeLimit: '16mb',
     },
     // staleTimes survit à cacheComponents et alimente cacheLife.default.stale
     staleTimes: {

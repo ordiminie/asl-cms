@@ -2893,6 +2893,11 @@
       "linkRequestsPerDay": {
         "label": "Sign-in links per email address",
         "help": "Maximum number of sign-in links sent to the same address in one day. Beyond that, the person sees the same screen but no email is sent until the next day: this protects your members' inboxes and your association's sending quota."
+      },
+      "memberCount": {
+        "label": "Number of owner members",
+        "help": "Shown at the top of the public « Le bureau » page. Left empty, the sentence does not appear at all.",
+        "whenEmpty": "Empty: the public page announces no member count."
       }
     },
     "hues": {
@@ -2904,7 +2909,8 @@
       "broom": "Broom"
     },
     "units": {
-      "requestsPerDay": "requests per day"
+      "requestsPerDay": "requests per day",
+      "members": "members"
     }
   },
   "BureauSettingsPage": {

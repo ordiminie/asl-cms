@@ -2806,7 +2806,8 @@
       "siteGroup": "Le site",
       "pages": "Pages",
       "navigation": "Navigation",
-      "news": "Actualités"
+      "news": "Actualités",
+      "board": "Membres du bureau"
     },
     "cards": {
       "logo": {
@@ -2893,6 +2894,11 @@
       "linkRequestsPerDay": {
         "label": "Liens de connexion par adresse email",
         "help": "Nombre de liens de connexion envoyés au plus à une même adresse dans une journée. Au-delà, la personne voit le même écran mais aucun email ne part jusqu'au lendemain : cela protège la boîte de vos membres et le quota d'envoi de votre association."
+      },
+      "memberCount": {
+        "label": "Nombre de membres propriétaires",
+        "help": "Affiché en tête de la page publique « Le bureau ». Laissé vide, la phrase n'apparaît pas du tout.",
+        "whenEmpty": "Vide : la page publique n'annonce aucun nombre de membres."
       }
     },
     "hues": {
@@ -2904,7 +2910,8 @@
       "broom": "Genêt"
     },
     "units": {
-      "requestsPerDay": "demandes par jour"
+      "requestsPerDay": "demandes par jour",
+      "members": "membres"
     }
   },
   "BureauSettingsPage": {
@@ -3238,5 +3245,78 @@
     },
     "previewDraft": "Aperçu — cette actualité est un brouillon. Les visiteurs ne la voient pas.",
     "previewUnpublished": "Aperçu — cette actualité est dépubliée. Les visiteurs ne la voient pas."
+  },
+  "BureauBoardPage": {
+    "metadata": {
+      "title": "Membres du bureau"
+    },
+    "title": "Membres du bureau",
+    "add": "Ajouter un membre du bureau",
+    "memberCount": "{count, plural, one {# membre affiché en tête de la page publique — modifiable dans L’association › Réglages} other {# membres affichés en tête de la page publique — modifiable dans L’association › Réglages}}",
+    "publicPage": "Page publique : /le-bureau",
+    "viewPublicPage": "Voir la page",
+    "newTab": "(nouvel onglet)",
+    "empty": "Aucune fiche pour l’instant.",
+    "emptyAction": "Ajouter le premier membre du bureau",
+    "list": {
+      "edit": "Modifier",
+      "remove": "Supprimer",
+      "rankLabel": "Rang",
+      "deleteTitle": "Supprimer la fiche de {name} ?",
+      "deleteHelp": "Elle disparaît de la page publique et sa photo est effacée. Cette action est définitive.",
+      "deleteConfirm": "Supprimer la fiche",
+      "cancel": "Annuler",
+      "removedNotice": "{count, plural, one {Fiche supprimée. La fiche restante a été renumérotée en 1.} other {Fiche supprimée. Les # fiches restantes ont été renumérotées de 1 à #.}}",
+      "removedLastNotice": "Fiche supprimée. Il ne reste aucune fiche."
+    },
+    "errors": {
+      "title": "L’enregistrement a échoué",
+      "reorderFailed": "L’ordre n’a pas pu être enregistré. Les fiches sont restées dans leur ordre précédent. Rien n’est perdu.",
+      "removeFailed": "La fiche n’a pas pu être supprimée. Elle est toujours en ligne. Rien n’est perdu.",
+      "forbidden": "Vous n’avez pas les droits pour gérer les fiches du bureau.",
+      "failed": "L’enregistrement a échoué. Rien n’est perdu : réessayez dans un instant."
+    },
+    "form": {
+      "backToList": "Membres du bureau",
+      "newTitle": "Nouveau membre du bureau",
+      "editTitle": "Modifier la fiche de {name}",
+      "visibleNotice": "Cette fiche est visible sur /le-bureau dès son enregistrement.",
+      "nameLabel": "Nom",
+      "nameHelp": "Le nom affiché sur la page publique, tel qu’il doit se lire.",
+      "nameRequired": "Le nom est obligatoire : c’est lui qui s’affiche sur la page publique.",
+      "roleLabel": "Rôle dans le bureau",
+      "roleHelp": "Par exemple : Présidente, Trésorier, Secrétaire adjointe, référent voirie.",
+      "roleRequired": "Le rôle est obligatoire : il s’affiche sous le nom sur la page publique.",
+      "photoLabel": "Photo",
+      "optional": "facultatif",
+      "photoHelp": "PNG, JPEG ou WebP, carré de préférence, 400 px de côté au moins. {maxSize} Mo au plus.",
+      "photoReplace": "Remplacer la photo",
+      "photoRemove": "Retirer la photo",
+      "photoPreviewAlt": "Aperçu du portrait",
+      "photoAltNotice": "Texte alternatif : « {alt} » — généré à partir du nom, il n’y a rien à saisir.",
+      "photoRejectedFormat": "Ce fichier n’est pas une image PNG, JPEG ou WebP. La fiche est conservée.",
+      "photoRejectedSize": "Cette image est trop lourde : elle pèse {size} Mo, la limite est {maxSize} Mo. La fiche est conservée.",
+      "biographyLabel": "Biographie",
+      "biographyHelp": "Quelques phrases de présentation. {max} caractères au plus.",
+      "biographyCounter": "{count} / {max}",
+      "biographyOverflow": "{over} caractères de trop.",
+      "save": "Enregistrer la fiche",
+      "saving": "Enregistrement en cours…",
+      "savingFile": "Enregistrement en cours — {fileName}",
+      "cancel": "Annuler",
+      "savedNotice": "Fiche enregistrée. Elle est visible sur la page publique.",
+      "saveFailed": "L’enregistrement a échoué. Rien n’est perdu : la fiche est restée telle quelle, réessayez dans un instant.",
+      "errorSummaryTitle": "Le formulaire n’a pas pu être enregistré"
+    }
+  },
+  "PublicBoardPage": {
+    "metadata": {
+      "title": "Le bureau"
+    },
+    "title": "Le bureau",
+    "memberCount": "{count, plural, one {L’association compte # membre propriétaire.} other {L’association compte # membres propriétaires.}}",
+    "composition": "Son bureau, élu en assemblée générale, est composé des personnes suivantes.",
+    "empty": "La composition du bureau sera publiée prochainement.",
+    "privacy": "Les noms, photographies et présentations publiés sur cette page le sont avec l’accord des personnes concernées. Toute demande de retrait ou de rectification de ces données personnelles peut être adressée au bureau de l’association."
   }
 }

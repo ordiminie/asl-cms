@@ -2893,6 +2893,11 @@
       "linkRequestsPerDay": {
         "label": "Enlaces de acceso por dirección de email",
         "help": "Número máximo de enlaces de acceso enviados a una misma dirección en un día. Más allá, la persona ve la misma pantalla pero no se envía ningún email hasta el día siguiente: así se protegen los buzones de sus miembros y la cuota de envío de su asociación."
+      },
+      "memberCount": {
+        "label": "Número de miembros propietarios",
+        "help": "Se muestra al principio de la página pública « Le bureau ». Si se deja vacío, la frase no aparece.",
+        "whenEmpty": "Vacío: la página pública no anuncia ningún número de miembros."
       }
     },
     "hues": {
@@ -2904,7 +2909,8 @@
       "broom": "Retama"
     },
     "units": {
-      "requestsPerDay": "solicitudes por día"
+      "requestsPerDay": "solicitudes por día",
+      "members": "miembros"
     }
   },
   "BureauSettingsPage": {

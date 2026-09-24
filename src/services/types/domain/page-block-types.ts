@@ -105,6 +105,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   'contact',
   'dashboard',
   'docs',
+  'le-bureau',
   'login',
   'logout',
   'modules',
