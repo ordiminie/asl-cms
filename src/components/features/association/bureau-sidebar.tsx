@@ -25,6 +25,7 @@ const NAV_GROUPS = [
       {href: '/bureau/pages', labelKey: 'pages'},
       {href: '/bureau/actualites', labelKey: 'news'},
       {href: '/bureau/navigation', labelKey: 'navigation'},
+      {href: '/bureau/le-bureau', labelKey: 'board'},
     ],
   },
   {

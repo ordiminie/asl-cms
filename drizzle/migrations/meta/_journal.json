@@ -127,6 +127,20 @@
       "when": 1790099322155,
       "tag": "0017_news_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790250100872,
+      "tag": "0018_glorious_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790250107830,
+      "tag": "0019_board_member_rls",
+      "breakpoints": true
     }
   ]
 }

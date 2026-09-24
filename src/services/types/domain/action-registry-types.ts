@@ -63,6 +63,13 @@ export const ActionIdConst = {
    * `PAGE_MANAGE`.
    */
   NEWS_MANAGE: 'news.manage',
+  /**
+   * Gerer les fiches du bureau (s06) : creer, modifier, reordonner, supprimer.
+   * Une seule entree pour les quatre verbes, sur le precedent de `PAGE_MANAGE`.
+   * A ne pas confondre avec le role d'organisation `board` : cette action dit
+   * **qui** peut editer les fiches, pas ce qu'une fiche represente.
+   */
+  BOARD_MEMBER_MANAGE: 'board.member.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -84,6 +91,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.NEWS_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.BOARD_MEMBER_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

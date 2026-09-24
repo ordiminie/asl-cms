@@ -31,8 +31,14 @@ import {Button} from '@/components/ui/button'
  * resultat que la souris. Le glisser-deposer (`@dnd-kit`) n'est qu'un confort
  * en plus — les deux chemins appellent `onReorder` avec le meme tableau.
  *
- * Le premier element garde son bouton « Monter » **visible et desactive**,
- * jamais absent : une action qui disparait deplace les cibles sous le doigt.
+ * Le premier element garde son bouton « Monter » **visible et annonce
+ * desactive**, jamais absent : une action qui disparait deplace les cibles sous
+ * le doigt.
+ *
+ * Il porte `aria-disabled`, **jamais l'attribut `disabled`** : un bouton
+ * `disabled` sort de l'ordre de tabulation et n'est plus annonce, donc la
+ * promesse « visible et annonce » ne tient qu'au clavier voyant. Le clic reste
+ * sans effet — `applyMove` refuse une cible hors bornes.
  */
 export type SortableListRenderMeta = {
   index: number
@@ -218,8 +224,8 @@ function SortableRow({
             <Button
               type="button"
               variant="outline"
-              className="h-11"
-              disabled={index === 0}
+              className="h-11 aria-disabled:pointer-events-none aria-disabled:opacity-45"
+              aria-disabled={index === 0 || undefined}
               onClick={onMoveUp}
             >
               <ChevronUp aria-hidden="true" className="size-4" />
@@ -228,8 +234,8 @@ function SortableRow({
             <Button
               type="button"
               variant="outline"
-              className="h-11"
-              disabled={index === total - 1}
+              className="h-11 aria-disabled:pointer-events-none aria-disabled:opacity-45"
+              aria-disabled={index === total - 1 || undefined}
               onClick={onMoveDown}
             >
               <ChevronDown aria-hidden="true" className="size-4" />

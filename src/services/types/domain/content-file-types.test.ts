@@ -24,8 +24,8 @@ const PNG_BYTES = new Uint8Array([
 ])
 
 describe('registre des portées de fichiers de contenu (ADR 023)', () => {
-  it('déclare les pages et les actualités', () => {
-    expect(CONTENT_FILE_SCOPES).toEqual(['pages', 'news'])
+  it('déclare les pages, les actualités et les fiches du bureau', () => {
+    expect(CONTENT_FILE_SCOPES).toEqual(['pages', 'news', 'board'])
   })
 })
 

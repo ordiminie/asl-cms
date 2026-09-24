@@ -1,0 +1,16 @@
+import boardMemberServiceInterceptor from './interceptors/board-member-service-logger-interceptor'
+
+export const canManageBoardMembersService =
+  boardMemberServiceInterceptor.canManageBoardMembersService
+export const createBoardMemberService =
+  boardMemberServiceInterceptor.createBoardMemberService
+export const getBoardMembersForBureauService =
+  boardMemberServiceInterceptor.getBoardMembersForBureauService
+export const getBoardMembersService =
+  boardMemberServiceInterceptor.getBoardMembersService
+export const removeBoardMemberService =
+  boardMemberServiceInterceptor.removeBoardMemberService
+export const reorderBoardMembersService =
+  boardMemberServiceInterceptor.reorderBoardMembersService
+export const updateBoardMemberService =
+  boardMemberServiceInterceptor.updateBoardMemberService

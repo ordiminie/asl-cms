@@ -64,3 +64,40 @@ describe('ACTION_REGISTRY — actualites (s05)', () => {
     ).toBe(false)
   })
 })
+
+describe('ACTION_REGISTRY — fiches du bureau (s06)', () => {
+  it('board.member.manage autorise la Presidente et le bureau', () => {
+    expect(ActionIdConst.BOARD_MEMBER_MANAGE).toBe('board.member.manage')
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.BOARD_MEMBER_MANAGE,
+        'owner'
+      )
+    ).toBe(true)
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.BOARD_MEMBER_MANAGE,
+        'board'
+      )
+    ).toBe(true)
+  })
+
+  it('refuse un membre simple et un role inconnu', () => {
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.BOARD_MEMBER_MANAGE,
+        'member'
+      )
+    ).toBe(false)
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.BOARD_MEMBER_MANAGE,
+        'intruder' as never
+      )
+    ).toBe(false)
+  })
+})

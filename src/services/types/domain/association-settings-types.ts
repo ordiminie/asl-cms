@@ -122,6 +122,12 @@ export const FORAGE_EMAIL_SETTING_KEY = 'forage.responsable.email'
 export const ACCENT_HUE_SETTING_KEY = 'identity.accent_hue'
 export const MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY =
   'login.link_requests_per_address_per_day'
+/**
+ * Nombre de membres proprietaires de l'association (s06), saisi par le bureau
+ * en attendant la base des membres de s12. **Sans defaut** : non renseigne, la
+ * phrase de la page publique est omise, jamais rendue « 0 membres ».
+ */
+export const ASSOCIATION_MEMBER_COUNT_SETTING_KEY = 'association.member_count'
 
 /**
  * Les six teintes d'accent validees (design system §1.2). Le bureau choisit
@@ -192,6 +198,18 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     unitKey: 'units.requestsPerDay',
     labelKey: 'fields.linkRequestsPerDay.label',
     helpKey: 'fields.linkRequestsPerDay.help',
+    page: 'settings',
+  },
+  {
+    key: ASSOCIATION_MEMBER_COUNT_SETTING_KEY,
+    type: 'number',
+    required: false,
+    min: 0,
+    integer: true,
+    unitKey: 'units.members',
+    labelKey: 'fields.memberCount.label',
+    helpKey: 'fields.memberCount.help',
+    whenEmptyKey: 'fields.memberCount.whenEmpty',
     page: 'settings',
   },
 ]

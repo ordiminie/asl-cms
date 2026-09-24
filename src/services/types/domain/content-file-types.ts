@@ -27,6 +27,8 @@ export {
 export const ContentFileScopeConst = {
   PAGES: 'pages',
   NEWS: 'news',
+  /** Photos des fiches du bureau (s06). */
+  BOARD: 'board',
 } as const
 
 export type ContentFileScope =
@@ -35,6 +37,7 @@ export type ContentFileScope =
 export const CONTENT_FILE_SCOPES: readonly ContentFileScope[] = [
   ContentFileScopeConst.PAGES,
   ContentFileScopeConst.NEWS,
+  ContentFileScopeConst.BOARD,
 ]
 
 const UUID_PATTERN =

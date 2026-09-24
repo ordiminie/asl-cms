@@ -6,6 +6,7 @@ import fr from '../../../messages/fr.json'
 import {
   ACCENT_HUE_SETTING_KEY,
   ACCENT_HUES,
+  ASSOCIATION_MEMBER_COUNT_SETTING_KEY,
   ASSOCIATION_SETTING_ERROR_CODES,
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingDefinition,
@@ -70,7 +71,25 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      {
+        key: ASSOCIATION_MEMBER_COUNT_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  it('le nombre de membres est un entier positif, sans valeur par defaut', () => {
+    const definition = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      ASSOCIATION_MEMBER_COUNT_SETTING_KEY
+    )
+    expect(ASSOCIATION_MEMBER_COUNT_SETTING_KEY).toBe(
+      'association.member_count'
+    )
+    expect(definition).toMatchObject({type: 'number', integer: true, min: 0})
+    expect(definition.default).toBeUndefined()
   })
 
   it('le seuil de demande de lien est un entier de 1 a 20, 3 par defaut', () => {
@@ -200,6 +219,7 @@ describe('registre de production', () => {
       CONTACT_EMAIL_SETTING_KEY,
       FORAGE_EMAIL_SETTING_KEY,
       MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
+      ASSOCIATION_MEMBER_COUNT_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(

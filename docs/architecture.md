@@ -186,7 +186,8 @@ clé) autorise un cache long ; sans favicon, la route sert le monogramme de l'as
 **Fichiers de contenu depuis s05** (ADR 023) : les fichiers déposés dans un contenu — blocs de page
 (s04), image d'actualité (s05), puis fiches du bureau et analyses d'eau — passent par **une seule**
 chaîne. Un module de domaine isomorphe
-(`src/services/types/domain/content-file-types.ts`) déclare les **portées** (`pages`, `news`),
+(`src/services/types/domain/content-file-types.ts`) déclare les **portées** (`pages`, `news`,
+`board`),
 construit la clé `{organizationId}/{portée}/{ownerId}/{slotId}-{uuid}.{ext}` et vérifie qu'une clé
 lue dans une requête vit sous une portée enregistrée de l'association résolue par le domaine.
 La lecture publique est `GET /api/files/[...key]` (`readContentFileService`, sans autorisation et
@@ -197,6 +198,14 @@ et tout nouveau client passe par `/api/files`. Une implémentation, deux chemins
 moins sur l'ancien. La validation reste celle de s04 : format
 jugé sur la **signature binaire**, 5 Mo par image, 10 Mo par document, `X-Content-Type-Options:
 nosniff` et cache long `immutable` (la clé change à chaque remplacement).
+
+**Redimensionnement à l'écriture depuis s06** (ADR 024) : une image de contenu est redimensionnée
+**avant** d'être écrite, par `sharp` (`src/lib/files/resize-image.ts`), et l'original n'est pas
+conservé — le fichier stocké est le fichier servi. Une photo de fiche du bureau entre en PNG, JPEG
+ou WebP et sort en **WebP carré de 512 px**, recadré au centre, sans métadonnée EXIF. Le
+redimensionnement s'intercale **après** la validation par signature binaire : un fichier refusé
+n'est jamais décodé. Les images de blocs de s04 ne sont pas reprises — ce serait changer le rendu
+d'une story livrée.
 
 **Enveloppe d'une requête — décision du 23/09/2026.** Les plafonds par fichier ci-dessus ne servent à
 rien tant que l'enveloppe de la requête est plus basse : `next.config.ts` fixe
@@ -243,10 +252,10 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 26 tables du schéma
+### Classement RLS des 27 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 26 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05) sont donc toutes classées, sans reste. Toute
+Les 27 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
 Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
@@ -255,7 +264,7 @@ déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et éc
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-**Scopée par une policy RLS forcée** — 7 tables
+**Scopée par une policy RLS forcée** — 8 tables
 
 | Table                  | Pourquoi                                                                                                                                                                                                                                                                                                        |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -266,6 +275,7 @@ manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la 
 | `content_block`        | Blocs typés d'une page (ADR 019, s04). **Sans `organization_id`** : le tenant est celui de la page, et la policy `tenant_isolation` forcée (`0013`) joint `page` pour le retrouver — donc aucune colonne de tenant dupliquée à tenir cohérente.                                                                 |
 | `menu_item`            | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ».                                                          |
 | `news`                 | Actualités datées de l'association (ADR 023, s05). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0017`). Slug unique **par association**, nul tant que l'actualité n'a pas de titre.                                                                                              |
+| `board_member`         | Fiches du bureau (ADR 007, ADR 024, s06). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0019`). **Aucune clé étrangère vers `user` ni vers un membre propriétaire** : une fiche n'est pas un compte. Rangs contigus garantis applicativement, sans contrainte d'unicité.          |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**
