@@ -64,6 +64,13 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
   const [biography, setBiography] = useState(member?.biography ?? '')
   const [photo, setPhoto] = useState<File>()
   const [photoRemoved, setPhotoRemoved] = useState(false)
+  /**
+   * « Remplacer la photo » rouvre la zone de depot : sans cet etat, le bouton
+   * n'aurait rien a changer sur une fiche qui a deja une photo, et le seul
+   * chemin vers un nouveau portrait passerait par « Retirer » — que rien
+   * n'annonce.
+   */
+  const [isChoosingPhoto, setIsChoosingPhoto] = useState(false)
   const [nameError, setNameError] = useState<string>()
   const [roleError, setRoleError] = useState<string>()
   const [formError, setFormError] = useState<string>()
@@ -86,6 +93,11 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
       : undefined
 
   const submit = () => {
+    // Le bouton est annonce desactive par `aria-disabled` (ecart 3 du design),
+    // donc il reste cliquable : c'est ici que le clic devient un non-evenement,
+    // sans effacer le message de succes deja affiche.
+    if (isPending || created) return
+
     const trimmedName = name.trim()
     const trimmedRole = roleLabel.trim()
 
@@ -94,7 +106,7 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
     setFormError(undefined)
     setNotice(undefined)
 
-    if (created || trimmedName === '' || trimmedRole === '' || hasOverflow) {
+    if (trimmedName === '' || trimmedRole === '' || hasOverflow) {
       return
     }
 
@@ -112,7 +124,10 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
 
         if (result.status === 'saved') {
           setNotice(t('savedNotice'))
-          setPhoto(undefined)
+          // La photo deposee est **conservee** en etat : l'ancienne cle vient
+          // d'etre effacee par le service, y retomber n'afficherait qu'une
+          // image cassee jusqu'au rechargement.
+          setIsChoosingPhoto(false)
           if (!member) setCreated(true)
           return
         }
@@ -233,7 +248,7 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
             {t('photoHelp', {maxSize: MAX_MEGABYTES})}
           </p>
 
-          {photo || previewSrc ? (
+          {(photo || previewSrc) && !isChoosingPhoto ? (
             <div className="flex flex-col gap-3">
               {previewSrc && (
                 <Image
@@ -255,10 +270,7 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
                   type="button"
                   variant="outline"
                   className="h-14 sm:h-11"
-                  onClick={() => {
-                    setPhoto(undefined)
-                    setPhotoRemoved(false)
-                  }}
+                  onClick={() => setIsChoosingPhoto(true)}
                 >
                   {t('photoReplace')}
                 </Button>
@@ -269,6 +281,7 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
                   onClick={() => {
                     setPhoto(undefined)
                     setPhotoRemoved(true)
+                    setIsChoosingPhoto(false)
                   }}
                 >
                   {t('photoRemove')}
@@ -287,6 +300,7 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
                 if (files[0]) {
                   setPhoto(files[0])
                   setPhotoRemoved(false)
+                  setIsChoosingPhoto(false)
                 }
               }}
             />
@@ -348,8 +362,8 @@ export function BoardMemberForm({member, saveAction}: BoardMemberFormProps) {
         <div className="flex flex-wrap gap-3">
           <Button
             type="submit"
-            className="h-14 min-w-[216px] sm:h-12"
-            disabled={isPending || created}
+            className="h-14 min-w-[216px] aria-disabled:pointer-events-none aria-disabled:opacity-45 sm:h-12"
+            aria-disabled={isPending || created || undefined}
           >
             {isPending ? t('saving') : t('save')}
           </Button>

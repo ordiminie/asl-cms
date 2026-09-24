@@ -119,7 +119,7 @@ function BoardMemberPortrait({member}: {member: BoardMemberDTO}) {
     return (
       <span
         aria-hidden="true"
-        className="bg-muted text-muted-foreground flex size-24 shrink-0 items-center justify-center rounded-lg font-serif text-[36px] font-semibold sm:size-32 sm:text-[48px]"
+        className="bg-muted text-muted-foreground flex size-24 shrink-0 items-center justify-center rounded-md font-serif text-[36px] font-semibold sm:size-32 sm:text-[48px]"
       >
         {getPersonInitials(member.name)}
       </span>
@@ -133,7 +133,7 @@ function BoardMemberPortrait({member}: {member: BoardMemberDTO}) {
       width={PORTRAIT_RENDERED_SIZE}
       height={PORTRAIT_RENDERED_SIZE}
       unoptimized
-      className="size-24 shrink-0 rounded-lg object-cover sm:size-32"
+      className="size-24 shrink-0 rounded-md object-cover sm:size-32"
     />
   )
 }

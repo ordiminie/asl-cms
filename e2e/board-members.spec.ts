@@ -404,7 +404,7 @@ test.describe('Fiches du bureau — bureau et site public', () => {
     const dialog = page.getByRole('alertdialog')
     await expect(dialog).toContainText(named('Claire'))
     await dialog.getByRole('button', {name: 'Supprimer la fiche'}).click()
-    await expect(page.getByText(/renumérotées|aucune fiche/)).toBeVisible({
+    await expect(page.getByText(/renumérot|aucune fiche/)).toBeVisible({
       timeout: 20_000,
     })
 

@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from 'vitest'
 
-import {render, screen, userEvent} from '@/__tests__/customRender'
+import {render, screen, userEvent, waitFor} from '@/__tests__/customRender'
 import {
   BOARD_MEMBER_BIOGRAPHY_MAX_LENGTH,
   BoardMemberDTO,
@@ -92,10 +92,15 @@ describe('BoardMemberForm — après une création', () => {
     const submit = await screen.findByRole('button', {
       name: 'Enregistrer la fiche',
     })
-    expect(submit).toBeDisabled()
+    // Ecart 3 du design : « Enregistrer » desactive est annonce par
+    // `aria-disabled`, jamais par l'attribut `disabled` qui le sortirait de
+    // l'ordre de tabulation. Le clic doit rester un non-evenement.
+    expect(submit).toHaveAttribute('aria-disabled', 'true')
+    expect(submit).not.toBeDisabled()
 
     await user.click(submit)
     expect(action).toHaveBeenCalledTimes(1)
+    expect(screen.getByText(/Fiche enregistrée/)).toBeInTheDocument()
   })
 
   it('laisse enregistrer plusieurs fois une fiche existante', async () => {
@@ -166,5 +171,64 @@ describe('BoardMemberForm — photo', () => {
     renderForm(saved(), existing)
 
     expect(screen.getByText(/5 Mo au plus/)).toBeInTheDocument()
+  })
+})
+
+const PHOTO_KEY = `${ORG_ID}/board/${existing.id}/photo-1.webp`
+
+/**
+ * La zone de depot de `FileUpload` n'a pas de libelle : son champ de fichier
+ * porte l'identifiant `file-upload-handle`. Le rendre nul est la preuve que la
+ * zone n'est pas a l'ecran.
+ */
+const dropzoneInput = () =>
+  document.querySelector<HTMLInputElement>('#file-upload-handle')
+
+const withPhoto = {...existing, photoKey: PHOTO_KEY}
+
+describe('BoardMemberForm — remplacement de la photo', () => {
+  it('« Remplacer la photo » rouvre le dépôt et transmet le nouveau fichier', async () => {
+    const user = userEvent.setup()
+    const action = saved()
+    renderForm(action, withPhoto)
+
+    expect(dropzoneInput()).toBeNull()
+    await user.click(screen.getByRole('button', {name: 'Remplacer la photo'}))
+
+    const input = dropzoneInput()
+    expect(input).not.toBeNull()
+    await user.upload(
+      input as HTMLInputElement,
+      new File(['x'], 'portrait.png', {type: 'image/png'})
+    )
+
+    expect(await screen.findByText('portrait.png')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', {name: /Enregistrer la fiche/}))
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+
+    const sent = action.mock.calls[0][0].get('photo')
+    expect(sent).toBeInstanceOf(File)
+    expect((sent as File).name).toBe('portrait.png')
+    expect(action.mock.calls[0][0].get('removePhoto')).toBeNull()
+  })
+
+  it("n'affiche plus l'ancienne photo une fois la nouvelle enregistrée", async () => {
+    const user = userEvent.setup()
+    const action = saved()
+    renderForm(action, withPhoto)
+
+    await user.click(screen.getByRole('button', {name: 'Remplacer la photo'}))
+    await user.upload(
+      dropzoneInput() as HTMLInputElement,
+      new File(['x'], 'portrait.png', {type: 'image/png'})
+    )
+    await user.click(screen.getByRole('button', {name: /Enregistrer la fiche/}))
+
+    expect(await screen.findByText(/Fiche enregistrée/)).toBeInTheDocument()
+
+    const preview = screen.queryByAltText('Aperçu du portrait')
+    expect(preview?.getAttribute('src') ?? '').not.toContain('photo-1.webp')
+    expect(screen.getByText('portrait.png')).toBeInTheDocument()
   })
 })

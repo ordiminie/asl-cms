@@ -29,6 +29,47 @@ const makePng = async (
 const describeOutput = async (bytes: Uint8Array) =>
   sharp(Buffer.from(bytes)).metadata()
 
+/**
+ * Portrait pris au telephone : les octets sont en paysage et un marqueur EXIF
+ * `orientation: 6` demande une rotation de 90 deg a l'affichage. La moitie
+ * haute des octets est rouge, la moitie basse bleue ; une fois redressee,
+ * l'image doit donc etre bleue a gauche et rouge a droite. Sans redressement,
+ * l'inversion est exactement contraire — c'est ce qui distingue les deux.
+ */
+const makePngOrientedRight = async (side: number): Promise<Uint8Array> => {
+  const raw = Buffer.alloc(side * side * 3)
+  for (let y = 0; y < side; y++) {
+    for (let x = 0; x < side; x++) {
+      const offset = (y * side + x) * 3
+      if (y < side / 2) {
+        raw[offset] = 255
+      } else {
+        raw[offset + 2] = 255
+      }
+    }
+  }
+
+  return new Uint8Array(
+    await sharp(raw, {raw: {width: side, height: side, channels: 3}})
+      .withMetadata({orientation: 6})
+      .jpeg()
+      .toBuffer()
+  )
+}
+
+const samplePixel = async (
+  bytes: Uint8Array,
+  left: number,
+  top: number
+): Promise<{red: number; blue: number}> => {
+  const {data} = await sharp(Buffer.from(bytes))
+    .raw()
+    .extract({left, top, width: 1, height: 1})
+    .toBuffer({resolveWithObject: true})
+
+  return {red: data[0], blue: data[2]}
+}
+
 describe('resizeToSquareWebp (ADR 024)', () => {
   it('rend un WebP carré de 512 px depuis un PNG paysage de 800×600', async () => {
     const output = await resizeToSquareWebp(await makePng(800, 600), 512)
@@ -80,5 +121,20 @@ describe('resizeToSquareWebp (ADR 024)', () => {
     )
 
     expect(metadata.exif).toBeUndefined()
+  })
+
+  it("redresse l'orientation EXIF d'un portrait pris au téléphone", async () => {
+    const output = await resizeToSquareWebp(
+      await makePngOrientedRight(600),
+      512
+    )
+
+    const left = await samplePixel(output, 40, 100)
+    const right = await samplePixel(output, 470, 400)
+
+    expect(left.blue).toBeGreaterThan(200)
+    expect(left.red).toBeLessThan(60)
+    expect(right.red).toBeGreaterThan(200)
+    expect(right.blue).toBeLessThan(60)
   })
 })

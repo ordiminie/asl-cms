@@ -207,16 +207,19 @@ redimensionnement s'intercale **après** la validation par signature binaire : u
 n'est jamais décodé. Les images de blocs de s04 ne sont pas reprises — ce serait changer le rendu
 d'une story livrée.
 
-**Enveloppe d'une requête — décision du 23/09/2026.** Les plafonds par fichier ci-dessus ne servent à
-rien tant que l'enveloppe de la requête est plus basse : `next.config.ts` fixe
-`serverActions.bodySizeLimit: '2mb'`, donc **tout dépôt de plus de 2 Mo est refusé par Next avant
-d'atteindre la validation**, sans le message de poids. Défaut latent depuis s04 : aucun test ne dépose
-un fichier de cette taille. Les ordres de grandeur réels le rendent bloquant — une photo prise au
-téléphone pèse 2 à 5 Mo, un PDF d'analyse scanné en couleur jusqu'à 8 Mo — et s09 dépose **une affiche
-et un PDF dans la même soumission** (son critère 4 interdit le dépôt en deux temps). L'enveloppe passe
-donc à **16 Mo**, soit la somme des deux plafonds plus la marge des champs de formulaire. Le plafond
-écrit sous un champ de dépôt est toujours celui réellement appliqué, jamais l'enveloppe. À vérifier en
-même temps : la limite du serveur web devant l'application (s12b), qui a la sienne et tronque au-delà.
+**Enveloppe d'une requête — décision du 23/09/2026, appliquée en s06.** Les plafonds par fichier
+ci-dessus ne servent à rien tant que l'enveloppe de la requête est plus basse : jusqu'à s06,
+`next.config.ts` fixait `serverActions.bodySizeLimit: '2mb'`, donc **tout dépôt de plus de 2 Mo était
+refusé par Next avant d'atteindre la validation**, sans le message de poids. Défaut latent depuis s04 :
+aucun test ne déposait un fichier de cette taille. Les ordres de grandeur réels le rendent bloquant —
+une photo prise au téléphone pèse 2 à 5 Mo, un PDF d'analyse scanné en couleur jusqu'à 8 Mo — et s09
+dépose **une affiche et un PDF dans la même soumission** (son critère 4 interdit le dépôt en deux
+temps). L'enveloppe est donc à **16 Mo** (`bodySizeLimit: '16mb'`), soit la somme des deux plafonds
+plus la marge des champs de formulaire. Une garde mécanique interdit qu'elle redescende sous le plus
+grand plafond de `CONTENT_FILE_MAX_BYTES` — celui d'un document, 10 Mo, pas celui d'une image
+(`src/services/__tests__/board-member-service.test.ts`). Le plafond écrit sous un champ de dépôt est
+toujours celui réellement appliqué, jamais l'enveloppe. À vérifier en même temps : la limite du serveur
+web devant l'application (s12b), qui a la sienne et tronque au-delà.
 
 Entités ajoutées par ASL-CMS, par domaine :
 

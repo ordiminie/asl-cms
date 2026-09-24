@@ -109,6 +109,33 @@ describe('BoardMemberList — liste', () => {
     expect(dialog).toHaveTextContent(/définitive/)
   })
 
+  it('accorde la phrase du nombre de membres au singulier', () => {
+    renderList(bureau(), 1)
+
+    expect(screen.getByText(/^1 membre affiché/)).toBeInTheDocument()
+  })
+
+  it('accorde l’annonce de renumérotation quand il ne reste qu’une fiche', async () => {
+    const user = userEvent.setup()
+    renderList([
+      member('a', 'Claire Besson', 0),
+      member('b', 'Michel Arnaud', 1),
+    ])
+
+    const row = screen.getAllByRole('listitem')[1]
+    await user.click(within(row).getByRole('button', {name: 'Supprimer'}))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(
+      within(dialog).getByRole('button', {name: /Supprimer la fiche/})
+    )
+
+    expect(
+      await screen.findByText(
+        'Fiche supprimée. La fiche restante a été renumérotée en 1.'
+      )
+    ).toBeInTheDocument()
+  })
+
   it('annonce la renumérotation après une suppression', async () => {
     const user = userEvent.setup()
     renderList()
@@ -124,7 +151,7 @@ describe('BoardMemberList — liste', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 
-  it("écrit l'échec du réordonnancement dans la page, jamais en toast", async () => {
+  it("écrit l'échec du réordonnancement dans la page, jamais en toast, et rend l'ordre précédent", async () => {
     const user = userEvent.setup()
     render(
       <BoardMemberList
@@ -132,7 +159,11 @@ describe('BoardMemberList — liste', () => {
         memberCount={412}
         reorderAction={vi.fn(async () => ({
           status: 'error' as const,
-          message: "L'ordre n'a pas pu être enregistré.",
+          // Le message que l'action rend vraiment (`BureauBoardPage.errors.failed`),
+          // et non une phrase de test : « Rien n'est perdu » ne doit pas
+          // s'afficher au-dessus d'un ordre qui, lui, a bougé.
+          message:
+            'L’enregistrement a échoué. Rien n’est perdu : réessayez dans un instant.',
         }))}
         removeAction={vi.fn(async () => ({status: 'ok'}) as const)}
       />
@@ -141,10 +172,38 @@ describe('BoardMemberList — liste', () => {
     const second = screen.getAllByRole('listitem')[1]
     await user.click(within(second).getByRole('button', {name: 'Monter'}))
 
-    expect(
-      await screen.findByText(
-        /n’a pas pu être enregistré|n'a pas pu être enregistré/
-      )
-    ).toBeInTheDocument()
+    expect(await screen.findByText(/Rien n’est perdu/)).toBeInTheDocument()
+
+    const rows = screen.getAllByRole('listitem')
+    expect(rows[0]).toHaveTextContent('Claire Besson')
+    expect(rows[1]).toHaveTextContent('Michel Arnaud')
+  })
+
+  it('remet la fiche en liste et retire l’annonce quand la suppression échoue', async () => {
+    const user = userEvent.setup()
+    render(
+      <BoardMemberList
+        members={bureau()}
+        memberCount={412}
+        reorderAction={vi.fn(async () => ({status: 'ok'}) as const)}
+        removeAction={vi.fn(async () => ({
+          status: 'error' as const,
+          message:
+            'L’enregistrement a échoué. Rien n’est perdu : réessayez dans un instant.',
+        }))}
+      />
+    )
+
+    const row = screen.getAllByRole('listitem')[3]
+    await user.click(within(row).getByRole('button', {name: 'Supprimer'}))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(
+      within(dialog).getByRole('button', {name: /Supprimer la fiche/})
+    )
+
+    expect(await screen.findByText(/Rien n’est perdu/)).toBeInTheDocument()
+    expect(screen.queryByText(/Fiche supprimée/)).not.toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(4)
+    expect(screen.getByText('Jean-Pierre Vasseur')).toBeInTheDocument()
   })
 })

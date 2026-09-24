@@ -3252,7 +3252,7 @@
     },
     "title": "Membres du bureau",
     "add": "Ajouter un membre du bureau",
-    "memberCount": "{count} membres affichés en tête de la page publique — modifiable dans L’association › Réglages",
+    "memberCount": "{count, plural, one {# membre affiché en tête de la page publique — modifiable dans L’association › Réglages} other {# membres affichés en tête de la page publique — modifiable dans L’association › Réglages}}",
     "publicPage": "Page publique : /le-bureau",
     "viewPublicPage": "Voir la page",
     "newTab": "(nouvel onglet)",
@@ -3266,7 +3266,7 @@
       "deleteHelp": "Elle disparaît de la page publique et sa photo est effacée. Cette action est définitive.",
       "deleteConfirm": "Supprimer la fiche",
       "cancel": "Annuler",
-      "removedNotice": "Fiche supprimée. Les {count} fiches restantes ont été renumérotées de 1 à {count}.",
+      "removedNotice": "{count, plural, one {Fiche supprimée. La fiche restante a été renumérotée en 1.} other {Fiche supprimée. Les # fiches restantes ont été renumérotées de 1 à #.}}",
       "removedLastNotice": "Fiche supprimée. Il ne reste aucune fiche."
     },
     "errors": {
@@ -3314,7 +3314,7 @@
       "title": "Le bureau"
     },
     "title": "Le bureau",
-    "memberCount": "L’association compte {count} membres propriétaires.",
+    "memberCount": "{count, plural, one {L’association compte # membre propriétaire.} other {L’association compte # membres propriétaires.}}",
     "composition": "Son bureau, élu en assemblée générale, est composé des personnes suivantes.",
     "empty": "La composition du bureau sera publiée prochainement.",
     "privacy": "Les noms, photographies et présentations publiés sur cette page le sont avec l’accord des personnes concernées. Toute demande de retrait ou de rectification de ces données personnelles peut être adressée au bureau de l’association."

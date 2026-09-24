@@ -458,7 +458,7 @@ describe('plafond de téléversement (next.config.ts)', () => {
     return Number(match[1]) * units[match[2].toLowerCase()]
   }
 
-  it("dépasse le plafond d'une image, sinon le message « Il pèse… » n'est jamais rendu", () => {
+  it("dépasse le plus grand fichier accepté, sinon le message « Il pèse… » n'est jamais rendu", () => {
     const source = fs.readFileSync(
       path.resolve(import.meta.dirname, '../../../next.config.ts'),
       'utf8'
@@ -469,8 +469,10 @@ describe('plafond de téléversement (next.config.ts)', () => {
       match,
       'bodySizeLimit introuvable dans next.config.ts'
     ).not.toBeNull()
-    expect(parseSize(match?.[1] ?? '')).toBeGreaterThanOrEqual(
-      CONTENT_FILE_MAX_BYTES.image
-    )
+
+    // Le plus grand plafond, pas seulement celui d'une image : le bloc PDF de
+    // s04 televerse lui aussi par Server Action, avec un plafond de 10 Mo.
+    const largestFile = Math.max(...Object.values(CONTENT_FILE_MAX_BYTES))
+    expect(parseSize(match?.[1] ?? '')).toBeGreaterThanOrEqual(largestFile)
   })
 })

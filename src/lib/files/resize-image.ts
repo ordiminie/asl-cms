@@ -16,6 +16,11 @@ import sharp from 'sharp'
  * souvent la position GPS et le modele d'appareil, qui n'ont rien a faire sur
  * un site public.
  *
+ * `rotate()` sans argument applique d'abord l'orientation EXIF : un portrait
+ * pris au telephone est stocke en paysage avec un marqueur de rotation, que
+ * `sharp` n'applique pas de lui-meme et que la sortie WebP ne conserve pas —
+ * sans ce redressement, la photo serait servie couchee.
+ *
  * Leve si les octets ne sont pas une image que `sharp` sait decoder. L'echec
  * est bruyant, jamais un fichier vide ecrit en silence.
  */
@@ -24,6 +29,7 @@ export const resizeToSquareWebp = async (
   size: number
 ): Promise<Uint8Array> => {
   const output = await sharp(Buffer.from(content))
+    .rotate()
     .resize(size, size, {fit: 'cover', position: 'centre'})
     .webp()
     .toBuffer()

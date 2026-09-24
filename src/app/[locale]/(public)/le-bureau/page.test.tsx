@@ -1,26 +1,27 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
+/**
+ * `getTranslations` est double par le **vrai** formateur de next-intl
+ * (`createTranslator`), pas par une substitution de `{cle}` : sans lui, un
+ * pluriel ICU serait rendu tel quel et le test ne prouverait rien de la phrase
+ * reellement lue.
+ */
 vi.mock('next-intl/server', async () => {
+  const {createTranslator} = await import('next-intl')
   const messages = (await import('../../../../../messages/fr.json')).default
 
-  return {
-    getTranslations:
-      async (namespace: string) =>
-      (key: string, values?: Record<string, string | number>) => {
-        const message = [
-          ...namespace.split('.'),
-          ...key.split('.'),
-        ].reduce<unknown>(
-          (node, part) => (node as Record<string, unknown>)?.[part],
-          messages
-        )
+  // `createTranslator` type son espace de noms sur les messages du projet ;
+  // ici il est recu en chaine, comme `getTranslations` le recoit de la page.
+  const translatorFor = createTranslator as unknown as (options: {
+    locale: string
+    messages: typeof messages
+    namespace: string
+  }) => (key: string, values?: Record<string, unknown>) => string
 
-        return Object.entries(values ?? {}).reduce<string>(
-          (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
-          message as string
-        )
-      },
+  return {
+    getTranslations: async (namespace: string) =>
+      translatorFor({locale: 'fr', messages, namespace}),
     setRequestLocale: vi.fn(),
   }
 })
@@ -126,6 +127,17 @@ describe('/le-bureau — page publique', () => {
     expect(screen.getByText(/412 membres propriétaires/)).toBeInTheDocument()
   })
 
+  it('accorde la phrase au singulier — jamais « 1 membres »', async () => {
+    vi.mocked(getAssociationSettingsDal).mockResolvedValue(
+      settingsWith(1) as never
+    )
+
+    const {container} = await renderPage()
+
+    expect(screen.getByText(/1 membre propriétaire\./)).toBeInTheDocument()
+    expect(container.textContent).not.toMatch(/membres propriétaires/)
+  })
+
   it('omet la phrase quand le paramètre est absent — jamais « 0 membres »', async () => {
     vi.mocked(getAssociationSettingsDal).mockResolvedValue(
       settingsWith(null) as never
@@ -135,6 +147,18 @@ describe('/le-bureau — page publique', () => {
 
     expect(container.textContent).not.toMatch(/membres propriétaires/)
     expect(container.textContent).not.toMatch(/0 membre/)
+  })
+
+  it('arrondit le portrait à 8 px, comme le back-office (§3.9)', async () => {
+    vi.mocked(getPublicBoardMembersDal).mockResolvedValue([
+      member({id: 'm1'}),
+      member({id: 'm4', name: 'Jean-Pierre Vasseur', photoKey: null}),
+    ])
+
+    const {container} = await renderPage()
+
+    expect(container.querySelector('img')).toHaveClass('rounded-md')
+    expect(screen.getByText('JV')).toHaveClass('rounded-md')
   })
 
   it('porte la mention RGPD une seule fois, en pied de page', async () => {

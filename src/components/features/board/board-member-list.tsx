@@ -64,31 +64,48 @@ export function BoardMemberList({
   const [notice, setNotice] = useState<string>()
   const [, startTransition] = useTransition()
 
+  /**
+   * L'ecriture est optimiste : la liste bouge avant la reponse. Un echec doit
+   * donc **revenir en arriere** et effacer l'annonce de succes, sinon l'ecran
+   * affirme deux choses contraires — « Fiche supprimee » au-dessus d'un message
+   * qui dit qu'elle est toujours en ligne, ou « rien n'est perdu » au-dessus du
+   * nouvel ordre.
+   */
   const apply = (
     run: () => Promise<BoardMemberActionResult>,
-    fallback: string
+    fallback: string,
+    previousItems: BoardMemberDTO[]
   ) => {
+    const revert = (message: string) => {
+      setItems(previousItems)
+      setNotice(undefined)
+      setError(message)
+    }
+
     startTransition(async () => {
       try {
         const result = await run()
-        if (result.status === 'error') setError(result.message)
+        if (result.status === 'error') revert(result.message)
       } catch {
-        setError(fallback)
+        revert(fallback)
       }
     })
   }
 
   const reorder = (nextItems: BoardMemberDTO[]) => {
+    const previousItems = items
     setError(undefined)
     setNotice(undefined)
     setItems(nextItems)
     apply(
       () => reorderAction(nextItems.map((item) => item.id)),
-      t('errors.reorderFailed')
+      t('errors.reorderFailed'),
+      previousItems
     )
   }
 
   const remove = (member: BoardMemberDTO) => {
+    const previousItems = items
     setError(undefined)
     const remaining = items.filter((item) => item.id !== member.id)
     setItems(remaining)
@@ -97,7 +114,11 @@ export function BoardMemberList({
         ? t('list.removedLastNotice')
         : t('list.removedNotice', {count: remaining.length})
     )
-    apply(() => removeAction(member.id), t('errors.removeFailed'))
+    apply(
+      () => removeAction(member.id),
+      t('errors.removeFailed'),
+      previousItems
+    )
   }
 
   return (
