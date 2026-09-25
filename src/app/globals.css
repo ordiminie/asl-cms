@@ -68,7 +68,7 @@
 
   /* avertissement — bandeau d'alerte niveau 2, deuxième relance */
   --warning: oklch(0.94 0.06 75);
-  --warning-border: oklch(0.72 0.12 70);
+  --warning-border: oklch(0.6 0.13 65);
   --warning-foreground: oklch(0.3 0.08 60);
 
   /* accent = couleur de l'association ; SEULE la teinte varie */

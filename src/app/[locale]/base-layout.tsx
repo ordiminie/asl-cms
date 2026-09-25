@@ -6,11 +6,13 @@ import NextTopLoader from 'nextjs-toploader'
 import React, {CSSProperties, ReactNode} from 'react'
 
 import {AppProviders} from '@/components/context/app-providers'
+import {AlertBanner} from '@/components/ui/alert-banner'
 import {env} from '@/env'
 import {
   DEFAULT_ACCENT_HUE,
   isAccentHue,
 } from '@/services/types/domain/association-settings-types'
+import {PublicSiteAlertDTO} from '@/services/types/domain/site-alert-types'
 
 const sans = Public_Sans({
   subsets: ['latin'],
@@ -38,6 +40,8 @@ type Props = {
   locale: string
   /** Teinte d'accent de l'association (s02) ; 195 si absente ou hors liste. */
   accentHue?: number
+  /** Bandeau d'alerte de l'association (s07), absent quand il est masque. */
+  alert?: PublicSiteAlertDTO
 }
 
 /**
@@ -50,7 +54,12 @@ const accentHueStyle = (accentHue?: number) =>
     '--accent-hue': isAccentHue(accentHue) ? accentHue : DEFAULT_ACCENT_HUE,
   }) as CSSProperties
 
-export default async function BaseLayout({children, locale, accentHue}: Props) {
+export default async function BaseLayout({
+  children,
+  locale,
+  accentHue,
+  alert,
+}: Props) {
   // Re-configurer la locale avant getMessages
   setRequestLocale(locale)
 
@@ -63,6 +72,9 @@ export default async function BaseLayout({children, locale, accentHue}: Props) {
       <body
         className={`${sans.variable} ${serif.variable} ${mono.variable} bg-background text-foreground font-sans text-[17px] leading-[1.6] antialiased`}
       >
+        {/* Premier enfant de <body> : le bandeau pousse toute la page, barres
+            laterales comprises (ADR 027), et ne recouvre rien. */}
+        {alert && <AlertBanner message={alert.message} />}
         {/* La barre de progression est peinte hors de la cascade CSS : elle ne
             peut pas lire var(--primary). #2C3F63 est la jumelle hexadecimale
             canonique de `primary` (design-system §5.3). */}

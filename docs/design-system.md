@@ -461,6 +461,30 @@ shadcn `src/components/ui/<nom>.tsx`. Chaque état correspond à une story.
 > (planche P3, texte 11,14:1, filet 3,40:1) — c'est la valeur **claire** de `--warning-border` qui a
 > dû être corrigée, voir §1.9. Le bandeau en est le premier consommateur visible.
 
+#### Règles du niveau unique — arrêtées par s07 (25/09/2026)
+
+Trois manques du design de s07 (`docs/designs/s07-bandeau-alerte.md`, manques n° 3, 4 et 5) sont
+tranchés par son plan et valent pour toute évolution du bandeau :
+
+- **Le message est affiché en entier, même en mobile** (écart assumé au « trois lignes maximum » de
+  l'extension ci-dessous). 280 caractères non refermables occupent sept à huit lignes à 390 px ;
+  tronquer cacherait l'alerte sans rien pour la rattraper. L'intention reste : **jamais la moitié
+  de l'écran**, c'est le plafond de 280 caractères qui la tient. Texte brut, sans lien ni mise en
+  forme, rendu comme du texte — jamais comme du HTML.
+- **Rôle ARIA : `<section role="region" aria-label="Alerte de l'association">`**, sans
+  `aria-live` et sans `role="alert"`. Présent sur toutes les pages, le bandeau serait sinon
+  réannoncé à chaque chargement ; l'annonce impérative reste réservée à l'entrée et à la sortie de
+  simulation de rôle (§2.6). Sur l'écran du bureau, l'`alert` de succès porte `role="status"`,
+  celle d'échec d'une soumission `role="alert"`.
+- **Placement : une seule fois pour tout le produit, en premier enfant de `<body>`** (gabarit
+  commun `BaseLayout`), dans le flux, **sans `position` ni `z-index`** : il pousse toute la page,
+  barres latérales comprises, et ne recouvre rien. Dans les gabarits à barre latérale, la colonne
+  desktop de `sidebar` est **`sticky top-0`** et non plus `fixed` (ADR 027) : elle commence sous le
+  filet du bandeau et s'épingle en haut dès qu'il a défilé. Elle garde la hauteur de la fenêtre
+  (`100svh`) — écart assumé à la maquette, qui la voulait à la hauteur restante. Conséquence à
+  tenir : aucun ancêtre d'un `SidebarProvider` ne porte `overflow-x-hidden` (qui neutralise
+  `sticky`) ; `overflow-x-clip` le remplace. Le bandeau disparaît à l'impression (§6.2).
+
 #### Extension documentée — trois niveaux (hors périmètre V1)
 
 ```

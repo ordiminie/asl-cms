@@ -70,6 +70,12 @@ export const ActionIdConst = {
    * **qui** peut editer les fiches, pas ce qu'une fiche represente.
    */
   BOARD_MEMBER_MANAGE: 'board.member.manage',
+  /**
+   * Gerer le bandeau d'alerte (s07) : l'afficher, modifier son message, le
+   * retirer. Une seule entree pour les trois verbes : le critere 4 dit
+   * « n'importe quel membre du bureau, sans restriction supplementaire ».
+   */
+  SITE_ALERT_MANAGE: 'site.alert.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -95,6 +101,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.BOARD_MEMBER_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.SITE_ALERT_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

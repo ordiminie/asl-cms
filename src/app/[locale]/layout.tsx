@@ -7,6 +7,7 @@ import {getTranslations, setRequestLocale} from 'next-intl/server'
 import React from 'react'
 
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
+import {getPublicSiteAlertDal} from '@/app/dal/site-alert-dal'
 import {
   getCurrentTenantDal,
   requireCurrentTenantDal,
@@ -45,12 +46,21 @@ export default async function LocaleLayout({
   // doit etre provisionne**, back-office du prestataire compris.
   const tenant = await requireCurrentTenantDal()
 
-  // La teinte d'accent de l'association (s02), lue en cache par association ;
-  // la teinte par defaut quand elle n'en a pas choisi.
-  const accentHue = getAccentHue(await getAssociationSettingsDal(tenant.id))
+  // La teinte d'accent de l'association (s02) et son bandeau d'alerte (s07),
+  // lus en cache par association. Le bandeau vit ici parce que c'est le seul
+  // point commun a toutes les pages, publiques comme authentifiees.
+  const [settings, siteAlert] = await Promise.all([
+    getAssociationSettingsDal(tenant.id),
+    getPublicSiteAlertDal(tenant.id),
+  ])
+  const accentHue = getAccentHue(settings)
 
   return (
-    <BaseLayout locale={locale} accentHue={accentHue}>
+    <BaseLayout
+      locale={locale}
+      accentHue={accentHue}
+      alert={siteAlert ?? undefined}
+    >
       {children}
     </BaseLayout>
   )

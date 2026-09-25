@@ -21,9 +21,9 @@ export default async function DocsLayout({children, params}: DocsLayoutProps) {
   const resolvedParams = await params
   const docsStructure = await getDocsStructureAction(resolvedParams.locale)
   return (
-    <SidebarProvider className="max-w-full overflow-x-hidden">
+    <SidebarProvider className="max-w-full overflow-x-clip">
       <DocsSidebar structure={docsStructure} />
-      <SidebarInset className="max-w-full overflow-x-hidden">
+      <SidebarInset className="max-w-full overflow-x-clip">
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b">
           <div className="flex items-center gap-2 px-3">
             <SidebarTrigger />

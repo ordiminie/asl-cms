@@ -2806,7 +2806,8 @@
       "siteGroup": "The site",
       "pages": "Pages",
       "navigation": "Navigation",
-      "news": "News"
+      "news": "News",
+      "alert": "Alert banner"
     },
     "cards": {
       "logo": {
@@ -3244,5 +3245,48 @@
     },
     "previewDraft": "Preview — this news item is a draft. Visitors cannot see it.",
     "previewUnpublished": "Preview — this news item is unpublished. Visitors cannot see it."
+  },
+  "AlertBanner": {
+    "label": "Association alert",
+    "prefix": "Alert:"
+  },
+  "BureauAlertPage": {
+    "metadata": {
+      "title": "Alert banner"
+    },
+    "title": "Alert banner",
+    "intro": "The banner appears at the top of every page of the site, including this area.",
+    "message": {
+      "label": "Alert message",
+      "help": "{max} characters maximum. Plain text, no links: write the date, time and place.",
+      "counter": "{count} / {max}",
+      "overflow": "{over, plural, one {# character too many.} other {# characters too many.}}"
+    },
+    "status": {
+      "shown": "Banner shown on the site",
+      "hidden": "Banner hidden"
+    },
+    "preview": {
+      "title": "Preview",
+      "meta": "This is what visitors will see.",
+      "empty": "Write a message to see the preview."
+    },
+    "actions": {
+      "show": "Show the banner on the site",
+      "save": "Save the message",
+      "remove": "Remove the banner",
+      "saving": "Saving…"
+    },
+    "notices": {
+      "shown": "Banner shown across the whole site, with your message.",
+      "removed": "Banner removed from the site. The message is kept: you can show it again."
+    },
+    "errors": {
+      "saveFailedTitle": "The banner could not be saved.",
+      "forbidden": "Only the association's board can manage the alert banner.",
+      "failed": "Nothing is lost: your message is still in the field. Try again in a moment.",
+      "messageRequired": "Write the message before showing the banner.",
+      "messageTooLong": "The message exceeds {max} characters."
+    }
   }
 }

@@ -2806,7 +2806,8 @@
       "siteGroup": "El sitio",
       "pages": "Páginas",
       "navigation": "Navegación",
-      "news": "Noticias"
+      "news": "Noticias",
+      "alert": "Banner de alerta"
     },
     "cards": {
       "logo": {
@@ -3244,5 +3245,48 @@
     },
     "previewDraft": "Vista previa — esta noticia es un borrador. Los visitantes no la ven.",
     "previewUnpublished": "Vista previa — esta noticia está despublicada. Los visitantes no la ven."
+  },
+  "AlertBanner": {
+    "label": "Alerta de la asociación",
+    "prefix": "Alerta:"
+  },
+  "BureauAlertPage": {
+    "metadata": {
+      "title": "Banner de alerta"
+    },
+    "title": "Banner de alerta",
+    "intro": "El banner aparece en la parte superior de todas las páginas del sitio, incluida esta.",
+    "message": {
+      "label": "Mensaje de la alerta",
+      "help": "{max} caracteres como máximo. Texto simple, sin enlaces: indique la fecha, la hora y el lugar.",
+      "counter": "{count} / {max}",
+      "overflow": "{over, plural, one {# carácter de más.} other {# caracteres de más.}}"
+    },
+    "status": {
+      "shown": "Banner visible en el sitio",
+      "hidden": "Banner oculto"
+    },
+    "preview": {
+      "title": "Vista previa",
+      "meta": "Esto es lo que verán los visitantes.",
+      "empty": "Escriba un mensaje para ver la vista previa."
+    },
+    "actions": {
+      "show": "Mostrar el banner en el sitio",
+      "save": "Guardar el mensaje",
+      "remove": "Retirar el banner",
+      "saving": "Guardando…"
+    },
+    "notices": {
+      "shown": "Banner visible en todo el sitio, con su mensaje.",
+      "removed": "Banner retirado del sitio. El mensaje se conserva: podrá mostrarlo de nuevo."
+    },
+    "errors": {
+      "saveFailedTitle": "No se pudo guardar el banner.",
+      "forbidden": "Solo la junta de la asociación puede gestionar el banner de alerta.",
+      "failed": "No se ha perdido nada: su mensaje sigue en el campo. Inténtelo de nuevo en un momento.",
+      "messageRequired": "Escriba el mensaje antes de mostrar el banner.",
+      "messageTooLong": "El mensaje supera los {max} caracteres."
+    }
   }
 }

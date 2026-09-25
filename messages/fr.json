@@ -2807,7 +2807,8 @@
       "pages": "Pages",
       "navigation": "Navigation",
       "news": "Actualités",
-      "board": "Membres du bureau"
+      "board": "Membres du bureau",
+      "alert": "Bandeau d’alerte"
     },
     "cards": {
       "logo": {
@@ -3318,5 +3319,48 @@
     "composition": "Son bureau, élu en assemblée générale, est composé des personnes suivantes.",
     "empty": "La composition du bureau sera publiée prochainement.",
     "privacy": "Les noms, photographies et présentations publiés sur cette page le sont avec l’accord des personnes concernées. Toute demande de retrait ou de rectification de ces données personnelles peut être adressée au bureau de l’association."
+  },
+  "AlertBanner": {
+    "label": "Alerte de l'association",
+    "prefix": "Alerte :"
+  },
+  "BureauAlertPage": {
+    "metadata": {
+      "title": "Bandeau d’alerte"
+    },
+    "title": "Bandeau d’alerte",
+    "intro": "Le bandeau s’affiche en haut de toutes les pages du site, y compris de cet espace.",
+    "message": {
+      "label": "Message de l’alerte",
+      "help": "{max} caractères au maximum. Texte simple, sans lien : écrivez la date, l’heure et le lieu.",
+      "counter": "{count} / {max}",
+      "overflow": "{over, plural, one {# caractère de trop.} other {# caractères de trop.}}"
+    },
+    "status": {
+      "shown": "Bandeau affiché sur le site",
+      "hidden": "Bandeau masqué"
+    },
+    "preview": {
+      "title": "Aperçu",
+      "meta": "Voici ce que verront les visiteurs.",
+      "empty": "Écrivez un message pour voir l’aperçu."
+    },
+    "actions": {
+      "show": "Afficher le bandeau sur le site",
+      "save": "Enregistrer le message",
+      "remove": "Retirer le bandeau",
+      "saving": "Enregistrement…"
+    },
+    "notices": {
+      "shown": "Bandeau affiché sur tout le site, avec votre message.",
+      "removed": "Bandeau retiré du site. Le message est conservé : vous pourrez l’afficher à nouveau."
+    },
+    "errors": {
+      "saveFailedTitle": "Le bandeau n’a pas pu être enregistré.",
+      "forbidden": "Seul le bureau de l’association peut gérer le bandeau d’alerte.",
+      "failed": "Rien n’est perdu : votre message est toujours dans le champ. Réessayez dans un instant.",
+      "messageRequired": "Écrivez le message avant d’afficher le bandeau.",
+      "messageTooLong": "Le message dépasse {max} caractères."
+    }
   }
 }
