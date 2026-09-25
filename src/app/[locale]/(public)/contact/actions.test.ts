@@ -1,7 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
-vi.mock('next/headers', () => ({headers: vi.fn()}))
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(() =>
     Promise.resolve((key: string) => `ContactPage.${key}`)
@@ -9,18 +8,15 @@ vi.mock('next-intl/server', () => ({
 }))
 vi.mock('@/app/dal/tenant-dal', () => ({
   getCurrentTenantDal: vi.fn(),
-  withCurrentTenant: vi.fn(
-    async (callback: () => Promise<unknown>) => await callback()
-  ),
 }))
-vi.mock('@/services/facades/user-submission-service-facade', () => ({
-  createUserSubmissionService: vi.fn(),
+vi.mock('@/services/facades/contact-message-service-facade', () => ({
+  createContactMessageService: vi.fn(),
 }))
 
-import {headers} from 'next/headers'
+import {getTranslations} from 'next-intl/server'
 
-import {getCurrentTenantDal, withCurrentTenant} from '@/app/dal/tenant-dal'
-import {createUserSubmissionService} from '@/services/facades/user-submission-service-facade'
+import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {createContactMessageService} from '@/services/facades/contact-message-service-facade'
 
 import {submitContactAction} from './actions'
 
@@ -36,57 +32,110 @@ const tenant = {
   faviconKey: null,
 }
 
-let ipCounter = 0
-
-const contactForm = () => {
+const contactForm = (overrides: Record<string, string> = {}) => {
   const formData = new FormData()
-  formData.set('email', 'proprietaire@example.test')
-  formData.set('subject', 'Un lampadaire est cassé')
-  formData.set(
-    'content',
-    'Le lampadaire de la rue des Tilleuls ne marche plus.'
-  )
+  const values = {
+    locale: 'fr',
+    name: 'Claire Meunier',
+    email: 'proprietaire@example.test',
+    subject: 'Un lampadaire est cassé',
+    content: 'Le lampadaire de la rue des Tilleuls ne marche plus.',
+    ...overrides,
+  }
+  for (const [key, value] of Object.entries(values)) formData.set(key, value)
   return formData
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  ipCounter += 1
-  // Le formulaire est limite en debit par IP : une IP distincte par test.
-  vi.mocked(headers).mockResolvedValue(
-    new Headers({'x-forwarded-for': `10.0.0.${ipCounter}`}) as never
-  )
   vi.mocked(getCurrentTenantDal).mockResolvedValue(tenant)
+  vi.mocked(createContactMessageService).mockResolvedValue({
+    status: 'created',
+    id: '33333333-3333-4333-8333-333333333333',
+    notificationFailed: false,
+  })
 })
 
 describe('submitContactAction', () => {
-  it("rattache la soumission a l'association servie par le domaine", async () => {
+  it("enregistre le message pour l'association servie par le domaine", async () => {
+    const state = await submitContactAction({status: 'idle'}, contactForm())
+
+    expect(state).toEqual({status: 'sent'})
+    expect(createContactMessageService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      locale: 'fr',
+      name: 'Claire Meunier',
+      email: 'proprietaire@example.test',
+      subject: 'Un lampadaire est cassé',
+      body: 'Le lampadaire de la rue des Tilleuls ne marche plus.',
+    })
+  })
+
+  it('n’envoie aucune adresse IP au service', async () => {
+    await submitContactAction({status: 'idle'}, contactForm())
+
+    const [input] = vi.mocked(createContactMessageService).mock.calls[0]
+    expect(JSON.stringify(input)).not.toMatch(/ip|forwarded/i)
+  })
+
+  it('reste un succès quand la notification au bureau n’est pas partie', async () => {
+    vi.mocked(createContactMessageService).mockResolvedValue({
+      status: 'created',
+      id: '33333333-3333-4333-8333-333333333333',
+      notificationFailed: true,
+    })
+
+    const state = await submitContactAction({status: 'idle'}, contactForm())
+
+    expect(state).toEqual({status: 'sent'})
+  })
+
+  it('rejette un email mal formé et un message vide, champ par champ, sans rien écrire', async () => {
     const state = await submitContactAction(
-      {success: false, message: ''},
-      contactForm()
+      {status: 'idle'},
+      contactForm({email: 'pas-une-adresse', content: '   '})
     )
 
-    expect(state.success).toBe(true)
-    expect(createUserSubmissionService).toHaveBeenCalledWith(
-      expect.objectContaining({organizationId: TENANT_ID})
+    expect(state).toEqual({
+      status: 'invalid',
+      errors: [
+        {field: 'email', message: 'ContactPage.validation.emailInvalid'},
+        {field: 'content', message: 'ContactPage.validation.contentRequired'},
+      ],
+    })
+    expect(createContactMessageService).not.toHaveBeenCalled()
+  })
+
+  it('traduit dans la locale du formulaire, pas dans celle du cookie', async () => {
+    await submitContactAction({status: 'idle'}, contactForm({locale: 'fr'}))
+
+    expect(getTranslations).toHaveBeenCalledWith({
+      locale: 'fr',
+      namespace: 'ContactPage',
+    })
+  })
+
+  it('ramène une locale que le routage ne sert pas à la locale du produit', async () => {
+    await submitContactAction({status: 'idle'}, contactForm({locale: 'xx'}))
+
+    expect(createContactMessageService).toHaveBeenCalledWith(
+      expect.objectContaining({locale: 'fr'})
     )
   })
 
-  it('ecrit dans le scope du tenant, sans quoi la policy RLS refuserait la ligne', async () => {
-    await submitContactAction({success: false, message: ''}, contactForm())
+  it('omet le nom laissé vide', async () => {
+    await submitContactAction({status: 'idle'}, contactForm({name: ''}))
 
-    expect(withCurrentTenant).toHaveBeenCalled()
+    const [input] = vi.mocked(createContactMessageService).mock.calls[0]
+    expect(input.name).toBeUndefined()
   })
 
-  it("n'ecrit rien sur un domaine qui ne sert aucune association", async () => {
+  it("n'écrit rien sur un domaine qui ne sert aucune association", async () => {
     vi.mocked(getCurrentTenantDal).mockResolvedValue(undefined)
 
-    const state = await submitContactAction(
-      {success: false, message: ''},
-      contactForm()
-    )
-
-    expect(state.success).toBe(false)
-    expect(createUserSubmissionService).not.toHaveBeenCalled()
+    await expect(
+      submitContactAction({status: 'idle'}, contactForm())
+    ).rejects.toThrow()
+    expect(createContactMessageService).not.toHaveBeenCalled()
   })
 })

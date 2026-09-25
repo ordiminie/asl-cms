@@ -109,3 +109,21 @@ describe('BureauSidebar — item actif selon la route', () => {
     )
   })
 })
+
+describe('BureauSidebar — « Messages reçus » (s08)', () => {
+  it('ajoute l’entrée au groupe « Le site », après Navigation, sans icône', () => {
+    renderSidebarAt('/fr/bureau/messages')
+
+    const messages = screen.getByRole('link', {name: 'Messages reçus'})
+    expect(messages).toHaveAttribute('href', '/bureau/messages')
+    expect(messages).toHaveAttribute('aria-current', 'page')
+    expect(messages.querySelector('svg')).toBeNull()
+
+    const siteLinks = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    expect(siteLinks.indexOf('/bureau/messages')).toBe(
+      siteLinks.indexOf('/bureau/navigation') + 1
+    )
+  })
+})

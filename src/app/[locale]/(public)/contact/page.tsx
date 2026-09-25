@@ -26,10 +26,8 @@ const Page = async ({params}: {params: Promise<{locale: string}>}) => {
   setRequestLocale(locale)
 
   return (
-    <div className="flex min-h-[calc(100vh-200px)] items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <ContactForm />
-      </div>
+    <div className="mx-auto w-full max-w-[68ch] px-[18px] py-12 sm:px-6">
+      <ContactForm />
     </div>
   )
 }

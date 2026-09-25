@@ -6,6 +6,7 @@ import {env} from '@/env'
 import * as appSettings from './app-settings-model'
 import * as auth from './auth-model'
 import * as boardMember from './board-member-model'
+import * as contactMessage from './contact-message-model'
 import * as contentBlock from './content-block-model'
 import * as menuItem from './menu-item-model'
 import * as news from './news-model'
@@ -45,6 +46,7 @@ const db = drizzle(pool, {
     ...menuItem,
     ...news,
     ...boardMember,
+    ...contactMessage,
     ...userSubmission,
   },
 })

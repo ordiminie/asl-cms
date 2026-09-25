@@ -1,0 +1,12 @@
+import contactMessageServiceInterceptor from './interceptors/contact-message-service-logger-interceptor'
+
+export const canManageContactMessagesService =
+  contactMessageServiceInterceptor.canManageContactMessagesService
+export const createContactMessageService =
+  contactMessageServiceInterceptor.createContactMessageService
+export const getContactMessageService =
+  contactMessageServiceInterceptor.getContactMessageService
+export const getContactMessagesPageService =
+  contactMessageServiceInterceptor.getContactMessagesPageService
+export const setContactMessageReadService =
+  contactMessageServiceInterceptor.setContactMessageReadService

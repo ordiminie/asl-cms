@@ -57,14 +57,17 @@
   --link: oklch(0.45 0.13 250);
 
   /*
-    Les variantes `-ink` sont la couleur prise EN TEXTE sur le fond de page,
-    distincte du `-foreground` qui est l'encre posee SUR l'aplat. Le document
-    sombre les introduit en les marquant « dark only » ; en clair, `primary` et
-    `destructive` tiennent deja ce role sur blanc, d'ou le renvoi. Cet
-    appariement clair est deduit, pas ecrit : a confirmer au design system.
+    `--primary-ink` est la couleur prise EN TEXTE sur le fond de page,
+    distincte du `-foreground` qui est l'encre posee SUR l'aplat ; en clair,
+    `primary` tient deja ce role sur blanc, d'ou le renvoi.
   */
   --primary-ink: var(--primary);
-  --destructive-ink: var(--destructive);
+  /* texte d'erreur (§1.9) : `--destructive` reste bordures et fonds */
+  --destructive-text: oklch(0.48 0.17 27);
+
+  /* tableaux du bureau (§1.9) : zebrure et survol d'une ligne */
+  --table-stripe: oklch(0.99 0.002 250);
+  --table-row-hover: var(--muted);
 
   /* avertissement — bandeau d'alerte niveau 2, deuxième relance */
   --warning: oklch(0.94 0.06 75);
@@ -127,7 +130,7 @@
   --secondary-foreground: oklch(0.9 0.008 250);
   --destructive: oklch(0.58 0.19 27);
   --destructive-foreground: oklch(0.98 0.01 27);
-  --destructive-ink: oklch(0.74 0.16 27);
+  --destructive-text: oklch(0.68 0.17 27);
   --link: oklch(0.8 0.1 250);
 
   /*
@@ -168,6 +171,10 @@
   --sidebar-accent-foreground: oklch(0.92 0.01 250);
   --sidebar-border: oklch(0.32 0.01 250);
   --sidebar-ring: oklch(0.7 0.12 235);
+
+  /* tableaux du bureau (§1.9) */
+  --table-stripe: oklch(0.235 0.009 255);
+  --table-row-hover: oklch(0.29 0.012 250);
 }
 
 /*
@@ -212,7 +219,9 @@
   --color-accent-border: var(--accent-border);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-destructive-ink: var(--destructive-ink);
+  --color-destructive-text: var(--destructive-text);
+  --color-table-stripe: var(--table-stripe);
+  --color-table-row-hover: var(--table-row-hover);
   --color-warning: var(--warning);
   --color-warning-border: var(--warning-border);
   --color-warning-foreground: var(--warning-foreground);

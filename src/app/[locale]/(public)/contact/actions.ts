@@ -1,125 +1,75 @@
 'use server'
 
-import {headers} from 'next/headers'
 import {getTranslations} from 'next-intl/server'
-import {RateLimiterMemory} from 'rate-limiter-flexible'
 
-import {getCurrentTenantDal, withCurrentTenant} from '@/app/dal/tenant-dal'
-import {createUserSubmissionService} from '@/services/facades/user-submission-service-facade'
+import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
+import {createContactMessageService} from '@/services/facades/contact-message-service-facade'
 
-export type ContactFormState = {
-  success: boolean
-  message: string
-}
+import {
+  type ContactFormField,
+  createContactFormSchema,
+} from './contact-form-validation'
 
-const rateLimiter = new RateLimiterMemory({
-  points: 3,
-  duration: 300,
-})
+export type ContactFormError = {field: ContactFormField; message: string}
 
-function isRateLimiterRes(error: unknown) {
-  return (
-    error &&
-    typeof error === 'object' &&
-    'remainingPoints' in error &&
-    'msBeforeNext' in error
-  )
-}
+export type ContactFormState =
+  | {status: 'idle'}
+  | {status: 'sent'}
+  | {status: 'invalid'; errors: ContactFormError[]}
 
+const readField = (formData: FormData, key: string): string =>
+  formData.get(key)?.toString() ?? ''
+
+/**
+ * Envoi d'un message au bureau depuis `/contact` (s08).
+ *
+ * **Action publique, sans `requireActionAuth()`, et c'est delibere** : l'auteur
+ * est un visiteur sans compte (precedent : `requestMagicLinkAction`). Ordre
+ * (decision C) : tenant du domaine appele -> validation par le schema partage
+ * -> ecriture et notification par la facade. Une soumission invalide ne coute
+ * ni ecriture ni email. Aucune adresse IP n'est lue ni transmise.
+ *
+ * La locale vient du formulaire, verifiee contre le routage : une Server
+ * Action ne voit que le cookie `NEXT_LOCALE`, absent d'un navigateur neuf.
+ */
 export async function submitContactAction(
   _prevState: ContactFormState,
   formData: FormData
 ): Promise<ContactFormState> {
-  const t = await getTranslations('ContactPage')
-  const headersList = await headers()
-  const ip =
-    headersList.get('x-forwarded-for') ||
-    headersList.get('x-real-ip') ||
-    'unknown'
+  const locale = resolveSupportedLocale(formData.get('locale'))
+  const t = await getTranslations({locale, namespace: 'ContactPage'})
 
-  try {
-    await rateLimiter.consume(ip)
-  } catch (error) {
-    if (isRateLimiterRes(error)) {
-      const retryAfter = Math.ceil(
-        (error as {msBeforeNext: number}).msBeforeNext / 1000
-      )
-      return {
-        success: false,
-        message: t('errors.rateLimit', {seconds: retryAfter}),
-      }
-    }
-    throw error
-  }
-
-  const email = formData.get('email') as string
-  const subject = formData.get('subject') as string
-  const content = formData.get('content') as string
-
-  if (!email || !subject || !content) {
-    return {
-      success: false,
-      message: t('errors.allFieldsRequired'),
-    }
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email)) {
-    return {
-      success: false,
-      message: t('errors.emailInvalid'),
-    }
-  }
-
-  if (subject.length < 3 || subject.length > 255) {
-    return {
-      success: false,
-      message: t('errors.subjectRange'),
-    }
-  }
-
-  if (content.length < 10 || content.length > 5000) {
-    return {
-      success: false,
-      message: t('errors.contentRange'),
-    }
-  }
-
-  // Le tenant vient du domaine appele (ADR 003). Sans lui, la policy RLS de
-  // `user_submissions` refuserait la ligne : mieux vaut le dire que d'echouer
-  // en base.
   const tenant = await getCurrentTenantDal()
   if (!tenant) {
+    throw new Error("Aucune association n'est servie par ce domaine")
+  }
+
+  const validation = createContactFormSchema(t).safeParse({
+    name: readField(formData, 'name'),
+    email: readField(formData, 'email'),
+    subject: readField(formData, 'subject'),
+    content: readField(formData, 'content'),
+  })
+  if (!validation.success) {
     return {
-      success: false,
-      message: t('errors.server'),
+      status: 'invalid',
+      errors: validation.error.issues.map((issue) => ({
+        field: issue.path[0] as ContactFormField,
+        message: issue.message,
+      })),
     }
   }
 
-  try {
-    await withCurrentTenant(async () =>
-      createUserSubmissionService({
-        email,
-        organizationId: tenant.id,
-        type: 'contact',
-        subject,
-        message: content,
-        metadata: {
-          source: 'contact-page',
-          ip: ip || undefined,
-        },
-      })
-    )
+  const {name, email, subject, content} = validation.data
+  await createContactMessageService({
+    organizationId: tenant.id,
+    locale,
+    ...(name?.trim() ? {name} : {}),
+    email,
+    subject,
+    body: content,
+  })
 
-    return {
-      success: true,
-      message: t('success.message'),
-    }
-  } catch (error) {
-    console.error('Error submitting contact form:', error)
-    return {
-      success: false,
-      message: t('errors.server'),
-    }
-  }
+  return {status: 'sent'}
 }

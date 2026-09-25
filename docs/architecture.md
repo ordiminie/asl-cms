@@ -255,10 +255,10 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 27 tables du schéma
+### Classement RLS des 28 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 27 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06) sont donc toutes classées, sans reste. Toute
+Les 28 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
 Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
@@ -267,7 +267,7 @@ déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et éc
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-**Scopée par une policy RLS forcée** — 8 tables
+**Scopée par une policy RLS forcée** — 9 tables
 
 | Table                  | Pourquoi                                                                                                                                                                                                                                                                                                        |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -279,6 +279,7 @@ manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la 
 | `menu_item`            | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ».                                                          |
 | `news`                 | Actualités datées de l'association (ADR 023, s05). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0017`). Slug unique **par association**, nul tant que l'actualité n'a pas de titre.                                                                                              |
 | `board_member`         | Fiches du bureau (ADR 007, ADR 024, s06). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0019`). **Aucune clé étrangère vers `user` ni vers un membre propriétaire** : une fiche n'est pas un compte. Rangs contigus garantis applicativement, sans contrainte d'unicité.          |
+| `contact_message`      | Messages envoyés depuis la page publique `/contact` (ADR 025, s08). Porte `organization_id` **`NOT NULL`**, en `cascade`, policy `tenant_isolation` forcée (`0021`). **Ni jsonb ni colonne d'adresse** : aucune IP de visiteur ne peut y être écrite. `user_submissions` reste au boilerplate.                  |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**
@@ -413,11 +414,15 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
 - **Aucune donnée bancaire ne transite** par le produit. Le paiement est une redirection (s21). Hors
   périmètre DSP2/PCI, et cela doit le rester.
 - Les statuts de facture Pennylane sont **transportés tels quels**, jamais réduits à un booléen.
-- Les formulaires publics sont limités en débit sur **empreinte d'IP hachée, purgée sous 24 h**. Le
-  boilerplate utilise aujourd'hui `RateLimiterMemory` avec l'**IP en clair** (`src/app/[locale]/(public)/contact/actions.ts`) :
-  c'est à corriger, et le stockage en mémoire ne survit pas au redémarrage. Un compteur journalier en base
-  existe depuis s03 (`rate_limit_event`, `rate-limit-service.ts`, empreinte HMAC liée à l'usage) : s08 peut
-  s'y appuyer pour son propre usage.
+- Les formulaires publics seront limités en débit sur **empreinte d'IP hachée, purgée sous 24 h** :
+  cette protection **arrive avec s08b**, elle n'existe pas encore. Depuis s08, l'action de `/contact`
+  (`src/app/[locale]/(public)/contact/actions.ts`) ne porte **ni limiteur ni IP** : le
+  `RateLimiterMemory` du boilerplate et l'écriture de l'IP en clair dans `user_submissions` ont
+  disparu avec sa réécriture, et `contact_message` n'a aucune colonne où l'écrire. Entre s08 et s08b,
+  `/contact` n'a donc **aucune limitation de débit** ; le site ne peut pas être publié dans cet
+  intervalle, s12b (mise en ligne) dépendant de s08b. Le compteur en base existe depuis s03
+  (`rate_limit_event`, `rate-limit-service.ts`, empreinte HMAC liée à l'usage) : c'est sur lui que
+  s08b s'appuiera.
 
 ## Design / UX
 

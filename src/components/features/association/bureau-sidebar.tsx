@@ -28,6 +28,7 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
       {href: '/bureau/pages', labelKey: 'pages'},
       {href: '/bureau/actualites', labelKey: 'news'},
       {href: '/bureau/navigation', labelKey: 'navigation'},
+      {href: '/bureau/messages', labelKey: 'messages'},
       {href: '/bureau/le-bureau', labelKey: 'board'},
       {href: '/bureau/alerte', labelKey: 'alert', icon: AlertTriangle},
     ],
@@ -52,7 +53,8 @@ type BureauSidebarProps = {
 
 /**
  * Barre laterale de l'espace bureau (designs s01b, s02 et s04) : identite de
- * l'association en tete, puis « Le site » › Pages, Actualites, Navigation et
+ * l'association en tete, puis « Le site » › Pages, Actualites, Navigation,
+ * Messages recus (s08) et
  * « L'association » › Identite, Reglages ; l'item actif suit la route. Tiroir
  * sur petit ecran.
  */

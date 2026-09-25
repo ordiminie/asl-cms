@@ -76,6 +76,12 @@ export const ActionIdConst = {
    * « n'importe quel membre du bureau, sans restriction supplementaire ».
    */
   SITE_ALERT_MANAGE: 'site.alert.manage',
+  /**
+   * Consulter les messages recus depuis la page Contact (s08, ADR 025) et
+   * basculer leur temoin lu / non lu. Le nom dit ce qu'il accorde : le bureau
+   * ne cree, ne modifie ni ne supprime aucun message.
+   */
+  CONTACT_MESSAGE_READ: 'contact.message.read',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -105,6 +111,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.SITE_ALERT_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.CONTACT_MESSAGE_READ,
     defaultRoles: ['owner', 'board'],
   },
 ]

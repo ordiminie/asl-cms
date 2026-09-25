@@ -7,6 +7,12 @@ import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
 import {env} from '@/env'
 import {MAGIC_LINK_EXPIRES_IN_MINUTES} from '@/lib/better-auth/magic-link-constants'
 import AdminNotificationEmail from '@/lib/emails/admin-notification-email'
+import ContactMessageMail, {
+  CONTACT_MESSAGE_SUBJECT_MAX_LENGTH,
+  type ContactMessageEmailAssociation,
+  type ContactMessageEmailMessage,
+  fitSubjectToLength,
+} from '@/lib/emails/contact-message-email'
 import EmailChangeEmailVerification from '@/lib/emails/email-change-email-verification'
 import InternalEmail from '@/lib/emails/internal-email'
 import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization-link-email'
@@ -35,6 +41,7 @@ import {
 } from './app-settings-service'
 import {getPlanByPriceIdService} from './subscription-service'
 import {AppSettingKeys} from './types/domain/app-settings-types'
+import {receivedAtPartsOf} from './types/domain/contact-message-types'
 
 const DEFAULT_EMAIL_FROM = 'onboarding@resend.dev'
 
@@ -690,5 +697,65 @@ export const sendAdminInternalEmailService = async ({
       }),
     },
     {recipientType: 'admin'}
+  )
+}
+
+/**
+ * Avertit le bureau d'un message recu depuis `/contact` (s08). L'adresse `to`
+ * est celle des parametres de l'association, lue a l'envoi par l'appelant —
+ * jamais `EMAIL_TO`. `recipientType: 'system'` : les interrupteurs d'envoi de
+ * l'application ne peuvent pas couper cette notification en silence. Locale
+ * explicite, partagee par l'objet, le texte et le gabarit. Un echec du
+ * transport remonte a l'appelant.
+ */
+export const sendContactMessageNotificationEmailService = async ({
+  to,
+  locale,
+  association,
+  message,
+  messageUrl,
+}: {
+  to: string
+  locale: SupportedLocale
+  association: ContactMessageEmailAssociation
+  message: ContactMessageEmailMessage
+  messageUrl: string
+}) => {
+  const t = await getTranslations({
+    locale,
+    namespace: 'email.contact.notification',
+  })
+  const subject = fitSubjectToLength(
+    (name) => t('subject', {name}),
+    association.name,
+    CONTACT_MESSAGE_SUBJECT_MAX_LENGTH
+  )
+  const receivedAt = t(
+    'receivedAt',
+    receivedAtPartsOf(message.createdAt, locale)
+  )
+  const text = [
+    t('title'),
+    t('intro'),
+    [
+      `${t('labels.from')} : ${message.senderName ?? t('anonymous')}`,
+      `${t('labels.email')} : ${message.senderEmail}`,
+      `${t('labels.subject')} : ${message.subject}`,
+      `${t('labels.receivedAt')} : ${receivedAt}`,
+    ].join('\n'),
+    `${t('labels.message')} :\n${message.body}`,
+    `${t('urlIntro')}\n${messageUrl}`,
+    t('reply', {email: message.senderEmail}),
+    t('footer', {name: association.name}),
+  ].join('\n\n')
+
+  await sendEmailService(
+    {
+      to,
+      subject,
+      text,
+      react: ContactMessageMail({association, message, messageUrl, locale}),
+    },
+    {recipientType: 'system'}
   )
 }
