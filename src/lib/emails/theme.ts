@@ -55,3 +55,60 @@ const EMAIL_ACCENTS: Record<AccentHue, EmailAccent> = {
 /** Le triplet d'une teinte, celui de la teinte par defaut si elle est inconnue. */
 export const getEmailAccent = (hue: AccentHue): EmailAccent =>
   EMAIL_ACCENTS[isAccentHue(hue) ? hue : DEFAULT_ACCENT_HUE]
+
+/**
+ * Jumelles sombres (design system §5.2) : les valeurs qui reprennent la main
+ * quand le client de messagerie impose son mode sombre. Le libelle du bouton
+ * reste blanc, force.
+ */
+export const EMAIL_COLORS_DARK = {
+  background: '#171A1E',
+  text: '#E8EBEF',
+  textMuted: '#9DA6AE',
+  rule: '#32363A',
+  buttonBg: '#2063B0',
+  buttonText: '#FFFFFF',
+  link: '#8CC3FC',
+} as const
+
+/**
+ * Classes posees par un gabarit sur les elements que le mode sombre recolore.
+ * Les styles en ligne restent les couleurs claires ; seules ces classes sont
+ * visees par le bloc `<style>` de `emailDarkModeCss`.
+ */
+export const EMAIL_DARK_CLASSES = {
+  background: 'email-dark-bg',
+  text: 'email-dark-text',
+  textMuted: 'email-dark-muted',
+  rule: 'email-dark-rule',
+  button: 'email-dark-button',
+  buttonText: 'email-dark-button-text',
+  link: 'email-dark-link',
+} as const
+
+const darkRules = (prefix: string): string => {
+  const c = EMAIL_DARK_CLASSES
+  const d = EMAIL_COLORS_DARK
+  return [
+    `${prefix}.${c.background}{background-color:${d.background} !important;}`,
+    `${prefix}.${c.text}{color:${d.text} !important;}`,
+    `${prefix}.${c.textMuted}{color:${d.textMuted} !important;}`,
+    `${prefix}.${c.rule}{border-color:${d.rule} !important;}`,
+    `${prefix}.${c.button}{background-color:${d.buttonBg} !important;}`,
+    `${prefix}.${c.buttonText}{color:${d.buttonText} !important;}`,
+    `${prefix}.${c.link}{color:${d.link} !important;}`,
+  ].join('\n')
+}
+
+/**
+ * Le bloc `<style>` du mode sombre d'un email : les jumelles de
+ * `EMAIL_COLORS_DARK`, servies par `prefers-color-scheme` et par
+ * `[data-ogsc]` (Outlook, qui ignore la requete media).
+ */
+export const emailDarkModeCss = (): string =>
+  [
+    '@media (prefers-color-scheme: dark) {',
+    darkRules(''),
+    '}',
+    darkRules('[data-ogsc] '),
+  ].join('\n')

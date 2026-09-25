@@ -855,6 +855,15 @@ préférences, puisque l'envoi répond à une demande de la personne elle-même.
 l'email arrive** : « Cet email vous est envoyé parce qu'une connexion a été demandée avec votre
 adresse sur le site de {nom}. » Fond `muted`, texte `muted-foreground`.
 
+**Quatrième nature — la notification interne au bureau** (message reçu depuis `/contact`, s08) :
+personne ne l'a demandée, mais elle est adressée à une **adresse de fonction** que l'association a
+choisie dans ses réglages, pas à un membre. Elle **reprend telle quelle la forme du pied
+transactionnel** — ni désinscription ni renvoi aux préférences, fond `muted`, texte
+`muted-foreground` — et dit pourquoi elle arrive à cette adresse : « Cet email vous est envoyé parce
+qu'un visiteur a écrit au bureau depuis la page Contact du site de {nom}, et que cette adresse est
+celle que l'association a choisie pour être avertie. » Changer l'adresse se fait dans les réglages
+de l'association, pas depuis l'email. C'est une **nature** d'envoi, pas un gabarit nouveau.
+
 **Le ton de la phrase statutaire est décisif** : elle dit _pourquoi_ (« vous êtes propriétaire
 d'une parcelle du domaine »), pas _que c'est comme ça_. **Interdit : « vous ne pouvez pas vous
 désinscrire ».** Le pied statutaire renvoie tout de même vers les préférences, pour que le membre

@@ -1238,6 +1238,27 @@
         "preview": "Email interne du système",
         "footer": "SaaS Mike Codeur Stripe Boilerplate"
       }
+    },
+    "contact": {
+      "notification": {
+        "subject": "{name} — Nouveau message depuis le site",
+        "preview": "{sender} écrit au sujet de « {subject} »",
+        "title": "Nouveau message depuis le site",
+        "intro": "Un visiteur a écrit au bureau depuis la page Contact du site.",
+        "labels": {
+          "from": "De",
+          "email": "Adresse email",
+          "subject": "Objet",
+          "receivedAt": "Reçu le",
+          "message": "Message"
+        },
+        "anonymous": "Nom non renseigné",
+        "receivedAt": "{date} à {hour} h {minute}",
+        "action": "Ouvrir le message dans le back-office",
+        "urlIntro": "Pour lire le message dans le back-office :",
+        "reply": "Pour répondre, écrivez directement à {email}.",
+        "footer": "Cet email vous est envoyé parce qu'un visiteur a écrit au bureau depuis la page Contact du site de {name}, et que cette adresse est celle que l'association a choisie pour être avertie."
+      }
     }
   },
   "PrivacyPage": {
@@ -1657,52 +1678,52 @@
   },
   "ContactPage": {
     "metadata": {
-      "title": "Contact",
-      "description": "Contactez-nous pour toute question ou demande."
+      "title": "Contacter le bureau",
+      "description": "Écrivez au bureau de l’association : il vous répondra à l’adresse que vous indiquez."
     },
-    "card": {
-      "title": "Contactez-nous",
-      "description": "Une question, une suggestion ou besoin d'aide ? Nous sommes là pour vous."
-    },
-    "success": {
-      "title": "Message envoyé !",
-      "cta": "Envoyer un autre message",
-      "message": "Votre message a été envoyé avec succès. Nous vous répondrons rapidement."
-    },
+    "title": "Contacter le bureau",
+    "intro": "Une question sur l’eau, les parcelles ou la vie de l’association ? Écrivez au bureau. Il vous répondra à l’adresse que vous indiquez ici.",
     "fields": {
+      "name": {
+        "label": "Votre nom",
+        "optional": "Facultatif",
+        "help": "Le bureau saura mieux à qui il répond."
+      },
       "email": {
-        "label": "Email",
-        "placeholder": "votre@email.com"
+        "label": "Votre adresse email",
+        "help": "C’est à cette adresse que le bureau vous répondra."
       },
       "subject": {
-        "label": "Sujet",
-        "placeholder": "Objet de votre message"
+        "label": "Objet",
+        "help": "En quelques mots, le sujet de votre message."
       },
       "content": {
-        "label": "Message",
-        "placeholder": "Décrivez votre demande en détail..."
+        "label": "Votre message"
       }
     },
     "submit": {
       "idle": "Envoyer le message",
-      "pending": "Envoi en cours..."
+      "pending": "Envoi en cours…"
+    },
+    "summary": {
+      "title": "Le message n’a pas été envoyé.",
+      "kept": "Votre texte est conservé."
+    },
+    "success": {
+      "title": "Message envoyé.",
+      "message": "Le bureau de l’association l’a reçu et vous répondra à l’adresse {email}.",
+      "cta": "Écrire un autre message"
     },
     "validation": {
-      "emailRequired": "L'email est requis",
-      "emailInvalid": "Veuillez entrer un email valide",
-      "subjectMin": "Le sujet doit contenir au moins 3 caractères",
-      "subjectMax": "Le sujet ne doit pas dépasser 255 caractères",
-      "contentMin": "Le message doit contenir au moins 10 caractères",
-      "contentMax": "Le message ne doit pas dépasser 5000 caractères"
+      "nameMax": "Votre nom ne doit pas dépasser 120 caractères.",
+      "emailRequired": "Indiquez votre adresse email : c’est à elle que le bureau vous répondra.",
+      "emailInvalid": "Cette adresse email n’est pas valide. Vérifiez qu’elle contient un @ et un nom de domaine.",
+      "subjectRange": "L’objet doit compter entre 3 et 255 caractères.",
+      "contentRequired": "Écrivez votre message avant de l’envoyer.",
+      "contentMax": "Votre message ne doit pas dépasser 5 000 caractères."
     },
     "errors": {
-      "generic": "Une erreur est survenue. Veuillez réessayer.",
-      "server": "Une erreur est survenue. Veuillez réessayer plus tard.",
-      "rateLimit": "Trop de requêtes. Réessayez dans {seconds} secondes.",
-      "allFieldsRequired": "Tous les champs sont obligatoires.",
-      "subjectRange": "Le sujet doit contenir entre 3 et 255 caractères.",
-      "contentRange": "Le message doit contenir entre 10 et 5000 caractères.",
-      "emailInvalid": "Veuillez entrer un email valide."
+      "generic": "Le message n’a pas pu être envoyé. Votre texte est conservé : réessayez dans un instant."
     }
   },
   "CheckoutPlans": {
@@ -2808,7 +2829,8 @@
       "navigation": "Navigation",
       "news": "Actualités",
       "board": "Membres du bureau",
-      "alert": "Bandeau d’alerte"
+      "alert": "Bandeau d’alerte",
+      "messages": "Messages reçus"
     },
     "cards": {
       "logo": {
@@ -3361,6 +3383,49 @@
       "failed": "Rien n’est perdu : votre message est toujours dans le champ. Réessayez dans un instant.",
       "messageRequired": "Écrivez le message avant d’afficher le bandeau.",
       "messageTooLong": "Le message dépasse {max} caractères."
+    }
+  },
+  "BureauContactMessagesPage": {
+    "metadata": {
+      "title": "Messages reçus"
+    },
+    "title": "Messages reçus",
+    "unread": "{count, plural, =0 {Aucun message non lu} one {# message non lu} other {# messages non lus}}",
+    "columns": {
+      "subject": "Objet",
+      "from": "De",
+      "receivedAt": "Reçu le",
+      "status": "État",
+      "action": "Action"
+    },
+    "status": {
+      "unread": "Non lu",
+      "read": "Lu",
+      "notificationFailed": "Notification non envoyée"
+    },
+    "open": "Ouvrir le message",
+    "empty": "Aucun message pour l’instant. Les messages envoyés depuis la page Contact du site apparaissent ici.",
+    "emptyAction": "Voir la page Contact du site",
+    "pagination": {
+      "position": "Page {page} sur {total}",
+      "previous": "← Précédent",
+      "next": "Suivant →"
+    },
+    "detail": {
+      "metadataTitle": "Message reçu",
+      "back": "← Messages reçus",
+      "receivedAt": "Reçu le {date} à {hour} h {minute}",
+      "from": "De : {name}",
+      "anonymous": "nom non renseigné",
+      "notificationFailed": "Ce message est bien enregistré, mais l’email d’avertissement au bureau n’est pas parti. <strong>Rien n’est perdu</strong> : le message est là, et l’adresse de notification se vérifie dans Réglages.",
+      "openSettings": "Ouvrir les Réglages",
+      "markUnread": "Marquer comme non lu",
+      "markedReadOnOpen": "Marqué comme lu à l’ouverture.",
+      "markedUnread": "Marqué comme non lu."
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut consulter les messages reçus.",
+      "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
     }
   }
 }

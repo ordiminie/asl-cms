@@ -165,7 +165,7 @@ export function SiteAlertForm({
                 className={cn(
                   'shrink-0 text-right font-mono text-[14px] tabular-nums',
                   hasOverflow
-                    ? 'text-destructive-ink font-semibold'
+                    ? 'text-destructive-text font-semibold'
                     : 'text-muted-foreground'
                 )}
               >
@@ -176,12 +176,12 @@ export function SiteAlertForm({
               </p>
             </div>
             {hasOverflow && (
-              <p className="text-destructive-ink text-[16px] font-medium">
+              <p className="text-destructive-text text-[16px] font-medium">
                 {t('message.overflow', {over: overflow})}
               </p>
             )}
             {fieldError && (
-              <p className="text-destructive-ink text-[16px] font-medium">
+              <p className="text-destructive-text text-[16px] font-medium">
                 {fieldError}
               </p>
             )}

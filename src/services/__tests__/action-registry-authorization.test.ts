@@ -147,3 +147,52 @@ describe('canPerformAction — refus', () => {
     expect(canPerformAction(user, ORG_ID, 'unknown.action')).toBe(false)
   })
 })
+
+/**
+ * Consulter les messages recus et basculer leur temoin lu / non lu (s08,
+ * ADR 025). Le bureau ne cree, ne modifie ni ne supprime aucun message.
+ */
+describe('CONTACT_MESSAGE_READ — messages reçus (s08)', () => {
+  const READ = ActionIdConst.CONTACT_MESSAGE_READ
+
+  it('porte l identifiant contact.message.read', () => {
+    expect(READ).toBe('contact.message.read')
+    expect(ACTION_REGISTRY.some((action) => action.id === READ)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, READ)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canPerformAction(user, ORG_ID, READ)).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+    expect(canPerformAction(user, ORG_ID, READ)).toBe(false)
+  })
+
+  it('[USER NOT IN ORGANIZATION] refuse le bureau d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, READ)).toBe(false)
+  })
+})

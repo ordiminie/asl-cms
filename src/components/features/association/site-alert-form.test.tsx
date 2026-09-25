@@ -124,7 +124,7 @@ describe('SiteAlertForm — 1d plus de 280 caracteres', () => {
     renderForm({message: 'a'.repeat(313), active: false})
 
     const counter = screen.getByText('313 / 280')
-    expect(counter).toHaveClass('text-destructive-ink', 'font-semibold')
+    expect(counter).toHaveClass('text-destructive-text', 'font-semibold')
     expect(field()).toHaveClass('border-2', 'border-destructive')
     expect(field()).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByText('33 caractères de trop.')).toBeInTheDocument()

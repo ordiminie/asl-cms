@@ -5,7 +5,12 @@ import {
   DEFAULT_ACCENT_HUE,
 } from '@/services/types/domain/association-settings-types'
 
-import {EMAIL_COLORS, getEmailAccent} from './theme'
+import {
+  EMAIL_COLORS,
+  EMAIL_COLORS_DARK,
+  emailDarkModeCss,
+  getEmailAccent,
+} from './theme'
 
 const HEX = /^#[0-9A-F]{6}$/
 
@@ -67,5 +72,32 @@ describe('thème de l’email (design system §5.3)', () => {
     expect(getEmailAccent(12 as never)).toEqual(
       getEmailAccent(DEFAULT_ACCENT_HUE)
     )
+  })
+})
+
+describe('jumelles sombres de l’email (design system §5.2)', () => {
+  it('porte les sept valeurs arrêtées', () => {
+    expect(EMAIL_COLORS_DARK).toEqual({
+      background: '#171A1E',
+      text: '#E8EBEF',
+      textMuted: '#9DA6AE',
+      rule: '#32363A',
+      buttonBg: '#2063B0',
+      buttonText: '#FFFFFF',
+      link: '#8CC3FC',
+    })
+  })
+
+  it('les sert par prefers-color-scheme et par [data-ogsc]', () => {
+    const css = emailDarkModeCss()
+    expect(css).toContain('@media (prefers-color-scheme: dark)')
+    expect(css).toContain('[data-ogsc]')
+    for (const color of Object.values(EMAIL_COLORS_DARK)) {
+      expect(css).toContain(color)
+    }
+  })
+
+  it('force le blanc du libellé du bouton', () => {
+    expect(emailDarkModeCss()).toMatch(/color:\s*#FFFFFF\s*!important/)
   })
 })

@@ -825,9 +825,6 @@ statiques). Voir `.claude/rules/01-presentation/rule-react-cache-next-cache.md`.
 - [ ] Un envoi invalide (email mal formé, message vide) affiche les erreurs par champ, n'enregistre rien et n'envoie aucun email.
 - [ ] Le bureau consulte en back-office la liste des messages reçus, triée par date, avec le détail de chaque message.
 - [ ] Changer l'adresse de notification dans les paramètres (s02) redirige le message suivant vers la nouvelle adresse.
-- [ ] Au-delà d'un nombre d'envois par heure et par visiteur fixé en paramètre de tenant, une soumission supplémentaire est refusée avec un message explicite ; en deçà du seuil, elle passe.
-- [ ] Le compteur repose sur une empreinte d'adresse IP hachée : aucune adresse IP en clair n'est écrite en base.
-- [ ] Une opération de purge supprime toute empreinte de plus de 24 h et n'en touche aucune autre ; elle s'exécute à chaque soumission et peut être appelée seule, hors de toute soumission — vérifié par un test sur des empreintes de part et d'autre des 24 h.
 
 ### Dependencies
 
@@ -843,12 +840,54 @@ Adresse par défaut = celle de la présidente, lue dans les paramètres du tenan
 Distinct du formulaire « Questions au bureau » de l'espace membre (s22), qui est identifié et routé
 par catégorie. Ne pas fusionner les deux modèles.
 
+**Scindée le 24/09/2026, au moment du plan.** La limitation de débit des formulaires publics est
+partie dans **s08b**, qui suit immédiatement. Motif : le plan atteignait neuf tâches pour une story
+cotée 2, et la moitié « limitation » est exactement la ligne PRD « Limitation de débit des formulaires
+publics », celle que s10 réemploie. L'ordre compte : s08 puis s08b est livrable, l'inverse ne l'est
+pas — un limiteur sans formulaire ne protège rien.
+
+Le boilerplate a `src/db/models/user-submission-model.ts` — vérifier s'il convient avant d'en créer
+un nouveau. Server Action : suivre `rule-safe-server-action` et `rule-form-front-and-back`
+(validation Zod partagée client/serveur, messages traduits).
+
+---
+
+## Story s08b-limitation-debit-formulaires — Protéger les formulaires publics du spam
+
+**En tant que** membre du bureau **je veux** que les formulaires publics soient protégés du spam
+**afin de** ne pas passer mon temps bénévole à trier des messages automatiques.
+
+### Complexity
+
+1
+
+### Acceptance criteria
+
+- [ ] Au-delà d'un nombre d'envois par heure et par visiteur fixé en paramètre de tenant, une soumission supplémentaire est refusée avec un message explicite ; en deçà du seuil, elle passe.
+- [ ] Le compteur repose sur une empreinte d'adresse IP hachée : aucune adresse IP en clair n'est écrite en base.
+- [ ] Une opération de purge supprime toute empreinte de plus de 24 h et n'en touche aucune autre ; elle s'exécute à chaque soumission et peut être appelée seule, hors de toute soumission — vérifié par un test sur des empreintes de part et d'autre des 24 h.
+
+### Dependencies
+
+s08
+
+### Agentic notes
+
+**Issue de la scission de s08**, décidée le 24/09/2026 au moment du plan : les trois critères
+ci-dessus viennent de s08, mot pour mot. Le plan complet est déjà écrit — voir
+`docs/plans/s08b-limitation-debit-formulaires.md`, tiré de celui de s08.
+
 Réf. `PRD`, ligne « Limitation de débit des formulaires publics » (complexité 1), ajoutée au périmètre
 en revue du découpage : un formulaire public sans protection est une porte ouverte au spam, qui
 coûterait au bureau bénévole exactement le temps que le produit prétend lui rendre. Deux garde-fous
 imposés par le PRD : compteur sur empreinte hachée et purge sous 24 h, pour ne pas faire entrer un
 journal d'adresses IP — donnée personnelle sans règle de rétention — dans le produit. Rien à exporter
 en s38 de ce fait.
+
+**Un seul limiteur pour tout le produit.** s03 a déjà `rate_limit_event`, compté par jour calendaire.
+Cette story le généralise — fenêtre horodatée, empreinte par usage, seuil en paramètre d'association —
+au lieu d'en créer un second : **s10 doit réemployer celui-ci**, et deux tables rendraient le
+troisième critère ambigu (« n'en touche aucune autre »). s03 garde son comportement.
 
 **Qui déclenche la purge.** Une purge déclenchée seulement par une nouvelle soumission ne suffit pas :
 sans trafic, les empreintes restent. Aucun déclencheur périodique n'existe encore — le cron système
@@ -858,9 +897,9 @@ livre l'**opération de purge**, appelable seule (critère ci-dessus) et exécut
 la reprendre dans `scheduled_job` sans changer l'opération. En développement, l'absence d'appel
 périodique est sans conséquence : aucune adresse réelle n'y passe.
 
-Le boilerplate a `src/db/models/user-submission-model.ts` — vérifier s'il convient avant d'en créer
-un nouveau. Server Action : suivre `rule-safe-server-action` et `rule-form-front-and-back`
-(validation Zod partagée client/serveur, messages traduits).
+⚠️ **La RLS est forcée** : la purge s'exécute hors requête, donc sans association active, et une
+suppression sans scope ne supprime rien **sans lever d'erreur**. Elle boucle sur les associations
+sous `withTenant` ; `withRlsBypass()` est un point d'arrêt de revue.
 
 ---
 
@@ -919,11 +958,11 @@ exposer un chemin devinable vers d'autres fichiers du tenant.
 - [ ] Une catégorie peut porter une adresse de routage optionnelle : renseignée puis relue, elle revient inchangée ; laissée vide, elle se lit comme absente et non comme une chaîne vide.
 - [ ] Modifier les adresses de notification dans les paramètres (s02) change les destinataires du signalement suivant.
 - [ ] Un signalement public est enregistré sans lien vers un membre, même lorsque les coordonnées saisies correspondent exactement à celles d'un membre existant (aucun rapprochement automatique).
-- [ ] Le formulaire public est soumis à la même limitation de débit que le formulaire de contact (s08) : au-delà du seuil du tenant, une soumission supplémentaire est refusée avec un message explicite ; en deçà, elle passe.
+- [ ] Le formulaire public est soumis à la même limitation de débit que le formulaire de contact (s08b) : au-delà du seuil du tenant, une soumission supplémentaire est refusée avec un message explicite ; en deçà, elle passe.
 
 ### Dependencies
 
-s02, s04, s08
+s02, s04, s08b
 
 ### Agentic notes
 
@@ -1175,7 +1214,7 @@ chaque association soit servie en HTTPS sur son propre domaine.
 
 ### Dependencies
 
-s01, s01b, s03, s03c, s08, s12a
+s01, s01b, s03, s03c, s08b, s12a
 
 ### Agentic notes
 
