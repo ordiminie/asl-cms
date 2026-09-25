@@ -1,5 +1,6 @@
 'use client'
 
+import {AlertTriangle, type LucideIcon} from 'lucide-react'
 import Link from 'next/link'
 import {usePathname} from 'next/navigation'
 import {useTranslations} from 'next-intl'
@@ -17,8 +18,10 @@ import {
 
 import {AssociationMark} from './association-mark'
 
+type NavItem = {href: string; labelKey: string; icon?: LucideIcon}
+
 /** Les groupes de la barre laterale, dans l'ordre du design (s04 : « Le site » en tete). */
-const NAV_GROUPS = [
+const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
   {
     labelKey: 'siteGroup',
     items: [
@@ -26,6 +29,7 @@ const NAV_GROUPS = [
       {href: '/bureau/actualites', labelKey: 'news'},
       {href: '/bureau/navigation', labelKey: 'navigation'},
       {href: '/bureau/le-bureau', labelKey: 'board'},
+      {href: '/bureau/alerte', labelKey: 'alert', icon: AlertTriangle},
     ],
   },
   {
@@ -35,7 +39,7 @@ const NAV_GROUPS = [
       {href: '/bureau/reglages', labelKey: 'settings'},
     ],
   },
-] as const
+]
 
 /** Actif si la route courante est cette page, prefixe de langue ou non. */
 const isCurrentPage = (pathname: string, href: string) =>
@@ -75,7 +79,7 @@ export function BureauSidebar({
               {t(group.labelKey)}
             </SidebarGroupLabel>
             <SidebarMenu>
-              {group.items.map(({href, labelKey}) => {
+              {group.items.map(({href, labelKey, icon: Icon}) => {
                 const isActive = isCurrentPage(pathname, href)
                 return (
                   <SidebarMenuItem key={href}>
@@ -88,6 +92,7 @@ export function BureauSidebar({
                         href={href}
                         aria-current={isActive ? 'page' : undefined}
                       >
+                        {Icon && <Icon aria-hidden="true" strokeWidth={1.75} />}
                         {t(labelKey)}
                       </Link>
                     </SidebarMenuButton>

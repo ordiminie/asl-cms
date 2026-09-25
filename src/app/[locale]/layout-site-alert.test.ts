@@ -15,13 +15,13 @@ vi.mock('@/app/dal/association-settings-dal', () => ({
   getAssociationSettingsDal: vi.fn(),
 }))
 vi.mock('@/app/dal/site-alert-dal', () => ({
-  getPublicSiteAlertDal: vi.fn(async () => null),
+  getPublicSiteAlertDal: vi.fn(),
 }))
 
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
+import {getPublicSiteAlertDal} from '@/app/dal/site-alert-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {
-  ACCENT_HUE_SETTING_KEY,
   ASSOCIATION_SETTINGS_REGISTRY,
   resolveSettings,
 } from '@/services/types/domain/association-settings-types'
@@ -30,38 +30,42 @@ import LocaleLayout from './layout'
 
 const PINS_ID = '11111111-1111-4111-8111-111111111111'
 const LAC_ID = '22222222-2222-4222-8222-222222222222'
+const MESSAGE = 'Coupure d’eau rue des Pins, jeudi de 8 h à 12 h.'
 
-const hueOfLayout = async () => {
+const layoutProps = async () => {
   const element = (await LocaleLayout({
     children: null,
     params: Promise.resolve({locale: 'fr'}),
-  })) as ReactElement<{accentHue?: number}>
-  return element.props.accentHue
+  })) as ReactElement<{alert?: {message: string}}>
+  return element.props
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(getAssociationSettingsDal).mockImplementation(async (id) =>
-    resolveSettings(
-      ASSOCIATION_SETTINGS_REGISTRY,
-      id === PINS_ID ? [{key: ACCENT_HUE_SETTING_KEY, value: '150'}] : []
-    )
+  vi.mocked(getAssociationSettingsDal).mockResolvedValue(
+    resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+  )
+  vi.mocked(getPublicSiteAlertDal).mockImplementation(async (id) =>
+    id === PINS_ID ? {message: MESSAGE} : null
   )
 })
 
-describe('LocaleLayout — teinte de l association du domaine appele', () => {
-  it('passe la teinte choisie par l association', async () => {
+describe('LocaleLayout — bandeau d alerte de l association du domaine appele', () => {
+  it('passe le bandeau affiche au gabarit commun', async () => {
     vi.mocked(requireCurrentTenantDal).mockResolvedValue({
       id: PINS_ID,
     } as never)
 
-    expect(await hueOfLayout()).toBe(150)
-    expect(getAssociationSettingsDal).toHaveBeenCalledWith(PINS_ID)
+    expect((await layoutProps()).alert).toEqual({message: MESSAGE})
+    expect(getPublicSiteAlertDal).toHaveBeenCalledWith(PINS_ID)
   })
 
-  it('une association sans teinte recoit la teinte par defaut', async () => {
+  it('ne passe rien quand l association n affiche aucun bandeau', async () => {
     vi.mocked(requireCurrentTenantDal).mockResolvedValue({id: LAC_ID} as never)
 
-    expect(await hueOfLayout()).toBe(195)
+    const props = await layoutProps()
+
+    expect(props.alert).toBeUndefined()
+    expect(getPublicSiteAlertDal).toHaveBeenCalledWith(LAC_ID)
   })
 })

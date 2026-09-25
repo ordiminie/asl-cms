@@ -101,3 +101,33 @@ describe('ACTION_REGISTRY — fiches du bureau (s06)', () => {
     ).toBe(false)
   })
 })
+
+describe('ACTION_REGISTRY — bandeau d alerte (s07)', () => {
+  it('site.alert.manage autorise la Presidente et le bureau', () => {
+    expect(ActionIdConst.SITE_ALERT_MANAGE).toBe('site.alert.manage')
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.SITE_ALERT_MANAGE,
+        'owner'
+      )
+    ).toBe(true)
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.SITE_ALERT_MANAGE,
+        'board'
+      )
+    ).toBe(true)
+  })
+
+  it('refuse un membre simple', () => {
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.SITE_ALERT_MANAGE,
+        'member'
+      )
+    ).toBe(false)
+  })
+})

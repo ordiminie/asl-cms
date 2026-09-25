@@ -205,6 +205,12 @@ function Sidebar({
     )
   }
 
+  /*
+   * La colonne desktop est dans le flux (`sticky`), pas fixee au viewport
+   * (ADR 027) : le bandeau d'alerte rendu en tete de `<body>` la pousse vers le
+   * bas au lieu d'etre recouvert par elle. Elle porte donc sa largeur elle-meme,
+   * sans bloc d'espacement, et se replie hors ecran par une marge negative.
+   */
   return (
     <div
       className="group peer text-sidebar-foreground hidden md:block"
@@ -214,23 +220,12 @@ function Sidebar({
       data-side={side}
       data-slot="sidebar"
     >
-      {/* This is what handles the sidebar gap on desktop */}
       <div
         className={cn(
-          'relative h-svh w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
-          'group-data-[collapsible=offcanvas]:w-0',
-          'group-data-[side=right]:rotate-180',
-          variant === 'floating' || variant === 'inset'
-            ? 'group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]'
-            : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)'
-        )}
-      />
-      <div
-        className={cn(
-          'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+          'sticky top-0 z-10 hidden h-svh w-(--sidebar-width) transition-[margin,width] duration-200 ease-linear md:flex',
           side === 'left'
-            ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
-            : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
+            ? 'group-data-[collapsible=offcanvas]:-ml-(--sidebar-width)'
+            : 'group-data-[collapsible=offcanvas]:-mr-(--sidebar-width)',
           // Adjust the padding for floating and inset variants.
           variant === 'floating' || variant === 'inset'
             ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'

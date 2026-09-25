@@ -82,4 +82,30 @@ describe('BureauSidebar — item actif selon la route', () => {
       'aria-current'
     )
   })
+
+  it('place « Bandeau d’alerte » en dernier du groupe « Le site »', () => {
+    renderSidebarAt('/fr/bureau/pages')
+
+    const link = screen.getByRole('link', {name: 'Bandeau d’alerte'})
+    expect(link).toHaveAttribute('href', '/bureau/alerte')
+    expect(link.querySelector('svg.lucide-triangle-alert')).not.toBeNull()
+
+    const siteGroup = link.closest('[data-sidebar="group"]')
+    const labels = Array.from(siteGroup?.querySelectorAll('a') ?? []).map(
+      (anchor) => anchor.textContent
+    )
+    expect(labels.at(-1)).toBe('Bandeau d’alerte')
+    expect(labels).toContain('Navigation')
+  })
+
+  it('sur la page Bandeau d’alerte, seul cet item est actif', () => {
+    renderSidebarAt('/fr/bureau/alerte')
+
+    expect(
+      screen.getByRole('link', {name: 'Bandeau d’alerte'})
+    ).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', {name: 'Navigation'})).not.toHaveAttribute(
+      'aria-current'
+    )
+  })
 })
