@@ -6,29 +6,29 @@ import {getDb} from '@/db/tenant-scope'
 export type RateLimitCounterKey = {
   organizationId: string
   fingerprint: string
-  /** Jour du compteur, `YYYY-MM-DD`. */
-  day: string
+  /** Debut de la fenetre du compteur (debut du jour, de l'heure...). */
+  windowStart: Date
 }
 
 /**
- * Compte une demande et rend le total du jour, **en une seule requete** :
- * insertion du compteur a 1, ou incrément s'il existe deja. Deux demandes
- * simultanees ne peuvent pas lire le meme total. Sous RLS forcee : a appeler
- * dans `withTenant(organizationId, ...)`.
+ * Compte un evenement et rend le total de la fenetre, **en une seule
+ * requete** : insertion du compteur a 1, ou incrément s'il existe deja. Deux
+ * evenements simultanes ne peuvent pas lire le meme total. Sous RLS forcee : a
+ * appeler dans `withTenant(organizationId, ...)`.
  */
 export const incrementRateLimitCounterDao = async ({
   organizationId,
   fingerprint,
-  day,
+  windowStart,
 }: RateLimitCounterKey): Promise<number> => {
   const [row] = await getDb()
     .insert(rateLimitEvent)
-    .values({organizationId, fingerprint, day, count: 1})
+    .values({organizationId, fingerprint, windowStart, count: 1})
     .onConflictDoUpdate({
       target: [
         rateLimitEvent.organizationId,
         rateLimitEvent.fingerprint,
-        rateLimitEvent.day,
+        rateLimitEvent.windowStart,
       ],
       set: {count: sql`${rateLimitEvent.count} + 1`},
     })
@@ -36,17 +36,24 @@ export const incrementRateLimitCounterDao = async ({
   return row.count
 }
 
-/** Supprime les compteurs des jours anterieurs a `today` (`YYYY-MM-DD`). */
+/**
+ * Supprime les compteurs de l'association dont la fenetre commence avant
+ * `cutoff`, et rend leur nombre. Sous RLS forcee : a appeler dans
+ * `withTenant(organizationId, ...)`, sans quoi rien n'est supprime — et rien
+ * n'est leve.
+ */
 export const purgeRateLimitCountersDao = async (
   organizationId: string,
-  today: string
-): Promise<void> => {
-  await getDb()
+  cutoff: Date
+): Promise<number> => {
+  const deleted = await getDb()
     .delete(rateLimitEvent)
     .where(
       and(
         eq(rateLimitEvent.organizationId, organizationId),
-        lt(rateLimitEvent.day, today)
+        lt(rateLimitEvent.windowStart, cutoff)
       )
     )
+    .returning({id: rateLimitEvent.id})
+  return deleted.length
 }

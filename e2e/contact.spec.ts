@@ -43,11 +43,19 @@ const SETTINGS_SAVED =
   'Réglages enregistrés. Les prochains messages partiront vers ces adresses.'
 
 /**
- * Tous les envois de cette spec sortent par la même adresse, déclarée : le
- * limiteur de s08b lira cet en-tête, et sans lui tous les envois partageraient
- * `127.0.0.1` — la spec se couperait elle-même au-delà du seuil.
+ * Adresse déclarée du visiteur, que lit le limiteur de s08b : sans elle tous
+ * les envois partageraient `127.0.0.1`. Chaque envoi réussi prend une adresse
+ * **neuve** (`sendMessage`) : la spec envoie plus de messages que le seuil par
+ * défaut (3 par heure), et se couperait elle-même avec une adresse fixe.
  */
 const VISITOR_HEADERS = {'x-forwarded-for': '203.0.113.7'}
+
+const VISITOR_RUN = Date.now().toString(16).slice(-4)
+let visitorCount = 0
+/** Adresse IPv6 de documentation, propre à cet essai et à cet envoi. */
+const nextVisitorHeaders = () => ({
+  'x-forwarded-for': `2001:db8:5808:${VISITOR_RUN}::${(++visitorCount).toString(16)}`,
+})
 
 const VISITOR = {
   name: 'Claire Meunier',
@@ -237,6 +245,7 @@ const sendMessage = async (
   base: string,
   {subject, body}: {subject: string; body: string}
 ) => {
+  await page.setExtraHTTPHeaders(nextVisitorHeaders())
   await openContactForm(page, base)
   await field(page, /Votre nom/).fill(VISITOR.name)
   await field(page, 'Votre adresse email').fill(VISITOR.email)

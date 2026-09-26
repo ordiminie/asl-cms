@@ -1698,7 +1698,7 @@
     "errors": {
       "generic": "Se ha producido un error. Inténtalo de nuevo.",
       "server": "Se ha producido un error. Inténtalo de nuevo más tarde.",
-      "rateLimit": "Demasiadas solicitudes. Inténtalo de nuevo en {seconds} segundos.",
+      "rateLimit": "Ha enviado varios mensajes seguidos. Este formulario acepta {limit, plural, one {# mensaje} other {# mensajes}} por hora. Vuelva a intentarlo dentro de una hora o llame a la junta de su asociación.",
       "allFieldsRequired": "Todos los campos son obligatorios.",
       "subjectRange": "El asunto debe tener entre 3 y 255 caracteres.",
       "contentRange": "El mensaje debe tener entre 10 y 5000 caracteres.",
@@ -2899,6 +2899,10 @@
         "label": "Número de miembros propietarios",
         "help": "Se muestra al principio de la página pública « Le bureau ». Si se deja vacío, la frase no aparece.",
         "whenEmpty": "Vacío: la página pública no anuncia ningún número de miembros."
+      },
+      "contactMessagesPerHour": {
+        "label": "Mensajes por hora y por visitante",
+        "help": "Número de mensajes que un mismo visitante puede enviar en una hora mediante los formularios públicos del sitio, como la página de Contacto. Por encima, el envío se rechaza con un mensaje que lo explica, hasta la hora siguiente: esto protege a la junta de los mensajes automáticos."
       }
     },
     "hues": {
@@ -2911,7 +2915,8 @@
     },
     "units": {
       "requestsPerDay": "solicitudes por día",
-      "members": "miembros"
+      "members": "miembros",
+      "messagesPerHour": "mensajes por hora"
     }
   },
   "BureauSettingsPage": {

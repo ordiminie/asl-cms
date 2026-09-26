@@ -129,6 +129,19 @@ describe('AssociationSettingsForm — rendu genere par le registre (critere 2)',
     ).not.toBeInTheDocument()
   })
 
+  it('affiche le seuil des formulaires publics, genere depuis le registre (s08b)', () => {
+    productionForm()
+
+    const threshold = screen.getByLabelText(
+      /Nombre de messages par heure et par visiteur/
+    )
+    expect(threshold).toHaveAttribute('inputmode', 'numeric')
+    expect(threshold).toHaveClass('font-mono', 'tabular-nums')
+    expect(threshold.closest('[data-setting]')).toHaveTextContent(
+      'messages par heure'
+    )
+  })
+
   it('ecrit « facultatif » en clair sur les seuls reglages facultatifs', () => {
     productionForm()
 

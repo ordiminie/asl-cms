@@ -4,7 +4,9 @@ import {
   ACCENT_HUE_SETTING_KEY,
   ASSOCIATION_SETTINGS_REGISTRY,
   CONTACT_EMAIL_SETTING_KEY,
+  CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   getAccentHue,
+  getContactMessagesPerHourLimit,
   resolveSettings,
   validateSettingsChanges,
 } from '@/services/types/domain/association-settings-types'
@@ -55,5 +57,17 @@ describe('TEST_TENANT_SETTINGS — jeu de parametres des tenants de test', () =>
           row.key === ACCENT_HUE_SETTING_KEY
       )
     ).toBe(false)
+  })
+
+  it('le seuil des formulaires publics est connu des tenants de test, au defaut du registre', () => {
+    for (const slug of ['techcorp-solutions', 'marketing-pro']) {
+      const settings = settingsOf(slug)
+      expect(settings[CONTACT_MESSAGES_PER_HOUR_SETTING_KEY], slug).toEqual({
+        value: 3,
+        storedValue: null,
+        defaultFromKey: null,
+      })
+      expect(getContactMessagesPerHourLimit(settings), slug).toBe(3)
+    }
   })
 })

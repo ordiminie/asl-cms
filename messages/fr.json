@@ -1723,7 +1723,8 @@
       "contentMax": "Votre message ne doit pas dépasser 5 000 caractères."
     },
     "errors": {
-      "generic": "Le message n’a pas pu être envoyé. Votre texte est conservé : réessayez dans un instant."
+      "generic": "Le message n’a pas pu être envoyé. Votre texte est conservé : réessayez dans un instant.",
+      "rateLimit": "Vous avez envoyé plusieurs messages coup sur coup. Ce formulaire accepte {limit, plural, one {# message} other {# messages}} par heure. Réessayez dans une heure, ou appelez le bureau de votre association."
     }
   },
   "CheckoutPlans": {
@@ -2922,6 +2923,10 @@
         "label": "Nombre de membres propriétaires",
         "help": "Affiché en tête de la page publique « Le bureau ». Laissé vide, la phrase n'apparaît pas du tout.",
         "whenEmpty": "Vide : la page publique n'annonce aucun nombre de membres."
+      },
+      "contactMessagesPerHour": {
+        "label": "Nombre de messages par heure et par visiteur",
+        "help": "Nombre de messages qu’un même visiteur peut envoyer en une heure par les formulaires publics du site, comme la page Contact. Au-delà, l’envoi est refusé avec un message qui l’explique, jusqu’à l’heure suivante : cela protège le bureau des messages automatiques."
       }
     },
     "hues": {
@@ -2934,7 +2939,8 @@
     },
     "units": {
       "requestsPerDay": "demandes par jour",
-      "members": "membres"
+      "members": "membres",
+      "messagesPerHour": "messages par heure"
     }
   },
   "BureauSettingsPage": {

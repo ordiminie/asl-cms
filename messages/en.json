@@ -1698,7 +1698,7 @@
     "errors": {
       "generic": "Something went wrong. Please try again.",
       "server": "Something went wrong. Please try again later.",
-      "rateLimit": "Too many requests. Try again in {seconds} seconds.",
+      "rateLimit": "You have sent several messages in a row. This form accepts {limit, plural, one {# message} other {# messages}} per hour. Try again in an hour, or call your association's board.",
       "allFieldsRequired": "All fields are required.",
       "subjectRange": "The subject must be between 3 and 255 characters.",
       "contentRange": "The message must be between 10 and 5000 characters.",
@@ -2899,6 +2899,10 @@
         "label": "Number of owner members",
         "help": "Shown at the top of the public « Le bureau » page. Left empty, the sentence does not appear at all.",
         "whenEmpty": "Empty: the public page announces no member count."
+      },
+      "contactMessagesPerHour": {
+        "label": "Messages per hour and per visitor",
+        "help": "Number of messages a single visitor can send in one hour through the site's public forms, such as the Contact page. Beyond that, sending is refused with a message explaining why, until the next hour: this protects the board from automated messages."
       }
     },
     "hues": {
@@ -2911,7 +2915,8 @@
     },
     "units": {
       "requestsPerDay": "requests per day",
-      "members": "members"
+      "members": "members",
+      "messagesPerHour": "messages per hour"
     }
   },
   "BureauSettingsPage": {

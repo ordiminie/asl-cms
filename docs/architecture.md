@@ -273,7 +273,7 @@ manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la 
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `user_submissions`     | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé.                                                                                                                                                     |
 | `organization_setting` | Paramètres de l'association (adresses, teinte : ADR 010, ADR 016). Porte `organization_id`, policy `tenant_isolation` forcée (`0007`). Absence de ligne = valeur par défaut du registre.                                                                                                                        |
-| `rate_limit_event`     | Compteurs journaliers de la limitation de débit des formulaires publics (s03). Porte `organization_id`, policy `tenant_isolation` forcée (`0009`) : hors `withTenant`, aucun compteur ne se lit ni ne s'écrit. **Classée ici seulement en s05** — l'omission datait de s03, la policy, elle, n'a jamais manqué. |
+| `rate_limit_event`     | Compteurs du limiteur, table unique (s03 ; fenêtre `window_start` en s08b). Porte `organization_id`, policy `tenant_isolation` forcée (`0009`) : hors `withTenant`, aucun compteur ne se lit ni ne s'écrit. **Classée ici seulement en s05** — l'omission datait de s03, la policy, elle, n'a jamais manqué.    |
 | `page`                 | Pages du site public (ADR 007, ADR 020, s04). Porte `organization_id`, policy `tenant_isolation` forcée (`0013`). Slug unique **par association**, jamais globalement.                                                                                                                                          |
 | `content_block`        | Blocs typés d'une page (ADR 019, s04). **Sans `organization_id`** : le tenant est celui de la page, et la policy `tenant_isolation` forcée (`0013`) joint `page` pour le retrouver — donc aucune colonne de tenant dupliquée à tenir cohérente.                                                                 |
 | `menu_item`            | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ».                                                          |
@@ -351,10 +351,10 @@ passe que par `requestMagicLinkAction` (plancher de 1,5 s, même écran B quoi q
   (la table et son format appartiennent à la bibliothèque).
 - **Limitation de débit : 3 demandes par adresse et par jour**, en base : table `rate_limit_event`
   (`organization_id`, RLS forcée), une ligne par association, **empreinte HMAC-SHA256** de l'adresse en
-  minuscules (jamais en clair) et jour (Europe/Paris), avec le nombre de demandes du jour ; unicité sur les
-  trois. Le comptage est **atomique en une requête** (`insert … on conflict … do update set count = count + 1
+  minuscules (jamais en clair, usage `magic_link.address`) et fenêtre du jour (`window_start` = minuit
+  Europe/Paris depuis s08b), avec le nombre de demandes du jour ; unicité sur les trois. Le comptage est **atomique en une requête** (`insert … on conflict … do update set count = count + 1
 returning count`, sans verrou applicatif) ; le changement de jour remet le compteur à zéro sans tâche
-  planifiée, et les lignes des jours passés sont purgées à chaque demande. Une adresse inconnue est comptée
+  planifiée, et les lignes dont la fenêtre précède minuit sont purgées à chaque demande. Une adresse inconnue est comptée
   aussi. Le seuil est un **réglage de l'association** (registre, ADR 010 et 016 :
   `login.link_requests_per_address_per_day`, défaut 3, de 1 à 20), modifiable dans « Réglages ». Au-delà :
   aucun email, le lien précédent reste valable, et l'écran reste l'écran B. **Aucune limite de demande par
@@ -414,15 +414,36 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
 - **Aucune donnée bancaire ne transite** par le produit. Le paiement est une redirection (s21). Hors
   périmètre DSP2/PCI, et cela doit le rester.
 - Les statuts de facture Pennylane sont **transportés tels quels**, jamais réduits à un booléen.
-- Les formulaires publics seront limités en débit sur **empreinte d'IP hachée, purgée sous 24 h** :
-  cette protection **arrive avec s08b**, elle n'existe pas encore. Depuis s08, l'action de `/contact`
-  (`src/app/[locale]/(public)/contact/actions.ts`) ne porte **ni limiteur ni IP** : le
-  `RateLimiterMemory` du boilerplate et l'écriture de l'IP en clair dans `user_submissions` ont
-  disparu avec sa réécriture, et `contact_message` n'a aucune colonne où l'écrire. Entre s08 et s08b,
-  `/contact` n'a donc **aucune limitation de débit** ; le site ne peut pas être publié dans cet
-  intervalle, s12b (mise en ligne) dépendant de s08b. Le compteur en base existe depuis s03
-  (`rate_limit_event`, `rate-limit-service.ts`, empreinte HMAC liée à l'usage) : c'est sur lui que
-  s08b s'appuiera.
+- Les formulaires publics sont limités en débit sur **empreinte d'IP hachée, purgée sous 24 h** (s08b).
+  L'action de `/contact` (`src/app/[locale]/(public)/contact/actions.ts`) consomme le quota du
+  visiteur **entre la validation et l'écriture** : seule une soumission bien formée compte, et une
+  soumission refusée n'écrit rien et n'envoie rien. Le seuil est un **réglage de l'association**
+  (`contact.messages_per_visitor_per_hour`, défaut 3, de 1 à 20, **un seul seuil pour tous les
+  formulaires publics**, que s10 réemploie tel quel), relu à chaque soumission. La fenêtre est
+  l'**heure pleine**, pas glissante : l'incrément atomique de s03 est conservé, au prix d'au plus
+  2 × N envois à cheval sur un changement d'heure.
+  - **L'adresse IP** est la **dernière** entrée de `x-forwarded-for` (celle qu'ajoute le reverse
+    proxy), sinon `x-real-ip` — jamais la première, fournie par le client. Sans IP résoluble, l'envoi
+    passe **sans être compté** (avec un avertissement journalisé) : un seau commun couperait le
+    formulaire pour toute l'association. La vérification des en-têtes du proxy est à la charge de s12b.
+  - **Aucune IP en clair nulle part** : l'empreinte est un HMAC-SHA256 par `BETTER_AUTH_SECRET` de
+    `association \n usage \n ip` (usage `contact.ip`), jamais un hash nu ; l'IP ne traverse que
+    `consumeContactMessageQuotaService`, dont l'intercepteur ne journalise pas les arguments, et
+    `contact_message` n'a aucune colonne où l'écrire (ADR 025).
+  - **Un seul limiteur dans le produit** : `rate_limit_event` a été généralisée (fenêtre horodatée
+    `window_start`, usage dans l'empreinte, purge par **seuil**), elle n'a pas été dupliquée. Deux
+    usages la partagent : `magic_link.address` (jour, purge sous minuit) et `contact.ip` (heure, purge
+    sous 24 h). **Invariant** : chaque purge n'efface que des lignes dont la fenêtre est déjà close pour
+    tous les usages, son seuil étant toujours antérieur ou égal au début de la fenêtre courante de
+    l'usage le plus long (le jour) — les deux purges sont inoffensives l'une pour l'autre.
+  - **La purge des empreintes de plus de 24 h** s'exécute à chaque soumission (dans le scope du tenant
+    courant) **et** seule, hors requête : `purgeExpiredRateLimitFingerprintsService` liste les
+    associations (`organization` est exemptée de RLS) et ouvre un `withTenant` pour chacune — jamais
+    `withRlsBypass()`. Point d'entrée : `pnpm tsx src/db/scripts/purge-rate-limit-fingerprints.ts`.
+    **s12b** y branche son déclencheur quotidien ; s26 pourra la reprendre dans `scheduled_job` sans
+    changer l'opération.
+  - Le blog hérité (`(public)/blog/[slug]/actions.ts`) **garde** son `RateLimiterMemory` en mémoire,
+    hors du périmètre du PRD et non multi-tenant.
 
 ## Design / UX
 

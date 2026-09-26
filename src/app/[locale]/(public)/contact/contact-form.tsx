@@ -56,7 +56,7 @@ const toFormData = (values: ContactFormSchemaType, locale: string) => {
 
 /**
  * Formulaire public « Contacter le bureau » (s08, ecran 1 du design) : vierge,
- * erreurs par champ, envoi en cours, succes. Les erreurs portent les trois
+ * erreurs par champ, envoi en cours, succes, refus au-dela du seuil (s08b). Les erreurs portent les trois
  * signaux ensemble — resume ancre focalise a la soumission, bordure 2 px,
  * message sous le champ — qu'elles viennent du client ou du serveur. Le succes
  * remplace le formulaire par un `alert` neutre, meme si la notification au
@@ -97,10 +97,16 @@ function ContactFormCard({onSent}: {onSent: (email: string) => void}) {
   const summaryRef = useRef<HTMLDivElement>(null)
   const [summaryRequest, setSummaryRequest] = useState(0)
   const [failed, setFailed] = useState(false)
+  const rateLimitRef = useRef<HTMLDivElement>(null)
+  const [rateLimit, setRateLimit] = useState<number | null>(null)
 
   useEffect(() => {
     if (summaryRequest > 0) summaryRef.current?.focus()
   }, [summaryRequest])
+
+  useEffect(() => {
+    if (rateLimit !== null) rateLimitRef.current?.focus()
+  }, [rateLimit])
 
   const showSummary = () => setSummaryRequest((count) => count + 1)
 
@@ -118,6 +124,8 @@ function ContactFormCard({onSent}: {onSent: (email: string) => void}) {
           form.setError(error.field, {message: error.message})
         }
         showSummary()
+      } else if (result.status === 'rate_limited') {
+        setRateLimit(result.limit)
       }
     } catch {
       setFailed(true)
@@ -140,6 +148,9 @@ function ContactFormCard({onSent}: {onSent: (email: string) => void}) {
               fields={invalidFields}
               onFocusField={(field) => form.setFocus(field)}
             />
+          )}
+          {rateLimit !== null && (
+            <RateLimitAlert ref={rateLimitRef} limit={rateLimit} />
           )}
           {failed && (
             <Alert variant="destructive" className="border-2">
@@ -245,7 +256,7 @@ function ContactFormCard({onSent}: {onSent: (email: string) => void}) {
 
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || rateLimit !== null}
             className="h-14 w-full text-base sm:h-12 sm:w-58"
           >
             {isSubmitting ? t('submit.pending') : t('submit.idle')}
@@ -299,6 +310,37 @@ function ErrorSummary({
           ))}
         </ul>
         <p>{t('summary.kept')}</p>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+/**
+ * Refus au-dela du seuil horaire (s08b, etat 5 du design) : `alert`
+ * `destructive` ancre et focalise, seuil interpole depuis le reglage de
+ * l'association, texte saisi conserve.
+ */
+function RateLimitAlert({
+  ref,
+  limit,
+}: {
+  ref: Ref<HTMLDivElement>
+  limit: number
+}) {
+  const t = useTranslations('ContactPage')
+
+  return (
+    <Alert
+      ref={ref}
+      tabIndex={-1}
+      variant="destructive"
+      className="border-destructive border-2 [&>svg]:size-5"
+    >
+      <AlertTriangle aria-hidden="true" />
+      <AlertDescription className="text-foreground text-base">
+        <p>
+          {t('errors.rateLimit', {limit})} <strong>{t('summary.kept')}</strong>
+        </p>
       </AlertDescription>
     </Alert>
   )
