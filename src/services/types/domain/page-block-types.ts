@@ -96,6 +96,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   'account',
   'actualites',
   'admin',
+  'analyses-eau',
   'annonces',
   'api',
   'auth-error',

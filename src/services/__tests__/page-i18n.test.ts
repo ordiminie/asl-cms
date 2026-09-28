@@ -20,7 +20,8 @@ const flatKeys = (value: unknown, prefix = ''): string[] => {
 const catalogs = {en, es} as const
 
 /**
- * Les sept espaces de noms introduits par s04, plus les deux de s05. La garde
+ * Les sept espaces de noms introduits par s04, plus les deux de s05 et les
+ * deux de s09. La garde
  * porte sur tous, pas seulement sur les deux plus gros : une chaine recopiee du
  * francais s'etait glissee dans SortableList, hors du perimetre trop etroit de
  * la garde.
@@ -35,6 +36,8 @@ const translatedNamespaces = [
   'BureauPagesPage',
   'BureauNewsPage',
   'PublicNewsPage',
+  'BureauWaterAnalysisPage',
+  'PublicWaterAnalysisPage',
 ] as const
 
 /**
@@ -65,6 +68,8 @@ describe('catalogues de messages des pages CMS (s04)', () => {
     'RestrictedMarkdownEditor',
     'BureauNewsPage',
     'PublicNewsPage',
+    'BureauWaterAnalysisPage',
+    'PublicWaterAnalysisPage',
   ] as const) {
     it(`${namespace} porte les memes cles en fr, en et es`, () => {
       const expected = flatKeys(

@@ -2807,6 +2807,7 @@
       "pages": "Pages",
       "navigation": "Navigation",
       "news": "News",
+      "waterAnalysis": "Water analyses",
       "alert": "Alert banner"
     },
     "cards": {
@@ -3250,6 +3251,112 @@
     },
     "previewDraft": "Preview — this news item is a draft. Visitors cannot see it.",
     "previewUnpublished": "Preview — this news item is unpublished. Visitors cannot see it."
+  },
+  "BureauWaterAnalysisPage": {
+    "metadata": {
+      "title": "Water analyses"
+    },
+    "title": "Water analyses",
+    "newAction": "Publish an analysis",
+    "tableTitle": "Published analyses",
+    "columns": {
+      "date": "Sampling date",
+      "poster": "Poster",
+      "report": "PDF report",
+      "actions": "Actions"
+    },
+    "edit": "Edit",
+    "editLabel": "the analysis of {date}",
+    "empty": "No analysis published yet.",
+    "emptyAction": "Publish the first one",
+    "pagination": {
+      "label": "Analysis pages",
+      "position": "Page {page} of {total}",
+      "previous": "Previous",
+      "next": "Next"
+    },
+    "notice": {
+      "published": "The analysis is published: it now leads /analyses-eau.",
+      "saved": "Your changes are saved and visible on the site.",
+      "deleted": "The analysis is deleted: it is no longer on the site."
+    },
+    "form": {
+      "backToList": "Water analyses",
+      "newTitle": "Publish a water analysis",
+      "editTitle": "Analysis of {date}",
+      "visibleNotice": "Once published, the analysis is immediately visible on /analyses-eau.",
+      "onlineNotice": "This analysis is online. Your changes are visible on the site immediately.",
+      "dateLabel": "Sampling date",
+      "datePlaceholder": "dd/mm/yyyy",
+      "dateHelp": "Analyses are listed from the most recent to the oldest by this date.",
+      "posterLabel": "Poster",
+      "posterHelp": "PNG, JPEG or WebP, {maxSize} MB at most.",
+      "chooseFile": "Choose a file",
+      "posterReplace": "Replace the poster",
+      "posterPreviewAlt": "Poster preview",
+      "posterAlt": "Poster of the water analysis of {date}.",
+      "posterAltNotice": "Description for screen readers: {alt}",
+      "optional": "Optional",
+      "contentLabel": "Text",
+      "contentHelp": "Plain text, no formatting.",
+      "contentCounter": "{count} of {max}",
+      "contentOverflow": "Characters over the limit: {over}.",
+      "reportLabel": "Full report (PDF)",
+      "reportHelp": "PDF, {maxSize} MB at most.",
+      "reportReplace": "Replace the PDF",
+      "reportCurrent": "Full report of {date} (PDF, {weight})",
+      "fileChosen": "{name}, {weight}",
+      "submitNew": "Publish the analysis",
+      "submittingNew": "Publishing…",
+      "submitEdit": "Save changes",
+      "submittingEdit": "Saving…",
+      "sendingFiles": "Uploading: {files}",
+      "sending": "Uploading",
+      "cancel": "Cancel",
+      "errorSummaryTitle": "The analysis is not saved. To fix:",
+      "issues": {
+        "dateInvalid": "Enter a complete date, as dd/mm/yyyy.",
+        "futureDate": "The sampling date cannot be in the future.",
+        "contentTooLong": "The text is longer than {max} characters.",
+        "posterFormat": "The poster must be a PNG, JPEG or WebP image.",
+        "posterSize": "The poster weighs more than {maxSize} MB.",
+        "reportFormat": "The report must be a PDF file.",
+        "reportSize": "The PDF weighs more than {maxSize} MB.",
+        "missingPoster": "Add the poster of the analysis.",
+        "missingReport": "Add the PDF of the full report."
+      },
+      "delete": {
+        "action": "Delete the analysis",
+        "title": "Delete the analysis of {date}?",
+        "description": "It disappears from the site, with its poster and PDF report.",
+        "definitive": "This cannot be undone.",
+        "cancel": "Cancel",
+        "confirm": "Delete the analysis",
+        "pending": "Deleting…"
+      }
+    },
+    "errors": {
+      "forbidden": "Only the association's board can manage water analyses.",
+      "failed": "Saving failed and nothing was published. Please try again.",
+      "deleteFailed": "Deleting failed: the analysis is still online. Please try again."
+    }
+  },
+  "PublicWaterAnalysisPage": {
+    "metadata": {
+      "title": "Water analyses"
+    },
+    "title": "Water analyses",
+    "itemTitle": "Sample of {date}",
+    "posterAlt": "Poster of the water analysis of {date}.",
+    "download": "Full report of {date} (PDF, {weight})",
+    "downloadHint": "Download",
+    "empty": "No water analysis published yet.",
+    "pagination": {
+      "label": "Water analysis pages",
+      "position": "Page {page} of {total}",
+      "previous": "← Previous",
+      "next": "Next →"
+    }
   },
   "AlertBanner": {
     "label": "Association alert",

@@ -2807,6 +2807,7 @@
       "pages": "Páginas",
       "navigation": "Navegación",
       "news": "Noticias",
+      "waterAnalysis": "Análisis del agua",
       "alert": "Banner de alerta"
     },
     "cards": {
@@ -3250,6 +3251,112 @@
     },
     "previewDraft": "Vista previa — esta noticia es un borrador. Los visitantes no la ven.",
     "previewUnpublished": "Vista previa — esta noticia está despublicada. Los visitantes no la ven."
+  },
+  "BureauWaterAnalysisPage": {
+    "metadata": {
+      "title": "Análisis del agua"
+    },
+    "title": "Análisis del agua",
+    "newAction": "Publicar un análisis",
+    "tableTitle": "Análisis publicados",
+    "columns": {
+      "date": "Fecha de la toma",
+      "poster": "Cartel",
+      "report": "Resultado PDF",
+      "actions": "Acción"
+    },
+    "edit": "Editar",
+    "editLabel": "el análisis del {date}",
+    "empty": "Todavía no hay ningún análisis publicado.",
+    "emptyAction": "Publicar el primero",
+    "pagination": {
+      "label": "Páginas de los análisis",
+      "position": "Página {page} de {total}",
+      "previous": "Anterior",
+      "next": "Siguiente"
+    },
+    "notice": {
+      "published": "El análisis está publicado: encabeza /analyses-eau.",
+      "saved": "Los cambios están guardados y visibles en el sitio.",
+      "deleted": "El análisis está eliminado: ya no aparece en el sitio."
+    },
+    "form": {
+      "backToList": "Análisis del agua",
+      "newTitle": "Publicar un análisis del agua",
+      "editTitle": "Análisis del {date}",
+      "visibleNotice": "Una vez publicado, el análisis se ve de inmediato en /analyses-eau.",
+      "onlineNotice": "Este análisis está en línea. Sus cambios se ven de inmediato en el sitio.",
+      "dateLabel": "Fecha de la toma",
+      "datePlaceholder": "dd/mm/aaaa",
+      "dateHelp": "Los análisis se ordenan del más reciente al más antiguo según esta fecha.",
+      "posterLabel": "Cartel",
+      "posterHelp": "PNG, JPEG o WebP, {maxSize} MB como máximo.",
+      "chooseFile": "Elegir un archivo",
+      "posterReplace": "Sustituir el cartel",
+      "posterPreviewAlt": "Vista previa del cartel",
+      "posterAlt": "Cartel del análisis del agua del {date}.",
+      "posterAltNotice": "Descripción para lectores de pantalla: {alt}",
+      "optional": "Opcional",
+      "contentLabel": "Texto",
+      "contentHelp": "Texto sin formato.",
+      "contentCounter": "{count} de {max}",
+      "contentOverflow": "Caracteres de más: {over}.",
+      "reportLabel": "Resultado completo (PDF)",
+      "reportHelp": "PDF, {maxSize} MB como máximo.",
+      "reportReplace": "Sustituir el PDF",
+      "reportCurrent": "Resultado completo del {date} (PDF, {weight})",
+      "fileChosen": "{name} · {weight}",
+      "submitNew": "Publicar el análisis",
+      "submittingNew": "Publicando…",
+      "submitEdit": "Guardar los cambios",
+      "submittingEdit": "Guardando…",
+      "sendingFiles": "Enviando: {files}",
+      "sending": "Enviando",
+      "cancel": "Cancelar",
+      "errorSummaryTitle": "El análisis no está guardado. Corrija:",
+      "issues": {
+        "dateInvalid": "Escriba una fecha completa, con el formato dd/mm/aaaa.",
+        "futureDate": "La fecha de la toma no puede estar en el futuro.",
+        "contentTooLong": "El texto supera los {max} caracteres.",
+        "posterFormat": "El cartel debe ser una imagen PNG, JPEG o WebP.",
+        "posterSize": "El cartel pesa más de {maxSize} MB.",
+        "reportFormat": "El resultado debe ser un archivo PDF.",
+        "reportSize": "El PDF pesa más de {maxSize} MB.",
+        "missingPoster": "Añada el cartel del análisis.",
+        "missingReport": "Añada el PDF del resultado completo."
+      },
+      "delete": {
+        "action": "Eliminar el análisis",
+        "title": "¿Eliminar el análisis del {date}?",
+        "description": "Desaparece del sitio, con su cartel y su resultado PDF.",
+        "definitive": "Esta acción es definitiva.",
+        "cancel": "Cancelar",
+        "confirm": "Eliminar el análisis",
+        "pending": "Eliminando…"
+      }
+    },
+    "errors": {
+      "forbidden": "Solo la junta de la asociación puede gestionar los análisis del agua.",
+      "failed": "No se pudo guardar y no se publicó nada. Vuelva a intentarlo.",
+      "deleteFailed": "No se pudo eliminar: el análisis sigue en línea. Vuelva a intentarlo."
+    }
+  },
+  "PublicWaterAnalysisPage": {
+    "metadata": {
+      "title": "Análisis del agua"
+    },
+    "title": "Análisis del agua",
+    "itemTitle": "Toma del {date}",
+    "posterAlt": "Cartel del análisis del agua del {date}.",
+    "download": "Resultado completo del {date} (PDF, {weight})",
+    "downloadHint": "Descargar",
+    "empty": "Todavía no hay ningún análisis del agua publicado.",
+    "pagination": {
+      "label": "Páginas de los análisis del agua",
+      "position": "Página {page} de {total}",
+      "previous": "← Anterior",
+      "next": "Siguiente →"
+    }
   },
   "AlertBanner": {
     "label": "Alerta de la asociación",

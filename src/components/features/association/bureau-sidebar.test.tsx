@@ -127,3 +127,21 @@ describe('BureauSidebar — « Messages reçus » (s08)', () => {
     )
   })
 })
+
+describe("BureauSidebar — « Analyses d'eau » (s09)", () => {
+  it('ajoute l’entrée entre « Actualités » et « Navigation », sans icône', () => {
+    renderSidebarAt('/fr/bureau/analyses-eau')
+
+    const entry = screen.getByRole('link', {name: "Analyses d'eau"})
+    expect(entry).toHaveAttribute('href', '/bureau/analyses-eau')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+
+    const siteLinks = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    const position = siteLinks.indexOf('/bureau/analyses-eau')
+    expect(siteLinks[position - 1]).toBe('/bureau/actualites')
+    expect(siteLinks[position + 1]).toBe('/bureau/navigation')
+  })
+})

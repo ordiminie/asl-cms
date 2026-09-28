@@ -11,7 +11,7 @@ import {
   newsImageUrl,
 } from '@/app/dal/news-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
-import {formatNewsDate} from '@/lib/cms/format-news-date'
+import {formatContentDate} from '@/lib/cms/format-content-date'
 import {renderRestrictedMarkdown} from '@/lib/cms/render-page-block'
 import {NewsDTO} from '@/services/types/domain/news-types'
 
@@ -84,7 +84,7 @@ export default async function PublicNewsItemPage({params}: NewsItemParams) {
       </Link>
 
       <p className="text-muted-foreground text-[18px]">
-        {formatNewsDate(news.publishedOn)}
+        {formatContentDate(news.publishedOn)}
       </p>
 
       <h1 className="font-serif text-[34px] leading-tight font-semibold text-pretty">

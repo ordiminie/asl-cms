@@ -24,8 +24,84 @@ const PNG_BYTES = new Uint8Array([
 ])
 
 describe('registre des portées de fichiers de contenu (ADR 023)', () => {
-  it('déclare les pages, les actualités et les fiches du bureau', () => {
-    expect(CONTENT_FILE_SCOPES).toEqual(['pages', 'news', 'board'])
+  it("déclare les pages, les actualités, les fiches du bureau et les analyses d'eau", () => {
+    expect(CONTENT_FILE_SCOPES).toEqual([
+      'pages',
+      'news',
+      'board',
+      'water-analysis',
+    ])
+  })
+})
+
+describe("portée des analyses d'eau (s09)", () => {
+  const ANALYSIS_ID = '66666666-6666-4666-8666-666666666666'
+
+  it.each([
+    ['poster', 'png'],
+    ['report', 'pdf'],
+  ] as const)(
+    "construit une clé %s acceptée sous le préfixe de l'association",
+    (slot, format) => {
+      const key = buildContentFileKey(
+        ORG_ID,
+        ContentFileScopeConst.WATER_ANALYSIS,
+        ANALYSIS_ID,
+        slot,
+        format
+      )
+
+      expect(key).toMatch(
+        new RegExp(
+          `^${ORG_ID}/water-analysis/${ANALYSIS_ID}/${slot}-[0-9a-f-]{36}\\.${format}$`
+        )
+      )
+      expect(isContentFileKeyAllowed(ORG_ID, key)).toBe(true)
+    }
+  )
+
+  it("refuse la clé d'une autre association", () => {
+    const key = buildContentFileKey(
+      ORG_ID,
+      ContentFileScopeConst.WATER_ANALYSIS,
+      ANALYSIS_ID,
+      'report',
+      'pdf'
+    )
+
+    expect(isContentFileKeyAllowed(OTHER_ORG_ID, key)).toBe(false)
+  })
+
+  it('refuse une remontée, un segment vide ou une extension inconnue', () => {
+    expect(
+      isContentFileKeyAllowed(
+        ORG_ID,
+        `${ORG_ID}/water-analysis/${ANALYSIS_ID}/../../${OTHER_ORG_ID}/water-analysis/x.pdf`
+      )
+    ).toBe(false)
+    expect(
+      isContentFileKeyAllowed(ORG_ID, `${ORG_ID}/water-analysis//report.pdf`)
+    ).toBe(false)
+    expect(
+      isContentFileKeyAllowed(
+        ORG_ID,
+        `${ORG_ID}/water-analysis/${ANALYSIS_ID}/report-abc.exe`
+      )
+    ).toBe(false)
+  })
+
+  it('laisse les clés de pages et d’actualités acceptées', () => {
+    expect(
+      isContentFileKeyAllowed(ORG_ID, `${ORG_ID}/pages/${PAGE_ID}/b-abc.pdf`)
+    ).toBe(true)
+    expect(
+      isContentFileKeyAllowed(ORG_ID, `${ORG_ID}/news/${NEWS_ID}/image-abc.png`)
+    ).toBe(true)
+  })
+
+  it('reste hors du chemin historique des pages', () => {
+    const key = `${ORG_ID}/water-analysis/${ANALYSIS_ID}/report-abc.pdf`
+    expect(isPageBlockFileKeyAllowed(ORG_ID, key)).toBe(false)
   })
 })
 

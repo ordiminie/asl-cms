@@ -4,7 +4,7 @@ import {PAGE_FILE_CONTENT_TYPES, PageFileFormat} from './page-block-types'
  * Chaine de fichiers de contenu partagee (ADR 023, §3).
  *
  * Module isomorphe : il decrit les **portees** de fichiers de contenu (pages de
- * s04, actualites de s05 ; s06 et s09 y ajouteront la leur), construit leur cle
+ * s04, actualites de s05, bureau de s06, analyses d'eau de s09), construit leur cle
  * de stockage et verifie qu'une cle lue dans une requete vit sous une portee
  * enregistree de l'association resolue par le domaine.
  *
@@ -29,6 +29,8 @@ export const ContentFileScopeConst = {
   NEWS: 'news',
   /** Photos des fiches du bureau (s06). */
   BOARD: 'board',
+  /** Affiche et PDF d'une analyse d'eau (s09, ADR 026). */
+  WATER_ANALYSIS: 'water-analysis',
 } as const
 
 export type ContentFileScope =
@@ -38,6 +40,7 @@ export const CONTENT_FILE_SCOPES: readonly ContentFileScope[] = [
   ContentFileScopeConst.PAGES,
   ContentFileScopeConst.NEWS,
   ContentFileScopeConst.BOARD,
+  ContentFileScopeConst.WATER_ANALYSIS,
 ]
 
 const UUID_PATTERN =

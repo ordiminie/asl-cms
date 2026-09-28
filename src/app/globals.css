@@ -64,6 +64,8 @@
   --primary-ink: var(--primary);
   /* texte d'erreur (§1.9) : `--destructive` reste bordures et fonds */
   --destructive-text: oklch(0.48 0.17 27);
+  /* voile des dialogues modaux (§1.9, s09) : une valeur par theme */
+  --overlay: oklch(0.22 0.015 250 / 0.5);
 
   /* tableaux du bureau (§1.9) : zebrure et survol d'une ligne */
   --table-stripe: oklch(0.99 0.002 250);
@@ -131,6 +133,8 @@
   --destructive: oklch(0.58 0.19 27);
   --destructive-foreground: oklch(0.98 0.01 27);
   --destructive-text: oklch(0.68 0.17 27);
+  /* en sombre, du noir a 50 % ne separe rien : voile plus dense (§1.9) */
+  --overlay: oklch(0.1 0.01 255 / 0.7);
   --link: oklch(0.8 0.1 250);
 
   /*
@@ -220,6 +224,7 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-text: var(--destructive-text);
+  --color-overlay: var(--overlay);
   --color-table-stripe: var(--table-stripe);
   --color-table-row-hover: var(--table-row-hover);
   --color-warning: var(--warning);
