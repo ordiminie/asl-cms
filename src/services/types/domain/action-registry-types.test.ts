@@ -131,3 +131,40 @@ describe('ACTION_REGISTRY — bandeau d alerte (s07)', () => {
     ).toBe(false)
   })
 })
+
+describe("ACTION_REGISTRY — analyses d'eau (s09)", () => {
+  it('water.analysis.manage autorise la Presidente et le bureau', () => {
+    expect(ActionIdConst.WATER_ANALYSIS_MANAGE).toBe('water.analysis.manage')
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.WATER_ANALYSIS_MANAGE,
+        'owner'
+      )
+    ).toBe(true)
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.WATER_ANALYSIS_MANAGE,
+        'board'
+      )
+    ).toBe(true)
+  })
+
+  it('refuse un membre simple et un role inconnu', () => {
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.WATER_ANALYSIS_MANAGE,
+        'member'
+      )
+    ).toBe(false)
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.WATER_ANALYSIS_MANAGE,
+        'intruder' as never
+      )
+    ).toBe(false)
+  })
+})

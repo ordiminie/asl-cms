@@ -18,6 +18,7 @@ import * as post from './post-model'
 import * as subscription from './subscription-model'
 import * as user from './user-model'
 import * as userSubmission from './user-submission-model'
+import * as waterAnalysis from './water-analysis-model'
 
 // `max` vaut 1 par défaut, et ce n'est pas un réglage frileux : en serverless
 // chaque instance ouvre SON pool, donc les connexions retenues valent
@@ -47,6 +48,7 @@ const db = drizzle(pool, {
     ...news,
     ...boardMember,
     ...contactMessage,
+    ...waterAnalysis,
     ...userSubmission,
   },
 })

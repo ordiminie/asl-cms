@@ -169,6 +169,20 @@
       "when": 1790445779754,
       "tag": "0023_rate_limit_event_window_start",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790581847399,
+      "tag": "0024_dizzy_cerebro",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790582094431,
+      "tag": "0025_water_analysis_rls",
+      "breakpoints": true
     }
   ]
 }

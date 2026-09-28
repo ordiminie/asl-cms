@@ -475,4 +475,27 @@ describe('plafond de téléversement (next.config.ts)', () => {
     const largestFile = Math.max(...Object.values(CONTENT_FILE_MAX_BYTES))
     expect(parseSize(match?.[1] ?? '')).toBeGreaterThanOrEqual(largestFile)
   })
+
+  it('laisse passer une affiche et un PDF dans la même soumission, proxy compris (s09, ADR 026)', () => {
+    const source = fs.readFileSync(
+      path.resolve(import.meta.dirname, '../../../next.config.ts'),
+      'utf8'
+    )
+    const bodyLimit = source.match(/bodySizeLimit:\s*'([^']+)'/)
+    const proxyLimit = source.match(/proxyClientMaxBodySize:\s*'([^']+)'/)
+
+    // Au-dela de 10 Mo par defaut, le proxy **tronque** le corps : un fichier
+    // corrompu plutot qu'un refus.
+    expect(
+      proxyLimit,
+      'proxyClientMaxBodySize introuvable dans next.config.ts'
+    ).not.toBeNull()
+
+    const bothFiles =
+      CONTENT_FILE_MAX_BYTES.image + CONTENT_FILE_MAX_BYTES.document
+    expect(parseSize(bodyLimit?.[1] ?? '')).toBeGreaterThan(bothFiles)
+    expect(parseSize(proxyLimit?.[1] ?? '')).toBeGreaterThanOrEqual(
+      parseSize(bodyLimit?.[1] ?? '')
+    )
+  })
 })

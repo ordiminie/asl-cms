@@ -2829,6 +2829,7 @@
       "pages": "Pages",
       "navigation": "Navigation",
       "news": "Actualités",
+      "waterAnalysis": "Analyses d'eau",
       "board": "Membres du bureau",
       "alert": "Bandeau d’alerte",
       "messages": "Messages reçus"
@@ -3274,6 +3275,112 @@
     },
     "previewDraft": "Aperçu — cette actualité est un brouillon. Les visiteurs ne la voient pas.",
     "previewUnpublished": "Aperçu — cette actualité est dépubliée. Les visiteurs ne la voient pas."
+  },
+  "BureauWaterAnalysisPage": {
+    "metadata": {
+      "title": "Analyses d'eau"
+    },
+    "title": "Analyses d'eau",
+    "newAction": "Publier une analyse",
+    "tableTitle": "Analyses publiées",
+    "columns": {
+      "date": "Date du prélèvement",
+      "poster": "Affiche",
+      "report": "Résultat PDF",
+      "actions": "Action"
+    },
+    "edit": "Modifier",
+    "editLabel": "l'analyse du {date}",
+    "empty": "Aucune analyse publiée pour l'instant.",
+    "emptyAction": "Publier la première",
+    "pagination": {
+      "label": "Pages des analyses",
+      "position": "Page {page} sur {total}",
+      "previous": "Précédent",
+      "next": "Suivant"
+    },
+    "notice": {
+      "published": "L'analyse est publiée : elle est en tête de /analyses-eau.",
+      "saved": "Les modifications sont enregistrées et visibles sur le site.",
+      "deleted": "L'analyse est supprimée : elle a disparu du site."
+    },
+    "form": {
+      "backToList": "Analyses d'eau",
+      "newTitle": "Publier une analyse d'eau",
+      "editTitle": "Analyse du {date}",
+      "visibleNotice": "Une fois publiée, l'analyse est visible immédiatement sur /analyses-eau.",
+      "onlineNotice": "Cette analyse est en ligne. Vos modifications sont visibles immédiatement sur le site.",
+      "dateLabel": "Date du prélèvement",
+      "datePlaceholder": "jj/mm/aaaa",
+      "dateHelp": "Les analyses sont classées de la plus récente à la plus ancienne selon cette date.",
+      "posterLabel": "Affiche",
+      "posterHelp": "PNG, JPEG ou WebP, {maxSize} Mo au plus.",
+      "chooseFile": "Choisir un fichier",
+      "posterReplace": "Remplacer l'affiche",
+      "posterPreviewAlt": "Aperçu de l'affiche",
+      "posterAlt": "Affiche de l'analyse d'eau du {date}.",
+      "posterAltNotice": "Description pour les lecteurs d'écran : {alt}",
+      "optional": "Facultatif",
+      "contentLabel": "Texte",
+      "contentHelp": "Texte brut, sans mise en forme.",
+      "contentCounter": "{count} / {max}",
+      "contentOverflow": "Caractères en trop : {over}.",
+      "reportLabel": "Résultat complet (PDF)",
+      "reportHelp": "PDF, {maxSize} Mo au plus.",
+      "reportReplace": "Remplacer le PDF",
+      "reportCurrent": "Résultat complet du {date} (PDF, {weight})",
+      "fileChosen": "{name} — {weight}",
+      "submitNew": "Publier l'analyse",
+      "submittingNew": "Publication en cours…",
+      "submitEdit": "Enregistrer les modifications",
+      "submittingEdit": "Enregistrement en cours…",
+      "sendingFiles": "Envoi en cours : {files}",
+      "sending": "Envoi en cours",
+      "cancel": "Annuler",
+      "errorSummaryTitle": "L'analyse n'est pas enregistrée. À corriger :",
+      "issues": {
+        "dateInvalid": "Saisissez une date complète, au format jj/mm/aaaa.",
+        "futureDate": "La date du prélèvement ne peut pas être dans le futur.",
+        "contentTooLong": "Le texte dépasse {max} caractères.",
+        "posterFormat": "L'affiche doit être une image PNG, JPEG ou WebP.",
+        "posterSize": "L'affiche pèse plus de {maxSize} Mo.",
+        "reportFormat": "Le résultat doit être un fichier PDF.",
+        "reportSize": "Le PDF pèse plus de {maxSize} Mo.",
+        "missingPoster": "Ajoutez l'affiche de l'analyse.",
+        "missingReport": "Ajoutez le PDF du résultat complet."
+      },
+      "delete": {
+        "action": "Supprimer l'analyse",
+        "title": "Supprimer l'analyse du {date} ?",
+        "description": "Elle disparaît du site, avec son affiche et son résultat PDF.",
+        "definitive": "Cette action est définitive.",
+        "cancel": "Annuler",
+        "confirm": "Supprimer l'analyse",
+        "pending": "Suppression en cours…"
+      }
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l'association peut gérer les analyses d'eau.",
+      "failed": "L'enregistrement a échoué et rien n'a été publié. Réessayez.",
+      "deleteFailed": "La suppression a échoué : l'analyse est toujours en ligne. Réessayez."
+    }
+  },
+  "PublicWaterAnalysisPage": {
+    "metadata": {
+      "title": "Analyses d'eau"
+    },
+    "title": "Analyses d'eau",
+    "itemTitle": "Prélèvement du {date}",
+    "posterAlt": "Affiche de l'analyse d'eau du {date}.",
+    "download": "Résultat complet du {date} (PDF, {weight})",
+    "downloadHint": "Télécharger",
+    "empty": "Aucune analyse d'eau publiée pour l'instant.",
+    "pagination": {
+      "label": "Pages des analyses d'eau",
+      "position": "Page {page} sur {total}",
+      "previous": "← Précédent",
+      "next": "Suivant →"
+    }
   },
   "BureauBoardPage": {
     "metadata": {

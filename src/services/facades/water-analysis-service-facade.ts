@@ -1,0 +1,18 @@
+import waterAnalysisServiceInterceptor from './interceptors/water-analysis-service-logger-interceptor'
+
+export const canManageWaterAnalysisService =
+  waterAnalysisServiceInterceptor.canManageWaterAnalysisService
+export const deleteWaterAnalysisService =
+  waterAnalysisServiceInterceptor.deleteWaterAnalysisService
+export const getPublicWaterAnalysesPageService =
+  waterAnalysisServiceInterceptor.getPublicWaterAnalysesPageService
+export const getPublicWaterAnalysisPageCountService =
+  waterAnalysisServiceInterceptor.getPublicWaterAnalysisPageCountService
+export const getWaterAnalysesForBureauService =
+  waterAnalysisServiceInterceptor.getWaterAnalysesForBureauService
+export const getWaterAnalysisForBureauService =
+  waterAnalysisServiceInterceptor.getWaterAnalysisForBureauService
+export const publishWaterAnalysisService =
+  waterAnalysisServiceInterceptor.publishWaterAnalysisService
+export const updateWaterAnalysisService =
+  waterAnalysisServiceInterceptor.updateWaterAnalysisService

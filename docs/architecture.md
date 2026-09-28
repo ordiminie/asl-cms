@@ -187,7 +187,7 @@ clé) autorise un cache long ; sans favicon, la route sert le monogramme de l'as
 (s04), image d'actualité (s05), puis fiches du bureau et analyses d'eau — passent par **une seule**
 chaîne. Un module de domaine isomorphe
 (`src/services/types/domain/content-file-types.ts`) déclare les **portées** (`pages`, `news`,
-`board`),
+`board`, `water-analysis` — l'affiche et le PDF d'une analyse d'eau, s09, ADR 026),
 construit la clé `{organizationId}/{portée}/{ownerId}/{slotId}-{uuid}.{ext}` et vérifie qu'une clé
 lue dans une requête vit sous une portée enregistrée de l'association résolue par le domaine.
 La lecture publique est `GET /api/files/[...key]` (`readContentFileService`, sans autorisation et
@@ -207,7 +207,7 @@ redimensionnement s'intercale **après** la validation par signature binaire : u
 n'est jamais décodé. Les images de blocs de s04 ne sont pas reprises — ce serait changer le rendu
 d'une story livrée.
 
-**Enveloppe d'une requête — décision du 23/09/2026, appliquée en s06.** Les plafonds par fichier
+**Enveloppe d'une requête — décision du 23/09/2026, appliquée en s06 et complétée en s09.** Les plafonds par fichier
 ci-dessus ne servent à rien tant que l'enveloppe de la requête est plus basse : jusqu'à s06,
 `next.config.ts` fixait `serverActions.bodySizeLimit: '2mb'`, donc **tout dépôt de plus de 2 Mo était
 refusé par Next avant d'atteindre la validation**, sans le message de poids. Défaut latent depuis s04 :
@@ -215,9 +215,13 @@ aucun test ne déposait un fichier de cette taille. Les ordres de grandeur réel
 une photo prise au téléphone pèse 2 à 5 Mo, un PDF d'analyse scanné en couleur jusqu'à 8 Mo — et s09
 dépose **une affiche et un PDF dans la même soumission** (son critère 4 interdit le dépôt en deux
 temps). L'enveloppe est donc à **16 Mo** (`bodySizeLimit: '16mb'`), soit la somme des deux plafonds
-plus la marge des champs de formulaire. Une garde mécanique interdit qu'elle redescende sous le plus
-grand plafond de `CONTENT_FILE_MAX_BYTES` — celui d'un document, 10 Mo, pas celui d'une image
-(`src/services/__tests__/board-member-service.test.ts`). Le plafond écrit sous un champ de dépôt est
+plus la marge des champs de formulaire. **s09 y ajoute `proxyClientMaxBodySize: '16mb'`** : les routes
+du bureau passent par `src/proxy.ts`, qui met le corps en mémoire jusqu'à 10 Mo par défaut puis le
+**tronque** avec un simple avertissement — une affiche de 5 Mo et un PDF de 10 Mo arriveraient
+corrompus au lieu d'être refusés. Une garde mécanique interdit que l'enveloppe redescende sous le plus
+grand plafond de `CONTENT_FILE_MAX_BYTES` — celui d'un document, 10 Mo, pas celui d'une image — et que
+le proxy tronque sous elle (`src/services/__tests__/board-member-service.test.ts`) ; l'e2e de s09
+publie une affiche de 4 Mo et un PDF de 8 Mo dans la même soumission. Le plafond écrit sous un champ de dépôt est
 toujours celui réellement appliqué, jamais l'enveloppe. À vérifier en même temps : la limite du serveur
 web devant l'application (s12b), qui a la sienne et tronque au-delà.
 
@@ -255,10 +259,10 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 28 tables du schéma
+### Classement RLS des 29 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 28 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08) sont donc toutes classées, sans reste. Toute
+Les 29 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
 Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
@@ -267,7 +271,7 @@ déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et éc
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-**Scopée par une policy RLS forcée** — 9 tables
+**Scopée par une policy RLS forcée** — 10 tables
 
 | Table                  | Pourquoi                                                                                                                                                                                                                                                                                                     |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -280,6 +284,7 @@ manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la 
 | `news`                 | Actualités datées de l'association (ADR 023, s05). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0017`). Slug unique **par association**, nul tant que l'actualité n'a pas de titre.                                                                                           |
 | `board_member`         | Fiches du bureau (ADR 007, ADR 024, s06). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0019`). **Aucune clé étrangère vers `user` ni vers un membre propriétaire** : une fiche n'est pas un compte. Rangs contigus garantis applicativement, sans contrainte d'unicité.       |
 | `contact_message`      | Messages envoyés depuis la page publique `/contact` (ADR 025, s08). Porte `organization_id` **`NOT NULL`**, en `cascade`, policy `tenant_isolation` forcée (`0021`). **Ni jsonb ni colonne d'adresse** : aucune IP de visiteur ne peut y être écrite. `user_submissions` reste au boilerplate.               |
+| `water_analysis`       | Analyses d'eau publiées (ADR 007, ADR 026, s09). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0025`). **Ni `status` ni `image_alt`** : la publication est directe, et le texte alternatif de l'affiche est dérivé de `sampled_on` au rendu.                                   |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**

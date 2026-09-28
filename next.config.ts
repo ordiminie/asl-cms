@@ -52,6 +52,12 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '16mb',
     },
+    // Les routes du bureau passent par src/proxy.ts, qui met le corps de la
+    // requete en memoire jusqu'a cette limite — 10 Mo par defaut — puis le
+    // **tronque** avec un simple avertissement : une affiche de 5 Mo et un PDF
+    // de 10 Mo publies dans la meme soumission (s09, ADR 026) arriveraient
+    // corrompus au lieu d'etre refuses. Elle suit donc bodySizeLimit.
+    proxyClientMaxBodySize: '16mb',
     // staleTimes survit à cacheComponents et alimente cacheLife.default.stale
     staleTimes: {
       dynamic: 30,

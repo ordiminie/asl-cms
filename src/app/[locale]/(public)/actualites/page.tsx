@@ -10,7 +10,7 @@ import {
   newsImageUrl,
 } from '@/app/dal/news-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
-import {formatNewsDate} from '@/lib/cms/format-news-date'
+import {formatContentDate} from '@/lib/cms/format-content-date'
 
 type NewsListParams = {
   params: Promise<{locale: string}>
@@ -97,7 +97,7 @@ export default async function PublicNewsListPage({
               )}
               <div className="flex min-w-0 flex-col gap-2">
                 <p className="text-muted-foreground text-[18px]">
-                  {formatNewsDate(item.publishedOn)}
+                  {formatContentDate(item.publishedOn)}
                 </p>
                 <h2 className="font-serif text-[26px] leading-tight font-semibold text-pretty">
                   <Link

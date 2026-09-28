@@ -388,6 +388,11 @@ deux corrections ci-dessus avec **s07**, `--destructive-text` avec **s08**, `--o
 la zébrure et le survol avec la première story qui touche un tableau du bureau. Le document de design
 de chacune porte la tâche.
 
+**`--overlay` est entré dans le code avec s09** : posé dans `:root` et `.dark` de
+`src/app/globals.css`, exposé en `bg-overlay`, il remplace le `bg-black/50` écrit en dur dans
+`alert-dialog.tsx` **et** `dialog.tsx` — un seul voile dans le produit. La boîte garde son filet
+`border` en sombre.
+
 **Règles de forme arrêtées par les mêmes planches** (détail en §3.9) : épaisseur de bordure d'une
 alerte, compteur de caractères, champ date, portrait de personne, cadrage des images de contenu, deux
 badges sur une ligne. Les jumelles sombres des couleurs d'email sont en §5.2.

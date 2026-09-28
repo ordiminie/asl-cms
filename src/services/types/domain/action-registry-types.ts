@@ -82,6 +82,12 @@ export const ActionIdConst = {
    * ne cree, ne modifie ni ne supprime aucun message.
    */
   CONTACT_MESSAGE_READ: 'contact.message.read',
+  /**
+   * Gerer les analyses d'eau (s09, ADR 026) : publier, corriger, supprimer.
+   * Une seule entree pour les trois verbes, sur le precedent de `PAGE_MANAGE`
+   * et `NEWS_MANAGE` : aucun critere ne distingue les roles entre eux.
+   */
+  WATER_ANALYSIS_MANAGE: 'water.analysis.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -115,6 +121,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.CONTACT_MESSAGE_READ,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.WATER_ANALYSIS_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

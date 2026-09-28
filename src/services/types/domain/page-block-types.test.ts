@@ -157,4 +157,8 @@ describe('slugs réservés (ADR 020)', () => {
   it('réserve le segment de la présentation du bureau (s06)', () => {
     expect(isPageSlugReserved('le-bureau')).toBe(true)
   })
+
+  it("réserve le segment des analyses d'eau (s09)", () => {
+    expect(isPageSlugReserved('analyses-eau')).toBe(true)
+  })
 })
