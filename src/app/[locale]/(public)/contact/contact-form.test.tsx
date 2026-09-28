@@ -162,4 +162,47 @@ describe('ContactForm — écran 1 du design s08', () => {
     )
     expect(messageField()).toHaveValue('')
   })
+
+  it('refus au-delà du seuil : alert ancré et focalisé, seuil du réglage, texte conservé, envoi désactivé', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitContactAction).mockResolvedValue({
+      status: 'rate_limited',
+      limit: 5,
+    })
+    render(<ContactForm />)
+
+    await fillValid(user)
+    await user.click(submitButton())
+
+    const refusal = await screen.findByRole('alert')
+    await waitFor(() => expect(refusal).toHaveFocus())
+    expect(refusal).toHaveAttribute('tabindex', '-1')
+    expect(refusal).toHaveClass('border-2')
+    expect(refusal).toHaveTextContent(
+      'Vous avez envoyé plusieurs messages coup sur coup. Ce formulaire accepte 5 messages par heure. Réessayez dans une heure, ou appelez le bureau de votre association.'
+    )
+    expect(within(refusal).getByText('Votre texte est conservé.').tagName).toBe(
+      'STRONG'
+    )
+    expect(messageField()).toHaveValue('Bonjour ?')
+    expect(subjectField()).toHaveValue("Analyse d'eau du forage")
+    expect(submitButton()).toBeDisabled()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('accorde le seuil au singulier', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitContactAction).mockResolvedValue({
+      status: 'rate_limited',
+      limit: 1,
+    })
+    render(<ContactForm />)
+
+    await fillValid(user)
+    await user.click(submitButton())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Ce formulaire accepte 1 message par heure.'
+    )
+  })
 })

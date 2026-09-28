@@ -128,6 +128,12 @@ export const MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY =
  * phrase de la page publique est omise, jamais rendue « 0 membres ».
  */
 export const ASSOCIATION_MEMBER_COUNT_SETTING_KEY = 'association.member_count'
+/**
+ * Envois acceptes par heure et par visiteur sur les formulaires publics (s08b) :
+ * un seul seuil pour tous les formulaires publics de l'association.
+ */
+export const CONTACT_MESSAGES_PER_HOUR_SETTING_KEY =
+  'contact.messages_per_visitor_per_hour'
 
 /**
  * Les six teintes d'accent validees (design system §1.2). Le bureau choisit
@@ -210,6 +216,19 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     labelKey: 'fields.memberCount.label',
     helpKey: 'fields.memberCount.help',
     whenEmptyKey: 'fields.memberCount.whenEmpty',
+    page: 'settings',
+  },
+  {
+    key: CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '3'},
+    min: 1,
+    max: 20,
+    integer: true,
+    unitKey: 'units.messagesPerHour',
+    labelKey: 'fields.contactMessagesPerHour.label',
+    helpKey: 'fields.contactMessagesPerHour.help',
     page: 'settings',
   },
 ]
@@ -452,3 +471,11 @@ const numberSettingOf = (
 export const getMagicLinkDailyRequestLimit = (
   settings: ResolvedAssociationSettings
 ): number => numberSettingOf(settings, MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY)
+
+/**
+ * Envois acceptes par heure et par visiteur sur les formulaires publics
+ * (s08b) : valeur du bureau, sinon defaut du registre.
+ */
+export const getContactMessagesPerHourLimit = (
+  settings: ResolvedAssociationSettings
+): number => numberSettingOf(settings, CONTACT_MESSAGES_PER_HOUR_SETTING_KEY)

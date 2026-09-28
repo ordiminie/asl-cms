@@ -12,9 +12,11 @@ import {
   AssociationSettingDefinition,
   AssociationSettingsRegistry,
   CONTACT_EMAIL_SETTING_KEY,
+  CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   DEFAULT_ACCENT_HUE,
   FORAGE_EMAIL_SETTING_KEY,
   getAccentHue,
+  getContactMessagesPerHourLimit,
   getMagicLinkDailyRequestLimit,
   getSettingsForPage,
   hasSettingReferenceCycle,
@@ -38,7 +40,7 @@ const testDefinition = (key: string) =>
   definitionOf(TEST_SETTINGS_REGISTRY, key)
 
 describe('registre de production', () => {
-  it('declare les cles de s02 et de s03, avec leurs types et leur page', () => {
+  it('declare les cles de s02, s03, s06 et s08b, avec leurs types et leur page', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.map(({key, type, required, page}) => ({
         key,
@@ -77,7 +79,35 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      {
+        key: CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  it('le seuil des formulaires publics est un entier de 1 a 20 par heure, 3 par defaut', () => {
+    const definition = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      CONTACT_MESSAGES_PER_HOUR_SETTING_KEY
+    )
+    expect(CONTACT_MESSAGES_PER_HOUR_SETTING_KEY).toBe(
+      'contact.messages_per_visitor_per_hour'
+    )
+    expect(definition).toMatchObject({
+      type: 'number',
+      integer: true,
+      min: 1,
+      max: 20,
+      default: {value: '3'},
+      unitKey: 'units.messagesPerHour',
+    })
+    expect(parseSettingValue(definition, '0')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '21')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '1.5')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '1')).toMatchObject({valid: true})
   })
 
   it('le nombre de membres est un entier positif, sans valeur par defaut', () => {
@@ -220,6 +250,7 @@ describe('registre de production', () => {
       FORAGE_EMAIL_SETTING_KEY,
       MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
       ASSOCIATION_MEMBER_COUNT_SETTING_KEY,
+      CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -528,5 +559,25 @@ describe('getMagicLinkDailyRequestLimit — seuil de demande de lien', () => {
         ])
       )
     ).toBe(7)
+  })
+})
+
+describe('getContactMessagesPerHourLimit — seuil des formulaires publics', () => {
+  it('sans reglage, le defaut du registre : 3 par heure', () => {
+    expect(
+      getContactMessagesPerHourLimit(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+      )
+    ).toBe(3)
+  })
+
+  it('la valeur renseignee par le bureau l emporte', () => {
+    expect(
+      getContactMessagesPerHourLimit(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: CONTACT_MESSAGES_PER_HOUR_SETTING_KEY, value: '1'},
+        ])
+      )
+    ).toBe(1)
   })
 })

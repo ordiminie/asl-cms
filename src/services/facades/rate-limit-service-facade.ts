@@ -2,3 +2,9 @@ import rateLimitServiceInterceptor from './interceptors/rate-limit-service-logge
 
 export const consumeMagicLinkRequestQuotaService =
   rateLimitServiceInterceptor.consumeMagicLinkRequestQuotaService
+
+export const consumeContactMessageQuotaService =
+  rateLimitServiceInterceptor.consumeContactMessageQuotaService
+
+export const purgeExpiredRateLimitFingerprintsService =
+  rateLimitServiceInterceptor.purgeExpiredRateLimitFingerprintsService

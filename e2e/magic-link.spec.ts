@@ -485,8 +485,8 @@ test.describe('connexion par lien — s03', () => {
       try {
         await scopeTo(a)
         await client.query(
-          `insert into rate_limit_event (organization_id, fingerprint, day)
-           values ($1, 'e2e-isolation', current_date)`,
+          `insert into rate_limit_event (organization_id, fingerprint, window_start)
+           values ($1, 'e2e-isolation', date_trunc('day', now()))`,
           [a]
         )
 
@@ -498,8 +498,8 @@ test.describe('connexion par lien — s03', () => {
 
         await expect(
           client.query(
-            `insert into rate_limit_event (organization_id, fingerprint, day)
-             values ($1, 'e2e-forge', current_date)`,
+            `insert into rate_limit_event (organization_id, fingerprint, window_start)
+             values ($1, 'e2e-forge', date_trunc('day', now()))`,
             [a]
           )
         ).rejects.toThrow(/row-level security/i)

@@ -12,11 +12,17 @@ vi.mock('@/app/dal/tenant-dal', () => ({
 vi.mock('@/services/facades/contact-message-service-facade', () => ({
   createContactMessageService: vi.fn(),
 }))
+vi.mock('@/services/facades/rate-limit-service-facade', () => ({
+  consumeContactMessageQuotaService: vi.fn(),
+}))
+vi.mock('next/headers', () => ({headers: vi.fn()}))
 
+import {headers} from 'next/headers'
 import {getTranslations} from 'next-intl/server'
 
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {createContactMessageService} from '@/services/facades/contact-message-service-facade'
+import {consumeContactMessageQuotaService} from '@/services/facades/rate-limit-service-facade'
 
 import {submitContactAction} from './actions'
 
@@ -46,8 +52,22 @@ const contactForm = (overrides: Record<string, string> = {}) => {
   return formData
 }
 
+const VISITOR_IP = '203.0.113.7'
+
+const requestHeaders = (values: Record<string, string>) =>
+  vi
+    .mocked(headers)
+    .mockResolvedValue(
+      new Headers(values) as Awaited<ReturnType<typeof headers>>
+    )
+
 beforeEach(() => {
   vi.clearAllMocks()
+  requestHeaders({'x-forwarded-for': VISITOR_IP})
+  vi.mocked(consumeContactMessageQuotaService).mockResolvedValue({
+    allowed: true,
+    limit: 3,
+  })
   vi.mocked(getCurrentTenantDal).mockResolvedValue(tenant)
   vi.mocked(createContactMessageService).mockResolvedValue({
     status: 'created',
@@ -137,5 +157,79 @@ describe('submitContactAction', () => {
       submitContactAction({status: 'idle'}, contactForm())
     ).rejects.toThrow()
     expect(createContactMessageService).not.toHaveBeenCalled()
+  })
+
+  it('consomme le quota du visiteur, reconnu à son adresse IP, pour l’association servie', async () => {
+    await submitContactAction({status: 'idle'}, contactForm())
+
+    expect(consumeContactMessageQuotaService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      ip: VISITOR_IP,
+    })
+  })
+
+  it('refuse l’envoi au-delà du seuil, sans rien écrire, en rendant le seuil', async () => {
+    vi.mocked(consumeContactMessageQuotaService).mockResolvedValue({
+      allowed: false,
+      limit: 3,
+    })
+
+    const state = await submitContactAction({status: 'idle'}, contactForm())
+
+    expect(state).toEqual({status: 'rate_limited', limit: 3})
+    expect(createContactMessageService).not.toHaveBeenCalled()
+  })
+
+  it('ne consomme le quota qu’après la validation, et avant l’écriture', async () => {
+    await submitContactAction(
+      {status: 'idle'},
+      contactForm({email: 'pas-une-adresse'})
+    )
+    expect(consumeContactMessageQuotaService).not.toHaveBeenCalled()
+
+    await submitContactAction({status: 'idle'}, contactForm())
+    expect(
+      vi.mocked(consumeContactMessageQuotaService).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(createContactMessageService).mock.invocationCallOrder[0]
+    )
+  })
+
+  it('lit la dernière adresse de x-forwarded-for, celle posée par le proxy, pas celle du client', async () => {
+    requestHeaders({'x-forwarded-for': `198.51.100.99, ${VISITOR_IP}`})
+
+    await submitContactAction({status: 'idle'}, contactForm())
+
+    expect(consumeContactMessageQuotaService).toHaveBeenCalledWith(
+      expect.objectContaining({ip: VISITOR_IP})
+    )
+  })
+
+  it('se rabat sur x-real-ip sans x-forwarded-for', async () => {
+    requestHeaders({'x-real-ip': VISITOR_IP})
+
+    await submitContactAction({status: 'idle'}, contactForm())
+
+    expect(consumeContactMessageQuotaService).toHaveBeenCalledWith(
+      expect.objectContaining({ip: VISITOR_IP})
+    )
+  })
+
+  it('sans en-tête d’adresse, laisse le service décider, sans IP', async () => {
+    requestHeaders({})
+
+    await submitContactAction({status: 'idle'}, contactForm())
+
+    expect(consumeContactMessageQuotaService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      ip: undefined,
+    })
+  })
+
+  it('ne transmet jamais l’adresse IP au service des messages', async () => {
+    await submitContactAction({status: 'idle'}, contactForm())
+
+    const [input] = vi.mocked(createContactMessageService).mock.calls[0]
+    expect(JSON.stringify(input)).not.toContain(VISITOR_IP)
   })
 })

@@ -440,3 +440,15 @@ export const updateOrganizationIdentityKeyDao = async (
     .set({...reference, updatedAt: new Date()})
     .where(eq(organizations.id, organizationId))
 }
+
+/**
+ * Identifiants de toutes les associations. `organization` est exemptee de RLS
+ * (ADR 002) : elle se lit hors de tout scope, sans `withRlsBypass()`.
+ */
+export const getAllOrganizationIdsDao = async (): Promise<string[]> => {
+  const rows = await getDb()
+    .select({id: organizations.id})
+    .from(organizations)
+    .orderBy(organizations.createdAt)
+  return rows.map(({id}) => id)
+}
