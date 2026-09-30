@@ -1,5 +1,8 @@
 ---
 description:
+paths:
+  - 'src/services/**/*.test.ts'
+  - 'src/services/__tests__/**'
 ---
 
 # Services Tests Rules

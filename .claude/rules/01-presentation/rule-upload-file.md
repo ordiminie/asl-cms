@@ -1,5 +1,11 @@
 ---
 description:
+paths:
+  - 'src/lib/files/**'
+  - 'src/services/*file*'
+  - 'src/app/api/files/**'
+  - 'src/app/api/identity/**'
+  - '**/*upload*'
 ---
 
 # Système d'Upload de Fichiers et Images

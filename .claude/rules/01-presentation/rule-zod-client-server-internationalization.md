@@ -1,5 +1,9 @@
 ---
 description:
+paths:
+  - '**/*validation*.ts'
+  - '**/*form*.tsx'
+  - '**/action*.ts'
 ---
 
 # Règle Zod - Internationalisation Client/Serveur

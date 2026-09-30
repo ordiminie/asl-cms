@@ -1,5 +1,8 @@
 ---
 description:
+paths:
+  - 'src/lib/emails/**'
+  - 'src/services/email-service.ts'
 ---
 
 # Règle Internationalisation des Emails - Next-intl

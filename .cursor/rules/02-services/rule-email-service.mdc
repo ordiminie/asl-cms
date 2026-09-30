@@ -3,6 +3,7 @@ description:
 globs:
 alwaysApply: false
 ---
+
 # Service d'Email — contrat `EmailTransport` et React Email
 
 ## Principe
