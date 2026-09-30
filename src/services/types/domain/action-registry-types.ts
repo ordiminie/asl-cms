@@ -88,6 +88,13 @@ export const ActionIdConst = {
    * et `NEWS_MANAGE` : aucun critere ne distingue les roles entre eux.
    */
   WATER_ANALYSIS_MANAGE: 'water.analysis.manage',
+  /**
+   * Gerer les signalements (s10, ADR 028) : consulter la file et le detail,
+   * faire avancer le statut, administrer les categories du domaine `report`.
+   * Une seule entree pour tous les verbes, sur le precedent de `PAGE_MANAGE` :
+   * aucun critere ne distingue les roles entre eux.
+   */
+  REPORT_MANAGE: 'report.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -125,6 +132,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.WATER_ANALYSIS_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.REPORT_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

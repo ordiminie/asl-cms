@@ -196,3 +196,52 @@ describe('CONTACT_MESSAGE_READ — messages reçus (s08)', () => {
     expect(canPerformAction(user, ORG_ID, READ)).toBe(false)
   })
 })
+
+/**
+ * Gerer les signalements (s10, ADR 028) : file de suivi, detail, changements
+ * de statut, et catégories du domaine `report`.
+ */
+describe('REPORT_MANAGE — signalements (s10)', () => {
+  const MANAGE = ActionIdConst.REPORT_MANAGE
+
+  it('porte l identifiant report.manage', () => {
+    expect(MANAGE).toBe('report.manage')
+    expect(ACTION_REGISTRY.some((action) => action.id === MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+
+  it('[USER NOT IN ORGANIZATION] refuse le bureau d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+})

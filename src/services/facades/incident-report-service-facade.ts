@@ -1,0 +1,12 @@
+import incidentReportServiceInterceptor from './interceptors/incident-report-service-logger-interceptor'
+
+export const canManageIncidentReportsService =
+  incidentReportServiceInterceptor.canManageIncidentReportsService
+export const changeIncidentReportStatusService =
+  incidentReportServiceInterceptor.changeIncidentReportStatusService
+export const createIncidentReportService =
+  incidentReportServiceInterceptor.createIncidentReportService
+export const getIncidentReportService =
+  incidentReportServiceInterceptor.getIncidentReportService
+export const getIncidentReportsPageService =
+  incidentReportServiceInterceptor.getIncidentReportsPageService

@@ -5,6 +5,7 @@ import pg from 'pg'
 
 import {resolveMigrationUrl} from './db-url'
 import initDotEnv, {maskDbUrl} from './env'
+import {TEST_TENANT_CATEGORIES} from './tenant-categories-seed'
 import {TEST_TENANT_SETTINGS} from './tenant-settings-seed'
 
 initDotEnv()
@@ -556,6 +557,31 @@ const seed = async () => {
       DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = NULL;
     `,
       [setting.organizationSlug, setting.key, setting.value]
+    )
+  }
+
+  // 14. Categories de signalement des tenants de test (s10, ADR 028)
+  //
+  // `association_category` est sous RLS forcee : meme porte que ci-dessus.
+  // La cible de conflit est l'index unique partiel des noms actifs : un
+  // nouveau seed remet chaque categorie declaree a son adresse declaree, sans
+  // la dupliquer.
+  for (const category of TEST_TENANT_CATEGORIES) {
+    await client.query(
+      `
+      INSERT INTO "association_category" (organization_id, domain, name, routing_email)
+      SELECT o.id, $2, $3, $4
+      FROM "organization" o
+      WHERE o.slug = $1
+      ON CONFLICT (organization_id, domain, lower(name)) WHERE deleted_at IS NULL
+      DO UPDATE SET routing_email = EXCLUDED.routing_email;
+    `,
+      [
+        category.organizationSlug,
+        category.domain,
+        category.name,
+        category.routingEmail,
+      ]
     )
   }
   await client.query(`SET app.bypass_rls = 'off';`)
