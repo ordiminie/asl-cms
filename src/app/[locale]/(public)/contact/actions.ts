@@ -1,10 +1,10 @@
 'use server'
 
-import {headers} from 'next/headers'
 import {getTranslations} from 'next-intl/server'
 
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
+import {readVisitorIp} from '@/lib/helper/visitor-ip'
 import {createContactMessageService} from '@/services/facades/contact-message-service-facade'
 import {consumeContactMessageQuotaService} from '@/services/facades/rate-limit-service-facade'
 
@@ -23,22 +23,6 @@ export type ContactFormState =
 
 const readField = (formData: FormData, key: string): string =>
   formData.get(key)?.toString() ?? ''
-
-/**
- * Adresse IP du visiteur : la **derniere** entree de `x-forwarded-for`, celle
- * qu'ajoute le reverse proxy de confiance, sinon `x-real-ip`. Jamais la
- * premiere, fournie par le client : un limiteur qui la lit se contourne en
- * changeant une valeur d'en-tete (s08b, decision B).
- */
-const readVisitorIp = async (): Promise<string | undefined> => {
-  const requestHeaders = await headers()
-  const forwarded = requestHeaders
-    .get('x-forwarded-for')
-    ?.split(',')
-    .map((entry) => entry.trim())
-    .findLast((entry) => entry !== '')
-  return forwarded ?? requestHeaders.get('x-real-ip')?.trim() ?? undefined
-}
 
 /**
  * Envoi d'un message au bureau depuis `/contact` (s08).

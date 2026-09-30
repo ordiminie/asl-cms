@@ -248,7 +248,7 @@ test.describe.serial('s02 — paramètres de l’association', () => {
     expect(await storedSettings('b')).toEqual({[CONTACT_KEY]: SEED.b.contact})
   })
 
-  test('critère 4 — le forage jamais renseigné se lit à l’adresse de contact', async ({
+  test('critère 4 — le forage jamais renseigné reste vide, sans promettre d’envoi (s10, ADR 028)', async ({
     browser,
   }) => {
     const page = await newSession(browser, TENANT_A, 'user-owner@gmail.com')
@@ -256,9 +256,10 @@ test.describe.serial('s02 — paramètres de l’association', () => {
 
     await expect(forageField(page)).toHaveValue('')
     await expect(
-      page.getByText(
-        `Vide : les signalements de fuite partent vers ${SEED.a.contact}.`
-      )
+      page.getByText('Vide : aucune adresse n’est enregistrée ici.')
+    ).toBeVisible()
+    await expect(
+      page.getByText("Adresse non utilisée dans l'application.")
     ).toBeVisible()
 
     await page.close()
@@ -338,7 +339,7 @@ test.describe.serial('s02 — paramètres de l’association', () => {
     await page.close()
   })
 
-  test('critère 4 — le forage vidé revient à l’adresse de contact', async ({
+  test('critère 4 — le forage vidé n’est plus enregistré, sans promettre d’envoi (s10, ADR 028)', async ({
     browser,
   }) => {
     const page = await newSession(browser, TENANT_A, 'user-owner@gmail.com')
@@ -351,9 +352,7 @@ test.describe.serial('s02 — paramètres de l’association', () => {
     await openSettingsPage(page, TENANT_A)
     await expect(forageField(page)).toHaveValue('')
     await expect(
-      page.getByText(
-        `Vide : les signalements de fuite partent vers ${NEW_CONTACT_A}.`
-      )
+      page.getByText('Vide : aucune adresse n’est enregistrée ici.')
     ).toBeVisible()
     expect(await storedSettings('a')).not.toHaveProperty(FORAGE_KEY)
 

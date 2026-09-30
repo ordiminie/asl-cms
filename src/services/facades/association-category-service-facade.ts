@@ -1,0 +1,12 @@
+import associationCategoryServiceInterceptor from './interceptors/association-category-service-logger-interceptor'
+
+export const createAssociationCategoryService =
+  associationCategoryServiceInterceptor.createAssociationCategoryService
+export const deleteAssociationCategoryService =
+  associationCategoryServiceInterceptor.deleteAssociationCategoryService
+export const listActiveReportCategoriesPublicService =
+  associationCategoryServiceInterceptor.listActiveReportCategoriesPublicService
+export const listAssociationCategoriesService =
+  associationCategoryServiceInterceptor.listAssociationCategoriesService
+export const updateAssociationCategoryService =
+  associationCategoryServiceInterceptor.updateAssociationCategoryService

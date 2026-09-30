@@ -1259,6 +1259,29 @@
         "reply": "Pour répondre, écrivez directement à {email}.",
         "footer": "Cet email vous est envoyé parce qu'un visiteur a écrit au bureau depuis la page Contact du site de {name}, et que cette adresse est celle que l'association a choisie pour être avertie."
       }
+    },
+    "report": {
+      "notification": {
+        "subject": "{name} — Signalement : {category}",
+        "subjectWithoutCategory": "{name} — Nouveau signalement",
+        "preview": "{location} — signalé le {date} à {hour} h {minute}.",
+        "title": "Nouveau signalement depuis le site",
+        "labels": {
+          "category": "Catégorie",
+          "location": "Où",
+          "receivedAt": "Reçu le",
+          "reporter": "Signalé par",
+          "email": "Email",
+          "phone": "Téléphone",
+          "description": "Ce qui a été signalé"
+        },
+        "notProvided": "non renseigné",
+        "noCategory": "Sans catégorie",
+        "receivedAt": "{date} à {hour} h {minute}",
+        "action": "Ouvrir le signalement",
+        "urlIntro": "Ou copiez ce lien :",
+        "footer": "Cet email vous est envoyé parce qu’un visiteur a fait un signalement depuis le site de {name}, et que cette adresse est celle que l’association a choisie pour être avertie."
+      }
     }
   },
   "PrivacyPage": {
@@ -2832,7 +2855,8 @@
       "waterAnalysis": "Analyses d'eau",
       "board": "Membres du bureau",
       "alert": "Bandeau d’alerte",
-      "messages": "Messages reçus"
+      "messages": "Messages reçus",
+      "reports": "Signalements"
     },
     "cards": {
       "logo": {
@@ -2909,8 +2933,8 @@
       },
       "forageEmail": {
         "label": "Adresse du responsable forage",
-        "help": "Reçoit les signalements de fuite, en plus de l'adresse de contact. Laissée vide, ils ne partent que vers l'adresse de contact.",
-        "whenEmpty": "Vide : les signalements de fuite partent vers {value}."
+        "help": "Adresse non utilisée dans l'application.",
+        "whenEmpty": "Vide : aucune adresse n’est enregistrée ici."
       },
       "accentHue": {
         "label": "Teinte",
@@ -3538,6 +3562,202 @@
     },
     "errors": {
       "forbidden": "Seul le bureau de l’association peut consulter les messages reçus.",
+      "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
+    }
+  },
+  "ReportPage": {
+    "metadata": {
+      "title": "Signaler une fuite ou un incident",
+      "description": "Une fuite, un chemin abîmé, un lampadaire éteint ? Prévenez le bureau de l’association, sans compte."
+    },
+    "title": "Signaler une fuite ou un incident",
+    "intro": "Une fuite, un chemin abîmé, un lampadaire éteint ? Dites-le au bureau. Il n’y a pas besoin de compte.",
+    "emergency": "En cas de danger immédiat, appelez les secours (112). Ce formulaire prévient le bureau, pas les services d’urgence.",
+    "optional": "Facultatif",
+    "fields": {
+      "categoryId": {
+        "label": "De quoi s’agit-il ?",
+        "placeholder": "Choisissez…"
+      },
+      "location": {
+        "label": "Où ?",
+        "help": "Une adresse, un numéro de parcelle ou un repère : « devant le portail nord », « parcelle 47 »."
+      },
+      "description": {
+        "label": "Que se passe-t-il ?",
+        "help": "Décrivez ce que vous voyez. Depuis quand, si vous le savez."
+      },
+      "name": {
+        "label": "Votre nom"
+      },
+      "email": {
+        "label": "Votre adresse email"
+      },
+      "phone": {
+        "label": "Votre téléphone"
+      }
+    },
+    "contact": {
+      "title": "Vos coordonnées",
+      "help": "Facultatif. Laissez-les si vous souhaitez que le bureau puisse vous recontacter."
+    },
+    "submit": {
+      "idle": "Envoyer le signalement",
+      "pending": "Envoi en cours…"
+    },
+    "summary": {
+      "title": "Le signalement n’a pas été envoyé.",
+      "kept": "Votre texte est conservé."
+    },
+    "success": {
+      "title": "Signalement envoyé. Le bureau de l’association l’a reçu.",
+      "recontactPhone": "Il pourra vous recontacter au {phone}.",
+      "recontactEmail": "Il pourra vous recontacter à l’adresse {email}.",
+      "recontactBoth": "Il pourra vous recontacter au {phone} ou à l’adresse {email}.",
+      "noContact": "Vous n’avez pas laissé de coordonnées : le bureau ne pourra pas vous tenir informé.",
+      "cta": "Signaler autre chose"
+    },
+    "validation": {
+      "categoryRequired": "Choisissez ce que vous signalez.",
+      "locationRequired": "Indiquez où : une adresse, un numéro de parcelle ou un repère.",
+      "locationMax": "Le lieu ne doit pas dépasser 200 caractères.",
+      "descriptionRequired": "Décrivez ce que vous voyez avant d’envoyer.",
+      "descriptionMax": "La description ne doit pas dépasser 2 000 caractères.",
+      "nameMax": "Votre nom ne doit pas dépasser 120 caractères.",
+      "emailInvalid": "Cette adresse semble incomplète. Corrigez-la, ou laissez le champ vide.",
+      "phoneInvalid": "Ce numéro contient des caractères inattendus : gardez les chiffres, les espaces et + . - ( ), ou laissez le champ vide.",
+      "phoneMax": "Le numéro ne doit pas dépasser 30 caractères."
+    },
+    "errors": {
+      "generic": "Le signalement n’a pas pu être envoyé. Votre texte est conservé : réessayez dans un instant.",
+      "rateLimit": "Vous avez envoyé plusieurs messages coup sur coup. Ce formulaire en accepte {limit} par heure. Réessayez dans une heure, ou appelez le bureau de votre association."
+    }
+  },
+  "BureauReportsPage": {
+    "metadata": {
+      "title": "Signalements"
+    },
+    "title": "Signalements",
+    "counts": "{reported, plural, =0 {Aucun signalement à traiter} one {# signalement à traiter} other {# signalements à traiter}} · {inProgress, plural, =0 {aucun en cours} other {# en cours}}",
+    "manageCategories": "Gérer les catégories",
+    "columns": {
+      "category": "Catégorie",
+      "location": "Où",
+      "reporter": "Signalé par",
+      "receivedAt": "Reçu le",
+      "status": "Statut",
+      "action": "Action"
+    },
+    "status": {
+      "reported": "Signalé",
+      "in_progress": "En cours",
+      "resolved": "Résolu",
+      "notificationFailed": "Notification non envoyée"
+    },
+    "noCategory": "Sans catégorie",
+    "categoryDeleted": "catégorie supprimée",
+    "anonymous": "Anonyme",
+    "open": "Ouvrir le signalement",
+    "empty": "Aucun signalement pour l’instant. Les signalements envoyés depuis le site apparaissent ici.",
+    "emptyAction": "Voir le formulaire de signalement",
+    "pagination": {
+      "position": "Page {page} sur {total}",
+      "previous": "← Précédent",
+      "next": "Suivant →"
+    },
+    "detail": {
+      "metadataTitle": "Signalement",
+      "back": "← Signalements",
+      "receivedAt": "Reçu le {date} à {hour} h {minute} depuis le site",
+      "notificationFailed": "Ce signalement est bien enregistré, mais l’email d’avertissement au bureau n’est pas parti. <strong>Rien n’est perdu</strong> : vérifiez les adresses dans les Réglages.",
+      "openSettings": "Ouvrir les Réglages",
+      "categoryDeleted": "Cette catégorie a été supprimée depuis ; le signalement est conservé.",
+      "sections": {
+        "location": "Où",
+        "description": "Ce qui a été signalé",
+        "contact": "Coordonnées",
+        "followUp": "Suivi"
+      },
+      "noContact": "Aucune coordonnée laissée",
+      "actions": {
+        "in_progress": "Passer en cours",
+        "resolved": "Marquer comme résolu"
+      },
+      "resolvedNote": "Signalement résolu.",
+      "changed": {
+        "in_progress": "Signalement passé en cours.",
+        "resolved": "Signalement marqué comme résolu."
+      },
+      "history": {
+        "label": "Historique du signalement",
+        "reported": "Signalé depuis le site",
+        "in_progress": "Passé en cours par {name}",
+        "resolved": "Marqué comme résolu par {name}"
+      }
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut suivre les signalements.",
+      "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez.",
+      "stale": "Ce signalement avait déjà changé de statut."
+    }
+  },
+  "BureauReportCategoriesPage": {
+    "metadata": {
+      "title": "Catégories de signalement"
+    },
+    "breadcrumb": {
+      "label": "Fil d’Ariane",
+      "reports": "Signalements",
+      "categories": "Catégories"
+    },
+    "title": "Catégories de signalement",
+    "count": "{count, plural, =0 {0 catégorie} one {# catégorie} other {# catégories}} sur {max} possibles.",
+    "add": "Ajouter une catégorie",
+    "columns": {
+      "name": "Nom",
+      "routingEmail": "Adresse de routage",
+      "action": "Action"
+    },
+    "none": "Aucune",
+    "edit": "Modifier",
+    "empty": "Aucune catégorie. Le formulaire du site fonctionne sans, mais vos visiteurs ne pourront pas préciser ce qu’ils signalent.",
+    "limitReached": "Vous avez déjà {max} catégories, le maximum. Supprimez-en une avant d’en ajouter une autre.",
+    "saved": "Catégorie « {name} » enregistrée.",
+    "deleted": "Catégorie « {name} » supprimée.",
+    "dialog": {
+      "addTitle": "Ajouter une catégorie",
+      "editTitle": "Modifier la catégorie",
+      "summary": "La catégorie n’a pas été enregistrée.",
+      "optional": "Facultatif",
+      "counter": "{count} / {max}",
+      "fields": {
+        "name": {
+          "label": "Nom de la catégorie"
+        },
+        "routingEmail": {
+          "label": "Adresse de routage",
+          "help": "Les signalements de cette catégorie sont aussi envoyés à cette adresse, en plus de l’adresse de contact des Réglages."
+        }
+      },
+      "cancel": "Annuler",
+      "save": "Enregistrer la catégorie",
+      "saving": "Enregistrement…",
+      "delete": "Supprimer la catégorie"
+    },
+    "deleteDialog": {
+      "title": "Supprimer la catégorie « {name} » ?",
+      "description": "Elle ne sera plus proposée dans le formulaire du site. {count, plural, =0 {Aucun signalement n’a été reçu dans cette catégorie.} one {Le signalement déjà reçu dans cette catégorie est conservé.} other {Les # signalements déjà reçus dans cette catégorie sont conservés.}}",
+      "cancel": "Annuler",
+      "confirm": "Supprimer la catégorie"
+    },
+    "validation": {
+      "nameRequired": "Donnez un nom à la catégorie.",
+      "nameMax": "Le nom ne doit pas dépasser 40 caractères.",
+      "emailInvalid": "Cette adresse semble incomplète. Corrigez-la, ou laissez le champ vide.",
+      "duplicate": "Une catégorie porte déjà ce nom."
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut gérer les catégories.",
       "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
     }
   }

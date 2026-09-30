@@ -187,15 +187,16 @@ describe('AssociationSettingsForm — rendu genere par le registre (critere 2)',
 })
 
 describe('AssociationSettingsForm — etats de la page « Reglages »', () => {
-  it('forage non renseigne : le champ est vide et dit ou partent les signalements', () => {
+  it('forage non renseigne : le champ est vide et ne promet aucun envoi (s10, ADR 028)', () => {
     productionForm()
 
     expect(contactField()).toHaveValue(CONTACT)
     expect(forageField()).toHaveValue('')
     expect(
-      screen.getByText(
-        `Vide : les signalements de fuite partent vers ${CONTACT}.`
-      )
+      screen.getByText('Vide : aucune adresse n’est enregistrée ici.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText("Adresse non utilisée dans l'application.")
     ).toBeInTheDocument()
   })
 

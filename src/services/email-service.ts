@@ -12,8 +12,14 @@ import ContactMessageMail, {
   type ContactMessageEmailAssociation,
   type ContactMessageEmailMessage,
   fitSubjectToLength,
+  fitToLength,
 } from '@/lib/emails/contact-message-email'
 import EmailChangeEmailVerification from '@/lib/emails/email-change-email-verification'
+import IncidentReportMail, {
+  INCIDENT_REPORT_SUBJECT_MAX_LENGTH,
+  type IncidentReportEmailAssociation,
+  type IncidentReportEmailReport,
+} from '@/lib/emails/incident-report-email'
 import InternalEmail from '@/lib/emails/internal-email'
 import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization-link-email'
 import MagicLinkMail, {
@@ -755,6 +761,102 @@ export const sendContactMessageNotificationEmailService = async ({
       subject,
       text,
       react: ContactMessageMail({association, message, messageUrl, locale}),
+    },
+    {recipientType: 'system'}
+  )
+}
+
+/**
+ * Objet de l'avertissement d'un signalement : « {association} — Signalement :
+ * {categorie} », ou « … — Nouveau signalement » sans categorie. Trop long,
+ * c'est **la categorie** qui se raccourcit d'abord ; si le nom de
+ * l'association deborde encore, c'est lui qui se raccourcit, l'objet
+ * commencant toujours par lui.
+ */
+const incidentReportSubjectOf = (
+  t: (key: string, values?: Record<string, string>) => string,
+  associationName: string,
+  categoryName: string | null
+): string => {
+  const max = INCIDENT_REPORT_SUBJECT_MAX_LENGTH
+  if (!categoryName) {
+    return fitSubjectToLength(
+      (name) => t('subjectWithoutCategory', {name}),
+      associationName,
+      max
+    )
+  }
+
+  const withCategory = (category: string) => (name: string) =>
+    t('subject', {name, category})
+  const full = withCategory(categoryName)(associationName)
+  const overflow = full.length - max
+  if (overflow <= 0) return full
+
+  const minCategory = 12
+  const category = fitToLength(
+    categoryName,
+    Math.max(minCategory, categoryName.length - overflow)
+  )
+  return fitSubjectToLength(withCategory(category), associationName, max)
+}
+
+/**
+ * Avertit le bureau d'un signalement recu depuis `/signaler` (s10, decision
+ * F). L'adresse `to` est l'une des adresses resolues par l'appelant (contact
+ * des Reglages, adresse de la categorie) — jamais `EMAIL_TO`. Un envoi par
+ * destinataire. `recipientType: 'system'` : les interrupteurs d'envoi de
+ * l'application ne peuvent pas couper cette notification en silence. Locale
+ * explicite. Un echec du transport remonte a l'appelant.
+ */
+export const sendIncidentReportNotificationEmailService = async ({
+  to,
+  locale,
+  association,
+  report,
+  reportUrl,
+}: {
+  to: string
+  locale: SupportedLocale
+  association: IncidentReportEmailAssociation
+  report: IncidentReportEmailReport
+  reportUrl: string
+}) => {
+  const t = await getTranslations({
+    locale,
+    namespace: 'email.report.notification',
+  })
+  const subject = incidentReportSubjectOf(
+    t,
+    association.name,
+    report.categoryName
+  )
+  const receivedAt = t(
+    'receivedAt',
+    receivedAtPartsOf(report.createdAt, locale)
+  )
+  const notProvided = t('notProvided')
+  const text = [
+    t('title'),
+    [
+      `${t('labels.category')} : ${report.categoryName ?? t('noCategory')}`,
+      `${t('labels.location')} : ${report.location}`,
+      `${t('labels.receivedAt')} : ${receivedAt}`,
+      `${t('labels.reporter')} : ${report.reporterName ?? notProvided}`,
+      `${t('labels.email')} : ${report.reporterEmail ?? notProvided}`,
+      `${t('labels.phone')} : ${report.reporterPhone ?? notProvided}`,
+    ].join('\n'),
+    `${t('labels.description')} :\n${report.description}`,
+    `${t('action')} :\n${reportUrl}`,
+    t('footer', {name: association.name}),
+  ].join('\n\n')
+
+  await sendEmailService(
+    {
+      to,
+      subject,
+      text,
+      react: IncidentReportMail({association, report, reportUrl, locale}),
     },
     {recipientType: 'system'}
   )

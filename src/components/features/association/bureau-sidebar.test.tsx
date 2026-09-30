@@ -145,3 +145,21 @@ describe("BureauSidebar — « Analyses d'eau » (s09)", () => {
     expect(siteLinks[position + 1]).toBe('/bureau/navigation')
   })
 })
+
+describe('BureauSidebar — « Signalements » (s10)', () => {
+  it('ajoute l’entrée au groupe « Le site », après « Messages reçus », sans icône', () => {
+    renderSidebarAt('/fr/bureau/signalements')
+
+    const entry = screen.getByRole('link', {name: 'Signalements'})
+    expect(entry).toHaveAttribute('href', '/bureau/signalements')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+
+    const siteLinks = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    expect(siteLinks.indexOf('/bureau/signalements')).toBe(
+      siteLinks.indexOf('/bureau/messages') + 1
+    )
+  })
+})

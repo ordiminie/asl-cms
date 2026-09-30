@@ -115,6 +115,7 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
   'privacy',
   'register',
   'reset-password',
+  'signaler',
   'terms',
   'verify-request',
   'voirie',

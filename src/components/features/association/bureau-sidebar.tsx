@@ -30,6 +30,7 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
       {href: '/bureau/analyses-eau', labelKey: 'waterAnalysis'},
       {href: '/bureau/navigation', labelKey: 'navigation'},
       {href: '/bureau/messages', labelKey: 'messages'},
+      {href: '/bureau/signalements', labelKey: 'reports'},
       {href: '/bureau/le-bureau', labelKey: 'board'},
       {href: '/bureau/alerte', labelKey: 'alert', icon: AlertTriangle},
     ],

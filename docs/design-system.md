@@ -736,6 +736,28 @@ rognée** : une affiche doit rester lisible entière. Pas de hauteur minimale.
 la ligne de tableau reste à 56 px. En carte mobile, les badges passent sous le titre. La variante
 empilée est écartée : 88 px de hauteur pour la même information.
 
+### 3.10 Formes retenues par s10 — signalements
+
+Trois écarts de la maquette `docs/designs/s10-signalements-publics.html` (gaps 1, 2 et 5), versés ici
+par le plan de s10. Aucun ne crée de token ni de composant : ils composent l'existant.
+
+**Statuts d'un workflow** — **le mot porte
+l'information**, la variante existante du `badge` la souligne, **aucune couleur nouvelle** : l'étape
+qui demande une action en `outline` avec un point plein `primary` (« Signalé »), l'étape en cours en
+`secondary` (« En cours »), l'étape close en `outline` texte `muted-foreground` (« Résolu »). Jamais
+de rouge pour une étape normale : seule une vraie erreur porte `destructive` (« Notification non
+envoyée »), sur la même ligne que le statut.
+
+**Historique d'un objet** — liste ordonnée du plus ancien au plus récent : date et heure
+en `data` (`jj/mm/aaaa hh:mm`, `tabular-nums`, `muted-foreground`), puis **une phrase écrite** qui dit
+le changement et son auteur (« Passé en cours par Marie Delorme »). Le premier événement venu du site
+se lit « depuis le site », jamais « Anonyme ». Réutilisable pour les factures, votes et documents.
+
+**Action refusée parce qu'une limite est atteinte** — le bouton reste **visible et
+actif** ; au clic, le refus arrive en `alert` `destructive` ancré sous le titre, qui dit la limite et
+comment se remettre en règle (« Supprimez-en une avant d'en ajouter une autre. »). Un bouton
+désactivé seul serait de l'information par l'absence.
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs
