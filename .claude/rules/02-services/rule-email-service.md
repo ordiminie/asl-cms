@@ -1,3 +1,10 @@
+---
+description:
+paths:
+  - 'src/lib/emails/**'
+  - 'src/services/email-service.ts'
+---
+
 # Service d'Email — contrat `EmailTransport` et React Email
 
 ## Principe

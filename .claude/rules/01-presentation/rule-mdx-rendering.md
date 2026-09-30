@@ -1,5 +1,8 @@
 ---
 description: Rendu MDX du blog et de la documentation
+paths:
+  - '**/*.mdx'
+  - '**/mdx-*'
 ---
 
 # Rendu MDX (blog et documentation)

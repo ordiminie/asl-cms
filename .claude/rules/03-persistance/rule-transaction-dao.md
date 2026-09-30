@@ -1,5 +1,7 @@
 ---
 description:
+paths:
+  - 'src/db/repositories/**'
 ---
 
 # Transactions dans les Repositories DAO

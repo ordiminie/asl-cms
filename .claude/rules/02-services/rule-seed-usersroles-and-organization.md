@@ -1,5 +1,9 @@
 ---
 description:
+paths:
+  - 'src/db/scripts/**'
+  - 'src/services/__tests__/**'
+  - 'e2e/**'
 ---
 
 # Règle Seed - Utilisateurs, Rôles et Organisations

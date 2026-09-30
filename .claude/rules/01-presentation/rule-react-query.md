@@ -1,5 +1,9 @@
 ---
 description:
+paths:
+  - 'src/components/hooks/client/**'
+  - 'src/lib/api/**'
+  - 'src/components/context/query-provider.tsx'
 ---
 
 # Règle React Query - Guide d'Implémentation

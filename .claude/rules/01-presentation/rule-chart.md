@@ -1,5 +1,9 @@
 ---
 description:
+paths:
+  - 'src/components/ui/chart.tsx'
+  - '**/*dashboard*.tsx'
+  - '**/*chart*'
 ---
 
 # ShadCN Charts - Guide d'Implémentation
