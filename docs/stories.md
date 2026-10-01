@@ -1031,6 +1031,12 @@ de contenu parce qu'un sitemap sans contenu à indexer n'est pas testable.
 
 ## Story s12-membres-parcelles — Rattacher un membre à ses parcelles
 
+⚠️ **Scindée le 30 septembre 2026, au plan** (arbitrage de l'utilisatrice) : dix critères, un modèle
+daté, sept écrans et une capacité d'ouverture de compte que s03 n'a pas livrée. s12 garde les fiches,
+les parcelles, les ventes et les coordonnées ; **s12d-comptes-membres** prend l'ouverture et la
+fermeture du compte d'un membre (ex-critère 9) et « Mes parcelles » dans l'espace membre
+(ex-critère 10). La frontière avec s03 décrite plus bas est désormais celle de s12d.
+
 **En tant que** membre du bureau **je veux** gérer les propriétaires et leurs parcelles avec les
 périodes de propriété **afin que** l'historique reste attaché au bon propriétaire après une vente.
 
@@ -1048,8 +1054,6 @@ périodes de propriété **afin que** l'historique reste attaché au bon propri�
 - [ ] Le bureau saisit et met à jour les coordonnées d'un membre depuis sa fiche : adresse postale, téléphone, adresse email — y compris pour un membre qui n'a pas de compte.
 - [ ] Le bureau crée une fiche membre **sans adresse email** : la fiche existe, aucun compte de connexion n'est créé, et elle est marquée « joignable par courrier uniquement ».
 - [ ] Une fiche marquée « joignable par courrier uniquement » et dépourvue d'adresse postale est signalée comme incomplète dans la liste des membres : elle ne serait joignable par aucun canal.
-- [ ] Renseigner une adresse email sur une fiche « courrier uniquement » lui ouvre un compte connectable ; la retirer referme l'accès sans supprimer la fiche ni son historique.
-- [ ] Un membre ne voit que ses propres parcelles ; l'accès à la fiche d'un autre membre est refusé.
 
 ### Dependencies
 
@@ -1390,6 +1394,53 @@ automatisée en CI.
 
 ---
 
+## Story s12d-comptes-membres — Ouvrir et fermer le compte d'un membre
+
+⚠️ **Scindée de s12 le 30 septembre 2026, au plan** (arbitrage de l'utilisatrice). Porte les
+ex-critères 9 et 10 de s12. Id intercalé parce que l'ordre compte : s13 (import), s14 (rôles) et s15
+(invitation) supposent qu'une fiche avec email a un compte, et toute story où un membre propriétaire
+se connecte en dépend, directement ou par elles.
+
+**En tant que** membre du bureau **je veux** qu'une fiche membre dotée d'une adresse email ait un
+compte connectable, et qu'il se referme quand l'adresse est retirée, **afin que** chaque propriétaire
+joignable par email puisse accéder à son espace, et à lui seul.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Renseigner une adresse email sur une fiche « courrier uniquement » lui ouvre un compte connectable sur cette association ; la retirer referme l'accès sans supprimer la fiche ni son historique.
+- [ ] Une fiche créée avec une adresse email a un compte connectable dès sa création, y compris les fiches qui avaient déjà une adresse avant cette story.
+- [ ] Une adresse déjà connue du produit (même personne dans une autre association) réutilise son compte au lieu d'en créer un second ; fermer l'accès ici ne touche pas à son accès ailleurs.
+- [ ] Un membre ne voit que ses propres parcelles, actuelles et passées, dans son espace ; l'accès à la fiche d'un autre membre est refusé.
+- [ ] Retirer l'adresse d'une fiche dont le compte a une session ouverte coupe l'accès à la requête suivante, sans attendre l'expiration de la session.
+
+### Dependencies
+
+s03, s03c, s12
+
+### Agentic notes
+
+Réf. `V5 §5.1`. Design : `docs/designs/s12-membres-parcelles.md`, écran 6 (« Mes parcelles ») et les
+états de compte des écrans 2 et 3 (`2f`, `3f`, `3g`, `3h`).
+
+**Frontière avec s03** : s03 a livré le lien magique et « un lien ne crée jamais de compte », **pas**
+de capacité « ouvrir / fermer un compte de membre » (recherche de s12). Elle se crée **ici, une seule
+fois**, en service réutilisable : s13, s15 et s42 l'appellent, aucune ne la réimplémente.
+
+`user.email` est **unique sur toute la plateforme** : ouvrir un compte réutilise le `user` existant
+(précédent `provisionOrganizationService`). Fermer l'accès retire la ligne `member` de **cette**
+association, jamais le `user`, et **jamais une ligne dont le rôle n'est pas `member`** : retirer
+l'adresse de la fiche d'un membre du bureau ne doit pas lui retirer le bureau.
+
+Ouvrir un compte **n'envoie rien** : l'invitation est s15, le lancement s42.
+
+**Aucune coupure automatique** liée à la cotisation (arbitrage RGPD en attente, note de s12).
+
+---
+
 ## Story s13-import-initial-membres — Charger la liste des membres existants
 
 **En tant que** SuperAdmin **je veux** importer la liste des propriétaires fournie par l'association
@@ -1411,7 +1462,7 @@ automatisée en CI.
 
 ### Dependencies
 
-s12, s12c
+s12, s12d, s12c
 
 ### Agentic notes
 
@@ -1496,7 +1547,7 @@ fiche d'un membre **afin que** le bureau nouvellement élu puisse administrer le
 
 ### Dependencies
 
-s03b, s12
+s03b, s12, s12d
 
 ### Agentic notes
 
@@ -1543,7 +1594,7 @@ quelqu'un, là on emprunte temporairement une vue pour déboguer.
 
 ### Dependencies
 
-s02, s03, s03c, s12
+s02, s03, s03c, s12, s12d
 
 ### Agentic notes
 
@@ -1594,7 +1645,7 @@ en `/ks-design`, et sa qualité relève de la recette, pas d'un test automatisé
 
 ### Dependencies
 
-s12
+s12, s12d
 
 ### Agentic notes
 
@@ -1718,7 +1769,7 @@ cachée prenant un `memberId` en argument : un appelant pourrait demander les do
 
 ### Dependencies
 
-s02, s12
+s02, s12, s12d
 
 ### Agentic notes
 
@@ -1850,7 +1901,7 @@ périmètre et doit être refusée en review.
 
 ### Dependencies
 
-s10, s12
+s10, s12, s12d
 
 ### Agentic notes
 
@@ -1882,7 +1933,7 @@ pour les déclarations membres.
 
 ### Dependencies
 
-s02, s10, s12
+s02, s10, s12, s12d
 
 ### Agentic notes
 
@@ -2363,7 +2414,7 @@ bureau de conclure à tort que personne ne lit ses campagnes.
 
 ### Dependencies
 
-s01b, s03, s03b, s12
+s01b, s03, s03b, s12, s12d
 
 ### Agentic notes
 
@@ -2402,7 +2453,7 @@ perdu à la restauration passerait inaperçu.
 
 ### Dependencies
 
-s12, s31
+s12, s12d, s31
 
 ### Agentic notes
 
@@ -2567,7 +2618,7 @@ test de restauration de s12c (voir ses notes).
 
 ### Dependencies
 
-s10, s12
+s10, s12, s12d
 
 ### Agentic notes
 
@@ -2852,7 +2903,7 @@ l'association détient sur moi **afin d'**exercer mon droit d'accès.
 
 ### Dependencies
 
-s12, s24, s38, s39
+s12, s12d, s24, s38, s39
 
 ### Agentic notes
 
@@ -2984,6 +3035,57 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 
 ---
 
+## Story s43-locale-unique — Servir le site en français seul, sans préfixe de langue
+
+⚠️ **Story hors du tableau de périmètre du PRD.** Elle applique l'**ADR 008** (framing, 8 septembre
+2026), qu'aucune story ne portait : le plan de s01 l'avait noté (« aucune story ne le porte »), la
+revue de s04 aussi. Ajoutée le 30 septembre 2026 au moment du plan de s11, qui la **contourne** sans
+l'appliquer (sitemap limité aux adresses sans préfixe, adresse canonique sur chaque page publique).
+Arbitrage de l'utilisatrice : le contournement de s11 est accepté à condition que l'application soit
+prévue ; elle peut venir plus tard.
+
+**En tant que** visiteur **je veux** que chaque page du site n'ait qu'une adresse, en français
+**afin que** les liens partagés par le bureau soient courts, stables, et que les moteurs de recherche
+ne voient pas trois fois la même page.
+
+### Complexity
+
+2
+
+### Acceptance criteria
+
+- [ ] Le routage ne déclare qu'une locale, `fr`, sans préfixe d'URL : toute page publique, du bureau ou de l'espace membre est servie à son adresse sans préfixe, en français, avec `<html lang="fr">`.
+- [ ] Une adresse préfixée par `/fr`, `/en` ou `/es` ne sert plus aucune page : elle redirige de façon permanente vers la même adresse sans préfixe.
+- [ ] Les routes authentifiées (bureau, espace membre, SuperAdmin) restent protégées par le proxy sans préfixe de langue : un visiteur sans session qui ouvre `/bureau` est renvoyé vers la connexion, comme avant.
+- [ ] Les liens écrits dans les emails (lien de connexion, notifications au bureau) et le sitemap (s11) ne portent aucun préfixe de langue.
+- [ ] `messages/en.json` et `messages/es.json` sont retirés, ainsi que le sélecteur de langue ; aucun libellé ne manque en français.
+
+### Dependencies
+
+s11
+
+### Agentic notes
+
+Réf. `ADR 008`.
+
+**Point de rupture annoncé par l'ADR** : `src/proxy.ts` manipule explicitement le préfixe de locale
+(`localeOf`, `stripLocalePrefix`) pour reconnaître les segments authentifiés. C'est là que la story
+peut casser la protection des routes sans erreur visible — d'où le critère 3, à prouver en e2e.
+
+Les routes restent physiquement sous `src/app/[locale]/` (décision de l'ADR) : aucun déplacement de
+fichier. Les specs e2e et les tests qui visitent `/fr/…` ou `/en/…` sont à revoir ; c'est l'essentiel
+du coût.
+
+Aujourd'hui la locale par défaut est `en` : l'adresse sans préfixe sert la locale anglaise, dont les
+messages ont été alignés à la main sur le français par les stories précédentes. Vérifier qu'aucun
+écran ne perd un libellé au retrait de `en.json`.
+
+À faire **de préférence avant la mise en ligne (s12b)** pour qu'aucune adresse préfixée ne soit
+jamais publiée, mais sans en faire une dépendance bloquante : les adresses sans préfixe, les seules
+que s11 déclare, restent valides après la story.
+
+---
+
 # Récapitulatif — ordre et dépendances
 
 | Id   | Story                     | Cx  | Dépend de                                                                                                                                | Bloc |
@@ -3007,17 +3109,18 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s12a | retrait-supabase          | 2   | s01b                                                                                                                                     | B    |
 | s12b | mise-en-ligne             | 3   | s01, s01b, s03, s03c, s08, s12a                                                                                                          | B    |
 | s12c | sauvegarde                | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
-| s13  | import-initial-membres    | 3   | s12, s12c                                                                                                                                | B    |
-| s14  | attribuer-roles           | 2   | s03b, s12                                                                                                                                | B    |
-| s15  | inviter-membre            | 2   | s02, s03, s03c, s12                                                                                                                      | B    |
-| s16  | coordonnees-membre        | 1   | s12                                                                                                                                      | B    |
+| s12d | comptes-membres           | 3   | s03, s03c, s12                                                                                                                           | B    |
+| s13  | import-initial-membres    | 3   | s12, s12d, s12c                                                                                                                          | B    |
+| s14  | attribuer-roles           | 2   | s03b, s12, s12d                                                                                                                          | B    |
+| s15  | inviter-membre            | 2   | s02, s03, s03c, s12, s12d                                                                                                                | B    |
+| s16  | coordonnees-membre        | 1   | s12, s12d                                                                                                                                | B    |
 | s17  | import-releves-eau        | 3   | s02, s12, s13                                                                                                                            | B    |
 | s18  | historique-consommation   | 2   | s17                                                                                                                                      | B    |
-| s19  | factures-liste            | 3   | s02, s12                                                                                                                                 | B    |
+| s19  | factures-liste            | 3   | s02, s12, s12d                                                                                                                           | B    |
 | s20  | factures-pennylane        | 3   | s02, s19                                                                                                                                 | B    |
 | s21  | redirection-paiement      | 1   | s02, s19                                                                                                                                 | B    |
-| s22  | signalement-membre        | 2   | s10, s12                                                                                                                                 | B    |
-| s23  | questions-bureau          | 2   | s02, s10, s12                                                                                                                            | B    |
+| s22  | signalement-membre        | 2   | s10, s12, s12d                                                                                                                           | B    |
+| s23  | questions-bureau          | 2   | s02, s10, s12, s12d                                                                                                                      | B    |
 | s24  | notes-internes-membre     | 2   | s12                                                                                                                                      | B    |
 | s25  | campagnes-email           | 3   | s02, s03, s12                                                                                                                            | C    |
 | s26  | envoi-echelonne           | 4   | s02, s12b, s25                                                                                                                           | C    |
@@ -3026,26 +3129,28 @@ campagne (s25), ne pas la faire figurer dans l'export (s38).
 | s28  | publipostage-pdf          | 3   | s12, s25                                                                                                                                 | C    |
 | s29  | relances-impayes          | 4   | s02, s19, s25, s26, s27, s27b, s28                                                                                                       | C    |
 | s30  | stats-campagnes           | 2   | s25, s26                                                                                                                                 | C    |
-| s31  | documents-partages        | 2   | s01b, s03, s03b, s12                                                                                                                     | D    |
-| s32  | documents-nominatifs      | 4   | s12, s31                                                                                                                                 | D    |
+| s31  | documents-partages        | 2   | s01b, s03, s03b, s12, s12d                                                                                                               | D    |
+| s32  | documents-nominatifs      | 4   | s12, s12d, s31                                                                                                                           | D    |
 | s33  | vote-asl-community        | 3   | s02, s12, s31                                                                                                                            | E    |
 | s34  | module-voirie             | 2   | s01, s04, s04b                                                                                                                           | F    |
-| s35  | petites-annonces          | 3   | s10, s12                                                                                                                                 | F    |
+| s35  | petites-annonces          | 3   | s10, s12, s12d                                                                                                                           | F    |
 | s36  | modeles-documents         | 3   | s27, s28, s32                                                                                                                            | F    |
 | s37  | permissions-configurables | 4   | s03b                                                                                                                                     | F    |
 | s38  | export-donnees            | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37 | F    |
 | s39  | completude-export         | 2   | s38                                                                                                                                      | F    |
-| s40  | export-membre             | 2   | s12, s24, s38, s39                                                                                                                       | F    |
+| s40  | export-membre             | 2   | s12, s12d, s24, s38, s39                                                                                                                 | F    |
 | s41  | simulation-role           | 2   | s01, s03b, s24, s37, s38, s39                                                                                                            | F    |
 | s42  | lancement-invitations     | 3   | s03, s03c, s13, s15, s25, s26, s27, s27b, s28                                                                                            | F    |
+| s43  | locale-unique             | 2   | s11                                                                                                                                      | A    |
 
-**50 stories, aucune à 5.** Répartition : trois à 1, vingt à 2, dix-neuf à 3, huit à 4.
-**Quatre stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**52 stories, aucune à 5.** Répartition : trois à 1, vingt et une à 2, vingt à 3, huit à 4.
+**Cinq stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
-« mise en production effective sur le VPS » ; et s12c, la sauvegarde, que s13 attend avant
-d'importer les données réelles.
+« mise en production effective sur le VPS » ; s12c, la sauvegarde, que s13 attend avant
+d'importer les données réelles ; et s43, l'application de l'ADR 008 (locale unique), ajoutée au plan
+de s11.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
