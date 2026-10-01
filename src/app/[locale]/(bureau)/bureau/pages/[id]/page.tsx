@@ -3,17 +3,20 @@ import {notFound} from 'next/navigation'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {Suspense} from 'react'
 
+import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {canManageCurrentPagesDal, getPageForBureauDal} from '@/app/dal/page-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {BureauAccessDenied} from '@/components/features/association/bureau-access-denied'
 import {PageEditor} from '@/components/features/pages/page-editor'
 import {Skeleton} from '@/components/ui/skeleton'
+import {getAssociationDescription} from '@/services/types/domain/association-settings-types'
 
 import {
   publishPageAction,
   savePageDraftAction,
   unpublishPageAction,
   uploadPageBlockFileAction,
+  uploadPageShareImageAction,
 } from './actions'
 
 type EditorParams = {params: Promise<{locale: string; id: string}>}
@@ -54,7 +57,10 @@ async function EditorSection({pageId}: {pageId: string}) {
     return <BureauAccessDenied />
   }
 
-  const page = await getPageForBureauDal(tenant.id, pageId)
+  const [page, settings] = await Promise.all([
+    getPageForBureauDal(tenant.id, pageId),
+    getAssociationSettingsDal(tenant.id),
+  ])
   if (!page) {
     notFound()
   }
@@ -62,10 +68,15 @@ async function EditorSection({pageId}: {pageId: string}) {
   return (
     <PageEditor
       page={page}
+      association={{
+        host: tenant.domain,
+        description: getAssociationDescription(settings),
+      }}
       saveAction={savePageDraftAction}
       publishAction={publishPageAction}
       unpublishAction={unpublishPageAction}
       uploadAction={uploadPageBlockFileAction}
+      uploadShareImageAction={uploadPageShareImageAction}
     />
   )
 }

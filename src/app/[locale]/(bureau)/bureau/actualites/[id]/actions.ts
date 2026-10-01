@@ -42,6 +42,8 @@ export type NewsInput = {
   imageAlt: string
   /** Cle du dernier depot, ou `null` si l'image a ete retiree. */
   imageKey: string | null
+  /** Description pour les moteurs (s11) ; vide, le debut du texte. */
+  seoDescription?: string
 }
 
 const failure = async (error: unknown): Promise<{message: string}> => {

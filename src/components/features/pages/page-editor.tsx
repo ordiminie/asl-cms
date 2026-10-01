@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
-import {useState, useTransition} from 'react'
+import {useId, useState, useTransition} from 'react'
 
 import {
   PageBlockUploadState,
+  PageInput,
   PagePublishState,
   PageSaveState,
+  PageShareImageUploadState,
   PageUnpublishState,
 } from '@/app/[locale]/(bureau)/bureau/pages/[id]/actions'
 import {
@@ -32,7 +34,15 @@ import {
   PageBlockData,
   PageBlockTypeConst,
 } from '@/services/types/domain/page-block-types'
-import {PageWithBlocksDTO} from '@/services/types/domain/page-types'
+import {
+  isPageBlockPublicationIssue,
+  PagePublicationIssue,
+  PageWithBlocksDTO,
+} from '@/services/types/domain/page-types'
+import {
+  SEO_DESCRIPTION_MAX,
+  SEO_TITLE_MAX,
+} from '@/services/types/domain/seo-types'
 
 import {EditorBlock} from './blocks/block-form-types'
 import {CalloutBlockForm} from './blocks/callout-block-form'
@@ -41,29 +51,34 @@ import {ImageBlockForm} from './blocks/image-block-form'
 import {PdfBlockForm} from './blocks/pdf-block-form'
 import {TextBlockForm} from './blocks/text-block-form'
 import {UnknownBlockCard} from './blocks/unknown-block-card'
+import {overflowOf, PageSeoSection, PageSeoValue} from './page-seo-section'
 
 type PageEditorProps = {
   page: PageWithBlocksDTO
-  saveAction: (input: {
-    pageId: string
-    previousSlug: string
-    title: string
-    slug: string
-    blocks: {id?: string; type?: string; data: unknown}[]
-  }) => Promise<PageSaveState>
-  publishAction: (input: {
-    pageId: string
-    previousSlug: string
-    title: string
-    slug: string
-    blocks: {id?: string; type?: string; data: unknown}[]
-  }) => Promise<PagePublishState>
+  /** Domaine et description de l'association, pour l'apercu et le repli. */
+  association: {host: string; description?: string}
+  saveAction: (input: PageInput) => Promise<PageSaveState>
+  publishAction: (input: PageInput) => Promise<PagePublishState>
   unpublishAction: (input: {
     pageId: string
     slug: string
   }) => Promise<PageUnpublishState>
   uploadAction: (formData: FormData) => Promise<PageBlockUploadState>
+  uploadShareImageAction: (
+    formData: FormData
+  ) => Promise<PageShareImageUploadState>
 }
+
+const toSeoValue = (page: PageWithBlocksDTO): PageSeoValue => ({
+  seoTitle: page.seoTitle ?? '',
+  seoDescription: page.seoDescription ?? '',
+  shareImageKey: page.shareImageKey,
+  shareImageAlt: page.shareImageAlt ?? '',
+})
+
+const hasSeoOverflow = (seo: PageSeoValue): boolean =>
+  overflowOf(seo.seoTitle, SEO_TITLE_MAX) > 0 ||
+  overflowOf(seo.seoDescription, SEO_DESCRIPTION_MAX) > 0
 
 const EMPTY_BLOCK: Record<string, PageBlockData> = {
   [PageBlockTypeConst.TEXT]: {type: 'text', markdown: ''},
@@ -108,13 +123,17 @@ const persistedStatus = (
  */
 export function PageEditor({
   page,
+  association,
   saveAction,
   publishAction,
   unpublishAction,
   uploadAction,
+  uploadShareImageAction,
 }: PageEditorProps) {
   const t = useTranslations('BureauPagesPage.editor')
+  const tSeo = useTranslations('BureauPagesPage.editor.seo')
   const tTypes = useTranslations('PageBlocks.types')
+  const shareAltId = useId()
 
   const [savedPage, setSavedPage] = useState(page)
   const [title, setTitle] = useState(page.title)
@@ -122,9 +141,11 @@ export function PageEditor({
   const [blocks, setBlocks] = useState<EditorBlock[]>(() =>
     toEditorBlocks(page)
   )
+  const [seo, setSeo] = useState<PageSeoValue>(() => toSeoValue(page))
   const [isDirty, setIsDirty] = useState(false)
   const [slugError, setSlugError] = useState<string>()
   const [barError, setBarError] = useState<string>()
+  const [shareAltError, setShareAltError] = useState<string>()
   const [isPending, startTransition] = useTransition()
 
   const status: PreviewBarStatus = barError
@@ -142,25 +163,60 @@ export function PageEditor({
       data: block.data,
     }))
 
+  const payload = (): PageInput => ({
+    pageId: page.id,
+    previousSlug: savedPage.slug,
+    title,
+    slug,
+    blocks: blockPayload(),
+    ...seo,
+  })
+
   const applySaved = (next: PageWithBlocksDTO) => {
     setSavedPage(next)
     setBlocks(toEditorBlocks(next))
     setTitle(next.title)
     setSlug(next.slug)
+    setSeo(toSeoValue(next))
     setIsDirty(false)
   }
 
-  const save = () => {
+  /**
+   * Un texte trop long n'est pas envoye : le compteur dit deja l'excedent sous
+   * le champ, la barre dit le refus.
+   */
+  const startSubmit = (): boolean => {
     setSlugError(undefined)
     setBarError(undefined)
+    setShareAltError(undefined)
+    if (!hasSeoOverflow(seo)) return true
+    setBarError(tSeo('tooLongRefused'))
+    return false
+  }
+
+  const refusalOf = (issues: readonly PagePublicationIssue[]): string => {
+    const blockIssues = issues.filter((issue) =>
+      isPageBlockPublicationIssue(issue)
+    )
+    const messages = []
+    if (blockIssues.length > 0) {
+      messages.push(
+        t('incomplete', {
+          positions: blockIssues.map((issue) => issue.rank + 1).join(', '),
+        })
+      )
+    }
+    if (blockIssues.length < issues.length) {
+      messages.push(tSeo('shareImageAltMissing'))
+      setShareAltError(tSeo('altMissing'))
+    }
+    return messages.join(' ')
+  }
+
+  const save = () => {
+    if (!startSubmit()) return
     startTransition(async () => {
-      const result = await saveAction({
-        pageId: page.id,
-        previousSlug: savedPage.slug,
-        title,
-        slug,
-        blocks: blockPayload(),
-      })
+      const result = await saveAction(payload())
 
       if (result.status === 'saved') applySaved(result.page)
       else if (result.status === 'slug-taken') setSlugError(t('slugTaken'))
@@ -169,27 +225,33 @@ export function PageEditor({
   }
 
   const publish = () => {
-    setSlugError(undefined)
-    setBarError(undefined)
+    if (!startSubmit()) return
     startTransition(async () => {
-      const result = await publishAction({
-        pageId: page.id,
-        previousSlug: savedPage.slug,
-        title,
-        slug,
-        blocks: blockPayload(),
-      })
+      const result = await publishAction(payload())
 
       if (result.status === 'published') applySaved(result.page)
       else if (result.status === 'incomplete') {
-        setBarError(
-          t('incomplete', {
-            positions: result.issues.map((issue) => issue.rank + 1).join(', '),
-          })
-        )
+        setBarError(refusalOf(result.issues))
       } else setBarError(result.message)
     })
   }
+
+  const uploadShareImage = async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('pageId', page.id)
+
+    const result = await uploadShareImageAction(formData)
+    if (result.status === 'error') {
+      setBarError(result.message)
+      return undefined
+    }
+
+    setIsDirty(true)
+    return result
+  }
+
+  const focusShareAlt = () => document.getElementById(shareAltId)?.focus()
 
   const unpublish = () => {
     setBarError(undefined)
@@ -264,6 +326,20 @@ export function PageEditor({
         status={status}
         title={savedPage.title}
         errorMessage={barError}
+        errorAction={
+          shareAltError ? (
+            <a
+              href={`#${shareAltId}`}
+              className="font-semibold underline"
+              onClick={(event) => {
+                event.preventDefault()
+                focusShareAlt()
+              }}
+            >
+              {tSeo('describeImage')}
+            </a>
+          ) : undefined
+        }
         back={
           <Button asChild variant="outline" className="h-11">
             <Link href="/bureau/pages">{t('back')}</Link>
@@ -419,6 +495,22 @@ export function PageEditor({
               </p>
             )}
           </div>
+
+          <PageSeoSection
+            value={seo}
+            onChange={(next) => {
+              setSeo(next)
+              setIsDirty(true)
+              if (next.shareImageAlt.trim() !== '') setShareAltError(undefined)
+            }}
+            pageTitle={title}
+            slug={slug}
+            host={association.host}
+            associationDescription={association.description}
+            onUpload={uploadShareImage}
+            altError={shareAltError}
+            altInputId={shareAltId}
+          />
         </aside>
       </div>
     </div>

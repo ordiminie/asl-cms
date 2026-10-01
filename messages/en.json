@@ -75,7 +75,8 @@
   },
   "LocaleLayout": {
     "title": "Next SaaS Boilerplate",
-    "description": "Next SaaS Boilerplate"
+    "description": "Next SaaS Boilerplate",
+    "titleTemplate": "%s · {association}"
   },
   "LangToggle": {
     "label": "Change language",
@@ -2873,7 +2874,9 @@
       "aboveMax": "The value is too large: the maximum is {max}.",
       "invalidBoolean": "Tick or untick the box for this setting.",
       "invalidChoice": "Choose one of the options offered in the list.",
-      "unknownKey": "This setting does not exist or is no longer offered."
+      "unknownKey": "This setting does not exist or is no longer offered.",
+      "tooLong": "{excess, plural, one {# character too many.} other {# characters too many.}}",
+      "invalidCode": "This code does not look like Google's: it only contains letters, digits, hyphens and underscores."
     },
     "fields": {
       "contactEmail": {
@@ -2904,6 +2907,17 @@
       "contactMessagesPerHour": {
         "label": "Messages per hour and per visitor",
         "help": "Number of messages a single visitor can send in one hour through the site's public forms, such as the Contact page. Beyond that, sending is refused with a message explaining why, until the next hour: this protects the board from automated messages."
+      },
+      "associationDescription": {
+        "label": "Association description",
+        "help": "Two sentences introducing the association. They appear under the site name in Google results, and when someone shares a link to a page that has no description of its own.",
+        "whenEmpty": "Empty: search results will show the text Google picks from the page."
+      },
+      "googleVerification": {
+        "label": "Google verification code",
+        "help": "Google gives it to you when you declare the site in the Search Console: it is the string of letters and digits after content=. Paste it here.",
+        "whenEmpty": "Empty: the site is not declared to Google. It may still appear in its results.",
+        "extracted": "We kept the code only: {code}."
       }
     },
     "hues": {
@@ -2918,7 +2932,8 @@
       "requestsPerDay": "requests per day",
       "members": "members",
       "messagesPerHour": "messages per hour"
-    }
+    },
+    "counter": "{count} / {max}"
   },
   "BureauSettingsPage": {
     "metadata": {
@@ -2933,6 +2948,10 @@
     "cards": {
       "notifications": {
         "title": "Notification addresses"
+      },
+      "seo": {
+        "title": "Search engines",
+        "description": "What Google shows of your site, and what people see when a link is shared."
       }
     },
     "submit": "Save settings",
@@ -2948,7 +2967,8 @@
       "kept": "The previous addresses remain in effect.",
       "forbidden": "This action is reserved for the association's board.",
       "invalidData": "No settings were received. Reload the page and try again."
-    }
+    },
+    "successSeo": "Settings saved. Google will take them into account on its next visit to the site."
   },
   "PublicCmsPage": {
     "previewDraft": "Board preview: this page is a draft, visitors cannot see it.",
@@ -3108,7 +3128,36 @@
       "slugLabel": "Page address",
       "slugHelp": "The page will be visible at /{slug}",
       "slugTaken": "This slug is already used by another page.",
-      "incomplete": "Cannot publish: blocks {positions} are still missing an alternative text or a title. Nothing is lost."
+      "incomplete": "Cannot publish: blocks {positions} are still missing an alternative text or a title. Nothing is lost.",
+      "seo": {
+        "title": "Search and sharing",
+        "intro": "What shows up in Google, and when someone shares the link to the page.",
+        "optional": "Optional",
+        "counter": "{count} of {max}",
+        "overflow": "{over} characters too many.",
+        "seoTitleLabel": "Title in search engines",
+        "seoTitleEmpty": "Empty: the page title, “{title}”, will be used.",
+        "descriptionLabel": "Summary",
+        "descriptionEmpty": "Empty: the association description will be used.",
+        "descriptionEmptyNoAssociation": "Empty, like the association description: Google will pick an excerpt from the page.",
+        "associationDescriptionLink": "Fill in the association description",
+        "imageLabel": "Sharing image",
+        "imageHelp": "Shown when someone shares the link, for example in a messaging app.",
+        "imageConstraints": "PNG, JPEG or WebP, 5 MB at most. Ideally 1200 × 630 px.",
+        "imageEmpty": "Empty: the association logo will be shown.",
+        "imageChoose": "Choose a file",
+        "imageReplace": "Replace the image",
+        "imageRemove": "Remove the image",
+        "imagePreviewAlt": "Preview of the sharing image",
+        "imageUploading": "Uploading {fileName}…",
+        "altLabel": "Image alternative text",
+        "altRequired": "Required with an image",
+        "altHelp": "Describe what the image shows, for people who cannot see it.",
+        "altMissing": "Describe the image before publishing: without alternative text, the page cannot be published.",
+        "shareImageAltMissing": "Publishing refused: the sharing image has no alternative text. Nothing is lost.",
+        "describeImage": "Describe the image",
+        "tooLongRefused": "Saving refused: a text is too long. Nothing is lost."
+      }
     }
   },
   "BureauNavigationPage": {
@@ -3232,6 +3281,16 @@
       "publishedIssues": {
         "missing_title": "Give this news item a title: it is online, and its title shows on the website.",
         "missing_image_alt": "Add an alternative text to the image: the news item is online, and this text describes it to people who cannot see it."
+      },
+      "seo": {
+        "title": "Search and sharing",
+        "intro": "The title and image shown are those of the news item, with its alternative text.",
+        "optional": "Optional",
+        "counter": "{count} of {max}",
+        "overflow": "{over} characters too many.",
+        "descriptionLabel": "Summary",
+        "descriptionEmpty": "Empty: the beginning of the news text will be used.",
+        "tooLongRefused": "Saving refused: the summary is too long. Nothing is lost."
       }
     }
   },
@@ -3400,5 +3459,11 @@
       "messageRequired": "Write the message before showing the banner.",
       "messageTooLong": "The message exceeds {max} characters."
     }
+  },
+  "SearchPreview": {
+    "label": "In Google",
+    "address": "{host} › {path}",
+    "noDescription": "Excerpt chosen by Google from the page.",
+    "disclaimer": "Google may shorten these texts or choose others."
   }
 }

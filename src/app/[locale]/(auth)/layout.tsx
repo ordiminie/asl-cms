@@ -4,6 +4,7 @@ import {PropsWithChildren} from 'react'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {AssociationMark} from '@/components/features/association/association-mark'
 import {routing} from '@/i18n/routing'
+import {NO_INDEX_ROBOTS} from '@/lib/seo/resolve-metadata'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 
 export async function generateMetadata({
@@ -18,6 +19,7 @@ export async function generateMetadata({
   return {
     title: t('title'),
     description: t('description'),
+    robots: NO_INDEX_ROBOTS,
   }
 }
 

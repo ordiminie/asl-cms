@@ -7,12 +7,17 @@ import {getTranslations, setRequestLocale} from 'next-intl/server'
 import React from 'react'
 
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
+import {AssociationSeoDTO, getCurrentAssociationSeoDal} from '@/app/dal/seo-dal'
 import {getPublicSiteAlertDal} from '@/app/dal/site-alert-dal'
 import {
   getCurrentTenantDal,
   requireCurrentTenantDal,
 } from '@/app/dal/tenant-dal'
 import {routing} from '@/i18n/routing'
+import {
+  OPEN_GRAPH_LOCALE,
+  shareImageFallbackUrl,
+} from '@/lib/seo/resolve-metadata'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 import {getAccentHue} from '@/services/types/domain/association-settings-types'
 
@@ -78,14 +83,48 @@ export async function generateMetadata({
   // Configurer la locale avant getTranslations
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'LocaleLayout'})
-  const tenant = await getCurrentTenantDal()
+  const [tenant, association] = await Promise.all([
+    getCurrentTenantDal(),
+    getCurrentAssociationSeoDal(),
+  ])
+  const icons = {icon: associationFaviconUrl(tenant?.faviconKey)}
+
+  if (!association) {
+    return {title: t('title'), description: t('description'), icons}
+  }
 
   return {
-    title: t('title'),
-    description: t('description'),
-    icons: {icon: associationFaviconUrl(tenant?.faviconKey)},
+    ...associationMetadata(
+      association,
+      t('titleTemplate', {association: association.name})
+    ),
+    icons,
   }
 }
+
+/**
+ * Metadonnees par defaut de toutes les pages de l'association du domaine
+ * appele (s11) : base des adresses sur son origine, son nom apres chaque
+ * titre, sa description, son code Google et son image de repli. Une valeur
+ * absente n'emet aucune balise, jamais une balise vide.
+ */
+const associationMetadata = (
+  association: AssociationSeoDTO,
+  titleTemplate: string
+): Metadata => ({
+  metadataBase: new URL(association.origin),
+  title: {template: titleTemplate, default: association.name},
+  ...(association.description ? {description: association.description} : {}),
+  ...(association.googleVerification
+    ? {verification: {google: association.googleVerification}}
+    : {}),
+  openGraph: {
+    type: 'website',
+    siteName: association.name,
+    locale: OPEN_GRAPH_LOCALE,
+    images: [{url: shareImageFallbackUrl(association), alt: association.name}],
+  },
+})
 
 /**
  * Le favicon de l'association du domaine appele (ADR 015) : toujours la route

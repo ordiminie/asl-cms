@@ -14,6 +14,8 @@ import {Button} from '@/components/ui/button'
 import {Component} from '@/components/ui/vapour-text-effect'
 import {routing} from '@/i18n/routing'
 import {APP_NAME} from '@/lib/constants'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolveFixedPageSeo} from '@/lib/seo/resolve-metadata'
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))
@@ -28,10 +30,17 @@ export async function generateMetadata({
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'HomePage'})
 
-  return {
-    title: t('metadata.title'),
-    description: t('metadata.description'),
-  }
+  return publicPageMetadata(
+    (association) =>
+      resolveFixedPageSeo({path: '/', title: association.name}, association),
+    {
+      absoluteTitle: true,
+      fallback: {
+        title: t('metadata.title'),
+        description: t('metadata.description'),
+      },
+    }
+  )
 }
 
 export default async function Home({

@@ -21,6 +21,7 @@ const item = (
   publishedOn: '2026-09-02',
   imageKey: null,
   imageAlt: '',
+  seoDescription: null,
   content: '',
   status,
   createdAt: new Date('2026-09-01T10:00:00Z'),

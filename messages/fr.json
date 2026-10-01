@@ -75,7 +75,8 @@
   },
   "LocaleLayout": {
     "title": "Next SaaS Boilerplate",
-    "description": "Next SaaS Boilerplate"
+    "description": "Next SaaS Boilerplate",
+    "titleTemplate": "%s · {association}"
   },
   "LangToggle": {
     "label": "Changer de langue",
@@ -2921,7 +2922,9 @@
       "aboveMax": "La valeur est trop grande : le maximum est {max}.",
       "invalidBoolean": "Cochez ou décochez la case pour ce réglage.",
       "invalidChoice": "Choisissez une des options proposées dans la liste.",
-      "unknownKey": "Ce réglage n'existe pas ou n'est plus proposé."
+      "unknownKey": "Ce réglage n'existe pas ou n'est plus proposé.",
+      "tooLong": "{excess, plural, one {# caractère de trop.} other {# caractères de trop.}}",
+      "invalidCode": "Ce code ne ressemble pas à celui de Google : il ne contient que des lettres, des chiffres, des tirets et des soulignés."
     },
     "fields": {
       "contactEmail": {
@@ -2952,6 +2955,17 @@
       "contactMessagesPerHour": {
         "label": "Nombre de messages par heure et par visiteur",
         "help": "Nombre de messages qu’un même visiteur peut envoyer en une heure par les formulaires publics du site, comme la page Contact. Au-delà, l’envoi est refusé avec un message qui l’explique, jusqu’à l’heure suivante : cela protège le bureau des messages automatiques."
+      },
+      "associationDescription": {
+        "label": "Description de l’association",
+        "help": "Deux phrases qui présentent l’association. Elles s’affichent sous le nom du site dans les résultats de Google, et quand quelqu’un partage un lien vers une page qui n’a pas sa propre description.",
+        "whenEmpty": "Vide : les résultats de recherche afficheront le texte que Google choisira dans la page."
+      },
+      "googleVerification": {
+        "label": "Code de vérification Google",
+        "help": "Google vous le donne quand vous déclarez le site dans la Search Console : c’est la suite de lettres et de chiffres après content=. Collez-la ici.",
+        "whenEmpty": "Vide : le site n’est pas déclaré auprès de Google. Il peut tout de même apparaître dans ses résultats.",
+        "extracted": "Nous avons gardé le code seul : {code}."
       }
     },
     "hues": {
@@ -2966,7 +2980,8 @@
       "requestsPerDay": "demandes par jour",
       "members": "membres",
       "messagesPerHour": "messages par heure"
-    }
+    },
+    "counter": "{count} / {max}"
   },
   "BureauSettingsPage": {
     "metadata": {
@@ -2981,6 +2996,10 @@
     "cards": {
       "notifications": {
         "title": "Adresses de notification"
+      },
+      "seo": {
+        "title": "Référencement",
+        "description": "Ce que Google affiche de votre site, et ce qu’on voit quand un lien est partagé."
       }
     },
     "submit": "Enregistrer les réglages",
@@ -2996,7 +3015,8 @@
       "kept": "Les anciennes adresses restent en vigueur.",
       "forbidden": "Cette action est réservée au bureau de l'association.",
       "invalidData": "Aucun réglage n'a été reçu. Rechargez la page et réessayez."
-    }
+    },
+    "successSeo": "Réglages enregistrés. Google en tiendra compte à son prochain passage sur le site."
   },
   "PublicCmsPage": {
     "previewDraft": "Aperçu du bureau : cette page est en brouillon, elle n'est pas visible par les visiteurs.",
@@ -3156,7 +3176,36 @@
       "slugLabel": "Adresse de la page",
       "slugHelp": "La page sera visible à l’adresse /{slug}",
       "slugTaken": "Ce slug est déjà utilisé par une autre page.",
-      "incomplete": "Publication impossible : les blocs {positions} attendent un texte alternatif ou un titre. Rien n'est perdu."
+      "incomplete": "Publication impossible : les blocs {positions} attendent un texte alternatif ou un titre. Rien n'est perdu.",
+      "seo": {
+        "title": "Référencement et partage",
+        "intro": "Ce qui s’affiche dans Google, et quand quelqu’un partage le lien de la page.",
+        "optional": "Facultatif",
+        "counter": "{count} / {max}",
+        "overflow": "{over} caractères de trop.",
+        "seoTitleLabel": "Titre dans les moteurs de recherche",
+        "seoTitleEmpty": "Vide : le titre de la page, « {title} », sera utilisé.",
+        "descriptionLabel": "Description",
+        "descriptionEmpty": "Vide : la description de l’association sera utilisée.",
+        "descriptionEmptyNoAssociation": "Vide, comme la description de l’association : Google choisira un extrait de la page.",
+        "associationDescriptionLink": "Renseigner la description de l’association",
+        "imageLabel": "Image de partage",
+        "imageHelp": "Montrée quand quelqu’un partage le lien, par exemple dans une messagerie.",
+        "imageConstraints": "PNG, JPEG ou WebP, 5 Mo au plus. Idéalement 1200 × 630 px.",
+        "imageEmpty": "Vide : le logo de l’association sera montré.",
+        "imageChoose": "Choisir un fichier",
+        "imageReplace": "Remplacer l’image",
+        "imageRemove": "Retirer l’image",
+        "imagePreviewAlt": "Aperçu de l’image de partage",
+        "imageUploading": "Envoi de {fileName}…",
+        "altLabel": "Texte alternatif de l’image",
+        "altRequired": "Obligatoire avec une image",
+        "altHelp": "Décrivez ce que montre l’image, pour les personnes qui ne la voient pas.",
+        "altMissing": "Décrivez l’image avant de publier : sans texte alternatif, la page ne peut pas être publiée.",
+        "shareImageAltMissing": "Publication refusée : l’image de partage n’a pas de texte alternatif. Rien n’est perdu.",
+        "describeImage": "Décrire l’image",
+        "tooLongRefused": "Enregistrement refusé : un texte dépasse sa longueur. Rien n’est perdu."
+      }
     }
   },
   "BureauNavigationPage": {
@@ -3280,6 +3329,16 @@
       "publishedIssues": {
         "missing_title": "Donnez un titre à cette actualité : elle est en ligne, et son titre s’affiche sur le site.",
         "missing_image_alt": "Ajoutez un texte alternatif à l’image : l’actualité est en ligne, et ce texte la décrit à qui ne la voit pas."
+      },
+      "seo": {
+        "title": "Référencement et partage",
+        "intro": "Le titre et l’image montrés sont ceux de l’actualité, avec son texte alternatif.",
+        "optional": "Facultatif",
+        "counter": "{count} / {max}",
+        "overflow": "{over} caractères de trop.",
+        "descriptionLabel": "Description",
+        "descriptionEmpty": "Vide : le début du texte de l’actualité sera utilisé.",
+        "tooLongRefused": "Enregistrement refusé : la description dépasse sa longueur. Rien n’est perdu."
       }
     }
   },
@@ -3760,5 +3819,11 @@
       "forbidden": "Seul le bureau de l’association peut gérer les catégories.",
       "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
     }
+  },
+  "SearchPreview": {
+    "label": "Dans Google",
+    "address": "{host} › {path}",
+    "noDescription": "Extrait choisi par Google dans la page.",
+    "disclaimer": "Google peut raccourcir ces textes ou en choisir d’autres."
   }
 }

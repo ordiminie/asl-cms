@@ -134,6 +134,28 @@ Les **secrets** ne sont pas des paramètres : ils vivent dans `@/env` (validatio
 - Une modification que l'utilisateur doit voir tout de suite s'invalide par `updateTag`, pas `revalidateTag`.
 - Détail : `.claude/rules/01-presentation/rule-react-cache-next-cache.md`.
 
+### Référencement (s11)
+
+- **Chaque domaine sert son association** : `sitemap.ts`, `robots.ts` et les métadonnées lisent le
+  tenant du domaine appelé, ce qui les rend dynamiques. Le sitemap liste l'accueil, les pages à
+  adresse fixe, les pages CMS et les actualités **publiées** (`getPublishedSitemapEntriesDal`, lue
+  sous `withTenant`, **sans `'use cache'`** : publier ajoute la page à la requête suivante, sans
+  invalidation). Ni le blog hérité ni les pages du produit (`/pricing`…). Un domaine qui ne sert
+  aucune association rend un sitemap vide et un `robots.txt` qui interdit tout.
+- **Deux protections pour les routes authentifiées** (critère 3) : `robots.txt` interdit chaque
+  segment de `AUTHENTICATED_SEGMENTS` (`src/lib/routing/authenticated-segments.ts`), **la même
+  liste que le proxy** — un nouveau segment authentifié se déclare là, et il est protégé des deux
+  côtés du même geste — plus les écrans de connexion et `/api/` ; et les layouts `(app)`,
+  `(bureau)`, `(auth)` et `admin` portent `robots: noindex, nofollow`, qui couvre par construction
+  toute route créée dessous, quel que soit son segment.
+- **L'ADR 008 est contourné, pas appliqué** : le sitemap n'émet que des adresses sans préfixe, sans
+  alternative de langue, et chaque page publique déclare l'adresse sans préfixe comme canonique.
+  `/fr/x` et `/es/x` restent servies jusqu'à **s43-locale-unique**, qui applique l'ADR.
+- Les métadonnées d'une page suivent une chaîne de repli pure (`src/lib/seo/resolve-metadata.ts`) :
+  ce que le bureau a saisi, sinon la page, sinon l'association (description et code Google en
+  paramètres, ADR 016), sinon rien — jamais une balise vide. L'image de repli est générée par
+  `/api/identity/share-image` (`next/og`, police Source Serif 4 versée au dépôt sous licence OFL).
+
 ### Nommage
 
 | Élément                   | Convention        | Exemple                       |
@@ -321,10 +343,10 @@ données d'un client. — 4 tables
 **Contenu du socle, hors produit ou pas encore rattaché à un tenant — exemptées** : elles ne portent
 aujourd'hui **aucune** colonne de rattachement, et aucun contenu d'association n'y est écrit. — 6 tables
 
-| Table                                                                   | Pourquoi exemptée                                                                                                                                                                                                                                                                                                                       |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `posts`, `posts_translation`, `categories`, `hashtags`, `post_hashtags` | **Blog hérité du boilerplate, hors produit** (ADR 023, qui remplace sur ce point « base des actualités » de l'ADR 009). Les actualités de s05 vivent dans `news`. `/blog`, `/admin/blog` et `sitemap.ts` lisent ces tables **hors de tout scope** : les scoper les viderait sans erreur. Leur retrait est l'affaire d'une story dédiée. |
-| `notifications`                                                         | Rattachée à `user_id`. Une notification d'association demandera `organization_id`, donc une policy.                                                                                                                                                                                                                                     |
+| Table                                                                   | Pourquoi exemptée                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts`, `posts_translation`, `categories`, `hashtags`, `post_hashtags` | **Blog hérité du boilerplate, hors produit** (ADR 023, qui remplace sur ce point « base des actualités » de l'ADR 009). Les actualités de s05 vivent dans `news`. `/blog` et `/admin/blog` lisent ces tables **hors de tout scope** : les scoper les viderait sans erreur. `sitemap.ts` ne les lit plus depuis s11 : le sitemap d'une association ne liste que son propre contenu publié. Leur retrait est l'affaire d'une story dédiée. |
+| `notifications`                                                         | Rattachée à `user_id`. Une notification d'association demandera `organization_id`, donc une policy.                                                                                                                                                                                                                                                                                                                                      |
 
 Enfin, les tables de migration Drizzle (`drizzle.__drizzle_migrations`) sont hors périmètre : elles
 n'appartiennent à aucun tenant et ne sont écrites que par le rôle propriétaire.

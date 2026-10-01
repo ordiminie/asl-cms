@@ -9,6 +9,8 @@ import {
 } from '@/app/dal/page-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {renderPageBlock} from '@/lib/cms/render-page-block'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolvePageSeo} from '@/lib/seo/resolve-metadata'
 import {PageWithBlocksDTO} from '@/services/types/domain/page-types'
 
 type PageParams = {params: Promise<{locale: string; slug: string}>}
@@ -44,7 +46,11 @@ export async function generateMetadata({
   const tenant = await requireCurrentTenantDal()
   const resolved = await resolvePage(tenant.id, slug)
 
-  return resolved ? {title: resolved.page.title} : {}
+  return resolved
+    ? publicPageMetadata((association) =>
+        resolvePageSeo(resolved.page, association)
+      )
+    : {}
 }
 
 export default async function PublicCmsPage({params}: PageParams) {

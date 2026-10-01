@@ -13,3 +13,5 @@ export const unpublishPageService = pageServiceInterceptor.unpublishPageService
 export const updatePageService = pageServiceInterceptor.updatePageService
 export const uploadPageBlockFileService =
   pageServiceInterceptor.uploadPageBlockFileService
+export const uploadPageShareImageService =
+  pageServiceInterceptor.uploadPageShareImageService

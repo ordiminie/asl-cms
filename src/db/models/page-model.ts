@@ -44,6 +44,12 @@ export const page = pgTable(
     slug: text('slug').notNull(),
     title: text('title').notNull(),
     status: pageStatusEnum('status').default('draft').notNull(),
+    /** Referencement (s11) : vides, la chaine de repli de l'association. */
+    seoTitle: text('seo_title'),
+    seoDescription: text('seo_description'),
+    /** Cle de fichier de contenu, portee `pages` de cette page. */
+    shareImageKey: text('share_image_key'),
+    shareImageAlt: text('share_image_alt'),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
       .notNull(),

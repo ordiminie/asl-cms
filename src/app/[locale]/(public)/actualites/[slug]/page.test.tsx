@@ -57,6 +57,7 @@ const newsOf = (overrides: Partial<NewsDTO> = {}): NewsDTO => ({
   publishedOn: '2026-09-02',
   imageKey: null,
   imageAlt: '',
+  seoDescription: null,
   content: '## Ordre du jour\n\nUn **point** important.',
   status: 'published',
   createdAt: new Date('2026-09-01'),

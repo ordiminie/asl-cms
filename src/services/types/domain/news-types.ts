@@ -30,6 +30,8 @@ export type NewsDTO = {
   imageKey: string | null
   imageAlt: string
   content: string
+  /** Referencement (s11) : `null` = debut du texte de l'actualite. */
+  seoDescription: string | null
   status: NewsStatus
   createdAt: Date
   updatedAt: Date

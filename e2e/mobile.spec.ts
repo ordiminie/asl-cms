@@ -13,8 +13,8 @@ test.describe('Mobile Navigation', () => {
   test('should display homepage on mobile', async ({page}) => {
     await page.goto('/')
 
-    // Check if the page loads with correct title
-    await expect(page).toHaveTitle(/Next SaaS Boilerplate/)
+    // Titre de la page d'accueil : le nom de l'association du domaine (s11)
+    await expect(page).toHaveTitle('TechCorp Solutions')
 
     // Check for hero content
     await expect(page.getByText('Modern SaaS platform')).toBeVisible()

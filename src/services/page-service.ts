@@ -13,6 +13,7 @@ import {
   updatePageStatusDao,
 } from '@/db/repositories/page-repository'
 import {withTenant} from '@/db/tenant-scope'
+import {resizeToFitWebp} from '@/lib/files/resize-image'
 
 import {getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
@@ -26,6 +27,11 @@ import {
 } from './errors/validation-error'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
+  buildContentFileKey,
+  ContentFileScopeConst,
+  validateContentFile,
+} from './types/domain/content-file-types'
+import {
   buildPageBlockFileKey,
   isPageSlugReserved,
   PAGE_FILE_CONTENT_TYPES,
@@ -36,13 +42,17 @@ import {
   validatePageBlocksForPublication,
 } from './types/domain/page-block-types'
 import {
+  isPageShareImageKeyAllowed,
+  PAGE_SHARE_IMAGE_SLOT,
   PAGE_SLUG_UNAVAILABLE,
   PageDTO,
   PageMutationResult,
   PagePublicationResult,
   PageUnpublicationResult,
   PageWithBlocksDTO,
+  validatePageShareForPublication,
 } from './types/domain/page-types'
+import {SHARE_IMAGE_HEIGHT, SHARE_IMAGE_WIDTH} from './types/domain/seo-types'
 import {
   createPageServiceSchema,
   pageOrganizationIdSchema,
@@ -50,27 +60,38 @@ import {
   readPageBySlugServiceSchema,
   updatePageServiceSchema,
   uploadPageBlockFileServiceSchema,
+  uploadPageShareImageServiceSchema,
 } from './validation/page-validation'
 
 const MANAGE_DENIED = "Seul le bureau de l'association peut gérer les pages"
+const SHARE_IMAGE_KEY_REFUSED = "Cette image n'appartient pas à cette page"
 
-const toPageDto = (row: {
-  id: string
-  organizationId: string
-  slug: string
-  title: string
-  status: PageDTO['status']
-  createdAt: Date
-  updatedAt: Date
-}): PageDTO => ({
+const toPageDto = (row: PageDTO): PageDTO => ({
   id: row.id,
   organizationId: row.organizationId,
   slug: row.slug,
   title: row.title,
   status: row.status,
+  seoTitle: row.seoTitle,
+  seoDescription: row.seoDescription,
+  shareImageKey: row.shareImageKey,
+  shareImageAlt: row.shareImageAlt,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 })
+
+/** Les seuls champs de referencement envoyes : les autres restent en base. */
+const seoChangesOf = (input: {
+  seoTitle?: string | null
+  seoDescription?: string | null
+  shareImageKey?: string | null
+  shareImageAlt?: string | null
+}) =>
+  Object.fromEntries(
+    (['seoTitle', 'seoDescription', 'shareImageKey', 'shareImageAlt'] as const)
+      .filter((field) => input[field] !== undefined)
+      .map((field) => [field, input[field]])
+  )
 
 const toPageWithBlocksDto = (row: PageWithBlocksRow): PageWithBlocksDTO => ({
   ...toPageDto(row),
@@ -191,6 +212,10 @@ export const updatePageService = async (input: {
   title: string
   slug: string
   blocks: BlockInput[]
+  seoTitle?: string
+  seoDescription?: string
+  shareImageKey?: string | null
+  shareImageAlt?: string
 }): Promise<PageMutationResult> => {
   const parsed = updatePageServiceSchema.safeParse(input)
   if (!parsed.success) {
@@ -198,6 +223,18 @@ export const updatePageService = async (input: {
   }
 
   await requirePageManager(parsed.data.organizationId)
+
+  const {shareImageKey} = parsed.data
+  if (
+    shareImageKey &&
+    !isPageShareImageKeyAllowed(
+      parsed.data.organizationId,
+      parsed.data.pageId,
+      shareImageKey
+    )
+  ) {
+    throw new ValidationError(SHARE_IMAGE_KEY_REFUSED)
+  }
 
   const current = await withTenant(parsed.data.organizationId, () =>
     getPageByIdDao(parsed.data.pageId)
@@ -222,6 +259,7 @@ export const updatePageService = async (input: {
     const updated = await updatePageDao(parsed.data.pageId, {
       slug: parsed.data.slug,
       title: parsed.data.title,
+      ...seoChangesOf(parsed.data),
     })
     const savedBlocks = await reorderPageBlocksTxnDao(
       parsed.data.pageId,
@@ -265,7 +303,10 @@ export const publishPageService = async (input: {
     }
   }
 
-  const issues = validatePageBlocksForPublication(knownBlocks)
+  const issues = [
+    ...validatePageBlocksForPublication(knownBlocks),
+    ...validatePageShareForPublication(current),
+  ]
   if (issues.length > 0) {
     return {status: 'rejected', issues}
   }
@@ -452,5 +493,76 @@ export const uploadPageBlockFileService = async (input: {
     fileName: input.file.name,
     fileSize: content.length,
     contentType: PAGE_FILE_CONTENT_TYPES[validation.format],
+  }
+}
+
+export type PageShareImageUpload =
+  | {status: 'uploaded'; key: string; fileName: string; fileSize: number}
+  | {status: 'rejected'; reason: 'format'}
+  | {status: 'rejected'; reason: 'size'; size: number; maxBytes: number}
+
+/**
+ * Depose l'image de partage d'une page (s11) et rend sa cle, **sans toucher a
+ * la ligne** : c'est l'enregistrement qui l'ecrit, comme pour les blocs.
+ *
+ * Ordre : `safeParse` -> controle d'acces -> la page appartient bien a cette
+ * association -> validation par **signature binaire** -> redimensionnement a
+ * l'ecriture (ADR 024), sans recadrage -> ecriture sous une cle de portee
+ * `pages` generee par le serveur, a l'emplacement fixe `share`.
+ */
+export const uploadPageShareImageService = async (input: {
+  organizationId: string
+  pageId: string
+  file: File
+}): Promise<PageShareImageUpload> => {
+  const parsed = uploadPageShareImageServiceSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  await requirePageManager(parsed.data.organizationId)
+
+  const owningPage = await withTenant(parsed.data.organizationId, () =>
+    getPageByIdDao(parsed.data.pageId)
+  )
+  if (!owningPage) {
+    throw new NotFoundError('Page introuvable')
+  }
+
+  const content = new Uint8Array(await input.file.arrayBuffer())
+  const validation = validateContentFile('image', content)
+  if (!validation.valid) {
+    return validation.reason === 'size'
+      ? {
+          status: 'rejected',
+          reason: 'size',
+          size: validation.size,
+          maxBytes: validation.maxBytes,
+        }
+      : {status: 'rejected', reason: 'format'}
+  }
+
+  const resized = await resizeToFitWebp(
+    content,
+    SHARE_IMAGE_WIDTH,
+    SHARE_IMAGE_HEIGHT
+  )
+  const key = buildContentFileKey(
+    parsed.data.organizationId,
+    ContentFileScopeConst.PAGES,
+    parsed.data.pageId,
+    PAGE_SHARE_IMAGE_SLOT,
+    'webp'
+  )
+  await getContentFileStorage().upload(
+    new File([resized as BlobPart], input.file.name, {type: 'image/webp'}),
+    key
+  )
+
+  return {
+    status: 'uploaded',
+    key,
+    fileName: input.file.name,
+    fileSize: resized.length,
   }
 }

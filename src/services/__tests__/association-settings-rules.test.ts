@@ -6,6 +6,7 @@ import fr from '../../../messages/fr.json'
 import {
   ACCENT_HUE_SETTING_KEY,
   ACCENT_HUES,
+  ASSOCIATION_DESCRIPTION_SETTING_KEY,
   ASSOCIATION_MEMBER_COUNT_SETTING_KEY,
   ASSOCIATION_SETTING_ERROR_CODES,
   ASSOCIATION_SETTINGS_REGISTRY,
@@ -14,11 +15,15 @@ import {
   CONTACT_EMAIL_SETTING_KEY,
   CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   DEFAULT_ACCENT_HUE,
+  extractGoogleVerificationCode,
   FORAGE_EMAIL_SETTING_KEY,
   getAccentHue,
+  getAssociationDescription,
   getContactMessagesPerHourLimit,
+  getGoogleVerificationCode,
   getMagicLinkDailyRequestLimit,
   getSettingsForPage,
+  GOOGLE_VERIFICATION_SETTING_KEY,
   hasSettingReferenceCycle,
   MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
   parseSettingValue,
@@ -40,7 +45,7 @@ const testDefinition = (key: string) =>
   definitionOf(TEST_SETTINGS_REGISTRY, key)
 
 describe('registre de production', () => {
-  it('declare les cles de s02, s03, s06 et s08b, avec leurs types et leur page', () => {
+  it('declare les cles de s02, s03, s06, s08b et s11, avec leurs types et leur page', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.map(({key, type, required, page}) => ({
         key,
@@ -82,6 +87,18 @@ describe('registre de production', () => {
       {
         key: CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
         type: 'number',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: ASSOCIATION_DESCRIPTION_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: GOOGLE_VERIFICATION_SETTING_KEY,
+        type: 'text',
         required: false,
         page: 'settings',
       },
@@ -251,6 +268,8 @@ describe('registre de production', () => {
       MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
       ASSOCIATION_MEMBER_COUNT_SETTING_KEY,
       CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
+      ASSOCIATION_DESCRIPTION_SETTING_KEY,
+      GOOGLE_VERIFICATION_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -579,5 +598,171 @@ describe('getContactMessagesPerHourLimit — seuil des formulaires publics', () 
         ])
       )
     ).toBe(1)
+  })
+})
+
+describe('registre — carte « Referencement » (s11)', () => {
+  const description = definitionOf(
+    ASSOCIATION_SETTINGS_REGISTRY,
+    ASSOCIATION_DESCRIPTION_SETTING_KEY
+  )
+  const verification = definitionOf(
+    ASSOCIATION_SETTINGS_REGISTRY,
+    GOOGLE_VERIFICATION_SETTING_KEY
+  )
+
+  it('porte deux cles texte facultatives, sans defaut, rangees dans la carte « Referencement »', () => {
+    expect(ASSOCIATION_DESCRIPTION_SETTING_KEY).toBe('association.description')
+    expect(GOOGLE_VERIFICATION_SETTING_KEY).toBe('search.google_verification')
+    expect(description).toMatchObject({
+      type: 'text',
+      maxLength: 160,
+      multiline: true,
+      section: 'seo',
+    })
+    expect(verification).toMatchObject({
+      type: 'text',
+      multiline: false,
+      format: 'verification-code',
+      section: 'seo',
+    })
+    expect(description.default).toBeUndefined()
+    expect(verification.default).toBeUndefined()
+  })
+
+  it('les cles existantes ne changent pas de carte', () => {
+    expect(
+      ASSOCIATION_SETTINGS_REGISTRY.filter(
+        (definition) => definition.section !== undefined
+      ).map((definition) => definition.key)
+    ).toEqual([
+      ASSOCIATION_DESCRIPTION_SETTING_KEY,
+      GOOGLE_VERIFICATION_SETTING_KEY,
+    ])
+  })
+
+  it('chaque phrase « Vide : » existe dans les trois langues', () => {
+    for (const messages of [fr, en, es]) {
+      const {associationDescription, googleVerification} =
+        messages.AssociationSettings.fields
+      expect(associationDescription.whenEmpty).toEqual(expect.any(String))
+      expect(googleVerification.whenEmpty).toEqual(expect.any(String))
+    }
+  })
+})
+
+describe('extractGoogleVerificationCode — balise collee entiere', () => {
+  const CODE = 'k3Jd8-QwX_9mLp2vRtY7aBcDeFgHiJ0kLmNoPq'
+
+  it('extrait le code d une balise complete', () => {
+    expect(
+      extractGoogleVerificationCode(
+        `<meta name="google-site-verification" content="${CODE}" />`
+      )
+    ).toBe(CODE)
+  })
+
+  it('extrait le code d une balise a guillemets simples', () => {
+    expect(
+      extractGoogleVerificationCode(
+        `<meta name='google-site-verification' content='${CODE}'>`
+      )
+    ).toBe(CODE)
+  })
+
+  it('rend le code nu tel quel, espaces retires', () => {
+    expect(extractGoogleVerificationCode(`  ${CODE} `)).toBe(CODE)
+  })
+
+  it('une balise sans content ne donne aucun code', () => {
+    expect(
+      extractGoogleVerificationCode('<meta name="google-site-verification">')
+    ).toBeUndefined()
+  })
+})
+
+describe('parseSettingValue — texte (s11)', () => {
+  const description = definitionOf(
+    ASSOCIATION_SETTINGS_REGISTRY,
+    ASSOCIATION_DESCRIPTION_SETTING_KEY
+  )
+  const verification = definitionOf(
+    ASSOCIATION_SETTINGS_REGISTRY,
+    GOOGLE_VERIFICATION_SETTING_KEY
+  )
+
+  it('accepte une description de 160 caracteres, espaces de bord retires', () => {
+    const text = 'a'.repeat(160)
+    expect(parseSettingValue(description, ` ${text} `)).toEqual({
+      valid: true,
+      value: text,
+      normalized: text,
+    })
+  })
+
+  it('refuse 161 caracteres, en disant le plafond', () => {
+    expect(parseSettingValue(description, 'a'.repeat(161))).toEqual({
+      valid: false,
+      error: {code: 'tooLong', max: 160},
+    })
+  })
+
+  it('reduit une balise collee a son code, cote serveur aussi', () => {
+    expect(
+      parseSettingValue(
+        verification,
+        '<meta name="google-site-verification" content="abc-DEF_123" />'
+      )
+    ).toEqual({valid: true, value: 'abc-DEF_123', normalized: 'abc-DEF_123'})
+  })
+
+  it.each(['k3Jd8 QwX', 'k3Jd8/QwX', 'abc#def', '<meta name="x">'])(
+    'refuse le code %s',
+    (raw) => {
+      expect(parseSettingValue(verification, raw)).toEqual({
+        valid: false,
+        error: {code: 'invalidCode'},
+      })
+    }
+  )
+
+  it('une valeur vide est absente : la ligne est supprimee', () => {
+    expect(
+      validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, {
+        [ASSOCIATION_DESCRIPTION_SETTING_KEY]: '  ',
+        [GOOGLE_VERIFICATION_SETTING_KEY]: '',
+      })
+    ).toEqual({
+      valid: true,
+      upserts: [],
+      deletions: [
+        ASSOCIATION_DESCRIPTION_SETTING_KEY,
+        GOOGLE_VERIFICATION_SETTING_KEY,
+      ],
+    })
+  })
+})
+
+describe('lecture des reglages de referencement (s11)', () => {
+  it('rend la description et le code renseignes', () => {
+    const settings = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {key: ASSOCIATION_DESCRIPTION_SETTING_KEY, value: 'Réseau d’eau privé.'},
+      {key: GOOGLE_VERIFICATION_SETTING_KEY, value: 'abc-DEF_123'},
+    ])
+    expect(getAssociationDescription(settings)).toBe('Réseau d’eau privé.')
+    expect(getGoogleVerificationCode(settings)).toBe('abc-DEF_123')
+  })
+
+  it('non renseignes : rien, jamais une chaine vide', () => {
+    const settings = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+    expect(getAssociationDescription(settings)).toBeUndefined()
+    expect(getGoogleVerificationCode(settings)).toBeUndefined()
+  })
+
+  it('une valeur stockee invalide se lit comme absente', () => {
+    const settings = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {key: GOOGLE_VERIFICATION_SETTING_KEY, value: 'abc def'},
+    ])
+    expect(getGoogleVerificationCode(settings)).toBeUndefined()
   })
 })

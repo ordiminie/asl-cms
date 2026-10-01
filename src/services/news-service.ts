@@ -74,6 +74,7 @@ const toNewsDto = (row: NewsModel): NewsDTO => ({
   imageKey: row.imageKey,
   imageAlt: row.imageAlt,
   content: row.content,
+  seoDescription: row.seoDescription,
   status: row.status,
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
@@ -179,6 +180,7 @@ export const updateNewsService = async (input: {
   content: string
   imageAlt: string
   imageKey: string | null
+  seoDescription?: string
 }): Promise<NewsMutationResult> => {
   const parsed = updateNewsServiceSchema.safeParse(input)
   if (!parsed.success) {
@@ -193,6 +195,7 @@ export const updateNewsService = async (input: {
     content,
     imageAlt,
     imageKey,
+    seoDescription,
   } = parsed.data
   await requireNewsManager(organizationId)
 
@@ -225,6 +228,7 @@ export const updateNewsService = async (input: {
       imageKey,
       imageAlt: imageKey === null ? '' : imageAlt,
       ...(slug === undefined ? {} : {slug}),
+      ...(seoDescription === undefined ? {} : {seoDescription}),
     })
   )
 

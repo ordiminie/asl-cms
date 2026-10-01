@@ -16,10 +16,12 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import {APP_NAME} from '@/lib/constants'
+import {NO_INDEX_ROBOTS} from '@/lib/seo/resolve-metadata'
 
 export const metadata: Metadata = {
   title: `Espace utilisateur ${APP_NAME}`,
   description: "Page d'espace utilisateur",
+  robots: NO_INDEX_ROBOTS,
 }
 
 export default function AppLayout({children}: {children: React.ReactNode}) {

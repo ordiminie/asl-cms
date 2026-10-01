@@ -10,6 +10,10 @@ vi.mock('next-intl/server', () => ({
   ),
 }))
 vi.mock('@/app/dal/tenant-dal', () => ({requireCurrentTenantDal: vi.fn()}))
+vi.mock('@/app/dal/association-settings-dal', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getAssociationSettingsDal: vi.fn(),
+}))
 vi.mock('@/app/dal/user-dal', () => ({requireActionAuth: vi.fn()}))
 vi.mock('@/services/facades/association-settings-service-facade', () => ({
   updateAssociationSettingsService: vi.fn(),
@@ -17,14 +21,18 @@ vi.mock('@/services/facades/association-settings-service-facade', () => ({
 
 import {updateTag} from 'next/cache'
 
+import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {updateAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
 import {
   ACCENT_HUE_SETTING_KEY,
+  ASSOCIATION_SETTINGS_REGISTRY,
   CONTACT_EMAIL_SETTING_KEY,
   FORAGE_EMAIL_SETTING_KEY,
+  GOOGLE_VERIFICATION_SETTING_KEY,
+  resolveSettings,
 } from '@/services/types/domain/association-settings-types'
 
 import {updateAssociationSettingsAction} from './actions'
@@ -46,6 +54,11 @@ beforeEach(() => {
   vi.mocked(updateAssociationSettingsService).mockResolvedValue({
     status: 'saved',
   })
+  vi.mocked(getAssociationSettingsDal).mockResolvedValue(
+    resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {key: GOOGLE_VERIFICATION_SETTING_KEY, value: 'ancien-code'},
+    ])
+  )
 })
 
 describe('updateAssociationSettingsAction — succes', () => {
@@ -89,6 +102,36 @@ describe('updateAssociationSettingsAction — succes', () => {
     expect(updateAssociationSettingsService).toHaveBeenCalledWith(TENANT_ID, {
       [CONTACT_EMAIL_SETTING_KEY]: 'contact@asl.test',
     })
+  })
+})
+
+describe('updateAssociationSettingsAction — carte « Referencement » (s11)', () => {
+  it('un reglage de referencement modifie : le succes dit que Google en tiendra compte', async () => {
+    const state = await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({
+        [CONTACT_EMAIL_SETTING_KEY]: 'contact@asl.test',
+        [GOOGLE_VERIFICATION_SETTING_KEY]: 'abc-DEF_123',
+      })
+    )
+
+    expect(updateAssociationSettingsService).toHaveBeenCalledWith(TENANT_ID, {
+      [CONTACT_EMAIL_SETTING_KEY]: 'contact@asl.test',
+      [GOOGLE_VERIFICATION_SETTING_KEY]: 'abc-DEF_123',
+    })
+    expect(state).toEqual({success: true, message: 'successSeo'})
+  })
+
+  it('un reglage de referencement renvoye inchange : le succes habituel', async () => {
+    const state = await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({
+        [CONTACT_EMAIL_SETTING_KEY]: 'contact@asl.test',
+        [GOOGLE_VERIFICATION_SETTING_KEY]: 'ancien-code',
+      })
+    )
+
+    expect(state).toEqual({success: true, message: 'success'})
   })
 })
 

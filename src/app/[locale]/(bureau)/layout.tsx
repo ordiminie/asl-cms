@@ -1,3 +1,4 @@
+import type {Metadata} from 'next'
 import React, {Suspense} from 'react'
 
 import {canManageCurrentAssociationIdentityDal} from '@/app/dal/association-identity-dal'
@@ -7,7 +8,11 @@ import {BureauAccessDenied} from '@/components/features/association/bureau-acces
 import {BureauMenuButton} from '@/components/features/association/bureau-menu-button'
 import {BureauSidebar} from '@/components/features/association/bureau-sidebar'
 import {SidebarInset, SidebarProvider} from '@/components/ui/sidebar'
+import {NO_INDEX_ROBOTS} from '@/lib/seo/resolve-metadata'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
+
+/** Back-office : jamais dans les moteurs (s11, critere 3). */
+export const metadata: Metadata = {robots: NO_INDEX_ROBOTS}
 
 /**
  * Espace bureau de l'association (s01b). La session n'est jamais attendue en

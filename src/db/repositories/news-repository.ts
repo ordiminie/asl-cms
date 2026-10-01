@@ -1,4 +1,4 @@
-import {and, count, desc, eq} from 'drizzle-orm'
+import {and, count, desc, eq, isNotNull} from 'drizzle-orm'
 
 import {news, NewsModel} from '@/db/models/news-model'
 import {getDb} from '@/db/tenant-scope'
@@ -68,6 +68,7 @@ export const updateNewsDao = async (
     imageAlt: string
     imageKey: string | null
     slug?: string
+    seoDescription?: string | null
   }
 ): Promise<NewsModel> => {
   const [row] = await getDb()
@@ -150,3 +151,27 @@ export const getPublishedNewsPageDao = async (input: {
     input.limit,
     input.offset
   )
+
+/**
+ * Actualites publiees d'une association pour le sitemap (s11) : adresse et
+ * date de publication. Une actualite sans adresse n'y entre pas.
+ */
+export const getPublishedNewsForSitemapDao = async (
+  organizationId: string
+): Promise<{slug: string; publishedOn: string}[]> => {
+  const rows = await getDb()
+    .select({slug: news.slug, publishedOn: news.publishedOn})
+    .from(news)
+    .where(
+      and(
+        eq(news.organizationId, organizationId),
+        eq(news.status, 'published'),
+        isNotNull(news.slug)
+      )
+    )
+    .orderBy(desc(news.publishedOn))
+
+  return rows.flatMap((row) =>
+    row.slug ? [{slug: row.slug, publishedOn: row.publishedOn}] : []
+  )
+}

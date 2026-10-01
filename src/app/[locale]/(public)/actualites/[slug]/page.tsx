@@ -13,6 +13,8 @@ import {
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {formatContentDate} from '@/lib/cms/format-content-date'
 import {renderRestrictedMarkdown} from '@/lib/cms/render-page-block'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolveNewsSeo} from '@/lib/seo/resolve-metadata'
 import {NewsDTO} from '@/services/types/domain/news-types'
 
 type NewsItemParams = {params: Promise<{locale: string; slug: string}>}
@@ -44,7 +46,13 @@ export async function generateMetadata({
   const tenant = await requireCurrentTenantDal()
   const resolved = await resolveNews(tenant.id, slug)
 
-  return resolved ? {title: resolved.news.title} : {}
+  if (!resolved) return {}
+  const {news} = resolved
+  return publicPageMetadata(
+    (association) =>
+      resolveNewsSeo({...news, slug: news.slug ?? slug}, association),
+    {type: 'article'}
+  )
 }
 
 export default async function PublicNewsItemPage({params}: NewsItemParams) {

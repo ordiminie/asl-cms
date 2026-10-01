@@ -1,5 +1,9 @@
 import {PageModel} from '@/db/models/page-model'
 
+import {
+  ContentFileScopeConst,
+  isContentFileKeyAllowed,
+} from './content-file-types'
 import {PageBlockPublicationIssue} from './page-block-types'
 
 /**
@@ -23,6 +27,11 @@ export type PageDTO = {
   slug: string
   title: string
   status: PageStatus
+  /** Referencement (s11) : `null` = repli de la chaine de l'association. */
+  seoTitle: string | null
+  seoDescription: string | null
+  shareImageKey: string | null
+  shareImageAlt: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -40,8 +49,54 @@ export type PageMutationResult =
   | {status: 'saved'; page: PageWithBlocksDTO}
   | {status: 'rejected'; error: typeof PAGE_SLUG_UNAVAILABLE}
 
+/** Refus de publication propre a la page, hors blocs (s11). */
+export const PageSharePublicationErrorConst = {
+  SHARE_IMAGE_ALT_MISSING: 'share_image_alt_missing',
+} as const
+
+export type PageSharePublicationIssue = {
+  code: (typeof PageSharePublicationErrorConst)[keyof typeof PageSharePublicationErrorConst]
+}
+
+export type PagePublicationIssue =
+  PageBlockPublicationIssue | PageSharePublicationIssue
+
+export const isPageBlockPublicationIssue = (
+  issue: PagePublicationIssue
+): issue is PageBlockPublicationIssue => 'rank' in issue
+
 export type PagePublicationResult =
   | {status: 'published'; page: PageDTO}
-  | {status: 'rejected'; issues: PageBlockPublicationIssue[]}
+  | {status: 'rejected'; issues: PagePublicationIssue[]}
 
 export type PageUnpublicationResult = {status: 'unpublished'; page: PageDTO}
+
+/** Emplacement fixe de l'image de partage dans la portee `pages` (s11). */
+export const PAGE_SHARE_IMAGE_SLOT = 'share'
+
+/**
+ * Une cle d'image de partage rendue par l'editeur n'est ecrite que si elle vit
+ * sous `{organisation}/pages/{page}/share-` : une cle que le serveur a lui-meme
+ * generee au depot pour **cette** page.
+ */
+export const isPageShareImageKeyAllowed = (
+  organizationId: string,
+  pageId: string,
+  key: string
+): boolean =>
+  key.startsWith(
+    `${organizationId}/${ContentFileScopeConst.PAGES}/${pageId}/${PAGE_SHARE_IMAGE_SLOT}-`
+  ) &&
+  isContentFileKeyAllowed(organizationId, key, [ContentFileScopeConst.PAGES])
+
+/**
+ * L'image de partage deposee doit porter son texte alternatif pour publier
+ * (design system §4) ; sans image, rien n'est exige.
+ */
+export const validatePageShareForPublication = (page: {
+  shareImageKey: string | null
+  shareImageAlt: string | null
+}): PageSharePublicationIssue[] =>
+  page.shareImageKey && (page.shareImageAlt ?? '').trim() === ''
+    ? [{code: PageSharePublicationErrorConst.SHARE_IMAGE_ALT_MISSING}]
+    : []
