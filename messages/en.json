@@ -87,8 +87,6 @@
     }
   },
   "PublicLayout": {
-    "title": "Public Page",
-    "description": "Public Page",
     "menuLabel": "Site menu"
   },
   "AuthLayout": {
@@ -3134,7 +3132,7 @@
         "intro": "What shows up in Google, and when someone shares the link to the page.",
         "optional": "Optional",
         "counter": "{count} of {max}",
-        "overflow": "{over} characters too many.",
+        "overflow": "{over, plural, one {# character too many.} other {# characters too many.}}",
         "seoTitleLabel": "Title in search engines",
         "seoTitleEmpty": "Empty: the page title, “{title}”, will be used.",
         "descriptionLabel": "Summary",
@@ -3287,7 +3285,7 @@
         "intro": "The title and image shown are those of the news item, with its alternative text.",
         "optional": "Optional",
         "counter": "{count} of {max}",
-        "overflow": "{over} characters too many.",
+        "overflow": "{over, plural, one {# character too many.} other {# characters too many.}}",
         "descriptionLabel": "Summary",
         "descriptionEmpty": "Empty: the beginning of the news text will be used.",
         "tooLongRefused": "Saving refused: the summary is too long. Nothing is lost."

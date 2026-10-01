@@ -155,6 +155,25 @@ describe('PageEditor — section « Referencement et partage » (s11)', () => {
     expect(titleField()).toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('un seul caractere de trop : le message est au singulier (revue s11, m1)', async () => {
+    renderEditor()
+
+    await userEvent.click(titleField())
+    await userEvent.paste('a'.repeat(61))
+
+    expect(screen.getByText('1 caractère de trop.')).toBeInTheDocument()
+  })
+
+  it('le compteur mesure ce que mesure l erreur : espaces de fin exclus (revue s11, m2)', async () => {
+    renderEditor()
+
+    await userEvent.click(titleField())
+    await userEvent.paste(`${'a'.repeat(60)}   `)
+
+    expect(screen.getByText('60 / 60')).not.toHaveClass('text-destructive-text')
+    expect(titleField()).not.toHaveAttribute('aria-invalid')
+  })
+
   it('un texte trop long n est pas envoye : la barre dit le refus', async () => {
     const props = renderEditor()
 

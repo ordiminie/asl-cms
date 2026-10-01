@@ -6,6 +6,7 @@ import {ImageResponse} from 'next/og'
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {getCurrentTenantDal, TenantDTO} from '@/app/dal/tenant-dal'
 import {convertToPng} from '@/lib/files/resize-image'
+import {shareImageNameKey} from '@/lib/seo/resolve-metadata'
 import {
   getShareImageColors,
   SHARE_IMAGE_MONOGRAM_TEXT,
@@ -75,12 +76,14 @@ const readLogoDataUrl = async (
 const isCurrentKey = (
   request: Request,
   logoVersion: string | undefined,
-  hue: number
+  hue: number,
+  name: string
 ): boolean => {
   const query = new URL(request.url).searchParams
   return (
     query.get('h') === String(hue) &&
-    (query.get('v') ?? undefined) === logoVersion
+    (query.get('v') ?? undefined) === logoVersion &&
+    query.get('n') === shareImageNameKey(name)
   )
 }
 
@@ -155,8 +158,9 @@ const shareImageElement = ({
  * Image de partage de repli de l'association du domaine appele (s11, design
  * ecran 3) : 1200 x 630, rendue par `next/og`. Le tenant vient du domaine,
  * le logo de la base ; rien n'est lu depuis la requete hors la cle de cache.
- * Cache long seulement quand `?v=&h=` portent la version du logo et la teinte
- * en vigueur, pour qu'un changement s'affiche aussitot.
+ * Cache long seulement quand `?v=&h=&n=` portent la version du logo, la
+ * teinte et l'empreinte du nom en vigueur, pour qu'un changement s'affiche
+ * aussitot.
  */
 export async function GET(request: Request): Promise<Response> {
   const tenant = await getCurrentTenantDal()
@@ -193,7 +197,7 @@ export async function GET(request: Request): Promise<Response> {
         },
       ],
       headers: {
-        'Cache-Control': isCurrentKey(request, logoVersion, hue)
+        'Cache-Control': isCurrentKey(request, logoVersion, hue, tenant.name)
           ? LONG_CACHE
           : REVALIDATE_CACHE,
         'X-Content-Type-Options': 'nosniff',

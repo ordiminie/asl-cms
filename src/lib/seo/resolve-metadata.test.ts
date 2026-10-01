@@ -7,6 +7,7 @@ import {
   resolveNewsSeo,
   resolvePageSeo,
   shareImageFallbackUrl,
+  shareImageNameKey,
   toPageMetadata,
 } from './resolve-metadata'
 
@@ -47,17 +48,26 @@ const newsItem = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const FALLBACK_IMAGE = `${ORIGIN}/api/identity/share-image?v=abc123&h=195`
+const NAME_KEY = shareImageNameKey('Les Amis de l’Étang')
+const FALLBACK_IMAGE = `${ORIGIN}/api/identity/share-image?v=abc123&h=195&n=${NAME_KEY}`
 
 describe('shareImageFallbackUrl — image de repli generee', () => {
-  it('absolue sur l origine, cle = version du logo + teinte', () => {
+  it('absolue sur l origine, cle = version du logo + teinte + nom', () => {
     expect(shareImageFallbackUrl(association())).toBe(FALLBACK_IMAGE)
   })
 
-  it('sans logo, la teinte seule', () => {
+  it('sans logo, la teinte et le nom', () => {
     expect(shareImageFallbackUrl(association({logoVersion: undefined}))).toBe(
-      `${ORIGIN}/api/identity/share-image?h=195`
+      `${ORIGIN}/api/identity/share-image?h=195&n=${NAME_KEY}`
     )
+  })
+
+  it('un renommage change l adresse, donc le cache long (revue s11, m3)', () => {
+    expect(
+      shareImageFallbackUrl(association({name: 'Les Amis du Lac'}))
+    ).not.toBe(FALLBACK_IMAGE)
+    expect(shareImageNameKey('Les Amis de l’Étang')).toBe(NAME_KEY)
+    expect(NAME_KEY).toMatch(/^[0-9a-z]{1,8}$/)
   })
 })
 

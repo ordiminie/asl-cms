@@ -15,6 +15,7 @@ vi.mock('@/lib/routing/authenticated-segments', async (importOriginal) => ({
 }))
 
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {routing} from '@/i18n/routing'
 
 import robots from './robots'
 
@@ -47,7 +48,7 @@ describe('robots.ts (critere 3)', () => {
     const {rules} = await rulesOf()
 
     expect(rules.userAgent).toBe('*')
-    expect(rules.allow).toBe('/')
+    expect(rules.allow).toContain('/')
     for (const segment of segments.list) {
       expect(rules.disallow).toContain(segment)
     }
@@ -101,5 +102,37 @@ describe('robots.ts (critere 3)', () => {
 
     expect(rules).toEqual({userAgent: '*', disallow: '/'})
     expect(result).not.toHaveProperty('sitemap')
+  })
+
+  it('interdit aussi chaque segment authentifie prefixe d une locale (revue s11, M2)', async () => {
+    const {rules} = await rulesOf()
+
+    for (const locale of routing.locales) {
+      for (const segment of [...segments.list, '/login', '/register']) {
+        expect(rules.disallow).toContain(`/${locale}${segment}`)
+      }
+    }
+  })
+
+  it('un segment declare au proxy est aussi interdit sous chaque locale', async () => {
+    segments.list = [...segments.list, '/tresorerie']
+
+    const {rules} = await rulesOf()
+
+    expect(rules.disallow).toContain('/fr/tresorerie')
+  })
+
+  it('l image de partage, le favicon et les fichiers publics restent explorables (revue s11, M1)', async () => {
+    const {rules} = await rulesOf()
+
+    expect(rules.disallow).toContain('/api/')
+    for (const publicApi of [
+      '/api/identity/',
+      '/api/files/',
+      '/api/pages/files/',
+    ]) {
+      expect(rules.allow).toContain(publicApi)
+    }
+    expect(rules.allow).not.toContain('/api/auth/')
   })
 })

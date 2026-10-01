@@ -483,6 +483,19 @@ describe('AssociationSettingsForm — carte « Referencement » (s11)', () => {
     expect(descriptionField()).toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('le compteur mesure ce que mesure l erreur : espaces de fin exclus (revue s11, m2)', async () => {
+    productionForm()
+
+    await userEvent.click(descriptionField())
+    await userEvent.paste(`${'a'.repeat(160)}  `)
+    await userEvent.tab()
+
+    expect(screen.getByText('160 / 160')).not.toHaveClass(
+      'text-destructive-text'
+    )
+    expect(descriptionField()).not.toHaveAttribute('aria-invalid')
+  })
+
   it('balise collee entiere : le code seul est garde au blur, et la phrase le dit', async () => {
     const saveAction = saved()
     productionForm(saveAction)

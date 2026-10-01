@@ -87,8 +87,6 @@
     }
   },
   "PublicLayout": {
-    "title": "Página Pública",
-    "description": "Página Pública",
     "menuLabel": "Menú del sitio"
   },
   "AuthLayout": {
@@ -3134,7 +3132,7 @@
         "intro": "Lo que aparece en Google, y cuando alguien comparte el enlace de la página.",
         "optional": "Opcional",
         "counter": "{count} de {max}",
-        "overflow": "{over} caracteres de más.",
+        "overflow": "{over, plural, one {# carácter de más.} other {# caracteres de más.}}",
         "seoTitleLabel": "Título en los buscadores",
         "seoTitleEmpty": "Vacío: se usará el título de la página, «{title}».",
         "descriptionLabel": "Resumen",
@@ -3287,7 +3285,7 @@
         "intro": "El título y la imagen mostrados son los de la noticia, con su texto alternativo.",
         "optional": "Opcional",
         "counter": "{count} de {max}",
-        "overflow": "{over} caracteres de más.",
+        "overflow": "{over, plural, one {# carácter de más.} other {# caracteres de más.}}",
         "descriptionLabel": "Resumen",
         "descriptionEmpty": "Vacío: se usará el principio del texto de la noticia.",
         "tooLongRefused": "Guardado rechazado: el resumen supera su longitud. No se pierde nada."

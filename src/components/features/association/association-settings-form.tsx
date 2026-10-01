@@ -606,7 +606,8 @@ function TextSettingControl(
     return <TextControl {...props} type="text" className="font-mono" />
   }
 
-  const overflow = value.trim().length > definition.maxLength
+  const length = value.trim().length
+  const overflow = length > definition.maxLength
   return (
     <div className="flex flex-col gap-1">
       <Textarea
@@ -634,7 +635,7 @@ function TextSettingControl(
             : 'text-muted-foreground'
         )}
       >
-        {t('counter', {count: value.length, max: definition.maxLength})}
+        {t('counter', {count: length, max: definition.maxLength})}
       </p>
     </div>
   )

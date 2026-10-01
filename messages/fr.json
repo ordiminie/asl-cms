@@ -87,8 +87,6 @@
     }
   },
   "PublicLayout": {
-    "title": "Page Publique",
-    "description": "Page Publique",
     "menuLabel": "Menu du site"
   },
   "AuthLayout": {
@@ -3182,7 +3180,7 @@
         "intro": "Ce qui s’affiche dans Google, et quand quelqu’un partage le lien de la page.",
         "optional": "Facultatif",
         "counter": "{count} / {max}",
-        "overflow": "{over} caractères de trop.",
+        "overflow": "{over, plural, one {# caractère de trop.} other {# caractères de trop.}}",
         "seoTitleLabel": "Titre dans les moteurs de recherche",
         "seoTitleEmpty": "Vide : le titre de la page, « {title} », sera utilisé.",
         "descriptionLabel": "Description",
@@ -3335,7 +3333,7 @@
         "intro": "Le titre et l’image montrés sont ceux de l’actualité, avec son texte alternatif.",
         "optional": "Facultatif",
         "counter": "{count} / {max}",
-        "overflow": "{over} caractères de trop.",
+        "overflow": "{over, plural, one {# caractère de trop.} other {# caractères de trop.}}",
         "descriptionLabel": "Description",
         "descriptionEmpty": "Vide : le début du texte de l’actualité sera utilisé.",
         "tooLongRefused": "Enregistrement refusé : la description dépasse sa longueur. Rien n’est perdu."

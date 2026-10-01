@@ -335,7 +335,7 @@ export function CountedField({
               : 'text-muted-foreground'
           )}
         >
-          {t('counter', {count: value.length, max})}
+          {t('counter', {count: value.trim().length, max})}
         </p>
       </div>
     </div>

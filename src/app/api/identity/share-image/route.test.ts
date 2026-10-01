@@ -35,6 +35,7 @@ vi.mock('@/lib/files/resize-image', () => ({
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {convertToPng} from '@/lib/files/resize-image'
+import {shareImageNameKey} from '@/lib/seo/resolve-metadata'
 import {readAssociationIdentityFileService} from '@/services/facades/association-identity-service-facade'
 import {getAssociationMonogram} from '@/services/types/domain/association-identity-types'
 import {
@@ -58,6 +59,8 @@ const tenantWith = (logoKey: string | null) => ({
   logoKey,
   faviconKey: null,
 })
+
+const NAME_KEY = shareImageNameKey('Les Amis de l’Étang')
 
 const call = (query = '') =>
   GET(new Request(`http://localhost/api/identity/share-image${query}`))
@@ -117,12 +120,20 @@ describe('GET /api/identity/share-image — image de repli (s11)', () => {
     expect(font.data.byteLength).toBeGreaterThan(1000)
   })
 
-  it('cle courante (teinte et logo) : cache public long', async () => {
-    const response = await call('?h=195')
+  it('cle courante (teinte, logo et nom) : cache public long', async () => {
+    const response = await call(`?h=195&n=${NAME_KEY}`)
 
     expect(response.headers.get('Cache-Control')).toBe(
       'public, max-age=31536000, immutable'
     )
+  })
+
+  it('nom perime ou absent : cache public sans duree (revue s11, m3)', async () => {
+    for (const query of ['?h=195', '?h=195&n=autre']) {
+      const response = await call(query)
+
+      expect(response.headers.get('Cache-Control')).toBe('public, no-cache')
+    }
   })
 
   it('cle perimee : cache public sans duree, pour ne pas figer une ancienne image', async () => {

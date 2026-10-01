@@ -66,7 +66,8 @@ const createDraftPage = async (page: Page, title: string, slug: string) => {
 }
 
 const publish = async (page: Page) => {
-  await page.getByRole('button', {name: 'Publier la page'}).click()
+  // `exact` : une page en ligne porte aussi « Dépublier la page ».
+  await page.getByRole('button', {name: 'Publier la page', exact: true}).click()
   await expect(page.getByText('En ligne')).toBeVisible({timeout: 20_000})
 }
 
@@ -216,10 +217,14 @@ test.describe.serial('s11 — référencement', () => {
       '/admin',
       '/login',
       '/register',
+      '/fr/bureau',
+      '/fr/login',
       '/api/',
     ]) {
       expect(robots).toContain(`Disallow: ${path}`)
     }
+    expect(robots).toContain('Allow: /api/identity/')
+    expect(robots).toContain('Allow: /api/files/')
     expect(robots).not.toContain('/(app)/')
 
     await login(page, TENANT_A, OWNER_A)

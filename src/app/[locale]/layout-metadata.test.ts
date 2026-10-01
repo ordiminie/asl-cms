@@ -21,6 +21,7 @@ vi.mock('@/app/dal/tenant-dal', () => ({
 
 import {AssociationSeoDTO, getCurrentAssociationSeoDal} from '@/app/dal/seo-dal'
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {shareImageNameKey} from '@/lib/seo/resolve-metadata'
 
 import {generateMetadata} from './layout'
 
@@ -150,7 +151,7 @@ describe('generateMetadata — metadonnees de l association du domaine (s11)', (
       locale: 'fr_FR',
       images: [
         {
-          url: 'https://lesamisdeletang.fr/api/identity/share-image?h=195',
+          url: `https://lesamisdeletang.fr/api/identity/share-image?h=195&n=${shareImageNameKey('Les Amis de l’Étang')}`,
           alt: 'Les Amis de l’Étang',
         },
       ],

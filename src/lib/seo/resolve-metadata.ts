@@ -71,8 +71,22 @@ const withDescription = (
 ): ResolvedSeo => (description ? {...seo, description} : seo)
 
 /**
+ * Empreinte courte du nom (FNV-1a 32 bits, base 36) : le nom est dessine dans
+ * l'image de repli, un renommage doit donc changer son adresse (revue s11,
+ * m3). Pas une protection, une cle de cache.
+ */
+export const shareImageNameKey = (name: string): string => {
+  let hash = 0x811c9dc5
+  for (const char of name) {
+    hash ^= char.codePointAt(0) ?? 0
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(36)
+}
+
+/**
  * Adresse de l'image de repli, cle de cache comprise : elle change quand le
- * logo ou la teinte change, pas avant.
+ * logo, la teinte ou le nom change, pas avant.
  */
 export const shareImageFallbackUrl = (
   association: AssociationSeoContext
@@ -80,6 +94,7 @@ export const shareImageFallbackUrl = (
   const query = new URLSearchParams()
   if (association.logoVersion) query.set('v', association.logoVersion)
   query.set('h', String(association.hue))
+  query.set('n', shareImageNameKey(association.name))
   return `${association.origin}${SHARE_IMAGE_ROUTE}?${query.toString()}`
 }
 

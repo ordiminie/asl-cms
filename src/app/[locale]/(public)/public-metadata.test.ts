@@ -37,6 +37,7 @@ import type {Metadata} from 'next'
 import {getPublicNewsBySlugDal} from '@/app/dal/news-dal'
 import {getPublicPageBySlugDal} from '@/app/dal/page-dal'
 import {AssociationSeoDTO, getCurrentAssociationSeoDal} from '@/app/dal/seo-dal'
+import {shareImageNameKey} from '@/lib/seo/resolve-metadata'
 import {NewsDTO} from '@/services/types/domain/news-types'
 import {PageWithBlocksDTO} from '@/services/types/domain/page-types'
 
@@ -52,7 +53,7 @@ import {generateMetadata as reportMetadata} from './signaler/page'
 const ORIGIN = 'https://lesamisdeletang.fr'
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const SHARE_KEY = `${ORG_ID}/pages/p/share-66666666-6666-4666-8666-666666666666.webp`
-const FALLBACK = `${ORIGIN}/api/identity/share-image?h=195`
+const FALLBACK = `${ORIGIN}/api/identity/share-image?h=195&n=${shareImageNameKey('Les Amis de l’Étang')}`
 
 const association = (
   overrides: Partial<AssociationSeoDTO> = {}
