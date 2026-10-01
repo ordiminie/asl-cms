@@ -95,6 +95,9 @@ beforeEach(() => {
   og.calls.length = 0
   vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantWith(null))
   vi.mocked(getAssociationSettingsDal).mockResolvedValue(settingsWithHue())
+  vi.mocked(convertToPng).mockResolvedValue(
+    new Uint8Array([0x89, 0x50, 0x4e, 0x47])
+  )
   vi.mocked(readAssociationIdentityFileService).mockImplementation(
     async (_organizationId, _kind, key) => ({
       content: new NodeBlob([`contenu:${key}`]) as unknown as Blob,
@@ -154,7 +157,7 @@ describe('GET /api/identity/share-image — image de repli (s11)', () => {
     expect(readAssociationIdentityFileService).not.toHaveBeenCalled()
   })
 
-  it('logo PNG : l image du logo, sans conversion', async () => {
+  it('logo PNG : decode par sharp, puis l image du logo', async () => {
     vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantWith(PNG_LOGO))
 
     await call('?v=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa&h=195')
@@ -165,8 +168,25 @@ describe('GET /api/identity/share-image — image de repli (s11)', () => {
     expect((image?.props as {src: string}).src).toMatch(
       /^data:image\/png;base64,/
     )
-    expect(convertToPng).not.toHaveBeenCalled()
+    expect(convertToPng).toHaveBeenCalledTimes(1)
     expect(textsOf(rendered())).not.toContain(
+      getAssociationMonogram('Les Amis de l’Étang')
+    )
+  })
+
+  it('logo PNG illisible : le monogramme, jamais une connexion coupee (revue s11, C2)', async () => {
+    vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantWith(PNG_LOGO))
+    vi.mocked(convertToPng).mockRejectedValue(
+      new Error('Input buffer contains unsupported image format')
+    )
+
+    const response = await call('?v=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa&h=195')
+
+    expect(response.status).toBe(200)
+    expect(
+      elementsOf(rendered()).some((element) => element.type === 'img')
+    ).toBe(false)
+    expect(textsOf(rendered())).toContain(
       getAssociationMonogram('Les Amis de l’Étang')
     )
   })

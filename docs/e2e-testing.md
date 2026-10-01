@@ -56,6 +56,9 @@ e2e/
 # Lancer tous les tests E2E
 pnpm test:e2e
 
+# Suite complète en local : un seul worker, comme la CI
+pnpm test:e2e --project=chromium --workers=1
+
 # Lancer les tests avec l'interface UI interactive
 pnpm test:e2e:ui
 
@@ -78,6 +81,8 @@ pnpm test:e2e --debug
 # Générer un rapport HTML
 pnpm test:e2e --reporter=html
 ```
+
+> **Suite complète : `--workers=1`.** Plusieurs specs (`seo`, `association-settings`, `contact`, `incident-report`, `rate-limit`…) modifient les réglages de la même association du seed. En CI, `workers: 1` les sérialise ; en local, plusieurs workers peuvent les faire se marcher dessus. Lancer la suite complète avec `--workers=1`, comme la CI.
 
 ## Écriture des tests
 

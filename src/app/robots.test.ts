@@ -48,7 +48,9 @@ describe('robots.ts (critere 3)', () => {
     const {rules} = await rulesOf()
 
     expect(rules.userAgent).toBe('*')
-    expect(rules.allow).toContain('/')
+    // Autorise par defaut : un `Allow: /` en tete tromperait les analyseurs
+    // qui appliquent la premiere regle trouvee (revue s11, m9).
+    expect(rules.allow).not.toContain('/')
     for (const segment of segments.list) {
       expect(rules.disallow).toContain(segment)
     }
@@ -133,6 +135,10 @@ describe('robots.ts (critere 3)', () => {
     ]) {
       expect(rules.allow).toContain(publicApi)
     }
-    expect(rules.allow).not.toContain('/api/auth/')
+    expect(rules.allow).toEqual([
+      '/api/identity/',
+      '/api/files/',
+      '/api/pages/files/',
+    ])
   })
 })

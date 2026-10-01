@@ -51,8 +51,10 @@ const notFound = () =>
   })
 
 /**
- * Le logo en `data:` PNG, ou rien sans logo lisible. Le moteur de rendu ne
- * lit pas le WebP : il est converti.
+ * Le logo en `data:` PNG, ou rien sans logo lisible. Toujours decode par
+ * sharp, PNG compris : le moteur de rendu ne lit pas le WebP, et un fichier
+ * illisible (seule sa signature est verifiee a l'upload) ferait echouer le
+ * rendu en plein streaming au lieu de retomber sur le monogramme.
  */
 const readLogoDataUrl = async (
   tenant: TenantDTO
@@ -65,8 +67,7 @@ const readLogoDataUrl = async (
       tenant.logoKey
     )
     const bytes = new Uint8Array(await stored.content.arrayBuffer())
-    const png =
-      stored.contentType === 'image/png' ? bytes : await convertToPng(bytes)
+    const png = await convertToPng(bytes)
     return `data:image/png;base64,${Buffer.from(png).toString('base64')}`
   } catch {
     return undefined

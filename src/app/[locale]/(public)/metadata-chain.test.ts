@@ -17,9 +17,11 @@ const messages = vi.hoisted(() => ({value: {} as Record<string, unknown>}))
 /*
  * `resolve-metadata` de Next fait un `require('server-only')` CommonJS, que
  * `vi.mock` n'intercepte pas : le module est neutralise dans le cache de
- * `require` avant l'import.
+ * `require` avant l'import, attendu pour ne pas dependre de l'ordre des
+ * microtaches. Chemin interne de Next 16.3 (`next/dist/lib/metadata`) : une
+ * montee de version peut le deplacer, le test echoue alors en rouge.
  */
-vi.hoisted(async () => {
+await vi.hoisted(async () => {
   const {createRequire} = await import('node:module')
   const {dirname} = await import('node:path')
   const require = createRequire(import.meta.url)

@@ -54,7 +54,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   return {
     rules: {
       userAgent: '*',
-      allow: ['/', ...PUBLIC_API_PREFIXES],
+      allow: [...PUBLIC_API_PREFIXES],
       disallow: [
         ...withLocalePrefixes([...AUTHENTICATED_SEGMENTS, ...SIGN_IN_SEGMENTS]),
         API_PREFIX,
