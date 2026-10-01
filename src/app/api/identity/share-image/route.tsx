@@ -2,10 +2,12 @@ import {readFile} from 'node:fs/promises'
 import {join} from 'node:path'
 
 import {ImageResponse} from 'next/og'
+import sharp from 'sharp'
 
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {getCurrentTenantDal, TenantDTO} from '@/app/dal/tenant-dal'
 import {convertToPng} from '@/lib/files/resize-image'
+import {logger} from '@/lib/logger'
 import {shareImageNameKey} from '@/lib/seo/resolve-metadata'
 import {
   getShareImageColors,
@@ -67,10 +69,60 @@ const readLogoDataUrl = async (
       tenant.logoKey
     )
     const bytes = new Uint8Array(await stored.content.arrayBuffer())
-    const png = await convertToPng(bytes)
+    const png = await convertToPng(bytes, MARK_SIZE * 2)
     return `data:image/png;base64,${Buffer.from(png).toString('base64')}`
-  } catch {
+  } catch (error) {
+    logger.warn('[SHARE-IMAGE] logo indécodable, repli sur le monogramme', {
+      organizationId: tenant.id,
+      logoKey: tenant.logoKey,
+      error,
+    })
     return undefined
+  }
+}
+
+/**
+ * Rouvre le seul chargeur SVG **en memoire** de libvips (ADR 030).
+ *
+ * `next/og` (@vercel/og) rasterise le SVG de satori avec sharp. Or, au premier
+ * appel de l'optimiseur de `next/image`, Next 16.3 bloque pour tout le
+ * processus tous les chargeurs de libvips et ne rouvre que les formats
+ * raster : sans ce deblocage, chaque image de partage rendue ensuite echoue.
+ * Appele juste avant chaque rendu, et non au chargement du module, parce que
+ * le blocage de l'optimiseur peut survenir apres. Le chargeur SVG depuis un
+ * fichier reste bloque ; le SVG lu ici est produit par satori, jamais fourni
+ * par un visiteur. A reverifier a chaque montee de version de Next.
+ */
+const reopenSvgBufferLoader = () =>
+  sharp.unblock({operation: ['VipsForeignLoadSvgBuffer']})
+
+/**
+ * Rend l'image entiere avant de repondre : un echec de rendu en plein
+ * streaming couperait la connexion sans rien dire. Ici il devient un 500
+ * journalise.
+ */
+const materialize = async (
+  response: Response,
+  organizationId: string
+): Promise<Response> => {
+  try {
+    const body = await response.arrayBuffer()
+    return new Response(body, {
+      status: response.status,
+      headers: response.headers,
+    })
+  } catch (error) {
+    logger.error('[SHARE-IMAGE] rendu de l image de partage en echec', {
+      organizationId,
+      error,
+    })
+    return new Response(null, {
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    })
   }
 }
 
@@ -177,7 +229,8 @@ export async function GET(request: Request): Promise<Response> {
   const hue = getAccentHue(settings)
   const logoVersion = getIdentityVersionFromKey(tenant.logoKey)
 
-  return new ImageResponse(
+  reopenSvgBufferLoader()
+  const response = new ImageResponse(
     shareImageElement({
       name: tenant.name,
       logoDataUrl,
@@ -205,4 +258,5 @@ export async function GET(request: Request): Promise<Response> {
       },
     }
   )
+  return materialize(response, tenant.id)
 }

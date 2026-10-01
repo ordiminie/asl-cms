@@ -1,6 +1,7 @@
 /* eslint-disable no-restricted-properties -- une spec e2e tourne hors de
    l'application : le fichier env.ts typé n'y est pas chargé. */
-import {Browser, expect, Page, test} from '@playwright/test'
+import {APIRequestContext, Browser, expect, Page, test} from '@playwright/test'
+import sharp from 'sharp'
 
 /**
  * Référencement — s11, critères 1 à 5.
@@ -82,6 +83,36 @@ const robotsText = async (page: Page, base: string): Promise<string> => {
   const response = await page.request.get(`${base}/robots.txt`)
   expect(response.ok()).toBe(true)
   return response.text()
+}
+
+/**
+ * Fait charger sharp par l'optimiseur de `next/image` dans le processus du
+ * serveur (revue s11, C3) : à son premier appel, Next y bloque le chargeur SVG
+ * dont `next/og` a besoin. Sans cela, le test dépendrait de l'ordre des specs.
+ *
+ * L'image source n'est rendue par aucune page via `next/image`, et 32 px est
+ * une largeur qu'aucune autre spec ne demande pour elle : avec un build neuf
+ * (la CI), la requête n'est jamais servie depuis `.next/cache/images` et
+ * passe donc par sharp. Next refuse une URL locale avec paramètres : on ne
+ * peut pas rendre la source unique à chaque passage. Largeur et qualité font
+ * partie de celles que `next.config.ts` autorise (valeurs par défaut).
+ */
+const forceImageOptimizer = async (
+  request: APIRequestContext,
+  base: string
+) => {
+  const response = await request.get(
+    `${base}/_next/image?url=${encodeURIComponent('/shipsaas/shipsaas.png')}&w=32&q=75`
+  )
+  expect(response.ok()).toBe(true)
+}
+
+const decodePng = async (bytes: Buffer) => {
+  const {info} = await sharp(bytes, {failOn: 'warning'})
+    .raw()
+    .toBuffer({resolveWithObject: true})
+  const {format} = await sharp(bytes).metadata()
+  return {format, width: info.width, height: info.height}
 }
 
 const metaContent = async (page: Page, selector: string) =>
@@ -199,9 +230,15 @@ test.describe.serial('s11 — référencement', () => {
       new RegExp(`^${TENANT_A}/api/identity/share-image\\?`)
     )
 
+    await forceImageOptimizer(visitor.request, TENANT_A)
     const generated = await visitor.request.get(image as string)
-    expect(generated.ok()).toBe(true)
+    expect(generated.status()).toBe(200)
     expect(generated.headers()['content-type']).toBe('image/png')
+    expect(await decodePng(await generated.body())).toEqual({
+      format: 'png',
+      width: 1200,
+      height: 630,
+    })
 
     await visitor.close()
   })

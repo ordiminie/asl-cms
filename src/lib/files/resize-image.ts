@@ -60,9 +60,22 @@ export const resizeToFitWebp = async (
 }
 
 /**
- * Rend les octets d'une image en PNG, dimensions inchangees. Sert le logo de
- * l'image de repli (s11) : le moteur de rendu de `next/og` ne lit pas le
- * WebP.
+ * Rend les octets d'une image en PNG. Sert le logo de l'image de repli (s11) :
+ * le moteur de rendu de `next/og` ne lit pas le WebP.
+ *
+ * Avec `maxSide`, la sortie tient dans un carre de `maxSide` px, sans recadrage
+ * ni agrandissement : le logo est rendu a chaque requete, inutile de reencoder
+ * et de redecoder un fichier de plusieurs milliers de pixels pour l'afficher
+ * en 240 px. Sans `maxSide`, dimensions inchangees.
  */
-export const convertToPng = async (content: Uint8Array): Promise<Uint8Array> =>
-  new Uint8Array(await sharp(Buffer.from(content)).png().toBuffer())
+export const convertToPng = async (
+  content: Uint8Array,
+  maxSide?: number
+): Promise<Uint8Array> => {
+  const image = sharp(Buffer.from(content))
+  const bounded = maxSide
+    ? image.resize(maxSide, maxSide, {fit: 'inside', withoutEnlargement: true})
+    : image
+
+  return new Uint8Array(await bounded.png().toBuffer())
+}

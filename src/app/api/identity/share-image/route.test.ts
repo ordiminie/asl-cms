@@ -5,6 +5,8 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 const og = vi.hoisted(() => ({
   calls: [] as {element: ReactElement; options: Record<string, unknown>}[],
+  events: [] as string[],
+  failRender: false,
 }))
 
 vi.mock('server-only', () => ({}))
@@ -15,11 +17,31 @@ vi.mock('next/og', () => ({
       options: {headers?: Record<string, string>} & Record<string, unknown>
     ) {
       og.calls.push({element, options})
-      super('png', {
+      og.events.push('render')
+      const body = og.failRender
+        ? new ReadableStream({
+            start(controller) {
+              controller.error(
+                new Error('Input buffer contains unsupported image format')
+              )
+            },
+          })
+        : 'png'
+      super(body, {
         headers: {'Content-Type': 'image/png', ...options.headers},
       })
     }
   },
+}))
+vi.mock('sharp', () => ({
+  default: {
+    unblock: vi.fn(() => {
+      og.events.push('unblock')
+    }),
+  },
+}))
+vi.mock('@/lib/logger', () => ({
+  logger: {debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn()},
 }))
 vi.mock('@/app/dal/tenant-dal', () => ({getCurrentTenantDal: vi.fn()}))
 vi.mock('@/app/dal/association-settings-dal', () => ({
@@ -32,9 +54,12 @@ vi.mock('@/lib/files/resize-image', () => ({
   convertToPng: vi.fn(async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47])),
 }))
 
+import sharp from 'sharp'
+
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {convertToPng} from '@/lib/files/resize-image'
+import {logger} from '@/lib/logger'
 import {shareImageNameKey} from '@/lib/seo/resolve-metadata'
 import {readAssociationIdentityFileService} from '@/services/facades/association-identity-service-facade'
 import {getAssociationMonogram} from '@/services/types/domain/association-identity-types'
@@ -93,6 +118,8 @@ const settingsWithHue = (hue?: string) =>
 beforeEach(() => {
   vi.clearAllMocks()
   og.calls.length = 0
+  og.events.length = 0
+  og.failRender = false
   vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantWith(null))
   vi.mocked(getAssociationSettingsDal).mockResolvedValue(settingsWithHue())
   vi.mocked(convertToPng).mockResolvedValue(
@@ -230,5 +257,60 @@ describe('GET /api/identity/share-image — image de repli (s11)', () => {
 
     expect(response.status).toBe(404)
     expect(og.calls).toHaveLength(0)
+  })
+
+  it('rouvre le seul chargeur SVG en memoire de sharp avant chaque rendu (revue s11, C3)', async () => {
+    await call('?h=195')
+    await call('?h=195')
+
+    expect(og.events).toEqual(['unblock', 'render', 'unblock', 'render'])
+    for (const args of vi.mocked(sharp.unblock).mock.calls) {
+      expect(args).toEqual([{operation: ['VipsForeignLoadSvgBuffer']}])
+    }
+  })
+
+  it('image servie entiere : corps materialise, en-tetes de cache gardes', async () => {
+    const response = await call(`?h=195&n=${NAME_KEY}`)
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('png')
+    expect(response.headers.get('Content-Type')).toBe('image/png')
+    expect(response.headers.get('Cache-Control')).toBe(
+      'public, max-age=31536000, immutable'
+    )
+  })
+
+  it('rendu en echec : 500 explicite et journalise, jamais une connexion coupee (revue s11, C3)', async () => {
+    og.failRender = true
+
+    const response = await call(`?h=195&n=${NAME_KEY}`)
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('[SHARE-IMAGE]'),
+      expect.objectContaining({organizationId: ORG_ID})
+    )
+  })
+
+  it('logo indecodable : repli sur le monogramme, trace en avertissement (revue s11, m11)', async () => {
+    vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantWith(PNG_LOGO))
+    const failure = new Error('Input buffer contains unsupported image format')
+    vi.mocked(convertToPng).mockRejectedValue(failure)
+
+    await call('?v=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa&h=195')
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      '[SHARE-IMAGE] logo indécodable, repli sur le monogramme',
+      {organizationId: ORG_ID, logoKey: PNG_LOGO, error: failure}
+    )
+  })
+
+  it('logo borne a deux fois la taille du repere avant le rendu (revue s11, m12)', async () => {
+    vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantWith(PNG_LOGO))
+
+    await call('?v=aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa&h=195')
+
+    expect(convertToPng).toHaveBeenCalledWith(expect.any(Uint8Array), 480)
   })
 })

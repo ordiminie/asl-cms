@@ -173,3 +173,24 @@ describe('convertToPng — logo WebP pour l image de repli (s11)', () => {
     expect(metadata.height).toBe(200)
   })
 })
+
+describe('convertToPng borne — logo de l image de repli (revue s11, m12)', () => {
+  it('ramene un grand logo dans le carre demande, proportions gardees', async () => {
+    const metadata = await describeOutput(
+      await convertToPng(await makePng(4000, 2000), 480)
+    )
+
+    expect(metadata.format).toBe('png')
+    expect(metadata.width).toBe(480)
+    expect(metadata.height).toBe(240)
+  })
+
+  it('n agrandit jamais un petit logo', async () => {
+    const metadata = await describeOutput(
+      await convertToPng(await makePng(120, 80), 480)
+    )
+
+    expect(metadata.width).toBe(120)
+    expect(metadata.height).toBe(80)
+  })
+})
