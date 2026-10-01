@@ -4,8 +4,8 @@ test.describe('Homepage', () => {
   test('should display the homepage correctly', async ({page}) => {
     await page.goto('/')
 
-    // Check if the page loads with correct title
-    await expect(page).toHaveTitle(/Next SaaS Boilerplate/)
+    // Titre de la page d'accueil : le nom de l'association du domaine (s11)
+    await expect(page).toHaveTitle('TechCorp Solutions')
 
     // Check for main hero heading specifically
     await expect(

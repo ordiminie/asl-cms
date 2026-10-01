@@ -65,6 +65,7 @@ async function EditorSection({newsId}: {newsId: string}) {
   return (
     <NewsEditor
       news={item}
+      host={tenant.domain}
       saveAction={saveNewsDraftAction}
       publishAction={publishNewsAction}
       unpublishAction={unpublishNewsAction}

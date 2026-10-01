@@ -15,9 +15,12 @@ import {
   unpublishPageService,
   updatePageService,
   uploadPageBlockFileService,
+  uploadPageShareImageService,
 } from '@/services/facades/page-service-facade'
-import {PageBlockPublicationIssue} from '@/services/types/domain/page-block-types'
-import {PageWithBlocksDTO} from '@/services/types/domain/page-types'
+import {
+  PagePublicationIssue,
+  PageWithBlocksDTO,
+} from '@/services/types/domain/page-types'
 
 export type PageSaveState =
   | {status: 'saved'; page: PageWithBlocksDTO}
@@ -26,7 +29,7 @@ export type PageSaveState =
 
 export type PagePublishState =
   | {status: 'published'; page: PageWithBlocksDTO}
-  | {status: 'incomplete'; issues: PageBlockPublicationIssue[]}
+  | {status: 'incomplete'; issues: PagePublicationIssue[]}
   | {status: 'error'; message: string}
 
 export type PageUnpublishState =
@@ -37,7 +40,36 @@ export type PageBlockUploadState =
   | {status: 'uploaded'; key: string; fileName: string; fileSize: number}
   | {status: 'error'; message: string}
 
+export type PageShareImageUploadState =
+  | {status: 'uploaded'; key: string; fileName: string; fileSize: number}
+  | {status: 'error'; message: string}
+
 export type PageBlockInput = {id?: string; type?: string; data: unknown}
+
+/** L'etat courant de l'editeur : parametres, blocs et referencement (s11). */
+export type PageInput = {
+  pageId: string
+  previousSlug: string
+  title: string
+  slug: string
+  blocks: PageBlockInput[]
+  seoTitle?: string
+  seoDescription?: string
+  shareImageKey?: string | null
+  shareImageAlt?: string
+}
+
+const pageUpdateOf = (organizationId: string, input: PageInput) => ({
+  organizationId,
+  pageId: input.pageId,
+  title: input.title,
+  slug: input.slug,
+  blocks: input.blocks,
+  seoTitle: input.seoTitle,
+  seoDescription: input.seoDescription,
+  shareImageKey: input.shareImageKey,
+  shareImageAlt: input.shareImageAlt,
+})
 
 const failure = async (error: unknown): Promise<{message: string}> => {
   const t = await getTranslations('BureauPagesPage.errors')
@@ -101,25 +133,15 @@ export async function createPageAction(): Promise<void> {
  * le nouveau slug — un renommage laisserait sinon l'ancienne adresse servir la
  * page en cache.
  */
-export async function savePageDraftAction(input: {
-  pageId: string
-  previousSlug: string
-  title: string
-  slug: string
-  blocks: PageBlockInput[]
-}): Promise<PageSaveState> {
+export async function savePageDraftAction(
+  input: PageInput
+): Promise<PageSaveState> {
   const tenant = await requireCurrentTenantDal()
 
   try {
     await requireActionAuth()
 
-    const result = await updatePageService({
-      organizationId: tenant.id,
-      pageId: input.pageId,
-      title: input.title,
-      slug: input.slug,
-      blocks: input.blocks,
-    })
+    const result = await updatePageService(pageUpdateOf(tenant.id, input))
 
     if (result.status === 'rejected') {
       return {status: 'slug-taken'}
@@ -134,25 +156,15 @@ export async function savePageDraftAction(input: {
 }
 
 /** Publie la page apres avoir enregistre l'etat courant de l'editeur. */
-export async function publishPageAction(input: {
-  pageId: string
-  previousSlug: string
-  title: string
-  slug: string
-  blocks: PageBlockInput[]
-}): Promise<PagePublishState> {
+export async function publishPageAction(
+  input: PageInput
+): Promise<PagePublishState> {
   const tenant = await requireCurrentTenantDal()
 
   try {
     await requireActionAuth()
 
-    const saved = await updatePageService({
-      organizationId: tenant.id,
-      pageId: input.pageId,
-      title: input.title,
-      slug: input.slug,
-      blocks: input.blocks,
-    })
+    const saved = await updatePageService(pageUpdateOf(tenant.id, input))
     if (saved.status === 'rejected') {
       const t = await getTranslations('BureauPagesPage.errors')
       return {status: 'error', message: t('slugTaken')}
@@ -228,6 +240,49 @@ export async function uploadPageBlockFileAction(
       pageId: String(formData.get('pageId')),
       blockId: String(formData.get('blockId')),
       kind: formData.get('kind') === 'document' ? 'document' : 'image',
+      file,
+    })
+
+    if (result.status === 'rejected') {
+      const t = await getTranslations('BureauPagesPage.errors')
+      return {
+        status: 'error',
+        message: result.reason === 'size' ? t('fileTooLarge') : t('fileFormat'),
+      }
+    }
+
+    return {
+      status: 'uploaded',
+      key: result.key,
+      fileName: result.fileName,
+      fileSize: result.fileSize,
+    }
+  } catch (error) {
+    return {status: 'error', ...(await failure(error))}
+  }
+}
+
+/**
+ * Depose l'image de partage d'une page (s11) et rend sa cle : c'est
+ * l'enregistrement de la page qui l'ecrit.
+ */
+export async function uploadPageShareImageAction(
+  formData: FormData
+): Promise<PageShareImageUploadState> {
+  const tenant = await requireCurrentTenantDal()
+
+  try {
+    await requireActionAuth()
+
+    const file = formData.get('file')
+    if (!(file instanceof File)) {
+      const t = await getTranslations('BureauPagesPage.errors')
+      return {status: 'error', message: t('invalidData')}
+    }
+
+    const result = await uploadPageShareImageService({
+      organizationId: tenant.id,
+      pageId: String(formData.get('pageId')),
       file,
     })
 

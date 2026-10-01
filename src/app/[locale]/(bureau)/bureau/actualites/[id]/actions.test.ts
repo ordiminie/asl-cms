@@ -68,6 +68,7 @@ const saved: NewsDTO = {
   publishedOn: '2026-10-10',
   imageKey: null,
   imageAlt: '',
+  seoDescription: null,
   content: 'Rendez-vous le 10 octobre.',
   status: 'draft',
   createdAt: new Date('2026-09-01'),

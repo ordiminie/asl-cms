@@ -9,6 +9,8 @@ import {
 } from '@/app/dal/board-member-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {Separator} from '@/components/ui/separator'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolveFixedPageSeo} from '@/lib/seo/resolve-metadata'
 import {ASSOCIATION_MEMBER_COUNT_SETTING_KEY} from '@/services/types/domain/association-settings-types'
 import {
   BoardMemberDTO,
@@ -26,7 +28,12 @@ export async function generateMetadata({
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'PublicBoardPage'})
 
-  return {title: t('metadata.title')}
+  const title = t('metadata.title')
+  return publicPageMetadata(
+    (association) =>
+      resolveFixedPageSeo({path: '/le-bureau', title}, association),
+    {fallback: {title}}
+  )
 }
 
 /**

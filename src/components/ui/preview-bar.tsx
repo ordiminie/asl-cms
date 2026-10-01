@@ -48,6 +48,8 @@ type PreviewBarProps = {
   title: string
   /** Message d'echec, rendu en 2e ligne de la barre. */
   errorMessage?: string
+  /** Lien qui mene a la correction, a la suite du message d'echec (s11). */
+  errorAction?: ReactNode
   /** Retour vers la liste, et actions de droite. */
   back: ReactNode
   actions: ReactNode
@@ -57,6 +59,7 @@ export function PreviewBar({
   status,
   title,
   errorMessage,
+  errorAction,
   back,
   actions,
 }: PreviewBarProps) {
@@ -88,12 +91,10 @@ export function PreviewBar({
       </div>
 
       {errorMessage && (
-        <p
-          className="bg-[oklch(0.3_0.06_25)] px-4 py-2 text-[14px] sm:px-6"
-          role="alert"
-        >
-          {errorMessage}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-[oklch(0.3_0.06_25)] px-4 py-2 text-[14px] sm:px-6">
+          <p role="alert">{errorMessage}</p>
+          {errorAction}
+        </div>
       )}
     </div>
   )

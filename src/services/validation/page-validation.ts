@@ -1,5 +1,7 @@
 import {z} from 'zod'
 
+import {SEO_DESCRIPTION_MAX, SEO_TITLE_MAX} from '../types/domain/seo-types'
+
 /**
  * Validation des pages CMS (s04). Le slug est la seule contrainte de forme qui
  * compte cote public : minuscules, chiffres et tirets, sans tiret en bordure —
@@ -40,7 +42,38 @@ export const createPageServiceSchema = z.object({
   blocks: z.array(pageBlockInputSchema).default([]),
 })
 
-export const updatePageServiceSchema = createPageServiceSchema.extend({
+/** Texte facultatif : vide ou blanc, il est stocke absent (`null`). */
+const optionalSeoText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .transform((value) => (value === '' ? null : value))
+    .optional()
+
+export const PAGE_SHARE_IMAGE_ALT_MAX_LENGTH = 300
+
+/**
+ * Champs de referencement d'une page (s11). Absents de la requete, ceux en
+ * base ne sont pas touches ; envoyes vides, ils sont effaces.
+ */
+export const pageSeoInputSchema = z.object({
+  seoTitle: optionalSeoText(SEO_TITLE_MAX),
+  seoDescription: optionalSeoText(SEO_DESCRIPTION_MAX),
+  /**
+   * Cle de l'image telle que l'editeur la rend, ou `null` si elle a ete
+   * retiree. Sa forme est verifiee contre la page dans le service.
+   */
+  shareImageKey: z.string().min(1).nullable().optional(),
+  shareImageAlt: optionalSeoText(PAGE_SHARE_IMAGE_ALT_MAX_LENGTH),
+})
+
+export const updatePageServiceSchema = createPageServiceSchema
+  .extend({pageId: pageIdSchema})
+  .extend(pageSeoInputSchema.shape)
+
+export const uploadPageShareImageServiceSchema = z.object({
+  organizationId: pageOrganizationIdSchema,
   pageId: pageIdSchema,
 })
 

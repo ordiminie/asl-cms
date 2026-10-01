@@ -11,6 +11,8 @@ import {
 } from '@/app/dal/news-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {formatContentDate} from '@/lib/cms/format-content-date'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolveFixedPageSeo} from '@/lib/seo/resolve-metadata'
 
 type NewsListParams = {
   params: Promise<{locale: string}>
@@ -24,7 +26,12 @@ export async function generateMetadata({
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'PublicNewsPage'})
 
-  return {title: t('metadata.title')}
+  const title = t('metadata.title')
+  return publicPageMetadata(
+    (association) =>
+      resolveFixedPageSeo({path: '/actualites', title}, association),
+    {fallback: {title}}
+  )
 }
 
 /**

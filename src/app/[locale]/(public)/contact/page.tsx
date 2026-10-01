@@ -3,6 +3,8 @@ import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {routing} from '@/i18n/routing'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolveFixedPageSeo} from '@/lib/seo/resolve-metadata'
 
 import {ContactForm} from './contact-form'
 
@@ -12,10 +14,12 @@ export function generateStaticParams() {
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('ContactPage.metadata')
-  return {
-    title: t('title'),
-    description: t('description'),
-  }
+  const title = t('title')
+  return publicPageMetadata(
+    (association) =>
+      resolveFixedPageSeo({path: '/contact', title}, association),
+    {fallback: {title}}
+  )
 }
 
 const Page = async ({params}: {params: Promise<{locale: string}>}) => {

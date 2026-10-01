@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import {getTranslations, setRequestLocale} from 'next-intl/server'
+import {getTranslations} from 'next-intl/server'
 import {PropsWithChildren} from 'react'
 
 import {getCurrentPublicSiteNavigationDal} from '@/app/dal/site-navigation-dal'
@@ -13,20 +13,12 @@ import {Button} from '@/components/ui/button'
 import {routing} from '@/i18n/routing'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{locale: string}>
-}) {
-  const {locale} = await params
-  setRequestLocale(locale)
-  const t = await getTranslations({locale, namespace: 'PublicLayout'})
-
-  return {
-    title: t('title'),
-    description: t('description'),
-  }
-}
+/*
+ * Pas de `generateMetadata` ici : un titre en chaine dans un layout
+ * intermediaire remet a zero le gabarit « · association » du layout
+ * `[locale]`, et une description y remplacerait celle de l'association
+ * (revue s11, C1). Le layout `[locale]` porte titre et description.
+ */
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}))

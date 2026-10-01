@@ -84,7 +84,14 @@ export const createPageDao = async (input: {
 
 export const updatePageDao = async (
   pageId: string,
-  input: {slug: string; title: string}
+  input: {
+    slug: string
+    title: string
+    seoTitle?: string | null
+    seoDescription?: string | null
+    shareImageKey?: string | null
+    shareImageAlt?: string | null
+  }
 ): Promise<PageModel> => {
   const [row] = await getDb()
     .update(page)
@@ -161,3 +168,18 @@ export const reorderPageBlocksTxnDao = async (
 
     return rows.map((row) => toBlockRow(row))
   })
+
+/**
+ * Pages publiees d'une association pour le sitemap (s11) : adresse et date de
+ * derniere modification, rien d'autre. Sous RLS forcee : hors scope, rien.
+ */
+export const getPublishedPagesForSitemapDao = async (
+  organizationId: string
+): Promise<{slug: string; updatedAt: Date}[]> =>
+  getDb()
+    .select({slug: page.slug, updatedAt: page.updatedAt})
+    .from(page)
+    .where(
+      and(eq(page.organizationId, organizationId), eq(page.status, 'published'))
+    )
+    .orderBy(asc(page.slug))

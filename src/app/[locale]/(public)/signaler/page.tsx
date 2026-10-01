@@ -3,6 +3,8 @@ import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {getActiveReportCategoriesDal} from '@/app/dal/association-category-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolveFixedPageSeo} from '@/lib/seo/resolve-metadata'
 
 import {ReportForm} from './report-form'
 
@@ -15,7 +17,12 @@ export async function generateMetadata({
   setRequestLocale(locale)
   const t = await getTranslations({locale, namespace: 'ReportPage.metadata'})
 
-  return {title: t('title'), description: t('description')}
+  const title = t('title')
+  return publicPageMetadata(
+    (association) =>
+      resolveFixedPageSeo({path: '/signaler', title}, association),
+    {fallback: {title}}
+  )
 }
 
 /**

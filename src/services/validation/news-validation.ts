@@ -1,5 +1,6 @@
 import {z} from 'zod'
 
+import {SEO_DESCRIPTION_MAX} from '../types/domain/seo-types'
 import {pageSlugSchema} from './page-validation'
 
 /**
@@ -60,6 +61,16 @@ export const updateNewsServiceSchema = z.object({
    * l'actualite par `isNewsImageKeyAllowed`, dans le service.
    */
   imageKey: z.string().min(1).nullable(),
+  /**
+   * Description pour les moteurs (s11). Absente de la requete, celle en base
+   * n'est pas touchee ; vide, elle est effacee.
+   */
+  seoDescription: z
+    .string()
+    .trim()
+    .max(SEO_DESCRIPTION_MAX)
+    .transform((value) => (value === '' ? null : value))
+    .optional(),
 })
 
 export const newsStatusChangeServiceSchema = z.object({

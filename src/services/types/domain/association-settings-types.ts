@@ -1,5 +1,7 @@
 import {z} from 'zod'
 
+import {SEO_DESCRIPTION_MAX} from './seo-types'
+
 /**
  * Parametres d'une association (ADR 010, ADR 016).
  *
@@ -14,6 +16,12 @@ import {z} from 'zod'
 
 /** Page du back-office qui affiche le parametre. */
 export type AssociationSettingPage = 'settings' | 'identity'
+
+/**
+ * Carte de la page « Reglages » qui regroupe le parametre. Absente : la carte
+ * d'origine, celle des adresses de notification.
+ */
+export type AssociationSettingSection = 'seo'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -30,6 +38,7 @@ type AssociationSettingDefinitionBase = {
   /** Phrase affichee sous le champ vide, qui dit la valeur par defaut. */
   whenEmptyKey?: string
   page: AssociationSettingPage
+  section?: AssociationSettingSection
 }
 
 export type EmailSettingDefinition = AssociationSettingDefinitionBase & {
@@ -55,11 +64,27 @@ export type ChoiceSettingDefinition = AssociationSettingDefinitionBase & {
   options: readonly ChoiceSettingOption[]
 }
 
+/**
+ * Jeu de caracteres restreint d'un texte : `verification-code` n'accepte que
+ * lettres, chiffres, tirets et soulignes, et reduit une balise `<meta>` collee
+ * entiere a la valeur de son attribut `content`.
+ */
+export type TextSettingFormat = 'verification-code'
+
+export type TextSettingDefinition = AssociationSettingDefinitionBase & {
+  type: 'text'
+  maxLength: number
+  /** Texte long (zone de saisie sur plusieurs lignes, avec compteur). */
+  multiline: boolean
+  format?: TextSettingFormat
+}
+
 export type AssociationSettingDefinition =
   | EmailSettingDefinition
   | NumberSettingDefinition
   | BooleanSettingDefinition
   | ChoiceSettingDefinition
+  | TextSettingDefinition
 
 export type AssociationSettingType = AssociationSettingDefinition['type']
 
@@ -76,6 +101,8 @@ export const ASSOCIATION_SETTING_ERROR_CODES = [
   'aboveMax',
   'invalidBoolean',
   'invalidChoice',
+  'tooLong',
+  'invalidCode',
   'unknownKey',
 ] as const
 
@@ -134,6 +161,18 @@ export const ASSOCIATION_MEMBER_COUNT_SETTING_KEY = 'association.member_count'
  */
 export const CONTACT_MESSAGES_PER_HOUR_SETTING_KEY =
   'contact.messages_per_visitor_per_hour'
+/**
+ * Description de l'association (s11) : repli de la description des pages
+ * publiques. **Sans defaut** : vide, aucune balise `description` n'est emise.
+ */
+export const ASSOCIATION_DESCRIPTION_SETTING_KEY = 'association.description'
+/** Code de verification de la Search Console de Google (s11). */
+export const GOOGLE_VERIFICATION_SETTING_KEY = 'search.google_verification'
+
+/** Plafond d'une description, valeur d'usage des moteurs de recherche. */
+export const ASSOCIATION_DESCRIPTION_MAX_LENGTH = SEO_DESCRIPTION_MAX
+/** Plafond d'un code de verification : bien au-dela des ~43 de Google. */
+export const VERIFICATION_CODE_MAX_LENGTH = 100
 
 /**
  * Les six teintes d'accent validees (design system §1.2). Le bureau choisit
@@ -231,6 +270,31 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     helpKey: 'fields.contactMessagesPerHour.help',
     page: 'settings',
   },
+  {
+    key: ASSOCIATION_DESCRIPTION_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: ASSOCIATION_DESCRIPTION_MAX_LENGTH,
+    multiline: true,
+    labelKey: 'fields.associationDescription.label',
+    helpKey: 'fields.associationDescription.help',
+    whenEmptyKey: 'fields.associationDescription.whenEmpty',
+    page: 'settings',
+    section: 'seo',
+  },
+  {
+    key: GOOGLE_VERIFICATION_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: VERIFICATION_CODE_MAX_LENGTH,
+    multiline: false,
+    format: 'verification-code',
+    labelKey: 'fields.googleVerification.label',
+    helpKey: 'fields.googleVerification.help',
+    whenEmptyKey: 'fields.googleVerification.whenEmpty',
+    page: 'settings',
+    section: 'seo',
+  },
 ]
 
 const emailSchema = z.email()
@@ -279,6 +343,44 @@ const parseChoice = (
     ? accepted(raw, raw)
     : refused({code: 'invalidChoice'})
 
+const VERIFICATION_CODE_PATTERN = /^[A-Za-z0-9_-]+$/
+const META_CONTENT_PATTERN = /\bcontent\s*=\s*(["'])(.*?)\1/i
+
+/**
+ * Le code de verification d'une saisie : la valeur de l'attribut `content`
+ * si une balise `<meta>` a ete collee entiere, sinon la saisie elle-meme,
+ * espaces de bord retires. Une balise sans `content` ne donne aucun code.
+ */
+export const extractGoogleVerificationCode = (
+  raw: string
+): string | undefined => {
+  const trimmed = raw.trim()
+  if (!trimmed.startsWith('<')) return trimmed
+  const content = META_CONTENT_PATTERN.exec(trimmed)?.[2]?.trim()
+  return content === undefined || content === '' ? undefined : content
+}
+
+const parseText = (
+  definition: TextSettingDefinition,
+  raw: string
+): AssociationSettingParseResult => {
+  const text =
+    definition.format === 'verification-code'
+      ? extractGoogleVerificationCode(raw)
+      : raw
+  if (text === undefined) return refused({code: 'invalidCode'})
+  if (
+    definition.format === 'verification-code' &&
+    !VERIFICATION_CODE_PATTERN.test(text)
+  ) {
+    return refused({code: 'invalidCode'})
+  }
+  if (text.length > definition.maxLength) {
+    return refused({code: 'tooLong', max: definition.maxLength})
+  }
+  return accepted(text, text)
+}
+
 /**
  * Valide une valeur brute selon le type declare. Une valeur vide est refusee
  * (`required`) : vider un parametre se traite dans `validateSettingsChanges`.
@@ -299,6 +401,8 @@ export const parseSettingValue = (
       return parseBoolean(trimmed)
     case 'choice':
       return parseChoice(definition, trimmed)
+    case 'text':
+      return parseText(definition, trimmed)
   }
 }
 
@@ -479,3 +583,23 @@ export const getMagicLinkDailyRequestLimit = (
 export const getContactMessagesPerHourLimit = (
   settings: ResolvedAssociationSettings
 ): number => numberSettingOf(settings, CONTACT_MESSAGES_PER_HOUR_SETTING_KEY)
+
+const textSettingOf = (
+  settings: ResolvedAssociationSettings,
+  key: string
+): string | undefined => {
+  const value = settings[key]?.value
+  return typeof value === 'string' && value.trim() !== '' ? value : undefined
+}
+
+/** Description de l'association (s11) : rien si non renseignee. */
+export const getAssociationDescription = (
+  settings: ResolvedAssociationSettings
+): string | undefined =>
+  textSettingOf(settings, ASSOCIATION_DESCRIPTION_SETTING_KEY)
+
+/** Code de verification Google (s11) : rien si non renseigne. */
+export const getGoogleVerificationCode = (
+  settings: ResolvedAssociationSettings
+): string | undefined =>
+  textSettingOf(settings, GOOGLE_VERIFICATION_SETTING_KEY)

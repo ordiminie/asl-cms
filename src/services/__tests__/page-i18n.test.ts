@@ -111,8 +111,14 @@ describe('catalogues de messages des pages CMS (s04)', () => {
     })
 
     it(`${namespace} garde les memes variables d'interpolation`, () => {
+      // Le nom de chaque argument, simple (`{count}`) ou ICU
+      // (`{over, plural, ...}`) : les branches d'un pluriel se traduisent.
       const placeholders = (value: unknown) =>
-        typeof value === 'string' ? (value.match(/{[^}]+}/g) ?? []).sort() : []
+        typeof value === 'string'
+          ? [...value.matchAll(/{\s*(\w+)\s*[,}]/g)]
+              .map(([, name]) => name)
+              .sort()
+          : []
 
       for (const [key, value] of flatEntries(
         (fr as Record<string, unknown>)[namespace]

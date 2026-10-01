@@ -11,6 +11,8 @@ import {
   waterAnalysisFileUrl,
 } from '@/app/dal/water-analysis-dal'
 import {formatContentDate} from '@/lib/cms/format-content-date'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolveFixedPageSeo} from '@/lib/seo/resolve-metadata'
 import {
   formatFileWeight,
   waterAnalysisDownloadName,
@@ -31,7 +33,12 @@ export async function generateMetadata({
     namespace: 'PublicWaterAnalysisPage',
   })
 
-  return {title: t('metadata.title')}
+  const title = t('metadata.title')
+  return publicPageMetadata(
+    (association) =>
+      resolveFixedPageSeo({path: '/analyses-eau', title}, association),
+    {fallback: {title}}
+  )
 }
 
 /**

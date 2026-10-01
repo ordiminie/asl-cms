@@ -36,3 +36,46 @@ export const resizeToSquareWebp = async (
 
   return new Uint8Array(output)
 }
+
+/**
+ * Rend un WebP qui tient dans `width` x `height` px, **sans recadrage ni
+ * agrandissement** (`fit: inside`) et sans metadonnee de la source. Sert
+ * l'image de partage d'une page (s11) : les plateformes recadrent elles-memes,
+ * l'image deposee n'est que bornee en poids et en dimensions.
+ *
+ * Leve si les octets ne sont pas une image que `sharp` sait decoder.
+ */
+export const resizeToFitWebp = async (
+  content: Uint8Array,
+  width: number,
+  height: number
+): Promise<Uint8Array> => {
+  const output = await sharp(Buffer.from(content))
+    .rotate()
+    .resize(width, height, {fit: 'inside', withoutEnlargement: true})
+    .webp()
+    .toBuffer()
+
+  return new Uint8Array(output)
+}
+
+/**
+ * Rend les octets d'une image en PNG. Sert le logo de l'image de repli (s11) :
+ * le moteur de rendu de `next/og` ne lit pas le WebP.
+ *
+ * Avec `maxSide`, la sortie tient dans un carre de `maxSide` px, sans recadrage
+ * ni agrandissement : le logo est rendu a chaque requete, inutile de reencoder
+ * et de redecoder un fichier de plusieurs milliers de pixels pour l'afficher
+ * en 240 px. Sans `maxSide`, dimensions inchangees.
+ */
+export const convertToPng = async (
+  content: Uint8Array,
+  maxSide?: number
+): Promise<Uint8Array> => {
+  const image = sharp(Buffer.from(content))
+  const bounded = maxSide
+    ? image.resize(maxSide, maxSide, {fit: 'inside', withoutEnlargement: true})
+    : image
+
+  return new Uint8Array(await bounded.png().toBuffer())
+}

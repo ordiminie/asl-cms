@@ -21,13 +21,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {Textarea} from '@/components/ui/textarea'
 import {cn} from '@/lib/utils'
 import {
   AssociationSettingDefinition,
   AssociationSettingError,
+  AssociationSettingSection,
   ChoiceSettingDefinition,
+  extractGoogleVerificationCode,
   NumberSettingDefinition,
   ResolvedAssociationSettings,
+  TextSettingDefinition,
 } from '@/services/types/domain/association-settings-types'
 
 import {
@@ -61,6 +65,38 @@ type Feedback =
 const MAX_RADIO_OPTIONS = 3
 
 const fieldId = (key: string) => `setting-${key.replaceAll('.', '-')}`
+
+/** Au-dela de cette longueur, un code extrait s'affiche abrege. */
+const ABBREVIATED_CODE_MIN_LENGTH = 12
+const ABBREVIATED_CODE_EDGE = 4
+
+const abbreviateCode = (code: string): string =>
+  code.length <= ABBREVIATED_CODE_MIN_LENGTH
+    ? code
+    : `${code.slice(0, ABBREVIATED_CODE_EDGE)}…${code.slice(-ABBREVIATED_CODE_EDGE)}`
+
+type SettingsCard = {
+  section: AssociationSettingSection | undefined
+  definitions: AssociationSettingDefinition[]
+}
+
+/**
+ * Les cartes de la page, dans l'ordre du registre : les parametres sans
+ * section restent dans la carte d'origine, chaque section a la sienne.
+ */
+const settingsCardsOf = (
+  definitions: readonly AssociationSettingDefinition[]
+): SettingsCard[] => {
+  const cards: SettingsCard[] = []
+  for (const definition of definitions) {
+    const card = cards.find(
+      (candidate) => candidate.section === definition.section
+    )
+    if (card) card.definitions.push(definition)
+    else cards.push({section: definition.section, definitions: [definition]})
+  }
+  return cards
+}
 
 /**
  * Valeur affichee dans le champ : la valeur renseignee ; pour un booleen ou un
@@ -262,40 +298,50 @@ export function AssociationSettingsForm({
         !isSubmitting && <FormFeedback feedback={feedback} />
       )}
 
-      <Card className="gap-4 px-4 py-4 shadow-none sm:px-6 sm:py-6">
-        <CardHeader className="px-0">
-          <CardTitle>
-            <h3 className="text-xl leading-snug font-semibold">
-              {t('cards.notifications.title')}
-            </h3>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-6 px-0">
-          {definitions.map((definition) => (
-            <Controller
-              key={definition.key}
-              control={form.control}
-              name={toSettingFieldName(definition.key)}
-              render={({field}) => (
-                <SettingField
-                  definition={definition}
-                  value={field.value ?? ''}
-                  error={settingErrorOf(definition, errors)}
-                  currentValue={savedValues[definition.key] ?? ''}
-                  defaultValue={effectiveDefault(
-                    definition,
-                    watchedValues,
-                    settings
-                  )}
-                  disabled={isSubmitting}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                />
-              )}
-            />
-          ))}
-        </CardContent>
-      </Card>
+      {settingsCardsOf(definitions).map((card) => (
+        <Card
+          key={card.section ?? 'notifications'}
+          className="gap-4 px-4 py-4 shadow-none sm:px-6 sm:py-6"
+        >
+          <CardHeader className="px-0">
+            <CardTitle>
+              <h3 className="text-xl leading-snug font-semibold">
+                {t(`cards.${card.section ?? 'notifications'}.title`)}
+              </h3>
+            </CardTitle>
+            {card.section && (
+              <p className="text-muted-foreground text-base">
+                {t(`cards.${card.section}.description`)}
+              </p>
+            )}
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6 px-0">
+            {card.definitions.map((definition) => (
+              <Controller
+                key={definition.key}
+                control={form.control}
+                name={toSettingFieldName(definition.key)}
+                render={({field}) => (
+                  <SettingField
+                    definition={definition}
+                    value={field.value ?? ''}
+                    error={settingErrorOf(definition, errors)}
+                    currentValue={savedValues[definition.key] ?? ''}
+                    defaultValue={effectiveDefault(
+                      definition,
+                      watchedValues,
+                      settings
+                    )}
+                    disabled={isSubmitting}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      ))}
 
       <Button
         type="submit"
@@ -352,7 +398,37 @@ type SettingFieldProps = {
   onBlur: () => void
 }
 
-function SettingField(props: SettingFieldProps) {
+/**
+ * Un code de verification colle dans sa balise `<meta>` entiere est reduit a
+ * son code au _blur_, avant la validation ; le champ dit ce qu'il a garde.
+ */
+const useVerificationCodeExtraction = (props: SettingFieldProps) => {
+  const {definition, value, onChange, onBlur} = props
+  const [extracted, setExtracted] = useState<string>()
+  const isCode =
+    definition.type === 'text' && definition.format === 'verification-code'
+
+  const handleChange = (next: string) => {
+    setExtracted(undefined)
+    onChange(next)
+  }
+
+  const handleBlur = () => {
+    const code = isCode ? extractGoogleVerificationCode(value) : undefined
+    if (code !== undefined && value.trim().startsWith('<')) {
+      onChange(code)
+      setExtracted(code)
+    }
+    onBlur()
+  }
+
+  return {extracted, handleChange, handleBlur}
+}
+
+function SettingField(fieldProps: SettingFieldProps) {
+  const {extracted, handleChange, handleBlur} =
+    useVerificationCodeExtraction(fieldProps)
+  const props = {...fieldProps, onChange: handleChange, onBlur: handleBlur}
   const {definition, value, error, currentValue, defaultValue} = props
   const t = useTranslations('AssociationSettings')
   const id = fieldId(definition.key)
@@ -365,6 +441,12 @@ function SettingField(props: SettingFieldProps) {
     value.trim() === '' &&
     defaultValue !== undefined &&
     (definition.type === 'email' || definition.type === 'number')
+  const showWhenEmpty =
+    !error &&
+    definition.type === 'text' &&
+    definition.whenEmptyKey !== undefined &&
+    value.trim() === '' &&
+    !extracted
 
   const label = (
     <>
@@ -421,10 +503,26 @@ function SettingField(props: SettingFieldProps) {
               {
                 min: error.min ?? '',
                 max: error.max ?? '',
+                excess:
+                  definition.type === 'text'
+                    ? Math.max(0, value.trim().length - definition.maxLength)
+                    : 0,
                 current: currentValue,
               }
             )}
           </span>
+        </p>
+      )}
+      {extracted && !error && (
+        <p className="text-foreground text-base">
+          {t('fields.googleVerification.extracted', {
+            code: abbreviateCode(extracted),
+          })}
+        </p>
+      )}
+      {showWhenEmpty && definition.whenEmptyKey && (
+        <p className="text-foreground text-base">
+          {t(definition.whenEmptyKey)}
         </p>
       )}
       {showDefault && (
@@ -449,6 +547,8 @@ function SettingControl(props: ControlProps) {
       return <TextControl {...props} type="email" />
     case 'number':
       return <NumberControl {...props} definition={definition} />
+    case 'text':
+      return <TextSettingControl {...props} definition={definition} />
     case 'choice':
       return definition.options.length <= MAX_RADIO_OPTIONS ? (
         <RadioControl {...props} definition={definition} />
@@ -490,6 +590,54 @@ function TextControl({
       onChange={(event) => onChange(event.target.value)}
       onBlur={onBlur}
     />
+  )
+}
+
+/**
+ * Texte long : zone de 3 lignes et compteur, en erreur au-dela du plafond
+ * (design system §3.9). Code : champ d'une ligne en chasse fixe.
+ */
+function TextSettingControl(
+  props: ControlProps & {definition: TextSettingDefinition}
+) {
+  const t = useTranslations('AssociationSettings')
+  const {definition, id, describedBy, value, error, disabled} = props
+  if (!definition.multiline) {
+    return <TextControl {...props} type="text" className="font-mono" />
+  }
+
+  const length = value.trim().length
+  const overflow = length > definition.maxLength
+  return (
+    <div className="flex flex-col gap-1">
+      <Textarea
+        id={id}
+        name={id}
+        rows={3}
+        value={value}
+        disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={`${describedBy} ${id}-counter`}
+        className={cn(
+          'min-h-[calc(3lh+1rem+2px)]',
+          invalidClass,
+          overflow && 'border-destructive border-2'
+        )}
+        onChange={(event) => props.onChange(event.target.value)}
+        onBlur={props.onBlur}
+      />
+      <p
+        id={`${id}-counter`}
+        className={cn(
+          'self-end font-mono text-[14px] tabular-nums',
+          overflow
+            ? 'text-destructive-text font-semibold'
+            : 'text-muted-foreground'
+        )}
+      >
+        {t('counter', {count: length, max: definition.maxLength})}
+      </p>
+    </div>
   )
 }
 

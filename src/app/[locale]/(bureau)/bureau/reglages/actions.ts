@@ -3,7 +3,10 @@
 import {updateTag} from 'next/cache'
 import {getTranslations} from 'next-intl/server'
 
-import {associationSettingsTag} from '@/app/dal/association-settings-dal'
+import {
+  associationSettingsTag,
+  getAssociationSettingsDal,
+} from '@/app/dal/association-settings-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
@@ -12,6 +15,8 @@ import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingError,
   getSettingsForPage,
+  parseSettingValue,
+  ResolvedAssociationSettings,
 } from '@/services/types/domain/association-settings-types'
 
 export type AssociationSettingsFormState = {
@@ -26,6 +31,27 @@ export type AssociationSettingsFormState = {
    */
   fieldErrors?: Record<string, AssociationSettingError>
 }
+
+/**
+ * Un parametre de la carte « Referencement » change de valeur : le succes dit
+ * alors que Google en tiendra compte (s11). Le formulaire renvoie aussi les
+ * valeurs deja enregistrees ; elles ne comptent pas comme un changement.
+ */
+const changesSeoSetting = (
+  changes: Record<string, string>,
+  before: ResolvedAssociationSettings
+): boolean =>
+  getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'settings').some(
+    (definition) => {
+      if (definition.section !== 'seo' || !(definition.key in changes)) {
+        return false
+      }
+      const raw = changes[definition.key]
+      const parsed = parseSettingValue(definition, raw)
+      const next = parsed.valid ? parsed.normalized : raw.trim()
+      return next !== (before[definition.key]?.storedValue ?? '')
+    }
+  )
 
 /** Les seules cles recues : celles que la page « Reglages » affiche. */
 const settingsPageChanges = (formData: FormData): Record<string, string> =>
@@ -67,17 +93,21 @@ export async function updateAssociationSettingsAction(
   }
 
   try {
-    const result = await updateAssociationSettingsService(
-      tenant.id,
-      settingsPageChanges(formData)
-    )
+    const changes = settingsPageChanges(formData)
+    const before = await getAssociationSettingsDal(tenant.id)
+    const result = await updateAssociationSettingsService(tenant.id, changes)
 
     if (result.status === 'rejected') {
       return {success: false, fieldErrors: result.errors}
     }
 
     updateTag(associationSettingsTag(tenant.id))
-    return {success: true, message: t('success')}
+    return {
+      success: true,
+      message: changesSeoSetting(changes, before)
+        ? t('successSeo')
+        : t('success'),
+    }
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return {success: false, message: t('errors.forbidden')}

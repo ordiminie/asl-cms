@@ -1,7 +1,7 @@
 import sharp from 'sharp'
 import {describe, expect, it} from 'vitest'
 
-import {resizeToSquareWebp} from './resize-image'
+import {convertToPng, resizeToFitWebp, resizeToSquareWebp} from './resize-image'
 
 /**
  * Preuve du critere 2 de s06 et de l'ADR 024 : le redimensionnement s'execute
@@ -136,5 +136,61 @@ describe('resizeToSquareWebp (ADR 024)', () => {
     expect(left.red).toBeLessThan(60)
     expect(right.red).toBeGreaterThan(200)
     expect(right.blue).toBeLessThan(60)
+  })
+})
+
+describe('resizeToFitWebp — image de partage (s11)', () => {
+  it('reduit une grande image dans le cadre, sans la recadrer ni la deformer', async () => {
+    const output = await resizeToFitWebp(await makePng(2400, 1600), 1200, 630)
+
+    const metadata = await describeOutput(output)
+    expect(metadata.format).toBe('webp')
+    expect(metadata.height).toBe(630)
+    expect(metadata.width).toBe(945)
+  })
+
+  it('n agrandit pas une petite image', async () => {
+    const output = await resizeToFitWebp(await makePng(600, 315), 1200, 630)
+
+    const metadata = await describeOutput(output)
+    expect(metadata.format).toBe('webp')
+    expect(metadata.width).toBe(600)
+    expect(metadata.height).toBe(315)
+  })
+})
+
+describe('convertToPng — logo WebP pour l image de repli (s11)', () => {
+  it('rend un PNG de memes dimensions', async () => {
+    const webp = new Uint8Array(
+      await sharp(Buffer.from(await makePng(320, 200)))
+        .webp()
+        .toBuffer()
+    )
+
+    const metadata = await describeOutput(await convertToPng(webp))
+    expect(metadata.format).toBe('png')
+    expect(metadata.width).toBe(320)
+    expect(metadata.height).toBe(200)
+  })
+})
+
+describe('convertToPng borne — logo de l image de repli (revue s11, m12)', () => {
+  it('ramene un grand logo dans le carre demande, proportions gardees', async () => {
+    const metadata = await describeOutput(
+      await convertToPng(await makePng(4000, 2000), 480)
+    )
+
+    expect(metadata.format).toBe('png')
+    expect(metadata.width).toBe(480)
+    expect(metadata.height).toBe(240)
+  })
+
+  it('n agrandit jamais un petit logo', async () => {
+    const metadata = await describeOutput(
+      await convertToPng(await makePng(120, 80), 480)
+    )
+
+    expect(metadata.width).toBe(120)
+    expect(metadata.height).toBe(80)
   })
 })

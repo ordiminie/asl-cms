@@ -5,18 +5,9 @@ import createMiddleware from 'next-intl/middleware'
 
 import {routing} from './i18n/routing'
 import {stripLocalePrefix} from './lib/helper/locale-helper'
+import {AUTHENTICATED_SEGMENTS} from './lib/routing/authenticated-segments'
 
 const intlMiddleware = createMiddleware(routing)
-
-// Segments servis derrière une session : le groupe (app), l'espace admin et
-// l'espace bureau de l'association (s01b).
-const AUTHENTICATED_SEGMENTS = [
-  '/account',
-  '/admin',
-  '/bureau',
-  '/dashboard',
-  '/team',
-]
 
 const localeOf = (pathname: string) => {
   const firstSegment = pathname.split('/')[1]

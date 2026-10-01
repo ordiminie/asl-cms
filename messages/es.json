@@ -75,7 +75,8 @@
   },
   "LocaleLayout": {
     "title": "Next SaaS Boilerplate",
-    "description": "Next SaaS Boilerplate"
+    "description": "Next SaaS Boilerplate",
+    "titleTemplate": "%s · {association}"
   },
   "LangToggle": {
     "label": "Cambiar idioma",
@@ -86,8 +87,6 @@
     }
   },
   "PublicLayout": {
-    "title": "Página Pública",
-    "description": "Página Pública",
     "menuLabel": "Menú del sitio"
   },
   "AuthLayout": {
@@ -2873,7 +2872,9 @@
       "aboveMax": "El valor es demasiado grande: el máximo es {max}.",
       "invalidBoolean": "Marque o desmarque la casilla de este ajuste.",
       "invalidChoice": "Elija una de las opciones propuestas en la lista.",
-      "unknownKey": "Este ajuste no existe o ya no se ofrece."
+      "unknownKey": "Este ajuste no existe o ya no se ofrece.",
+      "tooLong": "{excess, plural, one {# carácter de más.} other {# caracteres de más.}}",
+      "invalidCode": "Este código no se parece al de Google: solo contiene letras, cifras, guiones y guiones bajos."
     },
     "fields": {
       "contactEmail": {
@@ -2904,6 +2905,17 @@
       "contactMessagesPerHour": {
         "label": "Mensajes por hora y por visitante",
         "help": "Número de mensajes que un mismo visitante puede enviar en una hora mediante los formularios públicos del sitio, como la página de Contacto. Por encima, el envío se rechaza con un mensaje que lo explica, hasta la hora siguiente: esto protege a la junta de los mensajes automáticos."
+      },
+      "associationDescription": {
+        "label": "Descripción de la asociación",
+        "help": "Dos frases que presentan la asociación. Aparecen bajo el nombre del sitio en los resultados de Google, y cuando alguien comparte un enlace a una página sin descripción propia.",
+        "whenEmpty": "Vacío: los resultados de búsqueda mostrarán el texto que Google elija en la página."
+      },
+      "googleVerification": {
+        "label": "Código de verificación de Google",
+        "help": "Google se lo da cuando declara el sitio en la Search Console: es la serie de letras y cifras después de content=. Péguela aquí.",
+        "whenEmpty": "Vacío: el sitio no está declarado ante Google. Aun así puede aparecer en sus resultados.",
+        "extracted": "Hemos conservado solo el código: {code}."
       }
     },
     "hues": {
@@ -2918,7 +2930,8 @@
       "requestsPerDay": "solicitudes por día",
       "members": "miembros",
       "messagesPerHour": "mensajes por hora"
-    }
+    },
+    "counter": "{count} / {max}"
   },
   "BureauSettingsPage": {
     "metadata": {
@@ -2933,6 +2946,10 @@
     "cards": {
       "notifications": {
         "title": "Direcciones de notificación"
+      },
+      "seo": {
+        "title": "Posicionamiento",
+        "description": "Lo que Google muestra de su sitio, y lo que se ve cuando se comparte un enlace."
       }
     },
     "submit": "Guardar los ajustes",
@@ -2948,7 +2965,8 @@
       "kept": "Las direcciones anteriores siguen vigentes.",
       "forbidden": "Esta acción está reservada a la junta de la asociación.",
       "invalidData": "No se ha recibido ningún ajuste. Recargue la página e inténtelo de nuevo."
-    }
+    },
+    "successSeo": "Ajustes guardados. Google los tendrá en cuenta en su próxima visita al sitio."
   },
   "PublicCmsPage": {
     "previewDraft": "Vista previa de la junta: esta página es un borrador, los visitantes no pueden verla.",
@@ -3108,7 +3126,36 @@
       "slugLabel": "Dirección de la página",
       "slugHelp": "La página será visible en la dirección /{slug}",
       "slugTaken": "Este slug ya lo utiliza otra página.",
-      "incomplete": "No se puede publicar: los bloques {positions} esperan un texto alternativo o un título. No se ha perdido nada."
+      "incomplete": "No se puede publicar: los bloques {positions} esperan un texto alternativo o un título. No se ha perdido nada.",
+      "seo": {
+        "title": "Posicionamiento y difusión",
+        "intro": "Lo que aparece en Google, y cuando alguien comparte el enlace de la página.",
+        "optional": "Opcional",
+        "counter": "{count} de {max}",
+        "overflow": "{over, plural, one {# carácter de más.} other {# caracteres de más.}}",
+        "seoTitleLabel": "Título en los buscadores",
+        "seoTitleEmpty": "Vacío: se usará el título de la página, «{title}».",
+        "descriptionLabel": "Resumen",
+        "descriptionEmpty": "Vacío: se usará la descripción de la asociación.",
+        "descriptionEmptyNoAssociation": "Vacío, como la descripción de la asociación: Google elegirá un extracto de la página.",
+        "associationDescriptionLink": "Completar la descripción de la asociación",
+        "imageLabel": "Imagen para compartir",
+        "imageHelp": "Se muestra cuando alguien comparte el enlace, por ejemplo en una mensajería.",
+        "imageConstraints": "PNG, JPEG o WebP, 5 MB como máximo. Idealmente 1200 × 630 px.",
+        "imageEmpty": "Vacío: se mostrará el logotipo de la asociación.",
+        "imageChoose": "Elegir un archivo",
+        "imageReplace": "Reemplazar la imagen",
+        "imageRemove": "Quitar la imagen",
+        "imagePreviewAlt": "Vista previa de la imagen para compartir",
+        "imageUploading": "Enviando {fileName}…",
+        "altLabel": "Texto alternativo de la imagen",
+        "altRequired": "Obligatorio con una imagen",
+        "altHelp": "Describa lo que muestra la imagen, para las personas que no la ven.",
+        "altMissing": "Describa la imagen antes de publicar: sin texto alternativo, la página no puede publicarse.",
+        "shareImageAltMissing": "Publicación rechazada: la imagen para compartir no tiene texto alternativo. No se pierde nada.",
+        "describeImage": "Describir la imagen",
+        "tooLongRefused": "Guardado rechazado: un texto supera su longitud. No se pierde nada."
+      }
     }
   },
   "BureauNavigationPage": {
@@ -3232,6 +3279,16 @@
       "publishedIssues": {
         "missing_title": "Ponga un título a esta noticia: ya está en línea, y su título aparece en el sitio.",
         "missing_image_alt": "Añada un texto alternativo a la imagen: la noticia está en línea, y ese texto la describe a quienes no pueden verla."
+      },
+      "seo": {
+        "title": "Posicionamiento y difusión",
+        "intro": "El título y la imagen mostrados son los de la noticia, con su texto alternativo.",
+        "optional": "Opcional",
+        "counter": "{count} de {max}",
+        "overflow": "{over, plural, one {# carácter de más.} other {# caracteres de más.}}",
+        "descriptionLabel": "Resumen",
+        "descriptionEmpty": "Vacío: se usará el principio del texto de la noticia.",
+        "tooLongRefused": "Guardado rechazado: el resumen supera su longitud. No se pierde nada."
       }
     }
   },
@@ -3400,5 +3457,11 @@
       "messageRequired": "Escriba el mensaje antes de mostrar el banner.",
       "messageTooLong": "El mensaje supera los {max} caracteres."
     }
+  },
+  "SearchPreview": {
+    "label": "En Google",
+    "address": "{host} › {path}",
+    "noDescription": "Extracto elegido por Google en la página.",
+    "disclaimer": "Google puede acortar estos textos o elegir otros."
   }
 }

@@ -50,6 +50,8 @@ export const news = pgTable(
     imageKey: text('image_key'),
     imageAlt: text('image_alt').default('').notNull(),
     content: text('content').default('').notNull(),
+    /** Referencement (s11) : vide, le debut du texte de l'actualite. */
+    seoDescription: text('seo_description'),
     status: newsStatusEnum('status').default('draft').notNull(),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()

@@ -16,6 +16,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import {APP_NAME} from '@/lib/constants'
+import {NO_INDEX_ROBOTS} from '@/lib/seo/resolve-metadata'
 
 // Opt-out nécessaire : `withAuthAdmin` fait un `await` sur la session au niveau
 // supérieur du layout, ce qui tient tout le segment. Vérifié en le retirant —
@@ -35,6 +36,7 @@ export const instant = false
 export const metadata: Metadata = {
   title: `Espace administrateur ${APP_NAME}`,
   description: "Page d'espace administrateur",
+  robots: NO_INDEX_ROBOTS,
 }
 
 function AdminLayout({

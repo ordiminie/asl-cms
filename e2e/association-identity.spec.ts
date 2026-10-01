@@ -1,5 +1,7 @@
 /* eslint-disable no-restricted-properties -- une spec e2e tourne hors de
    l'application : le fichier env.ts typé n'y est pas chargé. */
+import {crc32, deflateSync} from 'node:zlib'
+
 import {APIRequestContext, Browser, expect, Page, test} from '@playwright/test'
 
 /**
@@ -13,8 +15,10 @@ import {APIRequestContext, Browser, expect, Page, test} from '@playwright/test'
  * `tenant-isolation.spec.ts`) : `localhost` sert TechCorp Solutions,
  * `127.0.0.1` sert Marketing Pro. Une session est propre à un hôte.
  *
- * Aucun binaire commité : les fichiers sont fabriqués en mémoire. Seule leur
- * signature compte pour le serveur, qui juge le format sur le contenu.
+ * Aucun binaire commité : les fichiers sont fabriqués en mémoire. Le serveur
+ * juge le format sur la signature ; les logos sont pourtant de vrais PNG, pour
+ * ne pas laisser à TechCorp un logo illisible que les specs suivantes servent
+ * (image de partage, revue s11, C2).
  */
 
 const PORT = process.env.PLAYWRIGHT_PORT ?? '3000'
@@ -30,6 +34,30 @@ const PAGE_TITLE = "Identité de l'association"
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 const ICO_SIGNATURE = [0x00, 0x00, 0x01, 0x00]
 const JPEG_SIGNATURE = [0xff, 0xd8, 0xff, 0xe0]
+
+const pngChunk = (type: string, data: Buffer) => {
+  const length = Buffer.alloc(4)
+  length.writeUInt32BE(data.length)
+  const body = Buffer.concat([Buffer.from(type, 'latin1'), data])
+  const crc = Buffer.alloc(4)
+  crc.writeUInt32BE(crc32(body))
+  return Buffer.concat([length, body, crc])
+}
+
+/** Un vrai PNG d'un pixel, rendu unique par un commentaire `tEXt`. */
+const pngWith = (marker: string) => {
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(1, 0)
+  header.writeUInt32BE(1, 4)
+  header.set([8, 6, 0, 0, 0], 8)
+  return Buffer.concat([
+    Buffer.from(PNG_SIGNATURE),
+    pngChunk('IHDR', header),
+    pngChunk('tEXt', Buffer.from(`Comment\0${marker}-${Date.now()}`, 'latin1')),
+    pngChunk('IDAT', deflateSync(Buffer.from([0, 0x18, 0x5a, 0x66, 0xff]))),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ])
+}
 
 /** Un fichier dont la signature est celle du format, suivie d'un marqueur unique. */
 const fileWith = (signature: number[], marker: string) =>
@@ -174,9 +202,9 @@ const uploadIdentityFile = async (
 }
 
 test.describe.serial('s01b — identité de l’association', () => {
-  const logoA = fileWith(PNG_SIGNATURE, 'logo-techcorp')
-  const firstLogoA = fileWith(PNG_SIGNATURE, 'premier-logo-techcorp')
-  const logoB = fileWith(PNG_SIGNATURE, 'logo-marketing-pro')
+  const logoA = pngWith('logo-techcorp')
+  const firstLogoA = pngWith('premier-logo-techcorp')
+  const logoB = pngWith('logo-marketing-pro')
   const faviconB = fileWith(ICO_SIGNATURE, 'favicon-marketing-pro')
 
   /** L'appel de l'action d'un vrai téléversement, rejoué par d'autres comptes. */

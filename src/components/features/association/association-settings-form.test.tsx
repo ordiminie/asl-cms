@@ -15,10 +15,12 @@ import {
   TEST_SETTINGS_REGISTRY,
 } from '@/services/__tests__/association-settings-test-registry'
 import {
+  ASSOCIATION_DESCRIPTION_SETTING_KEY,
   ASSOCIATION_SETTINGS_REGISTRY,
   CONTACT_EMAIL_SETTING_KEY,
   FORAGE_EMAIL_SETTING_KEY,
   getSettingsForPage,
+  GOOGLE_VERIFICATION_SETTING_KEY,
   resolveSettings,
 } from '@/services/types/domain/association-settings-types'
 
@@ -412,5 +414,140 @@ describe('AssociationSettingsForm — l absence de ligne reste le defaut (ADR 01
     await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
     const formData = vi.mocked(saveAction).mock.calls[0][1]
     expect(formData.get(FORAGE_EMAIL_SETTING_KEY)).toBe('')
+  })
+})
+
+describe('AssociationSettingsForm — carte « Referencement » (s11)', () => {
+  const CODE = 'k3Jd8-QwX_9mLp2vRtY7aBcDeFgHiJ0kLmNoPq'
+  const descriptionField = () =>
+    screen.getByLabelText(/Description de l’association/)
+  const codeField = () => screen.getByLabelText(/Code de vérification Google/)
+
+  it('rend les deux champs dans la carte « Referencement », hors de la carte des adresses', () => {
+    productionForm()
+
+    const card = screen
+      .getByRole('heading', {name: 'Référencement'})
+      .closest('[data-slot="card"]') as HTMLElement
+    expect(card).not.toBeNull()
+    expect(
+      within(card).getByText(
+        'Ce que Google affiche de votre site, et ce qu’on voit quand un lien est partagé.'
+      )
+    ).toBeInTheDocument()
+    expect(within(card).getByLabelText(/Description de l’association/)).toBe(
+      descriptionField()
+    )
+    expect(within(card).getByLabelText(/Code de vérification Google/)).toBe(
+      codeField()
+    )
+    expect(within(card).queryByLabelText('Adresse de contact')).toBeNull()
+  })
+
+  it('texte long en zone de 3 lignes avec compteur, code en champ monospace', () => {
+    productionForm()
+
+    expect(descriptionField().tagName).toBe('TEXTAREA')
+    expect(descriptionField()).toHaveAttribute('rows', '3')
+    expect(screen.getByText('0 / 160')).toBeInTheDocument()
+    expect(codeField().tagName).toBe('INPUT')
+    expect(codeField()).toHaveClass('font-mono')
+  })
+
+  it('vides : chaque champ dit ce qui s applique', () => {
+    productionForm()
+
+    expect(
+      screen.getByText(
+        'Vide : les résultats de recherche afficheront le texte que Google choisira dans la page.'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Vide : le site n’est pas déclaré auprès de Google. Il peut tout de même apparaître dans ses résultats.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('compteur depasse : erreur au blur avec le nombre de caracteres de trop', async () => {
+    productionForm()
+
+    await userEvent.click(descriptionField())
+    await userEvent.paste('a'.repeat(178))
+    await userEvent.tab()
+
+    expect(
+      await screen.findByText('18 caractères de trop.')
+    ).toBeInTheDocument()
+    expect(screen.getByText('178 / 160')).toBeInTheDocument()
+    expect(descriptionField()).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('le compteur mesure ce que mesure l erreur : espaces de fin exclus (revue s11, m2)', async () => {
+    productionForm()
+
+    await userEvent.click(descriptionField())
+    await userEvent.paste(`${'a'.repeat(160)}  `)
+    await userEvent.tab()
+
+    expect(screen.getByText('160 / 160')).not.toHaveClass(
+      'text-destructive-text'
+    )
+    expect(descriptionField()).not.toHaveAttribute('aria-invalid')
+  })
+
+  it('balise collee entiere : le code seul est garde au blur, et la phrase le dit', async () => {
+    const saveAction = saved()
+    productionForm(saveAction)
+
+    await userEvent.click(codeField())
+    await userEvent.paste(
+      `<meta name="google-site-verification" content="${CODE}" />`
+    )
+    await userEvent.tab()
+
+    expect(codeField()).toHaveValue(CODE)
+    expect(
+      screen.getByText('Nous avons gardé le code seul : k3Jd…NoPq.')
+    ).toBeInTheDocument()
+
+    await submit()
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    expect(
+      vi
+        .mocked(saveAction)
+        .mock.calls[0][1].get(GOOGLE_VERIFICATION_SETTING_KEY)
+    ).toBe(CODE)
+  })
+
+  it('code a caractere interdit : refuse au blur, rien n est envoye', async () => {
+    const saveAction = saved()
+    productionForm(saveAction)
+
+    await userEvent.type(codeField(), 'k3Jd8 QwX/9')
+    await userEvent.tab()
+
+    expect(
+      await screen.findByText(
+        'Ce code ne ressemble pas à celui de Google : il ne contient que des lettres, des chiffres, des tirets et des soulignés.'
+      )
+    ).toBeInTheDocument()
+    await submit()
+    expect(saveAction).not.toHaveBeenCalled()
+  })
+
+  it('envoie la description saisie sous sa cle', async () => {
+    const saveAction = saved()
+    productionForm(saveAction)
+
+    await userEvent.type(descriptionField(), 'Réseau d’eau privé.')
+    await submit()
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    expect(
+      vi
+        .mocked(saveAction)
+        .mock.calls[0][1].get(ASSOCIATION_DESCRIPTION_SETTING_KEY)
+    ).toBe('Réseau d’eau privé.')
   })
 })

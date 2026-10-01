@@ -91,6 +91,7 @@ const newsRow = (overrides: Partial<News> = {}): News => ({
   publishedOn: '2026-09-02',
   imageKey: null,
   imageAlt: '',
+  seoDescription: null,
   content: '',
   status: 'draft',
   createdAt: new Date('2026-09-01'),
@@ -649,5 +650,47 @@ describe('canManageNewsService', () => {
     setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
 
     expect(await canManageNewsService(ORG_ID)).toBe(true)
+  })
+})
+
+describe('updateNewsService — description pour les moteurs (s11)', () => {
+  it('enregistre la description saisie et la rend', async () => {
+    const news = await savedNewsOf({
+      seoDescription: '  Pique-nique et balade au bord de l’étang.  ',
+    })
+
+    expect(vi.mocked(updateNewsDao).mock.calls[0][1]).toMatchObject({
+      seoDescription: 'Pique-nique et balade au bord de l’étang.',
+    })
+    expect(news.seoDescription).toBe(
+      'Pique-nique et balade au bord de l’étang.'
+    )
+  })
+
+  it('une description vide est stockee absente', async () => {
+    await savedNewsOf({seoDescription: ''})
+
+    expect(vi.mocked(updateNewsDao).mock.calls[0][1]).toMatchObject({
+      seoDescription: null,
+    })
+  })
+
+  it('accepte 160 caracteres et refuse 161, sans rien ecrire', async () => {
+    await savedNewsOf({seoDescription: 'a'.repeat(160)})
+    vi.mocked(updateNewsDao).mockClear()
+
+    await expect(
+      updateNewsService(updateInput({seoDescription: 'a'.repeat(161)}))
+    ).rejects.toThrow()
+    expect(updateNewsDao).not.toHaveBeenCalled()
+  })
+
+  it('un membre simple ne peut pas l ecrire', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+
+    await expect(
+      updateNewsService(updateInput({seoDescription: 'Description'}))
+    ).rejects.toThrow(AuthorizationError)
+    expect(updateNewsDao).not.toHaveBeenCalled()
   })
 })

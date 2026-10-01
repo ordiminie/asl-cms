@@ -14,6 +14,11 @@ import {
   NewsUnpublishState,
 } from '@/app/[locale]/(bureau)/bureau/actualites/[id]/actions'
 import {RestrictedMarkdownEditor} from '@/components/features/pages/blocks/restricted-markdown-editor'
+import {
+  CountedField,
+  overflowOf,
+} from '@/components/features/pages/page-seo-section'
+import {SearchPreview} from '@/components/features/pages/search-preview'
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {
   AlertDialog,
@@ -32,15 +37,20 @@ import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
 import {PreviewBar, PreviewBarStatus} from '@/components/ui/preview-bar'
 import {Progress} from '@/components/ui/progress'
+import {Separator} from '@/components/ui/separator'
+import {excerptOf} from '@/lib/seo/resolve-metadata'
 import {contentFileUrl} from '@/services/types/domain/content-file-types'
 import {
   NewsDTO,
   NewsPublicationError,
   NewsPublicationErrorConst,
 } from '@/services/types/domain/news-types'
+import {SEO_DESCRIPTION_MAX} from '@/services/types/domain/seo-types'
 
 type NewsEditorProps = {
   news: NewsDTO
+  /** Domaine de l'association, pour l'apercu « Dans Google » (s11). */
+  host: string
   saveAction: (input: NewsInput) => Promise<NewsSaveState>
   publishAction: (input: NewsInput) => Promise<NewsPublishState>
   unpublishAction: (input: {newsId: string}) => Promise<NewsUnpublishState>
@@ -59,12 +69,16 @@ const persistedStatus = (status: NewsDTO['status']): PreviewBarStatus =>
  */
 export function NewsEditor({
   news,
+  host,
   saveAction,
   publishAction,
   unpublishAction,
   uploadAction,
 }: NewsEditorProps) {
   const t = useTranslations('BureauNewsPage.editor')
+  const tSeo = useTranslations('BureauNewsPage.editor.seo')
+  const seoHeadingId = useId()
+  const seoDescriptionId = useId()
   const titleId = useId()
   const dateId = useId()
   const altId = useId()
@@ -76,6 +90,9 @@ export function NewsEditor({
   const [content, setContent] = useState(news.content)
   const [imageAlt, setImageAlt] = useState(news.imageAlt)
   const [imageKey, setImageKey] = useState(news.imageKey)
+  const [seoDescription, setSeoDescription] = useState(
+    news.seoDescription ?? ''
+  )
   const [uploadingName, setUploadingName] = useState<string>()
   const [isDirty, setIsDirty] = useState(false)
   const [titleError, setTitleError] = useState<string>()
@@ -99,6 +116,7 @@ export function NewsEditor({
     content,
     imageAlt,
     imageKey,
+    seoDescription,
   })
 
   const applySaved = (next: NewsDTO, message: string) => {
@@ -108,6 +126,7 @@ export function NewsEditor({
     setContent(next.content)
     setImageAlt(next.imageAlt)
     setImageKey(next.imageKey)
+    setSeoDescription(next.seoDescription ?? '')
     setIsDirty(false)
     setNotice(message)
   }
@@ -148,8 +167,16 @@ export function NewsEditor({
     setBarError(refusal)
   }
 
+  /** Une description trop longue n'est pas envoyee : la barre dit le refus. */
+  const refuseOverflow = (): boolean => {
+    if (overflowOf(seoDescription, SEO_DESCRIPTION_MAX) === 0) return false
+    setBarError(tSeo('tooLongRefused'))
+    return true
+  }
+
   const save = () => {
     resetMessages()
+    if (refuseOverflow()) return
     startTransition(async () => {
       const result = await saveAction(payload())
       if (result.status === 'saved') {
@@ -165,6 +192,7 @@ export function NewsEditor({
 
   const publish = () => {
     resetMessages()
+    if (refuseOverflow()) return
     startTransition(async () => {
       const result = await publishAction(payload())
 
@@ -444,6 +472,37 @@ export function NewsEditor({
             setIsDirty(true)
           }}
         />
+
+        <section aria-labelledby={seoHeadingId} className="flex flex-col gap-4">
+          <Separator />
+          <div className="flex flex-col gap-1">
+            <h2 id={seoHeadingId} className="text-[17px] font-semibold">
+              {tSeo('title')}
+            </h2>
+            <p className="text-muted-foreground text-[14px]">{tSeo('intro')}</p>
+          </div>
+          <CountedField
+            namespace="BureauNewsPage.editor.seo"
+            id={seoDescriptionId}
+            label={tSeo('descriptionLabel')}
+            value={seoDescription}
+            max={SEO_DESCRIPTION_MAX}
+            multiline
+            onChange={(value) => {
+              setSeoDescription(value)
+              setIsDirty(true)
+            }}
+            whenEmpty={tSeo('descriptionEmpty')}
+          />
+          <SearchPreview
+            host={host}
+            path={saved.slug ? ['actualites', saved.slug] : ['actualites']}
+            title={title.trim() || saved.title}
+            description={
+              seoDescription.trim() || excerptOf(content, SEO_DESCRIPTION_MAX)
+            }
+          />
+        </section>
       </div>
     </div>
   )

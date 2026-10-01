@@ -1,6 +1,12 @@
 import {describe, expect, it, vi} from 'vitest'
 
-import {render, screen, userEvent, waitFor} from '@/__tests__/customRender'
+import {
+  render,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from '@/__tests__/customRender'
 import {NewsDTO} from '@/services/types/domain/news-types'
 
 import {NewsEditor} from './news-editor'
@@ -16,6 +22,7 @@ const newsOf = (overrides: Partial<NewsDTO> = {}): NewsDTO => ({
   publishedOn: '2026-10-10',
   imageKey: null,
   imageAlt: '',
+  seoDescription: null,
   content: 'Rendez-vous le 10 octobre.',
   status: 'draft',
   createdAt: new Date('2026-09-01'),
@@ -26,6 +33,7 @@ const newsOf = (overrides: Partial<NewsDTO> = {}): NewsDTO => ({
 const editorOf = (news: NewsDTO, actions: Record<string, unknown> = {}) => (
   <NewsEditor
     news={news}
+    host="lesamisdeletang.fr"
     saveAction={vi.fn(async () => ({status: 'saved', news}) as never)}
     publishAction={vi.fn(async () => ({status: 'published', news}) as never)}
     unpublishAction={vi.fn(
@@ -371,6 +379,93 @@ describe("NewsEditor — la clé déposée part à l'enregistrement", () => {
     await waitFor(() => expect(saveAction).toHaveBeenCalled())
     expect(saveAction).toHaveBeenCalledWith(
       expect.objectContaining({imageKey: null})
+    )
+  })
+})
+
+describe('NewsEditor — description pour Google (s11)', () => {
+  const section = () =>
+    screen.getByRole('region', {name: 'Référencement et partage'})
+  const preview = () => screen.getByRole('region', {name: 'Dans Google'})
+  const descriptionField = () =>
+    within(section()).getByLabelText(/^Description/)
+
+  it('dit que le titre et l image viennent de l actualite, sans jargon', () => {
+    render(editorOf(newsOf()))
+
+    expect(
+      within(section()).getByText(
+        'Le titre et l’image montrés sont ceux de l’actualité, avec son texte alternatif.'
+      )
+    ).toBeInTheDocument()
+    expect(section().textContent).not.toMatch(
+      /SEO|\bmeta\b|Open Graph|sitemap/i
+    )
+  })
+
+  it('l apercu suit la description, et revient au debut du texte quand on la vide', async () => {
+    render(editorOf(newsOf()))
+
+    expect(
+      within(preview()).getByText(
+        'lesamisdeletang.fr › actualites › assemblee-generale'
+      )
+    ).toBeInTheDocument()
+    expect(
+      within(preview()).getByText('Assemblée générale')
+    ).toBeInTheDocument()
+    expect(
+      within(preview()).getByText('Rendez-vous le 10 octobre.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Vide : le début du texte de l’actualité sera utilisé.')
+    ).toBeInTheDocument()
+
+    await userEvent.type(descriptionField(), 'Pique-nique au bord de l’étang.')
+    expect(
+      within(preview()).getByText('Pique-nique au bord de l’étang.')
+    ).toBeInTheDocument()
+
+    await userEvent.clear(descriptionField())
+    expect(
+      within(preview()).getByText('Rendez-vous le 10 octobre.')
+    ).toBeInTheDocument()
+  })
+
+  it('compteur depasse : erreur, et l enregistrement est refuse sans envoi', async () => {
+    const saveAction = vi.fn(async () => ({status: 'saved'}) as never)
+    render(editorOf(newsOf(), {saveAction}))
+
+    await userEvent.click(descriptionField())
+    await userEvent.paste('a'.repeat(174))
+
+    expect(screen.getByText('14 caractères de trop.')).toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer le brouillon'})
+    )
+    expect(saveAction).not.toHaveBeenCalled()
+    expect(
+      screen.getByText(
+        'Enregistrement refusé : la description dépasse sa longueur. Rien n’est perdu.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('envoie la description avec l actualite', async () => {
+    const news = newsOf({seoDescription: 'Ancienne.'})
+    const saveAction = vi.fn(async () => ({status: 'saved', news}) as never)
+    render(editorOf(news, {saveAction}))
+
+    expect(descriptionField()).toHaveValue('Ancienne.')
+    await userEvent.clear(descriptionField())
+    await userEvent.type(descriptionField(), 'Nouvelle.')
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer le brouillon'})
+    )
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    expect(saveAction).toHaveBeenCalledWith(
+      expect.objectContaining({seoDescription: 'Nouvelle.'})
     )
   })
 })
