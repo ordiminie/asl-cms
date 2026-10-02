@@ -107,6 +107,8 @@ export type AttachParcelResult =
     }
   | {status: 'overlap'; parcelNumber: string; conflict: OwnershipConflictDTO}
   | {status: 'member_not_found'}
+  /** La date de debut est posterieure a aujourd'hui : rien n'est ecrit. */
+  | {status: 'future_date'}
 
 export type RecordSaleInput = {
   organizationId: string
@@ -123,6 +125,8 @@ export type RecordSaleResult =
   | {status: 'no_open_period'}
   | {status: 'overlap'; conflict: OwnershipConflictDTO | null}
   | {status: 'not_found'}
+  /** La date de la vente est posterieure a aujourd'hui : rien n'est ecrit. */
+  | {status: 'future_date'}
 
 /** Le contexte de l'ecran de vente : la parcelle et la periode du vendeur. */
 export type SaleContextDTO = {

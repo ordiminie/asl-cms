@@ -297,6 +297,27 @@ describe('SaleForm — refus', () => {
     expect(actions.recordSaleAction).not.toHaveBeenCalled()
   })
 
+  it('refuse une date postérieure à aujourd’hui sous le champ de date, sans ouvrir la confirmation', async () => {
+    renderSale({initialDate: '2026-09-30', initialBuyer: FERRAND})
+
+    await submit()
+
+    expect(
+      screen.getByText('Cette date ne peut pas être postérieure à aujourd’hui.')
+    ).toBeInTheDocument()
+    expect(dateField()).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(actions.recordSaleAction).not.toHaveBeenCalled()
+  })
+
+  it('accepte une vente datée d’aujourd’hui', async () => {
+    renderSale({initialBuyer: FERRAND})
+
+    await submit()
+
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+  })
+
   it('refuse le vendeur comme acquéreur (état 5f)', async () => {
     renderSale({initialDate: '2026-06-15', initialBuyer: DUBOIS})
 
@@ -375,6 +396,11 @@ describe('SaleForm — refus', () => {
       'la date refusée par le serveur',
       {status: 'date_not_after_start', startsOn: '1998-02-03'},
       'Jean et Odile Dubois n’est propriétaire que depuis le 03/02/1998 : la vente doit être postérieure à cette date.',
+    ],
+    [
+      'la date future refusée par le serveur',
+      {status: 'future_date'},
+      'Cette date ne peut pas être postérieure à aujourd’hui.',
     ],
     [
       'l’acquéreur refusé par le serveur',

@@ -20,7 +20,11 @@ import {canPerformAction} from './authorization/action-registry-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {toMemberProfileDto} from './rules/member-profile-rules'
-import {findOverlap, planSale} from './rules/parcel-ownership-rules'
+import {
+  findOverlap,
+  isOwnershipDateInFuture,
+  planSale,
+} from './rules/parcel-ownership-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {MemberProfileDTO} from './types/domain/member-profile-types'
 import {
@@ -35,6 +39,7 @@ import {
   SalePlan,
   SaleRefusalConst,
 } from './types/domain/parcel-ownership-types'
+import {calendarDayOf} from './types/domain/water-analysis-types'
 import {
   attachParcelServiceSchema,
   memberParcelsServiceSchema,
@@ -89,13 +94,21 @@ const toConflict = (
   endsOn: period.endsOn,
 })
 
+/**
+ * Aujourd'hui, le jour calendaire de l'association : la meme fonction que
+ * celle des pages pour la date proposee, l'ecran et le service ne peuvent pas
+ * diverger. L'horloge n'est lue qu'ici.
+ */
+const today = (): string => calendarDayOf(new Date())
+
 const byParcelNumber = (a: {number: string}, b: {number: string}): number =>
   a.number.localeCompare(b.number, 'fr', {numeric: true})
 
 /**
  * Rattache une parcelle a une fiche a partir d'une date (critere 1). La
  * parcelle inconnue est creee. Si un autre proprietaire la possede sur cette
- * periode, le rattachement est refuse en le nommant (critere 4).
+ * periode, le rattachement est refuse en le nommant (critere 4). Une date
+ * posterieure a aujourd'hui est refusee avant toute ecriture.
  */
 export const attachParcelService = async (
   input: AttachParcelInput
@@ -107,6 +120,10 @@ export const attachParcelService = async (
 
   const {organizationId, memberProfileId, parcelNumber, startsOn} = parsed.data
   await requireMemberProfileManager(organizationId)
+
+  if (isOwnershipDateInFuture(startsOn, today())) {
+    return {status: 'future_date'}
+  }
 
   return withTenant(organizationId, async () => {
     const profile = await getMemberProfileByIdDao(memberProfileId)
@@ -166,8 +183,9 @@ const toSaleRefusal = (
 /**
  * Enregistre une vente (critere 2), tout ou rien : verrou de la parcelle,
  * regles pures, **une** ecriture sur la periode ouverte du vendeur (sa date
- * de fin), puis la periode de l'acquereur a partir du meme jour. Un refus
- * n'ecrit rien ; une erreur en cours de route sort du scope de tenant et
+ * de fin), puis la periode de l'acquereur a partir du meme jour. Une date
+ * posterieure a aujourd'hui est refusee avant le verrou. Un refus n'ecrit
+ * rien ; une erreur en cours de route sort du scope de tenant et
  * annule la cloture.
  */
 export const recordSaleService = async (
@@ -180,6 +198,10 @@ export const recordSaleService = async (
 
   const {organizationId, parcelId, sellerId, buyerId, date} = parsed.data
   await requireMemberProfileManager(organizationId)
+
+  if (isOwnershipDateInFuture(date, today())) {
+    return {status: 'future_date'}
+  }
 
   return withTenant(organizationId, async () => {
     const parcel = await lockParcelTxnDao(parcelId)

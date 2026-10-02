@@ -384,6 +384,15 @@ describe('attachParcelAction', () => {
     expect(revalidatePath).not.toHaveBeenCalled()
   })
 
+  it('rend le refus d’une date future tel quel, sans revalider', async () => {
+    vi.mocked(attachParcelService).mockResolvedValue({status: 'future_date'})
+
+    const result = await attachParcelAction(undefined, attachForm())
+
+    expect(result).toEqual({status: 'future_date'})
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
   it('refuse à qui n’est pas au bureau, sans revalider', async () => {
     vi.mocked(attachParcelService).mockRejectedValue(new AuthorizationError())
 
@@ -457,6 +466,7 @@ describe('recordSaleAction', () => {
     [{status: 'date_not_after_start', startsOn: '1998-02-03'} as const],
     [{status: 'buyer_is_seller'} as const],
     [{status: 'no_open_period'} as const],
+    [{status: 'future_date'} as const],
     [
       {
         status: 'overlap',

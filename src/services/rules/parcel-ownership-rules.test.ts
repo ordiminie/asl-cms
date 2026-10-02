@@ -4,6 +4,7 @@ import {OwnershipPeriod} from '../types/domain/parcel-ownership-types'
 import {
   findOverlap,
   isIncomplete,
+  isOwnershipDateInFuture,
   lastOwnershipDayOf,
   ownerAt,
   planSale,
@@ -230,6 +231,20 @@ describe('isIncomplete — fiche incomplète (critère 8)', () => {
     ['une commune', {city: 'Saint-Denis'}],
   ])('ne signale pas une fiche courrier qui porte %s', (_label, part) => {
     expect(isIncomplete({...noContact, ...part})).toBe(false)
+  })
+})
+
+describe('isOwnershipDateInFuture — ni rattachement ni vente à une date future', () => {
+  const TODAY = '2026-10-02'
+
+  it.each([
+    ['hier', '2026-10-01', false],
+    ['aujourd’hui', TODAY, false],
+    ['demain', '2026-10-03', true],
+    ['l’an prochain', '2027-01-01', true],
+    ['une date ancienne', '1998-02-03', false],
+  ])('%s → %s', (_label, date, expected) => {
+    expect(isOwnershipDateInFuture(date, TODAY)).toBe(expected)
   })
 })
 

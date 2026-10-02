@@ -4,12 +4,16 @@ import {zodResolver} from '@hookform/resolvers/zod'
 import {AlertTriangle} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
-import {useState} from 'react'
+import {type ChangeEvent, useState} from 'react'
 import {Controller, useForm} from 'react-hook-form'
 
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
-import {DateField, isoToFrenchDate} from '@/components/ui/date-field'
+import {
+  DateField,
+  frenchDateToIso,
+  isoToFrenchDate,
+} from '@/components/ui/date-field'
 import {
   Dialog,
   DialogContent,
@@ -19,7 +23,10 @@ import {
 } from '@/components/ui/dialog'
 import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
-import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
+import {
+  isOwnershipDateInFuture,
+  lastOwnershipDayOf,
+} from '@/services/rules/parcel-ownership-rules'
 import type {MemberProfileDTO} from '@/services/types/domain/member-profile-types'
 import type {OwnershipConflictDTO} from '@/services/types/domain/parcel-ownership-types'
 
@@ -42,7 +49,7 @@ export type AttachedParcel = Extract<
 
 type AttachParcelDialogProps = {
   profile: Pick<MemberProfileDTO, 'id' | 'name'>
-  /** Le jour calendaire de Paris, ISO : la date proposee. */
+  /** Le jour calendaire de Paris, ISO : la date proposee, et la plus tardive. */
   today: string
   open: boolean
   onClose: () => void
@@ -115,9 +122,30 @@ function AttachParcelForm({
   const [overlap, setOverlap] = useState<Overlap | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
 
+  /**
+   * Le numero s'ecrit en majuscules pendant la saisie : c'est sous cette
+   * forme que le service l'enregistre. Le curseur reste ou il etait.
+   */
+  const showUpperCase = (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.target
+    const {selectionStart, selectionEnd} = input
+    form.setValue('parcelNumber', input.value.toUpperCase())
+    input.setSelectionRange(selectionStart, selectionEnd)
+  }
+
+  const refuseFutureDate = () =>
+    form.setError('startsOn', {message: t('validation.dateFuture')})
+
   const onValid = async (values: AttachParcelFormSchemaType) => {
     setOverlap(null)
     setFailure(null)
+
+    const startsOn = frenchDateToIso(values.startsOn)
+    if (startsOn && isOwnershipDateInFuture(startsOn, today)) {
+      refuseFutureDate()
+      return
+    }
+
     const formData = new FormData()
     formData.set('memberProfileId', profile.id)
     formData.set('parcelNumber', values.parcelNumber)
@@ -130,6 +158,8 @@ function AttachParcelForm({
       }
     } else if (result.status === 'overlap') {
       setOverlap(result)
+    } else if (result.status === 'future_date') {
+      refuseFutureDate()
     } else if (result.status === 'error') {
       setFailure(result.message)
     } else {
@@ -165,7 +195,7 @@ function AttachParcelForm({
             errors.parcelNumber ? `${NUMBER_ID}-error` : undefined
           }
           className="h-14 max-w-60 font-mono text-[18px] font-medium tabular-nums aria-invalid:border-2 sm:h-12"
-          {...form.register('parcelNumber')}
+          {...form.register('parcelNumber', {onChange: showUpperCase})}
         />
         {errors.parcelNumber && (
           <p

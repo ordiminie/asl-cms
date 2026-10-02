@@ -177,7 +177,8 @@ export async function updateMemberProfileContactAction(
 
 /**
  * « Rattacher la parcelle » (ecran 4). Le chevauchement est rendu avec le
- * proprietaire en place et sa date (critere 4) ; rien n'est alors ecrit.
+ * proprietaire en place et sa date (critere 4), la date future telle quelle ;
+ * rien n'est alors ecrit.
  */
 export async function attachParcelAction(
   _prevState: AttachParcelActionResult | undefined,
@@ -213,7 +214,9 @@ export async function attachParcelAction(
     if (result.status === 'member_not_found') {
       return {status: 'error', message: t('errors.notFound')}
     }
-    if (result.status === 'overlap') return result
+    if (result.status === 'overlap' || result.status === 'future_date') {
+      return result
+    }
 
     revalidateMemberProfileScreens()
     return {
@@ -229,7 +232,8 @@ export async function attachParcelAction(
 
 /**
  * « Enregistrer la vente » (ecran 5). Les refus du service — date anterieure
- * au debut de la periode, acquereur = vendeur, chevauchement — sont rendus
+ * au debut de la periode, date future, acquereur = vendeur, chevauchement —
+ * sont rendus
  * tels quels : rien n'a ete ecrit, rien n'est revalide.
  */
 export async function recordSaleAction(

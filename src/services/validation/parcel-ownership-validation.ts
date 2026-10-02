@@ -15,9 +15,15 @@ const uuid = z.string().uuid()
 
 export const ownershipDateSchema = newsDateSchema
 
+/**
+ * Le numero d'une parcelle, tel qu'il est enregistre : sans espaces autour,
+ * **en majuscules**. « a12 » et « A12 » designent la meme parcelle ; la regle
+ * vit ici pour que tout chemin d'ecriture y passe, l'import compris.
+ */
 export const parcelNumberSchema = z
   .string()
   .trim()
+  .toUpperCase()
   .min(1)
   .max(PARCEL_NUMBER_MAX_LENGTH)
 

@@ -278,6 +278,43 @@ story à part, à décider).
      depuis le scope de B ; la parcelle de même numéro chez B n'est pas celle de A ; ouvrir
      `/bureau/proprietaires/{id de A}` sur le domaine de B ne rend rien.
 
+### Ajouts après la première revue (demande de l'utilisatrice, 02/10/2026)
+
+Deux tâches ajoutées après le premier passage de revue (`Ship allowed: yes`, un majeur M1). Elles
+font l'objet d'un **second commit** `fix(s12): …` sur la branche, non d'une réécriture du premier.
+
+10. [x] **Numéro de parcelle normalisé en majuscules, côté serveur.**
+    - `parcelNumberSchema` (`src/services/validation/parcel-ownership-validation.ts`) : après le
+      `trim`, le numéro est passé en majuscules. La règle vit dans la validation du service, pas
+      seulement dans le formulaire : tout chemin d'écriture y passe, l'import de s13 compris.
+    - Écran : le champ « Numéro de parcelle » du `dialog` de rattachement montre la majuscule
+      pendant la saisie ; le message de confirmation et le message de chevauchement citent le numéro
+      **normalisé**, celui qui est enregistré.
+    - Conséquence voulue : « a12 » et « A12 » désignent la même parcelle ; saisir « a12 » quand
+      « A12 » existe rattache la parcelle existante (ou rend le refus de chevauchement), sans créer
+      de seconde parcelle.
+    - Hors périmètre : aucune migration de données (aucune donnée réelle, seed en chiffres seuls),
+      aucune contrainte en base, la recherche de la liste reste insensible à la casse.
+    - **Tests** : schéma (« a12 » → « A12 », espaces retirés, chiffres inchangés) ; service
+      (rattacher « a12 » alors que « A12 » existe ne crée pas de parcelle) ; écran (le numéro
+      envoyé à l'action et le message affiché sont en majuscules).
+
+11. [x] **Refus d'une date future au rattachement et à la vente** (revue, M1).
+    - `attachParcelService` et `recordSaleService` refusent une date **postérieure à aujourd'hui** ;
+      aujourd'hui est accepté. Refus typé, au patron des refus existants, **avant toute écriture**.
+    - « Aujourd'hui » est le jour calendaire rendu par `calendarDayOf`, la même fonction que les
+      pages utilisent déjà pour la date par défaut : l'écran et le service ne peuvent pas diverger.
+      `ownershipDateSchema` reste sans horloge ; la règle est une fonction pure de
+      `src/services/rules/` qui reçoit le jour courant en argument, et le service le lui fournit.
+    - Écran : le `dialog` de rattachement et l'écran de vente affichent le refus sous le champ de
+      date, libellé dans `messages/fr.json` ; le refus côté client reprend la même règle.
+    - Hors périmètre : la voie de correction d'une période déjà enregistrée (correction en base, au
+      besoin) et la définition de « parcelle actuelle », inchangée.
+    - **Tests** : règle pure (hier et aujourd'hui acceptés, demain refusé) ; les deux services
+      (date future → refus, aucun DAO d'écriture appelé) ; les deux écrans (message affiché).
+    - e2e : un cas dans `e2e/member-profiles.spec.ts` — rattachement daté de l'an prochain refusé,
+      aucune ligne ajoutée (SQL).
+
 ## Files touched
 
 **Créés**

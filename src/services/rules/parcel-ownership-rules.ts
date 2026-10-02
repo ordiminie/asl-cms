@@ -95,6 +95,14 @@ export const planSale = ({
 }
 
 /**
+ * Ni rattachement ni vente a une date posterieure a aujourd'hui ; aujourd'hui
+ * est accepte. Le jour courant est un **argument** : l'appelant lit l'horloge
+ * (`calendarDayOf`), la regle reste pure, et l'ecran la rejoue telle quelle.
+ */
+export const isOwnershipDateInFuture = (date: string, today: string): boolean =>
+  date > today
+
+/**
  * Fiche incomplete (decision G) : joignable par courrier uniquement, et
  * aucune adresse postale exploitable — adresse, code postal et commune tous
  * absents. Aucun envoi ne peut l'atteindre.

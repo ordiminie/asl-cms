@@ -377,6 +377,64 @@ describe('MemberProfileDetail — rattacher une parcelle (écran 4)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('montre le numéro en majuscules pendant la saisie, l’envoie tel quel et le cite dans la confirmation', async () => {
+    actions.attachParcelAction.mockResolvedValue({
+      status: 'attached',
+      parcelNumber: 'A12',
+      parcelCreated: false,
+      startsOn: '2026-09-29',
+    })
+    renderDetail()
+    const dialog = await openDialog()
+    const number = within(dialog).getByLabelText('Numéro de parcelle')
+
+    await userEvent.type(number, 'a1')
+    expect(number).toHaveValue('A1')
+    await userEvent.type(number, '2')
+    expect(number).toHaveValue('A12')
+
+    await userEvent.click(
+      within(dialog).getByRole('button', {name: 'Rattacher la parcelle'})
+    )
+
+    expect(sentFields(actions.attachParcelAction).parcelNumber).toBe('A12')
+    expect(
+      await screen.findByText(
+        'Parcelle A12 rattachée à Hélène Roy depuis le 29/09/2026.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('cite le numéro en majuscules dans le refus de chevauchement, et le garde dans le champ', async () => {
+    actions.attachParcelAction.mockResolvedValue({
+      status: 'overlap',
+      parcelNumber: 'A12',
+      conflict: {
+        memberProfileId: FERRAND_ID,
+        name: 'Paul Ferrand',
+        startsOn: '2026-06-15',
+        endsOn: null,
+      },
+    })
+    renderDetail()
+    const dialog = await openDialog()
+
+    await userEvent.type(
+      within(dialog).getByLabelText('Numéro de parcelle'),
+      'a12'
+    )
+    await userEvent.click(
+      within(dialog).getByRole('button', {name: 'Rattacher la parcelle'})
+    )
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'La parcelle A12 appartient à Paul Ferrand depuis le 15/06/2026.'
+    )
+    expect(within(dialog).getByLabelText('Numéro de parcelle')).toHaveValue(
+      'A12'
+    )
+  })
+
   it('dit simplement « rattachée » quand la parcelle existait déjà', async () => {
     actions.attachParcelAction.mockResolvedValue({
       status: 'attached',
@@ -461,6 +519,52 @@ describe('MemberProfileDetail — rattacher une parcelle (écran 4)', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
       'La parcelle 47 appartenait à Jean et Odile Dubois du 03/02/1998 au 14/06/2026.'
     )
+  })
+
+  it('refuse une date postérieure à aujourd’hui sous le champ de date, sans rien envoyer', async () => {
+    renderDetail()
+    const dialog = await openDialog()
+
+    await userEvent.type(
+      within(dialog).getByLabelText('Numéro de parcelle'),
+      '52'
+    )
+    const date = within(dialog).getByLabelText('Propriétaire depuis le')
+    await userEvent.clear(date)
+    await userEvent.type(date, '30092026')
+    await userEvent.click(
+      within(dialog).getByRole('button', {name: 'Rattacher la parcelle'})
+    )
+
+    expect(
+      await within(dialog).findByText(
+        'Cette date ne peut pas être postérieure à aujourd’hui.'
+      )
+    ).toBeInTheDocument()
+    expect(date).toHaveAttribute('aria-invalid', 'true')
+    expect(actions.attachParcelAction).not.toHaveBeenCalled()
+  })
+
+  it('affiche sous le champ de date le refus d’une date future rendu par le serveur, dialog ouvert', async () => {
+    actions.attachParcelAction.mockResolvedValue({status: 'future_date'})
+    renderDetail()
+    const dialog = await openDialog()
+
+    await userEvent.type(
+      within(dialog).getByLabelText('Numéro de parcelle'),
+      '52'
+    )
+    await userEvent.click(
+      within(dialog).getByRole('button', {name: 'Rattacher la parcelle'})
+    )
+
+    expect(
+      await within(dialog).findByText(
+        'Cette date ne peut pas être postérieure à aujourd’hui.'
+      )
+    ).toBeInTheDocument()
+    expect(actions.attachParcelAction).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('ferme le dialog par « Annuler », sans rien envoyer', async () => {

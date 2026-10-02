@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 const scope = vi.hoisted(() => ({current: undefined as string | undefined}))
 
@@ -148,7 +148,14 @@ const allDaos = () => [
 const order = (mock: unknown): number =>
   vi.mocked(mock as () => unknown).mock.invocationCallOrder[0]
 
+/** Le 02/10/2026 à midi, à Paris : « aujourd'hui » de toute la suite. */
+const NOON_ON_2026_10_02 = new Date('2026-10-02T10:00:00Z')
+const TODAY = '2026-10-02'
+const TOMORROW = '2026-10-03'
+
 beforeEach(() => {
+  vi.useFakeTimers({toFake: ['Date']})
+  vi.setSystemTime(NOON_ON_2026_10_02)
   vi.clearAllMocks()
   scope.current = undefined
   vi.mocked(getMemberProfileByIdDao).mockImplementation(async (id) =>
@@ -166,6 +173,10 @@ beforeEach(() => {
   vi.mocked(getCurrentParcelsByMemberDao).mockResolvedValue([])
   vi.mocked(getFormerParcelsByMemberDao).mockResolvedValue([])
   vi.mocked(getParcelOwnerAtDao).mockResolvedValue(undefined)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe.each([
@@ -233,6 +244,58 @@ describe.each([
       )
     })
 
+    it('should attach the existing parcel « A12 » when « a12 » is typed, without creating a second parcel', async () => {
+      const known = new Map([['A12', parcelRow({number: 'A12'})]])
+      vi.mocked(findOrCreateParcelTxnDao).mockImplementation(
+        async (organizationId, number) => {
+          const existing = known.get(number)
+          if (existing) return {row: existing, created: false}
+
+          const row = parcelRow({id: OTHER_PARCEL_ID, organizationId, number})
+          known.set(number, row)
+          return {row, created: true}
+        }
+      )
+
+      const result = await attachParcelService({
+        organizationId: ORG_ID,
+        memberProfileId: ROY_ID,
+        parcelNumber: ' a12 ',
+        startsOn: '2026-09-01',
+      })
+
+      expect([...known.keys()]).toEqual(['A12'])
+      expect(result).toEqual({
+        status: 'attached',
+        parcelId: PARCEL_ID,
+        parcelNumber: 'A12',
+        parcelCreated: false,
+      })
+      expect(openPeriodTxnDao).toHaveBeenCalledWith(
+        expect.objectContaining({parcelId: PARCEL_ID})
+      )
+    })
+
+    it('should refuse the overlap on « A12 » when « a12 » is typed, quoting the normalised number', async () => {
+      vi.mocked(findOrCreateParcelTxnDao).mockImplementation(
+        async (organizationId, number) => ({
+          row: parcelRow({organizationId, number}),
+          created: false,
+        })
+      )
+      vi.mocked(getParcelPeriodsDao).mockResolvedValue(SOLD)
+
+      const result = await attachParcelService({
+        organizationId: ORG_ID,
+        memberProfileId: BLANC_ID,
+        parcelNumber: 'a12',
+        startsOn: '2026-09-01',
+      })
+
+      expect(result).toMatchObject({status: 'overlap', parcelNumber: 'A12'})
+      expect(openPeriodTxnDao).not.toHaveBeenCalled()
+    })
+
     it('should refuse an overlap, naming the owner in place and their date, and open nothing (critère 4)', async () => {
       vi.mocked(getParcelPeriodsDao).mockResolvedValue(SOLD)
 
@@ -240,7 +303,7 @@ describe.each([
         organizationId: ORG_ID,
         memberProfileId: BLANC_ID,
         parcelNumber: '47',
-        startsOn: '2027-01-01',
+        startsOn: '2026-09-01',
       })
 
       expect(result).toEqual({
@@ -304,6 +367,49 @@ describe.each([
       for (const dao of writeDaos()) {
         expect(dao).not.toHaveBeenCalled()
       }
+    })
+
+    it('should refuse a start date after today, before any write: no parcel is created, nothing is locked', async () => {
+      const result = await attachParcelService({
+        organizationId: ORG_ID,
+        memberProfileId: DUBOIS_ID,
+        parcelNumber: '112',
+        startsOn: TOMORROW,
+      })
+
+      expect(result).toEqual({status: 'future_date'})
+      for (const dao of writeDaos()) {
+        expect(dao).not.toHaveBeenCalled()
+      }
+      expect(lockParcelTxnDao).not.toHaveBeenCalled()
+    })
+
+    it('should accept a start date of today', async () => {
+      const result = await attachParcelService({
+        organizationId: ORG_ID,
+        memberProfileId: DUBOIS_ID,
+        parcelNumber: '47',
+        startsOn: TODAY,
+      })
+
+      expect(result).toMatchObject({status: 'attached'})
+      expect(openPeriodTxnDao).toHaveBeenCalledWith(
+        expect.objectContaining({startsOn: TODAY})
+      )
+    })
+
+    it('should read today as the calendar day in Paris, not in UTC', async () => {
+      vi.setSystemTime(new Date('2026-10-02T22:30:00Z'))
+      const attach = (startsOn: string) =>
+        attachParcelService({
+          organizationId: ORG_ID,
+          memberProfileId: DUBOIS_ID,
+          parcelNumber: '47',
+          startsOn,
+        })
+
+      expect(await attach('2026-10-03')).toMatchObject({status: 'attached'})
+      expect(await attach('2026-10-04')).toEqual({status: 'future_date'})
     })
 
     it.each([
@@ -370,13 +476,13 @@ describe.each([
         ...sale,
         sellerId: ROY_ID,
         buyerId: BLANC_ID,
-        date: '2030-03-01',
+        date: '2026-09-01',
       })
 
       expect(closeOpenPeriodTxnDao).toHaveBeenCalledTimes(1)
       expect(closeOpenPeriodTxnDao).toHaveBeenCalledWith(
         ROY_PERIOD_ID,
-        '2030-03-01'
+        '2026-09-01'
       )
     })
 
@@ -408,6 +514,26 @@ describe.each([
       for (const dao of writeDaos()) {
         expect(dao).not.toHaveBeenCalled()
       }
+    })
+
+    it('should refuse a sale dated after today, before any write: nothing is locked, closed or opened', async () => {
+      const result = await recordSaleService({...sale, date: TOMORROW})
+
+      expect(result).toEqual({status: 'future_date'})
+      for (const dao of writeDaos()) {
+        expect(dao).not.toHaveBeenCalled()
+      }
+      expect(lockParcelTxnDao).not.toHaveBeenCalled()
+    })
+
+    it('should accept a sale dated today', async () => {
+      const result = await recordSaleService({...sale, date: TODAY})
+
+      expect(result).toEqual({status: 'recorded'})
+      expect(closeOpenPeriodTxnDao).toHaveBeenCalledWith(
+        DUBOIS_PERIOD_ID,
+        TODAY
+      )
     })
 
     it('should refuse an overlap with a later period, naming its owner, and write nothing', async () => {
@@ -605,6 +731,21 @@ const calls = {
       sellerId: DUBOIS_ID,
       buyerId: ROY_ID,
       date: '2026-06-15',
+    }),
+  attachParcelInTheFuture: () =>
+    attachParcelService({
+      organizationId: ORG_ID,
+      memberProfileId: DUBOIS_ID,
+      parcelNumber: '47',
+      startsOn: '2027-01-01',
+    }),
+  recordSaleInTheFuture: () =>
+    recordSaleService({
+      organizationId: ORG_ID,
+      parcelId: PARCEL_ID,
+      sellerId: DUBOIS_ID,
+      buyerId: ROY_ID,
+      date: '2027-01-01',
     }),
   getParcelOwnerAt: () =>
     getParcelOwnerAtService(ORG_ID, PARCEL_ID, '2026-06-14'),

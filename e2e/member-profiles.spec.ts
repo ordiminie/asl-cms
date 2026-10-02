@@ -44,8 +44,12 @@ const SEED_ROY = 'a1200000-0000-4000-8000-000000000003'
 
 const RUN = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
 const nameOf = (label: string) => `${label} s12-${RUN}`
-/** Un numéro de parcelle propre à cet essai (30 caractères au plus). */
-const parcelOf = (suffix: string) => `E${RUN}-${suffix}`
+/**
+ * Un numéro de parcelle propre à cet essai (30 caractères au plus), en
+ * majuscules : c'est sous cette forme que le service l'enregistre.
+ */
+const PARCEL_PREFIX = `E${RUN.toUpperCase()}-`
+const parcelOf = (suffix: string) => `${PARCEL_PREFIX}${suffix}`
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -233,9 +237,11 @@ const cleanUpRun = () =>
       `delete from parcel_ownership
         where member_profile_id in (select id from member_profile where name like $1)
            or parcel_id in (select id from parcel where number like $2)`,
-      [`% s12-${RUN}`, `E${RUN}-%`]
+      [`% s12-${RUN}`, `${PARCEL_PREFIX}%`]
     )
-    await client.query(`delete from parcel where number like $1`, [`E${RUN}-%`])
+    await client.query(`delete from parcel where number like $1`, [
+      `${PARCEL_PREFIX}%`,
+    ])
     await client.query(`delete from member_profile where name like $1`, [
       `% s12-${RUN}`,
     ])
@@ -562,7 +568,7 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
     const bureau = await newSession(browser, TENANT_A, OWNER_A)
     try {
       await createProfile(bureau, {name})
-      await submitAttachment(bureau, {number: '47', startsOn: '01/01/2027'})
+      await submitAttachment(bureau, {number: '47', startsOn: '01/09/2026'})
 
       const alert = attachDialog(bureau).getByRole('alert')
       await expect(alert).toContainText(
@@ -588,6 +594,50 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
         'La parcelle 47 appartenait à Jean et Odile Dubois du 03/02/1998 au 14/06/2026.'
       )
       expect(await periodsOfParcelA('47')).toEqual(before)
+    } finally {
+      await bureau.context().close()
+    }
+  })
+
+  test('date future — un rattachement daté de l’an prochain est refusé sous le champ de date, rien n’est écrit', async ({
+    browser,
+  }) => {
+    test.setTimeout(90_000)
+    const {a} = await tenantIds()
+    const name = nameOf('Date future')
+    const number = parcelOf('F')
+    const nextYear = new Date().getFullYear() + 1
+
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      const id = await createProfile(bureau, {name})
+      await submitAttachment(bureau, {
+        number,
+        startsOn: `01/01/${nextYear}`,
+      })
+
+      const dialog = attachDialog(bureau)
+      await expect(
+        dialog.getByText(
+          'Cette date ne peut pas être postérieure à aujourd’hui.'
+        )
+      ).toBeVisible()
+      await expect(dialog.getByLabel('Propriétaire depuis le')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      )
+      await expect(dialog.getByLabel('Numéro de parcelle')).toHaveValue(number)
+
+      const written = await inTenantScope(a, async (client) => {
+        const result = await client.query<{parcels: number; periods: number}>(
+          `select (select count(*)::int from parcel where number = $1) as parcels,
+                  (select count(*)::int from parcel_ownership
+                    where member_profile_id = $2) as periods`,
+          [number, id]
+        )
+        return result.rows[0]
+      })
+      expect(written).toEqual({parcels: 0, periods: 0})
     } finally {
       await bureau.context().close()
     }

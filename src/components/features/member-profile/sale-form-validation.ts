@@ -43,6 +43,8 @@ export type RecordSaleActionResult =
   | {status: 'buyer_is_seller'}
   | {status: 'no_open_period'}
   | {status: 'overlap'; conflict: OwnershipConflictDTO | null}
+  /** La date est posterieure a aujourd'hui : rien n'a ete ecrit. */
+  | {status: 'future_date'}
   | {status: 'error'; message: string}
 
 /** Une fiche proposee comme acquereur, ses parcelles actuelles en `meta`. */

@@ -48,6 +48,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import {
+  isOwnershipDateInFuture,
   lastOwnershipDayOf,
   planSale,
 } from '@/services/rules/parcel-ownership-rules'
@@ -71,7 +72,7 @@ import type {
 
 type SaleFormProps = {
   context: SaleContextDTO
-  /** Le jour calendaire de Paris, ISO : la date proposee. */
+  /** Le jour calendaire de Paris, ISO : la date proposee, et la plus tardive. */
   today: string
   /** Date ISO conservee au retour de la creation de l'acquereur. */
   initialDate?: string
@@ -144,6 +145,8 @@ export function SaleForm({
             }),
           },
         }
+      case 'future_date':
+        return {errors: {date: t('validation.dateFuture')}}
       case 'buyer_is_seller':
         return {
           errors: {
@@ -210,6 +213,11 @@ export function SaleForm({
     }
     if (!isoDate || !buyer) {
       show({errors: missing})
+      return
+    }
+
+    if (isOwnershipDateInFuture(isoDate, today)) {
+      show(refusalOf({status: 'future_date'}, isoDate))
       return
     }
 

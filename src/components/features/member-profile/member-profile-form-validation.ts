@@ -175,4 +175,6 @@ export type AttachParcelActionResult =
       errors: {field: AttachParcelFormField; message: string}[]
     }
   | {status: 'overlap'; parcelNumber: string; conflict: OwnershipConflictDTO}
+  /** La date est posterieure a aujourd'hui : rien n'a ete ecrit. */
+  | {status: 'future_date'}
   | {status: 'error'; message: string}

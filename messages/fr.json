@@ -3914,6 +3914,7 @@
       "parcelNumberRequired": "Indiquez le numéro de la parcelle.",
       "parcelNumberMax": "Ce numéro de parcelle est trop long : 30 caractères au plus.",
       "dateInvalid": "Cette date n’existe pas. Écrivez-la sous la forme jj/mm/aaaa.",
+      "dateFuture": "Cette date ne peut pas être postérieure à aujourd’hui.",
       "buyerRequired": "Choisissez l’acquéreur."
     },
     "errors": {
