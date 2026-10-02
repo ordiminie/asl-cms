@@ -284,12 +284,11 @@ type ProfileInput = {
   city?: string
 }
 
-/** Crée une fiche à l'écran et attend sa fiche ; rend son identifiant. */
-const createProfile = async (
+/** Remplit « Ajouter un propriétaire », déjà à l'écran, et attend la fiche créée ; rend son identifiant. */
+const fillAndSaveProfile = async (
   page: Page,
   input: ProfileInput
 ): Promise<string> => {
-  await page.goto(`${TENANT_A}${NEW_ROUTE}`, {waitUntil: 'networkidle'})
   await expect(
     page.getByRole('heading', {level: 1, name: 'Ajouter un propriétaire'})
   ).toBeVisible({timeout: 15_000})
@@ -317,6 +316,15 @@ const createProfile = async (
   const id = new URL(page.url()).pathname.split('/').at(-1) as string
   expect(id).toMatch(UUID_PATTERN)
   return id
+}
+
+/** Crée une fiche à l'écran et attend sa fiche ; rend son identifiant. */
+const createProfile = async (
+  page: Page,
+  input: ProfileInput
+): Promise<string> => {
+  await page.goto(`${TENANT_A}${NEW_ROUTE}`, {waitUntil: 'networkidle'})
+  return fillAndSaveProfile(page, input)
 }
 
 const openProfile = async (page: Page, base: string, id: string) => {
@@ -750,6 +758,62 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
         await accountsBornFrom({name, email}),
         'renseigner un email n’ouvre aucun compte (s12d)'
       ).toEqual({users: 0, members: 0})
+    } finally {
+      await bureau.context().close()
+    }
+  })
+
+  test('formulaire vierge — après une création, rouvrir « Ajouter un propriétaire » par les liens de l’écran montre des champs vides', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const name = nameOf('Formulaire vierge')
+
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      // Ni `goto` ni `reload` après la liste : Next garde l'écran de création
+      // monté et masqué, et c'est cette instance que le même lien rouvre. Les
+      // champs se lisent par rôle, qui ignore ce qui est masqué.
+      await openList(bureau, TENANT_A)
+      const addLink = bureau.getByRole('link', {
+        name: 'Ajouter un propriétaire',
+        exact: true,
+      })
+      await addLink.click()
+      await fillAndSaveProfile(bureau, {
+        name,
+        email: `formulaire-vierge-${RUN}@example.test`,
+        phone: '06 12 34 56 78',
+        addressLine: '14 allée des Aulnes',
+        postalCode: '33680',
+        city: 'Lacanau',
+      })
+
+      await bureau
+        .getByRole('navigation', {name: 'Fil d’Ariane'})
+        .getByRole('link', {name: 'Propriétaires', exact: true})
+        .click()
+      await expect(
+        bureau.getByRole('heading', {level: 1, name: 'Propriétaires'})
+      ).toBeVisible({timeout: 15_000})
+
+      await addLink.click()
+      await expect(
+        bureau.getByRole('heading', {level: 1, name: 'Ajouter un propriétaire'})
+      ).toBeVisible({timeout: 15_000})
+
+      for (const fieldName of [
+        'Nom',
+        /^Adresse email/,
+        /^Téléphone/,
+        'Adresse',
+        'Code postal',
+        'Commune',
+      ]) {
+        await expect(
+          bureau.getByRole('textbox', {name: fieldName, exact: true})
+        ).toHaveValue('')
+      }
     } finally {
       await bureau.context().close()
     }

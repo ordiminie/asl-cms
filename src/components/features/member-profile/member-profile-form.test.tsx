@@ -1,3 +1,4 @@
+import {Activity} from 'react'
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 const router = vi.hoisted(() => ({push: vi.fn()}))
@@ -211,5 +212,93 @@ describe('MemberProfileForm — ouvert depuis une vente (écran 5)', () => {
       'href',
       '/bureau/proprietaires/seller-id/vente/parcel-id?date=2026-06-15'
     )
+  })
+})
+
+/**
+ * Sous Cache Components, Next garde « Ajouter un proprietaire » monte entre deux
+ * navigations (`<Activity>`) : la meme instance est masquee apres le
+ * `router.push`, puis reaffichee au retour sur l'ecran.
+ */
+describe('MemberProfileForm — l’écran conservé revient vierge après une création', () => {
+  const FILLED: [RegExp | string, string][] = [
+    ['Nom', 'Marcel Laurent'],
+    [/Adresse email/, 'marcel.laurent@example.fr'],
+    [/Téléphone/, '06 12 34 56 78'],
+    ['Adresse', '14 allée des Aulnes'],
+    ['Code postal', '33680'],
+    ['Commune', 'Lacanau'],
+  ]
+
+  const fill = async () => {
+    for (const [label, value] of FILLED) {
+      await userEvent.type(field(label), value)
+    }
+  }
+
+  const shown = (visible: boolean) => (
+    <Activity mode={visible ? 'visible' : 'hidden'}>
+      <MemberProfileForm saveAction={saveAction} />
+    </Activity>
+  )
+
+  it('montre des champs vides, sans erreur ni résumé, quand on rouvre l’écran après un enregistrement', async () => {
+    const {rerender} = render(shown(true))
+
+    await fill()
+    await submit()
+    await vi.waitFor(() => expect(router.push).toHaveBeenCalledTimes(1))
+
+    rerender(shown(false))
+    rerender(shown(true))
+
+    for (const [label] of FILLED) {
+      expect(field(label)).toHaveValue('')
+    }
+    expect(screen.getByText(MAIL_ONLY_NOTICE)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await userEvent.click(field('Nom'))
+    await userEvent.tab()
+
+    expect(
+      await screen.findByText('Indiquez le nom du propriétaire.')
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    [
+      'une erreur de validation du serveur',
+      {
+        status: 'invalid',
+        errors: [{field: 'phone', message: 'Téléphone refusé par le serveur.'}],
+      },
+    ],
+    [
+      'un email déjà pris',
+      {status: 'email_taken', memberProfileId: 'other-id', name: 'Claire M.'},
+    ],
+    ['un échec', {status: 'error', message: 'L’enregistrement a échoué.'}],
+  ])('garde la saisie après %s', async (_refusal, result) => {
+    saveAction.mockResolvedValue(result)
+    const {rerender} = render(shown(true))
+
+    await fill()
+    await submit()
+    await vi.waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() =>
+      expect(
+        screen.getByRole('button', {name: 'Enregistrer le propriétaire'})
+      ).toBeEnabled()
+    )
+
+    rerender(shown(false))
+    rerender(shown(true))
+
+    for (const [label, value] of FILLED) {
+      expect(field(label)).toHaveValue(value)
+    }
+    expect(router.push).not.toHaveBeenCalled()
   })
 })

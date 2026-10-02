@@ -5,7 +5,7 @@ import {AlertTriangle} from 'lucide-react'
 import Link from 'next/link'
 import {useRouter} from 'next/navigation'
 import {useTranslations} from 'next-intl'
-import {type ReactNode, useId, useState} from 'react'
+import {type ReactNode, useId, useLayoutEffect, useRef, useState} from 'react'
 import {FormProvider, useForm} from 'react-hook-form'
 
 import {Alert, AlertDescription} from '@/components/ui/alert'
@@ -91,6 +91,21 @@ export function MemberProfileForm({
   const [failure, setFailure] = useState<string | null>(null)
   const [holder, setHolder] = useState<{id: string; name: string} | null>(null)
   const {isSubmitting} = form.formState
+  const savedRef = useRef(false)
+  const {reset} = form
+
+  // Next conserve cet ecran monte apres le `router.push` (`<Activity>`) : une
+  // fois la fiche enregistree, il se vide quand il est masque, pour revenir
+  // vierge. Une saisie refusee ou en cours, elle, reste.
+  useLayoutEffect(
+    () => () => {
+      if (!savedRef.current) return
+      savedRef.current = false
+      reset()
+      setSubmitted(false)
+    },
+    [reset]
+  )
 
   const onValid = async (values: MemberProfileFormSchemaType) => {
     setFailure(null)
@@ -110,6 +125,7 @@ export function MemberProfileForm({
     } else if (result.status === 'error') {
       setFailure(result.message)
     } else {
+      savedRef.current = true
       router.push(
         saleReturn
           ? saleReturnPathOf({...saleReturn, buyerId: result.memberProfileId})

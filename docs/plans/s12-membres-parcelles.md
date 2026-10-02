@@ -337,6 +337,29 @@ enregistré. » au lieu de « Vente enregistrée. La parcelle … ». Troisième
       et lit l'alerte de vente ; il doit échouer avant le correctif. Le cas e2e existant est la
       preuve finale, en CI.
 
+### Correctif après le troisième passage de revue (demande de l'utilisatrice, 02/10/2026)
+
+Quatrième commit de code `fix(s12): …`. Seul le majeur N1 est traité ; les mineurs n5 à n8 restent
+ouverts.
+
+13. [x] **Le formulaire « Ajouter un propriétaire » revient vide** (revue, N1).
+    - Cause : même mécanisme que la tâche 12. `MemberProfileForm` fait `router.push` après un
+      enregistrement réussi sans se vider ; Next garde `/nouveau` monté, et le formulaire réapparaît
+      avec les valeurs du propriétaire précédent (cas « Resetting form state on submit » de
+      `node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`).
+    - Attendu : après une création réussie, revenir sur « Ajouter un propriétaire » par navigation
+      cliente montre un formulaire vierge — champs vides, aucune erreur, aucun état « déjà envoyé ».
+      Vaut aussi pour la création d'un acquéreur depuis l'écran de vente.
+    - Ne pas vider le formulaire sur un refus (erreur de validation, email déjà pris, échec) : la
+      saisie reste pour être corrigée. Le formulaire de modification des coordonnées, sur la fiche,
+      n'est pas concerné et ne change pas.
+    - **Tests** : un test de composant sous un vrai `<Activity>` (enregistrer, masquer, réafficher →
+      champs vides), en échec avant le correctif ; un test qui épingle que la saisie reste après un
+      refus.
+    - e2e : un cas dans `e2e/member-profiles.spec.ts` qui passe **par les liens de l'écran**, sans
+      `goto` ni `reload` entre les deux — créer un propriétaire, revenir à la liste par le fil
+      d'Ariane, rouvrir « Ajouter un propriétaire », constater les champs vides.
+
 ## Files touched
 
 **Créés**
