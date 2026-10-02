@@ -388,3 +388,208 @@ Aucun constat n'a été aggravé par le second commit.
 
 Max severity: minor
 Ship allowed: yes
+
+---
+
+# Revue s12-membres-parcelles : propriétaires et parcelles (3e passage)
+
+> Revue en contexte neuf. Chaque défaut est classé critique, majeur ou mineur.
+> Diff relu : `git diff main...feature/s12-membres-parcelles`, soit `b8ce9e3`, `23fedc5`, `f3c19c6` (rapport seul) puis `8eb2dcc` (tâche 12, 5 fichiers).
+> Le commit `8eb2dcc` a été relu comme du code neuf ; le verdict porte sur le diff entier.
+> Références : `docs/plans/s12-membres-parcelles.md` (section « Correctif après la CI de la PR 37 »), AGENTS.md, ADR 001 à 030, `docs/design-system.md`, `docs/designs/s12-membres-parcelles.md`, rapports des deux premiers passages.
+
+**Verdict : le ship reste autorisé, mais la sévérité maximale remonte de mineur à majeur.** Le correctif `8eb2dcc` est juste, complet pour le cas e2e en échec, et la CI de la PR 37 est verte sur ce commit (155 passés, e2e compris). Le majeur est nouveau pour la revue, pas pour le code : l'écran « Ajouter un propriétaire » garde les valeurs de la fiche précédente quand on y revient par navigation cliente (N1). Il vient du premier commit et relève de la même cause que l'échec de la CI. Aucun critique.
+
+## Vérifications exécutées par le reviewer
+
+`/workspace` n'a pas été modifié (`git status` vide au départ et à la fin, HEAD `8eb2dcc`). Les mutations et les sondes ont tourné sur une copie en disque local (`git archive HEAD`, `node_modules` en lien vers celui de `/workspace`), supprimée ensuite.
+
+| Contrôle | Exécuté ? | Résultat |
+|---|---|---|
+| `pnpm test --run` dans `/workspace` | Oui | `Tests 1 failed \| 2439 passed \| 8 skipped (2448)`, aucun timeout de worker. L'échec est un dépassement de 5 s dans `src/lib/better-auth/magic-link-integration-imports.test.ts` (parcours de fichiers sur le montage 9p, pendant que d'autres commandes tournaient). Fichier hors du diff de la story ; relancé seul : `Tests 2 passed (2)`. Je ne le compte ni vert ni rouge. |
+| Même suite sur la copie en disque local | Oui | **`Test Files 196 passed \| 2 skipped (198)` ; `Tests 2440 passed \| 8 skipped (2448)`**, sortie 0. Conforme au chiffre annoncé. |
+| Les deux fichiers de test du correctif, dans `/workspace` | Oui | `Tests 54 passed (54)` |
+| `tsc --noEmit` (copie) | Oui | Sortie 0, aucune ligne |
+| `eslint` sur les 4 fichiers de code de `8eb2dcc` | Oui | Sortie 0 |
+| `prettier --check` sur ces 4 fichiers | Oui | Conformes. Le plan `.md` est signalé, mais il l'était déjà avant ce commit et n'est pas couvert par lint-staged. |
+| Mutations (5, sur la copie) | Oui | Toutes tuées : voir le tableau |
+| Sondes jetables (3, sur la copie, non versées au dépôt) | Oui | Voir N1 et n6 |
+| CI de la PR 37 sur `8eb2dcc` (run 37014297624) | Lue | **`success`** : « Lint, règles, tests unitaires » vert (`Tests 2440 passed \| 8 skipped`), « Tests e2e (build de production) » vert, **`155 passed (6.8m)`** |
+| CI précédente (run 37010505259) | Lue | Échec confirmé tel que décrit : `member-profiles.spec.ts:452`, attendu « Vente enregistrée… », reçu « Propriétaire enregistré. » |
+| `pnpm build`, Playwright en local | **Non** | Consigne |
+
+**Mutations sur `8eb2dcc` :**
+
+| Mutation | Résultat |
+|---|---|
+| M1 — fiche remise à son état d'avant (`useState` figé) | Tuée (3 tests) |
+| M2 — nettoyage du `useLayoutEffect` retiré | Tuée (le test sous `<Activity>`) |
+| M3 — focus de l'alerte née dans la page retiré | Tuée |
+| M4 — écran de vente remis à son état d'avant | Tuée (1 test) |
+| M5 — vente : l'acquéreur de la prop est adopté à chaque nouvel objet, pas à chaque nouvel identifiant | Tuée (« ne remplace pas l'acquéreur choisi ensuite ») |
+
+Six tests ajoutés, quatre échouent sans le correctif (3 sur la fiche, 1 sur la vente) ; les deux autres sont des gardes de non-régression. Le chiffre annoncé est exact.
+
+## Le commit `8eb2dcc`, relu comme du code neuf
+
+Réponses aux questions posées pour ce passage.
+
+- **La cause annoncée est vraie.**
+  - `node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md` : sous Cache Components, Next masque les pages avec `<Activity>` au lieu de les démonter, et en garde trois.
+  - `node_modules/next/dist/client/components/layout-router.js:549` calcule la clé avec `createRouterCacheKey(activeSegment, true)`, « no search params » ; `:684-688` enveloppe chaque entrée dans `<Activity>` sous cette clé ; `bfcache-state-manager.js` fixe `MAX_BF_CACHE_ENTRIES` à 3.
+  - `next.config.ts:36` porte `cacheComponents: true`.
+  - La fiche `?cree=1` et la fiche `?vente=…` ont donc la même clé `__PAGE__` sous `[id]` : même instance, nouvelles props, état conservé.
+  - Contre-épreuve par élimination : avec `?vente=` dans l'URL, `created` vaut `false` côté serveur ; « Propriétaire enregistré. » ne pouvait venir que de l'état conservé.
+- **Le correctif est complet pour le cas e2e**, lu depuis la navigation de la spec.
+  - Création (`goto` puis `router.push` vers `?cree=1`), rattachement, `reload` (l'URL garde `?cree=1`, l'état repart sur « created »), lien vers la vente (fiche masquée), `router.push` vers `?vente=`.
+  - Au retour, `notice = pageNotice ?? arrivalNoticeOf(props)` : `pageNotice` est nul, `created` est faux, la vente se lit dans `parcels.former`.
+- **`parcels.former` est frais au retour.**
+  - `recordSaleAction` attend le service puis appelle `revalidatePath(MEMBER_PROFILES_ROUTE_PATTERN, 'layout')`.
+  - Côté client, `server-action-reducer.js:218-236` vide alors le cache de données dynamiques (`invalidateBfCache`) et le cache de préchargement.
+  - `src/app/dal/member-profile-dal.ts` ne porte aucun `'use cache'` (seulement `cache()` de React, par requête).
+  - L'URL `?vente=…` n'a jamais été visitée : `staleTimes.dynamic: 30` ne peut pas servir une ancienne réponse.
+- **Le nettoyage en `useLayoutEffect` est sain.**
+  - C'est le patron que donne le guide Next (« Resetting stale status messages »).
+  - Sous Strict Mode, le nettoyage rejoué au montage remet `null` sur `null`. Sonde B : l'alerte « Parcelle 52 ajoutée… » reste affichée et focalisée.
+  - Au démontage réel, le `setState` est sans effet.
+  - Le focus est inchangé : `pageNotice` ne porte que les deux genres qui prenaient déjà le focus. Au retour sur la fiche, l'effet rejoué ne focalise plus rien, ce qui est mieux qu'avant.
+  - Une réserve latente : voir n6.
+- **Aucune réapparition nouvelle d'une alerte d'arrivée.**
+  - Tant que la fiche reste visible, une alerte née dans la page masque l'alerte d'arrivée, même avec `?cree=1` dans l'URL.
+  - Il n'existe pas de bouton pour fermer l'alerte.
+  - Au rechargement, ou au retour par l'historique sur une URL qui porte encore `?cree=1` ou `?vente=`, l'alerte d'arrivée se redit. C'était déjà le cas avant ce commit, et le plan le demande (« à chaque arrivée »). Pas une régression.
+- **`sale-form.tsx` est dans le périmètre de la tâche 12** (« retour de l'écran de vente après création d'un acquéreur, `saleReturn` […] le corriger s'il y est »).
+  - Le défaut y était : l'écran de vente reste monté sous `[id]` pendant qu'on est sur `/nouveau`, et l'acquéreur arrive en prop sur la même instance.
+  - La logique est juste : l'ajustement d'état pendant le rendu est le patron documenté par React ; la comparaison porte sur l'identifiant, donc un simple rafraîchissement n'écrase pas un choix manuel ; un nouvel acquéreur créé ensuite est bien adopté ; l'absence de `?acquereur=` ne vide pas le choix en cours.
+  - La date n'a pas besoin du même traitement : elle vit dans l'état conservé, et un écran évincé se remonte en lisant les props.
+  - Les deux tests l'épinglent (M4, M5).
+- **Le test sous `<Activity>` est un vrai `Activity`** (`import {Activity} from 'react'`, React 19.2.8). M2 le prouve : sans le nettoyage, il échoue.
+- **Aucune des 6 specs non lancées n'a échoué** : la CI sur `8eb2dcc` rend 155 passés. À la lecture, elles n'étaient pas exposées : leurs lectures après une navigation cliente passent par `getByRole` ou sont bornées au `dialog`, et leurs autres étapes partent d'un `goto`.
+- **API vérifiées** : `useLayoutEffect`, `Activity` (React 19.2.8) ; `soldParcelPathOf`, `saleReturnPathOf`, `newBuyerPathOf` (`member-profile-paths.ts`) ; `BuyerOption` (`sale-form-validation.ts`) ; clés `detail.created`, `detail.contactSaved`, `detail.sold`, `detail.parcels.attached*` dans `messages/fr.json:3927-3963`.
+- **Design** : aucun composant, token ni couleur ajouté. Aucun ADR concerné.
+
+## Défauts nouveaux
+
+### N1 — majeur : « Ajouter un propriétaire » garde les valeurs de la fiche précédente
+
+- **Où** : `src/components/features/member-profile/member-profile-form.tsx:84-118` ; `src/app/[locale]/(bureau)/bureau/proprietaires/nouveau/page.tsx`.
+- **Le constat** : après un enregistrement réussi, le formulaire fait `router.push` sans se vider. Next garde `/nouveau` monté (clé `nouveau`, trois entrées au niveau `proprietaires`).
+  - Parcours : liste, « Ajouter un propriétaire », enregistrer, fiche, retour à la liste, « Ajouter un propriétaire ». Le formulaire revient avec le nom, l'email, le téléphone et l'adresse du propriétaire précédent, et `submitted` à vrai.
+  - Le même effet touche la création d'un acquéreur depuis une vente.
+- **Preuves** :
+  - Le guide Next décrit ce cas exact (« Resetting form state on submit »).
+  - Les clés de route ont été vérifiées dans la source.
+  - Sonde sous un vrai `<Activity>` (enregistrer, masquer, réafficher) : `name= Jean Dupont | phone= 0612345678`.
+  - **Non observé dans un navigateur.** La spec e2e ne peut pas le voir : `createProfile` ouvre `/nouveau` par `page.goto`.
+- **Pourquoi majeur et pas critique** : rien n'est écrit en silence ; les valeurs sont à l'écran et le nom est obligatoire. Mais c'est la boucle de saisie principale de la story, et un téléphone ou un complément d'adresse de la fiche précédente peut partir sur la suivante si on ne le voit pas.
+- **Correctif** : vider le formulaire au succès, avant `router.push` (`form.reset()`, `setSubmitted(false)`), avec un test sous `<Activity>` qui échoue avant. Petit, à faire avant le merge si l'utilisatrice le souhaite ; la règle du gate ne l'impose pas.
+
+### n5 — mineur : autres états conservés au retour sur un écran
+
+- **Où** : `src/components/features/member-profile/sale-form.tsx:114-127` ; `member-profile-detail.tsx:121-122` ; `attach-parcel-dialog.tsx:283-288`.
+- **Le constat** (par lecture) :
+  - L'écran de vente quitté par « Annuler » puis rouvert pour la même parcelle garde la date, l'acquéreur, et surtout un refus ou une erreur périmés.
+  - Le `dialog` de rattachement quitté par le lien « Ouvrir la fiche de … » est encore ouvert, avec son refus, quand on revient sur la fiche.
+  - L'encart « Ce qui va changer » et la confirmation relisent l'état : aucune vente ne part à l'aveugle.
+
+### n6 — mineur : le nettoyage efface aussi l'alerte si le `Suspense` de la page repasse en repli
+
+- **Où** : `src/components/features/member-profile/member-profile-detail.tsx:136`.
+- **Le constat** : React joue les nettoyages de `useLayoutEffect` quand un `Suspense` masque un contenu déjà affiché. Sonde : après un rattachement, un repli visible fait disparaître « Parcelle 52… » et revenir « Propriétaire enregistré. ».
+- **Pas atteint aujourd'hui** : le rafraîchissement après une Server Action est une transition (`app-call-server.js:16`), qui garde le contenu affiché. La CI le confirme : les specs lisent l'alerte née dans la page après `revalidatePath`.
+- **Correctif possible** : le drapeau `shouldReset` du guide Next ne change rien à ce point ; le noter en commentaire suffit.
+
+### n7 — mineur, non observé : la route de vente devient introuvable avant le retour sur la fiche
+
+- **Où** : `src/components/features/member-profile/sale-form.tsx:257-262` ; `src/services/parcel-ownership-service.ts:335-339`.
+- **Le constat** (par lecture) : la revalidation portée par la réponse de l'action rafraîchit la route courante, l'écran de vente, dont le contexte n'existe plus une fois la vente faite (`notFound()`). Le `router.push` suit. Un affichage bref de « introuvable » est possible entre les deux ; je n'ai pas pu trancher à la lecture de React.
+- Antérieur à `8eb2dcc`. À regarder une fois à la main sur le build de prod.
+
+### n8 — mineur : deux parcours corrigés ne sont prouvés qu'en jsdom
+
+- **Où** : `e2e/member-profiles.spec.ts:479`.
+- **Le constat** : aucun cas e2e ne passe par « créer l'acquéreur depuis la vente, revenir présélectionné », ni par « rattacher puis vendre sans recharger ». Le `reload` de la ligne 479 (m3) évite justement le second. Les tests de composant les tiennent (M2, M4).
+
+## Statut des constats antérieurs
+
+- **m1 à m6, n1 à n4** : inchangés, `8eb2dcc` n'y touche pas.
+- **Réserve des deux premiers passages (« la CI doit montrer la spec verte »)** : levée, 155 passés sur `8eb2dcc`.
+
+## Plan, tâche par tâche
+
+- **Tâches 1 à 11** : faites (passages 1 et 2) ; `8eb2dcc` n'en défait aucune.
+- **Tâche 12** : faite.
+  - Alerte d'arrivée dérivée des props.
+  - Alertes nées dans la page conservées, focus compris.
+  - `saleReturn` vérifié et corrigé.
+  - Test « créée → vente » présent, en échec avant le correctif.
+  - Case cochée dans le plan.
+- **Hors plan dans `8eb2dcc`** : rien. Le nettoyage au masquage est nécessaire à « l'alerte reflète les paramètres courants » : sans lui, une alerte née dans la page masquerait la vente au retour.
+- **Écart déclaré par l'implémenteur** (`MemberProfileForm` non corrigé) : exact, et conforme au « ne rien toucher d'autre » du plan. C'est N1.
+
+## Checklist de revue
+
+### Respect du plan
+
+- [x] Les douze tâches sont faites ; le troisième commit ne contient rien hors plan.
+- [ ] Ajouts du premier commit hors de la lettre du plan, à dire dans la PR (m6, inchangé).
+
+### Anti-hallucination
+
+- [x] Aucune API inventée (liste ci-dessus, chaque cible ouverte ; source Next lue).
+- [x] Aucune valeur ni logique plausible mais fausse dans `8eb2dcc`.
+- [x] Le code fait ce qu'il annonce ; la cause annoncée est vérifiée.
+
+### Respect des règles
+
+- [x] Conventions du dépôt respectées ; aucune migration, aucun libellé en dur.
+- [x] Aucun ADR accepté contredit.
+- [x] Design system respecté par `8eb2dcc` ; gap non consigné (m5, inchangé).
+
+### Tests
+
+- [x] Suite unitaire lancée par le reviewer : `Tests 2440 passed | 8 skipped (2448)` sur la copie locale et en CI ; un dépassement de délai sans rapport sur le montage 9p.
+- [x] Les assertions épinglent la tâche 12 : 5 mutations sur 5 tuées.
+- [x] Suite e2e : verte en CI sur `8eb2dcc` (155 passés) ; non exécutée en local.
+- [ ] État conservé de `/nouveau` sans test (N1) ; parcours corrigés sans e2e (n8) ; mineurs m1, m3, n1 inchangés.
+
+### Régressions
+
+- [x] Aucune régression introduite par `8eb2dcc`.
+- [ ] Défaut du premier commit mis au jour par ce passage : N1.
+
+## Constats
+
+- **majeur** — `src/components/features/member-profile/member-profile-form.tsx:84-118` : le formulaire d'ajout garde les valeurs de la fiche précédente au retour par navigation cliente (N1).
+- **mineur** — `src/components/features/member-profile/sale-form.tsx:114-127`, `attach-parcel-dialog.tsx:283-288` : brouillon, refus et `dialog` conservés au retour (n5).
+- **mineur** — `src/components/features/member-profile/member-profile-detail.tsx:136` : alerte née dans la page perdue si le `Suspense` repasse en repli ; non atteint aujourd'hui (n6).
+- **mineur** — `src/components/features/member-profile/sale-form.tsx:257-262` : route de vente introuvable entre l'action et le retour, non observé (n7).
+- **mineur** — `e2e/member-profiles.spec.ts:479` : retour d'acquéreur et vente sans rechargement non couverts en e2e (n8).
+- **mineur** — m1 à m6 et n1 à n4 des passages précédents, inchangés.
+
+## Fichiers concernés
+
+- `docs/plans/s12-membres-parcelles.md`
+- `src/components/features/member-profile/member-profile-detail.tsx`
+- `src/components/features/member-profile/member-profile-detail.test.tsx`
+- `src/components/features/member-profile/sale-form.tsx`
+- `src/components/features/member-profile/sale-form.test.tsx`
+- `src/components/features/member-profile/member-profile-form.tsx`
+- `src/components/features/member-profile/attach-parcel-dialog.tsx`
+- `src/components/features/member-profile/member-profile-paths.ts`
+- `src/app/[locale]/(bureau)/bureau/proprietaires/actions.ts`
+- `src/app/[locale]/(bureau)/bureau/proprietaires/[id]/page.tsx`
+- `src/app/[locale]/(bureau)/bureau/proprietaires/[id]/vente/[parcelId]/page.tsx`
+- `src/app/[locale]/(bureau)/bureau/proprietaires/nouveau/page.tsx`
+- `src/app/dal/member-profile-dal.ts`
+- `src/services/parcel-ownership-service.ts`
+- `e2e/member-profiles.spec.ts`
+- `next.config.ts`
+- `node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`
+- `node_modules/next/dist/client/components/layout-router.js`
+- `node_modules/next/dist/client/components/bfcache-state-manager.js`
+- `node_modules/next/dist/client/components/router-reducer/create-router-cache-key.js`
+- `node_modules/next/dist/client/components/router-reducer/reducers/server-action-reducer.js`
+
+Max severity: major
+Ship allowed: yes
