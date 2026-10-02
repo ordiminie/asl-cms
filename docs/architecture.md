@@ -253,11 +253,37 @@ Entités ajoutées par ASL-CMS, par domaine :
   modules** typés (ADR 010) et des **clés de stockage du logo et du favicon** (`identity_logo_key`,
   `identity_favicon_key`, nullables, ADR 015) ; `organization_setting` en clé composite
   `(organization_id, key)`, valeurs seules, définitions au registre du code (ADR 016).
-- **Membres et parcelles** — `member_profile` (fiche membre, **existe sans compte** : 100 des 400
-  propriétaires de La Fourche n'ont pas d'email), `parcel`, et surtout `parcel_ownership`, la relation
-  **datée** membre ↔ parcelle. C'est le cœur du modèle : l'historique est attaché à la parcelle **au
-  moment des faits**. Une vente ne transfère ni les factures, ni les documents, ni les relevés antérieurs.
-  Ce n'est pas une clé étrangère `parcel → membre_courant`, et c'est l'erreur de conception à ne pas commettre.
+- **Membres et parcelles** (s12, ADR 029) — `member_profile` (fiche d'un propriétaire, **existe sans
+  compte** : 100 des 400 propriétaires de La Fourche n'ont pas d'email), `parcel`, et surtout
+  `parcel_ownership`, la relation **datée** fiche ↔ parcelle. C'est le cœur du modèle : l'historique
+  est attaché à la parcelle **au moment des faits**. Une vente ne transfère ni les factures, ni les
+  documents, ni les relevés antérieurs. Ce n'est pas une clé étrangère `parcel → membre_courant`, et
+  c'est l'erreur de conception à ne pas commettre : **aucune colonne « propriétaire actuel »
+  n'existe**, le propriétaire se lit toujours par date.
+  - **Période demi-ouverte `[starts_on, ends_on)`** : `ends_on` est le jour de la vente, premier jour
+    de l'acquéreur ; le dernier jour du vendeur est la veille. Une vente ne produit ni jour de
+    chevauchement ni jour sans propriétaire. La seule traduction à l'écran — « au 14/06/2026 » pour
+    une vente le 15 — vit dans `lastOwnershipDayOf` (`src/services/rules/parcel-ownership-rules.ts`).
+  - **Lecture datée : `getParcelOwnerAtService(organizationId, parcelId, date)`**
+    (`src/services/parcel-ownership-service.ts`) rend la fiche propriétaire à cette date, ou rien.
+    **C'est le point d'entrée de s18, s19, s28 et s32** : aucune de ces stories ne relit
+    `parcel_ownership` par elle-même, et aucune ne déduit le propriétaire « d'aujourd'hui ».
+  - **Non-chevauchement** : garantie **applicative**, sous verrou de la ligne `parcel`
+    (`SELECT … FOR UPDATE` dans la transaction du scope de tenant), puis règles pures (`findOverlap`,
+    `planSale`). Tout chemin d'écriture d'une période — l'import de s13 compris — passe par
+    `attachParcelService` ou `recordSaleService`, jamais par un DAO direct.
+  - **Une période close est immuable** : la seule mise à jour exposée par le repository pose `ends_on`
+    sur une période ouverte (`WHERE ends_on IS NULL`). Aucune fonction ne modifie ni ne supprime une
+    période close.
+  - **`member` n'est pas `member_profile`.** `member` est le pivot Better Auth identité ↔ association
+    (plan identité, exempté de RLS, ADR 014) : il dit qui a un compte et quel rôle. `member_profile`
+    est la **fiche métier** d'un propriétaire, sous RLS forcée, qui existe sans compte. s12 n'écrit
+    ni `user` ni `member` ; le lien entre une fiche et un compte est l'affaire de s12d.
+  - **« Courrier uniquement »** est la colonne **générée** `mail_only` (`email IS NULL`), que s25 et
+    s28 liront ; un email absent est `NULL`, jamais une chaîne vide. **« Fiche incomplète »** (courrier
+    uniquement et aucune adresse postale) est calculée à la lecture, pas stockée.
+  - `association.member_count` (Réglages) reste saisi à la main : s12 ne le branche pas sur le
+    décompte des fiches.
 - **Identité** — la clé de rattachement d'un membre est **sa clé primaire arbitraire**. Jamais l'email
   (absent, changeant, partagé dans un foyer), jamais le numéro de parcelle (non unique, transmis à la vente).
   Vrai pour le stockage nominatif, le rapprochement Pennylane, le dédoublonnage d'import et l'export.
@@ -291,10 +317,10 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 32 tables du schéma
+### Classement RLS des 35 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 32 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10) sont donc toutes classées, sans reste. Toute
+Les 35 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
 Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
@@ -303,23 +329,26 @@ déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et éc
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-**Scopée par une policy RLS forcée** — 13 tables
+**Scopée par une policy RLS forcée** — 16 tables
 
-| Table                   | Pourquoi                                                                                                                                                                                                                                                                                                                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `user_submissions`      | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé.                                                                                                                                                                                             |
-| `organization_setting`  | Paramètres de l'association (adresses, teinte : ADR 010, ADR 016). Porte `organization_id`, policy `tenant_isolation` forcée (`0007`). Absence de ligne = valeur par défaut du registre.                                                                                                                                                                |
-| `rate_limit_event`      | Compteurs du limiteur, table unique (s03 ; fenêtre `window_start` en s08b). Porte `organization_id`, policy `tenant_isolation` forcée (`0009`) : hors `withTenant`, aucun compteur ne se lit ni ne s'écrit. **Classée ici seulement en s05** — l'omission datait de s03, la policy, elle, n'a jamais manqué.                                            |
-| `page`                  | Pages du site public (ADR 007, ADR 020, s04). Porte `organization_id`, policy `tenant_isolation` forcée (`0013`). Slug unique **par association**, jamais globalement.                                                                                                                                                                                  |
-| `content_block`         | Blocs typés d'une page (ADR 019, s04). **Sans `organization_id`** : le tenant est celui de la page, et la policy `tenant_isolation` forcée (`0013`) joint `page` pour le retrouver — donc aucune colonne de tenant dupliquée à tenir cohérente.                                                                                                         |
-| `menu_item`             | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ».                                                                                                  |
-| `news`                  | Actualités datées de l'association (ADR 023, s05). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0017`). Slug unique **par association**, nul tant que l'actualité n'a pas de titre.                                                                                                                                      |
-| `board_member`          | Fiches du bureau (ADR 007, ADR 024, s06). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0019`). **Aucune clé étrangère vers `user` ni vers un membre propriétaire** : une fiche n'est pas un compte. Rangs contigus garantis applicativement, sans contrainte d'unicité.                                                  |
-| `contact_message`       | Messages envoyés depuis la page publique `/contact` (ADR 025, s08). Porte `organization_id` **`NOT NULL`**, en `cascade`, policy `tenant_isolation` forcée (`0021`). **Ni jsonb ni colonne d'adresse** : aucune IP de visiteur ne peut y être écrite. `user_submissions` reste au boilerplate.                                                          |
-| `water_analysis`        | Analyses d'eau publiées (ADR 007, ADR 026, s09). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0025`). **Ni `status` ni `image_alt`** : la publication est directe, et le texte alternatif de l'affiche est dérivé de `sampled_on` au rendu.                                                                              |
-| `association_category`  | Catégories administrables, **génériques par domaine** (ADR 028, s10 ; `'report'` aujourd'hui, s23 et s35 demain). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0027`). Suppression **logique** (`deleted_at`) ; nom unique parmi les actives d'un domaine, sans casse ; plafond de 10 tenu sous `pg_advisory_xact_lock`. |
-| `incident_report`       | Signalements envoyés depuis `/signaler` (ADR 028, s10). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0027`). **Ni jsonb ni colonne d'adresse** (discipline de `contact_message`). `category_id` en `RESTRICT` ; `member_id` nullable **sans clé étrangère**, jamais écrit (s22 posera la contrainte).                    |
-| `incident_report_event` | Historique des statuts d'un signalement (s10, critère 3). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0027`), sans jointure. `author_user_id` en `SET NULL` et `author_name` copié au changement : l'attribution survit à la suppression d'un compte.                                                                        |
+| Table                   | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_submissions`      | Donnée métier de l'association (contact, retours). Porte `organization_id`, policy `tenant_isolation` forcée. C'est sur elle que s01 prouve l'accès croisé.                                                                                                                                                                                                                                                                 |
+| `organization_setting`  | Paramètres de l'association (adresses, teinte : ADR 010, ADR 016). Porte `organization_id`, policy `tenant_isolation` forcée (`0007`). Absence de ligne = valeur par défaut du registre.                                                                                                                                                                                                                                    |
+| `rate_limit_event`      | Compteurs du limiteur, table unique (s03 ; fenêtre `window_start` en s08b). Porte `organization_id`, policy `tenant_isolation` forcée (`0009`) : hors `withTenant`, aucun compteur ne se lit ni ne s'écrit. **Classée ici seulement en s05** — l'omission datait de s03, la policy, elle, n'a jamais manqué.                                                                                                                |
+| `page`                  | Pages du site public (ADR 007, ADR 020, s04). Porte `organization_id`, policy `tenant_isolation` forcée (`0013`). Slug unique **par association**, jamais globalement.                                                                                                                                                                                                                                                      |
+| `content_block`         | Blocs typés d'une page (ADR 019, s04). **Sans `organization_id`** : le tenant est celui de la page, et la policy `tenant_isolation` forcée (`0013`) joint `page` pour le retrouver — donc aucune colonne de tenant dupliquée à tenir cohérente.                                                                                                                                                                             |
+| `menu_item`             | Entrées du menu du site public (ADR 021, s04b). Porte `organization_id` **directement**, comme `page` : la policy `tenant_isolation` forcée (`0015`) n'a pas de jointure à faire, la lecture réelle étant « toutes les entrées de cette association ».                                                                                                                                                                      |
+| `news`                  | Actualités datées de l'association (ADR 023, s05). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0017`). Slug unique **par association**, nul tant que l'actualité n'a pas de titre.                                                                                                                                                                                                          |
+| `board_member`          | Fiches du bureau (ADR 007, ADR 024, s06). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0019`). **Aucune clé étrangère vers `user` ni vers un membre propriétaire** : une fiche n'est pas un compte. Rangs contigus garantis applicativement, sans contrainte d'unicité.                                                                                                                      |
+| `contact_message`       | Messages envoyés depuis la page publique `/contact` (ADR 025, s08). Porte `organization_id` **`NOT NULL`**, en `cascade`, policy `tenant_isolation` forcée (`0021`). **Ni jsonb ni colonne d'adresse** : aucune IP de visiteur ne peut y être écrite. `user_submissions` reste au boilerplate.                                                                                                                              |
+| `water_analysis`        | Analyses d'eau publiées (ADR 007, ADR 026, s09). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0025`). **Ni `status` ni `image_alt`** : la publication est directe, et le texte alternatif de l'affiche est dérivé de `sampled_on` au rendu.                                                                                                                                                  |
+| `association_category`  | Catégories administrables, **génériques par domaine** (ADR 028, s10 ; `'report'` aujourd'hui, s23 et s35 demain). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0027`). Suppression **logique** (`deleted_at`) ; nom unique parmi les actives d'un domaine, sans casse ; plafond de 10 tenu sous `pg_advisory_xact_lock`.                                                                     |
+| `incident_report`       | Signalements envoyés depuis `/signaler` (ADR 028, s10). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0027`). **Ni jsonb ni colonne d'adresse** (discipline de `contact_message`). `category_id` en `RESTRICT` ; `member_id` nullable **sans clé étrangère**, jamais écrit (s22 posera la contrainte).                                                                                        |
+| `incident_report_event` | Historique des statuts d'un signalement (s10, critère 3). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0027`), sans jointure. `author_user_id` en `SET NULL` et `author_name` copié au changement : l'attribution survit à la suppression d'un compte.                                                                                                                                            |
+| `member_profile`        | Fiches des propriétaires (ADR 029, s12). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0030`). **Clé primaire UUID, seule identité** : jamais l'email ni un numéro de parcelle. `email` nul quand il est absent, unique par association sans casse ; `mail_only` **générée** (`email IS NULL`). À ne pas confondre avec `member` (Better Auth, plan identité) : une fiche existe sans compte. |
+| `parcel`                | Parcelles d'une association (ADR 029, s12). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0030`). Numéro unique **par association**. **Aucune colonne « propriétaire actuel »** : il se lit par date.                                                                                                                                                                                         |
+| `parcel_ownership`      | Périodes de propriété, la relation **datée** fiche ↔ parcelle (ADR 029, s12). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0030`), sans jointure. Période demi-ouverte `[starts_on, ends_on)`, `CHECK (ends_on > starts_on)`, clés étrangères en `RESTRICT`. Non-chevauchement contrôlé par le service sous verrou de la ligne `parcel` ; une période close n'est plus jamais écrite.             |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**

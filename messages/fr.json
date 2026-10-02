@@ -2855,7 +2855,8 @@
       "board": "Membres du bureau",
       "alert": "Bandeau d’alerte",
       "messages": "Messages reçus",
-      "reports": "Signalements"
+      "reports": "Signalements",
+      "memberProfiles": "Propriétaires"
     },
     "cards": {
       "logo": {
@@ -3823,5 +3824,196 @@
     "address": "{host} › {path}",
     "noDescription": "Extrait choisi par Google dans la page.",
     "disclaimer": "Google peut raccourcir ces textes ou en choisir d’autres."
+  },
+  "BureauMemberProfilesPage": {
+    "metadata": {
+      "title": "Propriétaires"
+    },
+    "title": "Propriétaires",
+    "counts": "{count, plural, =0 {Aucun propriétaire} one {# propriétaire} other {# propriétaires}} · {incomplete, plural, =0 {aucune fiche incomplète} one {# fiche incomplète} other {# fiches incomplètes}}",
+    "add": "Ajouter un propriétaire",
+    "search": {
+      "label": "Rechercher un nom ou un numéro de parcelle",
+      "submit": "Rechercher"
+    },
+    "columns": {
+      "name": "Propriétaire",
+      "parcels": "Parcelles",
+      "contact": "Contact",
+      "state": "État",
+      "action": "Action"
+    },
+    "noCurrentParcel": "Aucune parcelle actuelle",
+    "badges": {
+      "mailOnly": "Courrier uniquement",
+      "incomplete": "Fiche incomplète"
+    },
+    "noAddress": "Aucune adresse",
+    "open": "Ouvrir la fiche",
+    "empty": "Aucun propriétaire pour l’instant. Ajoutez les propriétaires un par un, ou attendez l’import de la liste existante.",
+    "noResult": "Aucun propriétaire ne correspond à « {search} ». Vérifiez l’orthographe, ou cherchez par numéro de parcelle.",
+    "pagination": {
+      "position": "Page {page} sur {total} · propriétaires {from} à {to}",
+      "previous": "← Précédent",
+      "next": "Suivant →"
+    },
+    "breadcrumb": {
+      "label": "Fil d’Ariane",
+      "list": "Propriétaires",
+      "new": "Ajouter un propriétaire"
+    },
+    "optional": "Facultatif",
+    "fields": {
+      "name": {
+        "label": "Nom",
+        "help": "Tel qu’il doit apparaître sur les courriers : « Jean et Odile Dubois », « SCI Les Pins »."
+      },
+      "email": {
+        "label": "Adresse email",
+        "help": "Sans adresse, ce propriétaire reçoit tout par courrier."
+      },
+      "phone": {
+        "label": "Téléphone"
+      },
+      "addressLine": {
+        "label": "Adresse"
+      },
+      "addressComplement": {
+        "label": "Complément"
+      },
+      "postalCode": {
+        "label": "Code postal"
+      },
+      "city": {
+        "label": "Commune"
+      }
+    },
+    "mailOnlyNotice": "Sans adresse email, ce propriétaire sera joignable par courrier uniquement. Son adresse postale est alors indispensable.",
+    "summary": "{count, plural, one {# champ à corriger} other {# champs à corriger}}. Rien n’a été enregistré.",
+    "emailTaken": "Cette adresse est déjà celle de la fiche de {name}.",
+    "openProfileOf": "Ouvrir la fiche de {name}",
+    "form": {
+      "metadataTitle": "Ajouter un propriétaire",
+      "title": "Ajouter un propriétaire",
+      "identity": "Identité",
+      "contact": "Coordonnées",
+      "parcels": "Parcelles",
+      "parcelsLater": "Vous rattacherez ses parcelles depuis sa fiche, une fois enregistrée.",
+      "save": "Enregistrer le propriétaire",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler"
+    },
+    "validation": {
+      "nameRequired": "Indiquez le nom du propriétaire.",
+      "nameMax": "Ce nom est trop long : 200 caractères au plus.",
+      "emailInvalid": "Cette adresse email n’est pas valide.",
+      "phoneInvalid": "Ce numéro de téléphone n’est pas valide : 30 caractères au plus, des chiffres, des espaces et + . - ( ).",
+      "addressMax": "Cette ligne d’adresse est trop longue : 200 caractères au plus.",
+      "postalCodeInvalid": "Un code postal compte 5 chiffres.",
+      "cityMax": "Ce nom de commune est trop long : 100 caractères au plus.",
+      "parcelNumberRequired": "Indiquez le numéro de la parcelle.",
+      "parcelNumberMax": "Ce numéro de parcelle est trop long : 30 caractères au plus.",
+      "dateInvalid": "Cette date n’existe pas. Écrivez-la sous la forme jj/mm/aaaa.",
+      "buyerRequired": "Choisissez l’acquéreur."
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut gérer les fiches des propriétaires.",
+      "failed": "L’enregistrement a échoué. Rien n’a été enregistré : réessayez dans un instant.",
+      "notFound": "Cette fiche n’existe plus. Rien n’a été enregistré."
+    },
+    "detail": {
+      "metadataTitle": "Fiche d’un propriétaire",
+      "created": "Propriétaire enregistré.",
+      "contactSaved": "Coordonnées enregistrées.",
+      "attention": "Attention.",
+      "incomplete": "Cette fiche n’a ni adresse email ni adresse postale : aucun envoi ne peut atteindre ce propriétaire.",
+      "addPostalAddress": "Ajouter une adresse postale",
+      "contact": {
+        "title": "Coordonnées",
+        "email": "Adresse email",
+        "phone": "Téléphone",
+        "postalAddress": "Adresse postale",
+        "missingFeminine": "Non renseignée",
+        "missingMasculine": "Non renseigné",
+        "edit": "Modifier les coordonnées",
+        "save": "Enregistrer les coordonnées",
+        "saving": "Enregistrement…",
+        "cancel": "Annuler"
+      },
+      "parcels": {
+        "title": "Parcelles",
+        "attach": "Rattacher une parcelle",
+        "current": "Parcelles actuelles",
+        "noCurrent": "Aucune parcelle actuelle.",
+        "former": "Anciennes parcelles",
+        "formerNote": "Les périodes closes ne se modifient pas.",
+        "columns": {
+          "parcel": "Parcelle",
+          "since": "Propriétaire depuis",
+          "action": "Action",
+          "period": "Période",
+          "soldTo": "Vendue à"
+        },
+        "period": "du {from} au {to}",
+        "recordSale": "Enregistrer une vente",
+        "attached": "Parcelle {number} rattachée à {name} depuis le {date}.",
+        "attachedCreated": "Parcelle {number} ajoutée et rattachée à {name} depuis le {date}."
+      },
+      "sold": "Vente enregistrée. La parcelle {number} est à {name} depuis le {date}."
+    },
+    "attachDialog": {
+      "title": "Rattacher une parcelle à {name}",
+      "parcelNumber": "Numéro de parcelle",
+      "startsOn": "Propriétaire depuis le",
+      "dateFormat": "jj/mm/aaaa",
+      "cancel": "Annuler",
+      "submit": "Rattacher la parcelle",
+      "submitting": "Rattachement…",
+      "overlapOpen": "La parcelle {number} appartient à {name} depuis le {date}. Elle ne peut pas avoir deux propriétaires en même temps. Si elle a été vendue, enregistrez la vente depuis la fiche de {name}.",
+      "overlapClosed": "La parcelle {number} appartenait à {name} du {from} au {to}. Elle ne peut pas avoir deux propriétaires en même temps : choisissez une date postérieure."
+    },
+    "sale": {
+      "metadataTitle": "Enregistrer une vente",
+      "breadcrumb": "Vendre la parcelle {number}",
+      "title": "Enregistrer la vente de la parcelle {number}",
+      "date": {
+        "label": "Date de la vente",
+        "help": "Le dernier jour de propriété du vendeur est la veille de cette date.",
+        "format": "jj/mm/aaaa"
+      },
+      "buyer": {
+        "label": "Acquéreur",
+        "choose": "Rechercher un propriétaire par son nom",
+        "searchLabel": "Nom du propriétaire",
+        "sheetTitle": "Choisir l’acquéreur",
+        "hint": "Écrivez le début d’un nom.",
+        "noResult": "Aucun propriétaire ne correspond.",
+        "searchFailed": "La recherche a échoué. Réessayez dans un instant.",
+        "noParcel": "Aucune parcelle actuelle",
+        "parcels": "{count, plural, one {Parcelle {numbers}} other {Parcelles {numbers}}}",
+        "cancel": "Annuler"
+      },
+      "noProfileYet": "L’acquéreur n’a pas encore de fiche ?",
+      "addFirst": "Ajoutez-le d’abord",
+      "changes": {
+        "title": "Ce qui va changer",
+        "seller": "Vendeur : {name}, propriétaire du {from} au {to}. Cette période sera close et ne pourra plus être modifiée.",
+        "sellerPending": "Vendeur : {name}, propriétaire depuis le {from}. Indiquez la date de la vente pour voir la suite.",
+        "buyer": "Acquéreur : {name}, propriétaire à partir du {date}.",
+        "buyerPending": "Choisissez l’acquéreur pour voir la suite.",
+        "history": "Les factures, relevés et documents antérieurs au {date} restent ceux de {name}."
+      },
+      "submit": "Enregistrer la vente",
+      "submitting": "Enregistrement…",
+      "cancel": "Annuler",
+      "confirmTitle": "Enregistrer la vente de la parcelle {number} ?",
+      "refusals": {
+        "dateNotAfterStart": "{name} n’est propriétaire que depuis le {date} : la vente doit être postérieure à cette date.",
+        "buyerIsSeller": "{name} est le vendeur : choisissez un autre propriétaire comme acquéreur.",
+        "noOpenPeriod": "La vente n’a pas été enregistrée. {name} ne possède plus la parcelle {number}.",
+        "overlap": "La vente n’a pas été enregistrée. La parcelle {number} a déjà un propriétaire enregistré à partir du {from} : {name}. Une vente au {date} lui donnerait deux propriétaires en même temps. Vérifiez la date, ou consultez la fiche de {name}.",
+        "overlapUnknown": "La vente n’a pas été enregistrée. La parcelle {number} a déjà un propriétaire enregistré après cette date."
+      }
+    }
   }
 }

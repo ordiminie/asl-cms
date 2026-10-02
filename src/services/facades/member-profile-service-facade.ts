@@ -1,0 +1,12 @@
+import memberProfileServiceInterceptor from './interceptors/member-profile-service-logger-interceptor'
+
+export const canManageMemberProfilesService =
+  memberProfileServiceInterceptor.canManageMemberProfilesService
+export const createMemberProfileService =
+  memberProfileServiceInterceptor.createMemberProfileService
+export const getMemberProfilePageService =
+  memberProfileServiceInterceptor.getMemberProfilePageService
+export const getMemberProfileService =
+  memberProfileServiceInterceptor.getMemberProfileService
+export const updateMemberProfileContactService =
+  memberProfileServiceInterceptor.updateMemberProfileContactService

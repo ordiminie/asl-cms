@@ -10,12 +10,14 @@ import * as boardMember from './board-member-model'
 import * as contactMessage from './contact-message-model'
 import * as contentBlock from './content-block-model'
 import * as incidentReport from './incident-report-model'
+import * as memberProfile from './member-profile-model'
 import * as menuItem from './menu-item-model'
 import * as news from './news-model'
 import * as notification from './notification-model'
 import * as organization from './organization-model'
 import * as organizationSetting from './organization-setting-model'
 import * as page from './page-model'
+import * as parcel from './parcel-model'
 import * as post from './post-model'
 import * as subscription from './subscription-model'
 import * as user from './user-model'
@@ -53,6 +55,8 @@ const db = drizzle(pool, {
     ...waterAnalysis,
     ...associationCategory,
     ...incidentReport,
+    ...memberProfile,
+    ...parcel,
     ...userSubmission,
   },
 })
