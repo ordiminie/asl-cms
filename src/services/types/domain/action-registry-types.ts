@@ -95,6 +95,16 @@ export const ActionIdConst = {
    * aucun critere ne distingue les roles entre eux.
    */
   REPORT_MANAGE: 'report.manage',
+  /**
+   * Gerer les fiches des proprietaires et leurs parcelles (s12, ADR 029) :
+   * creer une fiche, modifier ses coordonnees, rattacher une parcelle,
+   * enregistrer une vente, lire le proprietaire d'une parcelle a une date.
+   * Une seule entree pour tous les verbes, sur le precedent de `PAGE_MANAGE` :
+   * aucun critere ne distingue les roles entre eux. A ne pas confondre avec
+   * la table `member` de Better Auth : il s'agit de la fiche metier
+   * `member_profile`.
+   */
+  MEMBER_PROFILE_MANAGE: 'member.profile.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -136,6 +146,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.REPORT_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.MEMBER_PROFILE_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

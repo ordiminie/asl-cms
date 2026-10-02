@@ -38,6 +38,7 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
   {
     labelKey: 'group',
     items: [
+      {href: '/bureau/proprietaires', labelKey: 'memberProfiles'},
       {href: '/bureau/identite', labelKey: 'identity'},
       {href: '/bureau/reglages', labelKey: 'settings'},
     ],
@@ -58,7 +59,8 @@ type BureauSidebarProps = {
  * l'association en tete, puis « Le site » › Pages, Actualites, Analyses
  * d'eau (s09), Navigation,
  * Messages recus (s08) et
- * « L'association » › Identite, Reglages ; l'item actif suit la route. Tiroir
+ * « L'association » › Proprietaires (s12), Identite, Reglages ; l'item actif
+ * suit la route. Tiroir
  * sur petit ecran.
  */
 export function BureauSidebar({

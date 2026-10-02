@@ -771,6 +771,24 @@ actif** ; au clic, le refus arrive en `alert` `destructive` ancré sous le titre
 comment se remettre en règle (« Supprimez-en une avant d'en ajouter une autre. »). Un bouton
 désactivé seul serait de l'information par l'absence.
 
+### 3.11 Formes retenues par s12 — propriétaires et parcelles
+
+Deux écarts de la maquette `docs/designs/s12-membres-parcelles.html` (gaps 3 et 4), versés ici par
+le plan de s12. Aucun ne crée de token ni de composant : ils composent l'existant.
+
+**Historique daté d'une parcelle** — vu depuis la fiche d'un propriétaire, en deux listes : les
+**parcelles actuelles** (Parcelle · Propriétaire depuis · action) et, si elles existent, les
+**anciennes parcelles** (Parcelle · Période · Vendue à). La période s'écrit « du 03/02/1998 au
+14/06/2026 », en `data` : le « au » est **la veille** de la vente (ADR 029), jamais le jour de la
+vente. L'acquéreur est un lien vers sa fiche, de sorte qu'une parcelle vendue se lit des deux côtés.
+**Aucune action** sur une période close, et la phrase « Les périodes closes ne se modifient pas. » le
+dit au-dessus de la liste. Sous 640 px, les deux listes passent en cartes empilées (§3.5).
+
+**`dialog` sur mobile** — sous 640 px, un `dialog` de saisie est **ancré en bas**, pleine largeur,
+coins bas droits ; ses boutons font 56 px, **empilés, le principal en premier**. « Annuler » est
+écrit, il n'y a pas de croix ; Échap ferme. Limite inchangée : deux champs — au-delà, c'est une page
+(la vente d'une parcelle en est une).
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs

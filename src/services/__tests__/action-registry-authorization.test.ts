@@ -245,3 +245,53 @@ describe('REPORT_MANAGE — signalements (s10)', () => {
     expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
   })
 })
+
+/**
+ * Gerer les fiches des proprietaires et leurs parcelles (s12, ADR 029) :
+ * creer une fiche, modifier ses coordonnees, rattacher une parcelle,
+ * enregistrer une vente, lire le proprietaire a une date.
+ */
+describe('MEMBER_PROFILE_MANAGE — propriétaires et parcelles (s12)', () => {
+  const MANAGE = ActionIdConst.MEMBER_PROFILE_MANAGE
+
+  it('porte l identifiant member.profile.manage', () => {
+    expect(MANAGE).toBe('member.profile.manage')
+    expect(ACTION_REGISTRY.some((action) => action.id === MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+
+  it('[USER NOT IN ORGANIZATION] refuse le bureau d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+})

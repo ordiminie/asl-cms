@@ -163,3 +163,20 @@ describe('BureauSidebar — « Signalements » (s10)', () => {
     )
   })
 })
+
+describe('BureauSidebar — « Propriétaires » (s12)', () => {
+  it('ajoute l’entrée en tête du groupe « L’association », avant Identité, sans icône', () => {
+    renderSidebarAt('/fr/bureau/proprietaires')
+
+    const entry = screen.getByRole('link', {name: 'Propriétaires'})
+    expect(entry).toHaveAttribute('href', '/bureau/proprietaires')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+
+    const group = entry.closest('[data-sidebar="group"]')
+    const labels = Array.from(group?.querySelectorAll('a') ?? []).map(
+      (anchor) => anchor.textContent
+    )
+    expect(labels).toEqual(['Propriétaires', 'Identité', 'Réglages'])
+  })
+})

@@ -6,6 +6,10 @@ import pg from 'pg'
 import {resolveMigrationUrl} from './db-url'
 import initDotEnv, {maskDbUrl} from './env'
 import {TEST_TENANT_CATEGORIES} from './tenant-categories-seed'
+import {
+  TEST_MEMBER_PROFILES,
+  TEST_PARCEL_OWNERSHIPS,
+} from './tenant-member-profiles-seed'
 import {TEST_TENANT_SETTINGS} from './tenant-settings-seed'
 
 initDotEnv()
@@ -581,6 +585,75 @@ const seed = async () => {
         category.domain,
         category.name,
         category.routingEmail,
+      ]
+    )
+  }
+
+  // 15. Proprietaires, parcelles et periodes de propriete (s12, ADR 029)
+  //
+  // Les trois tables sont sous RLS forcee : meme porte que ci-dessus. Les
+  // identifiants sont ceux du jeu de test, fixes : un nouveau seed remet
+  // chaque fiche a ses coordonnees declarees sans la dupliquer. Une periode
+  // deja ecrite n'est **jamais** reecrite (`DO NOTHING`) : une periode close
+  // est immuable, y compris pour le seed.
+  for (const profile of TEST_MEMBER_PROFILES) {
+    await client.query(
+      `
+      INSERT INTO "member_profile" (id, organization_id, name, email, phone, address_line, address_complement, postal_code, city)
+      SELECT $2, o.id, $3, $4, $5, $6, $7, $8, $9
+      FROM "organization" o
+      WHERE o.slug = $1
+      ON CONFLICT (id)
+      DO UPDATE SET
+        name = EXCLUDED.name,
+        email = EXCLUDED.email,
+        phone = EXCLUDED.phone,
+        address_line = EXCLUDED.address_line,
+        address_complement = EXCLUDED.address_complement,
+        postal_code = EXCLUDED.postal_code,
+        city = EXCLUDED.city,
+        updated_at = NOW();
+    `,
+      [
+        profile.organizationSlug,
+        profile.id,
+        profile.name,
+        profile.email,
+        profile.phone,
+        profile.addressLine,
+        profile.addressComplement,
+        profile.postalCode,
+        profile.city,
+      ]
+    )
+  }
+  for (const ownership of TEST_PARCEL_OWNERSHIPS) {
+    await client.query(
+      `
+      INSERT INTO "parcel" (organization_id, number)
+      SELECT o.id, $2
+      FROM "organization" o
+      WHERE o.slug = $1
+      ON CONFLICT (organization_id, number) DO NOTHING;
+    `,
+      [ownership.organizationSlug, ownership.parcelNumber]
+    )
+    await client.query(
+      `
+      INSERT INTO "parcel_ownership" (id, organization_id, parcel_id, member_profile_id, starts_on, ends_on)
+      SELECT $2, o.id, p.id, $4, $5, $6
+      FROM "organization" o
+      JOIN "parcel" p ON p.organization_id = o.id AND p.number = $3
+      WHERE o.slug = $1
+      ON CONFLICT (id) DO NOTHING;
+    `,
+      [
+        ownership.organizationSlug,
+        ownership.id,
+        ownership.parcelNumber,
+        ownership.memberProfileId,
+        ownership.startsOn,
+        ownership.endsOn,
       ]
     )
   }
