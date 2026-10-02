@@ -315,6 +315,28 @@ font l'objet d'un **second commit** `fix(s12): …` sur la branche, non d'une r�
     - e2e : un cas dans `e2e/member-profiles.spec.ts` — rattachement daté de l'an prochain refusé,
       aucune ligne ajoutée (SQL).
 
+### Correctif après la CI de la PR 37 (02/10/2026)
+
+Le job e2e a échoué sur un seul cas, « critères 2 et 3 — une vente à l'écran » (148 passés, 1 échec,
+6 non lancés) : de retour sur la fiche du vendeur après la vente, l'alerte dit « Propriétaire
+enregistré. » au lieu de « Vente enregistrée. La parcelle … ». Troisième commit `fix(s12): …`.
+
+12. [x] **L'alerte d'arrivée de la fiche suit l'URL courante** (état `5h`, tâches 6 et 7).
+    - Cause : `MemberProfileDetail` fige l'alerte d'arrivée dans un `useState` initialisé une seule
+      fois. Sous Cache Components, Next conserve l'état des composants client d'une route entre deux
+      navigations (`<Activity>` — `node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`) :
+      la fiche ouverte avec `?cree=1` garde « created » quand on y revient avec `?vente=…`.
+    - Attendu : à chaque arrivée sur la fiche, l'alerte reflète les paramètres **courants** —
+      `?vente=` → « Vente enregistrée… », `?cree=1` → « Propriétaire enregistré. », aucun des deux →
+      pas d'alerte d'arrivée. Les alertes nées dans la page (coordonnées enregistrées, parcelle
+      rattachée) gardent leur comportement, focus compris.
+    - Vérifier le même défaut sur les autres états d'arrivée de la story portés par l'URL (retour de
+      l'écran de vente après création d'un acquéreur, `saleReturn`) et le corriger s'il y est ; ne
+      rien toucher d'autre.
+    - **Tests** : un test de composant qui re-rend la fiche avec de nouvelles props (créée → vente)
+      et lit l'alerte de vente ; il doit échouer avant le correctif. Le cas e2e existant est la
+      preuve finale, en CI.
+
 ## Files touched
 
 **Créés**

@@ -56,22 +56,23 @@ const actions = {
   searchBuyersAction: vi.fn(),
 }
 
-const renderSale = (
-  input: {
-    context?: SaleContextDTO
-    initialDate?: string
-    initialBuyer?: BuyerOption
-  } = {}
-) =>
-  render(
-    <SaleForm
-      context={input.context ?? context()}
-      today="2026-09-29"
-      initialDate={input.initialDate}
-      initialBuyer={input.initialBuyer}
-      {...actions}
-    />
-  )
+type SaleInput = {
+  context?: SaleContextDTO
+  initialDate?: string
+  initialBuyer?: BuyerOption
+}
+
+const saleOf = (input: SaleInput = {}) => (
+  <SaleForm
+    context={input.context ?? context()}
+    today="2026-09-29"
+    initialDate={input.initialDate}
+    initialBuyer={input.initialBuyer}
+    {...actions}
+  />
+)
+
+const renderSale = (input: SaleInput = {}) => render(saleOf(input))
 
 const dateField = () => screen.getByLabelText('Date de la vente')
 
@@ -467,6 +468,43 @@ describe('SaleForm — mobile', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('combobox', {name: /Acquéreur/})).toHaveTextContent(
       'Rechercher un propriétaire par son nom'
+    )
+  })
+})
+
+/**
+ * Sous Cache Components, Next garde l'ecran de vente monte pendant la creation
+ * de l'acquereur (`<Activity>`) : au retour, la meme instance recoit
+ * l'acquereur en prop, elle n'est pas remontee.
+ */
+describe('SaleForm — retour de la création de l’acquéreur, écran conservé', () => {
+  it('présélectionne l’acquéreur qui vient d’être créé, la date saisie conservée', async () => {
+    const {rerender} = renderSale()
+    await setDate('15062026')
+
+    rerender(saleOf({initialDate: '2026-06-15', initialBuyer: FERRAND}))
+
+    expect(dateField()).toHaveValue('15/06/2026')
+    expect(screen.getByRole('combobox', {name: /Acquéreur/})).toHaveTextContent(
+      'Paul Ferrand'
+    )
+    expect(changes()).toHaveTextContent(
+      'Acquéreur : Paul Ferrand, propriétaire à partir du 15/06/2026.'
+    )
+  })
+
+  it('ne remplace pas l’acquéreur choisi ensuite quand l’écran est simplement rafraîchi', async () => {
+    const {rerender} = renderSale({initialBuyer: FERRAND})
+
+    await userEvent.click(screen.getByRole('combobox', {name: /Acquéreur/}))
+    await userEvent.type(screen.getByLabelText('Nom du propriétaire'), 'Fer')
+    await userEvent.click(
+      await screen.findByRole('option', {name: /Sophie Ferreira/})
+    )
+    rerender(saleOf({initialBuyer: {...FERRAND}}))
+
+    expect(screen.getByRole('combobox', {name: /Acquéreur/})).toHaveTextContent(
+      'Sophie Ferreira'
     )
   })
 })

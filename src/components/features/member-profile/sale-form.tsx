@@ -113,6 +113,14 @@ export function SaleForm({
   const router = useRouter()
   const [date, setDate] = useState(isoToFrenchDate(initialDate ?? today))
   const [buyer, setBuyer] = useState<BuyerOption | null>(initialBuyer ?? null)
+  // Next conserve cet ecran monte pendant la creation de l'acquereur
+  // (`<Activity>`) : au retour, l'acquereur arrive en prop sur la meme
+  // instance, et l'etat initial ne le lirait pas.
+  const [arrivedBuyerId, setArrivedBuyerId] = useState(initialBuyer?.id)
+  if (initialBuyer?.id !== arrivedBuyerId) {
+    setArrivedBuyerId(initialBuyer?.id)
+    if (initialBuyer) setBuyer(initialBuyer)
+  }
   const [errors, setErrors] = useState<FieldErrors>({})
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const [confirming, setConfirming] = useState(false)

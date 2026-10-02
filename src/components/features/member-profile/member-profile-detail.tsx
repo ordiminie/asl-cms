@@ -4,7 +4,14 @@ import {zodResolver} from '@hookform/resolvers/zod'
 import {AlertTriangle, CircleCheck} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
-import {type ReactNode, useEffect, useId, useRef, useState} from 'react'
+import {
+  type ReactNode,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import {FormProvider, useForm} from 'react-hook-form'
 
 import {Alert, AlertDescription} from '@/components/ui/alert'
@@ -113,16 +120,20 @@ export function MemberProfileDetail({
   const t = useTranslations('BureauMemberProfilesPage')
   const [editing, setEditing] = useState<Editing | null>(null)
   const [attaching, setAttaching] = useState(false)
-  const [notice, setNotice] = useState<Notice | null>(() =>
-    arrivalNoticeOf({created, soldParcelId, parcels})
-  )
+  const [pageNotice, setPageNotice] = useState<Notice | null>(null)
   const noticeRef = useRef<HTMLDivElement>(null)
+  // Next conserve la fiche montee entre deux navigations (`<Activity>`, sans
+  // egard aux parametres de recherche) : l'alerte d'arrivee se lit donc dans
+  // les props de l'URL courante, jamais dans un etat fige au montage.
+  const notice = pageNotice ?? arrivalNoticeOf({created, soldParcelId, parcels})
 
   useEffect(() => {
-    if (notice?.kind === 'contactSaved' || notice?.kind === 'attached') {
-      noticeRef.current?.focus()
-    }
-  }, [notice])
+    if (pageNotice) noticeRef.current?.focus()
+  }, [pageNotice])
+
+  // Une alerte nee dans la page ne survit pas au depart : `<Activity>` joue ce
+  // nettoyage quand il masque la fiche.
+  useLayoutEffect(() => () => setPageNotice(null), [])
 
   return (
     <div className="mx-auto flex w-full max-w-240 flex-col gap-6 px-4 pt-6 pb-12 sm:px-8 sm:pt-8">
@@ -184,7 +195,7 @@ export function MemberProfileDetail({
             onCancel={() => setEditing(null)}
             onSaved={() => {
               setEditing(null)
-              setNotice({kind: 'contactSaved'})
+              setPageNotice({kind: 'contactSaved'})
             }}
           />
         ) : (
@@ -221,7 +232,7 @@ export function MemberProfileDetail({
         onClose={() => setAttaching(false)}
         onAttached={(parcel) => {
           setAttaching(false)
-          setNotice({kind: 'attached', parcel})
+          setPageNotice({kind: 'attached', parcel})
         }}
         action={attachParcelAction}
       />

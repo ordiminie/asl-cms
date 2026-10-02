@@ -1,3 +1,4 @@
+import {Activity} from 'react'
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 import {render, screen, userEvent, within} from '@/__tests__/customRender'
@@ -55,24 +56,25 @@ const actions = {
   attachParcelAction: vi.fn(),
 }
 
-const renderDetail = (
-  input: {
-    profile?: MemberProfileDTO
-    parcels?: MemberParcelsDTO
-    created?: boolean
-    soldParcelId?: string
-  } = {}
-) =>
-  render(
-    <MemberProfileDetail
-      profile={input.profile ?? profile()}
-      parcels={input.parcels ?? NO_PARCELS}
-      today="2026-09-29"
-      created={input.created ?? false}
-      soldParcelId={input.soldParcelId}
-      {...actions}
-    />
-  )
+type DetailInput = {
+  profile?: MemberProfileDTO
+  parcels?: MemberParcelsDTO
+  created?: boolean
+  soldParcelId?: string
+}
+
+const detailOf = (input: DetailInput = {}) => (
+  <MemberProfileDetail
+    profile={input.profile ?? profile()}
+    parcels={input.parcels ?? NO_PARCELS}
+    today="2026-09-29"
+    created={input.created ?? false}
+    soldParcelId={input.soldParcelId}
+    {...actions}
+  />
+)
+
+const renderDetail = (input: DetailInput = {}) => render(detailOf(input))
 
 const sentFields = (action: typeof actions.attachParcelAction) =>
   Object.fromEntries(
@@ -575,5 +577,83 @@ describe('MemberProfileDetail — rattacher une parcelle (écran 4)', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(actions.attachParcelAction).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Sous Cache Components, Next garde la fiche montee entre deux navigations
+ * (`<Activity>`, cle de route sans parametres de recherche) : la meme instance
+ * est masquee, puis rendue de nouveau avec les props de la nouvelle URL.
+ */
+describe('MemberProfileDetail — l’alerte d’arrivée suit l’URL courante', () => {
+  const SOLD = {parcels: SELLER_PARCELS, soldParcelId: PARCEL_47}
+
+  it('dit la vente quand la fiche ouverte après une création revient avec « ?vente= »', () => {
+    const {rerender} = renderDetail({created: true})
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Propriétaire enregistré.'
+    )
+
+    rerender(detailOf(SOLD))
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent(
+      'Vente enregistrée. La parcelle 47 est à Paul Ferrand depuis le 15/06/2026.'
+    )
+    expect(status).not.toHaveTextContent('Propriétaire enregistré.')
+  })
+
+  it('ne dit plus rien quand la fiche revient sans « ?cree= » ni « ?vente= »', () => {
+    const {rerender} = renderDetail({created: true})
+
+    rerender(detailOf())
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('oublie une alerte née dans la page quand la fiche est masquée, puis dit la vente au retour', async () => {
+    const shown = (visible: boolean, input: DetailInput) => (
+      <Activity mode={visible ? 'visible' : 'hidden'}>
+        {detailOf(input)}
+      </Activity>
+    )
+    const {rerender} = render(shown(true, {created: true}))
+
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Rattacher une parcelle'})
+    )
+    const dialog = screen.getByRole('dialog')
+    await userEvent.type(
+      within(dialog).getByLabelText('Numéro de parcelle'),
+      '52'
+    )
+    await userEvent.click(
+      within(dialog).getByRole('button', {name: 'Rattacher la parcelle'})
+    )
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Parcelle 52 ajoutée et rattachée à Hélène Roy depuis le 29/09/2026.'
+    )
+
+    rerender(shown(false, {created: true}))
+    rerender(shown(true, SOLD))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Vente enregistrée. La parcelle 47 est à Paul Ferrand depuis le 15/06/2026.'
+    )
+  })
+
+  it('garde le focus sur l’alerte des coordonnées enregistrées', async () => {
+    renderDetail({created: true})
+
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Modifier les coordonnées'})
+    )
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer les coordonnées'})
+    )
+
+    const status = await screen.findByRole('status')
+    expect(status).toHaveTextContent('Coordonnées enregistrées.')
+    expect(status).toHaveFocus()
   })
 })
