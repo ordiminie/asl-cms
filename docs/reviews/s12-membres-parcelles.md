@@ -593,3 +593,173 @@ Réponses aux questions posées pour ce passage.
 
 Max severity: major
 Ship allowed: yes
+
+---
+
+# Revue s12-membres-parcelles : propriétaires et parcelles (4e passage)
+
+> Revue en contexte neuf. Chaque défaut est classé critique, majeur ou mineur.
+> Diff relu : `git diff main...feature/s12-membres-parcelles`, soit `b8ce9e3`, `23fedc5`, `f3c19c6` (rapport seul), `8eb2dcc`, `d68e275` (rapport seul) puis `ebf9af8` (tâche 13, 4 fichiers).
+> Le commit `ebf9af8` a été relu comme du code neuf ; le verdict porte sur le diff entier.
+> Références : `docs/plans/s12-membres-parcelles.md` (section « Correctif après le troisième passage de revue »), AGENTS.md, ADR 001 à 030, `docs/design-system.md`, `docs/designs/s12-membres-parcelles.md`, rapports des trois premiers passages.
+
+**Verdict : le ship reste autorisé, et la sévérité maximale redescend de majeur à mineur.** Le majeur N1 est corrigé : après une création réussie, « Ajouter un propriétaire » revient vierge, et une saisie refusée ou en cours reste. Le correctif n'est pas celui que suggérait le 3e passage, et l'implémenteur a raison : la suggestion cassait la validation à la sortie de champ (vérifié dans la source de react-hook-form et par mutation). La CI de la PR 37 est verte sur `ebf9af8`, e2e compris (156 passés). Aucun critique, aucun majeur. Trois mineurs nouveaux (n9 à n11) ; m1 à m6 et n1 à n8 restent ouverts par décision.
+
+## Vérifications exécutées par le reviewer
+
+`/workspace` n'a pas été modifié (`git status` vide au départ et à la fin, HEAD `ebf9af8`). La suite, les mutations et les sondes ont tourné sur deux copies en disque local (`git archive HEAD`, `node_modules` en lien vers celui de `/workspace`, `.env.test` copié), supprimées ensuite.
+
+| Contrôle | Exécuté ? | Résultat |
+|---|---|---|
+| `pnpm test --run`, copie en disque local | Oui | **`Test Files 196 passed \| 2 skipped (198)` ; `Tests 2444 passed \| 8 skipped (2452)`**, sortie 0, aucun timeout. Conforme au chiffre annoncé (2440 + 4 tests nouveaux). |
+| `pnpm test --run` dans `/workspace` | **Non** | Montage 9p ; la copie locale et la CI donnent le même chiffre. |
+| `member-profile-form.test.tsx` seul (copie) | Oui | `Tests 13 passed (13)` |
+| `tsc --noEmit` (copie) | Oui | Sortie 0, aucune ligne |
+| `eslint` sur les 3 fichiers de code de `ebf9af8` | Oui | Sortie 0 |
+| `prettier --check` sur ces 3 fichiers | Oui | Conformes |
+| Mutations (6, sur la copie) | Oui | 5 tuées, 1 survivante : voir le tableau et n9 |
+| Sondes jetables (8, sur la copie, non versées au dépôt) | Oui | Voir « Le commit relu » et n10 |
+| CI de la PR 37 sur `ebf9af8` (run 37019807506) | Lue, attendue jusqu'à la fin | **`success`**. « Lint, règles, tests unitaires » vert (`Tests 2444 passed \| 8 skipped (2452)`). « Tests e2e (build de production) » vert, **`156 passed (6.0m)`**, soit 155 + le cas nouveau ; aucune mention `flaky` ni de nouvelle tentative dans le journal. |
+| `pnpm build`, Playwright en local | **Non** | Consigne |
+
+**Mutations sur `ebf9af8` :**
+
+| Mutation | Résultat |
+|---|---|
+| MA — `reset()` retiré du nettoyage | Tuée (test « champs vides ») |
+| MB — garde `if (!savedRef.current) return` retirée | Tuée (les 3 tests « garde la saisie après … ») |
+| MC — `setSubmitted(false)` retiré | Tuée (test « champs vides », sur l'absence de résumé après une sortie de champ) |
+| MF — `savedRef.current = true` retiré (état d'avant le correctif) | Tuée : le test « champs vides » échoue sur `toHaveValue('')`. L'annonce « en échec avant le correctif » est exacte. |
+| MD — correctif suggéré au 3e passage (`form.reset()` + `setSubmitted(false)` avant `router.push`, sans nettoyage) | Tuée : « Indiquez le nom du propriétaire. » n'apparaît plus à la sortie du champ. Confirme l'argument de l'implémenteur. |
+| ME — `savedRef.current = false` retiré du nettoyage | **Survivante** : les 13 tests versés passent. Seules mes sondes la voient (n9). |
+
+## Le commit `ebf9af8`, relu comme du code neuf
+
+Réponses aux questions posées pour ce passage.
+
+- **L'affirmation sur react-hook-form est vraie** (version installée 7.85.0, `node_modules/react-hook-form/dist/index.esm.mjs`).
+  - `handleSubmit` (l. 3122-3181) attend `onValid`, puis publie `isSubmitted: true` (l. 3170-3176). Un `reset()` appelé dans `onValid` est donc écrasé juste après.
+  - `skipValidation` (l. 2003-2017) : formulaire déjà envoyé et `reValidateMode: 'onChange'` → la sortie de champ ne valide plus.
+  - `_reset` (l. 3317-3319) remet bien `isSubmitted` à `false` quand il est appelé plus tard, erreurs comprises (l. 3302-3304).
+  - Preuve par exécution : MD.
+- **L'approche retenue est celle du guide Next** (`preserving-ui-state.md`, « Resetting stale status messages ») : un drapeau `shouldReset` en `ref`, levé au succès, et un nettoyage de `useLayoutEffect` qui vide le formulaire quand `<Activity>` masque l'écran. Le code en est la transcription. `reset` est stable (créé une fois par `createFormControl`, gardé en `ref`), donc le nettoyage ne rejoue pas à chaque rendu.
+- **Cycle de vie, sondé sous de vrais `<Activity>`, `<StrictMode>` et `<Suspense>` de React 19.2.8 :**
+  - Strict Mode : le nettoyage rejoué au montage trouve le drapeau baissé et ne fait rien. La saisie reste, le vidage après enregistrement fonctionne.
+  - Démontage réel après un enregistrement : aucune erreur, aucun avertissement.
+  - `Suspense` qui repasse en repli après un refus : la saisie et le message restent (le drapeau est baissé).
+  - `Suspense` qui repasse en repli après un succès : le formulaire se vide. Sans conséquence, la fiche est enregistrée ; c'est l'état visé. L'équivalent de n6 n'existe pas ici.
+  - Aucun de ces cas ne peut vider un formulaire en cours de saisie ni après un refus.
+- **Le drapeau ne reste pas levé à tort dans le parcours normal.** Succès → masqué (vidé, drapeau baissé) → retour → saisie → départ → retour : le brouillon est conservé. Un brouillon jamais envoyé est conservé aussi. Le comportement d'avant pour les brouillons non enregistrés est intact ; pas de régression. Deux cas étroits où il reste levé : voir n10.
+- **Entrée de route évincée ou `router.push` sans effet après un succès.**
+  - Éviction : l'écran est démonté, puis remonté vierge. Cohérent.
+  - Navigation qui n'aboutit pas : rien n'est écrit de travers ; le formulaire reste rempli, drapeau levé. Voir n10 pour la seule conséquence.
+- **Le parcours de vente passe par la même branche**, lue ligne à ligne : `savedRef.current = true` précède le `router.push`, et `saleReturn` ne change que la cible. `saleReturn` est une prop, pas un état : l'instance conservée de `/nouveau` sert les deux usages sans mélange (« Annuler » et la cible suivent la prop). Aucun test n'exerce le vidage avec `saleReturn` (n11).
+- **Le formulaire de modification des coordonnées n'est pas touché.** `MemberProfileForm` n'est importé que par `src/app/[locale]/(bureau)/bureau/proprietaires/nouveau/page.tsx`. La fiche a son propre `useForm` (`member-profile-detail.tsx:401`) ; `member-contact-fields.tsx`, partagé, n'est pas dans le commit.
+- **Le `<Activity>` du test est celui de React** (`import {Activity} from 'react'`). MA, MB, MC et MF le prouvent : les tests réagissent au masquage réel.
+- **L'extraction `fillAndSaveProfile` conserve le comportement.** Le diff ne déplace qu'une ligne : le `page.goto` sort du corps et revient dans `createProfile`, qui appelle ensuite le même corps. Les six appelants de `createProfile` (l. 385, 471, 472, 578, 621, 663, 838) font exactement ce qu'ils faisaient. La CI le confirme (155 cas antérieurs verts).
+- **Le cas e2e nouveau, lu ligne à ligne :**
+  - Un seul `goto`, celui de `openList`, avant tout. Ensuite : clic sur « Ajouter un propriétaire », enregistrement, clic sur « Propriétaires » dans le fil d'Ariane, second clic sur « Ajouter un propriétaire ». Ni `goto` ni `reload` entre les deux ouvertures.
+  - L'instance de `/nouveau` est bien conservée sur ce parcours : au niveau `proprietaires`, les trois entrées sont la liste, `nouveau` et la fiche (`bfcache-state-manager.js`, 3 entrées), sans éviction.
+  - **Échouerait-il sans le correctif ? Oui à la lecture, non prouvé par exécution** : je n'ai pas lancé Playwright, et la CI n'a tourné qu'avec le correctif. Le mécanisme est celui que la CI a déjà montré en vrai au 3e passage (run 37010505259), et le test de composant échoue sans le correctif (MF).
+  - Localisateurs : les six lectures finales passent par `getByRole('textbox')`, qui ignore le contenu masqué. Les noms accessibles sont justes (`messages/fr.json` : « Nom », « Adresse email Facultatif », « Téléphone Facultatif », « Adresse », « Code postal », « Commune »). `fillAndSaveProfile` remplit par `getByLabel`, qui ne filtre pas le masqué ; sans risque ici, la liste masquée ne porte qu'un libellé, « Rechercher un nom ou un numéro de parcelle », qu'aucun de ces localisateurs n'attrape.
+  - Nettoyage : le nom vient de `nameOf`, donc `cleanUpRun` (dans le `afterAll` du même `describe`) supprime la fiche. Aucun compte n'est créé par une fiche.
+- **API vérifiées** : `useLayoutEffect`, `useRef`, `Activity` (React 19.2.8) ; `form.reset` (react-hook-form 7.85.0) ; `saleReturnPathOf`, `createdProfilePathOf` ; `vi.waitFor` ; clés `breadcrumb.label`, `breadcrumb.list`, `fields.*` dans `messages/fr.json`.
+- **Design, ADR, règles** : aucun composant, token, couleur ni libellé ajouté. Aucun ADR concerné. Aucune occurrence nouvelle de `withRlsBypass`. Un commit pour le correctif, case de la tâche 13 cochée.
+
+## Défauts nouveaux
+
+### n9 — mineur : la remise à zéro du drapeau n'est épinglée par aucun test versé
+
+- **Où** : `src/components/features/member-profile/member-profile-form.tsx:103` ; `member-profile-form.test.tsx:245-268`.
+- **Le constat** : retirer `savedRef.current = false` laisse les 13 tests verts (mutation ME). Sans cette ligne, après une première création, tout brouillon non enregistré serait vidé à chaque départ de l'écran.
+- **Correctif** : un test « enregistrer, masquer, réafficher, saisir, masquer, réafficher → la saisie reste ». Ma sonde l'a fait passer sur le code actuel et échouer sous ME.
+
+### n10 — mineur : le drapeau levé survit à un second envoi refusé, et le vidage oublie deux messages
+
+- **Où** : `src/components/features/member-profile/member-profile-form.tsx:100-108` et `:119-128`.
+- **Le constat** : après un succès, le bouton redevient actif pendant que la navigation est en attente. Un second clic dans cette fenêtre renvoie le formulaire ; avec un email, le serveur répond « déjà pris » (par la fiche qui vient d'être créée). Le drapeau reste levé, et le nettoyage ne remet ni `holder` ni `failure` à zéro.
+  - Sonde : au retour sur l'écran, champs vides **et** « Cette adresse est déjà celle de la fiche de … » encore affiché.
+  - Même racine : si la navigation n'aboutit pas après un succès et que l'utilisatrice réécrit le formulaire pour un autre propriétaire sans l'envoyer, ce brouillon est vidé au départ.
+- **Pourquoi mineur** : fenêtre de quelques centaines de millisecondes, rien n'est écrit en base à tort par ce commit. La possibilité d'un double envoi date du premier commit, pas de celui-ci.
+- **Correctif possible** : vider aussi `holder` et `failure` dans le nettoyage ; baisser le drapeau sur un refus.
+
+### n11 — mineur : le vidage n'est pas prouvé pour le parcours de vente ni pour « Complément »
+
+- **Où** : `src/components/features/member-profile/member-profile-form.test.tsx:224-243` ; `e2e/member-profiles.spec.ts:766-820`.
+- **Le constat** : le plan dit « vaut aussi pour la création d'un acquéreur depuis l'écran de vente » ; aucun test ne masque puis réaffiche le formulaire avec `saleReturn`. Le champ « Complément » n'est ni rempli ni relu, en composant comme en e2e. Les deux passent par le même `reset()` global, d'où le classement. S'ajoute à n8.
+
+## Statut des constats antérieurs
+
+- **N1 (majeur)** : **corrigé** par `ebf9af8`. Épinglé par un test de composant (MA, MC, MF) et un cas e2e vert en CI.
+- **m1 à m6, n1 à n8** : inchangés, ouverts par décision ; `ebf9af8` n'y touche pas.
+
+## Plan, tâche par tâche
+
+- **Tâches 1 à 12** : faites (passages 1 à 3) ; `ebf9af8` n'en défait aucune.
+- **Tâche 13** : faite.
+  - Formulaire vierge au retour après une création : champs, erreurs, état « déjà envoyé ».
+  - Saisie conservée après un refus : trois cas (erreur du serveur, email déjà pris, échec).
+  - Test sous un vrai `<Activity>`, en échec avant le correctif.
+  - Cas e2e par les liens de l'écran, sans `goto` ni `reload` entre les deux ouvertures.
+  - Formulaire de la fiche non touché. Case cochée.
+- **Hors plan dans `ebf9af8`** : rien. L'extraction de `fillAndSaveProfile` est nécessaire au cas e2e demandé.
+- **Écart déclaré par l'implémenteur** (autre correctif que celui suggéré au 3e passage) : justifié, voir MD. Le plan ne prescrivait pas de technique.
+
+## Checklist de revue
+
+### Respect du plan
+
+- [x] Les treize tâches sont faites ; le dernier commit ne contient rien hors plan.
+- [ ] Ajouts du premier commit hors de la lettre du plan, à dire dans la PR (m6, inchangé).
+
+### Anti-hallucination
+
+- [x] Aucune API inventée (liste ci-dessus, chaque cible ouverte ; sources de react-hook-form et de Next lues).
+- [x] Aucune valeur ni logique plausible mais fausse dans `ebf9af8` ; l'argument de l'implémenteur contre le correctif suggéré est vérifié.
+- [x] Le code fait ce qu'il annonce.
+
+### Respect des règles
+
+- [x] Conventions du dépôt respectées ; aucune migration, aucun libellé en dur.
+- [x] Aucun ADR accepté contredit.
+- [x] Design system respecté par `ebf9af8` ; gap non consigné (m5, inchangé).
+
+### Tests
+
+- [x] Suite unitaire lancée par le reviewer : `Tests 2444 passed | 8 skipped (2452)` sur la copie locale ; même chiffre en CI.
+- [x] Les assertions épinglent la tâche 13 : 5 mutations sur 6 tuées.
+- [x] Suite e2e : verte en CI sur `ebf9af8` (156 passés) ; non exécutée en local.
+- [ ] Remise à zéro du drapeau non épinglée (n9) ; vente et « Complément » non couverts (n11) ; mineurs m1, m3, n1, n8 inchangés.
+
+### Régressions
+
+- [x] Aucune régression introduite par `ebf9af8` : brouillons non enregistrés conservés, formulaire de la fiche intact, appelants de `createProfile` inchangés.
+- [ ] Cas étroit laissé par le correctif : n10.
+
+## Constats
+
+- **mineur** — `src/components/features/member-profile/member-profile-form.tsx:103` : remise à zéro du drapeau sans test versé (n9).
+- **mineur** — `src/components/features/member-profile/member-profile-form.tsx:100-128` : drapeau levé après un second envoi refusé, `holder` et `failure` non vidés (n10).
+- **mineur** — `src/components/features/member-profile/member-profile-form.test.tsx:224-243` : vidage non prouvé avec `saleReturn` ni pour « Complément » (n11).
+- **mineur** — m1 à m6 et n1 à n8 des passages précédents, inchangés.
+- **corrigé** — N1 (majeur du 3e passage).
+
+## Fichiers concernés
+
+- `docs/plans/s12-membres-parcelles.md`
+- `src/components/features/member-profile/member-profile-form.tsx`
+- `src/components/features/member-profile/member-profile-form.test.tsx`
+- `src/components/features/member-profile/member-contact-fields.tsx`
+- `src/components/features/member-profile/member-profile-detail.tsx`
+- `src/components/features/member-profile/member-profile-list.tsx`
+- `src/components/features/member-profile/member-profile-paths.ts`
+- `src/app/[locale]/(bureau)/bureau/proprietaires/nouveau/page.tsx`
+- `e2e/member-profiles.spec.ts`
+- `messages/fr.json`
+- `playwright.config.ts`
+- `node_modules/react-hook-form/dist/index.esm.mjs`
+- `node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`
+- `node_modules/next/dist/client/components/bfcache-state-manager.js`
+
+Max severity: minor
+Ship allowed: yes
