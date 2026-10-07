@@ -22,6 +22,11 @@ devis sont des jalons de livraison, et le chiffrage calendaire a été établi a
 développement agentique. Seul écart à ce jour : la GED passe avant le vote — détaillé en fin de
 document.
 
+**Exception de numérotation** : s44, s45 et s46, ajoutées en fin de numérotation le 7 octobre 2026,
+se jouent **avant s12b et avant s12d**, dans cet ordre (s44 → s45 → s46). Elles nettoient les écrans
+hérités du boilerplate avant la mise en ligne, et s46 fixe l'adresse de l'espace membre que s12d
+remplit. Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
+
 ## Règles transverses à toutes les stories
 
 Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fois :
@@ -1284,6 +1289,11 @@ déploiement est écrite dans la documentation d'exploitation (c'est une propri�
 documentation). Le critère testable est celui du nouveau domaine servi en HTTPS. De même, qu'aucun
 workflow restant ne prétende déployer ce qu'il ne déploie pas : c'est une propriété du diff.
 
+**Connexion Google sur chaque domaine** (reporté de s46) : le retour OAuth de Google doit être
+autorisé pour le domaine de chaque association dans la console Google, ou passer par un domaine
+commun (s03c). Le vérifier sur les deux domaines du test de fumée, et l'inscrire dans la procédure
+d'ajout d'un domaine.
+
 **Hors de cette story** : la sauvegarde (s12c), la supervision applicative (Sentry reste tel quel),
 la montée de version du système du VPS.
 
@@ -1415,16 +1425,22 @@ joignable par email puisse accéder à son espace, et à lui seul.
 - [ ] Une fiche créée avec une adresse email a un compte connectable dès sa création, y compris les fiches qui avaient déjà une adresse avant cette story.
 - [ ] Une adresse déjà connue du produit (même personne dans une autre association) réutilise son compte au lieu d'en créer un second ; fermer l'accès ici ne touche pas à son accès ailleurs.
 - [ ] Un membre ne voit que ses propres parcelles, actuelles et passées, dans son espace ; l'accès à la fiche d'un autre membre est refusé.
+- [ ] Après sa connexion, un membre propriétaire arrive sur « Mes parcelles », à l'adresse de l'espace membre fixée par s46 (`/dashboard`).
 - [ ] Retirer l'adresse d'une fiche dont le compte a une session ouverte coupe l'accès à la requête suivante, sans attendre l'expiration de la session.
 
 ### Dependencies
 
-s03, s03c, s12
+s03, s03c, s12, s46
 
 ### Agentic notes
 
 Réf. `V5 §5.1`. Design : `docs/designs/s12-membres-parcelles.md`, écran 6 (« Mes parcelles ») et les
 états de compte des écrans 2 et 3 (`2f`, `3f`, `3g`, `3h`).
+
+**Après s46** : `/dashboard` est l'espace membre, vidé du tableau de bord du boilerplate, et la
+destination après connexion d'un membre propriétaire y pointe déjà. Cette story remplace la page
+minimale de s46 par « Mes parcelles » ; elle ne retouche pas la destination. Créer le compte
+directement (`createUserDao`, voir la recherche), puisque s46 ferme l'inscription publique.
 
 **Frontière avec s03** : s03 a livré le lien magique et « un lien ne crée jamais de compte », **pas**
 de capacité « ouvrir / fermer un compte de membre » (recherche de s12). Elle se crée **ici, une seule
@@ -3104,7 +3120,7 @@ page du CMS désignée par le bureau, avec un accueil minimal par défaut.
 ### Acceptance criteria
 
 - [ ] Depuis le back-office, le bureau désigne une page publiée du CMS (s04) comme page d'accueil ; `/` affiche alors le contenu de cette page, avec la navigation (s04b) et le bandeau d'alerte (s07) du site public.
-- [ ] Sans page désignée, ou si la page désignée est dépubliée ou supprimée, `/` affiche un accueil minimal : nom et logo de l'association et ses dernières actualités publiées (s05). Il n'affiche jamais un texte, un lien ou un bouton de la vitrine du boilerplate (`/pricing`, « Essayez gratuitement », sélecteur de thème).
+- [ ] Sans page désignée, ou si la page désignée est dépubliée, `/` affiche un accueil minimal : nom et logo de l'association et ses dernières actualités publiées (s05). Il n'affiche jamais un texte, un lien ou un bouton de la vitrine du boilerplate (`/pricing`, « Essayez gratuitement »).
 - [ ] Le choix est un paramètre d'association : deux associations ont chacune leur propre page d'accueil, et le bureau d'une association ne peut pas désigner une page d'une autre association, ni côté interface ni côté serveur — prouvé par un test d'accès croisé.
 - [ ] Seuls le bureau, la Présidence de l'association du domaine appelé et le SuperAdmin changent la page d'accueil ; tout autre utilisateur authentifié reçoit un refus, côté interface et côté serveur.
 - [ ] Changer de page d'accueil prend effet à la requête suivante, sans redéploiement.
@@ -3128,7 +3144,10 @@ typés) ; `ADR 010` (le choix est un paramètre d'association, jamais un slug co
 - Où le bureau fait ce choix (réglages, navigation, ou liste des pages) : à trancher en `/ks-design`,
   sur la base du design system.
 - Une page désignée puis dépubliée : la lecture publique ne doit pas la servir (même règle que
-  `/<slug>`). C'est l'accueil minimal qui prend le relais.
+  `/<slug>`). C'est l'accueil minimal qui prend le relais. La dépublication existe depuis s04 ; la
+  suppression d'une page n'existe pas dans le produit, elle n'est donc pas un cas de cette story.
+- Le sélecteur de thème n'est pas traité ici : l'accueil, servi sous `(public)`, l'affiche comme le
+  reste du site public jusqu'à s45, qui passe tout le produit en clair (arbitrage du 7 octobre 2026).
 - Les specs `e2e/homepage.spec.ts` et `e2e/mobile.spec.ts` vérifient aujourd'hui le texte de la
   vitrine (« La plateforme SaaS moderne… ») : elles sont à réécrire sur le nouveau comportement.
 - Les clés `HomePage.*` de `messages/fr.json` qui ne servent plus sont retirées ; le retrait du reste
@@ -3145,6 +3164,8 @@ simple masquage ; la vitrine commerciale de la plateforme est retirée des domai
 Arbitrages du 7 octobre, après la recherche : l'abonnement de la plateforme est créé par le
 SuperAdmin (Stripe ou `/admin`), sans parcours d'achat en ligne ; les mentions légales et la
 politique de confidentialité d'une association sont des pages du CMS publiées par le bureau.
+Arbitrage du 7 octobre, après la revue du découpage : le produit ne s'affiche plus qu'en clair, et
+le sélecteur de thème est retiré (revient sur l'ADR 012).
 
 **En tant que** visiteur du site d'une association **je veux** ne trouver que les pages de cette
 association **afin de** ne pas tomber sur un blog, une documentation technique ou une page de tarifs
@@ -3163,6 +3184,7 @@ qui ne la concernent pas.
 - [ ] Le sitemap (s11) ne liste et le `robots.txt` ne mentionne plus aucune adresse retirée.
 - [ ] L'abonnement Stripe de la plateforme continue de fonctionner : le webhook `/api/webhooks/stripe` et les écrans plans et abonnements de `/admin` passent leurs tests.
 - [ ] Les familles `blog` et `docs` disparaissent de `NEXT_PUBLIC_ENABLED_PAGES` (schéma, `.env.development`, CI) ; `pnpm build` passe et ne génère plus aucune page retirée.
+- [ ] Le produit ne s'affiche qu'en clair : aucune page (site public, connexion, back-office du bureau, compte, `/admin`) ne propose de sélecteur de thème, et un navigateur réglé en mode sombre voit les pages en clair — vérifié en e2e avec un navigateur en mode sombre.
 
 ### Dependencies
 
@@ -3204,6 +3226,13 @@ produit).
   `stripe-utils.ts`, conservé : le déplacer avant de retirer le dossier.
 - `EnabledPageSchema` refuse une valeur inconnue : retirer `blog` et `docs` de l'enum sans les retirer
   de chaque `.env` empêche le démarrage et le build.
+- **Mode clair seul** : la story écrit une ADR qui remplace l'ADR 012 (une ADR est immuable). Forcer
+  le thème clair au niveau de `next-themes` plutôt que retirer le mode sombre : sans migration, la
+  colonne `user.theme`, l'enum `theme_type`, le bloc `.dark` et les classes `dark:` restent mais ne
+  s'appliquent plus. C'est ce qui évite le « retrait à moitié » que l'ADR 012 a rejeté (classes
+  `dark:` actives par-dessus des tokens clairs). Le cookie `theme` et l'en-tête `x-theme` de
+  `src/proxy.ts` deviennent sans effet : le plan décide s'ils partent. Mettre à jour la consigne
+  « en clair et en sombre » de `rule-mdx-rendering.md`.
 
 ---
 
@@ -3213,22 +3242,28 @@ produit).
 2026 : garder le minimum, retirer le reste, en attendant l'espace membre du bloc B. Précisé après la
 recherche : il n'existe plus d'écran de profil (retiré en s12a) ; on garde la sécurité seule. La
 connexion par Google est conservée, sans création de compte ; Apple et GitHub sont retirés.
+Arbitrages du 7 octobre, après la revue du découpage : l'espace membre garde l'adresse `/dashboard`,
+où s12d posera « Mes parcelles », et le membre propriétaire y arrive après sa connexion ; quel que
+soit le mode de connexion, un compte ne se connecte que sur le domaine de son association.
 
-**En tant que** membre du bureau **je veux** un espace de compte réduit à ma sécurité
-**afin de** ne pas me perdre dans des écrans de clés d'API, d'organisations ou d'abonnement qui ne
-servent pas l'association.
+**En tant que** membre du bureau **je veux** un espace de compte réduit à ma sécurité, et que seuls
+les membres de mon association puissent se connecter sur son site, **afin de** ne pas me perdre dans
+des écrans de clés d'API, d'organisations ou d'abonnement qui ne servent pas l'association, et
+qu'aucun inconnu ni membre d'une autre association ne puisse y ouvrir une session.
 
 ### Complexity
 
-3
+4
 
 ### Acceptance criteria
 
-- [ ] `/account` reste accessible à tout utilisateur connecté et ne propose que la sécurité (email, mot de passe, double authentification, sessions) ; les adresses `/account/settings`, `/account/api-keys`, `/account/notifications`, `/account/organizations/…`, `/account/invitations/…`, `/account/billing/…`, `/dashboard` et `/team/…` répondent 404, et aucun menu n'y renvoie.
-- [ ] Après connexion, par lien magique comme par mot de passe ou double authentification, un membre du bureau ou la Présidence de l'association du domaine appelé arrive sur `/bureau`, le SuperAdmin sur `/admin`, et tout autre utilisateur sur `/account` ; plus aucun parcours ne renvoie vers `/dashboard`.
-- [ ] L'inscription libre est fermée : `/register` répond 404, et une création de compte par mot de passe adressée directement au serveur d'authentification est refusée. Un compte ne naît que du back-office (s12d) ou du seed — prouvé par un test qui tente l'inscription et constate qu'aucun utilisateur n'est créé.
+- [ ] `/account` reste accessible à tout utilisateur connecté et ne propose que la sécurité (email, mot de passe, double authentification, sessions) ; les adresses `/account/settings`, `/account/api-keys`, `/account/notifications`, `/account/organizations/…`, `/account/invitations/…`, `/account/billing/…` et `/team/…` répondent 404, et aucun menu n'y renvoie.
+- [ ] `/dashboard` devient l'espace membre : il ne montre plus rien du tableau de bord du boilerplate, seulement le nom de l'association et un lien vers la sécurité du compte (`/account`), en attendant « Mes parcelles » (s12d). Sans session, il redirige vers la connexion comme aujourd'hui.
+- [ ] Après connexion, quel que soit le mode, un membre du bureau ou la Présidence de l'association du domaine appelé arrive sur `/bureau`, le SuperAdmin sur `/admin`, et un membre propriétaire sur l'espace membre (`/dashboard`).
+- [ ] Un compte ne se connecte que sur le domaine d'une association dont il est membre, **quel que soit le mode** : mot de passe, lien magique, double authentification ou Google. Un compte membre de l'association A qui tente de se connecter sur le domaine de l'association B n'obtient aucune session et reçoit le même message qu'un compte inconnu — prouvé par un test d'accès croisé entre deux associations, pour chaque mode. Seul le SuperAdmin fait exception.
+- [ ] L'inscription libre est fermée : `/register` répond 404, et une création de compte par mot de passe adressée directement au serveur d'authentification est refusée. Un compte ne naît que du provisioning d'une association (s01), de l'ouverture du compte d'une fiche membre (s12d, à venir) ou du seed — prouvé par un test qui tente l'inscription et constate qu'aucun utilisateur n'est créé.
 - [ ] Un lien magique demandé pour une adresse inconnue ne crée aucun compte (fermeture déjà faite par s03, gardée par un test).
-- [ ] La connexion par Google reste proposée : un compte existant dont l'adresse est celle du compte Google se connecte par Google ; un compte Google inconnu ne crée aucun utilisateur. Les connexions Apple et GitHub ne sont plus proposées ni configurées.
+- [ ] La connexion par Google reste proposée : un compte existant dont l'adresse est celle du compte Google se connecte par Google, sur le domaine de son association seulement ; un compte Google inconnu ne crée aucun utilisateur. Les connexions Apple et GitHub ne sont plus proposées ni configurées.
 - [ ] Les familles `apikey`, `organization`, `invitation`, `subscription` et `notifications` disparaissent de `NEXT_PUBLIC_ENABLED_PAGES` (schéma, `.env.development`, CI).
 - [ ] Les dates encore affichées par les écrans conservés sont formatées en français : `DEFAULT_LOCALE` de `src/lib/helper/date-helper.ts` vaut `fr`, et un test le vérifie.
 
@@ -3252,8 +3287,19 @@ Réf. `ADR 009` (modèle de retrait et voie de retour), `ADR 008` (locale unique
 - `src/proxy.ts` et ses tests protègent `/dashboard` et `/account` : à mettre à jour sans affaiblir la
   protection des segments conservés.
 - L'invitation de s15 est un lien magique, pas l'invitation d'organisation de Better Auth : retirer
-  `/account/invitations` ne la gêne pas. Vérifier qu'aucun autre parcours du bloc B (s12d, s15, s42)
-  ne cite un écran retiré.
+  `/account/invitations` ne la gêne pas. Vérifier qu'aucun autre parcours du bloc B (s15, s42) ne
+  cite un écran retiré.
+- **Espace membre** : `/dashboard` est conservé comme adresse de l'espace membre, parce que le design
+  de s12d (`docs/designs/s12-membres-parcelles.md`, écran 6) y place « Mes parcelles ». Cette story
+  vide la page et fixe la destination ; s12d la remplit. Ne pas renommer l'adresse ici.
+- **Connexion limitée à son association** — c'est un trou du code livré, pas seulement une règle
+  nouvelle : seul le lien magique vérifie l'appartenance (`isMemberOf`,
+  `src/lib/better-auth/magic-link-integration.ts`). `loginCredentialAction`
+  (`src/app/[locale]/(auth)/action.ts`) ne la vérifie pas, et le hook `session.create.before` de
+  `src/lib/better-auth/auth.ts` ne contrôle que le bannissement. Le contrôle doit vivre à **un seul
+  endroit** que tous les modes traversent (l'ouverture de la session est le candidat naturel), avec
+  la même résolution du tenant par le domaine appelé (ADR 003) et la même règle que le lien magique.
+  Le message de refus ne doit pas révéler que le compte existe ailleurs.
 - Fermer l'inscription : `disableSignUp` (Better Auth) sur `emailAndPassword` et sur le lien
   magique. Le seed et la création de comptes par le back-office passent par l'API serveur ; vérifier
   qu'ils ne dépendent pas de l'inscription publique. Les specs e2e se connectent par mot de passe à
@@ -3267,6 +3313,13 @@ Réf. `ADR 009` (modèle de retrait et voie de retour), `ADR 008` (locale unique
 - Le lien magique et Google fixent leur destination avant de savoir qui se connecte : une
   destination par rôle suppose une route de passage après ouverture de la session (voir la
   recherche).
+
+Risque (complexité 4) : trois changements de l'authentification dans la même story — la fermeture de
+l'inscription sur trois canaux, la connexion limitée à l'association du domaine pour quatre modes, et
+la destination par rôle résolue après l'ouverture de la session, par une route de passage nouvelle.
+Une erreur sur l'un d'eux ouvre une session à qui ne doit pas en avoir, ou enferme un membre dehors.
+Les tests d'accès croisé et la dizaine de specs e2e touchées (voir la recherche) sont ce qui le
+couvre.
 
 ---
 
@@ -3293,7 +3346,7 @@ Réf. `ADR 009` (modèle de retrait et voie de retour), `ADR 008` (locale unique
 | s12a | retrait-supabase                 | 2   | s01b                                                                                                                                     | B    |
 | s12b | mise-en-ligne                    | 3   | s01, s01b, s03, s03c, s08, s12a, s44, s45, s46                                                                                           | B    |
 | s12c | sauvegarde                       | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
-| s12d | comptes-membres                  | 3   | s03, s03c, s12                                                                                                                           | B    |
+| s12d | comptes-membres                  | 3   | s03, s03c, s12, s46                                                                                                                      | B    |
 | s13  | import-initial-membres           | 3   | s12, s12d, s12c                                                                                                                          | B    |
 | s14  | attribuer-roles                  | 2   | s03b, s12, s12d                                                                                                                          | B    |
 | s15  | inviter-membre                   | 2   | s02, s03, s03c, s12, s12d                                                                                                                | B    |
@@ -3328,9 +3381,9 @@ Réf. `ADR 009` (modèle de retrait et voie de retour), `ADR 008` (locale unique
 | s43  | locale-unique                    | 2   | s11                                                                                                                                      | A    |
 | s44  | page-accueil                     | 3   | s02, s04, s04b, s05, s07, s11                                                                                                            | A    |
 | s45  | retrait-pages-publiques-heritees | 3   | s43, s44                                                                                                                                 | A    |
-| s46  | comptes-herites-minimum          | 3   | s03, s03b, s43, s45                                                                                                                      | B    |
+| s46  | comptes-herites-minimum          | 4   | s03, s03b, s43, s45                                                                                                                      | B    |
 
-**55 stories, aucune à 5.** Répartition : trois à 1, vingt et une à 2, vingt-trois à 3, huit à 4.
+**56 stories, aucune à 5.** Répartition : quatre à 1, vingt et une à 2, vingt-deux à 3, neuf à 4.
 **Sept stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
@@ -3348,12 +3401,13 @@ travail vit dans `docs/adaptation-socle-design-system.md`, et la contrainte qu'e
 stories d'écran reste, en règle transverse « Socle habillé ».
 Sa surface est énumérée dans le tableau mesuré de `docs/adaptation-socle-design-system.md`, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
-Les huit stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
+Les neuf stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
 blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
 daté), s26
 (planification, budget transverse et file de report), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
-s38 (moteur d'export et son archive) — portent chacune leur risque
+s38 (moteur d'export et son archive), s46 (inscription fermée, connexion limitée à l'association du
+domaine, destination par rôle) — portent chacune leur risque
 explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
 `/ks-plan`.
 
