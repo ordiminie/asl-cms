@@ -9,7 +9,9 @@ test.describe('Homepage', () => {
 
     // Check for main hero heading specifically
     await expect(
-      page.getByRole('heading', {name: /Modern SaaS platform to boost/})
+      page.getByRole('heading', {
+        name: /La plateforme SaaS moderne pour booster/,
+      })
     ).toBeVisible()
   })
 
@@ -25,6 +27,6 @@ test.describe('Homepage', () => {
     await page.goto('/')
 
     // Check for hero content
-    await expect(page.getByText('Modern SaaS platform')).toBeVisible()
+    await expect(page.getByText('La plateforme SaaS moderne')).toBeVisible()
   })
 })
