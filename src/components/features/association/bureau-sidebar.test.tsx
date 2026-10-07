@@ -1,6 +1,6 @@
 import {describe, expect, it, vi} from 'vitest'
 
-const navigation = vi.hoisted(() => ({pathname: '/fr/bureau/identite'}))
+const navigation = vi.hoisted(() => ({pathname: '/bureau/identite'}))
 
 vi.mock('next/navigation', () => ({
   usePathname: () => navigation.pathname,
@@ -22,7 +22,7 @@ const renderSidebarAt = (pathname: string) => {
 
 describe('BureauSidebar — item actif selon la route', () => {
   it('porte les deux items du groupe « L association »', () => {
-    renderSidebarAt('/fr/bureau/identite')
+    renderSidebarAt('/bureau/identite')
 
     expect(screen.getByRole('link', {name: 'Identité'})).toHaveAttribute(
       'href',
@@ -35,7 +35,7 @@ describe('BureauSidebar — item actif selon la route', () => {
   })
 
   it('porte les deux items du groupe « Le site »', () => {
-    renderSidebarAt('/fr/bureau/pages')
+    renderSidebarAt('/bureau/pages')
 
     expect(screen.getByRole('link', {name: 'Pages'})).toHaveAttribute(
       'href',
@@ -48,7 +48,7 @@ describe('BureauSidebar — item actif selon la route', () => {
   })
 
   it('sur la page Navigation, seul « Navigation » est actif', () => {
-    renderSidebarAt('/fr/bureau/navigation')
+    renderSidebarAt('/bureau/navigation')
 
     expect(screen.getByRole('link', {name: 'Navigation'})).toHaveAttribute(
       'aria-current',
@@ -60,7 +60,7 @@ describe('BureauSidebar — item actif selon la route', () => {
   })
 
   it('sur la page Identite, seul « Identite » est actif', () => {
-    renderSidebarAt('/fr/bureau/identite')
+    renderSidebarAt('/bureau/identite')
 
     expect(screen.getByRole('link', {name: 'Identité'})).toHaveAttribute(
       'aria-current',
@@ -84,7 +84,7 @@ describe('BureauSidebar — item actif selon la route', () => {
   })
 
   it('place « Bandeau d’alerte » en dernier du groupe « Le site »', () => {
-    renderSidebarAt('/fr/bureau/pages')
+    renderSidebarAt('/bureau/pages')
 
     const link = screen.getByRole('link', {name: 'Bandeau d’alerte'})
     expect(link).toHaveAttribute('href', '/bureau/alerte')
@@ -99,7 +99,7 @@ describe('BureauSidebar — item actif selon la route', () => {
   })
 
   it('sur la page Bandeau d’alerte, seul cet item est actif', () => {
-    renderSidebarAt('/fr/bureau/alerte')
+    renderSidebarAt('/bureau/alerte')
 
     expect(
       screen.getByRole('link', {name: 'Bandeau d’alerte'})
@@ -112,7 +112,7 @@ describe('BureauSidebar — item actif selon la route', () => {
 
 describe('BureauSidebar — « Messages reçus » (s08)', () => {
   it('ajoute l’entrée au groupe « Le site », après Navigation, sans icône', () => {
-    renderSidebarAt('/fr/bureau/messages')
+    renderSidebarAt('/bureau/messages')
 
     const messages = screen.getByRole('link', {name: 'Messages reçus'})
     expect(messages).toHaveAttribute('href', '/bureau/messages')
@@ -130,7 +130,7 @@ describe('BureauSidebar — « Messages reçus » (s08)', () => {
 
 describe("BureauSidebar — « Analyses d'eau » (s09)", () => {
   it('ajoute l’entrée entre « Actualités » et « Navigation », sans icône', () => {
-    renderSidebarAt('/fr/bureau/analyses-eau')
+    renderSidebarAt('/bureau/analyses-eau')
 
     const entry = screen.getByRole('link', {name: "Analyses d'eau"})
     expect(entry).toHaveAttribute('href', '/bureau/analyses-eau')
@@ -148,7 +148,7 @@ describe("BureauSidebar — « Analyses d'eau » (s09)", () => {
 
 describe('BureauSidebar — « Signalements » (s10)', () => {
   it('ajoute l’entrée au groupe « Le site », après « Messages reçus », sans icône', () => {
-    renderSidebarAt('/fr/bureau/signalements')
+    renderSidebarAt('/bureau/signalements')
 
     const entry = screen.getByRole('link', {name: 'Signalements'})
     expect(entry).toHaveAttribute('href', '/bureau/signalements')
@@ -166,7 +166,7 @@ describe('BureauSidebar — « Signalements » (s10)', () => {
 
 describe('BureauSidebar — « Propriétaires » (s12)', () => {
   it('ajoute l’entrée en tête du groupe « L’association », avant Identité, sans icône', () => {
-    renderSidebarAt('/fr/bureau/proprietaires')
+    renderSidebarAt('/bureau/proprietaires')
 
     const entry = screen.getByRole('link', {name: 'Propriétaires'})
     expect(entry).toHaveAttribute('href', '/bureau/proprietaires')

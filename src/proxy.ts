@@ -4,26 +4,14 @@ import {NextResponse} from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 
 import {routing} from './i18n/routing'
-import {stripLocalePrefix} from './lib/helper/locale-helper'
 import {AUTHENTICATED_SEGMENTS} from './lib/routing/authenticated-segments'
 
 const intlMiddleware = createMiddleware(routing)
 
-const localeOf = (pathname: string) => {
-  const firstSegment = pathname.split('/')[1]
-  return routing.locales.includes(
-    firstSegment as (typeof routing.locales)[number]
+const isAuthenticatedPath = (pathname: string) =>
+  AUTHENTICATED_SEGMENTS.some(
+    (segment) => pathname === segment || pathname.startsWith(`${segment}/`)
   )
-    ? firstSegment
-    : routing.defaultLocale
-}
-
-const isAuthenticatedPath = (pathname: string, locale: string) => {
-  const path = stripLocalePrefix(pathname, locale)
-  return AUTHENTICATED_SEGMENTS.some(
-    (segment) => path === segment || path.startsWith(`${segment}/`)
-  )
-}
 
 export default function middleware(request: NextRequest) {
   const {pathname, searchParams} = request.nextUrl
@@ -49,9 +37,11 @@ export default function middleware(request: NextRequest) {
   // Contrôle optimiste, sans appel base : la présence du cookie ne prouve pas
   // que la session est valide. La vraie vérification reste côté serveur —
   // getCurrentUserDal, withAuth et l'autorisation CASL dans les services.
-  const locale = localeOf(pathname)
-  if (isAuthenticatedPath(pathname, locale) && !getSessionCookie(request)) {
-    return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
+  // Locale unique sans prefixe (ADR 008) : les adresses prefixees /fr, /en,
+  // /es sont redirigees par next.config.ts avant le proxy (ADR 031), le chemin
+  // recu ici est donc toujours sans prefixe.
+  if (isAuthenticatedPath(pathname) && !getSessionCookie(request)) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // Obtenir le thème depuis le cookie

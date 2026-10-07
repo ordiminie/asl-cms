@@ -161,4 +161,10 @@ describe('slugs réservés (ADR 020)', () => {
   it("réserve le segment des analyses d'eau (s09)", () => {
     expect(isPageSlugReserved('analyses-eau')).toBe(true)
   })
+
+  it('réserve les anciens préfixes de langue, redirigés par next.config (s43, ADR 031)', () => {
+    for (const slug of ['fr', 'en', 'es', 'FR', ' En ']) {
+      expect(isPageSlugReserved(slug), slug).toBe(true)
+    }
+  })
 })

@@ -243,7 +243,7 @@ const requestLink = async (
 ) => {
   // Saisie avant l'hydratation = champ remis à vide par React, et le clic
   // tombe sur « adresse non valide » : attendre que la page soit au repos.
-  await page.goto(`${origin}/fr/login`)
+  await page.goto(`${origin}/login`)
   await page.waitForLoadState('networkidle')
   const field = page.getByLabel('Adresse email')
   await field.fill(address)
@@ -580,8 +580,8 @@ test.describe('connexion par lien — s03', () => {
       await expectSessionOn(onA, fromA, TENANT_A, TENANT_B)
 
       // Critère 2 : la session ouverte sur A n'ouvre pas l'espace de B.
-      await onA.goto(`${TENANT_B}/fr/bureau`)
-      await expect(onA).toHaveURL(`${TENANT_B}/fr/login`)
+      await onA.goto(`${TENANT_B}/bureau`)
+      await expect(onA).toHaveURL(`${TENANT_B}/login`)
       await onA.context().close()
 
       const onB = await freshPage(browser)

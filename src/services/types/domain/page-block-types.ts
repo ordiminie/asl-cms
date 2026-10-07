@@ -1,5 +1,7 @@
 import {z} from 'zod'
 
+import {LEGACY_LOCALE_PREFIXES} from '@/lib/routing/legacy-locale-prefixes'
+
 import {
   buildContentFileKey,
   ContentFileScopeConst,
@@ -91,8 +93,12 @@ export type StoredPageBlock = {
  * ⚠️ Toute story qui ajoute un segment racine à `src/app/[locale]/` doit
  * l'ajouter ici **dans le même commit**, sinon la collision se découvre en
  * production.
+ *
+ * Les anciens prefixes de langue (`fr`, `en`, `es`) sont redirigés par
+ * `next.config.ts` (s43, ADR 031) : une page de ce slug serait injoignable.
  */
 export const RESERVED_PAGE_SLUGS: readonly string[] = [
+  ...LEGACY_LOCALE_PREFIXES,
   'account',
   'actualites',
   'admin',

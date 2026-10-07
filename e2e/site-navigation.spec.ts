@@ -28,17 +28,17 @@ const OWNER_A = 'user-owner@gmail.com'
 /** Membre simple de TechCorp Solutions, jamais du bureau. */
 const MEMBER_A = 'user@gmail.com'
 
-const NAVIGATION_ROUTE = '/fr/bureau/navigation'
+const NAVIGATION_ROUTE = '/bureau/navigation'
 const NAVIGATION_TITLE = 'Navigation du site'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 /** Une page publique du socle : elle porte l'en-tête et le pied de page du site. */
-const PUBLIC_ROUTE = '/fr/privacy'
+const PUBLIC_ROUTE = '/privacy'
 
 const unique = (prefix: string) =>
   `${prefix}-${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)
@@ -62,7 +62,7 @@ const createDraftPage = async (
   title: string,
   slug: string
 ) => {
-  await page.goto(`${base}/fr/bureau/pages`, {waitUntil: 'load'})
+  await page.goto(`${base}/bureau/pages`, {waitUntil: 'load'})
   await page.getByRole('button', {name: 'Nouvelle page'}).click()
   await page.waitForURL(/\/bureau\/pages\/[0-9a-f-]{36}/, {timeout: 20_000})
   await expect(page.getByLabel('Adresse de la page')).toBeVisible({
@@ -241,7 +241,7 @@ test.describe('Navigation du site — composition et rendu public', () => {
     await expect(visitorPage.getByText(title)).toBeHidden({timeout: 20_000})
 
     // La page, elle, reste atteignable par son adresse (critère 2).
-    await visitorPage.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await visitorPage.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     await expect(
       visitorPage.getByRole('heading', {level: 1, name: title})
     ).toBeVisible({timeout: 20_000})

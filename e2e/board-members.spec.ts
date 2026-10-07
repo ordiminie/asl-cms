@@ -30,8 +30,8 @@ const OWNER_A = 'user-owner@gmail.com'
 /** Membre simple de TechCorp Solutions, jamais du bureau. */
 const MEMBER_A = 'user@gmail.com'
 
-const BOARD_ROUTE = '/fr/bureau/le-bureau'
-const PUBLIC_BOARD_ROUTE = '/fr/le-bureau'
+const BOARD_ROUTE = '/bureau/le-bureau'
+const PUBLIC_BOARD_ROUTE = '/le-bureau'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 
 /** Le carré stocké, ADR 024. */
@@ -154,7 +154,7 @@ const deleteBoardMembersLike = async (...patterns: string[]) => {
 }
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

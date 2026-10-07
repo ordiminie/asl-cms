@@ -28,9 +28,6 @@ describe('src/i18n/request.ts par le vrai getTranslations de next-intl', () => {
     expect(
       await subjectOf({locale: 'fr', namespace: 'email.user.magicLink'})
     ).toBe('ASL — votre lien de connexion')
-    expect(
-      await subjectOf({locale: 'es', namespace: 'email.user.magicLink'})
-    ).toBe('ASL — su enlace de conexión')
   })
 
   it('préfère la locale explicite au cookie NEXT_LOCALE', async () => {
@@ -41,23 +38,35 @@ describe('src/i18n/request.ts par le vrai getTranslations de next-intl', () => {
     ).toBe('ASL — votre lien de connexion')
   })
 
-  it('sans locale explicite, garde la chaîne actuelle : cookie, sinon locale par défaut', async () => {
-    expect(await subjectOf()).toBe('ASL — your sign-in link')
+  it('sans locale explicite ni cookie, sert la locale unique du produit (ADR 008)', async () => {
+    expect(await subjectOf()).toBe('ASL — votre lien de connexion')
 
     withLocaleCookie('fr')
     expect(await subjectOf()).toBe('ASL — votre lien de connexion')
   })
 
-  it('ignore une locale explicite non servie et retombe sur la chaîne actuelle', async () => {
-    expect(
-      await subjectOf({locale: 'de', namespace: 'email.user.magicLink'})
-    ).toBe('ASL — your sign-in link')
-  })
+  it.each(['en', 'es', 'de'])(
+    'ignore une locale explicite non servie (%s) et répond en français',
+    async (locale) => {
+      expect(await subjectOf({locale, namespace: 'email.user.magicLink'})).toBe(
+        'ASL — votre lien de connexion'
+      )
+    }
+  )
+
+  it.each(['en', 'es'])(
+    'un cookie NEXT_LOCALE=%s resté d’avant la locale unique répond en français, sans 404',
+    async (value) => {
+      withLocaleCookie(value)
+
+      expect(await subjectOf()).toBe('ASL — votre lien de connexion')
+    }
+  )
 
   it('sans locale explicite, lit root-params en premier dans une route', async () => {
     withLocaleCookie('en')
-    vi.mocked(rootParams.locale).mockResolvedValueOnce('es')
+    vi.mocked(rootParams.locale).mockResolvedValueOnce('fr')
 
-    expect(await subjectOf()).toBe('ASL — su enlace de conexión')
+    expect(await subjectOf()).toBe('ASL — votre lien de connexion')
   })
 })

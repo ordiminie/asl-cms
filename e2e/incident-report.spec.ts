@@ -40,11 +40,11 @@ const BOARD_B = 'user-admin@gmail.com'
 /** Membre simple de TechCorp : ses coordonnées servent le critère 8. */
 const MEMBER_A = {email: 'moderator-member@gmail.com', name: 'Julie'}
 
-const REPORT_ROUTE = '/fr/signaler'
-const REPORTS_ROUTE = '/fr/bureau/signalements'
-const CATEGORIES_ROUTE = '/fr/bureau/signalements/categories'
-const SETTINGS_ROUTE = '/fr/bureau/reglages'
-const CONTACT_ROUTE = '/fr/contact'
+const REPORT_ROUTE = '/signaler'
+const REPORTS_ROUTE = '/bureau/signalements'
+const CATEGORIES_ROUTE = '/bureau/signalements/categories'
+const SETTINGS_ROUTE = '/bureau/reglages'
+const CONTACT_ROUTE = '/contact'
 const SETTINGS_SAVED =
   'Réglages enregistrés. Les prochains messages partiront vers ces adresses.'
 const THRESHOLD_LABEL = /Nombre de messages par heure et par visiteur/
@@ -266,7 +266,7 @@ const cleanUpRun = () =>
   })
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

@@ -11,19 +11,18 @@ Ce projet utilise **Next-intl** pour gérer les traductions internationales. Le 
 
 Key Principles
 
-- Traduire toutes les langues
+- Une seule langue, le français (ADR 008) : tout libellé vit dans `messages/fr.json`, jamais en dur
 
 ## Architecture des Traductions
 
 ### Organisation des Fichiers de Traduction
 
-Les traductions sont stockées dans le dossier `messages/` avec un fichier par langue :
+Les traductions sont stockées dans le dossier `messages/`. ASL-CMS est servi en français seul, sans
+préfixe d'URL (ADR 008, appliqué en s43) : il n'y a qu'un fichier.
 
 ```
 messages/
-├── fr.json     # Français (langue par défaut)
-├── en.json     # Anglais
-└── es.json     # Espagnol
+└── fr.json     # Français, seule locale servie
 ```
 
 ### Structure Hiérarchique des Clés
@@ -256,7 +255,7 @@ export function EditUserSettingsForm({user}: {user: User}) {
 
 - Utilisez des noms descriptifs
 - Évitez les abréviations
-- Maintenez la cohérence entre les langues
+- Maintenez la cohérence du vocabulaire d'un espace de noms à l'autre
 
 ### 3. **Séparation des Responsabilités**
 
@@ -336,8 +335,8 @@ Next-intl supporte les pluriels avec ICU MessageFormat :
 
 ### Vérification de Complétude
 
-- Assurez-vous que toutes les clés existent dans toutes les langues
-- Utilisez des outils de validation pour détecter les clés manquantes
+- Assurez-vous que toute clé appelée par le code existe dans `fr.json`
+- Utilisez des outils de validation pour détecter les clés manquantes (exemple : `src/services/__tests__/page-i18n.test.ts`)
 
 ### Tests de Traduction
 
@@ -349,19 +348,18 @@ expect(t('form.updating')).toBeDefined()
 
 ## Maintenance
 
-### Ajout de Nouvelles Langues
+### Ajout d'une Langue
 
-1. Créer le fichier `messages/{locale}.json`
-2. Copier la structure depuis `fr.json`
-3. Traduire toutes les valeurs
-4. Ajouter la locale dans la configuration Next-intl
+Hors périmètre : l'ADR 008 l'a écarté. Rouvrir une seconde locale est une décision structurante qui
+passe par un nouvel ADR. Elle demandera au minimum de retirer son préfixe de
+`LEGACY_LOCALE_PREFIXES` (`src/lib/routing/legacy-locale-prefixes.ts`, ADR 031), qui le redirige
+aujourd'hui de façon permanente, avant de l'ajouter à `src/i18n/routing.ts`.
 
 ### Ajout de Nouvelles Clés
 
 1. Ajouter la clé dans `fr.json`
-2. Ajouter la clé dans tous les autres fichiers de langue
-3. Utiliser la clé dans le code
-4. Tester dans toutes les langues
+2. Utiliser la clé dans le code
+3. Tester le rendu avec `messages/fr.json`
 
 ## Résumé
 

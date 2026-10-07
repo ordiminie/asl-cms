@@ -1,9 +1,11 @@
 import {defineRouting} from 'next-intl/routing'
 
+/*
+ * Locale unique, sans prefixe d'URL (ADR 008). Les anciennes adresses /fr,
+ * /en et /es sont redirigees par next.config.ts (ADR 031).
+ */
 export const routing = defineRouting({
-  // A list of all locales that are supported
-  locales: ['en', 'fr', 'es'],
-
-  // Used when no locale matches
-  defaultLocale: 'en',
+  locales: ['fr'],
+  defaultLocale: 'fr',
+  localePrefix: 'never',
 })

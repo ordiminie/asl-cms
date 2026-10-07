@@ -31,7 +31,7 @@ const MEMBER_A = 'user@gmail.com'
 /** Bureau de Marketing Pro. */
 const BOARD_B = 'user-admin@gmail.com'
 
-const PAGES_ROUTE = '/fr/bureau/pages'
+const PAGES_ROUTE = '/bureau/pages'
 const PAGES_TITLE = 'Pages'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 const NOT_FOUND_TITLE = 'Page non trouvée'
@@ -98,7 +98,7 @@ const inTenantScope = async <T>(
 }
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)
@@ -180,14 +180,14 @@ test.describe('Pages du site — bureau', () => {
     // Critère 2 : un visiteur ne voit pas un brouillon.
     const visitor = await browser.newContext()
     const visitorPage = await visitor.newPage()
-    await visitorPage.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await visitorPage.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     await expect(visitorPage.getByText(NOT_FOUND_TITLE)).toBeVisible({
       timeout: 20_000,
     })
     await expect(visitorPage.getByText('Premier bloc')).toBeHidden()
 
     // Critère 2 (suite) : le bureau, lui, prévisualise le même brouillon.
-    await page.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await page.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     await expect(page.getByText(/Aperçu du bureau/)).toBeVisible({
       timeout: 20_000,
     })
@@ -215,7 +215,7 @@ test.describe('Pages du site — bureau', () => {
     await expect(page.getByText('En ligne')).toBeVisible({timeout: 20_000})
 
     // Critère 1 et 7 : rendu public dans l'ordre, après rechargement.
-    await visitorPage.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await visitorPage.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     const publishedText = await articleText(visitorPage)
     expect(publishedText).toContain('Premier bloc')
     expect(publishedText.indexOf('Deuxieme bloc')).toBeLessThan(
@@ -238,7 +238,7 @@ test.describe('Pages du site — bureau', () => {
       .click()
     await expect(page.getByText('Dépubliée')).toBeVisible({timeout: 20_000})
 
-    await visitorPage.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await visitorPage.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     await expect(visitorPage.getByText(NOT_FOUND_TITLE)).toBeVisible({
       timeout: 20_000,
     })
@@ -247,7 +247,7 @@ test.describe('Pages du site — bureau', () => {
     await page.getByRole('button', {name: 'Publier la page'}).click()
     await expect(page.getByText('En ligne')).toBeVisible({timeout: 20_000})
 
-    await visitorPage.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await visitorPage.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     const republishedText = await articleText(visitorPage)
     expect(republishedText).toBe(publishedText)
 
@@ -303,7 +303,7 @@ test.describe('Pages du site — autorisation et isolation', () => {
     // Le même slug sur le domaine du tenant B : rien, même page publiée.
     const visitor = await browser.newContext()
     const visitorPage = await visitor.newPage()
-    await visitorPage.goto(`${TENANT_B}/fr/${shared}`, {waitUntil: 'load'})
+    await visitorPage.goto(`${TENANT_B}/${shared}`, {waitUntil: 'load'})
     await expect(visitorPage.getByText(NOT_FOUND_TITLE)).toBeVisible({
       timeout: 20_000,
     })
@@ -322,7 +322,7 @@ test.describe('Pages du site — autorisation et isolation', () => {
       timeout: 20_000,
     })
 
-    await visitorPage.goto(`${TENANT_B}/fr/${shared}`, {waitUntil: 'load'})
+    await visitorPage.goto(`${TENANT_B}/${shared}`, {waitUntil: 'load'})
     await expect(visitorPage.getByText('Contenu du tenant B')).toBeVisible({
       timeout: 20_000,
     })
@@ -397,7 +397,7 @@ test.describe('Pages du site — autorisation et isolation', () => {
     // Le rendu public s'affiche, le bloc inconnu est simplement absent.
     const visitor = await browser.newContext()
     const visitorPage = await visitor.newPage()
-    await visitorPage.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await visitorPage.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     await expect(visitorPage.getByText('Bloc de texte visible')).toBeVisible({
       timeout: 20_000,
     })

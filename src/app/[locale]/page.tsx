@@ -8,7 +8,6 @@ import {Suspense} from 'react'
 import ButtonConnexionDashboard from '@/components/features/auth/button-connexion-dashboard'
 import PublicFooter from '@/components/features/layouts/public-footer'
 import ImageTheme from '@/components/image-theme'
-import {LangToggle} from '@/components/lang-toggle'
 import {ModeToggle} from '@/components/theme-toggle'
 import {Button} from '@/components/ui/button'
 import {Component} from '@/components/ui/vapour-text-effect'
@@ -81,7 +80,6 @@ export default async function Home({
           </Link>
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <LangToggle />
           <Suspense fallback={<Button disabled>&nbsp;</Button>}>
             <ButtonConnexionDashboard />
           </Suspense>

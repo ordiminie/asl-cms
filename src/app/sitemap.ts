@@ -22,7 +22,7 @@ const FIXED_PUBLIC_PATHS = [
  * Lire le domaine rend ce gestionnaire dynamique : chaque association sert
  * le sien, et une page publiee y entre a la requete suivante (decision C).
  * Une seule adresse par page, **sans prefixe de locale** et sans alternative
- * de langue (decision B, contournement de l'ADR 008 jusqu'a s43). Ni le blog
+ * de langue (decision B ; ADR 008 applique en s43, ADR 031). Ni le blog
  * herite ni les pages du produit : ce n'est pas le site de l'association.
  * Un domaine qui ne sert aucune association rend un sitemap vide.
  */

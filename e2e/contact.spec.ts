@@ -36,9 +36,9 @@ const OWNER_A = 'user-owner@gmail.com'
 /** Membre du bureau (rôle `board`) de Marketing Pro. */
 const BOARD_B = 'user-admin@gmail.com'
 
-const CONTACT_ROUTE = '/fr/contact'
-const MESSAGES_ROUTE = '/fr/bureau/messages'
-const SETTINGS_ROUTE = '/fr/bureau/reglages'
+const CONTACT_ROUTE = '/contact'
+const MESSAGES_ROUTE = '/bureau/messages'
+const SETTINGS_ROUTE = '/bureau/reglages'
 const SETTINGS_SAVED =
   'Réglages enregistrés. Les prochains messages partiront vers ces adresses.'
 
@@ -205,7 +205,7 @@ const RUN = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
 const subjectOf = (label: string) => `${label} s08-${RUN}`
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

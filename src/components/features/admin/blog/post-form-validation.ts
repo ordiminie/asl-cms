@@ -6,8 +6,6 @@ import {SupportedLanguage} from '@/services/types/domain/post-types'
 // Constante pour l'interface utilisateur (ordre spécifique pour le formulaire)
 export const LANGUAGE_OPTIONS: {value: SupportedLanguage; label: string}[] = [
   {value: 'fr', label: 'Français'},
-  {value: 'en', label: 'English'},
-  {value: 'es', label: 'Español'},
 ]
 
 // Schéma pour une traduction

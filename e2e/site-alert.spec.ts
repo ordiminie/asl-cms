@@ -37,14 +37,14 @@ const BOARD_B = 'user-admin@gmail.com'
 /** Membre simple de TechCorp Solutions, jamais du bureau. */
 const MEMBER_A = 'user@gmail.com'
 
-const ALERT_ROUTE = '/fr/bureau/alerte'
+const ALERT_ROUTE = '/bureau/alerte'
 const ALERT_TITLE = 'Bandeau d’alerte'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 const BANNER_LABEL = "Alerte de l'association"
 /** Une page publique du socle, sous le gabarit du site public. */
-const PUBLIC_ROUTE = '/fr/privacy'
+const PUBLIC_ROUTE = '/privacy'
 /** Une page authentifiée, sous le gabarit à barre latérale du bureau. */
-const AUTHENTICATED_ROUTE = '/fr/bureau/pages'
+const AUTHENTICATED_ROUTE = '/bureau/pages'
 
 const ALERT_SETTING_KEYS = ['site.alert_message', 'site.alert_active']
 
@@ -95,7 +95,7 @@ const unique = (prefix: string) =>
   `${prefix} ${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

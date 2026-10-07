@@ -34,8 +34,8 @@ const PASSWORD = 'Azerty123'
 /** Présidente de TechCorp Solutions. */
 const OWNER_A = 'user-owner@gmail.com'
 
-const CONTACT_ROUTE = '/fr/contact'
-const SETTINGS_ROUTE = '/fr/bureau/reglages'
+const CONTACT_ROUTE = '/contact'
+const SETTINGS_ROUTE = '/bureau/reglages'
 const SETTINGS_SAVED =
   'Réglages enregistrés. Les prochains messages partiront vers ces adresses.'
 const THRESHOLD_LABEL = /Nombre de messages par heure et par visiteur/
@@ -164,7 +164,7 @@ const awayFromHourBoundary = async (page: Page) => {
 }
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

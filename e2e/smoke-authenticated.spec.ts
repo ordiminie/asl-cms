@@ -20,28 +20,28 @@ import {expect, Page, test} from '@playwright/test'
 const PASSWORD = 'Azerty123'
 
 const USER_ROUTES = [
-  '/en/dashboard',
-  '/en/account',
-  '/en/account/settings',
-  '/en/account/notifications',
-  '/en/account/organizations',
-  '/en/account/invitations',
-  '/en/account/api-keys',
-  '/en/account/billing/subscription',
+  '/dashboard',
+  '/account',
+  '/account/settings',
+  '/account/notifications',
+  '/account/organizations',
+  '/account/invitations',
+  '/account/api-keys',
+  '/account/billing/subscription',
 ]
 
-const TEAM_ROUTES = ['/en/team/evil-corp']
+const TEAM_ROUTES = ['/team/evil-corp']
 
 const ADMIN_ROUTES = [
-  '/en/admin',
-  '/en/admin/users',
-  '/en/admin/organizations',
-  '/en/admin/plans',
-  '/en/admin/subscriptions',
-  '/en/admin/blog',
-  '/en/admin/emails',
-  '/en/admin/submissions',
-  '/en/admin/settings',
+  '/admin',
+  '/admin/users',
+  '/admin/organizations',
+  '/admin/plans',
+  '/admin/subscriptions',
+  '/admin/blog',
+  '/admin/emails',
+  '/admin/submissions',
+  '/admin/settings',
 ]
 
 /** Bruit de console sans rapport avec la santé de la page. */
@@ -66,7 +66,7 @@ const DEV_ONLY_ADVISORIES =
   /Next\.js encountered (the unstable value|uncached data)/
 
 const login = async (page: Page, email: string) => {
-  await page.goto('/en/login/prestataire')
+  await page.goto('/login/prestataire')
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

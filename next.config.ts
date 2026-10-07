@@ -6,11 +6,18 @@ import {withSentryConfig} from '@sentry/nextjs'
 import type {NextConfig} from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
 
+import {legacyLocaleRedirects} from './src/lib/routing/legacy-locale-prefixes'
+
 const withNextIntl = createNextIntlPlugin()
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['localhost'],
   pageExtensions: ['js', 'jsx', 'mdx', 'md', 'ts', 'tsx'],
+  // Locale unique sans prefixe (ADR 008) : les anciennes adresses /fr, /en et
+  // /es redirigent en 308 vers la meme adresse sans prefixe (ADR 031).
+  async redirects() {
+    return legacyLocaleRedirects()
+  },
   logging: {
     incomingRequests: {
       ignore: [/\/api\/auth\/magic-link\/verify/],

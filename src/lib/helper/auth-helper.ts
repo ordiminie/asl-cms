@@ -24,7 +24,7 @@ export function buildBannedMessage(
     banExpires?: Date | string | null
   },
   translations?: BanTranslations,
-  locale = 'en'
+  locale = 'fr'
 ): string {
   const t = translations || defaultBanTranslations
 

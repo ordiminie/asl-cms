@@ -1,12 +1,12 @@
 import {MetadataRoute} from 'next'
 
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
-import {routing} from '@/i18n/routing'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
 import {
   AUTHENTICATED_SEGMENTS,
   SIGN_IN_SEGMENTS,
 } from '@/lib/routing/authenticated-segments'
+import {LEGACY_LOCALE_PREFIXES} from '@/lib/routing/legacy-locale-prefixes'
 
 const API_PREFIX = '/api/'
 
@@ -24,14 +24,15 @@ const PUBLIC_API_PREFIXES: readonly string[] = [
 ]
 
 /**
- * Chaque segment, sans prefixe et sous chaque locale : le proxy enleve la
- * locale avant de verifier la session, `/fr/bureau` est donc le meme
- * back-office que `/bureau` (revue s11, M2).
+ * Chaque segment, sans prefixe et sous chaque ancien prefixe de langue
+ * (revue s11, M2). Ces adresses sont redirigees en 308 par next.config.ts
+ * (s43, ADR 031) ; l'interdiction reste pour un robot qui ne suivrait pas la
+ * redirection.
  */
 const withLocalePrefixes = (segments: readonly string[]) =>
   segments.flatMap((segment) => [
     segment,
-    ...routing.locales.map((locale) => `/${locale}${segment}`),
+    ...LEGACY_LOCALE_PREFIXES.map((prefix) => `/${prefix}${segment}`),
   ])
 
 /**

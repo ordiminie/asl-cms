@@ -142,13 +142,27 @@ describe('requestMagicLinkAction', () => {
   it('transmet à l’email la locale de la page de demande', async () => {
     const pending = requestMagicLinkAction(
       {status: 'idle'},
-      requestFormData('membre@exemple.test', 'es')
+      requestFormData('membre@exemple.test', 'fr')
     )
     await vi.runAllTimersAsync()
     await pending
 
-    expect(requestedLocale()).toBe('es')
+    expect(requestedLocale()).toBe('fr')
   })
+
+  it.each(['es', 'en'])(
+    'ramène l’ancienne locale %s au français (s43)',
+    async (locale) => {
+      const pending = requestMagicLinkAction(
+        {status: 'idle'},
+        requestFormData('membre@exemple.test', locale)
+      )
+      await vi.runAllTimersAsync()
+      await pending
+
+      expect(requestedLocale()).toBe('fr')
+    }
+  )
 
   it('retombe sur fr pour une locale non servie (ADR 008)', async () => {
     const pending = requestMagicLinkAction(
@@ -239,15 +253,15 @@ describe('requestMagicLinkAction', () => {
   it('traduit l’erreur de champ dans la locale de la page, pas celle du cookie', async () => {
     await requestMagicLinkAction(
       {status: 'idle'},
-      requestFormData('pas-une-adresse', 'es')
+      requestFormData('pas-une-adresse', 'fr')
     )
     await requestMagicLinkAction(
       {status: 'idle'},
-      requestFormData('pas-une-adresse', 'de')
+      requestFormData('pas-une-adresse', 'es')
     )
 
     expect(vi.mocked(getTranslations).mock.calls).toEqual([
-      [{locale: 'es', namespace: 'Auth.MagicLinkLogin'}],
+      [{locale: 'fr', namespace: 'Auth.MagicLinkLogin'}],
       [{locale: 'fr', namespace: 'Auth.MagicLinkLogin'}],
     ])
   })

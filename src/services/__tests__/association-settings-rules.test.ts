@@ -1,7 +1,5 @@
 import {describe, expect, it} from 'vitest'
 
-import en from '../../../messages/en.json'
-import es from '../../../messages/es.json'
 import fr from '../../../messages/fr.json'
 import {
   ACCENT_HUE_SETTING_KEY,
@@ -166,8 +164,8 @@ describe('registre de production', () => {
     expect(keys).not.toContain('login.link_requests_per_network_per_hour')
   })
 
-  it('chaque cle a son libelle et son aide dans les trois langues', () => {
-    for (const messages of [fr, en, es]) {
+  it('chaque cle a son libelle et son aide en francais', () => {
+    for (const messages of [fr]) {
       const namespace = messages.AssociationSettings as Record<string, unknown>
       const lookup = (dotted: string) =>
         dotted
@@ -278,8 +276,8 @@ describe('registre de production', () => {
     ).toEqual([ACCENT_HUE_SETTING_KEY])
   })
 
-  it('chaque refus a un message explicite dans les trois langues', () => {
-    for (const messages of [fr, en, es]) {
+  it('chaque refus a un message explicite en francais', () => {
+    for (const messages of [fr]) {
       const errors = messages.AssociationSettings.errors as Record<
         string,
         string
@@ -641,8 +639,8 @@ describe('registre — carte « Referencement » (s11)', () => {
     ])
   })
 
-  it('chaque phrase « Vide : » existe dans les trois langues', () => {
-    for (const messages of [fr, en, es]) {
+  it('chaque phrase « Vide : » existe en francais', () => {
+    for (const messages of [fr]) {
       const {associationDescription, googleVerification} =
         messages.AssociationSettings.fields
       expect(associationDescription.whenEmpty).toEqual(expect.any(String))

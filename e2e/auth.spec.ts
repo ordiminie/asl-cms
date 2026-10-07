@@ -2,7 +2,7 @@ import {expect, test} from '@playwright/test'
 
 test.describe('Authentication', () => {
   test('should display login page', async ({page}) => {
-    await page.goto('/en/login/prestataire')
+    await page.goto('/login/prestataire')
 
     // Check if login form is present
     await expect(page.locator('form')).toBeVisible()
@@ -18,14 +18,14 @@ test.describe('Authentication', () => {
   })
 
   test('should display register page', async ({page}) => {
-    await page.goto('/en/register')
+    await page.goto('/register')
 
     // Check if provider buttons are present
     await expect(page.locator('button:has-text("Google")')).toBeVisible()
     await expect(page.locator('button:has-text("Apple")')).toBeVisible()
 
     // Click "Create account with email" to show the form
-    await page.click('button:has-text("Create account with email")')
+    await page.click('button:has-text("Créer un compte avec email")')
 
     // Check if signup form is now visible
     await expect(page.locator('form')).toBeVisible()
@@ -40,20 +40,20 @@ test.describe('Authentication', () => {
   // s03 : ni l'écran de connexion par lien ni l'accès prestataire ne
   // proposent l'inscription (pas d'inscription libre, design system §7).
   test('login pages do not offer sign-up', async ({page}) => {
-    await page.goto('/en/login/prestataire')
+    await page.goto('/login/prestataire')
     await expect(page.locator('form')).toBeVisible()
     await expect(page.locator('a[href="/register"]')).toHaveCount(0)
 
-    await page.goto('/en/login')
+    await page.goto('/login')
     await expect(page.locator('input[type="email"]')).toBeVisible()
     await expect(page.locator('a[href="/register"]')).toHaveCount(0)
   })
 
   test('should successfully register a new user', async ({page}) => {
-    await page.goto('/en/register')
+    await page.goto('/register')
 
     // Click "Create account with email" to show the form
-    await page.click('button:has-text("Create account with email")')
+    await page.click('button:has-text("Créer un compte avec email")')
 
     // Wait for form to be visible
     await expect(page.locator('form')).toBeVisible()
@@ -123,7 +123,7 @@ test.describe('Authentication', () => {
   test('should successfully login with existing credentials', async ({
     page,
   }) => {
-    await page.goto('/en/login/prestataire')
+    await page.goto('/login/prestataire')
 
     // Wait for the form to load
     await expect(page.locator('form')).toBeVisible()
@@ -183,12 +183,12 @@ test.describe('Authentication', () => {
       }
     } else {
       // If redirected, it should be to dashboard, app, or home
-      expect(currentUrl).toMatch(/\/(dashboard|app|en$)/)
+      expect(currentUrl).toMatch(/\/(dashboard|app)|^https?:\/\/[^/]+\/$/)
     }
   })
 
   test('should show error for invalid login credentials', async ({page}) => {
-    await page.goto('/en/login/prestataire')
+    await page.goto('/login/prestataire')
 
     // Wait for the form to load
     await expect(page.locator('form')).toBeVisible()
@@ -223,10 +223,10 @@ test.describe('Authentication', () => {
   test('should show validation errors for incomplete registration', async ({
     page,
   }) => {
-    await page.goto('/en/register')
+    await page.goto('/register')
 
     // Click "Create account with email" to show the form
-    await page.click('button:has-text("Create account with email")')
+    await page.click('button:has-text("Créer un compte avec email")')
 
     // Wait for form to be visible
     await expect(page.locator('form')).toBeVisible()
@@ -247,10 +247,10 @@ test.describe('Authentication', () => {
   test('should show error for mismatched passwords in registration', async ({
     page,
   }) => {
-    await page.goto('/en/register')
+    await page.goto('/register')
 
     // Click "Create account with email" to show the form
-    await page.click('button:has-text("Create account with email")')
+    await page.click('button:has-text("Créer un compte avec email")')
 
     // Wait for form to be visible
     await expect(page.locator('form')).toBeVisible()

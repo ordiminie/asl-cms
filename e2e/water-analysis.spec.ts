@@ -28,8 +28,8 @@ const OWNER_A = 'user-owner@gmail.com'
 /** Membre simple de TechCorp Solutions, jamais du bureau. */
 const MEMBER_A = 'user@gmail.com'
 
-const BUREAU_ROUTE = '/fr/bureau/analyses-eau'
-const PUBLIC_ROUTE = '/fr/analyses-eau'
+const BUREAU_ROUTE = '/bureau/analyses-eau'
+const PUBLIC_ROUTE = '/analyses-eau'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 
 /** Un PNG minimal valide : la validation juge la signature binaire. */
@@ -171,7 +171,7 @@ const longDate = (isoDate: string): string =>
   )
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)
