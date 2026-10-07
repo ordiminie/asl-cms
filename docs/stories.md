@@ -22,10 +22,10 @@ devis sont des jalons de livraison, et le chiffrage calendaire a été établi a
 développement agentique. Seul écart à ce jour : la GED passe avant le vote — détaillé en fin de
 document.
 
-**Exception de numérotation** : s44, s45 et s46, ajoutées en fin de numérotation le 7 octobre 2026,
-se jouent **avant s12b et avant s12d**, dans cet ordre (s44 → s45 → s46). Elles nettoient les écrans
-hérités du boilerplate avant la mise en ligne, et s46 fixe l'adresse de l'espace membre que s12d
-remplit. Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
+**Exception de numérotation** : s44, s45, s46 et s47, ajoutées en fin de numérotation le 7 octobre
+2026, se jouent **avant s12b et avant s12d**, dans cet ordre (s44 → s45 → s46 → s47). Elles
+nettoient ce qui reste du boilerplate avant la mise en ligne, et s46 fixe l'adresse de l'espace
+membre que s12d remplit. Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
 
 ## Règles transverses à toutes les stories
 
@@ -1223,7 +1223,7 @@ chaque association soit servie en HTTPS sur son propre domaine.
 
 ### Dependencies
 
-s01, s01b, s03, s03c, s08b, s12a, s44, s45, s46
+s01, s01b, s03, s03c, s08b, s12a, s44, s45, s46, s47
 
 ### Agentic notes
 
@@ -3185,6 +3185,7 @@ qui ne la concernent pas.
 - [ ] L'abonnement Stripe de la plateforme continue de fonctionner : le webhook `/api/webhooks/stripe` et les écrans plans et abonnements de `/admin` passent leurs tests.
 - [ ] Les familles `blog` et `docs` disparaissent de `NEXT_PUBLIC_ENABLED_PAGES` (schéma, `.env.development`, CI) ; `pnpm build` passe et ne génère plus aucune page retirée.
 - [ ] Le produit ne s'affiche qu'en clair : aucune page (site public, connexion, back-office du bureau, compte, `/admin`) ne propose de sélecteur de thème, et un navigateur réglé en mode sombre voit les pages en clair — vérifié en e2e avec un navigateur en mode sombre.
+- [ ] Aucune règle de `.claude/rules/` (ni sa copie `.cursor/rules/`) ni aucune note de story ne cite comme exemple un fichier ou une route retirés : notamment `rule-react-cache-next-cache.md` (routes bloquantes assumées, exemples du blog) et `rule-mdx-rendering.md`, les autres étant inventoriées au plan par une recherche sur les chemins retirés ; `pnpm check:rules` passe.
 
 ### Dependencies
 
@@ -3259,13 +3260,15 @@ qu'aucun inconnu ni membre d'une autre association ne puisse y ouvrir une sessio
 
 - [ ] `/account` reste accessible à tout utilisateur connecté et ne propose que la sécurité (email, mot de passe, double authentification, sessions) ; les adresses `/account/settings`, `/account/api-keys`, `/account/notifications`, `/account/organizations/…`, `/account/invitations/…`, `/account/billing/…` et `/team/…` répondent 404, et aucun menu n'y renvoie.
 - [ ] `/dashboard` devient l'espace membre : il ne montre plus rien du tableau de bord du boilerplate, seulement le nom de l'association et un lien vers la sécurité du compte (`/account`), en attendant « Mes parcelles » (s12d). Sans session, il redirige vers la connexion comme aujourd'hui.
-- [ ] Après connexion, quel que soit le mode, un membre du bureau ou la Présidence de l'association du domaine appelé arrive sur `/bureau`, le SuperAdmin sur `/admin`, et un membre propriétaire sur l'espace membre (`/dashboard`).
+- [ ] Après connexion, quel que soit le mode, un membre du bureau ou la Présidence de l'association du domaine appelé arrive sur `/bureau`, le SuperAdmin sur `/admin` — même s'il a aussi un rôle dans l'association —, et un membre propriétaire sur l'espace membre (`/dashboard`).
+- [ ] Sur le domaine d'une association, le menu de `/admin` propose au SuperAdmin un lien vers le back-office du bureau de cette association (`/bureau`), qui s'ouvre sans nouvelle connexion.
 - [ ] Un compte ne se connecte que sur le domaine d'une association dont il est membre, **quel que soit le mode** : mot de passe, lien magique, double authentification ou Google. Un compte membre de l'association A qui tente de se connecter sur le domaine de l'association B n'obtient aucune session et reçoit le même message qu'un compte inconnu — prouvé par un test d'accès croisé entre deux associations, pour chaque mode. Seul le SuperAdmin fait exception.
 - [ ] L'inscription libre est fermée : `/register` répond 404, et une création de compte par mot de passe adressée directement au serveur d'authentification est refusée. Un compte ne naît que du provisioning d'une association (s01), de l'ouverture du compte d'une fiche membre (s12d, à venir) ou du seed — prouvé par un test qui tente l'inscription et constate qu'aucun utilisateur n'est créé.
 - [ ] Un lien magique demandé pour une adresse inconnue ne crée aucun compte (fermeture déjà faite par s03, gardée par un test).
 - [ ] La connexion par Google reste proposée : un compte existant dont l'adresse est celle du compte Google se connecte par Google, sur le domaine de son association seulement ; un compte Google inconnu ne crée aucun utilisateur. Les connexions Apple et GitHub ne sont plus proposées ni configurées.
 - [ ] Les familles `apikey`, `organization`, `invitation`, `subscription` et `notifications` disparaissent de `NEXT_PUBLIC_ENABLED_PAGES` (schéma, `.env.development`, CI).
 - [ ] Les dates encore affichées par les écrans conservés sont formatées en français : `DEFAULT_LOCALE` de `src/lib/helper/date-helper.ts` vaut `fr`, et un test le vérifie.
+- [ ] Aucune règle de `.claude/rules/` (ni sa copie `.cursor/rules/`) ni aucune note de story ne cite comme exemple un écran ou un fichier retirés : notamment `rule-form-front.md`, qui désigne `edit-user-settings.tsx` comme « exemple vivant » (les autres règles qui citent `/account/settings` ou ce fichier sont inventoriées au plan) ; les notes de s16 sont rebranchées sur un écran conservé ; `pnpm check:rules` passe.
 
 ### Dependencies
 
@@ -3323,6 +3326,62 @@ couvre.
 
 ---
 
+## Story s47-roles-globaux-reduits — Ne garder que les rôles globaux qui servent
+
+⚠️ **Story hors du tableau de périmètre du PRD**, pour la même raison que s45 et s46. Arbitrage du
+7 octobre 2026, après la revue du découpage : les rôles **globaux** `admin`, `moderator` et
+`redactor` du boilerplate ne correspondent à aucun rôle d'ASL-CMS — Membre, Bureau et Présidence
+sont des rôles **d'association**, le SuperAdmin est le rôle global `super_admin`. Ils sont retirés.
+Elle se joue avant s12b : retirer une valeur d'énumération Postgres avant qu'une base de production
+existe ne coûte qu'une migration sur des données de recette.
+
+**En tant que** SuperAdmin **je veux** qu'il n'existe plus de rôle global sans équivalent dans
+l'association **afin que** personne n'entre dans `/admin` ou ne garde un droit par un rôle que plus
+personne ne sait attribuer.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Seul le SuperAdmin accède à `/admin` et à ses actions serveur ; un compte de rôle global `user` reçoit un refus, côté interface et côté serveur — prouvé par un test pour chaque action serveur de `/admin`.
+- [ ] Les rôles globaux `admin`, `moderator` et `redactor` n'existent plus : ni dans l'énumération `role_type` du schéma, ni dans le code d'autorisation, ni dans le formulaire de gestion des utilisateurs de `/admin`, qui ne propose plus que les rôles conservés.
+- [ ] Un compte qui portait l'un de ces rôles passe à `user` par la migration et garde ses rôles d'association — vérifié sur la base seedée avant et après migration.
+- [ ] Le seed ne crée plus aucun compte de ces rôles ; les specs e2e et les tests unitaires qui s'en servaient sont réécrits sur un rôle conservé ou retirés, pas désactivés.
+- [ ] Aucune règle de `.claude/rules/` (ni sa copie `.cursor/rules/`) ne cite plus ces rôles — notamment `rule-roles-and-organization-roles.md`, `rule-casl-authorization.md` et `rule-seed-usersroles-and-organization.md` — et `pnpm check:rules` passe.
+
+### Dependencies
+
+s03b, s46
+
+### Agentic notes
+
+Réf. `ADR 009` (modèle de retrait).
+
+- **Homonymie à ne pas casser** : `UserOrganizationRoleConst.ADMIN` vaut `board`, c'est le **Bureau**
+  de l'association (s03b). Il n'est pas concerné. Seul `RoleConst.ADMIN` (`admin`, global) part.
+- **Migration** : Postgres ne sait pas retirer une valeur d'une énumération. Il faut convertir les
+  comptes, créer le nouveau type, y basculer la colonne `user.role`, puis supprimer l'ancien. La
+  conversion des données passe par `drizzle-kit generate --custom`, jamais par du SQL écrit à la main
+  dans `drizzle/migrations/` (AGENTS.md). C'est le second commit de la story, pour pouvoir le
+  défaire seul.
+- **Voie de retour** : `git revert` du code, et une nouvelle migration qui rajoute les valeurs. Les
+  comptes convertis ne retrouvent pas leur ancien rôle — il n'en existe aucun en production.
+- **Piège Better Auth** : le plugin `admin()` (`src/lib/better-auth/auth.ts`) reconnaît par défaut le
+  rôle `admin` comme administrateur. Lui déclarer `super_admin`, sinon le SuperAdmin perd les
+  opérations du plugin (bannir, changer un rôle) au moment où `admin` disparaît.
+- Une cinquantaine d'occurrences de `RoleConst.ADMIN` : la plupart sont la paire
+  `[RoleConst.ADMIN, RoleConst.SUPER_ADMIN]` des actions de `/admin`, et `withAuthAdmin` s'appuie sur
+  la hiérarchie `roleHierarchy`. `isAdmin` de `auth-provider.tsx` est à revoir.
+- Les rôles `public` et `user` restent ; le plan vérifie à quoi sert `public` dans l'autorisation
+  avant de le garder.
+- Des tests vérifient aujourd'hui qu'un `admin` global est **refusé** sur les réglages d'une
+  association (`e2e/association-settings.spec.ts`) : ils se réécrivent sur `user`, ils ne
+  disparaissent pas.
+
+---
+
 # Récapitulatif — ordre et dépendances
 
 | Id   | Story                            | Cx  | Dépend de                                                                                                                                | Bloc |
@@ -3344,7 +3403,7 @@ couvre.
 | s11  | seo                              | 2   | s02, s04, s05, s09                                                                                                                       | A    |
 | s12  | membres-parcelles                | 4   | s01, s03, s03b                                                                                                                           | B    |
 | s12a | retrait-supabase                 | 2   | s01b                                                                                                                                     | B    |
-| s12b | mise-en-ligne                    | 3   | s01, s01b, s03, s03c, s08, s12a, s44, s45, s46                                                                                           | B    |
+| s12b | mise-en-ligne                    | 3   | s01, s01b, s03, s03c, s08, s12a, s44, s45, s46, s47                                                                                      | B    |
 | s12c | sauvegarde                       | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
 | s12d | comptes-membres                  | 3   | s03, s03c, s12, s46                                                                                                                      | B    |
 | s13  | import-initial-membres           | 3   | s12, s12d, s12c                                                                                                                          | B    |
@@ -3382,16 +3441,19 @@ couvre.
 | s44  | page-accueil                     | 3   | s02, s04, s04b, s05, s07, s11                                                                                                            | A    |
 | s45  | retrait-pages-publiques-heritees | 3   | s43, s44                                                                                                                                 | A    |
 | s46  | comptes-herites-minimum          | 4   | s03, s03b, s43, s45                                                                                                                      | B    |
+| s47  | roles-globaux-reduits            | 3   | s03b, s46                                                                                                                                | B    |
 
-**56 stories, aucune à 5.** Répartition : quatre à 1, vingt et une à 2, vingt-deux à 3, neuf à 4.
-**Sept stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**57 stories, aucune à 5.** Répartition : quatre à 1, vingt et une à 2, vingt-trois à 3, neuf à 4.
+**Huit stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
 « mise en production effective sur le VPS » ; s12c, la sauvegarde, que s13 attend avant
 d'importer les données réelles ; s43, l'application de l'ADR 008 (locale unique), ajoutée au plan
 de s11 ; s45 et s46, le retrait des pages héritées du boilerplate (blog, docs, vitrine, comptes),
-décidé le 6 octobre 2026 et placé avant s12b avec s44, la page d'accueil choisie par le bureau.
+décidé le 6 octobre 2026 et placé avant s12b avec s44, la page d'accueil choisie par le bureau ;
+s47, le retrait des rôles globaux du boilerplate sans équivalent dans l'association, décidé à la
+revue du découpage du 7 octobre.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
