@@ -3142,6 +3142,9 @@ typés) ; `ADR 010` (le choix est un paramètre d'association, jamais un slug co
 des écrans du boilerplate que l'ADR 009 n'avait pas couverts (il ne retirait que les sous-systèmes
 coûteux en RLS). Décidée le 6 octobre 2026, arbitrages du 7 octobre : **suppression du code**, pas
 simple masquage ; la vitrine commerciale de la plateforme est retirée des domaines d'association.
+Arbitrages du 7 octobre, après la recherche : l'abonnement de la plateforme est créé par le
+SuperAdmin (Stripe ou `/admin`), sans parcours d'achat en ligne ; les mentions légales et la
+politique de confidentialité d'une association sont des pages du CMS publiées par le bureau.
 
 **En tant que** visiteur du site d'une association **je veux** ne trouver que les pages de cette
 association **afin de** ne pas tomber sur un blog, une documentation technique ou une page de tarifs
@@ -3153,9 +3156,10 @@ qui ne la concernent pas.
 
 ### Acceptance criteria
 
-- [ ] Les adresses du blog hérité (`/blog`, `/blog/<slug>`, `/blog/category/…`, `/blog/page/…`), de la documentation héritée (`/docs`, `/docs/…`) et de la vitrine de la plateforme (`/pricing`, `/pricing_old`, `/checkout/…`, `/modules/…`, `/privacy`, `/terms`) répondent 404 sur le domaine d'une association, y compris quand la configuration active encore ces familles de pages.
+- [ ] Les adresses du blog hérité (`/blog`, `/blog/<slug>`, `/blog/category/…`, `/blog/page/…`), de la documentation héritée (`/docs`, `/docs/…`) et de la vitrine de la plateforme (`/pricing`, `/pricing_old`, `/checkout/…`, `/privacy`, `/terms`) répondent 404 sur le domaine d'une association, y compris quand la configuration active encore ces familles de pages.
 - [ ] Le back-office de la plateforme ne propose plus la gestion du blog : `/admin/blog` et ses sous-pages répondent 404 et n'apparaissent plus dans la navigation de `/admin` ; les autres écrans de `/admin` (associations, utilisateurs, plans, abonnements, réglages) restent accessibles au SuperAdmin.
-- [ ] Aucune page servie (site public, connexion, back-office du bureau, `/admin`) ne contient de lien vers une adresse retirée — vérifié en e2e sur les pages principales.
+- [ ] Aucune page servie (site public, connexion, réinitialisation, double authentification, back-office du bureau, `/admin`) ne contient de lien vers une adresse retirée — vérifié en e2e sur les pages principales.
+- [ ] `/modules/<module>`, la sonde d'activation de module de s01, reste en place et `e2e/tenant-isolation.spec.ts` passe sans modification.
 - [ ] Le sitemap (s11) ne liste et le `robots.txt` ne mentionne plus aucune adresse retirée.
 - [ ] L'abonnement Stripe de la plateforme continue de fonctionner : le webhook `/api/webhooks/stripe` et les écrans plans et abonnements de `/admin` passent leurs tests.
 - [ ] Les familles `blog` et `docs` disparaissent de `NEXT_PUBLIC_ENABLED_PAGES` (schéma, `.env.development`, CI) ; `pnpm build` passe et ne génère plus aucune page retirée.
@@ -3190,15 +3194,27 @@ produit).
   qui dépasse son délai sur le montage 9p, et m7 pour `docs/authentication-system.md` l. 392-393, qui
   cite encore `messages/en.json` et `messages/es.json`.
 - Les specs e2e et les tests unitaires qui visitent ces pages sont retirés avec elles, pas désactivés.
+  Quatre specs utilisent `/privacy` comme page publique de référence : elles visent désormais une page
+  publique du produit (voir la recherche).
+- `/modules/[module]` **n'est pas** de la vitrine : sonde d'activation de s01, réservée aux futurs
+  modules par l'ADR 020. Ne pas la retirer.
+- Mentions légales : aucun code. Le bureau les publie comme pages du CMS (s04) ; les liens
+  `/privacy` et `/terms` des écrans de connexion sont retirés, pas redirigés.
+- Le type `PriceRecap` (`src/components/features/checkout-stripe/`) est importé par
+  `stripe-utils.ts`, conservé : le déplacer avant de retirer le dossier.
+- `EnabledPageSchema` refuse une valeur inconnue : retirer `blog` et `docs` de l'enum sans les retirer
+  de chaque `.env` empêche le démarrage et le build.
 
 ---
 
 ## Story s46-comptes-herites-minimum — Ne garder que l'essentiel du compte
 
 ⚠️ **Story hors du tableau de périmètre du PRD**, pour la même raison que s45. Arbitrage du 7 octobre
-2026 : garder le profil et la sécurité, retirer le reste, en attendant l'espace membre du bloc B.
+2026 : garder le minimum, retirer le reste, en attendant l'espace membre du bloc B. Précisé après la
+recherche : il n'existe plus d'écran de profil (retiré en s12a) ; on garde la sécurité seule. La
+connexion par Google est conservée, sans création de compte ; Apple et GitHub sont retirés.
 
-**En tant que** membre du bureau **je veux** un espace de compte réduit à mon profil et à ma sécurité
+**En tant que** membre du bureau **je veux** un espace de compte réduit à ma sécurité
 **afin de** ne pas me perdre dans des écrans de clés d'API, d'organisations ou d'abonnement qui ne
 servent pas l'association.
 
@@ -3208,10 +3224,11 @@ servent pas l'association.
 
 ### Acceptance criteria
 
-- [ ] `/account` reste accessible à tout utilisateur connecté et ne propose que le profil et la sécurité (mot de passe, double authentification) ; les adresses `/account/api-keys`, `/account/notifications`, `/account/organizations/…`, `/account/invitations/…`, `/account/billing/…`, `/dashboard` et `/team/…` répondent 404, et aucun menu n'y renvoie.
+- [ ] `/account` reste accessible à tout utilisateur connecté et ne propose que la sécurité (email, mot de passe, double authentification, sessions) ; les adresses `/account/settings`, `/account/api-keys`, `/account/notifications`, `/account/organizations/…`, `/account/invitations/…`, `/account/billing/…`, `/dashboard` et `/team/…` répondent 404, et aucun menu n'y renvoie.
 - [ ] Après connexion, par lien magique comme par mot de passe ou double authentification, un membre du bureau ou la Présidence de l'association du domaine appelé arrive sur `/bureau`, le SuperAdmin sur `/admin`, et tout autre utilisateur sur `/account` ; plus aucun parcours ne renvoie vers `/dashboard`.
 - [ ] L'inscription libre est fermée : `/register` répond 404, et une création de compte par mot de passe adressée directement au serveur d'authentification est refusée. Un compte ne naît que du back-office (s12d) ou du seed — prouvé par un test qui tente l'inscription et constate qu'aucun utilisateur n'est créé.
-- [ ] Un lien magique demandé pour une adresse inconnue ne crée aucun compte (fermeture prévue par s03, vérifiée ici).
+- [ ] Un lien magique demandé pour une adresse inconnue ne crée aucun compte (fermeture déjà faite par s03, gardée par un test).
+- [ ] La connexion par Google reste proposée : un compte existant dont l'adresse est celle du compte Google se connecte par Google ; un compte Google inconnu ne crée aucun utilisateur. Les connexions Apple et GitHub ne sont plus proposées ni configurées.
 - [ ] Les familles `apikey`, `organization`, `invitation`, `subscription` et `notifications` disparaissent de `NEXT_PUBLIC_ENABLED_PAGES` (schéma, `.env.development`, CI).
 - [ ] Les dates encore affichées par les écrans conservés sont formatées en français : `DEFAULT_LOCALE` de `src/lib/helper/date-helper.ts` vaut `fr`, et un test le vérifie.
 
@@ -3242,6 +3259,14 @@ Réf. `ADR 009` (modèle de retrait et voie de retour), `ADR 008` (locale unique
   qu'ils ne dépendent pas de l'inscription publique. Les specs e2e se connectent par mot de passe à
   des comptes du seed : elles n'ont pas à changer, sauf celles qui s'inscrivent (`e2e/auth.spec.ts`).
 - Solde aussi m6 et les commentaires anglais de m7 dans `e2e/auth.spec.ts` (revue de s43).
+- Google sans inscription : `socialProviders.google.disableSignUp` (Better Auth 1.7.1) ;
+  `accountLinking.enabled` est déjà actif, `trustedProviders` non renseigné — vérifier au plan comment
+  un compte créé par le bureau se rattache à Google à la première connexion. **Plusieurs domaines** :
+  le retour OAuth doit être autorisé pour chaque domaine d'association dans la console Google, ou
+  passer par un domaine commun (s03c) ; à vérifier au plan et à reporter dans s12b.
+- Le lien magique et Google fixent leur destination avant de savoir qui se connecte : une
+  destination par rôle suppose une route de passage après ouverture de la session (voir la
+  recherche).
 
 ---
 
