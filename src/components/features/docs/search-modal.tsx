@@ -43,7 +43,7 @@ export function SearchModal({open, onOpenChange}: SearchModalProps) {
 
     try {
       // Use our server action for search
-      const searchResults = await searchDocsAction(searchQuery, 'en')
+      const searchResults = await searchDocsAction(searchQuery)
       setResults(searchResults)
     } catch (error) {
       console.error('Search error:', error)

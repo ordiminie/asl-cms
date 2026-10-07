@@ -16,6 +16,7 @@ import {env} from '@/env'
 import {routing} from '@/i18n/routing'
 import {
   type DocItem,
+  DOCS_CONTENT_LOCALE,
   findDocBySlug,
   getDocFilePath,
   getDocsNavigation,
@@ -45,30 +46,13 @@ function getAllSlugsFromStructure(items: DocItem[]): string[] {
 }
 
 export async function generateStaticParams() {
-  const params: {locale: string; slug: string[]}[] = []
+  const slugs = getAllSlugsFromStructure(
+    getDocsStructure(DOCS_CONTENT_LOCALE).items
+  )
 
-  for (const locale of routing.locales) {
-    try {
-      const structure = getDocsStructure(locale)
-      const slugs = getAllSlugsFromStructure(structure.items)
-
-      if (slugs.length > 0) {
-        for (const slug of slugs) {
-          params.push({
-            locale,
-            slug: slug.split('/'),
-          })
-        }
-      }
-    } catch (error) {
-      console.warn(
-        `Failed to generate static params for locale ${locale}:`,
-        error
-      )
-    }
-  }
-
-  return params
+  return routing.locales.flatMap((locale) =>
+    slugs.map((slug) => ({locale, slug: slug.split('/')}))
+  )
 }
 
 export async function generateMetadata({
@@ -77,7 +61,7 @@ export async function generateMetadata({
   const resolvedParams = await params
   const slug = resolvedParams.slug.join('/')
   const locale = resolvedParams.locale
-  const docItem = findDocBySlug(slug, locale)
+  const docItem = findDocBySlug(slug, DOCS_CONTENT_LOCALE)
 
   if (!docItem) {
     return {
@@ -86,7 +70,7 @@ export async function generateMetadata({
     }
   }
 
-  const filePath = getDocFilePath(slug, locale)
+  const filePath = getDocFilePath(slug, DOCS_CONTENT_LOCALE)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let frontmatter: any = {}
 
@@ -183,13 +167,13 @@ export default async function DocsPage({params}: DocsPageProps) {
   const t = await getTranslations('DocsPage')
   const resolvedParams = await params
   const slug = resolvedParams.slug.join('/')
-  const docItem = findDocBySlug(slug, resolvedParams.locale)
+  const docItem = findDocBySlug(slug, DOCS_CONTENT_LOCALE)
 
   if (!docItem) {
     notFound()
   }
 
-  const filePath = getDocFilePath(slug, resolvedParams.locale)
+  const filePath = getDocFilePath(slug, DOCS_CONTENT_LOCALE)
   let content = ''
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let frontmatter: any = {}
@@ -238,7 +222,7 @@ export default async function DocsPage({params}: DocsPageProps) {
           <MDXContent source={content} />
         </Suspense>
 
-        <DocsPagination {...getDocsNavigation(slug, resolvedParams.locale)} />
+        <DocsPagination {...getDocsNavigation(slug, DOCS_CONTENT_LOCALE)} />
       </div>
 
       <TableOfContents items={headings} />

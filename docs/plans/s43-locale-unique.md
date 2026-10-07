@@ -139,6 +139,16 @@ d'effet.
     `LANGUAGE_OPTIONS` réduit au français (minimum sur les écrans hérités) ;
   - `src/lib/__tests__/locale-defaults.test.ts` — test qui motive ces retouches et celles de
     `email-registry.ts`, `auth-helper.ts`, `blog.server.ts`.
+  - Échec du build de production constaté au `/ks-ship` (2026-10-07) : sous Cache Components,
+    `generateStaticParams` de `docs/[...slug]` ne rendait plus aucun param, la documentation héritée
+    n'ayant de contenu que sous `_files/en` alors que le routage ne sert plus que `fr`. Correctif
+    (direction validée par l'utilisatrice, révise la conséquence « la documentation héritée répond
+    404 ») : la documentation lit son contenu dans une langue fixe, `DOCS_CONTENT_LOCALE`
+    (`src/lib/files/docs-file-helper.ts`), indépendante de la locale du routage, et ses params ne
+    portent que la locale servie. Fichiers : `src/lib/files/docs-file-helper.ts`,
+    `src/app/[locale]/docs/[...slug]/page.tsx`, `src/app/[locale]/docs/actions.ts`,
+    `src/app/[locale]/docs/layout.tsx`, `src/components/features/docs/search-modal.tsx`, et le test
+    `src/app/[locale]/docs/docs-locale.test.ts`.
 - **Supprimés** : `messages/en.json`, `messages/es.json`, `src/components/lang-toggle.tsx`.
 - **Non touchés, volontairement** : `src/app/[locale]/**` reste en place (ADR 008) ; schéma de base et
   migrations (décision C) ; blog, docs et réglages hérités au-delà du typage (décision de
