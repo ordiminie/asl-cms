@@ -27,7 +27,7 @@ const TENANT_A_NAME = 'TechCorp Solutions'
 const TENANT_B = `http://127.0.0.1:${PORT}`
 
 const PASSWORD = 'Azerty123'
-const IDENTITY_PAGE = '/fr/bureau/identite'
+const IDENTITY_PAGE = '/bureau/identite'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 const PAGE_TITLE = "Identité de l'association"
 
@@ -67,7 +67,7 @@ const fileWith = (signature: number[], marker: string) =>
   ])
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)
@@ -246,7 +246,7 @@ test.describe.serial('s01b — identité de l’association', () => {
       timeout: 15_000,
     })
 
-    await page.goto(`${TENANT_A}/fr/privacy`, {waitUntil: 'load'})
+    await page.goto(`${TENANT_A}/privacy`, {waitUntil: 'load'})
     const headerLogo = page
       .getByRole('banner')
       .getByRole('img', {name: `Logo de l'association ${TENANT_A_NAME}`})
@@ -336,7 +336,7 @@ test.describe.serial('s01b — identité de l’association', () => {
 
     // La page déclare le favicon de la route, propre au domaine.
     for (const base of [TENANT_A, TENANT_B]) {
-      await page.goto(`${base}/fr/privacy`, {waitUntil: 'load'})
+      await page.goto(`${base}/privacy`, {waitUntil: 'load'})
       await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute(
         'href',
         /\/api\/identity\/favicon/

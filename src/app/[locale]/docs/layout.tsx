@@ -12,14 +12,10 @@ import {getDocsStructureAction} from './actions'
 
 interface DocsLayoutProps {
   children: React.ReactNode
-  params: Promise<{
-    locale: string
-  }>
 }
 
-export default async function DocsLayout({children, params}: DocsLayoutProps) {
-  const resolvedParams = await params
-  const docsStructure = await getDocsStructureAction(resolvedParams.locale)
+export default async function DocsLayout({children}: DocsLayoutProps) {
+  const docsStructure = await getDocsStructureAction()
   return (
     <SidebarProvider className="max-w-full overflow-x-clip">
       <DocsSidebar structure={docsStructure} />

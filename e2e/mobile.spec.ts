@@ -17,6 +17,6 @@ test.describe('Mobile Navigation', () => {
     await expect(page).toHaveTitle('TechCorp Solutions')
 
     // Check for hero content
-    await expect(page.getByText('Modern SaaS platform')).toBeVisible()
+    await expect(page.getByText('La plateforme SaaS moderne')).toBeVisible()
   })
 })

@@ -78,14 +78,6 @@
     "description": "Next SaaS Boilerplate",
     "titleTemplate": "%s · {association}"
   },
-  "LangToggle": {
-    "label": "Changer de langue",
-    "languages": {
-      "fr": "Français",
-      "en": "English",
-      "es": "Español"
-    }
-  },
   "PublicLayout": {
     "menuLabel": "Menu du site"
   },

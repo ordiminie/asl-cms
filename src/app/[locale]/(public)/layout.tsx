@@ -7,7 +7,6 @@ import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {AssociationMark} from '@/components/features/association/association-mark'
 import PublicFooter from '@/components/features/layouts/public-footer'
 import {PublicMobileMenu} from '@/components/features/layouts/public-mobile-menu'
-import {LangToggle} from '@/components/lang-toggle'
 import {ModeToggle} from '@/components/theme-toggle'
 import {Button} from '@/components/ui/button'
 import {routing} from '@/i18n/routing'
@@ -71,7 +70,6 @@ export default async function PublicLayout({children}: PropsWithChildren) {
 
             <div className="flex flex-1 items-center justify-end space-x-2">
               <div className="flex items-center gap-2">
-                <LangToggle />
                 <Button asChild className="hidden sm:flex">
                   <Link href="/login">Connexion</Link>
                 </Button>

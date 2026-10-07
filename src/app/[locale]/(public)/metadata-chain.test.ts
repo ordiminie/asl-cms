@@ -123,7 +123,7 @@ const resolveChain = (page: Metadata | null) =>
       [null, null],
       [page, null],
     ],
-    Promise.resolve('/fr/contact'),
+    Promise.resolve('/contact'),
     {trailingSlash: false, isStaticMetadataRouteFile: false}
   )
 

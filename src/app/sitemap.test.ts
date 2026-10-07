@@ -9,7 +9,7 @@ vi.mock('@/app/dal/sitemap-dal', () => ({
 vi.mock('@/app/dal/blog-dal', () => ({
   BLOG_POSTS_PER_PAGE: 10,
   getAllUnifiedBlogSlugsDal: vi.fn(async () => [
-    {postId: 'p', slug: 'article', locale: 'en'},
+    {postId: 'p', slug: 'article', locale: 'fr'},
   ]),
   getTotalPagesDal: vi.fn(async () => 1),
   getAllBlogCategoriesDal: vi.fn(async () => []),

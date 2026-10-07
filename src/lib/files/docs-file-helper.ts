@@ -2,6 +2,12 @@ import fs from 'fs'
 import matter from 'gray-matter'
 import path from 'path'
 
+/**
+ * Langue du contenu de la documentation heritee : seul `_files/en` existe. Elle
+ * ne suit pas la locale du routage (francais seul depuis s43).
+ */
+export const DOCS_CONTENT_LOCALE = 'en'
+
 export interface DocItem {
   title: string
   slug: string
@@ -44,7 +50,7 @@ function buildSlug(pathParts: string[]): string {
 function scanDirectory(
   dirPath: string,
   basePath: string = '',
-  locale: string = 'en'
+  locale: string = DOCS_CONTENT_LOCALE
 ): DocItem[] {
   if (!fs.existsSync(dirPath)) {
     return []
@@ -161,7 +167,9 @@ function scanDirectory(
   return items.sort((a, b) => a.order - b.order)
 }
 
-export function getDocsStructure(locale: string = 'en'): DocsStructure {
+export function getDocsStructure(
+  locale: string = DOCS_CONTENT_LOCALE
+): DocsStructure {
   const docsPath = path.join(
     process.cwd(),
     'src',
@@ -178,7 +186,7 @@ export function getDocsStructure(locale: string = 'en'): DocsStructure {
 
 export function findDocBySlug(
   slug: string,
-  locale: string = 'en'
+  locale: string = DOCS_CONTENT_LOCALE
 ): DocItem | null {
   const structure = getDocsStructure(locale)
 
@@ -201,7 +209,7 @@ export function findDocBySlug(
 
 export function getDocFilePath(
   slug: string,
-  locale: string = 'en'
+  locale: string = DOCS_CONTENT_LOCALE
 ): string | null {
   const docsPath = path.join(
     process.cwd(),
@@ -322,7 +330,7 @@ export function flattenDocsItems(items: DocItem[]): DocItem[] {
 
 export function getDocsNavigation(
   slug: string,
-  locale: string = 'en'
+  locale: string = DOCS_CONTENT_LOCALE
 ): DocsNavigation {
   const pages = flattenDocsItems(getDocsStructure(locale).items)
   const index = pages.findIndex((page) => page.slug === slug)

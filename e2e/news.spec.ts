@@ -30,8 +30,8 @@ const MEMBER_A = 'user@gmail.com'
 /** Bureau de Marketing Pro. */
 const BOARD_B = 'user-admin@gmail.com'
 
-const NEWS_ROUTE = '/fr/bureau/actualites'
-const PUBLIC_NEWS_ROUTE = '/fr/actualites'
+const NEWS_ROUTE = '/bureau/actualites'
+const PUBLIC_NEWS_ROUTE = '/actualites'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 const NOT_FOUND_TITLE = 'Page non trouvée'
 
@@ -123,7 +123,7 @@ const inTenantScope = async <T>(
 }
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

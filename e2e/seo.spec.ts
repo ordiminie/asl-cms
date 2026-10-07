@@ -22,8 +22,8 @@ const PASSWORD = 'Azerty123'
 /** Présidente de TechCorp Solutions. */
 const OWNER_A = 'user-owner@gmail.com'
 
-const PAGES_ROUTE = '/fr/bureau/pages'
-const SETTINGS_ROUTE = '/fr/bureau/reglages'
+const PAGES_ROUTE = '/bureau/pages'
+const SETTINGS_ROUTE = '/bureau/reglages'
 const SETTINGS_TITLE = "Réglages de l'association"
 
 const GOOGLE_CODE = 'k3Jd8-QwX_9mLp2vRtY7aBcDeFgHiJ0kLmNoPq'
@@ -31,7 +31,7 @@ const SAVED_SEO =
   'Réglages enregistrés. Google en tiendra compte à son prochain passage sur le site.'
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)
@@ -198,7 +198,7 @@ test.describe.serial('s11 — référencement', () => {
     await publish(page)
 
     const visitor = await browser.newPage()
-    await visitor.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await visitor.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     await expect(visitor).toHaveTitle(
       'Analyses de l’eau du domaine · TechCorp Solutions'
     )
@@ -223,7 +223,7 @@ test.describe.serial('s11 — référencement', () => {
       .fill('')
     await publish(page)
 
-    await visitor.goto(`${TENANT_A}/fr/${slug}`, {waitUntil: 'load'})
+    await visitor.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
     await expect(visitor).toHaveTitle('Qualité de l’eau · TechCorp Solutions')
     const image = await metaContent(visitor, 'meta[property="og:image"]')
     expect(image).toMatch(
@@ -285,12 +285,12 @@ test.describe.serial('s11 — référencement', () => {
     await expect(page.getByText(SAVED_SEO)).toBeVisible({timeout: 15_000})
 
     const visitor = await browser.newPage()
-    await visitor.goto(`${TENANT_A}/fr/contact`, {waitUntil: 'load'})
+    await visitor.goto(`${TENANT_A}/contact`, {waitUntil: 'load'})
     expect(
       await metaContent(visitor, 'meta[name="google-site-verification"]')
     ).toBe(GOOGLE_CODE)
 
-    await visitor.goto(`${TENANT_B}/fr/contact`, {waitUntil: 'load'})
+    await visitor.goto(`${TENANT_B}/contact`, {waitUntil: 'load'})
     await expect(
       visitor.locator('meta[name="google-site-verification"]')
     ).toHaveCount(0)
@@ -311,7 +311,7 @@ test.describe.serial('s11 — référencement', () => {
       `Sitemap: ${TENANT_B}/sitemap.xml`
     )
 
-    await page.goto(`${TENANT_B}/fr/contact`, {waitUntil: 'load'})
+    await page.goto(`${TENANT_B}/contact`, {waitUntil: 'load'})
     expect(await metaContent(page, 'meta[property="og:url"]')).toBe(
       `${TENANT_B}/contact`
     )
@@ -323,7 +323,7 @@ test.describe.serial('s11 — référencement', () => {
     )
     await expect(page).toHaveTitle(/· Marketing Pro$/)
 
-    await page.goto(`${TENANT_B}/fr/${slug}`, {waitUntil: 'load'})
+    await page.goto(`${TENANT_B}/${slug}`, {waitUntil: 'load'})
     await expect(page.getByText('Page non trouvée')).toBeVisible({
       timeout: 20_000,
     })

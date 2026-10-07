@@ -90,11 +90,11 @@ test.describe('critère 2 — le tenant vient du domaine appelé', () => {
     // Le module `voirie` est actif chez A, inactif chez B : la même URL se
     // comporte donc différemment selon le domaine, ce qui ne peut venir que de
     // la résolution par `Host`.
-    const responseA = await page.goto(`${TENANT_A}/fr/modules/voirie`)
+    const responseA = await page.goto(`${TENANT_A}/modules/voirie`)
     expect(responseA?.status()).toBe(200)
     await expect(page.getByTestId('module-actif')).toContainText(TENANT_A_NAME)
 
-    const responseB = await page.goto(`${TENANT_B}/fr/modules/voirie`)
+    const responseB = await page.goto(`${TENANT_B}/modules/voirie`)
     expect(responseB?.status()).toBe(200)
     await expect(page.getByTestId('module-actif')).toHaveCount(0)
     await expect(page.getByText(TENANT_A_NAME)).toHaveCount(0)
@@ -103,7 +103,7 @@ test.describe('critère 2 — le tenant vient du domaine appelé', () => {
   test('un domaine inconnu ne sert le contenu d’aucune association', async ({
     page,
   }) => {
-    const response = await page.goto(`${UNKNOWN_DOMAIN}/fr`)
+    const response = await page.goto(`${UNKNOWN_DOMAIN}/`)
 
     // Le statut est **200**, et l'assertion est stricte : sous Cache
     // Components, `notFound()` part après le début de la réponse (ADR 013,
@@ -125,7 +125,7 @@ test.describe('critère 2 — le tenant vient du domaine appelé', () => {
     // seul segment trouve désormais une route. Un slug inconnu y rend un 200
     // portant l'UI « Page non trouvée » (preuve dans `page-cms.spec.ts`) ; seul
     // un chemin qu'aucune route ne peut matcher garde le vrai 404.
-    const response = await page.goto(`${TENANT_A}/fr/does-not-exist/nested`)
+    const response = await page.goto(`${TENANT_A}/does-not-exist/nested`)
 
     expect(response?.status()).toBe(404)
   })
@@ -133,7 +133,7 @@ test.describe('critère 2 — le tenant vient du domaine appelé', () => {
 
 test.describe('critère 4 — activation des modules', () => {
   test('la route d’un module inactif est introuvable', async ({page}) => {
-    const response = await page.goto(`${TENANT_A}/fr/modules/vote`)
+    const response = await page.goto(`${TENANT_A}/modules/vote`)
 
     expect(response?.status()).toBe(200)
     await expect(page.getByTestId('module-actif')).toHaveCount(0)
@@ -142,7 +142,7 @@ test.describe('critère 4 — activation des modules', () => {
   test('une clé de module inconnue est introuvable, pas active par défaut', async ({
     page,
   }) => {
-    const response = await page.goto(`${TENANT_A}/fr/modules/module-fictif`)
+    const response = await page.goto(`${TENANT_A}/modules/module-fictif`)
 
     expect(response?.status()).toBe(200)
     await expect(page.getByTestId('module-actif')).toHaveCount(0)
@@ -153,7 +153,7 @@ test.describe('critère 6 — le tenant A ne voit rien du tenant B', () => {
   test('le back-office ne montre que les soumissions du domaine appelé', async ({
     page,
   }) => {
-    await page.goto(`${TENANT_A}/en/login/prestataire`)
+    await page.goto(`${TENANT_A}/login/prestataire`)
     await expect(page.locator('form')).toBeVisible()
     await page.fill('input[name="email"]', 'admin@gmail.com')
     await page.fill('input[name="password"]', PASSWORD)
@@ -162,7 +162,7 @@ test.describe('critère 6 — le tenant A ne voit rien du tenant B', () => {
       timeout: 15_000,
     })
 
-    await page.goto(`${TENANT_A}/en/admin/submissions`, {waitUntil: 'load'})
+    await page.goto(`${TENANT_A}/admin/submissions`, {waitUntil: 'load'})
 
     // Au premier chargement à froid, le tableau existe un temps en deux copies
     // masquées (streaming puis reprise React) : getByText les verrait toutes

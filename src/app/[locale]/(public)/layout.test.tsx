@@ -100,4 +100,15 @@ describe('PublicLayout — la navigation composee par le bureau', () => {
     expect(screen.queryByRole('link', {name: 'Docs'})).toBeNull()
     expect(screen.queryByRole('link', {name: 'Blog'})).toBeNull()
   })
+
+  it('ne propose plus de sélecteur de langue (ADR 008, s43)', async () => {
+    withMenu([])
+
+    await renderLayout()
+
+    expect(
+      screen.queryByRole('combobox', {name: 'Changer de langue'})
+    ).toBeNull()
+    expect(screen.queryByRole('combobox')).toBeNull()
+  })
 })

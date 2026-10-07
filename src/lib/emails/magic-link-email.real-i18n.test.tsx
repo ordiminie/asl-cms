@@ -31,12 +31,12 @@ describe('MagicLinkMail — planche D', () => {
       await MagicLinkMail({
         url: URL_WITH_PARAMS,
         association: {name: 'ASL Les Pins', hue: 195},
-        locale: 'es',
+        locale: 'fr',
       })
     )
     const doc = new DOMParser().parseFromString(html, 'text/html')
 
-    expect(doc.documentElement.getAttribute('lang')).toBe('es')
+    expect(doc.documentElement.getAttribute('lang')).toBe('fr')
   })
 
   it('affiche le logo en en-tête, avec le nom en texte alternatif', async () => {

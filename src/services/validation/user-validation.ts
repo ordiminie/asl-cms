@@ -1,7 +1,6 @@
 import {getTranslations} from 'next-intl/server'
 import {z} from 'zod'
 
-import {SUPPORTED_LANGUAGES} from '../types/common-type'
 import {
   CreateUser,
   CreateUserFromStripe,
@@ -107,9 +106,19 @@ export const themeSchema = z.enum([
   'system',
 ]) satisfies z.Schema<Theme>
 
-export const languageSchema = z.enum(
-  SUPPORTED_LANGUAGES
-) satisfies z.Schema<Language>
+/**
+ * Valeurs de l'enum de base `language_type`, gardees telles quelles (s43,
+ * decision C) : la preference n'est plus lue, le produit ne sert que le
+ * francais (ADR 008). Elle ne suit donc plus les locales du routage.
+ * Liste recopiee et non importee de `languageEnum` : ce fichier est importe
+ * par un composant client, qui ne doit pas embarquer le modele Drizzle. Un
+ * test (`locale-defaults.test.ts`) la tient egale a `languageEnum.enumValues`.
+ */
+export const languageSchema = z.enum([
+  'fr',
+  'en',
+  'es',
+]) satisfies z.Schema<Language>
 
 export const notificationChannelSchema = z.enum([
   'email',

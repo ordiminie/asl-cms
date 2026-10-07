@@ -41,7 +41,12 @@ export default getRequestConfig(async ({locale}) => {
     paramValue = await rootParams.locale()
   } catch {
     const cookieStore = await cookies()
-    paramValue = cookieStore.get('NEXT_LOCALE')?.value ?? routing.defaultLocale
+    const cookieValue = cookieStore.get('NEXT_LOCALE')?.value
+    // Un cookie pose avant la locale unique (`en`, `es`) peut survivre dans un
+    // navigateur : la Server Action repond en francais plutot qu'en 404 (s43).
+    paramValue = hasLocale(routing.locales, cookieValue)
+      ? cookieValue
+      : routing.defaultLocale
   }
 
   if (!hasLocale(routing.locales, paramValue)) {

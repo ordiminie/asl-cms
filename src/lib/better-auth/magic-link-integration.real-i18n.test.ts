@@ -208,13 +208,32 @@ describe('sendMagicLink', () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue(member)
 
     await sendMagicLink(
-      {email, url, metadata: {locale: 'es'}},
+      {email, url, metadata: {locale: 'fr'}},
       requestContext()
     )
 
     const [sent] = memoryTransport.messages
-    expect(sent.subject).toMatch(/ASL Les Pins — su enlace de conexión$/)
-    expect(htmlOf().documentElement.getAttribute('lang')).toBe('es')
+    expect(sent.subject).toMatch(/ASL Les Pins — votre lien de connexion$/)
+    expect(htmlOf().documentElement.getAttribute('lang')).toBe('fr')
+  })
+
+  it('écrit en français une demande venue d’une ancienne page es ou en (s43)', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue(member)
+
+    await sendMagicLink(
+      {email, url, metadata: {locale: 'es'}},
+      requestContext()
+    )
+    await sendMagicLink(
+      {email, url, metadata: {locale: 'en'}},
+      requestContext()
+    )
+
+    expect(memoryTransport.messages).toHaveLength(2)
+    for (const sent of memoryTransport.messages) {
+      expect(sent.subject).toMatch(/ASL Les Pins — votre lien de connexion$/)
+      expect(sent.html).toContain('lang="fr"')
+    }
   })
 
   it('écrit en français sans locale transmise, ou avec une locale non servie (ADR 008)', async () => {

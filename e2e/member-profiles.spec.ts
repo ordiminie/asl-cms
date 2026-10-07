@@ -35,8 +35,8 @@ const OWNER_A = 'user-owner@gmail.com'
 /** Membre du bureau (rôle `board`) de Marketing Pro. */
 const BOARD_B = 'user-admin@gmail.com'
 
-const LIST_ROUTE = '/fr/bureau/proprietaires'
-const NEW_ROUTE = '/fr/bureau/proprietaires/nouveau'
+const LIST_ROUTE = '/bureau/proprietaires'
+const NEW_ROUTE = '/bureau/proprietaires/nouveau'
 
 /** Fiches du seed de TechCorp (`tenant-member-profiles-seed.ts`). */
 const SEED_DUBOIS = 'a1200000-0000-4000-8000-000000000002'
@@ -248,7 +248,7 @@ const cleanUpRun = () =>
   })
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)

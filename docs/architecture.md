@@ -148,9 +148,12 @@ Les **secrets** ne sont pas des paramètres : ils vivent dans `@/env` (validatio
   côtés du même geste — plus les écrans de connexion et `/api/` ; et les layouts `(app)`,
   `(bureau)`, `(auth)` et `admin` portent `robots: noindex, nofollow`, qui couvre par construction
   toute route créée dessous, quel que soit son segment.
-- **L'ADR 008 est contourné, pas appliqué** : le sitemap n'émet que des adresses sans préfixe, sans
-  alternative de langue, et chaque page publique déclare l'adresse sans préfixe comme canonique.
-  `/fr/x` et `/es/x` restent servies jusqu'à **s43-locale-unique**, qui applique l'ADR.
+- **L'ADR 008 est appliqué** (s43-locale-unique, ADR 031) : le routage ne déclare que `fr`, avec
+  `localePrefix: 'never'` ; le sitemap n'émet que des adresses sans préfixe, sans alternative de
+  langue, et chaque page publique déclare l'adresse sans préfixe comme canonique. Les anciennes
+  adresses `/fr/x`, `/en/x` et `/es/x` redirigent en **308** vers `/x` par les `redirects()` de
+  `next.config.ts` ; la liste `LEGACY_LOCALE_PREFIXES` (`src/lib/routing/legacy-locale-prefixes.ts`)
+  alimente aussi les interdictions préfixées de `robots.txt` et les slugs réservés du CMS.
 - Les métadonnées d'une page suivent une chaîne de repli pure (`src/lib/seo/resolve-metadata.ts`) :
   ce que le bureau a saisi, sinon la page, sinon l'association (description et code Google en
   paramètres, ADR 016), sinon rien — jamais une balise vide. L'image de repli est générée par

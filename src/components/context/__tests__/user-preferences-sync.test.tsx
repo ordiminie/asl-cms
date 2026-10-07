@@ -1,5 +1,5 @@
 import {Suspense} from 'react'
-import {describe, expect, it, vi} from 'vitest'
+import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 import {act, render, waitFor} from '@/__tests__/customRender'
 import type {CurrentUserContext} from '@/app/dal/user-dal'
@@ -8,19 +8,25 @@ import {UserPreferencesSync} from '@/components/context/user-preferences-sync'
 import {Language, User} from '@/services/types/domain/user-types'
 
 const replaceMock = vi.fn()
-const pathnameMock = vi.fn<() => string>()
-const paramsMock = vi.fn<() => Record<string, string>>()
+const setThemeMock = vi.fn()
 
 vi.mock('@/i18n/navigation', () => ({
   useRouter: () => ({replace: replaceMock, push: vi.fn()}),
-  usePathname: () => pathnameMock(),
+  usePathname: () => '/bureau',
 }))
 
 vi.mock('next/navigation', () => ({
-  useParams: () => paramsMock(),
+  useParams: () => ({locale: 'fr'}),
+  useRouter: () => ({replace: replaceMock, push: vi.fn()}),
+  usePathname: () => '/bureau',
 }))
 
-const buildUser = (language: Language): User =>
+vi.mock('next-themes', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useTheme: () => ({theme: 'light', setTheme: setThemeMock}),
+}))
+
+const buildUser = (language: Language, theme?: 'light' | 'dark'): User =>
   ({
     id: 'ae760f8e-4aa6-4d71-a4c8-344429b7ae21',
     name: 'Test User',
@@ -36,14 +42,14 @@ const buildUser = (language: Language): User =>
     banExpires: null,
     twoFactorEnabled: false,
     stripeCustomerId: null,
-    settings: {language},
+    settings: {language, ...(theme ? {theme} : {})},
   }) as User
 
 // La session est une promesse déroulée par `use()` : le rendu suspend, donc il
 // faut un act() attendu pour que React reprenne après résolution.
-const renderSync = async (language: Language) => {
+const renderSync = async (language: Language, theme?: 'light' | 'dark') => {
   const userPromise: Promise<CurrentUserContext> = Promise.resolve({
-    user: buildUser(language),
+    user: buildUser(language, theme),
     activeOrganization: null,
   })
 
@@ -58,38 +64,26 @@ const renderSync = async (language: Language) => {
   })
 }
 
-describe('UserPreferencesSync - bascule de locale du profil', () => {
-  it('ne re-préfixe pas un pathname déjà préfixé par la locale', async () => {
+describe('UserPreferencesSync - locale unique (ADR 008, s43)', () => {
+  beforeEach(() => {
     replaceMock.mockClear()
-    pathnameMock.mockReturnValue('/fr/dashboard')
-    paramsMock.mockReturnValue({locale: 'fr'})
-
-    await renderSync('en')
-
-    await waitFor(() =>
-      expect(replaceMock).toHaveBeenCalledWith('/dashboard', {locale: 'en'})
-    )
+    setThemeMock.mockClear()
   })
 
-  it('laisse intact un pathname non préfixé', async () => {
-    replaceMock.mockClear()
-    pathnameMock.mockReturnValue('/dashboard')
-    paramsMock.mockReturnValue({locale: 'fr'})
+  it.each<Language>(['en', 'es', 'fr'])(
+    'un compte dont la langue enregistrée est %s ne déclenche aucune navigation',
+    async (language) => {
+      await renderSync(language)
 
-    await renderSync('es')
+      await waitFor(() => expect(setThemeMock).not.toHaveBeenCalled())
+      expect(replaceMock).not.toHaveBeenCalled()
+    }
+  )
 
-    await waitFor(() =>
-      expect(replaceMock).toHaveBeenCalledWith('/dashboard', {locale: 'es'})
-    )
-  })
+  it('applique toujours le thème enregistré', async () => {
+    await renderSync('en', 'dark')
 
-  it('ne redirige pas quand la langue du profil est déjà la locale courante', async () => {
-    replaceMock.mockClear()
-    pathnameMock.mockReturnValue('/fr/dashboard')
-    paramsMock.mockReturnValue({locale: 'fr'})
-
-    await renderSync('fr')
-
-    await waitFor(() => expect(replaceMock).not.toHaveBeenCalled())
+    await waitFor(() => expect(setThemeMock).toHaveBeenCalledWith('dark'))
+    expect(replaceMock).not.toHaveBeenCalled()
   })
 })

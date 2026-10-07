@@ -5,10 +5,11 @@ import matter from 'gray-matter'
 import {cacheLife} from 'next/cache'
 import path from 'path'
 
+import {routing} from '@/i18n/routing'
 import {MdxBlogPost, MdxFrontmatter} from '@/services/types/domain/blog-types'
 
 const SUPPORTED_EXTENSIONS = ['.mdx', '.mdc']
-const SUPPORTED_LOCALES = ['en', 'fr', 'es']
+const SUPPORTED_LOCALES: readonly string[] = routing.locales
 
 function getContentDir(): string {
   return path.join(process.cwd(), 'content/blog')

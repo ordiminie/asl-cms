@@ -1,32 +1,30 @@
+import {readdirSync, readFileSync} from 'node:fs'
+import path from 'node:path'
+
 import {describe, expect, it} from 'vitest'
 
-import en from '../../../messages/en.json'
-import es from '../../../messages/es.json'
 import fr from '../../../messages/fr.json'
 
 /**
- * Les catalogues restent complets dans les trois langues, meme si le produit
- * ne sert que le francais (ADR 008) : une cle presente d'un seul cote se
- * decouvre autrement le jour ou une locale est rouverte, jamais avant.
+ * Le produit ne sert que le francais (ADR 008, s43) : `messages/fr.json` est
+ * le seul catalogue. Les gardes de parite fr/en/es ont perdu leur objet avec
+ * les fichiers ; il reste a verifier que chaque espace de noms attendu existe
+ * et n'est pas vide.
  */
-const flatKeys = (value: unknown, prefix = ''): string[] => {
-  if (typeof value !== 'object' || value === null) return [prefix]
+const flatEntries = (value: unknown, prefix = ''): [string, unknown][] =>
+  typeof value !== 'object' || value === null
+    ? [[prefix, value]]
+    : Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
+        flatEntries(child, prefix ? `${prefix}.${key}` : key)
+      )
 
-  return Object.entries(value as Record<string, unknown>).flatMap(
-    ([key, child]) => flatKeys(child, prefix ? `${prefix}.${key}` : key)
-  )
-}
+/** Le seul gabarit de cle du formulaire : `fields.${field}.label`. */
+const FIELD_PLACEHOLDER = /\$\{field\}/
 
-const catalogs = {en, es} as const
+const repositoryRoot = path.resolve(import.meta.dirname, '../../..')
 
-/**
- * Les sept espaces de noms introduits par s04, plus les deux de s05 et les
- * deux de s09. La garde
- * porte sur tous, pas seulement sur les deux plus gros : une chaine recopiee du
- * francais s'etait glissee dans SortableList, hors du perimetre trop etroit de
- * la garde.
- */
-const translatedNamespaces = [
+/** Les espaces de noms introduits par s04, s05 et s09. */
+const pageNamespaces = [
   'PublicCmsPage',
   'PreviewBar',
   'SortableList',
@@ -40,118 +38,78 @@ const translatedNamespaces = [
   'PublicWaterAnalysisPage',
 ] as const
 
-/**
- * Six libelles anglais coincident mot pour mot avec le francais : ce sont les
- * traductions justes, pas des copies oubliees. Les nommer un par un garde la
- * garde stricte sur les 173 autres valeurs.
- */
-const identicalByTranslation = new Set([
-  'en:BureauPagesPage.title',
-  'en:BureauPagesPage.columns.actions',
-  'en:BureauNewsPage.columns.date',
-  'en:BureauNewsPage.columns.actions',
-  'en:BureauNewsPage.editor.dateLabel',
-  'en:BureauNewsPage.editor.imageLabel',
-])
-
-const flatEntries = (value: unknown, prefix = ''): [string, unknown][] =>
-  typeof value !== 'object' || value === null
-    ? [[prefix, value]]
-    : Object.entries(value as Record<string, unknown>).flatMap(([key, child]) =>
-        flatEntries(child, prefix ? `${prefix}.${key}` : key)
+describe('catalogue unique de messages (ADR 008, s43)', () => {
+  it('messages/ ne contient plus que le francais', () => {
+    expect(
+      readdirSync(path.join(repositoryRoot, 'messages')).filter((file) =>
+        file.endsWith('.json')
       )
+    ).toEqual(['fr.json'])
+  })
 
-describe('catalogues de messages des pages CMS (s04)', () => {
-  for (const namespace of [
-    'PublicCmsPage',
-    'BureauPagesPage',
-    'RestrictedMarkdownEditor',
-    'BureauNewsPage',
-    'PublicNewsPage',
-    'BureauWaterAnalysisPage',
-    'PublicWaterAnalysisPage',
-  ] as const) {
-    it(`${namespace} porte les memes cles en fr, en et es`, () => {
-      const expected = flatKeys(
-        (fr as Record<string, unknown>)[namespace]
-      ).sort()
+  /*
+   * Preuve consignee avant le retrait de en.json : treize cles ContactPage
+   * n'existaient qu'en anglais (card.*, fields.*.placeholder, validation
+   * subjectMin/subjectMax/contentMin, errors.server/allFieldsRequired/
+   * subjectRange/contentRange/emailInvalid). Aucun appel ne les vise : la
+   * seule cle construite du formulaire est `fields.${field}.label`. Ce test
+   * relit les sources du contact et exige que chaque cle appelee existe en
+   * francais.
+   */
+  it('chaque cle ContactPage appelee par le formulaire de contact existe en francais', () => {
+    const contactDirectory = path.join(
+      repositoryRoot,
+      'src/app/[locale]/(public)/contact'
+    )
+    const sources = readdirSync(contactDirectory)
+      .filter((file) => /\.tsx?$/.test(file) && !file.includes('.test.'))
+      .map((file) => readFileSync(path.join(contactDirectory, file), 'utf8'))
+      .join('\n')
 
-      expect(expected.length).toBeGreaterThan(0)
+    const literalKeys = [...sources.matchAll(/\bt\(\s*'([^']+)'/g)].map(
+      ([, key]) => key
+    )
+    const templateKeys = [...sources.matchAll(/\bt\(\s*`([^`]+)`/g)].map(
+      ([, key]) => key
+    )
+    const fieldKeys = templateKeys.flatMap((template) =>
+      ['name', 'email', 'subject', 'content'].map((field) =>
+        template.replace(FIELD_PLACEHOLDER, field)
+      )
+    )
 
-      for (const [locale, catalog] of Object.entries(catalogs)) {
-        const actual = flatKeys(
-          (catalog as Record<string, unknown>)[namespace]
-        ).sort()
-        expect(actual, `${namespace} incomplet en ${locale}`).toEqual(expected)
-      }
-    })
-  }
+    const french = new Map(
+      flatEntries((fr as Record<string, unknown>).ContactPage)
+    )
+    expect(literalKeys.length).toBeGreaterThan(0)
+    expect(templateKeys).toHaveLength(1)
+    expect(templateKeys[0]).toMatch(/^fields\.\$\{field\}\.label$/)
+    for (const key of [...literalKeys, ...fieldKeys]) {
+      expect(french.get(key), `ContactPage.${key}`).toEqual(expect.any(String))
+    }
+  })
 
-  for (const namespace of translatedNamespaces) {
-    it(`${namespace} est reellement traduit en en et es, pas recopie du fr`, () => {
-      const french = flatEntries((fr as Record<string, unknown>)[namespace])
-      expect(french.length).toBeGreaterThan(0)
-
-      for (const [locale, catalog] of Object.entries(catalogs)) {
-        const translated = new Map(
-          flatEntries((catalog as Record<string, unknown>)[namespace])
-        )
-        const copied = french
-          .filter(
-            ([key, value]) =>
-              translated.get(key) === value &&
-              !identicalByTranslation.has(`${locale}:${namespace}.${key}`)
-          )
-          .map(([key]) => key)
-
-        expect(copied, `${namespace} recopie du francais en ${locale}`).toEqual(
-          []
-        )
-      }
-    })
-
-    it(`${namespace} garde les memes variables d'interpolation`, () => {
-      // Le nom de chaque argument, simple (`{count}`) ou ICU
-      // (`{over, plural, ...}`) : les branches d'un pluriel se traduisent.
-      const placeholders = (value: unknown) =>
-        typeof value === 'string'
-          ? [...value.matchAll(/{\s*(\w+)\s*[,}]/g)]
-              .map(([, name]) => name)
-              .sort()
-          : []
-
-      for (const [key, value] of flatEntries(
-        (fr as Record<string, unknown>)[namespace]
-      )) {
-        for (const [locale, catalog] of Object.entries(catalogs)) {
-          const translated = new Map(
-            flatEntries((catalog as Record<string, unknown>)[namespace])
-          )
-          expect(
-            placeholders(translated.get(key)),
-            `${namespace}.${key} en ${locale}`
-          ).toEqual(placeholders(value))
-        }
+  for (const namespace of pageNamespaces) {
+    it(`${namespace} existe en francais et n'est pas vide`, () => {
+      const entries = flatEntries((fr as Record<string, unknown>)[namespace])
+      expect(entries.length).toBeGreaterThan(0)
+      for (const [key, value] of entries) {
+        expect(value, `${namespace}.${key}`).toEqual(expect.any(String))
+        expect((value as string).trim(), `${namespace}.${key}`).not.toBe('')
       }
     })
   }
 
   it("l'apercu du bureau annonce le brouillon et la depublication", () => {
-    for (const catalog of [fr, en, es] as Record<string, unknown>[]) {
-      const namespace = catalog.PublicCmsPage as
-        Record<string, string> | undefined
-      expect(namespace?.previewDraft).toBeTruthy()
-      expect(namespace?.previewUnpublished).toBeTruthy()
-    }
+    const namespace = fr.PublicCmsPage as Record<string, string> | undefined
+    expect(namespace?.previewDraft).toBeTruthy()
+    expect(namespace?.previewUnpublished).toBeTruthy()
   })
 
-  it("l'echec de creation d'une page a son message dans les trois langues", () => {
-    for (const catalog of [fr, en, es] as Record<string, unknown>[]) {
-      const errors = (
-        catalog.BureauPagesPage as {errors?: Record<string, string>}
-      )?.errors
-      expect(errors?.createFailedTitle).toBeTruthy()
-      expect(errors?.createFailed).toBeTruthy()
-    }
+  it("l'echec de creation d'une page a son message", () => {
+    const errors = (fr.BureauPagesPage as {errors?: Record<string, string>})
+      ?.errors
+    expect(errors?.createFailedTitle).toBeTruthy()
+    expect(errors?.createFailed).toBeTruthy()
   })
 })

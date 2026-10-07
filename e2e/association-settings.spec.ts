@@ -27,9 +27,9 @@ const TENANT_A = `http://localhost:${PORT}`
 const TENANT_B = `http://127.0.0.1:${PORT}`
 
 const PASSWORD = 'Azerty123'
-const SETTINGS_PAGE = '/fr/bureau/reglages'
-const IDENTITY_PAGE = '/fr/bureau/identite'
-const PUBLIC_PAGE = '/fr/privacy'
+const SETTINGS_PAGE = '/bureau/reglages'
+const IDENTITY_PAGE = '/bureau/identite'
+const PUBLIC_PAGE = '/privacy'
 const SETTINGS_TITLE = "Réglages de l'association"
 const IDENTITY_TITLE = "Identité de l'association"
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
@@ -132,7 +132,7 @@ const storedSettings = async (organizationSlug: 'a' | 'b') =>
   })
 
 const login = async (page: Page, base: string, email: string) => {
-  await page.goto(`${base}/fr/login/prestataire`)
+  await page.goto(`${base}/login/prestataire`)
   await expect(page.locator('form')).toBeVisible()
   await page.fill('input[name="email"]', email)
   await page.fill('input[name="password"]', PASSWORD)
@@ -487,7 +487,7 @@ test.describe.serial('s02 — paramètres de l’association', () => {
     browser,
   }) => {
     const page = await newSession(browser, TENANT_A, 'superadmin@gmail.com')
-    await page.goto(`${TENANT_A}/fr/admin/organizations/new`, {
+    await page.goto(`${TENANT_A}/admin/organizations/new`, {
       waitUntil: 'load',
     })
 
