@@ -1218,7 +1218,7 @@ chaque association soit servie en HTTPS sur son propre domaine.
 
 ### Dependencies
 
-s01, s01b, s03, s03c, s08b, s12a
+s01, s01b, s03, s03c, s08b, s12a, s44, s45, s46
 
 ### Agentic notes
 
@@ -3086,71 +3086,234 @@ que s11 déclare, restent valides après la story.
 
 ---
 
+## Story s44-page-accueil — Choisir la page d'accueil du site
+
+**En tant que** membre du bureau **je veux** désigner quelle page du site sert d'accueil **afin que**
+un visiteur qui tape l'adresse de l'association arrive sur le contenu de l'association, et non sur
+la vitrine commerciale du boilerplate.
+
+Ajoutée le 7 octobre 2026, avec s45 et s46, pour le nettoyage des pages héritées décidé le 6 octobre.
+La racine `/` sert encore le hero marketing du boilerplate (« La plateforme SaaS moderne pour booster
+votre business », lien vers `/pricing`, « Essayez gratuitement »). Arbitrage de l'utilisatrice : une
+page du CMS désignée par le bureau, avec un accueil minimal par défaut.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Depuis le back-office, le bureau désigne une page publiée du CMS (s04) comme page d'accueil ; `/` affiche alors le contenu de cette page, avec la navigation (s04b) et le bandeau d'alerte (s07) du site public.
+- [ ] Sans page désignée, ou si la page désignée est dépubliée ou supprimée, `/` affiche un accueil minimal : nom et logo de l'association et ses dernières actualités publiées (s05). Il n'affiche jamais un texte, un lien ou un bouton de la vitrine du boilerplate (`/pricing`, « Essayez gratuitement », sélecteur de thème).
+- [ ] Le choix est un paramètre d'association : deux associations ont chacune leur propre page d'accueil, et le bureau d'une association ne peut pas désigner une page d'une autre association, ni côté interface ni côté serveur — prouvé par un test d'accès croisé.
+- [ ] Seuls le bureau, la Présidence de l'association du domaine appelé et le SuperAdmin changent la page d'accueil ; tout autre utilisateur authentifié reçoit un refus, côté interface et côté serveur.
+- [ ] Changer de page d'accueil prend effet à la requête suivante, sans redéploiement.
+- [ ] La page désignée n'a qu'une adresse pour les moteurs : le sitemap (s11) la liste une seule fois, sous `/`, et son adresse propre `/<slug>` déclare `/` comme adresse canonique.
+
+### Dependencies
+
+s02, s04, s04b, s05, s07, s11
+
+### Agentic notes
+
+Réf. `V5 §3.1`, `CDCT §3.1` (l'accueil est une page du site public) ; `ADR 007` (une page = blocs
+typés) ; `ADR 010` (le choix est un paramètre d'association, jamais un slug codé en dur).
+
+- `src/app/[locale]/page.tsx` est la page à remplacer. Le titre de page vient déjà de l'association
+  (s11, `resolveFixedPageSeo`) : le garder. Le rendu d'une page CMS existe déjà sous
+  `src/app/[locale]/(public)/[slug]` : le réutiliser, ne pas le dupliquer.
+- Le paramètre vit dans le registre d'association (`ASSOCIATION_SETTINGS_REGISTRY`,
+  `src/services/association-settings-service.ts`, table `organization_setting`). Il référence une
+  page par son **identifiant**, pas par son slug, qui peut changer.
+- Où le bureau fait ce choix (réglages, navigation, ou liste des pages) : à trancher en `/ks-design`,
+  sur la base du design system.
+- Une page désignée puis dépubliée : la lecture publique ne doit pas la servir (même règle que
+  `/<slug>`). C'est l'accueil minimal qui prend le relais.
+- Les specs `e2e/homepage.spec.ts` et `e2e/mobile.spec.ts` vérifient aujourd'hui le texte de la
+  vitrine (« La plateforme SaaS moderne… ») : elles sont à réécrire sur le nouveau comportement.
+- Les clés `HomePage.*` de `messages/fr.json` qui ne servent plus sont retirées ; le retrait du reste
+  de la vitrine (`/pricing`, `/checkout`…) est s45, pas ici.
+
+---
+
+## Story s45-retrait-pages-publiques-heritees — Ne servir que le site de l'association
+
+⚠️ **Story hors du tableau de périmètre du PRD.** Elle ne livre pas de fonctionnalité : elle retire
+des écrans du boilerplate que l'ADR 009 n'avait pas couverts (il ne retirait que les sous-systèmes
+coûteux en RLS). Décidée le 6 octobre 2026, arbitrages du 7 octobre : **suppression du code**, pas
+simple masquage ; la vitrine commerciale de la plateforme est retirée des domaines d'association.
+
+**En tant que** visiteur du site d'une association **je veux** ne trouver que les pages de cette
+association **afin de** ne pas tomber sur un blog, une documentation technique ou une page de tarifs
+qui ne la concernent pas.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Les adresses du blog hérité (`/blog`, `/blog/<slug>`, `/blog/category/…`, `/blog/page/…`), de la documentation héritée (`/docs`, `/docs/…`) et de la vitrine de la plateforme (`/pricing`, `/pricing_old`, `/checkout/…`, `/modules/…`, `/privacy`, `/terms`) répondent 404 sur le domaine d'une association, y compris quand la configuration active encore ces familles de pages.
+- [ ] Le back-office de la plateforme ne propose plus la gestion du blog : `/admin/blog` et ses sous-pages répondent 404 et n'apparaissent plus dans la navigation de `/admin` ; les autres écrans de `/admin` (associations, utilisateurs, plans, abonnements, réglages) restent accessibles au SuperAdmin.
+- [ ] Aucune page servie (site public, connexion, back-office du bureau, `/admin`) ne contient de lien vers une adresse retirée — vérifié en e2e sur les pages principales.
+- [ ] Le sitemap (s11) ne liste et le `robots.txt` ne mentionne plus aucune adresse retirée.
+- [ ] L'abonnement Stripe de la plateforme continue de fonctionner : le webhook `/api/webhooks/stripe` et les écrans plans et abonnements de `/admin` passent leurs tests.
+- [ ] Les familles `blog` et `docs` disparaissent de `NEXT_PUBLIC_ENABLED_PAGES` (schéma, `.env.development`, CI) ; `pnpm build` passe et ne génère plus aucune page retirée.
+
+### Dependencies
+
+s43, s44
+
+### Agentic notes
+
+Réf. `ADR 009` (modèle de retrait, voie de retour par `upstream/main`), `ADR 023` (blog hérité hors
+produit).
+
+- **Voie de retour** : le commit de la story se défait par `git revert` ; un écran se récupère depuis
+  l'historique de `main` ou depuis `upstream/main`, comme le décrit l'ADR 009.
+- **Aucune migration** : les tables `posts`, `posts_translation`, `categories`, `hashtags`,
+  `post_hashtags` restent (ADR 023). Les services et repositories devenus orphelins par le retrait
+  des écrans : le plan décide s'ils partent aussi, sans toucher au schéma.
+- Contenus à retirer avec leurs écrans : `content/blog/`, `src/app/[locale]/docs/_files/`,
+  `public/docs/`, les composants `src/components/features/blog/` et `src/components/features/docs/`,
+  `src/components/features/admin/blog/`, et les espaces de noms correspondants de `messages/fr.json`.
+- Le formulaire de connexion (`src/components/features/auth/forms/login.tsx`) et le rendu MDX
+  (`src/components/mdx-components.tsx`) référencent des pages retirées : à vérifier. Le rendu MDX sert
+  peut-être encore ailleurs ; ne le retirer que s'il devient orphelin
+  (`.claude/rules/01-presentation/rule-mdx-rendering.md`).
+- `/checkout/*` est le parcours d'achat public du boilerplate ; la facturation plateforme
+  (ADR 011 : Stripe = Zourite Studio ↔ association) se pilote depuis `/admin`. Vérifier que le plugin
+  Stripe de Better Auth (`src/lib/better-auth/auth.ts`) ne dépend pas d'une route retirée pour ses
+  redirections de succès ou d'annulation.
+- Le retrait solde des constats laissés par la revue de s43 : m9 (canonical et `hreflang` préfixés de
+  la documentation), m10 (`'en'` en dur dans `src/lib/files/search.ts`), le test de recherche des docs
+  qui dépasse son délai sur le montage 9p, et m7 pour `docs/authentication-system.md` l. 392-393, qui
+  cite encore `messages/en.json` et `messages/es.json`.
+- Les specs e2e et les tests unitaires qui visitent ces pages sont retirés avec elles, pas désactivés.
+
+---
+
+## Story s46-comptes-herites-minimum — Ne garder que l'essentiel du compte
+
+⚠️ **Story hors du tableau de périmètre du PRD**, pour la même raison que s45. Arbitrage du 7 octobre
+2026 : garder le profil et la sécurité, retirer le reste, en attendant l'espace membre du bloc B.
+
+**En tant que** membre du bureau **je veux** un espace de compte réduit à mon profil et à ma sécurité
+**afin de** ne pas me perdre dans des écrans de clés d'API, d'organisations ou d'abonnement qui ne
+servent pas l'association.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] `/account` reste accessible à tout utilisateur connecté et ne propose que le profil et la sécurité (mot de passe, double authentification) ; les adresses `/account/api-keys`, `/account/notifications`, `/account/organizations/…`, `/account/invitations/…`, `/account/billing/…`, `/dashboard` et `/team/…` répondent 404, et aucun menu n'y renvoie.
+- [ ] Après connexion, par lien magique comme par mot de passe ou double authentification, un membre du bureau ou la Présidence de l'association du domaine appelé arrive sur `/bureau`, le SuperAdmin sur `/admin`, et tout autre utilisateur sur `/account` ; plus aucun parcours ne renvoie vers `/dashboard`.
+- [ ] L'inscription libre est fermée : `/register` répond 404, et une création de compte par mot de passe adressée directement au serveur d'authentification est refusée. Un compte ne naît que du back-office (s12d) ou du seed — prouvé par un test qui tente l'inscription et constate qu'aucun utilisateur n'est créé.
+- [ ] Un lien magique demandé pour une adresse inconnue ne crée aucun compte (fermeture prévue par s03, vérifiée ici).
+- [ ] Les familles `apikey`, `organization`, `invitation`, `subscription` et `notifications` disparaissent de `NEXT_PUBLIC_ENABLED_PAGES` (schéma, `.env.development`, CI).
+- [ ] Les dates encore affichées par les écrans conservés sont formatées en français : `DEFAULT_LOCALE` de `src/lib/helper/date-helper.ts` vaut `fr`, et un test le vérifie.
+
+### Dependencies
+
+s03, s03b, s43, s45
+
+### Agentic notes
+
+Réf. `ADR 009` (modèle de retrait et voie de retour), `ADR 008` (locale unique).
+
+- **Voie de retour** : comme s45, `git revert` ou récupération depuis `main` / `upstream/main`.
+- **Aucune migration** : les tables `apikey`, `two_factor`, `user_settings`, `notifications`,
+  `invitation` restent. Le plugin `apiKey` de Better Auth peut rester branché sans écran ; le plan
+  tranche s'il faut le retirer, sans toucher au schéma.
+- `/dashboard` est aujourd'hui la destination codée en dur de tous les parcours de connexion :
+  `src/app/[locale]/(auth)/action.ts` (l. 143, 235, 390, 472, 552, 612), `verify-request/otp/otp.tsx`,
+  `verify-request/totp/totp.tsx`, `account/invitations/[id]/accept-invitation-form.tsx`. Centraliser la
+  destination dans une seule fonction qui lit le rôle dans l'association du domaine appelé ; ne pas
+  recopier la règle six fois. Le contrôle de rôle existe déjà (s03b) : le réutiliser.
+- `src/proxy.ts` et ses tests protègent `/dashboard` et `/account` : à mettre à jour sans affaiblir la
+  protection des segments conservés.
+- L'invitation de s15 est un lien magique, pas l'invitation d'organisation de Better Auth : retirer
+  `/account/invitations` ne la gêne pas. Vérifier qu'aucun autre parcours du bloc B (s12d, s15, s42)
+  ne cite un écran retiré.
+- Fermer l'inscription : `disableSignUp` (Better Auth) sur `emailAndPassword` et sur le lien
+  magique. Le seed et la création de comptes par le back-office passent par l'API serveur ; vérifier
+  qu'ils ne dépendent pas de l'inscription publique. Les specs e2e se connectent par mot de passe à
+  des comptes du seed : elles n'ont pas à changer, sauf celles qui s'inscrivent (`e2e/auth.spec.ts`).
+- Solde aussi m6 et les commentaires anglais de m7 dans `e2e/auth.spec.ts` (revue de s43).
+
+---
+
 # Récapitulatif — ordre et dépendances
 
-| Id   | Story                     | Cx  | Dépend de                                                                                                                                | Bloc |
-| ---- | ------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| s01  | provisionner-association  | 4   | —                                                                                                                                        | A    |
-| s01b | logo-association          | 3   | s01                                                                                                                                      | A    |
-| s02  | parametres-association    | 3   | s01, s01b                                                                                                                                | A    |
-| s03  | connexion-lien-magique    | 3   | s01, s01b, s02                                                                                                                           | A    |
-| s03b | roles-registre-actions    | 3   | s01, s01b, s02                                                                                                                           | A    |
-| s03c | session-multi-domaine     | 3   | s03                                                                                                                                      | A    |
-| s04  | pages-cms                 | 4   | s01, s02, s03b                                                                                                                           | A    |
-| s04b | navigation-publique       | 2   | s04                                                                                                                                      | A    |
-| s05  | actualites                | 2   | s04                                                                                                                                      | A    |
-| s06  | presentation-bureau       | 2   | s04                                                                                                                                      | A    |
-| s07  | bandeau-alerte            | 1   | s01, s03b                                                                                                                                | A    |
-| s08  | formulaire-contact        | 2   | s02, s04                                                                                                                                 | A    |
-| s09  | analyses-eau              | 2   | s04                                                                                                                                      | A    |
-| s10  | signalements-publics      | 3   | s02, s04, s08                                                                                                                            | A    |
-| s11  | seo                       | 2   | s02, s04, s05, s09                                                                                                                       | A    |
-| s12  | membres-parcelles         | 4   | s01, s03, s03b                                                                                                                           | B    |
-| s12a | retrait-supabase          | 2   | s01b                                                                                                                                     | B    |
-| s12b | mise-en-ligne             | 3   | s01, s01b, s03, s03c, s08, s12a                                                                                                          | B    |
-| s12c | sauvegarde                | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
-| s12d | comptes-membres           | 3   | s03, s03c, s12                                                                                                                           | B    |
-| s13  | import-initial-membres    | 3   | s12, s12d, s12c                                                                                                                          | B    |
-| s14  | attribuer-roles           | 2   | s03b, s12, s12d                                                                                                                          | B    |
-| s15  | inviter-membre            | 2   | s02, s03, s03c, s12, s12d                                                                                                                | B    |
-| s16  | coordonnees-membre        | 1   | s12, s12d                                                                                                                                | B    |
-| s17  | import-releves-eau        | 3   | s02, s12, s13                                                                                                                            | B    |
-| s18  | historique-consommation   | 2   | s17                                                                                                                                      | B    |
-| s19  | factures-liste            | 3   | s02, s12, s12d                                                                                                                           | B    |
-| s20  | factures-pennylane        | 3   | s02, s19                                                                                                                                 | B    |
-| s21  | redirection-paiement      | 1   | s02, s19                                                                                                                                 | B    |
-| s22  | signalement-membre        | 2   | s10, s12, s12d                                                                                                                           | B    |
-| s23  | questions-bureau          | 2   | s02, s10, s12, s12d                                                                                                                      | B    |
-| s24  | notes-internes-membre     | 2   | s12                                                                                                                                      | B    |
-| s25  | campagnes-email           | 3   | s02, s03, s12                                                                                                                            | C    |
-| s26  | envoi-echelonne           | 4   | s02, s12b, s25                                                                                                                           | C    |
-| s27  | groupes-destinataires     | 3   | s19, s25                                                                                                                                 | C    |
-| s27b | nature-envois             | 2   | s25, s27                                                                                                                                 | C    |
-| s28  | publipostage-pdf          | 3   | s12, s25                                                                                                                                 | C    |
-| s29  | relances-impayes          | 4   | s02, s19, s25, s26, s27, s27b, s28                                                                                                       | C    |
-| s30  | stats-campagnes           | 2   | s25, s26                                                                                                                                 | C    |
-| s31  | documents-partages        | 2   | s01b, s03, s03b, s12, s12d                                                                                                               | D    |
-| s32  | documents-nominatifs      | 4   | s12, s12d, s31                                                                                                                           | D    |
-| s33  | vote-asl-community        | 3   | s02, s12, s31                                                                                                                            | E    |
-| s34  | module-voirie             | 2   | s01, s04, s04b                                                                                                                           | F    |
-| s35  | petites-annonces          | 3   | s10, s12, s12d                                                                                                                           | F    |
-| s36  | modeles-documents         | 3   | s27, s28, s32                                                                                                                            | F    |
-| s37  | permissions-configurables | 4   | s03b                                                                                                                                     | F    |
-| s38  | export-donnees            | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37 | F    |
-| s39  | completude-export         | 2   | s38                                                                                                                                      | F    |
-| s40  | export-membre             | 2   | s12, s12d, s24, s38, s39                                                                                                                 | F    |
-| s41  | simulation-role           | 2   | s01, s03b, s24, s37, s38, s39                                                                                                            | F    |
-| s42  | lancement-invitations     | 3   | s03, s03c, s13, s15, s25, s26, s27, s27b, s28                                                                                            | F    |
-| s43  | locale-unique             | 2   | s11                                                                                                                                      | A    |
+| Id   | Story                            | Cx  | Dépend de                                                                                                                                | Bloc |
+| ---- | -------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| s01  | provisionner-association         | 4   | —                                                                                                                                        | A    |
+| s01b | logo-association                 | 3   | s01                                                                                                                                      | A    |
+| s02  | parametres-association           | 3   | s01, s01b                                                                                                                                | A    |
+| s03  | connexion-lien-magique           | 3   | s01, s01b, s02                                                                                                                           | A    |
+| s03b | roles-registre-actions           | 3   | s01, s01b, s02                                                                                                                           | A    |
+| s03c | session-multi-domaine            | 3   | s03                                                                                                                                      | A    |
+| s04  | pages-cms                        | 4   | s01, s02, s03b                                                                                                                           | A    |
+| s04b | navigation-publique              | 2   | s04                                                                                                                                      | A    |
+| s05  | actualites                       | 2   | s04                                                                                                                                      | A    |
+| s06  | presentation-bureau              | 2   | s04                                                                                                                                      | A    |
+| s07  | bandeau-alerte                   | 1   | s01, s03b                                                                                                                                | A    |
+| s08  | formulaire-contact               | 2   | s02, s04                                                                                                                                 | A    |
+| s09  | analyses-eau                     | 2   | s04                                                                                                                                      | A    |
+| s10  | signalements-publics             | 3   | s02, s04, s08                                                                                                                            | A    |
+| s11  | seo                              | 2   | s02, s04, s05, s09                                                                                                                       | A    |
+| s12  | membres-parcelles                | 4   | s01, s03, s03b                                                                                                                           | B    |
+| s12a | retrait-supabase                 | 2   | s01b                                                                                                                                     | B    |
+| s12b | mise-en-ligne                    | 3   | s01, s01b, s03, s03c, s08, s12a, s44, s45, s46                                                                                           | B    |
+| s12c | sauvegarde                       | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
+| s12d | comptes-membres                  | 3   | s03, s03c, s12                                                                                                                           | B    |
+| s13  | import-initial-membres           | 3   | s12, s12d, s12c                                                                                                                          | B    |
+| s14  | attribuer-roles                  | 2   | s03b, s12, s12d                                                                                                                          | B    |
+| s15  | inviter-membre                   | 2   | s02, s03, s03c, s12, s12d                                                                                                                | B    |
+| s16  | coordonnees-membre               | 1   | s12, s12d                                                                                                                                | B    |
+| s17  | import-releves-eau               | 3   | s02, s12, s13                                                                                                                            | B    |
+| s18  | historique-consommation          | 2   | s17                                                                                                                                      | B    |
+| s19  | factures-liste                   | 3   | s02, s12, s12d                                                                                                                           | B    |
+| s20  | factures-pennylane               | 3   | s02, s19                                                                                                                                 | B    |
+| s21  | redirection-paiement             | 1   | s02, s19                                                                                                                                 | B    |
+| s22  | signalement-membre               | 2   | s10, s12, s12d                                                                                                                           | B    |
+| s23  | questions-bureau                 | 2   | s02, s10, s12, s12d                                                                                                                      | B    |
+| s24  | notes-internes-membre            | 2   | s12                                                                                                                                      | B    |
+| s25  | campagnes-email                  | 3   | s02, s03, s12                                                                                                                            | C    |
+| s26  | envoi-echelonne                  | 4   | s02, s12b, s25                                                                                                                           | C    |
+| s27  | groupes-destinataires            | 3   | s19, s25                                                                                                                                 | C    |
+| s27b | nature-envois                    | 2   | s25, s27                                                                                                                                 | C    |
+| s28  | publipostage-pdf                 | 3   | s12, s25                                                                                                                                 | C    |
+| s29  | relances-impayes                 | 4   | s02, s19, s25, s26, s27, s27b, s28                                                                                                       | C    |
+| s30  | stats-campagnes                  | 2   | s25, s26                                                                                                                                 | C    |
+| s31  | documents-partages               | 2   | s01b, s03, s03b, s12, s12d                                                                                                               | D    |
+| s32  | documents-nominatifs             | 4   | s12, s12d, s31                                                                                                                           | D    |
+| s33  | vote-asl-community               | 3   | s02, s12, s31                                                                                                                            | E    |
+| s34  | module-voirie                    | 2   | s01, s04, s04b                                                                                                                           | F    |
+| s35  | petites-annonces                 | 3   | s10, s12, s12d                                                                                                                           | F    |
+| s36  | modeles-documents                | 3   | s27, s28, s32                                                                                                                            | F    |
+| s37  | permissions-configurables        | 4   | s03b                                                                                                                                     | F    |
+| s38  | export-donnees                   | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37 | F    |
+| s39  | completude-export                | 2   | s38                                                                                                                                      | F    |
+| s40  | export-membre                    | 2   | s12, s12d, s24, s38, s39                                                                                                                 | F    |
+| s41  | simulation-role                  | 2   | s01, s03b, s24, s37, s38, s39                                                                                                            | F    |
+| s42  | lancement-invitations            | 3   | s03, s03c, s13, s15, s25, s26, s27, s27b, s28                                                                                            | F    |
+| s43  | locale-unique                    | 2   | s11                                                                                                                                      | A    |
+| s44  | page-accueil                     | 3   | s02, s04, s04b, s05, s07, s11                                                                                                            | A    |
+| s45  | retrait-pages-publiques-heritees | 3   | s43, s44                                                                                                                                 | A    |
+| s46  | comptes-herites-minimum          | 3   | s03, s03b, s43, s45                                                                                                                      | B    |
 
-**52 stories, aucune à 5.** Répartition : trois à 1, vingt et une à 2, vingt à 3, huit à 4.
-**Cinq stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**55 stories, aucune à 5.** Répartition : trois à 1, vingt et une à 2, vingt-trois à 3, huit à 4.
+**Sept stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
 « mise en production effective sur le VPS » ; s12c, la sauvegarde, que s13 attend avant
-d'importer les données réelles ; et s43, l'application de l'ADR 008 (locale unique), ajoutée au plan
-de s11.
+d'importer les données réelles ; s43, l'application de l'ADR 008 (locale unique), ajoutée au plan
+de s11 ; s45 et s46, le retrait des pages héritées du boilerplate (blog, docs, vitrine, comptes),
+décidé le 6 octobre 2026 et placé avant s12b avec s44, la page d'accueil choisie par le bureau.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
