@@ -6,6 +6,9 @@ vi.mock('@/app/dal/tenant-dal', () => ({getCurrentTenantDal: vi.fn()}))
 vi.mock('@/app/dal/sitemap-dal', () => ({
   getPublishedSitemapEntriesDal: vi.fn(),
 }))
+vi.mock('@/app/dal/home-page-dal', () => ({
+  getPublicHomePageDal: vi.fn(),
+}))
 vi.mock('@/app/dal/blog-dal', () => ({
   BLOG_POSTS_PER_PAGE: 10,
   getAllUnifiedBlogSlugsDal: vi.fn(async () => [
@@ -17,8 +20,10 @@ vi.mock('@/app/dal/blog-dal', () => ({
 }))
 
 import {getAllUnifiedBlogSlugsDal} from '@/app/dal/blog-dal'
+import {getPublicHomePageDal} from '@/app/dal/home-page-dal'
 import {getPublishedSitemapEntriesDal} from '@/app/dal/sitemap-dal'
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {PageWithBlocksDTO} from '@/services/types/domain/page-types'
 
 import sitemap from './sitemap'
 
@@ -39,6 +44,7 @@ const urlsOf = async () => (await sitemap()).map((entry) => entry.url)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(getPublicHomePageDal).mockResolvedValue(undefined)
   vi.mocked(getCurrentTenantDal).mockResolvedValue(
     tenantOf(ORG_A, 'lesamisdeletang.fr')
   )
@@ -116,5 +122,66 @@ describe('sitemap.ts — une association par domaine (criteres 1 et 5)', () => {
 
     expect(await sitemap()).toEqual([])
     expect(getPublishedSitemapEntriesDal).not.toHaveBeenCalled()
+  })
+})
+
+const homePageOf = (slug: string, updatedAt: Date): PageWithBlocksDTO => ({
+  id: '33333333-3333-4333-8333-333333333333',
+  organizationId: ORG_A,
+  slug,
+  title: 'Qualité de l’eau',
+  status: 'published',
+  seoTitle: null,
+  seoDescription: null,
+  shareImageKey: null,
+  shareImageAlt: null,
+  createdAt: new Date('2026-09-01'),
+  updatedAt,
+  blocks: [],
+})
+
+describe('sitemap.ts — la page d accueil une seule fois, sous / (s44, critere 6)', () => {
+  it('liste / une fois, date de la page, et jamais son adresse propre', async () => {
+    vi.mocked(getPublicHomePageDal).mockResolvedValue(
+      homePageOf('qualite-de-l-eau', new Date('2026-09-02'))
+    )
+
+    const entries = await sitemap()
+    const urls = entries.map((entry) => entry.url)
+
+    expect(
+      urls.filter((url) => url === 'https://lesamisdeletang.fr/')
+    ).toHaveLength(1)
+    expect(urls).not.toContain('https://lesamisdeletang.fr/qualite-de-l-eau')
+    expect(entries[0]).toEqual({
+      url: 'https://lesamisdeletang.fr/',
+      lastModified: new Date('2026-09-02'),
+    })
+    expect(getPublicHomePageDal).toHaveBeenCalledWith(ORG_A)
+  })
+
+  it('page designee depubliee : / sans date, son adresse absente comme toute page non publiee', async () => {
+    vi.mocked(getPublicHomePageDal).mockResolvedValue(undefined)
+    vi.mocked(getPublishedSitemapEntriesDal).mockResolvedValue({
+      pages: [],
+      news: [],
+    })
+
+    const entries = await sitemap()
+
+    expect(entries[0]).toEqual({url: 'https://lesamisdeletang.fr/'})
+    expect(entries.map((entry) => entry.url)).not.toContain(
+      'https://lesamisdeletang.fr/qualite-de-l-eau'
+    )
+  })
+
+  it('une autre page designee : les autres pages restent listees', async () => {
+    vi.mocked(getPublicHomePageDal).mockResolvedValue(
+      homePageOf('bienvenue', new Date('2026-09-05'))
+    )
+
+    expect(await urlsOf()).toContain(
+      'https://lesamisdeletang.fr/qualite-de-l-eau'
+    )
   })
 })

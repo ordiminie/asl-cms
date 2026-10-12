@@ -1,5 +1,6 @@
 import {MetadataRoute} from 'next'
 
+import {getPublicHomePageDal} from '@/app/dal/home-page-dal'
 import {getPublishedSitemapEntriesDal} from '@/app/dal/sitemap-dal'
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
@@ -25,21 +26,32 @@ const FIXED_PUBLIC_PATHS = [
  * de langue (decision B ; ADR 008 applique en s43, ADR 031). Ni le blog
  * herite ni les pages du produit : ce n'est pas le site de l'association.
  * Un domaine qui ne sert aucune association rend un sitemap vide.
+ *
+ * La page designee comme accueil (s44, critere 6) n'est listee qu'une fois,
+ * sous `/`, datee de sa derniere modification : son adresse propre declare
+ * `/` comme canonique et n'a pas sa place ici.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const tenant = await getCurrentTenantDal()
   const origin = associationOriginOf(tenant?.domain)
   if (!tenant || !origin) return []
 
-  const {pages, news} = await getPublishedSitemapEntriesDal(tenant.id)
+  const [{pages, news}, homePage] = await Promise.all([
+    getPublishedSitemapEntriesDal(tenant.id),
+    getPublicHomePageDal(tenant.id),
+  ])
 
   return [
-    {url: `${origin}/`},
+    homePage
+      ? {url: `${origin}/`, lastModified: homePage.updatedAt}
+      : {url: `${origin}/`},
     ...FIXED_PUBLIC_PATHS.map((path) => ({url: `${origin}${path}`})),
-    ...pages.map((page) => ({
-      url: `${origin}/${page.slug}`,
-      lastModified: page.updatedAt,
-    })),
+    ...pages
+      .filter((page) => page.slug !== homePage?.slug)
+      .map((page) => ({
+        url: `${origin}/${page.slug}`,
+        lastModified: page.updatedAt,
+      })),
     ...news.map((item) => ({
       url: `${origin}/actualites/${item.slug}`,
       lastModified: item.publishedOn,

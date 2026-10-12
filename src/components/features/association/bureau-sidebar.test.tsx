@@ -180,3 +180,32 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
     expect(labels).toEqual(['Propriétaires', 'Identité', 'Réglages'])
   })
 })
+
+describe('BureauSidebar — « Page d’accueil » (s44)', () => {
+  it('ajoute l’entrée au groupe « Le site », entre « Pages » et « Actualités », sans icône', () => {
+    renderSidebarAt('/bureau/pages')
+
+    const entry = screen.getByRole('link', {name: 'Page d’accueil'})
+    expect(entry).toHaveAttribute('href', '/bureau/page-accueil')
+    expect(entry.querySelector('svg')).toBeNull()
+
+    const siteLinks = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    const position = siteLinks.indexOf('/bureau/page-accueil')
+    expect(siteLinks[position - 1]).toBe('/bureau/pages')
+    expect(siteLinks[position + 1]).toBe('/bureau/actualites')
+  })
+
+  it('sur l’écran « Page d’accueil », seul cet item est actif', () => {
+    renderSidebarAt('/bureau/page-accueil')
+
+    expect(screen.getByRole('link', {name: 'Page d’accueil'})).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+    expect(screen.getByRole('link', {name: 'Pages'})).not.toHaveAttribute(
+      'aria-current'
+    )
+  })
+})

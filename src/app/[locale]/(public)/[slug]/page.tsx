@@ -1,14 +1,15 @@
 import {Metadata} from 'next'
 import {notFound} from 'next/navigation'
-import {getTranslations, setRequestLocale} from 'next-intl/server'
+import {setRequestLocale} from 'next-intl/server'
 
+import {getCurrentPublicHomePageDal} from '@/app/dal/home-page-dal'
 import {
   canManageCurrentPagesDal,
   getPageBySlugForPreviewDal,
   getPublicPageBySlugDal,
 } from '@/app/dal/page-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
-import {renderPageBlock} from '@/lib/cms/render-page-block'
+import {PublicPageArticle} from '@/components/features/pages/public-page-article'
 import {publicPageMetadata} from '@/lib/seo/public-metadata'
 import {resolvePageSeo} from '@/lib/seo/resolve-metadata'
 import {PageWithBlocksDTO} from '@/services/types/domain/page-types'
@@ -20,9 +21,9 @@ type PageParams = {params: Promise<{locale: string; slug: string}>}
  *
  * Le tenant vient du domaine appele. Une page qui n'est pas publiee n'existe
  * pas pour un visiteur (critere 2) ; le bureau, lui, la voit en apercu, lue
- * **sans cache** pour montrer le dernier enregistrement. Chaque bloc est rendu
- * dans l'ordre de son rang ; un bloc incomplet ou de type inconnu est
- * simplement omis, jamais une boite vide (critere 9).
+ * **sans cache** pour montrer le dernier enregistrement. Le rendu est celui
+ * de `PublicPageArticle`, partage avec l'accueil `/` (s44) ; la page designee
+ * comme accueil declare `/` comme canonique.
  */
 const resolvePage = async (
   organizationId: string,
@@ -44,61 +45,33 @@ export async function generateMetadata({
   setRequestLocale(locale)
 
   const tenant = await requireCurrentTenantDal()
-  const resolved = await resolvePage(tenant.id, slug)
+  const [resolved, homePage] = await Promise.all([
+    resolvePage(tenant.id, slug),
+    getCurrentPublicHomePageDal(),
+  ])
+  if (!resolved) return {}
 
-  return resolved
-    ? publicPageMetadata((association) =>
-        resolvePageSeo(resolved.page, association)
-      )
-    : {}
+  const isHomePage = homePage?.id === resolved.page.id
+  return publicPageMetadata((association) =>
+    resolvePageSeo(
+      resolved.page,
+      association,
+      isHomePage ? {canonicalPath: '/'} : {}
+    )
+  )
 }
 
 export default async function PublicCmsPage({params}: PageParams) {
   const {locale, slug} = await params
   setRequestLocale(locale)
 
-  const [tenant, t] = await Promise.all([
-    requireCurrentTenantDal(),
-    getTranslations('PublicCmsPage'),
-  ])
-
+  const tenant = await requireCurrentTenantDal()
   const resolved = await resolvePage(tenant.id, slug)
   if (!resolved) {
     notFound()
   }
 
-  const {page, isPreview} = resolved
-  const blocks = [...page.blocks]
-    .sort((left, right) => left.rank - right.rank)
-    .map((block) => ({id: block.id, html: renderPageBlock(block)}))
-    .filter((block): block is {id: string; html: string} => block.html !== null)
-
   return (
-    <article className="mx-auto flex w-full max-w-[52rem] flex-col gap-6 px-4 pt-8 pb-16 sm:px-6">
-      {isPreview && (
-        <p
-          className="bg-accent text-accent-foreground rounded-md px-4 py-3 text-[15px]"
-          role="status"
-        >
-          {t(
-            page.status === 'unpublished'
-              ? 'previewUnpublished'
-              : 'previewDraft'
-          )}
-        </p>
-      )}
-
-      <h1 className="font-serif text-[34px] leading-tight font-semibold text-pretty">
-        {page.title}
-      </h1>
-
-      {blocks.map((block) => (
-        <div
-          key={block.id}
-          className="page-block text-[18px] leading-[1.65]"
-          dangerouslySetInnerHTML={{__html: block.html}}
-        />
-      ))}
-    </article>
+    <PublicPageArticle page={resolved.page} isPreview={resolved.isPreview} />
   )
 }
