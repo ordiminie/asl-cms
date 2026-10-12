@@ -23,7 +23,7 @@ développement agentique. Seul écart à ce jour : la GED passe avant le vote �
 document.
 
 **Exception de numérotation** : s44, s45, s46 et s47, ajoutées en fin de numérotation le 7 octobre
-2026, se jouent **avant s12b et avant s12d**, dans cet ordre (s44 → s45 → s46 → s47). Elles
+2026, se jouent dans cet ordre (s44 → s45 → s46 → s47), s44 à s46 **avant s12b et avant s12d**, s47 avant s12b. Elles
 nettoient ce qui reste du boilerplate avant la mise en ligne, et s46 fixe l'adresse de l'espace
 membre que s12d remplit. Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
 
@@ -31,14 +31,15 @@ membre que s12d remplit. Pour toutes les autres stories, l'ordre des ids reste l
 
 Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fois :
 
-- **Socle habillé** : l'application du design system au boilerplate — tokens, polices, retrait du
-  thème sombre — est un **préalable au découpage, conduit hors du pipeline killer-saas** (voir
+- **Socle habillé** : l'application du design system au boilerplate — tokens, polices — est un **préalable au découpage, conduit hors du pipeline killer-saas** (voir
   `docs/adaptation-socle-design-system.md`). Toute story porteuse d'écran compose avec ce socle déjà
   habillé : elle ne reprend ni les tokens, ni les polices, ni les conventions d'usage des composants
   de `src/components/ui/`. Un écran qui redéfinit une couleur, une taille de cible ou un rayon est un
   échec de review. Ce n'est pas une dépendance de story, donc rien n'apparaît dans la colonne
   « Dépend de » — c'est l'état du dépôt au moment où s01 démarre, et c'est le `/ks-research` de s01
-  qui le vérifie (voir ses notes).
+  qui le vérifie (voir ses notes). **Thème** : le produit s'affiche en clair seul, forcé par s45
+  (ADR qui remplace l'ADR 012) ; les classes `dark:` et le bloc `.dark` restent dans le code mais
+  sont inertes — ne pas en ajouter dans une nouvelle story d'écran.
 - **Multi-tenant** : toute table métier créée après s01 porte `organization_id`, est couverte par une
   policy RLS, et sa story prouve l'isolation par un test d'accès croisé entre deux tenants.
 - **Rien de propre à La Fourche en dur** : adresses de notification, catégories, seuils, activation
@@ -1219,7 +1220,7 @@ chaque association soit servie en HTTPS sur son propre domaine.
 - [ ] Déployer une nouvelle version applique les migrations en attente avant que la nouvelle version ne serve des requêtes ; une migration en échec interrompt le déploiement et laisse la version précédente en service.
 - [ ] Un redéploiement conserve les fichiers déjà téléversés : un logo envoyé avant le redéploiement est toujours servi après.
 - [ ] Après l'ajout du domaine d'une nouvelle association dans la configuration du serveur, ce domaine répond en HTTPS avec un certificat valide et sert cette association — vérifié par le même test de fumée.
-- [ ] Sur le serveur déployé, la purge des empreintes des formulaires publics (s08) est appelée au moins une fois par jour sans intervention humaine : une empreinte de plus de 24 h ne survit pas à l'appel planifié suivant.
+- [ ] Sur le serveur déployé, la purge des empreintes des formulaires publics (s08b) est appelée au moins une fois par jour sans intervention humaine : une empreinte de plus de 24 h ne survit pas à l'appel planifié suivant.
 
 ### Dependencies
 
@@ -1280,7 +1281,7 @@ aux redéploiements ; sinon chaque déploiement efface les fichiers, ce que le c
 détecte.
 
 **Le cron système des tâches planifiées.** Cette story y installe la purge quotidienne des empreintes
-de s08, s12c y ajoute les sauvegardes et s26 le déclencheur du planificateur de l'ADR 006. Cette story choisit **où** vivent ces planifications sur le serveur et
+de s08b, s12c y ajoute les sauvegardes et s26 le déclencheur du planificateur de l'ADR 006. Cette story choisit **où** vivent ces planifications sur le serveur et
 le documente, pour que les deux suivantes n'aient pas à le chercher.
 
 **À vérifier en review, pas en test** : qu'ajouter un domaine ne demande aucune modification du code
@@ -3169,7 +3170,7 @@ le sélecteur de thème est retiré (revient sur l'ADR 012).
 
 **En tant que** visiteur du site d'une association **je veux** ne trouver que les pages de cette
 association **afin de** ne pas tomber sur un blog, une documentation technique ou une page de tarifs
-qui ne la concernent pas.
+qui ne la concernent pas, et de voir le site s'afficher en clair, sans sélecteur de thème.
 
 ### Complexity
 
@@ -3177,7 +3178,7 @@ qui ne la concernent pas.
 
 ### Acceptance criteria
 
-- [ ] Les adresses du blog hérité (`/blog`, `/blog/<slug>`, `/blog/category/…`, `/blog/page/…`), de la documentation héritée (`/docs`, `/docs/…`) et de la vitrine de la plateforme (`/pricing`, `/pricing_old`, `/checkout/…`, `/privacy`, `/terms`) répondent 404 sur le domaine d'une association, y compris quand la configuration active encore ces familles de pages.
+- [ ] Les adresses du blog hérité (`/blog`, `/blog/<slug>`, `/blog/category/…`, `/blog/page/…`), de la documentation héritée (`/docs`, `/docs/…`) et de la vitrine de la plateforme (`/pricing`, `/pricing_old`, `/checkout/…`, `/privacy`, `/terms`) répondent 404 sur le domaine d'une association, quelle que soit la valeur de `NEXT_PUBLIC_ENABLED_PAGES`.
 - [ ] Le back-office de la plateforme ne propose plus la gestion du blog : `/admin/blog` et ses sous-pages répondent 404 et n'apparaissent plus dans la navigation de `/admin` ; les autres écrans de `/admin` (associations, utilisateurs, plans, abonnements, réglages) restent accessibles au SuperAdmin.
 - [ ] Aucune page servie (site public, connexion, réinitialisation, double authentification, back-office du bureau, `/admin`) ne contient de lien vers une adresse retirée — vérifié en e2e sur les pages principales.
 - [ ] `/modules/<module>`, la sonde d'activation de module de s01, reste en place et `e2e/tenant-isolation.spec.ts` passe sans modification.
@@ -3329,15 +3330,18 @@ couvre.
 ## Story s47-roles-globaux-reduits — Ne garder que les rôles globaux qui servent
 
 ⚠️ **Story hors du tableau de périmètre du PRD**, pour la même raison que s45 et s46. Arbitrage du
-7 octobre 2026, après la revue du découpage : les rôles **globaux** `admin`, `moderator` et
-`redactor` du boilerplate ne correspondent à aucun rôle d'ASL-CMS — Membre, Bureau et Présidence
-sont des rôles **d'association**, le SuperAdmin est le rôle global `super_admin`. Ils sont retirés.
+7 octobre 2026, après la revue du découpage : les rôles **globaux** `admin`, `moderator`, `redactor`
+et `public` du boilerplate ne correspondent à aucun rôle d'ASL-CMS. Membre (`member`), Bureau
+(`board`) et Présidence (`owner`) sont des rôles **d'association**, portés par la table `member` :
+ils ne changent pas. Le SuperAdmin est le rôle global `super_admin`. Il ne reste que deux rôles
+globaux : `user` (tout compte ordinaire) et `super_admin`. `public`, qui désigne le visiteur sans
+compte, n'a ni droit ni compte : le code traite déjà « aucun rôle » de la même façon.
 Elle se joue avant s12b : retirer une valeur d'énumération Postgres avant qu'une base de production
 existe ne coûte qu'une migration sur des données de recette.
 
 **En tant que** SuperAdmin **je veux** qu'il n'existe plus de rôle global sans équivalent dans
-l'association **afin que** personne n'entre dans `/admin` ou ne garde un droit par un rôle que plus
-personne ne sait attribuer.
+l'association **afin que** aucun droit de la plateforme ne dépende d'un rôle que le modèle d'ASL-CMS ne connaît
+pas, et que seul le SuperAdmin entre dans `/admin`.
 
 ### Complexity
 
@@ -3346,8 +3350,8 @@ personne ne sait attribuer.
 ### Acceptance criteria
 
 - [ ] Seul le SuperAdmin accède à `/admin` et à ses actions serveur ; un compte de rôle global `user` reçoit un refus, côté interface et côté serveur — prouvé par un test pour chaque action serveur de `/admin`.
-- [ ] Les rôles globaux `admin`, `moderator` et `redactor` n'existent plus : ni dans l'énumération `role_type` du schéma, ni dans le code d'autorisation, ni dans le formulaire de gestion des utilisateurs de `/admin`, qui ne propose plus que les rôles conservés.
-- [ ] Un compte qui portait l'un de ces rôles passe à `user` par la migration et garde ses rôles d'association — vérifié sur la base seedée avant et après migration.
+- [ ] Le formulaire de gestion des utilisateurs de `/admin` ne propose plus que les rôles globaux `user` et `super_admin`, et le serveur refuse toute autre valeur, y compris `admin`, `moderator`, `redactor` et `public` — prouvé par un test unitaire sur la validation. Les rôles d'association (`member`, `board`, `owner`) sont inchangés.
+- [ ] Une migration appliquée à une base qui contient des comptes de rôle `admin`, `moderator`, `redactor` ou `public` aboutit sans erreur, ces comptes passent à `user` et gardent leurs lignes `member` — vérifié dans la CI sur le Postgres éphémère : base du seed de `main`, migrations de la branche appliquées, contrôle des deux points.
 - [ ] Le seed ne crée plus aucun compte de ces rôles ; les specs e2e et les tests unitaires qui s'en servaient sont réécrits sur un rôle conservé ou retirés, pas désactivés.
 - [ ] Aucune règle de `.claude/rules/` (ni sa copie `.cursor/rules/`) ne cite plus ces rôles — notamment `rule-roles-and-organization-roles.md`, `rule-casl-authorization.md` et `rule-seed-usersroles-and-organization.md` — et `pnpm check:rules` passe.
 
@@ -3359,13 +3363,20 @@ s03b, s46
 
 Réf. `ADR 009` (modèle de retrait).
 
+- **Deux niveaux de rôles, à ne pas confondre** : le rôle global (`user.role`, `RoleConst`) est
+  celui que cette story réduit ; le rôle d'association (`member.role`, `UserOrganizationRoleConst`)
+  est celui de Membre, Bureau et Présidence, et n'est pas touché.
 - **Homonymie à ne pas casser** : `UserOrganizationRoleConst.ADMIN` vaut `board`, c'est le **Bureau**
   de l'association (s03b). Il n'est pas concerné. Seul `RoleConst.ADMIN` (`admin`, global) part.
 - **Migration** : Postgres ne sait pas retirer une valeur d'une énumération. Il faut convertir les
-  comptes, créer le nouveau type, y basculer la colonne `user.role`, puis supprimer l'ancien. La
-  conversion des données passe par `drizzle-kit generate --custom`, jamais par du SQL écrit à la main
-  dans `drizzle/migrations/` (AGENTS.md). C'est le second commit de la story, pour pouvoir le
-  défaire seul.
+  comptes, créer le nouveau type, y basculer la colonne `user.role`, puis supprimer l'ancien. Ordre
+  imposé par AGENTS.md, pour que le journal et le snapshot restent cohérents : (1) une migration
+  `drizzle-kit generate --custom` pour la **seule conversion des données** ; (2) la modification de
+  `roleEnum` dans `src/db/models/auth-model.ts` ; (3) `pnpm db:generate`, qui produit le changement
+  de type — comme s03b l'a fait pour `organization_role`. Jamais de SQL écrit à la main dans
+  `drizzle/migrations/`. La migration est le second commit de la story, pour pouvoir la défaire
+  seule. La CI e2e monte la base par `db:push` et n'exécute aucune migration : le contrôle du
+  critère de migration est un test dédié, sur le précédent de s12c.
 - **Voie de retour** : `git revert` du code, et une nouvelle migration qui rajoute les valeurs. Les
   comptes convertis ne retrouvent pas leur ancien rôle — il n'en existe aucun en production.
 - **Piège Better Auth** : le plugin `admin()` (`src/lib/better-auth/auth.ts`) reconnaît par défaut le
@@ -3374,8 +3385,15 @@ Réf. `ADR 009` (modèle de retrait).
 - Une cinquantaine d'occurrences de `RoleConst.ADMIN` : la plupart sont la paire
   `[RoleConst.ADMIN, RoleConst.SUPER_ADMIN]` des actions de `/admin`, et `withAuthAdmin` s'appuie sur
   la hiérarchie `roleHierarchy`. `isAdmin` de `auth-provider.tsx` est à revoir.
-- Les rôles `public` et `user` restent ; le plan vérifie à quoi sert `public` dans l'autorisation
-  avant de le garder.
+- `public` part aussi : `authorization-service.ts` le traite comme le cas « aucun rôle » (droits de
+  visiteur), `isPublic` de `auth-provider.tsx` est à retirer. Le défaut de la colonne `user.role`
+  est déjà `user`.
+- **Propriétés du diff, à vérifier en review** : aucune occurrence restante de `RoleConst.ADMIN`,
+  `MODERATOR`, `REDACTOR` ni `PUBLIC` dans le code d'autorisation, et `roleHierarchy` réduit à
+  `user` et `super_admin`.
+- **Pourquoi après s46** : les deux stories touchent `src/lib/better-auth/auth.ts`, la destination
+  après connexion et l'exception réservée au SuperAdmin (s46, connexion limitée à l'association).
+  s47 n'a de sens qu'une fois cette exception posée ; ne pas les réordonner sans le vérifier.
 - Des tests vérifient aujourd'hui qu'un `admin` global est **refusé** sur les réglages d'une
   association (`e2e/association-settings.spec.ts`) : ils se réécrivent sur `user`, ils ne
   disparaissent pas.
@@ -3398,12 +3416,13 @@ Réf. `ADR 009` (modèle de retrait).
 | s06  | presentation-bureau              | 2   | s04                                                                                                                                      | A    |
 | s07  | bandeau-alerte                   | 1   | s01, s03b                                                                                                                                | A    |
 | s08  | formulaire-contact               | 2   | s02, s04                                                                                                                                 | A    |
+| s08b | limitation-debit-formulaires     | 1   | s08                                                                                                                                      | A    |
 | s09  | analyses-eau                     | 2   | s04                                                                                                                                      | A    |
-| s10  | signalements-publics             | 3   | s02, s04, s08                                                                                                                            | A    |
+| s10  | signalements-publics             | 3   | s02, s04, s08b                                                                                                                           | A    |
 | s11  | seo                              | 2   | s02, s04, s05, s09                                                                                                                       | A    |
 | s12  | membres-parcelles                | 4   | s01, s03, s03b                                                                                                                           | B    |
 | s12a | retrait-supabase                 | 2   | s01b                                                                                                                                     | B    |
-| s12b | mise-en-ligne                    | 3   | s01, s01b, s03, s03c, s08, s12a, s44, s45, s46, s47                                                                                      | B    |
+| s12b | mise-en-ligne                    | 3   | s01, s01b, s03, s03c, s08b, s12a, s44, s45, s46, s47                                                                                     | B    |
 | s12c | sauvegarde                       | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
 | s12d | comptes-membres                  | 3   | s03, s03c, s12, s46                                                                                                                      | B    |
 | s13  | import-initial-membres           | 3   | s12, s12d, s12c                                                                                                                          | B    |
@@ -3515,6 +3534,14 @@ formulaires hérités écrivent encore vers ce stockage, alors que l'ADR 004 l'a
 id intercalé parce que s12b en dépend. Le même jour, `production.yml` et `preview.yml`, qui ne
 déployaient rien et échouaient à chaque poussée sur `main`, ont été retirés en Quick Fix, et le
 critère correspondant de s12b a été supprimé.
+
+**s08b, s12d, s43 à s47 ont été ajoutées après la revue du 20 septembre.** s08b est la limitation
+de débit scindée de s08 le 24 septembre (livrée). s12d scinde s12 le 30 septembre (comptes de
+membres), avec s43, la locale unique. s44 à s47 sont inscrites le 7 octobre, après la décision du
+6 octobre de nettoyer le boilerplate avant la mise en ligne : s44 l'accueil, s45 les pages publiques
+et le mode clair seul, s46 les comptes et la connexion limitée à l'association du domaine, s47 les
+rôles globaux. Elles ont passé la revue du 7 octobre, dont les arbitrages sont écrits dans leurs
+en-têtes.
 
 **Ordre vs calendrier contractuel** : la GED (s31, s32) est placée **avant** le vote (s33), alors
 que le calendrier du devis annonce l'inverse (vote en décembre 2026, GED en janvier 2027). Arbitrage
