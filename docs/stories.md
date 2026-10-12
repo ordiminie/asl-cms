@@ -2760,6 +2760,14 @@ branchée, avec la configuration par défaut. C'est le filet de sécurité de ce
 pour laquelle sa liste de dépendances est courte alors que son critère 3 porte sur tout le produit :
 ce sont les tests existants qui font foi, pas une dépendance déclarée story par story.
 
+Deuxième piège, relevé à la revue de s44 : un écran peut **lire** par une action et **écrire** par une
+autre. L'écran « Page d'accueil » (s44) enregistre sous `site.home.manage` mais liste les pages par
+`getPagesForBureauDal`, gardé par `page.manage`. Les deux ont aujourd'hui les mêmes rôles par défaut,
+donc rien ne casse ; dès qu'un rôle aura l'une sans l'autre, il recevra une erreur d'autorisation en
+ouvrant l'écran. Cette story doit y ajouter une lecture dédiée des pages publiées (ou lever la
+dépendance), et chercher si d'autres écrans croisent ainsi deux actions du registre avant de rendre la
+matrice éditable.
+
 Le verrou anti-blocage est un vrai risque terrain : un bureau bénévole qui se retire ses propres
 droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
