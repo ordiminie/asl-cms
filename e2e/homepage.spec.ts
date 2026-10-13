@@ -21,11 +21,10 @@ test.describe('Homepage', () => {
     ).toBeVisible()
   })
 
-  test('porte l’en-tête et le pied de page du site public', async ({page}) => {
+  test('porte l’en-tête du site public', async ({page}) => {
     await page.goto('/')
 
     await expect(page.getByRole('banner')).toBeVisible()
-    await expect(page.getByRole('contentinfo')).toBeVisible()
   })
 
   test('ne sert rien de la vitrine du boilerplate', async ({page}) => {

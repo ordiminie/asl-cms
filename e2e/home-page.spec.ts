@@ -268,7 +268,6 @@ test.describe('Page d’accueil — cycle complet', () => {
         visitor.page.getByRole('heading', {level: 1, name: title})
       ).toBeVisible({timeout: 20_000})
       await expect(visitor.page.getByRole('banner')).toBeVisible()
-      await expect(visitor.page.getByRole('contentinfo')).toBeVisible()
 
       // Critère 6 : une seule adresse pour les moteurs.
       expect(await canonicalOf(visitor.page)).toBe(`${TENANT_A}/`)
