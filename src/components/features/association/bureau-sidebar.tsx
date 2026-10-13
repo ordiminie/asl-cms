@@ -26,6 +26,7 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
     labelKey: 'siteGroup',
     items: [
       {href: '/bureau/pages', labelKey: 'pages'},
+      {href: '/bureau/page-accueil', labelKey: 'homePage'},
       {href: '/bureau/actualites', labelKey: 'news'},
       {href: '/bureau/analyses-eau', labelKey: 'waterAnalysis'},
       {href: '/bureau/navigation', labelKey: 'navigation'},
@@ -56,7 +57,8 @@ type BureauSidebarProps = {
 
 /**
  * Barre laterale de l'espace bureau (designs s01b, s02 et s04) : identite de
- * l'association en tete, puis « Le site » › Pages, Actualites, Analyses
+ * l'association en tete, puis « Le site » › Pages, Page d'accueil (s44),
+ * Actualites, Analyses
  * d'eau (s09), Navigation,
  * Messages recus (s08) et
  * « L'association » › Proprietaires (s12), Identite, Reglages ; l'item actif

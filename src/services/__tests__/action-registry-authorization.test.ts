@@ -295,3 +295,57 @@ describe('MEMBER_PROFILE_MANAGE — propriétaires et parcelles (s12)', () => {
     expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
   })
 })
+
+/**
+ * Designer la page d'accueil du site (s44, ADR 032). Une action a part de
+ * `PAGE_MANAGE` : s37 rend les droits ajustables par action, choisir
+ * l'accueil ne doit pas rester lie a ecrire des pages.
+ */
+describe('HOME_PAGE_MANAGE — page d accueil (s44)', () => {
+  const MANAGE = ActionIdConst.HOME_PAGE_MANAGE
+
+  it('porte l identifiant site.home.manage', () => {
+    expect(MANAGE).toBe('site.home.manage')
+    expect(ACTION_REGISTRY.some((action) => action.id === MANAGE)).toBe(true)
+  })
+
+  it('[SUPER_ADMIN] autorise le SuperAdmin', () => {
+    expect(canPerformAction(userTestSuperAdmin, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+
+  it('[USER NOT IN ORGANIZATION] refuse le bureau d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+})

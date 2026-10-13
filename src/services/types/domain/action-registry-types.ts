@@ -105,6 +105,13 @@ export const ActionIdConst = {
    * `member_profile`.
    */
   MEMBER_PROFILE_MANAGE: 'member.profile.manage',
+  /**
+   * Designer la page d'accueil du site (s44, ADR 032) : choisir la page
+   * publiee servie sur `/`, ou revenir a l'accueil automatique. Une entree a
+   * part de `PAGE_MANAGE` : s37 rend les droits ajustables par action, et
+   * choisir l'accueil ne doit pas rester lie a ecrire des pages.
+   */
+  HOME_PAGE_MANAGE: 'site.home.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -150,6 +157,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.MEMBER_PROFILE_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.HOME_PAGE_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

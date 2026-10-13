@@ -1,32 +1,40 @@
 import {expect, test} from '@playwright/test'
 
+/**
+ * Accueil du site public (s44, critère 2) : sur une base fraîche, aucune page
+ * n'est désignée — `/` sert l'accueil automatique de l'association du
+ * domaine, jamais la vitrine du boilerplate.
+ */
 test.describe('Homepage', () => {
-  test('should display the homepage correctly', async ({page}) => {
+  test('affiche l’accueil de l’association : son nom en titre et en h1', async ({
+    page,
+  }) => {
     await page.goto('/')
 
     // Titre de la page d'accueil : le nom de l'association du domaine (s11)
     await expect(page).toHaveTitle('TechCorp Solutions')
-
-    // Check for main hero heading specifically
     await expect(
-      page.getByRole('heading', {
-        name: /La plateforme SaaS moderne pour booster/,
-      })
+      page.getByRole('heading', {level: 1, name: 'TechCorp Solutions'})
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', {level: 2, name: 'Dernières actualités'})
     ).toBeVisible()
   })
 
-  test('should have working navigation', async ({page}) => {
+  test('porte l’en-tête du site public', async ({page}) => {
     await page.goto('/')
 
-    // Check if navigation links are present - use more specific selector
-    const navigation = page.locator('nav').first()
-    await expect(navigation).toBeVisible()
+    await expect(page.getByRole('banner')).toBeVisible()
   })
 
-  test('should display hero section', async ({page}) => {
+  test('ne sert rien de la vitrine du boilerplate', async ({page}) => {
     await page.goto('/')
 
-    // Check for hero content
-    await expect(page.getByText('La plateforme SaaS moderne')).toBeVisible()
+    await expect(
+      page.getByRole('heading', {level: 1, name: 'TechCorp Solutions'})
+    ).toBeVisible()
+    await expect(page.getByText('Essayez gratuitement')).toHaveCount(0)
+    await expect(page.getByText(/La plateforme SaaS moderne/)).toHaveCount(0)
+    await expect(page.locator('a[href="/pricing"]')).toHaveCount(0)
   })
 })

@@ -94,65 +94,6 @@
       "unable_to_create_user": "Impossible de créer votre compte. Veuillez réessayer."
     }
   },
-  "HomePage": {
-    "title": "La plateforme SaaS moderne pour booster votre business",
-    "description": "Gérez, analysez et développez votre activité avec des outils puissants et une interface intuitive.",
-    "metadata": {
-      "title": "Accueil - Next SaaS Boilerplate",
-      "description": "La plateforme SaaS moderne pour booster votre business"
-    },
-    "navigation": {
-      "features": "Fonctionnalités",
-      "pricing": "Tarifs",
-      "contact": "Contact"
-    },
-    "hero": {
-      "title": "La plateforme SaaS moderne pour booster votre business",
-      "description": "Gérez, analysez et développez votre activité avec des outils puissants et une interface intuitive.",
-      "cta": "Essayez gratuitement"
-    },
-    "features": {
-      "title": "Fonctionnalités",
-      "subtitle": "Découvrez ce qui rend notre plateforme unique",
-      "automation": {
-        "title": "Automatisation",
-        "description": "Automatisez vos tâches répétitives et gagnez du temps au quotidien."
-      },
-      "analytics": {
-        "title": "Analyse avancée",
-        "description": "Obtenez des rapports détaillés pour piloter votre croissance."
-      },
-      "security": {
-        "title": "Sécurité optimale",
-        "description": "Vos données sont protégées grâce à notre infrastructure sécurisée."
-      }
-    },
-    "footer": {
-      "byMike": "By Mike Codeur",
-      "allRightsReserved": "Tous droits réservés.",
-      "product": {
-        "title": "Produit",
-        "features": "Fonctionnalités",
-        "pricing": "Tarifs",
-        "demo": "Démo",
-        "updates": "Nouveautés"
-      },
-      "resources": {
-        "title": "Ressources",
-        "documentation": "Documentation",
-        "blog": "Blog",
-        "support": "Support",
-        "api": "API"
-      },
-      "legal": {
-        "title": "Légal & Contact",
-        "terms": "Mentions légales",
-        "privacy": "Politique de confidentialité",
-        "contact": "Contact",
-        "careers": "Recrutement"
-      }
-    }
-  },
   "TermsPage": {
     "title": "Conditions d'Utilisation",
     "description": "Page de conditions d'utilisation",
@@ -2841,6 +2782,7 @@
       "settings": "Réglages",
       "siteGroup": "Le site",
       "pages": "Pages",
+      "homePage": "Page d’accueil",
       "navigation": "Navigation",
       "news": "Actualités",
       "waterAnalysis": "Analyses d'eau",
@@ -3349,6 +3291,61 @@
     },
     "previewDraft": "Aperçu — cette actualité est un brouillon. Les visiteurs ne la voient pas.",
     "previewUnpublished": "Aperçu — cette actualité est dépubliée. Les visiteurs ne la voient pas."
+  },
+  "BureauHomePage": {
+    "metadata": {
+      "title": "Page d’accueil"
+    },
+    "title": "Page d’accueil",
+    "intro": "C’est la première chose que voient les visiteurs quand ils tapent l’adresse de votre association.",
+    "cardTitle": "Ce que voient les visiteurs",
+    "current": {
+      "automatic": "Aujourd’hui : l’accueil automatique.",
+      "page": "Aujourd’hui : la page « {title} ».",
+      "unpublished": "Aujourd’hui : l’accueil automatique, la page « {title} » n’étant plus publiée."
+    },
+    "choices": {
+      "label": "Accueil du site",
+      "automatic": {
+        "label": "L’accueil automatique",
+        "help": "Le nom et le logo de l’association, puis ses trois dernières actualités."
+      },
+      "page": {
+        "label": "Une page du site",
+        "help": "Vous écrivez l’accueil vous-même dans l’éditeur de pages.",
+        "noPublished": "Aucune page n’est publiée pour l’instant.",
+        "publish": "Publier une page"
+      }
+    },
+    "select": {
+      "label": "Page choisie",
+      "help": "Seules les pages publiées sont proposées.",
+      "unpublished": "{title} — non publiée"
+    },
+    "warning": {
+      "body": "La page « {title} » n’est plus publiée. Les visiteurs voient l’accueil automatique en attendant. Publiez-la de nouveau, ou choisissez-en une autre.",
+      "open": "Ouvrir la page"
+    },
+    "notices": {
+      "savedPage": "Accueil enregistré. Les visiteurs voient maintenant la page « {title} » à l’adresse de l’association.",
+      "savedAutomatic": "Accueil enregistré. Les visiteurs voient maintenant l’accueil automatique à l’adresse de l’association."
+    },
+    "errors": {
+      "failed": "L’accueil n’a pas été enregistré. Rien n’a changé pour les visiteurs. Réessayez dans un instant.",
+      "notPublished": "Cette page n’est plus publiée. Choisissez-en une autre.",
+      "forbidden": "Cette action est réservée au bureau de l’association."
+    },
+    "actions": {
+      "save": "Enregistrer l’accueil",
+      "saving": "Enregistrement…",
+      "view": "Voir l’accueil du site",
+      "viewLabel": "Voir l’accueil du site (s’ouvre dans un nouvel onglet)"
+    }
+  },
+  "PublicHome": {
+    "newsTitle": "Dernières actualités",
+    "newsEmpty": "Aucune actualité pour l’instant.",
+    "allNews": "Toutes les actualités"
   },
   "BureauWaterAnalysisPage": {
     "metadata": {

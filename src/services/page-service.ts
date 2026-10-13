@@ -93,7 +93,9 @@ const seoChangesOf = (input: {
       .map((field) => [field, input[field]])
   )
 
-const toPageWithBlocksDto = (row: PageWithBlocksRow): PageWithBlocksDTO => ({
+export const toPageWithBlocksDto = (
+  row: PageWithBlocksRow
+): PageWithBlocksDTO => ({
   ...toPageDto(row),
   blocks: row.blocks.map((block) => ({
     id: block.id,

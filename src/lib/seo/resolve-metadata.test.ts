@@ -297,3 +297,17 @@ describe('toPageMetadata — metadonnees Next completes', () => {
     ).toMatchObject({type: 'article'})
   })
 })
+
+describe('resolvePageSeo — adresse canonique (s44)', () => {
+  it('par défaut, l adresse propre de la page', () => {
+    expect(resolvePageSeo(cmsPage(), association()).canonical).toBe(
+      `${ORIGIN}/qualite-de-l-eau`
+    )
+  })
+
+  it('la page d accueil déclare la racine comme canonique', () => {
+    expect(
+      resolvePageSeo(cmsPage(), association(), {canonicalPath: '/'}).canonical
+    ).toBe(`${ORIGIN}/`)
+  })
+})

@@ -25,6 +25,9 @@ vi.mock('@/app/dal/page-dal', () => ({
   getPageBySlugForPreviewDal: vi.fn(),
   getPublicPageBySlugDal: vi.fn(),
 }))
+vi.mock('@/app/dal/home-page-dal', () => ({
+  getCurrentPublicHomePageDal: vi.fn(async () => undefined),
+}))
 vi.mock('@/app/dal/news-dal', () => ({
   canManageCurrentNewsDal: vi.fn(async () => false),
   getNewsBySlugForPreviewDal: vi.fn(),
@@ -34,6 +37,7 @@ vi.mock('@/app/dal/news-dal', () => ({
 
 import type {Metadata} from 'next'
 
+import {getCurrentPublicHomePageDal} from '@/app/dal/home-page-dal'
 import {getPublicNewsBySlugDal} from '@/app/dal/news-dal'
 import {getPublicPageBySlugDal} from '@/app/dal/page-dal'
 import {AssociationSeoDTO, getCurrentAssociationSeoDal} from '@/app/dal/seo-dal'
@@ -41,13 +45,13 @@ import {shareImageNameKey} from '@/lib/seo/resolve-metadata'
 import {NewsDTO} from '@/services/types/domain/news-types'
 import {PageWithBlocksDTO} from '@/services/types/domain/page-types'
 
-import {generateMetadata as homeMetadata} from '../page'
 import {generateMetadata as cmsMetadata} from './[slug]/page'
 import {generateMetadata as newsItemMetadata} from './actualites/[slug]/page'
 import {generateMetadata as newsListMetadata} from './actualites/page'
 import {generateMetadata as waterMetadata} from './analyses-eau/page'
 import {generateMetadata as contactMetadata} from './contact/page'
 import {generateMetadata as boardMetadata} from './le-bureau/page'
+import {generateMetadata as homeMetadata} from './page'
 import {generateMetadata as reportMetadata} from './signaler/page'
 
 const ORIGIN = 'https://lesamisdeletang.fr'
@@ -113,6 +117,7 @@ const slugParams = (slug: string, locale = 'fr') => ({
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getCurrentAssociationSeoDal).mockResolvedValue(association())
+  vi.mocked(getCurrentPublicHomePageDal).mockResolvedValue(undefined)
 })
 
 describe('page CMS publiee — titre, description et partage du bureau (critere 2)', () => {
@@ -167,6 +172,30 @@ describe('page CMS publiee — titre, description et partage du bureau (critere 
     vi.mocked(getPublicPageBySlugDal).mockResolvedValue(undefined)
 
     expect(await cmsMetadata(slugParams('absente'))).toEqual({})
+  })
+})
+
+describe('page d accueil a son adresse propre (s44, critere 6)', () => {
+  it('la page designee comme accueil declare / comme canonique', async () => {
+    vi.mocked(getPublicPageBySlugDal).mockResolvedValue(cmsPage())
+    vi.mocked(getCurrentPublicHomePageDal).mockResolvedValue(cmsPage())
+
+    const metadata = await cmsMetadata(slugParams('qualite-de-l-eau'))
+
+    expect(metadata.alternates).toEqual({canonical: `${ORIGIN}/`})
+  })
+
+  it('toute autre page garde sa propre adresse', async () => {
+    vi.mocked(getPublicPageBySlugDal).mockResolvedValue(cmsPage())
+    vi.mocked(getCurrentPublicHomePageDal).mockResolvedValue(
+      cmsPage({id: 'accueil', slug: 'bienvenue'})
+    )
+
+    const metadata = await cmsMetadata(slugParams('qualite-de-l-eau'))
+
+    expect(metadata.alternates).toEqual({
+      canonical: `${ORIGIN}/qualite-de-l-eau`,
+    })
   })
 })
 
@@ -225,5 +254,23 @@ describe('pages a adresse fixe et accueil : repli sur l association', () => {
     expect(metadata.title).toEqual({absolute: 'Les Amis de l’Étang'})
     expect(metadata.alternates).toEqual({canonical: `${ORIGIN}/`})
     expect(metadata.description).toBe('Description de l’association.')
+  })
+
+  it('accueil avec une page designee : les metadonnees de la page, canonique racine (s44)', async () => {
+    vi.mocked(getCurrentPublicHomePageDal).mockResolvedValue(
+      cmsPage({seoDescription: 'Bienvenue sur le site.'})
+    )
+
+    const metadata = await homeMetadata(localeParams())
+
+    expect(metadata.title).toBe('Qualité de l’eau')
+    expect(metadata.description).toBe('Bienvenue sur le site.')
+    expect(metadata.alternates).toEqual({canonical: `${ORIGIN}/`})
+  })
+
+  it('domaine sans association : aucune metadonnee de la vitrine', async () => {
+    vi.mocked(getCurrentAssociationSeoDal).mockResolvedValue(undefined)
+
+    expect(await homeMetadata(localeParams())).toEqual({})
   })
 })

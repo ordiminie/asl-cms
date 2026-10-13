@@ -106,10 +106,15 @@ const fallbackImage = (association: AssociationSeoContext) => ({
 const canonicalOf = (association: AssociationSeoContext, path: string) =>
   `${association.origin}${path}`
 
-/** Page CMS : titre moteur -> titre ; description -> association -> aucune. */
+/**
+ * Page CMS : titre moteur -> titre ; description -> association -> aucune.
+ * `canonicalPath` remplace l'adresse propre `/{slug}` : la page d'accueil
+ * declare `/` (s44), a son adresse propre comme a la racine.
+ */
 export const resolvePageSeo = (
   page: PageSeoSource,
-  association: AssociationSeoContext
+  association: AssociationSeoContext,
+  options: {canonicalPath?: string} = {}
 ): ResolvedSeo =>
   withDescription(
     {
@@ -120,7 +125,10 @@ export const resolvePageSeo = (
             alt: filled(page.shareImageAlt) ?? association.name,
           }
         : fallbackImage(association),
-      canonical: canonicalOf(association, `/${page.slug}`),
+      canonical: canonicalOf(
+        association,
+        options.canonicalPath ?? `/${page.slug}`
+      ),
     },
     filled(page.seoDescription) ?? filled(association.description)
   )
