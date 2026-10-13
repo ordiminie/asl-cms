@@ -9,8 +9,8 @@ import {Browser, expect, Page, test} from '@playwright/test'
  * compte hérité ne sont plus servis (un vrai 404 : adresses à plusieurs
  * segments, ADR 013), `/dashboard` est l'espace membre vide, la déconnexion
  * ferme bien la session, aucun menu ne renvoie vers une adresse retirée, et le
- * SuperAdmin passe de `/admin` à `/bureau` sans se reconnecter (cookie propre
- * à l'hôte).
+ * SuperAdmin passe de `/admin` au back-office (`/bureau/pages`) sans se
+ * reconnecter (cookie propre à l'hôte).
  */
 
 const PORT = process.env.PLAYWRIGHT_PORT ?? '3000'
@@ -216,7 +216,7 @@ test.describe('critère 1 — aucun lien ne vise une adresse retirée', () => {
   })
 })
 
-test.describe('critère 3 — de /admin à /bureau sans reconnexion', () => {
+test.describe('critère 3 — de /admin à /bureau/pages sans reconnexion', () => {
   test('le SuperAdmin ouvre le back-office de l’association du domaine', async ({
     browser,
   }) => {
@@ -228,7 +228,7 @@ test.describe('critère 3 — de /admin à /bureau sans reconnexion', () => {
     })
     await expect(entry).toBeVisible({timeout: 20_000})
     await expect(entry).toContainText(TENANT_A_NAME)
-    await expect(entry).toHaveAttribute('href', '/bureau')
+    await expect(entry).toHaveAttribute('href', '/bureau/pages')
     await expect(menu.getByText('Application (front office)')).toHaveCount(0)
 
     const visited: string[] = []
@@ -237,8 +237,18 @@ test.describe('critère 3 — de /admin à /bureau sans reconnexion', () => {
     })
 
     await entry.click()
-    await page.waitForURL(/\/bureau/, {timeout: 20_000})
-    await expect(page.locator('main').first()).toBeVisible({timeout: 20_000})
+    await page.waitForURL(`${TENANT_A}/bureau/pages`, {timeout: 20_000})
+    expect(new URL(page.url()).pathname).toBe('/bureau/pages')
+
+    await expect(
+      page.getByRole('heading', {level: 1, name: 'Pages'})
+    ).toBeVisible({timeout: 20_000})
+    await expect(
+      page
+        .locator('[data-sidebar="sidebar"]')
+        .getByRole('link', {name: 'Page d’accueil'})
+    ).toHaveAttribute('href', '/bureau/page-accueil')
+    await expect(page.getByText('Page non trouvée')).toHaveCount(0)
 
     expect(visited.filter((url) => url.includes('/login'))).toEqual([])
     await page.close()

@@ -83,8 +83,8 @@ compte. » Puis quatre `card` empilées (32 px d'écart, 24 px sur mobile), dans
 
 - **Domaine d'une association** : l'entrée « Application (front office) » (vers `/dashboard`) est
   remplacée par « **Back-office de l'association** », icône `Landmark` (lucide), avec le **nom de
-  l'association** en sous-libellé `meta` 15 px, tronqué s'il manque de place. Ouvre `/bureau` dans le
-  même onglet, sans nouvelle connexion.
+  l'association** en sous-libellé `meta` 15 px, tronqué s'il manque de place. Ouvre `/bureau/pages` dans le
+  même onglet (`/bureau` n'a pas de page ; sa destination est décidée par s46b), sans nouvelle connexion.
 - **Barre repliée** : `aria-label` et `tooltip` portent libellé + nom.
 - **Adresse de la plateforme** : l'entrée n'est pas rendue (pas d'état grisé) ; le groupe du bas, qui
   ne contenait qu'elle, disparaît avec son séparateur.

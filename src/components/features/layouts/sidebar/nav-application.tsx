@@ -13,7 +13,7 @@ import {
 
 /**
  * Entree « Back-office de l'association » de la barre de /admin (s46) : meme
- * hote, meme cookie, `/bureau` s'ouvre sans nouvelle connexion. Rendue
+ * hote, meme cookie, `/bureau/pages` s'ouvre sans nouvelle connexion. Rendue
  * seulement quand le domaine appele sert une association.
  */
 export function NavApplication({association}: {association?: {name: string}}) {
@@ -30,7 +30,7 @@ export function NavApplication({association}: {association?: {name: string}}) {
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton asChild size="lg" tooltip={label}>
-            <Link href="/bureau" aria-label={label}>
+            <Link href="/bureau/pages" aria-label={label}>
               <Landmark />
               <span className="grid min-w-0 flex-1 text-left leading-tight">
                 <span className="truncate font-semibold">{t('label')}</span>

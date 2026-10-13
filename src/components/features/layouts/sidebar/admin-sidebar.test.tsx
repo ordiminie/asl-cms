@@ -35,13 +35,13 @@ const hrefs = () =>
   )
 
 describe('barre de /admin — lien vers le back-office de l association (s46, critere 3)', () => {
-  it('sur le domaine d une association, propose /bureau avec son nom', () => {
+  it('sur le domaine d une association, ouvre /bureau/pages avec son nom', () => {
     renderSidebar({name: "Les Amis de l'Étang"})
 
     const entry = screen.getByRole('link', {
       name: "Back-office de l'association Les Amis de l'Étang",
     })
-    expect(entry).toHaveAttribute('href', '/bureau')
+    expect(entry).toHaveAttribute('href', '/bureau/pages')
     expect(entry).toHaveTextContent("Back-office de l'association")
     expect(entry).toHaveTextContent("Les Amis de l'Étang")
     expect(screen.queryByText('Application (front office)')).toBeNull()
@@ -53,7 +53,7 @@ describe('barre de /admin — lien vers le back-office de l association (s46, cr
 
     expect(screen.queryByText(/Back-office de l.association/)).toBeNull()
     expect(screen.queryByText('Application (front office)')).toBeNull()
-    expect(document.querySelector('a[href="/bureau"]')).toBeNull()
+    expect(document.querySelector('a[href^="/bureau"]')).toBeNull()
   })
 
   it('aucun lien, menu du compte compris, ne vise une adresse retirée', async () => {
