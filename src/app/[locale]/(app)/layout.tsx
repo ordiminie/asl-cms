@@ -5,7 +5,6 @@ import {getCurrentUserDal} from '@/app/dal/user-dal'
 import AuthProvider from '@/components/context/auth-provider'
 import {OrganizationProvider} from '@/components/context/organization-provider'
 import {OrganizationSync} from '@/components/context/organization-sync'
-import {UserPreferencesSync} from '@/components/context/user-preferences-sync'
 import {AppBreadcrumb} from '@/components/features/app-breadcrumb'
 import {AppSidebar} from '@/components/features/layouts/sidebar/app-sidebar'
 import {SidebarSkeleton} from '@/components/features/layouts/sidebar/sidebar-skeleton'
@@ -34,7 +33,6 @@ export default function AppLayout({children}: {children: React.ReactNode}) {
     <AuthProvider userPromise={userPromise}>
       <OrganizationProvider>
         <Suspense fallback={null}>
-          <UserPreferencesSync />
           <OrganizationSync />
         </Suspense>
         <SidebarProvider>

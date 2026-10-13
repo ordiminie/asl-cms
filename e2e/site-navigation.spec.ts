@@ -32,7 +32,7 @@ const NAVIGATION_ROUTE = '/bureau/navigation'
 const NAVIGATION_TITLE = 'Navigation du site'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 /** Une page publique du socle : elle porte l'en-tête et le pied de page du site. */
-const PUBLIC_ROUTE = '/privacy'
+const PUBLIC_ROUTE = '/actualites'
 
 const unique = (prefix: string) =>
   `${prefix}-${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`

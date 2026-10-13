@@ -19,8 +19,6 @@ export type AuthMethod = z.infer<typeof AuthMethodSchema>
 
 export const EnabledPageSchema = z.enum([
   'none',
-  'blog',
-  'docs',
   'apikey',
   'organization',
   'invitation',

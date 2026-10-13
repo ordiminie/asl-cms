@@ -1,6 +1,6 @@
 # ADR 012 — Le mode sombre est conservé
 
-- Status: accepted
+- Status: superseded by ADR 033
 - Date: 2026-09-09
 - Scope: framing
 

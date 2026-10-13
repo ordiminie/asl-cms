@@ -1,7 +1,6 @@
 /* eslint-disable no-restricted-properties */
 // Ce fichier s'évalue avant que le module `@/env` ne soit disponible :
 // process.env y est le seul accès possible aux variables.
-import createMDX from '@next/mdx'
 import {withSentryConfig} from '@sentry/nextjs'
 import type {NextConfig} from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
@@ -12,7 +11,7 @@ const withNextIntl = createNextIntlPlugin()
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['localhost'],
-  pageExtensions: ['js', 'jsx', 'mdx', 'md', 'ts', 'tsx'],
+  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   // Locale unique sans prefixe (ADR 008) : les anciennes adresses /fr, /en et
   // /es redirigent en 308 vers la meme adresse sans prefixe (ADR 031).
   async redirects() {
@@ -73,15 +72,7 @@ const nextConfig: NextConfig = {
   },
 }
 
-const withMDX = createMDX({
-  extension: /\.mdx?$/,
-  options: {
-    remarkPlugins: [],
-    rehypePlugins: [],
-  },
-})
-
-const config = withNextIntl(withMDX(nextConfig))
+const config = withNextIntl(nextConfig)
 
 // Sentry est optionnel dans le boilerplate : sans DSN, on exporte la
 // configuration inchangée. Le plugin n'est jamais appliqué, le build est donc

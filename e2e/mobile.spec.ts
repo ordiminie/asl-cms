@@ -20,6 +20,5 @@ test.describe('Mobile Navigation', () => {
       page.getByRole('heading', {level: 1, name: 'TechCorp Solutions'})
     ).toBeVisible()
     await expect(page.getByText('Essayez gratuitement')).toHaveCount(0)
-    await expect(page.locator('a[href="/pricing"]')).toHaveCount(0)
   })
 })

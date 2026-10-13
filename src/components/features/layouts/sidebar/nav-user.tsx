@@ -7,14 +7,11 @@ import {
   CreditCard,
   Key,
   LogOut,
-  Moon,
   Settings,
   Sparkles,
-  Sun,
 } from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
-import {useTheme} from 'next-themes'
 
 import {useSubscription} from '@/components/hooks/use-subscription'
 import {useUnreadNotifications} from '@/components/hooks/use-unread-notifications'
@@ -42,13 +39,8 @@ import {User} from '@/services/types/domain/user-types'
 export function NavUser({user}: {user?: User}) {
   const t = useTranslations('NavUser')
   const {isMobile} = useSidebar()
-  const {theme, setTheme} = useTheme()
   const {unreadCount} = useUnreadNotifications()
   const {isFree, loading: subscriptionLoading} = useSubscription()
-
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light')
-  }
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -109,28 +101,6 @@ export function NavUser({user}: {user?: User}) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                onClick={toggleTheme}
-                className="cursor-pointer"
-              >
-                {theme === 'light' ? (
-                  <>
-                    <Moon
-                      className="h-[1.2rem] w-[1.2rem]"
-                      suppressHydrationWarning
-                    />
-                    {t('darkMode')}
-                  </>
-                ) : (
-                  <>
-                    <Sun
-                      className="h-[1.2rem] w-[1.2rem]"
-                      suppressHydrationWarning
-                    />
-                    {t('lightMode')}
-                  </>
-                )}
-              </DropdownMenuItem>
               {isPageEnabled(PagesConst.ACCOUNT) && (
                 <DropdownMenuItem>
                   <BadgeCheck />

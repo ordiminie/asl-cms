@@ -60,7 +60,6 @@ export default function AppLayout({children}: {children: React.ReactNode}) {
     <AuthProvider userPromise={userPromise}>
       <OrganizationProvider>
         <Suspense fallback={null}>
-          <UserPreferencesSync />
           <OrganizationSync />
         </Suspense>
         <Suspense fallback={<SidebarSkeleton />}>
@@ -82,8 +81,8 @@ est absente. Détail dans
 **Côté client**, `useAuth()` et `useOrganization()` déroulent la promesse avec
 `use()` : ils **suspendent**, donc ne s'appellent que depuis un composant placé
 derrière un `<Suspense>`. Un provider qui suspend emporte `{children}` avec lui —
-c'est pour ça que les effets vivent dans `UserPreferencesSync` et
-`OrganizationSync` plutôt que dans les providers.
+c'est pour ça que les effets vivent dans `OrganizationSync` plutôt que dans les
+providers.
 
 ## Le contrôle de rôle : `withAuth`
 

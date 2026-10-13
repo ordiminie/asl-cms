@@ -1,16 +1,8 @@
 'use client'
 
-import {
-  BadgeCheck,
-  ChevronsUpDown,
-  LogOut,
-  Moon,
-  Settings,
-  Sun,
-} from 'lucide-react'
+import {BadgeCheck, ChevronsUpDown, LogOut, Settings} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
-import {useTheme} from 'next-themes'
 
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
 import {
@@ -35,11 +27,6 @@ import {User} from '@/services/types/domain/user-types'
 export function NavUserAdmin({user}: {user?: User}) {
   const t = useTranslations('NavUser')
   const {isMobile} = useSidebar()
-  const {theme, setTheme} = useTheme()
-
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light')
-  }
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -80,28 +67,6 @@ export function NavUserAdmin({user}: {user?: User}) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                onClick={toggleTheme}
-                className="cursor-pointer"
-              >
-                {theme === 'light' ? (
-                  <>
-                    <Moon
-                      className="h-[1.2rem] w-[1.2rem]"
-                      suppressHydrationWarning
-                    />
-                    {t('darkMode')}
-                  </>
-                ) : (
-                  <>
-                    <Sun
-                      className="h-[1.2rem] w-[1.2rem]"
-                      suppressHydrationWarning
-                    />
-                    {t('lightMode')}
-                  </>
-                )}
-              </DropdownMenuItem>
               {isPageEnabled(PagesConst.ACCOUNT) && (
                 <DropdownMenuItem>
                   <BadgeCheck />

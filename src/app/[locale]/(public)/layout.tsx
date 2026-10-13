@@ -7,7 +7,6 @@ import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {AssociationMark} from '@/components/features/association/association-mark'
 import PublicFooter from '@/components/features/layouts/public-footer'
 import {PublicMobileMenu} from '@/components/features/layouts/public-mobile-menu'
-import {ModeToggle} from '@/components/theme-toggle'
 import {Button} from '@/components/ui/button'
 import {routing} from '@/i18n/routing'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
@@ -76,8 +75,6 @@ export default async function PublicLayout({children}: PropsWithChildren) {
                 <div className="sm:hidden">
                   <PublicMobileMenu entries={menu} />
                 </div>
-
-                <ModeToggle />
               </div>
             </div>
           </div>

@@ -11,7 +11,7 @@ import {expect, test} from '@playwright/test'
  * assertion de DOM passe très bien sur une page sans styles.
  */
 
-const ROUTES = ['/', '/login/prestataire', '/blog', '/pricing']
+const ROUTES = ['/', '/login/prestataire']
 
 for (const route of ROUTES) {
   test(`${route} charge la feuille de styles de l'application`, async ({

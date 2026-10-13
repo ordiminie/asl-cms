@@ -13,28 +13,32 @@ l'authentification ou non.
 
 | Type de donnée                          | Mécanisme                                  | Où                   |
 | --------------------------------------- | ------------------------------------------ | -------------------- |
-| Lecture publique (blog, docs, plans)    | `'use cache'` + `cacheLife` + `cacheTag`   | fonction du DAL      |
+| Lecture publique (actualités, plans)    | `'use cache'` + `cacheLife` + `cacheTag`   | fonction du DAL      |
 | Donnée devant survivre aux déploiements | `unstable_cache` conservé                  | fonction du DAL      |
 | Donnée par utilisateur                  | ni l'un ni l'autre — `<Suspense>` + stream | composant de la page |
 
 ### 1. Lecture publique — `'use cache'` dans le DAL
 
 ```ts
-export const getAllBlogCategoriesDal = cache(async (locale: string) => {
-  'use cache'
-  cacheLife('days')
-  cacheTag('blog')
+const readPublishedNewsPageCached = cache(
+  async (organizationId: string, page: number): Promise<NewsListPageDTO> => {
+    'use cache'
+    cacheLife('hours')
+    cacheTag(newsListTag(organizationId))
 
-  return getAllCategoriesPublicService(locale)
-})
+    return getPublishedNewsPageService(organizationId, page)
+  }
+)
 ```
+
+Voir `src/app/dal/news-dal.ts`.
 
 Invalidation depuis une Server Action :
 
 ```ts
 import {updateTag} from 'next/cache'
 
-updateTag('blog') // read-your-writes : l'utilisateur voit son changement tout de suite
+updateTag(newsListTag(organizationId)) // read-your-writes : l'utilisateur voit son changement tout de suite
 ```
 
 `revalidateTag(tag, profil)` existe aussi, mais c'est du **stale-while-revalidate** : les lecteurs
@@ -64,25 +68,19 @@ Pas de cache. Le composant qui lit la session est isolé pour que le reste de la
 Ces accès font échouer le prerender. La liste vient de cas réellement rencontrés pendant la
 migration :
 
-| Interdit                               | Symptôme                              | Solution                                 |
-| -------------------------------------- | ------------------------------------- | ---------------------------------------- |
-| `new Date()`, `Date.now()`             | `blocking-prerender-current-time`     | cacher la valeur dans sa propre fonction |
-| `Math.random()`, `crypto.randomUUID()` | idem                                  | rendre déterministe, ou supprimer        |
-| `headers()`, `cookies()`               | `next-request-in-use-cache`           | lire en dehors et passer en argument     |
-| Compilation MDX (`MDXRemote` + Shiki)  | `Date.now()` en frames ignore-listées | `<Suspense>` **+** `await connection()`  |
+| Interdit                               | Symptôme                          | Solution                                 |
+| -------------------------------------- | --------------------------------- | ---------------------------------------- |
+| `new Date()`, `Date.now()`             | `blocking-prerender-current-time` | cacher la valeur dans sa propre fonction |
+| `Math.random()`, `crypto.randomUUID()` | idem                              | rendre déterministe, ou supprimer        |
+| `headers()`, `cookies()`               | `next-request-in-use-cache`       | lire en dehors et passer en argument     |
 
 ⚠️ **`<Suspense>` seul ne suffit pas** pour l'IO synchrone. La doc est explicite et on l'a vérifié :
 `instant = false` et `<Suspense>` ne neutralisent pas une erreur d'IO synchrone au prerender. Il faut
 `await connection()` pour marquer le sous-arbre comme rendu à la requête.
 
-Exemple, `blog-article.tsx` :
-
-```tsx
-async function ArticleContent({content}: {content: string}) {
-  await connection()
-  return <MDXRemote source={content} ... />
-}
-```
+Le cas rencontré était la compilation MDX du blog et de la documentation hérités (`Date.now()` en
+frames ignore-listées), retirés par s45. Le rendu des blocs du CMS l'évite : il est pur et synchrone
+(`src/lib/cms/render-page-block.ts`, ADR 019).
 
 ## Authentification
 
@@ -139,7 +137,7 @@ personnelle dedans : indexer sur un identifiant stable.
 **Un provider ne doit jamais suspendre** : il emporterait `{children}` avec lui. `AuthProvider` et
 `OrganizationProvider` ne portent que la promesse et l'état client ; ce sont les hooks
 (`useAuth`, `useOrganization`) qui déroulent, et les effets vivent dans des composants dédiés
-(`UserPreferencesSync`, `OrganizationSync`) montés derrière un `<Suspense>`.
+(`OrganizationSync`) montés derrière un `<Suspense>`.
 
 **Le contrôle d'accès n'est pas dans le stream.** Un `redirect()` ou un `forbidden()` déclenché en
 cours de rendu part après le début d'un `200` et ne peut plus changer le statut. Le gating grossier
@@ -156,11 +154,11 @@ rendre un vrai 403 garde son layout bloquant. Voir
 Une route légitimement dépendante de la requête porte `export const instant = false` **avec la raison
 écrite dans le fichier**, jamais un TODO générique.
 
-Il en reste quatre dans tout `src/app`, un par fichier qui décide :
+Il en reste deux dans tout `src/app`, un par fichier qui décide :
 
+- `[locale]/layout.tsx` — le tenant vient de l'en-tête `Host` (ADR 003) : toute page dépend de la
+  requête
 - `admin/layout.tsx` — le contrôle du rôle ADMIN doit rendre un vrai 403
-- `checkout/[priceId]` et `checkout/better-auth` — prix, session, état Stripe
-- `docs/[...slug]` — lit `x-theme` pour la coloration Shiki
 
 L'opt-out d'un layout couvre son segment : ne pas le répéter sur chaque page en dessous, ça ne change
 rien et ça périme.

@@ -1,9 +1,8 @@
 import {Metadata} from 'next'
-import React, {Suspense} from 'react'
+import React from 'react'
 
 import {getCurrentUserDal} from '@/app/dal/user-dal'
 import AuthProvider from '@/components/context/auth-provider'
-import {UserPreferencesSync} from '@/components/context/user-preferences-sync'
 import {AppBreadcrumb} from '@/components/features/app-breadcrumb'
 import {
   withAuthAdmin,
@@ -47,9 +46,6 @@ function AdminLayout({
 } & WithAuthProps) {
   return (
     <AuthProvider userPromise={getCurrentUserDal()}>
-      <Suspense fallback={null}>
-        <UserPreferencesSync />
-      </Suspense>
       <SidebarProvider>
         <AdminSidebar user={user} />
         <SidebarInset>

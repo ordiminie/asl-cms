@@ -55,62 +55,36 @@ export const blogHelper = {
 
 ## Solution : Pattern de Splitting
 
-### 🔧 Exemple Concret : Blog Helpers
+### 🔧 Exemple Concret : métadonnées SEO
 
-Référence : [blog.ts](src/lib/helper/blog.ts), [blog.server.ts](src/lib/helper/blog.server.ts), [blog.client.ts](src/lib/helper/blog.client.ts)
+Référence : [resolve-metadata.ts](src/lib/seo/resolve-metadata.ts), [public-metadata.ts](src/lib/seo/public-metadata.ts)
 
-#### 1. **Fichier Commun** : `blog.ts`
+#### 1. **Fichier Commun** : `resolve-metadata.ts`
 
 ```typescript
-// Interface et fonctions isomorphiques
-export interface BlogPost {
-  slug: string
-  title: string
-  description: string
-  readTime: string
-  content?: string
-}
+// Types et fonctions pures : aucune dépendance au serveur ni au navigateur
+export type ResolvedSeo = { ... }
 
-export const generateSlug = (title: string): string => {
-  // Logique pure, fonctionne partout
-  return title
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim()
-}
+export const resolvePageSeo = (page, association, options) => { ... }
+export const toPageMetadata = (seo, associationName, options) => { ... }
 ```
 
-#### 2. **Fichier Serveur** : `blog.server.ts`
+#### 2. **Fichier Serveur** : `public-metadata.ts`
 
 ```typescript
 import 'server-only'
-import fs from 'fs'
-import { BlogPost } from './blog'
 
-// Fonctions serveur uniquement
-export function getMDXSlugs(): string[] { ... }
-export function getMDXContent(slug: string): string { ... }
-export function getAllBlogPosts(): BlogPost[] { ... }
+import {getCurrentAssociationSeoDal} from '@/app/dal/seo-dal'
+
+import {ResolvedSeo, toPageMetadata} from './resolve-metadata'
+
+// Lit l'association du domaine appelé, puis délègue au code commun
+export const publicPageMetadata = async (resolve, options) => { ... }
 ```
 
-#### 3. **Fichier Client** : `blog.client.ts`
-
-```typescript
-import {BlogPost} from './blog'
-
-// Fonctions client uniquement
-export const blogStorage = {
-  savePost: (post: BlogPost): void => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`blog-post-${post.slug}`, JSON.stringify(post))
-    }
-  },
-}
-```
+Le fichier serveur porte `import 'server-only'`. Écrit avant la convention de
+nommage ci-dessous, il n'a pas le suffixe `.server.ts` : un nouveau fichier le
+prend. Le dépôt n'a aujourd'hui aucun helper client séparé (`.client.ts`).
 
 ## Convention de Nommage
 
@@ -135,22 +109,18 @@ src/lib/helper/
 
 ```typescript
 // Dans un Server Component
-import {generateSlug} from '@/lib/helper/blog'
-import {getAllBlogPosts} from '@/lib/helper/blog.server'
+import {publicPageMetadata} from '@/lib/seo/public-metadata'
+import {resolvePageSeo} from '@/lib/seo/resolve-metadata'
 
-// Dans un Client Component
-import {generateSlug} from '@/lib/helper/blog'
-import {blogStorage} from '@/lib/helper/blog.client'
+// Dans un Client Component : le code commun seulement
+import {excerptOf} from '@/lib/seo/resolve-metadata'
 ```
 
 ### ❌ Éviter
 
 ```typescript
 // ❌ Import serveur dans du code client
-import {getAllBlogPosts} from '@/lib/helper/blog.server' // ERREUR
-
-// ❌ Import client dans du code serveur
-import {blogStorage} from '@/lib/helper/blog.client' // ERREUR
+import {publicPageMetadata} from '@/lib/seo/public-metadata' // ERREUR
 ```
 
 ## Checklist de Refactorisation

@@ -136,10 +136,6 @@ export default function TotpVerificationPage() {
             </div>
           </CardContent>
         </Card>
-        <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-          {t('terms')} <Link href="/terms">{t('termsLink')}</Link> {t('and')}{' '}
-          <Link href="/privacy">{t('privacyLink')}</Link>.
-        </div>
       </div>
     </div>
   )

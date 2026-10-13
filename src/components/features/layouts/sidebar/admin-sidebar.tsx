@@ -47,10 +47,6 @@ const data = {
           url: '/admin/subscriptions',
         },
         {
-          title: 'Blog',
-          url: '/admin/blog',
-        },
-        {
           title: 'Soumissions',
           url: '/admin/submissions',
         },

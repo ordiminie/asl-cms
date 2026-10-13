@@ -372,7 +372,8 @@ const generateFilePath = (
 
 ### Upload d'un fichier d'article
 
-**Référence : [file-dropzone.tsx](src/components/features/admin/blog/file-dropzone.tsx)**
+L'éditeur d'articles du blog hérité, seul écran qui appelait ce service, est retiré par s45. Le
+service reste, avec la chaîne `posts` que s45 conserve (tables gardées, ADR 023).
 
 ```tsx
 // Écrira sous : "<LOCAL_STORAGE_ROOT>/<basePath>/posts/post-id/image/timestamp-nom.png"

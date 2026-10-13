@@ -140,8 +140,10 @@ Les **secrets** ne sont pas des paramètres : ils vivent dans `@/env` (validatio
   tenant du domaine appelé, ce qui les rend dynamiques. Le sitemap liste l'accueil, les pages à
   adresse fixe, les pages CMS et les actualités **publiées** (`getPublishedSitemapEntriesDal`, lue
   sous `withTenant`, **sans `'use cache'`** : publier ajoute la page à la requête suivante, sans
-  invalidation). Ni le blog hérité ni les pages du produit (`/pricing`…). Un domaine qui ne sert
-  aucune association rend un sitemap vide et un `robots.txt` qui interdit tout.
+  invalidation). Ni le blog hérité ni les pages du produit : s45 a retiré leurs routes (blog,
+  documentation, `/pricing`, `/checkout`, `/privacy`, `/terms`) et `blog`, `docs` ont quitté
+  `NEXT_PUBLIC_ENABLED_PAGES`. Un domaine qui ne sert aucune association rend un sitemap vide et un
+  `robots.txt` qui interdit tout.
 - **Deux protections pour les routes authentifiées** (critère 3) : `robots.txt` interdit chaque
   segment de `AUTHENTICATED_SEGMENTS` (`src/lib/routing/authenticated-segments.ts`), **la même
   liste que le proxy** — un nouveau segment authentifié se déclare là, et il est protégé des deux
@@ -202,7 +204,8 @@ stockage du produit**, confiné sous `LOCAL_STORAGE_ROOT` (`@/env`), écriture p
 renommage. `createStorage` n'accepte plus que `'local'`, `STORAGE_TYPE` absente vaut `local`, les paquets
 et les variables Supabase ont quitté le dépôt, et un test de garde interdit tout import d'un SDK Supabase
 dans `src/`. Deux chaînes l'utilisent : le **logo et le favicon** des associations (s01b) et les fichiers
-d'article du blog d'administration hérité. Les clés d'identité sont générées par le serveur
+d'article du blog hérité, dont le service reste sans écran depuis que s45 a retiré `/admin/blog`
+(chaîne `posts` conservée). Les clés d'identité sont générées par le serveur
 (`{organizationId}/identity/{logo|favicon}-{uuid}.{png|webp|ico}`), jamais tirées d'un nom fourni, et
 référencées sur `organization`. Lecture par `GET /api/identity/{logo|favicon}` : type énuméré, tenant
 du domaine appelé, clé lue en base — aucun chemin ne vient de la requête ; `?v=` (version tirée de la
@@ -375,10 +378,10 @@ données d'un client. — 4 tables
 **Contenu du socle, hors produit ou pas encore rattaché à un tenant — exemptées** : elles ne portent
 aujourd'hui **aucune** colonne de rattachement, et aucun contenu d'association n'y est écrit. — 6 tables
 
-| Table                                                                   | Pourquoi exemptée                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `posts`, `posts_translation`, `categories`, `hashtags`, `post_hashtags` | **Blog hérité du boilerplate, hors produit** (ADR 023, qui remplace sur ce point « base des actualités » de l'ADR 009). Les actualités de s05 vivent dans `news`. `/blog` et `/admin/blog` lisent ces tables **hors de tout scope** : les scoper les viderait sans erreur. `sitemap.ts` ne les lit plus depuis s11 : le sitemap d'une association ne liste que son propre contenu publié. Leur retrait est l'affaire d'une story dédiée. |
-| `notifications`                                                         | Rattachée à `user_id`. Une notification d'association demandera `organization_id`, donc une policy.                                                                                                                                                                                                                                                                                                                                      |
+| Table                                                                   | Pourquoi exemptée                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `posts`, `posts_translation`, `categories`, `hashtags`, `post_hashtags` | **Blog hérité du boilerplate, hors produit** (ADR 023, qui remplace sur ce point « base des actualités » de l'ADR 009). Les actualités de s05 vivent dans `news`. Depuis s45, aucun écran ne les lit plus (`/blog` et `/admin/blog` retirés) ; la chaîne de persistance reste, hors de tout scope. `sitemap.ts` ne les lit plus depuis s11 : le sitemap d'une association ne liste que son propre contenu publié. Leur retrait est l'affaire d'une story dédiée. |
+| `notifications`                                                         | Rattachée à `user_id`. Une notification d'association demandera `organization_id`, donc une policy.                                                                                                                                                                                                                                                                                                                                                              |
 
 Enfin, les tables de migration Drizzle (`drizzle.__drizzle_migrations`) sont hors périmètre : elles
 n'appartiennent à aucun tenant et ne sont écrites que par le rôle propriétaire.
@@ -517,8 +520,6 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
     `withRlsBypass()`. Point d'entrée : `pnpm tsx src/db/scripts/purge-rate-limit-fingerprints.ts`.
     **s12b** y branche son déclencheur quotidien ; s26 pourra la reprendre dans `scheduled_job` sans
     changer l'opération.
-  - Le blog hérité (`(public)/blog/[slug]/actions.ts`) **garde** son `RateLimiterMemory` en mémoire,
-    hors du périmètre du PRD et non multi-tenant.
 
 ## Design / UX
 

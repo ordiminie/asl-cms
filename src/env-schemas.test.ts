@@ -4,7 +4,12 @@ import {z} from 'zod'
 
 import {env} from '@/env'
 
-import {clientSchema, serverSchema} from './env-schemas'
+import {
+  clientSchema,
+  EnabledPageSchema,
+  EnabledPagesSchema,
+  serverSchema,
+} from './env-schemas'
 import {getStorageConfig} from './lib/files/storage/env'
 
 const SUPABASE_VARIABLES = [
@@ -82,5 +87,29 @@ describe('Variables d’environnement — plus aucune variable Supabase', () => 
         allowedMimeTypes: expect.any(Array),
       },
     })
+  })
+})
+
+describe('NEXT_PUBLIC_ENABLED_PAGES — blog et docs retirés (s45)', () => {
+  it.each(['blog', 'docs'])('refuse la famille retirée %s', (page) => {
+    expect(EnabledPageSchema.safeParse(page).success).toBe(false)
+    expect(EnabledPagesSchema.safeParse(`account,${page}`).success).toBe(false)
+  })
+
+  it('accepte les familles encore servies', () => {
+    expect(
+      EnabledPagesSchema.parse(
+        'apikey,organization,invitation,account,settings,subscription,notifications,admin'
+      )
+    ).toEqual([
+      'apikey',
+      'organization',
+      'invitation',
+      'account',
+      'settings',
+      'subscription',
+      'notifications',
+      'admin',
+    ])
   })
 })

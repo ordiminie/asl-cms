@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  BookOpen,
   Building2,
   CreditCard,
   type LucideIcon,
@@ -54,11 +53,6 @@ export function NavAdmin({
       title: t('admin.plans'),
       url: '/admin/plans',
       icon: CreditCard,
-    },
-    {
-      title: t('admin.blog'),
-      url: '/admin/blog',
-      icon: BookOpen,
     },
   ]
 

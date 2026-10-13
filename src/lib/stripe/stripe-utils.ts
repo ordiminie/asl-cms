@@ -1,9 +1,25 @@
 import Stripe from 'stripe'
 
 import {getPlanByPriceId} from '@/app/dal/subscription-dal'
-import {PriceRecap} from '@/components/features/checkout-stripe/actions'
 
 import {stripeClient} from './stripe-client'
+
+export type PriceRecap = {
+  priceId?: string
+  planName: string
+  price: number
+  originalPrice: number
+  discount: number
+  description: string | null
+  features?: string[]
+  currency: string
+  interval?: string
+  intervalCount?: number
+  seats: number
+  unitPrice: number
+  unitOriginalPrice: number
+  unitDiscount: number
+}
 
 /**
  * Récupère le priceId à partir d'un subscriptionId

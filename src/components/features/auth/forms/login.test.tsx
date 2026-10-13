@@ -24,4 +24,12 @@ describe('LoginForm — accès prestataire (mot de passe)', () => {
     expect(screen.queryByText(/lien magique/i)).toBeNull()
     expect(screen.queryByText(/Google|Apple|GitHub/)).toBeNull()
   })
+
+  it('ne lie plus aucune page légale retirée (s45, décision F)', () => {
+    render(<LoginForm />)
+
+    expect(document.querySelector('a[href="/terms"]')).toBeNull()
+    expect(document.querySelector('a[href="/privacy"]')).toBeNull()
+    expect(screen.queryByText(/vous acceptez/)).toBeNull()
+  })
 })
