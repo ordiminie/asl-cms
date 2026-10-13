@@ -41,7 +41,7 @@ env:
   NEXT_PUBLIC_BILLING_MODE: organization
   NEXT_PUBLIC_AUTH_METHODS: credential,magiclink
   NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION: 'false'
-  NEXT_PUBLIC_ENABLED_PAGES: apikey,organization,invitation,account,settings,subscription,notifications,admin
+  NEXT_PUBLIC_ENABLED_PAGES: account,admin
   NEXT_PUBLIC_MAX_FILE_SIZE: 5242880
   NEXT_PUBLIC_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/gif,application/pdf
   NEXT_PUBLIC_NODE_ENV: production

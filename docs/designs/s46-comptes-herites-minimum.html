@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette — s46 Comptes hérités minimum</title>
+<!-- Référence visuelle, pas du code : l'implémentation utilise les composants du socle.
+     Normalisée depuis l'export Claude Design du 2026-10-13 (réglages retenus : phrase sous le titre
+     retirée, nom d'association sur mobile en retour à la ligne, notes en marge affichées). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:oklch(0.95 0.005 240);font-family:'Public Sans',system-ui,sans-serif;color:oklch(0.22 0.015 250);-webkit-font-smoothing:antialiased}
+a{color:oklch(0.45 0.13 250)}a:hover{color:oklch(0.35 0.06 240)}
+</style>
+</head>
+<body>
+<div style="padding:64px;display:flex;flex-direction:column;gap:64px;min-width:max-content">
+
+<header style="display:flex;flex-direction:column;gap:8px;max-width:900px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245);font-family:ui-monospace,Menlo,monospace">s46-comptes-herites-minimum · clair seul · ordinateur + mobile 390 px</div>
+<h1 style="margin:0;font-family:'Source Serif 4',serif;font-weight:600;font-size:34px;line-height:1.2">Comptes hérités réduits au minimum</h1>
+<p style="margin:0;font-size:17px;line-height:1.55;color:oklch(0.45 0.02 245);text-wrap:pretty">Coquille de l'espace membre (proposition), espace membre vide, sécurité du compte, et repère de continuité dans la barre latérale de /admin. Données fictives : « Les Amis de l'Étang », teinte 195, Claire Meunier.</p>
+</header>
+
+<!-- 0 · Coquille -->
+<section data-screen-label="0 Coquille" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:15px;background:oklch(0.22 0.015 250);color:#fff;padding:4px 8px;border-radius:4px">0</span><h2 style="margin:0;font-size:24px;font-weight:600">Coquille de l'espace membre — en-tête</h2><span style="font-size:15px;color:oklch(0.45 0.02 245)">proposition pour combler le manque du design system</span></div>
+<div style="display:flex;gap:48px;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">Ordinateur — 1280 px, en-tête aligné sur la colonne de 1000 px</div>
+<div style="width:1280px;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+<div style="border-bottom:1px solid oklch(0.9 0.008 245);padding:16px 0">
+<div style="max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px">
+<a href="#" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:oklch(0.22 0.015 250)"><span style="width:44px;height:44px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;flex-shrink:0">AE</span><span style="font-family:'Source Serif 4',serif;font-weight:600;font-size:20px">Les Amis de l'Étang</span></a>
+<button style="height:48px;padding:0 16px;display:flex;align-items:center;gap:8px;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);color:oklch(0.22 0.015 250);border-radius:8px;font:600 16px 'Public Sans',sans-serif;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Se déconnecter</button>
+</div></div></div>
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">Lien d'évitement — invisible jusqu'au premier Tab, puis affiché au-dessus de l'en-tête</div>
+<div style="width:1280px;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden;position:relative">
+<div style="padding:8px 0;max-width:1000px;margin:0 auto"><a href="#" style="display:inline-flex;align-items:center;height:44px;padding:0 16px;background:oklch(0.35 0.06 240);color:oklch(0.985 0.003 240);border-radius:8px;font-weight:600;font-size:16px;text-decoration:underline;outline:2px solid oklch(0.55 0.11 235);outline-offset:2px">Aller au contenu</a></div>
+<div style="border-top:1px solid oklch(0.9 0.008 245);border-bottom:1px solid oklch(0.9 0.008 245);padding:16px 0;opacity:.5"><div style="max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:12px"><span style="width:44px;height:44px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:600;font-size:18px">AE</span><span style="font-family:'Source Serif 4',serif;font-weight:600;font-size:20px">Les Amis de l'Étang</span></div></div>
+</div>
+</div>
+
+<aside style="width:360px;background:oklch(0.985 0.02 90);border:1px solid oklch(0.88 0.05 90);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:12px;font-size:15px;line-height:1.5">
+<strong style="font-size:16px">Proposition retenue pour le design system (§2.1)</strong>
+<div>1. Deux éléments seulement : <code>&lt;AssociationMark size="public" /&gt;</code> à gauche, lien vers « / » ; bouton <code>outline</code> « Se déconnecter » à droite.</div>
+<div>2. Bouton : icône LogOut 20 px + libellé, 48 px (56 px sur mobile). Jamais l'icône seule.</div>
+<div>3. Pas de menu, d'avatar, de cloche, de sélecteur, de tiroir. La navigation /dashboard ↔ /account passe par des liens dans le contenu.</div>
+<div>4. Fond <code>background</code>, filet 1 px <code>border</code>, sans ombre ; padding vertical 16 px (12 px sur mobile) ; intérieur aligné sur la colonne <code>max-w-[1000px]</code>, marges 16 px sous 1 024 px.</div>
+<div>5. Mobile : le nom passe à la ligne (2 lignes max, puis points de suspension) ; le bouton garde toujours son libellé (<code>flex-shrink: 0</code>).</div>
+<div>6. « Aller au contenu » : premier élément focalisable, visible au focus, cible <code>&lt;main id="contenu"&gt;</code>.</div>
+<div style="color:oklch(0.45 0.02 245)">Pas de nom de l'utilisateur dans l'en-tête : le futur « Bonjour {prénom nom} » de s12d le portera dans le contenu.</div>
+</aside>
+
+</div>
+</section>
+
+<!-- 1 · /dashboard -->
+<section data-screen-label="1 Espace membre" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:15px;background:oklch(0.22 0.015 250);color:#fff;padding:4px 8px;border-radius:4px">1</span><h2 style="margin:0;font-size:24px;font-weight:600">Espace membre</h2><code style="font-size:15px;color:oklch(0.45 0.02 245)">/dashboard</code></div>
+<div style="display:flex;gap:48px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">1a · Ordinateur</div>
+<div style="width:1280px;height:640px;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+<div style="border-bottom:1px solid oklch(0.9 0.008 245);padding:16px 0"><div style="max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px">
+<a href="#" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:oklch(0.22 0.015 250)"><span style="width:44px;height:44px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;flex-shrink:0">AE</span><span style="font-family:'Source Serif 4',serif;font-weight:600;font-size:20px">Les Amis de l'Étang</span></a>
+<button style="height:48px;padding:0 16px;display:flex;align-items:center;gap:8px;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);color:oklch(0.22 0.015 250);border-radius:8px;font:600 16px 'Public Sans',sans-serif;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Se déconnecter</button>
+</div></div>
+<main style="max-width:1000px;margin:0 auto;padding:48px 0;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<h1 style="margin:0;font-family:'Source Serif 4',serif;font-weight:600;font-size:34px;line-height:1.2">Votre espace membre</h1>
+
+</div>
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px;background:oklch(1 0 0)">
+<h3 style="margin:0;font-size:20px;font-weight:600">Sécurité du compte</h3>
+<p style="margin:0;font-size:17px;line-height:1.55">Votre adresse email, votre mot de passe et les appareils connectés à votre compte.</p>
+<a href="#" style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;min-height:48px;font-size:17px;font-weight:600;color:oklch(0.45 0.13 250);text-decoration:underline;text-underline-offset:3px">Gérer la sécurité du compte<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
+</div>
+</main>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">1b · Mobile 390 px</div>
+<div style="width:390px;height:780px;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+<div style="border-bottom:1px solid oklch(0.9 0.008 245);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+<a href="#" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:oklch(0.22 0.015 250);min-width:0"><span style="width:44px;height:44px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;flex-shrink:0">AE</span>
+<span style="font-family:'Source Serif 4',serif;font-weight:600;font-size:20px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0">Les Amis de l'Étang</span>
+
+</a>
+<button style="height:56px;padding:0 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);color:oklch(0.22 0.015 250);border-radius:8px;font:600 16px 'Public Sans',sans-serif"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Se déconnecter</button>
+</div>
+<main style="padding:32px 16px;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;flex-direction:column;gap:12px">
+<h1 style="margin:0;font-family:'Source Serif 4',serif;font-weight:600;font-size:34px;line-height:1.2">Votre espace membre</h1>
+
+</div>
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px">
+<h3 style="margin:0;font-size:20px;font-weight:600">Sécurité du compte</h3>
+<p style="margin:0;font-size:17px;line-height:1.55">Votre adresse email, votre mot de passe et les appareils connectés à votre compte.</p>
+<a href="#" style="display:inline-flex;align-items:center;gap:8px;min-height:56px;font-size:17px;font-weight:600;color:oklch(0.45 0.13 250);text-decoration:underline;text-underline-offset:3px">Gérer la sécurité du compte<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a>
+</div>
+</main>
+</div>
+</div>
+
+
+<aside style="width:320px;background:oklch(0.985 0.02 90);border:1px solid oklch(0.88 0.05 90);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:12px;font-size:15px;line-height:1.5">
+<strong style="font-size:16px">Notes</strong>
+<div><strong>Phrase sous le h1</strong> (proposition) : avis — elle répète la carte et n'aide ni le membre ni le bureau. Recommandation : la <strong>retirer</strong> maintenant ; « Bonjour {prénom nom} » de s12d prendra cette place. Réglage « Phrase sous le titre » pour comparer.</div>
+<div>Action unique : un <strong>lien</strong> souligné (pas de bouton <code>default</code>), cible 48 px / 56 px mobile.</div>
+<div>SuperAdmin ou compte sans appartenance : écran identique, rien n'est lu du membre.</div>
+<div>Cadre prêt pour s12d : la carte « Mes parcelles » s'insère au-dessus de « Sécurité du compte », espacement 32 px, sans changer l'en-tête ni la colonne.</div>
+<div>Mobile : nom de l'association sur 2 lignes max (réglage : retour à la ligne / points de suspension).</div>
+</aside>
+
+</div>
+</section>
+
+<!-- 2 · /account -->
+<section data-screen-label="2 Sécurité du compte" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:15px;background:oklch(0.22 0.015 250);color:#fff;padding:4px 8px;border-radius:4px">2</span><h2 style="margin:0;font-size:24px;font-weight:600">Sécurité du compte</h2><code style="font-size:15px;color:oklch(0.45 0.02 245)">/account</code></div>
+<div style="display:flex;gap:48px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">2a · Ordinateur</div>
+<div style="width:1280px;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+<div style="border-bottom:1px solid oklch(0.9 0.008 245);padding:16px 0"><div style="max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px">
+<a href="#" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:oklch(0.22 0.015 250)"><span style="width:44px;height:44px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;flex-shrink:0">AE</span><span style="font-family:'Source Serif 4',serif;font-weight:600;font-size:20px">Les Amis de l'Étang</span></a>
+<button style="height:48px;padding:0 16px;display:flex;align-items:center;gap:8px;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);color:oklch(0.22 0.015 250);border-radius:8px;font:600 16px 'Public Sans',sans-serif;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Se déconnecter</button>
+</div></div>
+<main style="max-width:1000px;margin:0 auto;padding:32px 0 64px;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<a href="#" style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;min-height:44px;font-size:17px;color:oklch(0.45 0.13 250);text-decoration:underline;text-underline-offset:3px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>Revenir à mon espace</a>
+<h1 style="margin:0;font-family:'Source Serif 4',serif;font-weight:600;font-size:34px;line-height:1.2">Sécurité du compte</h1>
+<p style="margin:0;font-size:17px;line-height:1.55;color:oklch(0.45 0.02 245)">Votre adresse email, votre mot de passe et les appareils connectés à votre compte.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:32px">
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px"><h3 style="margin:0;font-size:20px;font-weight:600">Adresse email</h3><div style="display:flex;flex-direction:column;gap:8px;max-width:480px"><div style="width:120px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="height:48px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;display:flex;align-items:center;padding:0 12px;font-size:17px;color:oklch(0.45 0.02 245)">claire.meunier@exemple.fr</div></div><div style="align-self:flex-start;height:48px;width:160px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div>
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px"><h3 style="margin:0;font-size:20px;font-weight:600">Mot de passe</h3><div style="display:flex;flex-direction:column;gap:8px;max-width:480px"><div style="width:160px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="height:48px;border:1px solid oklch(0.66 0.014 245);border-radius:8px"></div></div><div style="align-self:flex-start;height:48px;width:200px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div>
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px"><h3 style="margin:0;font-size:20px;font-weight:600">Vérification en deux étapes</h3><div style="display:flex;flex-direction:column;gap:8px;max-width:600px"><div style="height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="width:70%;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div><div style="align-self:flex-start;height:48px;width:180px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div>
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px"><h3 style="margin:0;font-size:20px;font-weight:600">Appareils connectés</h3><div style="display:flex;flex-direction:column"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid oklch(0.9 0.008 245)"><div style="width:240px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="height:44px;width:120px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0"><div style="width:200px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="height:44px;width:120px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div></div></div>
+</div>
+</main>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">2b · Mobile 390 px</div>
+<div style="width:390px;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+<div style="border-bottom:1px solid oklch(0.9 0.008 245);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+<a href="#" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:oklch(0.22 0.015 250);min-width:0"><span style="width:44px;height:44px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-weight:600;font-size:18px;flex-shrink:0">AE</span>
+<span style="font-family:'Source Serif 4',serif;font-weight:600;font-size:20px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-width:0">Les Amis de l'Étang</span>
+
+</a>
+<button style="height:56px;padding:0 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);color:oklch(0.22 0.015 250);border-radius:8px;font:600 16px 'Public Sans',sans-serif"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>Se déconnecter</button>
+</div>
+<main style="padding:24px 16px 48px;display:flex;flex-direction:column;gap:32px">
+<div style="display:flex;flex-direction:column;gap:16px">
+<a href="#" style="align-self:flex-start;display:inline-flex;align-items:center;gap:8px;min-height:48px;font-size:17px;color:oklch(0.45 0.13 250);text-decoration:underline;text-underline-offset:3px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>Revenir à mon espace</a>
+<h1 style="margin:0;font-family:'Source Serif 4',serif;font-weight:600;font-size:34px;line-height:1.2">Sécurité du compte</h1>
+<p style="margin:0;font-size:17px;line-height:1.55;color:oklch(0.45 0.02 245)">Votre adresse email, votre mot de passe et les appareils connectés à votre compte.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:24px">
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px"><h3 style="margin:0;font-size:20px;font-weight:600">Adresse email</h3><div style="display:flex;flex-direction:column;gap:8px"><div style="width:120px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="height:48px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;display:flex;align-items:center;padding:0 12px;font-size:17px;color:oklch(0.45 0.02 245);overflow:hidden">claire.meunier@exemple.fr</div></div><div style="height:56px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div>
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px"><h3 style="margin:0;font-size:20px;font-weight:600">Mot de passe</h3><div style="display:flex;flex-direction:column;gap:8px"><div style="width:160px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="height:48px;border:1px solid oklch(0.66 0.014 245);border-radius:8px"></div></div><div style="height:56px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div>
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px"><h3 style="margin:0;font-size:20px;font-weight:600">Vérification en deux étapes</h3><div style="display:flex;flex-direction:column;gap:8px"><div style="height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="width:70%;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div><div style="height:56px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div>
+<div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:16px"><h3 style="margin:0;font-size:20px;font-weight:600">Appareils connectés</h3><div style="display:flex;flex-direction:column;gap:12px"><div style="width:80%;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="height:56px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"></div></div></div>
+</div>
+</main>
+</div>
+</div>
+
+
+<aside style="width:320px;background:oklch(0.985 0.02 90);border:1px solid oklch(0.88 0.05 90);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:12px;font-size:15px;line-height:1.5">
+<strong style="font-size:16px">Notes</strong>
+<div>Titre unique « Sécurité du compte » : remplace le h1 « Mon Compte », le h2 « Sécurité » et l'ancienne description.</div>
+<div>Contenu gris des cartes = formulaires existants, <strong>non redessinés</strong> ; seuls titres, ordre et cadre sont spécifiés. Cartes empilées à 32 px (24 px sur mobile).</div>
+<div><strong>⚠ À signaler :</strong> le titre « Double authentification » et les libellés « authentification à deux facteurs » emploient un mot interdit à l'écran (§3.6). Proposé ici en titre de carte : « Vérification en deux étapes ». Les libellés internes du formulaire restent à corriger dans une story dédiée.</div>
+<div>« Sessions » devient « Appareils connectés ».</div>
+</aside>
+
+</div>
+</section>
+
+<!-- 3 · /admin sidebar -->
+<section data-screen-label="3 Barre admin" style="display:flex;flex-direction:column;gap:24px">
+<div style="display:flex;align-items:baseline;gap:12px"><span style="font-family:ui-monospace,Menlo,monospace;font-size:15px;background:oklch(0.22 0.015 250);color:#fff;padding:4px 8px;border-radius:4px">3</span><h2 style="margin:0;font-size:24px;font-weight:600">Repère de continuité — barre latérale de /admin</h2><span style="font-size:15px;color:oklch(0.45 0.02 245)">héritée, seule l'entrée du bas change · ordinateur seul</span></div>
+<div style="display:flex;gap:48px;align-items:flex-start">
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">3a · Domaine d'une association — dépliée</div>
+<div style="width:560px;height:560px;display:flex;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+<div style="width:256px;background:oklch(0.985 0.004 250);border-right:1px solid oklch(0.9 0.008 245);display:flex;flex-direction:column;padding:12px;gap:8px">
+<div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 8px"><div style="width:28px;height:28px;border-radius:8px;background:oklch(0.9 0.008 245)"></div><div style="width:100px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="display:flex;flex-direction:column;gap:4px;padding-top:8px">
+<div style="height:40px;display:flex;align-items:center;gap:12px;padding:0 8px"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="width:120px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="height:40px;display:flex;align-items:center;gap:12px;padding:0 8px"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="width:96px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="height:40px;display:flex;align-items:center;gap:12px;padding:0 8px"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="width:136px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+</div>
+<div style="flex:1"></div>
+<div style="border-top:1px solid oklch(0.9 0.008 245);padding-top:8px">
+<a href="#" style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:8px;text-decoration:none;color:oklch(0.22 0.015 250);background:oklch(0.93 0.012 245);outline:2px dashed oklch(0.55 0.11 235);outline-offset:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0"><line x1="3" x2="21" y1="22" y2="22"></line><line x1="6" x2="6" y1="18" y2="11"></line><line x1="10" x2="10" y1="18" y2="11"></line><line x1="14" x2="14" y1="18" y2="11"></line><line x1="18" x2="18" y1="18" y2="11"></line><polygon points="12 2 20 7 4 7"></polygon></svg><span style="display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:500;line-height:1.3">Back-office de l'association</span><span style="font-size:15px;color:oklch(0.45 0.02 245);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Les Amis de l'Étang</span></span></a>
+</div>
+<div style="height:40px;display:flex;align-items:center;gap:8px;padding:0 8px"><div style="width:28px;height:28px;border-radius:999px;background:oklch(0.9 0.008 245)"></div><div style="width:100px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+</div>
+<div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:15px;color:oklch(0.45 0.02 245);background:repeating-linear-gradient(135deg,oklch(0.985 0.004 250) 0 8px,oklch(1 0 0) 8px 16px)">contenu /admin — hérité</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">3b · Domaine d'une association — repliée, survol / focus</div>
+<div style="width:420px;height:560px;display:flex;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden;position:relative">
+<div style="width:56px;background:oklch(0.985 0.004 250);border-right:1px solid oklch(0.9 0.008 245);display:flex;flex-direction:column;align-items:center;padding:12px 0;gap:8px">
+<div style="width:28px;height:28px;border-radius:8px;background:oklch(0.9 0.008 245);margin:8px 0"></div>
+<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="flex:1"></div>
+<a href="#" aria-label="Back-office de l'association — Les Amis de l'Étang" style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:oklch(0.93 0.012 245);color:oklch(0.22 0.015 250);outline:2px solid oklch(0.55 0.11 235);outline-offset:2px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"></line><line x1="6" x2="6" y1="18" y2="11"></line><line x1="10" x2="10" y1="18" y2="11"></line><line x1="14" x2="14" y1="18" y2="11"></line><line x1="18" x2="18" y1="18" y2="11"></line><polygon points="12 2 20 7 4 7"></polygon></svg></a>
+<div style="width:28px;height:28px;border-radius:999px;background:oklch(0.9 0.008 245);margin:8px 0"></div>
+</div>
+<div style="position:absolute;left:68px;bottom:70px;background:oklch(0.22 0.015 250);color:oklch(0.985 0.003 240);border-radius:8px;padding:8px 12px;font-size:15px;line-height:1.4;white-space:nowrap">Back-office de l'association<br><span style="opacity:.8">Les Amis de l'Étang</span></div>
+<div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:15px;color:oklch(0.45 0.02 245);background:repeating-linear-gradient(135deg,oklch(0.985 0.004 250) 0 8px,oklch(1 0 0) 8px 16px)">contenu /admin — hérité</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="font-size:15px;color:oklch(0.45 0.02 245)">3c · Adresse de la plateforme — entrée absente</div>
+<div style="width:420px;height:560px;display:flex;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+<div style="width:256px;background:oklch(0.985 0.004 250);border-right:1px solid oklch(0.9 0.008 245);display:flex;flex-direction:column;padding:12px;gap:8px">
+<div style="height:44px;display:flex;align-items:center;gap:8px;padding:0 8px"><div style="width:28px;height:28px;border-radius:8px;background:oklch(0.9 0.008 245)"></div><div style="width:100px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="display:flex;flex-direction:column;gap:4px;padding-top:8px">
+<div style="height:40px;display:flex;align-items:center;gap:12px;padding:0 8px"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="width:120px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="height:40px;display:flex;align-items:center;gap:12px;padding:0 8px"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="width:96px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+<div style="height:40px;display:flex;align-items:center;gap:12px;padding:0 8px"><div style="width:20px;height:20px;border-radius:4px;background:oklch(0.9 0.008 245)"></div><div style="width:136px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+</div>
+<div style="flex:1"></div>
+<div style="height:40px;display:flex;align-items:center;gap:8px;padding:0 8px"><div style="width:28px;height:28px;border-radius:999px;background:oklch(0.9 0.008 245)"></div><div style="width:100px;height:12px;border-radius:4px;background:oklch(0.9 0.008 245)"></div></div>
+</div>
+<div style="flex:1;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:15px;color:oklch(0.45 0.02 245);background:repeating-linear-gradient(135deg,oklch(0.985 0.004 250) 0 8px,oklch(1 0 0) 8px 16px)">contenu /admin</div>
+</div>
+</div>
+
+
+<aside style="width:320px;background:oklch(0.985 0.02 90);border:1px solid oklch(0.88 0.05 90);border-radius:8px;padding:24px;display:flex;flex-direction:column;gap:12px;font-size:15px;line-height:1.5">
+<strong style="font-size:16px">Notes</strong>
+<div>Gris = barre héritée, non redessinée. Contour pointillé = seule entrée qui change.</div>
+<div>Icône proposée : <code>Landmark</code> (lucide) — l'institution, distincte des icônes de gestion de la plateforme.</div>
+<div>Libellé « Back-office de l'association », sous-libellé <code>meta</code> 15 px = nom de l'association, tronqué s'il manque de place. Ouvre <code>/bureau</code> dans le même onglet, sans nouvelle connexion.</div>
+<div>Repliée : <code>aria-label</code> et <code>tooltip</code> portent libellé + nom.</div>
+<div>Plateforme : l'entrée n'est pas rendue (pas d'état grisé) ; le groupe du bas, qui ne contenait qu'elle, disparaît avec son séparateur.</div>
+</aside>
+
+</div>
+</section>
+
+</div>
+</body>
+</html>

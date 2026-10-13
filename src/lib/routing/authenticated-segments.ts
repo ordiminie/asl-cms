@@ -11,7 +11,6 @@ export const AUTHENTICATED_SEGMENTS: readonly string[] = [
   '/admin',
   '/bureau',
   '/dashboard',
-  '/team',
 ]
 
 /** Ecrans de connexion : publics, mais sans interet pour un moteur. */

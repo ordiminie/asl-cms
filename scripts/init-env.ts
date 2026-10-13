@@ -135,16 +135,7 @@ function getVariableChoices(varName: string): string[] | undefined {
     NEXT_PUBLIC_BETTER_AUTH_TOKEN_MANAGEMENT: ['true', 'false'],
     NEXT_PUBLIC_BETTER_AUTH_CHANGE_PASSWORD: ['true', 'false'],
     NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL: ['true', 'false'],
-    NEXT_PUBLIC_ENABLED_PAGES: [
-      'apikey',
-      'organization',
-      'invitation',
-      'account',
-      'settings',
-      'subscription',
-      'notifications',
-      'admin',
-    ],
+    NEXT_PUBLIC_ENABLED_PAGES: ['account', 'admin'],
   }
   return choices[varName]
 }
@@ -162,7 +153,7 @@ function getVariableExample(varName: string): string {
     STRIPE_WEBHOOK_SECRET: 'whsec_example_replace_with_real_webhook_secret',
     GOOGLE_CLIENT_ID: 'example-client-id.apps.googleusercontent.com',
     GOOGLE_CLIENT_SECRET: 'GOCSPX-example_client_secret_replace',
-    NEXT_PUBLIC_ENABLED_PAGES: 'apikey,organization',
+    NEXT_PUBLIC_ENABLED_PAGES: 'account,admin',
     NEXT_PUBLIC_AUTH_METHODS: 'credential,magiclink,google',
     NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: 'GA_EXAMPLE_ID',
     NEXT_PUBLIC_API_URL: 'https://localhost:3000',
@@ -266,7 +257,7 @@ function generateDefaultValue(varName: string): string {
     return 'credential,magiclink,google'
   }
   if (varName.includes('ENABLED_PAGES')) {
-    return 'apikey,organization'
+    return 'account,admin'
   }
 
   // Fallback sur l'exemple

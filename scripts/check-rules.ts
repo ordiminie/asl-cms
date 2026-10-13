@@ -47,6 +47,11 @@ const STALE_PATTERNS: {pattern: RegExp; why: string; allow?: RegExp}[] = [
       /features\/(blog|docs|payment|admin\/blog)\b|checkout-stripe|mdx-content|mdx-components|blog\.(server|client)|helper\/blog|blog-dal|post-dal|docs-file-helper|docs\.server|admin\/blog|\[locale\]\/docs|\(public\)\/(blog|pricing|checkout|privacy|terms)|theme-toggle|user-preferences-sync|UserPreferencesSync|ModeToggle|blog-article|getAllBlogCategoriesDal|docs\/\[\.\.\.slug\]|checkout\/(\[priceId\]|better-auth)/,
     why: 'retiré par s45 : blog, documentation, vitrine et sélecteur de thème hérités',
   },
+  {
+    pattern:
+      /edit-user-settings|account\/(settings|api-keys|notifications|organizations|invitations|billing)|team-switcher|TeamSwitcher|OrganizationSync|OrganizationProvider|features\/api-key|features\/dashboard(?!-)|use-subscription|quick-feedback/,
+    why: 'retiré par s46 : écrans du compte hérité, coquille à barre latérale, tableau de bord de démonstration',
+  },
 ]
 
 const DESCRIBE_THE_CODE = [

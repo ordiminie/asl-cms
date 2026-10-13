@@ -109,16 +109,6 @@
       "credits": "Crédits",
       "affiliates": "Affiliés"
     },
-    "account": {
-      "title": "Compte",
-      "accountAndSecurity": "Compte et Sécurité",
-      "subscriptions": "Abonnements",
-      "organizations": "Organisations",
-      "invitations": "Invitations",
-      "settings": "Paramètres",
-      "apiKeys": "Clés API",
-      "affiliate": "Affiliation"
-    },
     "projects": {
       "title": "Projets",
       "dashboard": "Tableau de bord",
@@ -161,25 +151,20 @@
       "login": "Connexion",
       "adminLabel": "Admin",
       "adminPanel": "Panel d'administration"
+    },
+    "associationBackOffice": {
+      "label": "Back-office de l'association",
+      "ariaLabel": "Back-office de l'association {name}"
     }
   },
   "NavUser": {
-    "upgradeToPro": "Passer à Pro",
-    "subscription": "Abonnement",
     "account": "Compte",
-    "apiKeys": "Clés API",
-    "settings": "Paramètres",
-    "billing": "Facturation",
-    "notifications": "Notifications",
     "logout": "Se déconnecter"
   },
   "AccountPage": {
-    "title": "Mon Compte",
-    "description": "Gérez votre profil et vos paramètres de sécurité",
-    "security": {
-      "title": "Sécurité",
-      "description": "Gérez les paramètres de sécurité de votre compte, y compris l'authentification à deux facteurs, le changement de mot de passe et d'email."
-    },
+    "title": "Sécurité du compte",
+    "description": "Votre adresse email, votre mot de passe et les appareils connectés à votre compte.",
+    "backToMemberSpace": "Revenir à mon espace",
     "EditUserProfileForm": {
       "form": {
         "save": "Enregistrer",
@@ -222,7 +207,7 @@
     },
     "UserSecuritySection": {
       "changePassword": {
-        "title": "Changer le mot de passe",
+        "title": "Mot de passe",
         "description": "Pour changer votre mot de passe, veuillez saisir votre mot de passe actuel et votre nouveau mot de passe.",
         "currentPassword": "Mot de passe actuel",
         "newPassword": "Nouveau mot de passe",
@@ -233,7 +218,7 @@
         "error": "Erreur lors du changement de mot de passe"
       },
       "changeEmail": {
-        "title": "Changer l'adresse email",
+        "title": "Adresse email",
         "description": "Pour changer votre adresse email, veuillez saisir votre nouvelle adresse email. Un email de vérification sera envoyé à votre adresse actuelle.",
         "currentEmail": "Adresse email actuelle",
         "newEmail": "Nouvelle adresse email",
@@ -243,7 +228,7 @@
         "error": "Erreur lors du changement d'email"
       },
       "twoFactor": {
-        "title": "Authentification à deux facteurs",
+        "title": "Vérification en deux étapes",
         "description": "Ajoutez une couche de sécurité supplémentaire à votre compte",
         "enable": "Activer l'A2F",
         "disable": "Désactiver l'A2F",
@@ -310,7 +295,7 @@
         "revokeAll": "Révoquer toutes les autres sessions"
       },
       "listTokens": {
-        "title": "Sessions actives",
+        "title": "Appareils connectés",
         "description": "Gérez vos sessions et tokens d'accès. Vous pouvez révoquer les sessions suspectes ou inutilisées.",
         "loading": "Chargement des sessions...",
         "noSessions": "Aucune session active trouvée",
@@ -343,115 +328,6 @@
         },
         "sessionCount": "{count, plural, =0 {Aucune session active} one {# session active} other {# sessions actives}}"
       }
-    }
-  },
-  "ApiKeysPage": {
-    "title": "Clés API",
-    "description": "Gérez vos clés API pour les intégrations externes",
-    "management": {
-      "title": "Gestion des clés API",
-      "description": "Créez et gérez des clés API pour accéder à votre compte de manière programmatique"
-    },
-    "actions": {
-      "createKey": "Créer une clé API",
-      "cancel": "Annuler",
-      "create": "Créer",
-      "creating": "Création...",
-      "delete": "Supprimer",
-      "done": "Terminé"
-    },
-    "createDialog": {
-      "title": "Créer une nouvelle clé API",
-      "description": "Créez une nouvelle clé API pour votre application",
-      "nameLabel": "Nom de la clé",
-      "namePlaceholder": "Entrez un nom descriptif pour cette clé API",
-      "expirationLabel": "Expiration",
-      "neverExpires": "N'expire jamais",
-      "expiresAtLabel": "Expire le",
-      "expirationHelp": "Choisissez quand cette clé API doit expirer pour la sécurité",
-      "newKeyLabel": "Votre nouvelle clé API",
-      "keyWarning": "⚠️ C'est la seule fois que vous verrez cette clé. Copiez-la et stockez-la en sécurité."
-    },
-    "deleteDialog": {
-      "title": "Supprimer la clé API",
-      "description": "Êtes-vous sûr de vouloir supprimer la clé API \"{name}\" ? Cette action ne peut pas être annulée et révoquera immédiatement l'accès pour les applications utilisant cette clé."
-    },
-    "table": {
-      "name": "Nom",
-      "key": "Clé",
-      "created": "Créée",
-      "expires": "Expire",
-      "actions": "Actions",
-      "noKeys": "Aucune clé API trouvée. Créez votre première clé API pour commencer.",
-      "never": "Jamais",
-      "keyHidden": "La clé est masquée pour des raisons de sécurité"
-    },
-    "messages": {
-      "keyCreated": "Clé API créée avec succès",
-      "keyDeleted": "Clé API supprimée avec succès",
-      "copiedToClipboard": "Copié dans le presse-papiers"
-    },
-    "errors": {
-      "nameRequired": "Le nom de la clé API est requis",
-      "loadFailed": "Échec du chargement des clés API",
-      "createFailed": "Échec de la création de la clé API",
-      "deleteFailed": "Échec de la suppression de la clé API",
-      "invalidExpiration": "La date d'expiration doit être dans le futur"
-    }
-  },
-  "AccountSettingsPage": {
-    "title": "Paramètres",
-    "description": "Configurez vos préférences d'application",
-    "settings": {
-      "title": "Paramètres",
-      "description": "Configurez vos préférences d'application"
-    },
-    "appearance": {
-      "title": "Apparence",
-      "language": {
-        "label": "Langue",
-        "placeholder": "Sélectionner une langue",
-        "fr": "Français",
-        "en": "English",
-        "es": "Español",
-        "de": "Deutsch"
-      }
-    },
-    "notifications": {
-      "title": "Notifications",
-      "channel": {
-        "label": "Canal de notification",
-        "placeholder": "Sélectionner un canal",
-        "email": "Email uniquement",
-        "push": "Notifications push uniquement",
-        "both": "Les deux",
-        "none": "Aucune notification"
-      },
-      "emailNotifications": {
-        "title": "Notifications par email",
-        "description": "Recevez des notifications importantes par email"
-      },
-      "pushNotifications": {
-        "title": "Notifications push",
-        "description": "Recevez des notifications en temps réel"
-      },
-      "emailDigest": {
-        "title": "Résumé quotidien par email",
-        "description": "Recevez un résumé quotidien de vos activités"
-      }
-    },
-    "marketing": {
-      "title": "Marketing",
-      "marketingEmails": {
-        "title": "Emails marketing",
-        "description": "Recevez des offres spéciales et des mises à jour"
-      }
-    },
-    "form": {
-      "updating": "Mise à jour...",
-      "updateSettings": "Mettre à jour les paramètres",
-      "success": "Succès",
-      "error": "Erreur"
     }
   },
   "ui": {
@@ -1445,68 +1321,6 @@
     "docs": "Documentation",
     "blog": "Blog"
   },
-  "QuickFeedback": {
-    "trigger": "Envoyer un feedback",
-    "messageLabel": "Message",
-    "messagePlaceholder": "Votre message...",
-    "required": "Veuillez entrer un message",
-    "success": "Merci pour votre feedback !",
-    "error": "Erreur lors de l'envoi du feedback"
-  },
-  "Invitations": {
-    "received": {
-      "title": "Invitations reçues",
-      "inviter": "Inviteur",
-      "unknownInviter": "Inviteur inconnu",
-      "empty": "Aucune invitation reçue",
-      "expires": "Expire :",
-      "acceptTitle": "Confirmer l'acceptation",
-      "acceptDescription": "Êtes-vous sûr de vouloir accepter l'invitation de {name} ? Vous rejoindrez cette organisation en tant que {role}.",
-      "accept": "Accepter l'invitation",
-      "accepting": "Acceptation...",
-      "rejectTitle": "Confirmer le rejet",
-      "rejectDescription": "Êtes-vous sûr de vouloir rejeter l'invitation de {name} ? Cette action ne peut pas être annulée.",
-      "reject": "Rejeter l'invitation",
-      "rejecting": "Rejet...",
-      "acceptSuccess": "Invitation acceptée avec succès",
-      "acceptError": "Erreur lors de l'acceptation de l'invitation",
-      "rejectSuccess": "Invitation rejetée avec succès",
-      "rejectError": "Erreur lors du rejet de l'invitation"
-    },
-    "sent": {
-      "loading": "Chargement des invitations",
-      "loadingDescription": "Veuillez patienter pendant le chargement des invitations...",
-      "loadError": "Erreur lors du chargement des invitations",
-      "cancelTitle": "Confirmer l'annulation",
-      "cancelSuccess": "Invitation annulée avec succès",
-      "cancelError": "Erreur lors de l'annulation de l'invitation",
-      "title": "Invitations envoyées par {organization}",
-      "empty": "Aucune invitation envoyée",
-      "expires": "Expire :",
-      "cancelDescription": "Êtes-vous sûr de vouloir annuler l'invitation envoyée à {email} ? Cette action ne peut pas être annulée.",
-      "cancel": "Confirmer l'annulation",
-      "canceling": "Annulation..."
-    }
-  },
-  "Notifications": {
-    "empty": {
-      "title": "Aucune notification",
-      "allRead": "Toutes vos notifications ont été lues.",
-      "none": "Vous n'avez aucune notification pour le moment."
-    },
-    "filter": {
-      "all": "Toutes",
-      "unread": "Non lues",
-      "allNotifications": "Toutes les notifications",
-      "unreadOnly": "Non lues uniquement",
-      "showing": "Affichage : {value}"
-    },
-    "markAllAsRead": "Marquer tout comme lu",
-    "unread": "Non lue",
-    "pagination": {
-      "showing": "Affichage de {start} à {end} sur {total} notifications"
-    }
-  },
   "Projects": {
     "management": {
       "title": "Gestion des projets",
@@ -1609,139 +1423,6 @@
       "memberDescription": "Gérer les emails, les domaines et les webhooks."
     }
   },
-  "Subscription": {
-    "heading": "Choisissez votre plan",
-    "subheadingActive": "Modifiez votre abonnement ou changez de plan",
-    "subheadingNew": "Sélectionnez le plan qui vous convient",
-    "recap": "Offre « {plan} » ({seats, plural, one {# siège} other {# sièges}}) - {billing} - {ending, select, yes {se termine} other {se renouvelle}} le {date}{autoFree, select, yes {, passage au gratuit automatique} other {}}",
-    "billing": {
-      "monthly": "Mensuel",
-      "yearly": "Annuel",
-      "save": "Économisez 17%",
-      "perYear": "an",
-      "perMonth": "mois",
-      "monthsFree": "✨ 2 mois gratuits",
-      "perUser": "par utilisateur"
-    },
-    "badge": {
-      "current": "Plan actuel",
-      "endingOn": "Se termine le {date}",
-      "futureFree": "Votre futur plan à partir du {date}",
-      "popular": "Populaire",
-      "modified": "Modifié"
-    },
-    "nextBilling": "Prochaine facturation : {date}",
-    "seats": {
-      "label": "Nombre de sièges",
-      "unit": "utilisateur(s)",
-      "priceNote": "Prix ajusté selon le nombre d'utilisateurs"
-    },
-    "trialNote": "Tous les plans incluent une période d'essai gratuite de 14 jours. Vous pouvez annuler à tout moment depuis cette page.",
-    "actions": {
-      "startingFrom": "À partir du {date}",
-      "downgradeFree": "Passer au gratuit",
-      "canceling": "Annulation...",
-      "restoring": "Restauration...",
-      "continuePlan": "Continuer {plan}",
-      "updating": "Mise à jour...",
-      "update": "Mettre à jour",
-      "redirecting": "Redirection...",
-      "switchTo": "Passer à {plan}"
-    },
-    "errors": {
-      "loadFailed": "Impossible de charger les abonnements",
-      "modeUnknown": "Impossible de déterminer le mode de subscription",
-      "updateFailed": "Erreur lors de la mise à jour",
-      "notOwner": "Vous n'êtes pas propriétaire de l'organisation",
-      "cancelFailed": "Erreur lors de l'annulation",
-      "restoreFailed": "Erreur lors de la restauration",
-      "notOwnerOfThis": "Vous n'êtes pas propriétaire de cette organisation"
-    },
-    "success": {
-      "redirecting": "Redirection vers le paiement...",
-      "canceled": "Abonnement annulé",
-      "restored": "Abonnement restauré avec succès"
-    }
-  },
-  "Dashboard": {
-    "badge": "Espace client",
-    "heading": "Vue d'ensemble de votre activité",
-    "subheading": "Suivez vos revenus, vos clients et vos opportunités de croissance en un coup d’œil.",
-    "revenueTrend": "{trend} de revenus vs mois dernier",
-    "activeUsers": "{count} utilisateurs actifs",
-    "lastPeak": "Dernier pic : {month} avec {amount}",
-    "tabs": {
-      "overview": "Aperçu",
-      "analytics": "Analytiques",
-      "reports": "Rapports"
-    },
-    "metrics": {
-      "monthlyRevenue": "Revenu mensuel",
-      "vsPreviousMonth": "{trend} vs mois précédent",
-      "averageTicket": "Tickets moyens",
-      "completedTransactions": "{count} transactions complétées",
-      "newCustomers": "Nouveaux clients",
-      "acquisitionCampaign": "Campagne d’acquisition Q2",
-      "cumulativeRevenue": "Revenus cumulés (6 mois)",
-      "bestMonth": "Meilleur mois : {month}",
-      "salesVolume": "Volume de ventes",
-      "leadingProduct": "{product} est en tête ({count} ventes)",
-      "averageRevenuePerCustomer": "Revenu moyen / client",
-      "basedOnCompleted": "Basé sur les transactions complétées",
-      "conversionRate": "Taux de conversion",
-      "conversionDetail": "+3,2 pts depuis janvier"
-    },
-    "insights": {
-      "title": "Insights clés",
-      "description": "Identifiez vos leviers de croissance et priorisez vos actions.",
-      "topProduct": "Produit phare",
-      "topProductDetail": "{count} ventes sur 30 jours",
-      "strongestGrowth": "Croissance la plus forte",
-      "strongestGrowthDetail": "{amount} générés",
-      "conversionDetail": "Campagnes multi-canales performantes",
-      "averageBasket": "Panier moyen",
-      "averageBasketDetail": "Combos plan + add-ons en hausse"
-    },
-    "charts": {
-      "revenueTitle": "Revenus mensuels",
-      "revenueDescription": "Détail des revenus récurrents sur 6 mois",
-      "salesTitle": "Répartition des ventes",
-      "salesDescription": "Ventilation par plans et add-ons",
-      "revenueLabel": "Revenu",
-      "salesLabel": "Ventes"
-    },
-    "transactions": {
-      "title": "Transactions récentes",
-      "description": "Les cinq dernières opérations clients",
-      "completed": "Complété",
-      "pending": "En attente"
-    },
-    "goals": {
-      "title": "Objectifs trimestriels",
-      "description": "Suivi de vos jalons stratégiques",
-      "acquisition": "Acquisition",
-      "acquisitionDetail": "4 500 / 6 000 leads",
-      "retention": "Fidélisation",
-      "retentionDetail": "2 700 / 3 000 clients actifs",
-      "revenue": "Chiffre d'affaires",
-      "revenueDetail": "650k / 1M €",
-      "satisfaction": "Satisfaction client",
-      "satisfactionDetail": "Note moyenne 4,1 / 5"
-    },
-    "analytics": {
-      "marketingTitle": "Performances marketing",
-      "marketingDescription": "Détail des canaux et campagnes pour vos prochains arbitrages.",
-      "marketingBody": "Ajoutez ici vos rapports personnalisés (ex : CAC, LTV par canal, cohortes clients…).",
-      "pipelineTitle": "Pipeline commercial",
-      "pipelineDescription": "Conversion par étape, valeur des deals et forecast.",
-      "pipelineBody": "Branchez vos données CRM pour suivre en direct vos opportunités."
-    },
-    "reports": {
-      "title": "Rapports exportables",
-      "description": "Téléchargez vos exports financiers et marketing.",
-      "body": "Connectez vos automatisations (Notion, Looker, Google Sheets…) pour alimenter vos reportings."
-    }
-  },
   "CreditsSimulator": {
     "title": "Simulateur de crédits IA",
     "description": "Testez la consommation de crédits avec une fausse API IA (1 crédit par génération)",
@@ -1781,22 +1462,6 @@
       "refundBody": "Les remboursements apparaissent dans le ledger avec la source « Refund »."
     }
   },
-  "TeamPage": {
-    "membersTitle": "Membres de l'équipe",
-    "usageTitle": "Utilisation",
-    "detailsTitle": "Informations détaillées",
-    "uniqueId": "Identifiant unique",
-    "slug": "Slug de l'organisation",
-    "lastUpdate": "Dernière mise à jour",
-    "notSet": "Non définie",
-    "actionsTitle": "Actions",
-    "leave": "Quitter l'organisation",
-    "leaveConfirm": "Êtes-vous sûr de vouloir quitter l'organisation {name} ? Cette action est irréversible et vous perdrez l'accès à toutes les ressources de l'organisation.",
-    "leaving": "Sortie en cours...",
-    "notFound": "Organisation non trouvée",
-    "leaveSuccess": "Vous avez quitté l'organisation avec succès",
-    "leaveError": "Erreur lors de la sortie de l'organisation"
-  },
   "Chat": {
     "title": "Chat IA",
     "description": "Conversation avec votre assistant IA local (Ollama)",
@@ -1819,34 +1484,10 @@
     "membersTitle": "Membres de l'organisation",
     "loadingMembers": "Chargement des membres..."
   },
-  "NotificationsPage": {
-    "title": "Notifications",
-    "description": "Restez informé de toutes vos activités et mises à jour importantes."
-  },
-  "AcceptInvitation": {
-    "title": "Invitation d'organisation",
-    "subtitle": "Vous avez été invité à rejoindre une organisation",
-    "invitedBy": "Invité par",
-    "acceptSuccess": "Invitation acceptée avec succès",
-    "acceptError": "Erreur lors de l'acceptation de l'invitation",
-    "declineSuccess": "Invitation annulée avec succès",
-    "declineError": "Erreur lors de l'annulation de l'invitation"
-  },
-  "TeamSwitcher": {
-    "loading": "Chargement...",
-    "noOrganization": "Aucune organisation",
-    "teams": "Équipes",
-    "addTeam": "Ajouter une équipe",
-    "cannotCreate": "Vous ne pouvez pas créer une organisation"
-  },
   "ProjectsPages": {
     "tasksTitle": "Gestion des tâches",
     "loadingTasks": "Chargement des tâches...",
     "newTask": "Nouvelle tâche"
-  },
-  "LimitReached": {
-    "currentUsage": "Utilisation actuelle",
-    "upgradeNeeded": "Mise à niveau nécessaire"
   },
   "CreditsUi": {
     "buy": "Acheter des crédits",
@@ -3496,6 +3137,17 @@
         "overlap": "La vente n’a pas été enregistrée. La parcelle {number} a déjà un propriétaire enregistré à partir du {from} : {name}. Une vente au {date} lui donnerait deux propriétaires en même temps. Vérifiez la date, ou consultez la fiche de {name}.",
         "overlapUnknown": "La vente n’a pas été enregistrée. La parcelle {number} a déjà un propriétaire enregistré après cette date."
       }
+    }
+  },
+  "MemberSpaceLayout": {
+    "skipToContent": "Aller au contenu"
+  },
+  "MemberSpacePage": {
+    "title": "Votre espace membre",
+    "security": {
+      "title": "Sécurité du compte",
+      "description": "Votre adresse email, votre mot de passe et les appareils connectés à votre compte.",
+      "link": "Gérer la sécurité du compte"
     }
   }
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import {Frame, Settings2, SquareTerminal} from 'lucide-react'
+import {Settings2, SquareTerminal} from 'lucide-react'
 import * as React from 'react'
 
 import {AdminMenuHeader} from '@/components/features/layouts/sidebar/admin-menu-header'
@@ -81,26 +81,24 @@ const data = {
       ],
     },
   ],
-  appNavMain: [
-    {
-      name: 'Application (front office)',
-      url: '/dashboard',
-      icon: Frame,
-    },
-  ],
 }
 
 export function AdminSidebar({
   user,
+  association,
   ...props
-}: React.ComponentProps<typeof Sidebar> & {user?: User}) {
+}: React.ComponentProps<typeof Sidebar> & {
+  user?: User
+  /** L'association du domaine appele ; absente sur l'adresse de la plateforme. */
+  association?: {name: string}
+}) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <AdminMenuHeader />
       </SidebarHeader>
       <SidebarContent>
-        <NavApplication applications={data.appNavMain} />
+        <NavApplication association={association} />
         <NavMain items={data.navMain} />
       </SidebarContent>
       <SidebarFooter>

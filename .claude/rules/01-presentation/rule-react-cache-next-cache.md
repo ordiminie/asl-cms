@@ -111,12 +111,12 @@ donne `stale` 5 min et `revalidate` 1 min.
 
 ```tsx
 // Le layout ne fait PAS await : il crée la promesse et la passe telle quelle
-export default function AppLayout({children}) {
+export default function SessionLayout({children}) {
   const userPromise = getCurrentUserDal()
   return (
     <AuthProvider userPromise={userPromise}>
-      <Suspense fallback={<SidebarSkeleton />}>
-        <AppSidebar />
+      <Suspense fallback={<UserMenuSkeleton />}>
+        <UserMenu />
       </Suspense>
       {children}
     </AuthProvider>
@@ -134,10 +134,10 @@ fonction interne — sinon un appelant peut demander les données d'un autre uti
 ⚠️ Les clés de cache et les `cacheTag` sont stockés **en clair**. Jamais de secret ni de donnée
 personnelle dedans : indexer sur un identifiant stable.
 
-**Un provider ne doit jamais suspendre** : il emporterait `{children}` avec lui. `AuthProvider` et
-`OrganizationProvider` ne portent que la promesse et l'état client ; ce sont les hooks
-(`useAuth`, `useOrganization`) qui déroulent, et les effets vivent dans des composants dédiés
-(`OrganizationSync`) montés derrière un `<Suspense>`.
+**Un provider ne doit jamais suspendre** : il emporterait `{children}` avec lui. `AuthProvider`
+(`src/components/context/auth-provider.tsx`) ne porte que la promesse ; c'est le hook `useAuth`
+qui la déroule, dans un composant monté derrière un `<Suspense>`. Un effet qui dépend de la session
+vit, lui aussi, dans un composant dédié derrière un `<Suspense>`, jamais dans le provider.
 
 **Le contrôle d'accès n'est pas dans le stream.** Un `redirect()` ou un `forbidden()` déclenché en
 cours de rendu part après le début d'un `200` et ne peut plus changer le statut. Le gating grossier

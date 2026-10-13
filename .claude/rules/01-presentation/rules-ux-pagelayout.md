@@ -84,43 +84,41 @@ Pour un formulaire dans une Card complète :
 Les formulaires avec plusieurs sections logiques doivent être découpés en plusieurs Cards :
 
 ```tsx
-// edit-user-settings.tsx
-<Form {...form}>
-  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-    {/* Section Apparence */}
+// member-profile-form.tsx — une Card par section (identité, contact, parcelles)
+<FormProvider {...form}>
+  <form onSubmit={form.handleSubmit(onValid)} className="flex flex-col gap-6">
+    {/* Section Identité */}
     <Card>
       <CardHeader>
-        <CardTitle>{t('appearance.title')}</CardTitle>
+        <CardTitle>{t('form.identity')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">{/* Champ nom */}</CardContent>
+    </Card>
+
+    {/* Section Contact */}
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('form.contact')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Champs theme, language */}
+        {/* Champs email, téléphone, adresse */}
       </CardContent>
     </Card>
 
-    {/* Section Notifications */}
+    {/* Section Parcelles */}
     <Card>
       <CardHeader>
-        <CardTitle>{t('notifications.title')}</CardTitle>
+        <CardTitle>{t('form.parcels')}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Champs notifications */}
-      </CardContent>
+      <CardContent>{/* Rattachement des parcelles */}</CardContent>
     </Card>
 
-    {/* Section Marketing (avec bouton submit) */}
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('marketing.title')}</CardTitle>
-      </CardHeader>
-      <CardContent>{/* Champs marketing */}</CardContent>
-      <CardFooter>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? t('form.updating') : t('form.updateSettings')}
-        </Button>
-      </CardFooter>
-    </Card>
+    {/* Actions, après la dernière Card */}
+    <Button type="submit" disabled={isSubmitting}>
+      {isSubmitting ? t('form.saving') : t('form.save')}
+    </Button>
   </form>
-</Form>
+</FormProvider>
 ```
 
 ## Pattern Section Sécurité
@@ -171,32 +169,16 @@ export default async function Page() {
   const user = await getAuthUser()
 
   return (
-    <div className="space-y-6">
-      {/* En-tête de page */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+    <div className="space-y-8">
+      {/* Retour vers l'espace membre */}
+      <Link href="/dashboard">{t('backToMemberSpace')}</Link>
+
+      {/* En-tête de page : un seul titre, un chapeau */}
+      <div className="space-y-2">
+        <h1 className="font-serif text-3xl font-semibold tracking-tight">
           {t('title')}
         </h1>
         <p className="text-muted-foreground">{t('description')}</p>
-      </div>
-
-      {/* Section Profil */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('profile.title')}</CardTitle>
-          <CardDescription>{t('profile.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EditUserProfileForm user={user} />
-        </CardContent>
-      </Card>
-
-      {/* En-tête Section Sécurité */}
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">{t('security.title')}</h2>
-        <p className="text-muted-foreground text-sm">
-          {t('security.description')}
-        </p>
       </div>
 
       {/* Composants Sécurité (chacun dans sa Card) */}
@@ -206,27 +188,19 @@ export default async function Page() {
 }
 ```
 
-## Exemple Page Paramètres (Settings)
+## Exemple Page Formulaire (fiche d'un membre)
 
 ```tsx
-// app/[locale]/(app)/account/settings/page.tsx
-export default async function Page() {
-  const t = await getTranslations('AccountSettingsPage')
-  const user = await getAuthUser()
+// app/[locale]/(bureau)/bureau/proprietaires/nouveau/page.tsx
+export default async function BureauNewMemberProfilePage({params}) {
+  const {locale} = await params
+  setRequestLocale(locale)
 
   return (
-    <div className="space-y-6">
-      {/* En-tête de page */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {t('title')}
-        </h1>
-        <p className="text-muted-foreground">{t('description')}</p>
-      </div>
-
-      {/* Le formulaire gère ses propres Cards internes */}
-      <EditUserSettingsForm user={user} />
-    </div>
+    <Suspense fallback={<FormSkeleton />}>
+      {/* Le formulaire porte son titre et ses propres Cards internes */}
+      <MemberProfileForm saveAction={createMemberProfileAction} />
+    </Suspense>
   )
 }
 ```

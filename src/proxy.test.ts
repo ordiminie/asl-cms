@@ -16,7 +16,7 @@ const redirectTarget = (response: Response) => {
 }
 
 describe('proxy — gating de session sans préfixe de langue (s43)', () => {
-  it.each(['/bureau', '/bureau/membres', '/account/settings', '/admin'])(
+  it.each(['/bureau', '/bureau/membres', '/account', '/dashboard', '/admin'])(
     'renvoie un visiteur sans session de %s vers /login, sans préfixe',
     (pathname) => {
       const response = middleware(requestTo(pathname))
@@ -36,7 +36,7 @@ describe('proxy — gating de session sans préfixe de langue (s43)', () => {
     }
   )
 
-  it.each(['/actualites', '/', '/contact', '/bureautique'])(
+  it.each(['/actualites', '/', '/contact', '/bureautique', '/team/x'])(
     'ne redirige pas la page publique %s sans session',
     (pathname) => {
       const response = middleware(requestTo(pathname))

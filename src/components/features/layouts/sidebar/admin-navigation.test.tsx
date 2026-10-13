@@ -1,12 +1,5 @@
 import {SquareTerminal} from 'lucide-react'
-import {describe, expect, it, vi} from 'vitest'
-
-vi.mock('@/components/hooks/use-unread-notifications', () => ({
-  useUnreadNotifications: () => ({unreadCount: 0}),
-}))
-vi.mock('@/components/hooks/use-subscription', () => ({
-  useSubscription: () => ({isFree: true, loading: false}),
-}))
+import {describe, expect, it} from 'vitest'
 
 import {render, screen, userEvent} from '@/__tests__/customRender'
 import {SidebarProvider} from '@/components/ui/sidebar'

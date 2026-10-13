@@ -1,4 +1,3 @@
-import {apiKey} from '@better-auth/api-key'
 import {stripe} from '@better-auth/stripe'
 import {betterAuth, BetterAuthOptions, User} from 'better-auth'
 import {drizzleAdapter} from 'better-auth/adapters/drizzle'
@@ -132,7 +131,6 @@ const options = {
   },
   plugins: [
     bearer(),
-    apiKey(),
     twoFactor({
       issuer: APP_ISSUER,
       skipVerificationOnEnable: AuthAppConfig.skipVerificationOnEnable,

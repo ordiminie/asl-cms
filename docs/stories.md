@@ -1666,9 +1666,10 @@ s12, s12d
 Réf. `V5 §5.4`, `CDCT §5.4`. CRUD simple sur ses propres données — la seule subtilité est
 l'autorisation, à écrire en test d'abord (tentative sur l'id d'un autre membre).
 
-Le dépôt a un formulaire équivalent
-(`src/components/features/user/edit-user-settings.tsx`) : s'en inspirer plutôt que réinventer, en
-suivant `rule-form-front-and-back` et `rule-zod-client-server-internationalization`.
+Le dépôt a le formulaire du même modèle, saisi par le bureau en s12
+(`src/components/features/member-profile/member-profile-form.tsx`, champs de coordonnées dans
+`member-contact-fields.tsx`) : s'en inspirer plutôt que réinventer, en suivant
+`rule-form-front-and-back` et `rule-zod-client-server-internationalization`.
 
 Cette story ne couvre que le **self-service d'un membre connecté**. La saisie par le bureau — seule
 voie possible pour les membres sans compte — appartient à s12. Ne pas réimplémenter le formulaire :
