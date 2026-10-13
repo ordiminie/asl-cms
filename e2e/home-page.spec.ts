@@ -238,6 +238,14 @@ const newVisitor = async (browser: Browser) => {
 const canonicalOf = async (page: Page) =>
   page.locator('link[rel="canonical"]').getAttribute('href')
 
+/**
+ * `http://hote/` et `http://hote` sont la même adresse pour un moteur, et le
+ * rendu des métadonnées de Next retire la barre finale d'une URL réduite à
+ * son origine. On compare donc des adresses normalisées.
+ */
+const sameAddress = (url: string | null) =>
+  url === null ? null : url.replace(/^(https?:\/\/[^/]+)\/$/, '$1')
+
 const sitemapUrls = async (page: Page, base: string): Promise<string[]> => {
   const response = await page.request.get(`${base}/sitemap.xml`)
   expect(response.ok()).toBe(true)
@@ -270,15 +278,18 @@ test.describe('Page d’accueil — cycle complet', () => {
       await expect(visitor.page.getByRole('banner')).toBeVisible()
 
       // Critère 6 : une seule adresse pour les moteurs.
-      expect(await canonicalOf(visitor.page)).toBe(`${TENANT_A}/`)
+      const rootCanonical = sameAddress(await canonicalOf(visitor.page))
+      expect(rootCanonical).toBe(sameAddress(`${TENANT_A}/`))
       await visitor.page.goto(`${TENANT_A}/${slug}`, {waitUntil: 'load'})
       await expect(
         visitor.page.getByRole('heading', {level: 1, name: title})
       ).toBeVisible({timeout: 20_000})
-      expect(await canonicalOf(visitor.page)).toBe(`${TENANT_A}/`)
+      expect(sameAddress(await canonicalOf(visitor.page))).toBe(rootCanonical)
 
-      const urls = await sitemapUrls(visitor.page, TENANT_A)
-      expect(urls.filter((url) => url === `${TENANT_A}/`)).toHaveLength(1)
+      const urls = (await sitemapUrls(visitor.page, TENANT_A)).map(sameAddress)
+      expect(
+        urls.filter((url) => url === sameAddress(`${TENANT_A}/`))
+      ).toHaveLength(1)
       expect(urls).not.toContain(`${TENANT_A}/${slug}`)
 
       // Critère 2 : dépubliée, l'accueil automatique reprend la main…
