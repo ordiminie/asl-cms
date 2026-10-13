@@ -3320,8 +3320,8 @@ membre d'une autre association ne puisse y ouvrir une session.
 ### Acceptance criteria
 
 - [ ] Après connexion, quel que soit le mode, un membre du bureau ou la Présidence de l'association du domaine appelé arrive sur `/bureau`, le SuperAdmin sur `/admin` — même s'il a aussi un rôle dans l'association —, et un membre propriétaire sur l'espace membre (`/dashboard`).
-- [ ] Un compte ne se connecte que sur le domaine d'une association dont il est membre, **quel que soit le mode** : mot de passe, lien magique, double authentification ou Google. Un compte membre de l'association A qui tente de se connecter sur le domaine de l'association B n'obtient aucune session et reçoit le même message qu'un compte inconnu — prouvé par un test d'accès croisé entre deux associations, pour chaque mode ; pour Google, qui n'a aucun écran en V1, la preuve est le contrôle commun à tous les modes, sans test e2e dédié. Seul le SuperAdmin fait exception.
-- [ ] L'inscription libre est fermée : `/register` répond 404, et une création de compte par mot de passe adressée directement au serveur d'authentification est refusée. Un compte ne naît que du provisioning d'une association (s01), de l'ouverture du compte d'une fiche membre (s12d, à venir) ou du seed — prouvé par un test qui tente l'inscription et constate qu'aucun utilisateur n'est créé.
+- [ ] Un compte ne se connecte que sur le domaine d'une association dont il est membre, **quel que soit le mode** : mot de passe, lien magique, double authentification ou Google. Un compte membre de l'association A qui tente de se connecter sur le domaine de l'association B n'obtient aucune session et reçoit le même message qu'un compte inconnu. Seul le SuperAdmin fait exception. Preuves : un test e2e d'accès croisé entre deux associations pour le mot de passe et pour le lien magique (jeton émis sur A, ouvert sur B compris) ; un test unitaire du point de contrôle unique, appelé tel que l'appellent les quatre modes — membre de A refusé sur B, membre de A accepté sur A, SuperAdmin accepté partout, hôte sans association refusé sauf au SuperAdmin. La double authentification et Google n'ont pas de test e2e dédié : le seed n'a aucun compte à double authentification et Google n'a aucun écran en V1.
+- [ ] L'inscription libre est fermée : `/register` répond 404, et une création de compte par mot de passe adressée directement au serveur d'authentification est refusée. Un compte ne naît que du provisioning d'une association (s01), de l'ouverture du compte d'une fiche membre (s12d, à venir) ou du seed — prouvé par un test qui tente l'inscription et constate qu'aucun utilisateur n'est créé. Le webhook Stripe ne crée plus de compte : l'achat « invité » (`metadata.source = 'custom_checkout'`), dont l'écran est parti avec s45, ne crée plus d'utilisateur — prouvé par un test unitaire de `onStripeEvent` qui reçoit cet événement et constate qu'aucun utilisateur n'est créé.
 - [ ] Un lien magique demandé pour une adresse inconnue ne crée aucun compte (fermeture déjà faite par s03, gardée par un test).
 - [ ] La connexion par Google n'est proposée sur aucun écran : sa configuration serveur reste en place pour une V2 (PRD, « Reporté en V2 »), avec `disableSignUp`, et un compte Google inconnu ne crée aucun utilisateur. Apple n'est ni proposé ni configuré en V1 (extension V2, même ligne du PRD) ; GitHub est retiré. Aucune trace d'Apple ni de GitHub ne reste dans les écrans, les actions, le schéma d'environnement ni la CI.
 
@@ -3350,8 +3350,23 @@ déjà ce périmètre : `/ks-research s46b` la reprend et la vérifie au lieu de
   Le message de refus ne doit pas révéler que le compte existe ailleurs.
 - Fermer l'inscription : `disableSignUp` (Better Auth) sur `emailAndPassword` et sur le lien
   magique. Le seed et la création de comptes par le back-office passent par l'API serveur ; vérifier
-  qu'ils ne dépendent pas de l'inscription publique. Specs touchées : `e2e/auth.spec.ts` (inscription)
-  et celles qui épinglent `/dashboard` après connexion (`e2e/magic-link.spec.ts`, voir la recherche).
+  qu'ils ne dépendent pas de l'inscription publique. Specs touchées : `e2e/auth.spec.ts` (inscription),
+  celles qui épinglent `/dashboard` après connexion (`e2e/magic-link.spec.ts`, voir la recherche), et
+  celles qui connectent le compte `admin` global sur un domaine d'association
+  (`e2e/association-settings.spec.ts`, `e2e/association-identity.spec.ts`) : sans ligne `member`, il
+  ne s'y connecte plus dès cette story, pas seulement à s47 (revue du découpage du 13 octobre).
+- **Le point de contrôle unique est testable seul** : la règle (utilisateur, association du domaine
+  appelé → session acceptée ou non) vit dans une fonction pure, appelée par le hook d'ouverture de
+  session. Le test unitaire du critère 2 porte sur cette fonction et sur l'appel du hook ; le plan
+  dit comment le hook reçoit le domaine pour chaque mode (`loginCredentialAction` n'envoie pas les
+  `headers` aujourd'hui).
+- **Webhook Stripe** : `handleGuestCheckoutSessionCompleted` (`src/lib/stripe/stripe-events.ts`) crée
+  un utilisateur par `createUserFromStripeService` pour un achat « invité ». Plus aucun code de
+  l'application ne crée de session de paiement (`checkout.sessions.create` absent de `src/`) : seule
+  une session créée hors de l'application (tableau de bord Stripe, CLI) déclencherait encore la
+  branche. La retirer avec `createUserFromStripeService` (service, façade,
+  schéma) et `handleFullCheckoutSessionCompleted`, dont l'appel est déjà commenté (l. 66). Le reste du webhook (abonnements gérés par le plugin, paiement en plusieurs
+  fois) ne change pas. Voie de retour : `git revert`, ou `upstream/main` (ADR 009).
 - Solde aussi m6 et les commentaires anglais de m7 dans `e2e/auth.spec.ts` (revue de s43).
 - **Google en sommeil, Apple en V2** (arbitrage du 13 octobre, à la revue du découpage) : la
   configuration `socialProviders.google` reste, avec `disableSignUp` (Better Auth 1.7.1) ; aucun
