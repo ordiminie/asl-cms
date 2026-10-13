@@ -20,9 +20,9 @@
 **Décisions fondatrices**
 
 - **Personnalisation par association = logo + une teinte d'accent**, rien d'autre.
-- **Mode sombre conservé** — deux jeux de tokens ([ADR 012](decisions/012-mode-sombre-conserve.md)).
-  La première version de ce document actait l'abandon ; l'arbitrage du 9 septembre 2026 l'a renversé.
-  Le jeu sombre vit dans `docs/designs/Design system - sombre.dc.html`. Voir §10.
+- **Clair seul** — le thème clair est forcé, sans sélecteur de thème
+  ([ADR 033](decisions/033-mode-clair-seul.md), qui remplace l'ADR 012). Le jeu sombre de
+  `docs/designs/Design system - sombre.dc.html` reste en archive, inappliqué. Voir §10.
 - **Aucun plan B de connexion pour les membres sans email.** Ils n'ont aucun compte : la
   réponse produit à leur situation est le **publipostage papier**. La livraison n° 1 proposait
   un `<CodeInput />` d'activation par courrier ; il a été **retiré au second tour**.
@@ -839,7 +839,7 @@ photos. Bloc PDF : bouton pleine largeur sous le titre. **Texte long : aucune tr
 
 ### 5.2 Mode sombre forcé (Outlook, Gmail Android)
 
-Le web a désormais son propre mode sombre (ADR 012), mais l'email reste un cas à part :
+Le web s'affiche en clair seul (ADR 033), mais l'email reste un cas à part :
 **certains clients l'imposent**, sans rapport avec le thème choisi sur le site.
 
 - **Doit rester lisible** : texte du corps, libellé du bouton, URL en clair, pied de page — donc
@@ -1134,25 +1134,22 @@ documenté (style en ligne sur `<html>`) est celui qu'applique s02.
 Ces dettes sont ouvertes par les décisions du design system. Elles appartiennent à la story qui
 applique le système au boilerplate.
 
-### ~~L'abandon du mode sombre~~ — décision renversée, voir ADR 012
+### Le mode sombre — clair seul, voir ADR 033
 
-> **Ce paragraphe est caduc.** Le mode sombre est **conservé** : arbitrage du 9 septembre 2026,
-> acté par [ADR 012](decisions/012-mode-sombre-conserve.md). Le retrait traversait la base de
-> données, le proxy, les tests et trois règles pour rhabiller un socle dont aucun écran ASL-CMS
-> n'existe encore. Les décisions fondatrices en tête de document sont amendées d'autant : il y a
-> **deux** jeux de tokens, pas un.
+> **Historique.** La première version de ce document actait l'abandon du mode sombre ; l'arbitrage
+> du 9 septembre 2026 l'avait renversé ([ADR 012](decisions/012-mode-sombre-conserve.md)). Celui du
+> 7 octobre 2026 tranche à nouveau : **le produit ne s'affiche qu'en clair**, acté par
+> [ADR 033](decisions/033-mode-clair-seul.md) (s45), qui remplace l'ADR 012.
 >
 > Conséquences pratiques :
 >
-> - `src/app/globals.css` garde son bloc `.dark`, désormais aligné sur
->   `docs/designs/Design system - sombre.dc.html`. `next-themes` et le sélecteur de thème restent.
-> - `.claude/rules/01-presentation/rule-mdx-rendering.md` garde sa consigne de vérifier « en clair
->   et en sombre » : elle redevient exacte, il n'y a rien à y corriger.
-> - Le point n° 3 de la version précédente était **faux indépendamment de ce revirement** :
->   `docs/architecture.md` ne mentionne `x-theme` nulle part (grep : zéro occurrence), et
->   `src/app/[locale]/docs/[...slug]/page.tsx` ne porte plus d'`instant = false`.
-> - **Toute livraison de conception doit fournir deux jeux de tokens.** Un manque du jeu sombre
->   se signale ici, il ne se dérive pas en silence — le trio `warning` est dans ce cas.
+> - Le thème clair est **forcé** au niveau de `next-themes` (`forcedTheme="light"`) ; le sélecteur
+>   de l'en-tête public, les bascules des menus utilisateur et le choix du thème des réglages
+>   de compte sont retirés. Un navigateur réglé en sombre voit le produit en clair.
+> - **Rien n'est retiré en dessous** : le bloc `.dark` de `src/app/globals.css`, les classes
+>   `dark:`, l'enum `theme_type` et la colonne `user.theme` restent, inertes (aucune migration).
+> - Tout nouvel écran se dessine et se vérifie **en clair seul** : une livraison de conception ne
+>   fournit plus de jeu sombre.
 
 ⚠️ **L'exception email reste vraie**, et pour une autre raison : certains clients de messagerie
 imposent le mode sombre quoi que fasse le web. Voir §5.2.

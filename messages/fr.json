@@ -94,57 +94,6 @@
       "unable_to_create_user": "Impossible de créer votre compte. Veuillez réessayer."
     }
   },
-  "TermsPage": {
-    "title": "Conditions d'Utilisation",
-    "description": "Page de conditions d'utilisation",
-    "terms": [
-      {
-        "title": "Introduction",
-        "contents": [
-          "En utilisant ce service, vous acceptez les précautions d'utilisation. Veuillez les lire attentivement avant d'accéder ou d'utiliser le service.",
-          "Ce service est conçu pour aider les entrepreneurs à gérer leurs finances et leur activité sportive. Son utilisation est soumise aux conditions énoncées ci-dessous."
-        ]
-      },
-      {
-        "title": "Acceptation des Conditions",
-        "contents": [
-          "En accédant ou en utilisant ce service, vous acceptez d'être lié par ces conditions. Si vous n'acceptez pas ces conditions, veuillez ne pas utiliser le service.",
-          "Nous nous réservons le droit de modifier ces conditions à tout moment. Tout changement sera publié sur cette page. Votre utilisation continue du service après de telles modifications constitue votre acceptation desdites modifications."
-        ]
-      },
-      {
-        "title": "Utilisation du Service",
-        "contents": [
-          "Vous êtes responsable de maintenir la confidentialité de vos informations de connexion.",
-          "Vous acceptez de ne pas utiliser le service à des fins illégales ou non autorisées.",
-          "Vous acceptez de ne pas accéder au code source du service ou de le modifier de quelque manière que ce soit.",
-          "Vous acceptez de ne pas utiliser le service pour toute activité qui pourrait nuire à la sécurité ou à l'intégrité du service ou de tout autre système informatique."
-        ]
-      },
-      {
-        "title": "Données Utilisateur",
-        "contents": [
-          "Vous conservez la propriété de toutes les données que vous entrez ou téléchargez dans le service.",
-          "Nous ne revendiquerons aucun droit de propriété sur vos données.",
-          "Vous consentez à ce que nous utilisions vos données pour fournir et améliorer le service, ainsi qu'à des fins d'analyse et de marketing."
-        ]
-      },
-      {
-        "title": "Limitation de Responsabilité",
-        "contents": [
-          "Nous ne serons pas responsables des dommages directs, indirects, accessoires, spéciaux ou consécutifs découlant de l'utilisation ou de l'incapacité à utiliser le service.",
-          "Nous ne garantissons pas que le service sera exempt d'erreurs ou de interruptions."
-        ]
-      },
-      {
-        "title": "Droit Applicable",
-        "contents": [
-          "Les présentes conditions sont régies par les lois en vigueur dans votre pays de résidence.",
-          "Tout litige découlant de ces conditions sera soumis à la juridiction exclusive des tribunaux compétents de votre pays de résidence."
-        ]
-      }
-    ]
-  },
   "NotFoundPage": {
     "title": "Page non trouvée",
     "description": "Désolé, nous n'avons pas trouvé la page que vous recherchez.",
@@ -157,7 +106,6 @@
       "users": "Utilisateurs",
       "organizations": "Organisations",
       "plans": "Plans",
-      "blog": "Blog",
       "credits": "Crédits",
       "affiliates": "Affiliés"
     },
@@ -218,8 +166,6 @@
   "NavUser": {
     "upgradeToPro": "Passer à Pro",
     "subscription": "Abonnement",
-    "darkMode": "Mode sombre",
-    "lightMode": "Mode clair",
     "account": "Compte",
     "apiKeys": "Clés API",
     "settings": "Paramètres",
@@ -462,13 +408,6 @@
     },
     "appearance": {
       "title": "Apparence",
-      "theme": {
-        "label": "Thème",
-        "placeholder": "Sélectionner un thème",
-        "light": "Clair",
-        "dark": "Sombre",
-        "system": "Système"
-      },
       "language": {
         "label": "Langue",
         "placeholder": "Sélectionner une langue",
@@ -663,10 +602,6 @@
       },
       "backToClassic": "Retour à la connexion classique",
       "backToOptions": "Retour aux options de connexion",
-      "terms": "En cliquant sur continuer, vous acceptez nos",
-      "termsLink": "Conditions d'utilisation",
-      "and": "et notre",
-      "privacyLink": "Politique de confidentialité",
       "noAccount": "Pas encore de compte?",
       "signUpLink": "S'inscrire"
     },
@@ -750,10 +685,6 @@
       },
       "alreadyAccount": "Vous avez déjà un compte?",
       "loginLink": "Se connecter",
-      "terms": "En vous inscrivant, vous acceptez nos",
-      "termsLink": "Conditions d'utilisation",
-      "and": "et notre",
-      "privacyLink": "Politique de confidentialité",
       "validation": {
         "nameMin": "Le nom doit contenir au moins 2 caractères",
         "passwordMin": "Le mot de passe doit contenir au moins 8 caractères",
@@ -800,10 +731,6 @@
       "emailSent": "Email de réinitialisation envoyé",
       "passwordResetSuccess": "Mot de passe réinitialisé avec succès",
       "errorOccurred": "Une erreur est survenue",
-      "terms": "En cliquant sur continuer, vous acceptez nos",
-      "termsLink": "Conditions d'utilisation",
-      "and": "et notre",
-      "privacyLink": "Politique de confidentialité",
       "validation": {
         "passwordMin": "Le mot de passe doit contenir au moins 8 caractères",
         "passwordMax": "Le mot de passe ne doit pas dépasser 100 caractères",
@@ -835,11 +762,7 @@
         "verificationSuccess": "Vérification OTP réussie",
         "verificationError": "Une erreur est survenue lors de la vérification OTP",
         "redirecting": "Redirection vers le dashboard ..."
-      },
-      "terms": "En cliquant sur continuer, vous acceptez nos",
-      "termsLink": "Conditions d'utilisation",
-      "and": "et notre",
-      "privacyLink": "Politique de confidentialité"
+      }
     },
     "TotpVerificationPage": {
       "title": "Vérification à deux facteurs",
@@ -858,11 +781,7 @@
         "verificationSuccess": "Vérification réussie",
         "verificationError": "Code de vérification invalide",
         "generalError": "Une erreur est survenue lors de la vérification"
-      },
-      "terms": "En cliquant sur continuer, vous acceptez nos",
-      "termsLink": "Conditions d'utilisation",
-      "and": "et notre",
-      "privacyLink": "Politique de confidentialité"
+      }
     },
     "RecoveryCodePage": {
       "title": "Code de sauvegarde",
@@ -1216,48 +1135,6 @@
       }
     }
   },
-  "PrivacyPage": {
-    "title": "Politique de confidentialité",
-    "description": "Page de politique de confidentialité",
-    "sections": {
-      "privacyPolicy": {
-        "title": "Politique de Confidentialité",
-        "description": "Votre vie privée est importante pour nous. Cette politique de confidentialité décrit les types d'informations que [Nom de l'entreprise] (\"nous\", \"notre\", \"nos\") peut collecter auprès de vous ou que vous nous fournissez lorsque vous utilisez notre service, et la façon dont nous utilisons, protégeons et divulguons ces informations. En utilisant le service, vous acceptez la collecte et l'utilisation des informations conformément à cette politique."
-      },
-      "collectedInformation": {
-        "title": "Informations Collectées",
-        "description": "Nous pouvons collecter différents types d'informations lorsque vous utilisez notre service, y compris :",
-        "contents": [
-          "Informations d'identification personnelles telles que votre nom, adresse e-mail, numéro de téléphone, et informations de facturation lorsque vous vous inscrivez pour utiliser notre service.",
-          "Informations sur votre entreprise, telles que le nom de l'entreprise, l'adresse, et d'autres informations financières nécessaires à la gestion de vos finances.",
-          "Informations sur votre activité sportive, telles que les types d'activités effectuées, la durée et l'intensité de l'exercice."
-        ]
-      },
-      "informationUsage": {
-        "title": "Utilisation des Informations",
-        "description": "Nous utilisons les informations que nous collectons pour :",
-        "contents": [
-          "Fournir, maintenir et améliorer notre service.",
-          "Personnaliser votre expérience et répondre à vos besoins individuels.",
-          "Traiter vos transactions financières et vous fournir un suivi de vos finances.",
-          "Suivre et analyser les tendances d'utilisation et les préférences des utilisateurs.",
-          "Vous envoyer des informations administratives, telles que des alertes de compte, des mises à jour sur les services ou des communications liées au service."
-        ]
-      },
-      "informationProtection": {
-        "title": "Protection des Informations",
-        "description": "La sécurité de vos informations est importante pour nous. Nous mettons en œuvre des mesures de sécurité appropriées pour protéger les informations contre tout accès non autorisé, toute altération, toute divulgation ou toute destruction."
-      },
-      "dataRetention": {
-        "title": "Conservation des Données",
-        "description": "Nous conservons vos informations personnelles aussi longtemps que nécessaire aux fins pour lesquelles elles ont été collectées et conformément aux exigences légales."
-      },
-      "policyChanges": {
-        "title": "Changements de la Politique de Confidentialité",
-        "description": "Nous nous réservons le droit de mettre à jour ou de modifier cette politique de confidentialité à tout moment. Toute modification sera publiée sur cette page avec une date de révision mise à jour."
-      }
-    }
-  },
   "Tasks": {
     "board": {
       "title": "Tableau des tâches",
@@ -1321,98 +1198,6 @@
       "createError": "Erreur lors de la création de la tâche",
       "updateError": "Erreur lors de la mise à jour de la tâche",
       "deleteError": "Erreur lors de la suppression de la tâche"
-    }
-  },
-  "BlogPage": {
-    "title": "Blog",
-    "description": "Découvrez nos derniers articles et réflexions sur le développement web",
-    "meta": {
-      "title": "Blog - Articles et tutoriels sur le développement web",
-      "description": "Découvrez nos articles sur Next.js, React, TypeScript et les dernières technologies de développement web."
-    },
-    "backToBlog": "Retour aux articles",
-    "share": "Partager",
-    "readTime": "min de lecture"
-  },
-  "BlogListPage": {
-    "title": "Articles",
-    "description": "Découvrez nos derniers articles et réflexions sur le développement web",
-    "meta": {
-      "title": "Blog - Articles et tutoriels sur le développement web",
-      "description": "Découvrez nos articles sur Next.js, React, TypeScript et les dernières technologies de développement web."
-    },
-    "noArticles": "Aucun article disponible pour le moment.",
-    "noCategory": "Sans catégorie",
-    "views": "vues",
-    "likes": "likes",
-    "readMore": "Lire la suite",
-    "pagination": {
-      "previous": "Précédent",
-      "next": "Suivant",
-      "page": "Page",
-      "of": "sur"
-    },
-    "category": {
-      "title": "Catégorie : {category}",
-      "description": "Tous les articles de la catégorie {category}"
-    },
-    "paginationLabel": "Pagination"
-  },
-  "BlogPostPage": {
-    "meta": {
-      "title": "Blog - Articles et tutoriels sur le développement web"
-    },
-    "publishedOn": "Publié le",
-    "updatedOn": "Mis à jour le",
-    "share": "Partager",
-    "comment": "Commenter",
-    "author": "Auteur",
-    "writtenBy": "Écrit par",
-    "relatedArticles": "Articles connexes",
-    "likeThanks": "Merci pour votre like !"
-  },
-  "BlogLayout": {
-    "navigation": {
-      "title": "Navigation",
-      "allArticles": "Tous les Articles",
-      "mdxArticles": "Articles MDX",
-      "admin": "Administration"
-    },
-    "categories": {
-      "title": "Catégories"
-    },
-    "popular": {
-      "title": "Les Plus Lus",
-      "views": "vues"
-    },
-    "hashtags": {
-      "title": "Tags Populaires"
-    },
-    "newsletter": {
-      "title": "Newsletter",
-      "description": "Restez informé de nos derniers articles et actualités du développement web.",
-      "placeholder": "votre.email@exemple.com",
-      "subscribe": "S'abonner",
-      "subscribing": "Inscription...",
-      "success": "Inscription réussie !",
-      "error": "Une erreur est survenue. Veuillez réessayer.",
-      "privacy": "Pas de spam, désabonnement à tout moment"
-    },
-    "stats": {
-      "title": "Statistiques du Blog",
-      "articles": "Articles",
-      "authors": "Auteurs",
-      "categories": "Catégories",
-      "totalViews": "Vues Totales"
-    },
-    "cta": {
-      "badge": "Commencer",
-      "titleStart": "Prêt à",
-      "titleHighlight": "commencer",
-      "titleEnd": "?",
-      "description": "Rejoignez des milliers d'utilisateurs qui créent des choses incroyables avec notre plateforme.",
-      "button": "Commencer gratuitement",
-      "disclaimer": "Pas de carte de crédit requise"
     }
   },
   "WelcomeFollowUpEmail": {
@@ -1589,48 +1374,6 @@
       "next": "Suivant"
     }
   },
-  "Pricing": {
-    "heading": "Des tarifs simples et transparents",
-    "subheading": "Choisissez le plan qui vous convient et commencez à créer de beaux extraits de code pour vos emails",
-    "billing": {
-      "monthly": "Mensuel",
-      "yearly": "Annuel",
-      "save": "Économisez 20%"
-    },
-    "badge": {
-      "currentPlan": "Plan actuel",
-      "mostPopular": "Le plus populaire"
-    },
-    "plans": {
-      "free": {
-        "name": "Free",
-        "description": "Parfait pour démarrer"
-      },
-      "pro": {
-        "name": "Pro",
-        "description": "Parfait pour un usage régulier"
-      },
-      "enterprise": {
-        "name": "Enterprise",
-        "description": "Pour les grandes organisations"
-      },
-      "lifetime": {
-        "name": "Lifetime",
-        "description": "Parfait pour le long terme"
-      }
-    },
-    "perMonth": "par mois",
-    "perYear": "par an",
-    "oneTimePayment": "paiement unique",
-    "monthsFree": "✨ 2 mois offerts",
-    "users": "Utilisateurs :",
-    "perUser": "par utilisateur",
-    "cta": {
-      "getStarted": "Commencer",
-      "subscribe": "S'abonner",
-      "buyLifetime": "Acheter à vie"
-    }
-  },
   "ContactPage": {
     "metadata": {
       "title": "Contacter le bureau",
@@ -1682,154 +1425,6 @@
       "rateLimit": "Vous avez envoyé plusieurs messages coup sur coup. Ce formulaire accepte {limit, plural, one {# message} other {# messages}} par heure. Réessayez dans une heure, ou appelez le bureau de votre association."
     }
   },
-  "CheckoutPlans": {
-    "heading": "Choisissez votre plan",
-    "subheading": "Sélectionnez le plan qui correspond le mieux à vos besoins",
-    "billing": {
-      "monthly": "Mensuel",
-      "yearly": "Annuel",
-      "discount": "-20%",
-      "monthsFree": "✨ 2 mois gratuits",
-      "perMonth": "par mois",
-      "perYear": "par an",
-      "free": "gratuit",
-      "users": "Utilisateurs :",
-      "perUser": "par utilisateur"
-    },
-    "badge": {
-      "mostPopular": "Le plus populaire",
-      "enterprise": "Enterprise"
-    },
-    "plans": {
-      "free": {
-        "name": "Free",
-        "description": "Parfait pour commencer",
-        "cta": "Plan actuel",
-        "features": [
-          "Code snippets illimités",
-          "5 snippets sauvegardés",
-          "Thèmes de base",
-          "Support standard"
-        ]
-      },
-      "pro": {
-        "name": "Pro",
-        "description": "Pour les utilisateurs réguliers",
-        "features": [
-          "Code snippets illimités",
-          "Snippets sauvegardés illimités",
-          "Thèmes premium",
-          "Support prioritaire",
-          "Coloration syntaxique personnalisée",
-          "Organisation des snippets"
-        ]
-      },
-      "enterprise": {
-        "name": "Enterprise",
-        "description": "Pour les grandes organisations",
-        "features": [
-          "Tout du plan Pro",
-          "Utilisateurs illimités",
-          "Support 24/7 dédié",
-          "SSO et sécurité avancée",
-          "API personnalisée",
-          "Formation équipe incluse"
-        ]
-      }
-    },
-    "cta": {
-      "subscribePro": "S'abonner au Pro {period}",
-      "subscribeEnterprise": "S'abonner à Enterprise {period}",
-      "redirecting": "Redirection..."
-    },
-    "toast": {
-      "error": "Erreur",
-      "redirecting": "Redirection vers le paiement...",
-      "errorPro": "Erreur lors de la mise à niveau vers Pro",
-      "errorEnterprise": "Erreur lors de la mise à niveau vers Enterprise"
-    },
-    "secureNotice": "Vous serez redirigé vers la page de paiement sécurisée"
-  },
-  "Checkout": {
-    "success": {
-      "verifying": "Vérification de votre paiement...",
-      "creatingSubscription": "Création de votre abonnement en cours...",
-      "subscriptionCreated": "Votre abonnement a été créé avec succès !",
-      "subscriptionError": "Erreur lors de la création de l'abonnement",
-      "unexpectedError": "Erreur inattendue lors de la création de l'abonnement",
-      "paymentProcessed": "Votre paiement a été traité avec succès !",
-      "paymentCancelled": "Le paiement a échoué ou a été annulé",
-      "failureTitle": "Échec du paiement",
-      "retry": "Réessayer",
-      "subscriptionTitle": "Abonnement créé !",
-      "paymentTitle": "Paiement réussi !",
-      "setupIntentId": "Setup Intent ID :",
-      "paymentId": "Payment ID :",
-      "goToDashboard": "Aller au tableau de bord",
-      "returnHome": "Retour à l'accueil"
-    },
-    "reactStripe": {
-      "setupFailed": "Échec de la configuration",
-      "setupFailedDescription": "Une erreur est survenue lors de la configuration de l'abonnement",
-      "processing": "Configuration en cours...",
-      "submit": "Configurer l'abonnement",
-      "emailRequired": "Email requis",
-      "emailRequiredDescription": "Veuillez saisir votre adresse email pour continuer",
-      "emailInvalid": "Email invalide",
-      "emailInvalidDescription": "Veuillez saisir une adresse email valide",
-      "guestIntro": "Veuillez saisir votre adresse email pour continuer en tant qu'invité",
-      "emailLabel": "Adresse email",
-      "emailPlaceholder": "votre@email.com",
-      "creating": "Création en cours...",
-      "continueLabel": "Continuer",
-      "subscriptionError": "Une erreur est survenue lors de la création de l'abonnement",
-      "creatingSubscription": "Création de l'abonnement...",
-      "subscribeGuest": "S'abonner en tant qu'invité",
-      "subscribeStripe": "S'abonner avec Stripe"
-    },
-    "recap": {
-      "lifetimeAccess": "Accès à vie",
-      "subtotal": "Sous-total :",
-      "discount": "Remise :",
-      "total": "Total",
-      "installmentsNotice": "Vous pouvez payer en 3 ou 2 fois"
-    },
-    "errors": {
-      "title": "Erreur",
-      "generic": "Une erreur est survenue"
-    },
-    "page": {
-      "title": "Finalisez votre achat",
-      "testBannerLabel": "Mode Test :",
-      "testBannerText": "Paiements en plusieurs fois activés",
-      "secureNotice": "Votre paiement est sécurisé et chiffré",
-      "chooseMethod": "Choisissez votre mode de paiement ci-dessous",
-      "clickButton": "Cliquez sur le bouton ci-dessous pour finaliser votre achat",
-      "fillForm": "Remplissez le formulaire ci-dessous pour finaliser votre achat",
-      "paymentLinkGuestOnly": "Le mode « paiement Link » est réservé aux utilisateurs non connectés."
-    },
-    "installments": {
-      "title": "Finaliser votre commande",
-      "securedByStripe": "Paiement sécurisé par Stripe",
-      "splitPaymentDescription": "Paiement en {plan}",
-      "noticeTitle": "Paiement échelonné",
-      "noticeText": "Votre premier paiement sera débité aujourd'hui, puis les paiements suivants seront automatiquement prélevés chaque mois.",
-      "preparing": "Préparation du paiement...",
-      "payGuest": "Payer en {count} fois (Invité)",
-      "payStart": "Commencer le paiement en {count} fois",
-      "redirecting": "Redirection vers le paiement en cours...",
-      "sessionError": "Erreur lors de la création de la session de paiement",
-      "unexpectedError": "Une erreur inattendue est survenue",
-      "selectorTitle": "Options de paiement",
-      "recurringNotice": "Les abonnements nécessitent un paiement unique",
-      "selectorDescription": "Choisissez votre mode de paiement préféré",
-      "noExtraFees": "Aucun frais supplémentaire",
-      "firstPaymentToday": "Premier paiement aujourd'hui",
-      "recommended": "Recommandé",
-      "monthly": "Mensuel",
-      "schedule": "Calendrier de paiement :"
-    }
-  },
   "ErrorPage": {
     "title": "Une erreur est survenue",
     "description": "Désolé, une erreur inattendue s'est produite. Veuillez réessayer ou contacter l'administrateur si le problème persiste.",
@@ -1841,21 +1436,6 @@
     "title": "Accès non autorisé",
     "description": "Désolé, vous n'avez pas la permission d'accéder à cette page. Contactez un administrateur si vous pensez qu'il s'agit d'une erreur.",
     "backHome": "Retour à l'accueil"
-  },
-  "ThemeToggle": {
-    "label": "Changer de thème",
-    "light": "Clair",
-    "dark": "Sombre",
-    "system": "Système"
-  },
-  "DocsPage": {
-    "brand": "ShipSaaS",
-    "title": "Documentation",
-    "searchPlaceholder": "Rechercher dans la documentation...",
-    "searchLabel": "Rechercher dans la documentation",
-    "escKey": "Échap",
-    "comingSoon": "Contenu à venir...",
-    "onThisPage": "Sur cette page"
   },
   "PublicMobileMenu": {
     "toggle": "Ouvrir le menu",
@@ -1872,14 +1452,6 @@
     "required": "Veuillez entrer un message",
     "success": "Merci pour votre feedback !",
     "error": "Erreur lors de l'envoi du feedback"
-  },
-  "MdxContent": {
-    "invalidTweet": "Tweet invalide : impossible d'extraire l'ID du tweet",
-    "loadingTweet": "Chargement du tweet...",
-    "videoUnsupported": "Votre navigateur ne prend pas en charge la lecture de vidéos.",
-    "viewFullscreen": "Voir en plein écran",
-    "openInExcalidraw": "Ouvrir dans Excalidraw",
-    "defaultAlt": "Image"
   },
   "Invitations": {
     "received": {
@@ -2494,91 +2066,11 @@
     "banExpires": "Date d'expiration du bannissement",
     "createdOn": "Créé le",
     "lastUpdate": "Dernière modification",
-    "theme": "Thème",
     "language": "Langue",
     "timezone": "Fuseau horaire",
     "notifications": "Notifications",
     "channel": "Canal",
     "orgsAndUsage": "Organisations et utilisation"
-  },
-  "AdminBlog": {
-    "listTitle": "Liste des posts",
-    "columns": {
-      "title": "Titre",
-      "author": "Auteur",
-      "views": "Vues",
-      "likes": "Likes",
-      "createdAt": "Créé le"
-    },
-    "status": {
-      "draft": "Brouillon",
-      "published": "Publié",
-      "archived": "Archivé",
-      "all": "Tous les statuts"
-    },
-    "categories": {
-      "none": "Aucune catégorie",
-      "all": "Toutes catégories",
-      "placeholder": "Catégorie"
-    },
-    "untitled": "Sans titre",
-    "unknown": "Inconnu",
-    "successTitle": "Succès",
-    "errorTitle": "Erreur",
-    "searchPlaceholder": "Rechercher dans les titres...",
-    "statusPlaceholder": "Statut",
-    "show": "Afficher",
-    "editTitle": "Modifier le post",
-    "deleteTitle": "Confirmer la suppression",
-    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer ce post ? Cette action supprimera également toutes les traductions associées. Cette action ne peut pas être annulée.",
-    "deleting": "Suppression...",
-    "saving": "Enregistrement...",
-    "selectStatus": "Sélectionner un statut",
-    "selectCategory": "Sélectionner une catégorie",
-    "form": {
-      "generalConfig": "Configuration générale",
-      "hashtags": "Hashtags",
-      "selectHashtags": "Sélectionner des hashtags",
-      "chooseHashtag": "Choisir un hashtag...",
-      "addHashtag": "Ajouter un nouveau hashtag",
-      "hashtagPlaceholder": "Ex : react, javascript, web_dev (lettres, chiffres, _)",
-      "allHashtagsSelected": "Tous les hashtags sont déjà sélectionnés",
-      "selectedHashtags": "Hashtags sélectionnés",
-      "hashtagTooShort": "Le hashtag doit contenir au moins 2 caractères valides",
-      "files": "Fichiers",
-      "translations": "Traductions",
-      "addLanguage": "Ajouter une langue",
-      "titleRequired": "Titre *",
-      "titlePlaceholder": "Titre de l'article",
-      "slugRequired": "Slug *",
-      "slugPlaceholder": "slug-de-larticle",
-      "slugDescription": "URL de l'article (généré automatiquement depuis le titre)",
-      "descriptionPlaceholder": "Description courte de l'article",
-      "content": "Contenu",
-      "contentPlaceholder": "Contenu complet de l'article (Markdown supporté)",
-      "seoMeta": "SEO Meta",
-      "metaTitle": "Meta Title",
-      "metaTitlePlaceholder": "Titre pour les moteurs de recherche",
-      "metaTitleHint": "Recommandé : 50-60 caractères",
-      "metaDescription": "Meta Description",
-      "metaDescriptionPlaceholder": "Description pour les moteurs de recherche",
-      "metaDescriptionHint": "Recommandé : 150-160 caractères",
-      "metaKeywords": "Meta Keywords",
-      "metaKeywordsPlaceholder": "mots-clés, séparés, par, des, virgules",
-      "metaKeywordsHint": "Mots-clés séparés par des virgules",
-      "create": "Créer le post",
-      "update": "Mettre à jour",
-      "genericError": "Une erreur est survenue",
-      "fileUploaded": "Fichier uploadé :"
-    },
-    "dropzone": {
-      "prompt": "Glissez-déposez des fichiers ici, ou cliquez pour les sélectionner",
-      "active": "Déposez les fichiers ici...",
-      "disabled": "L'upload de fichiers est désactivé",
-      "linkCopied": "Lien copié dans le presse-papiers",
-      "unknownSize": "Taille inconnue",
-      "unknownType": "Type inconnu"
-    }
   },
   "AdminSubscriptions": {
     "title": "Gestion des abonnements",

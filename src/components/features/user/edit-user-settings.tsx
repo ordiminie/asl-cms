@@ -38,7 +38,6 @@ import {languageSchema} from '@/services/validation/user-validation'
 import {updateUserSettingsAction} from './action'
 
 const settingsFormSchema = z.object({
-  theme: z.enum(['light', 'dark', 'system']),
   language: languageSchema,
   timezone: z.string(),
   //enableTwoFactor: z.boolean(),
@@ -58,7 +57,6 @@ export function EditUserSettingsForm({user}: {user: User}) {
   const form = useForm<FormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
-      theme: user?.settings?.theme ?? 'system',
       language: user?.settings?.language ?? 'fr',
       timezone: user?.settings?.timezone ?? 'Europe/Paris',
       enableEmailNotifications:
@@ -108,40 +106,6 @@ export function EditUserSettingsForm({user}: {user: User}) {
             <CardTitle>{t('appearance.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="theme"
-              render={({field}) => (
-                <FormItem>
-                  <FormLabel>{t('appearance.theme.label')}</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={t('appearance.theme.placeholder')}
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="light">
-                        {t('appearance.theme.light')}
-                      </SelectItem>
-                      <SelectItem value="dark">
-                        {t('appearance.theme.dark')}
-                      </SelectItem>
-                      <SelectItem value="system">
-                        {t('appearance.theme.system')}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="language"

@@ -45,3 +45,23 @@ describe('proxy — gating de session sans préfixe de langue (s43)', () => {
     }
   )
 })
+
+describe('proxy — clair seul, aucun thème calculé (ADR 033)', () => {
+  it('ne pose ni en-tête x-theme ni cookie theme, même en sombre', () => {
+    const request = new NextRequest(
+      new URL('/actualites', 'https://asl.example.fr'),
+      {
+        headers: {
+          'sec-ch-prefers-color-scheme': 'dark',
+          'user-agent':
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+        },
+      }
+    )
+
+    const response = middleware(request)
+
+    expect(response.headers.get('x-theme')).toBeNull()
+    expect(response.cookies.get('theme')).toBeUndefined()
+  })
+})

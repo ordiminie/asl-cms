@@ -42,7 +42,7 @@ const ALERT_TITLE = 'Bandeau d’alerte'
 const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
 const BANNER_LABEL = "Alerte de l'association"
 /** Une page publique du socle, sous le gabarit du site public. */
-const PUBLIC_ROUTE = '/privacy'
+const PUBLIC_ROUTE = '/actualites'
 /** Une page authentifiée, sous le gabarit à barre latérale du bureau. */
 const AUTHENTICATED_ROUTE = '/bureau/pages'
 

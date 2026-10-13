@@ -246,7 +246,7 @@ test.describe.serial('s01b — identité de l’association', () => {
       timeout: 15_000,
     })
 
-    await page.goto(`${TENANT_A}/privacy`, {waitUntil: 'load'})
+    await page.goto(`${TENANT_A}/actualites`, {waitUntil: 'load'})
     const headerLogo = page
       .getByRole('banner')
       .getByRole('img', {name: `Logo de l'association ${TENANT_A_NAME}`})
@@ -336,7 +336,7 @@ test.describe.serial('s01b — identité de l’association', () => {
 
     // La page déclare le favicon de la route, propre au domaine.
     for (const base of [TENANT_A, TENANT_B]) {
-      await page.goto(`${base}/privacy`, {waitUntil: 'load'})
+      await page.goto(`${base}/actualites`, {waitUntil: 'load'})
       await expect(page.locator('link[rel="icon"]').first()).toHaveAttribute(
         'href',
         /\/api\/identity\/favicon/

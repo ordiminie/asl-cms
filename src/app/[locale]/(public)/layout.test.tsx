@@ -111,4 +111,12 @@ describe('PublicLayout — la navigation composee par le bureau', () => {
     ).toBeNull()
     expect(screen.queryByRole('combobox')).toBeNull()
   })
+
+  it('ne propose aucun sélecteur de thème : clair seul (ADR 033)', async () => {
+    withMenu([])
+
+    await renderLayout()
+
+    expect(screen.queryByRole('button', {name: /thème/i})).toBeNull()
+  })
 })

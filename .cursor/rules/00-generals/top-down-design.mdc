@@ -87,7 +87,11 @@ type ApiResponse = {/* ... */}
 
 ## Exemple Concret : Checkout Stripe
 
-### Référence : [external-checkout/actions.ts](mdc:src/components/features/checkout-stripe/external-checkout/actions.ts)
+### Origine : le checkout Stripe du boilerplate
+
+Le fichier d'où vient cet exemple est retiré par s45 avec la vitrine de la plateforme (récupérable
+depuis `upstream/main`, ADR 009). L'exemple reste valable pour la forme ; il ne désigne plus un
+fichier du dépôt.
 
 #### ✅ Top-Down Appliqué
 

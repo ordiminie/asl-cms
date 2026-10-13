@@ -1,6 +1,3 @@
-import {readFileSync} from 'node:fs'
-import path from 'node:path'
-
 import {describe, expect, it} from 'vitest'
 
 import {render} from '@/__tests__/customRender'
@@ -48,17 +45,5 @@ describe('Sidebar — colonne desktop dans le flux (ADR 027)', () => {
     expect(outer.firstElementChild?.className).toContain(
       'group-data-[collapsible=offcanvas]:-ml-(--sidebar-width)'
     )
-  })
-})
-
-describe('docs/layout — aucun ancetre ne neutralise sticky', () => {
-  it('coupe le debordement horizontal sans creer de defilement', () => {
-    const source = readFileSync(
-      path.resolve(import.meta.dirname, '../../app/[locale]/docs/layout.tsx'),
-      'utf8'
-    )
-
-    expect(source).not.toContain('overflow-x-hidden')
-    expect(source.match(/overflow-x-clip/g)).toHaveLength(2)
   })
 })

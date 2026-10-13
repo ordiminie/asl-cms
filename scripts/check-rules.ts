@@ -42,6 +42,11 @@ const STALE_PATTERNS: {pattern: RegExp; why: string; allow?: RegExp}[] = [
     pattern: /src\/middleware/,
     why: "ce fichier n'a jamais existé : le gating est dans src/proxy.ts",
   },
+  {
+    pattern:
+      /features\/(blog|docs|payment|admin\/blog)\b|checkout-stripe|mdx-content|mdx-components|blog\.(server|client)|helper\/blog|blog-dal|post-dal|docs-file-helper|docs\.server|admin\/blog|\[locale\]\/docs|\(public\)\/(blog|pricing|checkout|privacy|terms)|theme-toggle|user-preferences-sync|UserPreferencesSync|ModeToggle|blog-article|getAllBlogCategoriesDal|docs\/\[\.\.\.slug\]|checkout\/(\[priceId\]|better-auth)/,
+    why: 'retiré par s45 : blog, documentation, vitrine et sélecteur de thème hérités',
+  },
 ]
 
 const DESCRIBE_THE_CODE = [
@@ -50,7 +55,6 @@ const DESCRIBE_THE_CODE = [
   'README.md',
   CLAUDE_RULES,
   CURSOR_RULES,
-  'src/app/[locale]/docs/_files',
 ]
 
 const failures: string[] = []

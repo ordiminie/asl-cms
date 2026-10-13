@@ -9,17 +9,7 @@ vi.mock('@/app/dal/sitemap-dal', () => ({
 vi.mock('@/app/dal/home-page-dal', () => ({
   getPublicHomePageDal: vi.fn(),
 }))
-vi.mock('@/app/dal/blog-dal', () => ({
-  BLOG_POSTS_PER_PAGE: 10,
-  getAllUnifiedBlogSlugsDal: vi.fn(async () => [
-    {postId: 'p', slug: 'article', locale: 'fr'},
-  ]),
-  getTotalPagesDal: vi.fn(async () => 1),
-  getAllBlogCategoriesDal: vi.fn(async () => []),
-  getCategoryTotalPagesDal: vi.fn(async () => 1),
-}))
 
-import {getAllUnifiedBlogSlugsDal} from '@/app/dal/blog-dal'
 import {getPublicHomePageDal} from '@/app/dal/home-page-dal'
 import {getPublishedSitemapEntriesDal} from '@/app/dal/sitemap-dal'
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
@@ -102,7 +92,6 @@ describe('sitemap.ts — une association par domaine (criteres 1 et 5)', () => {
     for (const path of ['/pricing', '/faq', '/terms', '/privacy']) {
       expect(urls).not.toContain(`https://lesamisdeletang.fr${path}`)
     }
-    expect(getAllUnifiedBlogSlugsDal).not.toHaveBeenCalled()
   })
 
   it('une autre association sur son domaine : ses seules pages', async () => {

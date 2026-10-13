@@ -9,11 +9,9 @@ vi.mock('@/env', () => ({
   },
 }))
 
-import {LANGUAGE_OPTIONS} from '@/components/features/admin/blog/post-form-validation'
 import {languageEnum} from '@/db/models/user-model'
 import {EMAIL_REGISTRY} from '@/lib/emails/email-registry'
 import {buildBannedMessage} from '@/lib/helper/auth-helper'
-import {getAvailableLocalesForPost} from '@/lib/helper/blog.server'
 import {languageSchema} from '@/services/validation/user-validation'
 
 /**
@@ -41,10 +39,6 @@ describe('valeurs par defaut de locale apres s43', () => {
     }
   })
 
-  it('le blog herite ne lit que les articles servis par le routage', () => {
-    expect(getAvailableLocalesForPost('001-bienvenue')).toEqual(['fr'])
-  })
-
   it('la preference de langue enregistree reste valide, sans etre lue (decision C)', () => {
     for (const language of languageEnum.enumValues) {
       expect(languageSchema.safeParse(language).success, language).toBe(true)
@@ -53,9 +47,5 @@ describe('valeurs par defaut de locale apres s43', () => {
 
   it("le schema de langue reprend exactement l'enum de base language_type", () => {
     expect(languageSchema.options).toEqual(languageEnum.enumValues)
-  })
-
-  it("l'editeur d'articles herite ne propose que le francais", () => {
-    expect(LANGUAGE_OPTIONS.map(({value}) => value)).toEqual(['fr'])
   })
 })

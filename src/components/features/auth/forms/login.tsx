@@ -1,5 +1,4 @@
 'use client'
-import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 import React from 'react'
 
@@ -33,12 +32,6 @@ export function LoginForm({className, ...props}: React.ComponentProps<'div'>) {
           <CredentialForm />
         </CardContent>
       </Card>
-      <div className="flex flex-col items-center gap-2 text-center">
-        <div className="text-muted-foreground *:[a]:hover:text-primary text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-          {t('terms')} <Link href="/terms">{t('termsLink')}</Link> {t('and')}{' '}
-          <Link href="/privacy">{t('privacyLink')}</Link>.
-        </div>
-      </div>
     </div>
   )
 }

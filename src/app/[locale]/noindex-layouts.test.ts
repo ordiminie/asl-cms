@@ -29,9 +29,6 @@ vi.mock('@/components/context/organization-provider', () =>
 vi.mock('@/components/context/organization-sync', () =>
   named('OrganizationSync')
 )
-vi.mock('@/components/context/user-preferences-sync', () =>
-  named('UserPreferencesSync')
-)
 vi.mock('@/components/features/app-breadcrumb', () => named('AppBreadcrumb'))
 vi.mock('@/components/features/layouts/sidebar/app-sidebar', () =>
   named('AppSidebar')

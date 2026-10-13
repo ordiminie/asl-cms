@@ -38,7 +38,6 @@ const ADMIN_ROUTES = [
   '/admin/organizations',
   '/admin/plans',
   '/admin/subscriptions',
-  '/admin/blog',
   '/admin/emails',
   '/admin/submissions',
   '/admin/settings',

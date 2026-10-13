@@ -35,6 +35,5 @@ test.describe('Homepage', () => {
     ).toBeVisible()
     await expect(page.getByText('Essayez gratuitement')).toHaveCount(0)
     await expect(page.getByText(/La plateforme SaaS moderne/)).toHaveCount(0)
-    await expect(page.locator('a[href="/pricing"]')).toHaveCount(0)
   })
 })

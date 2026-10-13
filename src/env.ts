@@ -20,8 +20,6 @@ export {
 
 // Pages optionnelles disponibles
 export const PagesConst = {
-  BLOG: 'blog' satisfies EnabledPage,
-  DOCS: 'docs' satisfies EnabledPage,
   APIKEY: 'apikey' satisfies EnabledPage,
   ORGANIZATION: 'organization' satisfies EnabledPage,
   INVITATION: 'invitation' satisfies EnabledPage,

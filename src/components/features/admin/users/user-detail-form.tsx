@@ -530,13 +530,6 @@ export default function UserDetailForm({
               <CardContent className="space-y-4">
                 <div>
                   <p className="text-muted-foreground text-sm font-medium">
-                    {t('theme')}
-                  </p>
-                  <p className="text-sm capitalize">{user.settings.theme}</p>
-                </div>
-
-                <div>
-                  <p className="text-muted-foreground text-sm font-medium">
                     {t('language')}
                   </p>
                   <p className="text-sm uppercase">{user.settings.language}</p>

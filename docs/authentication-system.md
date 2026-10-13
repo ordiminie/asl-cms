@@ -386,11 +386,8 @@ const hasGoogle = authMethods.includes('google')
 
 ### Traductions
 
-Le système est entièrement traduit avec `next-intl`. Messages disponibles dans :
-
-- `messages/fr.json`
-- `messages/en.json`
-- `messages/es.json`
+Le système est entièrement traduit avec `next-intl`. Messages dans `messages/fr.json` : le produit
+ne sert que le français (ADR 008, s43).
 
 ## Sécurité
 

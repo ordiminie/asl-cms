@@ -1,15 +1,13 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import {useTheme} from 'next-themes'
 import {Toaster as Sonner, ToasterProps} from 'sonner'
 
+// Clair seul (ADR 033) : le thème des notifications est fixe.
 const SonnerToaster = ({...props}: ToasterProps) => {
-  const {theme = 'system'} = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps['theme']}
+      theme="light"
       className="toaster group"
       style={
         {
