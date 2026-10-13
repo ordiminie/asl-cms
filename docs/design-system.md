@@ -297,7 +297,7 @@ limitées à 120 ms, sur couleur et bordure.
 | Article         | `max-w-[68ch]`                                                  |
 | Back-office     | barre latérale 248 px fixe → tiroir (`sheet`) sous `lg`         |
 | Éditeur de page | colonne de blocs + panneau 296 px → panneau en tiroir sous `xl` |
-| Espace membre   | `max-w-[1000px]`, une colonne                                   |
+| Espace membre   | `max-w-[1000px]`, une colonne ; en-tête en §3.12                |
 
 ### 1.7 Icônes — lucide
 
@@ -788,6 +788,28 @@ dit au-dessus de la liste. Sous 640 px, les deux listes passent en cartes empil�
 coins bas droits ; ses boutons font 56 px, **empilés, le principal en premier**. « Annuler » est
 écrit, il n'y a pas de croix ; Échap ferme. Limite inchangée : deux champs — au-delà, c'est une page
 (la vente d'une parcelle en est une).
+
+### 3.12 Formes retenues par s46 — l'en-tête de l'espace membre
+
+Le gabarit de l'espace membre (§1.6) n'avait ni en-tête ni moyen de se déconnecter. Réponse arrêtée
+sur le canevas de s46 le 13/10/2026 (`docs/designs/s46-comptes-herites-minimum.md`, écran 0). Elle
+ne crée ni token ni composant : elle compose l'existant. Elle vaut pour tout écran de l'espace membre
+(`/dashboard`, `/account`, et ceux que le bloc B y ajoutera).
+
+- **Deux éléments seulement** : `<AssociationMark size="public" />` à gauche, lien vers le site
+  public (`/`) ; bouton `outline` « Se déconnecter » à droite, icône `LogOut` 20 px **+ libellé**,
+  48 px (56 px sur mobile). C'est une action secondaire : elle ne prend jamais le `default` de
+  l'écran.
+- **Rien d'autre** : ni menu, ni avatar, ni cloche, ni sélecteur, ni tiroir. **Pas de nom de
+  l'utilisateur** dans l'en-tête : le contenu le porte (« Bonjour {prénom nom} », s12d). La
+  navigation entre les écrans de l'espace membre passe par des **liens dans le contenu** (« Revenir à
+  mon espace », icône `ArrowLeft` + libellé).
+- Fond `background`, filet 1 px `border`, sans ombre ; padding vertical 16 px (12 px sur mobile) ;
+  intérieur aligné sur la colonne `max-w-[1000px]`, marges 16 px sous 1 024 px.
+- **Mobile** : le nom de l'association passe à la ligne (deux lignes au plus, puis points de
+  suspension) ; le bouton garde toujours son libellé (`flex-shrink: 0`).
+- **« Aller au contenu »** : premier élément focalisable, visible au focus, vers `<main id="contenu">`
+  (§1.5).
 
 ---
 
