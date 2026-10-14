@@ -1,6 +1,6 @@
 'use client'
 
-import {BadgeCheck, ChevronsUpDown, LogOut, Settings} from 'lucide-react'
+import {BadgeCheck, ChevronsUpDown, LogOut} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 
@@ -71,12 +71,6 @@ export function NavUserAdmin({user}: {user?: User}) {
                 <DropdownMenuItem>
                   <BadgeCheck />
                   <Link href="/account">{t('account')}</Link>
-                </DropdownMenuItem>
-              )}
-              {isPageEnabled(PagesConst.SETTINGS) && (
-                <DropdownMenuItem>
-                  <Settings />
-                  <Link href="/account/settings">{t('settings')}</Link>
                 </DropdownMenuItem>
               )}
             </DropdownMenuGroup>

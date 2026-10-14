@@ -1,6 +1,7 @@
 import {Metadata} from 'next'
 import React from 'react'
 
+import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {getCurrentUserDal} from '@/app/dal/user-dal'
 import AuthProvider from '@/components/context/auth-provider'
 import {AppBreadcrumb} from '@/components/features/app-breadcrumb'
@@ -38,16 +39,21 @@ export const metadata: Metadata = {
   robots: NO_INDEX_ROBOTS,
 }
 
-function AdminLayout({
+async function AdminLayout({
   children,
   user,
 }: {
   children: React.ReactNode
 } & WithAuthProps) {
+  const tenant = await getCurrentTenantDal()
+
   return (
     <AuthProvider userPromise={getCurrentUserDal()}>
       <SidebarProvider>
-        <AdminSidebar user={user} />
+        <AdminSidebar
+          user={user}
+          association={tenant ? {name: tenant.name} : undefined}
+        />
         <SidebarInset>
           <div className="flex min-h-screen flex-col">
             <main className="flex-1">

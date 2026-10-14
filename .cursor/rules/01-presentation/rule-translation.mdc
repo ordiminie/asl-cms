@@ -110,16 +110,16 @@ une Server Action traduite, **en lisant le log du serveur en direct**.
 Utilisez `getTranslations` pour les Server Components :
 
 ```tsx
-// src/app/[locale]/(app)/account/settings/page.tsx
+// src/app/[locale]/(app)/account/page.tsx
 import {getTranslations} from 'next-intl/server'
 
 export default async function Page() {
-  const t = await getTranslations('AccountSettingsPage')
+  const t = await getTranslations('AccountPage')
 
   return (
     <div>
       <h1>{t('title')}</h1>
-      <p>{t('settings.description')}</p>
+      <p>{t('description')}</p>
     </div>
   )
 }
@@ -136,19 +136,19 @@ export default async function Page() {
 Utilisez `useTranslations` pour les Client Components :
 
 ```tsx
-// src/components/features/user/edit-user-settings.tsx
+// src/components/features/member-profile/member-profile-form.tsx
 'use client'
 
 import {useTranslations} from 'next-intl'
 
-export function EditUserSettingsForm({user}: {user: User}) {
-  const t = useTranslations('AccountSettingsPage')
+export function MemberProfileForm({saveAction}: MemberProfileFormProps) {
+  const t = useTranslations('BureauMemberProfilesPage')
 
   return (
     <form>
-      <label>{t('appearance.theme.label')}</label>
+      <h1>{t('form.title')}</h1>
       <button type="submit">
-        {isSubmitting ? t('form.updating') : t('form.updateSettings')}
+        {isSubmitting ? t('form.saving') : t('form.save')}
       </button>
     </form>
   )

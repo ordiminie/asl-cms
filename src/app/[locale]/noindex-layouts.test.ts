@@ -18,30 +18,18 @@ vi.mock('@/components/features/auth/with-auth', () => ({
   withAuthAdmin: (layout: unknown) => layout,
 }))
 vi.mock('@/app/dal/user-dal', () => named('getCurrentUserDal'))
-vi.mock('@/app/dal/tenant-dal', () => named('requireCurrentTenantDal'))
+vi.mock('@/app/dal/tenant-dal', () =>
+  named('requireCurrentTenantDal', 'getCurrentTenantDal')
+)
 vi.mock('@/app/dal/association-identity-dal', () =>
   named('canManageCurrentAssociationIdentityDal')
 )
 vi.mock('@/components/context/auth-provider', component)
-vi.mock('@/components/context/organization-provider', () =>
-  named('OrganizationProvider')
-)
-vi.mock('@/components/context/organization-sync', () =>
-  named('OrganizationSync')
-)
 vi.mock('@/components/features/app-breadcrumb', () => named('AppBreadcrumb'))
-vi.mock('@/components/features/layouts/sidebar/app-sidebar', () =>
-  named('AppSidebar')
-)
 vi.mock('@/components/features/layouts/sidebar/admin-sidebar', () =>
   named('AdminSidebar')
 )
-vi.mock('@/components/features/layouts/sidebar/sidebar-skeleton', () =>
-  named('SidebarSkeleton')
-)
-vi.mock('@/components/features/quick-feedback-button', () =>
-  named('QuickFeedbackButton')
-)
+vi.mock('@/components/features/auth/forms/logout-button', component)
 vi.mock('@/components/features/association/association-mark', () =>
   named('AssociationMark')
 )

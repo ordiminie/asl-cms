@@ -45,15 +45,36 @@ const renderServerPage = async (element: ReactElement) => {
   return await type(element.props)
 }
 
-describe('/account', () => {
-  it('rend ses sections restantes sans formulaire de profil herite', async () => {
+describe('/account — sécurité du compte (s46, critere 1)', () => {
+  it('titre unique « Sécurité du compte », avec son chapeau', async () => {
+    render(await renderServerPage(await AccountPage({})))
+
+    expect(screen.getAllByRole('heading', {level: 1})).toHaveLength(1)
+    expect(
+      screen.getByRole('heading', {level: 1, name: 'Sécurité du compte'})
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Votre adresse email, votre mot de passe et les appareils connectés à votre compte.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByTestId('security-section')).toBeInTheDocument()
+  })
+
+  it('ramène à l espace membre', async () => {
     render(await renderServerPage(await AccountPage({})))
 
     expect(
-      screen.getByRole('heading', {level: 1, name: 'Mon Compte'})
-    ).toBeInTheDocument()
-    expect(screen.getByText('Sécurité')).toBeInTheDocument()
-    expect(screen.getByTestId('security-section')).toBeInTheDocument()
+      screen.getByRole('link', {name: 'Revenir à mon espace'})
+    ).toHaveAttribute('href', '/dashboard')
+  })
+
+  it('ne garde ni « Mon Compte », ni le sous-titre « Sécurité », ni profil', async () => {
+    render(await renderServerPage(await AccountPage({})))
+
+    expect(screen.queryByText('Mon Compte')).toBeNull()
+    expect(screen.queryByRole('heading', {level: 2})).toBeNull()
+    expect(screen.queryByText(/authentification/i)).toBeNull()
     expect(screen.queryByText('Profil')).toBeNull()
     expect(screen.queryByLabelText('Nom')).toBeNull()
   })

@@ -1,119 +1,46 @@
 'use client'
 
-import {
-  Building2,
-  CreditCard,
-  Key,
-  type LucideIcon,
-  Mail,
-  MoreHorizontal,
-  Settings,
-  User,
-} from 'lucide-react'
+import {Landmark} from 'lucide-react'
+import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '@/components/ui/sidebar'
 
-export function NavApplication({
-  applications,
-}: {
-  applications: {
-    name: string
-    url: string
-    icon: LucideIcon
-  }[]
-}) {
-  const {isMobile} = useSidebar()
-  const t = useTranslations('AppSidebar')
+/**
+ * Entree « Back-office de l'association » de la barre de /admin (s46) : meme
+ * hote, meme cookie, `/bureau/pages` s'ouvre sans nouvelle connexion. Rendue
+ * seulement quand le domaine appele sert une association.
+ */
+export function NavApplication({association}: {association?: {name: string}}) {
+  const t = useTranslations('AppSidebar.associationBackOffice')
 
-  // Menu items pour le dropdown des applications front
-  const accountMenuItems = [
-    {
-      title: t('account.accountAndSecurity'),
-      url: '/account',
-      icon: User,
-    },
-    {
-      title: t('account.settings'),
-      url: '/account/settings',
-      icon: Settings,
-    },
-    {
-      title: t('account.apiKeys'),
-      url: '/account/api-keys',
-      icon: Key,
-    },
-    {
-      title: t('account.subscriptions'),
-      url: '/account/billing/subscription',
-      icon: CreditCard,
-    },
-    {
-      title: t('account.organizations'),
-      url: '/account/organizations',
-      icon: Building2,
-    },
-    {
-      title: t('account.invitations'),
-      url: '/account/invitations',
-      icon: Mail,
-    },
-  ]
+  if (!association) {
+    return null
+  }
+
+  const label = t('ariaLabel', {name: association.name})
 
   return (
-    <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Applications</SidebarGroupLabel>
+    <SidebarGroup>
       <SidebarMenu>
-        {applications.map((item) => (
-          <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton asChild>
-              <a href={item.url}>
-                <item.icon />
-                <span>{item.name}</span>
-              </a>
-            </SidebarMenuButton>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuAction showOnHover>
-                  <MoreHorizontal />
-                  <span className="sr-only">More</span>
-                </SidebarMenuAction>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-48 rounded-lg"
-                side={isMobile ? 'bottom' : 'right'}
-                align={isMobile ? 'end' : 'start'}
-              >
-                {accountMenuItems.map((menuItem) => (
-                  <DropdownMenuItem
-                    key={menuItem.title}
-                    asChild
-                    className="cursor-pointer"
-                  >
-                    <a href={menuItem.url}>
-                      <menuItem.icon className="text-muted-foreground" />
-                      <span>{menuItem.title}</span>
-                    </a>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        ))}
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild size="lg" tooltip={label}>
+            <Link href="/bureau/pages" aria-label={label}>
+              <Landmark />
+              <span className="grid min-w-0 flex-1 text-left leading-tight">
+                <span className="truncate font-semibold">{t('label')}</span>
+                <span className="text-muted-foreground truncate text-[15px]">
+                  {association.name}
+                </span>
+              </span>
+            </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   )

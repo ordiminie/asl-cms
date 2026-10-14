@@ -132,6 +132,10 @@ Pourquoi maintenant : La Fourche a voté le budget en AG de juillet 2026 et sign
 - Abstraction générique « ressource partagée » fusionnant Eau et Voirie — les deux domaines divergent trop (individuel/facturable contre collectif/non facturable). À réévaluer seulement si un troisième domaine similaire apparaît réellement.
 - WordPress comme base du CMS — voir `docs/decisions/001-base-technique-cms.md`.
 
+**Reporté en V2** (hors périmètre V1, à rouvrir par ce document)
+
+- Connexion par Google et par Apple — décidé le 13/10/2026, à la revue du découpage (s46b). Aucun écran ne les propose en V1. Google garde sa configuration serveur en sommeil (`socialProviders.google`, sans création de compte) ; Apple n'a aucune configuration (Better Auth 1.7.1 fournit le fournisseur). À traiter en V2 : un bouton sur `/login` (design), le retour OAuth pour plusieurs domaines d'association (ADR), la déclaration des domaines chez Google et Apple. Pour Apple, prévoir le rattachement des adresses relais (« Masquer mon adresse e-mail », `…@privaterelay.appleid.com`), qui ne correspondent pas à l'adresse du compte créé par le bureau.
+
 ### The angle (done differently / better)
 
 1. **La ressource individuelle mesurée.** Aucun concurrent identifié ne traite l'eau comme une ressource relevée, facturée à la consommation, sujette à fuite et à analyse. C'est le cœur de la valeur pour une ASL de terrains de vacances, et le fossé le plus difficile à combler pour un généraliste de la copropriété.

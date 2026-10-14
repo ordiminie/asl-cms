@@ -97,19 +97,28 @@ describe('NEXT_PUBLIC_ENABLED_PAGES — blog et docs retirés (s45)', () => {
   })
 
   it('accepte les familles encore servies', () => {
-    expect(
-      EnabledPagesSchema.parse(
-        'apikey,organization,invitation,account,settings,subscription,notifications,admin'
-      )
-    ).toEqual([
-      'apikey',
-      'organization',
-      'invitation',
+    expect(EnabledPagesSchema.parse('none,account,admin')).toEqual([
+      'none',
       'account',
-      'settings',
-      'subscription',
-      'notifications',
       'admin',
     ])
+  })
+})
+
+describe('NEXT_PUBLIC_ENABLED_PAGES — familles du compte hérité retirées (s46)', () => {
+  it.each([
+    'apikey',
+    'organization',
+    'invitation',
+    'subscription',
+    'notifications',
+    'settings',
+  ])('refuse la famille retirée %s', (page) => {
+    expect(EnabledPageSchema.safeParse(page).success).toBe(false)
+    expect(EnabledPagesSchema.safeParse(`account,${page}`).success).toBe(false)
+  })
+
+  it('ne connaît plus que none, account et admin', () => {
+    expect(EnabledPageSchema.options).toEqual(['none', 'account', 'admin'])
   })
 })

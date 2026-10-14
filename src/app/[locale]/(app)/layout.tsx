@@ -1,67 +1,66 @@
 import {Metadata} from 'next'
-import React, {Suspense} from 'react'
+import Link from 'next/link'
+import {getTranslations} from 'next-intl/server'
+import React from 'react'
 
-import {getCurrentUserDal} from '@/app/dal/user-dal'
-import AuthProvider from '@/components/context/auth-provider'
-import {OrganizationProvider} from '@/components/context/organization-provider'
-import {OrganizationSync} from '@/components/context/organization-sync'
-import {AppBreadcrumb} from '@/components/features/app-breadcrumb'
-import {AppSidebar} from '@/components/features/layouts/sidebar/app-sidebar'
-import {SidebarSkeleton} from '@/components/features/layouts/sidebar/sidebar-skeleton'
-import {QuickFeedbackButton} from '@/components/features/quick-feedback-button'
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@/components/ui/sidebar'
-import {APP_NAME} from '@/lib/constants'
+import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {AssociationMark} from '@/components/features/association/association-mark'
+import LogoutButton from '@/components/features/auth/forms/logout-button'
 import {NO_INDEX_ROBOTS} from '@/lib/seo/resolve-metadata'
+import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 
 export const metadata: Metadata = {
-  title: `Espace utilisateur ${APP_NAME}`,
-  description: "Page d'espace utilisateur",
+  title: 'Espace membre',
   robots: NO_INDEX_ROBOTS,
 }
 
-export default function AppLayout({children}: {children: React.ReactNode}) {
-  // La promesse est créée, jamais attendue : un `await` ici tiendrait tout le
-  // segment derrière la requête, {children} compris. Ce sont les composants
-  // placés derrière un <Suspense> qui la déroulent.
-  const userPromise = getCurrentUserDal()
+/**
+ * Coquille de l'espace membre (design system §3.12) : l'identite de
+ * l'association et la deconnexion, rien d'autre. La session n'est jamais
+ * attendue ici ; le tenant, lui, est deja resolu en bloquant par le layout
+ * `[locale]` (ADR 003) et `cache()` dedoublonne la lecture.
+ */
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const [tenant, t] = await Promise.all([
+    requireCurrentTenantDal(),
+    getTranslations('MemberSpaceLayout'),
+  ])
 
   return (
-    <AuthProvider userPromise={userPromise}>
-      <OrganizationProvider>
-        <Suspense fallback={null}>
-          <OrganizationSync />
-        </Suspense>
-        <SidebarProvider>
-          <Suspense fallback={<SidebarSkeleton />}>
-            <AppSidebar />
-          </Suspense>
-          <SidebarInset>
-            <div className="flex min-h-screen flex-col">
-              <main className="flex-1">
-                <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                  <div className="flex h-14 items-center gap-2">
-                    <SidebarTrigger />
-                    {/* usePathname() : sur les routes à params inconnus au
-                        prerender (team/[slug]), le chemin n'existe qu'à la
-                        requête. */}
-                    <Suspense fallback={null}>
-                      <AppBreadcrumb />
-                    </Suspense>
-                    <div className="ml-auto">
-                      <QuickFeedbackButton />
-                    </div>
-                  </div>
-                  <div className="pt-6 pb-8">{children}</div>
-                </div>
-              </main>
-            </div>
-          </SidebarInset>
-        </SidebarProvider>
-      </OrganizationProvider>
-    </AuthProvider>
+    <div className="bg-background flex min-h-screen flex-col">
+      <a
+        href="#contenu"
+        className="bg-primary text-primary-foreground focus-visible:outline-ring sr-only rounded-md px-4 py-3 font-semibold underline focus:not-sr-only focus:absolute focus:top-2 focus:left-4 focus:z-50 focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        {t('skipToContent')}
+      </a>
+      <header className="bg-background border-b">
+        <div className="mx-auto flex w-full max-w-[1000px] items-center justify-between gap-4 px-4 py-3 sm:py-4 lg:px-0">
+          <Link href="/" className="min-w-0">
+            <AssociationMark
+              name={tenant.name}
+              logoVersion={getIdentityVersionFromKey(tenant.logoKey)}
+              size="public"
+              className="min-w-0 [&>span:last-child]:line-clamp-2"
+            />
+          </Link>
+          <LogoutButton
+            variant="outline"
+            withIcon
+            className="h-14 shrink-0 sm:h-12"
+          />
+        </div>
+      </header>
+      <main
+        id="contenu"
+        className="mx-auto w-full max-w-[1000px] flex-1 px-4 pt-8 pb-12 lg:px-0"
+      >
+        {children}
+      </main>
+    </div>
   )
 }

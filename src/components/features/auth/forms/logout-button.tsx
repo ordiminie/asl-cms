@@ -1,12 +1,24 @@
 'use client'
 
+import {LogOut} from 'lucide-react'
 import {useTranslations} from 'next-intl'
 import {useState} from 'react'
 
 import {logoutAction} from '@/app/[locale]/(auth)/action'
 import {Button} from '@/components/ui/button'
 
-export default function LogoutButton() {
+type LogoutButtonProps = {
+  variant?: 'default' | 'outline'
+  /** Icone `LogOut` devant le libelle, jamais a sa place (design system §3.12). */
+  withIcon?: boolean
+  className?: string
+}
+
+export default function LogoutButton({
+  variant = 'default',
+  withIcon = false,
+  className,
+}: LogoutButtonProps = {}) {
   const t = useTranslations('Auth.LogoutForm')
   const [pending, setPending] = useState(false)
 
@@ -23,7 +35,13 @@ export default function LogoutButton() {
   }
 
   return (
-    <Button onClick={handleClick} disabled={pending}>
+    <Button
+      variant={variant}
+      className={className}
+      onClick={handleClick}
+      disabled={pending}
+    >
+      {withIcon && <LogOut className="size-5" aria-hidden="true" />}
       {pending ? t('loggingOut') : t('logoutButton')}
     </Button>
   )

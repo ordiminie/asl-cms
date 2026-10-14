@@ -20,13 +20,7 @@ export {
 
 // Pages optionnelles disponibles
 export const PagesConst = {
-  APIKEY: 'apikey' satisfies EnabledPage,
-  ORGANIZATION: 'organization' satisfies EnabledPage,
-  INVITATION: 'invitation' satisfies EnabledPage,
   ACCOUNT: 'account' satisfies EnabledPage,
-  SETTINGS: 'settings' satisfies EnabledPage,
-  SUBSCRIPTION: 'subscription' satisfies EnabledPage,
-  NOTIFICATIONS: 'notifications' satisfies EnabledPage,
   ADMIN: 'admin' satisfies EnabledPage,
 } as const
 

@@ -19,18 +19,7 @@ import {expect, Page, test} from '@playwright/test'
 
 const PASSWORD = 'Azerty123'
 
-const USER_ROUTES = [
-  '/dashboard',
-  '/account',
-  '/account/settings',
-  '/account/notifications',
-  '/account/organizations',
-  '/account/invitations',
-  '/account/api-keys',
-  '/account/billing/subscription',
-]
-
-const TEAM_ROUTES = ['/team/evil-corp']
+const USER_ROUTES = ['/dashboard', '/account']
 
 const ADMIN_ROUTES = [
   '/admin',
@@ -143,10 +132,11 @@ const describeRoutes = (title: string, email: string, routes: string[]) => {
   })
 }
 
-describeRoutes('Pages authentifiées — utilisateur standard', 'user@gmail.com', [
-  ...USER_ROUTES,
-  ...TEAM_ROUTES,
-])
+describeRoutes(
+  'Pages authentifiées — utilisateur standard',
+  'user@gmail.com',
+  USER_ROUTES
+)
 
 describeRoutes(
   'Pages authentifiées — administrateur',

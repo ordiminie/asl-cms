@@ -1,3 +1,5 @@
+import {ArrowLeft} from 'lucide-react'
+import Link from 'next/link'
 import {notFound} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 
@@ -21,19 +23,19 @@ async function Page() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+    <div className="space-y-8">
+      <Link
+        href="/dashboard"
+        className="text-primary focus-visible:outline-ring inline-flex h-12 items-center gap-2 font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+      >
+        <ArrowLeft className="size-5" aria-hidden="true" />
+        {t('backToMemberSpace')}
+      </Link>
+      <div className="space-y-2">
+        <h1 className="font-serif text-3xl font-semibold tracking-tight">
           {t('title')}
         </h1>
         <p className="text-muted-foreground">{t('description')}</p>
-      </div>
-
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">{t('security.title')}</h2>
-        <p className="text-muted-foreground text-sm">
-          {t('security.description')}
-        </p>
       </div>
       <UserSecurityFactorSection user={user} />
     </div>

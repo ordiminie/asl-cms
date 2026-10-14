@@ -1,8 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
-const segments = vi.hoisted(() => ({
-  list: ['/account', '/admin', '/bureau', '/dashboard', '/team'],
-}))
+const segments = vi.hoisted(() => ({list: [] as readonly string[]}))
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/env', () => ({env: {BETTER_AUTH_URL: 'https://plateforme.test'}}))
@@ -15,6 +13,7 @@ vi.mock('@/lib/routing/authenticated-segments', async (importOriginal) => ({
 }))
 
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
+import * as declaredSegments from '@/lib/routing/authenticated-segments'
 
 import robots from './robots'
 
@@ -34,9 +33,13 @@ const rulesOf = async () => {
   return {result, rules}
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
-  segments.list = ['/account', '/admin', '/bureau', '/dashboard', '/team']
+  segments.list = (
+    await vi.importActual<typeof declaredSegments>(
+      '@/lib/routing/authenticated-segments'
+    )
+  ).AUTHENTICATED_SEGMENTS
   vi.mocked(getCurrentTenantDal).mockResolvedValue(
     tenantOn('lesamisdeletang.fr')
   )
@@ -53,6 +56,16 @@ describe('robots.ts (critere 3)', () => {
     for (const segment of segments.list) {
       expect(rules.disallow).toContain(segment)
     }
+  })
+
+  it('/team, que plus aucune route ne sert, n est plus interdit (s46, decision F)', async () => {
+    const {rules} = await rulesOf()
+
+    for (const segment of ['/account', '/admin', '/bureau', '/dashboard']) {
+      expect(rules.disallow).toContain(segment)
+    }
+    expect(rules.disallow).not.toContain('/team')
+    expect(rules.disallow).not.toContain('/fr/team')
   })
 
   it('un segment declare au proxy apparait sans toucher a robots.ts', async () => {

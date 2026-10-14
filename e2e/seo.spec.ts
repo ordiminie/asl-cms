@@ -263,6 +263,8 @@ test.describe.serial('s11 — référencement', () => {
     expect(robots).toContain('Allow: /api/identity/')
     expect(robots).toContain('Allow: /api/files/')
     expect(robots).not.toContain('/(app)/')
+    // s46 : plus aucune route ne sert /team, le segment n'est plus déclaré.
+    expect(robots).not.toContain('Disallow: /team')
 
     await login(page, TENANT_A, OWNER_A)
     await page.goto(`${TENANT_A}${PAGES_ROUTE}`, {waitUntil: 'load'})

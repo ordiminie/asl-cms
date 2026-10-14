@@ -50,23 +50,18 @@ perdu.
 Le layout crée la promesse et la passe telle quelle :
 
 ```tsx
-// src/app/[locale]/(app)/layout.tsx
+// Patron : un layout dont des composants clients lisent la session
 import {getCurrentUserDal} from '@/app/dal/user-dal'
 
-export default function AppLayout({children}: {children: React.ReactNode}) {
+export default function SessionLayout({children}: {children: React.ReactNode}) {
   const userPromise = getCurrentUserDal() // créée, jamais attendue
 
   return (
     <AuthProvider userPromise={userPromise}>
-      <OrganizationProvider>
-        <Suspense fallback={null}>
-          <OrganizationSync />
-        </Suspense>
-        <Suspense fallback={<SidebarSkeleton />}>
-          <AppSidebar />
-        </Suspense>
-        {children}
-      </OrganizationProvider>
+      <Suspense fallback={<UserMenuSkeleton />}>
+        <UserMenu />
+      </Suspense>
+      {children}
     </AuthProvider>
   )
 }
@@ -78,11 +73,11 @@ navigateur et jamais sur le serveur. Elle redirige vers `/login` si la session
 est absente. Détail dans
 [rule-react-cache-next-cache.md](rule-react-cache-next-cache.md).
 
-**Côté client**, `useAuth()` et `useOrganization()` déroulent la promesse avec
-`use()` : ils **suspendent**, donc ne s'appellent que depuis un composant placé
-derrière un `<Suspense>`. Un provider qui suspend emporte `{children}` avec lui —
-c'est pour ça que les effets vivent dans `OrganizationSync` plutôt que dans les
-providers.
+**Côté client**, `useAuth()` déroule la promesse avec `use()` : il
+**suspend**, donc ne s'appelle que depuis un composant placé derrière un
+`<Suspense>`. Un provider qui suspend emporte `{children}` avec lui — c'est pour
+ça qu'`AuthProvider` (monté par `admin/layout.tsx`) ne porte que la promesse et
+laisse ses consommateurs la dérouler.
 
 ## Le contrôle de rôle : `withAuth`
 

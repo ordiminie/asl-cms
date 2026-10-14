@@ -14,7 +14,7 @@ import {TwoFactorForm} from './two-factor-form'
 
 export function UserSecurityFactorSection({user}: {user: User}) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-8">
       {AuthClientAppConfig.changeEmail && shouldShowChangeEmail() && (
         <Card>
           <CardContent className="pt-6">

@@ -1,222 +1,178 @@
 # Revue du découpage : ASL-CMS (Lp)
 
-> Relecture à contexte neuf de `docs/stories.md` (57 stories) face à `docs/prd.md`, avec la grille de `templates/stories-review-checklist.md`. Chaque constat est classé critique, majeur ou mineur.
-> Les stories s01 à s12a et s43 sont livrées (revue présente dans `docs/reviews/`). Ni leur taille ni leur contenu ne sont rediscutés. Les documents hérités du boilerplate (`docs/research/s000-*`, `s001-*`) ne sont pas des stories du projet.
-> Passe précédente, le même jour : verdict `major` / `yes`, un majeur (M1) et neuf mineurs (m1 à m9). Depuis, s44, s45, s46, s12d, s12b et le récapitulatif ont été repris selon les arbitrages de l'utilisatrice. La fermeture de chaque constat est vérifiée ci-dessous.
-> L'effort porte surtout sur **s47-roles-globaux-reduits** (ajoutée le 2026-10-07) et sur la cohérence des reprises de s44, s45, s46 et s12d. Le passage complet est quand même fait.
+> Relecture à contexte neuf de `docs/stories.md` (58 stories) face à `docs/prd.md`, avec la grille de `templates/stories-review-checklist.md`. Chaque constat est classé critique, majeur ou mineur.
+> Les stories s01 à s12a, s43, s44 et s45 sont livrées. Leur taille et leur contenu ne sont pas rediscutés. Les documents hérités du boilerplate (`docs/research/s000-*`, `s001-*`) ne sont pas des stories du projet.
+> Passe précédente (2026-10-07) : verdict `minor` / `yes`, sept mineurs (m1 à m7). Depuis, le 2026-10-13, s46 a été scindée en s46 (retraits et espace membre vide, 3) et s46b-connexion-limitee-association (4). Les dépendances de s12b, s12d et s47 ont suivi, ainsi que le récapitulatif.
+> Cette passe porte surtout sur la scission s46 / s46b, sur la cohérence des dépendances qu'elle touche et sur la fermeture des sept mineurs. Tout le tableau de couverture a quand même été repris ligne par ligne.
 
-**En bref : aucun critique, aucun majeur, sept mineurs. Le majeur M1 est fermé : l'espace membre reste sur `/dashboard`, et s46 et s12d disent désormais la même chose. Deux constats de la passe précédente restent ouverts en partie : le récapitulatif (s08b) et la clause morte de s45.**
+**En bref : aucun critique, un majeur, quatre mineurs.**
 
-- Toutes les lignes du périmètre restent couvertes. s47 n'en retire aucune : les quatre rôles du PRD (Membre, Bureau, Président(e), SuperAdmin) survivent tous.
-- **s47 n'est pas une couche technique déguisée.** Elle déclare un utilisateur (le SuperAdmin) et un comportement observable : le formulaire de `/admin` ne propose plus que les rôles conservés, et un ancien `admin` global est refusé sur `/admin`. Elle est livrable seule et se déclare en dérogation, comme s45 et s46. Ses défauts sont mineurs :
-  - son critère de migration ne peut pas passer dans la stratégie de test du projet telle qu'elle est (m3) ;
-  - les « rôles conservés » ne sont pas fixés (m4) ;
-  - sa place avant s12d est affirmée sans être portée par une dépendance (m5).
-- **s47 n'entre en conflit avec aucune autre story.** L'homonymie `board` / `admin` est traitée explicitement. La règle « seul le SuperAdmin fait exception » de s46 c5 prépare s47. s37 et s41 ne reposent que sur des rôles d'association et sur `super_admin`.
-- Les reprises de s46 et s45 sont cohérentes entre elles et avec s12d. Deux points de forme restent :
-  - le mode clair seul arrive dans s45 sans que son titre ni son « afin de » l'annoncent, et la règle transverse « Socle habillé » dit le contraire de ce que fait s45 (m6) ;
-  - s46 a encore grossi depuis m8 (m7).
+- Les sept mineurs de la passe précédente sont fermés. Deux laissent un petit reste, repris en m3 et m4.
+- La scission est propre :
+  - s46 et s46b ne se chevauchent pas ;
+  - l'état intermédiaire entre les deux est écrit (destination encore `/dashboard` pour tous, `/register` gardé jusqu'à s46b) ;
+  - le graphe ne contient aucun cycle et colle au paragraphe « Exception de numérotation ».
+- **Le majeur porte sur Google dans s46b (M1).** Le critère c5 dit que la connexion Google « reste proposée ». La recherche de s46 a montré que c'est faux : aucun écran ne propose Google en dehors de `/register`, que s46b ferme. Ce critère cache donc trois choses :
+  - une décision de produit à reprendre (ajouter un bouton, ou retirer Google) ;
+  - un écran à concevoir ;
+  - un mécanisme multi-domaine que personne n'a tranché.
+
+  Le risque écrit pour la note 4 de s46b n'en parle pas.
 
 ## Suivi de la revue précédente
 
-| Constat                                               | État                                               | Preuve                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M1 : s46 et s12d se contredisent sur l'espace membre  | **Fermé**                                          | s46 c2 : « `/dashboard` devient l'espace membre ». s46 c3 : le membre propriétaire arrive sur `/dashboard`. s46 c6 cite le provisioning de s01 et s12d « à venir ». s12d dépend de s46 (en-tête et récapitulatif). s12d c5 et sa note « Après s46 » posent « Mes parcelles » sur l'adresse fixée par s46, sans retoucher la destination, et créent le compte par `createUserDao`. Le design de s12d (`/dashboard`) n'est plus contredit. |
-| m1 : récapitulatif dérivé pour s08b                   | **Ouvert en partie**                               | Les compteurs sont justes : 57 stories, quatre à 1, vingt et une à 2, vingt-trois à 3 et neuf à 4, recomptés ligne à ligne avec s08b à 1. En revanche, s08b n'a **toujours pas de ligne** dans le tableau. Les lignes de s10 et s12b citent toujours `s08` là où leurs en-têtes citent `s08b`. L'historique reste incomplet. Voir m1.                                                                                                    |
-| m2 : « Ordre des stories » n'est plus vraie           | **Fermé**                                          | Paragraphe « Exception de numérotation » (l. 25-28) : s44 → s45 → s46 → s47 se jouent avant s12b et s12d. Reste un écart entre ce paragraphe et le graphe pour s47 (m5).                                                                                                                                                                                                                                                                 |
-| m3 : s44 c2 non repris après la recherche             | **Fermé** ; suppression : **Écarté par arbitrage** | s44 c2 ne cite plus ni le sélecteur de thème ni la page « supprimée ». La note (l. 3146-3150) dit que la suppression d'une page n'existe pas dans le produit, et que le sélecteur de thème disparaît avec s45. Arbitrage de l'utilisatrice : pas de suppression de page, la dépublication suffit.                                                                                                                                        |
-| m4 : clause morte de s45 c1                           | **Ouvert**                                         | s45 c1 se termine toujours par « y compris quand la configuration active encore ces familles de pages », alors que s45 c7 retire `blog` et `docs` de l'enum. Voir m2.                                                                                                                                                                                                                                                                    |
-| m5 : règles et notes citant les fichiers retirés      | **Fermé**                                          | s45 c9 (`rule-react-cache-next-cache.md`, `rule-mdx-rendering.md`, inventaire au plan, `pnpm check:rules`). s46 c11 (`rule-form-front.md`, notes de s16 rebranchées).                                                                                                                                                                                                                                                                    |
-| m6 : Google sans parité ni report vers s12b           | **Fermé**                                          | s46 c5 : connexion limitée à l'association du domaine « quel que soit le mode », Google compris, prouvée par un test croisé par mode. s46 c8 : « sur le domaine de son association seulement ». s12b, note « Connexion Google sur chaque domaine (reporté de s46) ».                                                                                                                                                                     |
-| m7 : trois cas limites de s46                         | **Fermé**                                          | SuperAdmin : s46 c3, « même s'il a aussi un rôle dans l'association ». `admin` global : s46 c5 ne lui accorde pas d'exception, et s47 retire le rôle. `/dashboard` sans session : s46 c2, « il redirige vers la connexion comme aujourd'hui ».                                                                                                                                                                                           |
-| m8 : trois valeurs sous un 3 sans risque              | **Fermé**                                          | s46 passe à 4. Son risque est écrit (l. 3320-3325) et le récapitulatif la range parmi les 4. Son « afin de » nomme désormais la fermeture aux inconnus. La story a toutefois encore grossi (m7).                                                                                                                                                                                                                                         |
-| m9 : justification par le PRD plutôt que par une date | **Écarté par arbitrage**                           | Décision de l'utilisatrice : les stories hors périmètre n'ont pas à se justifier par le PRD. Constat non reconduit, y compris pour s47.                                                                                                                                                                                                                                                                                                  |
+| Constat | État | Preuve |
+| --- | --- | --- |
+| m1 : récapitulatif sans ligne s08b, `s08` au lieu de `s08b` | **Fermé** | Ligne s08b présente (l. 3473). s10 et s12b citent `s08b` (l. 3475, 3479). s12b c6 et sa note « Le cron système » citent s08b (l. 1224, 1285). L'historique consigne s08b, s12d et s43 à s47 (l. 3594-3601). Il reste une phrase périmée, voir m4. |
+| m2 : clause morte de s45 c1 | **Fermé** | Reformulé en « quelle que soit la valeur de `NEXT_PUBLIC_ENABLED_PAGES` » (l. 3191). s45 est livrée. |
+| m3 : s47 c3 sans niveau de test, ordre des migrations | **Fermé, avec un reste** | c3 dit maintenant « vérifié dans la CI sur le Postgres éphémère : base du seed de `main`, migrations de la branche appliquées » (l. 3408). La note fixe l'ordre `--custom` → `roleEnum` → `pnpm db:generate` (l. 3425-3433). Le reste, le « précédent de s12c », est repris en m3. |
+| m4 : rôles conservés non fixés, « afin que » inexact | **Fermé** | c2 fixe `user` et `super_admin` et refuse `public` (l. 3407). La propriété du diff est rangée « à vérifier en review » (l. 3445-3447). L'« afin que » est corrigé (l. 3397-3398). |
+| m5 : ordre annoncé plus large que le graphe, s47 → s46 non motivée | **Fermé** | « s44 à s46b avant s12b et avant s12d, s47 avant s12b » (l. 27), ce qui correspond exactement aux en-têtes et au récapitulatif. La note « Pourquoi après s46b » est ajoutée (l. 3448-3450). |
+| m6 : mode clair non annoncé, règle « Socle habillé » contraire | **Fermé** | L'« afin de » de s45 mentionne le clair (l. 3183). La règle transverse est mise à jour : « clair seul, forcé par s45 ; classes `dark:` inertes » (l. 41-43). |
+| m7 : s46 à la limite haute de son 4 | **Fermé par la scission** | s46 passe à 3 avec six critères, sans changement d'authentification. s46b porte les trois changements d'authentification. Mais s46b a hérité de Google, qui ajoute un quatrième risque non écrit (M1). |
 
 ## Couverture du périmètre
 
-| Ligne du PRD (core loop)                      | Couverte par                       | OK  |
-| --------------------------------------------- | ---------------------------------- | --- |
-| CMS de pages génériques                       | s04 (+ s44 pour l'accueil)         | ✅  |
-| Attribution des rôles aux membres             | s14                                | ✅  |
-| Permissions par rôle configurables            | s37 (registre posé par s03b)       | ✅  |
-| Connexion par lien magique + suivi d'adoption | s03, s03c, s15, s42 (c3)           | ✅  |
-| Pages publiques + formulaire de contact       | s04, s08                           | ✅  |
-| Navigation du site public                     | s04b                               | ✅  |
-| Identité visuelle                             | s01b (logo, favicon), s02 (teinte) | ✅  |
-| Limitation de débit des formulaires publics   | s08b, réemployée par s10           | ✅  |
-| Actualités                                    | s05                                | ✅  |
-| Présentation du bureau                        | s06                                | ✅  |
-| Désinscription et classification              | s27b                               | ✅  |
-| Bandeau d'alerte                              | s07                                | ✅  |
-| SEO                                           | s11                                | ✅  |
-| Import initial des membres                    | s13                                | ✅  |
-| Modèle membre ↔ parcelle daté                 | s12                                | ✅  |
-| Coordonnées                                   | s16                                | ✅  |
-| Questions au bureau                           | s23                                | ✅  |
-| Notes internes et historique                  | s24                                | ✅  |
-| Import annuel des relevés d'eau               | s17                                | ✅  |
-| Historique de consommation                    | s18                                | ✅  |
-| Signalements                                  | s10 (public), s22 (membre)         | ✅  |
-| Analyses d'eau                                | s09                                | ✅  |
-| Documents partagés                            | s31                                | ✅  |
-| Documents nominatifs séparés                  | s32                                | ✅  |
-| Campagnes email Brevo                         | s25                                | ✅  |
-| Envoi échelonné au-delà de 300                | s26                                | ✅  |
-| Relances d'impayés                            | s29                                | ✅  |
-| Publipostage PDF                              | s28                                | ✅  |
-| Groupes de destinataires                      | s27                                | ✅  |
-| Statistiques de campagnes                     | s30                                | ✅  |
-| Modèles de documents                          | s36                                | ✅  |
-| Facturation membres (interface + Pennylane)   | s19, s20                           | ✅  |
-| Redirection de paiement                       | s21                                | ✅  |
-| Multi-tenant                                  | s01                                | ✅  |
-| Export individuel d'un membre                 | s40                                | ✅  |
-| Simulation de rôle SuperAdmin                 | s41                                | ✅  |
-| Export et portabilité                         | s38 (+ s39)                        | ✅  |
-| Module Vote                                   | s33                                | ✅  |
-| Module Voirie                                 | s34                                | ✅  |
-| Module Petites annonces                       | s35                                | ✅  |
+| Ligne du PRD (core loop) | Couverte par | OK |
+| --- | --- | --- |
+| CMS de pages génériques | s04 (+ s44 pour l'accueil) | ✅ |
+| Attribution des rôles aux membres | s14 | ✅ |
+| Permissions par rôle configurables | s37 (registre posé par s03b) | ✅ |
+| Connexion par lien magique + suivi d'adoption | s03, s03c, s15, s42 | ✅ |
+| Pages publiques + formulaire de contact | s04, s08 | ✅ |
+| Navigation du site public | s04b | ✅ |
+| Identité visuelle | s01b (logo, favicon), s02 (teinte) | ✅ |
+| Limitation de débit des formulaires publics | s08b, réemployée par s10 | ✅ |
+| Actualités | s05 | ✅ |
+| Présentation du bureau | s06 | ✅ |
+| Désinscription et classification | s27b | ✅ |
+| Bandeau d'alerte | s07 | ✅ |
+| SEO | s11 | ✅ |
+| Import initial des membres | s13 (comptes : s12d) | ✅ |
+| Modèle membre ↔ parcelle daté | s12 | ✅ |
+| Coordonnées | s16 | ✅ |
+| Questions au bureau | s23 | ✅ |
+| Notes internes et historique | s24 | ✅ |
+| Import annuel des relevés d'eau | s17 | ✅ |
+| Historique de consommation | s18 | ✅ |
+| Signalements | s10 (public), s22 (membre) | ✅ |
+| Analyses d'eau | s09 | ✅ |
+| Documents partagés | s31 | ✅ |
+| Documents nominatifs séparés | s32 | ✅ |
+| Campagnes email Brevo | s25 | ✅ |
+| Envoi échelonné au-delà de 300 | s26 | ✅ |
+| Relances d'impayés | s29 | ✅ |
+| Publipostage PDF | s28 | ✅ |
+| Groupes de destinataires | s27 | ✅ |
+| Statistiques de campagnes | s30 | ✅ |
+| Modèles de documents | s36 | ✅ |
+| Facturation membres (interface + Pennylane) | s19, s20 | ✅ |
+| Redirection de paiement | s21 | ✅ |
+| Multi-tenant | s01 | ✅ |
+| Export individuel d'un membre | s40 | ✅ |
+| Simulation de rôle SuperAdmin | s41 | ✅ |
+| Export et portabilité | s38 (+ s39) | ✅ |
+| Module Vote | s33 | ✅ |
+| Module Voirie | s34 | ✅ |
+| Module Petites annonces | s35 | ✅ |
 
-- [x] Chaque ligne du tableau « Replicated (core loop) » est livrée par au moins une story : 37 lignes du tronc commun et 3 modules.
-- Les reprises et l'ajout ne retirent aucune couverture :
-  - **s47** ne garde que `user` et `super_admin` côté global. Les quatre rôles des Target users et de s03b c1 sont tous intacts, et la simulation de rôle (s41) repose sur `super_admin`, conservé.
-  - **s46 c5** limite la connexion à l'association du domaine pour tous les modes. Elle étend la règle du lien magique de s03, elle ne la retire pas.
-  - **s45 c8** (mode clair seul) ne touche pas la ligne Identité visuelle : la teinte reste une variable de la palette claire.
+- [x] Chaque ligne du tableau « Replicated (core loop) » est livrée par au moins une story : les 37 lignes du tronc commun et les 3 modules, recomptées dans le PRD (l. 62-98 et 104-106).
+- La scission ne retire aucune couverture :
+  - s46b ferme l'inscription libre sur le lien magique (c3, c4). Elle renforce la règle « un lien ne crée jamais de compte » de s03 sans la retirer.
+  - Les comptes des membres viennent de s12d, qui crée le compte directement (`createUserDao`) et ne dépend donc pas de l'inscription publique (l. 1444-1446).
+  - s15 et s42 dépendent de s12d.
 
 ## Périmètre
 
-- [x] Aucune story ne reprend un élément du cimetière.
-  - s46 c4, le lien de `/admin` vers `/bureau` pour le SuperAdmin, reste interne à Zourite Studio. Il n'expose rien aux associations, ce qui respecte la Target users « non exposé aux associations ».
-  - La connexion Google, gardée sans inscription, suppose une adresse. Ce n'est donc pas le « plan B de connexion pour les membres sans email ».
-- [x] Aucune story ne dépasse le périmètre, à **huit** dérogations déclarées près : s12a, s12b, s12c, s39, s43, s45, s46 et s47. Chacune est déclarée dans son en-tête, et le récapitulatif les énumère toutes les huit. s47 est bornée : retrait seul, voie de retour écrite, migration isolée dans un second commit.
+- [x] Aucune story ne reprend un élément du cimetière. La connexion Google gardée par s46b suppose une adresse email : ce n'est pas le « plan B de connexion pour les membres sans email ».
+- [x] Aucune story ne sort du périmètre en dehors des **neuf** dérogations déclarées : s12a, s12b, s12c, s39, s43, s45, s46, s46b et s47. Chacune est déclarée dans son en-tête, et le récapitulatif les énumère toutes les neuf (l. 3521-3531). Réserve : avec un bouton Google à ajouter, s46b n'est plus « conservation », c'est un **ajout** (M1).
 
 ## Qualité des stories
 
-- [x] Chaque story est une tranche livrable de bout en bout, aux dérogations déclarées près.
-  - **s47** : ce n'est pas une couche technique. L'utilisateur est déclaré (le SuperAdmin) et le comportement est observable :
-    - formulaire de `/admin` réduit (c2) ;
-    - comptes convertis en `user` (c3) ;
-    - refus de `/admin` à tout autre que le SuperAdmin, sur chaque action serveur (c1).
-
-    Elle est livrable seule. Sa valeur réelle est le moindre privilège : aucun droit plateforme ne dépend d'un rôle que le modèle d'ASL-CMS ne connaît pas. Son « afin que » le formule mal (m4).
-
-  - **s46** reste une tranche livrable, avec une valeur désormais double, écran réduit et fermeture aux inconnus, nommée dans son « afin de ». Elle est à la limite haute de son 4 (m7).
-  - **s45** porte maintenant une deuxième valeur, le mode clair seul, que son utilisateur déclaré (le visiteur) ne couvre pas (m6).
-
+- [x] Chaque story est une tranche livrable de bout en bout, dérogations déclarées comprises.
+  - **s46** : la valeur est observable (un compte réduit à la sécurité, `/dashboard` vidé, le lien SuperAdmin vers `/bureau`) et la story est livrable seule. L'état intermédiaire avant s46b est écrit (l. 3291-3293).
+  - **s46b** : ce n'est pas une couche technique. Elle a un utilisateur (le bureau) et des comportements observables : destination par rôle, refus de connexion croisée, inscription fermée. Elle regroupe la destination (expérience) et la fermeture (sécurité), mais les deux passent par le même point, une route de passage après l'ouverture de la session. Le regroupement est défendable.
 - [ ] Chaque critère peut devenir un test : **presque**.
-  - s45 c1 garde sa clause morte (m2).
-  - s47 c3 vérifie la migration « sur la base seedée avant et après », alors qu'aucun niveau de test du projet n'exécute de migration (m3).
-  - s47 c2 dépend d'une décision renvoyée au plan (le sort de `public`), et sa clause « ni dans le code d'autorisation » est une propriété du diff, pas un comportement (m4).
-  - Les nouveaux critères de s46 (c2 à c6) et de s45 (c8, c9) sont exerçables tels quels.
-- [x] Notes agentiques présentes et utiles. Celles de s47 sont d'un bon niveau : homonymie `board` / `admin`, piège du plugin `admin()` de Better Auth, voie de retour, second commit pour la migration, test à réécrire plutôt qu'à supprimer. Deux remarques, sans constat :
-  - la note ne cite que `e2e/association-settings.spec.ts`, alors que `e2e/association-identity.spec.ts`, qui porte le critère livré de s01b (« administrateur global de la plateforme… reçoit un refus »), boucle aussi sur `admin@gmail.com` ;
-  - `moderator-member@gmail.com` sert de `MEMBER_A` dans `e2e/incident-report.spec.ts`.
-
-  L'inventaire revient au plan, mais le critère de s01b perd son cas « administrateur global » : le réécrire sur `user` reviendrait à doubler le cas `user` déjà présent dans la boucle.
-
-- [x] Complexité notée partout, **aucune story à 5**, et les neuf stories à 4 explicitent leur risque (s46 comprise).
-  - **Le 3 de s47 se défend.** Le retrait des valeurs de l'enum transforme tout reste de `RoleConst.ADMIN` en erreur de compilation : c'est un volume mécanique et outillé, le raisonnement que s01 tenait pour le retrait de l'ADR 009. Son vrai risque, perdre les opérations du plugin `admin()` ou rouvrir `/admin` par la hiérarchie `roleHierarchy`, est écrit en piège. Un 3 n'exige pas plus.
+  - s46b c5 : voir M1.
+  - s46b c2 exige un test d'accès croisé « pour chaque mode », alors que le seed n'a ni compte à double authentification ni simulacre OAuth. Le niveau de test n'est pas fixé (m1).
+  - s46b c3 affirme une liste fermée des origines possibles d'un compte, et cette liste est incomplète (m2).
+- [x] Notes agentiques présentes et utiles. Celles de s46b sont précises : lignes de `action.ts`, trou de `loginCredentialAction`, hook `session.create.before`, `disableSignUp` sur trois canaux, reprise de la recherche de s46. Celles de s47 sont complétées (ordre des migrations, raison de la dépendance).
+- [ ] Complexité notée partout, **aucune story à 5**, et les neuf stories à 4 écrivent leur risque. **Sauf** que le risque de s46b annonce « trois changements de l'authentification » et ne compte pas Google, qui en est un quatrième, multi-domaine et non tranché (M1).
+  - Le 3 de s46 se défend : retraits mécaniques, aucune migration, aucun changement d'authentification.
 
 ## La liste dans son ensemble
 
-- [x] Pas de cycle. Arêtes nouvelles ou modifiées vérifiées :
-  - s47 → s03b (livrée), s46 ;
-  - s12b → s44, s45, s46, s47 ;
-  - s12d → s03, s03c, s12, s46.
+- [x] Pas de cycle. Arêtes nouvelles ou modifiées, vérifiées en-tête par en-tête puis dans le récapitulatif :
+  - s46 → s03, s03b, s43, s45 ;
+  - s46b → s03, s03b, s03c, s46 ;
+  - s47 → s03b, s46b ;
+  - s12b → … s46, s46b, s47 ;
+  - s12d → s03, s03c, s12, s46, s46b.
 
-  La chaîne s44 → s45 → s46 → s47 → s12b → s12c → s13 est exécutable, et s46 → s12d → s13 aussi. L'en-tête de s12b concorde avec le récapitulatif sur ces quatre ajouts.
-
-- [ ] Ordre lisible de haut en bas : **oui pour s44 à s46, presque pour s47.**
-  - Le paragraphe « Exception de numérotation » rend l'écart d'ids explicite.
-  - Il place aussi s47 « avant s12d », sans que s12d en dépende et sans que la dépendance s47 → s46 soit motivée (m5).
-  - Ce n'est pas une référence en avant : aucune story ne suppose un travail planifié après elle.
-- [ ] Ids bien formés et uniques : oui pour la forme. `s47-roles-globaux-reduits` est conforme et unique. **Non pour la concordance avec le récapitulatif**, toujours à cause de s08b (m1).
+  La chaîne s44 → s45 → s46 → s46b → s47 → s12b → s12c → s13 est exécutable, et s46b → s12d → s13 aussi.
+- [x] Ordre lisible de haut en bas : le paragraphe « Exception de numérotation » et le graphe disent la même chose. Une seule référence en avant, de forme, dans une note de s47 (m3).
+- [x] Ids bien formés et uniques. `s46b-connexion-limitee-association` est conforme et l'id intercalé est justifié par l'ordre d'exécution. s46b a un préfixe commun avec s46 : le résolveur flou refusera de choisir entre les deux, il faudra taper l'id complet ou le slug. C'est prévu par AGENTS.md, ce n'est pas un défaut.
 - [x] Aucun chevauchement. Soupçons examinés et levés :
-  - **s47 / s03b** : s03b a renommé le Bureau en `board` et déclaré que « le rôle global `admin` ne change pas ». C'était le périmètre de s03b (un rechercher-remplacer aveugle), pas un engagement durable. s47 le reprend explicitement (« Homonymie à ne pas casser ») et ne touche que `RoleConst`. Pas de conflit.
-  - **s47 / s46** : s46 c3 envoie le SuperAdmin sur `/admin`, et s46 c5 ne fait d'exception que pour lui. Entre s46 et s47, un `admin` global sans rôle d'association ne peut donc plus se connecter sur un domaine d'association. s47 achève ce mouvement au lieu de le contredire. s46 c4 (lien `/admin` → `/bureau`) et s47 c1 (`/admin` au seul SuperAdmin) se complètent.
-  - **s47 / s37** : la matrice porte sur les rôles d'association du registre. Aucun rôle global n'y entre, et l'ADR 018 excluait déjà l'`admin` global du contournement. Pas de recouvrement.
-  - **s47 / s41** : la simulation s'appuie sur `super_admin` et sur les rôles d'association. Rien de retiré.
-  - **s47 / s12d** : s12d crée des comptes au rôle global `user` par défaut. Elle n'utilise aucune valeur retirée.
-  - **s47 / s01b, s02 (livrées)** : le critère de s01b nomme l'« administrateur global de la plateforme » parmi les refusés. Après s47, cette population n'existe plus ; le critère reste vrai, mais son test change de sujet (voir « Qualité »). s02 ne nomme pas le rôle global.
-  - **s46 / s12d** : s46 vide `/dashboard` et fixe la destination ; s12d remplit la page sans retoucher la destination. s12d c5 vérifie l'arrivée sur « Mes parcelles » : c'est un recouvrement de vérification, pas de livraison. Acceptable.
+  - **s46 / s46b** : s46 garde `/register` et la destination `/dashboard` pour tous ; s46b les change. s46 c3 (lien `/admin` vers `/bureau`) et s46b c1 (SuperAdmin envoyé sur `/admin`) se complètent.
+  - **s46b / s12d** : s46b fixe la destination, s12d remplit la page sans la toucher. s12d c5 vérifie l'arrivée « par la destination de s46b » : c'est un recoupement de vérification, pas de livraison.
+  - **s46b / s47** : s46b pose l'exception réservée au SuperAdmin, et s47 retire les rôles globaux qui n'y ont pas droit. Remarque, sans constat : dès s46b, un compte `admin` global sans ligne `member` ne peut plus se connecter sur un domaine d'association. Les specs qui l'utilisent (`e2e/association-settings.spec.ts`, `e2e/association-identity.spec.ts`) risquent donc de casser **à s46b**, pas à s47. L'inventaire des specs de s46b doit les inclure.
+  - **s46b / s12b** : la procédure Google multi-domaine est reportée « de s46b » dans s12b (l. 1294). Ce report suppose que s46b a tranché le mécanisme, ce qui n'est pas acquis (M1).
 
 ## Constats
 
+### Majeur
+
+**M1 : s46b c5, la connexion Google « reste proposée » repose sur une prémisse fausse et cache une décision, un écran et un mécanisme non tranchés.**
+
+- La recherche de s46 (`docs/research/s46-comptes-herites-minimum.md`, l. 228-231 et question 1, l. 440-444) établit qu'**aucun écran ne propose Google** : `/login` est l'écran du lien magique, `/login/prestataire` celui du mot de passe, et `login.test.tsx` affirme qu'il n'y a pas de bouton Google. Le seul appelant est `/register`, que s46b c3 ferme. La note de s46b le reconnaît (« le critère "reste proposée" suppose un bouton… à faire désigner »), mais le critère n'a pas été repris.
+- L'arbitrage du 7 octobre (« la connexion par Google est conservée ») a été pris sur cette prémisse. Concrètement, il veut désormais dire **ajouter** un bouton sur un écran de connexion. Cela pose trois problèmes :
+  1. **une décision de produit à reprendre** par l'utilisatrice : ajouter Google, ou le retirer comme Apple et GitHub. Retirer Google supprime d'un coup c5, la moitié des cas de c2 et la note Google de s12b ;
+  2. **un écran sans design** : s46b ne se déclare pas porteuse d'écran, et un bouton OAuth sur `/login` (public âgé, lien magique en parcours principal) relève de `/ks-design`, voire d'un manque du design system ;
+  3. **un mécanisme non tranché** : l'URI de retour est celle de `BETTER_AUTH_URL`, et la session serait ouverte sur l'hôte de la plateforme, pas sur le domaine de l'association (recherche, l. 222-227). c5 exige pourtant « sur le domaine de son association seulement ». La note renvoie le choix au plan (console Google par domaine, ou domaine commun) et la procédure à s12b. C'est une décision structurelle (ADR), pas une tâche de plan.
+- Le risque écrit pour la note 4 (l. 3375-3380) ne compte que trois changements et ne mentionne pas Google. Au seuil que s03 s'était fixé le 19 septembre, ce quatrième risque justifie de **sortir Google de s46b** : soit dans une story propre ajoutée en fin de numérotation, avec son design et son ADR, soit en le retirant du produit. s46b resterait alors un 4 cohérent avec son risque écrit.
+- À trancher avant `/ks-plan s46b`.
+
 ### Mineurs
 
-**m1 : le récapitulatif n'a toujours pas de ligne pour s08b (reprise partielle de m1).**
+**m1 : s46b c2, le niveau de test des preuves croisées pour la double authentification et Google n'est pas fixé.**
 
-- Les compteurs ont été corrigés et sont justes.
-- En revanche :
-  - s08b, livrée, n'a **pas de ligne** dans le tableau « ordre et dépendances » ;
-  - les lignes de **s10** (« s02, s04, s08 ») et de **s12b** (« …, s03c, s08, s12a, … ») citent `s08`, alors que leurs en-têtes citent `s08b` ;
-  - **s12b c6** dit encore « la purge des empreintes des formulaires publics (s08) », et sa note « Le cron système » parle de « la purge quotidienne des empreintes de s08 ». La purge est livrée par s08b c3.
-- L'historique de fin de document ne consigne ni s08b, ni s12d, ni s43. s44 à s47 n'y apparaissent que dans le paragraphe des dérogations. Le paragraphe « Dix stories ont été ajoutées en revue du découpage » ne compte pas s47, pourtant « décidé[e] à la revue du découpage du 7 octobre ».
-- Le constat reste mineur parce que la story absente est livrée : personne ne peut la sauter. C'est toutefois la troisième passe où le tableau dérive.
+- c2 exige un test d'accès croisé « pour chaque mode ». AGENTS.md place le test d'isolation en e2e Playwright, mais le seed n'a aucun compte à double authentification et il n'existe aucun simulacre OAuth (recherche, l. 394 et question 10, l. 471-472). La note renvoie à « voir la recherche » sans trancher.
+- Le contrôle doit vivre « à un seul endroit que tous les modes traversent » (note de s46b). La story peut donc fixer la preuve :
+  - e2e croisé pour le mot de passe et le lien magique ;
+  - ajout d'un compte à double authentification au seed, ou test de service sur le point de contrôle unique, pour la double authentification ;
+  - test de service pour Google, ou aucun test si M1 retire Google.
 
-**m2 : s45 c1, la clause « y compris quand la configuration active encore ces familles de pages » est toujours morte (ex-m4, non repris).**
+  C'est une décision de découpage, parce qu'elle conditionne la testabilité du critère.
 
-- Après s45 c7, `blog` et `docs` ne figurent plus dans `EnabledPageSchema`, qui refuse toute valeur inconnue au démarrage. `/pricing`, `/checkout`, `/privacy` et `/terms` n'ont aucune famille dans cet enum.
-- Aucun test ne peut exercer cette clause. La supprimer, ou la reformuler, par exemple « quelle que soit la valeur de `NEXT_PUBLIC_ENABLED_PAGES` ».
+**m2 : s46b c3, la liste fermée des origines possibles d'un compte est incomplète.**
 
-**m3 : s47 c3, la vérification de la migration n'a pas de niveau de test, et la note de migration laisse l'ordre ambigu face à AGENTS.md.**
+- c3 affirme qu'« un compte ne naît que du provisioning d'une association (s01), de l'ouverture du compte d'une fiche membre (s12d) ou du seed ». Or le webhook Stripe, conservé et vérifié par s45 c6, crée encore un utilisateur « guest » : `createUserFromStripeService` dans `src/lib/stripe/stripe-events.ts` (l. 425 et l. 569). Le parcours `/checkout` a disparu, mais le webhook réagit toujours aux événements Stripe.
+- Deux choix : ajouter cette origine à la liste comme légitime (abonnement plateforme créé par le SuperAdmin), ou la fermer dans s46b. En l'état, le test prévu (« tente l'inscription et constate qu'aucun utilisateur n'est créé ») ne couvre pas cette affirmation. À noter aussi : le formulaire de `/admin/users` ne crée pas de compte (seulement modification, suppression et liste), il n'est donc pas concerné.
 
-- « Vérifié sur la base seedée avant et après migration » ne correspond à aucun niveau de la stratégie de test du projet :
-  - les tests unitaires n'ont pas de base (`db.ts` refuse la connexion) ;
-  - la CI e2e monte la base par `pnpm db:push && pnpm db:seed` (`rule-ci-cd-devops.md`) et n'exécute **aucune migration** ;
-  - et s47 c4 retire ces rôles du seed : la « base seedée avant » est celle de `main`, pas celle de la branche.
-- La partie « garde ses rôles d'association » est vraie par construction, puisque la migration ne touche que `user.role`. Le vrai risque n'est pas couvert : une migration qui échoue sur une base de recette contenant ces valeurs.
-- Deux sorties possibles :
-  - suivre le précédent de s12c, avec un test joué en CI sur le Postgres éphémère : seed de `main`, application des migrations de la branche, contrôle ;
-  - ou passer le critère en « à vérifier en review », avec la procédure écrite, comme s12b et s12c le font pour ce qui n'est pas automatisable.
-- Côté AGENTS.md, la note énumère quatre étapes : convertir, créer le type, basculer la colonne, supprimer l'ancien type. Elle ne range explicitement que la conversion des données dans `drizzle-kit generate --custom`. Si les quatre étapes partent dans le fichier `--custom`, le modèle `roleEnum` et le snapshot divergent, et le `pnpm db:generate` suivant régénère le changement. C'est exactement l'incohérence de journal et de snapshot qu'AGENTS.md interdit. Préciser l'ordre dans la note :
-  1. une migration `--custom` pour la conversion des données ;
-  2. puis la modification de `roleEnum` dans `src/db/models/auth-model.ts` ;
-  3. puis `pnpm db:generate`, pour que le snapshot reflète le nouveau type.
+**m3 : s47, « sur le précédent de s12c » est une référence en avant.**
 
-  s03b avait fait de même pour `organization_role`.
+- La note de migration (l. 3432-3433) appuie le test du critère c3 sur « le précédent de s12c ». Mais s12c se joue **après** s47 (s47 → s12b → s12c). Ce précédent n'existe que dans une note de story, pas dans le dépôt.
+- Ce n'est pas une dépendance impossible : c3 décrit le contrôle de façon autonome. Mais s47 sera la première à monter dans la CI une base au seed de `main` et à y appliquer les migrations de la branche. Le dire (« s47 crée ce contrôle ; s12c le réutilise pour sa restauration »), sinon l'agent de s47 cherchera un modèle absent.
 
-**m4 : s47 c2 renvoie au plan une décision de périmètre, et son « afin que » est inexact.**
+**m4 : historique du récapitulatif, une phrase périmée par la scission.**
 
-- c2 exige que le formulaire de `/admin` « ne propose plus que les rôles conservés », mais la note renvoie au plan la question de garder `public` (« le plan vérifie à quoi sert `public` avant de le garder »). Retirer `public` serait une quatrième valeur retirée de `role_type`, hors de la liste du critère. Le critère ne peut pas devenir un test tant que l'ensemble n'est pas fixé. Le nommer dans la story (`user` et `super_admin`, avec ou sans `public`) : c'est une décision de découpage, pas d'implémentation.
-- « Ni dans le code d'autorisation » est une propriété du diff, pas un comportement. La ranger en « à vérifier en review », comme s03b le fait pour les contrôles écrits à la main.
-- L'« afin que » invoque « un rôle que plus personne ne sait attribuer ». C'est inexact : le formulaire de `/admin` les attribue aujourd'hui, et c2 le constate. La raison réelle est dans l'en-tête : ces rôles n'ont **aucun équivalent** dans le modèle d'ASL-CMS, et ils ouvrent des droits plateforme (paire `[ADMIN, SUPER_ADMIN]`). Corriger la formule.
-
-**m5 : s47, l'ordre annoncé dépasse le graphe, et la dépendance vers s46 n'est pas motivée.**
-
-- « Ordre des stories » place s44 → s45 → s46 → s47 « avant s12b et avant s12d ». s12d dépend de s46, mais **pas de s47**, ni dans son en-tête ni dans le récapitulatif. Un agent qui suit le graphe peut planifier s12d avant s47.
-- Rien ne l'interdit techniquement : s12d ne crée que des comptes `user`. Mais la phrase et le tableau disent deux choses différentes. Soit ajouter s47 aux dépendances de s12d, soit écrire « s44 à s46 avant s12d ; s47 avant s12b ».
-- La dépendance s47 → s46 n'est expliquée nulle part dans les notes de s47. La raison probable est que les deux stories touchent `src/lib/better-auth/auth.ts`, la destination après connexion et l'exception SuperAdmin. Une ligne suffit, pour qu'un futur réordonnancement ne la casse pas sans le savoir.
-
-**m6 : s45 porte le mode clair seul sans l'annoncer, et la règle transverse « Socle habillé » dit le contraire.**
-
-- s45 c8 (thème clair forcé partout, sélecteur retiré, nouvelle ADR qui remplace l'ADR 012) est une deuxième valeur, sans lien avec « ne servir que le site de l'association ». Elle concerne le back-office, le compte et `/admin`, pas seulement le visiteur déclaré. Le titre, le slug et l'« afin de » de s45 n'en parlent pas. Seul l'en-tête la mentionne.
-- Le coût est faible et la décision est actée : pas de scission nécessaire. Ajouter la valeur à l'« afin de » suffit, pour qu'un lecteur du récapitulatif sache où vit cette décision.
-- La règle transverse « Socle habillé » (l. 34-36) range toujours le « retrait du thème sombre » parmi les préalables déjà faits, et les notes de s01 (livrée) supposent `grep 'dark:'` vide. Or l'ADR 012 (`012-mode-sombre-conserve.md`) avait gardé le mode sombre. Et s45 choisit de **forcer** le clair en laissant `.dark` et les classes `dark:` inertes. Une story d'écran écrite après s45 lira dans la règle transverse un état du dépôt qui n'existe pas. Mettre la règle à jour en même temps que la nouvelle ADR (« clair seul, forcé par s45 ; classes `dark:` inertes, ne pas en ajouter »).
-
-**m7 : s46 a encore grossi depuis m8 et se tient à la limite haute de son 4.**
-
-- Depuis la passe précédente, s46 a gagné deux nouveaux pans :
-  - **c4**, le lien SuperAdmin vers `/bureau` ;
-  - **c5**, la connexion limitée à l'association du domaine pour quatre modes, prouvée par un test croisé **par mode**.
-
-  Elle compte onze critères. Sa note le dit : c5 corrige « un trou du code livré » (seul le lien magique vérifie l'appartenance).
-
-- Cette correction de sécurité ne dépend d'aucun écran retiré. Elle pourrait être livrée seule, et plus tôt. Le risque écrit couvre bien les trois changements d'authentification, ce qui suffit à la grille.
-- À surveiller au plan, au seuil que s03 s'était fixé le 19 septembre : si la recherche ou le plan compte plus de risques que les trois annoncés, sortir c5 dans une story propre, ajoutée en fin de numérotation selon AGENTS.md. C'est la scission la moins chère du document à ce jour.
+- L. 3597-3598 : « s46 les comptes et la connexion limitée à l'association du domaine ». La phrase suivante corrige (scission du 13 octobre), mais la première est fausse en lecture rapide. Écrire « s46 les comptes (la connexion passe dans s46b le 13 octobre) ».
+- Le paragraphe « Dix stories ont été ajoutées en revue du découpage » ne compte toujours pas s47, que son en-tête dit « décidé[e] à la revue du découpage du 7 octobre ». Le paragraphe l. 3594-3601 la consigne bien : seul le compte du paragraphe précédent est inexact.
 
 ## Verdict
 
 Aucun problème critique :
 
-- toutes les lignes du périmètre sont couvertes, et s47 ne retire aucun des rôles du PRD ;
+- toutes les lignes du périmètre sont couvertes (37 + 3), et la scission n'en retire aucune ;
 - aucune story ne reprend un élément du cimetière ;
 - aucune story n'est à 5 ;
-- aucun cycle. Les chaînes s44 → s45 → s46 → s47 → s12b et s46 → s12d sont exécutables.
+- aucun cycle ni dépendance impossible. Les chaînes s44 → s45 → s46 → s46b → s47 → s12b et s46b → s12d → s13 sont exécutables, et le paragraphe d'ordre correspond au graphe.
 
-Aucun majeur : M1 est fermé, et s46 et s12d s'accordent sur `/dashboard`. s47 est une tranche légitime, sans conflit avec s03b, s37, s41, s46 ou s12d.
+Un majeur (M1) : le critère Google de s46b repose sur une prémisse fausse, établie par la recherche. Il cache une décision de produit (ajouter ou retirer Google), un écran sans design et un mécanisme multi-domaine non tranché, absent du risque écrit. À trancher par l'utilisatrice avant `/ks-plan s46b`. La sortie la moins chère : retirer Google, ou le sortir dans une story propre en fin de numérotation.
 
-Les mineurs m3 et m4 sont à corriger avant `/ks-plan s47` : critère de migration testable, ordre des migrations conforme à AGENTS.md, ensemble des rôles conservés fixé. m2 est à corriger avant le plan de s45, et m6 avant ou avec lui. m1 et m5 sont des éditions de quelques lignes dans le récapitulatif et dans « Ordre des stories ». m7 est une vigilance pour le plan de s46, pas une correction à faire maintenant.
+m1 et m2 sont à reprendre avec M1, avant le plan de s46b. m3 est une ligne à corriger dans la note de s47. m4 est une correction de quelques mots dans le récapitulatif. s46 n'est touchée par aucun constat et peut partir en plan telle quelle.
 
-Max severity: minor
+Fichiers concernés : `docs/stories.md` (s46b l. 3310-3380, s47 l. 3432-3433, récapitulatif l. 3560 et 3597-3598), `docs/research/s46-comptes-herites-minimum.md` (l. 222-240, 394, 440-444, 471-472), `src/lib/stripe/stripe-events.ts` (l. 425, 569).
+
+Max severity: major
 Stories ready: yes

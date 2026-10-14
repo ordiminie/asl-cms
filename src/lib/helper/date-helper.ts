@@ -3,14 +3,15 @@ import {enUS, es, fr, type Locale} from 'date-fns/locale'
 
 const DATE_FNS_LOCALES: Record<string, Locale> = {en: enUS, fr, es}
 
-const DEFAULT_LOCALE = 'en'
+const DEFAULT_LOCALE = 'fr'
 
 /**
  * Résout la locale date-fns correspondant à une locale de l'application.
- * Retourne l'anglais pour toute locale inconnue, comme `routing.defaultLocale`.
+ * Retourne le français pour toute locale absente ou inconnue : c'est la locale
+ * unique du produit (ADR 008).
  */
 export const getDateFnsLocale = (locale?: string): Locale =>
-  DATE_FNS_LOCALES[locale ?? DEFAULT_LOCALE] ?? enUS
+  DATE_FNS_LOCALES[locale ?? DEFAULT_LOCALE] ?? fr
 
 export const formatDateString = (dateString?: string, locale?: string) => {
   if (!dateString) return ''
