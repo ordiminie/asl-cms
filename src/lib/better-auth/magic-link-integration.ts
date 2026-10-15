@@ -1,12 +1,12 @@
 import {getUserByEmailDao} from '@/db/repositories/user-repository'
 import type {MagicLinkEmailAssociation} from '@/lib/emails/magic-link-email'
 import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
-import {normalizeTenantHost} from '@/lib/helper/tenant-helper'
 import {logger} from '@/lib/logger'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 import {getAccentHue} from '@/services/types/domain/association-settings-types'
 import type {Organization} from '@/services/types/domain/organization-types'
 
+import {canOpenSessionOn, organizationOfRequest} from './association-membership'
 import {
   associationOriginOf,
   rebaseMagicLinkUrl,
@@ -73,15 +73,12 @@ const pngLogoUrlOf = (organization: Organization, origin: string) => {
  * `magic-link-integration-imports.test.ts` parcourt le graphe d'imports.
  */
 const loadServices = async () => {
-  const [organizations, settings, emails, rateLimits] = await Promise.all([
-    import('@/services/facades/organization-service-facade'),
+  const [settings, emails, rateLimits] = await Promise.all([
     import('@/services/facades/association-settings-service-facade'),
     import('@/services/facades/email-service-facade'),
     import('@/services/facades/rate-limit-service-facade'),
   ])
   return {
-    getOrganizationByDomainService:
-      organizations.getOrganizationByDomainService,
     getAssociationSettingsService: settings.getAssociationSettingsService,
     sendMagicLinkEmailService: emails.sendMagicLinkEmailService,
     consumeMagicLinkRequestQuotaService:
@@ -90,18 +87,6 @@ const loadServices = async () => {
 }
 
 type MagicLinkServices = Awaited<ReturnType<typeof loadServices>>
-
-/** L'association servie par le domaine appele, s'il en sert une. */
-const organizationOfRequest = async (
-  host: string | undefined,
-  services: MagicLinkServices
-) => {
-  const domain = normalizeTenantHost(host)
-  const organization = domain
-    ? await services.getOrganizationByDomainService(domain)
-    : undefined
-  return organization?.domain ? organization : undefined
-}
 
 /** L'association telle que l'email la montre : nom, teinte, logo PNG. */
 const emailAssociationOf = async (
@@ -149,7 +134,8 @@ const revokeEarlierMagicLinks = async (
  * jour par defaut, reglage du bureau) : au-dela, rien ne part et le lien
  * precedent reste valable. Aucune IP n'est lue. Adresse inconnue, ou compte
  * sans appartenance a l'association du domaine (s03c) : **rien** — ni email
- * ni compte (`disableSignUp`). Membre de l'association : les liens
+ * ni compte (`disableSignUp`). Membre de l'association, ou SuperAdmin (s46b,
+ * `canOpenSessionOn`, ADR 034) : les liens
  * precedents sont revoques, puis l'email de l'association part par le service
  * d'email (plus de notification : un lien secret n'a rien a faire dans la
  * liste des notifications), avec un lien rebase sur l'origine de
@@ -166,7 +152,7 @@ export async function sendMagicLink(
   const services = await loadServices()
   const host = requestHostOf(requestHeadersOf(ctx))
 
-  const organization = await organizationOfRequest(host, services)
+  const organization = await organizationOfRequest(host)
   const origin = associationOriginOf(organization?.domain)
   if (!organization || !origin) {
     logger.warn(
@@ -187,7 +173,7 @@ export async function sendMagicLink(
   }
 
   const user = await getUserByEmailDao(email)
-  if (!user || !isMemberOf(user, organization)) return
+  if (!user || !canOpenSessionOn(user, organization)) return
 
   const association = await emailAssociationOf(organization, origin, services)
   await revokeEarlierMagicLinks(email, token, ctx)
@@ -218,12 +204,3 @@ export const magicLinkOptions = {
 export const MAGIC_LINK_DISABLED_HTTP_PATHS: readonly string[] = [
   '/sign-in/magic-link',
 ]
-
-/** Le compte appartient-il a l'association du domaine appele ? */
-const isMemberOf = (
-  user: {organizations?: {organizationId: string}[]},
-  organization: Organization
-) =>
-  (user.organizations ?? []).some(
-    (membership) => membership.organizationId === organization.id
-  )

@@ -3,7 +3,6 @@ import {z} from 'zod'
 
 import {
   CreateUser,
-  CreateUserFromStripe,
   CreateUserSettings,
   Language,
   NotificationChannel,
@@ -34,22 +33,6 @@ export const createUserServiceSchema = baseUserServiceSchema.extend({
     message: "L'email n'est pas valide.",
   }),
 }) satisfies z.Schema<CreateUser>
-
-export const createUserFromStripeServiceSchema = z.object({
-  email: z.string().email({
-    message: "L'email n'est pas valide.",
-  }),
-  name: z
-    .string()
-    .min(1, {
-      message: 'Le nom ne peut pas être vide.',
-    })
-    .max(50, {
-      message: 'Le nom ne doit pas contenir plus de 50 caractères.',
-    })
-    .optional(),
-  stripeCustomerId: z.string().optional(),
-}) satisfies z.Schema<CreateUserFromStripe>
 
 export const updateUserServiceSchema = createUserServiceSchema.extend({
   id: z.string(),

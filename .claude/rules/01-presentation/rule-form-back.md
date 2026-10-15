@@ -27,7 +27,7 @@ app/
   ├── (auth)/
   │   ├── action.ts          ← Actions d'authentification
   │   ├── login/page.tsx
-  │   └── register/page.tsx
+  │   └── verify-request/
   ├── (app)/
   │   ├── account/action.ts  ← Actions du compte utilisateur
   │   └── dashboard/action.ts
@@ -106,12 +106,10 @@ export async function formAction(
 **✅ CORRECT - Évite les exceptions**
 
 ```tsx
-// Exemple du projet
-const validationResult = authRegisterFormSchema.safeParse({
-  name: formData.get('name'),
+// Exemple du projet (connexion par mot de passe)
+const validationResult = authLoginFormSchema.safeParse({
   email: formData.get('email'),
   password: formData.get('password'),
-  confirmPassword: formData.get('confirmPassword'),
 })
 
 if (!validationResult.success) {
@@ -185,7 +183,7 @@ try {
 
 ### Formulaire avec useActionState
 
-**Référence : [register-form.tsx](src/components/features/auth/forms/register-form.tsx)**
+**Référence : [credential-form.tsx](src/components/features/auth/forms/credential-form.tsx)**
 
 ```tsx
 'use client'

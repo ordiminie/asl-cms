@@ -31,3 +31,23 @@ export const canManageAssociation = (
       BOARD_ROLES.includes(membership.role)
   )
 }
+
+export type PostLoginPath = '/admin' | '/bureau' | '/dashboard'
+
+/**
+ * Ou arrive un compte apres sa connexion (s46b) : le SuperAdmin au back-office
+ * de la plateforme, meme avec un role dans l'association ; le bureau et la
+ * Presidence de l'association du domaine au back-office de l'association ;
+ * tout autre compte a l'espace membre. Le role global `admin` n'est pas
+ * SuperAdmin : il suit son role dans l'association.
+ */
+export const postLoginPathOf = (
+  user: User,
+  organizationId: string | undefined
+): PostLoginPath => {
+  if (user.role === RoleConst.SUPER_ADMIN) return '/admin'
+  if (organizationId && canManageAssociation(user, organizationId)) {
+    return '/bureau'
+  }
+  return '/dashboard'
+}

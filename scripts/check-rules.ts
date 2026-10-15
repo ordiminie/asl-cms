@@ -52,6 +52,11 @@ const STALE_PATTERNS: {pattern: RegExp; why: string; allow?: RegExp}[] = [
       /edit-user-settings|account\/(settings|api-keys|notifications|organizations|invitations|billing)|team-switcher|TeamSwitcher|OrganizationSync|OrganizationProvider|features\/api-key|features\/dashboard(?!-)|use-subscription|quick-feedback/,
     why: 'retiré par s46 : écrans du compte hérité, coquille à barre latérale, tableau de bord de démonstration',
   },
+  {
+    pattern:
+      /register-form|register-magic-link-form|register\/page|\(auth\)\/register|\bRegister\b|registerCredentialAction|registerMagicLinkAction|registerProviderAction|loginProviderAction|([Cc]onnexion|connecter|[Ll]ogin|[Ss]ign[- ]?[Ii]n)\W+(avec|par|with)?\W*(Apple|GitHub)|provider: '(apple|github)'/,
+    why: 'retiré par s46b : inscription fermée (plus de /register), connexion Apple et GitHub retirées',
+  },
 ]
 
 const DESCRIBE_THE_CODE = [

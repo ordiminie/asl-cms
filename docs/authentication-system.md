@@ -8,8 +8,9 @@ Le système d'authentification prend en charge :
 
 - **Authentification par credentials** (email/mot de passe)
 - **Magic Links** (liens de connexion par email)
-- **OAuth Social** (Google, Apple, GitHub)
+- **Google**, configuré côté serveur sans écran ni inscription (s46b)
 - **Authentification à deux facteurs (2FA)**
+- **Connexion limitée à l'association du domaine** (s46b, ADR 034)
 - **Gestion des organisations**
 - **Intégration Stripe** pour les abonnements
 
@@ -46,7 +47,7 @@ STRIPE_WEBHOOK_SECRET="whsec_xxxxx"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
 # Méthodes d'authentification activées
-NEXT_PUBLIC_AUTH_METHODS="credential,magiclink,google,apple,github"
+NEXT_PUBLIC_AUTH_METHODS="credential,magiclink"
 
 # Configuration Better Auth
 NEXT_PUBLIC_BETTER_AUTH_REQUIRE_EMAIL_VERIFICATION="true"
@@ -68,8 +69,7 @@ NEXT_PUBLIC_BILLING_MODE="user" # ou "organization"
 
 **Fonctionnalités** :
 
-- Inscription avec email/mot de passe
-- Connexion sécurisée
+- Connexion sécurisée (inscription fermée : `disableSignUp`, s46b)
 - Réinitialisation de mot de passe
 - Vérification d'email obligatoire (configurable)
 
@@ -98,7 +98,7 @@ const handleLogin = async (email: string, password: string) => {
 **Fonctionnalités** :
 
 - Connexion sans mot de passe
-- Création automatique de compte si inexistant
+- Aucun compte créé pour une adresse inconnue (`disableSignUp`)
 - Liens sécurisés avec expiration
 
 **Flow** :
@@ -108,13 +108,10 @@ const handleLogin = async (email: string, password: string) => {
 3. L'utilisateur clique sur le lien
 4. Connexion automatique
 
-### 3. OAuth Social
+### 3. Google
 
-**Providers supportés** :
-
-- **Google** : `google`
-- **Apple** : `apple`
-- **GitHub** : `github`
+Google est le seul fournisseur tiers configuré, **sans écran** et avec `disableSignUp` : un compte
+Google inconnu ne crée aucun utilisateur (s46b). Apple et GitHub ne sont ni proposés ni configurés.
 
 **Configuration Google** :
 
@@ -127,12 +124,6 @@ const handleLogin = async (email: string, password: string) => {
 ```env
 GOOGLE_CLIENT_ID="your-google-client-id"
 GOOGLE_CLIENT_SECRET="your-google-client-secret"
-```
-
-**Configuration dans l'interface** :
-
-```env
-NEXT_PUBLIC_AUTH_METHODS="credential,google"
 ```
 
 ## Authentification à Deux Facteurs (2FA)
@@ -224,7 +215,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_xxxxx"
 
 ### Fonctionnalités
 
-- **Création automatique de clients Stripe** à l'inscription
+- **Aucun compte créé par le webhook Stripe** (s46b)
 - **Gestion d'abonnements** intégrée
 - **Webhooks Stripe** pour synchronisation
 - **Support facturation utilisateur ou organisation**
@@ -241,12 +232,11 @@ src/
 ├── app/[locale]/(auth)/
 │   ├── action.ts            # Server Actions d'authentification
 │   ├── login/page.tsx       # Page de connexion
-│   ├── register/page.tsx    # Page d'inscription
+│   ├── login/destination/   # Route de passage : destination selon le rôle (s46b)
 │   ├── reset-password/      # Réinitialisation mot de passe
 │   └── verify-request/      # Vérifications (email, 2FA)
 ├── components/features/auth/forms/
 │   ├── login.tsx            # Formulaire de connexion
-│   ├── register-form.tsx    # Formulaire d'inscription
 │   ├── credential-form.tsx  # Formulaire email/password
 │   └── magic-link-form.tsx  # Formulaire magic link
 └── services/authentication/
@@ -264,19 +254,22 @@ export const auth = betterAuth({
   // Configuration email/password
   emailAndPassword: {
     enabled: true,
+    disableSignUp: true,
     requireEmailVerification: true,
   },
 
-  // Providers OAuth
+  // Google, sans ecran ni inscription
   socialProviders: {
     google: {
+      disableSignUp: true,
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
 
-  // Plugins
+  // Plugins : le controle d'association en tete (ADR 034)
   plugins: [
+    associationSessionGuard(),
     twoFactor({issuer: APP_ISSUER}),
     magicLink(),
     organization(),
@@ -311,17 +304,16 @@ export async function loginCredentialAction(
   formData: FormData
 ): Promise<LoginFormState>
 
-// Connexion par magic link
-export async function loginMagicLinkAction(
-  prevState: MagicLinkFormState,
+// Demande d'un lien de connexion
+export async function requestMagicLinkAction(
+  prevState: MagicLinkRequestState,
   formData: FormData
-): Promise<MagicLinkFormState>
-
-// Connexion OAuth
-export async function loginProviderAction(
-  provider: 'google' | 'apple' | 'github'
-): Promise<LoginFormState>
+): Promise<MagicLinkRequestState>
 ```
+
+Chaque connexion réussie passe par `/login/destination`, qui envoie le SuperAdmin vers `/admin`, le
+bureau et la Présidence de l'association du domaine vers `/bureau`, et tout autre compte vers
+`/dashboard` (s46b).
 
 ## Gestion des Sessions
 
@@ -367,22 +359,8 @@ export default async function ProtectedPage() {
 
 ### Configuration des méthodes visibles
 
-L'interface s'adapte automatiquement selon `NEXT_PUBLIC_AUTH_METHODS` :
-
-```typescript
-// Dans LoginForm
-const authMethods = env.NEXT_PUBLIC_AUTH_METHODS
-const hasCredential = authMethods.includes('credential')
-const hasMagicLink = authMethods.includes('magiclink')
-const hasGoogle = authMethods.includes('google')
-
-// Affichage conditionnel des boutons
-{hasGoogle && (
-  <Button onClick={() => handleProviderLogin('google')}>
-    Se connecter avec Google
-  </Button>
-)}
-```
+`NEXT_PUBLIC_AUTH_METHODS` n'accepte que `credential`, `magiclink` et `google`. Aucun écran ne
+propose de fournisseur tiers (s46b).
 
 ### Traductions
 
@@ -451,8 +429,6 @@ NEXT_PUBLIC_APP_URL="https://yourdomain.com"
 ### Configuration OAuth en Production
 
 1. **Google** : Ajoutez votre domaine de production dans les origines autorisées
-2. **Apple** : Configurez les domaines et URLs de retour
-3. **GitHub** : Mettez à jour l'URL de callback
 
 ## Exemples d'Utilisation
 
@@ -470,8 +446,8 @@ export function LoginButton() {
     })
 
     if (result.data) {
-      // Connexion réussie
-      window.location.href = '/dashboard'
+      // Connexion réussie : destination selon le rôle
+      window.location.href = '/login/destination'
     }
   }
 

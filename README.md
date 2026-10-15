@@ -84,7 +84,7 @@ Ce projet utilise Husky et lint-staged pour maintenir une qualité de code élev
 src/
  ┣ app/
  ┃ ┣ dashboard/         # Espace utilisateur protégé après connexion
- ┃ ┣ (auth)/            # Pages d'authentification (Login, Register)
+ ┃ ┣ (auth)/            # Pages d'authentification (connexion, vérifications)
  ┃ ┣ api/               # API Routes pour les actions côté serveur
  ┃ ┣ layout.tsx         # Layout global
  ┃ ┗ page.tsx           # Page d'accueil

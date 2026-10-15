@@ -10,11 +10,7 @@ vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn((argument: string | {namespace: string}) => {
     const namespace =
       typeof argument === 'string' ? argument : argument.namespace
-    return Promise.resolve((key: string) =>
-      namespace === 'AuthActions.registerMagicLink'
-        ? `registerMagicLink.${key}`
-        : `${namespace}.${key}`
-    )
+    return Promise.resolve((key: string) => `${namespace}.${key}`)
   }),
 }))
 vi.mock('@/lib/logger', () => ({
@@ -23,14 +19,15 @@ vi.mock('@/lib/logger', () => ({
 vi.mock('@/lib/better-auth/auth', () => ({
   auth: {
     api: {
+      signInEmail: vi.fn(),
       signInMagicLink: vi.fn(),
+      verifyBackupCode: vi.fn(),
+      verifyTwoFactorOTP: vi.fn(),
     },
   },
-  AuthAppConfig: {requireEmailVerification: true},
 }))
 vi.mock('@/services/facades/user-service-facade', () => ({
   getUserByEmailService: vi.fn(),
-  isEmailAvailableService: vi.fn(),
 }))
 
 import {headers} from 'next/headers'
@@ -40,53 +37,14 @@ import {getTranslations} from 'next-intl/server'
 import {auth} from '@/lib/better-auth/auth'
 import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
 import {EmailTransportError} from '@/lib/emails/transport'
-import {isEmailAvailableService} from '@/services/facades/user-service-facade'
+import {getUserByEmailService} from '@/services/facades/user-service-facade'
 
-import {registerMagicLinkAction, requestMagicLinkAction} from './action'
-
-const email = 'new-user@example.test'
-
-function registrationFormData() {
-  const formData = new FormData()
-  formData.set('email', email)
-  return formData
-}
-
-describe('registerMagicLinkAction', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(headers).mockResolvedValue(new Headers() as never)
-    vi.mocked(isEmailAvailableService).mockResolvedValue(true)
-    vi.mocked(auth.api.signInMagicLink).mockResolvedValue({status: true})
-  })
-
-  it('demande le lien puis redirige vers la confirmation', async () => {
-    await registerMagicLinkAction({success: false}, registrationFormData())
-
-    expect(auth.api.signInMagicLink).toHaveBeenCalledWith({
-      headers: expect.any(Headers),
-      body: {email, callbackURL: '/dashboard'},
-    })
-    expect(redirect).toHaveBeenCalledWith('/verify-request')
-  })
-
-  it('rend l’erreur d’envoi localisée quand Better Auth rejette', async () => {
-    vi.mocked(auth.api.signInMagicLink).mockRejectedValue(
-      new Error('provider refused')
-    )
-
-    const result = await registerMagicLinkAction(
-      {success: false},
-      registrationFormData()
-    )
-
-    expect(result).toEqual({
-      success: false,
-      message: 'registerMagicLink.sendError',
-    })
-    expect(redirect).not.toHaveBeenCalled()
-  })
-})
+import {
+  loginCredentialAction,
+  requestMagicLinkAction,
+  verifyBackupCodeAction,
+  verifyOTPAction,
+} from './action'
 
 describe('requestMagicLinkAction', () => {
   const requestFormData = (address: string, locale?: string) => {
@@ -131,7 +89,7 @@ describe('requestMagicLinkAction', () => {
       headers: expect.any(Headers),
       body: {
         email: 'membre@exemple.test',
-        callbackURL: '/dashboard',
+        callbackURL: '/login/destination',
         errorCallbackURL: '/login/lien-invalide',
         metadata: {locale: 'fr'},
       },
@@ -277,5 +235,198 @@ describe('requestMagicLinkAction', () => {
       errors: [{field: 'email', message: 'Auth.MagicLinkLogin.email.invalid'}],
     })
     expect(auth.api.signInMagicLink).not.toHaveBeenCalled()
+  })
+})
+
+describe('loginCredentialAction (s46b, décision E)', () => {
+  const loginFormData = (address = 'membre@exemple.test') => {
+    const formData = new FormData()
+    formData.set('email', address)
+    formData.set('password', 'mot-de-passe')
+    return formData
+  }
+
+  const jsonResponse = (status: number, body: unknown) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: {'Content-Type': 'application/json'},
+    })
+
+  const requestHeaders = new Headers({host: 'asso-a.test'})
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(headers).mockResolvedValue(requestHeaders as never)
+  })
+
+  it.each([
+    [
+      'compte inconnu',
+      jsonResponse(401, {
+        code: 'INVALID_EMAIL_OR_PASSWORD',
+        message: 'Invalid email or password',
+      }),
+    ],
+    [
+      'mauvais mot de passe',
+      jsonResponse(401, {
+        code: 'INVALID_EMAIL_OR_PASSWORD',
+        message: 'Invalid email or password',
+      }),
+    ],
+    [
+      'refus d’association',
+      jsonResponse(422, {
+        code: 'FAILED_TO_CREATE_SESSION',
+        message: 'Failed to create session',
+      }),
+    ],
+  ])('%s : rend le message d’identifiants invalides', async (_, response) => {
+    vi.mocked(auth.api.signInEmail).mockResolvedValue(response as never)
+
+    const result = await loginCredentialAction(
+      {success: false},
+      loginFormData()
+    )
+
+    expect(result).toEqual({
+      success: false,
+      message: 'AuthActions.login.invalidCredentials',
+    })
+    expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it('ne consulte pas le compte avant la connexion', async () => {
+    vi.mocked(auth.api.signInEmail).mockResolvedValue(
+      jsonResponse(401, {code: 'INVALID_EMAIL_OR_PASSWORD'}) as never
+    )
+
+    await loginCredentialAction({success: false}, loginFormData())
+
+    expect(getUserByEmailService).not.toHaveBeenCalled()
+  })
+
+  it('transmet les en-têtes de la requête et vise la route de passage', async () => {
+    vi.mocked(auth.api.signInEmail).mockResolvedValue(
+      jsonResponse(200, {redirect: false, token: 't'}) as never
+    )
+
+    await loginCredentialAction({success: false}, loginFormData())
+
+    expect(auth.api.signInEmail).toHaveBeenCalledWith({
+      headers: requestHeaders,
+      body: {
+        email: 'membre@exemple.test',
+        password: 'mot-de-passe',
+        callbackURL: '/login/destination',
+      },
+      asResponse: true,
+    })
+  })
+
+  it('redirige vers la route de passage après une connexion réussie', async () => {
+    vi.mocked(auth.api.signInEmail).mockResolvedValue(
+      jsonResponse(200, {redirect: false, token: 't'}) as never
+    )
+
+    await loginCredentialAction({success: false}, loginFormData())
+
+    expect(redirect).toHaveBeenCalledWith('/login/destination')
+  })
+
+  it('redirige un compte banni vers /auth-error avec le message traduit', async () => {
+    vi.mocked(auth.api.signInEmail).mockResolvedValue(
+      jsonResponse(403, {code: 'BANNED_USER', message: 'banned'}) as never
+    )
+    vi.mocked(getUserByEmailService).mockResolvedValue({
+      banned: true,
+      banReason: 'spam',
+      banExpires: null,
+    } as never)
+
+    await loginCredentialAction({success: false}, loginFormData())
+
+    const expected = [
+      'AuthActions.login.userBanned.base',
+      'AuthActions.login.userBanned.reason',
+      'AuthActions.login.userBanned.permanent',
+    ].join(' ')
+    expect(getUserByEmailService).toHaveBeenCalledWith('membre@exemple.test')
+    expect(redirect).toHaveBeenCalledWith(
+      `/auth-error?error=banned&message=${encodeURIComponent(expected)}`
+    )
+  })
+
+  it('ne révèle pas le bannissement sans le bon mot de passe', async () => {
+    vi.mocked(auth.api.signInEmail).mockResolvedValue(
+      jsonResponse(401, {code: 'INVALID_EMAIL_OR_PASSWORD'}) as never
+    )
+    vi.mocked(getUserByEmailService).mockResolvedValue({
+      banned: true,
+      banReason: 'spam',
+    } as never)
+
+    const result = await loginCredentialAction(
+      {success: false},
+      loginFormData()
+    )
+
+    expect(result).toEqual({
+      success: false,
+      message: 'AuthActions.login.invalidCredentials',
+    })
+    expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['otp', '/verify-request/otp'],
+    ['totp', '/verify-request/totp'],
+  ])(
+    'double authentification %s : redirige vers %s',
+    async (twoFactorType, path) => {
+      vi.mocked(auth.api.signInEmail).mockResolvedValue(
+        jsonResponse(200, {twoFactorRedirect: true}) as never
+      )
+      vi.mocked(getUserByEmailService).mockResolvedValue({
+        settings: {twoFactorType},
+      } as never)
+
+      await loginCredentialAction({success: false}, loginFormData())
+
+      expect(redirect).toHaveBeenCalledWith(path)
+    }
+  )
+})
+
+describe('double authentification — destination (s46b, décision F)', () => {
+  const codeFormData = () => {
+    const formData = new FormData()
+    formData.set('code', '123456')
+    return formData
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(headers).mockResolvedValue(new Headers() as never)
+  })
+
+  it('un code de sauvegarde valide mène à la route de passage', async () => {
+    vi.mocked(auth.api.verifyBackupCode).mockResolvedValue({
+      token: 't',
+    } as never)
+
+    await verifyBackupCodeAction({success: false}, codeFormData())
+
+    expect(redirect).toHaveBeenCalledWith('/login/destination')
+  })
+
+  it('un code OTP valide mène à la route de passage', async () => {
+    vi.mocked(auth.api.verifyTwoFactorOTP).mockResolvedValue(
+      new Response('{}', {status: 200}) as never
+    )
+
+    await verifyOTPAction({success: false}, codeFormData())
+
+    expect(redirect).toHaveBeenCalledWith('/login/destination')
   })
 })

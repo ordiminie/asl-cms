@@ -4,11 +4,16 @@ import {cacheLife} from 'next/cache'
 import {redirect} from 'next/navigation'
 import {cache} from 'react'
 
+import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {
   getAuthUser,
   getSessionActiveOrganizationId,
 } from '@/services/authentication/auth-service'
 import {hasRequiredRoles} from '@/services/authentication/auth-util'
+import {
+  PostLoginPath,
+  postLoginPathOf,
+} from '@/services/authorization/association-authorization'
 import {isUserAdmin} from '@/services/authorization/authorization-service'
 import {canManageUsers} from '@/services/authorization/user-authorization'
 import {AuthorizationError} from '@/services/errors/authorization-error'
@@ -155,4 +160,23 @@ export const getCurrentUserDal = async (): Promise<CurrentUserContext> => {
     )?.organization ?? null
 
   return {user, activeOrganization}
+}
+
+// ========================================
+// DESTINATION APRES CONNEXION (s46b)
+// ========================================
+
+/**
+ * Le chemin ou envoyer le compte qui vient de se connecter, selon son role et
+ * l'association du domaine appele ; rien sans session. Lu a la requete, sans
+ * cache : la session vient d'etre ouverte.
+ */
+export const getPostLoginPathDal = async (): Promise<
+  PostLoginPath | undefined
+> => {
+  const user = await getAuthUser()
+  if (!user) return undefined
+
+  const tenant = await getCurrentTenantDal()
+  return postLoginPathOf(user as User, tenant?.id)
 }
