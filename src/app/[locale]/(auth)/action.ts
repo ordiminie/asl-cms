@@ -154,8 +154,26 @@ const isBannedResponse = async (response: Response) => {
 const redirectToPostLoginPath = async (
   email: string | undefined
 ): Promise<never> => {
-  const path = email ? await getPostLoginPathOfAccountDal(email) : undefined
-  redirect(path ?? '/login')
+  redirect(await postLoginPathOfSignedInAccount(email))
+}
+
+/**
+ * La session est deja ouverte : un compte introuvable ou une lecture en echec
+ * ne renvoie pas vers `/login` mais vers l'espace membre, et se journalise
+ * (revue m7 de s46b).
+ */
+const postLoginPathOfSignedInAccount = async (email: string | undefined) => {
+  try {
+    const path = email ? await getPostLoginPathOfAccountDal(email) : undefined
+    if (path) return path
+    logger.error('[LOGIN] Compte introuvable apres une connexion reussie')
+  } catch (error) {
+    logger.error(
+      '[LOGIN] Lecture du compte en echec apres une connexion reussie',
+      {error}
+    )
+  }
+  return '/dashboard'
 }
 
 /** L'email du compte que Better Auth rend apres une verification 2FA. */

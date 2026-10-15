@@ -35,6 +35,7 @@ vi.mock('@/services/authentication/auth-service', () => ({
 }))
 vi.mock('@/app/dal/tenant-dal', () => ({getCurrentTenantDal: vi.fn()}))
 
+import {isRedirectError} from 'next/dist/client/components/redirect-error'
 import {headers} from 'next/headers'
 import {redirect} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
@@ -43,6 +44,7 @@ import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {auth} from '@/lib/better-auth/auth'
 import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
 import {EmailTransportError} from '@/lib/emails/transport'
+import {logger} from '@/lib/logger'
 import {POST_LOGIN_PATHS} from '@/services/authorization/association-authorization'
 import {getUserByEmailService} from '@/services/facades/user-service-facade'
 
@@ -325,7 +327,7 @@ describe('loginCredentialAction (s46b, décision E)', () => {
     ],
     [
       'refus d’association',
-      jsonResponse(422, {
+      jsonResponse(401, {
         code: 'FAILED_TO_CREATE_SESSION',
         message: 'Failed to create session',
       }),
@@ -523,6 +525,115 @@ describe('double authentification — destination (s46b, revue M1)', () => {
       expect(getUserByEmailService).toHaveBeenCalledWith('membre@exemple.test')
       expect(redirect).toHaveBeenCalledTimes(1)
       expect(redirect).toHaveBeenCalledWith(path)
+    }
+  )
+})
+
+/**
+ * Revue m7 : la session est deja ouverte quand la destination se calcule. Un
+ * compte introuvable ou une lecture qui echoue ne renvoie ni vers `/login` ni
+ * vers un message d'erreur, mais vers l'espace membre, et l'erreur est
+ * journalisee. La redirection de Next n'est pas avalee.
+ */
+describe('destination introuvable après une connexion réussie (s46b, revue m7)', () => {
+  const redirectSignal = new Error('NEXT_REDIRECT')
+  const signedIn = {email: 'membre@exemple.test', id: 'user-1'}
+
+  const loginForm = () => {
+    const formData = new FormData()
+    formData.set('email', 'membre@exemple.test')
+    formData.set('password', 'mot-de-passe')
+    return formData
+  }
+
+  const codeForm = () => {
+    const formData = new FormData()
+    formData.set('code', '123456')
+    return formData
+  }
+
+  const SIGNED_IN_ACTIONS = [
+    [
+      'mot de passe',
+      () => {
+        vi.mocked(auth.api.signInEmail).mockResolvedValue(
+          new Response(JSON.stringify({redirect: false, token: 't'}), {
+            status: 200,
+          }) as never
+        )
+        return loginCredentialAction({success: false}, loginForm())
+      },
+    ],
+    [
+      'code de sauvegarde',
+      () => {
+        vi.mocked(auth.api.verifyBackupCode).mockResolvedValue({
+          token: 't',
+          user: signedIn,
+        } as never)
+        return verifyBackupCodeAction({success: false}, codeForm())
+      },
+    ],
+    [
+      'code OTP',
+      () => {
+        vi.mocked(auth.api.verifyTwoFactorOTP).mockResolvedValue(
+          new Response(JSON.stringify({token: 't', user: signedIn}), {
+            status: 200,
+          }) as never
+        )
+        return verifyOTPAction({success: false}, codeForm())
+      },
+    ],
+  ] as const
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({host: 'asso-a.test'}) as never
+    )
+    vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantA)
+    vi.mocked(redirect).mockImplementation(() => {
+      throw redirectSignal
+    })
+    vi.mocked(isRedirectError).mockImplementation(
+      (error: unknown) => error === redirectSignal
+    )
+  })
+
+  afterEach(() => {
+    vi.mocked(redirect).mockReset()
+    vi.mocked(isRedirectError).mockReset().mockReturnValue(false)
+  })
+
+  it.each(SIGNED_IN_ACTIONS)(
+    '%s : compte introuvable, envoie sur l’espace membre et journalise',
+    async (_, act) => {
+      vi.mocked(getUserByEmailService).mockResolvedValue(undefined)
+
+      await expect(act()).rejects.toBe(redirectSignal)
+
+      expect(redirect).toHaveBeenCalledTimes(1)
+      expect(redirect).toHaveBeenCalledWith('/dashboard')
+      expect(POST_LOGIN_PATHS).toContain('/dashboard')
+      expect(logger.error).toHaveBeenCalled()
+    }
+  )
+
+  it.each(SIGNED_IN_ACTIONS)(
+    '%s : lecture du compte en échec, envoie sur l’espace membre et journalise',
+    async (_, act) => {
+      const failure = new Error('base indisponible')
+      vi.mocked(getUserByEmailService).mockRejectedValue(failure)
+
+      await expect(act()).rejects.toBe(redirectSignal)
+
+      expect(redirect).toHaveBeenCalledTimes(1)
+      expect(redirect).toHaveBeenCalledWith('/dashboard')
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({error: failure})
+      )
     }
   )
 })

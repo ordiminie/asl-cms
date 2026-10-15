@@ -288,16 +288,6 @@ export const searchUsersDao = async (
   return rows
 }
 
-/**
- * Vérifie si un email existe déjà dans la base de données
- */
-export const isEmailExistsDao = async (email: string): Promise<boolean> => {
-  const user = await getDb().query.user.findFirst({
-    where: eq(users.email, email),
-  })
-  return !!user
-}
-
 // CRUD pour les paramètres utilisateur
 export const createUserSettingsDao = async (
   settings: AddUserSettingsModel

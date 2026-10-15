@@ -173,6 +173,15 @@ Les décisions validées ci-dessus ne sont pas réécrites ; ce qui suit l'empor
   `src/lib/better-auth/email-verification-link.ts`, `email-verification-link.test.ts` et
   `email-verification-link.real-auth.test.ts` (sur un vrai Better Auth 1.7.1) ; branchement dans
   `src/lib/better-auth/auth.ts` et son test.
+- **Destination introuvable après connexion (constat m7).** Si, la session ouverte, le compte est
+  introuvable par son email ou que sa lecture échoue, les trois actions de connexion journalisent
+  l'erreur et redirigent vers `/dashboard` (l'espace membre, une page finale de `POST_LOGIN_PATHS`),
+  et non plus vers `/login` ou le message `connectionError`.
+- **Orphelins de la décision K (constat m3).** Retirés avec leur entrée de façade :
+  `isEmailAvailableService` et le DAO devenu orphelin `isEmailExistsDao` ; `getBillingContext` et
+  `getBillingReferenceId`, qu'il était seul à appeler ; `getSubscriptionByUserIdService` et
+  `updateSubscriptionForWebhookService`. Aucun appelant ni test ; les DAO encore appelés ailleurs
+  restent.
 
 ## Files touched
 

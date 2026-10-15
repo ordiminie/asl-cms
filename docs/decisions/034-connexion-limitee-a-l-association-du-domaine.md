@@ -84,14 +84,24 @@ connexion la rend avec le message d'un compte inconnu.
     (Server Action, comme `changeEmailAction`), Better Auth ne passe aucune `Request` et ce sont les
     en-têtes de la requête Next qui servent. Hôte sans association (le SuperAdmin sur la plateforme) ou
     hors requête : le lien reste sur la plateforme, comme avant — seul le SuperAdmin peut y ouvrir la
-    session. Prouvé sur un vrai Better Auth (`email-verification-link.real-auth.test.ts`).
+    session. Prouvé sur un vrai Better Auth, contrôle d'origine actif
+    (`email-verification-link.real-auth.test.ts`) : liens rebasés ouverts sur l'association (session et
+    adresse mises à jour) ; vérification ouverte sur la plateforme (adresse vérifiée puis 500 du contrôle
+    d'association) ; second lien du changement d'adresse ouvert sur la plateforme (403
+    `INVALID_CALLBACK_URL` du contrôle d'origine, adresse inchangée). Le 500 du changement d'adresse avant
+    correctif n'est plus rejoué par ce test.
   - **Réinitialisation du mot de passe** : rebasée de la même façon depuis la seconde revue de s46b
     (`sendResetPassword`, même fonction). Elle n'ouvre aucune session, mais son lien construit sur la
     plateforme renvoyait vers `/reset-password` de la plateforme (Better Auth 1.7.1 redirige vers le
     `callbackURL` résolu sur `BETTER_AUTH_URL`), puis vers `/login` de la plateforme, où le nouveau mot
     de passe était refusé à tout compte sauf le SuperAdmin. Rebasé, le `callbackURL` devient absolu sur
     l'association, accepté comme origine de confiance (ADR 022), et tout le parcours y reste. Prouvé sur
-    un vrai Better Auth dans le même fichier de test.
+    un vrai Better Auth dans le même fichier de test, contrôle d'origine actif
+    (`advanced.disableOriginCheck: false`, sans quoi Better Auth le saute sous `NODE_ENV=test`) : le lien
+    rebasé ouvert sur l'association redirige vers `/reset-password` de l'association avec son jeton ; le
+    lien brut redirige vers la plateforme ; demandé sur un hôte sans association, lien et retour restent
+    sur la plateforme. Le refus du nouveau mot de passe sur `/login` de la plateforme n'est pas rejoué par
+    ce test (il découle du contrôle d'association, couvert ailleurs).
   - **Lien OTP** de la double authentification : toujours construit sur `NEXT_PUBLIC_APP_URL`
     (`auth.ts`). Ouvert sur l'hôte de la plateforme, sa vérification est refusée. Dette connue (ADR 022,
     « Reste connu »), à traiter avec s12b.

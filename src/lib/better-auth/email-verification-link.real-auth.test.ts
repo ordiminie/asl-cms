@@ -1,20 +1,28 @@
 import {betterAuth} from 'better-auth'
 import {memoryAdapter} from 'better-auth/adapters/memory'
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {afterAll, beforeEach, describe, expect, it, vi} from 'vitest'
 
 /**
  * Sous jsdom, `TextEncoder` rend un `Uint8Array` d'un autre royaume que le
  * `Uint8Array` global : `jose`, qui signe les jetons de verification, le
  * refuse. Le contenu est recopie dans le `Uint8Array` global, avant que
- * `jose` ne cree son encodeur au chargement.
+ * `jose` ne cree son encodeur au chargement. L'environnement node de Vitest ne
+ * convient pas : le setup du projet client touche `window`. D'ou la
+ * restauration en fin de fichier.
  */
-vi.hoisted(() => {
-  class SameRealmTextEncoder extends TextEncoder {
+const {OriginalTextEncoder} = vi.hoisted(() => {
+  const OriginalTextEncoder = globalThis.TextEncoder
+  class SameRealmTextEncoder extends OriginalTextEncoder {
     encode(input?: string) {
       return new Uint8Array(super.encode(input))
     }
   }
   globalThis.TextEncoder = SameRealmTextEncoder
+  return {OriginalTextEncoder}
+})
+
+afterAll(() => {
+  globalThis.TextEncoder = OriginalTextEncoder
 })
 
 vi.mock('next/headers', () => ({headers: vi.fn()}))
@@ -40,6 +48,11 @@ import {verificationLinkOnAssociation} from './email-verification-link'
  * passe aux callbacks d'envoi, et le parcours complet du changement d'adresse
  * et de la verification d'email, avec le controle d'association (ADR 034),
  * et le retour du lien de reinitialisation du mot de passe.
+ *
+ * Le controle d'origine est force (`disableOriginCheck: false`) : sous
+ * `NODE_ENV=test`, Better Auth le saute sinon. Les `callbackURL` absolus sur
+ * l'association passent donc reellement par `trustedOriginsOf`, comme en
+ * production.
  */
 
 const ASSOCIATION_HOST = 'asso-a.test'
@@ -82,6 +95,7 @@ const createLocalAuth = () => {
     secret: 'local-test-secret-long-enough-for-better-auth',
     database: memoryAdapter(memoryDb),
     rateLimit: {enabled: false},
+    advanced: {disableOriginCheck: false},
     trustedOrigins: trustedOriginsOf,
     emailAndPassword: {
       enabled: true,
@@ -199,7 +213,7 @@ describe('liens de vérification sur un vrai Better Auth (revue M2)', () => {
     expect(memoryDb.user[0].email).toBe(NEW_EMAIL)
   })
 
-  it('sur l’hôte de la plateforme, la session est refusée et l’adresse ne change pas (le défaut corrigé)', async () => {
+  it('sur l’hôte de la plateforme, le retour vers l’association n’est pas une origine de confiance : 403, l’adresse ne change pas', async () => {
     const {localAuth, memoryDb, sent, sessionHeaders} = await signedInMember()
     await localAuth.api.changeEmail({
       headers: sessionHeaders,
@@ -209,7 +223,8 @@ describe('liens de vérification sur un vrai Better Auth (revue M2)', () => {
 
     const refused = await open(localAuth, sent[1].platformUrl, PLATFORM_HOST)
 
-    expect(refused.status).toBe(500)
+    expect(refused.status).toBe(403)
+    expect(await refused.json()).toMatchObject({code: 'INVALID_CALLBACK_URL'})
     expect(memoryDb.user[0].email).toBe(EMAIL)
   })
 

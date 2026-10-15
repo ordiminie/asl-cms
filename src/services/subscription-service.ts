@@ -86,7 +86,6 @@ import {isAuthAdmin} from './authorization/user-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationError} from './errors/validation-error'
 import {getUserOrganizationsService} from './organization-service'
-import {OrganizationRoleConst} from './types/domain/organization-types'
 import {User} from './types/domain/user-types'
 
 export const createSubscriptionService = async (params: CreateSubscription) => {
@@ -212,17 +211,6 @@ export const createSubscriptionFromStripeService = async (
   return subscription
 }
 
-export const getSubscriptionByUserIdService = async (userId: string) => {
-  const user = await getUserByIdDao(userId)
-  if (!user) {
-    throw new Error('User not found')
-  }
-
-  // Utilise referenceId (userId) pour la recherche car c'est l'identifiant Better Auth
-  const subscription = await getSubscriptionByUserIdDao(userId)
-  return subscription
-}
-
 export const getActiveSubscriptionsByUserIdService = async (userId: string) => {
   // Vérifier si l'utilisateur existe
   const user = await getUserByIdDao(userId)
@@ -316,121 +304,6 @@ export const initSubscriptionService = async (params: {
   const subscriptionId = await initSubscriptionDao(params)
 
   return subscriptionId
-}
-
-/**
- * Service spécialisé pour la mise à jour des subscriptions depuis les webhooks
- * Pas de vérification d'autorisation car les webhooks sont des sources trusted
- */
-export const updateSubscriptionForWebhookService = async (params: {
-  subscriptionId: string
-  referenceId: string
-  stripeCustomerId?: string
-}): Promise<Subscription> => {
-  // Validation simple des paramètres
-  if (!params.subscriptionId) {
-    throw new ValidationError('SubscriptionId is required')
-  }
-  if (!params.referenceId) {
-    throw new ValidationError('ReferenceId is required')
-  }
-
-  // Vérifier que la subscription existe
-  const existingSubscription = await getSubscriptionByIdDao(
-    params.subscriptionId
-  )
-  if (!existingSubscription) {
-    throw new ValidationError(
-      `Subscription with id ${params.subscriptionId} not found`
-    )
-  }
-
-  // Préparation des données à mettre à jour
-  const updateData: Partial<Parameters<typeof updateSubscriptionDao>[1]> = {
-    referenceId: params.referenceId,
-  }
-
-  // Ajouter stripeCustomerId si fourni
-  if (params.stripeCustomerId) {
-    updateData.stripeCustomerId = params.stripeCustomerId
-  }
-
-  // Mise à jour directe sans autorisation (webhook trusted)
-  const updatedSubscription = await updateSubscriptionDao(
-    params.subscriptionId,
-    updateData
-  )
-
-  if (!updatedSubscription) {
-    throw new Error('Failed to update subscription')
-  }
-
-  return updatedSubscription
-}
-
-/**
- * 🎯 Détermine le referenceId pour les subscriptions selon le mode de facturation
- */
-export async function getBillingReferenceId(
-  userId?: string,
-  organizationId?: string
-): Promise<string> {
-  // Si organizationId explicite fourni, l'utiliser en mode organization
-  if (organizationId && BILLING_MODE === BillingModes.ORGANIZATION) {
-    return organizationId
-  }
-
-  // Mode USER : utilise toujours l'userId
-  if (BILLING_MODE === BillingModes.USER) {
-    const user = userId ? {id: userId} : await getAuthUser()
-    if (!user?.id) {
-      throw new Error('User ID required for user billing mode')
-    }
-    return user.id
-  }
-
-  // Mode ORGANIZATION : récupère l'org par défaut de l'user
-  if (BILLING_MODE === BillingModes.ORGANIZATION) {
-    const user = userId ? {id: userId} : await getAuthUser()
-    if (!user?.id) {
-      throw new Error('User ID required to get organization')
-    }
-
-    // Récupérer la première organisation de l'utilisateur (ou celle créée automatiquement)
-    const organizations = await getUserOrganizationsService(user.id)
-    const defaultOrg =
-      organizations.find((org) => org.role === OrganizationRoleConst.owner) ||
-      organizations[0] // Cherche d'abord le rôle owner, sinon prend la première org
-
-    if (!defaultOrg) {
-      console.warn(
-        'No organization found for user : referenceId is user.id',
-        user.id
-      )
-      return user.id
-    }
-
-    return defaultOrg.organizationId
-  }
-
-  throw new Error(`Invalid billing mode: ${BILLING_MODE}`)
-}
-
-/**
- * 🏢 Récupère le contexte de facturation complet
- */
-export async function getBillingContext(
-  userId?: string,
-  organizationId?: string
-) {
-  const referenceId = await getBillingReferenceId(userId, organizationId)
-
-  return {
-    referenceId,
-    billingMode: BILLING_MODE,
-    isUserBilling: BILLING_MODE === BillingModes.USER,
-    isOrganizationBilling: BILLING_MODE === BillingModes.ORGANIZATION,
-  }
 }
 
 /**

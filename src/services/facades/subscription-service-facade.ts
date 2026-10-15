@@ -13,14 +13,8 @@ export const isPlanExistService =
   subscriptionServiceInterceptor.isPlanExistService
 export const getActiveSubscriptionsByUserEmailService =
   subscriptionServiceInterceptor.getActiveSubscriptionsByUserEmailService
-export const getSubscriptionByUserIdService =
-  subscriptionServiceInterceptor.getSubscriptionByUserIdService
 export const initSubscriptionService =
   subscriptionServiceInterceptor.initSubscriptionService
-export const updateSubscriptionForWebhookService =
-  subscriptionServiceInterceptor.updateSubscriptionForWebhookService
-export const getBillingContext =
-  subscriptionServiceInterceptor.getBillingContext
 
 // ========================================
 // SERVICES DE PLANS
