@@ -5,6 +5,7 @@ import {z} from 'zod'
 import {env} from '@/env'
 
 import {
+  AuthMethodSchema,
   clientSchema,
   EnabledPageSchema,
   EnabledPagesSchema,
@@ -120,5 +121,26 @@ describe('NEXT_PUBLIC_ENABLED_PAGES — familles du compte hérité retirées (s
 
   it('ne connaît plus que none, account et admin', () => {
     expect(EnabledPageSchema.options).toEqual(['none', 'account', 'admin'])
+  })
+})
+
+describe('Méthodes d’authentification — ni Apple ni GitHub (s46b, décision L)', () => {
+  it.each(['apple', 'github'])('refuse la méthode %s', (method) => {
+    expect(AuthMethodSchema.safeParse(method).success).toBe(false)
+    expect(
+      clientSchema.NEXT_PUBLIC_AUTH_METHODS.safeParse(`credential,${method}`)
+        .success
+    ).toBe(false)
+  })
+
+  it('garde Google comme valeur valide, pour la V2', () => {
+    expect(AuthMethodSchema.safeParse('google').success).toBe(true)
+  })
+
+  it('n’active par défaut que le mot de passe et le lien magique', () => {
+    expect(clientSchema.NEXT_PUBLIC_AUTH_METHODS.parse(undefined)).toEqual([
+      'credential',
+      'magiclink',
+    ])
   })
 })

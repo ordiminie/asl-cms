@@ -4,16 +4,22 @@ import {cacheLife} from 'next/cache'
 import {redirect} from 'next/navigation'
 import {cache} from 'react'
 
+import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {
   getAuthUser,
   getSessionActiveOrganizationId,
 } from '@/services/authentication/auth-service'
 import {hasRequiredRoles} from '@/services/authentication/auth-util'
+import {
+  PostLoginPath,
+  postLoginPathOf,
+} from '@/services/authorization/association-authorization'
 import {isUserAdmin} from '@/services/authorization/authorization-service'
 import {canManageUsers} from '@/services/authorization/user-authorization'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {
   getAllUsersWithPaginationService,
+  getUserByEmailService,
   getUserByIdService,
   getUsersByOrganizationService,
 } from '@/services/facades/user-service-facade'
@@ -155,4 +161,44 @@ export const getCurrentUserDal = async (): Promise<CurrentUserContext> => {
     )?.organization ?? null
 
   return {user, activeOrganization}
+}
+
+// ========================================
+// DESTINATION APRES CONNEXION (s46b)
+// ========================================
+
+/** La destination d'un compte sur le domaine appele. */
+const postLoginPathOnRequestDomain = async (
+  user: User
+): Promise<PostLoginPath> => {
+  const tenant = await getCurrentTenantDal()
+  return postLoginPathOf(user, tenant?.id)
+}
+
+/**
+ * Le chemin ou envoyer le compte qui vient de se connecter, selon son role et
+ * l'association du domaine appele ; rien sans session. Lu a la requete, sans
+ * cache : la session vient d'etre ouverte.
+ */
+export const getPostLoginPathDal = async (): Promise<
+  PostLoginPath | undefined
+> => {
+  const user = await getAuthUser()
+  if (!user) return undefined
+
+  return postLoginPathOnRequestDomain(user as User)
+}
+
+/**
+ * La meme destination, pour une Server Action qui vient d'ouvrir la session :
+ * le cookie n'est pas encore dans la requete, le compte est lu par son email.
+ * Rien pour un compte introuvable. Sans cache.
+ */
+export const getPostLoginPathOfAccountDal = async (
+  email: string
+): Promise<PostLoginPath | undefined> => {
+  const user = await getUserByEmailService(email)
+  if (!user) return undefined
+
+  return postLoginPathOnRequestDomain(user)
 }

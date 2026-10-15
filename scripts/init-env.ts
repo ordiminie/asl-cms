@@ -154,7 +154,7 @@ function getVariableExample(varName: string): string {
     GOOGLE_CLIENT_ID: 'example-client-id.apps.googleusercontent.com',
     GOOGLE_CLIENT_SECRET: 'GOCSPX-example_client_secret_replace',
     NEXT_PUBLIC_ENABLED_PAGES: 'account,admin',
-    NEXT_PUBLIC_AUTH_METHODS: 'credential,magiclink,google',
+    NEXT_PUBLIC_AUTH_METHODS: 'credential,magiclink',
     NEXT_PUBLIC_GOOGLE_ANALYTICS_ID: 'GA_EXAMPLE_ID',
     NEXT_PUBLIC_API_URL: 'https://localhost:3000',
     OPENAI_API_KEY: 'sk-example_openai_key_replace_with_real',
@@ -254,7 +254,7 @@ function generateDefaultValue(varName: string): string {
 
   // Listes de méthodes
   if (varName.includes('AUTH_METHODS')) {
-    return 'credential,magiclink,google'
+    return 'credential,magiclink'
   }
   if (varName.includes('ENABLED_PAGES')) {
     return 'account,admin'

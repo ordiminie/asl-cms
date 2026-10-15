@@ -8,13 +8,9 @@ import {
 import {BillingModes} from './services/types/domain/subscription-types'
 
 // Schémas redéfinis ici pour éviter la dépendance circulaire
-export const AuthMethodSchema = z.enum([
-  'credential',
-  'magiclink',
-  'google',
-  'apple',
-  'github',
-])
+// Mot de passe et lien magique seulement (s46b). Google reste valide : configure cote serveur,
+// sans ecran, pour la V2.
+export const AuthMethodSchema = z.enum(['credential', 'magiclink', 'google'])
 export type AuthMethod = z.infer<typeof AuthMethodSchema>
 
 export const EnabledPageSchema = z.enum(['none', 'account', 'admin'])
@@ -179,10 +175,11 @@ export const clientSchema = {
   // Méthodes d'authentification
   NEXT_PUBLIC_AUTH_METHODS: z
     .string()
-    .default('credential,magiclink,google')
+    .default('credential,magiclink')
     .transform((val) =>
       val.split(',').map((method) => method.trim() as AuthMethod)
-    ),
+    )
+    .pipe(z.array(AuthMethodSchema)),
 
   // Pages optionnelles activées
   NEXT_PUBLIC_ENABLED_PAGES: EnabledPagesSchema,

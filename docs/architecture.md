@@ -463,7 +463,32 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   adresse de retour vers une autre origine est ramenée à son chemin). Le logo de l'email est construit sur
   la même origine.
 - **Non-membre = inconnu** : un compte sans appartenance à l'association du domaine appelé ne reçoit rien,
-  après le décompte du quota (la durée ne trahit rien) — même écran B.
+  après le décompte du quota (la durée ne trahit rien) — même écran B. La règle est
+  `canOpenSessionOn` (`association-membership.ts`) : le SuperAdmin reçoit un lien sur tout domaine (s46b).
+- **Contrôle à l'ouverture de session** (s46b, ADR 034) : le plugin local `associationSessionGuard()`
+  (`association-session-guard.ts`), **en tête** du tableau `plugins` — avant `admin()`, dont le contrôle de
+  bannissement révélerait sinon un compte d'une autre association —, porte un seul hook
+  `session.create.before`, traversé par les quatre modes (mot de passe, double authentification, lien
+  magique, Google). Il lit `context.headers ?? context.request.headers`, résout l'association du domaine,
+  relit le compte et renvoie `false` si `canOpenSessionOn` refuse : aucune session, et l'erreur générique
+  de chaque mode, rendue comme celle d'un compte inconnu. **Fermé par défaut** : contexte nul, en-têtes
+  absents ou domaine sans association refusent tout compte sauf le SuperAdmin. Toute action qui ouvre une
+  session par `auth.api.*` doit donc transmettre les `headers` de la requête.
+- **Inscription fermée** (s46b) : `disableSignUp` sur le mot de passe, sur Google (configuré, sans écran)
+  et sur le lien magique ; plus de `/register`, et le webhook Stripe ne crée plus aucun compte.
+- **Destination après connexion** (s46b) : `postLoginPathOf` rend une **page finale** (`POST_LOGIN_PATHS`) :
+  SuperAdmin → `/admin`, bureau et Présidence de l'association du domaine → `/bureau/pages`, tout autre
+  compte → `/dashboard`. Jamais une adresse qui redirige encore (Route Handler, source de `redirects()`) :
+  après une **Server Action**, Next suit la chaîne côté serveur et laisse la barre d'adresse sur la
+  première adresse (garde : `post-login-paths.test.ts`).
+  - **Actions du mot de passe et de la double authentification** : elles calculent la destination
+    elles-mêmes (`getPostLoginPathOfAccountDal`, compte lu par son email — le cookie de la session qui
+    vient de s'ouvrir n'est pas encore dans la requête) et redirigent directement vers la page finale.
+  - **Route de passage `/login/destination`** : un Route Handler, pour les connexions par une vraie
+    navigation du navigateur (`callbackURL` du lien magique, vérification d'email, navigation client des
+    écrans OTP et TOTP). Il lit la session et l'association du domaine (`getPostLoginPathDal`) et rend un
+    **307** relatif vers la même page finale ; sans session → `/login`. `/bureau` reste redirigé vers
+    `/bureau/pages` par `next.config.ts`.
 - **`trustedOrigins` est une fonction** (`trustedOriginsOf`) : la liste `BETTER_AUTH_TRUSTED_ORIGINS`, plus
   l'origine de l'association servie par l'hôte de la requête, lue en base à chaque requête. Une nouvelle
   association est reconnue sans redéploiement ; aucune origine à joker n'est produite (un domaine portant
@@ -476,7 +501,16 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
 - **Client navigateur** (`auth-client.ts`) sans `baseURL` : Better Auth prend l'origine de la page.
 - **Reste connu** : les pages héritées du groupe `(app)` (`account/organizations`, `team/[slug]`,
   `activeOrganizationId`) ne sont pas scopées au domaine — un membre de A et B connecté sur A peut y lire B.
-  Les liens OTP (2FA) et d'invitation (s15) sont encore construits sur `NEXT_PUBLIC_APP_URL`. **À vérifier
+  Les liens OTP (2FA) et d'invitation (s15) sont encore construits sur `NEXT_PUBLIC_APP_URL` : depuis s46b,
+  un lien OTP ouvert sur l'hôte de la plateforme y est refusé par le contrôle d'ouverture de session (ADR
+  034). Le callback de Google est sur l'hôte de la plateforme : il n'y ouvre de session qu'au SuperAdmin
+  (la V2 devra en donner un par domaine). Les liens de **vérification d'email**, de **changement
+  d'adresse** et de **réinitialisation du mot de passe**, eux, sont couverts depuis s46b :
+  `verificationLinkOnAssociation` (`email-verification-link.ts`) les rebase sur l'origine de l'association du domaine appelé, comme le
+  lien magique ; l'hôte vient de la `Request` passée par Better Auth (appel HTTP), sinon des en-têtes de
+  la requête Next (appel direct `auth.api.*` depuis une Server Action, où Better Auth 1.7.1 ne passe aucune
+  `Request`). Demandés depuis un hôte sans association (le SuperAdmin sur la plateforme) ou hors requête,
+  ils restent sur la plateforme : seul le SuperAdmin peut y ouvrir la session qu'ils créent. **À vérifier
   en s12b** : derrière le reverse proxy du VPS, `Host` et `x-forwarded-host` (Better Auth n'honore ce
   dernier qu'avec `advanced.trustedProxyHeaders`, non activé) et le protocole résolu, dont dépend le
   préfixe `__Secure-` du cookie lu par `src/proxy.ts`.

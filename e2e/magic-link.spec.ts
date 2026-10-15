@@ -21,6 +21,10 @@ import {Client} from 'pg'
  * apparus pendant cet essai (différence de la boîte avant / après), les
  * adresses inconnues sont uniques, et le jeton reculé en base est celui de
  * l'essai. `localhost` sert TechCorp Solutions (voir tenant-isolation).
+ *
+ * Depuis s46b, le lien mène à la route de passage `/login/destination`, qui
+ * envoie chaque compte vers la destination de son rôle : le bureau et la
+ * Présidence vers `/bureau/pages`, les membres vers `/dashboard`.
  */
 
 const PORT = process.env.PLAYWRIGHT_PORT ?? '3000'
@@ -30,7 +34,10 @@ const TENANT_A = `http://localhost:${PORT}`
 const TENANT_B = `http://127.0.0.1:${PORT}`
 const TENANT_B_SLUG = 'marketing-pro'
 
+/** Présidence de TechCorp : arrive sur le back-office de l'association. */
 const KNOWN_ADDRESS = 'user-owner@gmail.com'
+const BOARD_DESTINATION = '/bureau/pages'
+const MEMBER_DESTINATION = '/dashboard'
 const TENANT_A_SLUG = 'techcorp-solutions'
 const TENANT_A_NAME = 'TechCorp Solutions'
 
@@ -283,6 +290,18 @@ const linkOf = (message: OutboxMessage) => {
   return link as string
 }
 
+/** Le même lien, servi et rappelé sur `to` au lieu de `from`. */
+const onOrigin = (link: string, from: string, to: string) => {
+  const moved = new URL(link.replace(from, to))
+  for (const param of ['callbackURL', 'errorCallbackURL']) {
+    const callback = moved.searchParams.get(param)
+    if (callback?.startsWith(from)) {
+      moved.searchParams.set(param, callback.replace(from, to))
+    }
+  }
+  return moved.toString()
+}
+
 const expectInvalidLinkScreen = async (page: Page) => {
   await expect(page).toHaveURL(/\/login\/lien-invalide/)
   await expect(
@@ -355,7 +374,7 @@ test.describe('connexion par lien — s03', () => {
     // Critère 2 : le lien ouvre une session valide...
     const link = linkOf(message)
     await page.goto(link)
-    await expect(page).toHaveURL(/\/dashboard/, {timeout: 15_000})
+    await expect(page).toHaveURL(/\/bureau\/pages/, {timeout: 15_000})
     const cookies = await page.context().cookies()
     expect(
       cookies.some((cookie) => cookie.name.includes('session_token'))
@@ -421,7 +440,7 @@ test.describe('connexion par lien — s03', () => {
     expect(token).toBeTruthy()
     await page.goto(
       `${TENANT_A}/api/auth/magic-link/verify?token=${token}` +
-        `&callbackURL=%2Fdashboard&errorCallbackURL=%2Flogin%2Flien-invalide`
+        `&callbackURL=%2Flogin%2Fdestination&errorCallbackURL=%2Flogin%2Flien-invalide`
     )
     await expect(page).toHaveURL(/\/login\/lien-invalide/)
     expect(await userCount(unknown)).toBe(0)
@@ -439,7 +458,7 @@ test.describe('connexion par lien — s03', () => {
     await expectInvalidLinkScreen(page)
 
     await page.goto(second)
-    await expect(page).toHaveURL(/\/dashboard/, {timeout: 15_000})
+    await expect(page).toHaveURL(/\/bureau\/pages/, {timeout: 15_000})
     await page.context().close()
   })
 
@@ -450,7 +469,7 @@ test.describe('connexion par lien — s03', () => {
       `${TENANT_A}/api/auth/sign-in/magic-link`,
       {
         headers: {origin: TENANT_A},
-        data: {email: KNOWN_ADDRESS, callbackURL: '/dashboard'},
+        data: {email: KNOWN_ADDRESS, callbackURL: '/login/destination'},
       }
     )
 
@@ -520,24 +539,27 @@ test.describe('connexion par lien — s03', () => {
         cookie.name.includes('session_token')
       )
 
-    /** Ouvre le lien reçu sur `origin` et vérifie qu'il y ouvre la session. */
+    /**
+     * Ouvre le lien reçu sur `origin` et vérifie qu'il y ouvre la session, à
+     * la destination du rôle (s46b).
+     */
     const expectSessionOn = async (
       page: Page,
       message: OutboxMessage,
       origin: string,
-      otherOrigin: string
+      otherOrigin: string,
+      destination: string
     ) => {
       const link = linkOf(message)
       expect(link.startsWith(`${origin}/`)).toBe(true)
       expect(new URL(link).searchParams.get('callbackURL')).toBe(
-        `${origin}/dashboard`
+        `${origin}/login/destination`
       )
 
       await page.goto(link)
-      await expect(page).toHaveURL(
-        new RegExp(`^${origin.replaceAll('.', '\\.')}/.*dashboard`),
-        {timeout: 15_000}
-      )
+      await expect(page).toHaveURL(`${origin}${destination}`, {
+        timeout: 15_000,
+      })
       expect(await sessionCookiesOn(page, origin)).toHaveLength(1)
       expect(await sessionCookiesOn(page, otherOrigin)).toHaveLength(0)
     }
@@ -556,7 +578,13 @@ test.describe('connexion par lien — s03', () => {
         TENANT_B
       )
 
-      await expectSessionOn(page, message, TENANT_B, TENANT_A)
+      await expectSessionOn(
+        page,
+        message,
+        TENANT_B,
+        TENANT_A,
+        BOARD_DESTINATION
+      )
       await page.context().close()
     })
 
@@ -566,7 +594,13 @@ test.describe('connexion par lien — s03', () => {
       const page = await freshPage(browser)
       const message = await requestLinkMessage(page, KNOWN_ADDRESS, TENANT_A)
 
-      await expectSessionOn(page, message, TENANT_A, TENANT_B)
+      await expectSessionOn(
+        page,
+        message,
+        TENANT_A,
+        TENANT_B,
+        BOARD_DESTINATION
+      )
       await page.context().close()
     })
 
@@ -577,7 +611,7 @@ test.describe('connexion par lien — s03', () => {
 
       const onA = await freshPage(browser)
       const fromA = await requestLinkMessage(onA, address, TENANT_A)
-      await expectSessionOn(onA, fromA, TENANT_A, TENANT_B)
+      await expectSessionOn(onA, fromA, TENANT_A, TENANT_B, MEMBER_DESTINATION)
 
       // Critère 2 : la session ouverte sur A n'ouvre pas l'espace de B.
       await onA.goto(`${TENANT_B}/bureau`)
@@ -586,7 +620,7 @@ test.describe('connexion par lien — s03', () => {
 
       const onB = await freshPage(browser)
       const fromB = await requestLinkMessage(onB, address, TENANT_B)
-      await expectSessionOn(onB, fromB, TENANT_B, TENANT_A)
+      await expectSessionOn(onB, fromB, TENANT_B, TENANT_A, BOARD_DESTINATION)
       await onB.context().close()
     })
 
@@ -599,6 +633,28 @@ test.describe('connexion par lien — s03', () => {
 
       await expect(page.getByTestId('magic-link-sent')).toBeVisible()
       expect(newMessagesTo(before, address)).toHaveLength(0)
+      await page.context().close()
+    })
+
+    /**
+     * s46b, critère 2 — le jeton émis sur A ne vaut rien sur B. L'hôte **et**
+     * les URL de rappel sont réécrits vers B : le refus vient du contrôle à
+     * l'ouverture de session (ADR 034), pas d'une origine non reconnue.
+     */
+    test('membre de A : un lien émis sur A et ouvert sur B n’ouvre aucune session', async ({
+      browser,
+    }) => {
+      const address = 'user@gmail.com'
+      const page = await freshPage(browser)
+      const message = await requestLinkMessage(page, address, TENANT_A)
+
+      await page.goto(onOrigin(linkOf(message), TENANT_A, TENANT_B))
+
+      await expect(page).toHaveURL(/\/login\/lien-invalide/, {
+        timeout: 15_000,
+      })
+      expect(await sessionCookiesOn(page, TENANT_B)).toHaveLength(0)
+      expect(await sessionCookiesOn(page, TENANT_A)).toHaveLength(0)
       await page.context().close()
     })
   })

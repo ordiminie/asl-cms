@@ -6,55 +6,28 @@ import {redirect} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 import {z} from 'zod'
 
+import {getPostLoginPathOfAccountDal} from '@/app/dal/user-dal'
 import {
   authLoginFormSchema,
-  authMagicLinkFormSchema,
-  authRegisterFormSchema,
   createMagicLinkRequestSchema,
 } from '@/components/features/auth/auth-form-validation'
-import {AuthMethod, env} from '@/env'
-import {auth, AuthAppConfig} from '@/lib/better-auth/auth'
+import {env} from '@/env'
+import {auth} from '@/lib/better-auth/auth'
 import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
 import {isEmailTransportError} from '@/lib/emails/transport'
 import {buildBannedMessage, isUserBanned} from '@/lib/helper/auth-helper'
 import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
 import {logger} from '@/lib/logger'
-import {
-  getUserByEmailService,
-  isEmailAvailableService,
-} from '@/services/facades/user-service-facade'
-//import {APIError} from 'better-auth'
+import {getUserByEmailService} from '@/services/facades/user-service-facade'
 
 type LoginValidationError = {
   field: keyof z.infer<typeof authLoginFormSchema>
   message: string
 }
 
-type RegisterValidationError = {
-  field: keyof z.infer<typeof authRegisterFormSchema>
-  message: string
-}
-
-type MagicLinkValidationError = {
-  field: keyof z.infer<typeof authMagicLinkFormSchema>
-  message: string
-}
-
 type LoginFormState = {
   success: boolean
   errors?: LoginValidationError[]
-  message?: string
-}
-
-type RegisterFormState = {
-  success: boolean
-  errors?: RegisterValidationError[]
-  message?: string
-}
-
-type MagicLinkFormState = {
-  success: boolean
-  errors?: MagicLinkValidationError[]
   message?: string
 }
 
@@ -111,66 +84,40 @@ export async function loginCredentialAction(
 
     const {email, password} = validationResult.data
 
-    // 2. verification de l'email en bdd (optionel)
-    const user = await getUserByEmailService(email)
-
-    if (!user) {
-      return {
-        success: false,
-        message: t('userNotFound'),
-      }
-    }
-
-    if (isUserBanned(user)) {
-      const message = buildBannedMessage(user, {
-        base: t('userBanned.base'),
-        reason: ({reason}) => t('userBanned.reason', {reason}),
-        expires: ({date, time}) => t('userBanned.expires', {date, time}),
-        permanent: t('userBanned.permanent'),
-      })
-      redirect(
-        `/auth-error?error=banned&message=${encodeURIComponent(message)}`
-      )
-    }
-
-    const twoFactorType = user.settings?.twoFactorType
-
-    // Login Credential
+    // Aucune consultation du compte avant la connexion : compte inconnu,
+    // mauvais mot de passe et refus d'association rendent le meme message
+    // (s46b, ADR 034). Les en-tetes portent le domaine appele, que le
+    // controle d'ouverture de session lit.
     const response = await auth.api.signInEmail({
+      headers: await headers(),
       body: {
         email,
         password: password ?? '',
-        callbackURL: '/dashboard',
+        callbackURL: '/login/destination',
       },
-      asResponse: true, // returns a response object instead of data
+      asResponse: true,
     })
 
     if (!response.ok) {
+      if (await isBannedResponse(response)) {
+        await redirectBannedUser(email, t)
+      }
       return {
         success: false,
         message: t('invalidCredentials'),
       }
     }
 
-    let twoFactorRedirect
-    let responseData
-    try {
-      responseData = await response.json()
-      twoFactorRedirect = responseData.twoFactorRedirect
-    } catch {
-      twoFactorRedirect = false
-    }
-
+    const twoFactorRedirect = await isTwoFactorRedirect(response)
     if (!twoFactorRedirect) {
-      //CAS Sans 2FA
-      redirect(response.headers.get('Location') ?? responseData?.url ?? '/404') //callbackURL
+      return await redirectToPostLoginPath(email)
     } else {
-      //CAS Avec 2FA - Rediriger vers la page appropriée
-      if (twoFactorType === 'otp') {
-        redirect('/verify-request/otp')
-      } else {
-        redirect('/verify-request/totp')
-      }
+      const user = await getUserByEmailService(email)
+      redirect(
+        user?.settings?.twoFactorType === 'otp'
+          ? '/verify-request/otp'
+          : '/verify-request/totp'
+      )
     }
   } catch (error) {
     if (isRedirectError(error)) {
@@ -181,6 +128,84 @@ export async function loginCredentialAction(
       message: t('connectionError'),
     }
   }
+}
+
+type LoginTranslator = Awaited<
+  ReturnType<typeof getTranslations<'AuthActions.login'>>
+>
+
+/** Le refus du plugin `admin()` pour un compte banni (403 `BANNED_USER`). */
+const isBannedResponse = async (response: Response) => {
+  if (response.status !== 403) return false
+  try {
+    const body = await response.clone().json()
+    return body?.code === 'BANNED_USER'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Redirige le compte qui vient d'ouvrir sa session vers sa **page finale**
+ * (revue M1 de s46b). Pas vers `/login/destination` : apres une Server Action,
+ * Next suit cote serveur la chaine de redirections et laisse la barre
+ * d'adresse sur la premiere adresse.
+ */
+const redirectToPostLoginPath = async (
+  email: string | undefined
+): Promise<never> => {
+  redirect(await postLoginPathOfSignedInAccount(email))
+}
+
+/**
+ * La session est deja ouverte : un compte introuvable ou une lecture en echec
+ * ne renvoie pas vers `/login` mais vers l'espace membre, et se journalise
+ * (revue m7 de s46b).
+ */
+const postLoginPathOfSignedInAccount = async (email: string | undefined) => {
+  try {
+    const path = email ? await getPostLoginPathOfAccountDal(email) : undefined
+    if (path) return path
+    logger.error('[LOGIN] Compte introuvable apres une connexion reussie')
+  } catch (error) {
+    logger.error(
+      '[LOGIN] Lecture du compte en echec apres une connexion reussie',
+      {error}
+    )
+  }
+  return '/dashboard'
+}
+
+/** L'email du compte que Better Auth rend apres une verification 2FA. */
+const signedInEmailOf = (body: unknown): string | undefined => {
+  const email = (body as {user?: {email?: unknown}} | null)?.user?.email
+  return typeof email === 'string' ? email : undefined
+}
+
+const isTwoFactorRedirect = async (response: Response) => {
+  try {
+    const body = await response.json()
+    return Boolean(body?.twoFactorRedirect)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Le bannissement n'est connu qu'apres un mot de passe correct, sur le
+ * domaine de l'association du compte : le message traduit est alors construit
+ * comme avant s46b.
+ */
+const redirectBannedUser = async (email: string, t: LoginTranslator) => {
+  const user = await getUserByEmailService(email)
+  if (!user || !isUserBanned(user)) return
+  const message = buildBannedMessage(user, {
+    base: t('userBanned.base'),
+    reason: ({reason}) => t('userBanned.reason', {reason}),
+    expires: ({date, time}) => t('userBanned.expires', {date, time}),
+    permanent: t('userBanned.permanent'),
+  })
+  redirect(`/auth-error?error=banned&message=${encodeURIComponent(message)}`)
 }
 
 export type MagicLinkRequestState =
@@ -232,7 +257,7 @@ export async function requestMagicLinkAction(
       headers: await headers(),
       body: {
         email: validation.data.email,
-        callbackURL: '/dashboard',
+        callbackURL: '/login/destination',
         errorCallbackURL: '/login/lien-invalide',
         metadata: {locale},
       },
@@ -247,269 +272,6 @@ export async function requestMagicLinkAction(
 
   await waitUntil(deadline)
   return result
-}
-
-/**
- * Action d'inscription d'un nouvel utilisateur
- */
-export async function registerCredentialAction(
-  prevState: RegisterFormState,
-  formData: FormData
-): Promise<RegisterFormState> {
-  const t = await getTranslations('AuthActions.register')
-
-  // Vérifier si credential est activé
-  if (!env.NEXT_PUBLIC_AUTH_METHODS.includes('credential')) {
-    return {
-      success: false,
-      message: 'Credential authentication is not enabled',
-    }
-  }
-
-  // 1. Validation server  Zod des données du formulaire
-  const validationResult = authRegisterFormSchema.safeParse({
-    name: formData.get('name'),
-    email: formData.get('email')?.toString().toLowerCase(),
-    password: formData.get('password'),
-    confirmPassword: formData.get('confirmPassword'),
-  })
-
-  if (!validationResult.success) {
-    const validationErrors: RegisterValidationError[] =
-      validationResult.error.issues.map((err) => ({
-        field: err.path[0] as keyof z.infer<typeof authRegisterFormSchema>,
-        message: err.message,
-      }))
-    return {
-      success: false,
-      message: t('validationError'),
-      errors: validationErrors,
-    }
-  }
-
-  const {name, email, password} = validationResult.data
-
-  // 2. Vérifier si l'email est disponible
-  const isEmailAvailable = await isEmailAvailableService(email)
-  if (!isEmailAvailable) {
-    return {
-      success: false,
-      errors: [
-        {
-          field: 'email',
-          message: t('emailAlreadyUsed'),
-        },
-      ],
-    }
-  }
-
-  // 3. creation de l'utilisateur avec better auth
-  const response = await auth.api.signUpEmail({
-    body: {
-      name,
-      email,
-      password: password ?? '',
-    },
-    asResponse: true,
-  })
-
-  if (!response.ok && response.status !== 302) {
-    return {
-      success: false,
-      message: t('userCreationError'),
-    }
-  }
-
-  try {
-    if (!AuthAppConfig.requireEmailVerification) {
-      const response = await auth.api.signInEmail({
-        headers: await headers(),
-        body: {
-          email,
-          password,
-          rememberMe: true,
-        },
-        asResponse: true,
-      })
-
-      if (!response.ok && response.status !== 302) {
-        return {
-          success: false,
-          message: t('invalidCredentials'),
-        }
-      }
-      redirect(response.headers.get('Location') ?? '/404')
-    }
-
-    redirect('/verify-request')
-  } catch (error) {
-    if (isRedirectError(error)) {
-      throw error
-    }
-
-    // Si l'erreur est une erreur technique generique
-    return {
-      success: false,
-      message:
-        error instanceof Error
-          ? `Error technique : ${error.message}`
-          : t('accountCreationError'),
-      errors: [],
-    }
-  }
-}
-
-/**
- * Action pour l'inscription avec un provider OAuth (Google, Apple)
- */
-export async function loginProviderAction(
-  provider:
-    | 'google'
-    | 'apple'
-    | 'github'
-    | 'discord'
-    | 'facebook'
-    | 'twitter'
-    | 'linkedin'
-): Promise<LoginFormState> {
-  const t = await getTranslations('AuthActions.loginProvider')
-
-  // Vérifier si le provider est activé (seulement pour google et apple pour l'instant)
-  if (!env.NEXT_PUBLIC_AUTH_METHODS.includes(provider as AuthMethod)) {
-    return {
-      success: false,
-      message: `${provider} authentication is not enabled`,
-    }
-  }
-
-  try {
-    const response = await auth.api.signInSocial({
-      headers: await headers(),
-      body: {
-        provider,
-        callbackURL: '/dashboard',
-      },
-    })
-    if (response.url) {
-      redirect(response.url)
-    }
-    return {
-      success: true,
-      message: t('redirecting'),
-    }
-  } catch (error) {
-    if (isRedirectError(error)) {
-      throw error
-    }
-    return {
-      success: false,
-      message:
-        error instanceof Error
-          ? `Error technique : ${error.message}`
-          : t('connectionError'),
-      errors: [],
-    }
-  }
-}
-
-/**
- * Action d'inscription d'un nouvel utilisateur
- */
-export async function registerMagicLinkAction(
-  prevState: MagicLinkFormState,
-  formData: FormData
-): Promise<MagicLinkFormState> {
-  const t = await getTranslations('AuthActions.registerMagicLink')
-
-  // Vérifier si magiclink est activé
-  if (!env.NEXT_PUBLIC_AUTH_METHODS.includes('magiclink')) {
-    return {
-      success: false,
-      message: 'Magic link authentication is not enabled',
-    }
-  }
-
-  // 1. Validation server  Zod des données du formulaire
-  const validationResult = authMagicLinkFormSchema.safeParse({
-    email: formData.get('email')?.toString().toLowerCase(),
-  })
-
-  if (!validationResult.success) {
-    const validationErrors: MagicLinkValidationError[] =
-      validationResult.error.issues.map((err) => ({
-        field: err.path[0] as keyof z.infer<typeof authMagicLinkFormSchema>,
-        message: err.message,
-      }))
-    return {
-      success: false,
-      message: t('validationError'),
-      errors: validationErrors,
-    }
-  }
-
-  const {email} = validationResult.data
-
-  // 2. Vérifier si l'email est disponible
-  const isEmailAvailable = await isEmailAvailableService(email)
-  if (!isEmailAvailable) {
-    return {
-      success: false,
-      errors: [
-        {
-          field: 'email',
-          message: t('emailAlreadyUsed'),
-        },
-      ],
-    }
-  }
-  let response
-  try {
-    // 3. Envoi du magic link avec better auth
-    response = await auth.api.signInMagicLink({
-      headers: await headers(),
-      body: {
-        email,
-        callbackURL: '/dashboard',
-      },
-    })
-  } catch {
-    return {
-      success: false,
-      message: t('sendError'),
-    }
-  }
-
-  if (!response.status) {
-    return {
-      success: false,
-      message: t('sendError'),
-    }
-  }
-
-  redirect('/verify-request')
-}
-
-/**
- * Action pour l'inscription avec un provider OAuth (Google, Apple)
- */
-export async function registerProviderAction(
-  provider: 'google' | 'apple' | 'github'
-): Promise<LoginFormState> {
-  const t = await getTranslations('AuthActions.registerProvider')
-
-  // Vérifier si le provider est activé
-  if (!env.NEXT_PUBLIC_AUTH_METHODS.includes(provider)) {
-    return {
-      success: false,
-      message: `${provider} authentication is not enabled`,
-    }
-  }
-
-  await loginProviderAction(provider)
-  return {
-    success: true,
-    message: t('redirecting'),
-  }
 }
 
 export async function logoutAction() {
@@ -547,9 +309,8 @@ export async function verifyBackupCodeAction(
       },
     })
 
-    // Si la vérification réussit, rediriger vers le dashboard
     if (response.token) {
-      redirect('/dashboard')
+      return await redirectToPostLoginPath(signedInEmailOf(response))
     }
 
     return {
@@ -602,14 +363,14 @@ export async function verifyOTPAction(
       body: {
         code: code.trim(),
         trustDevice: true,
-        // callbackURL: '/dashboard',
       },
       asResponse: true,
     })
 
-    // Si la vérification réussit, rediriger vers le dashboard
     if (response.ok) {
-      redirect('/dashboard')
+      return await redirectToPostLoginPath(
+        signedInEmailOf(await response.json())
+      )
     }
     // Si la vérification échoue
     const errorData = await response.json()

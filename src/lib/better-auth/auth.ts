@@ -21,6 +21,8 @@ import {
 } from '@/db/repositories/user-repository'
 import {env} from '@/env'
 import {trustedOriginsOf} from '@/lib/better-auth/association-origin'
+import {associationSessionGuard} from '@/lib/better-auth/association-session-guard'
+import {verificationLinkOnAssociation} from '@/lib/better-auth/email-verification-link'
 import {
   MAGIC_LINK_DISABLED_HTTP_PATHS,
   magicLinkOptions,
@@ -72,13 +74,17 @@ const options = {
   },
   emailAndPassword: {
     enabled: true,
+    // Inscription fermee (s46b) : les comptes sont crees par le bureau.
+    disableSignUp: true,
     requireEmailVerification: AuthAppConfig.requireEmailVerification,
-    sendResetPassword: async ({user, url}) => {
+    // Lien sur le domaine de l'association : le retour vers /reset-password,
+    // puis /login, doit rester sur l'association (revue M1′ de s46b, ADR 034).
+    sendResetPassword: async ({user, url}, request) => {
       await createTypedNotificationService({
         userId: user.id,
         type: NotificationTypeConst.reset_password,
         metadata: {
-          url,
+          url: await verificationLinkOnAssociation(url, request),
         },
       })
     },
@@ -89,12 +95,14 @@ const options = {
     },
   },
   emailVerification: {
-    sendVerificationEmail: async ({user, url}) => {
+    // Lien sur le domaine de l'association : la session qu'il ouvre doit
+    // passer le controle d'association (revue M2 de s46b, ADR 034).
+    sendVerificationEmail: async ({user, url}, request) => {
       await createTypedNotificationService({
         userId: user.id,
         type: NotificationTypeConst.email_verification,
         metadata: {
-          url,
+          url: await verificationLinkOnAssociation(url, request),
         },
       })
     },
@@ -110,12 +118,12 @@ const options = {
   user: {
     changeEmail: {
       enabled: AuthAppConfig.changeEmail,
-      sendChangeEmailConfirmation: async ({user, newEmail, url}) => {
+      sendChangeEmailConfirmation: async ({user, newEmail, url}, request) => {
         await createTypedNotificationService({
           userId: user.id,
           type: NotificationTypeConst.change_email_verification,
           metadata: {
-            url,
+            url: await verificationLinkOnAssociation(url, request),
             newEmail: newEmail,
           },
         })
@@ -125,11 +133,16 @@ const options = {
   socialProviders: {
     google: {
       prompt: 'select_account',
+      // Sans ecran (s46b) : un compte Google inconnu ne cree aucun utilisateur.
+      disableSignUp: true,
       clientId: env.GOOGLE_CLIENT_ID as string,
       clientSecret: env.GOOGLE_CLIENT_SECRET as string,
     },
   },
   plugins: [
+    // En tete, avant admin() : la connexion est limitee a l'association du
+    // domaine avant tout autre controle (ADR 034).
+    associationSessionGuard(),
     bearer(),
     twoFactor({
       issuer: APP_ISSUER,
@@ -395,12 +408,6 @@ function createAuthRedirectMiddleware() {
       //throw ctx.redirect('/dashboard')
     }
 
-    // Redirection après inscription réussie
-    if (ctx.path === '/sign-up/email' && ctx.context.newSession) {
-      console.log('Redirection après inscription réussie')
-      throw ctx.redirect('/verify-request')
-    }
-
     // Redirection après déconnexion
     if (ctx.path === '/sign-out') {
       console.log('Redirection après déconnexion')
@@ -410,7 +417,7 @@ function createAuthRedirectMiddleware() {
     // Redirection après vérification d'email
     if (ctx.path === '/verify-email' && ctx.context.newSession) {
       console.log("Redirection après vérification d'email")
-      throw ctx.redirect('/dashboard')
+      throw ctx.redirect('/login/destination')
     }
   })
 }

@@ -14,8 +14,13 @@ const nextConfig: NextConfig = {
   pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
   // Locale unique sans prefixe (ADR 008) : les anciennes adresses /fr, /en et
   // /es redirigent en 308 vers la meme adresse sans prefixe (ADR 031).
+  // /bureau n'a pas de page : il mene a la premiere page du back-office, en
+  // 307, avant tout rendu (s46b).
   async redirects() {
-    return legacyLocaleRedirects()
+    return [
+      ...legacyLocaleRedirects(),
+      {source: '/bureau', destination: '/bureau/pages', permanent: false},
+    ]
   },
   logging: {
     incomingRequests: {

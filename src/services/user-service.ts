@@ -11,12 +11,10 @@ import {
   getUserByIdDao,
   getUsersByOrganizationDao,
   getUserSettingsByUserIdDao,
-  isEmailExistsDao,
   searchUsersDao,
   updateUserSafeByUidDao,
   upsertUserSettingsDao,
 } from '@/db/repositories/user-repository'
-import {auth} from '@/lib/better-auth/auth'
 import {triggerInngestWelcomeFollowUpEmail} from '@/lib/inngest/events'
 import {logger} from '@/lib/logger'
 
@@ -35,7 +33,6 @@ import {RoleConst} from './types/domain/auth-types'
 import {CreateOrganization} from './types/domain/organization-types'
 import {
   CreateUser,
-  CreateUserFromStripe,
   CreateUserSettings,
   UpdateUser,
   UpdateUserSettings,
@@ -43,7 +40,6 @@ import {
 import {
   baseUserServiceSchema,
   createUpdateUserServiceSchema,
-  createUserFromStripeServiceSchema,
   createUserServiceSchema,
   createUserSettingsServiceSchema,
   updateUserSettingsServiceSchema,
@@ -171,16 +167,6 @@ export const getAllUsersWithPaginationService = async (
   }
 
   return await getAllUsersWithPaginationDao(pagination, search)
-}
-
-/**
- * Vérifie si un email est disponible pour l'inscription
- */
-export const isEmailAvailableService = async (
-  email: string
-): Promise<boolean> => {
-  const exists = await isEmailExistsDao(email)
-  return !exists
 }
 
 /**
@@ -328,94 +314,6 @@ export const upsertUserSettingsService = async (
   }
 
   return await upsertUserSettingsDao(settings.userId, parsed.data)
-}
-
-/**
- * Crée un utilisateur à partir des données Stripe ou retourne l'utilisateur existant
- * Fonction sans autorisation - utilisée par les webhooks Stripe
- */
-export const createUserFromStripeService = async (
-  userParams: CreateUserFromStripe
-) => {
-  // Validation des paramètres d'entrée
-  const parsed = createUserFromStripeServiceSchema.safeParse(userParams)
-  if (!parsed.success) {
-    throw new ValidationParsedZodError(parsed.error)
-  }
-  const userParamsSanitized = parsed.data
-
-  // Vérifier si l'utilisateur existe déjà
-  const existingUser = await getUserByEmailDao(userParamsSanitized.email)
-
-  if (existingUser) {
-    // Mettre à jour le stripeCustomerId si fourni et différent
-    if (
-      userParamsSanitized.stripeCustomerId &&
-      existingUser.stripeCustomerId !== userParamsSanitized.stripeCustomerId
-    ) {
-      await updateUserSafeByUidDao(
-        {
-          id: existingUser.id,
-          email: existingUser.email,
-          name: existingUser.name,
-          stripeCustomerId: userParamsSanitized.stripeCustomerId,
-        },
-        existingUser.id
-      )
-
-      return {
-        user: {
-          ...existingUser,
-          stripeCustomerId: userParamsSanitized.stripeCustomerId,
-        },
-        isNewUser: false,
-      }
-    }
-
-    return {
-      user: existingUser,
-      isNewUser: false,
-    }
-  }
-
-  // Créer un nouvel utilisateur avec les données Stripe
-  // const newUserData: AddUserModel = {
-  //   email: userParamsSanitized.email,
-  //   role: RoleConst.USER,
-  //   name: userParamsSanitized.name || userParamsSanitized.email.split('@')[0],
-  //   stripeCustomerId: userParamsSanitized.stripeCustomerId,
-  // }
-
-  //  const newUser: User = await createUserDao(newUserData)
-
-  const response = await auth.api.createUser({
-    body: {
-      email: userParamsSanitized.email,
-      name: userParamsSanitized.name || userParamsSanitized.email.split('@')[0],
-      password: '',
-      role: ['user'],
-    },
-  })
-  await updateUserSafeByUidDao(
-    {
-      id: response.user.id ?? '',
-      name: userParamsSanitized.name || userParamsSanitized.email.split('@')[0],
-      email: userParamsSanitized.email,
-      stripeCustomerId: userParamsSanitized.stripeCustomerId,
-    },
-    response.user.id ?? ''
-  )
-  await initializeRegisterUserDataService(userParamsSanitized.email)
-  await auth.api.sendVerificationEmail({
-    body: {
-      email: userParamsSanitized.email,
-    },
-  })
-
-  return {
-    user: response,
-    isNewUser: true,
-  }
 }
 
 export const getUsersByOrganizationService = async (organizationId: string) => {

@@ -1,6 +1,9 @@
 import {describe, expect, it} from 'vitest'
 
-import {canManageAssociation} from '../authorization/association-authorization'
+import {
+  canManageAssociation,
+  postLoginPathOf,
+} from '../authorization/association-authorization'
 import {RoleConst, UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
@@ -104,5 +107,68 @@ describe('canManageAssociation — refus', () => {
     )
 
     expect(canManageAssociation(user, ORG_ID)).toBe(false)
+  })
+})
+
+describe('postLoginPathOf — destination après connexion (s46b, décision G)', () => {
+  it('[SUPER_ADMIN] va au back-office plateforme, membre ou non', () => {
+    const member = withMembership(
+      userTestSuperAdmin,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+
+    expect(postLoginPathOf(userTestSuperAdmin, ORG_ID)).toBe('/admin')
+    expect(postLoginPathOf(member, ORG_ID)).toBe('/admin')
+    expect(postLoginPathOf(userTestSuperAdmin, undefined)).toBe('/admin')
+  })
+
+  it.each([UserOrganizationRoleConst.OWNER, UserOrganizationRoleConst.ADMIN])(
+    '[ORGANIZATION %s] va à la première page du bureau de cette association',
+    (role) => {
+      const user = withMembership(userTest, ORG_ID, role)
+
+      expect(postLoginPathOf(user, ORG_ID)).toBe('/bureau/pages')
+    }
+  )
+
+  it('[OTHER ORGANIZATION ADMIN] va à l’espace membre', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+
+    expect(postLoginPathOf(user, ORG_ID)).toBe('/dashboard')
+  })
+
+  it('[ORGANIZATION MEMBER] va à l’espace membre', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+
+    expect(postLoginPathOf(user, ORG_ID)).toBe('/dashboard')
+  })
+
+  it('[ADMIN + MEMBER] le rôle global admin suit son rôle dans l’association', () => {
+    const user = withMembership(
+      userTestAdmin,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+
+    expect(postLoginPathOf(user, ORG_ID)).toBe('/dashboard')
+  })
+
+  it('[ORGANIZATION OWNER] sans association du domaine, va à l’espace membre', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+
+    expect(postLoginPathOf(user, undefined)).toBe('/dashboard')
   })
 })

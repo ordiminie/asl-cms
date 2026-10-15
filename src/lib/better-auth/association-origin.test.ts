@@ -67,12 +67,14 @@ describe('rebaseMagicLinkUrl', () => {
 
   it('rend absolus sur l’association les callbackURL relatifs', () => {
     const url = rebase(
-      '&callbackURL=%2Fdashboard' +
+      '&callbackURL=%2Flogin%2Fdestination' +
         '&errorCallbackURL=%2Flogin%2Flien-invalide' +
         '&newUserCallbackURL=%2Fbienvenue%3Fa%3D1'
     )
 
-    expect(url.searchParams.get('callbackURL')).toBe(`${origin}/dashboard`)
+    expect(url.searchParams.get('callbackURL')).toBe(
+      `${origin}/login/destination`
+    )
     expect(url.searchParams.get('errorCallbackURL')).toBe(
       `${origin}/login/lien-invalide`
     )
@@ -93,10 +95,12 @@ describe('rebaseMagicLinkUrl', () => {
 
   it('garde tel quel un callbackURL déjà sur l’association', () => {
     const url = rebase(
-      `&callbackURL=${encodeURIComponent(`${origin}/dashboard`)}`
+      `&callbackURL=${encodeURIComponent(`${origin}/login/destination`)}`
     )
 
-    expect(url.searchParams.get('callbackURL')).toBe(`${origin}/dashboard`)
+    expect(url.searchParams.get('callbackURL')).toBe(
+      `${origin}/login/destination`
+    )
   })
 
   it('n’ajoute aucun paramètre absent et ne touche pas aux autres', () => {

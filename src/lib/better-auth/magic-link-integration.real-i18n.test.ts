@@ -70,7 +70,7 @@ import {
 
 const email = 'membre@exemple.test'
 const url =
-  'https://asl-les-pins.test/api/auth/magic-link/verify?token=secret-token&callbackURL=%2Fdashboard'
+  'https://asl-les-pins.test/api/auth/magic-link/verify?token=secret-token&callbackURL=%2Flogin%2Fdestination'
 
 const tenant = (identityLogoKey: string | null): Organization => ({
   id: 'org-1',
@@ -372,7 +372,7 @@ describe('sendMagicLink', () => {
   describe('sur le domaine de l’association (s03c, ADR 022)', () => {
     const pluginUrl =
       'http://localhost:3000/api/auth/magic-link/verify?token=secret-token' +
-      '&callbackURL=%2Fdashboard&errorCallbackURL=%2Flogin%2Flien-invalide'
+      '&callbackURL=%2Flogin%2Fdestination&errorCallbackURL=%2Flogin%2Flien-invalide'
     const originB = 'http://asso-b.test:3000'
     const tenantB: Organization = {
       ...tenant('organizations/org-b/identity/logo-7.png'),
@@ -420,7 +420,9 @@ describe('sendMagicLink', () => {
       )
 
       const link = sentLink()
-      expect(link.searchParams.get('callbackURL')).toBe(`${originB}/dashboard`)
+      expect(link.searchParams.get('callbackURL')).toBe(
+        `${originB}/login/destination`
+      )
       expect(link.searchParams.get('errorCallbackURL')).toBe(
         `${originB}/login/lien-invalide`
       )
@@ -460,6 +462,22 @@ describe('sendMagicLink', () => {
       })
       expect(memoryTransport.messages).toHaveLength(0)
       expect(deleteMany).not.toHaveBeenCalled()
+    })
+
+    it('envoie un lien au SuperAdmin, même sans appartenance à l’association (s46b, ADR 034)', async () => {
+      vi.mocked(getUserByEmailDao).mockResolvedValue({
+        id: 'super-1',
+        role: 'super_admin',
+        organizations: [],
+      } as never)
+
+      await sendMagicLink(
+        {email, url: pluginUrl},
+        requestContext('asso-b.test')
+      )
+
+      expect(memoryTransport.messages).toHaveLength(1)
+      expect(sentLink().origin).toBe(originB)
     })
 
     it('traite un compte sans aucune association comme une adresse inconnue', async () => {
@@ -568,7 +586,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
         headers,
         body: {
           email: address,
-          callbackURL: '/dashboard',
+          callbackURL: '/login/destination',
           errorCallbackURL: '/login/lien-invalide',
         },
       })
@@ -586,7 +604,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
             headers,
             query: {
               token,
-              callbackURL: '/dashboard',
+              callbackURL: '/login/destination',
               errorCallbackURL: '/login/lien-invalide',
             },
           }),
@@ -626,7 +644,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
     const first = await verify(token)
     expect(isRedirectApiError(first.error)).toBe(true)
     if (!isRedirectApiError(first.error)) throw new Error('no redirect')
-    expect(first.error.headers.get('location')).toContain('/dashboard')
+    expect(first.error.headers.get('location')).toContain('/login/destination')
     expect(memoryDb.session).toHaveLength(1)
 
     const replay = await verify(token)
@@ -659,7 +677,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
           'content-type': 'application/json',
           origin: 'http://localhost:3000',
         },
-        body: JSON.stringify({email, callbackURL: '/dashboard'}),
+        body: JSON.stringify({email, callbackURL: '/login/destination'}),
       })
     )
 
@@ -674,12 +692,12 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
     const response = await localAuth.handler(
       new Request(
         `http://localhost:3000/api/auth/magic-link/verify?token=${token}` +
-          '&callbackURL=%2Fdashboard&errorCallbackURL=%2Flogin%2Flien-invalide'
+          '&callbackURL=%2Flogin%2Fdestination&errorCallbackURL=%2Flogin%2Flien-invalide'
       )
     )
 
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toContain('/dashboard')
+    expect(response.headers.get('location')).toContain('/login/destination')
     expect(memoryDb.session).toHaveLength(1)
   })
 
@@ -704,7 +722,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
 
     const latest = await verify(second)
     if (!isRedirectApiError(latest.error)) throw new Error('no redirect')
-    expect(latest.error.headers.get('location')).toContain('/dashboard')
+    expect(latest.error.headers.get('location')).toContain('/login/destination')
     expect(memoryDb.session).toHaveLength(1)
   })
 
@@ -720,7 +738,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
 
     const result = await verify(mine)
     if (!isRedirectApiError(result.error)) throw new Error('no redirect')
-    expect(result.error.headers.get('location')).toContain('/dashboard')
+    expect(result.error.headers.get('location')).toContain('/login/destination')
   })
 
   it('transmet la locale de la demande à l’email par les métadonnées du plugin', async () => {
@@ -731,7 +749,11 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
 
     await localAuth.api.signInMagicLink({
       headers: new Headers({host: 'localhost:3000'}),
-      body: {email, callbackURL: '/dashboard', metadata: {locale: 'fr'}},
+      body: {
+        email,
+        callbackURL: '/login/destination',
+        metadata: {locale: 'fr'},
+      },
     })
 
     expect(memoryTransport.messages).toHaveLength(1)
@@ -751,7 +773,7 @@ describe('contrat Better Auth du lien magique, avec nos options', () => {
 
     const response = await localAuth.api.signInMagicLink({
       headers: new Headers({host: 'localhost:3000'}),
-      body: {email, callbackURL: '/dashboard'},
+      body: {email, callbackURL: '/login/destination'},
     })
 
     expect(response).toEqual({status: true})
@@ -813,7 +835,7 @@ describe('limitation de débit de la vérification du lien', () => {
         headers: new Headers({host: 'localhost:3000'}),
         body: {
           email,
-          callbackURL: '/dashboard',
+          callbackURL: '/login/destination',
           errorCallbackURL: '/login/lien-invalide',
         },
       })
@@ -825,7 +847,7 @@ describe('limitation de débit de la vérification du lien', () => {
       localAuth.handler(
         new Request(
           `http://localhost:3000/api/auth/magic-link/verify?token=${token}` +
-            '&callbackURL=%2Fdashboard&errorCallbackURL=%2Flogin%2Flien-invalide',
+            '&callbackURL=%2Flogin%2Fdestination&errorCallbackURL=%2Flogin%2Flien-invalide',
           {headers: {'x-forwarded-for': ip}}
         )
       )
@@ -844,7 +866,7 @@ describe('limitation de débit de la vérification du lien', () => {
     const response = await verifyOverHttp(token)
 
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toContain('/dashboard')
+    expect(response.headers.get('location')).toContain('/login/destination')
     expect(memoryDb.session).toHaveLength(1)
   })
 

@@ -67,9 +67,9 @@ export default function TotpVerificationPage() {
       }
 
       toast.success(t('messages.verificationSuccess'))
-      // Rediriger vers le dashboard après 2 secondes
+      // Vers la route de passage, qui choisit la destination du role (s46b)
       setTimeout(() => {
-        router.push('/dashboard')
+        router.push('/login/destination')
       }, 2000)
     } catch {
       toast.error(t('messages.generalError'))

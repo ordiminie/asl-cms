@@ -56,13 +56,6 @@ export type UpdateUser = {
   id: string
 } & Partial<Omit<UpdateUserModel, 'id'>>
 
-// Type spécifique pour la création d'utilisateur via Stripe
-export type CreateUserFromStripe = {
-  email: string
-  name?: string
-  stripeCustomerId?: string
-}
-
 //DTO = Data Transfer Object
 export type UserDTO = {
   id: string

@@ -24,7 +24,7 @@ app/
   │   └── layout.tsx
   ├── (auth)/ → Routes d'authentification
   │   ├── login/
-  │   └── register/
+  │   └── verify-request/
   ├── (app)/ → Routes utilisateur protégées
   │   ├── account/
   │   └── dashboard/
