@@ -124,11 +124,11 @@ describe('postLoginPathOf — destination après connexion (s46b, décision G)',
   })
 
   it.each([UserOrganizationRoleConst.OWNER, UserOrganizationRoleConst.ADMIN])(
-    '[ORGANIZATION %s] va au bureau de cette association',
+    '[ORGANIZATION %s] va à la première page du bureau de cette association',
     (role) => {
       const user = withMembership(userTest, ORG_ID, role)
 
-      expect(postLoginPathOf(user, ORG_ID)).toBe('/bureau')
+      expect(postLoginPathOf(user, ORG_ID)).toBe('/bureau/pages')
     }
   )
 

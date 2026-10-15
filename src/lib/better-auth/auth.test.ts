@@ -1,6 +1,7 @@
-import {describe, expect, it, vi} from 'vitest'
+import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
+vi.mock('next/headers', () => ({headers: vi.fn()}))
 vi.mock('@/db/models/db', () => ({default: {}}))
 vi.mock('@/db/repositories/user-repository', () => ({
   getUserByEmailDao: vi.fn(),
@@ -27,6 +28,12 @@ vi.mock('@/services/facades/user-service-facade', () => ({
   initializeRegisterUserDataService: vi.fn(),
 }))
 
+import {headers} from 'next/headers'
+
+import {createTypedNotificationService} from '@/services/facades/notification-service-facade'
+import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
+import type {Organization} from '@/services/types/domain/organization-types'
+
 import {ASSOCIATION_SESSION_GUARD_ID} from './association-session-guard'
 import {auth} from './auth'
 
@@ -51,5 +58,63 @@ describe('inscription fermée (s46b, décision I)', () => {
 
   it('refuse la création de compte par Google, gardé configuré', () => {
     expect(auth.options.socialProviders?.google?.disableSignUp).toBe(true)
+  })
+})
+
+describe('liens de vérification d’email sur le domaine de l’association (revue M2)', () => {
+  const association = {id: 'org-a', domain: 'asso-a.test'} as Organization
+  const user = {id: 'user-1', email: 'membre@exemple.test'} as never
+  const platformLink =
+    'http://localhost:3000/api/auth/verify-email?token=jeton&callbackURL=%2Faccount'
+
+  const notifiedUrl = () =>
+    (
+      vi.mocked(createTypedNotificationService).mock.calls[0][0].metadata as {
+        url?: string
+      }
+    ).url
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getOrganizationByDomainService).mockImplementation(
+      async (domain: string) =>
+        domain === association.domain ? association : undefined
+    )
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({host: 'asso-a.test'}) as never
+    )
+  })
+
+  it('vérification d’email : le lien notifié ouvre la session sur l’association', async () => {
+    const send = auth.options.emailVerification?.sendVerificationEmail
+
+    await send?.(
+      {user, url: platformLink, token: 'jeton'},
+      new Request('http://interne/api/auth/verify-email', {
+        headers: {host: 'asso-a.test'},
+      })
+    )
+
+    expect(notifiedUrl()).toBe(
+      'http://asso-a.test:3000/api/auth/verify-email?token=jeton&callbackURL=http%3A%2F%2Fasso-a.test%3A3000%2Faccount'
+    )
+  })
+
+  it('changement d’adresse depuis une Server Action : lien sur l’association', async () => {
+    const send = auth.options.user?.changeEmail?.sendChangeEmailConfirmation
+
+    await send?.(
+      {
+        user,
+        newEmail: 'nouvelle@exemple.test',
+        url: platformLink,
+        token: 'jeton',
+      },
+      undefined
+    )
+
+    expect(new URL(String(notifiedUrl())).origin).toBe(
+      'http://asso-a.test:3000'
+    )
   })
 })

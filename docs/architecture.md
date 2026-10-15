@@ -476,12 +476,19 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   session par `auth.api.*` doit donc transmettre les `headers` de la requête.
 - **Inscription fermée** (s46b) : `disableSignUp` sur le mot de passe, sur Google (configuré, sans écran)
   et sur le lien magique ; plus de `/register`, et le webhook Stripe ne crée plus aucun compte.
-- **Route de passage `/login/destination`** (s46b) : un Route Handler, cible de toutes les connexions
-  (`callbackURL` du lien magique, actions du mot de passe et de la double authentification, vérification
-  d'email). Il lit la session et l'association du domaine (`getPostLoginPathDal`) et rend un **307**
-  relatif vers la destination du rôle (`postLoginPathOf`) : SuperAdmin → `/admin`, bureau et Présidence de
-  l'association du domaine → `/bureau` (redirigé vers `/bureau/pages` par `next.config.ts`), tout autre
-  compte → `/dashboard` ; sans session → `/login`.
+- **Destination après connexion** (s46b) : `postLoginPathOf` rend une **page finale** (`POST_LOGIN_PATHS`) :
+  SuperAdmin → `/admin`, bureau et Présidence de l'association du domaine → `/bureau/pages`, tout autre
+  compte → `/dashboard`. Jamais une adresse qui redirige encore (Route Handler, source de `redirects()`) :
+  après une **Server Action**, Next suit la chaîne côté serveur et laisse la barre d'adresse sur la
+  première adresse (garde : `post-login-paths.test.ts`).
+  - **Actions du mot de passe et de la double authentification** : elles calculent la destination
+    elles-mêmes (`getPostLoginPathOfAccountDal`, compte lu par son email — le cookie de la session qui
+    vient de s'ouvrir n'est pas encore dans la requête) et redirigent directement vers la page finale.
+  - **Route de passage `/login/destination`** : un Route Handler, pour les connexions par une vraie
+    navigation du navigateur (`callbackURL` du lien magique, vérification d'email, navigation client des
+    écrans OTP et TOTP). Il lit la session et l'association du domaine (`getPostLoginPathDal`) et rend un
+    **307** relatif vers la même page finale ; sans session → `/login`. `/bureau` reste redirigé vers
+    `/bureau/pages` par `next.config.ts`.
 - **`trustedOrigins` est une fonction** (`trustedOriginsOf`) : la liste `BETTER_AUTH_TRUSTED_ORIGINS`, plus
   l'origine de l'association servie par l'hôte de la requête, lue en base à chaque requête. Une nouvelle
   association est reconnue sans redéploiement ; aucune origine à joker n'est produite (un domaine portant
@@ -497,7 +504,13 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   Les liens OTP (2FA) et d'invitation (s15) sont encore construits sur `NEXT_PUBLIC_APP_URL` : depuis s46b,
   un lien OTP ouvert sur l'hôte de la plateforme y est refusé par le contrôle d'ouverture de session (ADR
   034). Le callback de Google est sur l'hôte de la plateforme : il n'y ouvre de session qu'au SuperAdmin
-  (la V2 devra en donner un par domaine). **À vérifier
+  (la V2 devra en donner un par domaine). Les liens de **vérification d'email** et de **changement
+  d'adresse**, eux, sont couverts depuis s46b : `verificationLinkOnAssociation`
+  (`email-verification-link.ts`) les rebase sur l'origine de l'association du domaine appelé, comme le
+  lien magique ; l'hôte vient de la `Request` passée par Better Auth (appel HTTP), sinon des en-têtes de
+  la requête Next (appel direct `auth.api.*` depuis une Server Action, où Better Auth 1.7.1 ne passe aucune
+  `Request`). Demandés depuis un hôte sans association (le SuperAdmin sur la plateforme) ou hors requête,
+  ils restent sur la plateforme : seul le SuperAdmin peut y ouvrir la session qu'ils créent. **À vérifier
   en s12b** : derrière le reverse proxy du VPS, `Host` et `x-forwarded-host` (Better Auth n'honore ce
   dernier qu'avec `advanced.trustedProxyHeaders`, non activé) et le protocole résolu, dont dépend le
   préfixe `__Secure-` du cookie lu par `src/proxy.ts`.

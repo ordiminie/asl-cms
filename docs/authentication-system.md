@@ -311,9 +311,12 @@ export async function requestMagicLinkAction(
 ): Promise<MagicLinkRequestState>
 ```
 
-Chaque connexion réussie passe par `/login/destination`, qui envoie le SuperAdmin vers `/admin`, le
-bureau et la Présidence de l'association du domaine vers `/bureau`, et tout autre compte vers
-`/dashboard` (s46b).
+Chaque connexion réussie mène à la page de son rôle (s46b) : le SuperAdmin vers `/admin`, le bureau et
+la Présidence de l'association du domaine vers `/bureau/pages`, tout autre compte vers `/dashboard`. Les
+Server Actions du mot de passe et de la double authentification y redirigent directement : une Server
+Action qui redirige vers une adresse qui redirige encore laisse la barre d'adresse sur cette adresse. Les
+navigations du navigateur (lien magique, vérification d'email, écrans OTP et TOTP) passent par la route
+`/login/destination`, qui rend un 307 vers la même page.
 
 ## Gestion des Sessions
 

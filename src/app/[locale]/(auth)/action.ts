@@ -6,6 +6,7 @@ import {redirect} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 import {z} from 'zod'
 
+import {getPostLoginPathOfAccountDal} from '@/app/dal/user-dal'
 import {
   authLoginFormSchema,
   createMagicLinkRequestSchema,
@@ -109,7 +110,7 @@ export async function loginCredentialAction(
 
     const twoFactorRedirect = await isTwoFactorRedirect(response)
     if (!twoFactorRedirect) {
-      redirect('/login/destination')
+      return await redirectToPostLoginPath(email)
     } else {
       const user = await getUserByEmailService(email)
       redirect(
@@ -142,6 +143,25 @@ const isBannedResponse = async (response: Response) => {
   } catch {
     return false
   }
+}
+
+/**
+ * Redirige le compte qui vient d'ouvrir sa session vers sa **page finale**
+ * (revue M1 de s46b). Pas vers `/login/destination` : apres une Server Action,
+ * Next suit cote serveur la chaine de redirections et laisse la barre
+ * d'adresse sur la premiere adresse.
+ */
+const redirectToPostLoginPath = async (
+  email: string | undefined
+): Promise<never> => {
+  const path = email ? await getPostLoginPathOfAccountDal(email) : undefined
+  redirect(path ?? '/login')
+}
+
+/** L'email du compte que Better Auth rend apres une verification 2FA. */
+const signedInEmailOf = (body: unknown): string | undefined => {
+  const email = (body as {user?: {email?: unknown}} | null)?.user?.email
+  return typeof email === 'string' ? email : undefined
 }
 
 const isTwoFactorRedirect = async (response: Response) => {
@@ -272,7 +292,7 @@ export async function verifyBackupCodeAction(
     })
 
     if (response.token) {
-      redirect('/login/destination')
+      return await redirectToPostLoginPath(signedInEmailOf(response))
     }
 
     return {
@@ -330,7 +350,9 @@ export async function verifyOTPAction(
     })
 
     if (response.ok) {
-      redirect('/login/destination')
+      return await redirectToPostLoginPath(
+        signedInEmailOf(await response.json())
+      )
     }
     // Si la vérification échoue
     const errorData = await response.json()

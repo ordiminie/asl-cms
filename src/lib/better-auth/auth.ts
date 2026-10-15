@@ -22,6 +22,7 @@ import {
 import {env} from '@/env'
 import {trustedOriginsOf} from '@/lib/better-auth/association-origin'
 import {associationSessionGuard} from '@/lib/better-auth/association-session-guard'
+import {verificationLinkOnAssociation} from '@/lib/better-auth/email-verification-link'
 import {
   MAGIC_LINK_DISABLED_HTTP_PATHS,
   magicLinkOptions,
@@ -92,12 +93,14 @@ const options = {
     },
   },
   emailVerification: {
-    sendVerificationEmail: async ({user, url}) => {
+    // Lien sur le domaine de l'association : la session qu'il ouvre doit
+    // passer le controle d'association (revue M2 de s46b, ADR 034).
+    sendVerificationEmail: async ({user, url}, request) => {
       await createTypedNotificationService({
         userId: user.id,
         type: NotificationTypeConst.email_verification,
         metadata: {
-          url,
+          url: await verificationLinkOnAssociation(url, request),
         },
       })
     },
@@ -113,12 +116,12 @@ const options = {
   user: {
     changeEmail: {
       enabled: AuthAppConfig.changeEmail,
-      sendChangeEmailConfirmation: async ({user, newEmail, url}) => {
+      sendChangeEmailConfirmation: async ({user, newEmail, url}, request) => {
         await createTypedNotificationService({
           userId: user.id,
           type: NotificationTypeConst.change_email_verification,
           metadata: {
-            url,
+            url: await verificationLinkOnAssociation(url, request),
             newEmail: newEmail,
           },
         })

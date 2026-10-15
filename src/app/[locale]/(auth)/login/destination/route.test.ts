@@ -51,8 +51,8 @@ describe('GET /login/destination (s46b, décision F)', () => {
       accountOf('super_admin', [[ORG_A, 'owner']]),
       '/admin',
     ],
-    ['la Présidence', accountOf('user', [[ORG_A, 'owner']]), '/bureau'],
-    ['le bureau', accountOf('user', [[ORG_A, 'board']]), '/bureau'],
+    ['la Présidence', accountOf('user', [[ORG_A, 'owner']]), '/bureau/pages'],
+    ['le bureau', accountOf('user', [[ORG_A, 'board']]), '/bureau/pages'],
     [
       'le bureau d’une autre association',
       accountOf('user', [[ORG_B, 'board']]),

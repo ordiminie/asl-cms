@@ -29,14 +29,21 @@ vi.mock('@/lib/better-auth/auth', () => ({
 vi.mock('@/services/facades/user-service-facade', () => ({
   getUserByEmailService: vi.fn(),
 }))
+vi.mock('@/services/authentication/auth-service', () => ({
+  getAuthUser: vi.fn(),
+  getSessionActiveOrganizationId: vi.fn(),
+}))
+vi.mock('@/app/dal/tenant-dal', () => ({getCurrentTenantDal: vi.fn()}))
 
 import {headers} from 'next/headers'
 import {redirect} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 
+import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {auth} from '@/lib/better-auth/auth'
 import {MAGIC_LINK_REQUEST_MIN_DURATION_MS} from '@/lib/better-auth/magic-link-constants'
 import {EmailTransportError} from '@/lib/emails/transport'
+import {POST_LOGIN_PATHS} from '@/services/authorization/association-authorization'
 import {getUserByEmailService} from '@/services/facades/user-service-facade'
 
 import {
@@ -45,6 +52,48 @@ import {
   verifyBackupCodeAction,
   verifyOTPAction,
 } from './action'
+
+const ORG_A = '11111111-1111-4111-8111-111111111111'
+const ORG_B = '22222222-2222-4222-8222-222222222222'
+
+const tenantA = {
+  id: ORG_A,
+  name: 'ASL A',
+  slug: 'asl-a',
+  domain: 'asso-a.test',
+  enabledModules: [],
+  logoKey: null,
+  faviconKey: null,
+}
+
+const accountOf = (role: string, memberships: [string, string][] = []) =>
+  ({
+    id: 'user-1',
+    email: 'membre@exemple.test',
+    role,
+    organizations: memberships.map(([organizationId, memberRole]) => ({
+      organizationId,
+      role: memberRole,
+    })),
+  }) as never
+
+/** Chaque role, et la page finale ou il arrive sur le domaine de A. */
+const DESTINATIONS = [
+  ['le SuperAdmin', '/admin', accountOf('super_admin')],
+  [
+    'le SuperAdmin membre de A',
+    '/admin',
+    accountOf('super_admin', [[ORG_A, 'owner']]),
+  ],
+  [
+    'la Présidence de A',
+    '/bureau/pages',
+    accountOf('user', [[ORG_A, 'owner']]),
+  ],
+  ['le bureau de A', '/bureau/pages', accountOf('user', [[ORG_A, 'board']])],
+  ['le bureau de B', '/dashboard', accountOf('user', [[ORG_B, 'board']])],
+  ['un membre de A', '/dashboard', accountOf('user', [[ORG_A, 'member']])],
+] as const
 
 describe('requestMagicLinkAction', () => {
   const requestFormData = (address: string, locale?: string) => {
@@ -324,14 +373,41 @@ describe('loginCredentialAction (s46b, décision E)', () => {
     })
   })
 
-  it('redirige vers la route de passage après une connexion réussie', async () => {
+  /**
+   * Revue M1 : la Server Action redirige vers la page finale. Une adresse qui
+   * redirige encore (Route Handler, `/bureau`) laisserait la barre d'adresse
+   * sur l'adresse demandee.
+   */
+  it.each(DESTINATIONS)(
+    'connexion réussie : envoie %s directement sur %s',
+    async (_, path, account) => {
+      vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantA)
+      vi.mocked(getUserByEmailService).mockResolvedValue(account)
+      vi.mocked(auth.api.signInEmail).mockResolvedValue(
+        jsonResponse(200, {redirect: false, token: 't'}) as never
+      )
+
+      await loginCredentialAction({success: false}, loginFormData())
+
+      expect(getUserByEmailService).toHaveBeenCalledWith('membre@exemple.test')
+      expect(redirect).toHaveBeenCalledTimes(1)
+      expect(redirect).toHaveBeenCalledWith(path)
+      expect(POST_LOGIN_PATHS).toContain(path)
+    }
+  )
+
+  it('connexion réussie sur un domaine sans association : espace membre', async () => {
+    vi.mocked(getCurrentTenantDal).mockResolvedValue(undefined)
+    vi.mocked(getUserByEmailService).mockResolvedValue(
+      accountOf('user', [[ORG_A, 'owner']])
+    )
     vi.mocked(auth.api.signInEmail).mockResolvedValue(
       jsonResponse(200, {redirect: false, token: 't'}) as never
     )
 
     await loginCredentialAction({success: false}, loginFormData())
 
-    expect(redirect).toHaveBeenCalledWith('/login/destination')
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
   })
 
   it('redirige un compte banni vers /auth-error avec le message traduit', async () => {
@@ -398,35 +474,55 @@ describe('loginCredentialAction (s46b, décision E)', () => {
   )
 })
 
-describe('double authentification — destination (s46b, décision F)', () => {
+describe('double authentification — destination (s46b, revue M1)', () => {
   const codeFormData = () => {
     const formData = new FormData()
     formData.set('code', '123456')
     return formData
   }
 
+  const signedIn = {email: 'membre@exemple.test', id: 'user-1'}
+
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(headers).mockResolvedValue(new Headers() as never)
-  })
-
-  it('un code de sauvegarde valide mène à la route de passage', async () => {
-    vi.mocked(auth.api.verifyBackupCode).mockResolvedValue({
-      token: 't',
-    } as never)
-
-    await verifyBackupCodeAction({success: false}, codeFormData())
-
-    expect(redirect).toHaveBeenCalledWith('/login/destination')
-  })
-
-  it('un code OTP valide mène à la route de passage', async () => {
-    vi.mocked(auth.api.verifyTwoFactorOTP).mockResolvedValue(
-      new Response('{}', {status: 200}) as never
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({host: 'asso-a.test'}) as never
     )
-
-    await verifyOTPAction({success: false}, codeFormData())
-
-    expect(redirect).toHaveBeenCalledWith('/login/destination')
+    vi.mocked(getCurrentTenantDal).mockResolvedValue(tenantA)
   })
+
+  it.each(DESTINATIONS)(
+    'un code de sauvegarde valide envoie %s directement sur %s',
+    async (_, path, account) => {
+      vi.mocked(getUserByEmailService).mockResolvedValue(account)
+      vi.mocked(auth.api.verifyBackupCode).mockResolvedValue({
+        token: 't',
+        user: signedIn,
+      } as never)
+
+      await verifyBackupCodeAction({success: false}, codeFormData())
+
+      expect(getUserByEmailService).toHaveBeenCalledWith('membre@exemple.test')
+      expect(redirect).toHaveBeenCalledTimes(1)
+      expect(redirect).toHaveBeenCalledWith(path)
+    }
+  )
+
+  it.each(DESTINATIONS)(
+    'un code OTP valide envoie %s directement sur %s',
+    async (_, path, account) => {
+      vi.mocked(getUserByEmailService).mockResolvedValue(account)
+      vi.mocked(auth.api.verifyTwoFactorOTP).mockResolvedValue(
+        new Response(JSON.stringify({token: 't', user: signedIn}), {
+          status: 200,
+        }) as never
+      )
+
+      await verifyOTPAction({success: false}, codeFormData())
+
+      expect(getUserByEmailService).toHaveBeenCalledWith('membre@exemple.test')
+      expect(redirect).toHaveBeenCalledTimes(1)
+      expect(redirect).toHaveBeenCalledWith(path)
+    }
+  )
 })

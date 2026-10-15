@@ -72,9 +72,22 @@ connexion la rend avec le message d'un compte inconnu.
 - Toute action serveur qui appelle `auth.api.*` en ouvrant une session **doit transmettre les
   `headers`** de la requête : sans eux, le contrôle refuse. `loginCredentialAction` est corrigée par
   s46b ; un futur appel qui l'oublierait échouerait fermé.
-- Le lien OTP de la double authentification est construit sur `NEXT_PUBLIC_APP_URL` (`auth.ts:141`) :
-  s'il est ouvert sur l'hôte de la plateforme, sa vérification est refusée. Dette connue (ADR 022,
-  « Reste connu »), à traiter avec s12b.
+- Toute session ouverte **par un lien d'email** doit naître sur le domaine de l'association : un lien
+  construit sur l'hôte de la plateforme (`BETTER_AUTH_URL`, ADR 022) y crée sa session, que ce contrôle
+  refuse à tout compte sauf le SuperAdmin.
+  - **Lien magique** : rebasé sur l'origine de l'association depuis s03 (ADR 022).
+  - **Vérification d'email et changement d'adresse** : rebasés de la même façon depuis la revue de s46b
+    (`verificationLinkOnAssociation`, `email-verification-link.ts`). Sans cela, le changement d'adresse
+    échouait en 500 sans changer l'adresse (Better Auth crée la session **avant** la mise à jour), et la
+    vérification finissait en 500 **après** avoir marqué l'adresse vérifiée. L'hôte vient de la `Request`
+    que Better Auth 1.7.1 passe au callback lors d'un appel HTTP ; lors d'un appel direct `auth.api.*`
+    (Server Action, comme `changeEmailAction`), Better Auth ne passe aucune `Request` et ce sont les
+    en-têtes de la requête Next qui servent. Hôte sans association (le SuperAdmin sur la plateforme) ou
+    hors requête : le lien reste sur la plateforme, comme avant — seul le SuperAdmin peut y ouvrir la
+    session. Prouvé sur un vrai Better Auth (`email-verification-link.real-auth.test.ts`).
+  - **Lien OTP** de la double authentification : toujours construit sur `NEXT_PUBLIC_APP_URL`
+    (`auth.ts`). Ouvert sur l'hôte de la plateforme, sa vérification est refusée. Dette connue (ADR 022,
+    « Reste connu »), à traiter avec s12b.
 - Google, en sommeil sans écran, a son callback sur l'hôte de la plateforme (`BETTER_AUTH_URL`) : il
   n'y ouvre de session que pour le SuperAdmin. La V2 devra donner un callback par domaine.
 - La règle d'appartenance a une seule définition, et le lien magique l'utilise aussi : le SuperAdmin y

@@ -19,6 +19,7 @@ import {canManageUsers} from '@/services/authorization/user-authorization'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {
   getAllUsersWithPaginationService,
+  getUserByEmailService,
   getUserByIdService,
   getUsersByOrganizationService,
 } from '@/services/facades/user-service-facade'
@@ -166,6 +167,14 @@ export const getCurrentUserDal = async (): Promise<CurrentUserContext> => {
 // DESTINATION APRES CONNEXION (s46b)
 // ========================================
 
+/** La destination d'un compte sur le domaine appele. */
+const postLoginPathOnRequestDomain = async (
+  user: User
+): Promise<PostLoginPath> => {
+  const tenant = await getCurrentTenantDal()
+  return postLoginPathOf(user, tenant?.id)
+}
+
 /**
  * Le chemin ou envoyer le compte qui vient de se connecter, selon son role et
  * l'association du domaine appele ; rien sans session. Lu a la requete, sans
@@ -177,6 +186,19 @@ export const getPostLoginPathDal = async (): Promise<
   const user = await getAuthUser()
   if (!user) return undefined
 
-  const tenant = await getCurrentTenantDal()
-  return postLoginPathOf(user as User, tenant?.id)
+  return postLoginPathOnRequestDomain(user as User)
+}
+
+/**
+ * La meme destination, pour une Server Action qui vient d'ouvrir la session :
+ * le cookie n'est pas encore dans la requete, le compte est lu par son email.
+ * Rien pour un compte introuvable. Sans cache.
+ */
+export const getPostLoginPathOfAccountDal = async (
+  email: string
+): Promise<PostLoginPath | undefined> => {
+  const user = await getUserByEmailService(email)
+  if (!user) return undefined
+
+  return postLoginPathOnRequestDomain(user)
 }
