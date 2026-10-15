@@ -20,9 +20,9 @@ const currentRequestHeaders = async (): Promise<Headers | undefined> => {
 }
 
 /**
- * Lien de verification d'email ou de changement d'adresse, reporte sur
- * l'origine de l'association du domaine appele (revue M2 de s46b, ADR 022,
- * ADR 034). Better Auth le construit sur `BETTER_AUTH_URL` ; ouvert la, il
+ * Lien de verification d'email, de changement d'adresse ou de reinitialisation
+ * du mot de passe, reporte sur l'origine de l'association du domaine appele
+ * (revues M2 et M1′ de s46b, ADR 022, ADR 034). Better Auth le construit sur `BETTER_AUTH_URL` ; ouvert la, il
  * creerait sa session sur l'hote de la plateforme, ou le controle
  * d'association la refuse. Rebase comme le lien magique, il ouvre la session
  * sur le domaine de l'association.

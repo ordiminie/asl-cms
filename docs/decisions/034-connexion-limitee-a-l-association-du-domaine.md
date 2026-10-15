@@ -85,6 +85,13 @@ connexion la rend avec le message d'un compte inconnu.
     en-têtes de la requête Next qui servent. Hôte sans association (le SuperAdmin sur la plateforme) ou
     hors requête : le lien reste sur la plateforme, comme avant — seul le SuperAdmin peut y ouvrir la
     session. Prouvé sur un vrai Better Auth (`email-verification-link.real-auth.test.ts`).
+  - **Réinitialisation du mot de passe** : rebasée de la même façon depuis la seconde revue de s46b
+    (`sendResetPassword`, même fonction). Elle n'ouvre aucune session, mais son lien construit sur la
+    plateforme renvoyait vers `/reset-password` de la plateforme (Better Auth 1.7.1 redirige vers le
+    `callbackURL` résolu sur `BETTER_AUTH_URL`), puis vers `/login` de la plateforme, où le nouveau mot
+    de passe était refusé à tout compte sauf le SuperAdmin. Rebasé, le `callbackURL` devient absolu sur
+    l'association, accepté comme origine de confiance (ADR 022), et tout le parcours y reste. Prouvé sur
+    un vrai Better Auth dans le même fichier de test.
   - **Lien OTP** de la double authentification : toujours construit sur `NEXT_PUBLIC_APP_URL`
     (`auth.ts`). Ouvert sur l'hôte de la plateforme, sa vérification est refusée. Dette connue (ADR 022,
     « Reste connu »), à traiter avec s12b.

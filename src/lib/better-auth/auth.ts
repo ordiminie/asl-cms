@@ -77,12 +77,14 @@ const options = {
     // Inscription fermee (s46b) : les comptes sont crees par le bureau.
     disableSignUp: true,
     requireEmailVerification: AuthAppConfig.requireEmailVerification,
-    sendResetPassword: async ({user, url}) => {
+    // Lien sur le domaine de l'association : le retour vers /reset-password,
+    // puis /login, doit rester sur l'association (revue M1′ de s46b, ADR 034).
+    sendResetPassword: async ({user, url}, request) => {
       await createTypedNotificationService({
         userId: user.id,
         type: NotificationTypeConst.reset_password,
         metadata: {
-          url,
+          url: await verificationLinkOnAssociation(url, request),
         },
       })
     },

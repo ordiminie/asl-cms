@@ -151,6 +151,29 @@ le plan.
      `pnpm lint`, `pnpm check:rules`.
    - Les e2e tournent en CI.
 
+## Écarts après revue
+
+Écarts voulus, introduits par les correctifs de revue (`docs/reviews/s46b-connexion-limitee-association.md`).
+Les décisions validées ci-dessus ne sont pas réécrites ; ce qui suit l'emporte sur elles.
+
+- **Destination directe (constat M1).** Les trois actions de connexion (mot de passe, code de
+  secours, OTP) redirigent directement vers la page finale, et non vers `/login/destination`
+  (tâche 3) : une Server Action qui redirige vers une adresse qui redirige encore laisse la barre
+  d'adresse sur cette adresse. Elles lisent la destination par `getPostLoginPathOfAccountDal`
+  (`src/app/dal/user-dal.ts`), seulement après une connexion réussie.
+- **Destination du bureau (constat M1).** `postLoginPathOf` rend `/bureau/pages` au lieu de
+  `/bureau` (décisions G et H, tâche 4, critère 1) : la cible ne doit être ni un Route Handler ni une
+  source de `redirects()`. Ce que l'utilisateur voit ne change pas (la tâche 8 attendait déjà
+  `/bureau/pages`). Garde : `src/lib/routing/post-login-paths.test.ts`.
+- **Route de passage.** `/login/destination` reste pour le lien magique, la vérification d'email et
+  les écrans OTP et TOTP (navigations du navigateur).
+- **Liens d'email sur l'association (constats M2 et M1′).** Les liens de vérification d'email, de
+  changement d'adresse et de réinitialisation du mot de passe sont rebasés sur l'origine de
+  l'association du domaine appelé, comme le lien magique. Fichiers ajoutés :
+  `src/lib/better-auth/email-verification-link.ts`, `email-verification-link.test.ts` et
+  `email-verification-link.real-auth.test.ts` (sur un vrai Better Auth 1.7.1) ; branchement dans
+  `src/lib/better-auth/auth.ts` et son test.
+
 ## Files touched
 
 - **Authentification** :

@@ -36,9 +36,10 @@ import {associationSessionGuard} from './association-session-guard'
 import {verificationLinkOnAssociation} from './email-verification-link'
 
 /**
- * Revue M2 de s46b, sur un vrai Better Auth 1.7.1 : ce que la bibliotheque
+ * Revues M2 et M1′ de s46b, sur un vrai Better Auth 1.7.1 : ce que la bibliotheque
  * passe aux callbacks d'envoi, et le parcours complet du changement d'adresse
- * et de la verification d'email, avec le controle d'association (ADR 034).
+ * et de la verification d'email, avec le controle d'association (ADR 034),
+ * et le retour du lien de reinitialisation du mot de passe.
  */
 
 const ASSOCIATION_HOST = 'asso-a.test'
@@ -51,7 +52,7 @@ const NEW_EMAIL = 'nouvelle@exemple.test'
 const PASSWORD = 'mot-de-passe-solide'
 
 type Sent = {
-  kind: 'verification' | 'change-confirmation'
+  kind: 'verification' | 'change-confirmation' | 'reset-password'
   platformUrl: string
   url: string
   request: Request | undefined
@@ -82,7 +83,10 @@ const createLocalAuth = () => {
     database: memoryAdapter(memoryDb),
     rateLimit: {enabled: false},
     trustedOrigins: trustedOriginsOf,
-    emailAndPassword: {enabled: true},
+    emailAndPassword: {
+      enabled: true,
+      sendResetPassword: record('reset-password'),
+    },
     emailVerification: {
       sendVerificationEmail: record('verification'),
       autoSignInAfterVerification: true,
@@ -251,5 +255,89 @@ describe('liens de vérification sur un vrai Better Auth (revue M2)', () => {
 
     expect(refused.status).toBe(500)
     expect(memoryDb.user[0].emailVerified).toBe(true)
+  })
+})
+
+describe('lien de réinitialisation du mot de passe sur un vrai Better Auth (revue M1′)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getOrganizationByDomainService).mockImplementation(
+      async (domain: string) =>
+        domain === ASSOCIATION_HOST ? association : undefined
+    )
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({host: ASSOCIATION_HOST}) as never
+    )
+  })
+
+  /**
+   * Un membre de A qui demande la reinitialisation depuis l'ecran, sur l'hote
+   * donne.
+   */
+  const resetRequested = async (host: string) => {
+    const auth = createLocalAuth()
+    await auth.localAuth.api.signUpEmail({
+      headers: new Headers({host: ASSOCIATION_HOST}),
+      body: {email: EMAIL, password: PASSWORD, name: 'Membre'},
+    })
+    await auth.localAuth.handler(
+      new Request(`http://${host}/api/auth/request-password-reset`, {
+        method: 'POST',
+        headers: {
+          host,
+          origin: `http://${host}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({email: EMAIL, redirectTo: '/reset-password'}),
+      })
+    )
+    return auth
+  }
+
+  it('demandé sur l’association : le lien renvoie vers /reset-password de l’association', async () => {
+    const {localAuth, sent} = await resetRequested(ASSOCIATION_HOST)
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0].kind).toBe('reset-password')
+    expect(sent[0].request?.headers.get('host')).toBe(ASSOCIATION_HOST)
+    expect(new URL(sent[0].platformUrl).origin).toBe('http://localhost:3000')
+    expect(new URL(sent[0].url).origin).toBe(ASSOCIATION_ORIGIN)
+
+    const opened = await open(localAuth, sent[0].url, ASSOCIATION_HOST)
+
+    expect(opened.status).toBe(302)
+    const location = new URL(String(opened.headers.get('location')))
+    expect(location.origin).toBe(ASSOCIATION_ORIGIN)
+    expect(location.pathname).toBe('/reset-password')
+    expect(location.searchParams.get('token')).toBeTruthy()
+  })
+
+  it('le lien brut de Better Auth renverrait vers la plateforme (le défaut corrigé)', async () => {
+    const {localAuth, sent} = await resetRequested(ASSOCIATION_HOST)
+
+    const opened = await open(localAuth, sent[0].platformUrl, PLATFORM_HOST)
+
+    expect(opened.status).toBe(302)
+    expect(new URL(String(opened.headers.get('location'))).origin).toBe(
+      'http://localhost:3000'
+    )
+  })
+
+  it('demandé sur un hôte sans association : le lien et son retour restent sur la plateforme', async () => {
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({host: PLATFORM_HOST}) as never
+    )
+    const {localAuth, sent} = await resetRequested(PLATFORM_HOST)
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0].url).toBe(sent[0].platformUrl)
+
+    const opened = await open(localAuth, sent[0].url, PLATFORM_HOST)
+
+    expect(opened.status).toBe(302)
+    const location = new URL(String(opened.headers.get('location')))
+    expect(location.origin).toBe('http://localhost:3000')
+    expect(location.pathname).toBe('/reset-password')
+    expect(location.searchParams.get('token')).toBeTruthy()
   })
 })

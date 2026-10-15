@@ -504,9 +504,9 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   Les liens OTP (2FA) et d'invitation (s15) sont encore construits sur `NEXT_PUBLIC_APP_URL` : depuis s46b,
   un lien OTP ouvert sur l'hôte de la plateforme y est refusé par le contrôle d'ouverture de session (ADR
   034). Le callback de Google est sur l'hôte de la plateforme : il n'y ouvre de session qu'au SuperAdmin
-  (la V2 devra en donner un par domaine). Les liens de **vérification d'email** et de **changement
-  d'adresse**, eux, sont couverts depuis s46b : `verificationLinkOnAssociation`
-  (`email-verification-link.ts`) les rebase sur l'origine de l'association du domaine appelé, comme le
+  (la V2 devra en donner un par domaine). Les liens de **vérification d'email**, de **changement
+  d'adresse** et de **réinitialisation du mot de passe**, eux, sont couverts depuis s46b :
+  `verificationLinkOnAssociation` (`email-verification-link.ts`) les rebase sur l'origine de l'association du domaine appelé, comme le
   lien magique ; l'hôte vient de la `Request` passée par Better Auth (appel HTTP), sinon des en-têtes de
   la requête Next (appel direct `auth.api.*` depuis une Server Action, où Better Auth 1.7.1 ne passe aucune
   `Request`). Demandés depuis un hôte sans association (le SuperAdmin sur la plateforme) ou hors requête,

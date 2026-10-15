@@ -118,3 +118,53 @@ describe('liens de vérification d’email sur le domaine de l’association (re
     )
   })
 })
+
+describe('lien de réinitialisation du mot de passe sur le domaine de l’association (revue M1′)', () => {
+  const association = {id: 'org-a', domain: 'asso-a.test'} as Organization
+  const user = {id: 'user-1', email: 'membre@exemple.test'} as never
+  const platformLink =
+    'http://localhost:3000/api/auth/reset-password/jeton?callbackURL=%2Freset-password'
+
+  const notifiedUrl = () =>
+    (
+      vi.mocked(createTypedNotificationService).mock.calls[0][0].metadata as {
+        url?: string
+      }
+    ).url
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getOrganizationByDomainService).mockImplementation(
+      async (domain: string) =>
+        domain === association.domain ? association : undefined
+    )
+    vi.mocked(headers).mockResolvedValue(
+      new Headers({host: 'asso-a.test'}) as never
+    )
+  })
+
+  it('demande par HTTP : le lien notifié et son retour sont sur l’association', async () => {
+    const send = auth.options.emailAndPassword?.sendResetPassword
+
+    await send?.(
+      {user, url: platformLink, token: 'jeton'},
+      new Request('http://interne/api/auth/request-password-reset', {
+        headers: {host: 'asso-a.test'},
+      })
+    )
+
+    expect(notifiedUrl()).toBe(
+      'http://asso-a.test:3000/api/auth/reset-password/jeton?callbackURL=http%3A%2F%2Fasso-a.test%3A3000%2Freset-password'
+    )
+  })
+
+  it('appel direct sans Request : lien sur l’association lue dans les en-têtes Next', async () => {
+    const send = auth.options.emailAndPassword?.sendResetPassword
+
+    await send?.({user, url: platformLink, token: 'jeton'}, undefined)
+
+    expect(new URL(String(notifiedUrl())).origin).toBe(
+      'http://asso-a.test:3000'
+    )
+  })
+})
