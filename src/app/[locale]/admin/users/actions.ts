@@ -2,15 +2,17 @@
 
 import {revalidatePath} from 'next/cache'
 import {headers} from 'next/headers'
+import {getTranslations} from 'next-intl/server'
 
 import {requireActionAuth} from '@/app/dal/user-dal'
+import {userRoleSchema} from '@/components/features/admin/users/user-form-validation'
 import {auth} from '@/lib/auth'
 import {
   getAllUsersWithPaginationService,
   updateUserService,
 } from '@/services/facades/user-service-facade'
 import {RoleConst} from '@/services/types/domain/auth-types'
-import {Roles, UpdateUser, User} from '@/services/types/domain/user-types'
+import {UpdateUser, User} from '@/services/types/domain/user-types'
 
 export type FormState = {
   success: boolean
@@ -24,7 +26,7 @@ export async function updateUserAction(
   formData?: FormData
 ): Promise<FormState> {
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
   if (!formData) {
     return {success: false, message: 'Données invalides'}
@@ -87,7 +89,7 @@ export async function updateUserDetailAction(
   }
 ): Promise<FormState> {
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
 
   try {
@@ -105,12 +107,22 @@ export async function updateUserDetailAction(
       }
     }
 
+    const role = userRoleSchema.safeParse(data.role)
+    if (!role.success) {
+      const t = await getTranslations('AdminUsers.validation')
+      return {
+        success: false,
+        message: t('roleInvalid'),
+        errors: [{field: 'role', message: t('roleInvalid')}],
+      }
+    }
+
     // Ne pas passer les données de ban - elles sont gérées par Better Auth
     const updateData: UpdateUser = {
       id: userId,
       name: data.name,
       email: data.email,
-      role: data.role as Roles,
+      role: role.data,
       visibility: data.visibility,
       //twoFactorEnabled: data.twoFactorEnabled, // need use betterauth api
       emailVerified: data.emailVerified,
@@ -176,6 +188,10 @@ export async function updateUserDetailAction(
 }
 
 export async function deleteUserAction(userId: string): Promise<FormState> {
+  await requireActionAuth({
+    roles: [RoleConst.SUPER_ADMIN],
+  })
+
   try {
     // Note: Nous n'avons pas encore implémenté deleteUserService
     // Ceci est un placeholder pour la fonction
@@ -209,7 +225,7 @@ export async function fetchUsersAction(params: {
 }> {
   try {
     await requireActionAuth({
-      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+      roles: [RoleConst.SUPER_ADMIN],
     })
 
     const result = await getAllUsersWithPaginationService(

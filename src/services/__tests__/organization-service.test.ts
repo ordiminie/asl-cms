@@ -31,7 +31,7 @@ import {
   UpdateOrganization,
 } from '../types/domain/organization-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 // Mock des DAOs
 vi.mock('@/db/repositories/organization-repository')
@@ -125,7 +125,7 @@ describe('[ADMIN] CRUD : OrganizationService', () => {
   beforeEach(() => {
     // Admin système peut tout faire
     const user = {
-      ...userTestAdmin,
+      ...userTestSuperAdmin,
     }
     setupAuthUserMocked(user)
     vi.clearAllMocks()
@@ -179,10 +179,12 @@ describe('[ADMIN] CRUD : OrganizationService', () => {
   })
 
   it('should get organizations by user id', async () => {
-    const result = await getOrganizationsByUserIdService(userTestAdmin.id)
+    const result = await getOrganizationsByUserIdService(userTestSuperAdmin.id)
 
     expect(result).toEqual([{...organizationData, role: 'owner'}])
-    expect(getOrganizationsByUserIdDao).toHaveBeenCalledWith(userTestAdmin.id)
+    expect(getOrganizationsByUserIdDao).toHaveBeenCalledWith(
+      userTestSuperAdmin.id
+    )
   })
 })
 
@@ -658,7 +660,7 @@ describe('[ORGANIZATION MEMBER READ ACCESS] getOrganizationMembersService', () =
   })
 
   it('[ADMIN SYSTEM] should be able to read organization members', async () => {
-    setupAuthUserMocked(userTestAdmin)
+    setupAuthUserMocked(userTestSuperAdmin)
 
     const result = await getOrganizationMembersService(organizationId)
 
@@ -694,7 +696,7 @@ describe('[ADMIN] deleteInvitationByIdService', () => {
 
   beforeEach(() => {
     // Admin système peut supprimer les invitations
-    setupAuthUserMocked(userTestAdmin)
+    setupAuthUserMocked(userTestSuperAdmin)
     vi.clearAllMocks()
     vi.mocked(deleteInvitationByIdDao).mockResolvedValue()
   })

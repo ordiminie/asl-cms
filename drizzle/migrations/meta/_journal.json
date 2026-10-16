@@ -218,6 +218,20 @@
       "when": 1790927131962,
       "tag": "0030_member_profile_parcel_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792155638425,
+      "tag": "0031_global_roles_to_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792155670660,
+      "tag": "0032_classy_hellfire_club",
+      "breakpoints": true
     }
   ]
 }

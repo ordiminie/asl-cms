@@ -48,7 +48,7 @@ export const SubjectsConst = {
 
 ## Permissions par Rôle
 
-### GUEST (Non authentifié)
+### GUEST (Non authentifié, ou rôle absent ou inconnu)
 
 - **Accès limité** : Peut uniquement lire certains champs des logs
 - **Restrictions** : Aucun accès aux utilisateurs, subscriptions ou ressources techniques
@@ -71,17 +71,13 @@ export const SubjectsConst = {
   - Ne peut pas supprimer d'autres utilisateurs
   - Aucun accès aux ressources techniques
 
-### ADMIN
-
-- **Permissions étendues** :
-  - Peut gérer (`MANAGE`) tous les utilisateurs
-  - Peut gérer toutes les subscriptions
-  - Peut gérer les ressources techniques et logs
-
 ### SUPER_ADMIN
 
 - **Permissions complètes** :
   - Peut gérer (`MANAGE`) toutes les ressources (`ALL`)
+
+Il n'y a que deux rôles globaux, `user` et `super_admin` (s47, ADR 035) :
+pas de palier intermédiaire entre l'utilisateur et le SuperAdmin.
 
 ## Fonctions Utilitaires
 
@@ -108,7 +104,7 @@ defineAbilitiesFor(user?: User): AppAbility
 ### Fonctions d'Aide
 
 ```typescript
-// Vérifie si l'utilisateur est admin
+// Vérifie si l'utilisateur est le SuperAdmin (nom historique)
 isUserAdmin(user?: User): boolean
 
 // Filtre les champs selon les permissions

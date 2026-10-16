@@ -37,17 +37,12 @@ import {Textarea} from '@/components/ui/textarea'
 import {AdminUserOrganizationWithUsage} from '@/services/organization-service'
 import {User as UserType} from '@/services/types/domain/user-types'
 
+import {userRoleSchema} from './user-form-validation'
+
 const userDetailSchema = z.object({
   name: z.string().min(1, 'Le nom est requis'),
   email: z.string().email('Format email invalide'),
-  role: z.enum([
-    'public',
-    'user',
-    'redactor',
-    'moderator',
-    'admin',
-    'super_admin',
-  ]),
+  role: userRoleSchema,
   visibility: z.enum(['public', 'private']),
   banned: z.boolean(),
   banReason: z.string().optional(),
@@ -89,7 +84,7 @@ export default function UserDetailForm({
     defaultValues: {
       name: user.name || '',
       email: user.email || '',
-      role: user.role || 'user',
+      role: user.role === 'super_admin' ? 'super_admin' : 'user',
       visibility: user.visibility || 'private',
       banned: user.banned || false,
       banReason: user.banReason || '',
@@ -256,20 +251,8 @@ export default function UserDetailForm({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="public">
-                                {tCommon('states.public')}
-                              </SelectItem>
                               <SelectItem value="user">
                                 {t('roles.user')}
-                              </SelectItem>
-                              <SelectItem value="redactor">
-                                {t('roles.redactor')}
-                              </SelectItem>
-                              <SelectItem value="moderator">
-                                {t('roles.moderator')}
-                              </SelectItem>
-                              <SelectItem value="admin">
-                                {t('roles.admin')}
                               </SelectItem>
                               <SelectItem value="super_admin">
                                 {t('roles.super_admin')}

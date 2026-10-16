@@ -363,39 +363,37 @@ test.describe.serial('s01b — identité de l’association', () => {
     expect(logo.headers['content-type']).toBe('image/png')
   })
 
-  for (const email of ['user@gmail.com', 'admin@gmail.com']) {
-    test(`critère 8 — ${email} voit l’écran de refus, et l’action serveur directe est refusée`, async ({
-      browser,
-    }) => {
-      const page = await newSession(browser, TENANT_A, email)
+  test('critère 8 — user@gmail.com voit l’écran de refus, et l’action serveur directe est refusée', async ({
+    browser,
+  }) => {
+    const page = await newSession(browser, TENANT_A, 'user@gmail.com')
 
-      await page.goto(`${TENANT_A}${IDENTITY_PAGE}`, {waitUntil: 'load'})
-      await expect(
-        page.getByRole('heading', {level: 1, name: DENIED_TITLE})
-      ).toBeVisible({timeout: 15_000})
-      await expect(page.getByTestId('identity-file-input-logo')).toHaveCount(0)
+    await page.goto(`${TENANT_A}${IDENTITY_PAGE}`, {waitUntil: 'load'})
+    await expect(
+      page.getByRole('heading', {level: 1, name: DENIED_TITLE})
+    ).toBeVisible({timeout: 15_000})
+    await expect(page.getByTestId('identity-file-input-logo')).toHaveCount(0)
 
-      // Rejoue, sous cette session, l'appel d'action d'un vrai téléversement
-      // de la présidente : le serveur doit refuser, le logo ne doit pas bouger.
-      expect(capturedAction?.nextAction).toBeTruthy()
-      const replay = await page.request.post(`${TENANT_A}${IDENTITY_PAGE}`, {
-        headers: {
-          'next-action': capturedAction.nextAction,
-          'content-type': capturedAction.contentType,
-          accept: 'text/x-component',
-          origin: TENANT_A,
-        },
-        data: capturedAction.body,
-      })
-      expect(replay.status()).toBeLessThan(500)
-
-      const served = await identityBytes(page.request, TENANT_A, 'logo')
-      expect(Buffer.compare(served.body, logoA)).toBe(0)
-      expect(Buffer.compare(served.body, firstLogoA)).not.toBe(0)
-
-      await page.close()
+    // Rejoue, sous cette session, l'appel d'action d'un vrai téléversement
+    // de la présidente : le serveur doit refuser, le logo ne doit pas bouger.
+    expect(capturedAction?.nextAction).toBeTruthy()
+    const replay = await page.request.post(`${TENANT_A}${IDENTITY_PAGE}`, {
+      headers: {
+        'next-action': capturedAction.nextAction,
+        'content-type': capturedAction.contentType,
+        accept: 'text/x-component',
+        origin: TENANT_A,
+      },
+      data: capturedAction.body,
     })
-  }
+    expect(replay.status()).toBeLessThan(500)
+
+    const served = await identityBytes(page.request, TENANT_A, 'logo')
+    expect(Buffer.compare(served.body, logoA)).toBe(0)
+    expect(Buffer.compare(served.body, firstLogoA)).not.toBe(0)
+
+    await page.close()
+  })
 
   test('critère 8 — le SuperAdmin accède à la page de réglages', async ({
     browser,

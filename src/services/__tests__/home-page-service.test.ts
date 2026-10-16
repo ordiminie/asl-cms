@@ -44,7 +44,7 @@ import {HOME_PAGE_SETTING_KEY} from '../types/domain/home-page-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -231,8 +231,8 @@ describe('[REFUS] setHomePageService', () => {
     expectNoWrite()
   })
 
-  it('[ADMIN] refuse l administrateur global sans rôle dans l association', async () => {
-    setupAuthUserMocked(userTestAdmin)
+  it('[USER NOT IN ORGANIZATION] refuse un compte sans rôle dans l association', async () => {
+    setupAuthUserMocked(userTest)
 
     await expect(
       setHomePageService({organizationId: ORG_ID, pageId: PAGE_ID})

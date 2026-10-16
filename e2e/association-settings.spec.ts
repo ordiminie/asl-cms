@@ -359,36 +359,34 @@ test.describe.serial('s02 — paramètres de l’association', () => {
     await page.close()
   })
 
-  for (const email of ['user@gmail.com', 'admin@gmail.com']) {
-    test(`critère 7 — ${email} voit l’écran de refus, et l’action serveur directe est refusée`, async ({
-      browser,
-    }) => {
-      const page = await newSession(browser, TENANT_A, email)
+  test('critère 7 — user@gmail.com voit l’écran de refus, et l’action serveur directe est refusée', async ({
+    browser,
+  }) => {
+    const page = await newSession(browser, TENANT_A, 'user@gmail.com')
 
-      await page.goto(`${TENANT_A}${SETTINGS_PAGE}`, {waitUntil: 'load'})
-      await expect(
-        page.getByRole('heading', {level: 1, name: DENIED_TITLE})
-      ).toBeVisible({timeout: 15_000})
-      await expect(contactField(page)).toHaveCount(0)
+    await page.goto(`${TENANT_A}${SETTINGS_PAGE}`, {waitUntil: 'load'})
+    await expect(
+      page.getByRole('heading', {level: 1, name: DENIED_TITLE})
+    ).toBeVisible({timeout: 15_000})
+    await expect(contactField(page)).toHaveCount(0)
 
-      // Rejoue, sous cette session, l'enregistrement de REPLAYED_CONTACT_A par
-      // la présidente : l'adresse en vigueur ne doit pas y revenir.
-      expect(capturedAction?.nextAction).toBeTruthy()
-      const replay = await page.request.post(`${TENANT_A}${SETTINGS_PAGE}`, {
-        headers: {
-          'next-action': capturedAction.nextAction,
-          'content-type': capturedAction.contentType,
-          accept: 'text/x-component',
-          origin: TENANT_A,
-        },
-        data: capturedAction.body,
-      })
-      expect(replay.status()).toBeLessThan(500)
-      expect((await storedSettings('a'))[CONTACT_KEY]).toBe(NEW_CONTACT_A)
-
-      await page.close()
+    // Rejoue, sous cette session, l'enregistrement de REPLAYED_CONTACT_A par
+    // la présidente : l'adresse en vigueur ne doit pas y revenir.
+    expect(capturedAction?.nextAction).toBeTruthy()
+    const replay = await page.request.post(`${TENANT_A}${SETTINGS_PAGE}`, {
+      headers: {
+        'next-action': capturedAction.nextAction,
+        'content-type': capturedAction.contentType,
+        accept: 'text/x-component',
+        origin: TENANT_A,
+      },
+      data: capturedAction.body,
     })
-  }
+    expect(replay.status()).toBeLessThan(500)
+    expect((await storedSettings('a'))[CONTACT_KEY]).toBe(NEW_CONTACT_A)
+
+    await page.close()
+  })
 
   test('critère 7 — le SuperAdmin accède aux réglages', async ({browser}) => {
     const page = await newSession(browser, TENANT_A, 'superadmin@gmail.com')

@@ -37,7 +37,7 @@ import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -136,7 +136,7 @@ describe('updateAssociationSettingsService — refus d acces, sans aucun appel D
       withRole(UserOrganizationRoleConst.ADMIN, OTHER_ORG_ID),
     ],
     ['[OTHER ORGANIZATION OWNER]', withRole('owner', OTHER_ORG_ID)],
-    ['[ADMIN] global', userTestAdmin],
+    ['[USER NOT IN ORGANIZATION]', userTest],
   ])('%s est refuse', async (_label, user) => {
     setupAuthUserMocked(user)
 

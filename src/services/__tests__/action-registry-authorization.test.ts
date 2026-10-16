@@ -6,10 +6,10 @@ import {
   ActionIdConst,
   isActionAllowedForRole,
 } from '../types/domain/action-registry-types'
-import {RoleConst, UserOrganizationRoleConst} from '../types/domain/auth-types'
+import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
-import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -130,11 +130,6 @@ describe('canPerformAction — refus', () => {
     )
 
     expect(canPerformAction(user, ORG_ID, ACTION_ID)).toBe(false)
-  })
-
-  it('[ADMIN] refuse l administrateur global sans role dans l association', () => {
-    expect(userTestAdmin.role).toBe(RoleConst.ADMIN)
-    expect(canPerformAction(userTestAdmin, ORG_ID, ACTION_ID)).toBe(false)
   })
 
   it('refuse une action absente du registre, meme pour la presidente — defaut ferme', () => {

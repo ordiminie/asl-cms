@@ -21,28 +21,11 @@ export const userTest = {
   stripeCustomerId: 'cus_1234567890',
 } satisfies User
 
-export const userTestAdmin = {
-  id: currentAuthUserId,
-  name: 'Test User',
-  email: 'test@example.com',
-  emailVerified: true,
-  image: null,
-  role: RoleConst.ADMIN,
-  visibility: 'private',
-  banned: null,
-  banReason: null,
-  banExpires: null,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  twoFactorEnabled: false,
-  stripeCustomerId: 'cus_1234567890',
-} satisfies User
-
 /**
- * SuperAdmin Zourite Studio. C'est le seul role qui provisionne une
- * association (s01, critere 1) : ADMIN ne suffit pas, et les tests le prouvent.
+ * SuperAdmin Zourite Studio. C'est le seul role global au-dessus de `user`
+ * (s47, ADR 035) : il provisionne une association et administre `/admin`.
  */
 export const userTestSuperAdmin = {
-  ...userTestAdmin,
+  ...userTest,
   role: RoleConst.SUPER_ADMIN,
 } satisfies User

@@ -34,7 +34,7 @@ export async function updateOrganizationAction(
   formData?: FormData
 ): Promise<FormState> {
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
   if (!formData) {
     return {success: false, message: 'Données invalides'}
@@ -91,6 +91,10 @@ export async function updateOrganizationAction(
 }
 
 export async function deleteOrganizationAction(id: string): Promise<FormState> {
+  await requireActionAuth({
+    roles: [RoleConst.SUPER_ADMIN],
+  })
+
   try {
     await deleteOrganizationService(id)
 
@@ -116,7 +120,7 @@ export async function addUserToOrganizationAction(
   role: OrganizationRole = OrganizationRoleConst.member as OrganizationRole
 ): Promise<MemberActionResult> {
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
 
   try {
@@ -157,7 +161,7 @@ export async function deleteAdminMemberInvitationAction(
   invitationId: string
 ) {
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
 
   await deleteInvitationByIdService(invitationId)

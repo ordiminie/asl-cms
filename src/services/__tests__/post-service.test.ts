@@ -83,7 +83,7 @@ import {
   UpdatePost,
 } from '../types/domain/post-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 describe('[ADMIN] CRUD : Post Service', () => {
   const postId = faker.string.uuid()
@@ -111,7 +111,7 @@ describe('[ADMIN] CRUD : Post Service', () => {
   const postData: Post = {
     id: postId,
     status: POST_STATUS.DRAFT,
-    authorId: userTestAdmin.id,
+    authorId: userTestSuperAdmin.id,
     categoryId: categoryId,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -121,7 +121,7 @@ describe('[ADMIN] CRUD : Post Service', () => {
 
   const postWithRelationsData: PostData = {
     ...postData,
-    author: userTestAdmin,
+    author: userTestSuperAdmin,
     category: categoryData,
     postTranslations: [],
     postHashtags: [],
@@ -144,7 +144,7 @@ describe('[ADMIN] CRUD : Post Service', () => {
 
   const notificationData: NotificationModel = {
     id: faker.string.uuid(),
-    userId: userTestAdmin.id,
+    userId: userTestSuperAdmin.id,
     type: NotificationTypeConst.project_created,
     title: 'Test',
     message: 'Test message',
@@ -154,7 +154,7 @@ describe('[ADMIN] CRUD : Post Service', () => {
   }
 
   beforeEach(() => {
-    setupAuthUserMocked(userTestAdmin)
+    setupAuthUserMocked(userTestSuperAdmin)
     vi.clearAllMocks()
 
     // Mock des méthodes DAO pour les posts
@@ -201,14 +201,14 @@ describe('[ADMIN] CRUD : Post Service', () => {
     vi.mocked(createNotificationDao).mockResolvedValue(notificationData)
 
     // Mock user pour les notifications
-    vi.mocked(getUserByIdDao).mockResolvedValue(userTestAdmin)
+    vi.mocked(getUserByIdDao).mockResolvedValue(userTestSuperAdmin)
   })
 
   describe('POSTS', () => {
     it('should create a post', async () => {
       const createData: CreatePost = {
         status: POST_STATUS.DRAFT,
-        authorId: userTestAdmin.id,
+        authorId: userTestSuperAdmin.id,
         categoryId: categoryId,
       }
 

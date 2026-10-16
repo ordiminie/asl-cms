@@ -1,6 +1,7 @@
 import {getTranslations} from 'next-intl/server'
 import {z} from 'zod'
 
+import {GLOBAL_ROLES} from '../types/domain/auth-types'
 import {
   CreateUser,
   CreateUserSettings,
@@ -39,9 +40,7 @@ export const updateUserServiceSchema = createUserServiceSchema.extend({
   image: z.string().nullable().optional(),
   visibility: z.enum(['public', 'private']) satisfies z.Schema<UserVisibility>,
   password: z.string().optional(),
-  role: z
-    .enum(['public', 'user', 'redactor', 'moderator', 'admin', 'super_admin'])
-    .optional(),
+  role: z.enum(GLOBAL_ROLES).optional(),
   banned: z.boolean().optional(),
   banReason: z.string().nullable().optional(),
   banExpires: z.date().nullable().optional(),
@@ -67,9 +66,7 @@ export async function createUpdateUserServiceSchema() {
     email: z.string().email({
       message: t('validation.email.invalid'),
     }),
-    role: z
-      .enum(['public', 'user', 'redactor', 'moderator', 'admin', 'super_admin'])
-      .optional(),
+    role: z.enum(GLOBAL_ROLES).optional(),
     banned: z.boolean().optional(),
     banReason: z.string().nullable().optional(),
     banExpires: z.date().nullable().optional(),

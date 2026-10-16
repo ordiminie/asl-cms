@@ -26,7 +26,10 @@ export const canUpdateUser = async (resourceId: string): Promise<boolean> => {
   })
 }
 
-// Fonction de compatibilité - maintenant basée sur CASL
+/**
+ * Vrai si l'utilisateur connecté est le SuperAdmin de la plateforme (s47,
+ * ADR 035). Le nom est historique : il n'existe plus de rôle global `admin`.
+ */
 export const isAuthAdmin = async (): Promise<boolean> => {
   const authUser = await getAuthUser()
   return isUserAdmin(authUser)

@@ -144,12 +144,10 @@ const seed = async () => {
   await client.query(`
     INSERT INTO "user" (email, name, email_verified, image, visibility, role)
     VALUES
-      -- Rôles globaux purs (sans organisations)
+      -- Deux rôles globaux seulement (s47, ADR 035) : user et super_admin
       ('superadmin@gmail.com', 'Frank', true, 'https://randomuser.me/api/portraits/med/men/9.jpg', 'public', 'super_admin'),
-      ('admin@gmail.com', 'Admin', true, 'https://randomuser.me/api/portraits/med/men/4.jpg', 'public', 'admin'),
-      ('moderator@gmail.com', 'David', true, 'https://randomuser.me/api/portraits/med/men/7.jpg', 'public', 'moderator'),
-      ('redactor@gmail.com', 'Grace', true, 'https://randomuser.me/api/portraits/med/women/11.jpg', 'public', 'redactor'),
-      ('public@gmail.com', 'Charlie', true, 'https://randomuser.me/api/portraits/med/men/5.jpg', 'public', 'public'),
+      -- Compte user membre de trois associations (adresse historique)
+      ('admin@gmail.com', 'Admin', true, 'https://randomuser.me/api/portraits/med/men/4.jpg', 'public', 'user'),
       
       -- Utilisateur multi-organisations (cas complexe)
       ('user@gmail.com', 'Bob', true, 'https://randomuser.me/api/portraits/med/men/3.jpg', 'public', 'user'),
@@ -159,9 +157,9 @@ const seed = async () => {
       ('user-admin@gmail.com', 'Sophie', true, 'https://randomuser.me/api/portraits/med/women/12.jpg', 'public', 'user'),
       ('user-member@gmail.com', 'Lucas', true, 'https://randomuser.me/api/portraits/med/men/13.jpg', 'public', 'user'),
       
-      -- Cas de chevauchement intéressants
-      ('admin-owner@gmail.com', 'Emma', true, 'https://randomuser.me/api/portraits/med/women/14.jpg', 'public', 'admin'),
-      ('moderator-member@gmail.com', 'Julie', true, 'https://randomuser.me/api/portraits/med/women/10.jpg', 'public', 'moderator'),
+      -- Adresses historiques, comptes user depuis s47
+      ('admin-owner@gmail.com', 'Emma', true, 'https://randomuser.me/api/portraits/med/women/14.jpg', 'public', 'user'),
+      ('moderator-member@gmail.com', 'Julie', true, 'https://randomuser.me/api/portraits/med/women/10.jpg', 'public', 'user'),
       
       -- Utilisateur isolé (sans organisations)
       ('user-isolated@gmail.com', 'Thomas', true, 'https://randomuser.me/api/portraits/med/men/15.jpg', 'public', 'user')
@@ -198,9 +196,6 @@ const seed = async () => {
     WHERE u.email IN (
       'superadmin@gmail.com',
       'admin@gmail.com',
-      'moderator@gmail.com',
-      'redactor@gmail.com',
-      'public@gmail.com',
       'user@gmail.com',
       'user-owner@gmail.com',
       'user-admin@gmail.com',
@@ -306,7 +301,7 @@ const seed = async () => {
         WHEN u.email = 'user-admin@gmail.com' AND o.slug = 'marketing-pro' THEN 'board'
         WHEN u.email = 'user-member@gmail.com' AND o.slug = 'acme-corp' THEN 'member'
         
-        -- Cas de chevauchement (rôle global élevé + rôle org)
+        -- Adresses historiques : role global user depuis s47, seul le role org compte
         WHEN u.email = 'admin-owner@gmail.com' AND o.slug = 'marketing-pro' THEN 'owner'
         WHEN u.email = 'moderator-member@gmail.com' AND o.slug = 'techcorp-solutions' THEN 'member'
         
@@ -463,7 +458,7 @@ const seed = async () => {
         ('user@gmail.com', 'organization_invitation', 'Nouvelle invitation', 'Vous avez été invité à rejoindre Evil Corp en tant que propriétaire.', '{"organization": "evil-corp", "role": "owner"}', 'true', '7'),
         ('user@gmail.com', 'security_alert', 'Connexion suspecte détectée', 'Une tentative de connexion depuis un nouvel appareil a été détectée.', '{"ip": "192.168.1.100", "device": "Chrome/Linux"}', 'false', '1'),
         
-        -- Notifications pour admin@gmail.com (admin global)
+        -- Notifications pour admin@gmail.com
         ('admin@gmail.com', 'system_maintenance', 'Maintenance programmée', 'Une maintenance du système est programmée ce week-end.', '{"scheduled_date": "2024-11-16", "duration": "2 hours"}', 'true', '4'),
         ('admin@gmail.com', 'user_banned', 'Utilisateur suspendu', 'Utilisateur test@spam.com a été suspendu pour violation des conditions.', '{"banned_user": "test@spam.com", "reason": "spam"}', 'true', '6'),
         
@@ -671,13 +666,15 @@ const seed = async () => {
   console.log('')
   console.log('📊 Jeu de test créé avec succès :')
   console.log(
-    '🔹 Rôles globaux purs : superadmin, admin, moderator, redactor, public'
+    '🔹 Rôles globaux : superadmin (super_admin), tous les autres user'
   )
   console.log('🔹 Utilisateur multi-org : user@gmail.com (MEMBER→ADMIN→OWNER)')
   console.log(
     '🔹 Utilisateurs spécialisés : user-owner, user-admin, user-member'
   )
-  console.log('🔹 Cas de chevauchement : admin-owner, moderator-member')
+  console.log(
+    '🔹 Adresses historiques (rôle user) : admin, admin-owner, moderator-member'
+  )
   console.log('🔹 Utilisateur isolé : user-isolated (aucune organisation)')
   console.log('')
   console.log('📝 Articles de blog créés :')

@@ -58,7 +58,7 @@ import {
   uploadFileService,
 } from '../file-service'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTestAdmin} from './service-test-data'
+import {userTestSuperAdmin} from './service-test-data'
 
 const rootDir = async () => (await localRoot).dir
 
@@ -77,12 +77,12 @@ let postId = ''
 
 beforeEach(async () => {
   postId = faker.string.uuid()
-  setupAuthUserMocked(userTestAdmin)
+  setupAuthUserMocked(userTestSuperAdmin)
   vi.clearAllMocks()
   vi.mocked(getPostByIdDao).mockResolvedValue({
     id: postId,
     status: 'published',
-    authorId: userTestAdmin.id,
+    authorId: userTestSuperAdmin.id,
   } as Awaited<ReturnType<typeof getPostByIdDao>>)
 })
 

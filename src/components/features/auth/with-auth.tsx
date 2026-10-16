@@ -33,6 +33,10 @@ const withAuth = <P extends object>(
 
 export default withAuth
 
+/**
+ * Réserve la page à la console plateforme : seul le SuperAdmin passe (s47,
+ * ADR 035). Le nom est historique, il n'existe plus de rôle global `admin`.
+ */
 export const withAuthAdmin = <P extends object>(
   WrappedComponent: React.ComponentType<P & WithAuthProps>
-) => withAuth(WrappedComponent, RoleConst.ADMIN)
+) => withAuth(WrappedComponent, RoleConst.SUPER_ADMIN)

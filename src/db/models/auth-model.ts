@@ -16,14 +16,8 @@ export const userVisibilityEnum = pgEnum('user_visibility', [
   'private',
 ])
 
-export const roleEnum = pgEnum('role_type', [
-  'public',
-  'user',
-  'redactor',
-  'moderator',
-  'admin',
-  'super_admin',
-])
+/** Deux rôles globaux (s47, ADR 035) : tout compte, et le SuperAdmin. */
+export const roleEnum = pgEnum('role_type', ['user', 'super_admin'])
 export const user = pgTable('user', {
   id: uuid('id')
     .default(sql`uuid_generate_v4()`)

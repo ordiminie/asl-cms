@@ -58,7 +58,7 @@ import {CONTACT_MESSAGES_BUREAU_PAGE_SIZE} from '../types/domain/contact-message
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -403,7 +403,6 @@ describe.each([
     () => withRole(UserOrganizationRoleConst.OWNER, OTHER_ORG_ID),
   ],
   ['[USER] sans association', () => userTest as User],
-  ['[ADMIN] global sans association', () => userTestAdmin as User],
 ])('%s ne lit rien', (_label, userOf) => {
   beforeEach(() => {
     setupAuthUserMocked(userOf())

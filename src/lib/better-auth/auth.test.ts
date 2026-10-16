@@ -51,6 +51,46 @@ describe('configuration de Better Auth', () => {
   })
 })
 
+/** s47, ADR 035 : le plugin admin reconnaît le SuperAdmin, et lui seul. */
+describe('plugin admin — rôles globaux (s47)', () => {
+  const adminPluginOptions = () =>
+    (
+      (auth.options.plugins ?? []).find(
+        (plugin: {id: string}) => plugin.id === 'admin'
+      ) as {options?: {adminRoles?: string[]; roles?: object}}
+    ).options
+
+  const canBan = async (role: string) =>
+    (
+      await auth.api.userHasPermission({
+        body: {
+          role: role as 'user' | 'super_admin',
+          permissions: {user: ['ban']},
+        },
+      })
+    ).success
+
+  it('déclare super_admin comme rôle administrateur', () => {
+    expect(adminPluginOptions()?.adminRoles).toEqual(['super_admin'])
+  })
+
+  it('ne connaît que les rôles user et super_admin', () => {
+    expect(Object.keys(adminPluginOptions()?.roles ?? {}).sort()).toEqual([
+      'super_admin',
+      'user',
+    ])
+  })
+
+  it('accorde le bannissement au SuperAdmin', async () => {
+    await expect(canBan('super_admin')).resolves.toBe(true)
+  })
+
+  it('le refuse à un compte user et à un rôle retiré', async () => {
+    await expect(canBan('user')).resolves.toBe(false)
+    await expect(canBan('admin')).resolves.toBe(false)
+  })
+})
+
 describe('inscription fermée (s46b, décision I)', () => {
   it('refuse la création de compte par mot de passe', () => {
     expect(auth.options.emailAndPassword?.disableSignUp).toBe(true)

@@ -37,10 +37,12 @@ contrôle de rôle doit remonter dans le proxy. C'est ce que prescrit
 « run that check in `proxy` instead ».
 
 **La portée est bornée au rendu de page.** Les Route Handlers ne streament aucun
-shell : `src/lib/api-auth.ts` rend bien `401` sans session et `403` sur rôle
-insuffisant, et c'est vérifié dans `e2e/authorization.spec.ts`. La couche où un
-code de statut est réellement consommé — clients d'API, monitoring — n'est donc
-pas concernée.
+shell : un handler peut rendre un vrai `401` sans session ou `403` sur rôle
+insuffisant. La couche où un code de statut est réellement consommé — clients
+d'API, monitoring — n'est donc pas concernée. L'ancien helper
+`src/lib/api-auth.ts`, qui faisait ce contrôle mais n'était plus appelé, est
+supprimé par s47 (ADR 035) ; il reste récupérable par
+`git show 97a18a8b:src/lib/api-auth.ts`.
 
 ## La règle d'or des layouts
 
@@ -84,7 +86,8 @@ laisse ses consommateurs la dérouler.
 
 `withAuth` (et son raccourci `withAuthAdmin`) fait un `await` sur la session,
 redirige si non authentifié, appelle `forbidden()` si le rôle manque, et injecte
-`user` en prop.
+`user` en prop. `withAuthAdmin` exige `super_admin` : la console `/admin` est
+réservée au SuperAdmin (s47, ADR 035), le nom est historique.
 
 ```tsx
 // Sur une page : la page streame derrière le loading.tsx du segment

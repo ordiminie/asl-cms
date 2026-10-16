@@ -103,16 +103,16 @@ export async function updateUserAction(
   prevState?: FormState,
   formData?: FormData
 ): Promise<FormState> {
-  // ✅ OBLIGATOIRE - Vérification avec rôles spécifiques
+  // ✅ OBLIGATOIRE - Console /admin : SuperAdmin seulement (s47, ADR 035)
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
 
   if (!formData) {
     return {success: false, message: 'Données invalides'}
   }
 
-  // Logique métier pour admin seulement
+  // Logique métier pour le SuperAdmin seulement
   try {
     await updateUserService(userData)
     revalidatePath('/admin/users')
@@ -233,12 +233,12 @@ type RequireAuthOptions = {
   roles?: Roles[] // Rôles requis (optionnel)
 }
 
-// Rôles disponibles
-enum RoleConst {
-  USER = 'USER',
-  ADMIN = 'ADMIN',
-  SUPER_ADMIN = 'SUPER_ADMIN',
-}
+// Rôles globaux disponibles (s47, ADR 035) : la hiérarchie est
+// user < super_admin, une exigence USER laisse donc passer le SuperAdmin.
+const RoleConst = {
+  USER: 'user',
+  SUPER_ADMIN: 'super_admin',
+} as const
 ```
 
 ## Règles Strictes à Respecter
@@ -258,7 +258,7 @@ export async function myAction() {
 
 ```tsx
 await requireActionAuth({
-  roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+  roles: [RoleConst.SUPER_ADMIN],
 }) // ✅ Rôles explicites
 ```
 

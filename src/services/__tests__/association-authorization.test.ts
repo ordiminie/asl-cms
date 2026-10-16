@@ -4,10 +4,10 @@ import {
   canManageAssociation,
   postLoginPathOf,
 } from '../authorization/association-authorization'
-import {RoleConst, UserOrganizationRoleConst} from '../types/domain/auth-types'
+import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
-import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -93,21 +93,6 @@ describe('canManageAssociation — refus', () => {
 
     expect(canManageAssociation(user, ORG_ID)).toBe(false)
   })
-
-  it('[ADMIN] refuse l administrateur global sans role dans l association', () => {
-    expect(userTestAdmin.role).toBe(RoleConst.ADMIN)
-    expect(canManageAssociation(userTestAdmin, ORG_ID)).toBe(false)
-  })
-
-  it('[ADMIN + MEMBER] refuse l administrateur global simple membre', () => {
-    const user = withMembership(
-      userTestAdmin,
-      ORG_ID,
-      UserOrganizationRoleConst.MEMBER
-    )
-
-    expect(canManageAssociation(user, ORG_ID)).toBe(false)
-  })
 })
 
 describe('postLoginPathOf — destination après connexion (s46b, décision G)', () => {
@@ -145,16 +130,6 @@ describe('postLoginPathOf — destination après connexion (s46b, décision G)',
   it('[ORGANIZATION MEMBER] va à l’espace membre', () => {
     const user = withMembership(
       userTest,
-      ORG_ID,
-      UserOrganizationRoleConst.MEMBER
-    )
-
-    expect(postLoginPathOf(user, ORG_ID)).toBe('/dashboard')
-  })
-
-  it('[ADMIN + MEMBER] le rôle global admin suit son rôle dans l’association', () => {
-    const user = withMembership(
-      userTestAdmin,
       ORG_ID,
       UserOrganizationRoleConst.MEMBER
     )

@@ -1,5 +1,4 @@
 import {
-  RoleConst,
   roleHierarchy,
   UserOrganizationRoleConst,
 } from '../types/domain/auth-types'
@@ -10,8 +9,7 @@ export function hasRequiredRole(userConnected?: User, requestedRole?: Roles) {
     return false
   }
 
-  // Vérifier que l'utilisateur a un rôle
-  const userRole = userConnected?.role ?? 'public'
+  const userRole = userConnected.role
   const requestedRoleIndex = roleHierarchy.indexOf(requestedRole)
 
   if (requestedRoleIndex === -1) {
@@ -31,8 +29,7 @@ export function hasRequiredRoles(
     return false
   }
 
-  // Vérifier que l'utilisateur a un rôle
-  const userRole = userConnected?.role ?? 'public'
+  const userRole = userConnected.role
 
   // Vérifier si l'utilisateur a un des rôles requis
   return requestedRoles.some((requestedRole) => {
@@ -42,11 +39,6 @@ export function hasRequiredRoles(
     const userRoleIndex = roleHierarchy.indexOf(userRole as Roles)
     return userRoleIndex !== -1 && userRoleIndex >= requestedRoleIndex
   })
-}
-
-export const isAdmin = (user?: User | null) => {
-  if (!user) return false
-  return user?.role === RoleConst.ADMIN || user?.role === RoleConst.SUPER_ADMIN
 }
 
 export const isOrganizationAdmin = async (

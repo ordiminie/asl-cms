@@ -286,12 +286,12 @@ export function createExtendedUserFormSchema(t: (key: string) => string) {
 ```typescript
 export function createConditionalUserFormSchema(
   t: (key: string) => string,
-  isAdmin: boolean
+  isSuperAdmin: boolean
 ) {
   return userFormSchema.extend({
     // Champs conditionnels selon le rôle
-    ...(isAdmin && {
-      role: z.enum(['user', 'admin'], {
+    ...(isSuperAdmin && {
+      role: z.enum(['user', 'super_admin'], {
         errorMap: () => ({message: t('validation.role.invalid')}),
       }),
     }),

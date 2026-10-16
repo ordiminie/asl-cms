@@ -33,7 +33,7 @@ import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -169,7 +169,7 @@ describe('replaceAssociationIdentityFileService — refus d acces, sans aucune e
   it.each<[string, User | undefined]>([
     ['[PUBLIC]', undefined],
     ['[ORGANIZATION MEMBER]', withBoardRole(UserOrganizationRoleConst.MEMBER)],
-    ['[ADMIN] global', userTestAdmin],
+    ['[USER NOT IN ORGANIZATION]', userTest],
     [
       '[OTHER ORGANIZATION OWNER]',
       withBoardRole(UserOrganizationRoleConst.OWNER, OTHER_ORG_ID),
@@ -327,7 +327,7 @@ describe('canManageAssociationIdentityService', () => {
   it.each<[string, User | undefined]>([
     ['[PUBLIC]', undefined],
     ['[ORGANIZATION MEMBER]', withBoardRole(UserOrganizationRoleConst.MEMBER)],
-    ['[ADMIN] global', userTestAdmin],
+    ['[USER NOT IN ORGANIZATION]', userTest],
     [
       '[OTHER ORGANIZATION ADMIN]',
       withBoardRole(UserOrganizationRoleConst.ADMIN, OTHER_ORG_ID),
