@@ -301,7 +301,7 @@ const seed = async () => {
         WHEN u.email = 'user-admin@gmail.com' AND o.slug = 'marketing-pro' THEN 'board'
         WHEN u.email = 'user-member@gmail.com' AND o.slug = 'acme-corp' THEN 'member'
         
-        -- Cas de chevauchement (rôle global élevé + rôle org)
+        -- Adresses historiques : role global user depuis s47, seul le role org compte
         WHEN u.email = 'admin-owner@gmail.com' AND o.slug = 'marketing-pro' THEN 'owner'
         WHEN u.email = 'moderator-member@gmail.com' AND o.slug = 'techcorp-solutions' THEN 'member'
         

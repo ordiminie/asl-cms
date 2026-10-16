@@ -8,6 +8,11 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 vi.mock('server-only', () => ({}))
 vi.mock('next/cache', () => ({cacheLife: vi.fn(), revalidatePath: vi.fn()}))
 vi.mock('next/headers', () => ({headers: vi.fn(async () => new Headers())}))
+vi.mock('next-intl/server', () => ({
+  getTranslations: vi.fn((namespace: string) =>
+    Promise.resolve((key: string) => `${namespace}.${key}`)
+  ),
+}))
 vi.mock('@/lib/auth', () => ({
   auth: {api: {banUser: vi.fn(), unbanUser: vi.fn()}},
 }))
@@ -157,7 +162,11 @@ describe('updateUserDetailAction — rôle global', () => {
     async (role) => {
       const result = await updateUserDetailAction(USER_ID, detail(role))
 
-      expect(result.success).toBe(false)
+      expect(result).toMatchObject({
+        success: false,
+        message: 'AdminUsers.validation.roleInvalid',
+        errors: [{field: 'role', message: 'AdminUsers.validation.roleInvalid'}],
+      })
       expect(updateUserService).not.toHaveBeenCalled()
       expect(auth.api.banUser).not.toHaveBeenCalled()
       expect(auth.api.unbanUser).not.toHaveBeenCalled()

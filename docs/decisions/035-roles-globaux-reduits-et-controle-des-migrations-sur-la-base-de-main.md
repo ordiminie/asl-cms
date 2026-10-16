@@ -65,3 +65,5 @@ d'une branche sur une base déjà peuplée.
   sans build Next. Une fois s47 mergée, ses contrôles propres à s47 passent sans rien prouver de
   nouveau (le seed de `main` ne contient plus de rôle retiré). Le job, lui, reste utile pour les
   migrations suivantes.
+- `src/lib/api-auth.ts`, code mort que l'ADR 013 cite en illustration, est supprimé. Il reste
+  récupérable par `git show 97a18a8b:src/lib/api-auth.ts`.

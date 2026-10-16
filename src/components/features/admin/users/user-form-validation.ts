@@ -1,7 +1,7 @@
 import z from 'zod'
 
+import {GLOBAL_ROLES} from '@/services/types/domain/auth-types'
 import {
-  GLOBAL_ROLES,
   languageSchema,
   notificationChannelSchema,
   themeSchema,

@@ -2,6 +2,7 @@
 
 import {revalidatePath} from 'next/cache'
 import {headers} from 'next/headers'
+import {getTranslations} from 'next-intl/server'
 
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {userRoleSchema} from '@/components/features/admin/users/user-form-validation'
@@ -108,10 +109,11 @@ export async function updateUserDetailAction(
 
     const role = userRoleSchema.safeParse(data.role)
     if (!role.success) {
+      const t = await getTranslations('AdminUsers.validation')
       return {
         success: false,
-        message: 'Rôle invalide',
-        errors: [{field: 'role', message: 'Rôle invalide'}],
+        message: t('roleInvalid'),
+        errors: [{field: 'role', message: t('roleInvalid')}],
       }
     }
 

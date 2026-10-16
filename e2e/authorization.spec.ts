@@ -93,5 +93,14 @@ test.describe('Contrôle d’accès', () => {
 
     expect(response?.status()).toBe(200)
     await expect(page).toHaveURL(/^https?:\/\/[^/]+\/admin$/)
+
+    // Le statut 200 et l'URL vaudraient aussi pour l'UI forbidden (voir les
+    // cas précédents) : il faut le contenu admin, et pas l'écran de refus.
+    await expect(
+      page.getByRole('heading', {name: 'Dashboard Administration'})
+    ).toBeVisible({timeout: 20_000})
+    await expect(
+      page.getByRole('heading', {name: /accès non autorisé/i})
+    ).toHaveCount(0)
   })
 })

@@ -170,7 +170,7 @@ export const canReadPlan = async (resourceId?: string): Promise<boolean> => {
 
 /**
  * Vérifie si l'utilisateur connecté peut créer un plan
- * Seuls les ADMIN et SUPER_ADMIN peuvent créer des plans
+ * Seul le SUPER_ADMIN peut créer des plans
  * @returns true si l'accès est autorisé
  */
 export const canCreatePlan = async (): Promise<boolean> => {
@@ -182,7 +182,7 @@ export const canCreatePlan = async (): Promise<boolean> => {
 
 /**
  * Vérifie si l'utilisateur connecté peut modifier un plan
- * Seuls les ADMIN et SUPER_ADMIN peuvent modifier des plans
+ * Seul le SUPER_ADMIN peut modifier des plans
  * @param resourceId - ID du plan
  * @returns true si l'accès est autorisé
  */

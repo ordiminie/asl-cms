@@ -1,25 +1,18 @@
 import {getTranslations} from 'next-intl/server'
 import {z} from 'zod'
 
+import {GLOBAL_ROLES} from '../types/domain/auth-types'
 import {
   CreateUser,
   CreateUserSettings,
   Language,
   NotificationChannel,
-  Roles,
   Theme,
   UpdateUser,
   UpdateUserSettings,
   User,
   UserVisibility,
 } from '../types/domain/user-types'
-
-/**
- * Les deux seuls rôles globaux (s47, ADR 035). Liste recopiée et non importée
- * de `roleEnum` : ce fichier est importé par un composant client, qui ne doit
- * pas embarquer le modèle Drizzle.
- */
-export const GLOBAL_ROLES = ['user', 'super_admin'] as const satisfies Roles[]
 
 export const baseUserServiceSchema = z.object({
   email: z.string().email({

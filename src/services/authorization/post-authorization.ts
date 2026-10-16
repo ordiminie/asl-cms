@@ -13,18 +13,16 @@ import {ActionsConst, SubjectsConst} from './casl-abilities'
 /**
  * Système d'autorisation pour les posts et blog avec gestion des rôles
  *
- * Permissions par rôle global :
- * - ADMIN/SUPER_ADMIN : Peut gérer tous les posts, catégories et hashtags
- * - MODERATOR : Peut modérer les posts publiés
- * - REDACTOR : Peut créer et gérer ses posts + publier
- * - USER : Peut créer et gérer ses propres posts (draft uniquement)
- * - PUBLIC/GUEST : Peut lire les posts publiés
+ * Permissions par rôle global (s47, ADR 035 : `user` et `super_admin`) :
+ * - SUPER_ADMIN : Peut gérer tous les posts, catégories et hashtags
+ * - USER : Peut créer et gérer ses propres posts, lire les posts publiés
+ * - Invité (aucun rôle) : Peut lire les posts publiés
  *
  * Règles spécifiques :
  * - Auteur du post : Peut toujours modifier/supprimer ses propres posts
  * - Posts publiés : Lecture publique autorisée
- * - Posts draft : Seul l'auteur et les admins/modérateurs peuvent lire
- * - Catégories/Hashtags : Création limitée aux rôles REDACTOR et plus
+ * - Posts draft : Seuls l'auteur et le SUPER_ADMIN peuvent lire
+ * - Catégories/Hashtags : Création réservée au SUPER_ADMIN
  */
 
 // ===== AUTORISATION POSTS =====

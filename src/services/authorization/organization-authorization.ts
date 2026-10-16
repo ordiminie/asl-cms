@@ -31,7 +31,7 @@ import {isAuthAdmin} from './user-authorization'
  * - MEMBER : Peut uniquement lire l'organisation
  *
  * Permissions système :
- * - Utilisateurs avec rôle ADMIN/SUPER_ADMIN système : Peuvent gérer toutes les organisations
+ * - Utilisateurs avec le rôle système SUPER_ADMIN : Peuvent gérer toutes les organisations
  * - Utilisateurs connectés : Peuvent lire toutes les organisations et en créer
  * - Guests : Peuvent uniquement lire les informations publiques
  *
@@ -470,9 +470,9 @@ export const canSearchOrganizationsForAdmin = async (): Promise<boolean> => {
  * pas de l'administration d'une association : seul le SUPER_ADMIN le peut
  * (s01, critere 1 et 5).
  *
- * Le controle porte sur le role, et non sur CASL, parce que CASL ne peut pas
- * exprimer la distinction ici : ADMIN porte deja `manage ORGANIZATION` et
- * `manage TECHNICAL`, donc toute abilite existante l'autoriserait aussi.
+ * Le controle porte sur le role, et non sur CASL : un `user` peut deja creer
+ * une organisation (`create ORGANIZATION`), et provisionner une association
+ * n'est pas cela. Seul le role global `super_admin` (s47, ADR 035) le peut.
  */
 export const canProvisionOrganization = async (): Promise<boolean> => {
   const authUser = await getAuthUser()

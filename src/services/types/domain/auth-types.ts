@@ -23,8 +23,17 @@ export interface SignInError {
  * Rôles GLOBAUX (s47, ADR 035) : tout compte est `user`, le SuperAdmin
  * Zourite Studio est `super_admin`. Les rôles qui comptent pour une
  * association (Membre, Bureau, Présidence) sont des rôles d'association.
+ *
+ * Source unique côté domaine, du moins au plus élevé : la hiérarchie et les
+ * schémas Zod en dérivent. Son égalité avec l'énuméré `role_type` de la base
+ * est vérifiée par `auth-types.test.ts`.
  */
-export const roleHierarchy: readonly Roles[] = ['user', 'super_admin']
+export const GLOBAL_ROLES = [
+  'user',
+  'super_admin',
+] as const satisfies readonly Roles[]
+
+export const roleHierarchy: readonly Roles[] = GLOBAL_ROLES
 
 // Context pour spécifier l'organisation COURANTE
 export interface OrganizationContext {
