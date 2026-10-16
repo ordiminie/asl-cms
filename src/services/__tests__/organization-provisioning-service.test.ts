@@ -15,7 +15,7 @@ import {
 import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {Organization} from '../types/domain/organization-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const scope = vi.hoisted(() => ({current: undefined as string | undefined}))
 
@@ -246,20 +246,6 @@ describe('[SUPER_ADMIN] provisionOrganizationService', () => {
   })
 })
 
-describe('[ADMIN] provisionOrganizationService', () => {
-  beforeEach(() => {
-    setupAuthUserMocked(userTestAdmin)
-  })
-
-  it('refuse : provisionner est un acte du prestataire, pas de l administrateur', async () => {
-    await expect(provisionOrganizationService(provisionParams)).rejects.toThrow(
-      AuthorizationError
-    )
-
-    expect(organizationRepository.createOrganizationDao).not.toHaveBeenCalled()
-  })
-})
-
 describe('[USER] provisionOrganizationService', () => {
   beforeEach(() => {
     setupAuthUserMocked(userTest)
@@ -355,18 +341,6 @@ describe('updateOrganizationModulesService', () => {
         'module-fictif',
       ] as never)
     ).rejects.toThrow()
-
-    expect(
-      organizationRepository.updateOrganizationModulesDao
-    ).not.toHaveBeenCalled()
-  })
-
-  it('[ADMIN] refuse', async () => {
-    setupAuthUserMocked(userTestAdmin)
-
-    await expect(
-      updateOrganizationModulesService(ORGANIZATION_ID, ['vote'])
-    ).rejects.toThrow(AuthorizationError)
 
     expect(
       organizationRepository.updateOrganizationModulesDao

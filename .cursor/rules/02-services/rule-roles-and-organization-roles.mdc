@@ -21,51 +21,41 @@ Cette architecture permet une gestion flexible des permissions avec une hiérarc
 
 Les rôles globaux sont définis dans [auth-types.ts](mdc:src/services/types/domain/auth-types.ts) et [user-types.ts](mdc:src/services/types/domain/user-types.ts).
 
-### Hiérarchie des Rôles Globaux
+### Deux rôles globaux (s47, ADR 035)
 
 ```typescript
-export const RoleConst = {
-  PUBLIC: 'public' as Roles,
-  USER: 'user' as Roles,
-  REDACTOR: 'redactor' as Roles,
-  MODERATOR: 'moderator' as Roles,
-  ADMIN: 'admin' as Roles,
-  SUPER_ADMIN: 'super_admin' as Roles,
-} as const
+export const roleHierarchy: readonly Roles[] = ['user', 'super_admin']
 
-export const roleHierarchy = [
-  'public',
-  'user',
-  'redactor',
-  'moderator',
-  'admin',
-  'super_admin',
-] satisfies Roles[]
+export const RoleConst = {
+  USER: 'user' satisfies Roles,
+  SUPER_ADMIN: 'super_admin' satisfies Roles,
+} as const
 ```
 
-#### 1. **PUBLIC/GUEST** (`public`)
+L'énuméré Postgres `role_type` ne porte que ces deux valeurs. Les rôles qui
+comptent pour une association (Membre, Bureau, Présidence) sont des rôles
+**d'association** (`member.role`), décrits plus bas.
 
-- **Utilisateurs non authentifiés**
-- **Permissions limitées** : Lecture de certains logs, profils publics
-- **Usage** : Visiteurs du site
+#### 1. **Visiteur sans compte** (aucun rôle)
+
+- **Utilisateurs non authentifiés** : `defineAbilitiesFor(undefined)`
+- **Permissions limitées** : droits d'invité (profils publics, contenus publiés)
+- Un compte dont le rôle est absent ou inconnu reçoit les mêmes droits d'invité,
+  et `hasRequiredRole(s)` ne lui accorde aucune exigence.
 
 #### 2. **USER** (`user`)
 
-- **Utilisateurs standard authentifiés**
-- **Permissions de base** : Gestion de son profil, création d'organisations
+- **Tout compte** : membre, Bureau ou Présidence d'une association
+- **Permissions de base** : Gestion de son profil
 - **Particularité** : Utilise les **rôles organisationnels** pour des permissions fines
 
-#### 3. **ADMIN** (`admin`)
+#### 3. **SUPER_ADMIN** (`super_admin`)
 
-- **Administrateurs système**
-- **Permissions étendues** : Gestion de tous les utilisateurs, organisations, subscriptions
-- **Bypass** : Peut outrepasser les permissions organisationnelles
-
-#### 4. **SUPER_ADMIN** (`super_admin`)
-
-- **Super administrateurs**
+- **SuperAdmin Zourite Studio**, seul admis sur la console `/admin` et ses actions serveur
 - **Permissions complètes** : Accès total à toutes les ressources (`MANAGE ALL`)
 - **Bypass** : Outrepasse tous les contrôles d'autorisation
+- `withAuthAdmin`, `isUserAdmin` et `isAuthAdmin` gardent un nom historique :
+  ils ne reconnaissent que `super_admin`.
 
 ## Rôles Organisationnels
 
@@ -121,22 +111,20 @@ export function defineAbilitiesFor(
   user?: User,
   orgContext?: OrganizationContext
 ) {
-  // 1. SUPER_ADMIN → Permissions complètes
-  if (user.roles?.includes(RoleConst.SUPER_ADMIN)) {
+  // 1. Aucun compte → droits d'invité
+  if (!user) return buildGuestAbilities()
+
+  // 2. SUPER_ADMIN → Permissions complètes
+  if (user.role === RoleConst.SUPER_ADMIN) {
     return buildSuperAdminAbilities()
   }
 
-  // 2. ADMIN → Permissions étendues (bypass organisationnel)
-  if (user.roles?.includes(RoleConst.ADMIN)) {
-    return buildAdminAbilities()
-  }
-
   // 3. USER → Permissions de base + rôles organisationnels
-  if (user.roles?.includes(RoleConst.USER)) {
+  if (user.role === RoleConst.USER) {
     return buildUserAbilities(user, orgContext)
   }
 
-  // 4. GUEST → Permissions minimales
+  // 4. Rôle absent ou inconnu → droits d'invité
   return buildGuestAbilities()
 }
 ```
@@ -206,7 +194,7 @@ export function hasOrganizationRole(
 
 - **Toujours vérifier les autorisations** avant les opérations métier
 - **Utiliser le contexte organisationnel** pour les permissions fines
-- **Respecter la hiérarchie** : ADMIN/SUPER_ADMIN globaux peuvent bypass
+- **Respecter la hiérarchie** : seul le SUPER_ADMIN global peut bypass
 - **Tester tous les scénarios** : OWNER, ADMIN, MEMBER, non-membre
 
 ### ❌ À Éviter
@@ -243,7 +231,7 @@ describe('[ORGANIZATION OWNER] Service', () => {
 
 ### Scénarios de Test Essentiels
 
-1. **ADMIN global** : Peut tout faire
+1. **SUPER_ADMIN global** (`userTestSuperAdmin`) : Peut tout faire
 2. **ORGANIZATION OWNER** : Permissions complètes dans son org
 3. **ORGANIZATION ADMIN** : Permissions limitées (pas de suppression)
 4. **ORGANIZATION MEMBER** : Lecture seule

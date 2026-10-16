@@ -26,14 +26,16 @@ src/app/api/
 
 ### Référence aux fichiers du système d'authentification
 
-- [api-auth.ts](src/lib/api-auth.ts) : Fonctions d'authentification
+- `src/lib/api-auth.ts` : **retiré par s47** (ADR 035). Ses helpers n'étaient importés nulle part
+  et citaient des rôles globaux qui n'existent plus. Récupérable depuis l'historique :
+  `git show 97a18a8b:src/lib/api-auth.ts`.
 
 ⚠️ **Il n'y a plus d'exemple de route API gardée dans le dépôt.** Les trois routes citées ici
 (`/api/projects`, `/api/projects/[id]`, `/api/projects/by-token`) sont parties avec l'ADR 009. Les
 gabarits ci-dessous restent la référence, mais ils ne sont plus adossés à du code vivant : la
-première route API gardée d'ASL-CMS devra être citée ici. `src/lib/api-auth.ts` est conservé — c'est
-le seul endroit du dépôt qui rende de vrais 401 et 403, les pages étant bornées à 200 sous Cache
-Components (ADR 013).
+première route API gardée d'ASL-CMS devra être citée ici, et recréer `src/lib/api-auth.ts` avec les
+seuls rôles globaux `user` et `super_admin`. Un Route Handler rend de vrais 401 et 403, là où les
+pages sont bornées à 200 sous Cache Components (ADR 013).
 
 ## Conventions RESTful CRUD
 
@@ -53,14 +55,10 @@ Components (ADR 013).
 // Routes statiques
 withAuth(handler, role?)           // Authentification de base
 withUserAuth(handler)              // Rôle USER requis
-withAdminAuth(handler)             // Rôle ADMIN requis
-withRedactorAuth(handler)          // Rôle REDACTOR requis
 
 // Routes dynamiques
 withDynamicAuth(handler, role?)    // Authentification de base
 withDynamicUserAuth(handler)       // Rôle USER requis
-withDynamicAdminAuth(handler)      // Rôle ADMIN requis
-withDynamicRedactorAuth(handler)   // Rôle REDACTOR requis
 
 // Authentification par token Bearer
 withAuthToken(handler, role?)      // Token Bearer/API Key

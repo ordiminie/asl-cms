@@ -19,7 +19,7 @@ Le projet utilise **CASL (Code Access Security Library)** avec une architecture 
 - **Définit les règles CASL** avec `defineAbilitiesFor(user)`
 - **Fonctions utilitaires** : `userCan()`, `userCanOnResource()`, `filterFields()`
 - **Types et constantes** : `ActionsConst`, `SubjectsConst`, `AppAbility`
-- **Permissions par rôle** : GUEST, USER, ADMIN, SUPER_ADMIN
+- **Permissions par rôle** : GUEST, USER, SUPER_ADMIN (deux rôles globaux, s47)
 
 ### Services d'Autorisation par Domaine
 
@@ -134,20 +134,20 @@ import {
 
 - **GUEST** : Lecture profils publics uniquement
 - **USER** : Lecture/modification de son propre profil + profils publics
-- **ADMIN** : Gestion complète de tous les utilisateurs
+- **SUPER_ADMIN** : Gestion complète de tous les utilisateurs
 
 ### Subscriptions
 
 - **GUEST** : Aucun accès
 - **USER** : Lecture/modification de ses propres subscriptions
-- **ADMIN** : Gestion complète de toutes les subscriptions
+- **SUPER_ADMIN** : Gestion complète de toutes les subscriptions
 
 ## Testing
 
 ### Tests par Domaine
 
 - **Tester au niveau service** (pas besoin de tests autorisation séparés)
-- **Trois scénarios** : PUBLIC (guest), USER (connecté), ADMIN
+- **Trois scénarios** : visiteur sans compte (guest), USER (connecté), SUPER_ADMIN
 - **Vérifier les comportements** : accès autorisé/refusé, erreurs `AuthorizationError`
 
 ### Exemple Test Pattern

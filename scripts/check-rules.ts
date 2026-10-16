@@ -57,6 +57,15 @@ const STALE_PATTERNS: {pattern: RegExp; why: string; allow?: RegExp}[] = [
       /register-form|register-magic-link-form|register\/page|\(auth\)\/register|\bRegister\b|registerCredentialAction|registerMagicLinkAction|registerProviderAction|loginProviderAction|([Cc]onnexion|connecter|[Ll]ogin|[Ss]ign[- ]?[Ii]n)\W+(avec|par|with)?\W*(Apple|GitHub)|provider: '(apple|github)'/,
     why: 'retiré par s46b : inscription fermée (plus de /register), connexion Apple et GitHub retirées',
   },
+  {
+    // `UserOrganizationRoleConst.ADMIN` (le Bureau) n'est pas visé, ni
+    // `visibility: 'public'`, ni la page ou le slug `admin`.
+    pattern:
+      /(?<![A-Za-z])RoleConst\.(ADMIN|MODERATOR|REDACTOR|PUBLIC)\b|\b([Mm]oderator|MODERATOR|[Rr]edactor|REDACTOR)\b|withAdminAuth|withRedactorAuth|withDynamic(Admin|Redactor)Auth|useAuthUserRole|userTestAdmin/,
+    why: 'retiré par s47 : deux rôles globaux seulement, user et super_admin (ADR 035)',
+    // adresse historique du seed, compte `user` depuis s47
+    allow: /moderator-member@gmail\.com/,
+  },
 ]
 
 const DESCRIBE_THE_CODE = [

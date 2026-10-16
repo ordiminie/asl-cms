@@ -95,7 +95,7 @@ Rules for business logic, validation, and authorization.
 | Rule              | Link                                                          | Description                                               | When to Consult                 |
 | ----------------- | ------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------- |
 | **Service**       | [rule-service.mdc](02-services/rule-service.md)               | Service structure, Zod validation, authorization, facades | Creating a new business service |
-| **Service Tests** | [rule-services-tests.mdc](02-services/rule-services-tests.md) | Test patterns by role (ADMIN, USER, PUBLIC), mocking DAOs | Writing service tests           |
+| **Service Tests** | [rule-services-tests.mdc](02-services/rule-services-tests.md) | Test patterns by role (SUPER_ADMIN, USER, guest), mocking DAOs | Writing service tests           |
 
 ### Authorization (CASL)
 
@@ -103,7 +103,7 @@ Rules for business logic, validation, and authorization.
 | --------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------ |
 | **CASL Abilities**          | [rule-casl-authorization.mdc](02-services/rule-casl-authorization.md)                     | CASL system, defineAbilitiesFor, userCan, userCanOnResource | Understanding the permissions system |
 | **Authorization Service**   | [rule-authorization-service.mdc](02-services/rule-authorization-service.md)               | canReadX, canUpdateX functions per domain                   | Creating authorization functions     |
-| **Roles and Organizations** | [rule-roles-and-organization-roles.mdc](02-services/rule-roles-and-organization-roles.md) | Global roles (USER, ADMIN) vs org roles (OWNER, MEMBER)     | Understanding permission hierarchy   |
+| **Roles and Organizations** | [rule-roles-and-organization-roles.mdc](02-services/rule-roles-and-organization-roles.md) | Global roles (USER, SUPER_ADMIN) vs org roles (OWNER, MEMBER) | Understanding permission hierarchy   |
 
 ### Validation and Emails
 

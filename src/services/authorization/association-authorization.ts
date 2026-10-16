@@ -12,11 +12,12 @@ const BOARD_ROLES: string[] = [
 /**
  * Gerer une association — son identite (s01b, critere 8) et ses parametres
  * (s02, critere 7) : le SuperAdmin, ou le bureau de **cette** association —
- * Bureau (`admin`) et President(e) (`owner`). Point d'accroche unique pour le
+ * Bureau (`board`) et President(e) (`owner`). Point d'accroche unique pour le
  * registre des permissions de s03.
  *
- * Volontairement hors CASL : l'`admin` global y gere toutes les organisations,
- * et la story l'exclut.
+ * Volontairement hors CASL : la regle tient en deux lignes, SuperAdmin ou
+ * bureau de cette association. Il n'existe plus d'autre role global que
+ * `user` et `super_admin` (s47, ADR 035).
  */
 export const canManageAssociation = (
   user: User | undefined,
@@ -51,8 +52,7 @@ export type PostLoginPath = (typeof POST_LOGIN_PATHS)[number]
  * Ou arrive un compte apres sa connexion (s46b) : le SuperAdmin au back-office
  * de la plateforme, meme avec un role dans l'association ; le bureau et la
  * Presidence de l'association du domaine au back-office de l'association ;
- * tout autre compte a l'espace membre. Le role global `admin` n'est pas
- * SuperAdmin : il suit son role dans l'association.
+ * tout autre compte a l'espace membre.
  */
 export const postLoginPathOf = (
   user: User,

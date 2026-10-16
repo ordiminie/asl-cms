@@ -19,15 +19,12 @@ export interface SignInError {
   code?: string
 }
 
-//Roles GLOBAUX
-export const roleHierarchy = [
-  'public',
-  'user',
-  'redactor',
-  'moderator',
-  'admin',
-  'super_admin',
-] satisfies Roles[]
+/**
+ * Rôles GLOBAUX (s47, ADR 035) : tout compte est `user`, le SuperAdmin
+ * Zourite Studio est `super_admin`. Les rôles qui comptent pour une
+ * association (Membre, Bureau, Présidence) sont des rôles d'association.
+ */
+export const roleHierarchy: readonly Roles[] = ['user', 'super_admin']
 
 // Context pour spécifier l'organisation COURANTE
 export interface OrganizationContext {
@@ -36,9 +33,9 @@ export interface OrganizationContext {
 
 /**
  * Rôles d'une association (s03b). `ADMIN` porte la valeur `board` : c'est le
- * Bureau de l'association, sans rapport avec le rôle **global** `admin` de la
- * plateforme (`RoleConst.ADMIN`). La clé reste `ADMIN` pour limiter l'étendue
- * du renommage ; seule la valeur en base a changé.
+ * Bureau de l'association. Le rôle global `admin` de la plateforme n'existe
+ * plus (s47). La clé reste `ADMIN` pour limiter l'étendue du renommage ;
+ * seule la valeur en base a changé.
  */
 export const UserOrganizationRoleConst = {
   OWNER: 'owner' satisfies OrganizationRoleEnumModel,
@@ -48,10 +45,6 @@ export const UserOrganizationRoleConst = {
 
 // Constantes pour les rôles globaux
 export const RoleConst = {
-  PUBLIC: 'public' satisfies Roles,
   USER: 'user' satisfies Roles,
-  REDACTOR: 'redactor' satisfies Roles,
-  MODERATOR: 'moderator' satisfies Roles,
-  ADMIN: 'admin' satisfies Roles,
   SUPER_ADMIN: 'super_admin' satisfies Roles,
 } as const

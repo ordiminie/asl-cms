@@ -19,7 +19,7 @@ export async function sendTestEmailAction(
   params: Record<string, string>
 ): Promise<SendTestEmailResult> {
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
 
   const emailDef = EMAIL_REGISTRY[emailId]

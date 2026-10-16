@@ -14,7 +14,7 @@ export async function updateSettingsAction(
 ): Promise<ActionResponse<void>> {
   try {
     const authUser = await requireActionAuth({
-      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+      roles: [RoleConst.SUPER_ADMIN],
     })
 
     await bulkUpdateAppSettingsService(settings, authUser.id)

@@ -84,7 +84,8 @@ laisse ses consommateurs la dérouler.
 
 `withAuth` (et son raccourci `withAuthAdmin`) fait un `await` sur la session,
 redirige si non authentifié, appelle `forbidden()` si le rôle manque, et injecte
-`user` en prop.
+`user` en prop. `withAuthAdmin` exige `super_admin` : la console `/admin` est
+réservée au SuperAdmin (s47, ADR 035), le nom est historique.
 
 ```tsx
 // Sur une page : la page streame derrière le loading.tsx du segment

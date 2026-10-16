@@ -183,7 +183,8 @@ Le code nouveau s'ajoute **en fin de fichier**.
 - **`pnpm test --run`** — jamais `pnpm test`, qui reste en watch et ne rend jamais la main. Le verdict
   est la ligne `Tests N passed`, pas celle de pnpm.
 - Unitaire (Vitest) : services, fonctions, composants. Base et authentification **mockées** (`vi.mock`).
-  Tester les trois rôles globaux — ADMIN, USER, PUBLIC — et les rôles d'organisation quand ils s'appliquent.
+  Tester les deux rôles globaux — USER et SUPER_ADMIN (ADR 035) — plus le visiteur sans compte, et les
+  rôles d'organisation quand ils s'appliquent.
 - e2e (Playwright) : parcours complets, **contre le build de production** (`pnpm build && pnpm start`),
   sur un Postgres éphémère seedé. C'est là que vivent les tests de RLS et d'accès croisé.
 - Migrations : `pnpm db:generate`, ou `drizzle-kit generate --custom` pour du SQL sur mesure (policies RLS).

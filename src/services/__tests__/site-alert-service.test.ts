@@ -40,7 +40,7 @@ import {
 } from '../types/domain/site-alert-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin, userTestSuperAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -214,9 +214,9 @@ describe('[USER NOT IN ORGANIZATION] le bureau d une autre association est refus
   })
 })
 
-describe('[ADMIN] un administrateur global sans appartenance est refuse', () => {
+describe('[USER] un compte sans appartenance est refuse', () => {
   beforeEach(() => {
-    setupAuthUserMocked(userTestAdmin)
+    setupAuthUserMocked(userTest)
   })
 
   it('refuse l enregistrement sans rien ecrire', async () => {

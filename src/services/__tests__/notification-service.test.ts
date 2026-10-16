@@ -80,9 +80,9 @@ const userTest = {
   twoFactorEnabled: null,
 } satisfies User
 
-const adminUser = {
+const superAdminUser = {
   ...userTest,
-  role: RoleConst.ADMIN,
+  role: RoleConst.SUPER_ADMIN,
 } satisfies User
 
 const notificationTest = {
@@ -138,8 +138,8 @@ describe('[createNotificationService]', () => {
     vi.clearAllMocks()
   })
 
-  it('[ADMIN] devrait créer une notification si utilisateur admin', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait créer une notification si utilisateur super admin', async () => {
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(userTest)
     vi.mocked(userRepository.getUserSettingsByUserIdDao).mockResolvedValue({
       userId: currentAuthUserId,
@@ -249,7 +249,7 @@ describe('[createNotificationService]', () => {
   })
 
   it('devrait lever une erreur si utilisateur cible inexistant', async () => {
-    setupAuthUserMocked(adminUser)
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(undefined)
 
     const notificationData = {
@@ -266,7 +266,7 @@ describe('[createNotificationService]', () => {
   })
 
   it('devrait lever une erreur de validation si données invalides', async () => {
-    setupAuthUserMocked(adminUser)
+    setupAuthUserMocked(superAdminUser)
 
     const invalidData = {
       userId: 'invalid-uuid',
@@ -287,8 +287,8 @@ describe('[createTypedNotificationService]', () => {
     vi.clearAllMocks()
   })
 
-  it('[ADMIN] devrait créer une notification typée', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait créer une notification typée', async () => {
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(userRepository.getUserByIdDao).mockResolvedValue(userTest)
     vi.mocked(userRepository.getUserSettingsByUserIdDao).mockResolvedValue({
       userId: currentAuthUserId,
@@ -469,12 +469,12 @@ describe('[getNotificationByIdService]', () => {
     )
   })
 
-  it("[ADMIN] devrait récupérer n'importe quelle notification", async () => {
+  it("[SUPER_ADMIN] devrait récupérer n'importe quelle notification", async () => {
     const otherUserNotification = {
       ...notificationTest,
       userId: differentUserId,
     }
-    setupAuthUserMocked(adminUser)
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(notificationRepository.getNotificationByIdDao).mockResolvedValue(
       otherUserNotification
     )
@@ -543,8 +543,8 @@ describe('[getNotificationsByUserIdService]', () => {
     ).rejects.toThrow(AuthorizationError)
   })
 
-  it("[ADMIN] devrait récupérer les notifications de n'importe quel utilisateur", async () => {
-    setupAuthUserMocked(adminUser)
+  it("[SUPER_ADMIN] devrait récupérer les notifications de n'importe quel utilisateur", async () => {
+    setupAuthUserMocked(superAdminUser)
     const notifications = [notificationTest]
     vi.mocked(
       notificationRepository.getNotificationsByUserIdDao
@@ -821,12 +821,12 @@ describe('[deleteNotificationService]', () => {
     )
   })
 
-  it("[ADMIN] devrait supprimer n'importe quelle notification", async () => {
+  it("[SUPER_ADMIN] devrait supprimer n'importe quelle notification", async () => {
     const otherUserNotification = {
       ...notificationTest,
       userId: differentUserId,
     }
-    setupAuthUserMocked(adminUser)
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(notificationRepository.getNotificationByIdDao).mockResolvedValue(
       otherUserNotification
     )
@@ -874,8 +874,8 @@ describe('[deleteReadNotificationsByUserIdService]', () => {
     ).rejects.toThrow(AuthorizationError)
   })
 
-  it("[ADMIN] devrait supprimer les notifications lues de n'importe quel utilisateur", async () => {
-    setupAuthUserMocked(adminUser)
+  it("[SUPER_ADMIN] devrait supprimer les notifications lues de n'importe quel utilisateur", async () => {
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(
       notificationRepository.deleteReadNotificationsByUserIdDao
     ).mockResolvedValue(2)

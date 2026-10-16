@@ -1,11 +1,25 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
+/*
+ * s47, critère 1 : la vraie garde `requireActionAuth` → `hasRequiredRoles`
+ * s'exécute. Seule la session (`getAuthUser`) est doublée. Hors rendu serveur,
+ * `cache()` de React ne mémorise pas : chaque cas pose son propre compte.
+ */
 vi.mock('server-only', () => ({}))
 vi.mock('next/cache', () => ({
+  cacheLife: vi.fn(),
   revalidatePath: vi.fn(),
   updateTag: vi.fn(),
 }))
-vi.mock('@/app/dal/user-dal', () => ({requireActionAuth: vi.fn()}))
+vi.mock('@/services/authentication/auth-service', () => ({
+  getAuthUser: vi.fn(),
+  getSessionActiveOrganizationId: vi.fn(),
+}))
+vi.mock('@/app/dal/tenant-dal', () => ({
+  getCurrentTenantDal: vi.fn(),
+  TENANT_CACHE_TAG: 'tenant',
+}))
+vi.mock('@/services/facades/user-service-facade', () => ({}))
 vi.mock('@/db/tenant-scope', () => ({
   withRlsBypass: vi.fn(
     async (callback: () => Promise<unknown>) => await callback()
@@ -25,21 +39,32 @@ vi.mock('@/services/facades/organization-service-facade', () => ({
 
 import {updateTag} from 'next/cache'
 
-import {requireActionAuth} from '@/app/dal/user-dal'
 import {withRlsBypass} from '@/db/tenant-scope'
+import {getAuthUser} from '@/services/authentication/auth-service'
+import {canInviteToOrganization} from '@/services/authorization/organization-authorization'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {
+  createOrganizationMemberService,
+  deleteInvitationByIdService,
+  deleteOrganizationService,
   provisionOrganizationService,
   updateOrganizationModulesService,
+  updateOrganizationService,
 } from '@/services/facades/organization-service-facade'
-import {RoleConst} from '@/services/types/domain/auth-types'
 
 import {
+  addUserToOrganizationAction,
+  deleteAdminMemberInvitationAction,
+  deleteOrganizationAction,
   provisionOrganizationAction,
+  updateOrganizationAction,
   updateOrganizationModulesAction,
 } from './actions'
 
 const ORGANIZATION_ID = '11111111-1111-4111-8111-111111111111'
+const USER_ID = '33333333-3333-4333-8333-333333333333'
+
+const account = (role: string) => ({id: `${role}-1`, role}) as never
 
 const provisionForm = () => {
   const formData = new FormData()
@@ -55,7 +80,7 @@ const provisionForm = () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(requireActionAuth).mockResolvedValue({id: 'super'} as never)
+  vi.mocked(getAuthUser).mockResolvedValue(account('super_admin'))
   vi.mocked(provisionOrganizationService).mockResolvedValue({
     organization: {
       id: ORGANIZATION_ID,
@@ -69,11 +94,12 @@ beforeEach(() => {
 
 describe('provisionOrganizationAction', () => {
   it('est reservee au SuperAdmin Zourite Studio', async () => {
-    await provisionOrganizationAction(undefined, provisionForm())
+    vi.mocked(getAuthUser).mockResolvedValue(account('user'))
 
-    expect(requireActionAuth).toHaveBeenCalledWith({
-      roles: [RoleConst.SUPER_ADMIN],
-    })
+    await expect(
+      provisionOrganizationAction(undefined, provisionForm())
+    ).rejects.toThrow(AuthorizationError)
+    expect(provisionOrganizationService).not.toHaveBeenCalled()
   })
 
   it('transmet les six champs du formulaire, modules cochés compris', async () => {
@@ -158,7 +184,7 @@ describe('provisionOrganizationAction', () => {
   })
 
   it("laisse remonter le refus d'autorisation", async () => {
-    vi.mocked(requireActionAuth).mockRejectedValue(new AuthorizationError())
+    vi.mocked(getAuthUser).mockResolvedValue(undefined)
 
     await expect(
       provisionOrganizationAction(undefined, provisionForm())
@@ -169,14 +195,20 @@ describe('provisionOrganizationAction', () => {
 })
 
 describe('updateOrganizationModulesAction', () => {
-  it('est reservee au SuperAdmin et transmet la liste complete', async () => {
+  it('est reservee au SuperAdmin', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(account('user'))
+
+    await expect(
+      updateOrganizationModulesAction(ORGANIZATION_ID, ['vote'])
+    ).rejects.toThrow(AuthorizationError)
+    expect(updateOrganizationModulesService).not.toHaveBeenCalled()
+  })
+
+  it('transmet la liste complete', async () => {
     const state = await updateOrganizationModulesAction(ORGANIZATION_ID, [
       'vote',
     ])
 
-    expect(requireActionAuth).toHaveBeenCalledWith({
-      roles: [RoleConst.SUPER_ADMIN],
-    })
     expect(updateOrganizationModulesService).toHaveBeenCalledWith(
       ORGANIZATION_ID,
       ['vote']
@@ -201,4 +233,68 @@ describe('updateOrganizationModulesAction', () => {
 
     expect(state.success).toBe(false)
   })
+})
+
+const organizationForm = () => {
+  const formData = new FormData()
+  formData.set('name', 'ASL La Fourche')
+  formData.set('slug', 'asl-la-fourche')
+  return formData
+}
+
+describe('actions de /admin/organizations — réservées au SuperAdmin (s47)', () => {
+  const cases = [
+    {
+      name: 'updateOrganizationAction',
+      call: () =>
+        updateOrganizationAction(
+          ORGANIZATION_ID,
+          undefined,
+          organizationForm()
+        ),
+      service: updateOrganizationService,
+    },
+    {
+      name: 'deleteOrganizationAction',
+      call: () => deleteOrganizationAction(ORGANIZATION_ID),
+      service: deleteOrganizationService,
+    },
+    {
+      name: 'addUserToOrganizationAction',
+      call: () =>
+        addUserToOrganizationAction(ORGANIZATION_ID, USER_ID, 'm@asl.test'),
+      service: createOrganizationMemberService,
+    },
+    {
+      name: 'deleteAdminMemberInvitationAction',
+      call: () =>
+        deleteAdminMemberInvitationAction(ORGANIZATION_ID, 'invitation-1'),
+      service: deleteInvitationByIdService,
+    },
+  ]
+
+  beforeEach(() => {
+    vi.mocked(canInviteToOrganization).mockResolvedValue(true)
+  })
+
+  it.each(cases)(
+    '[USER] $name refuse un compte user sans appeler le service',
+    async ({call, service}) => {
+      vi.mocked(getAuthUser).mockResolvedValue(account('user'))
+
+      await expect(call()).rejects.toThrow(AuthorizationError)
+      expect(service).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each(cases)(
+    '[SUPER_ADMIN] $name atteint son service',
+    async ({call, service}) => {
+      vi.mocked(getAuthUser).mockResolvedValue(account('super_admin'))
+
+      await call()
+
+      expect(service).toHaveBeenCalledTimes(1)
+    }
+  )
 })

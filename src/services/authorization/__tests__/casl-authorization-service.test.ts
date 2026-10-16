@@ -2,7 +2,7 @@ import {describe, expect, it} from 'vitest'
 
 import {RoleConst} from '@/services/types/domain/auth-types'
 
-import type {User} from '../../types/domain/user-types'
+import type {Roles, User} from '../../types/domain/user-types'
 import {
   createUserAbility,
   defineAbilitiesFor,
@@ -35,23 +35,6 @@ describe('CASL Abilities', () => {
     stripeCustomerId: null,
   }
 
-  const adminUser: User = {
-    id: 'admin-123',
-    email: 'admin@test.com',
-    name: 'Admin User',
-    role: RoleConst.ADMIN,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    emailVerified: true,
-    banned: null,
-    banReason: null,
-    banExpires: null,
-    image: null,
-    visibility: 'public',
-    twoFactorEnabled: false,
-    stripeCustomerId: null,
-  }
-
   const superAdminUser: User = {
     id: 'super-admin-123',
     email: 'super@test.com',
@@ -68,6 +51,19 @@ describe('CASL Abilities', () => {
     twoFactorEnabled: false,
     stripeCustomerId: null,
   }
+
+  /**
+   * s47 : un compte qui porterait encore un rôle global retiré (en base avant
+   * migration, ou dans un cookie de session) ne doit recevoir aucun droit
+   * au-delà de ceux d'un invité. Le cast passe par `string` : le type `Roles`
+   * ne connaît plus ces valeurs.
+   */
+  const retiredRoleUser = (role: string): User => ({
+    ...regularUser,
+    id: `retired-${role}`,
+    role: role as Roles,
+  })
+  const noRoleUser = {...regularUser, role: undefined} as unknown as User
 
   describe('defineAbilitiesFor', () => {
     it('devrait créer une ability pour un guest', () => {
@@ -86,13 +82,26 @@ describe('CASL Abilities', () => {
       expect(ability.can(ActionsConst.MANAGE, SubjectsConst.USER)).toBe(false)
     })
 
-    it('devrait créer une ability pour un admin', () => {
-      const ability = defineAbilitiesFor(adminUser)
-      expect(ability).toBeDefined()
-      expect(ability.can(ActionsConst.MANAGE, SubjectsConst.USER)).toBe(true)
-      expect(ability.can(ActionsConst.MANAGE, SubjectsConst.SUBSCRIPTION)).toBe(
-        true
+    it("donne les droits d'invité à un compte sans rôle", () => {
+      const ability = defineAbilitiesFor(noRoleUser)
+      expect(ability.can(ActionsConst.READ, SubjectsConst.LOG)).toBe(true)
+      expect(ability.can(ActionsConst.READ, SubjectsConst.SUBSCRIPTION)).toBe(
+        false
       )
+      expect(ability.can(ActionsConst.MANAGE, SubjectsConst.USER)).toBe(false)
+    })
+
+    it("donne les droits d'invité à un compte au rôle global retiré", () => {
+      for (const role of ['admin', 'moderator', 'redactor', 'public']) {
+        const ability = defineAbilitiesFor(retiredRoleUser(role))
+        expect(ability.can(ActionsConst.MANAGE, SubjectsConst.USER)).toBe(false)
+        expect(ability.can(ActionsConst.MANAGE, SubjectsConst.TECHNICAL)).toBe(
+          false
+        )
+        expect(ability.can(ActionsConst.READ, SubjectsConst.SUBSCRIPTION)).toBe(
+          false
+        )
+      }
     })
 
     it('devrait créer une ability pour un super admin', () => {
@@ -173,25 +182,25 @@ describe('CASL Abilities', () => {
       })
     })
 
-    describe('Admin', () => {
+    describe('Super Admin (gestion des utilisateurs)', () => {
       it('peut gérer (manage) tous les utilisateurs', () => {
         expect(
-          userCan(adminUser, ActionsConst.MANAGE, SubjectsConst.USER)
+          userCan(superAdminUser, ActionsConst.MANAGE, SubjectsConst.USER)
         ).toBe(true)
       })
 
       it('peut effectuer toutes les actions sur les utilisateurs', () => {
         expect(
-          userCan(adminUser, ActionsConst.CREATE, SubjectsConst.USER)
-        ).toBe(true)
-        expect(userCan(adminUser, ActionsConst.READ, SubjectsConst.USER)).toBe(
-          true
-        )
-        expect(
-          userCan(adminUser, ActionsConst.UPDATE, SubjectsConst.USER)
+          userCan(superAdminUser, ActionsConst.CREATE, SubjectsConst.USER)
         ).toBe(true)
         expect(
-          userCan(adminUser, ActionsConst.DELETE, SubjectsConst.USER)
+          userCan(superAdminUser, ActionsConst.READ, SubjectsConst.USER)
+        ).toBe(true)
+        expect(
+          userCan(superAdminUser, ActionsConst.UPDATE, SubjectsConst.USER)
+        ).toBe(true)
+        expect(
+          userCan(superAdminUser, ActionsConst.DELETE, SubjectsConst.USER)
         ).toBe(true)
       })
     })
@@ -253,13 +262,21 @@ describe('CASL Abilities', () => {
       })
     })
 
-    describe('Admin', () => {
+    describe('Super Admin', () => {
       it('peut gérer toutes les subscriptions', () => {
         expect(
-          userCan(adminUser, ActionsConst.MANAGE, SubjectsConst.SUBSCRIPTION)
+          userCan(
+            superAdminUser,
+            ActionsConst.MANAGE,
+            SubjectsConst.SUBSCRIPTION
+          )
         ).toBe(true)
         expect(
-          userCan(adminUser, ActionsConst.DELETE, SubjectsConst.SUBSCRIPTION)
+          userCan(
+            superAdminUser,
+            ActionsConst.DELETE,
+            SubjectsConst.SUBSCRIPTION
+          )
         ).toBe(true)
       })
     })
@@ -273,9 +290,9 @@ describe('CASL Abilities', () => {
       expect(userCan(regularUser, ActionsConst.READ, SubjectsConst.LOG)).toBe(
         true
       )
-      expect(userCan(adminUser, ActionsConst.READ, SubjectsConst.LOG)).toBe(
-        true
-      )
+      expect(
+        userCan(superAdminUser, ActionsConst.READ, SubjectsConst.LOG)
+      ).toBe(true)
     })
 
     it('seuls les admins peuvent gérer les logs', () => {
@@ -285,9 +302,9 @@ describe('CASL Abilities', () => {
       expect(userCan(regularUser, ActionsConst.MANAGE, SubjectsConst.LOG)).toBe(
         false
       )
-      expect(userCan(adminUser, ActionsConst.MANAGE, SubjectsConst.LOG)).toBe(
-        true
-      )
+      expect(
+        userCan(superAdminUser, ActionsConst.MANAGE, SubjectsConst.LOG)
+      ).toBe(true)
     })
   })
 
@@ -377,7 +394,7 @@ describe('CASL Abilities', () => {
       expect(filtered).toEqual({})
     })
 
-    it('devrait retourner les données pour un admin', () => {
+    it('devrait retourner les données pour un super admin', () => {
       const userData = {
         id: 'user-123',
         name: 'John Doe',
@@ -386,7 +403,7 @@ describe('CASL Abilities', () => {
       }
 
       const filtered = filterFields(
-        adminUser,
+        superAdminUser,
         ActionsConst.READ,
         SubjectsConst.USER,
         userData
@@ -420,8 +437,9 @@ describe('CASL Abilities', () => {
         expect(isUserAdmin(regularUser)).toBe(false)
       })
 
-      it('devrait retourner true pour un admin', () => {
-        expect(isUserAdmin(adminUser)).toBe(true)
+      it('devrait retourner false pour un rôle global retiré', () => {
+        expect(isUserAdmin(retiredRoleUser('admin'))).toBe(false)
+        expect(isUserAdmin(retiredRoleUser('moderator'))).toBe(false)
       })
 
       it('devrait retourner true pour un super admin', () => {
@@ -451,16 +469,13 @@ describe('CASL Abilities', () => {
   })
 
   describe('Permissions techniques', () => {
-    it('seuls les admins peuvent accéder aux ressources techniques', () => {
+    it('seul le super admin accède aux ressources techniques', () => {
       expect(
         userCan(guestUser, ActionsConst.READ, SubjectsConst.TECHNICAL)
       ).toBe(false)
       expect(
         userCan(regularUser, ActionsConst.READ, SubjectsConst.TECHNICAL)
       ).toBe(false)
-      expect(
-        userCan(adminUser, ActionsConst.MANAGE, SubjectsConst.TECHNICAL)
-      ).toBe(true)
       expect(
         userCan(superAdminUser, ActionsConst.MANAGE, SubjectsConst.TECHNICAL)
       ).toBe(true)

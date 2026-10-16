@@ -1582,10 +1582,7 @@
     },
     "roles": {
       "user": "Utilisateur",
-      "admin": "Admin",
-      "super_admin": "Super Admin",
-      "moderator": "Modérateur",
-      "redactor": "Rédacteur"
+      "super_admin": "Super Admin"
     },
     "validation": {
       "nameRequired": "Le nom est requis",

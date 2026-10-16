@@ -20,8 +20,8 @@ const TENANT_B = `http://127.0.0.1:${PORT}`
 const PASSWORD = 'Azerty123'
 /** Présidente de TechCorp Solutions. */
 const OWNER_A = 'user-owner@gmail.com'
-/** Administrateur de la plateforme, celui des specs de `/admin`. */
-const PLATFORM_ADMIN = 'admin@gmail.com'
+/** SuperAdmin de la plateforme, seul admis sur `/admin` (s47). */
+const PLATFORM_ADMIN = 'superadmin@gmail.com'
 
 const NOT_FOUND_TITLE = 'Page non trouvée'
 

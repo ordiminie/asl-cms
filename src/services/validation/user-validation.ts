@@ -6,12 +6,20 @@ import {
   CreateUserSettings,
   Language,
   NotificationChannel,
+  Roles,
   Theme,
   UpdateUser,
   UpdateUserSettings,
   User,
   UserVisibility,
 } from '../types/domain/user-types'
+
+/**
+ * Les deux seuls rôles globaux (s47, ADR 035). Liste recopiée et non importée
+ * de `roleEnum` : ce fichier est importé par un composant client, qui ne doit
+ * pas embarquer le modèle Drizzle.
+ */
+export const GLOBAL_ROLES = ['user', 'super_admin'] as const satisfies Roles[]
 
 export const baseUserServiceSchema = z.object({
   email: z.string().email({
@@ -39,9 +47,7 @@ export const updateUserServiceSchema = createUserServiceSchema.extend({
   image: z.string().nullable().optional(),
   visibility: z.enum(['public', 'private']) satisfies z.Schema<UserVisibility>,
   password: z.string().optional(),
-  role: z
-    .enum(['public', 'user', 'redactor', 'moderator', 'admin', 'super_admin'])
-    .optional(),
+  role: z.enum(GLOBAL_ROLES).optional(),
   banned: z.boolean().optional(),
   banReason: z.string().nullable().optional(),
   banExpires: z.date().nullable().optional(),
@@ -67,9 +73,7 @@ export async function createUpdateUserServiceSchema() {
     email: z.string().email({
       message: t('validation.email.invalid'),
     }),
-    role: z
-      .enum(['public', 'user', 'redactor', 'moderator', 'admin', 'super_admin'])
-      .optional(),
+    role: z.enum(GLOBAL_ROLES).optional(),
     banned: z.boolean().optional(),
     banReason: z.string().nullable().optional(),
     banExpires: z.date().nullable().optional(),

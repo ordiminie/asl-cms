@@ -27,7 +27,7 @@ export async function createPlanAction(
 ): Promise<ActionResponse> {
   try {
     await requireActionAuth({
-      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+      roles: [RoleConst.SUPER_ADMIN],
     })
 
     const validationResult = createPlanSchema.safeParse(planData)
@@ -77,7 +77,7 @@ export async function updatePlanAction(
   try {
     // ✅ SÉCURITÉ OBLIGATOIRE - Vérification auth et rôles admin
     await requireActionAuth({
-      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+      roles: [RoleConst.SUPER_ADMIN],
     })
 
     // ✅ VALIDATION ZOD côté serveur (sans l'ID)
@@ -132,7 +132,7 @@ export async function softDeletePlanAction(
   try {
     // ✅ SÉCURITÉ OBLIGATOIRE - Vérification auth et rôles admin
     await requireActionAuth({
-      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+      roles: [RoleConst.SUPER_ADMIN],
     })
 
     await softDeletePlanService(planId)
@@ -169,7 +169,7 @@ export async function deletePlanAction(
   try {
     // ✅ SÉCURITÉ OBLIGATOIRE - Vérification auth et rôles admin
     await requireActionAuth({
-      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+      roles: [RoleConst.SUPER_ADMIN],
     })
 
     await deletePlanService(planId)

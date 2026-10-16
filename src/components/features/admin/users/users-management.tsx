@@ -132,23 +132,8 @@ export default function UsersManagement({
 
   const users = IS_INFINITE_SCROLL ? infiniteUsers : initialUsers
 
-  const getUserRoleDisplay = (role?: string) => {
-    if (!role) return tCommon('states.public')
-    switch (role) {
-      case 'admin':
-        return t('roles.admin')
-      case 'moderator':
-        return t('roles.moderator')
-      case 'user':
-        return t('roles.user')
-      case 'redactor':
-        return t('roles.redactor')
-      case 'super_admin':
-        return t('roles.super_admin')
-      default:
-        return tCommon('states.public')
-    }
-  }
+  const getUserRoleDisplay = (role?: string) =>
+    role === 'super_admin' ? t('roles.super_admin') : t('roles.user')
 
   const getUserStatusDisplay = (user: User) => {
     const isVerified = user.emailVerified

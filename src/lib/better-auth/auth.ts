@@ -11,6 +11,7 @@ import {
   organization,
   twoFactor,
 } from 'better-auth/plugins'
+import {adminAc, userAc} from 'better-auth/plugins/admin/access'
 import {v4 as uuidv4} from 'uuid'
 
 import db from '@/db/models/db'
@@ -164,7 +165,15 @@ const options = {
       },
     }),
     magicLink(magicLinkOptions),
-    admin(),
+    /*
+     * Deux rôles globaux (s47, ADR 035). `adminRoles` seul fait lever une
+     * BetterAuthError au démarrage : chaque rôle administrateur doit aussi être
+     * déclaré dans `roles`.
+     */
+    admin({
+      adminRoles: ['super_admin'],
+      roles: {user: userAc, super_admin: adminAc},
+    }),
     organization({
       ac: organizationAccessControl,
       roles: organizationRoles,

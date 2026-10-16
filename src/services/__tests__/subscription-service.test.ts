@@ -49,7 +49,7 @@ import {
 import {PaginatedResponse} from '../types/common-type'
 import {Plan, Subscription} from '../types/domain/subscription-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 // Mock repositories
 vi.mock('@/db/repositories/subscription-repository', () => ({
@@ -84,7 +84,7 @@ describe('[ADMIN] CRUD : Subscription Service', () => {
   const subscriptionId = faker.string.uuid()
   const subscriptionData: Subscription = {
     id: subscriptionId,
-    referenceId: userTestAdmin.id,
+    referenceId: userTestSuperAdmin.id,
     plan: 'pro',
     status: 'active',
     periodStart: new Date(),
@@ -105,7 +105,7 @@ describe('[ADMIN] CRUD : Subscription Service', () => {
   }
 
   beforeEach(() => {
-    setupAuthUserMocked(userTestAdmin)
+    setupAuthUserMocked(userTestSuperAdmin)
     vi.clearAllMocks()
     vi.mocked(createSubscriptionDao).mockResolvedValue(subscriptionData)
     vi.mocked(getSubscriptionByIdDao).mockResolvedValue(subscriptionData)
@@ -114,7 +114,7 @@ describe('[ADMIN] CRUD : Subscription Service', () => {
 
   it('should create a new subscription', async () => {
     const createData = {
-      referenceId: userTestAdmin.id,
+      referenceId: userTestSuperAdmin.id,
       plan: 'pro',
       status: 'active',
       periodStart: new Date(),
@@ -139,7 +139,7 @@ describe('[ADMIN] CRUD : Subscription Service', () => {
   it('should update a subscription', async () => {
     const updateData = {
       id: subscriptionId,
-      referenceId: userTestAdmin.id,
+      referenceId: userTestSuperAdmin.id,
       plan: 'lifetime',
       status: 'active',
     }
@@ -508,7 +508,7 @@ describe('[ADMIN] CRUD : Plan Service', () => {
   }
 
   beforeEach(() => {
-    setupAuthUserMocked(userTestAdmin)
+    setupAuthUserMocked(userTestSuperAdmin)
     vi.clearAllMocks()
     vi.mocked(createPlanDao).mockResolvedValue(planData)
     vi.mocked(getPlanByIdDao).mockResolvedValue(planData)

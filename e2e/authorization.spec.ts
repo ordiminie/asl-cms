@@ -70,8 +70,24 @@ test.describe('Contrôle d’accès', () => {
     await expect(page).toHaveURL(/^https?:\/\/[^/]+\/dashboard$/)
   })
 
-  test('un administrateur atteint /admin', async ({page}) => {
+  test('un ancien compte admin, user depuis s47, n’atteint pas le contenu admin', async ({
+    page,
+  }) => {
+    // admin@gmail.com portait le rôle global `admin` avant s47 (ADR 035). Il
+    // est désormais `user` : la console plateforme lui est refusée, comme à
+    // tout compte qui n'est pas SuperAdmin. Statut 200 sous Cache Components,
+    // l'assertion porte sur le contenu (voir le cas précédent).
     await login(page, 'admin@gmail.com')
+
+    await page.goto('/admin')
+
+    await expect(
+      page.getByRole('heading', {name: /accès non autorisé/i})
+    ).toBeVisible()
+  })
+
+  test('le SuperAdmin atteint /admin', async ({page}) => {
+    await login(page, 'superadmin@gmail.com')
 
     const response = await page.goto('/admin')
 

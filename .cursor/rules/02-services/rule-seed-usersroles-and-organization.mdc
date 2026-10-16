@@ -14,12 +14,12 @@ Cette règle documente le jeu de test complet configuré dans [seed.ts](mdc:src/
 
 ### Rôles Globaux (System-wide)
 
-- **PUBLIC** : Utilisateur public avec accès minimal
-- **USER** : Utilisateur standard avec accès limité
-- **REDACTOR** : Rédacteur avec permissions d'édition
-- **MODERATOR** : Modérateur avec permissions étendues
-- **ADMIN** : Administrateur avec tous les privilèges
-- **SUPER_ADMIN** : Super administrateur avec accès total
+Deux rôles globaux seulement (s47, ADR 035) :
+
+- **USER** : tout compte, membre, Bureau ou Présidence d'une association
+- **SUPER_ADMIN** : SuperAdmin Zourite Studio, accès total et seul admis sur `/admin`
+
+Le visiteur sans compte n'a pas de rôle : il reçoit les droits d'invité.
 
 ### Rôles Organisationnels
 
@@ -38,17 +38,14 @@ Cette règle documente le jeu de test complet configuré dans [seed.ts](mdc:src/
 
 ## Jeu de Test Détaillé
 
-### 🔐 Rôles Globaux Purs (sans organisations)
+### 🔐 SuperAdmin (sans organisation)
 
-| Email                  | Nom     | Rôle Global | Usage                                   |
-| ---------------------- | ------- | ----------- | --------------------------------------- |
-| `superadmin@gmail.com` | Frank   | SUPER_ADMIN | Test bypass complet des permissions     |
-| `admin@gmail.com`      | Admin   | ADMIN       | Test permissions administrateur système |
-| `moderator@gmail.com`  | David   | MODERATOR   | Test permissions modérateur             |
-| `redactor@gmail.com`   | Grace   | REDACTOR    | Test permissions rédacteur              |
-| `public@gmail.com`     | Charlie | PUBLIC      | Test accès minimal                      |
+| Email                  | Nom   | Rôle Global | Usage                                            |
+| ---------------------- | ----- | ----------- | ------------------------------------------------ |
+| `superadmin@gmail.com` | Frank | SUPER_ADMIN | Console `/admin`, bypass complet des permissions |
 
-**🎯 Cas d'usage** : Tester les permissions système globales, bypass organisationnel, accès admin universel.
+**🎯 Cas d'usage** : Tester la console plateforme et le bypass global. C'est le seul compte au-dessus
+de `user`.
 
 ### 🔄 Utilisateur Multi-Organisations
 
@@ -68,14 +65,19 @@ Cette règle documente le jeu de test complet configuré dans [seed.ts](mdc:src/
 
 **🎯 Cas d'usage** : Tester les permissions pures par rôle organisationnel, isolation des contextes.
 
-### ⚖️ Cas de Chevauchement (Rôle Global + Organisationnel)
+### 🗂️ Adresses historiques (comptes `user` depuis s47)
 
-| Email                        | Nom   | Rôle Global | Organisation  | Rôle Org |
-| ---------------------------- | ----- | ----------- | ------------- | -------- |
-| `admin-owner@gmail.com`      | Emma  | ADMIN       | Marketing Pro | OWNER    |
-| `moderator-member@gmail.com` | Julie | MODERATOR   | TechCorp      | MEMBER   |
+Ces comptes portaient un rôle global retiré par s47. Ils gardent leur adresse et leurs appartenances,
+dont dépendent des specs e2e, avec le rôle `user`.
 
-**🎯 Cas d'usage** : Tester la priorité des permissions (global vs organisationnel), permissions cumulatives.
+| Email                        | Nom   | Rôle Global | Organisations                                         |
+| ---------------------------- | ----- | ----------- | ----------------------------------------------------- |
+| `admin@gmail.com`            | Admin | USER        | TechCorp MEMBER, Marketing Pro ADMIN, Acme Corp OWNER |
+| `admin-owner@gmail.com`      | Emma  | USER        | Marketing Pro OWNER                                   |
+| `moderator-member@gmail.com` | Julie | USER        | TechCorp MEMBER                                       |
+
+**🎯 Cas d'usage** : Prouver qu'un ancien compte administrateur n'a plus que les droits de ses
+appartenances, et rien sur `/admin`.
 
 ### 🏝️ Utilisateur Isolé
 
@@ -92,11 +94,8 @@ Cette règle documente le jeu de test complet configuré dans [seed.ts](mdc:src/
 ```typescript
 // Utilisateurs à tester
 const globalUsers = [
-  'superadmin@gmail.com', // Accès total
-  'admin@gmail.com', // Accès admin
-  'moderator@gmail.com', // Accès modérateur
-  'redactor@gmail.com', // Accès rédacteur
-  'public@gmail.com', // Accès minimal
+  'superadmin@gmail.com', // Accès total, console /admin
+  'user@gmail.com', // Compte user : droits de ses appartenances
 ]
 ```
 
@@ -111,14 +110,11 @@ const multiOrgTests = [
 ]
 ```
 
-### 3. **Tests de Chevauchement**
+### 3. **Tests des adresses historiques**
 
 ```typescript
-// Test priorité des permissions
-const overlapTests = [
-  'admin-owner@gmail.com', // ADMIN global + OWNER org
-  'moderator-member@gmail.com', // MODERATOR global + MEMBER org
-]
+// Anciens comptes administrateurs, user depuis s47 : refusés sur /admin
+const historicalAccounts = ['admin@gmail.com', 'admin-owner@gmail.com']
 ```
 
 ### 4. **Tests d'Isolation**
@@ -136,16 +132,16 @@ const isolationTest = 'user-isolated@gmail.com' // USER sans orgs
 | ---------------------- | ------------- | ------------- | --------- | ------------ |
 | `user@gmail.com`       | Lecture seule | Aucun         | Écriture  | Propriétaire |
 | `user-owner@gmail.com` | Propriétaire  | Aucun         | Aucun     | Aucun        |
-| `admin@gmail.com`      | Bypass        | Bypass        | Bypass    | Bypass       |
+| `superadmin@gmail.com` | Bypass        | Bypass        | Bypass    | Bypass       |
 
 ### Test Matrix 2: Actions CRUD par Rôle
 
-| Action           | MEMBER | ADMIN | OWNER | ADMIN Global |
-| ---------------- | ------ | ----- | ----- | ------------ |
-| Créer Projet     | ✅     | ✅    | ✅    | ✅ (bypass)  |
-| Modifier Projet  | ❌     | ✅    | ✅    | ✅ (bypass)  |
-| Supprimer Projet | ❌     | ❌    | ✅    | ✅ (bypass)  |
-| Gérer Membres    | ❌     | ✅    | ✅    | ✅ (bypass)  |
+| Action           | MEMBER | ADMIN | OWNER | SUPER_ADMIN |
+| ---------------- | ------ | ----- | ----- | ----------- |
+| Créer Projet     | ✅     | ✅    | ✅    | ✅ (bypass) |
+| Modifier Projet  | ❌     | ✅    | ✅    | ✅ (bypass) |
+| Supprimer Projet | ❌     | ❌    | ✅    | ✅ (bypass) |
+| Gérer Membres    | ❌     | ✅    | ✅    | ✅ (bypass) |
 
 ## Commandes Utiles
 
@@ -161,7 +157,7 @@ pnpm run db:seed
 ```bash
 # Test avec différents utilisateurs
 # Se connecter en tant que user@gmail.com pour tester multi-org
-# Se connecter en tant que admin@gmail.com pour tester bypass
+# Se connecter en tant que superadmin@gmail.com pour tester bypass
 # Se connecter en tant que user-member@gmail.com pour tester limitations
 ```
 
@@ -171,8 +167,8 @@ pnpm run db:seed
 
 1. **Isolation des organisations** : `user-member@gmail.com` ne doit voir que Acme Corp
 2. **Progression des permissions** : `user@gmail.com` doit avoir des droits différents selon l'organisation
-3. **Bypass global** : `admin@gmail.com` doit accéder à tout sans appartenir à une organisation
-4. **Chevauchement** : `admin-owner@gmail.com` doit cumuler les permissions
+3. **Bypass global** : `superadmin@gmail.com` doit accéder à tout sans appartenir à une organisation
+4. **Adresses historiques** : `admin-owner@gmail.com` n'a que les droits de sa présidence
 5. **Isolation** : `user-isolated@gmail.com` ne doit voir aucune organisation privée
 
 ### ⚠️ **Cas Limites à Tester**

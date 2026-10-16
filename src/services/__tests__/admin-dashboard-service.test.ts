@@ -11,12 +11,12 @@ import {AuthorizationError} from '../errors/authorization-error'
 import {ValidationError} from '../errors/validation-error'
 import {AdminDashboardStats} from '../types/domain/admin-dashboard-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 // Mock des DAOs
 vi.mock('@/db/repositories/admin-statistics-repository')
 
-describe('[ADMIN] Admin Dashboard Service', () => {
+describe('[SUPER_ADMIN] Admin Dashboard Service', () => {
   const mockStatsData: AdminDashboardStats = {
     totalUsers: 150,
     totalOrganizations: 25,
@@ -37,11 +37,11 @@ describe('[ADMIN] Admin Dashboard Service', () => {
     vi.mocked(getAdminStatisticsDao).mockResolvedValue(mockStatsData)
   })
 
-  describe('[ADMIN] getDashboardStatsService', () => {
+  describe('[SUPER_ADMIN] getDashboardStatsService', () => {
     beforeEach(() => {
       const user = {
-        ...userTestAdmin,
-        role: RoleConst.ADMIN,
+        ...userTestSuperAdmin,
+        role: RoleConst.SUPER_ADMIN,
         banned: false,
         banReason: null,
         banExpires: null,
@@ -71,11 +71,11 @@ describe('[ADMIN] Admin Dashboard Service', () => {
     })
   })
 
-  describe('[ADMIN] getDashboardStatsWithParamsService', () => {
+  describe('[SUPER_ADMIN] getDashboardStatsWithParamsService', () => {
     beforeEach(() => {
       const user = {
-        ...userTestAdmin,
-        role: RoleConst.ADMIN,
+        ...userTestSuperAdmin,
+        role: RoleConst.SUPER_ADMIN,
         banned: false,
         banReason: null,
         banExpires: null,

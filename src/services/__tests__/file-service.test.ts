@@ -40,7 +40,7 @@ import {
   UploadFileForEntity,
 } from '../types/domain/file-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 // Mock des repositories
 vi.mock('@/db/repositories/files-repository')
@@ -61,7 +61,7 @@ describe('[ADMIN] File Service', () => {
   const mockBlob = new Blob(['test content'], {type: 'image/jpeg'})
 
   beforeEach(() => {
-    setupAuthUserMocked(userTestAdmin)
+    setupAuthUserMocked(userTestSuperAdmin)
     vi.clearAllMocks()
 
     // Mock des repositories
@@ -352,7 +352,7 @@ describe('[PUBLIC] File Service', () => {
 
 describe('File Service Validation', () => {
   beforeEach(() => {
-    setupAuthUserMocked(userTestAdmin)
+    setupAuthUserMocked(userTestSuperAdmin)
     vi.clearAllMocks()
   })
 

@@ -74,10 +74,10 @@ describe("[getUserById] Lors de l'appel de la fonction", () => {
       `[AuthorizationError: Accès non autorisé.]`
     )
   })
-  it("[ADMIN] devrait appelé `getUserByIdDao` si l'utilisateur est un `admin`", async () => {
+  it("[SUPER_ADMIN] devrait appelé `getUserByIdDao` si l'utilisateur est un `super_admin`", async () => {
     const user = {
       ...userTest,
-      role: RoleConst.ADMIN,
+      role: RoleConst.SUPER_ADMIN,
     } satisfies User
     setupAuthUserMocked(user)
     const result = await getUserByIdService(differentUserId)

@@ -19,7 +19,7 @@ export async function cancelSubscriptionAction(
   try {
     // Vérification de l'authentification et des permissions admin
     await requireActionAuth({
-      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+      roles: [RoleConst.SUPER_ADMIN],
     })
 
     // Annulation de l'abonnement
@@ -51,7 +51,7 @@ export async function reactivateSubscriptionAction(
   try {
     // Vérification de l'authentification et des permissions admin
     await requireActionAuth({
-      roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+      roles: [RoleConst.SUPER_ADMIN],
     })
 
     // Réactivation de l'abonnement

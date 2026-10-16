@@ -77,37 +77,6 @@ export function buildSuperAdminAbilities(builder: AppAbilityBuilder) {
 }
 
 /**
- * Build abilities pour ADMIN - permissions étendues
- */
-export function buildAdminAbilities(builder: AppAbilityBuilder) {
-  const {can} = builder
-
-  // Peut gérer tous les utilisateurs
-  can(ActionsConst.MANAGE, SubjectsConst.USER)
-
-  // Peut gérer toutes les subscriptions
-  can(ActionsConst.MANAGE, SubjectsConst.SUBSCRIPTION)
-
-  // Peut gérer toutes les organisations
-  can(ActionsConst.MANAGE, SubjectsConst.ORGANIZATION)
-
-  // Peut gérer tous les fichiers
-  can(ActionsConst.MANAGE, SubjectsConst.FILE)
-
-  // Peut gérer les aspects techniques et logs
-  can(ActionsConst.MANAGE, SubjectsConst.TECHNICAL)
-  can(ActionsConst.MANAGE, SubjectsConst.LOG)
-
-  // Peut gérer toutes les notifications (créer des notifications système)
-  can(ActionsConst.MANAGE, SubjectsConst.NOTIFICATION)
-
-  // Peut gérer tous les posts, catégories et hashtags
-  can(ActionsConst.MANAGE, SubjectsConst.POST)
-  can(ActionsConst.MANAGE, SubjectsConst.CATEGORY)
-  can(ActionsConst.MANAGE, SubjectsConst.HASHTAG)
-}
-
-/**
  * Build abilities pour USER - permissions standards avec gestion des rôles organisationnels
  */
 export function buildUserAbilities(

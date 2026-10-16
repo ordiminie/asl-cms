@@ -18,7 +18,7 @@ export type FormState = {
 
 export async function markAsReadAction(id: string): Promise<FormState> {
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
 
   try {
@@ -44,7 +44,7 @@ export async function markAsReadAction(id: string): Promise<FormState> {
 
 export async function archiveSubmissionAction(id: string): Promise<FormState> {
   await requireActionAuth({
-    roles: [RoleConst.ADMIN, RoleConst.SUPER_ADMIN],
+    roles: [RoleConst.SUPER_ADMIN],
   })
 
   try {

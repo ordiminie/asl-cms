@@ -1,10 +1,14 @@
 import z from 'zod'
 
 import {
+  GLOBAL_ROLES,
   languageSchema,
   notificationChannelSchema,
   themeSchema,
 } from '@/services/validation/user-validation'
+
+/** Rôle global proposé et accepté par `/admin` : `user` ou `super_admin` (s47). */
+export const userRoleSchema = z.enum(GLOBAL_ROLES)
 
 export const userFormSchema = z.object({
   id: z.string().uuid('Invalid UUID').optional(),

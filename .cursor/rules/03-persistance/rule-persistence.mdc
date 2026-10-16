@@ -61,7 +61,7 @@ import {
 } from 'drizzle-orm/pg-core'
 
 // Définir les enums pour la sécurité des types
-export const userRoleEnum = pgEnum('user_role', ['user', 'admin', 'public'])
+export const userRoleEnum = pgEnum('user_role', ['user', 'super_admin'])
 export const userVisibilityEnum = pgEnum('user_visibility', [
   'public',
   'private',

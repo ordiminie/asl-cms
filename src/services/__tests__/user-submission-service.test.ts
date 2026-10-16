@@ -50,9 +50,9 @@ const userTest = {
   twoFactorEnabled: null,
 } satisfies User
 
-const adminUser = {
+const superAdminUser = {
   ...userTest,
-  role: RoleConst.ADMIN,
+  role: RoleConst.SUPER_ADMIN,
 } satisfies User
 
 const submissionTest = {
@@ -238,8 +238,8 @@ describe('[getAllUserSubmissionsService]', () => {
     vi.clearAllMocks()
   })
 
-  it('[ADMIN] devrait récupérer toutes les soumissions', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait récupérer toutes les soumissions', async () => {
+    setupAuthUserMocked(superAdminUser)
     const submissions = [submissionWithUserTest]
     vi.mocked(
       userSubmissionRepository.getAllUserSubmissionsWithPaginationDao
@@ -260,8 +260,8 @@ describe('[getAllUserSubmissionsService]', () => {
     ).toHaveBeenCalledWith(pagination, undefined)
   })
 
-  it('[ADMIN] devrait filtrer par type', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait filtrer par type', async () => {
+    setupAuthUserMocked(superAdminUser)
     const submissions = [submissionWithUserTest]
     vi.mocked(
       userSubmissionRepository.getAllUserSubmissionsWithPaginationDao
@@ -282,8 +282,8 @@ describe('[getAllUserSubmissionsService]', () => {
     ).toHaveBeenCalledWith(pagination, filters)
   })
 
-  it('[ADMIN] devrait filtrer par statut lu/non-lu', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait filtrer par statut lu/non-lu', async () => {
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(
       userSubmissionRepository.getAllUserSubmissionsWithPaginationDao
     ).mockResolvedValue({
@@ -325,8 +325,8 @@ describe('[getUserSubmissionByIdService]', () => {
     vi.clearAllMocks()
   })
 
-  it('[ADMIN] devrait récupérer une soumission par ID', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait récupérer une soumission par ID', async () => {
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(
       userSubmissionRepository.getUserSubmissionByIdDao
     ).mockResolvedValue(submissionWithUserTest)
@@ -352,8 +352,8 @@ describe('[markAsReadService]', () => {
     vi.clearAllMocks()
   })
 
-  it('[ADMIN] devrait marquer une soumission comme lue', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait marquer une soumission comme lue', async () => {
+    setupAuthUserMocked(superAdminUser)
     const readSubmission = {...submissionTest, read: true}
     vi.mocked(
       userSubmissionRepository.markUserSubmissionAsReadDao
@@ -375,7 +375,7 @@ describe('[markAsReadService]', () => {
   })
 
   it('devrait lever une erreur de validation si ID invalide', async () => {
-    setupAuthUserMocked(adminUser)
+    setupAuthUserMocked(superAdminUser)
 
     await expect(markAsReadService('invalid-uuid')).rejects.toThrow(
       ValidationParsedZodError
@@ -388,8 +388,8 @@ describe('[archiveUserSubmissionService]', () => {
     vi.clearAllMocks()
   })
 
-  it('[ADMIN] devrait archiver une soumission', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait archiver une soumission', async () => {
+    setupAuthUserMocked(superAdminUser)
     const archivedSubmission = {...submissionTest, archived: true}
     vi.mocked(
       userSubmissionRepository.archiveUserSubmissionDao
@@ -411,7 +411,7 @@ describe('[archiveUserSubmissionService]', () => {
   })
 
   it('devrait lever une erreur de validation si ID invalide', async () => {
-    setupAuthUserMocked(adminUser)
+    setupAuthUserMocked(superAdminUser)
 
     await expect(archiveUserSubmissionService('invalid-uuid')).rejects.toThrow(
       ValidationParsedZodError
@@ -424,8 +424,8 @@ describe('[getUnreadSubmissionsCountService]', () => {
     vi.clearAllMocks()
   })
 
-  it('[ADMIN] devrait compter les soumissions non lues', async () => {
-    setupAuthUserMocked(adminUser)
+  it('[SUPER_ADMIN] devrait compter les soumissions non lues', async () => {
+    setupAuthUserMocked(superAdminUser)
     vi.mocked(
       userSubmissionRepository.getUnreadSubmissionsCountDao
     ).mockResolvedValue(5)

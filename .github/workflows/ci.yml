@@ -135,3 +135,76 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # ADR 035 : une migration qui passe sur une base vide peut échouer sur une
+  # base peuplée. Ce job monte le Postgres jetable au schéma et au seed de
+  # main, applique les migrations de la branche, puis lance les contrôles
+  # versionnés de la story. Pas de build Next.
+  migrations-base-main:
+    name: Migrations sur la base de main
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Même préparation que le job e2e : le service postgres ne joue pas
+      # docker/db-init/.
+      - name: Rôle applicatif et extensions
+        run: |
+          PGPASSWORD=test psql -h localhost -U test -d test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+          CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'asl_app') THEN
+              CREATE ROLE asl_app LOGIN PASSWORD 'asl_app' NOSUPERUSER NOCREATEDB
+                NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+            END IF;
+          END
+          $$;
+          GRANT CONNECT ON DATABASE test TO asl_app;
+          GRANT USAGE ON SCHEMA public TO asl_app;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO asl_app;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO asl_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE test IN SCHEMA public
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO asl_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE test IN SCHEMA public
+            GRANT USAGE, SELECT ON SEQUENCES TO asl_app;
+          SQL
+
+      - name: Base au schéma et au seed de main
+        run: |
+          git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+          git worktree add --detach ../main origin/main
+          cd ../main
+          pnpm install --frozen-lockfile
+          pnpm db:migrate
+          pnpm db:seed
+
+      - name: Photo avant les migrations de la branche
+        run: scripts/ci/check-global-roles-migration.sh before
+
+      - name: Migrations de la branche
+        run: pnpm db:migrate
+
+      - name: Contrôles après migration (s47)
+        run: scripts/ci/check-global-roles-migration.sh after

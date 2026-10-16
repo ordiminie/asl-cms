@@ -155,7 +155,7 @@ test.describe('critère 6 — le tenant A ne voit rien du tenant B', () => {
   }) => {
     await page.goto(`${TENANT_A}/login/prestataire`)
     await expect(page.locator('form')).toBeVisible()
-    await page.fill('input[name="email"]', 'admin@gmail.com')
+    await page.fill('input[name="email"]', 'superadmin@gmail.com')
     await page.fill('input[name="password"]', PASSWORD)
     await page.click("button[type='submit']")
     await page.waitForURL((url) => !url.toString().includes('/login'), {

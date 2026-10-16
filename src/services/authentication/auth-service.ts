@@ -4,8 +4,6 @@ import {cache} from 'react'
 import {auth} from '@/lib/better-auth/auth'
 import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
 
-import {RoleConst} from '../types/domain/auth-types'
-
 /**
  * Récupère l'utilisateur connecté a partir de la session enrichie
  * Attention : expose toutes les données
@@ -55,11 +53,6 @@ export const getActiveSubscriptions = cache(async (referenceId: string) => {
     return []
   }
 })
-export const isAuthAdmin = async () => {
-  const authUser = await getAuthUser()
-  return authUser?.role === RoleConst.ADMIN
-}
-
 export const getAuthUserId = async () => {
   const user = await getAuthUser()
   if (!user) return

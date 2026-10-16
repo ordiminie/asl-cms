@@ -173,12 +173,12 @@ Key points:
 - Mock DAOs and external services
 - Test error cases
 - Verify input validation
-- import setupAuthUserMocked, userTest, userTestAdmin relatively like this
-- Allways Tests with role PUBLIC (no auth), USER (auth connected), ADMIN (role admin)
+- import setupAuthUserMocked, userTest, userTestSuperAdmin relatively like this
+- Allways Tests with no auth (guest), USER (auth connected), SUPER_ADMIN (role super_admin)
 
 ```ts
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 ```
 
 Example Test:
@@ -202,7 +202,7 @@ import {
 } from '../repositories/categories-repository'
 import {Category} from '../types/domain/category-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest, userTestAdmin} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 import {faker} from '@faker-js/faker'
 import {AuthorizationError} from '../errors/errors'
 import {getAuthUser} from '../authentication/auth-service'
@@ -210,7 +210,7 @@ import {canCreateCategory} from '../authorization/category-authorization'
 
 //@todo mock a deplacer setup-mocks.ts
 
-describe('[ADMIN] CRUD : CategoryService', () => {
+describe('[SUPER_ADMIN] CRUD : CategoryService', () => {
   const categoryId = faker.string.uuid()
   const categoryData: Category = {
     id: categoryId,
@@ -226,7 +226,7 @@ describe('[ADMIN] CRUD : CategoryService', () => {
 
   beforeEach(() => {
     const user = {
-      ...userTestAdmin,
+      ...userTestSuperAdmin,
     }
     setupAuthUserMocked(user)
     vi.clearAllMocks()

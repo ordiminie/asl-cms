@@ -9,7 +9,6 @@ import {OrganizationRole} from '../types/domain/organization-types'
 import type {User} from '../types/domain/user-types'
 import {
   Actions,
-  buildAdminAbilities,
   buildGuestAbilities,
   buildSuperAdminAbilities,
   buildUserAbilities,
@@ -57,31 +56,13 @@ export function defineAbilitiesFor(
     return builder.build()
   }
 
-  // ADMIN - permissions étendues
-  if (user.role === RoleConst.ADMIN) {
-    buildAdminAbilities(builder)
-    return builder.build()
-  }
-
   // USER - permissions standards
   if (user.role === RoleConst.USER) {
     buildUserAbilities(builder, user, orgContext)
     return builder.build()
   }
 
-  // MODERATOR/REDACTOR - même permissions que user pour le moment
-  if (user.role === RoleConst.MODERATOR || user.role === RoleConst.REDACTOR) {
-    buildUserAbilities(builder, user, orgContext)
-    return builder.build()
-  }
-
-  // PUBLIC ou role non defini - permissions guest
-  if (!user.role || user.role === RoleConst.PUBLIC) {
-    buildGuestAbilities(builder)
-    return builder.build()
-  }
-
-  // Fallback : Permissions par défaut pour utilisateurs connectés sans rôle spécifique connu
+  // Aucun rôle, ou rôle inconnu (retiré par s47) : droits d'invité
   buildGuestAbilities(builder)
   return builder.build()
 }
@@ -174,12 +155,12 @@ export function filterFields<T extends Record<string, unknown>>(
 }
 
 /**
- * Vérifie si l'utilisateur authentifié est admin
- * Fonction de compatibilité
+ * Vérifie si l'utilisateur est le SuperAdmin de la plateforme (s47, ADR 035).
+ * Le nom est historique : seul `super_admin` administre la console `/admin`.
  */
 export function isUserAdmin(user?: User): boolean {
   if (!user) return false
-  return user.role === RoleConst.ADMIN || user.role === RoleConst.SUPER_ADMIN
+  return user.role === RoleConst.SUPER_ADMIN
 }
 
 /**

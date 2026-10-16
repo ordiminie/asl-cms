@@ -139,7 +139,7 @@ describeRoutes(
 )
 
 describeRoutes(
-  'Pages authentifiées — administrateur',
-  'admin@gmail.com',
+  'Pages authentifiées — SuperAdmin',
+  'superadmin@gmail.com',
   ADMIN_ROUTES
 )
