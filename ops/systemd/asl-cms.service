@@ -1,0 +1,31 @@
+# Application ASL-CMS (ADR 036, s12b).
+# Installation : sudo cp ops/systemd/asl-cms.service /etc/systemd/system/
+#                sudo systemctl daemon-reload && sudo systemctl enable asl-cms
+# La version servie est celle du lien /srv/asl-cms/current ; Next lit
+# .env.production dans ce repertoire (lien vers shared/.env.production).
+
+[Unit]
+Description=ASL-CMS (Next.js)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=asl-cms
+Group=asl-cms
+WorkingDirectory=/srv/asl-cms/current
+Environment=NODE_ENV=production
+ExecStart=/srv/asl-cms/current/node_modules/.bin/next start -H 127.0.0.1 -p 3100
+Restart=on-failure
+RestartSec=5
+
+# Durcissement : tout le systeme en lecture seule, sauf shared/ (fichiers
+# televerses) et un /tmp prive.
+ProtectSystem=strict
+ReadWritePaths=/srv/asl-cms/shared
+PrivateTmp=true
+ProtectHome=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

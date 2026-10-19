@@ -10,29 +10,32 @@
 
 ## Stack
 
-| Couche                 | Technologie                                                                                                     | Note                                                  |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Framework              | Next.js **16.3** (App Router, Turbopack), React **19.2**                                                        | `cacheComponents: true` — rien n'est caché par défaut |
-| Langage                | TypeScript strict                                                                                               | `pnpm` imposé, jamais `npm`                           |
-| UI                     | Tailwind **4**, shadcn/ui, Radix UI, `lucide-react` / `@tabler/icons-react`                                     | `components.json` présent                             |
-| Édition                | **Milkdown** (WYSIWYG) + **@dnd-kit** (ordre des blocs)                                                         | ADR 007 — déjà dans les dépendances                   |
-| Base de données        | PostgreSQL **17**, Drizzle ORM                                                                                  | RLS forcée, ADR 002                                   |
-| Authentification       | **Better Auth 1.7.1** — plugins `magicLink`, `organization`, `admin`, `twoFactor`, `apiKey`, `bearer`, `stripe` | Lien magique natif (s03)                              |
-| Autorisation           | **CASL** (`@casl/ability`)                                                                                      | Rôles globaux + rôles d'organisation                  |
-| Validation             | **Zod 4**                                                                                                       | Client (RHF) _et_ serveur, schémas partagés           |
-| i18n                   | **next-intl**, locale unique `fr` sans préfixe                                                                  | ADR 008                                               |
-| Email                  | **Brevo**, derrière le contrat `EmailTransport` ; gabarits `react-email`                                        | ADR 005, ADR 017 — Resend en secours                  |
-| Fichiers               | Disque du **VPS**, seul adaptateur du factory de stockage                                                       | ADR 004 — Supabase retiré en s12a                     |
-| Tâches planifiées      | Table `scheduled_job` + cron système                                                                            | ADR 006 — remplace Inngest                            |
-| Facturation plateforme | **Stripe** (Zourite Studio ↔ association)                                                                       | Conservé du boilerplate                               |
-| Facturation membres    | **Pennylane**, derrière un contrat interchangeable                                                              | ADR 011 — sans rapport avec Stripe                    |
-| Vote                   | **ASL Community**, derrière un contrat interchangeable                                                          | ADR 011 — module activable                            |
-| Observabilité          | Sentry, Winston (`@/lib/logger`)                                                                                | Logger **serveur uniquement**                         |
-| Tests                  | Vitest (unitaire, `jsdom` + `node`), Playwright (e2e)                                                           | Pas de couche intermédiaire, pas de TestContainers    |
-| Hébergement            | VPS LWS France, 2 vCore / 4 Go / 100 Go SSD, infogéré                                                           | Un seul runtime, une seule base                       |
+| Couche                 | Technologie                                                                                                                                                               | Note                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Framework              | Next.js **16.3** (App Router, Turbopack), React **19.2**                                                                                                                  | `cacheComponents: true` — rien n'est caché par défaut |
+| Langage                | TypeScript strict                                                                                                                                                         | `pnpm` imposé, jamais `npm`                           |
+| UI                     | Tailwind **4**, shadcn/ui, Radix UI, `lucide-react` / `@tabler/icons-react`                                                                                               | `components.json` présent                             |
+| Édition                | **Milkdown** (WYSIWYG) + **@dnd-kit** (ordre des blocs)                                                                                                                   | ADR 007 — déjà dans les dépendances                   |
+| Base de données        | PostgreSQL **17**, Drizzle ORM                                                                                                                                            | RLS forcée, ADR 002                                   |
+| Authentification       | **Better Auth 1.7.1** — plugins `magicLink`, `organization`, `admin`, `twoFactor`, `apiKey`, `bearer`, `stripe`                                                           | Lien magique natif (s03)                              |
+| Autorisation           | **CASL** (`@casl/ability`)                                                                                                                                                | Rôles globaux + rôles d'organisation                  |
+| Validation             | **Zod 4**                                                                                                                                                                 | Client (RHF) _et_ serveur, schémas partagés           |
+| i18n                   | **next-intl**, locale unique `fr` sans préfixe                                                                                                                            | ADR 008                                               |
+| Email                  | **Brevo**, derrière le contrat `EmailTransport` ; gabarits `react-email`                                                                                                  | ADR 005, ADR 017 — Resend en secours                  |
+| Fichiers               | Disque du **VPS**, seul adaptateur du factory de stockage                                                                                                                 | ADR 004 — Supabase retiré en s12a                     |
+| Tâches planifiées      | Table `scheduled_job` + cron système                                                                                                                                      | ADR 006 — remplace Inngest                            |
+| Facturation plateforme | **Stripe** (Zourite Studio ↔ association)                                                                                                                                 | Conservé du boilerplate                               |
+| Facturation membres    | **Pennylane**, derrière un contrat interchangeable                                                                                                                        | ADR 011 — sans rapport avec Stripe                    |
+| Vote                   | **ASL Community**, derrière un contrat interchangeable                                                                                                                    | ADR 011 — module activable                            |
+| Observabilité          | Sentry, Winston (`@/lib/logger`)                                                                                                                                          | Logger **serveur uniquement**                         |
+| Tests                  | Vitest (unitaire, `jsdom` + `node`), Playwright (e2e)                                                                                                                     | Pas de couche intermédiaire, pas de TestContainers    |
+| Hébergement            | VPS unique (recette : Debian partagé ; cible : LWS France, 2 vCore / 4 Go / 100 Go SSD, infogéré) — service systemd sans conteneur, build sur le serveur, nginx + certbot | ADR 036 — un seul runtime, une seule base             |
 
 `docker-compose.yml` et le `Dockerfile` du dépôt servent **l'environnement de développement agentique**
-(conteneur + Postgres jetable), pas la production.
+(conteneur + Postgres jetable), pas la production. En production, l'application tourne **sans
+conteneur** : un service systemd lié à `127.0.0.1`, construit sur le serveur dans un répertoire par
+version, derrière nginx et un certificat par domaine (ADR 036). Procédure d'exploitation — préparation,
+ajout d'un domaine, déploiement, retour arrière, minuteries : `docs/exploitation/README.md`.
 
 ## Repo structure
 

@@ -45,6 +45,20 @@ export default defineConfig({
           globals: true,
         },
       },
+      // Exploitation (s12b) : configuration du serveur, deploiement, fumee
+      {
+        resolve: {tsconfigPaths: true},
+        test: {
+          name: 'ops',
+          environment: 'node',
+          include: [
+            'ops/**/*.test.ts',
+            'scripts/**/*.test.ts',
+            'smoke/**/*.test.ts',
+          ],
+          globals: true,
+        },
+      },
       /*
        * Projet pour la vraie chaine de traduction serveur : l'entree
        * react-server de next-intl (celle que Next sert aux Server Actions et

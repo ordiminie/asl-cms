@@ -368,3 +368,16 @@ export const getUsersByOrganizationDao = async (
 
   return rows
 }
+
+/**
+ * Vrai si au moins un compte porte le role global `super_admin`. Garde de
+ * l'amorcage de la plateforme (s12b) : il ne tourne que sur une base neuve.
+ */
+export const hasSuperAdminDao = async (): Promise<boolean> => {
+  const rows = await getDb()
+    .select({id: users.id})
+    .from(users)
+    .where(eq(users.role, 'super_admin'))
+    .limit(1)
+  return rows.length > 0
+}

@@ -61,3 +61,7 @@ export const provisionOrganizationService =
   organizationServiceInterceptor.provisionOrganizationService
 export const updateOrganizationModulesService =
   organizationServiceInterceptor.updateOrganizationModulesService
+
+// AMORCAGE DE LA PLATEFORME (s12b)
+export const bootstrapPlatformService =
+  organizationServiceInterceptor.bootstrapPlatformService

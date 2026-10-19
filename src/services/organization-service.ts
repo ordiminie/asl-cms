@@ -41,7 +41,7 @@ import {
   ValidationParsedZodError,
 } from './errors/validation-error'
 import {Pagination} from './types/common-type'
-import {UserOrganizationRoleConst} from './types/domain/auth-types'
+import {RoleConst, UserOrganizationRoleConst} from './types/domain/auth-types'
 import {
   CreateMember,
   CreateOrganization,
@@ -603,8 +603,10 @@ import {upsertOrganizationSettingsDao} from '@/db/repositories/organization-sett
 import {
   createUserDao,
   getUserByEmailDao,
+  hasSuperAdminDao,
+  updateUserSafeByUidDao,
 } from '@/db/repositories/user-repository'
-import {withTenant} from '@/db/tenant-scope'
+import {withRlsBypass, withTenant} from '@/db/tenant-scope'
 
 import {canProvisionOrganization} from './authorization/organization-authorization'
 import {CONTACT_EMAIL_SETTING_KEY} from './types/domain/association-settings-types'
@@ -761,4 +763,96 @@ export const updateOrganizationModulesService = async (
     parsed.data.organizationId,
     parsed.data.enabledModules
   )
+}
+
+// ========================================
+// AMORCAGE DE LA PLATEFORME (s12b)
+// ========================================
+
+export type BootstrapPlatform = Omit<ProvisionOrganization, 'enabledModules'>
+
+export type BootstrappedPlatform = {
+  organization: Organization
+  superAdminUserId: string
+}
+
+/**
+ * Amorce une base neuve : la premiere association, son parametrage initial et
+ * le premier compte `super_admin`, rattache a cette association. Sans eux,
+ * aucune page ne s'affiche (tout domaine doit etre provisionne) et l'ecran de
+ * provisionnement est inatteignable.
+ *
+ * **Sans controle de session, et c'est delibere** : appele seulement par le
+ * script `pnpm ops:bootstrap`, sur le serveur, comme la purge. La garde est
+ * ailleurs : le service refuse de tourner des qu'un `super_admin` existe ou
+ * que le domaine sert deja une association.
+ *
+ * **`withRlsBypass()`, point d'arret de revue** : comme le provisionnement, le
+ * tenant n'existe pas encore quand l'ecriture commence. Le scope ouvre une
+ * transaction : un echec au milieu n'ecrit rien. Le compte est cree sans mot
+ * de passe ; le SuperAdmin se connecte par lien magique (ADR 034).
+ */
+export const bootstrapPlatformService = async (
+  params: BootstrapPlatform
+): Promise<BootstrappedPlatform> => {
+  const parsed = provisionOrganizationServiceSchema.safeParse({
+    ...params,
+    enabledModules: [],
+  })
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+  const {name, slug, domain, adminEmail, contactEmail, enabledModules} =
+    parsed.data
+
+  return withRlsBypass(async () => {
+    if (await hasSuperAdminDao()) {
+      throw new ValidationError(
+        'Un compte super_admin existe déjà : la plateforme est déjà amorcée.'
+      )
+    }
+    if (await getOrganizationByDomainDao(domain)) {
+      throw new ValidationError(
+        'Ce domaine sert déjà une association : la plateforme est déjà amorcée.'
+      )
+    }
+
+    const organization = await createOrganizationDao({
+      name,
+      slug,
+      domain,
+      enabledModules,
+    })
+
+    const superAdmin =
+      (await getUserByEmailDao(adminEmail)) ??
+      (await createUserDao({email: adminEmail, name: adminEmail}))
+    await updateUserSafeByUidDao(
+      {
+        name: superAdmin.name,
+        email: superAdmin.email,
+        role: RoleConst.SUPER_ADMIN,
+      },
+      superAdmin.id
+    )
+
+    await createOrganizationMemberDao({
+      userId: superAdmin.id,
+      organizationId: organization.id,
+      role: UserOrganizationRoleConst.OWNER,
+      createdAt: new Date(),
+    })
+
+    await withTenant(organization.id, () =>
+      upsertOrganizationSettingsDao([
+        {
+          organizationId: organization.id,
+          key: CONTACT_EMAIL_SETTING_KEY,
+          value: contactEmail,
+        },
+      ])
+    )
+
+    return {organization, superAdminUserId: superAdmin.id}
+  })
 }

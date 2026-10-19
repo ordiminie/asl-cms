@@ -1,0 +1,20 @@
+# Purge des empreintes des formulaires publics de plus de 24 h (s08b, s12b).
+# Lancee chaque jour par asl-cms-purge.timer ; trace : journalctl -u asl-cms-purge
+
+[Unit]
+Description=ASL-CMS : purge des empreintes de limitation de debit
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=asl-cms
+Group=asl-cms
+WorkingDirectory=/srv/asl-cms/current
+Environment=NODE_ENV=production
+ExecStart=/srv/asl-cms/current/node_modules/.bin/tsx src/db/scripts/purge-rate-limit-fingerprints.ts
+
+ProtectSystem=strict
+ReadWritePaths=/srv/asl-cms/shared
+PrivateTmp=true
+ProtectHome=true
+NoNewPrivileges=true

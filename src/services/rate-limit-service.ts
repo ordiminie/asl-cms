@@ -217,13 +217,20 @@ export const consumeContactMessageQuotaService = async (
   })
 }
 
-export type RateLimitPurgeResult = {organizations: number; deleted: number}
+export type RateLimitPurgeResult = {
+  organizations: number
+  deleted: number
+  /** Associations dont la purge a echoue ; les autres sont purgees quand meme. */
+  failed: string[]
+}
 
 /**
  * Purge, hors de toute requete, les empreintes de plus de 24 h de **toutes**
  * les associations (s08b, critere 3). Chaque association est purgee dans son
  * propre `withTenant` : sous RLS forcee, une suppression sans scope ne
- * supprimerait rien, sans erreur. Jamais `withRlsBypass()`.
+ * supprimerait rien, sans erreur. Jamais `withRlsBypass()`. Une association en
+ * echec est journalisee et comptee dans `failed`, sans interrompre la purge
+ * des suivantes (s12b).
  *
  * **Sans controle d'autorisation, et c'est delibere** : operation de
  * maintenance appelee par un script serveur, sans session.
@@ -234,10 +241,19 @@ export const purgeExpiredRateLimitFingerprintsService =
     const organizationIds = await getAllOrganizationIdsDao()
 
     let deleted = 0
+    const failed: string[] = []
     for (const organizationId of organizationIds) {
-      deleted += await withTenant(organizationId, () =>
-        purgeRateLimitCountersDao(organizationId, cutoff)
-      )
+      try {
+        deleted += await withTenant(organizationId, () =>
+          purgeRateLimitCountersDao(organizationId, cutoff)
+        )
+      } catch (error) {
+        logger.error('[RATE-LIMIT-SERVICE] Echec de la purge des empreintes', {
+          organizationId,
+          error,
+        })
+        failed.push(organizationId)
+      }
     }
-    return {organizations: organizationIds.length, deleted}
+    return {organizations: organizationIds.length, deleted, failed}
   }
