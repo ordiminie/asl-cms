@@ -230,3 +230,28 @@ Aucune migration, aucun modèle, aucun écran.
   examiné explicitement.
 - Mise en production sur LWS : hors de cette story. Le serveur de recette sert l'environnement
   temporaire prévu par la story.
+
+## Écarts d'exécution (revues 1 et 2)
+
+Les tâches ci-dessus restent celles validées. L'exécution s'en écarte sur les points suivants,
+acceptés en revue :
+
+- **Lien `previous` et retour arrière (tâche 3, revue 1 M2).** L'orchestrateur écrit le lien
+  `/srv/asl-cms/previous` vers la version servie avant la nouvelle, seulement après une
+  vérification réussie. `ops/rollback.sh` sans argument y revient, puis fait désigner la version
+  quittée par `previous`. Il refuse une version sans `.next/BUILD_ID` (build interrompu), et
+  s'arrête si `previous` est absent (revue 2 N2, N4).
+- **Redéploiements refusés (tâche 3).** `ops/deploy.sh` refuse de reconstruire le commit en service
+  et celui désigné par `previous` (revue 2 N2) : il ne reconstruit qu'une version jamais servie.
+- **Miroir `repo.git` (tâche 3).** `ops/deploy.sh` clone depuis un miroir local
+  `/srv/asl-cms/repo.git`, mis à jour à chaque déploiement.
+- **Écriture du service (tâche 4, revue 1 m1, revue 2 N1).** `ReadWritePaths=/srv/asl-cms/shared`
+  seul, comme écrit dans la tâche. Le cache de Next n'est pas ouvert dans `releases/` : le
+  `.next/cache` de chaque version est un lien vers `shared/next-cache/<commit>`, créé sous
+  `asl-cms` par `ops/deploy.sh` avant le build. `next build` garde `.next/cache` quand il vide
+  `.next`.
+- **Durcissement (tâche 4).** `PrivateTmp=true` et `ProtectHome=true` en plus, sur le service et la
+  purge.
+- **Amorçage (tâche 2).** Argument `--contact-email` en plus (exigé par le schéma du
+  provisionnement) ; refus si un `super_admin` existe par `hasSuperAdminDao`
+  (`src/db/repositories/user-repository.ts`).

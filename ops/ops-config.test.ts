@@ -115,6 +115,37 @@ describe('ops/deploy.sh — déploiement', () => {
     expect(cdAt).toBeGreaterThan(-1)
     expect(cdAt).toBeLessThan(firstAsApp)
   })
+
+  it('lie le cache de Next de la version vers shared/next-cache/<version>, créé sous asl-cms, avant l’orchestrateur', () => {
+    expect(script).toContain('cache_dir="$APP_ROOT/shared/next-cache/$short"')
+    const mkdirAt = script.indexOf(
+      'as_app mkdir -p "$cache_dir" "$release/.next"'
+    )
+    const linkAt = script.indexOf(
+      'as_app ln -s "$cache_dir" "$release/.next/cache"'
+    )
+    const orchestratorAt = script.indexOf('ops:deploy-release')
+    expect(mkdirAt).toBeGreaterThan(-1)
+    expect(linkAt).toBeGreaterThan(mkdirAt)
+    expect(orchestratorAt).toBeGreaterThan(linkAt)
+  })
+
+  it('reconstruire une version repart d’un cache vide', () => {
+    expect(script).toContain('rm -rf "$release" "$cache_dir"')
+  })
+
+  it('refuse de reconstruire la version désignée par previous (cible du retour arrière)', () => {
+    const previousAt = script.indexOf(
+      'previous="$(readlink "$APP_ROOT/previous" || true)"'
+    )
+    const refusalAt = script.search(
+      /if \[\[ "\$previous" == "\$release" \]\]; then\n[^\n]*\n(?:[^\n]*\n)*?\s*exit 1\n/
+    )
+    const rebuildAt = script.indexOf('rm -rf "$release"')
+    expect(previousAt).toBeGreaterThan(-1)
+    expect(refusalAt).toBeGreaterThan(previousAt)
+    expect(rebuildAt).toBeGreaterThan(refusalAt)
+  })
 })
 
 describe('ops/rollback.sh — retour arrière', () => {
@@ -123,6 +154,24 @@ describe('ops/rollback.sh — retour arrière', () => {
   it('sans argument, revient à la version servie avant celle en service (lien previous)', () => {
     expect(script).toContain('readlink "$APP_ROOT/previous"')
     expect(script).not.toMatch(/ls -1d?t/)
+  })
+
+  it('sans argument et sans lien previous, refuse avant toute bascule', () => {
+    expect(script).toMatch(
+      /target="\$\(readlink "\$APP_ROOT\/previous" \|\| true\)"\n\s*if \[\[ -z "\$target" \]\]; then\n(?:(?!\n\s*fi\n)[\s\S])*\n\s*exit 1\n\s*fi\n/
+    )
+    const refusalAt = script.indexOf('if [[ -z "$target" ]]; then')
+    const switchAt = script.indexOf('ln -sfn "$target"')
+    expect(refusalAt).toBeGreaterThan(-1)
+    expect(switchAt).toBeGreaterThan(refusalAt)
+  })
+
+  it('n’accepte qu’une version entièrement construite (.next/BUILD_ID), jamais un build interrompu', () => {
+    expect(script).toContain('if [[ ! -f "$target/.next/BUILD_ID" ]]; then')
+    expect(script).not.toContain('[[ ! -d "$target/.next" ]]')
+    const checkAt = script.indexOf('"$target/.next/BUILD_ID"')
+    const switchAt = script.indexOf('ln -sfn "$target"')
+    expect(switchAt).toBeGreaterThan(checkAt)
   })
 
   it('après la bascule, retient la version quittée comme précédente', () => {
@@ -157,13 +206,28 @@ describe('ops/systemd — le service et la purge quotidienne', () => {
     expect(service.join('\n')).not.toContain('0.0.0.0')
   })
 
-  it('redémarre en cas d’échec, durci, n’écrit que dans shared/ et les versions (cache de Next)', () => {
+  it('redémarre en cas d’échec, durci, n’écrit que dans shared/ (le cache de Next y est lié)', () => {
     expect(service).toContain('Restart=on-failure')
     expect(service).toContain('ProtectSystem=strict')
-    expect(service).toContain(
-      'ReadWritePaths=/srv/asl-cms/shared /srv/asl-cms/releases'
-    )
+    expect(
+      service.filter((line) => line.startsWith('ReadWritePaths='))
+    ).toEqual(['ReadWritePaths=/srv/asl-cms/shared'])
     expect(service).toContain('NoNewPrivileges=true')
+  })
+
+  it('ne peut jamais écrire dans le code des versions ni leurs node_modules', () => {
+    const writable = [...service, ...purgeService]
+      .filter((line) => line.startsWith('ReadWritePaths='))
+      .join(' ')
+    expect(writable).not.toContain('releases')
+    expect(writable).not.toContain('current')
+  })
+
+  it('la purge n’écrit que dans shared/', () => {
+    expect(purgeService).toContain('ProtectSystem=strict')
+    expect(
+      purgeService.filter((line) => line.startsWith('ReadWritePaths='))
+    ).toEqual(['ReadWritePaths=/srv/asl-cms/shared'])
   })
 
   it('la purge lance le script de s08b sous le même utilisateur', () => {
@@ -205,6 +269,24 @@ describe('ops/ — aucun domaine écrit en dur', () => {
   )
 })
 
+/**
+ * Le mode des scripts se lit dans l’index git : hors d’un dépôt (copie par
+ * `git archive`, par exemple), ces tests sont ignorés plutôt qu’en échec.
+ */
+const insideGitWorkTree = () => {
+  try {
+    return (
+      execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
+        cwd: OPS_DIR,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim() === 'true'
+    )
+  } catch {
+    return false
+  }
+}
+
 describe('ops/*.sh — scripts exécutables tels que documentés', () => {
   const SCRIPTS = ['ops/add-domain.sh', 'ops/deploy.sh', 'ops/rollback.sh']
 
@@ -223,7 +305,10 @@ describe('ops/*.sh — scripts exécutables tels que documentés', () => {
         })
     )
 
-  it.each(SCRIPTS)('%s est versionné en 100755', (script) => {
-    expect(gitModes()[script]).toBe('100755')
-  })
+  it.skipIf(!insideGitWorkTree()).each(SCRIPTS)(
+    '%s est versionné en 100755',
+    (script) => {
+      expect(gitModes()[script]).toBe('100755')
+    }
+  )
 })

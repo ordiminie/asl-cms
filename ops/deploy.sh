@@ -5,7 +5,8 @@
 #
 # 1. met a jour le miroir du depot (/srv/asl-cms/repo.git) ;
 # 2. prepare /srv/asl-cms/releases/<commit> : clone, lien vers
-#    shared/.env.production, pnpm install --frozen-lockfile ;
+#    shared/.env.production, .next/cache lie vers shared/next-cache/<commit>,
+#    pnpm install --frozen-lockfile ;
 # 3. delegue a l'orchestrateur (scripts/ops/deploy-release.ts) : build,
 #    migrations, controle du role, bascule du lien current, redemarrage,
 #    verification. Une etape en echec avant la bascule laisse la version
@@ -56,21 +57,35 @@ if [[ -z "$commit" ]]; then
 fi
 short="${commit:0:12}"
 release="$APP_ROOT/releases/$short"
+cache_dir="$APP_ROOT/shared/next-cache/$short"
 current="$(readlink "$APP_ROOT/current" || true)"
+previous="$(readlink "$APP_ROOT/previous" || true)"
 
 if [[ "$current" == "$release" ]]; then
   echo "Le commit $short est deja en service ($release) : rien a deployer." >&2
   exit 1
 fi
+# Reconstruire la cible du retour arriere la laisserait a moitie construite si
+# le build echouait : rollback.sh n'aurait plus de version saine a remettre.
+if [[ "$previous" == "$release" ]]; then
+  echo "Le commit $short est la version du retour arriere ($APP_ROOT/previous) :" >&2
+  echo "pour la remettre en service sans la reconstruire : sudo ops/rollback.sh" >&2
+  exit 1
+fi
 if [[ -e "$release" ]]; then
   echo "[deploy] Version $short deja presente sans etre en service : reconstruction"
-  rm -rf "$release"
+  rm -rf "$release" "$cache_dir"
 fi
 
 echo "[deploy] Preparation de $release"
 as_app git clone --quiet "$MIRROR" "$release"
 as_app git -C "$release" checkout --quiet --detach "$commit"
 as_app ln -s "$ENV_FILE" "$release/.env.production"
+# Le service ne peut ecrire que dans shared/ (asl-cms.service) : le cache de
+# Next (images optimisees, ISR) y vit, une copie par version. next build garde
+# .next/cache quand il vide .next.
+as_app mkdir -p "$cache_dir" "$release/.next"
+as_app ln -s "$cache_dir" "$release/.next/cache"
 # Sans NODE_ENV=production : l'installation garde les devDependencies (tsx,
 # drizzle-kit) dont les scripts d'exploitation ont besoin. HUSKY=0 : pas de
 # hooks git sur le serveur.

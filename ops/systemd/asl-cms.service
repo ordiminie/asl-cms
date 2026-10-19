@@ -19,11 +19,13 @@ ExecStart=/srv/asl-cms/current/node_modules/.bin/next start -H 127.0.0.1 -p 3100
 Restart=on-failure
 RestartSec=5
 
-# Durcissement : tout le systeme en lecture seule, sauf shared/ (fichiers
-# televerses), releases/ (Next ecrit son cache dans .next/cache de la version
-# servie : images optimisees, ISR) et un /tmp prive.
+# Durcissement : tout le systeme en lecture seule, sauf shared/ et un /tmp
+# prive. shared/ porte les fichiers televerses et le cache de Next : le
+# .next/cache de chaque version est un lien vers shared/next-cache/<version>
+# (pose par ops/deploy.sh). Le code des versions et leurs node_modules restent
+# en lecture seule : deploy.sh les execute ensuite en root.
 ProtectSystem=strict
-ReadWritePaths=/srv/asl-cms/shared /srv/asl-cms/releases
+ReadWritePaths=/srv/asl-cms/shared
 PrivateTmp=true
 ProtectHome=true
 NoNewPrivileges=true

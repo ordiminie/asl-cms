@@ -41,8 +41,10 @@ else
   fi
 fi
 
-if [[ ! -d "$target/.next" ]]; then
-  echo "Aucune version construite a restaurer ($target)." >&2
+# BUILD_ID est ecrit a la fin de next build : sans lui, le build a ete
+# interrompu (.next existe des son debut).
+if [[ ! -f "$target/.next/BUILD_ID" ]]; then
+  echo "Aucune version entierement construite a restaurer ($target)." >&2
   exit 1
 fi
 if [[ "$target" == "$current" ]]; then
