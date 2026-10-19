@@ -1,3 +1,4 @@
+import {execFileSync} from 'node:child_process'
 import {readdirSync, readFileSync, statSync} from 'node:fs'
 import path from 'node:path'
 
@@ -91,11 +92,52 @@ describe('ops/add-domain.sh — ajout d’un domaine', () => {
     expect(checks.length).toBeGreaterThanOrEqual(reloads.length)
   })
 
+  it('relancé sur un domaine déjà certifié, ne repasse pas par le bloc HTTP seul', () => {
+    expect(script).toMatch(
+      /if \[\[ ! -f "\/etc\/letsencrypt\/live\/\$domain\/fullchain\.pem" \]\]; then\n(?:(?!\nfi\n)[\s\S])*BEGIN HTTPS(?:(?!\nfi\n)[\s\S])*\nfi\n/
+    )
+  })
+
   it('n’écrit que le fichier de son domaine', () => {
     expect(script).toContain(
       'site_file="/etc/nginx/sites-available/asl-cms-$domain.conf"'
     )
     expect(script).not.toMatch(/sites-(available|enabled)\/default/)
+  })
+})
+
+describe('ops/deploy.sh — déploiement', () => {
+  const script = read('deploy.sh')
+
+  it('quitte le répertoire de l’administrateur avant toute commande sous asl-cms', () => {
+    const cdAt = script.indexOf('cd "$APP_ROOT"\n')
+    const firstAsApp = script.indexOf('as_app git')
+    expect(cdAt).toBeGreaterThan(-1)
+    expect(cdAt).toBeLessThan(firstAsApp)
+  })
+})
+
+describe('ops/rollback.sh — retour arrière', () => {
+  const script = read('rollback.sh')
+
+  it('sans argument, revient à la version servie avant celle en service (lien previous)', () => {
+    expect(script).toContain('readlink "$APP_ROOT/previous"')
+    expect(script).not.toMatch(/ls -1d?t/)
+  })
+
+  it('après la bascule, retient la version quittée comme précédente', () => {
+    const switchAt = script.indexOf('mv -T "$APP_ROOT/current.next"')
+    const recordAt = script.indexOf('mv -T "$APP_ROOT/previous.next"')
+    expect(switchAt).toBeGreaterThan(-1)
+    expect(recordAt).toBeGreaterThan(switchAt)
+  })
+
+  it('vérifie en HTTP local que la version restaurée répond, après le redémarrage', () => {
+    const restartAt = script.indexOf('systemctl restart "$SERVICE"')
+    const verifyAt = script.search(/curl [^\n]*"\$LOCAL_URL"/)
+    expect(script).toContain('LOCAL_URL=http://127.0.0.1:3100/')
+    expect(restartAt).toBeGreaterThan(-1)
+    expect(verifyAt).toBeGreaterThan(restartAt)
   })
 })
 
@@ -115,10 +157,12 @@ describe('ops/systemd — le service et la purge quotidienne', () => {
     expect(service.join('\n')).not.toContain('0.0.0.0')
   })
 
-  it('redémarre en cas d’échec, durci, n’écrit que dans shared/', () => {
+  it('redémarre en cas d’échec, durci, n’écrit que dans shared/ et les versions (cache de Next)', () => {
     expect(service).toContain('Restart=on-failure')
     expect(service).toContain('ProtectSystem=strict')
-    expect(service).toContain('ReadWritePaths=/srv/asl-cms/shared')
+    expect(service).toContain(
+      'ReadWritePaths=/srv/asl-cms/shared /srv/asl-cms/releases'
+    )
     expect(service).toContain('NoNewPrivileges=true')
   })
 
@@ -159,4 +203,27 @@ describe('ops/ — aucun domaine écrit en dur', () => {
       expect(readFileSync(file, 'utf8')).not.toMatch(DOMAIN_PATTERN)
     }
   )
+})
+
+describe('ops/*.sh — scripts exécutables tels que documentés', () => {
+  const SCRIPTS = ['ops/add-domain.sh', 'ops/deploy.sh', 'ops/rollback.sh']
+
+  /** Mode enregistré dans l’index git : c’est lui qui part sur le serveur. */
+  const gitModes = () =>
+    Object.fromEntries(
+      execFileSync('git', ['ls-files', '--stage', '--', ...SCRIPTS], {
+        cwd: path.join(OPS_DIR, '..'),
+        encoding: 'utf8',
+      })
+        .trim()
+        .split('\n')
+        .map((line) => {
+          const [mode, , , file] = line.split(/\s+/)
+          return [file, mode]
+        })
+    )
+
+  it.each(SCRIPTS)('%s est versionné en 100755', (script) => {
+    expect(gitModes()[script]).toBe('100755')
+  })
 })

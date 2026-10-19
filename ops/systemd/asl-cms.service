@@ -20,9 +20,10 @@ Restart=on-failure
 RestartSec=5
 
 # Durcissement : tout le systeme en lecture seule, sauf shared/ (fichiers
-# televerses) et un /tmp prive.
+# televerses), releases/ (Next ecrit son cache dans .next/cache de la version
+# servie : images optimisees, ISR) et un /tmp prive.
 ProtectSystem=strict
-ReadWritePaths=/srv/asl-cms/shared
+ReadWritePaths=/srv/asl-cms/shared /srv/asl-cms/releases
 PrivateTmp=true
 ProtectHome=true
 NoNewPrivileges=true

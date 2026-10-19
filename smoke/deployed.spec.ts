@@ -1,6 +1,6 @@
 import {expect, test} from '@playwright/test'
 
-import {readSmokeTargets} from './smoke-targets'
+import {associationTitlePattern, readSmokeTargets} from './smoke-targets'
 
 /**
  * Test de fumee du serveur deploye (s12b, criteres 1, 2 et 5). Lance depuis le
@@ -25,8 +25,8 @@ for (const [index, {domain, name}] of associations.entries()) {
       expect(page.url()).toMatch(
         new RegExp(`^https://${escapeRegExp(domain)}/`)
       )
-      await expect(page).toHaveTitle(new RegExp(escapeRegExp(name)))
-      await expect(page).not.toHaveTitle(new RegExp(escapeRegExp(other.name)))
+      await expect(page).toHaveTitle(associationTitlePattern(name))
+      await expect(page).not.toHaveTitle(associationTitlePattern(other.name))
     })
 
     test('sert son favicon (200)', async ({request}) => {

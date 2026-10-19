@@ -42,6 +42,10 @@ as_app() {
   runuser -u "$APP_USER" -- "$@"
 }
 
+# Le repertoire courant herite de sudo (souvent le dossier personnel de
+# l'administrateur, ferme aux autres) : asl-cms ne pourrait pas y lire.
+cd "$APP_ROOT"
+
 echo "[deploy] Mise a jour du miroir"
 as_app git -C "$MIRROR" fetch --prune --quiet origin '+refs/heads/*:refs/heads/*' '+refs/tags/*:refs/tags/*'
 

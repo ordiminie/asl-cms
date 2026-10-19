@@ -175,6 +175,38 @@ describe('[CLI, sans session] bootstrapPlatformService — amorçage d une base 
     ])
   })
 
+  it('promeut le compte existant de cet email au lieu d’en créer un second', async () => {
+    const EXISTING_USER_ID = faker.string.uuid()
+    vi.mocked(userRepository.getUserByEmailDao).mockResolvedValue({
+      ...userTest,
+      id: EXISTING_USER_ID,
+      name: 'Prestataire existant',
+      email: bootstrapParams.adminEmail,
+    } as never)
+
+    const result = await bootstrapPlatformService(bootstrapParams)
+
+    expect(userRepository.createUserDao).not.toHaveBeenCalled()
+    expect(userRepository.updateUserSafeByUidDao).toHaveBeenCalledWith(
+      {
+        name: 'Prestataire existant',
+        email: bootstrapParams.adminEmail,
+        role: RoleConst.SUPER_ADMIN,
+      },
+      EXISTING_USER_ID
+    )
+    expect(
+      organizationRepository.createOrganizationMemberDao
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: EXISTING_USER_ID,
+        organizationId: ORGANIZATION_ID,
+        role: UserOrganizationRoleConst.OWNER,
+      })
+    )
+    expect(result.superAdminUserId).toBe(EXISTING_USER_ID)
+  })
+
   it('refuse de tourner si un super_admin existe déjà, sans rien créer', async () => {
     vi.mocked(userRepository.hasSuperAdminDao).mockResolvedValue(true)
 

@@ -67,3 +67,14 @@ export const readSmokeTargets = (
     unknownDomain: values.SMOKE_UNKNOWN_DOMAIN,
   }
 }
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Titre exact de l'accueil d'une association : son nom seul (accueil
+ * automatique) ou « Page · Nom » (page designee, gabarit `titleTemplate` de
+ * messages/fr.json). Exact pour qu'un nom contenu dans l'autre ne passe pas.
+ */
+export const associationTitlePattern = (name: string): RegExp =>
+  new RegExp(`^(?:.+ · )?${escapeRegExp(name)}$`)

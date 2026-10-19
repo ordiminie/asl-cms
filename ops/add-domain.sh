@@ -8,7 +8,8 @@
 # pnpm ops:bootstrap pour la premiere), et l'enregistrement DNS du domaine
 # pointe vers ce serveur.
 #
-# 1. ecrit un bloc HTTP seul (defi ACME + redirection) et recharge nginx ;
+# 1. ecrit un bloc HTTP seul (defi ACME + redirection) et recharge nginx,
+#    sauf si le certificat du domaine existe deja (script relance) ;
 # 2. obtient le certificat du domaine par certbot --webroot ; son
 #    renouvellement automatique rechargera nginx ;
 # 3. ecrit le bloc complet (HTTPS), verifie la configuration et recharge.
@@ -41,10 +42,14 @@ reload_nginx() {
 
 mkdir -p "$webroot"
 
-echo "[add-domain] Bloc HTTP seul pour $domain"
-render | sed '/^# BEGIN HTTPS$/,/^# END HTTPS$/d' > "$site_file"
-ln -sfn "$site_file" "$enabled_link"
-reload_nginx
+# Relance sur un domaine deja certifie : le bloc complet en place sert deja
+# le defi ACME ; repasser par le bloc HTTP seul couperait HTTPS un instant.
+if [[ ! -f "/etc/letsencrypt/live/$domain/fullchain.pem" ]]; then
+  echo "[add-domain] Bloc HTTP seul pour $domain"
+  render | sed '/^# BEGIN HTTPS$/,/^# END HTTPS$/d' > "$site_file"
+  ln -sfn "$site_file" "$enabled_link"
+  reload_nginx
+fi
 
 echo "[add-domain] Certificat pour $domain"
 certbot certonly \
@@ -58,6 +63,7 @@ certbot certonly \
 
 echo "[add-domain] Bloc complet (HTTPS) pour $domain"
 render > "$site_file"
+ln -sfn "$site_file" "$enabled_link"
 reload_nginx
 
 echo "[add-domain] $domain est servi en HTTPS. Verifier : curl -I https://$domain/"

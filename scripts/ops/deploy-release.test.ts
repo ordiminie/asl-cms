@@ -4,21 +4,28 @@ import {deployRelease, type DeploySteps} from './deploy-release'
 
 const PREVIOUS = '/srv/asl-cms/releases/aaaaaaa'
 const RELEASE = '/srv/asl-cms/releases/bbbbbbb'
+const OLDER = '/srv/asl-cms/releases/0000000'
 
 type StepName = keyof DeploySteps
 
 /**
  * Etapes factices : chacune note son passage dans `calls`, et celle nommee
- * dans `failing` leve. Le lien `current` est simule par `link.target`.
+ * dans `failing` leve a son premier appel. Le lien `current` est simule par
+ * `link.target`, le lien `previous` par `link.previous`.
  */
 const fakeSteps = (failing?: StepName) => {
   const calls: string[] = []
-  const link = {target: PREVIOUS as string | undefined}
+  const failed = new Set<StepName>()
+  const link = {
+    target: PREVIOUS as string | undefined,
+    previous: OLDER as string | undefined,
+  }
   const step =
     (name: StepName, effect?: (target?: string) => void) =>
     async (target?: string) => {
       calls.push(target ? `${name}:${target}` : name)
-      if (name === failing) {
+      if (name === failing && !failed.has(name)) {
+        failed.add(name)
         throw new Error(`${name} en échec`)
       }
       effect?.(target)
@@ -34,6 +41,9 @@ const fakeSteps = (failing?: StepName) => {
     }) as DeploySteps['switchCurrent'],
     restart: step('restart'),
     verify: step('verify'),
+    recordPrevious: step('recordPrevious', (target) => {
+      link.previous = target
+    }) as DeploySteps['recordPrevious'],
   }
   return {steps, calls, link}
 }
@@ -51,9 +61,60 @@ describe('deployRelease — orchestrateur du déploiement (ADR 036)', () => {
       `switchCurrent:${RELEASE}`,
       'restart',
       'verify',
+      `recordPrevious:${PREVIOUS}`,
     ])
     expect(result).toEqual({exitCode: 0})
     expect(link.target).toBe(RELEASE)
+  })
+
+  it('une fois la nouvelle version vérifiée, retient celle qui était servie avant elle (retour arrière)', async () => {
+    const {steps, link} = fakeSteps()
+
+    await deployRelease(RELEASE, steps)
+
+    expect(link.previous).toBe(PREVIOUS)
+  })
+
+  it.each(['build', 'migrate', 'checkDatabase'] as const)(
+    'un échec à « %s » ne change pas la version retenue pour le retour arrière',
+    async (failing) => {
+      const {steps, calls, link} = fakeSteps(failing)
+
+      await deployRelease(RELEASE, steps)
+
+      expect(calls.some((call) => call.startsWith('recordPrevious'))).toBe(
+        false
+      )
+      expect(link.previous).toBe(OLDER)
+    }
+  )
+
+  it.each(['restart', 'verify'] as const)(
+    'un échec à « %s » après la bascule restaure la version servie sans changer la version retenue',
+    async (failing) => {
+      const {steps, calls, link} = fakeSteps(failing)
+
+      const result = await deployRelease(RELEASE, steps)
+
+      expect(result).toEqual({exitCode: 1, failedStep: failing})
+      expect(link.target).toBe(PREVIOUS)
+      expect(calls.some((call) => call.startsWith('recordPrevious'))).toBe(
+        false
+      )
+      expect(link.previous).toBe(OLDER)
+    }
+  )
+
+  it('premier déploiement réussi : aucune version précédente à retenir', async () => {
+    const {steps, calls, link} = fakeSteps()
+    link.target = undefined
+    link.previous = undefined
+
+    const result = await deployRelease(RELEASE, steps)
+
+    expect(result).toEqual({exitCode: 0})
+    expect(calls.some((call) => call.startsWith('recordPrevious'))).toBe(false)
+    expect(link.previous).toBeUndefined()
   })
 
   it('un build en échec ne lance pas les migrations et ne touche pas au lien', async () => {

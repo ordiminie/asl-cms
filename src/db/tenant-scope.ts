@@ -138,8 +138,10 @@ export const withTenant = async <T>(
 
 /**
  * La seule porte derobee du systeme : leve l'isolation pour le SuperAdmin
- * Zourite Studio. Reservee au provisioning (s01) et a la simulation de role
- * (s41). Toute nouvelle occurrence dans un diff est un point d'arret de revue.
+ * Zourite Studio. Reservee au provisioning (s01), a la simulation de role
+ * (s41) et a l'amorcage d'une base neuve par `pnpm ops:bootstrap` (s12b,
+ * `bootstrapPlatformService`). Toute nouvelle occurrence dans un diff est un
+ * point d'arret de revue.
  */
 export const withRlsBypass = async <T>(
   callback: () => Promise<T>

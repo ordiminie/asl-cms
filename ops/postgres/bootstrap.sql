@@ -1,7 +1,11 @@
 -- Amorcage de PostgreSQL pour ASL-CMS (ADR 002, ADR 036, s12b).
 -- Derive de docker/db-init/ (developpement), adapte a la production :
 --
---   sudo -u postgres psql -f ops/postgres/bootstrap.sql
+--   sudo install -m 644 ops/postgres/bootstrap.sql /tmp/asl-cms-bootstrap.sql
+--   sudo -iu postgres psql -f /tmp/asl-cms-bootstrap.sql
+--
+-- (copie dans /tmp : postgres ne lit pas le dossier personnel de
+-- l'administrateur ; voir docs/exploitation/README.md, section 2.1)
 --
 -- A lancer UNE fois, sur un PostgreSQL neuf. Les mots de passe sont demandes
 -- par psql (\prompt) : ils ne sont ni versionnes, ni dans l'historique du

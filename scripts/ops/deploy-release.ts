@@ -9,6 +9,11 @@
  * arrete tout. Avant la bascule, le lien n'est jamais touche : la version
  * precedente reste en service. Apres la bascule, un echec remet le lien sur la
  * version precedente et la relance.
+ *
+ * Une fois la nouvelle version verifiee, le lien `previous` designe celle qui
+ * etait servie avant elle : c'est la cible de `ops/rollback.sh` sans argument.
+ * Il n'est ecrit qu'apres un deploiement reussi, jamais vers une version
+ * construite sans avoir ete servie (ni migree).
  */
 import {spawn} from 'node:child_process'
 import {readlink, rename, rm, symlink} from 'node:fs/promises'
@@ -24,6 +29,8 @@ export type DeploySteps = {
   switchCurrent: (target: string) => Promise<void>
   restart: () => Promise<void>
   verify: () => Promise<void>
+  /** Retient la version servie avant celle qui vient d'etre verifiee. */
+  recordPrevious: (target: string) => Promise<void>
 }
 
 export type DeployResult = {exitCode: 0} | {exitCode: 1; failedStep: string}
@@ -79,6 +86,9 @@ export const deployRelease = async (
     }
   }
 
+  if (previous) {
+    await steps.recordPrevious(previous)
+  }
   console.log(`[deploy] Version en service : ${release}`)
   return {exitCode: 0}
 }
@@ -127,11 +137,11 @@ const readCurrentLink = async (): Promise<string | undefined> => {
 }
 
 /** Lien temporaire puis `rename` : le remplacement du lien est atomique. */
-const switchCurrentLink = async (target: string) => {
-  const temporary = path.join(APP_ROOT, 'current.next')
+const replaceLink = async (name: 'current' | 'previous', target: string) => {
+  const temporary = path.join(APP_ROOT, `${name}.next`)
   await rm(temporary, {force: true})
   await symlink(target, temporary)
-  await rename(temporary, path.join(APP_ROOT, 'current'))
+  await rename(temporary, path.join(APP_ROOT, name))
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -159,9 +169,10 @@ export const serverSteps = (release: string): DeploySteps => ({
   migrate: () => runAsAppUser(release, 'db:migrate'),
   checkDatabase: () => runAsAppUser(release, 'db:check'),
   readCurrent: readCurrentLink,
-  switchCurrent: switchCurrentLink,
+  switchCurrent: (target) => replaceLink('current', target),
   restart: () => run('systemctl', ['restart', SERVICE]),
   verify: verifyLocally,
+  recordPrevious: (target) => replaceLink('previous', target),
 })
 
 const releaseFromArgs = (argv: string[]): string => {
