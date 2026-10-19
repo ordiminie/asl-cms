@@ -4,8 +4,9 @@
  *
  *     pnpm ops:deploy-release -- /srv/asl-cms/releases/<commit>
  *
- * Ordre : build, migrations, controle du role applicatif, bascule du lien
- * `current`, redemarrage, verification HTTP locale. La premiere etape en echec
+ * Ordre : build, cache partage, marqueur de build complet, migrations,
+ * controle du role applicatif, bascule du lien `current`, redemarrage,
+ * verification HTTP locale. La premiere etape en echec
  * arrete tout. Avant la bascule, le lien n'est jamais touche : la version
  * precedente reste en service. Apres la bascule, un echec remet le lien sur la
  * version precedente et la relance.
@@ -14,6 +15,14 @@
  * etait servie avant elle : c'est la cible de `ops/rollback.sh` sans argument.
  * Il n'est ecrit qu'apres un deploiement reussi, jamais vers une version
  * construite sans avoir ete servie (ni migree).
+ *
+ * `next build` lit et ecrit `.next/cache` : il construit avec un repertoire
+ * propre a la version, que le service ne peut pas ecrire. Seulement ensuite,
+ * ce repertoire est remplace par un lien vers `shared/next-cache/<commit>`,
+ * recree a neuf sous asl-cms : rien de prepare dans shared/ ne survit.
+ * Le marqueur `BUILD_MARKER` n'est ecrit qu'apres ces deux etapes : c'est lui,
+ * et non `.next/BUILD_ID` (ecrit avant la generation statique), que
+ * `ops/rollback.sh` exige.
  */
 import {spawn} from 'node:child_process'
 import {readlink, rename, rm, symlink} from 'node:fs/promises'
@@ -22,6 +31,10 @@ import {pathToFileURL} from 'node:url'
 
 export type DeploySteps = {
   build: () => Promise<void>
+  /** Remplace le `.next/cache` du build par un lien vers shared/. */
+  shareCache: () => Promise<void>
+  /** Marque la version comme entierement construite. */
+  markBuilt: () => Promise<void>
   migrate: () => Promise<void>
   checkDatabase: () => Promise<void>
   /** Cible actuelle du lien `current`, `undefined` au premier deploiement. */
@@ -35,7 +48,13 @@ export type DeploySteps = {
 
 export type DeployResult = {exitCode: 0} | {exitCode: 1; failedStep: string}
 
-const BEFORE_SWITCH = ['build', 'migrate', 'checkDatabase'] as const
+const BEFORE_SWITCH = [
+  'build',
+  'shareCache',
+  'markBuilt',
+  'migrate',
+  'checkDatabase',
+] as const
 const AFTER_SWITCH = ['restart', 'verify'] as const
 
 const errorMessage = (error: unknown) =>
@@ -96,6 +115,8 @@ export const deployRelease = async (
 // ===== Etapes reelles, sur le serveur =====
 
 export const APP_ROOT = '/srv/asl-cms'
+/** Chemin, relatif a la version, du marqueur de build complet. */
+export const BUILD_MARKER = '.next/ASL_BUILD_OK'
 const APP_USER = 'asl-cms'
 const SERVICE = 'asl-cms'
 const LOCAL_URL = 'http://127.0.0.1:3100/'
@@ -124,6 +145,27 @@ const runAsAppUser = (release: string, script: string) =>
     ['-u', APP_USER, '--', 'env', 'NODE_ENV=production', 'pnpm', script],
     release
   )
+
+const runCommandAsAppUser = (args: string[]) =>
+  run('runuser', ['-u', APP_USER, '--', ...args])
+
+/**
+ * Tout se fait sous asl-cms : root ne supprime rien a travers shared/,
+ * inscriptible par le service.
+ */
+const shareCache = async (release: string) => {
+  const sharedCache = path.join(
+    APP_ROOT,
+    'shared',
+    'next-cache',
+    path.basename(release)
+  )
+  const releaseCache = path.join(release, '.next', 'cache')
+  await runCommandAsAppUser(['rm', '-rf', sharedCache])
+  await runCommandAsAppUser(['mkdir', '-p', sharedCache])
+  await runCommandAsAppUser(['rm', '-rf', releaseCache])
+  await runCommandAsAppUser(['ln', '-sT', sharedCache, releaseCache])
+}
 
 const readCurrentLink = async (): Promise<string | undefined> => {
   try {
@@ -166,6 +208,9 @@ const verifyLocally = async () => {
 
 export const serverSteps = (release: string): DeploySteps => ({
   build: () => runAsAppUser(release, 'build'),
+  shareCache: () => shareCache(release),
+  markBuilt: () =>
+    runCommandAsAppUser(['touch', path.join(release, BUILD_MARKER)]),
   migrate: () => runAsAppUser(release, 'db:migrate'),
   checkDatabase: () => runAsAppUser(release, 'db:check'),
   readCurrent: readCurrentLink,

@@ -231,7 +231,7 @@ Aucune migration, aucun modèle, aucun écran.
 - Mise en production sur LWS : hors de cette story. Le serveur de recette sert l'environnement
   temporaire prévu par la story.
 
-## Écarts d'exécution (revues 1 et 2)
+## Écarts d'exécution (revues 1, 2 et 3)
 
 Les tâches ci-dessus restent celles validées. L'exécution s'en écarte sur les points suivants,
 acceptés en revue :
@@ -239,17 +239,27 @@ acceptés en revue :
 - **Lien `previous` et retour arrière (tâche 3, revue 1 M2).** L'orchestrateur écrit le lien
   `/srv/asl-cms/previous` vers la version servie avant la nouvelle, seulement après une
   vérification réussie. `ops/rollback.sh` sans argument y revient, puis fait désigner la version
-  quittée par `previous`. Il refuse une version sans `.next/BUILD_ID` (build interrompu), et
-  s'arrête si `previous` est absent (revue 2 N2, N4).
+  quittée par `previous`. Il refuse une version sans le marqueur `.next/ASL_BUILD_OK`, écrit par
+  l'orchestrateur après un build réussi (`.next/BUILD_ID`, écrit par Next avant la génération
+  statique, ne prouve pas un build complet — revue 3 P2), et s'arrête si `previous` est absent
+  (revue 2 N2, N4). Une version passée en argument doit avoir le format des noms de `releases/`
+  (12 caractères hexadécimaux, revue 3 P5).
 - **Redéploiements refusés (tâche 3).** `ops/deploy.sh` refuse de reconstruire le commit en service
-  et celui désigné par `previous` (revue 2 N2) : il ne reconstruit qu'une version jamais servie.
+  et celui désigné par `previous` quand sa version est sur le disque (revue 2 N2, revue 3 P5) : il
+  reconstruit toute autre version, y compris une version déjà servie par le passé. Un `previous`
+  pendant ne bloque pas le déploiement.
 - **Miroir `repo.git` (tâche 3).** `ops/deploy.sh` clone depuis un miroir local
   `/srv/asl-cms/repo.git`, mis à jour à chaque déploiement.
 - **Écriture du service (tâche 4, revue 1 m1, revue 2 N1).** `ReadWritePaths=/srv/asl-cms/shared`
-  seul, comme écrit dans la tâche. Le cache de Next n'est pas ouvert dans `releases/` : le
-  `.next/cache` de chaque version est un lien vers `shared/next-cache/<commit>`, créé sous
-  `asl-cms` par `ops/deploy.sh` avant le build. `next build` garde `.next/cache` quand il vide
-  `.next`.
+  seul, comme écrit dans la tâche. Le cache de Next n'est pas ouvert dans `releases/`. `next build`
+  construit avec un `.next/cache` propre à la version ; seulement après un build réussi,
+  l'orchestrateur recrée à neuf `shared/next-cache/<commit>` sous `asl-cms` et remplace le
+  `.next/cache` de la version par un lien vers lui (étape `shareCache`, revue 3 P1). Ce cache
+  partagé porte les images optimisées et le cache fetch ; l'ISR écrit sous `.next/server/`, en
+  lecture seule : les avertissements `Failed to update prerender cache … EROFS` sont attendus et
+  sans gravité (revue 3 P3). L'orchestrateur compte donc deux étapes de plus que la tâche 3, entre
+  le build et les migrations : `shareCache` puis `markBuilt` (marqueur ci-dessus) ; l'ordre est
+  fixé par `scripts/ops/deploy-release.test.ts`.
 - **Durcissement (tâche 4).** `PrivateTmp=true` et `ProtectHome=true` en plus, sur le service et la
   purge.
 - **Amorçage (tâche 2).** Argument `--contact-email` en plus (exigé par le schéma du

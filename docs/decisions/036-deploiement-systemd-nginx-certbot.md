@@ -81,8 +81,9 @@ propre utilisateur. La production cible est le VPS LWS du contrat.
 
 - Ajouter une association, c'est la provisionner dans `/admin`, créer son enregistrement DNS et
   lancer `ops/add-domain.sh <domaine>`. Aucune modification du code.
-- Un redéploiement ne touche ni `shared/` ni la base hors migrations. Les fichiers téléversés
-  survivent, à condition que `LOCAL_STORAGE_ROOT` reste absolu et pointe dans `shared/`.
+- Un redéploiement ne touche ni les fichiers téléversés ni l'environnement de `shared/` (seulement
+  le cache de Next de sa propre version, sous `shared/next-cache/`), ni la base hors migrations.
+  Les fichiers téléversés survivent, à condition que `LOCAL_STORAGE_ROOT` reste absolu et pointe dans `shared/`.
 - Une migration **réussie** suivie d'un démarrage en échec laisse, après le retour arrière,
   l'ancienne version sur le schéma migré. Drizzle n'écrit pas de migration descendante : la
   sauvegarde de s12c couvre ce cas, rien de plus n'est promis.

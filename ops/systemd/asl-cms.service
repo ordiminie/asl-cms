@@ -20,10 +20,14 @@ Restart=on-failure
 RestartSec=5
 
 # Durcissement : tout le systeme en lecture seule, sauf shared/ et un /tmp
-# prive. shared/ porte les fichiers televerses et le cache de Next : le
-# .next/cache de chaque version est un lien vers shared/next-cache/<version>
-# (pose par ops/deploy.sh). Le code des versions et leurs node_modules restent
-# en lecture seule : deploy.sh les execute ensuite en root.
+# prive. shared/ porte les fichiers televerses et le cache de Next (images
+# optimisees, cache fetch) : apres le build, le .next/cache de chaque version
+# devient un lien vers shared/next-cache/<version> (scripts/ops/deploy-release.ts).
+# L'ISR ecrit sous .next/server/, qui reste en lecture seule : les
+# avertissements « Failed to update prerender cache ... EROFS » sont attendus
+# et sans gravite (le cache en memoire est servi). Le code des versions et
+# leurs node_modules restent en lecture seule : deploy.sh les execute ensuite
+# en root.
 ProtectSystem=strict
 ReadWritePaths=/srv/asl-cms/shared
 PrivateTmp=true

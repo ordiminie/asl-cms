@@ -22,6 +22,16 @@ SERVICE=asl-cms
 LOCAL_URL=http://127.0.0.1:3100/
 VERIFY_ATTEMPTS=30
 VERIFY_DELAY_SECONDS=2
+# Ecrit par l'orchestrateur (scripts/ops/deploy-release.ts, BUILD_MARKER)
+# apres un build reussi et le lien du cache pose.
+BUILD_MARKER=.next/ASL_BUILD_OK
+
+# Meme nom que les repertoires de releases/ (ops/deploy.sh : 12 premiers
+# caracteres du commit) : les comparaisons de chemins restent exactes.
+if [[ $# -gt 0 && ! "$1" =~ ^[0-9a-f]{12}$ ]]; then
+  echo "Version invalide : '$1' (12 caracteres hexadecimaux, nom d'un repertoire de $APP_ROOT/releases)" >&2
+  exit 2
+fi
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "A lancer en root : sudo $0 $*" >&2
@@ -30,7 +40,7 @@ fi
 
 current="$(readlink "$APP_ROOT/current" || true)"
 
-if [[ -n "${1:-}" ]]; then
+if [[ $# -gt 0 ]]; then
   target="$APP_ROOT/releases/$1"
 else
   target="$(readlink "$APP_ROOT/previous" || true)"
@@ -41,9 +51,9 @@ else
   fi
 fi
 
-# BUILD_ID est ecrit a la fin de next build : sans lui, le build a ete
-# interrompu (.next existe des son debut).
-if [[ ! -f "$target/.next/BUILD_ID" ]]; then
+# Sans le marqueur, le build n'est pas alle au bout (.next/BUILD_ID, ecrit
+# avant la generation statique, ne le prouve pas).
+if [[ ! -f "$target/$BUILD_MARKER" ]]; then
   echo "Aucune version entierement construite a restaurer ($target)." >&2
   exit 1
 fi

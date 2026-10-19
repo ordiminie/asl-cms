@@ -1,8 +1,10 @@
-import {execFileSync} from 'node:child_process'
+import {execFileSync, spawnSync} from 'node:child_process'
 import {readdirSync, readFileSync, statSync} from 'node:fs'
 import path from 'node:path'
 
 import {describe, expect, it} from 'vitest'
+
+import {BUILD_MARKER} from '../scripts/ops/deploy-release'
 
 const OPS_DIR = import.meta.dirname
 const read = (relative: string) =>
@@ -116,22 +118,16 @@ describe('ops/deploy.sh — déploiement', () => {
     expect(cdAt).toBeLessThan(firstAsApp)
   })
 
-  it('lie le cache de Next de la version vers shared/next-cache/<version>, créé sous asl-cms, avant l’orchestrateur', () => {
-    expect(script).toContain('cache_dir="$APP_ROOT/shared/next-cache/$short"')
-    const mkdirAt = script.indexOf(
-      'as_app mkdir -p "$cache_dir" "$release/.next"'
-    )
-    const linkAt = script.indexOf(
-      'as_app ln -s "$cache_dir" "$release/.next/cache"'
-    )
-    const orchestratorAt = script.indexOf('ops:deploy-release')
-    expect(mkdirAt).toBeGreaterThan(-1)
-    expect(linkAt).toBeGreaterThan(mkdirAt)
-    expect(orchestratorAt).toBeGreaterThan(linkAt)
+  it('ne pose aucun lien de cache avant le build : next build écrit un .next/cache propre à la version', () => {
+    const commands = directives(script).join('\n')
+    expect(commands).not.toContain('next-cache')
+    expect(commands).not.toContain('.next/cache')
+    expect(commands).not.toContain('cache_dir')
   })
 
-  it('reconstruire une version repart d’un cache vide', () => {
-    expect(script).toContain('rm -rf "$release" "$cache_dir"')
+  it('root ne supprime rien dans shared/ (inscriptible par le service)', () => {
+    const removals = script.match(/rm -rf [^\n]*/g) ?? []
+    expect(removals).toEqual(['rm -rf "$release"'])
   })
 
   it('refuse de reconstruire la version désignée par previous (cible du retour arrière)', () => {
@@ -139,7 +135,7 @@ describe('ops/deploy.sh — déploiement', () => {
       'previous="$(readlink "$APP_ROOT/previous" || true)"'
     )
     const refusalAt = script.search(
-      /if \[\[ "\$previous" == "\$release" \]\]; then\n[^\n]*\n(?:[^\n]*\n)*?\s*exit 1\n/
+      /if \[\[ "\$previous" == "\$release" && -e "\$release" \]\]; then\n[^\n]*\n(?:[^\n]*\n)*?\s*exit 1\n/
     )
     const rebuildAt = script.indexOf('rm -rf "$release"')
     expect(previousAt).toBeGreaterThan(-1)
@@ -166,13 +162,37 @@ describe('ops/rollback.sh — retour arrière', () => {
     expect(switchAt).toBeGreaterThan(refusalAt)
   })
 
-  it('n’accepte qu’une version entièrement construite (.next/BUILD_ID), jamais un build interrompu', () => {
-    expect(script).toContain('if [[ ! -f "$target/.next/BUILD_ID" ]]; then')
-    expect(script).not.toContain('[[ ! -d "$target/.next" ]]')
-    const checkAt = script.indexOf('"$target/.next/BUILD_ID"')
+  it('n’accepte qu’une version marquée construite par l’orchestrateur, jamais un build interrompu', () => {
+    expect(script).toContain(`BUILD_MARKER=${BUILD_MARKER}\n`)
+    expect(script).toContain('if [[ ! -f "$target/$BUILD_MARKER" ]]; then')
+    expect(script).not.toMatch(/-f "[^"]*BUILD_ID"/)
+    const checkAt = script.indexOf('"$target/$BUILD_MARKER"')
     const switchAt = script.indexOf('ln -sfn "$target"')
     expect(switchAt).toBeGreaterThan(checkAt)
   })
+
+  it.each([
+    'abc123/',
+    '0123456789ab/',
+    '0123456789AB',
+    '0123456789a',
+    '0123456789abc',
+    '../../etc',
+    '',
+  ])(
+    'refuse la version « %s », qui n’a pas le format des noms de releases/ (12 caractères hexadécimaux)',
+    (version) => {
+      const result = spawnSync(
+        'bash',
+        [path.join(OPS_DIR, 'rollback.sh'), version],
+        {
+          encoding: 'utf8',
+        }
+      )
+      expect(result.status).toBe(2)
+      expect(result.stderr).toContain('Version invalide')
+    }
+  )
 
   it('après la bascule, retient la version quittée comme précédente', () => {
     const switchAt = script.indexOf('mv -T "$APP_ROOT/current.next"')

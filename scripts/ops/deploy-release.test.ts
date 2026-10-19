@@ -1,6 +1,17 @@
-import {describe, expect, it} from 'vitest'
+import {EventEmitter} from 'node:events'
 
-import {deployRelease, type DeploySteps} from './deploy-release'
+import {beforeEach, describe, expect, it, vi} from 'vitest'
+
+import {
+  BUILD_MARKER,
+  deployRelease,
+  type DeploySteps,
+  serverSteps,
+} from './deploy-release'
+
+const spawnMock = vi.hoisted(() => vi.fn())
+
+vi.mock('node:child_process', () => ({spawn: spawnMock}))
 
 const PREVIOUS = '/srv/asl-cms/releases/aaaaaaa'
 const RELEASE = '/srv/asl-cms/releases/bbbbbbb'
@@ -33,6 +44,8 @@ const fakeSteps = (failing?: StepName) => {
 
   const steps: DeploySteps = {
     build: step('build'),
+    shareCache: step('shareCache'),
+    markBuilt: step('markBuilt'),
     migrate: step('migrate'),
     checkDatabase: step('checkDatabase'),
     readCurrent: async () => link.target,
@@ -49,13 +62,15 @@ const fakeSteps = (failing?: StepName) => {
 }
 
 describe('deployRelease — orchestrateur du déploiement (ADR 036)', () => {
-  it('enchaîne build, migrations, contrôle du rôle, bascule, redémarrage, vérification', async () => {
+  it('enchaîne build, cache partagé, marqueur, migrations, contrôle du rôle, bascule, redémarrage, vérification', async () => {
     const {steps, calls, link} = fakeSteps()
 
     const result = await deployRelease(RELEASE, steps)
 
     expect(calls).toEqual([
       'build',
+      'shareCache',
+      'markBuilt',
       'migrate',
       'checkDatabase',
       `switchCurrent:${RELEASE}`,
@@ -75,7 +90,13 @@ describe('deployRelease — orchestrateur du déploiement (ADR 036)', () => {
     expect(link.previous).toBe(PREVIOUS)
   })
 
-  it.each(['build', 'migrate', 'checkDatabase'] as const)(
+  it.each([
+    'build',
+    'shareCache',
+    'markBuilt',
+    'migrate',
+    'checkDatabase',
+  ] as const)(
     'un échec à « %s » ne change pas la version retenue pour le retour arrière',
     async (failing) => {
       const {steps, calls, link} = fakeSteps(failing)
@@ -132,7 +153,7 @@ describe('deployRelease — orchestrateur du déploiement (ADR 036)', () => {
 
     const result = await deployRelease(RELEASE, steps)
 
-    expect(calls).toEqual(['build', 'migrate'])
+    expect(calls).toEqual(['build', 'shareCache', 'markBuilt', 'migrate'])
     expect(result).toEqual({exitCode: 1, failedStep: 'migrate'})
     expect(link.target).toBe(PREVIOUS)
   })
@@ -155,6 +176,8 @@ describe('deployRelease — orchestrateur du déploiement (ADR 036)', () => {
 
     expect(calls).toEqual([
       'build',
+      'shareCache',
+      'markBuilt',
       'migrate',
       'checkDatabase',
       `switchCurrent:${RELEASE}`,
@@ -177,5 +200,58 @@ describe('deployRelease — orchestrateur du déploiement (ADR 036)', () => {
       `switchCurrent:${RELEASE}`,
     ])
     expect(result).toEqual({exitCode: 1, failedStep: 'verify'})
+  })
+})
+
+describe('deployRelease — cache partagé et marqueur de build (revue 3, P1 et P2)', () => {
+  it.each(['build', 'shareCache'] as const)(
+    'un échec à « %s » n’écrit pas le marqueur de build complet',
+    async (failing) => {
+      const {steps, calls} = fakeSteps(failing)
+
+      const result = await deployRelease(RELEASE, steps)
+
+      expect(result).toEqual({exitCode: 1, failedStep: failing})
+      expect(calls).not.toContain('markBuilt')
+    }
+  )
+})
+
+describe('serverSteps — commandes réelles du cache partagé et du marqueur', () => {
+  const SERVER_RELEASE = '/srv/asl-cms/releases/0123456789ab'
+  const SHARED_CACHE = '/srv/asl-cms/shared/next-cache/0123456789ab'
+
+  const commands = () =>
+    spawnMock.mock.calls.map(([command, args]) =>
+      [command, ...(args as string[])].join(' ')
+    )
+
+  beforeEach(() => {
+    spawnMock.mockReset()
+    spawnMock.mockImplementation(() => {
+      const child = new EventEmitter()
+      process.nextTick(() => child.emit('exit', 0))
+      return child
+    })
+  })
+
+  it('recrée le cache partagé à neuf sous asl-cms, puis remplace le .next/cache du build par un lien', async () => {
+    await serverSteps(SERVER_RELEASE).shareCache()
+
+    expect(commands()).toEqual([
+      `runuser -u asl-cms -- rm -rf ${SHARED_CACHE}`,
+      `runuser -u asl-cms -- mkdir -p ${SHARED_CACHE}`,
+      `runuser -u asl-cms -- rm -rf ${SERVER_RELEASE}/.next/cache`,
+      `runuser -u asl-cms -- ln -sT ${SHARED_CACHE} ${SERVER_RELEASE}/.next/cache`,
+    ])
+  })
+
+  it('écrit le marqueur de build complet dans la version, sous asl-cms', async () => {
+    await serverSteps(SERVER_RELEASE).markBuilt()
+
+    expect(BUILD_MARKER).toBe('.next/ASL_BUILD_OK')
+    expect(commands()).toEqual([
+      `runuser -u asl-cms -- touch ${SERVER_RELEASE}/${BUILD_MARKER}`,
+    ])
   })
 })
