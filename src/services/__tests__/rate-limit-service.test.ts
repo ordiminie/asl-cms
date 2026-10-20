@@ -458,7 +458,7 @@ describe('purgeExpiredRateLimitFingerprintsService — purge appelable seule, ho
 
     const result = await purgeExpiredRateLimitFingerprintsService()
 
-    expect(result).toEqual({organizations: 2, deleted: 3})
+    expect(result).toEqual({organizations: 2, deleted: 3, failed: []})
     expect(scopes).toEqual([ORG_ID, OTHER_ORG_ID])
     expect(vi.mocked(purgeRateLimitCountersDao).mock.calls).toEqual([
       [ORG_ID, new Date('2026-09-18T10:25:00.000Z')],
@@ -481,7 +481,36 @@ describe('purgeExpiredRateLimitFingerprintsService — purge appelable seule, ho
     expect(await purgeExpiredRateLimitFingerprintsService()).toEqual({
       organizations: 0,
       deleted: 0,
+      failed: [],
     })
     expect(purgeRateLimitCountersDao).not.toHaveBeenCalled()
+  })
+
+  it('une association en échec au milieu de la liste n’empêche pas de purger les suivantes', async () => {
+    const THIRD_ORG_ID = '33333333-3333-4333-8333-333333333333'
+    vi.mocked(getAllOrganizationIdsDao).mockResolvedValue([
+      ORG_ID,
+      OTHER_ORG_ID,
+      THIRD_ORG_ID,
+    ])
+    vi.mocked(purgeRateLimitCountersDao).mockImplementation(
+      async (organizationId: string) => {
+        if (organizationId === OTHER_ORG_ID) {
+          throw new Error('connexion perdue')
+        }
+        return 2
+      }
+    )
+
+    const result = await purgeExpiredRateLimitFingerprintsService()
+
+    expect(result).toEqual({
+      organizations: 3,
+      deleted: 4,
+      failed: [OTHER_ORG_ID],
+    })
+    expect(
+      vi.mocked(purgeRateLimitCountersDao).mock.calls.map(([id]) => id)
+    ).toEqual([ORG_ID, OTHER_ORG_ID, THIRD_ORG_ID])
   })
 })

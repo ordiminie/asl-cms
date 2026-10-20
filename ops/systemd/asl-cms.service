@@ -1,0 +1,38 @@
+# Application ASL-CMS (ADR 036, s12b).
+# Installation : sudo cp ops/systemd/asl-cms.service /etc/systemd/system/
+#                sudo systemctl daemon-reload && sudo systemctl enable asl-cms
+# La version servie est celle du lien /srv/asl-cms/current ; Next lit
+# .env.production dans ce repertoire (lien vers shared/.env.production).
+
+[Unit]
+Description=ASL-CMS (Next.js)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=asl-cms
+Group=asl-cms
+WorkingDirectory=/srv/asl-cms/current
+Environment=NODE_ENV=production
+ExecStart=/srv/asl-cms/current/node_modules/.bin/next start -H 127.0.0.1 -p 3100
+Restart=on-failure
+RestartSec=5
+
+# Durcissement : tout le systeme en lecture seule, sauf shared/ et un /tmp
+# prive. shared/ porte les fichiers televerses et le cache de Next (images
+# optimisees, cache fetch) : apres le build, le .next/cache de chaque version
+# devient un lien vers shared/next-cache/<version> (scripts/ops/deploy-release.ts).
+# L'ISR ecrit sous .next/server/, qui reste en lecture seule : les
+# avertissements « Failed to update prerender cache ... EROFS » sont attendus
+# et sans gravite (le cache en memoire est servi). Le code des versions et
+# leurs node_modules restent en lecture seule : deploy.sh les execute ensuite
+# en root.
+ProtectSystem=strict
+ReadWritePaths=/srv/asl-cms/shared
+PrivateTmp=true
+ProtectHome=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

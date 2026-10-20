@@ -26,15 +26,22 @@ initDotEnv()
 const purge = async () => {
   const {purgeExpiredRateLimitFingerprintsService} =
     await import('@/services/facades/rate-limit-service-facade')
-  const {organizations, deleted} =
+  const {organizations, deleted, failed} =
     await purgeExpiredRateLimitFingerprintsService()
   console.log(
     `Empreintes purgees : ${deleted} (associations : ${organizations})`
   )
+  if (failed.length > 0) {
+    console.error(
+      `Purge en echec pour ${failed.length} association(s) : ${failed.join(', ')}`
+    )
+    return 1
+  }
+  return 0
 }
 
 purge()
-  .then(() => process.exit(0))
+  .then((exitCode) => process.exit(exitCode))
   .catch((error) => {
     console.error('Echec de la purge des empreintes', error)
     process.exit(1)

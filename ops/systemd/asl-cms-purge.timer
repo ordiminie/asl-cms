@@ -1,0 +1,15 @@
+# Declenchement quotidien de la purge des empreintes (s08b, critere 6 de s12b).
+# Persistent : un passage manque (serveur eteint) est rattrape au demarrage.
+# Les minuteries de s12c (sauvegardes) et s26 (planificateur) suivront ce modele.
+
+[Unit]
+Description=ASL-CMS : purge quotidienne des empreintes
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=15min
+Unit=asl-cms-purge.service
+
+[Install]
+WantedBy=timers.target
