@@ -129,5 +129,23 @@ La première exécution e2e sur la CI échoue : 11 tests en échec, 27 non lanc�
   4 ignorés**, code 0, aucun timeout. Aucun nouveau constat.
 - Reste à confirmer par la CI : `member-accounts.spec.ts` critère 1 et les 27 tests qui le suivent.
 
-Max severity: none
-Ship allowed: yes
+## Constat de la deuxième CI de la PR 45 (run 39609810690)
+
+213 passés, 1 en échec, 4 non lancés (la suite sérielle de `member-accounts.spec.ts`). Le critère 1
+passe désormais : le correctif `verification.id` est confirmé.
+
+1. **Majeur — critère 3 : sur l'association B, l'espace membre ne trouve pas la fiche.**
+   `member-accounts.spec.ts:447`. Fiche créée **avec** une adresse sur A, puis la même adresse sur B
+   (création, pas modification) ; `accountOf` montre bien un seul `user` et deux lignes `member`
+   (B puis A) ; fermeture sur A, la ligne `member` de A part. La connexion par lien sur B
+   (`127.0.0.1`) aboutit sur `/dashboard`, mais la page montre le titre générique « Votre espace
+   membre » (`MemberSpacePage.title`) au lieu de « Bonjour {nom} » : `getMyParcelsService` rend
+   `undefined`, donc `getMemberProfileByUserIdDao(B, user.id)` ne trouve pas de fiche liée. Échec aux
+   trois tentatives. Le critère 1, qui crée la fiche **sans** adresse puis l'ajoute (chemin de
+   modification), passe. Cause à établir (le test ne vérifie pas `user_id` de la fiche B) : lien jamais
+   posé sur la fiche B au chemin de création, lien retiré par la fermeture sur A, ou autre. Correctif
+   attendu : cause prouvée par un test qui échoue d'abord, puis correction ; et le test e2e vérifie en
+   plus `user_id` des deux fiches après chaque étape, pour localiser un futur échec.
+
+Max severity: major
+Ship allowed: no

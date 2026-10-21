@@ -450,12 +450,16 @@ test.describe('Comptes des membres — s12d', () => {
     test.setTimeout(180_000)
     const name = nameOf('Partage')
     const email = emailOf('partage')
+    const numberOnB = parcelOf('3')
 
     const bureauA = await bureauSession(browser, TENANT_A, OWNER_A)
     const bureauB = await bureauSession(browser, TENANT_B, BOARD_B)
     try {
       await createProfile(bureauA, TENANT_A, {name, email})
       await createProfile(bureauB, TENANT_B, {name, email})
+      // Sans parcelle, une fiche liée montre l'écran C5 (design s12d) : la
+      // salutation attendue sur B suppose une parcelle rattachée.
+      await attachParcel(bureauB, numberOnB, '01/03/2020')
 
       const shared = await accountOf(email)
       expect(shared.users, 'une adresse, un seul compte').toHaveLength(1)
@@ -463,6 +467,9 @@ test.describe('Comptes des membres — s12d', () => {
         {slug: TENANT_B_SLUG, role: 'member'},
         {slug: TENANT_A_SLUG, role: 'member'},
       ])
+      const userId = shared.users[0].id
+      expect((await storedProfileOf(TENANT_A_SLUG, name))?.user_id).toBe(userId)
+      expect((await storedProfileOf(TENANT_B_SLUG, name))?.user_id).toBe(userId)
 
       await saveEmail(bureauA, '')
       await expect(bureauA.getByRole('status')).toContainText(
@@ -471,6 +478,8 @@ test.describe('Comptes des membres — s12d', () => {
       expect((await accountOf(email)).members).toEqual([
         {slug: TENANT_B_SLUG, role: 'member'},
       ])
+      expect((await storedProfileOf(TENANT_A_SLUG, name))?.user_id).toBeNull()
+      expect((await storedProfileOf(TENANT_B_SLUG, name))?.user_id).toBe(userId)
 
       const onA = await freshPage(browser)
       await expectNoLinkSent(onA, TENANT_A, email)
@@ -481,6 +490,7 @@ test.describe('Comptes des membres — s12d', () => {
       await expect(
         onB.getByRole('heading', {level: 1, name: `Bonjour ${name}`})
       ).toBeVisible()
+      await expect(myParcels(onB)).toContainText(`Parcelle ${numberOnB}`)
       await onB.context().close()
     } finally {
       await bureauA.context().close()

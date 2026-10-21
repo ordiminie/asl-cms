@@ -103,6 +103,23 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
     }
     expect(screen.queryByText('Membre Test')).toBeNull()
   })
+
+  it('C5 aussi pour une fiche liée sans aucune parcelle : pas de salutation', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(
+      parcelsOf({current: [], former: []})
+    )
+
+    await renderDashboard()
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Votre espace membre',
+      })
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Bonjour Claire Meunier')).toBeNull()
+    expect(screen.queryByRole('region', {name: 'Mes parcelles'})).toBeNull()
+  })
 })
 
 describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
