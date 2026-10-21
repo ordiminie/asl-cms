@@ -163,5 +163,17 @@ passe désormais : le correctif `verification.id` est confirmé.
 - Mineurs : le nouveau test unitaire est rangé sous le `describe` « compte sans fiche » (laissé tel
   quel) ; l'affirmation non prouvée du constat de la deuxième CI — corrigée ci-dessus.
 
-Max severity: minor
-Ship allowed: yes
+## Constat de la troisième CI de la PR 45 (run 39614686989)
+
+217 passés, 1 en échec : le critère 3 et toute la série passent désormais.
+
+1. **Majeur (bloque la CI) — `member-accounts.spec.ts:618`, sélecteur ambigu.** « fiche du bureau —
+   vider son adresse est refusé » : `bureau.getByRole('alert')` trouve aussi l'annonceur de route de
+   Next.js (`#__next-route-announcer__`, `role="alert"`), violation du mode strict aux trois tentatives.
+   L'alerte attendue est bien affichée, dans la région « Coordonnées ». Correctif : cibler
+   `getByRole('region', {name: 'Coordonnées'}).getByRole('alert')`, comme les autres specs le font
+   (`association-settings.spec.ts:311`). Vérifier qu'aucun autre `getByRole('alert')` non borné ne
+   reste dans les specs de s12d.
+
+Max severity: major
+Ship allowed: no

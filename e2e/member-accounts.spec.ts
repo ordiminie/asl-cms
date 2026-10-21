@@ -615,7 +615,9 @@ test.describe('Comptes des membres — s12d', () => {
       )
 
       await saveEmail(bureau, '')
-      await expect(bureau.getByRole('alert')).toContainText(
+      await expect(
+        bureau.getByRole('region', {name: 'Coordonnées'}).getByRole('alert')
+      ).toContainText(
         `${name} fait partie du bureau : son adresse lui sert à se connecter. Vous pouvez la modifier, pas la supprimer. Rien n’a été enregistré.`
       )
 
