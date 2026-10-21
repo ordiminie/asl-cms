@@ -748,7 +748,7 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
       )
 
       await bureau.reload({waitUntil: 'networkidle'})
-      await expect(bureau.getByText(email)).toBeVisible()
+      await expect(bureau.getByText(email, {exact: true})).toBeVisible()
       await expect(bureau.getByText('06 12 34 56 78')).toBeVisible()
       await expect(
         bureau.getByText('Courrier uniquement', {exact: true})

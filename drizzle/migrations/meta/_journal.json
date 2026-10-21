@@ -239,6 +239,13 @@
       "when": 1792575588616,
       "tag": "0033_old_doctor_octopus",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792588775826,
+      "tag": "0034_icy_madripoor",
+      "breakpoints": true
     }
   ]
 }

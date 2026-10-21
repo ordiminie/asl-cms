@@ -259,3 +259,16 @@ ici), `docs/designs/s12d-comptes-membres.md` (validé le 20 octobre), ADR 037 et
   adresse) : la décision est alors sans effet, rien n'est écrit.
 - **Route `/login/acces-ferme`** (revue n° 2, mineur 1) : le repli `/dashboard` inatteignable est
   retiré ; l'accès est ouvert exactement quand `getPostLoginPathDal()` rend une destination.
+- **`verification.id` en `text`** (CI de la PR 45, majeur 1) : un compte ouvert par s12d est créé
+  non vérifié ; à la vérification du lien magique, Better Auth pose un verrou
+  (`reserveVerificationValue`) avec un `id` imposé, un SHA-256 en base64url de 43 caractères, que
+  la colonne `uuid` refusait. La colonne passe en `text`, défaut `uuid_generate_v4()::text`
+  (migration `0034_icy_madripoor`, générée par `pnpm db:generate`, sans clause `USING` : la
+  conversion `uuid` → `text` est un cast d'affectation, vérifié sur des lignes existantes). Pas
+  d'ADR : c'est la mise en conformité d'une table de Better Auth avec le contrat de la
+  bibliothèque, pas un choix d'architecture ; aucune autre table ni clé étrangère n'en dépend.
+  Figé par `src/db/verification-model.test.ts`.
+- **Specs e2e à l'écran C4** (CI de la PR 45, mineurs 2 et 3) : les neuf specs dont le refus vise
+  un membre simple attendent le titre de niveau 1 « Cette page ne vous est pas accessible » et le
+  texte « Elle est réservée au bureau de l’association. » ; dans `member-profiles.spec.ts`,
+  l'adresse de la fiche est cherchée en correspondance exacte, la carte « Accès » la citant aussi.

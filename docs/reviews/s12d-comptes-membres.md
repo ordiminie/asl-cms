@@ -82,5 +82,35 @@ Aucun critique, aucun majeur. Les six preuves e2e restent à passer sur la CI de
 Les deux constats de la revue 2 sont réellement corrigés, sans régression. Ouvrir la PR ; les e2e de
 la CI confirment les parcours (notamment la coupure du critère 6).
 
-Max severity: minor
-Ship allowed: yes
+## Constats de la CI de la PR 45 (run 39596447195)
+
+La première exécution e2e sur la CI échoue : 11 tests en échec, 27 non lancés, 180 passés.
+
+1. **Majeur — un compte ouvert par s12d ne peut pas se connecter par lien magique.** Le compte est créé
+   avec `emailVerified = false`. À la vérification du lien, Better Auth appelle
+   `revokeUnprovenAccountAccess`, qui pose un verrou par `internalAdapter.reserveVerificationValue` :
+   insertion dans `verification` avec un `id` imposé (`forceAllowId`), un SHA-256 en base64url de
+   43 caractères. La colonne `verification.id` est de type `uuid` (`src/db/models/auth-model.ts:92`) :
+   Postgres refuse (`22P02 invalid input syntax for type uuid`) et la vérification part en erreur ; la
+   page reste sur `/api/auth/magic-link/verify`. Les comptes du seed, vérifiés, ne passent jamais par ce
+   chemin, d'où l'absence du défaut avant s12d (aucune occurrence dans le run vert de s12b). Échec :
+   `member-accounts.spec.ts` critère 1 (trois tentatives, trois erreurs `uuid` dans le journal serveur à
+   12:13:45, 12:14:09, 12:14:32) ; les 27 tests non lancés sont la suite de ce fichier.
+   Correctif attendu : `verification.id` passe en `text` (le défaut `uuid_generate_v4()` reste valable,
+   converti en texte), migration générée par `pnpm db:generate`, test unitaire qui fige le type de la
+   colonne. Ne pas contourner en créant le compte avec `emailVerified = true` : l'adresse saisie par le
+   bureau n'est pas prouvée, et s13 (import) et s15 (invitation) créeront aussi des comptes non vérifiés.
+2. **Mineur — neuf specs antérieures attendent l'ancien titre de refus.** s12d remplace, pour le rôle
+   `member`, l'écran « Cette page est réservée au bureau de l'association » par l'écran C4 (titre
+   « Cette page ne vous est pas accessible », texte « Elle est réservée au bureau de l'association. »).
+   Le changement est voulu (design C4) ; les specs n'ont pas suivi : `association-identity.spec.ts:366`,
+   `association-settings.spec.ts:362`, `board-members.spec.ts:419`, `home-page.spec.ts:427`,
+   `news.spec.ts:375`, `page-cms.spec.ts:278`, `site-alert.spec.ts:230`, `site-navigation.spec.ts:254`,
+   `water-analysis.spec.ts:453`. Correctif : adapter leurs attentes à l'écran C4 (titre de niveau 1 et
+   texte), sans affaiblir l'assertion.
+3. **Mineur — `member-profiles.spec.ts:751` ambigu.** `getByText(email)` trouve aussi l'adresse dans la
+   confirmation « Compte ouvert. … » ajoutée par s12d (violation du mode strict). Correctif :
+   `{exact: true}` ou ciblage du `dd` de la fiche.
+
+Max severity: major
+Ship allowed: no

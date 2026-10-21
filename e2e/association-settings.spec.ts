@@ -32,7 +32,8 @@ const IDENTITY_PAGE = '/bureau/identite'
 const PUBLIC_PAGE = '/actualites'
 const SETTINGS_TITLE = "Réglages de l'association"
 const IDENTITY_TITLE = "Identité de l'association"
-const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
+const DENIED_TITLE = 'Cette page ne vous est pas accessible'
+const DENIED_TEXT = 'Elle est réservée au bureau de l’association.'
 
 const CONTACT_KEY = 'contact.email'
 const FORAGE_KEY = 'forage.responsable.email'
@@ -368,6 +369,7 @@ test.describe.serial('s02 — paramètres de l’association', () => {
     await expect(
       page.getByRole('heading', {level: 1, name: DENIED_TITLE})
     ).toBeVisible({timeout: 15_000})
+    await expect(page.getByText(DENIED_TEXT)).toBeVisible()
     await expect(contactField(page)).toHaveCount(0)
 
     // Rejoue, sous cette session, l'enregistrement de REPLAYED_CONTACT_A par

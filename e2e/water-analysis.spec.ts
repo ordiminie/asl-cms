@@ -30,7 +30,8 @@ const MEMBER_A = 'user@gmail.com'
 
 const BUREAU_ROUTE = '/bureau/analyses-eau'
 const PUBLIC_ROUTE = '/analyses-eau'
-const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
+const DENIED_TITLE = 'Cette page ne vous est pas accessible'
+const DENIED_TEXT = 'Elle est réservée au bureau de l’association.'
 
 /** Un PNG minimal valide : la validation juge la signature binaire. */
 const PNG_FIXTURE = Buffer.from(
@@ -454,10 +455,16 @@ test.describe("Analyses d'eau — refus", () => {
     await login(page, TENANT_A, MEMBER_A)
 
     await page.goto(`${TENANT_A}${BUREAU_ROUTE}`, {waitUntil: 'load'})
-    await expect(page.getByText(DENIED_TITLE)).toBeVisible({timeout: 20_000})
+    await expect(
+      page.getByRole('heading', {level: 1, name: DENIED_TITLE})
+    ).toBeVisible({timeout: 20_000})
+    await expect(page.getByText(DENIED_TEXT)).toBeVisible()
 
     await page.goto(`${TENANT_A}${BUREAU_ROUTE}/nouvelle`, {waitUntil: 'load'})
-    await expect(page.getByText(DENIED_TITLE)).toBeVisible({timeout: 20_000})
+    await expect(
+      page.getByRole('heading', {level: 1, name: DENIED_TITLE})
+    ).toBeVisible({timeout: 20_000})
+    await expect(page.getByText(DENIED_TEXT)).toBeVisible()
     await expect(
       page.getByRole('button', {name: "Publier l'analyse"})
     ).toBeHidden()

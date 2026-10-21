@@ -28,7 +28,8 @@ const TENANT_B = `http://127.0.0.1:${PORT}`
 
 const PASSWORD = 'Azerty123'
 const IDENTITY_PAGE = '/bureau/identite'
-const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
+const DENIED_TITLE = 'Cette page ne vous est pas accessible'
+const DENIED_TEXT = 'Elle est réservée au bureau de l’association.'
 const PAGE_TITLE = "Identité de l'association"
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
@@ -372,6 +373,7 @@ test.describe.serial('s01b — identité de l’association', () => {
     await expect(
       page.getByRole('heading', {level: 1, name: DENIED_TITLE})
     ).toBeVisible({timeout: 15_000})
+    await expect(page.getByText(DENIED_TEXT)).toBeVisible()
     await expect(page.getByTestId('identity-file-input-logo')).toHaveCount(0)
 
     // Rejoue, sous cette session, l'appel d'action d'un vrai téléversement
