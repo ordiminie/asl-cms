@@ -112,5 +112,22 @@ La première exécution e2e sur la CI échoue : 11 tests en échec, 27 non lanc�
    confirmation « Compte ouvert. … » ajoutée par s12d (violation du mode strict). Correctif :
    `{exact: true}` ou ciblage du `dd` de la fiche.
 
-Max severity: major
-Ship allowed: no
+## Revue n° 5 — correctif `bd79b1ad`, relecteur en contexte neuf
+
+- **Constat CI 1 corrigé.** `verification.id` est en `text` (défaut `uuid_generate_v4()::text`), migration
+  `0034_icy_madripoor.sql` générée par drizzle-kit (snapshot chaîné sur 0033, diff limité à la colonne).
+  SQL rejoué par le relecteur sur une table temporaire à lignes uuid (transaction annulée) : conversion,
+  insertion d'un id base64url de 43 caractères, défaut valides. Aucune clé étrangère ni aucun code ne
+  suppose un uuid ; les deux flux qui posent le verrou (lien magique, OTP email) sont couverts. La CI
+  applique la migration par `pnpm db:migrate`. Test `src/db/verification-model.test.ts`.
+- **Constat CI 2 corrigé.** Les neuf specs attendent le titre de niveau 1 « Cette page ne vous est pas
+  accessible » et « Elle est réservée au bureau de l’association. » (identiques à `messages/fr.json`) ;
+  assertions renforcées ; `user@gmail.com` est bien `member` de TechCorp, donc voit l'écran C4. Plus
+  aucune occurrence de l'ancien écran attendue pour un membre simple dans `e2e/`.
+- **Constat CI 3 corrigé.** `getByText(email, {exact: true})` ne cible que le `dd` de la fiche.
+- Suite unitaire relancée par le relecteur (copie disque local) : **249 fichiers, 2988 passés,
+  4 ignorés**, code 0, aucun timeout. Aucun nouveau constat.
+- Reste à confirmer par la CI : `member-accounts.spec.ts` critère 1 et les 27 tests qui le suivent.
+
+Max severity: none
+Ship allowed: yes
