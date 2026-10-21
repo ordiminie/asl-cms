@@ -165,6 +165,11 @@ Design (`support.js`) est retiré et les données du canevas sont déroulées da
   « Les envois partiront par courrier. »), plutôt que d'inventer une règle.
 - **Élision devant le nom de l'association** (« l'espace de Clos-Fleuri » / « de l'Étang ») : non
   spécifiée. Même remède : une tournure qui l'évite, ou la règle à ajouter au design system.
+- **Accord de « Président(e) »** dans la carte « Accès » (A, rôle `owner`) : le design prévoit
+  « Présidente » / « Président » selon le rôle, mais le rôle `owner` ne porte aucune donnée de genre
+  (ni la fiche, ni le compte). Libellé écrit « Président(e) : son adresse peut être modifiée, pas
+  supprimée. » (`messages/fr.json`). Une donnée de genre ou une tournure neutre est à décider au
+  design system (revue n° 1 de s12d, mineur 4).
 - **Badge de rôle au bureau** : absent du design system ; le rôle n'apparaît qu'en `meta` dans la
   carte « Accès ».
 - **Niveau de titre côté membre** : pas de niveau entre `h1` et `h3`. Titre de carte en `h2` à 20 px,

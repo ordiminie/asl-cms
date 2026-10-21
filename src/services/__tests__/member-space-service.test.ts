@@ -18,12 +18,14 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
 vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
   getCurrentParcelsByMemberDao: vi.fn(),
   getFormerParcelsByMemberDao: vi.fn(),
+  getMemberFormerParcelsDao: vi.fn(),
 }))
 
 import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {
   getCurrentParcelsByMemberDao,
   getFormerParcelsByMemberDao,
+  getMemberFormerParcelsDao,
 } from '@/db/repositories/parcel-ownership-repository'
 
 import {AuthorizationError} from '../errors/authorization-error'
@@ -88,6 +90,9 @@ beforeEach(() => {
       buyerName: 'Marcel Laurent',
     },
   ])
+  vi.mocked(getMemberFormerParcelsDao).mockResolvedValue([
+    {number: '9', startsOn: '2003-05-14', endsOn: '2019-10-01'},
+  ])
 })
 
 describe('[ORGANIZATION MEMBER] getMyParcelsService — « Mes parcelles » (critère 4)', () => {
@@ -110,7 +115,14 @@ describe('[ORGANIZATION MEMBER] getMyParcelsService — « Mes parcelles » (cri
     )
     expect(readUnder).toBe(ORG_ID)
     expect(getCurrentParcelsByMemberDao).toHaveBeenCalledWith(PROFILE_ID)
-    expect(getFormerParcelsByMemberDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(getMemberFormerParcelsDao).toHaveBeenCalledWith(PROFILE_ID)
+  })
+
+  it('lit les anciennes parcelles sans charger l’acquéreur (revue n° 1, mineur 5)', async () => {
+    await getMyParcelsService(ORG_ID)
+
+    expect(getMemberFormerParcelsDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(getFormerParcelsByMemberDao).not.toHaveBeenCalled()
   })
 
   it('rend parcelles actuelles et anciennes, sans l’acquéreur', async () => {
@@ -134,7 +146,7 @@ describe('[ORGANIZATION MEMBER] getMyParcelsService — « Mes parcelles » (cri
 
     expect(await getMyParcelsService(ORG_ID)).toBeUndefined()
     expect(getCurrentParcelsByMemberDao).not.toHaveBeenCalled()
-    expect(getFormerParcelsByMemberDao).not.toHaveBeenCalled()
+    expect(getMemberFormerParcelsDao).not.toHaveBeenCalled()
   })
 
   it('refuse un identifiant d’association malformé, sans rien lire', async () => {

@@ -244,3 +244,10 @@ ici), `docs/designs/s12d-comptes-membres.md` (validé le 20 octobre), ADR 037 et
 - Revue passée (`docs/reviews/s12d-comptes-membres.md`, `Ship allowed: yes`).
 - Mise en production : pas dans cette story ; **le premier déploiement sur le VPS (recette de s12b)
   est à faire juste après sa livraison**.
+
+## Écarts d'exécution
+
+- **« Président(e) »** (revue n° 1, mineur 4) : le libellé de présidence de la carte « Accès » est
+  écrit « Président(e) » au lieu de « Présidente » / « Président » du design, faute de donnée de
+  genre sur le rôle `owner`. Consigné comme manque du design system dans
+  `docs/designs/s12d-comptes-membres.md` ; aucun changement de code.

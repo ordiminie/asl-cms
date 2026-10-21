@@ -1,7 +1,12 @@
 import {headers} from 'next/headers'
 
+import {getPostLoginPathDal} from '@/app/dal/user-dal'
 import {auth} from '@/lib/better-auth/auth'
 import {logger} from '@/lib/logger'
+import {
+  getAuthUser,
+  getSessionAuth,
+} from '@/services/authentication/auth-service'
 
 /**
  * Route de passage d'un acces ferme (s12d, ecran D, ADR 038). Une session est
@@ -10,8 +15,13 @@ import {logger} from '@/lib/logger'
  * la reponse — puis un 307 relatif mene a la connexion, qui affiche le
  * message. Ferme cette session seulement : celles du compte sur d'autres
  * associations restent ouvertes (critere 3).
+ *
+ * La session n'est fermee que si l'acces l'est vraiment : sans session, la
+ * route renvoie a la connexion ; avec un acces ouvert, a la destination
+ * apres connexion, sans message.
  */
 const CLOSED_ACCESS_LOGIN = '/login?acces=ferme'
+const OPEN_ACCESS_FALLBACK = '/dashboard'
 
 const signOutCookies = async (): Promise<string[]> => {
   try {
@@ -26,7 +36,17 @@ const signOutCookies = async (): Promise<string[]> => {
   }
 }
 
+const redirectTo = (location: string): Response =>
+  new Response(null, {status: 307, headers: {Location: location}})
+
 export async function GET(): Promise<Response> {
+  const session = await getSessionAuth()
+  if (!session?.session?.userId) return redirectTo('/login')
+
+  if (await getAuthUser()) {
+    return redirectTo((await getPostLoginPathDal()) ?? OPEN_ACCESS_FALLBACK)
+  }
+
   const responseHeaders = new Headers({Location: CLOSED_ACCESS_LOGIN})
   for (const cookie of await signOutCookies()) {
     responseHeaders.append('set-cookie', cookie)

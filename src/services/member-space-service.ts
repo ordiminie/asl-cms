@@ -3,7 +3,7 @@ import 'server-only'
 import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {
   getCurrentParcelsByMemberDao,
-  getFormerParcelsByMemberDao,
+  getMemberFormerParcelsDao,
 } from '@/db/repositories/parcel-ownership-repository'
 import {withTenant} from '@/db/tenant-scope'
 
@@ -46,7 +46,7 @@ export const getMyParcelsService = async (
     if (!profile) return undefined
 
     const current = await getCurrentParcelsByMemberDao(profile.id)
-    const former = await getFormerParcelsByMemberDao(profile.id)
+    const former = await getMemberFormerParcelsDao(profile.id)
     return {
       name: profile.name,
       current: current
