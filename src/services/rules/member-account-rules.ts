@@ -20,6 +20,8 @@ export const sameEmail = (a: string | null, b: string | null): boolean =>
  * Decision a partir de l'adresse enregistree, de l'adresse demandee et du
  * role du compte lie. Un membre du bureau ou la presidence garde une adresse
  * (modifiable, jamais supprimable) et son role suit la nouvelle adresse.
+ * Une adresse videe sans ligne `member` lue ici delie la fiche sans rien
+ * fermer : une fiche courrier ne garde jamais de compte lie.
  */
 export const decideMemberAccount = ({
   savedEmail,
@@ -27,7 +29,7 @@ export const decideMemberAccount = ({
   linkedRole,
 }: MemberAccountDecisionInput): MemberAccountDecision => {
   if (nextEmail === null) {
-    if (linkedRole === null) return {kind: 'none'}
+    if (linkedRole === null) return {kind: 'unlink'}
     if (linkedRole !== MemberAccountRoleConst.MEMBER) {
       return {kind: 'refuse_board_removal'}
     }

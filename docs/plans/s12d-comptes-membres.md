@@ -251,3 +251,9 @@ ici), `docs/designs/s12d-comptes-membres.md` (validé le 20 octobre), ADR 037 et
   écrit « Président(e) » au lieu de « Présidente » / « Président » du design, faute de donnée de
   genre sur le rôle `owner`. Consigné comme manque du design system dans
   `docs/designs/s12d-comptes-membres.md` ; aucun changement de code.
+- **Décision `unlink`** (revue n° 2, mineur 2) : la règle de la tâche 2 rend une sixième décision,
+  `unlink`, quand l'adresse est vidée et que le compte lié n'a plus de ligne `member` dans
+  l'association. Le lien de la fiche est vidé, aucune ligne `member` n'est retirée, aucun
+  changement d'accès n'est annoncé : une fiche courrier ne garde jamais de compte lié.
+- **Route `/login/acces-ferme`** (revue n° 2, mineur 1) : le repli `/dashboard` inatteignable est
+  retiré ; l'accès est ouvert exactement quand `getPostLoginPathDal()` rend une destination.

@@ -3,10 +3,7 @@ import {headers} from 'next/headers'
 import {getPostLoginPathDal} from '@/app/dal/user-dal'
 import {auth} from '@/lib/better-auth/auth'
 import {logger} from '@/lib/logger'
-import {
-  getAuthUser,
-  getSessionAuth,
-} from '@/services/authentication/auth-service'
+import {getSessionAuth} from '@/services/authentication/auth-service'
 
 /**
  * Route de passage d'un acces ferme (s12d, ecran D, ADR 038). Une session est
@@ -18,10 +15,11 @@ import {
  *
  * La session n'est fermee que si l'acces l'est vraiment : sans session, la
  * route renvoie a la connexion ; avec un acces ouvert, a la destination
- * apres connexion, sans message.
+ * apres connexion, sans message. L'acces est ouvert exactement quand cette
+ * destination existe : `getPostLoginPathDal()` ne rend rien que si
+ * `getAuthUser()` ne rend aucun compte de l'association du domaine.
  */
 const CLOSED_ACCESS_LOGIN = '/login?acces=ferme'
-const OPEN_ACCESS_FALLBACK = '/dashboard'
 
 const signOutCookies = async (): Promise<string[]> => {
   try {
@@ -43,9 +41,8 @@ export async function GET(): Promise<Response> {
   const session = await getSessionAuth()
   if (!session?.session?.userId) return redirectTo('/login')
 
-  if (await getAuthUser()) {
-    return redirectTo((await getPostLoginPathDal()) ?? OPEN_ACCESS_FALLBACK)
-  }
+  const openAccessDestination = await getPostLoginPathDal()
+  if (openAccessDestination) return redirectTo(openAccessDestination)
 
   const responseHeaders = new Headers({Location: CLOSED_ACCESS_LOGIN})
   for (const cookie of await signOutCookies()) {

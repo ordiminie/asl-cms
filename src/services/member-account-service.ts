@@ -198,6 +198,10 @@ export const applyMemberAccountDecision = async ({
     await closeMemberAccount({...base, userId: profile.userId})
     return {change: 'closed', userId: null}
   }
+  if (decision.kind === 'unlink' && profile.userId !== null) {
+    await unlinkMemberAccount({organizationId, memberProfileId: profile.id})
+    return {change: null, userId: null}
+  }
   if (
     decision.kind === 'replace' &&
     profile.email !== null &&
@@ -233,4 +237,19 @@ export const openMemberAccountsForOrganization = async (
       })
     }
     return {opened: profiles.length}
+  })
+
+/**
+ * Delie une fiche dont le compte n'a plus de ligne `member` ici : vide le
+ * lien seulement, aucune ligne `member` n'est retiree.
+ */
+export const unlinkMemberAccount = async ({
+  organizationId,
+  memberProfileId,
+}: {
+  organizationId: string
+  memberProfileId: string
+}): Promise<void> =>
+  withTenant(organizationId, async () => {
+    await setMemberProfileUserIdDao(memberProfileId, null)
   })

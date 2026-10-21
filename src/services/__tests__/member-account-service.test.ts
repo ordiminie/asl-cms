@@ -297,6 +297,7 @@ describe('applyMemberAccountDecision — le changement d’accès', () => {
     [{kind: 'none'} as const, null, OLD_USER_ID],
     [{kind: 'open'} as const, 'opened', NEW_USER_ID],
     [{kind: 'close'} as const, 'closed', null],
+    [{kind: 'unlink'} as const, null, null],
     [{kind: 'replace', role: 'member'} as const, 'replaced', NEW_USER_ID],
   ])('%o → %s', async (decision, change, userId) => {
     expect(
@@ -318,6 +319,48 @@ describe('applyMemberAccountDecision — le changement d’accès', () => {
     expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
     expect(createMemberIfAbsentTxnDao).not.toHaveBeenCalled()
     expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+    expect(setMemberProfileUserIdDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('applyMemberAccountDecision — délier sans fermer', () => {
+  it('vide le lien d’une fiche liée sans retirer aucune ligne member, sous le scope', async () => {
+    let unlinkedUnder: string | undefined
+    vi.mocked(setMemberProfileUserIdDao).mockImplementation(async () => {
+      unlinkedUnder = scope.current
+    })
+
+    await applyMemberAccountDecision({
+      organizationId: ORG_ID,
+      profile: {
+        id: PROFILE_ID,
+        name: 'Odile Marchand',
+        email: null,
+        userId: OLD_USER_ID,
+      },
+      decision: {kind: 'unlink'},
+    })
+
+    expect(setMemberProfileUserIdDao).toHaveBeenCalledWith(PROFILE_ID, null)
+    expect(unlinkedUnder).toBe(ORG_ID)
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+    expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
+  })
+
+  it('n’écrit rien pour une fiche déjà sans lien', async () => {
+    expect(
+      await applyMemberAccountDecision({
+        organizationId: ORG_ID,
+        profile: {
+          id: PROFILE_ID,
+          name: 'Paul Ferrand',
+          email: null,
+          userId: null,
+        },
+        decision: {kind: 'unlink'},
+      })
+    ).toEqual({change: null, userId: null})
+
     expect(setMemberProfileUserIdDao).not.toHaveBeenCalled()
   })
 })

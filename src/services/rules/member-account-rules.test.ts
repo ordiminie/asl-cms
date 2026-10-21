@@ -13,10 +13,10 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
     ).toEqual({kind: 'open'})
   })
 
-  it('ne fait rien pour une fiche courrier qui le reste', () => {
+  it('délie une fiche courrier qui le reste : aucun accès à fermer', () => {
     expect(
       decideMemberAccount({savedEmail: null, nextEmail: null, linkedRole: null})
-    ).toEqual({kind: 'none'})
+    ).toEqual({kind: 'unlink'})
   })
 
   it('ferme le compte quand un propriétaire perd son adresse', () => {
@@ -119,14 +119,14 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
     ).toEqual({kind: 'open'})
   })
 
-  it('ne ferme rien quand une fiche sans compte perd son adresse', () => {
+  it('délie, sans rien fermer, une fiche sans accès ici qui perd son adresse', () => {
     expect(
       decideMemberAccount({
         savedEmail: 'odile@example.test',
         nextEmail: null,
         linkedRole: null,
       })
-    ).toEqual({kind: 'none'})
+    ).toEqual({kind: 'unlink'})
   })
 })
 

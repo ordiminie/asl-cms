@@ -8,17 +8,13 @@ vi.mock('@/lib/better-auth/auth', () => ({
   auth: {api: {signOut: vi.fn()}},
 }))
 vi.mock('@/services/authentication/auth-service', () => ({
-  getAuthUser: vi.fn(),
   getSessionAuth: vi.fn(),
 }))
 vi.mock('@/app/dal/user-dal', () => ({getPostLoginPathDal: vi.fn()}))
 
 import {getPostLoginPathDal} from '@/app/dal/user-dal'
 import {auth} from '@/lib/better-auth/auth'
-import {
-  getAuthUser,
-  getSessionAuth,
-} from '@/services/authentication/auth-service'
+import {getSessionAuth} from '@/services/authentication/auth-service'
 
 import {GET} from './route'
 
@@ -41,7 +37,6 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(auth.api.signOut).mockResolvedValue(signedOut() as never)
   vi.mocked(getSessionAuth).mockResolvedValue(openSession as never)
-  vi.mocked(getAuthUser).mockResolvedValue(undefined)
   vi.mocked(getPostLoginPathDal).mockResolvedValue(undefined)
 })
 
@@ -82,7 +77,7 @@ describe('GET /login/acces-ferme — accès réellement fermé (s12d, écran D, 
 
 describe('GET /login/acces-ferme — accès ouvert', () => {
   beforeEach(() => {
-    vi.mocked(getAuthUser).mockResolvedValue({id: 'user-1'} as never)
+    vi.mocked(getPostLoginPathDal).mockResolvedValue('/bureau/pages')
   })
 
   it('ne ferme pas la session et n’efface aucun cookie', async () => {
@@ -93,19 +88,10 @@ describe('GET /login/acces-ferme — accès ouvert', () => {
   })
 
   it('renvoie en 307 vers la destination après connexion, sans message', async () => {
-    vi.mocked(getPostLoginPathDal).mockResolvedValue('/bureau/pages')
-
     const response = await GET()
 
     expect(response.status).toBe(307)
     expect(response.headers.get('Location')).toBe('/bureau/pages')
-  })
-
-  it('se replie sur /dashboard sans destination connue', async () => {
-    const response = await GET()
-
-    expect(response.status).toBe(307)
-    expect(response.headers.get('Location')).toBe('/dashboard')
   })
 })
 

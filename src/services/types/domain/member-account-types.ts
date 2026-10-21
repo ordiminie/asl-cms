@@ -29,5 +29,6 @@ export type MemberAccountDecision =
   | {kind: 'none'}
   | {kind: 'open'}
   | {kind: 'close'}
+  | {kind: 'unlink'}
   | {kind: 'replace'; role: MemberAccountRole}
   | {kind: 'refuse_board_removal'}

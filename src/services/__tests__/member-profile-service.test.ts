@@ -663,6 +663,68 @@ describe('[s12d] le compte suit l’adresse de la fiche', () => {
     expect(result).toMatchObject({status: 'saved', accountChange: 'closed'})
   })
 
+  it('vide le lien quand l’adresse est retirée et que le compte lié n’a plus de ligne ici', async () => {
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
+      status: 'updated',
+      row: linkedRow({email: null, mailOnly: true}),
+    })
+
+    const result = await updateMemberProfileContactService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: '',
+    })
+
+    expect(setMemberProfileUserIdDao).toHaveBeenCalledWith(PROFILE_ID, null)
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+    expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
+    expect(getMemberAccountDao).not.toHaveBeenCalled()
+    expect(result).toMatchObject({
+      status: 'saved',
+      accountChange: null,
+      profile: {account: {status: 'mail_only'}},
+    })
+  })
+
+  it('ouvre et lie le nouveau compte quand l’adresse change et que le compte lié n’a plus de ligne ici', async () => {
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
+      status: 'updated',
+      row: linkedRow({email: 'odile.marchand@example.test'}),
+    })
+    vi.mocked(getMemberAccountDao).mockResolvedValue({
+      email: 'odile.marchand@example.test',
+      role: 'member',
+    })
+
+    const result = await updateMemberProfileContactService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: 'odile.marchand@example.test',
+    })
+
+    expect(createUserIfAbsentTxnDao).toHaveBeenCalledWith({
+      email: 'odile.marchand@example.test',
+      name: expect.any(String),
+    })
+    expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: ORG_ID,
+        userId: NEW_ACCOUNT_ID,
+        role: 'member',
+      })
+    )
+    expect(setMemberProfileUserIdDao).toHaveBeenCalledTimes(1)
+    expect(setMemberProfileUserIdDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      NEW_ACCOUNT_ID
+    )
+    expect(getMemberAccountDao).toHaveBeenCalledWith(NEW_ACCOUNT_ID, ORG_ID)
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+    expect(result).toMatchObject({status: 'saved', accountChange: 'opened'})
+  })
+
   it('refuse de vider l’adresse d’un membre du bureau et n’écrit rien', async () => {
     vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
     vi.mocked(getUserOrganizationDao).mockResolvedValue(
