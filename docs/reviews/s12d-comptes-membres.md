@@ -175,5 +175,14 @@ passe désormais : le correctif `verification.id` est confirmé.
    (`association-settings.spec.ts:311`). Vérifier qu'aucun autre `getByRole('alert')` non borné ne
    reste dans les specs de s12d.
 
-Max severity: major
-Ship allowed: no
+## Revue n° 7 — correctif `0ad14075`, relecteur en contexte neuf
+
+- **Constat de la troisième CI corrigé.** L'alerte est cherchée dans la région « Coordonnées »
+  (`DetailCard`, `section aria-labelledby`, titre `detail.contact.title`), seule région de ce nom sur la
+  page ; le refus du bureau (`Alert` destructive, `detail.boardEmailRequired.summary`) y est seul
+  `role="alert"` au moment du refus. Texte attendu identique mot pour mot ; assertion plus précise.
+- Aucun autre `getByRole('alert')` non borné dans les ajouts e2e de s12d. `tsc --noEmit` : code 0.
+  Aucun code de production modifié.
+
+Max severity: none
+Ship allowed: yes
