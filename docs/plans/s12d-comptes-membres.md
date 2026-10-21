@@ -254,6 +254,8 @@ ici), `docs/designs/s12d-comptes-membres.md` (validé le 20 octobre), ADR 037 et
 - **Décision `unlink`** (revue n° 2, mineur 2) : la règle de la tâche 2 rend une sixième décision,
   `unlink`, quand l'adresse est vidée et que le compte lié n'a plus de ligne `member` dans
   l'association. Le lien de la fiche est vidé, aucune ligne `member` n'est retirée, aucun
-  changement d'accès n'est annoncé : une fiche courrier ne garde jamais de compte lié.
+  changement d'accès n'est annoncé : une fiche courrier ne garde jamais de compte lié. La règle rend
+  aussi `unlink` pour une fiche sans compte lié (fiche courrier qui le reste, création sans
+  adresse) : la décision est alors sans effet, rien n'est écrit.
 - **Route `/login/acces-ferme`** (revue n° 2, mineur 1) : le repli `/dashboard` inatteignable est
   retiré ; l'accès est ouvert exactement quand `getPostLoginPathDal()` rend une destination.
