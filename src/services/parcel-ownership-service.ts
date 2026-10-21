@@ -26,7 +26,7 @@ import {
   planSale,
 } from './rules/parcel-ownership-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
-import {MemberProfileDTO} from './types/domain/member-profile-types'
+import {MemberProfileFieldsDTO} from './types/domain/member-profile-types'
 import {
   AttachParcelInput,
   AttachParcelResult,
@@ -246,7 +246,7 @@ export const getParcelOwnerAtService = async (
   organizationId: string,
   parcelId: string,
   date: string
-): Promise<MemberProfileDTO | undefined> => {
+): Promise<MemberProfileFieldsDTO | undefined> => {
   const parsed = parcelOwnerAtServiceSchema.safeParse({
     organizationId,
     parcelId,

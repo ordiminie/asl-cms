@@ -7,13 +7,17 @@ vi.mock('next/navigation', () => ({
 }))
 vi.mock('@/services/authentication/auth-service', () => ({
   getAuthUser: vi.fn(),
+  getSessionAuth: vi.fn(async () => null),
 }))
 
 import {forbidden, redirect} from 'next/navigation'
 
-import {getAuthUser} from '@/services/authentication/auth-service'
+import {
+  getAuthUser,
+  getSessionAuth,
+} from '@/services/authentication/auth-service'
 
-import {withAuthAdmin} from './with-auth'
+import withAuth, {withAuthAdmin} from './with-auth'
 
 const account = (role: string) => ({id: `${role}-1`, role}) as never
 
@@ -57,5 +61,42 @@ describe('withAuthAdmin', () => {
     await GuardedConsole({})
 
     expect(redirect).toHaveBeenCalledWith('/login')
+  })
+})
+
+/** s12d, ADR 038 : un accès fermé avec une session ouverte n'est pas « sans session ». */
+describe('withAuth — accès fermé', () => {
+  const MemberSpace = () => <p>espace</p>
+  const GuardedSpace = withAuth(MemberSpace)
+
+  it('[PUBLIC] sans session, renvoie vers /login', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(undefined)
+    vi.mocked(getSessionAuth).mockResolvedValue(null)
+
+    await GuardedSpace({})
+
+    expect(redirect).toHaveBeenCalledWith('/login')
+  })
+
+  it('[ACCÈS FERMÉ] session présente mais compte refusé ici : vers /login/acces-ferme', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(undefined)
+    vi.mocked(getSessionAuth).mockResolvedValue({
+      session: {userId: 'user-1'},
+      user: {id: 'user-1'},
+    } as never)
+
+    await GuardedSpace({})
+
+    expect(redirect).toHaveBeenCalledWith('/login/acces-ferme')
+    expect(redirect).not.toHaveBeenCalledWith('/login')
+  })
+
+  it('[USER] un compte accepté voit la page', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(account('user'))
+
+    await GuardedSpace({})
+
+    expect(redirect).not.toHaveBeenCalled()
+    expect(forbidden).not.toHaveBeenCalled()
   })
 })

@@ -2,11 +2,13 @@ import type {Metadata} from 'next'
 import React, {Suspense} from 'react'
 
 import {canManageCurrentAssociationIdentityDal} from '@/app/dal/association-identity-dal'
+import {isPlainMemberOfCurrentAssociationDal} from '@/app/dal/member-space-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {AssociationMark} from '@/components/features/association/association-mark'
 import {BureauAccessDenied} from '@/components/features/association/bureau-access-denied'
 import {BureauMenuButton} from '@/components/features/association/bureau-menu-button'
 import {BureauSidebar} from '@/components/features/association/bureau-sidebar'
+import {MemberSpaceAccessDenied} from '@/components/features/association/member-space-access-denied'
 import {SidebarInset, SidebarProvider} from '@/components/ui/sidebar'
 import {NO_INDEX_ROBOTS} from '@/lib/seo/resolve-metadata'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
@@ -28,19 +30,21 @@ export default function BureauLayout({children}: {children: React.ReactNode}) {
 
 /**
  * Barre laterale seulement pour le bureau de l'association du domaine appele
- * (ou le SuperAdmin) ; tout autre utilisateur voit l'ecran de refus, sans
- * aucune rubrique d'administration.
+ * (ou le SuperAdmin) ; tout autre utilisateur voit un ecran de refus, sans
+ * aucune rubrique d'administration : un proprietaire de l'association l'ecran
+ * C4, qui le renvoie a son espace (s12d), tout autre compte le refus de s01b.
  */
 async function BureauShell({children}: {children: React.ReactNode}) {
-  const [tenant, allowed] = await Promise.all([
+  const [tenant, allowed, plainMember] = await Promise.all([
     requireCurrentTenantDal(),
     canManageCurrentAssociationIdentityDal(),
+    isPlainMemberOfCurrentAssociationDal(),
   ])
 
   if (!allowed) {
     return (
       <main className="bg-background min-h-screen">
-        <BureauAccessDenied />
+        {plainMember ? <MemberSpaceAccessDenied /> : <BureauAccessDenied />}
       </main>
     )
   }

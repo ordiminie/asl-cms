@@ -124,7 +124,7 @@ export function MemberProfileForm({
       setHolder({id: result.memberProfileId, name: result.name})
     } else if (result.status === 'error') {
       setFailure(result.message)
-    } else {
+    } else if (result.status === 'saved') {
       savedRef.current = true
       router.push(
         saleReturn

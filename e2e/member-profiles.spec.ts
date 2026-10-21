@@ -14,8 +14,9 @@ import {Client} from 'pg'
  * Ce que seuls un navigateur, deux domaines et une vraie base prouvent : la
  * lecture datée **réelle** du propriétaire d'une parcelle (la requête du DAO,
  * rejouée en SQL sous le scope du tenant), l'immuabilité d'une période close
- * (instantané SQL avant / après une vente faite à l'écran), l'absence de tout
- * compte créé par une fiche, et la RLS forcée sur les trois tables.
+ * (instantané SQL avant / après une vente faite à l'écran), le compte qu'une
+ * fiche à adresse fait naître (s12d) et lui seul, et la RLS forcée sur les
+ * trois tables.
  *
  * `localhost` sert TechCorp Solutions, `127.0.0.1` Marketing Pro (seed). Le
  * seed porte la parcelle 47 de TechCorp vendue : Dubois du 03/02/1998, Roy à
@@ -213,10 +214,11 @@ const ownerAt = async (
   })
 
 /**
- * Les comptes et les appartenances qu'une fiche aurait pu faire naître : un
- * `user` portant son nom ou son email, et ses lignes `member`. s12 n'en crée
- * aucun. La recherche est ciblée, pour ne pas dépendre des comptes que
- * d'autres specs créent en parallèle.
+ * Les comptes et les appartenances qu'une fiche a fait naître : un `user`
+ * portant son nom ou son email, et ses lignes `member`. Sans adresse, aucun ;
+ * avec une adresse, un compte et sa ligne `member` (s12d). La recherche est
+ * ciblée, pour ne pas dépendre des comptes que d'autres specs créent en
+ * parallèle.
  */
 const accountsBornFrom = (input: {name: string; email?: string}) =>
   withAppRoleClient(async (client) => {
@@ -230,7 +232,11 @@ const accountsBornFrom = (input: {name: string; email?: string}) =>
     return result.rows[0]
   })
 
-/** Chaque essai nettoie ce qu'il a écrit : une base locale se relit deux fois. */
+/**
+ * Chaque essai nettoie ce qu'il a écrit : une base locale se relit deux fois.
+ * Les comptes ouverts par ses fiches à adresse (s12d) partent aussi, avec
+ * leurs lignes `member` (cascade) ; jamais un compte du seed.
+ */
 const cleanUpRun = () =>
   asMaintenance(async (client) => {
     await client.query(
@@ -244,6 +250,9 @@ const cleanUpRun = () =>
     ])
     await client.query(`delete from member_profile where name like $1`, [
       `% s12-${RUN}`,
+    ])
+    await client.query(`delete from "user" where email like $1`, [
+      `%-${RUN}@example.test`,
     ])
   })
 
@@ -756,8 +765,8 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
       })
       expect(
         await accountsBornFrom({name, email}),
-        'renseigner un email n’ouvre aucun compte (s12d)'
-      ).toEqual({users: 0, members: 0})
+        'renseigner un email ouvre un compte et une seule appartenance (s12d)'
+      ).toEqual({users: 1, members: 1})
     } finally {
       await bureau.context().close()
     }

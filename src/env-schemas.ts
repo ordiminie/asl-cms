@@ -150,9 +150,14 @@ export const clientSchema = {
     .string()
     .default('true')
     .transform((val) => val === 'true'),
+  /**
+   * Ferme par defaut (s12d) : `changeEmail` de Better Auth change `user.email`
+   * dans toutes les associations sans que la fiche suive. s16 le rouvrira en
+   * synchronisant fiche et compte.
+   */
   NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL: z
     .string()
-    .default('true')
+    .default('false')
     .transform((val) => val === 'true'),
 
   // API URL (optionnel)

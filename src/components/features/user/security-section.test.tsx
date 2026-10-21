@@ -1,14 +1,16 @@
-import {describe, expect, it, vi} from 'vitest'
+import {afterEach, describe, expect, it, vi} from 'vitest'
 
 import {render, screen} from '@/__tests__/customRender'
 
+const config = vi.hoisted(() => ({
+  changeEmail: true,
+  changePassword: true,
+  enable2FA: true,
+  enableTokenManagement: true,
+}))
+
 vi.mock('@/lib/better-auth/auth-client', () => ({
-  AuthClientAppConfig: {
-    changeEmail: true,
-    changePassword: true,
-    enable2FA: true,
-    enableTokenManagement: true,
-  },
+  AuthClientAppConfig: config,
 }))
 vi.mock('@/lib/helper/auth-helper', () => ({
   shouldShowChangeEmail: () => true,
@@ -45,5 +47,20 @@ describe('/account — cartes de sécurité (s46, design écran 2)', () => {
     const stack = screen.getByTestId('change-email').closest('.space-y-6')
     expect(stack).not.toBeNull()
     expect(stack).toHaveClass('space-y-6', 'lg:space-y-8')
+  })
+})
+
+describe('/account — changement d’adresse fermé (s12d)', () => {
+  afterEach(() => {
+    config.changeEmail = true
+  })
+
+  it('ne montre pas la carte « Adresse email » quand le drapeau est faux', () => {
+    config.changeEmail = false
+
+    render(<UserSecurityFactorSection user={user} />)
+
+    expect(screen.queryByTestId('change-email')).toBeNull()
+    expect(screen.getByTestId('change-password')).toBeInTheDocument()
   })
 })

@@ -1,7 +1,7 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
-import {AlertTriangle, CircleCheck} from 'lucide-react'
+import {AlertTriangle, CircleCheck, Lock} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 import {
@@ -12,7 +12,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import {FormProvider, useForm} from 'react-hook-form'
+import {FormProvider, useForm, useWatch} from 'react-hook-form'
 
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {
@@ -34,8 +34,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {sameEmail} from '@/services/rules/member-account-rules'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
-import type {MemberProfileDTO} from '@/services/types/domain/member-profile-types'
+import type {
+  MemberAccountChange,
+  MemberProfileAccountDTO,
+  MemberProfileDTO,
+} from '@/services/types/domain/member-profile-types'
 import type {
   CurrentParcelDTO,
   FormerParcelDTO,
@@ -79,8 +84,15 @@ type MemberProfileDetailProps = {
 }
 
 type Notice =
-  | {kind: 'created'}
-  | {kind: 'contactSaved'}
+  | {kind: 'created'; account: MemberProfileAccountDTO}
+  | {
+      kind: 'contactSaved'
+      change: MemberAccountChange
+      /** La nouvelle adresse, en minuscules : celle du compte ouvert. */
+      email: string
+      /** L'adresse de connexion avant l'enregistrement. */
+      previous: string | null
+    }
   | {kind: 'attached'; parcel: AttachedParcel}
   | {kind: 'sold'; parcel: FormerParcelDTO}
 
@@ -89,8 +101,9 @@ const arrivalNoticeOf = (input: {
   created: boolean
   soldParcelId?: string
   parcels: MemberParcelsDTO
+  account: MemberProfileAccountDTO
 }): Notice | null => {
-  if (input.created) return {kind: 'created'}
+  if (input.created) return {kind: 'created', account: input.account}
 
   const sold = input.parcels.former
     .filter((parcel) => parcel.parcelId === input.soldParcelId)
@@ -103,10 +116,9 @@ type Editing = {focus?: MemberProfileFormField}
 const DATA_CLASS = 'font-mono font-medium tabular-nums'
 
 /**
- * Fiche d'un proprietaire (ecran 3 du design s12) : ses coordonnees,
- * modifiables en place, et ses parcelles, presentes et passees. La carte
- * « Acces a l'espace membre » n'est pas ici : s12 n'ouvre aucun compte (s12d) ;
- * « courrier uniquement » se lit dans les badges.
+ * Fiche d'un proprietaire (ecran 3 du design s12, ecran A de s12d) : ses
+ * coordonnees, modifiables en place, l'acces a l'espace membre, qui suit
+ * l'adresse email, et ses parcelles, presentes et passees.
  */
 export function MemberProfileDetail({
   profile,
@@ -125,7 +137,9 @@ export function MemberProfileDetail({
   // Next conserve la fiche montee entre deux navigations (`<Activity>`, sans
   // egard aux parametres de recherche) : l'alerte d'arrivee se lit donc dans
   // les props de l'URL courante, jamais dans un etat fige au montage.
-  const notice = pageNotice ?? arrivalNoticeOf({created, soldParcelId, parcels})
+  const notice =
+    pageNotice ??
+    arrivalNoticeOf({created, soldParcelId, parcels, account: profile.account})
 
   useEffect(() => {
     if (pageNotice) noticeRef.current?.focus()
@@ -193,14 +207,26 @@ export function MemberProfileDetail({
             focus={editing.focus}
             action={updateContactAction}
             onCancel={() => setEditing(null)}
-            onSaved={() => {
+            onSaved={({change, email}) => {
               setEditing(null)
-              setPageNotice({kind: 'contactSaved'})
+              setPageNotice({
+                kind: 'contactSaved',
+                change,
+                email: email.trim().toLowerCase(),
+                previous:
+                  profile.account.status === 'open'
+                    ? profile.account.loginEmail
+                    : null,
+              })
             }}
           />
         ) : (
           <ContactView profile={profile} onEdit={() => setEditing({})} />
         )}
+      </DetailCard>
+
+      <DetailCard title={t('detail.access.title')}>
+        <AccessState name={profile.name} account={profile.account} />
       </DetailCard>
 
       <DetailCard
@@ -298,7 +324,130 @@ function NoticeMessage({notice, name}: {notice: Notice; name: string}) {
     )
   }
 
-  return t(`detail.${notice.kind}`)
+  if (notice.kind === 'created') {
+    return (
+      <TitledNotice
+        title={t('detail.created')}
+        detail={
+          notice.account.status === 'open'
+            ? t('detail.accountOpenedOnCreate', {
+                name,
+                email: notice.account.loginEmail,
+              })
+            : null
+        }
+      />
+    )
+  }
+
+  return (
+    <TitledNotice
+      title={t('detail.contactSaved')}
+      detail={
+        notice.change
+          ? t(`detail.accountChange.${notice.change}`, {
+              name,
+              email: notice.email,
+              previous: notice.previous ?? '',
+            })
+          : null
+      }
+    />
+  )
+}
+
+/** Le titre d'une confirmation, puis ce qui a change de l'acces (s12d). */
+function TitledNotice({title, detail}: {title: string; detail: string | null}) {
+  if (!detail) return title
+
+  return (
+    <>
+      <p className="font-semibold">{title}</p>
+      <p>{detail}</p>
+    </>
+  )
+}
+
+const strong = (chunks: ReactNode) => <strong>{chunks}</strong>
+
+/**
+ * L'etat **enregistre** du compte de la fiche (s12d) : ouvert, avec l'adresse
+ * de connexion, ou courrier uniquement. Aucune action : l'acces se pilote par
+ * l'adresse email.
+ */
+function AccessState({
+  name,
+  account,
+}: {
+  name: string
+  account: MemberProfileAccountDTO
+}) {
+  const t = useTranslations('BureauMemberProfilesPage.detail.access')
+
+  return (
+    <div className="flex items-start gap-3">
+      <Lock
+        aria-hidden="true"
+        className="text-primary mt-0.5 size-5 shrink-0"
+        strokeWidth={1.75}
+      />
+      <div className="flex flex-col gap-1">
+        <p className="text-[17px]">
+          {account.status === 'open'
+            ? t.rich('open', {name, email: account.loginEmail, strong})
+            : t.rich('mailOnly', {strong})}
+        </p>
+        {account.status === 'open' && account.boardRole && (
+          <p className="text-muted-foreground text-[15px]">
+            {t(account.boardRole)}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Avertissement sous le champ email, avant l'enregistrement (s12d, A3, A6,
+ * A10) : vider l'adresse ferme l'acces ; la remplacer le deplace. Rien pour
+ * le bureau qui vide son adresse : le refus vient a l'enregistrement.
+ */
+function EmailAccessWarning({
+  name,
+  account,
+}: {
+  name: string
+  account: MemberProfileAccountDTO
+}) {
+  const t = useTranslations('BureauMemberProfilesPage.detail.emailWarnings')
+  const email = ((useWatch({name: 'email'}) as string | undefined) ?? '').trim()
+
+  if (account.status !== 'open') return null
+  if (!email && account.boardRole) return null
+  if (email && sameEmail(email, account.loginEmail)) return null
+
+  return (
+    <Alert className="border-warning-border bg-warning text-warning-foreground border-2 [&>svg]:size-5">
+      <AlertTriangle aria-hidden="true" />
+      <AlertDescription className="text-warning-foreground text-base">
+        {email ? (
+          <>
+            <p>
+              {t.rich('replaced', {
+                name,
+                previous: account.loginEmail,
+                email,
+                strong,
+              })}
+            </p>
+            {account.boardRole && <p>{t('roleFollows')}</p>}
+          </>
+        ) : (
+          <p>{t.rich('removed', {name, strong})}</p>
+        )}
+      </AlertDescription>
+    </Alert>
+  )
 }
 
 function DetailCard({
@@ -395,7 +544,7 @@ function ContactForm({
   focus?: MemberProfileFormField
   action: MemberProfileFormAction
   onCancel: () => void
-  onSaved: () => void
+  onSaved: (saved: {change: MemberAccountChange; email: string}) => void
 }) {
   const t = useTranslations('BureauMemberProfilesPage')
   const form = useForm<MemberContactFormSchemaType>({
@@ -415,6 +564,9 @@ function ContactForm({
   const [submitted, setSubmitted] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
   const [holder, setHolder] = useState<{id: string; name: string} | null>(null)
+  const [boardRefusal, setBoardRefusal] = useState(false)
+  const emailRequired =
+    profile.account.status === 'open' && profile.account.boardRole !== null
 
   useEffect(() => {
     if (focus && focus !== 'name') setFocus(focus)
@@ -423,6 +575,7 @@ function ContactForm({
   const onValid = async (values: MemberContactFormSchemaType) => {
     setFailure(null)
     setHolder(null)
+    setBoardRefusal(false)
     const formData = new FormData()
     formData.set('memberProfileId', profile.id)
     for (const field of MEMBER_CONTACT_FORM_FIELDS) {
@@ -438,10 +591,15 @@ function ContactForm({
       }
     } else if (result.status === 'email_taken') {
       setHolder({id: result.memberProfileId, name: result.name})
+    } else if (result.status === 'board_email_required') {
+      setBoardRefusal(true)
+      form.setError('email', {
+        message: t('detail.boardEmailRequired.field'),
+      })
     } else if (result.status === 'error') {
       setFailure(result.message)
     } else {
-      onSaved()
+      onSaved({change: result.accountChange, email: values.email})
     }
   }
 
@@ -455,11 +613,23 @@ function ContactForm({
         }}
         className="flex flex-col gap-6"
       >
-        {submitted && (
-          <MemberFormErrorSummary
-            idPrefix={CONTACT_ID_PREFIX}
-            fields={MEMBER_CONTACT_FORM_FIELDS}
-          />
+        {boardRefusal ? (
+          <Alert
+            variant="destructive"
+            className="border-destructive border-2 [&>svg]:size-5"
+          >
+            <AlertTriangle aria-hidden="true" />
+            <AlertDescription className="text-foreground text-base">
+              {t('detail.boardEmailRequired.summary', {name: profile.name})}
+            </AlertDescription>
+          </Alert>
+        ) : (
+          submitted && (
+            <MemberFormErrorSummary
+              idPrefix={CONTACT_ID_PREFIX}
+              fields={MEMBER_CONTACT_FORM_FIELDS}
+            />
+          )
         )}
         {failure && (
           <Alert variant="destructive" className="border-2">
@@ -471,10 +641,17 @@ function ContactForm({
         )}
         <MemberContactFields
           idPrefix={CONTACT_ID_PREFIX}
+          emailRequired={emailRequired}
           afterEmail={
-            holder && (
-              <EmailHolder memberProfileId={holder.id} name={holder.name} />
-            )
+            <>
+              {holder && (
+                <EmailHolder memberProfileId={holder.id} name={holder.name} />
+              )}
+              <EmailAccessWarning
+                name={profile.name}
+                account={profile.account}
+              />
+            </>
           }
         />
         <div className="flex flex-col gap-3 sm:flex-row">

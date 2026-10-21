@@ -1,6 +1,11 @@
 import {headers} from 'next/headers'
 import {cache} from 'react'
 
+import {
+  canOpenSessionOn,
+  organizationOfRequest,
+} from '@/lib/better-auth/association-membership'
+import {requestHostOf} from '@/lib/better-auth/association-origin'
 import {auth} from '@/lib/better-auth/auth'
 import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
 
@@ -8,12 +13,22 @@ import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
  * Récupère l'utilisateur connecté a partir de la session enrichie
  * Attention : expose toutes les données
  * préferer 'getAuthUserDTO' pour exposition aux clients
+ *
+ * A chaque lecture, la regle d'ouverture de session de l'ADR 034 est
+ * rejouee sur l'association du domaine appele (s12d, ADR 038) : un compte
+ * dont l'acces a ete ferme est traite comme non connecte, a la requete
+ * suivante, meme si sa session est encore ouverte. Le SuperAdmin passe
+ * partout.
  * @returns L'utilisateur connecté avec organizations et settings
  */
 export const getAuthUser = cache(async () => {
   const session = await getSessionAuth()
   if (!session?.session?.userId) return
-  // La session est maintenant enrichie avec customSession, pas besoin d'appel séparé à getUserByIdDao
+  // customSession relit le compte et ses appartenances en base a chaque appel
+  const organization = await organizationOfRequest(
+    requestHostOf(await headers())
+  )
+  if (!session.user || !canOpenSessionOn(session.user, organization)) return
   return session.user
 })
 

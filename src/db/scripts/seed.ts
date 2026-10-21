@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 /* eslint-disable no-restricted-properties */
 
+import {registerHooks} from 'node:module'
+
 import pg from 'pg'
 
 import {resolveMigrationUrl} from './db-url'
@@ -654,6 +656,12 @@ const seed = async () => {
   }
   await client.query(`SET app.bypass_rls = 'off';`)
 
+  // 16. Comptes des fiches a adresse (s12d, critere 2, ADR 037)
+  //
+  // Par le service de l'application, pas par du SQL : la reprise des fiches
+  // existantes est celle que s13 rejouera a l'import. Idempotente.
+  await openSeedMemberAccounts(client)
+
   const end = Date.now()
 
   console.log('✅ Seed inserted in', end - start, 'ms')
@@ -718,6 +726,40 @@ const seed = async () => {
   console.log('')
 
   process.exit(0)
+}
+
+/**
+ * Ouvre le compte de chaque fiche a adresse des associations de test, par
+ * `openMemberAccountsForOrganization`, sous le role applicatif et le scope du
+ * tenant. Les services sont gardes par `server-only`, que Next resout sous la
+ * condition `react-server` : meme resolution que `ops:bootstrap`.
+ */
+const openSeedMemberAccounts = async (client: pg.Client) => {
+  registerHooks({
+    resolve: (specifier, context, nextResolve) =>
+      specifier === 'server-only'
+        ? nextResolve(specifier, {
+            ...context,
+            conditions: [...context.conditions, 'react-server'],
+          })
+        : nextResolve(specifier, context),
+  })
+  const {openMemberAccountsForOrganization} =
+    await import('@/services/member-account-service')
+
+  const slugs = [
+    ...new Set(TEST_MEMBER_PROFILES.map((row) => row.organizationSlug)),
+  ]
+  const {rows} = await client.query<{id: string; slug: string}>(
+    `SELECT id, slug FROM "organization" WHERE slug = ANY($1)`,
+    [slugs]
+  )
+  for (const organization of rows) {
+    const {opened} = await openMemberAccountsForOrganization(organization.id)
+    console.log(
+      `🔑 ${organization.slug} : ${opened} compte(s) de fiche ouvert(s)`
+    )
+  }
 }
 
 export default seed

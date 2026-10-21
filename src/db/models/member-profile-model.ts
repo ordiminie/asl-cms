@@ -8,7 +8,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 
-import {organization} from './auth-model'
+import {organization, user} from './auth-model'
 
 /**
  * Fiche d'un proprietaire (s12, ADR 029). Table metier : RLS forcee, policy
@@ -26,6 +26,10 @@ import {organization} from './auth-model'
  *   liront ne peut pas diverger de l'email.
  * - Aucune colonne de parcelle : le lien fiche ↔ parcelle est date, dans
  *   `parcel_ownership`.
+ * - `user_id` designe le compte ouvert pour la fiche (s12d, ADR 037) : nul
+ *   tant que la fiche n'a pas de compte, vide a la fermeture. Unique par
+ *   association ; `ON DELETE SET NULL` pour qu'un compte supprime laisse la
+ *   fiche intacte.
  */
 export const memberProfile = pgTable(
   'member_profile',
@@ -43,6 +47,7 @@ export const memberProfile = pgTable(
     addressComplement: text('address_complement'),
     postalCode: text('postal_code'),
     city: text('city'),
+    userId: uuid('user_id').references(() => user.id, {onDelete: 'set null'}),
     mailOnly: boolean('mail_only')
       .generatedAlwaysAs((): SQL => sql`"email" IS NULL`)
       .notNull(),
@@ -57,6 +62,9 @@ export const memberProfile = pgTable(
     uniqueIndex('member_profile_organization_email_idx')
       .on(table.organizationId, sql`lower(${table.email})`)
       .where(sql`${table.email} is not null`),
+    uniqueIndex('member_profile_organization_user_idx')
+      .on(table.organizationId, table.userId)
+      .where(sql`${table.userId} is not null`),
   ]
 )
 

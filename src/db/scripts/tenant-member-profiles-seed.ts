@@ -12,6 +12,11 @@
  * demi-ouverte : le jour de la vente appartient a l'acquereur). Marketing Pro
  * a ses propres fiches, dont une parcelle **de meme numero** : un numero n'est
  * unique que dans une association.
+ *
+ * s12d : les fiches a adresse recoivent un compte au seed (critere 2). Lucie
+ * Moreau a une parcelle actuelle et une ancienne (« Mes parcelles ») ; Gerard
+ * Pommier a une fiche, et la meme adresse, dans les deux associations : un
+ * seul compte, deux espaces (critere 3).
  */
 export type TestMemberProfile = {
   id: string
@@ -42,8 +47,13 @@ const DUBOIS_ID = 'a1200000-0000-4000-8000-000000000002'
 const ROY_ID = 'a1200000-0000-4000-8000-000000000003'
 const LAURENT_ID = 'a1200000-0000-4000-8000-000000000004'
 const FERRAND_ID = 'a1200000-0000-4000-8000-000000000005'
+const MOREAU_ID = 'a1200000-0000-4000-8000-000000000006'
+const POMMIER_TECHCORP_ID = 'a1200000-0000-4000-8000-000000000007'
 const SCI_PINS_ID = 'b1200000-0000-4000-8000-000000000001'
 const FERREIRA_ID = 'b1200000-0000-4000-8000-000000000002'
+const POMMIER_MARKETING_ID = 'b1200000-0000-4000-8000-000000000003'
+
+const POMMIER_EMAIL = 'gerard.pommier@example.test'
 
 const NO_CONTACT = {
   email: null,
@@ -99,6 +109,23 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
   },
   {
     ...NO_CONTACT,
+    id: MOREAU_ID,
+    organizationSlug: TECHCORP,
+    name: 'Lucie Moreau',
+    email: 'lucie.moreau@example.test',
+    addressLine: '5 impasse des Bruyères',
+    postalCode: '33680',
+    city: 'Lacanau',
+  },
+  {
+    ...NO_CONTACT,
+    id: POMMIER_TECHCORP_ID,
+    organizationSlug: TECHCORP,
+    name: 'Gérard Pommier',
+    email: POMMIER_EMAIL,
+  },
+  {
+    ...NO_CONTACT,
     id: SCI_PINS_ID,
     organizationSlug: MARKETING,
     name: 'SCI Les Pins',
@@ -115,6 +142,13 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     addressLine: '27 avenue des Dunes',
     postalCode: '40600',
     city: 'Biscarrosse',
+  },
+  {
+    ...NO_CONTACT,
+    id: POMMIER_MARKETING_ID,
+    organizationSlug: MARKETING,
+    name: 'Gérard Pommier',
+    email: POMMIER_EMAIL,
   },
 ]
 
@@ -176,6 +210,38 @@ export const TEST_PARCEL_OWNERSHIPS: readonly TestParcelOwnership[] = [
     endsOn: null,
   },
   {
+    id: 'a1200000-0000-4000-8000-0000000000a8',
+    organizationSlug: TECHCORP,
+    parcelNumber: '21',
+    memberProfileId: MOREAU_ID,
+    startsOn: '2011-04-02',
+    endsOn: null,
+  },
+  {
+    id: 'a1200000-0000-4000-8000-0000000000a9',
+    organizationSlug: TECHCORP,
+    parcelNumber: '9',
+    memberProfileId: MOREAU_ID,
+    startsOn: '2003-05-14',
+    endsOn: '2019-10-01',
+  },
+  {
+    id: 'a1200000-0000-4000-8000-0000000000aa',
+    organizationSlug: TECHCORP,
+    parcelNumber: '9',
+    memberProfileId: LAURENT_ID,
+    startsOn: '2019-10-01',
+    endsOn: null,
+  },
+  {
+    id: 'a1200000-0000-4000-8000-0000000000ab',
+    organizationSlug: TECHCORP,
+    parcelNumber: '33',
+    memberProfileId: POMMIER_TECHCORP_ID,
+    startsOn: '2016-08-22',
+    endsOn: null,
+  },
+  {
     id: 'b1200000-0000-4000-8000-0000000000b1',
     organizationSlug: MARKETING,
     parcelNumber: '47',
@@ -189,6 +255,14 @@ export const TEST_PARCEL_OWNERSHIPS: readonly TestParcelOwnership[] = [
     parcelNumber: '8',
     memberProfileId: FERREIRA_ID,
     startsOn: '2019-10-07',
+    endsOn: null,
+  },
+  {
+    id: 'b1200000-0000-4000-8000-0000000000b3',
+    organizationSlug: MARKETING,
+    parcelNumber: '21',
+    memberProfileId: POMMIER_MARKETING_ID,
+    startsOn: '2018-03-15',
     endsOn: null,
   },
 ]

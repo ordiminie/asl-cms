@@ -1,4 +1,4 @@
-import {MemberProfileDTO} from '../types/domain/member-profile-types'
+import {MemberProfileFieldsDTO} from '../types/domain/member-profile-types'
 import {isIncomplete} from './parcel-ownership-rules'
 
 /**
@@ -6,8 +6,8 @@ import {isIncomplete} from './parcel-ownership-rules'
  * « incomplete », calculee a la lecture (decision G) et jamais stockee.
  */
 export const toMemberProfileDto = (
-  row: Omit<MemberProfileDTO, 'incomplete'>
-): MemberProfileDTO => ({
+  row: Omit<MemberProfileFieldsDTO, 'incomplete'>
+): MemberProfileFieldsDTO => ({
   id: row.id,
   organizationId: row.organizationId,
   name: row.name,

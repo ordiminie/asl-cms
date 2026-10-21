@@ -8,6 +8,7 @@ import {
   MEMBER_PROFILE_PHONE_MAX_LENGTH,
   MEMBER_PROFILE_PHONE_PATTERN,
   MEMBER_PROFILE_POSTAL_CODE_PATTERN,
+  type MemberAccountChange,
 } from '@/services/types/domain/member-profile-types'
 import {
   type OwnershipConflictDTO,
@@ -119,7 +120,14 @@ export type MemberProfileFormField = (typeof MEMBER_PROFILE_FORM_FIELDS)[number]
 
 /** Resultat d'un enregistrement de fiche, rendu par les Server Actions. */
 export type MemberProfileActionResult =
-  | {status: 'saved'; memberProfileId: string}
+  | {
+      status: 'saved'
+      memberProfileId: string
+      /** Ce que l'enregistrement a fait du compte (s12d). */
+      accountChange: MemberAccountChange
+    }
+  /** Adresse d'un membre du bureau videe : refusee, rien n'est ecrit (s12d). */
+  | {status: 'board_email_required'}
   | {
       status: 'invalid'
       errors: {field: MemberProfileFormField; message: string}[]

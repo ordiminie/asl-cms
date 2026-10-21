@@ -232,6 +232,13 @@
       "when": 1792155670660,
       "tag": "0032_classy_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792575588616,
+      "tag": "0033_old_doctor_octopus",
+      "breakpoints": true
     }
   ]
 }

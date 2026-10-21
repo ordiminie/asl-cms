@@ -25,8 +25,9 @@ type MemberTextFieldProps = Omit<ComponentProps<'input'>, 'name' | 'id'> & {
 }
 
 /**
- * Un champ texte d'une fiche : libelle, « Facultatif » ecrit, aide, puis
- * l'erreur aux trois signaux (bordure 2 px, message sous le champ, resume).
+ * Un champ texte d'une fiche : libelle, « Facultatif » ecrit, le champ, l'aide
+ * sous le champ (design system §3.1), puis l'erreur aux trois signaux
+ * (bordure 2 px, message sous le champ, resume).
  */
 export function MemberTextField({
   idPrefix,
@@ -58,11 +59,6 @@ export function MemberTextField({
           </>
         )}
       </Label>
-      {help && (
-        <p id={`${id}-help`} className="text-muted-foreground text-base">
-          {t(`fields.${name}.help`)}
-        </p>
-      )}
       <Input
         id={id}
         aria-invalid={error ? true : undefined}
@@ -74,6 +70,11 @@ export function MemberTextField({
         {...inputProps}
         {...register(name)}
       />
+      {help && (
+        <p id={`${id}-help`} className="text-muted-foreground text-base">
+          {t(`fields.${name}.help`)}
+        </p>
+      )}
       {error && (
         <p
           id={`${id}-error`}
@@ -89,8 +90,16 @@ export function MemberTextField({
 
 type MemberContactFieldsProps = {
   idPrefix: string
-  /** Ce qui s'ecrit sous le champ email : la fiche qui porte deja l'adresse. */
+  /**
+   * Ce qui s'ecrit sous le champ email : la fiche qui porte deja l'adresse,
+   * l'avertissement d'un acces qui change (s12d).
+   */
   afterEmail?: ReactNode
+  /**
+   * L'adresse d'un membre du bureau ne se supprime pas (s12d) : pas de
+   * « Facultatif ».
+   */
+  emailRequired?: boolean
 }
 
 /**
@@ -101,6 +110,7 @@ type MemberContactFieldsProps = {
 export function MemberContactFields({
   idPrefix,
   afterEmail,
+  emailRequired = false,
 }: MemberContactFieldsProps) {
   const t = useTranslations('BureauMemberProfilesPage')
   const email = useWatch({name: 'email'}) as string | undefined
@@ -115,7 +125,7 @@ export function MemberContactFields({
         autoComplete="off"
         autoCapitalize="none"
         spellCheck={false}
-        optional
+        optional={!emailRequired}
         help
         after={afterEmail}
       />

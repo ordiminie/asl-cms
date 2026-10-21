@@ -170,4 +170,28 @@ describe('seed des propriétaires et des parcelles (s12, ADR 029)', () => {
       expect(new Set(emails).size, slug).toBe(emails.length)
     }
   })
+
+  it('donne à TechCorp une propriétaire à adresse avec une parcelle actuelle et une ancienne (s12d, écran C2)', () => {
+    const moreau = profileNamed(TECHCORP, 'Lucie Moreau')
+    const former = ownershipsOf(TECHCORP).filter(
+      (row) => row.memberProfileId === moreau.id && row.endsOn !== null
+    )
+
+    expect(moreau.email).not.toBeNull()
+    expect(currentParcelsOf(TECHCORP, moreau.id)).toHaveLength(1)
+    expect(former).toHaveLength(1)
+  })
+
+  it('porte une même adresse sur deux associations, avec une parcelle dans chacune (s12d, critère 3)', () => {
+    const atTechcorp = profileNamed(TECHCORP, 'Gérard Pommier')
+    const atMarketing = profileNamed(MARKETING, 'Gérard Pommier')
+
+    expect(atTechcorp.email).not.toBeNull()
+    expect(atTechcorp.email?.toLowerCase()).toBe(
+      atMarketing.email?.toLowerCase()
+    )
+    expect(atTechcorp.id).not.toBe(atMarketing.id)
+    expect(currentParcelsOf(TECHCORP, atTechcorp.id)).toHaveLength(1)
+    expect(currentParcelsOf(MARKETING, atMarketing.id)).toHaveLength(1)
+  })
 })

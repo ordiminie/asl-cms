@@ -25,8 +25,22 @@ const profile = (
   city: 'Lacanau',
   mailOnly: true,
   incomplete: false,
+  account: {status: 'mail_only'},
   ...overrides,
 })
+
+const OPEN_PROFILE = profile({
+  email: 'helene@example.test',
+  mailOnly: false,
+  account: {status: 'open', loginEmail: 'helene@example.test', boardRole: null},
+})
+
+const boardProfile = (boardRole: 'board' | 'owner') =>
+  profile({
+    email: 'helene@example.test',
+    mailOnly: false,
+    account: {status: 'open', loginEmail: 'helene@example.test', boardRole},
+  })
 
 const NO_PARCELS: MemberParcelsDTO = {current: [], former: []}
 
@@ -246,14 +260,6 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
     renderDetail({parcels: NO_PARCELS, soldParcelId: PARCEL_47})
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-  })
-
-  it('ne livre pas la carte « Accès à l’espace membre » (s12d)', () => {
-    renderDetail()
-
-    expect(
-      screen.queryByText(/Accès à l’espace membre|Accès à l'espace membre/)
-    ).not.toBeInTheDocument()
   })
 })
 
@@ -655,5 +661,231 @@ describe('MemberProfileDetail — l’alerte d’arrivée suit l’URL courante'
     const status = await screen.findByRole('status')
     expect(status).toHaveTextContent('Coordonnées enregistrées.')
     expect(status).toHaveFocus()
+  })
+})
+
+describe('MemberProfileDetail — carte « Accès à l’espace membre » (s12d)', () => {
+  const accessCard = () =>
+    screen.getByRole('region', {name: 'Accès à l’espace membre'})
+
+  it('dit qu’une fiche sans adresse n’a pas de compte, sans aucune action', () => {
+    renderDetail()
+
+    expect(accessCard()).toHaveTextContent(
+      'Joignable par courrier uniquement. Aucun compte : ajoutez une adresse email pour lui ouvrir son espace.'
+    )
+    expect(within(accessCard()).queryByRole('button')).toBeNull()
+    expect(within(accessCard()).queryByRole('link')).toBeNull()
+  })
+
+  it('dit le compte ouvert et l’adresse de connexion', () => {
+    renderDetail({profile: OPEN_PROFILE})
+
+    expect(accessCard()).toHaveTextContent(
+      'Compte ouvert. Hélène Roy peut se connecter à son espace avec helene@example.test.'
+    )
+    expect(accessCard()).not.toHaveTextContent('Membre du bureau')
+  })
+
+  it.each([
+    [
+      'board',
+      'Membre du bureau : son adresse peut être modifiée, pas supprimée.',
+    ],
+    ['owner', 'Président(e) : son adresse peut être modifiée, pas supprimée.'],
+  ] as const)('dit le rôle %s au bureau', (role, text) => {
+    renderDetail({profile: boardProfile(role)})
+
+    expect(accessCard()).toHaveTextContent(text)
+  })
+
+  it('montre l’état enregistré pendant une modification non validée', async () => {
+    renderDetail({profile: OPEN_PROFILE})
+
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Modifier les coordonnées'})
+    )
+    await userEvent.clear(screen.getByLabelText(/Adresse email/))
+
+    expect(accessCard()).toHaveTextContent(
+      'Compte ouvert. Hélène Roy peut se connecter à son espace avec helene@example.test.'
+    )
+  })
+})
+
+describe('MemberProfileDetail — création (écran B, s12d)', () => {
+  it('dit le compte ouvert à l’arrivée d’une fiche créée avec une adresse (B1)', () => {
+    renderDetail({created: true, profile: OPEN_PROFILE})
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Propriétaire enregistré.')
+    expect(status).toHaveTextContent(
+      'Compte ouvert : Hélène Roy peut se connecter avec helene@example.test.'
+    )
+  })
+
+  it('ne dit que l’enregistrement pour une fiche créée sans adresse (B2)', () => {
+    renderDetail({created: true})
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent(/^Propriétaire enregistré\.$/)
+  })
+})
+
+describe('MemberProfileDetail — l’accès suit l’adresse (écran A, s12d)', () => {
+  const editContact = async () => {
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Modifier les coordonnées'})
+    )
+    return screen.getByLabelText(/Adresse email/)
+  }
+
+  const save = () =>
+    userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer les coordonnées'})
+    )
+
+  it('avertit sous le champ, avant l’enregistrement, quand l’adresse est vidée (A3)', async () => {
+    renderDetail({profile: OPEN_PROFILE})
+    const email = await editContact()
+
+    await userEvent.clear(email)
+
+    expect(
+      screen.getByText(
+        /Sans adresse email, Hélène Roy ne pourra plus se connecter à son espace\. Sa fiche, ses parcelles et son historique sont conservés\. Les envois partiront par courrier\./
+      )
+    ).toBeInTheDocument()
+    expect(actions.updateContactAction).not.toHaveBeenCalled()
+  })
+
+  it('avertit quand l’adresse est remplacée (A6)', async () => {
+    renderDetail({profile: OPEN_PROFILE})
+    const email = await editContact()
+
+    await userEvent.clear(email)
+    await userEvent.type(email, 'h.roy@example.test')
+
+    expect(
+      screen.getByText(
+        /Hélène Roy ne pourra plus se connecter avec helene@example\.test\. Son espace s’ouvrira avec h\.roy@example\.test\./
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('Son rôle au bureau suit la nouvelle adresse.')
+    ).toBeNull()
+  })
+
+  it('dit au bureau que le rôle suit la nouvelle adresse (A10)', async () => {
+    renderDetail({profile: boardProfile('board')})
+    const email = await editContact()
+
+    await userEvent.clear(email)
+    await userEvent.type(email, 'h.roy@example.test')
+
+    expect(
+      screen.getByText(/Son rôle au bureau suit la nouvelle adresse\./)
+    ).toBeInTheDocument()
+  })
+
+  it('n’avertit pas quand seule la casse change', async () => {
+    renderDetail({profile: OPEN_PROFILE})
+    const email = await editContact()
+
+    await userEvent.clear(email)
+    await userEvent.type(email, 'Helene@Example.test')
+
+    expect(screen.queryByText(/ne pourra plus se connecter/)).toBeNull()
+  })
+
+  it('n’écrit pas « Facultatif » sur l’adresse d’un membre du bureau', async () => {
+    renderDetail({profile: boardProfile('owner')})
+    await editContact()
+
+    expect(
+      screen.getByText('Adresse email', {selector: 'label'})
+    ).not.toHaveTextContent('Facultatif')
+  })
+
+  it.each([
+    ['closed', '', 'Accès à l’espace fermé.'],
+    [
+      'opened',
+      'helene@example.test',
+      'Compte ouvert : Hélène Roy peut désormais se connecter avec helene@example.test.',
+    ],
+    [
+      'replaced',
+      'H.Roy@example.test',
+      'Hélène Roy se connecte désormais avec h.roy@example.test. L’accès avec helene@example.test est fermé.',
+    ],
+  ] as const)(
+    'confirme le changement d’accès %s (A4, A5, A7)',
+    async (accountChange, next, text) => {
+      actions.updateContactAction.mockResolvedValue({
+        status: 'saved',
+        memberProfileId: PROFILE_ID,
+        accountChange,
+      })
+      renderDetail({
+        profile: accountChange === 'opened' ? profile() : OPEN_PROFILE,
+      })
+      const email = await editContact()
+
+      await userEvent.clear(email)
+      if (next) await userEvent.type(email, next)
+      await save()
+
+      const status = await screen.findByRole('status')
+      expect(status).toHaveTextContent('Coordonnées enregistrées.')
+      expect(status).toHaveTextContent(text)
+    }
+  )
+
+  it('refuse de vider l’adresse d’un membre du bureau : résumé, message sous le champ, rien n’est enregistré (A9)', async () => {
+    actions.updateContactAction.mockResolvedValue({
+      status: 'board_email_required',
+    })
+    renderDetail({profile: boardProfile('board')})
+    const email = await editContact()
+
+    await userEvent.clear(email)
+    await save()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Hélène Roy fait partie du bureau : son adresse lui sert à se connecter. Vous pouvez la modifier, pas la supprimer. Rien n’a été enregistré.'
+    )
+    expect(
+      screen.getByText(
+        'Saisissez une adresse email : celle d’un membre du bureau ne peut pas être supprimée.'
+      )
+    ).toBeInTheDocument()
+    expect(email).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('oublie la confirmation d’accès quand la fiche est masquée par <Activity>', async () => {
+    actions.updateContactAction.mockResolvedValue({
+      status: 'saved',
+      memberProfileId: PROFILE_ID,
+      accountChange: 'closed',
+    })
+    const shown = (visible: boolean) => (
+      <Activity mode={visible ? 'visible' : 'hidden'}>
+        {detailOf({profile: OPEN_PROFILE})}
+      </Activity>
+    )
+    const {rerender} = render(shown(true))
+    const email = await editContact()
+    await userEvent.clear(email)
+    await save()
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Accès à l’espace fermé.'
+    )
+
+    rerender(shown(false))
+    rerender(shown(true))
+
+    expect(screen.queryByText('Accès à l’espace fermé.')).toBeNull()
   })
 })

@@ -1,5 +1,6 @@
 import 'server-only'
 
+import {MemberProfileModel} from '@/db/models/member-profile-model'
 import {
   countMemberProfilesDao,
   createMemberProfileTxnDao,
@@ -8,23 +9,32 @@ import {
   getMemberProfilePageDao,
   updateMemberProfileContactTxnDao,
 } from '@/db/repositories/member-profile-repository'
+import {getMemberAccountDao} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
 
 import {getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
+import {canReadMemberAccount} from './authorization/member-account-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
+import {
+  applyMemberAccountDecision,
+  getLinkedAccountRole,
+} from './member-account-service'
+import {decideMemberAccount} from './rules/member-account-rules'
 import {toMemberProfileDto} from './rules/member-profile-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   CreateMemberProfileInput,
   MEMBER_PROFILES_PAGE_SIZE,
+  MemberProfileAccountDTO,
   MemberProfileDTO,
   MemberProfilePageDTO,
   MemberProfilePageInput,
   MemberProfileWriteResult,
   UpdateMemberProfileContactInput,
 } from './types/domain/member-profile-types'
+import {User} from './types/domain/user-types'
 import {
   createMemberProfileServiceSchema,
   memberProfileOrganizationIdSchema,
@@ -37,8 +47,9 @@ import {
  * Fiches des proprietaires (s12, ADR 029). Chaque fonction : validation, puis
  * `member.profile.manage`, puis le repository sous le scope du tenant.
  *
- * s12 n'ouvre ni ne ferme aucun compte : aucun appel a `user`, a `member` ni a
- * un service de compte (s12d).
+ * Le compte d'une fiche suit son adresse (s12d, ADR 037) : l'ecriture de la
+ * fiche et celle du compte tiennent dans le meme `withTenant`, par
+ * `member-account-service`. Rien n'est envoye a l'ouverture.
  */
 
 const MANAGE_DENIED =
@@ -46,7 +57,7 @@ const MANAGE_DENIED =
 
 const requireMemberProfileManager = async (
   organizationId: string
-): Promise<void> => {
+): Promise<User | undefined> => {
   const authUser = await getAuthUser()
   if (
     !canPerformAction(
@@ -57,7 +68,41 @@ const requireMemberProfileManager = async (
   ) {
     throw new AuthorizationError(MANAGE_DENIED)
   }
+  return authUser
 }
+
+/**
+ * L'etat du compte d'une fiche (carte « Acces a l'espace membre ») : lecture
+ * de l'appartenance d'un tiers, sous son `can*` (ADR 014).
+ */
+const readAccount = async (
+  authUser: User | undefined,
+  organizationId: string,
+  userId: string | null
+): Promise<MemberProfileAccountDTO> => {
+  if (!canReadMemberAccount(authUser, organizationId)) {
+    throw new AuthorizationError(MANAGE_DENIED)
+  }
+  if (userId === null) return {status: 'mail_only'}
+
+  const account = await getMemberAccountDao(userId, organizationId)
+  if (!account) return {status: 'mail_only'}
+  return {
+    status: 'open',
+    loginEmail: account.email,
+    boardRole: account.role === 'member' ? null : account.role,
+  }
+}
+
+/** La fiche et l'etat de son compte, pour l'ecran. */
+const toProfileWithAccount = async (
+  authUser: User | undefined,
+  organizationId: string,
+  row: MemberProfileModel
+): Promise<MemberProfileDTO> => ({
+  ...toMemberProfileDto(row),
+  account: await readAccount(authUser, organizationId, row.userId),
+})
 
 /** La fiche qui detient deja cet email, pour que l'ecran y renvoie. */
 const emailTaken = async (
@@ -92,14 +137,31 @@ export const createMemberProfileService = async (
   }
 
   const {organizationId} = parsed.data
-  await requireMemberProfileManager(organizationId)
+  const authUser = await requireMemberProfileManager(organizationId)
 
   return withTenant(organizationId, async () => {
     const result = await createMemberProfileTxnDao(parsed.data)
     if (result.status === 'email_taken') {
       return emailTaken(organizationId, parsed.data.email)
     }
-    return {status: 'saved', profile: toMemberProfileDto(result.row)}
+    const {row} = result
+    const {change, userId} = await applyMemberAccountDecision({
+      organizationId,
+      profile: row,
+      decision: decideMemberAccount({
+        savedEmail: null,
+        nextEmail: row.email,
+        linkedRole: null,
+      }),
+    })
+    return {
+      status: 'saved',
+      profile: await toProfileWithAccount(authUser, organizationId, {
+        ...row,
+        userId,
+      }),
+      accountChange: change,
+    }
   })
 }
 
@@ -113,9 +175,21 @@ export const updateMemberProfileContactService = async (
   }
 
   const {organizationId, memberProfileId, ...contact} = parsed.data
-  await requireMemberProfileManager(organizationId)
+  const authUser = await requireMemberProfileManager(organizationId)
 
   return withTenant(organizationId, async () => {
+    const saved = await getMemberProfileByIdDao(memberProfileId)
+    if (!saved) return {status: 'not_found'}
+
+    const decision = decideMemberAccount({
+      savedEmail: saved.email,
+      nextEmail: contact.email,
+      linkedRole: await getLinkedAccountRole(organizationId, saved.userId),
+    })
+    if (decision.kind === 'refuse_board_removal') {
+      return {status: 'board_email_required'}
+    }
+
     const result = await updateMemberProfileContactTxnDao(
       memberProfileId,
       contact
@@ -124,7 +198,19 @@ export const updateMemberProfileContactService = async (
     if (result.status === 'email_taken') {
       return emailTaken(organizationId, contact.email)
     }
-    return {status: 'saved', profile: toMemberProfileDto(result.row)}
+    const {change, userId} = await applyMemberAccountDecision({
+      organizationId,
+      profile: {...result.row, userId: saved.userId},
+      decision,
+    })
+    return {
+      status: 'saved',
+      profile: await toProfileWithAccount(authUser, organizationId, {
+        ...result.row,
+        userId,
+      }),
+      accountChange: change,
+    }
   })
 }
 
@@ -141,12 +227,14 @@ export const getMemberProfileService = async (
     throw new ValidationParsedZodError(parsed.error)
   }
 
-  await requireMemberProfileManager(parsed.data.organizationId)
+  const authUser = await requireMemberProfileManager(parsed.data.organizationId)
 
-  const row = await withTenant(parsed.data.organizationId, () =>
-    getMemberProfileByIdDao(parsed.data.memberProfileId)
-  )
-  return row ? toMemberProfileDto(row) : undefined
+  return withTenant(parsed.data.organizationId, async () => {
+    const row = await getMemberProfileByIdDao(parsed.data.memberProfileId)
+    return row
+      ? toProfileWithAccount(authUser, parsed.data.organizationId, row)
+      : undefined
+  })
 }
 
 /**
