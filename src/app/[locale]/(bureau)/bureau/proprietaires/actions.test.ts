@@ -71,6 +71,7 @@ const profile = (
   city: null,
   mailOnly: true,
   incomplete: true,
+  account: {status: 'mail_only'},
   ...overrides,
 })
 
@@ -90,10 +91,12 @@ beforeEach(() => {
   vi.mocked(createMemberProfileService).mockResolvedValue({
     status: 'saved',
     profile: profile(),
+    accountChange: null,
   })
   vi.mocked(updateMemberProfileContactService).mockResolvedValue({
     status: 'saved',
     profile: profile(),
+    accountChange: null,
   })
   vi.mocked(getMemberProfileService).mockResolvedValue(
     profile({id: OTHER_PROFILE_ID, name: 'Claire Meunier'})
@@ -123,7 +126,11 @@ describe('createMemberProfileAction', () => {
       formOf({name: 'Marcel Laurent', ...blankContact})
     )
 
-    expect(result).toEqual({status: 'saved', memberProfileId: PROFILE_ID})
+    expect(result).toEqual({
+      status: 'saved',
+      memberProfileId: PROFILE_ID,
+      accountChange: null,
+    })
     expect(createMemberProfileService).toHaveBeenCalledWith({
       organizationId: TENANT_ID,
       name: 'Marcel Laurent',
@@ -247,7 +254,11 @@ describe('updateMemberProfileContactAction', () => {
       contactForm({phone: '06 12 34 56 78', city: 'Lacanau'})
     )
 
-    expect(result).toEqual({status: 'saved', memberProfileId: PROFILE_ID})
+    expect(result).toEqual({
+      status: 'saved',
+      memberProfileId: PROFILE_ID,
+      accountChange: null,
+    })
     expect(updateMemberProfileContactService).toHaveBeenCalledWith({
       organizationId: TENANT_ID,
       memberProfileId: PROFILE_ID,
@@ -256,6 +267,42 @@ describe('updateMemberProfileContactAction', () => {
       city: 'Lacanau',
     })
     expect(revalidatePath).toHaveBeenCalledWith(ROUTE, 'layout')
+  })
+
+  it.each(['opened', 'closed', 'replaced'] as const)(
+    'porte le changement d’accès « %s » pour le message de l’écran (s12d)',
+    async (accountChange) => {
+      vi.mocked(updateMemberProfileContactService).mockResolvedValue({
+        status: 'saved',
+        profile: profile(),
+        accountChange,
+      })
+
+      const result = await updateMemberProfileContactAction(
+        undefined,
+        contactForm({email: 'odile@example.test'})
+      )
+
+      expect(result).toEqual({
+        status: 'saved',
+        memberProfileId: PROFILE_ID,
+        accountChange,
+      })
+    }
+  )
+
+  it('rend le refus du bureau sans revalider : rien n’a été écrit (s12d, A9)', async () => {
+    vi.mocked(updateMemberProfileContactService).mockResolvedValue({
+      status: 'board_email_required',
+    })
+
+    const result = await updateMemberProfileContactAction(
+      undefined,
+      contactForm()
+    )
+
+    expect(result).toEqual({status: 'board_email_required'})
+    expect(revalidatePath).not.toHaveBeenCalled()
   })
 
   it('rend les erreurs par champ sans appeler la façade', async () => {

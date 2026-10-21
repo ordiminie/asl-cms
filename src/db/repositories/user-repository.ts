@@ -381,3 +381,41 @@ export const hasSuperAdminDao = async (): Promise<boolean> => {
     .limit(1)
   return rows.length > 0
 }
+
+/**
+ * Violation de l'unicite de `user.email`. Drizzle enveloppe l'erreur du
+ * pilote : le code Postgres est sur l'erreur ou sur sa cause.
+ */
+const isUniqueViolation = (error: unknown): boolean =>
+  [error, (error as {cause?: unknown})?.cause].some(
+    (candidate) => (candidate as {code?: string})?.code === '23505'
+  )
+
+/**
+ * Cree le compte d'une adresse s'il n'existe pas (s12d, ADR 037). Ecrit dans
+ * un point de sauvegarde : une creation concurrente de la meme adresse relit
+ * le compte existant au lieu de condamner la transaction du scope. L'adresse
+ * est attendue en minuscules ; `emailVerified` reste a sa valeur par defaut.
+ */
+export const createUserIfAbsentTxnDao = async (input: {
+  email: string
+  name: string
+}): Promise<{id: string}> => {
+  try {
+    return await getDb().transaction(async (tx) => {
+      const [row] = await tx
+        .insert(users)
+        .values({email: input.email, name: input.name})
+        .returning({id: users.id})
+      return row
+    })
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error
+    const [existing] = await getDb()
+      .select({id: users.id})
+      .from(users)
+      .where(eq(users.email, input.email))
+    if (!existing) throw error
+    return existing
+  }
+}

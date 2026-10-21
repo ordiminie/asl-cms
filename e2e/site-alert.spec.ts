@@ -39,7 +39,8 @@ const MEMBER_A = 'user@gmail.com'
 
 const ALERT_ROUTE = '/bureau/alerte'
 const ALERT_TITLE = 'Bandeau d’alerte'
-const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
+const DENIED_TITLE = 'Cette page ne vous est pas accessible'
+const DENIED_TEXT = 'Elle est réservée au bureau de l’association.'
 const BANNER_LABEL = "Alerte de l'association"
 /** Une page publique du socle, sous le gabarit du site public. */
 const PUBLIC_ROUTE = '/actualites'
@@ -235,6 +236,7 @@ test.describe('Bandeau d’alerte — autorisation', () => {
     await expect(
       page.getByRole('heading', {level: 1, name: DENIED_TITLE})
     ).toBeVisible({timeout: 15_000})
+    await expect(page.getByText(DENIED_TEXT)).toBeVisible()
     await expect(messageField(page)).toHaveCount(0)
   })
 })

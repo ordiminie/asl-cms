@@ -1,0 +1,3 @@
+ALTER TABLE "member_profile" ADD COLUMN "user_id" uuid;--> statement-breakpoint
+ALTER TABLE "member_profile" ADD CONSTRAINT "member_profile_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "member_profile_organization_user_idx" ON "member_profile" USING btree ("organization_id","user_id") WHERE "member_profile"."user_id" is not null;

@@ -140,7 +140,7 @@ function getVariableChoices(varName: string): string[] | undefined {
   return choices[varName]
 }
 
-function getVariableExample(varName: string): string {
+export function getVariableExample(varName: string): string {
   const examples: Record<string, string> = {
     DATABASE_URL: 'postgres://user:password@localhost:5432/saas_db',
     EMAIL_TRANSPORT: 'file',
@@ -179,7 +179,7 @@ function getVariableExample(varName: string): string {
     NEXT_PUBLIC_BETTER_AUTH_2FA_SKIP_VERIFICATION_ON_ENABLE: 'true',
     NEXT_PUBLIC_BETTER_AUTH_TOKEN_MANAGEMENT: 'true',
     NEXT_PUBLIC_BETTER_AUTH_CHANGE_PASSWORD: 'true',
-    NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL: 'true',
+    NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL: 'false',
   }
   return examples[varName] || `example_${varName.toLowerCase()}_value`
 }
@@ -199,7 +199,7 @@ function getPageHint(page: string): string {
 }
 
 // Générateurs de valeurs par défaut intelligentes basées sur les patterns
-function generateDefaultValue(varName: string): string {
+export function generateDefaultValue(varName: string): string {
   // Secrets - génération cryptographique
   if (varName.includes('SECRET')) {
     return randomBytes(32).toString('base64')
@@ -220,6 +220,8 @@ function generateDefaultValue(varName: string): string {
   if (varName === 'LOG_LEVEL') return 'info'
   if (varName === 'STORAGE_TYPE') return 'local'
   if (varName === 'CHAT_PROVIDER') return 'ollama'
+  // Changement d'adresse ferme jusqu'a s16 (s12d)
+  if (varName === 'NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL') return 'false'
 
   // Tailles et limites
   if (varName.includes('MAX_FILE_SIZE') || varName.includes('SIZE')) {

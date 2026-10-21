@@ -452,3 +452,92 @@ export const getAllOrganizationIdsDao = async (): Promise<string[]> => {
     .orderBy(organizations.createdAt)
   return rows.map(({id}) => id)
 }
+
+/** Violation d'unicite, sur l'erreur de Drizzle ou sur sa cause. */
+const isUniqueViolation = (error: unknown): boolean =>
+  [error, (error as {cause?: unknown})?.cause].some(
+    (candidate) => (candidate as {code?: string})?.code === '23505'
+  )
+
+/**
+ * Pose la ligne `member` d'un compte s'il n'en a pas dans l'association, et
+ * rend la ligne en place (s12d, ADR 037). Un role existant n'est jamais
+ * touche. Point de sauvegarde : une insertion concurrente relit l'existant.
+ */
+export const createMemberIfAbsentTxnDao = async (
+  row: AddMemberModel
+): Promise<MemberModel> => {
+  const existing = await getUserOrganizationDao(row.userId, row.organizationId)
+  if (existing) return existing
+
+  try {
+    return await getDb().transaction(async (tx) => {
+      const [created] = await tx.insert(member).values(row).returning()
+      return created
+    })
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error
+    const raced = await getUserOrganizationDao(row.userId, row.organizationId)
+    if (!raced) throw error
+    return raced
+  }
+}
+
+/**
+ * Retire la ligne `member` d'un compte dans l'association **seulement si son
+ * role est celui attendu** : la condition est portee par la requete, pour
+ * qu'une fermeture ne retire jamais un role du bureau change entre-temps.
+ */
+export const deleteMemberWithRoleDao = async (
+  userId: string,
+  organizationId: string,
+  role: OrganizationRoleEnumModel
+): Promise<void> => {
+  await getDb()
+    .delete(member)
+    .where(
+      and(
+        eq(member.userId, userId),
+        eq(member.organizationId, organizationId),
+        eq(member.role, role)
+      )
+    )
+}
+
+/** Change le role d'une ligne `member` seulement s'il vaut encore `from`. */
+export const updateMemberRoleFromDao = async (
+  userId: string,
+  organizationId: string,
+  from: OrganizationRoleEnumModel,
+  to: OrganizationRoleEnumModel
+): Promise<void> => {
+  await getDb()
+    .update(member)
+    .set({role: to})
+    .where(
+      and(
+        eq(member.userId, userId),
+        eq(member.organizationId, organizationId),
+        eq(member.role, from)
+      )
+    )
+}
+
+/**
+ * L'adresse de connexion et le role d'un compte dans une association, ou
+ * rien s'il n'y a plus de ligne `member` (s12d). Lecture d'appartenance d'un
+ * tiers : l'appelant porte son `can*` (ADR 014).
+ */
+export const getMemberAccountDao = async (
+  userId: string,
+  organizationId: string
+): Promise<{email: string; role: OrganizationRoleEnumModel} | undefined> => {
+  const [row] = await getDb()
+    .select({email: user.email, role: member.role})
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(
+      and(eq(member.userId, userId), eq(member.organizationId, organizationId))
+    )
+  return row
+}

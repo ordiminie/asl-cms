@@ -90,6 +90,7 @@ beforeEach(() => {
     city: null,
     mailOnly: true,
     incomplete: true,
+    account: {status: 'mail_only'},
   })
 })
 

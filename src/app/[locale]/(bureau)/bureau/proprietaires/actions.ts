@@ -86,7 +86,9 @@ const toFieldErrors = <Field extends string>(
 
 /**
  * Traduit le resultat d'ecriture du service. Pour un email deja pris, lit le
- * nom de la fiche qui le porte : l'ecran y renvoie (etat `2e`).
+ * nom de la fiche qui le porte : l'ecran y renvoie (etat `2e`). Le refus de
+ * vider l'adresse d'un membre du bureau n'a rien ecrit : rien n'est revalide.
+ * Un enregistrement porte le changement d'acces, pour le message (s12d).
  */
 const toActionResult = async (
   organizationId: string,
@@ -108,11 +110,19 @@ const toActionResult = async (
     }
   }
 
+  if (result.status === 'board_email_required') {
+    return {status: 'board_email_required'}
+  }
+
   revalidateMemberProfileScreens()
-  return {status: 'saved', memberProfileId: result.profile.id}
+  return {
+    status: 'saved',
+    memberProfileId: result.profile.id,
+    accountChange: result.accountChange,
+  }
 }
 
-/** « Enregistrer le proprietaire » (ecran 2). Sans email, aucun compte. */
+/** « Enregistrer le proprietaire » (ecran 2). Avec un email, un compte (s12d). */
 export async function createMemberProfileAction(
   _prevState: MemberProfileActionResult | undefined,
   formData: FormData

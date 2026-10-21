@@ -6,6 +6,7 @@ import {
   exists,
   ilike,
   inArray,
+  isNotNull,
   isNull,
   or,
   sql,
@@ -22,8 +23,9 @@ import {getDb} from '@/db/tenant-scope'
  * Fiches des proprietaires d'une association (s12, ADR 029). Sous RLS forcee :
  * hors `withTenant(organizationId, ...)`, rien ne sort et rien ne s'ecrit.
  *
- * Ce repository ne touche ni `user` ni `member` (Better Auth) : une fiche
- * n'ouvre et ne ferme aucun compte (s12d).
+ * Ce repository ne touche ni `user` ni `member` (Better Auth) : l'ouverture
+ * et la fermeture du compte d'une fiche vivent dans `member-account-service`
+ * (s12d, ADR 037) ; il n'ecrit ici que le lien `user_id`.
  */
 
 const EMAIL_INDEX = 'member_profile_organization_email_idx'
@@ -246,5 +248,60 @@ export const countMemberProfilesDao = async (
     })
     .from(memberProfile)
     .where(eq(memberProfile.organizationId, organizationId))
+  return row
+}
+
+/** Ecrit ou vide le compte lie a une fiche (s12d, ADR 037). */
+export const setMemberProfileUserIdDao = async (
+  memberProfileId: string,
+  userId: string | null
+): Promise<void> => {
+  await getDb()
+    .update(memberProfile)
+    .set({userId, updatedAt: sql`now()`})
+    .where(eq(memberProfile.id, memberProfileId))
+}
+
+/** Les fiches a adresse de l'association qui n'ont pas encore de compte. */
+export const getUnlinkedMemberProfilesWithEmailDao = async (
+  organizationId: string
+): Promise<{id: string; name: string; email: string}[]> => {
+  const rows = await getDb()
+    .select({
+      id: memberProfile.id,
+      name: memberProfile.name,
+      email: memberProfile.email,
+    })
+    .from(memberProfile)
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        isNotNull(memberProfile.email),
+        isNull(memberProfile.userId)
+      )
+    )
+    .orderBy(asc(memberProfile.id))
+  return rows.flatMap((row) =>
+    row.email === null ? [] : [{id: row.id, name: row.name, email: row.email}]
+  )
+}
+
+/**
+ * La fiche de l'association liee a ce compte (s12d, ADR 037) : « ma fiche »,
+ * resolue depuis la session, jamais depuis un identifiant venu du navigateur.
+ */
+export const getMemberProfileByUserIdDao = async (
+  organizationId: string,
+  userId: string
+): Promise<MemberProfileModel | undefined> => {
+  const [row] = await getDb()
+    .select()
+    .from(memberProfile)
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        eq(memberProfile.userId, userId)
+      )
+    )
   return row
 }

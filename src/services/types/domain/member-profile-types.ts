@@ -3,7 +3,8 @@
  * importer le modele Drizzle** (`rule-architecture`).
  *
  * A ne pas confondre avec `member` (Better Auth) : une fiche est une donnee
- * metier de l'association, qui existe sans compte.
+ * metier de l'association, qui existe sans compte. Une fiche dotee d'une
+ * adresse a un compte (s12d, ADR 037).
  */
 
 /** Taille de page de la liste du bureau, tableau comme cartes (decision I). */
@@ -31,7 +32,8 @@ export type MemberProfileContact = {
   city: string | null
 }
 
-export type MemberProfileDTO = MemberProfileContact & {
+/** Les champs d'une fiche, sans l'etat de son compte. */
+export type MemberProfileFieldsDTO = MemberProfileContact & {
   /** UUID genere par la base : la seule identite d'un proprietaire. */
   id: string
   organizationId: string
@@ -42,8 +44,21 @@ export type MemberProfileDTO = MemberProfileContact & {
   incomplete: boolean
 }
 
+/**
+ * L'etat du compte d'une fiche, tel que le bureau le lit (s12d, carte
+ * « Acces a l'espace membre ») : ouvert, avec l'adresse de connexion et le
+ * role au bureau eventuel, ou courrier uniquement.
+ */
+export type MemberProfileAccountDTO =
+  | {status: 'open'; loginEmail: string; boardRole: 'board' | 'owner' | null}
+  | {status: 'mail_only'}
+
+export type MemberProfileDTO = MemberProfileFieldsDTO & {
+  account: MemberProfileAccountDTO
+}
+
 /** Une ligne de la liste : la fiche et les numeros de ses parcelles actuelles. */
-export type MemberProfileListItemDTO = MemberProfileDTO & {
+export type MemberProfileListItemDTO = MemberProfileFieldsDTO & {
   currentParcelNumbers: string[]
 }
 
@@ -91,6 +106,19 @@ export type MemberProfilePageInput = {
  * detient deja l'adresse, pour que l'ecran y renvoie (design `2e`).
  */
 export type MemberProfileWriteResult =
-  | {status: 'saved'; profile: MemberProfileDTO}
+  | {
+      status: 'saved'
+      profile: MemberProfileDTO
+      /** Ce que l'enregistrement a fait du compte (s12d). */
+      accountChange: MemberAccountChange
+    }
   | {status: 'email_taken'; memberProfileId: string}
   | {status: 'not_found'}
+  /** Vider l'adresse d'un membre du bureau : refuse, rien n'est ecrit (s12d). */
+  | {status: 'board_email_required'}
+
+/**
+ * Ce que l'enregistrement d'une fiche a fait de son compte (s12d) : pour les
+ * messages de l'ecran. `null` quand l'acces ne change pas.
+ */
+export type MemberAccountChange = 'opened' | 'closed' | 'replaced' | null

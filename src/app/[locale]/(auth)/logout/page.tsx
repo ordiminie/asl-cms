@@ -3,7 +3,11 @@ import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import Logout from '@/components/features/auth/forms/logout-form'
-import {getAuthUser} from '@/services/authentication/auth-service'
+import {CLOSED_ACCESS_PATH} from '@/components/features/auth/with-auth'
+import {
+  getAuthUser,
+  getSessionAuth,
+} from '@/services/authentication/auth-service'
 
 export async function generateMetadata({
   params,
@@ -26,7 +30,9 @@ async function Page({params}: {params: Promise<{locale: string}>}) {
 
   const user = await getAuthUser()
   if (!user) {
-    redirect('/login')
+    const session = await getSessionAuth()
+    // Une session dont l'acces est ferme est terminee par sa route (s12d)
+    redirect(session?.session?.userId ? CLOSED_ACCESS_PATH : '/login')
   }
   return (
     <div className="flex h-screen w-full items-center justify-center px-4">

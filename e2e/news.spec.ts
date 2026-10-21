@@ -32,7 +32,8 @@ const BOARD_B = 'user-admin@gmail.com'
 
 const NEWS_ROUTE = '/bureau/actualites'
 const PUBLIC_NEWS_ROUTE = '/actualites'
-const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
+const DENIED_TITLE = 'Cette page ne vous est pas accessible'
+const DENIED_TEXT = 'Elle est réservée au bureau de l’association.'
 const NOT_FOUND_TITLE = 'Page non trouvée'
 
 /** Un PNG minimal valide : la validation juge la signature binaire. */
@@ -378,7 +379,10 @@ test.describe('Actualités — bureau et site public', () => {
     await login(page, TENANT_A, MEMBER_A)
     await page.goto(`${TENANT_A}${NEWS_ROUTE}`, {waitUntil: 'load'})
 
-    await expect(page.getByText(DENIED_TITLE)).toBeVisible({timeout: 20_000})
+    await expect(
+      page.getByRole('heading', {level: 1, name: DENIED_TITLE})
+    ).toBeVisible({timeout: 20_000})
+    await expect(page.getByText(DENIED_TEXT)).toBeVisible()
     await expect(
       page.getByRole('button', {name: 'Nouvelle actualité'})
     ).toBeHidden()

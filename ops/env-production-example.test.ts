@@ -57,6 +57,10 @@ describe('ops/env.production.example — gabarit de l’environnement de product
     expect(entries.get('BETTER_AUTH_URL')).toMatch(/^https:\/\/[^:]+$/)
   })
 
+  it('ferme le changement d’adresse hérité de /account jusqu’à s16 (s12d)', () => {
+    expect(entries.get('NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL')).toBe('false')
+  })
+
   it('migre sous un rôle distinct du rôle applicatif', () => {
     const app = entries.get('DATABASE_URL') ?? ''
     const migration = entries.get('DATABASE_MIGRATION_URL') ?? ''

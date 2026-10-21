@@ -24,6 +24,9 @@ vi.mock('@/app/dal/tenant-dal', () =>
 vi.mock('@/app/dal/association-identity-dal', () =>
   named('canManageCurrentAssociationIdentityDal')
 )
+vi.mock('@/app/dal/member-space-dal', () =>
+  named('isPlainMemberOfCurrentAssociationDal')
+)
 vi.mock('@/components/context/auth-provider', component)
 vi.mock('@/components/features/app-breadcrumb', () => named('AppBreadcrumb'))
 vi.mock('@/components/features/layouts/sidebar/admin-sidebar', () =>
@@ -35,6 +38,9 @@ vi.mock('@/components/features/association/association-mark', () =>
 )
 vi.mock('@/components/features/association/bureau-access-denied', () =>
   named('BureauAccessDenied')
+)
+vi.mock('@/components/features/association/member-space-access-denied', () =>
+  named('MemberSpaceAccessDenied')
 )
 vi.mock('@/components/features/association/bureau-menu-button', () =>
   named('BureauMenuButton')

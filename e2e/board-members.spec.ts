@@ -32,7 +32,8 @@ const MEMBER_A = 'user@gmail.com'
 
 const BOARD_ROUTE = '/bureau/le-bureau'
 const PUBLIC_BOARD_ROUTE = '/le-bureau'
-const DENIED_TITLE = "Cette page est réservée au bureau de l'association"
+const DENIED_TITLE = 'Cette page ne vous est pas accessible'
+const DENIED_TEXT = 'Elle est réservée au bureau de l’association.'
 
 /** Le carré stocké, ADR 024. */
 const STORED_SIZE = 512
@@ -420,7 +421,10 @@ test.describe('Fiches du bureau — bureau et site public', () => {
     await login(page, TENANT_A, MEMBER_A)
     await page.goto(`${TENANT_A}${BOARD_ROUTE}`, {waitUntil: 'load'})
 
-    await expect(page.getByText(DENIED_TITLE)).toBeVisible({timeout: 20_000})
+    await expect(
+      page.getByRole('heading', {level: 1, name: DENIED_TITLE})
+    ).toBeVisible({timeout: 20_000})
+    await expect(page.getByText(DENIED_TEXT)).toBeVisible()
     await expect(
       page.getByRole('heading', {level: 1, name: 'Membres du bureau'})
     ).toHaveCount(0)

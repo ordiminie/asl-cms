@@ -46,6 +46,12 @@ export type FormerParcelRow = {
   buyerName: string | null
 }
 
+export type MemberFormerParcelRow = {
+  number: string
+  startsOn: string
+  endsOn: string
+}
+
 /**
  * La parcelle de ce numero, creee si elle n'existe pas (design `4d`).
  * `ON CONFLICT DO NOTHING` puis lecture : deux rattachements simultanes de la
@@ -232,4 +238,32 @@ export const getParcelOwnerAtDao = async (
       )
     )
   return row?.profile
+}
+
+/**
+ * Les anciennes parcelles d'une fiche, pour son proprietaire (s12d, espace
+ * membre) : numero et periode seulement. Aucune jointure sur l'acquereur,
+ * qui n'est pas lu du tout ; le bureau garde `getFormerParcelsByMemberDao`.
+ */
+export const getMemberFormerParcelsDao = async (
+  memberProfileId: string
+): Promise<MemberFormerParcelRow[]> => {
+  const rows = await getDb()
+    .select({
+      number: parcel.number,
+      startsOn: parcelOwnership.startsOn,
+      endsOn: parcelOwnership.endsOn,
+    })
+    .from(parcelOwnership)
+    .innerJoin(parcel, eq(parcel.id, parcelOwnership.parcelId))
+    .where(
+      and(
+        eq(parcelOwnership.memberProfileId, memberProfileId),
+        isNotNull(parcelOwnership.endsOn)
+      )
+    )
+
+  return rows.flatMap((row) =>
+    row.endsOn === null ? [] : [{...row, endsOn: row.endsOn}]
+  )
 }

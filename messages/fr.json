@@ -453,6 +453,11 @@
     }
   },
   "Auth": {
+    "AccessClosedNotice": {
+      "title": "Votre accès à l’espace membre est fermé.",
+      "reopen": "Pour le rouvrir, écrivez au bureau.",
+      "contact": "Page Contact"
+    },
     "LoginPage": {
       "title": "Connexion",
       "metadata": {
@@ -2889,7 +2894,7 @@
       },
       "email": {
         "label": "Adresse email",
-        "help": "Sans adresse, ce propriétaire reçoit tout par courrier."
+        "help": "Avec une adresse, ce propriétaire peut se connecter à son espace. Sans adresse, il reçoit tout par courrier."
       },
       "phone": {
         "label": "Téléphone"
@@ -2945,6 +2950,28 @@
       "metadataTitle": "Fiche d’un propriétaire",
       "created": "Propriétaire enregistré.",
       "contactSaved": "Coordonnées enregistrées.",
+      "accountOpenedOnCreate": "Compte ouvert : {name} peut se connecter avec {email}.",
+      "accountChange": {
+        "opened": "Compte ouvert : {name} peut désormais se connecter avec {email}.",
+        "closed": "Accès à l’espace fermé.",
+        "replaced": "{name} se connecte désormais avec {email}. L’accès avec {previous} est fermé."
+      },
+      "access": {
+        "title": "Accès à l’espace membre",
+        "open": "<strong>Compte ouvert.</strong> {name} peut se connecter à son espace avec {email}.",
+        "mailOnly": "<strong>Joignable par courrier uniquement.</strong> Aucun compte : ajoutez une adresse email pour lui ouvrir son espace.",
+        "board": "Membre du bureau : son adresse peut être modifiée, pas supprimée.",
+        "owner": "Président(e) : son adresse peut être modifiée, pas supprimée."
+      },
+      "emailWarnings": {
+        "removed": "<strong>Attention.</strong> Sans adresse email, {name} ne pourra plus se connecter à son espace. Sa fiche, ses parcelles et son historique sont conservés. Les envois partiront par courrier.",
+        "replaced": "<strong>Attention.</strong> {name} ne pourra plus se connecter avec {previous}. Son espace s’ouvrira avec {email}.",
+        "roleFollows": "Son rôle au bureau suit la nouvelle adresse."
+      },
+      "boardEmailRequired": {
+        "summary": "{name} fait partie du bureau : son adresse lui sert à se connecter. Vous pouvez la modifier, pas la supprimer. Rien n’a été enregistré.",
+        "field": "Saisissez une adresse email : celle d’un membre du bureau ne peut pas être supprimée."
+      },
       "attention": "Attention.",
       "incomplete": "Cette fiche n’a ni adresse email ni adresse postale : aucun envoi ne peut atteindre ce propriétaire.",
       "addPostalAddress": "Ajouter une adresse postale",
@@ -3041,6 +3068,25 @@
   },
   "MemberSpacePage": {
     "title": "Votre espace membre",
+    "marker": "Espace personnel",
+    "markerParcels": "{count, plural, =0 {Aucune parcelle actuelle} one {Parcelle {numbers}} other {Parcelles {numbers}}}",
+    "greeting": "Bonjour {name}",
+    "parcels": {
+      "title": "Mes parcelles",
+      "current": "Parcelles actuelles",
+      "former": "Anciennes parcelles",
+      "parcel": "Parcelle <mono>{number}</mono>",
+      "since": "Propriétaire depuis le {date}",
+      "period": "Propriétaire du {from} au {to}",
+      "noLongerOwner": "Vous n’êtes plus propriétaire d’une parcelle du domaine depuis le {date}.",
+      "mistake": "Une erreur ? Écrivez au bureau.",
+      "contact": "Page Contact"
+    },
+    "denied": {
+      "title": "Cette page ne vous est pas accessible",
+      "description": "Elle est réservée au bureau de l’association.",
+      "back": "Revenir à mon espace"
+    },
     "security": {
       "title": "Sécurité du compte",
       "description": "Votre adresse email, votre mot de passe et les appareils connectés à votre compte.",

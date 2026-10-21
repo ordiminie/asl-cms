@@ -1,49 +1,27 @@
-import {ArrowRight} from 'lucide-react'
-import Link from 'next/link'
-import {getTranslations} from 'next-intl/server'
+import {Suspense} from 'react'
 
-import withAuth from '@/components/features/auth/with-auth'
+import {getMyParcelsDal} from '@/app/dal/member-space-dal'
+import withAuth, {
+  type WithAuthProps,
+} from '@/components/features/auth/with-auth'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+  MemberSpace,
+  MemberSpaceLoading,
+} from '@/components/features/member-space/member-space'
 
 /**
- * Espace membre (s46) : rien n'est lu du membre, l'ecran est le meme pour un
- * SuperAdmin ou un compte sans appartenance. s12d inserera « Mes parcelles »
- * au-dessus de la carte de securite.
+ * Espace membre (s46, s12d ecran C) : « Mes parcelles » du proprietaire
+ * connecte, puis la securite du compte. La fiche se lit cote serveur, par la
+ * session et le domaine appele, derriere un `<Suspense>` ; un compte sans
+ * fiche dans l'association retrouve la page de s46 (C5).
  */
-async function Page() {
-  const t = await getTranslations('MemberSpacePage')
+async function Page({user}: WithAuthProps) {
+  const parcelsPromise = getMyParcelsDal()
 
   return (
-    <div className="space-y-8">
-      <h1 className="font-serif text-3xl font-semibold tracking-tight">
-        {t('title')}
-      </h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <h2 className="text-xl">{t('security.title')}</h2>
-          </CardTitle>
-          <CardDescription className="text-base">
-            {t('security.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Link
-            href="/account"
-            className="text-primary focus-visible:outline-ring inline-flex h-14 items-center gap-2 font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 sm:h-12"
-          >
-            {t('security.link')}
-            <ArrowRight className="size-5" aria-hidden="true" />
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
+    <Suspense fallback={<MemberSpaceLoading name={user.name} />}>
+      <MemberSpace parcelsPromise={parcelsPromise} />
+    </Suspense>
   )
 }
 

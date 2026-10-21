@@ -93,6 +93,7 @@ const profileRow = (id: string) => ({
   addressComplement: null,
   postalCode: '97400',
   city: 'Saint-Denis',
+  userId: null,
   mailOnly: true,
   createdAt: new Date('2026-09-01T08:00:00Z'),
   updatedAt: new Date('2026-09-01T08:00:00Z'),

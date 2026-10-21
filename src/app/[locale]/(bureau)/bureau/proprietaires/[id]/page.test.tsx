@@ -54,6 +54,7 @@ const profile = {
   city: 'Lacanau',
   mailOnly: true,
   incomplete: false,
+  account: {status: 'mail_only' as const},
 }
 
 /** Le composant de page est asynchrone : on resout son arbre avant de rendre. */

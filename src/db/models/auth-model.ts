@@ -89,8 +89,8 @@ export const account = pgTable(
 )
 
 export const verification = pgTable('verification', {
-  id: uuid('id')
-    .default(sql`uuid_generate_v4()`)
+  id: text('id')
+    .default(sql`uuid_generate_v4()::text`)
     .primaryKey(),
   identifier: text('identifier').notNull(),
   value: text('value').notNull(),
