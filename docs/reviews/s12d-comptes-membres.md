@@ -140,12 +140,28 @@ passe désormais : le correctif `verification.id` est confirmé.
    (B puis A) ; fermeture sur A, la ligne `member` de A part. La connexion par lien sur B
    (`127.0.0.1`) aboutit sur `/dashboard`, mais la page montre le titre générique « Votre espace
    membre » (`MemberSpacePage.title`) au lieu de « Bonjour {nom} » : `getMyParcelsService` rend
-   `undefined`, donc `getMemberProfileByUserIdDao(B, user.id)` ne trouve pas de fiche liée. Échec aux
+   `undefined` ou une fiche sans parcelle (les deux donnent l'écran C5 ; la revue n° 6 a établi que
+   c'était le second cas). Échec aux
    trois tentatives. Le critère 1, qui crée la fiche **sans** adresse puis l'ajoute (chemin de
    modification), passe. Cause à établir (le test ne vérifie pas `user_id` de la fiche B) : lien jamais
    posé sur la fiche B au chemin de création, lien retiré par la fermeture sur A, ou autre. Correctif
    attendu : cause prouvée par un test qui échoue d'abord, puis correction ; et le test e2e vérifie en
    plus `user_id` des deux fiches après chaque étape, pour localiser un futur échec.
 
-Max severity: major
-Ship allowed: no
+## Revue n° 6 — correctif `2a454789`, relecteur en contexte neuf
+
+- **Cause : le test e2e, pas le code.** La fiche de B était créée sans parcelle ; une fiche liée sans
+  parcelle affiche l'écran C5 (« Votre espace membre »), comme le prévoit le design (« Pas d'état vide
+  distinct … sinon c'est C5 »), arbre identique au snapshot de la CI. Le chemin de création avec adresse
+  (compte existant sur A) pose bien le lien sur B dans la même transaction que la ligne `member`
+  constatée par la CI ; la fermeture sur A ne touche pas B.
+- **Correctif (tests seulement).** Le critère 3 rattache une parcelle à la fiche B, vérifie `user_id`
+  des deux fiches après création et après la fermeture sur A (A vidée, B toujours liée) et « Mes
+  parcelles » sur B. Test unitaire de la page : C5 pour une fiche liée sans parcelle.
+- **Suite de la série** (critère 4 ×2, critère 6, fiche du bureau) relue : pas le même piège.
+- Suite unitaire relancée par le relecteur : **249 fichiers, 2989 passés, 4 ignorés**, code 0.
+- Mineurs : le nouveau test unitaire est rangé sous le `describe` « compte sans fiche » (laissé tel
+  quel) ; l'affirmation non prouvée du constat de la deuxième CI — corrigée ci-dessus.
+
+Max severity: minor
+Ship allowed: yes
