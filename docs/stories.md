@@ -349,7 +349,7 @@ cadrage définit déjà — les deux adresses de `CDCT §4.6`, qui sont la raiso
 s08 et s10 lisent — et la teinte ; les clés propres à une story arrivent avec elle (seuil d'envoi en s26,
 activation des relances en s29…). Aucune clé n'est déclarée pour démontrer un type : nombre et booléen
 se prouvent sur le registre et sa clé de test, pas par des réglages sans usage affichés en back-office.
-Les types viendront aussi avec leurs stories : texte libre (s15), URL (s21, s33), liste de statuts (s19).
+Les types viendront aussi avec leurs stories : texte libre (s42), URL (s21, s33), liste de statuts (s19).
 
 **Accès** : la page de réglages et son contrôle d'accès sont posés par s01b — le bureau (Bureau et
 Président(e)) de l'association du domaine appelé, et le SuperAdmin, conformément au PRD. s02 applique la
@@ -529,8 +529,8 @@ Réf. ADR 003. Scindée de s03 le 19 septembre 2026 (voir ses notes). Recherche 
 alors que chaque association a son domaine (ADR 003). Un lien construit sur cette valeur renvoie
 toutes les associations vers un seul domaine : la session s'ouvre sur le mauvais site, et le défaut
 ne se voit qu'en production, sur la deuxième association. Le domaine du lien se déduit de
-l'association, **lu en base**, et non de l'en-tête de la requête : s15 et s42 génèrent aussi ces
-liens, et s42 les envoie depuis une tâche différée, hors de toute requête. Les origines de confiance
+l'association, **lu en base**, et non de l'en-tête de la requête : s42 génère aussi ces
+liens, et les les envoie depuis une tâche différée, hors de toute requête. Les origines de confiance
 et le cookie de session de Better Auth doivent accepter chaque domaine d'association, sans
 redéploiement pour une nouvelle association. Défaut relevé en revue du découpage (M6) ; s12b vérifie
 ensuite que le déploiement ne le défait pas.
@@ -1404,7 +1404,7 @@ automatisée en CI.
 ## Story s12d-comptes-membres — Ouvrir et fermer le compte d'un membre
 
 ⚠️ **Scindée de s12 le 30 septembre 2026, au plan** (arbitrage de l'utilisatrice). Porte les
-ex-critères 9 et 10 de s12. Id intercalé parce que l'ordre compte : s13 (import), s14 (rôles) et s15
+ex-critères 9 et 10 de s12. Id intercalé parce que l'ordre compte : s13 (import), s14 (rôles) et s42
 (invitation) supposent qu'une fiche avec email a un compte, et toute story où un membre propriétaire
 se connecte en dépend, directement ou par elles.
 
@@ -1442,14 +1442,14 @@ publique.
 
 **Frontière avec s03** : s03 a livré le lien magique et « un lien ne crée jamais de compte », **pas**
 de capacité « ouvrir / fermer un compte de membre » (recherche de s12). Elle se crée **ici, une seule
-fois**, en service réutilisable : s13, s15 et s42 l'appellent, aucune ne la réimplémente.
+fois**, en service réutilisable : s13 et s42 l'appellent, aucune ne la réimplémente.
 
 `user.email` est **unique sur toute la plateforme** : ouvrir un compte réutilise le `user` existant
 (précédent `provisionOrganizationService`). Fermer l'accès retire la ligne `member` de **cette**
 association, jamais le `user`, et **jamais une ligne dont le rôle n'est pas `member`** : retirer
 l'adresse de la fiche d'un membre du bureau ne doit pas lui retirer le bureau.
 
-Ouvrir un compte **n'envoie rien** : l'invitation est s15, le lancement s42.
+Ouvrir un compte **n'envoie rien** : l'invitation et le lancement sont s42.
 
 **Aucune coupure automatique** liée à la cotisation (arbitrage RGPD en attente, note de s12).
 
@@ -1583,61 +1583,6 @@ l'export de s38 comme le reste.
 
 Ne pas confondre avec s41 (simulation de rôle) : ici on **change** durablement les droits de
 quelqu'un, là on emprunte temporairement une vue pour déboguer.
-
----
-
-## Story s15-inviter-membre — Inviter un membre à rejoindre son espace
-
-**En tant que** membre du bureau **je veux** envoyer à un membre son invitation à se connecter
-**afin qu'**il sache qu'il a un espace et puisse y entrer sans que j'aie à lui expliquer au téléphone.
-
-### Complexity
-
-2
-
-### Acceptance criteria
-
-- [ ] Depuis la fiche d'un membre disposant d'une adresse email, le bureau déclenche l'envoi d'une invitation ; le membre reçoit un email portant un lien de connexion valide.
-- [ ] L'email d'invitation part par le même canal transactionnel que le lien magique (s03), dont il reprend l'en-tête au logo de l'association (s01b, ou son nom à défaut), et porte le nom de l'association.
-- [ ] Le texte de l'invitation est un paramètre de tenant : le modifier change l'email suivant, sans redéploiement.
-- [ ] La fiche membre affiche l'état de l'invitation : jamais invité, invité le <date>, ou connecté au moins une fois le <date>.
-- [ ] Inviter un membre marqué « joignable par courrier uniquement » est refusé avec un message expliquant qu'il relève du courrier, et non par une erreur technique.
-- [ ] Réinviter un membre déjà invité est possible et remplace l'invitation précédente ; l'ancien lien cesse de fonctionner.
-- [ ] Le bureau d'une association ne peut inviter aucun membre d'une autre.
-- [ ] Le lien de l'invitation pointe vers le domaine de l'association du membre et y ouvre la session — vérifié sur deux associations.
-
-### Dependencies
-
-s02, s03, s03c, s12, s12d
-
-### Agentic notes
-
-Réf. `PRD` (ligne « Connexion par lien magique » : « flux d'invitation, expiration et absence de mot
-de passe à éprouver auprès d'un public âgé »), `V5 §2, §3.3`.
-
-Story créée en revue du découpage : ces critères vivaient dans s03, où ils opéraient sur une fiche
-membre livrée par s12 — laquelle dépend de s03. La dépendance était circulaire et non exécutable.
-Placée ici, la story n'invente rien : le compte et le lien magique viennent de s03, la fiche et
-l'attribut « a une adresse email » viennent de s12.
-
-**Elle n'implémente ni compte ni lien magique** : elle déclenche ceux de s03 depuis la fiche de s12.
-Une seconde implémentation du lien de connexion serait un défaut de review. Le lien pointe donc vers
-le domaine de l'association du membre, comme en s03c (critère dédié ci-dessus).
-
-**L'invitation est un email transactionnel, pas une campagne.** Elle emprunte le canal du lien
-magique (s03), pas le gabarit de campagne livré par s25 — qui arrive dix stories plus tard. Exiger ce
-gabarit ici serait la référence en avant relevée en revue du découpage. L'en-tête au logo, lui, n'est
-pas provisoire : il est posé dès s03 sur le canal transactionnel, le logo existant depuis s01b. **À vérifier en review, pas en test** : que le texte par défaut n'énumère aucune fonctionnalité
-(factures, consommation, documents) livrée après cette story. C'est un jugement rédactionnel, pas un
-comportement observable — le critère testable est celui du paramètre de tenant, que le bureau
-enrichira au fil des mises en ligne.
-
-L'état « connecté au moins une fois » n'est pas un confort : c'est ce qui permet au bureau de savoir
-qui relancer, et à s42 de mesurer l'adoption au lancement. Il se déduit de la première connexion
-réussie, pas d'un clic sur le lien — un lien cliqué par un antivirus n'est pas une connexion.
-
-Public âgé et peu à l'aise : la rédaction de l'email compte autant que le mécanisme. Elle se traite
-en `/ks-design`, et sa qualité relève de la recette, pas d'un test automatisé.
 
 ---
 
@@ -2796,7 +2741,7 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 ### Dependencies
 
-s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37
+s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42
 
 ### Agentic notes
 
@@ -2998,28 +2943,42 @@ pendant une simulation reste possible mais est attribuée au SuperAdmin (critèr
 
 ## Story s42-lancement-invitations — Faire entrer les membres dans le service
 
+⚠️ **Absorbe s15-inviter-membre le 23 octobre 2026** (arbitrage de l'utilisatrice, après la recherche
+de s15). L'invitation unitaire n'avait de valeur propre que pour un propriétaire arrivé après le
+lancement ; construite seule, elle aurait tranché trop tôt des questions qui relèvent du lancement
+(habillage des envois de s25, budget quotidien de s26). Les critères de s15 sont repris ci-dessous ;
+la recherche faite pour s15 est le point de départ de celle de s42.
+
 **En tant que** membre du bureau **je veux** annoncer le site à tous les propriétaires d'un seul geste
 **afin que** chacun sache qu'il a un espace — ou, à défaut, que le site existe.
 
 ### Complexity
 
-3
+4
 
 ### Acceptance criteria
 
 - [ ] Une campagne d'invitation part vers tous les membres disposant d'une adresse email, chaque destinataire recevant un lien de connexion qui lui est propre.
 - [ ] La même opération produit, pour les membres sans email, un publipostage PDF (s28) annonçant le site public et ses contenus consultables sans compte.
 - [ ] L'invitation de lancement et sa relance déclarent leur nature dans le mécanisme de s27b, avec la valeur de seed `statutaire` pour le premier tenant, et la suivent : avec la nature `statutaire` (valeur du premier tenant), la relance atteint aussi un membre qui s'est désinscrit depuis l'email de lancement sans s'être connecté — vérifié sur ce cas ; avec `facultative`, elle l'exclut.
-- [ ] L'email de lancement porte l'habillage commun des campagnes (s25) — en-tête au logo, pied de page avec lien de désinscription — et, avec la nature `statutaire`, la mention de s27b indiquant qu'il est reçu malgré une désinscription. Son texte et son lien de connexion sont ceux de l'invitation de s15.
+- [ ] L'email de lancement porte l'habillage commun des campagnes (s25) — en-tête au logo, pied de page avec lien de désinscription — et, avec la nature `statutaire`, la mention de s27b indiquant qu'il est reçu malgré une désinscription. Son texte et son lien de connexion sont ceux de l'invitation individuelle.
 - [ ] Aucun membre de la liste n'est omis des deux canaux : la somme des destinataires email et des courriers produits égale l'effectif de l'association.
 - [ ] Le bureau suit l'adoption : nombre d'invitations envoyées, nombre de membres s'étant connectés au moins une fois, liste des membres jamais connectés.
 - [ ] Relancer les membres jamais connectés renvoie une invitation à eux seuls, sans réinviter ceux qui se sont déjà connectés.
 - [ ] L'opération passe par l'adaptateur d'envoi et respecte le budget quotidien du tenant (s26) : au-delà du seuil, elle se scinde et se reporte comme n'importe quel envoi.
+- [ ] **Invitation individuelle** (ex-s15) : depuis la fiche d'un membre disposant d'une adresse email, le bureau déclenche l'envoi d'une invitation ; le membre reçoit un email portant un lien de connexion valide. C'est le chemin d'un propriétaire arrivé après le lancement.
+- [ ] L'invitation individuelle part par le même canal transactionnel que le lien magique (s03), dont elle reprend l'en-tête au logo de l'association (s01b, ou son nom à défaut), et porte le nom de l'association.
+- [ ] Le texte de l'invitation est un paramètre de tenant : le modifier change l'email suivant, sans redéploiement.
+- [ ] La fiche membre affiche l'état de l'invitation : jamais invité, invité le <date>, ou connecté au moins une fois le <date>.
+- [ ] Inviter un membre marqué « joignable par courrier uniquement » est refusé avec un message expliquant qu'il relève du courrier, et non par une erreur technique.
+- [ ] Réinviter un membre déjà invité est possible et remplace l'invitation précédente ; l'ancien lien cesse de fonctionner.
+- [ ] Le bureau d'une association ne peut inviter aucun membre d'une autre.
+- [ ] Le lien d'une invitation individuelle pointe vers le domaine de l'association du membre et y ouvre la session — vérifié sur deux associations.
 - [ ] Un lien d'invitation envoyé par une part reportée au lendemain, donc hors de toute requête, pointe vers le domaine de l'association et y ouvre la session — vérifié sur deux associations.
 
 ### Dependencies
 
-s03, s03c, s13, s15, s25, s26, s27, s27b, s28
+s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28
 
 ### Agentic notes
 
@@ -3029,7 +2988,7 @@ livraient un service que **personne n'aurait su utiliser** — aucune ne disait 
 propriétaires apprennent qu'ils ont un espace.
 
 **À vérifier en review, pas en test** : que le courrier ne promette aucun accès à ces membres. C'est
-un jugement rédactionnel, comme en s15.
+un jugement rédactionnel, comme pour le texte par défaut de l'invitation (ci-dessous).
 
 **Le courrier des 100 sans email n'est pas une invitation** : ils n'ont pas de compte et n'en auront
 pas (cimetière du PRD — aucun plan B de connexion). Leur courrier annonce le site public, les
@@ -3046,11 +3005,25 @@ envoi à l'aveugle sur la population que le PRD désigne comme la plus fragile.
 C'est le moment de vérité de l'angle n°2 du PRD : les deux populations reçoivent la même information
 au même moment, depuis le même outil, sans double saisie.
 
-Elle réutilise le mécanisme d'invitation unitaire de s15, appliqué à une cible entière : ni second
-gabarit d'invitation, ni seconde génération de lien. **Mais l'enveloppe change** : l'invitation
-unitaire de s15 est un email transactionnel sans habillage de campagne, alors que le lancement est un
-envoi de masse — il porte donc le gabarit commun de s25 et son lien de désinscription, obligatoire sur
-tout envoi de masse. Le texte et le lien de s15 s'insèrent dans ce gabarit.
+Un seul mécanisme d'invitation, appliqué à un membre (invitation individuelle) ou à une cible entière
+(lancement, relance) : ni second gabarit d'invitation, ni seconde génération de lien. **Mais
+l'enveloppe change** : l'invitation individuelle est un email transactionnel sans habillage de
+campagne, alors que le lancement est un envoi de masse — il porte donc le gabarit commun de s25 et son
+lien de désinscription, obligatoire sur tout envoi de masse. Le texte et le lien de l'invitation
+s'insèrent dans ce gabarit.
+
+**Elle n'implémente ni compte ni lien magique** (repris de s15) : le compte vient de s12d (ouvrir un
+compte n'envoie rien), le lien de s03. Une seconde implémentation du lien de connexion serait un
+défaut de review. **À vérifier en review, pas en test** : que le texte par défaut de l'invitation
+n'énumère aucune fonctionnalité livrée après cette story ; le bureau l'enrichira au fil des mises en
+ligne. L'état « connecté au moins une fois » se déduit de la **première connexion réussie** sur
+l'association, pas d'un clic sur le lien — un lien cliqué par un antivirus n'est pas une connexion.
+Public âgé et peu à l'aise : la rédaction de l'email compte autant que le mécanisme ; elle se traite
+en `/ks-design`, sa qualité relève de la recette.
+
+**Taille** : avec l'invitation individuelle, la story frôle le seuil de scission. Si la recherche ou
+le plan la portent à 5, la scinder (par exemple invitation individuelle et suivi d'adoption, puis
+lancement de masse et relance).
 
 Le lien de connexion propre à chaque destinataire est une variable de campagne d'un genre nouveau —
 elle porte un secret à usage unique. Ne pas la journaliser, ne pas la stocker dans l'archive de
@@ -3289,8 +3262,8 @@ Réf. `ADR 009` (modèle de retrait et voie de retour), `ADR 008` (locale unique
   avec le lien vers sa sécurité ; il atteint `/bureau` par l'adresse.
 - `src/proxy.ts` et ses tests protègent `/dashboard` et `/account` : à mettre à jour sans affaiblir la
   protection des segments conservés.
-- L'invitation de s15 est un lien magique, pas l'invitation d'organisation de Better Auth : retirer
-  `/account/invitations` ne la gêne pas. Vérifier qu'aucun autre parcours du bloc B (s15, s42) ne
+- L'invitation de s42 est un lien magique, pas l'invitation d'organisation de Better Auth : retirer
+  `/account/invitations` ne la gêne pas. Vérifier qu'aucun autre parcours du bloc B (s42) ne
   cite un écran retiré.
 - **Espace membre** : `/dashboard` est conservé comme adresse de l'espace membre, parce que le design
   de s12d (`docs/designs/s12-membres-parcelles.md`, écran 6) y place « Mes parcelles ». Cette story
@@ -3487,7 +3460,6 @@ Réf. `ADR 009` (modèle de retrait).
 | s12d | comptes-membres                  | 3   | s03, s03c, s12, s46, s46b                                                                                                                | B    |
 | s13  | import-initial-membres           | 3   | s12, s12d, s12c                                                                                                                          | B    |
 | s14  | attribuer-roles                  | 2   | s03b, s12, s12d                                                                                                                          | B    |
-| s15  | inviter-membre                   | 2   | s02, s03, s03c, s12, s12d                                                                                                                | B    |
 | s16  | coordonnees-membre               | 1   | s12, s12d                                                                                                                                | B    |
 | s17  | import-releves-eau               | 3   | s02, s12, s13                                                                                                                            | B    |
 | s18  | historique-consommation          | 2   | s17                                                                                                                                      | B    |
@@ -3511,11 +3483,11 @@ Réf. `ADR 009` (modèle de retrait).
 | s35  | petites-annonces                 | 3   | s10, s12, s12d                                                                                                                           | F    |
 | s36  | modeles-documents                | 3   | s27, s28, s32                                                                                                                            | F    |
 | s37  | permissions-configurables        | 4   | s03b                                                                                                                                     | F    |
-| s38  | export-donnees                   | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s15, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37 | F    |
+| s38  | export-donnees                   | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42 | F    |
 | s39  | completude-export                | 2   | s38                                                                                                                                      | F    |
 | s40  | export-membre                    | 2   | s12, s12d, s24, s38, s39                                                                                                                 | F    |
 | s41  | simulation-role                  | 2   | s01, s03b, s24, s37, s38, s39                                                                                                            | F    |
-| s42  | lancement-invitations            | 3   | s03, s03c, s13, s15, s25, s26, s27, s27b, s28                                                                                            | F    |
+| s42  | lancement-invitations            | 4   | s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28                                                                                 | F    |
 | s43  | locale-unique                    | 2   | s11                                                                                                                                      | A    |
 | s44  | page-accueil                     | 3   | s02, s04, s04b, s05, s07, s11                                                                                                            | A    |
 | s45  | retrait-pages-publiques-heritees | 3   | s43, s44                                                                                                                                 | A    |
@@ -3523,7 +3495,7 @@ Réf. `ADR 009` (modèle de retrait).
 | s46b | connexion-limitee-association    | 4   | s03, s03b, s03c, s46                                                                                                                     | B    |
 | s47  | roles-globaux-reduits            | 3   | s03b, s46b                                                                                                                               | B    |
 
-**58 stories, aucune à 5.** Répartition : quatre à 1, vingt et une à 2, vingt-quatre à 3, neuf à 4.
+**57 stories, aucune à 5.** Répartition : quatre à 1, vingt à 2, vingt-trois à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026).
 **Neuf stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
@@ -3544,12 +3516,12 @@ travail vit dans `docs/adaptation-socle-design-system.md`, et la contrainte qu'e
 stories d'écran reste, en règle transverse « Socle habillé ».
 Sa surface est énumérée dans le tableau mesuré de `docs/adaptation-socle-design-system.md`, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
-Les neuf stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
+Les dix stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
 blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
 daté), s26
 (planification, budget transverse et file de report), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
-s38 (moteur d'export et son archive), s46b (inscription fermée, connexion limitée à l'association du
+s38 (moteur d'export et son archive), s42 (invitation individuelle et lancement de masse, absorbe s15), s46b (inscription fermée, connexion limitée à l'association du
 domaine, destination par rôle) — portent chacune leur risque
 explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
 `/ks-plan`.
@@ -3569,7 +3541,7 @@ s27b (nature des envois, scindée hors de s27), s04b (navigation du site public,
 de s04 qui empilait deux lignes de périmètre — premier id intercalé), s14 (attribution
 des rôles — les rôles
 existaient et la matrice était prévue, mais rien ne permettait de désigner la présidente ni le
-bureau), s15 (invitation unitaire, sortie de s03 où elle créait une dépendance circulaire vers s12),
+bureau), s15 (invitation unitaire, sortie de s03 où elle créait une dépendance circulaire vers s12 ; fondue dans s42 le 23 octobre 2026),
 s39 (garde-fou de complétude, sorti de s38), s40 (export individuel d'un membre, sorti de s38 qui
 portait deux valeurs utilisateur distinctes), s41 (simulation de rôle, sortie de s01) et s42
 (invitation des membres au lancement, qui n'était couverte par aucune story — le service existait
@@ -3586,7 +3558,7 @@ registre.
 notes : la recherche y a compté cinq sujets à risque, dont l'adaptateur d'envoi de l'ADR 005, absent du
 code. s03 garde le lien magique et l'adaptateur (3), **s03b** prend les rôles et le registre d'actions
 (3), **s03c** la session sur le domaine de chaque association (3). Les deux ids sont intercalés parce
-que toute la suite en dépend : le registre est une règle transverse, et s12b, s15 et s42 supposent le
+que toute la suite en dépend : le registre est une règle transverse, et s12b et s42 supposent le
 lien propre au domaine. Le même jour, la durée du lien est passée de 4 heures à **20 minutes**, et la
 connexion par mot de passe est conservée, au moins pour le SuperAdmin.
 
