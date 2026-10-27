@@ -38,7 +38,7 @@
 | CMS de pages génériques | s04 (+ s44 pour l'accueil) | ✅ |
 | Attribution des rôles aux membres | s14 | ✅ |
 | Permissions par rôle configurables | s37 (registre posé par s03b) | ✅ |
-| Connexion par lien magique + suivi d'adoption | s03, s03c, s15, s42 | ✅ |
+| Connexion par lien magique + suivi d'adoption | s03, s03c, s42 (absorbe s15 depuis le 23/10/2026) | ✅ |
 | Pages publiques + formulaire de contact | s04, s08 | ✅ |
 | Navigation du site public | s04b | ✅ |
 | Identité visuelle | s01b (logo, favicon), s02 (teinte) | ✅ |
@@ -80,7 +80,7 @@
 - La scission ne retire aucune couverture :
   - s46b ferme l'inscription libre sur le lien magique (c3, c4). Elle renforce la règle « un lien ne crée jamais de compte » de s03 sans la retirer.
   - Les comptes des membres viennent de s12d, qui crée le compte directement (`createUserDao`) et ne dépend donc pas de l'inscription publique (l. 1444-1446).
-  - s15 et s42 dépendent de s12d.
+  - s42 dépend de s12d (s15, qui en dépendait aussi, y est fondue depuis le 23/10/2026).
 
 ## Périmètre
 

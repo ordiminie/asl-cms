@@ -464,7 +464,7 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
 
 - **Origine d'une association** : `associationOriginOf(organization.domain)` = `BETTER_AUTH_URL` dont le nom
   d'hôte devient le domaine lu en base (protocole et port conservés, aucun en-tête lu : utilisable hors
-  requête, pour s15 et s42). `BETTER_AUTH_URL` ne désigne donc plus « le site » mais le **protocole et le
+  requête, pour s42). `BETTER_AUTH_URL` ne désigne donc plus « le site » mais le **protocole et le
   port de la plateforme** ; en production, HTTPS partout.
 - **Le lien est rebasé dans `sendMagicLink`** (`rebaseMagicLinkUrl`) : chemin et jeton gardés, origine de
   l'association, `callbackURL` / `errorCallbackURL` / `newUserCallbackURL` absolus sur cette origine (une
@@ -509,7 +509,7 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
 - **Client navigateur** (`auth-client.ts`) sans `baseURL` : Better Auth prend l'origine de la page.
 - **Reste connu** : les pages héritées du groupe `(app)` (`account/organizations`, `team/[slug]`,
   `activeOrganizationId`) ne sont pas scopées au domaine — un membre de A et B connecté sur A peut y lire B.
-  Les liens OTP (2FA) et d'invitation (s15) sont encore construits sur `NEXT_PUBLIC_APP_URL` : depuis s46b,
+  Les liens OTP (2FA) et d'invitation (s42) sont encore construits sur `NEXT_PUBLIC_APP_URL` : depuis s46b,
   un lien OTP ouvert sur l'hôte de la plateforme y est refusé par le contrôle d'ouverture de session (ADR
   034). Le callback de Google est sur l'hôte de la plateforme : il n'y ouvre de session qu'au SuperAdmin
   (la V2 devra en donner un par domaine). Les liens de **vérification d'email**, de **changement
