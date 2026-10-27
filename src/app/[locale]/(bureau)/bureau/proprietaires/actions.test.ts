@@ -774,6 +774,17 @@ describe('changeMemberRoleAction', () => {
     })
   })
 
+  it('dit le refus superadmin_presidency sans pronom genré', async () => {
+    const messages = (await import('../../../../../../messages/fr.json'))
+      .default
+    expect(
+      messages.BureauMemberProfilesPage.detail.role.refusals
+        .superadmin_presidency
+    ).toBe(
+      '{name} est un compte SuperAdmin de la plateforme : ce compte ne peut pas devenir Président(e). Rien n’a été enregistré.'
+    )
+  })
+
   it('rend la fiche sans compte et la fiche introuvable', async () => {
     vi.mocked(changeMemberRoleService).mockResolvedValue({status: 'no_account'})
     expect(await changeMemberRoleAction(undefined, roleForm('board'))).toEqual({

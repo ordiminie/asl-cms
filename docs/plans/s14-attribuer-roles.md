@@ -307,3 +307,9 @@ Relevés pendant l'exécution (implementer, 2026-10-27). Aucun ne change une dé
   `docs/exploitation/README.md` §12 reste exact sans retouche.
 - **Mineur 5 — `canChangeOrganizationMemberRole` supprimée** (aucun appelant dans `src`, `e2e`,
   `scripts`, aucun test).
+
+### Correctifs de la revue 3 (2026-10-27)
+
+- **Mineur 1 — refus sans pronom.** `refusals.superadmin_presidency` dit « ce compte ne peut pas
+  devenir Président(e) » au lieu de « il », conformément à la convention sans genre du design (A3) ;
+  texte épinglé par un test dans `proprietaires/actions.test.ts`.

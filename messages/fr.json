@@ -2996,7 +2996,7 @@
           "presidency_reserved": "Seul(e) la Président(e) peut transmettre la présidence. Rien n’a été enregistré.",
           "own_presidency": "Pour transmettre la présidence, ouvrez la fiche de la personne qui vous succède. Rien n’a été enregistré.",
           "invalid_role": "Ce rôle ne peut pas être attribué. Rien n’a été enregistré.",
-          "superadmin_presidency": "{name} est un compte SuperAdmin de la plateforme : il ne peut pas devenir Président(e). Rien n’a été enregistré.",
+          "superadmin_presidency": "{name} est un compte SuperAdmin de la plateforme : ce compte ne peut pas devenir Président(e). Rien n’a été enregistré.",
           "no_account": "Aucun rôle possible : ajoutez d’abord une adresse email pour lui ouvrir un compte. Rien n’a été enregistré."
         },
         "saved": {
