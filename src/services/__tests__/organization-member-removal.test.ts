@@ -159,6 +159,25 @@ describe('removeUserFromOrganizationService — retrait soumis au dernier compte
   })
 })
 
+describe('removeUserFromOrganizationService — cible SuperAdmin (s14, revue 2)', () => {
+  it('retire la ligne board d’un SuperAdmin, hors décompte, lue après le verrou', async () => {
+    vi.mocked(countCapableMembersDao).mockResolvedValue(1)
+    vi.mocked(getUserByIdDao).mockImplementation(async () => {
+      calls.push('target-account')
+      return {...userTestSuperAdmin, id: TARGET_ID, name: 'Zourite'} as never
+    })
+
+    await removeUserFromOrganizationService(TARGET_ID, ORG_ID)
+
+    expect(deleteUserOrganizationDao).toHaveBeenCalledWith(TARGET_ID, ORG_ID)
+    expect(calls.slice(0, 3)).toEqual([
+      `lock:${ORG_ID}`,
+      'membership',
+      'target-account',
+    ])
+  })
+})
+
 describe('[GUEST] removeUserFromOrganizationService', () => {
   it('refuse un visiteur sans verrou ni écriture', async () => {
     setupAuthUserMocked(undefined)

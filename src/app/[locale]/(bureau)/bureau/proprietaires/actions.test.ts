@@ -753,24 +753,26 @@ describe('changeMemberRoleAction', () => {
     }
   )
 
-  it.each(['presidency_reserved', 'own_presidency', 'invalid_role'] as const)(
-    'rend le refus %s',
-    async (reason) => {
-      vi.mocked(changeMemberRoleService).mockResolvedValue({
-        status: 'refused',
-        reason,
-        self: false,
-        name: 'Paul Vidal',
-      })
+  it.each([
+    'presidency_reserved',
+    'own_presidency',
+    'invalid_role',
+    'superadmin_presidency',
+  ] as const)('rend le refus %s', async (reason) => {
+    vi.mocked(changeMemberRoleService).mockResolvedValue({
+      status: 'refused',
+      reason,
+      self: false,
+      name: 'Paul Vidal',
+    })
 
-      expect(
-        await changeMemberRoleAction(undefined, roleForm('super_admin'))
-      ).toEqual({
-        status: 'refused',
-        message: `BureauMemberProfilesPage.detail.role.refusals.${reason}`,
-      })
-    }
-  )
+    expect(
+      await changeMemberRoleAction(undefined, roleForm('super_admin'))
+    ).toEqual({
+      status: 'refused',
+      message: `BureauMemberProfilesPage.detail.role.refusals.${reason}`,
+    })
+  })
 
   it('rend la fiche sans compte et la fiche introuvable', async () => {
     vi.mocked(changeMemberRoleService).mockResolvedValue({status: 'no_account'})

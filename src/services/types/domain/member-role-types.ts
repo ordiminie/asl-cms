@@ -32,7 +32,11 @@ export type MemberRoleChangeInput = {
 }
 
 export type MemberRoleRefusal =
-  'presidency_reserved' | 'own_presidency' | 'last_capable' | 'invalid_role'
+  | 'presidency_reserved'
+  | 'own_presidency'
+  | 'last_capable'
+  | 'invalid_role'
+  | 'superadmin_presidency'
 
 /** Ce que l'enregistrement d'un role fait. */
 export type MemberRoleChangeDecision =

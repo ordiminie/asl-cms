@@ -88,6 +88,15 @@ const memberRow = (role: 'member' | 'board' | 'owner', userId: string) => ({
   createdAt: new Date(),
 })
 
+/** Roles relus par `getUserOrganizationDao`, par compte. */
+const givenRoles = (
+  roles: Record<string, 'member' | 'board' | 'owner'>
+): void => {
+  vi.mocked(getUserOrganizationDao).mockImplementation(async (userId) =>
+    roles[userId] ? (memberRow(roles[userId], userId) as never) : undefined
+  )
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   scope.current = undefined
@@ -202,6 +211,8 @@ describe('closeMemberAccount — fermer sans rien supprimer d’autre', () => {
 
 describe('replaceMemberAccount — l’adresse change', () => {
   it('ferme l’ancien compte et ouvre le nouveau pour un propriétaire', async () => {
+    givenRoles({[OLD_USER_ID]: 'member'})
+
     await replaceMemberAccount({
       organizationId: ORG_ID,
       author: AUTHOR,
@@ -209,7 +220,6 @@ describe('replaceMemberAccount — l’adresse change', () => {
       previousUserId: OLD_USER_ID,
       email: 'nouvelle@example.test',
       name: 'Odile Marchand',
-      role: 'member',
     })
 
     expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
@@ -227,6 +237,8 @@ describe('replaceMemberAccount — l’adresse change', () => {
   })
 
   it('déplace le rôle du bureau vers le nouveau compte', async () => {
+    givenRoles({[OLD_USER_ID]: 'board'})
+
     await replaceMemberAccount({
       organizationId: ORG_ID,
       author: AUTHOR,
@@ -234,7 +246,6 @@ describe('replaceMemberAccount — l’adresse change', () => {
       previousUserId: OLD_USER_ID,
       email: 'helene.roux@example.test',
       name: 'Hélène Roux',
-      role: 'board',
     })
 
     expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
@@ -256,6 +267,7 @@ describe('replaceMemberAccount — l’adresse change', () => {
     vi.mocked(createMemberIfAbsentTxnDao).mockResolvedValue(
       memberRow('member', KNOWN_USER_ID) as never
     )
+    givenRoles({[OLD_USER_ID]: 'owner', [KNOWN_USER_ID]: 'member'})
 
     await replaceMemberAccount({
       organizationId: ORG_ID,
@@ -264,7 +276,6 @@ describe('replaceMemberAccount — l’adresse change', () => {
       previousUserId: OLD_USER_ID,
       email: 'odile@example.test',
       name: 'Odile Marchand',
-      role: 'owner',
     })
 
     expect(updateMemberRoleFromDao).toHaveBeenCalledWith(
@@ -313,7 +324,7 @@ describe('applyMemberAccountDecision — le changement d’accès', () => {
     [{kind: 'open'} as const, 'opened', NEW_USER_ID],
     [{kind: 'close'} as const, 'closed', null],
     [{kind: 'unlink'} as const, null, null],
-    [{kind: 'replace', role: 'member'} as const, 'replaced', NEW_USER_ID],
+    [{kind: 'replace'} as const, 'replaced', NEW_USER_ID],
   ])('%o → %s', async (decision, change, userId) => {
     expect(
       await applyMemberAccountDecision({
@@ -419,16 +430,20 @@ describe('openMemberAccountsForOrganization — reprise en lot (critère 2)', ()
  * l'adresse. Une ligne par compte dont le role change.
  */
 describe('replaceMemberAccount — trace du déplacement de rôle (s14, D5)', () => {
-  const replaceBoard = (role: 'member' | 'board' | 'owner') =>
-    replaceMemberAccount({
+  const replaceBoard = (
+    role: 'member' | 'board' | 'owner',
+    others: Record<string, 'member' | 'board' | 'owner'> = {}
+  ) => {
+    givenRoles({[OLD_USER_ID]: role, ...others})
+    return replaceMemberAccount({
       organizationId: ORG_ID,
       author: AUTHOR,
       memberProfileId: PROFILE_ID,
       previousUserId: OLD_USER_ID,
       email: 'helene.roux@example.test',
       name: 'Hélène Roux',
-      role,
     })
+  }
 
   it('trace l’arrivée du rôle sur le nouveau compte et son départ de l’ancien', async () => {
     let tracedUnder: string | undefined
@@ -466,14 +481,11 @@ describe('replaceMemberAccount — trace du déplacement de rôle (s14, D5)', ()
 
   it('trace la promotion d’un compte déjà simple membre', async () => {
     vi.mocked(getUserByEmailDao).mockResolvedValue(knownUser)
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      memberRow('member', KNOWN_USER_ID) as never
-    )
     vi.mocked(createMemberIfAbsentTxnDao).mockResolvedValue(
       memberRow('member', KNOWN_USER_ID) as never
     )
 
-    await replaceBoard('owner')
+    await replaceBoard('owner', {[KNOWN_USER_ID]: 'member'})
 
     expect(insertMemberRoleEventDao).toHaveBeenNthCalledWith(
       1,
@@ -496,9 +508,6 @@ describe('replaceMemberAccount — trace du déplacement de rôle (s14, D5)', ()
       ...knownUser,
       id: OLD_USER_ID,
     })
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      memberRow('board', OLD_USER_ID) as never
-    )
     vi.mocked(createMemberIfAbsentTxnDao).mockResolvedValue(
       memberRow('board', OLD_USER_ID) as never
     )
@@ -517,25 +526,22 @@ describe('replaceMemberAccount — trace du déplacement de rôle (s14, D5)', ()
  * sa ligne a bien ete retiree.
  */
 describe('replaceMemberAccount — verrou et retrait effectif (s14, revue 1)', () => {
-  const replace = (role: 'member' | 'board' | 'owner') =>
-    replaceMemberAccount({
+  const replace = (role: 'member' | 'board' | 'owner') => {
+    givenRoles({[OLD_USER_ID]: role})
+    return replaceMemberAccount({
       organizationId: ORG_ID,
       author: AUTHOR,
       memberProfileId: PROFILE_ID,
       previousUserId: OLD_USER_ID,
       email: 'helene.roux@example.test',
       name: 'Hélène Roux',
-      role,
     })
+  }
 
-  it('prend le verrou des rôles sous le scope, avant de lire ou d’écrire un rôle', async () => {
+  it('prend le verrou des rôles sous le scope, puis relit le rôle de l’ancien compte, avant toute écriture', async () => {
     const calls: string[] = []
     vi.mocked(lockOrganizationRolesDao).mockImplementation(async (orgId) => {
       calls.push(`lock:${orgId}:${scope.current}`)
-    })
-    vi.mocked(getUserOrganizationDao).mockImplementation(async () => {
-      calls.push('read-role')
-      return undefined
     })
     vi.mocked(createMemberIfAbsentTxnDao).mockImplementation(async (row) => {
       calls.push('membership')
@@ -546,11 +552,26 @@ describe('replaceMemberAccount — verrou et retrait effectif (s14, revue 1)', (
       return 1
     })
 
-    await replace('board')
+    vi.mocked(getUserOrganizationDao).mockImplementation(async (userId) => {
+      calls.push(`read-role:${userId}`)
+      return userId === OLD_USER_ID
+        ? (memberRow('board', OLD_USER_ID) as never)
+        : undefined
+    })
+
+    await replaceMemberAccount({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      memberProfileId: PROFILE_ID,
+      previousUserId: OLD_USER_ID,
+      email: 'helene.roux@example.test',
+      name: 'Hélène Roux',
+    })
 
     expect(calls).toEqual([
       `lock:${ORG_ID}:${ORG_ID}`,
-      'read-role',
+      `read-role:${OLD_USER_ID}`,
+      `read-role:${NEW_USER_ID}`,
       'membership',
       'delete',
     ])
@@ -568,5 +589,56 @@ describe('replaceMemberAccount — verrou et retrait effectif (s14, revue 1)', (
     expect(insertMemberRoleEventDao).not.toHaveBeenCalledWith(
       expect.objectContaining({targetUserId: OLD_USER_ID})
     )
+  })
+})
+
+/**
+ * Revue 2 de s14 : le role deplace est relu sous le verrou, sur l'ancien
+ * compte, et non recu de l'appelant qui l'a lu avant le verrou. Une
+ * retrogradation concurrente n'est pas annulee par le changement d'adresse.
+ */
+describe('replaceMemberAccount — rôle relu sous le verrou (s14, revue 2)', () => {
+  const replace = () =>
+    replaceMemberAccount({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      memberProfileId: PROFILE_ID,
+      previousUserId: OLD_USER_ID,
+      email: 'helene.roux@example.test',
+      name: 'Hélène Roux',
+    })
+
+  it('déplace le rôle relu après le verrou, pas un rôle lu avant', async () => {
+    givenRoles({[OLD_USER_ID]: 'member'})
+
+    await replace()
+
+    expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({userId: NEW_USER_ID, role: 'member'})
+    )
+    expect(updateMemberRoleFromDao).not.toHaveBeenCalled()
+    expect(deleteMemberWithRoleDao).toHaveBeenCalledWith(
+      OLD_USER_ID,
+      ORG_ID,
+      'member'
+    )
+    expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
+  })
+
+  it('ancien compte sans ligne ici : ouvre en simple membre, ne retire ni ne trace rien', async () => {
+    givenRoles({})
+
+    const result = await replace()
+
+    expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({userId: NEW_USER_ID, role: 'member'})
+    )
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+    expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
+    expect(setMemberProfileUserIdDao).toHaveBeenLastCalledWith(
+      PROFILE_ID,
+      NEW_USER_ID
+    )
+    expect(result).toEqual({userId: NEW_USER_ID})
   })
 })

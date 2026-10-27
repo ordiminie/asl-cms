@@ -329,7 +329,13 @@ describe('decideMemberRemoval — retrait d’une ligne member (s14, D2)', () =>
   it.each(['board', 'owner'] as const)(
     'refuse de retirer le dernier compte %s',
     (targetRole) => {
-      expect(decideMemberRemoval({targetRole, capableCount: 1})).toEqual({
+      expect(
+        decideMemberRemoval({
+          targetRole,
+          capableCount: 1,
+          targetIsSuperAdmin: false,
+        })
+      ).toEqual({
         kind: 'refuse',
         reason: 'last_capable',
       })
@@ -337,14 +343,49 @@ describe('decideMemberRemoval — retrait d’une ligne member (s14, D2)', () =>
   )
 
   it('retire un compte capable quand un autre reste', () => {
-    expect(decideMemberRemoval({targetRole: 'board', capableCount: 2})).toEqual(
-      {kind: 'remove'}
-    )
+    expect(
+      decideMemberRemoval({
+        targetRole: 'board',
+        capableCount: 2,
+        targetIsSuperAdmin: false,
+      })
+    ).toEqual({kind: 'remove'})
   })
 
   it('retire un simple membre quel que soit le décompte', () => {
     expect(
-      decideMemberRemoval({targetRole: 'member', capableCount: 0})
+      decideMemberRemoval({
+        targetRole: 'member',
+        capableCount: 0,
+        targetIsSuperAdmin: false,
+      })
     ).toEqual({kind: 'remove'})
+  })
+})
+
+describe('decideMemberRemoval — cible SuperAdmin (s14, revue 2)', () => {
+  it('retire la ligne board d’un SuperAdmin, hors décompte, même à un seul compte capable', () => {
+    expect(
+      decideMemberRemoval({
+        targetRole: 'board',
+        capableCount: 1,
+        targetIsSuperAdmin: true,
+      })
+    ).toEqual({kind: 'remove'})
+  })
+})
+
+describe('decideRoleChange — passation vers un SuperAdmin (s14, revue 2)', () => {
+  it('refuse de transmettre la présidence à un compte SuperAdmin', () => {
+    expect(
+      decideRoleChange(
+        input({
+          viewerRole: 'owner',
+          targetRole: 'board',
+          nextRole: 'owner',
+          targetIsSuperAdmin: true,
+        })
+      )
+    ).toEqual({kind: 'refuse', reason: 'superadmin_presidency'})
   })
 })

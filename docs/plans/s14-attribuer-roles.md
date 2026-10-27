@@ -284,3 +284,26 @@ Relevés pendant l'exécution (implementer, 2026-10-27). Aucun ne change une dé
   `docs/exploitation/README.md` mis à jour.
 - **Problème 7** (retrait d'un rôle par suppression d'un compte `user`) : non traité, demande une
   décision.
+
+### Correctifs de la revue 2 (2026-10-27)
+
+- **Mineur 1 — rôle relu sous verrou.** `replaceMemberAccount` ne reçoit plus de rôle : après
+  `lockOrganizationRolesDao`, il relit la ligne de `previousUserId` et déplace ce rôle-là (ordre
+  verrou → relecture → écritures épinglé par un test). Un ancien compte sans ligne ici ne déplace
+  rien : la nouvelle adresse ouvre un accès de simple membre, rien n'est retiré ni tracé. La
+  décision `replace` de `decideMemberAccount` ne porte plus de rôle (devenu inutile).
+- **Mineur 2 — retrait d'un SuperAdmin.** `decideMemberRemoval` reçoit `targetIsSuperAdmin` (lu par
+  `getUserByIdDao` dans `removeUserFromOrganizationService`, après le verrou) : une cible
+  SuperAdmin, hors décompte, n'est jamais refusée `last_capable`.
+- **Mineur 3 — passation vers un SuperAdmin.** `decideRoleChange` refuse `transfer_presidency`
+  quand la cible est SuperAdmin, code `superadmin_presidency` (aucun code existant ne disait ce
+  refus) et texte `refusals.superadmin_presidency` dans `messages/fr.json`. L'option Président(e)
+  n'est **pas** masquée dans `roleCardFor` : le drapeau n'arrive pas jusqu'à la carte sans faire
+  porter le rôle global du compte par `getMemberAccountDao` et `readAccount` (changement de DTO
+  hors du coût visé) ; le refus motivé couvre le cas.
+- **Mineur 4 — présidence unique depuis l'écran.** La passation rétrograde l'appelante puis toute
+  autre ligne `owner` hors SuperAdmin (`getOrganizationOwnersDao`) sauf la cible, une trace
+  `presidency_transfer` chacune ; l'appelante est rétrogradée même absente de la liste lue.
+  `docs/exploitation/README.md` §12 reste exact sans retouche.
+- **Mineur 5 — `canChangeOrganizationMemberRole` supprimée** (aucun appelant dans `src`, `e2e`,
+  `scripts`, aucun test).

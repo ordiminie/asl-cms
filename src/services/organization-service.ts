@@ -310,9 +310,11 @@ export const removeUserFromOrganizationService = async (
         "Le propriétaire (OWNER) ne peut pas se retirer lui-même de l'organisation."
       )
     }
+    const targetAccount = await getUserByIdDao(userIdSanitized)
     const decision = decideMemberRemoval({
       targetRole: membership.role,
       capableCount: await countCapableMembersDao(organizationIdSanitized),
+      targetIsSuperAdmin: targetAccount?.role === RoleConst.SUPER_ADMIN,
     })
     if (decision.kind === 'refuse') {
       throw new ValidationError(LAST_CAPABLE_REMOVAL_MESSAGE)

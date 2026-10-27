@@ -174,8 +174,12 @@ export const closeMemberAccount = async ({
  * L'adresse d'une fiche change : l'ancien acces se ferme, un acces s'ouvre
  * sur la nouvelle adresse. Pour le bureau et la presidence, le role suit la
  * nouvelle adresse, et ce deplacement est trace (D5, ADR 039). Le verrou des
- * roles est pris d'abord, comme pour tout changement de role ; le depart de
- * l'ancien compte n'est trace que si sa ligne a bien ete retiree.
+ * roles est pris d'abord, comme pour tout changement de role, puis le role
+ * de l'ancien compte est relu sous ce verrou : un role lu avant par
+ * l'appelant pourrait annuler une retrogradation concurrente. Un ancien
+ * compte sans ligne ici ne deplace rien : la nouvelle adresse ouvre un acces
+ * de simple membre. Le depart de l'ancien compte n'est trace que si sa ligne
+ * a bien ete retiree.
  */
 export const replaceMemberAccount = async ({
   organizationId,
@@ -183,19 +187,22 @@ export const replaceMemberAccount = async ({
   previousUserId,
   email,
   name,
-  role,
   author,
 }: OpenMemberAccountInput & {
   previousUserId: string
-  role: MemberAccountRole
   author: MemberAccountAuthor
 }): Promise<{userId: string}> =>
   withTenant(organizationId, async () => {
     await lockOrganizationRolesDao(organizationId)
+    const previous = await getUserOrganizationDao(
+      previousUserId,
+      organizationId
+    )
+    const role = previous?.role ?? MemberAccountRoleConst.MEMBER
     const userId = await findOrCreateUserId(normalizedEmail(email), name)
     const {before, after} = await ensureMembership(organizationId, userId, role)
     const removed =
-      userId !== previousUserId
+      previous && userId !== previousUserId
         ? await deleteMemberWithRoleDao(previousUserId, organizationId, role)
         : 0
     await setMemberProfileUserIdDao(memberProfileId, userId)
@@ -270,7 +277,6 @@ export const applyMemberAccountDecision = async ({
       ...base,
       email: profile.email,
       previousUserId: profile.userId,
-      role: decision.role,
       author,
     })
     return {change: 'replaced', userId}

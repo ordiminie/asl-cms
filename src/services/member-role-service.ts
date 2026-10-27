@@ -171,6 +171,22 @@ type ApplyDecisionInput = {
   viewer: User
 }
 
+/**
+ * Presidences a retrograder lors d'une passation depuis l'ecran : l'appelante
+ * d'abord, puis toute autre President(e) hors SuperAdmin, sauf la cible. La
+ * presidence reste unique, comme apres le recours d'exploitation.
+ */
+const presidentsToDemote = async (
+  organizationId: string,
+  viewer: User,
+  targetUserId: string
+): Promise<{userId: string; name: string}[]> => {
+  const others = (await getOrganizationOwnersDao(organizationId)).filter(
+    (owner) => owner.userId !== viewer.id && owner.userId !== targetUserId
+  )
+  return [{userId: viewer.id, name: viewer.name}, ...others]
+}
+
 /** Ecrit et trace la decision de `decideRoleChange`. */
 const applyDecision = async ({
   organizationId,
@@ -189,7 +205,7 @@ const applyDecision = async ({
         memberProfileId: target.memberProfileId,
         name: target.name,
       },
-      [{userId: viewer.id, name: viewer.name}],
+      await presidentsToDemote(organizationId, viewer, target.userId),
       organizationId,
       author
     )

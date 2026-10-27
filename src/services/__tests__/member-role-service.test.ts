@@ -140,6 +140,8 @@ beforeEach(() => {
   vi.mocked(insertMemberRoleEventDao).mockImplementation(async () => {
     calls.push(`trace:${scope.current}`)
   })
+  vi.mocked(getUserByIdDao).mockResolvedValue(undefined)
+  vi.mocked(getOrganizationOwnersDao).mockResolvedValue([])
 })
 
 describe('[GUEST] changeMemberRoleService', () => {
@@ -407,6 +409,9 @@ describe('[ORGANIZATION OWNER] changeMemberRoleService — passation', () => {
 
   it('transmet la présidence : cible owner puis appelante board, deux traces', async () => {
     rolesInDb({viewer: 'owner', target: 'board'})
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
+      {userId: VIEWER_ID, name: 'Hélène Roux'},
+    ])
     vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(
       profileRow({id: 'profil-presidente', userId: VIEWER_ID}) as never
     )
@@ -462,6 +467,78 @@ describe('[ORGANIZATION OWNER] changeMemberRoleService — passation', () => {
       reason: 'own_presidency',
     })
     expect(updateMemberRoleFromDao).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Revue 2 de s14 : la passation depuis l'ecran refuse un successeur
+ * SuperAdmin (comme le recours d'exploitation) et rend la presidence unique :
+ * toute President(e) hors SuperAdmin autre que la cible repasse Bureau, une
+ * trace chacune (docs/exploitation/README.md §12).
+ */
+describe('[ORGANIZATION OWNER] changeMemberRoleService — présidence unique (revue 2)', () => {
+  const LEGACY_ID = '99999999-9999-4999-8999-999999999999'
+
+  beforeEach(() => {
+    setupAuthUserMocked(withMembership(UserOrganizationRoleConst.OWNER))
+    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+  })
+
+  it('refuse de transmettre la présidence à un SuperAdmin, sans écriture', async () => {
+    rolesInDb({viewer: 'owner', target: 'board'})
+    vi.mocked(getUserByIdDao).mockResolvedValue({
+      ...userTestSuperAdmin,
+      id: TARGET_USER_ID,
+    } as never)
+
+    expect(await change('owner')).toMatchObject({
+      status: 'refused',
+      reason: 'superadmin_presidency',
+    })
+    expect(updateMemberRoleFromDao).not.toHaveBeenCalled()
+    expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
+  })
+
+  it('rétrograde toutes les présidences héritées, une trace chacune', async () => {
+    rolesInDb({viewer: 'owner', target: 'board'})
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
+      {userId: VIEWER_ID, name: 'Hélène Roux'},
+      {userId: LEGACY_ID, name: 'Ancienne Présidente'},
+    ])
+
+    await change('owner')
+
+    expect(calls.filter((c) => c.startsWith('update'))).toEqual([
+      `update:${TARGET_USER_ID}:board->owner`,
+      `update:${VIEWER_ID}:owner->board`,
+      `update:${LEGACY_ID}:owner->board`,
+    ])
+    expect(insertMemberRoleEventDao).toHaveBeenCalledTimes(3)
+    expect(insertMemberRoleEventDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetUserId: LEGACY_ID,
+        targetName: 'Ancienne Présidente',
+        authorUserId: VIEWER_ID,
+        fromRole: 'owner',
+        toRole: 'board',
+        reason: 'presidency_transfer',
+      })
+    )
+  })
+
+  it('rétrograde l’appelante même absente de la liste lue', async () => {
+    rolesInDb({viewer: 'owner', target: 'board'})
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
+      {userId: LEGACY_ID, name: 'Ancienne Présidente'},
+    ])
+
+    await change('owner')
+
+    expect(calls.filter((c) => c.startsWith('update'))).toEqual([
+      `update:${TARGET_USER_ID}:board->owner`,
+      `update:${VIEWER_ID}:owner->board`,
+      `update:${LEGACY_ID}:owner->board`,
+    ])
   })
 })
 

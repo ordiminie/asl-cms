@@ -38,5 +38,5 @@ export const decideMemberAccount = ({
 
   if (linkedRole === null) return {kind: 'open'}
   if (sameEmail(savedEmail, nextEmail)) return {kind: 'none'}
-  return {kind: 'replace', role: linkedRole}
+  return {kind: 'replace'}
 }

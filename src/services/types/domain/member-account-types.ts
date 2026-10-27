@@ -30,7 +30,7 @@ export type MemberAccountDecision =
   | {kind: 'open'}
   | {kind: 'close'}
   | {kind: 'unlink'}
-  | {kind: 'replace'; role: MemberAccountRole}
+  | {kind: 'replace'}
   | {kind: 'refuse_board_removal'}
 
 /**

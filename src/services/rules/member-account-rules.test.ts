@@ -29,14 +29,14 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
     ).toEqual({kind: 'close'})
   })
 
-  it('remplace le compte quand l’adresse change, rôle member reporté', () => {
+  it('remplace le compte quand l’adresse change (le rôle est relu sous le verrou)', () => {
     expect(
       decideMemberAccount({
         savedEmail: 'odile@example.test',
         nextEmail: 'odile.marchand@example.test',
         linkedRole: 'member',
       })
-    ).toEqual({kind: 'replace', role: 'member'})
+    ).toEqual({kind: 'replace'})
   })
 
   it('refuse de vider l’adresse d’un membre du bureau', () => {
@@ -59,24 +59,24 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
     ).toEqual({kind: 'refuse_board_removal'})
   })
 
-  it('remplace l’adresse d’un membre du bureau en reportant son rôle', () => {
+  it('remplace l’adresse d’un membre du bureau', () => {
     expect(
       decideMemberAccount({
         savedEmail: 'helene@example.test',
         nextEmail: 'helene.roux@example.test',
         linkedRole: 'board',
       })
-    ).toEqual({kind: 'replace', role: 'board'})
+    ).toEqual({kind: 'replace'})
   })
 
-  it('remplace l’adresse de la présidence en reportant son rôle', () => {
+  it('remplace l’adresse de la présidence', () => {
     expect(
       decideMemberAccount({
         savedEmail: 'presidence@example.test',
         nextEmail: 'nouvelle.presidence@example.test',
         linkedRole: 'owner',
       })
-    ).toEqual({kind: 'replace', role: 'owner'})
+    ).toEqual({kind: 'replace'})
   })
 
   it('ne fait rien quand seule la casse de l’adresse change', () => {

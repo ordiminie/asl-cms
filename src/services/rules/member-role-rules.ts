@@ -19,7 +19,7 @@ import {
  * - Une seule President(e) : seule elle transmet la presidence, depuis la fiche
  *   du successeur, et ne modifie pas son propre role.
  * - Le SuperAdmin agit comme un membre du Bureau (D4), meme titulaire d'une
- *   ligne `owner` de l'amorcage.
+ *   ligne `owner` de l'amorcage, et ne recoit jamais la presidence.
  * - Une association garde au moins un compte capable (D3) : une
  *   retrogradation qui ferait tomber le decompte a zero est refusee.
  */
@@ -67,7 +67,9 @@ export const decideRoleChange = ({
   }
   if (nextRole === targetRole) return {kind: 'none'}
   if (nextRole === MemberAccountRoleConst.OWNER) {
-    return {kind: 'transfer_presidency'}
+    return targetIsSuperAdmin
+      ? {kind: 'refuse', reason: 'superadmin_presidency'}
+      : {kind: 'transfer_presidency'}
   }
   if (nextRole === MemberAccountRoleConst.BOARD) return {kind: 'assign'}
   if (isCapable(targetRole) && !targetIsSuperAdmin && capableCount <= 1) {
@@ -128,15 +130,18 @@ export const roleCardFor = (
 
 /**
  * Retrait d'une ligne `member` (ecran SuperAdmin, D2) : meme regle du dernier
- * compte capable qu'une retrogradation.
+ * compte capable qu'une retrogradation. Une cible SuperAdmin, hors decompte
+ * (D3), n'est jamais refusee `last_capable`.
  */
 export const decideMemberRemoval = ({
   targetRole,
   capableCount,
+  targetIsSuperAdmin,
 }: {
   targetRole: MemberAccountRole
   capableCount: number
+  targetIsSuperAdmin: boolean
 }): {kind: 'remove'} | {kind: 'refuse'; reason: 'last_capable'} =>
-  isCapable(targetRole) && capableCount <= 1
+  isCapable(targetRole) && !targetIsSuperAdmin && capableCount <= 1
     ? {kind: 'refuse', reason: 'last_capable'}
     : {kind: 'remove'}
