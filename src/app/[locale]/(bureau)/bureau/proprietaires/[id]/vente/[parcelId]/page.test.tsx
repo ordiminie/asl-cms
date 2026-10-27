@@ -91,6 +91,13 @@ beforeEach(() => {
     mailOnly: true,
     incomplete: true,
     account: {status: 'mail_only'},
+    roleCard: {
+      reading: 'no_account',
+      canEdit: false,
+      notice: null,
+      options: [],
+      self: false,
+    },
   })
 })
 

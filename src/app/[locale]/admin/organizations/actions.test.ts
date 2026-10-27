@@ -261,8 +261,7 @@ describe('actions de /admin/organizations — réservées au SuperAdmin (s47)', 
     },
     {
       name: 'addUserToOrganizationAction',
-      call: () =>
-        addUserToOrganizationAction(ORGANIZATION_ID, USER_ID, 'm@asl.test'),
+      call: () => addUserToOrganizationAction(ORGANIZATION_ID, USER_ID),
       service: createOrganizationMemberService,
     },
     {
@@ -295,6 +294,30 @@ describe('actions de /admin/organizations — réservées au SuperAdmin (s47)', 
       await call()
 
       expect(service).toHaveBeenCalledTimes(1)
+    }
+  )
+})
+
+/**
+ * s14, ADR 039 : l'ecran SuperAdmin n'ajoute qu'au role Membre. Un role du
+ * bureau ne se pose que par l'ecran de la fiche, trace.
+ */
+describe('addUserToOrganizationAction — ajout au rôle Membre seulement (s14)', () => {
+  beforeEach(() => {
+    vi.mocked(getAuthUser).mockResolvedValue(account('super_admin'))
+    vi.mocked(canInviteToOrganization).mockResolvedValue(true)
+  })
+
+  it.each(['owner', 'board', 'super_admin'])(
+    'ignore un rôle « %s » forgé : la ligne est créée au rôle member',
+    async (role) => {
+      await (
+        addUserToOrganizationAction as (...args: unknown[]) => Promise<unknown>
+      )(ORGANIZATION_ID, USER_ID, role)
+
+      expect(createOrganizationMemberService).toHaveBeenCalledWith(
+        expect.objectContaining({role: 'member'})
+      )
     }
   )
 })

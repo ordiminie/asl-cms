@@ -28,12 +28,16 @@ vi.mock('@/db/repositories/user-repository', () => ({
   getUserByEmailDao: vi.fn(),
   getUserByIdDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-role-event-repository', () => ({
+  insertMemberRoleEventDao: vi.fn(),
+}))
 vi.mock('@/db/repositories/organization-repository', () => ({
   createOrganizationMemberDao: vi.fn(),
   createMemberIfAbsentTxnDao: vi.fn(),
   deleteMemberWithRoleDao: vi.fn(),
   deleteUserOrganizationDao: vi.fn(),
   getMemberAccountDao: vi.fn(),
+  getOrganizationMembersDao: vi.fn(),
   getUserOrganizationDao: vi.fn(),
   updateMemberRoleFromDao: vi.fn(),
 }))
@@ -47,12 +51,14 @@ import {
   setMemberProfileUserIdDao,
   updateMemberProfileContactTxnDao,
 } from '@/db/repositories/member-profile-repository'
+import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
   createMemberIfAbsentTxnDao,
   createOrganizationMemberDao,
   deleteMemberWithRoleDao,
   deleteUserOrganizationDao,
   getMemberAccountDao,
+  getOrganizationMembersDao,
   getUserOrganizationDao,
   updateMemberRoleFromDao,
 } from '@/db/repositories/organization-repository'
@@ -167,6 +173,7 @@ beforeEach(() => {
   )
   vi.mocked(getUserOrganizationDao).mockResolvedValue(undefined)
   vi.mocked(getMemberAccountDao).mockResolvedValue(undefined)
+  vi.mocked(getOrganizationMembersDao).mockResolvedValue([])
 })
 
 describe.each([
@@ -772,6 +779,35 @@ describe('[s12d] le compte suit l’adresse de la fiche', () => {
     expect(result).toMatchObject({status: 'saved', accountChange: 'replaced'})
   })
 
+  it('trace le départ de la présidence de l’ancienne adresse, auteur = la personne connectée (s14, D5)', async () => {
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(getUserOrganizationDao).mockResolvedValue(
+      membership('owner', ACCOUNT_ID)
+    )
+    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
+      status: 'updated',
+      row: linkedRow({email: 'presidence@example.test'}),
+    })
+
+    await updateMemberProfileContactService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: 'presidence@example.test',
+    })
+
+    expect(insertMemberRoleEventDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      targetUserId: ACCOUNT_ID,
+      targetName: 'Jean et Odile Dubois',
+      authorUserId: userTest.id,
+      authorName: userTest.name,
+      fromRole: 'owner',
+      toRole: null,
+      reason: 'email_change',
+    })
+  })
+
   it('ne change aucun accès quand seule la casse de l’adresse change', async () => {
     vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
     vi.mocked(getUserOrganizationDao).mockResolvedValue(
@@ -812,5 +848,136 @@ describe('[s12d] le compte suit l’adresse de la fiche', () => {
     const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
 
     expect(profile?.account).toEqual({status: 'mail_only'})
+  })
+})
+
+/**
+ * s14 : la fiche porte la carte « Rôle dans l’association » calculée pour la
+ * personne connectée, et la liste porte le rôle du bureau de chaque fiche.
+ */
+describe('[s14] lecture des rôles pour l’écran', () => {
+  const linkedRow = (overrides: Record<string, unknown> = {}) =>
+    profileRow({
+      email: 'odile@example.test',
+      mailOnly: false,
+      userId: ACCOUNT_ID,
+      ...overrides,
+    })
+
+  it('[ORGANIZATION BOARD] la carte d’une fiche Membre propose Membre et Bureau', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(getMemberAccountDao).mockResolvedValue({
+      email: 'odile@example.test',
+      role: 'member',
+    })
+
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(profile?.roleCard).toEqual({
+      reading: 'member',
+      canEdit: true,
+      notice: null,
+      options: ['member', 'board'],
+      self: false,
+    })
+  })
+
+  it('[ORGANIZATION BOARD] la fiche de la Président(e) se lit sans bouton', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(getMemberAccountDao).mockResolvedValue({
+      email: 'odile@example.test',
+      role: 'owner',
+    })
+
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(profile?.roleCard).toMatchObject({
+      reading: 'owner',
+      canEdit: false,
+      notice: 'presidency_reserved',
+    })
+  })
+
+  it('[ORGANIZATION OWNER] sa propre fiche : pas de bouton', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
+      linkedRow({userId: userTest.id})
+    )
+    vi.mocked(getMemberAccountDao).mockResolvedValue({
+      email: 'odile@example.test',
+      role: 'owner',
+    })
+
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(profile?.roleCard).toMatchObject({
+      canEdit: false,
+      notice: 'own_presidency',
+      self: true,
+    })
+  })
+
+  it('[ORGANIZATION OWNER] la carte propose la présidence', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(getMemberAccountDao).mockResolvedValue({
+      email: 'odile@example.test',
+      role: 'board',
+    })
+
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(profile?.roleCard?.options).toEqual(['member', 'board', 'owner'])
+  })
+
+  it('une fiche sans compte : aucun rôle possible', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+
+    const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
+
+    expect(profile?.roleCard).toEqual({
+      reading: 'no_account',
+      canEdit: false,
+      notice: null,
+      options: [],
+      self: false,
+    })
+  })
+
+  it('la liste porte le rôle du bureau de chaque fiche, rien pour un Membre', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
+    vi.mocked(getMemberProfilePageDao).mockResolvedValue({
+      rows: [
+        {...linkedRow(), currentParcelNumbers: []},
+        {
+          ...linkedRow({id: OTHER_PROFILE_ID, userId: NEW_ACCOUNT_ID}),
+          currentParcelNumbers: [],
+        },
+        {
+          ...profileRow({id: 'courrier', userId: null}),
+          currentParcelNumbers: [],
+        },
+      ],
+      total: 3,
+    })
+    vi.mocked(getOrganizationMembersDao).mockResolvedValue([
+      membership('owner', ACCOUNT_ID),
+      membership('member', NEW_ACCOUNT_ID),
+    ])
+
+    const page = await getMemberProfilePageService({
+      organizationId: ORG_ID,
+      page: 1,
+    })
+
+    expect(getOrganizationMembersDao).toHaveBeenCalledWith(ORG_ID)
+    expect(page.items.map((item) => item.boardRole)).toEqual([
+      'owner',
+      null,
+      null,
+    ])
+    expect(page.items[0]).not.toHaveProperty('userId')
   })
 })

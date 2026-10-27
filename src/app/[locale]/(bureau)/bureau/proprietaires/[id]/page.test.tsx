@@ -26,6 +26,7 @@ vi.mock('@/app/dal/member-profile-dal', () => ({
 }))
 vi.mock('../actions', () => ({
   attachParcelAction: vi.fn(),
+  changeMemberRoleAction: vi.fn(),
   updateMemberProfileContactAction: vi.fn(),
 }))
 
@@ -55,6 +56,13 @@ const profile = {
   mailOnly: true,
   incomplete: false,
   account: {status: 'mail_only' as const},
+  roleCard: {
+    reading: 'no_account' as const,
+    canEdit: false,
+    notice: null,
+    options: [],
+    self: false,
+  },
 }
 
 /** Le composant de page est asynchrone : on resout son arbre avant de rendre. */

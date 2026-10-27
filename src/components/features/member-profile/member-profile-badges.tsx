@@ -24,3 +24,13 @@ export function IncompleteBadge() {
     </Badge>
   )
 }
+
+/**
+ * Role au bureau du compte d'une fiche (s14, ecran B) : un statut, jamais une
+ * action. Variante `outline` existante, aucune couleur nouvelle (D6).
+ */
+export function BoardRoleBadge({role}: {role: 'board' | 'owner'}) {
+  const t = useTranslations('BureauMemberProfilesPage.badges')
+
+  return <Badge variant="outline">{t(role)}</Badge>
+}

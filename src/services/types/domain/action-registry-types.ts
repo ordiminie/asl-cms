@@ -112,6 +112,13 @@ export const ActionIdConst = {
    * choisir l'accueil ne doit pas rester lie a ecrire des pages.
    */
   HOME_PAGE_MANAGE: 'site.home.manage',
+  /**
+   * Attribuer et retirer les roles d'association Bureau et President(e) (s14,
+   * ADR 039). Une entree a part de `MEMBER_PROFILE_MANAGE` : s37 la reglera
+   * seule, et elle definira ce jour-la « un compte capable d'attribuer les
+   * roles ».
+   */
+  MEMBER_ROLE_ASSIGN: 'member.role.assign',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -161,6 +168,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.HOME_PAGE_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.MEMBER_ROLE_ASSIGN,
     defaultRoles: ['owner', 'board'],
   },
 ]

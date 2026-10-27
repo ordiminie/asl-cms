@@ -1,8 +1,9 @@
-import {ArrowRight, Lock, Map as MapIcon} from 'lucide-react'
+import {ArrowRight, CircleCheck, Lock, Map as MapIcon} from 'lucide-react'
 import Link from 'next/link'
 import {useFormatter, useTranslations} from 'next-intl'
 import {type ReactNode, use, useId} from 'react'
 
+import {Alert, AlertDescription} from '@/components/ui/alert'
 import {
   Card,
   CardContent,
@@ -237,5 +238,23 @@ function SecurityCard() {
         </Link>
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * Apres sa propre retrogradation (s14, A12) : `alert` neutre en tete de
+ * l'espace personnel, sur `/dashboard?role=retire`.
+ */
+export function RoleWithdrawnNotice() {
+  const t = useTranslations('MemberSpacePage.roleWithdrawn')
+
+  return (
+    <Alert role="status" className="[&>svg]:size-5">
+      <CircleCheck aria-hidden="true" className="text-primary" />
+      <AlertDescription className="text-foreground text-base">
+        <p className="font-semibold">{t('title')}</p>
+        <p>{t('detail')}</p>
+      </AlertDescription>
+    </Alert>
   )
 }

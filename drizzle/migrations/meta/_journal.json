@@ -246,6 +246,20 @@
       "when": 1792588775826,
       "tag": "0034_icy_madripoor",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793122184304,
+      "tag": "0035_lame_ricochet",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793122199376,
+      "tag": "0036_member_role_event_rls",
+      "breakpoints": true
     }
   ]
 }

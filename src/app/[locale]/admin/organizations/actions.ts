@@ -113,11 +113,14 @@ export async function deleteOrganizationAction(id: string): Promise<FormState> {
   }
 }
 
+/**
+ * Ajoute un compte a une association, **au role Membre seulement** (s14,
+ * ADR 039) : un role du bureau ne se pose que depuis la fiche du membre,
+ * par le service trace.
+ */
 export async function addUserToOrganizationAction(
   organizationId: string,
-  userId: string,
-  email: string,
-  role: OrganizationRole = OrganizationRoleConst.member as OrganizationRole
+  userId: string
 ): Promise<MemberActionResult> {
   await requireActionAuth({
     roles: [RoleConst.SUPER_ADMIN],
@@ -142,7 +145,7 @@ export async function addUserToOrganizationAction(
     await createOrganizationMemberService({
       organizationId,
       userId,
-      role: role || 'member',
+      role: OrganizationRoleConst.member as OrganizationRole,
       createdAt: new Date(),
     })
 

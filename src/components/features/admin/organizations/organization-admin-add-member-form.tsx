@@ -17,11 +17,6 @@ import {
 } from '@/components/ui/dialog'
 import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
-import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group'
-import {
-  OrganizationRole,
-  OrganizationRoleConst,
-} from '@/services/types/domain/organization-types'
 import {UserDTO} from '@/services/types/domain/user-types'
 
 import {searchUsersForOrganizationAction} from '../../organization/action'
@@ -40,9 +35,6 @@ export function OrganizationAdminAddMemberForm({
   const [selectedUser, setSelectedUser] = useState<UserDTO | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<OrganizationRole>(
-    OrganizationRoleConst.member as OrganizationRole
-  )
 
   // Debounce la recherche pour éviter les appels trop fréquents
   useDebounce(
@@ -86,9 +78,7 @@ export function OrganizationAdminAddMemberForm({
     startTransition(async () => {
       const res = await addUserToOrganizationAction(
         organizationId,
-        selectedUser.id,
-        selectedUser.email,
-        selectedRole
+        selectedUser.id
       )
 
       if (res.success) {
@@ -97,7 +87,6 @@ export function OrganizationAdminAddMemberForm({
         setSelectedUser(null)
         setResults([])
         setIsModalOpen(false)
-        setSelectedRole('member')
       } else {
         toast.error(res.message || "Erreur lors de l'invitation")
       }
@@ -208,54 +197,6 @@ export function OrganizationAdminAddMemberForm({
               </div>
             </div>
           )}
-
-          {/* Sélection du rôle */}
-          <div className="mb-6">
-            <Label className="mb-3 block text-sm font-medium">
-              Select role
-            </Label>
-            <RadioGroup
-              value={selectedRole}
-              onValueChange={(value: string) =>
-                setSelectedRole(value as OrganizationRole)
-              }
-              className="space-y-2"
-            >
-              <div className="hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3">
-                <RadioGroupItem
-                  value={OrganizationRoleConst.admin}
-                  id="admin"
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <Label htmlFor="admin" className="cursor-pointer font-medium">
-                    Admin
-                  </Label>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    Invite users, update payment, and delete the team.
-                  </p>
-                </div>
-              </div>
-              <div className="hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3">
-                <RadioGroupItem
-                  value={OrganizationRoleConst.member}
-                  id="member"
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <Label
-                    htmlFor="member"
-                    className="cursor-pointer font-medium"
-                  >
-                    Member
-                  </Label>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    Manage emails, domains, and webhooks.
-                  </p>
-                </div>
-              </div>
-            </RadioGroup>
-          </div>
 
           {/* Bouton Invite */}
           <div className="pt-4">

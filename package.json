@@ -37,6 +37,7 @@
     "init:env": "tsx scripts/init-env.ts",
     "knip": "knip",
     "ops:bootstrap": "tsx src/db/scripts/bootstrap-platform.ts",
+    "ops:transfer-presidency": "tsx src/db/scripts/transfer-presidency.ts",
     "ops:deploy-release": "tsx scripts/ops/deploy-release.ts"
   },
   "dependencies": {

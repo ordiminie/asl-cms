@@ -23,6 +23,7 @@ const item = (
   mailOnly: false,
   incomplete: false,
   currentParcelNumbers: ['12', '13'],
+  boardRole: null,
   ...overrides,
 })
 
@@ -255,5 +256,39 @@ describe('MemberProfileList — recherche et pagination', () => {
       )
     ).toBeInTheDocument()
     expect(screen.getByRole('searchbox')).toHaveValue('Duboi')
+  })
+})
+
+/** s14, écran B : un badge de rôle à côté du nom, rien pour un Membre. */
+describe('MemberProfileList — badge de rôle (s14, B1 et B2)', () => {
+  const list = () =>
+    page([
+      item({id: 'a', name: 'Hélène Roux', boardRole: 'owner'}),
+      item({id: 'b', name: 'Paul Vidal', boardRole: 'board'}),
+      item({id: 'c', name: 'Lucie Moreau', boardRole: null}),
+    ])
+
+  it('B1 : badge « Président(e) » ou « Bureau » dans la cellule du nom', () => {
+    render(<MemberProfileList list={list()} />)
+
+    const [helene, paul, lucie] = tableRows()
+    const nameCell = (row: HTMLElement) => within(row).getAllByRole('cell')[0]
+    expect(within(nameCell(helene)).getByText('Président(e)')).toBeVisible()
+    expect(within(nameCell(paul)).getByText('Bureau')).toBeVisible()
+    expect(within(nameCell(lucie)).queryByText('Bureau')).toBeNull()
+    expect(within(nameCell(lucie)).queryByText('Président(e)')).toBeNull()
+  })
+
+  it('B2 : sur mobile, le badge passe sous le nom de la carte', () => {
+    render(<MemberProfileList list={list()} />)
+
+    const [helene, , lucie] = cards()
+    const heading = within(helene).getByRole('heading', {name: 'Hélène Roux'})
+    const badge = within(helene).getByText('Président(e)')
+    expect(
+      heading.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(heading).not.toContainElement(badge)
+    expect(within(lucie).queryByText('Bureau')).toBeNull()
   })
 })

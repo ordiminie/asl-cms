@@ -24,6 +24,9 @@ vi.mock('@/db/repositories/organization-repository', () => ({
   updateMemberRoleFromDao: vi.fn(),
   deleteUserOrganizationDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-role-event-repository', () => ({
+  insertMemberRoleEventDao: vi.fn(),
+}))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   setMemberProfileUserIdDao: vi.fn(),
   getUnlinkedMemberProfilesWithEmailDao: vi.fn(),
@@ -33,6 +36,7 @@ import {
   getUnlinkedMemberProfilesWithEmailDao,
   setMemberProfileUserIdDao,
 } from '@/db/repositories/member-profile-repository'
+import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
   createMemberIfAbsentTxnDao,
   deleteMemberWithRoleDao,
@@ -61,6 +65,11 @@ const PROFILE_ID = '33333333-3333-4333-8333-333333333333'
 const KNOWN_USER_ID = '55555555-5555-4555-8555-555555555555'
 const NEW_USER_ID = '66666666-6666-4666-8666-666666666666'
 const OLD_USER_ID = '77777777-7777-4777-8777-777777777777'
+
+const AUTHOR = {
+  userId: '88888888-8888-4888-8888-888888888888',
+  name: 'Paul Vidal',
+}
 
 const knownUser: User = {
   ...userTest,
@@ -192,6 +201,7 @@ describe('replaceMemberAccount — l’adresse change', () => {
   it('ferme l’ancien compte et ouvre le nouveau pour un propriétaire', async () => {
     await replaceMemberAccount({
       organizationId: ORG_ID,
+      author: AUTHOR,
       memberProfileId: PROFILE_ID,
       previousUserId: OLD_USER_ID,
       email: 'nouvelle@example.test',
@@ -216,6 +226,7 @@ describe('replaceMemberAccount — l’adresse change', () => {
   it('déplace le rôle du bureau vers le nouveau compte', async () => {
     await replaceMemberAccount({
       organizationId: ORG_ID,
+      author: AUTHOR,
       memberProfileId: PROFILE_ID,
       previousUserId: OLD_USER_ID,
       email: 'helene.roux@example.test',
@@ -245,6 +256,7 @@ describe('replaceMemberAccount — l’adresse change', () => {
 
     await replaceMemberAccount({
       organizationId: ORG_ID,
+      author: AUTHOR,
       memberProfileId: PROFILE_ID,
       previousUserId: OLD_USER_ID,
       email: 'odile@example.test',
@@ -303,6 +315,7 @@ describe('applyMemberAccountDecision — le changement d’accès', () => {
     expect(
       await applyMemberAccountDecision({
         organizationId: ORG_ID,
+        author: AUTHOR,
         profile,
         decision,
       })
@@ -312,6 +325,7 @@ describe('applyMemberAccountDecision — le changement d’accès', () => {
   it('n’écrit aucun compte pour une décision none', async () => {
     await applyMemberAccountDecision({
       organizationId: ORG_ID,
+      author: AUTHOR,
       profile,
       decision: {kind: 'none'},
     })
@@ -332,6 +346,7 @@ describe('applyMemberAccountDecision — délier sans fermer', () => {
 
     await applyMemberAccountDecision({
       organizationId: ORG_ID,
+      author: AUTHOR,
       profile: {
         id: PROFILE_ID,
         name: 'Odile Marchand',
@@ -351,6 +366,7 @@ describe('applyMemberAccountDecision — délier sans fermer', () => {
     expect(
       await applyMemberAccountDecision({
         organizationId: ORG_ID,
+        author: AUTHOR,
         profile: {
           id: PROFILE_ID,
           name: 'Paul Ferrand',
@@ -391,5 +407,102 @@ describe('openMemberAccountsForOrganization — reprise en lot (critère 2)', ()
     })
     expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
     expect(createMemberIfAbsentTxnDao).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * D5, ADR 039 : le deplacement d'un role du bureau par changement d'adresse
+ * est trace (`email_change`), auteur = le membre du bureau qui a change
+ * l'adresse. Une ligne par compte dont le role change.
+ */
+describe('replaceMemberAccount — trace du déplacement de rôle (s14, D5)', () => {
+  const replaceBoard = (role: 'member' | 'board' | 'owner') =>
+    replaceMemberAccount({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      memberProfileId: PROFILE_ID,
+      previousUserId: OLD_USER_ID,
+      email: 'helene.roux@example.test',
+      name: 'Hélène Roux',
+      role,
+    })
+
+  it('trace l’arrivée du rôle sur le nouveau compte et son départ de l’ancien', async () => {
+    let tracedUnder: string | undefined
+    vi.mocked(insertMemberRoleEventDao).mockImplementation(async () => {
+      tracedUnder = scope.current
+    })
+
+    await replaceBoard('board')
+
+    expect(insertMemberRoleEventDao).toHaveBeenCalledTimes(2)
+    expect(insertMemberRoleEventDao).toHaveBeenNthCalledWith(1, {
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      targetUserId: NEW_USER_ID,
+      targetName: 'Hélène Roux',
+      authorUserId: AUTHOR.userId,
+      authorName: AUTHOR.name,
+      fromRole: null,
+      toRole: 'board',
+      reason: 'email_change',
+    })
+    expect(insertMemberRoleEventDao).toHaveBeenNthCalledWith(2, {
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      targetUserId: OLD_USER_ID,
+      targetName: 'Hélène Roux',
+      authorUserId: AUTHOR.userId,
+      authorName: AUTHOR.name,
+      fromRole: 'board',
+      toRole: null,
+      reason: 'email_change',
+    })
+    expect(tracedUnder).toBe(ORG_ID)
+  })
+
+  it('trace la promotion d’un compte déjà simple membre', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue(knownUser)
+    vi.mocked(getUserOrganizationDao).mockResolvedValue(
+      memberRow('member', KNOWN_USER_ID) as never
+    )
+    vi.mocked(createMemberIfAbsentTxnDao).mockResolvedValue(
+      memberRow('member', KNOWN_USER_ID) as never
+    )
+
+    await replaceBoard('owner')
+
+    expect(insertMemberRoleEventDao).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        targetUserId: KNOWN_USER_ID,
+        fromRole: 'member',
+        toRole: 'owner',
+      })
+    )
+  })
+
+  it('ne trace rien pour un simple membre', async () => {
+    await replaceBoard('member')
+
+    expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
+  })
+
+  it('ne trace rien quand l’adresse retombe sur le même compte, déjà au rôle', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({
+      ...knownUser,
+      id: OLD_USER_ID,
+    })
+    vi.mocked(getUserOrganizationDao).mockResolvedValue(
+      memberRow('board', OLD_USER_ID) as never
+    )
+    vi.mocked(createMemberIfAbsentTxnDao).mockResolvedValue(
+      memberRow('board', OLD_USER_ID) as never
+    )
+
+    await replaceBoard('board')
+
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+    expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
   })
 })

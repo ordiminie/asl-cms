@@ -4,6 +4,7 @@ import {
   getUnlinkedMemberProfilesWithEmailDao,
   setMemberProfileUserIdDao,
 } from '@/db/repositories/member-profile-repository'
+import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
   createMemberIfAbsentTxnDao,
   deleteMemberWithRoleDao,
@@ -17,6 +18,7 @@ import {
 import {withTenant} from '@/db/tenant-scope'
 
 import {
+  MemberAccountAuthor,
   MemberAccountDecision,
   MemberAccountRole,
   MemberAccountRoleConst,
@@ -62,13 +64,17 @@ const findOrCreateUserId = async (
 /**
  * Pose la ligne `member` du compte avec le role voulu. Un compte deja
  * simple membre recoit le role reporte ; un role du bureau en place n'est
- * jamais abaisse.
+ * jamais abaisse. Rend le role du compte avant et apres, pour la trace.
  */
 const ensureMembership = async (
   organizationId: string,
   userId: string,
   role: MemberAccountRole
-): Promise<void> => {
+): Promise<{
+  before: MemberAccountRole | null
+  after: MemberAccountRole
+}> => {
+  const existing = await getUserOrganizationDao(userId, organizationId)
   const membership = await createMemberIfAbsentTxnDao({
     organizationId,
     userId,
@@ -85,8 +91,38 @@ const ensureMembership = async (
       MemberAccountRoleConst.MEMBER,
       role
     )
+    return {before: existing?.role ?? null, after: role}
   }
+  return {before: existing?.role ?? null, after: membership.role}
 }
+
+type EmailChangeTrace = {
+  organizationId: string
+  memberProfileId: string
+  name: string
+  author: MemberAccountAuthor
+}
+
+/** Une ligne de trace `email_change` (D5, ADR 039). */
+const traceEmailChange = async (
+  trace: EmailChangeTrace,
+  change: {
+    userId: string
+    from: MemberAccountRole | null
+    to: MemberAccountRole | null
+  }
+): Promise<void> =>
+  insertMemberRoleEventDao({
+    organizationId: trace.organizationId,
+    memberProfileId: trace.memberProfileId,
+    targetUserId: change.userId,
+    targetName: trace.name,
+    authorUserId: trace.author.userId,
+    authorName: trace.author.name,
+    fromRole: change.from,
+    toRole: change.to,
+    reason: 'email_change',
+  })
 
 /**
  * Ouvre le compte d'une fiche : trouve ou cree le `user` par l'adresse en
@@ -136,7 +172,7 @@ export const closeMemberAccount = async ({
 /**
  * L'adresse d'une fiche change : l'ancien acces se ferme, un acces s'ouvre
  * sur la nouvelle adresse. Pour le bureau et la presidence, le role suit la
- * nouvelle adresse.
+ * nouvelle adresse, et ce deplacement est trace (D5, ADR 039).
  */
 export const replaceMemberAccount = async ({
   organizationId,
@@ -145,17 +181,34 @@ export const replaceMemberAccount = async ({
   email,
   name,
   role,
+  author,
 }: OpenMemberAccountInput & {
   previousUserId: string
   role: MemberAccountRole
+  author: MemberAccountAuthor
 }): Promise<{userId: string}> =>
   withTenant(organizationId, async () => {
     const userId = await findOrCreateUserId(normalizedEmail(email), name)
-    await ensureMembership(organizationId, userId, role)
-    if (userId !== previousUserId) {
+    const {before, after} = await ensureMembership(organizationId, userId, role)
+    const moved = userId !== previousUserId
+    if (moved) {
       await deleteMemberWithRoleDao(previousUserId, organizationId, role)
     }
     await setMemberProfileUserIdDao(memberProfileId, userId)
+
+    if (role !== MemberAccountRoleConst.MEMBER) {
+      const trace = {organizationId, memberProfileId, name, author}
+      if (before !== after) {
+        await traceEmailChange(trace, {userId, from: before, to: after})
+      }
+      if (moved) {
+        await traceEmailChange(trace, {
+          userId: previousUserId,
+          from: role,
+          to: null,
+        })
+      }
+    }
     return {userId}
   })
 
@@ -176,10 +229,12 @@ export const getLinkedAccountRole = async (
  */
 export const applyMemberAccountDecision = async ({
   organizationId,
+  author,
   profile,
   decision,
 }: {
   organizationId: string
+  author: MemberAccountAuthor
   profile: {
     id: string
     name: string
@@ -212,6 +267,7 @@ export const applyMemberAccountDecision = async ({
       email: profile.email,
       previousUserId: profile.userId,
       role: decision.role,
+      author,
     })
     return {change: 'replaced', userId}
   }

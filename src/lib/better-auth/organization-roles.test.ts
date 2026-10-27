@@ -1,8 +1,12 @@
+import fs from 'node:fs'
+import path from 'node:path'
+
 import {describe, expect, it} from 'vitest'
 
 import {UserOrganizationRoleConst} from '@/services/types/domain/auth-types'
 
 import {
+  ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS,
   organizationAccessControl,
   organizationRoles,
 } from './organization-roles'
@@ -60,5 +64,47 @@ describe('organizationRoles — roles declares au plugin Better Auth', () => {
     expect(Object.keys(organizationAccessControl.statements)).toContain(
       'organization'
     )
+  })
+})
+
+/**
+ * Portes laterales fermees (s14, ADR 039) : les routes HTTP du plugin qui
+ * ecrivent des appartenances contourneraient la trace et le verrou du dernier
+ * compte. La liste est epinglee, et chaque route doit exister dans la version
+ * installee de Better Auth : une route renommee a la mise a jour ne serait
+ * plus fermee en silence.
+ */
+describe('ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS (s14, ADR 039)', () => {
+  const pluginSources = () => {
+    const dir = path.resolve(
+      import.meta.dirname,
+      '../../../node_modules/better-auth/dist/plugins/organization/routes'
+    )
+    return fs
+      .readdirSync(dir)
+      .filter((name) => name.endsWith('.mjs'))
+      .map((name) => fs.readFileSync(path.join(dir, name), 'utf8'))
+      .join('\n')
+  }
+
+  it('ferme exactement les routes qui écrivent des appartenances', () => {
+    expect([...ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS].sort()).toEqual(
+      [
+        '/organization/accept-invitation',
+        '/organization/create',
+        '/organization/delete',
+        '/organization/invite-member',
+        '/organization/leave',
+        '/organization/remove-member',
+        '/organization/update-member-role',
+      ].sort()
+    )
+  })
+
+  it('chaque route fermée existe dans le plugin installé', () => {
+    const sources = pluginSources()
+    for (const route of ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS) {
+      expect(sources).toContain(`createAuthEndpoint("${route}"`)
+    }
   })
 })

@@ -1276,11 +1276,6 @@
     }
   },
   "Organization": {
-    "roles": {
-      "OWNER": "Propriétaire",
-      "ADMIN": "Administrateur",
-      "MEMBER": "Membre"
-    },
     "members": {
       "title": "Membres",
       "tableTitle": "Membres de l'organisation",
@@ -1289,15 +1284,6 @@
       "pendingInvitation": "Invitation en attente",
       "expiredInvitation": "Invitation expirée",
       "loading": "Chargement des membres...",
-      "editRole": "Modifier le rôle",
-      "editRoleTitle": "Modifier le rôle de {name}",
-      "editRoleDescription": "Sélectionnez le nouveau rôle pour ce membre de l'organisation.",
-      "selectRole": "Sélectionner un rôle",
-      "roleUpdated": "Rôle de {name} mis à jour avec succès",
-      "roleUpdateError": "Erreur lors de la mise à jour du rôle",
-      "ownerImmutable": "Le rôle « Propriétaire » ne peut pas être modifié. Veuillez contacter l'administrateur de l'organisation.",
-      "updating": "Mise à jour...",
-      "update": "Mettre à jour",
       "removeTitle": "Confirmer la suppression",
       "removeConfirm": "Voulez-vous vraiment retirer {name} de l'organisation ?",
       "removeSuccess": "Membre supprimé",
@@ -1321,10 +1307,7 @@
       "description": "Entrez l'adresse email de l'utilisateur que vous souhaitez inviter.",
       "emailLabel": "Adresse email",
       "selectedUser": "Utilisateur sélectionné",
-      "change": "Changer",
-      "selectRoleLabel": "Sélectionner un rôle",
-      "adminDescription": "Inviter des utilisateurs, modifier le paiement et supprimer l'équipe.",
-      "memberDescription": "Gérer les emails, les domaines et les webhooks."
+      "change": "Changer"
     }
   },
   "CreditsSimulator": {
@@ -2870,7 +2853,9 @@
     "noCurrentParcel": "Aucune parcelle actuelle",
     "badges": {
       "mailOnly": "Courrier uniquement",
-      "incomplete": "Fiche incomplète"
+      "incomplete": "Fiche incomplète",
+      "board": "Bureau",
+      "owner": "Président(e)"
     },
     "noAddress": "Aucune adresse",
     "open": "Ouvrir la fiche",
@@ -2962,6 +2947,63 @@
         "mailOnly": "<strong>Joignable par courrier uniquement.</strong> Aucun compte : ajoutez une adresse email pour lui ouvrir son espace.",
         "board": "Membre du bureau : son adresse peut être modifiée, pas supprimée.",
         "owner": "Président(e) : son adresse peut être modifiée, pas supprimée."
+      },
+      "role": {
+        "title": "Rôle dans l’association",
+        "reading": {
+          "member": "<strong>Membre.</strong> {name} accède à son espace personnel.",
+          "board": "<strong>Bureau.</strong> {name} gère le site de l’association avec le reste du bureau.",
+          "owner": "<strong>Président(e).</strong> {name} gère le site de l’association et peut transmettre la présidence.",
+          "no_account": "Aucun rôle possible : ajoutez d’abord une adresse email pour lui ouvrir un compte."
+        },
+        "notices": {
+          "presidency_reserved": "Seul(e) la Président(e) peut transmettre la présidence.",
+          "own_presidency": "Pour transmettre la présidence, ouvrez la fiche de la personne qui vous succède."
+        },
+        "edit": "Modifier le rôle",
+        "legend": "Rôle",
+        "options": {
+          "member": {
+            "label": "Membre",
+            "help": "Accède à son espace personnel."
+          },
+          "board": {
+            "label": "Bureau",
+            "help": "Gère le site de l’association."
+          },
+          "owner": {
+            "label": "Président(e)",
+            "help": "Vous lui transmettez la présidence."
+          }
+        },
+        "save": "Enregistrer le rôle",
+        "saving": "Enregistrement…",
+        "cancel": "Annuler",
+        "warnings": {
+          "board": "<strong>Attention.</strong> {name} pourra gérer tout le site de l’association dès maintenant : pages, actualités, propriétaires.",
+          "member": "<strong>Attention.</strong> {name} ne pourra plus gérer le site de l’association dès maintenant. Son espace personnel reste ouvert.",
+          "memberSelf": "<strong>Attention.</strong> Vous ne pourrez plus gérer le site de l’association dès l’enregistrement. Votre espace personnel reste ouvert."
+        },
+        "transfer": {
+          "title": "Transmettre la présidence à {name} ?",
+          "description": "{name} devient Président(e) dès maintenant. Vous redevenez membre du bureau. Vous ne pourrez pas reprendre la présidence vous-même : seul(e) {name} pourra la transmettre à nouveau.",
+          "confirm": "Transmettre la présidence",
+          "cancel": "Annuler"
+        },
+        "refusals": {
+          "last_capable": "{name} est le dernier compte qui peut désigner le bureau de l’association. Désignez d’abord une autre personne au bureau. Rien n’a été enregistré.",
+          "last_capable_self": "Votre compte est le dernier qui peut désigner le bureau de l’association. Désignez d’abord une autre personne au bureau. Rien n’a été enregistré.",
+          "presidency_reserved": "Seul(e) la Président(e) peut transmettre la présidence. Rien n’a été enregistré.",
+          "own_presidency": "Pour transmettre la présidence, ouvrez la fiche de la personne qui vous succède. Rien n’a été enregistré.",
+          "invalid_role": "Ce rôle ne peut pas être attribué. Rien n’a été enregistré.",
+          "no_account": "Aucun rôle possible : ajoutez d’abord une adresse email pour lui ouvrir un compte. Rien n’a été enregistré."
+        },
+        "saved": {
+          "title": "Rôle enregistré.",
+          "assigned": "{name} fait maintenant partie du bureau et peut gérer le site de l’association dès maintenant.",
+          "demoted": "{name} ne fait plus partie du bureau. Son espace personnel reste ouvert.",
+          "presidency_transferred": "{name} est maintenant Président(e). Vous restez membre du bureau."
+        }
       },
       "emailWarnings": {
         "removed": "<strong>Attention.</strong> Sans adresse email, {name} ne pourra plus se connecter à son espace. Sa fiche, ses parcelles et son historique sont conservés. Les envois partiront par courrier.",
@@ -3068,6 +3110,10 @@
   },
   "MemberSpacePage": {
     "title": "Votre espace membre",
+    "roleWithdrawn": {
+      "title": "Vous ne faites plus partie du bureau.",
+      "detail": "Votre espace personnel reste ouvert."
+    },
     "marker": "Espace personnel",
     "markerParcels": "{count, plural, =0 {Aucune parcelle actuelle} one {Parcelle {numbers}} other {Parcelles {numbers}}}",
     "greeting": "Bonjour {name}",

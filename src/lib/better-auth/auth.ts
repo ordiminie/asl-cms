@@ -29,6 +29,7 @@ import {
   magicLinkOptions,
 } from '@/lib/better-auth/magic-link-integration'
 import {
+  ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS,
   organizationAccessControl,
   organizationRoles,
 } from '@/lib/better-auth/organization-roles'
@@ -63,7 +64,10 @@ export const AuthAppConfig = {
 // Source : https://github.com/better-auth/better-auth/issues/3233
 const options = {
   appName: APP_ISSUER,
-  disabledPaths: [...MAGIC_LINK_DISABLED_HTTP_PATHS],
+  disabledPaths: [
+    ...MAGIC_LINK_DISABLED_HTTP_PATHS,
+    ...ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS,
+  ],
   database: drizzleAdapter(db, {
     provider: 'pg',
   }),
