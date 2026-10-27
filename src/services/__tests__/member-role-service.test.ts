@@ -20,7 +20,7 @@ vi.mock('@/db/tenant-scope', () => ({
 vi.mock('@/db/repositories/organization-repository', () => ({
   countCapableMembersDao: vi.fn(),
   getOrganizationByDomainDao: vi.fn(),
-  getOrganizationOwnerDao: vi.fn(),
+  getOrganizationOwnersDao: vi.fn(),
   getUserRoleInOrganizationDao: vi.fn(),
   lockOrganizationRolesDao: vi.fn(),
   updateMemberRoleFromDao: vi.fn(),
@@ -43,12 +43,15 @@ import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repo
 import {
   countCapableMembersDao,
   getOrganizationByDomainDao,
-  getOrganizationOwnerDao,
+  getOrganizationOwnersDao,
   getUserRoleInOrganizationDao,
   lockOrganizationRolesDao,
   updateMemberRoleFromDao,
 } from '@/db/repositories/organization-repository'
-import {getUserByEmailDao} from '@/db/repositories/user-repository'
+import {
+  getUserByEmailDao,
+  getUserByIdDao,
+} from '@/db/repositories/user-repository'
 
 import {AuthorizationError} from '../errors/authorization-error'
 import {ValidationParsedZodError} from '../errors/validation-error'
@@ -328,6 +331,29 @@ describe('[ORGANIZATION BOARD] changeMemberRoleService', () => {
     expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
   })
 
+  it('rétrograde une cible SuperAdmin du Bureau : elle ne compte pas parmi les comptes capables (revue 1)', async () => {
+    rolesInDb({viewer: 'board', target: 'board'})
+    vi.mocked(countCapableMembersDao).mockResolvedValue(1)
+    vi.mocked(getUserByIdDao).mockImplementation(async (userId) =>
+      userId === TARGET_USER_ID
+        ? ({...userTestSuperAdmin, id: TARGET_USER_ID} as never)
+        : undefined
+    )
+
+    expect(await change('member')).toEqual({
+      status: 'saved',
+      change: 'demoted',
+      self: false,
+      name: 'Paul Vidal',
+    })
+    expect(updateMemberRoleFromDao).toHaveBeenCalledWith(
+      TARGET_USER_ID,
+      ORG_ID,
+      'board',
+      'member'
+    )
+  })
+
   it.each(['super_admin', 'admin', ''])(
     'refuse le rôle « %s » sans écriture (critère 6)',
     async (role) => {
@@ -483,10 +509,9 @@ describe('transferPresidencyByOperatorService — recours d’exploitation (D8)'
     )
     vi.mocked(getUserByEmailDao).mockResolvedValue(successor as never)
     vi.mocked(getUserRoleInOrganizationDao).mockResolvedValue('board')
-    vi.mocked(getOrganizationOwnerDao).mockResolvedValue({
-      userId: VIEWER_ID,
-      name: 'Hélène Roux',
-    })
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
+      {userId: VIEWER_ID, name: 'Hélène Roux'},
+    ])
     vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
   })
 
@@ -546,7 +571,7 @@ describe('transferPresidencyByOperatorService — recours d’exploitation (D8)'
     expect(result).toEqual({
       organizationId: ORG_ID,
       newOwnerUserId: TARGET_USER_ID,
-      previousOwnerUserId: VIEWER_ID,
+      previousOwnerUserIds: [VIEWER_ID],
       changed: true,
     })
     expect(calls).toEqual([
@@ -584,24 +609,23 @@ describe('transferPresidencyByOperatorService — recours d’exploitation (D8)'
   })
 
   it('association sans Président(e) : une seule écriture, une seule trace', async () => {
-    vi.mocked(getOrganizationOwnerDao).mockResolvedValue(undefined)
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([])
 
     const result = await transferPresidencyByOperatorService(
       'clos-fleuri.test',
       'paul@example.test'
     )
 
-    expect(result.previousOwnerUserId).toBeNull()
+    expect(result.previousOwnerUserIds).toEqual([])
     expect(updateMemberRoleFromDao).toHaveBeenCalledTimes(1)
     expect(insertMemberRoleEventDao).toHaveBeenCalledTimes(1)
   })
 
   it('le successeur est déjà Président(e) : rien n’est écrit', async () => {
     vi.mocked(getUserRoleInOrganizationDao).mockResolvedValue('owner')
-    vi.mocked(getOrganizationOwnerDao).mockResolvedValue({
-      userId: TARGET_USER_ID,
-      name: 'Paul Vidal',
-    })
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
+      {userId: TARGET_USER_ID, name: 'Paul Vidal'},
+    ])
 
     const result = await transferPresidencyByOperatorService(
       'clos-fleuri.test',
@@ -611,5 +635,98 @@ describe('transferPresidencyByOperatorService — recours d’exploitation (D8)'
     expect(result.changed).toBe(false)
     expect(updateMemberRoleFromDao).not.toHaveBeenCalled()
     expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Revue 1 de s14 : D8 garantit une Président(e) unique. Si l'association porte
+ * plusieurs lignes `owner` hors SuperAdmin (etat herite), toutes repassent
+ * Bureau, une trace chacune.
+ */
+describe('transferPresidencyByOperatorService — plusieurs présidences héritées (revue 1)', () => {
+  const OTHER_OWNER_ID = '99999999-9999-4999-8999-999999999999'
+  const successor = {
+    ...userTest,
+    id: TARGET_USER_ID,
+    name: 'Paul Vidal',
+    email: 'paul@example.test',
+  }
+
+  beforeEach(() => {
+    vi.mocked(getOrganizationByDomainDao).mockResolvedValue({
+      id: ORG_ID,
+      domain: 'clos-fleuri.test',
+    } as never)
+    vi.mocked(getUserByEmailDao).mockResolvedValue(successor as never)
+    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+  })
+
+  it('rétrograde toutes les lignes owner hors SuperAdmin, une trace chacune', async () => {
+    vi.mocked(getUserRoleInOrganizationDao).mockResolvedValue('board')
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
+      {userId: VIEWER_ID, name: 'Hélène Roux'},
+      {userId: OTHER_OWNER_ID, name: 'Marc Lenoir'},
+    ])
+
+    const result = await transferPresidencyByOperatorService(
+      'clos-fleuri.test',
+      'paul@example.test'
+    )
+
+    expect(result.previousOwnerUserIds).toEqual([VIEWER_ID, OTHER_OWNER_ID])
+    expect(calls).toEqual([
+      `withTenant:${ORG_ID}`,
+      `lock:${ORG_ID}`,
+      `update:${TARGET_USER_ID}:board->owner`,
+      `update:${VIEWER_ID}:owner->board`,
+      `update:${OTHER_OWNER_ID}:owner->board`,
+      `trace:${ORG_ID}`,
+      `trace:${ORG_ID}`,
+      `trace:${ORG_ID}`,
+    ])
+    expect(insertMemberRoleEventDao).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        targetUserId: OTHER_OWNER_ID,
+        targetName: 'Marc Lenoir',
+        fromRole: 'owner',
+        toRole: 'board',
+        reason: 'presidency_transfer',
+      })
+    )
+  })
+
+  it('successeur déjà Président(e) parmi d’autres : seules les autres repassent Bureau', async () => {
+    vi.mocked(getUserRoleInOrganizationDao).mockResolvedValue('owner')
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
+      {userId: TARGET_USER_ID, name: 'Paul Vidal'},
+      {userId: OTHER_OWNER_ID, name: 'Marc Lenoir'},
+    ])
+
+    const result = await transferPresidencyByOperatorService(
+      'clos-fleuri.test',
+      'paul@example.test'
+    )
+
+    expect(result).toEqual({
+      organizationId: ORG_ID,
+      newOwnerUserId: TARGET_USER_ID,
+      previousOwnerUserIds: [OTHER_OWNER_ID],
+      changed: true,
+    })
+    expect(updateMemberRoleFromDao).toHaveBeenCalledTimes(1)
+    expect(updateMemberRoleFromDao).toHaveBeenCalledWith(
+      OTHER_OWNER_ID,
+      ORG_ID,
+      'owner',
+      'board'
+    )
+    expect(insertMemberRoleEventDao).toHaveBeenCalledTimes(1)
+    expect(insertMemberRoleEventDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetUserId: OTHER_OWNER_ID,
+        reason: 'presidency_transfer',
+      })
+    )
   })
 })

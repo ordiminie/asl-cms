@@ -196,19 +196,6 @@ export const getUserOrganizationDao = async (
   return row
 }
 
-export const updateUserOrganizationRoleDao = async (
-  userId: string,
-  organizationId: string,
-  role: OrganizationRoleEnumModel
-): Promise<void> => {
-  await getDb()
-    .update(member)
-    .set({role})
-    .where(
-      and(eq(member.userId, userId), eq(member.organizationId, organizationId))
-    )
-}
-
 export const deleteUserOrganizationDao = async (
   userId: string,
   organizationId: string
@@ -487,13 +474,14 @@ export const createMemberIfAbsentTxnDao = async (
  * Retire la ligne `member` d'un compte dans l'association **seulement si son
  * role est celui attendu** : la condition est portee par la requete, pour
  * qu'une fermeture ne retire jamais un role du bureau change entre-temps.
+ * Rend le nombre de lignes retirees (s14) : zero dit que rien n'a change.
  */
 export const deleteMemberWithRoleDao = async (
   userId: string,
   organizationId: string,
   role: OrganizationRoleEnumModel
-): Promise<void> => {
-  await getDb()
+): Promise<number> => {
+  const rows = await getDb()
     .delete(member)
     .where(
       and(
@@ -502,6 +490,8 @@ export const deleteMemberWithRoleDao = async (
         eq(member.role, role)
       )
     )
+    .returning({id: member.id})
+  return rows.length
 }
 
 /**
@@ -586,13 +576,15 @@ export const countCapableMembersDao = async (
 }
 
 /**
- * Le compte President(e) de l'association, hors SuperAdmin (la ligne `owner`
- * de l'amorcage n'en fait pas une President(e)), ou rien.
+ * Les comptes President(e) de l'association, hors SuperAdmin (la ligne
+ * `owner` de l'amorcage n'en fait pas une President(e)). Toutes les lignes,
+ * sans limite : un etat herite peut en porter plusieurs, et la passation
+ * d'exploitation (D8) les retrograde toutes.
  */
-export const getOrganizationOwnerDao = async (
+export const getOrganizationOwnersDao = async (
   organizationId: string
-): Promise<{userId: string; name: string} | undefined> => {
-  const [row] = await getDb()
+): Promise<{userId: string; name: string}[]> =>
+  getDb()
     .select({userId: member.userId, name: user.name})
     .from(member)
     .innerJoin(user, eq(user.id, member.userId))
@@ -603,6 +595,3 @@ export const getOrganizationOwnerDao = async (
         ne(user.role, 'super_admin')
       )
     )
-    .limit(1)
-  return row
-}

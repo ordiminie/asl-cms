@@ -23,6 +23,7 @@ vi.mock('@/db/repositories/organization-repository', () => ({
   deleteMemberWithRoleDao: vi.fn(),
   updateMemberRoleFromDao: vi.fn(),
   deleteUserOrganizationDao: vi.fn(),
+  lockOrganizationRolesDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
@@ -42,6 +43,7 @@ import {
   deleteMemberWithRoleDao,
   deleteUserOrganizationDao,
   getUserOrganizationDao,
+  lockOrganizationRolesDao,
   updateMemberRoleFromDao,
 } from '@/db/repositories/organization-repository'
 import {
@@ -95,6 +97,7 @@ beforeEach(() => {
     async (row) => memberRow(row.role ?? 'member', row.userId) as never
   )
   vi.mocked(getUserOrganizationDao).mockResolvedValue(undefined)
+  vi.mocked(deleteMemberWithRoleDao).mockResolvedValue(1)
 })
 
 describe('openMemberAccount — trouver ou créer le compte d’une fiche', () => {
@@ -504,5 +507,66 @@ describe('replaceMemberAccount — trace du déplacement de rôle (s14, D5)', ()
 
     expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
     expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Revue 1 de s14 : le deplacement d'un role par changement d'adresse prend le
+ * verrou des roles de l'association avant toute lecture de role, comme
+ * `changeMemberRoleService`, et ne trace le depart de l'ancien compte que si
+ * sa ligne a bien ete retiree.
+ */
+describe('replaceMemberAccount — verrou et retrait effectif (s14, revue 1)', () => {
+  const replace = (role: 'member' | 'board' | 'owner') =>
+    replaceMemberAccount({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      memberProfileId: PROFILE_ID,
+      previousUserId: OLD_USER_ID,
+      email: 'helene.roux@example.test',
+      name: 'Hélène Roux',
+      role,
+    })
+
+  it('prend le verrou des rôles sous le scope, avant de lire ou d’écrire un rôle', async () => {
+    const calls: string[] = []
+    vi.mocked(lockOrganizationRolesDao).mockImplementation(async (orgId) => {
+      calls.push(`lock:${orgId}:${scope.current}`)
+    })
+    vi.mocked(getUserOrganizationDao).mockImplementation(async () => {
+      calls.push('read-role')
+      return undefined
+    })
+    vi.mocked(createMemberIfAbsentTxnDao).mockImplementation(async (row) => {
+      calls.push('membership')
+      return memberRow(row.role ?? 'member', row.userId) as never
+    })
+    vi.mocked(deleteMemberWithRoleDao).mockImplementation(async () => {
+      calls.push('delete')
+      return 1
+    })
+
+    await replace('board')
+
+    expect(calls).toEqual([
+      `lock:${ORG_ID}:${ORG_ID}`,
+      'read-role',
+      'membership',
+      'delete',
+    ])
+  })
+
+  it('ne trace pas le départ de l’ancien compte quand aucune ligne n’a été retirée', async () => {
+    vi.mocked(deleteMemberWithRoleDao).mockResolvedValue(0)
+
+    await replace('board')
+
+    expect(insertMemberRoleEventDao).toHaveBeenCalledTimes(1)
+    expect(insertMemberRoleEventDao).toHaveBeenCalledWith(
+      expect.objectContaining({targetUserId: NEW_USER_ID, toRole: 'board'})
+    )
+    expect(insertMemberRoleEventDao).not.toHaveBeenCalledWith(
+      expect.objectContaining({targetUserId: OLD_USER_ID})
+    )
   })
 })

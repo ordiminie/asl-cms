@@ -25,6 +25,8 @@ export type MemberRoleChangeInput = {
   nextRole: string
   /** La personne connectee modifie sa propre fiche. */
   isSelf: boolean
+  /** Le compte de la fiche est SuperAdmin : il n'entre pas dans le decompte (D3). */
+  targetIsSuperAdmin: boolean
   /** Comptes capables d'attribuer les roles, lus sous verrou (D3). */
   capableCount: number
 }
@@ -96,6 +98,7 @@ export type MemberRoleChangeResult =
 export type TransferPresidencyByOperatorResult = {
   organizationId: string
   newOwnerUserId: string
-  previousOwnerUserId: string | null
+  /** Toutes les President(e)s retrogradees au Bureau ; vide s'il n'y en avait pas. */
+  previousOwnerUserIds: string[]
   changed: boolean
 }

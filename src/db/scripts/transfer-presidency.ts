@@ -68,7 +68,7 @@ const transferPresidency = async () => {
   const result = await transferPresidencyByOperatorService(domain, email)
   console.log(
     result.changed
-      ? `Présidence transmise : association ${result.organizationId}, nouvelle Président(e) ${result.newOwnerUserId}, ancienne ${result.previousOwnerUserId ?? 'aucune'}`
+      ? `Présidence transmise : association ${result.organizationId}, nouvelle Président(e) ${result.newOwnerUserId}, ancienne(s) ${result.previousOwnerUserIds.join(', ') || 'aucune'}`
       : `Rien à faire : ${result.newOwnerUserId} est déjà Président(e) de l'association ${result.organizationId}`
   )
 }

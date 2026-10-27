@@ -27,8 +27,6 @@ export const createOrganizationMemberService =
   organizationServiceInterceptor.createOrganizationMemberService
 export const removeUserFromOrganizationService =
   organizationServiceInterceptor.removeUserFromOrganizationService
-export const changeUserOrganizationRoleService =
-  organizationServiceInterceptor.changeUserOrganizationRoleService
 export const getUserRoleInOrganizationService =
   organizationServiceInterceptor.getUserRoleInOrganizationService
 export const getInvitationMembersService =

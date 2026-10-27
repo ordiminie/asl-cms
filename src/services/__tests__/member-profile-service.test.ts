@@ -39,6 +39,7 @@ vi.mock('@/db/repositories/organization-repository', () => ({
   getMemberAccountDao: vi.fn(),
   getOrganizationMembersDao: vi.fn(),
   getUserOrganizationDao: vi.fn(),
+  lockOrganizationRolesDao: vi.fn(),
   updateMemberRoleFromDao: vi.fn(),
 }))
 
@@ -164,6 +165,7 @@ beforeEach(() => {
   })
   vi.mocked(getMemberProfileByIdDao).mockResolvedValue(profileRow())
   vi.mocked(getMemberProfileByEmailDao).mockResolvedValue(undefined)
+  vi.mocked(deleteMemberWithRoleDao).mockResolvedValue(1)
   vi.mocked(getMemberProfilePageDao).mockResolvedValue({rows: [], total: 0})
   vi.mocked(countMemberProfilesDao).mockResolvedValue({total: 0, incomplete: 0})
   vi.mocked(getUserByEmailDao).mockResolvedValue(undefined)

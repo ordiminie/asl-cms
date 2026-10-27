@@ -9,6 +9,7 @@ import {
   createMemberIfAbsentTxnDao,
   deleteMemberWithRoleDao,
   getUserOrganizationDao,
+  lockOrganizationRolesDao,
   updateMemberRoleFromDao,
 } from '@/db/repositories/organization-repository'
 import {
@@ -172,7 +173,9 @@ export const closeMemberAccount = async ({
 /**
  * L'adresse d'une fiche change : l'ancien acces se ferme, un acces s'ouvre
  * sur la nouvelle adresse. Pour le bureau et la presidence, le role suit la
- * nouvelle adresse, et ce deplacement est trace (D5, ADR 039).
+ * nouvelle adresse, et ce deplacement est trace (D5, ADR 039). Le verrou des
+ * roles est pris d'abord, comme pour tout changement de role ; le depart de
+ * l'ancien compte n'est trace que si sa ligne a bien ete retiree.
  */
 export const replaceMemberAccount = async ({
   organizationId,
@@ -188,12 +191,13 @@ export const replaceMemberAccount = async ({
   author: MemberAccountAuthor
 }): Promise<{userId: string}> =>
   withTenant(organizationId, async () => {
+    await lockOrganizationRolesDao(organizationId)
     const userId = await findOrCreateUserId(normalizedEmail(email), name)
     const {before, after} = await ensureMembership(organizationId, userId, role)
-    const moved = userId !== previousUserId
-    if (moved) {
-      await deleteMemberWithRoleDao(previousUserId, organizationId, role)
-    }
+    const removed =
+      userId !== previousUserId
+        ? await deleteMemberWithRoleDao(previousUserId, organizationId, role)
+        : 0
     await setMemberProfileUserIdDao(memberProfileId, userId)
 
     if (role !== MemberAccountRoleConst.MEMBER) {
@@ -201,7 +205,7 @@ export const replaceMemberAccount = async ({
       if (before !== after) {
         await traceEmailChange(trace, {userId, from: before, to: after})
       }
-      if (moved) {
+      if (removed === 1) {
         await traceEmailChange(trace, {
           userId: previousUserId,
           from: role,

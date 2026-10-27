@@ -16,6 +16,7 @@ const input = (
   targetRole: 'member',
   nextRole: 'board',
   isSelf: false,
+  targetIsSuperAdmin: false,
   capableCount: 2,
   ...overrides,
 })
@@ -194,6 +195,22 @@ describe('decideRoleChange — le dernier compte capable (critère 3)', () => {
       kind: 'assign',
     })
   })
+
+  it.each([0, 1])(
+    'rétrograde une cible SuperAdmin, hors décompte, même avec %i compte capable (revue 1)',
+    (capableCount) => {
+      expect(
+        decideRoleChange(
+          input({
+            targetRole: 'board',
+            nextRole: 'member',
+            targetIsSuperAdmin: true,
+            capableCount,
+          })
+        )
+      ).toEqual({kind: 'demote'})
+    }
+  )
 
   it('rétrograde quand deux comptes capables restent', () => {
     expect(

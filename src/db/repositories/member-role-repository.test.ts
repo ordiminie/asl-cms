@@ -23,7 +23,8 @@ vi.mock('@/db/tenant-scope', () => ({
 import {insertMemberRoleEventDao} from './member-role-event-repository'
 import {
   countCapableMembersDao,
-  getOrganizationOwnerDao,
+  deleteMemberWithRoleDao,
+  getOrganizationOwnersDao,
   lockOrganizationRolesDao,
   updateMemberRoleFromDao,
 } from './organization-repository'
@@ -67,22 +68,30 @@ describe('countCapableMembersDao', () => {
   })
 })
 
-describe('getOrganizationOwnerDao', () => {
-  it('rend le compte Président(e) de l’association, hors SuperAdmin', async () => {
-    nextRows.current = [[USER_ID, 'Hélène Roux']]
+describe('getOrganizationOwnersDao', () => {
+  it('rend toutes les lignes Président(e) de l’association, hors SuperAdmin, sans limite (revue 1)', async () => {
+    const OTHER_ID = '99999999-9999-4999-8999-999999999999'
+    nextRows.current = [
+      [USER_ID, 'Hélène Roux'],
+      [OTHER_ID, 'Marc Lenoir'],
+    ]
 
-    const owner = await getOrganizationOwnerDao(ORG_ID)
+    const owners = await getOrganizationOwnersDao(ORG_ID)
 
-    expect(owner).toEqual({userId: USER_ID, name: 'Hélène Roux'})
+    expect(owners).toEqual([
+      {userId: USER_ID, name: 'Hélène Roux'},
+      {userId: OTHER_ID, name: 'Marc Lenoir'},
+    ])
     const [{sql, params}] = sent
     expect(sql).toContain('"member"."organization_id" = $1')
     expect(sql).toContain('"member"."role" = $2')
     expect(sql).toContain('"user"."role" <> $3')
-    expect(params).toEqual([ORG_ID, 'owner', 'super_admin', 1])
+    expect(sql).not.toContain('limit')
+    expect(params).toEqual([ORG_ID, 'owner', 'super_admin'])
   })
 
-  it('rend undefined quand l’association n’a pas de Président(e)', async () => {
-    expect(await getOrganizationOwnerDao(ORG_ID)).toBeUndefined()
+  it('rend une liste vide quand l’association n’a pas de Président(e)', async () => {
+    expect(await getOrganizationOwnersDao(ORG_ID)).toEqual([])
   })
 })
 
@@ -142,5 +151,24 @@ describe('insertMemberRoleEventDao', () => {
         'assignment',
       ])
     )
+  })
+})
+
+describe('deleteMemberWithRoleDao', () => {
+  it('ne retire la ligne que si son rôle vaut celui attendu, et rend le nombre de lignes retirées', async () => {
+    nextRows.current = [['row-id']]
+
+    const removed = await deleteMemberWithRoleDao(USER_ID, ORG_ID, 'board')
+
+    expect(removed).toBe(1)
+    const [{sql, params}] = sent
+    expect(sql).toMatch(/^delete from "member"/)
+    expect(sql).toContain('"member"."role" = $3')
+    expect(sql).toMatch(/returning "id"$/)
+    expect(params).toEqual([USER_ID, ORG_ID, 'board'])
+  })
+
+  it('rend zéro quand le rôle a changé entre-temps', async () => {
+    expect(await deleteMemberWithRoleDao(USER_ID, ORG_ID, 'board')).toBe(0)
   })
 })

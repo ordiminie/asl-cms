@@ -6,12 +6,15 @@ import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repo
 import {
   countCapableMembersDao,
   getOrganizationByDomainDao,
-  getOrganizationOwnerDao,
+  getOrganizationOwnersDao,
   getUserRoleInOrganizationDao,
   lockOrganizationRolesDao,
   updateMemberRoleFromDao,
 } from '@/db/repositories/organization-repository'
-import {getUserByEmailDao} from '@/db/repositories/user-repository'
+import {
+  getUserByEmailDao,
+  getUserByIdDao,
+} from '@/db/repositories/user-repository'
 import {withTenant} from '@/db/tenant-scope'
 
 import {getAuthUser} from './authentication/auth-service'
@@ -105,21 +108,30 @@ const traceRole = async (write: RoleWrite, trace: RoleTrace): Promise<void> =>
     reason: trace.reason,
   })
 
-/** Ecritures d'une passation : successeur d'abord, ancienne President(e) ensuite. */
+type PresidencyWrite = RoleWrite & {
+  memberProfileId: string | null
+  name: string
+}
+
+/**
+ * Ecritures d'une passation : successeur d'abord (s'il n'est pas deja
+ * President(e)), puis chaque ancienne President(e) repasse Bureau. Une trace
+ * par compte change.
+ */
 const transferPresidency = async (
-  successor: RoleWrite & {memberProfileId: string | null; name: string},
-  predecessor: {userId: string; name: string} | undefined,
+  successor: PresidencyWrite | null,
+  predecessors: {userId: string; name: string}[],
+  organizationId: string,
   author: RoleTrace['author']
 ): Promise<void> => {
-  const writes: (RoleWrite & {memberProfileId: string | null; name: string})[] =
-    [successor]
-  if (predecessor) {
+  const writes: PresidencyWrite[] = successor ? [successor] : []
+  for (const predecessor of predecessors) {
     const profile = await getMemberProfileByUserIdDao(
-      successor.organizationId,
+      organizationId,
       predecessor.userId
     )
     writes.push({
-      organizationId: successor.organizationId,
+      organizationId,
       userId: predecessor.userId,
       from: MemberAccountRoleConst.OWNER,
       to: MemberAccountRoleConst.BOARD,
@@ -177,7 +189,8 @@ const applyDecision = async ({
         memberProfileId: target.memberProfileId,
         name: target.name,
       },
-      {userId: viewer.id, name: viewer.name},
+      [{userId: viewer.id, name: viewer.name}],
+      organizationId,
       author
     )
     return
@@ -239,12 +252,14 @@ export const changeMemberRoleService = async (
       organizationId
     )
     const self = viewer.id === profile.userId
+    const targetAccount = await getUserByIdDao(profile.userId)
     const decision = decideRoleChange({
       viewerRole,
       viewerIsSuperAdmin: viewer.role === RoleConst.SUPER_ADMIN,
       targetRole,
       nextRole: role,
       isSelf: self,
+      targetIsSuperAdmin: targetAccount?.role === RoleConst.SUPER_ADMIN,
       capableCount: await countCapableMembersDao(organizationId),
     })
 
@@ -283,9 +298,9 @@ export const changeMemberRoleService = async (
 /**
  * Recours d'exploitation (D8, ADR 039) : la President(e) est partie sans
  * transmettre. Meme service, meme verrou : le compte de cette adresse, deja
- * membre de l'association du domaine, devient President(e) ; l'ancienne
- * repasse Bureau. Trace `presidency_transfer`, auteur « Zourite Studio ».
- * Appele par `pnpm ops:transfer-presidency`, jamais par un ecran.
+ * membre de l'association du domaine, devient President(e) ; toute autre
+ * President(e) (hors SuperAdmin) repasse Bureau. Trace `presidency_transfer`,
+ * auteur « Zourite Studio ». Appele par `pnpm ops:transfer-presidency`, jamais par un ecran.
  */
 export const transferPresidencyByOperatorService = async (
   domain: string,
@@ -321,30 +336,35 @@ export const transferPresidencyByOperatorService = async (
     )
     if (role === null) throw noMemberAccount
 
-    const predecessor = await getOrganizationOwnerDao(organizationId)
+    const predecessors = (
+      await getOrganizationOwnersDao(organizationId)
+    ).filter((owner) => owner.userId !== successor.id)
     const result = {
       organizationId,
       newOwnerUserId: successor.id,
-      previousOwnerUserId: predecessor?.userId ?? null,
+      previousOwnerUserIds: predecessors.map((owner) => owner.userId),
     }
-    if (role === MemberAccountRoleConst.OWNER) {
+    const alreadyOwner = role === MemberAccountRoleConst.OWNER
+    if (alreadyOwner && predecessors.length === 0) {
       return {...result, changed: false}
     }
 
-    const profile = await getMemberProfileByUserIdDao(
-      organizationId,
-      successor.id
-    )
+    const profile = alreadyOwner
+      ? undefined
+      : await getMemberProfileByUserIdDao(organizationId, successor.id)
     await transferPresidency(
-      {
-        organizationId,
-        userId: successor.id,
-        from: role,
-        to: MemberAccountRoleConst.OWNER,
-        memberProfileId: profile?.id ?? null,
-        name: successor.name,
-      },
-      predecessor,
+      alreadyOwner
+        ? null
+        : {
+            organizationId,
+            userId: successor.id,
+            from: role,
+            to: MemberAccountRoleConst.OWNER,
+            memberProfileId: profile?.id ?? null,
+            name: successor.name,
+          },
+      predecessors,
+      organizationId,
       {userId: null, name: OPERATOR_AUTHOR_NAME}
     )
     return {...result, changed: true}

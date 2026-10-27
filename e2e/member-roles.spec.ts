@@ -750,4 +750,67 @@ test.describe('Rôles d’association — s14', () => {
       await bureau.context().close()
     }
   })
+
+  test('la RLS refuse de lire et d’écrire la trace des rôles depuis le scope de l’autre association', async () => {
+    const tenantA = await tenantIdOf(TENANT_A_SLUG)
+    const marker = nameOf('Trace RLS')
+
+    const insertedId = await inTenant(TENANT_A_SLUG, async (client) => {
+      const result = await client.query<{id: string}>(
+        `insert into member_role_event
+           (organization_id, target_name, author_name, from_role, to_role, reason)
+         values ($1, $2, 'Zourite Studio', 'member', 'board', 'assignment')
+         returning id`,
+        [tenantA, marker]
+      )
+      return result.rows[0].id
+    })
+    try {
+      const seenFromA = await inTenant(TENANT_A_SLUG, (client) =>
+        client.query(`select id from member_role_event where id = $1`, [
+          insertedId,
+        ])
+      )
+      expect(seenFromA.rowCount, 'la trace existe chez TechCorp').toBe(1)
+
+      const seenFromB = await inTenant(TENANT_B_SLUG, async (client) => ({
+        byId: await client.query(
+          `select id from member_role_event where id = $1`,
+          [insertedId]
+        ),
+        ofA: await client.query(
+          `select id from member_role_event where organization_id = $1`,
+          [tenantA]
+        ),
+      }))
+      expect(seenFromB.byId.rowCount, 'un oubli de scope ne fuite pas').toBe(0)
+      expect(seenFromB.ofA.rowCount).toBe(0)
+
+      const withoutScope = await withClient((client) =>
+        client.query(`select id from member_role_event where id = $1`, [
+          insertedId,
+        ])
+      )
+      expect(withoutScope.rowCount).toBe(0)
+
+      // Écrire chez l'autre association depuis son propre scope est refusé.
+      await expect(
+        inTenant(TENANT_B_SLUG, (client) =>
+          client.query(
+            `insert into member_role_event
+               (organization_id, target_name, reason)
+             values ($1, $2, 'assignment')`,
+            [tenantA, nameOf('Intrus')]
+          )
+        )
+      ).rejects.toThrow(/row-level security/i)
+    } finally {
+      await asMaintenance((client) =>
+        client.query(
+          `delete from member_role_event where id = $1 or target_name = $2`,
+          [insertedId, nameOf('Intrus')]
+        )
+      )
+    }
+  })
 })

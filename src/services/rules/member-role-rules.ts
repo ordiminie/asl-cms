@@ -47,6 +47,7 @@ export const decideRoleChange = ({
   targetRole,
   nextRole,
   isSelf,
+  targetIsSuperAdmin,
   capableCount,
 }: MemberRoleChangeInput): MemberRoleChangeDecision => {
   if (!isAssignableRole(nextRole)) {
@@ -69,7 +70,7 @@ export const decideRoleChange = ({
     return {kind: 'transfer_presidency'}
   }
   if (nextRole === MemberAccountRoleConst.BOARD) return {kind: 'assign'}
-  if (isCapable(targetRole) && capableCount <= 1) {
+  if (isCapable(targetRole) && !targetIsSuperAdmin && capableCount <= 1) {
     return {kind: 'refuse', reason: 'last_capable'}
   }
   return {kind: 'demote'}

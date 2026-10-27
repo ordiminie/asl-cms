@@ -22,12 +22,10 @@ import {
   lockOrganizationRolesDao,
   searchOrganizationsWithMemberEmailsDao,
   updateOrganizationDao,
-  updateUserOrganizationRoleDao,
 } from '@/db/repositories/organization-repository'
 import {getAuthUser} from '@/services/authentication/auth-service'
 
 import {
-  canChangeOrganizationMemberRole,
   canCreateOrganization,
   canDeleteInvitation,
   canDeleteOrganization,
@@ -60,7 +58,6 @@ import {uuidSchema} from './validation/common-validation'
 import {
   createOrganizationServiceSchema,
   createUserOrganizationServiceSchema,
-  organizationRoleSchema,
   organizationUuidSchema,
   updateOrganizationServiceSchema,
   userUuidSchema,
@@ -251,6 +248,9 @@ export const createOrganizationMemberService = async (
     throw new ValidationParsedZodError(parsed.error)
   }
   const params = parsed.data
+  if (params.role !== UserOrganizationRoleConst.MEMBER) {
+    throw new ValidationError(MEMBER_ROLE_ONLY_MESSAGE)
+  }
 
   const granted = await canInviteToOrganization(params.organizationId)
   if (!granted) {
@@ -321,44 +321,6 @@ export const removeUserFromOrganizationService = async (
     await deleteUserOrganizationDao(userIdSanitized, organizationIdSanitized)
     await traceMemberRemoval(organizationIdSanitized, membership)
   })
-}
-
-export const changeUserOrganizationRoleService = async (
-  userId: string,
-  organizationId: string,
-  role: OrganizationRole
-) => {
-  const userParsed = userUuidSchema.safeParse(userId)
-  const orgParsed = organizationUuidSchema.safeParse(organizationId)
-  const roleParsed = organizationRoleSchema.safeParse(role)
-
-  if (!userParsed.success) {
-    throw new ValidationError(userParsed.error.message)
-  }
-  if (!orgParsed.success) {
-    throw new ValidationError(orgParsed.error.message)
-  }
-  if (!roleParsed.success) {
-    throw new ValidationError(roleParsed.error.message)
-  }
-
-  const userIdSanitized = userParsed.data
-  const organizationIdSanitized = orgParsed.data
-  const roleSanitized = roleParsed.data
-
-  const granted = await canChangeOrganizationMemberRole(
-    organizationIdSanitized,
-    userIdSanitized
-  )
-  if (!granted) {
-    throw new AuthorizationError()
-  }
-
-  await updateUserOrganizationRoleDao(
-    userIdSanitized,
-    organizationIdSanitized,
-    roleSanitized
-  )
 }
 
 export const getUserRoleInOrganizationService = async (
@@ -875,6 +837,9 @@ export const bootstrapPlatformService = async (
     return {organization, superAdminUserId: superAdmin.id}
   })
 }
+
+const MEMBER_ROLE_ONLY_MESSAGE =
+  "Un compte n'est ajouté à une association qu'au rôle Membre : le rôle Bureau ou Président(e) se désigne depuis la fiche du membre."
 
 const LAST_CAPABLE_REMOVAL_MESSAGE =
   "Ce compte est le dernier qui peut désigner le bureau de l'association : désignez d'abord une autre personne au bureau."

@@ -234,8 +234,10 @@ Relevés pendant l'exécution (implementer, 2026-10-27). Aucun ne change une dé
 - **Tâche 6 — trace `email_change` (D5).** Écrite seulement pour un rôle `board`/`owner` (le
   déplacement de rôle) : une ligne par compte dont le rôle change. `applyMemberAccountDecision` et
   `replaceMemberAccount` reçoivent l'auteur (`MemberAccountAuthor`), passé par
-  `member-profile-service`. Le verrou n'est pas pris par `replaceMemberAccount` : le plan ne le
-  demande pas, et le déplacement ne fait jamais tomber le décompte à zéro.
+  `member-profile-service`. ~~Le verrou n'est pas pris par `replaceMemberAccount` : le plan ne le
+  demande pas, et le déplacement ne fait jamais tomber le décompte à zéro.~~ Corrigé en revue 1 :
+  c'était faux — une rétrogradation concurrente du nouveau compte (ou de l'ancien) peut faire
+  tomber le décompte à zéro ; le verrou est désormais pris (voir plus bas).
 - **Tâche 7 — `boardRole` de la liste.** Lu par `getOrganizationMembersDao` (DAO existant), sous
   `canReadMemberAccount`, et rapproché du `user_id` de chaque fiche ; aucun DAO nouveau.
 - **Tâche 9 — composants.** La carte vit dans `member-role-card.tsx` ; `DetailCard` est extrait
@@ -251,4 +253,34 @@ Relevés pendant l'exécution (implementer, 2026-10-27). Aucun ne change une dé
   forgés (critères 5 et 6) réécrivent le corps de la Server Action par `page.route`.
 - **Hors plan, non traité (à arbitrer).** `changeUserOrganizationRoleService`
   (`organization-service.ts`, exposé par la façade) écrit un rôle sans trace ni verrou. Aucun
-  appelant dans le code ; le plan ne le cite pas, il n'a pas été touché.
+  appelant dans le code ; le plan ne le cite pas, il n'a pas été touché. → Retiré en revue 1
+  (voir plus bas).
+
+### Correctifs de la revue 1 (2026-10-27)
+
+- **Problème 1 — un seul chemin d'écriture (ADR 039 §1).** `changeUserOrganizationRoleService`,
+  son entrée de façade et `updateUserOrganizationRoleDao` sont supprimés (aucun appelant dans
+  `src`, `e2e`, `scripts`). `createOrganizationMemberService` refuse tout rôle autre que `member`
+  (`ValidationError`, aucune écriture) : les deux appelants passaient déjà `member`, le paramètre
+  est gardé.
+- **Problème 2 — verrou du changement d'adresse.** `replaceMemberAccount` prend
+  `lockOrganizationRolesDao` en tête de sa transaction, avant toute lecture de rôle (ordre épinglé
+  par un test). Non traité : la nouvelle adresse qui tombe sur un compte SuperAdmin porteur de la
+  ligne `owner` de l'amorçage (demande une décision produit).
+- **Problème 3 — trace de l'ancien compte.** `deleteMemberWithRoleDao` rend le nombre de lignes
+  retirées ; la trace `email_change` de l'ancien compte n'est écrite que s'il vaut 1.
+- **Problème 4 — sonde RLS de `member_role_event`** ajoutée à `e2e/member-roles.spec.ts` : ligne
+  écrite sous le scope de TechCorp, invisible depuis Marketing Pro et sans scope, insertion
+  croisée refusée ; ligne retirée en `finally` (et par le nettoyage du run).
+- **Problème 5 — cible SuperAdmin.** `decideRoleChange` reçoit `targetIsSuperAdmin` (relu par
+  `getUserByIdDao` sur le `user_id` de la fiche) : une cible SuperAdmin, hors décompte, n'est
+  jamais refusée `last_capable`.
+- **Problème 6 — Président(e) unique (D8).** `getOrganizationOwnerDao` (`LIMIT 1`) devient
+  `getOrganizationOwnersDao` (toutes les lignes `owner` hors SuperAdmin). Le recours d'exploitation
+  rétrograde chacune au Bureau, une trace `presidency_transfer` chacune ; le résultat porte
+  `previousOwnerUserIds`. Relancé pour un compte déjà Président(e), il n'écrit rien **sauf** s'il
+  reste une autre Président(e), qui repasse Bureau (corrige l'écart de la tâche 5 ci-dessus). La
+  passation depuis l'écran est inchangée (l'appelante, Président(e), repasse Bureau).
+  `docs/exploitation/README.md` mis à jour.
+- **Problème 7** (retrait d'un rôle par suppression d'un compte `user`) : non traité, demande une
+  décision.
