@@ -26,7 +26,8 @@ document.
 2026, et s46b, scindée de s46 le 13 octobre, se jouent dans cet ordre (s44 → s45 → s46 → s46b → s47),
 s44 à s46b **avant s12b et avant s12d**, s47 avant s12b. Elles nettoient ce qui reste du boilerplate
 avant la mise en ligne ; s46 fixe l'adresse de l'espace membre que s12d remplit, et s46b la
-destination après connexion. Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
+destination après connexion. s48, ajoutée le 28 octobre 2026, peut se jouer dès la fusion de s14.
+Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
 
 ## Règles transverses à toutes les stories
 
@@ -3433,6 +3434,69 @@ Réf. `ADR 009` (modèle de retrait).
 
 ---
 
+## Story s48-connexion-a-la-place — Agir à la place d'un compte, en garde-fou
+
+⚠️ **Story hors du tableau de périmètre du PRD**, ajoutée hors revue le 28 octobre 2026, après
+s14. Arbitrage de l'utilisatrice : **le SuperAdmin peut tout faire**, c'est le garde-fou de la
+plateforme quand une association se bloque (Président(e) partie sans transmettre la présidence,
+bureau vide, membre incapable de se connecter). s14 (ADR 039) a retiré la modification de rôle de
+l'écran SuperAdmin ; plutôt que de rouvrir des portes latérales dans chaque règle, le SuperAdmin se
+connecte **à la place** d'un compte et agit par les écrans normaux, avec ses règles et sa trace.
+
+**En tant que** SuperAdmin Zourite Studio **je veux** me connecter à la place de n'importe quel
+compte d'une association, sans connaître son mot de passe **afin de** réaliser en son nom une action
+qu'il ne peut pas ou plus faire lui-même (passer la présidence, nommer le bureau, corriger sa fiche).
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Depuis l'écran SuperAdmin des membres d'une association, un SuperAdmin choisit un compte et ouvre une session à sa place, sur le domaine de cette association, sans mot de passe ni lien magique ; il voit et fait exactement ce que ce compte voit et fait.
+- [ ] Une bannière permanente, sur toutes les pages, dit à la place de qui le SuperAdmin agit et permet d'en sortir ; la sortie rend la session SuperAdmin d'origine.
+- [ ] Seul le rôle global `super_admin` peut ouvrir une telle session, côté interface et côté serveur ; un compte `user`, quel que soit son rôle d'association, reçoit un refus — prouvé par un test, y compris par un appel direct à la route HTTP du plugin.
+- [ ] On ne peut pas se connecter à la place d'un autre SuperAdmin, ni enchaîner deux sessions à la place.
+- [ ] Chaque ouverture et chaque sortie sont tracées : SuperAdmin, compte visé, association, horodatage ; la table est scopée par `organization_id`, sous RLS forcée, avec un test d'accès croisé entre deux tenants.
+- [ ] Une écriture faite pendant la session est **attribuée au SuperAdmin** dans les traces existantes (au minimum `member_role_event` de s14 et `incident_report_event` de s10) : l'auteur est le SuperAdmin, et la trace dit pour le compte de qui il a agi.
+- [ ] La session à la place expire d'elle-même (durée paramétrée, pas en dur) et ne permet pas de changer le mot de passe, l'adresse email ni la double authentification du compte visé.
+- [ ] La table de trace entre dans l'inventaire des tables scopées (`docs/architecture.md`, `src/db/rls-inventory.test.ts`) : s38, jouée plus tard, l'exporte ou la déclare au registre des exclusions avec son motif.
+
+### Dependencies
+
+s03, s03c, s12d, s14, s46b, s47
+
+### Agentic notes
+
+Réf. arbitrage du 28 octobre 2026 (« le SuperAdmin peut tout faire, il ne doit pas avoir de
+limitation : c'est justement un garde-fou »), `PRD` (Target users : SuperAdmin, support et
+débogage), ADR 034 (connexion limitée à l'association du domaine), ADR 035 (deux rôles globaux),
+ADR 039 (un seul chemin de changement de rôle, tracé).
+
+- **La brique existe, en sommeil** : le plugin `admin()` de Better Auth est monté
+  (`src/lib/better-auth/auth.ts`, `adminRoles: ['super_admin']`) et sait ouvrir une session à la
+  place d'un compte (route `impersonate-user` / `stop-impersonating`) ; la colonne
+  `session.impersonated_by` existe déjà (`src/db/models/auth-model.ts`). Rien ne l'utilise, aucun
+  test ne la couvre : `/ks-research` vérifie le comportement réel de la version installée (durée,
+  cookie de la session d'origine, ce que rend `getSession`).
+- **Interaction avec le contrôle d'ouverture de session** (`associationSessionGuard`, ADR 034, rejoué
+  par `getAuthUser`, ADR 038) : la session ouverte est celle du compte visé, elle doit passer le
+  contrôle du domaine de son association. Ouvrir la session à la place sur l'hôte de la plateforme
+  serait refusé : le point d'entrée doit vivre sur le domaine de l'association.
+- **Le piège est l'attribution** : sans travail, toute écriture part sous l'identité du compte visé
+  (`customSession` relit le compte de la session) et la trace de s14 dirait « la Président(e) a
+  transmis la présidence », ce qui est faux. Le service qui écrit une trace lit
+  `impersonatedBy` et enregistre le SuperAdmin comme auteur.
+- **Ne pas confondre avec s41** (simulation de rôle) : s41 consulte le site avec les droits **d'un
+  rôle** pour déboguer, sans personne derrière ; s48 agit **en tant qu'une personne précise**. Si
+  s48 couvre le besoin de support, s41 pourra être revue (fusion ou retrait) à sa recherche.
+- **Règle transverse posée par cet arbitrage** : aucune règle métier ne limite le SuperAdmin acteur.
+  Les stories suivantes vérifient, en design et en revue, qu'il garde un chemin pour agir.
+- **Ordre** : toutes les dépendances sont livrées ou en cours (s14) ; elle peut se jouer dès la
+  fusion de s14.
+
+---
+
 # Récapitulatif — ordre et dépendances
 
 | Id   | Story                            | Cx  | Dépend de                                                                                                                                | Bloc |
@@ -3494,9 +3558,10 @@ Réf. `ADR 009` (modèle de retrait).
 | s46  | comptes-herites-minimum          | 3   | s03, s03b, s43, s45                                                                                                                      | B    |
 | s46b | connexion-limitee-association    | 4   | s03, s03b, s03c, s46                                                                                                                     | B    |
 | s47  | roles-globaux-reduits            | 3   | s03b, s46b                                                                                                                               | B    |
+| s48  | connexion-a-la-place             | 3   | s03, s03c, s12d, s14, s46b, s47                                                                                                          | B    |
 
-**57 stories, aucune à 5.** Répartition : quatre à 1, vingt à 2, vingt-trois à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026).
-**Neuf stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**58 stories, aucune à 5.** Répartition : quatre à 1, vingt à 2, vingt-quatre à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026).
+**Dix stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
@@ -3506,7 +3571,8 @@ de s11 ; s45 et s46, le retrait des pages héritées du boilerplate (blog, docs,
 décidé le 6 octobre 2026 et placé avant s12b avec s44, la page d'accueil choisie par le bureau ;
 s46b, la connexion limitée à l'association du domaine, scindée de s46 le 13 octobre ;
 s47, le retrait des rôles globaux du boilerplate sans équivalent dans l'association, décidé à la
-revue du découpage du 7 octobre.
+revue du découpage du 7 octobre ; s48, la connexion du SuperAdmin à la place d'un compte, garde-fou
+décidé le 28 octobre après s14.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une

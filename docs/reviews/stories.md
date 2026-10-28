@@ -70,7 +70,7 @@
 | Redirection de paiement | s21 | ✅ |
 | Multi-tenant | s01 | ✅ |
 | Export individuel d'un membre | s40 | ✅ |
-| Simulation de rôle SuperAdmin | s41 | ✅ |
+| Simulation de rôle SuperAdmin | s41 (+ s48, connexion à la place d'un compte, ajoutée hors revue le 28/10/2026) | ✅ |
 | Export et portabilité | s38 (+ s39) | ✅ |
 | Module Vote | s33 | ✅ |
 | Module Voirie | s34 | ✅ |
