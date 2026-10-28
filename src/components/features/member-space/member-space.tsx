@@ -3,6 +3,7 @@ import Link from 'next/link'
 import {useFormatter, useTranslations} from 'next-intl'
 import {type ReactNode, use, useId} from 'react'
 
+import type {MyContactFormAction} from '@/components/features/member-profile/member-profile-form-validation'
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {
   Card,
@@ -15,10 +16,13 @@ import {Skeleton} from '@/components/ui/skeleton'
 import {formatContentDate} from '@/lib/cms/format-content-date'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
 import type {
+  MyContactDTO,
   MyCurrentParcelDTO,
   MyFormerParcelDTO,
   MyParcelsDTO,
 } from '@/services/types/domain/member-space-types'
+
+import {MyContactCard} from './my-contact-card'
 
 /**
  * Espace membre (s46, s12d ecran C). Composants serveur, sans etat client :
@@ -28,24 +32,41 @@ import type {
 
 const HEADING_CLASS = 'font-serif text-3xl font-semibold tracking-tight'
 
-/** « Mes parcelles », ou la page de s46 pour un compte sans fiche (C5). */
+/**
+ * « Mes parcelles » et « Mes coordonnees », ou la page de s46 pour un compte
+ * sans fiche (C5). Une fiche sans parcelle garde ses coordonnees (s16, C7).
+ */
 export function MemberSpace({
   parcelsPromise,
+  contactPromise,
+  contactAction,
 }: {
   parcelsPromise: Promise<MyParcelsDTO | undefined>
+  contactPromise: Promise<MyContactDTO | undefined>
+  contactAction: MyContactFormAction
 }) {
   const parcels = use(parcelsPromise)
+  const contact = use(contactPromise)
   const hasParcels =
     parcels !== undefined &&
     (parcels.current.length > 0 || parcels.former.length > 0)
 
-  if (!parcels || !hasParcels) return <MemberSpaceWithoutProfile />
+  if (!contact) return <MemberSpaceWithoutProfile />
+
+  if (!parcels || !hasParcels) {
+    return (
+      <MemberSpaceWithoutParcels>
+        <MyContactCard contact={contact} action={contactAction} />
+      </MemberSpaceWithoutParcels>
+    )
+  }
 
   return (
     <div className="space-y-6">
       <PersonalMarker current={parcels.current} />
       <Greeting name={parcels.name} />
       <MyParcelsCard parcels={parcels} />
+      <MyContactCard contact={contact} action={contactAction} />
       <SecurityCard />
     </div>
   )
@@ -55,6 +76,7 @@ export function MemberSpace({
 export function MemberSpaceLoading({name}: {name: string}) {
   const t = useTranslations('MemberSpacePage')
   const titleId = useId()
+  const contactTitleId = useId()
 
   return (
     <div className="space-y-6">
@@ -63,6 +85,15 @@ export function MemberSpaceLoading({name}: {name: string}) {
         <Card className="gap-4 px-4 py-6 shadow-none sm:px-6">
           <h2 id={titleId} className="font-serif text-xl font-semibold">
             {t('parcels.title')}
+          </h2>
+          <Skeleton className="bg-muted h-14 w-full" />
+          <Skeleton className="bg-muted h-14 w-full" />
+        </Card>
+      </section>
+      <section aria-labelledby={contactTitleId} aria-busy="true">
+        <Card className="gap-4 px-4 py-6 shadow-none sm:px-6">
+          <h2 id={contactTitleId} className="font-serif text-xl font-semibold">
+            {t('contact.title')}
           </h2>
           <Skeleton className="bg-muted h-14 w-full" />
           <Skeleton className="bg-muted h-14 w-full" />
@@ -79,6 +110,19 @@ function MemberSpaceWithoutProfile() {
   return (
     <div className="space-y-8">
       <h1 className={HEADING_CLASS}>{t('title')}</h1>
+      <SecurityCard />
+    </div>
+  )
+}
+
+/** C7 (s16) : une fiche sans parcelle, ni marqueur ni salutation. */
+function MemberSpaceWithoutParcels({children}: {children: ReactNode}) {
+  const t = useTranslations('MemberSpacePage')
+
+  return (
+    <div className="space-y-6">
+      <h1 className={HEADING_CLASS}>{t('title')}</h1>
+      {children}
       <SecurityCard />
     </div>
   )

@@ -2,7 +2,10 @@ import {ReactElement} from 'react'
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 import {act, render, screen, within} from '@/__tests__/customRender'
-import type {MyParcelsDTO} from '@/services/types/domain/member-space-types'
+import type {
+  MyContactDTO,
+  MyParcelsDTO,
+} from '@/services/types/domain/member-space-types'
 
 vi.mock('server-only', () => ({}))
 vi.mock('next/navigation', () => ({
@@ -21,10 +24,12 @@ vi.mock('@/services/authentication/auth-service', () => ({
   getSessionAuth: vi.fn(),
 }))
 vi.mock('@/app/dal/member-space-dal', () => ({
+  getMyContactDal: vi.fn(),
   getMyParcelsDal: vi.fn(),
 }))
+vi.mock('./actions', () => ({updateMyContactAction: vi.fn()}))
 
-import {getMyParcelsDal} from '@/app/dal/member-space-dal'
+import {getMyContactDal, getMyParcelsDal} from '@/app/dal/member-space-dal'
 
 import DashboardPage from './page'
 
@@ -55,11 +60,30 @@ const parcelsOf = (overrides: Partial<MyParcelsDTO> = {}): MyParcelsDTO => ({
   ...overrides,
 })
 
+const CONTACT: MyContactDTO = {
+  email: 'claire.meunier@exemple.fr',
+  phone: '06 12 34 56 78',
+  addressLine: '4 chemin des Oliviers',
+  addressComplement: null,
+  postalCode: '13100',
+  city: 'Aix-en-Provence',
+}
+
+const SECURITY_DESCRIPTION =
+  'Votre mot de passe et les appareils connectés à votre compte.'
+
 const myParcels = () => screen.getByRole('region', {name: 'Mes parcelles'})
+const myContact = () => screen.getByRole('region', {name: 'Mes coordonnées'})
+
+const isBefore = (first: Element, second: Element) =>
+  Boolean(
+    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING
+  )
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getMyParcelsDal).mockResolvedValue(undefined)
+  vi.mocked(getMyContactDal).mockResolvedValue(undefined)
 })
 
 describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
@@ -78,15 +102,12 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
     await renderDashboard()
 
     expect(await screen.findByText('Sécurité du compte')).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        'Votre adresse email, votre mot de passe et les appareils connectés à votre compte.'
-      )
-    ).toBeInTheDocument()
+    expect(screen.getByText(SECURITY_DESCRIPTION)).toBeInTheDocument()
     expect(
       screen.getByRole('link', {name: 'Gérer la sécurité du compte'})
     ).toHaveAttribute('href', '/account')
     expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(screen.queryByRole('region', {name: 'Mes coordonnées'})).toBeNull()
   })
 
   it('ne garde rien du tableau de bord hérité', async () => {
@@ -106,10 +127,11 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
     expect(screen.queryByText('Membre Test')).toBeNull()
   })
 
-  it('C5 aussi pour une fiche liée sans aucune parcelle : pas de salutation', async () => {
+  it('C7 (s16) : une fiche sans parcelle voit « Mes coordonnées », sans salutation', async () => {
     vi.mocked(getMyParcelsDal).mockResolvedValue(
       parcelsOf({current: [], former: []})
     )
+    vi.mocked(getMyContactDal).mockResolvedValue(CONTACT)
 
     await renderDashboard()
 
@@ -120,11 +142,23 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
       })
     ).toBeInTheDocument()
     expect(screen.queryByText('Bonjour Claire Meunier')).toBeNull()
+    expect(screen.queryByText('Espace personnel')).toBeNull()
     expect(screen.queryByRole('region', {name: 'Mes parcelles'})).toBeNull()
+    expect(myContact()).toHaveTextContent('claire.meunier@exemple.fr')
+    expect(
+      isBefore(
+        myContact(),
+        screen.getByRole('heading', {level: 2, name: 'Sécurité du compte'})
+      )
+    ).toBe(true)
   })
 })
 
 describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
+  beforeEach(() => {
+    vi.mocked(getMyContactDal).mockResolvedValue(CONTACT)
+  })
+
   it('C1 : marqueur personnel, salutation au nom de la fiche, parcelles actuelles en clair', async () => {
     vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
 
@@ -166,6 +200,24 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
     expect(
       within(myParcels()).getByRole('link', {name: 'Page Contact'})
     ).toHaveAttribute('href', '/contact')
+  })
+
+  it('C1 (s16) : « Mes coordonnées » entre « Mes parcelles » et « Sécurité du compte »', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+
+    await renderDashboard()
+
+    await screen.findByRole('region', {name: 'Mes coordonnées'})
+    expect(myContact()).toHaveTextContent('claire.meunier@exemple.fr')
+    expect(myContact()).toHaveTextContent('06 12 34 56 78')
+    expect(isBefore(myParcels(), myContact())).toBe(true)
+    expect(
+      isBefore(
+        myContact(),
+        screen.getByRole('heading', {level: 2, name: 'Sécurité du compte'})
+      )
+    ).toBe(true)
+    expect(screen.getByText(SECURITY_DESCRIPTION)).toBeInTheDocument()
   })
 
   it('garde la carte « Sécurité du compte » de s46 sous « Mes parcelles »', async () => {
@@ -243,10 +295,27 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
     const loading = screen.getByRole('region', {name: 'Mes parcelles'})
     expect(loading).toHaveAttribute('aria-busy', 'true')
   })
+
+  it('C8 (s16) : « Mes coordonnées » aussi en squelette pendant le chargement', async () => {
+    vi.mocked(getMyParcelsDal).mockReturnValue(new Promise(() => {}))
+    vi.mocked(getMyContactDal).mockReturnValue(new Promise(() => {}))
+
+    await renderDashboard()
+
+    expect(
+      screen.getByRole('heading', {level: 2, name: 'Mes coordonnées'})
+    ).toBeInTheDocument()
+    expect(myContact()).toHaveAttribute('aria-busy', 'true')
+    expect(isBefore(myParcels(), myContact())).toBe(true)
+  })
 })
 
 /** s14, A12 : après sa propre rétrogradation, l’espace personnel le dit. */
 describe('/dashboard?role=retire — rôle retiré (s14, A12)', () => {
+  beforeEach(() => {
+    vi.mocked(getMyContactDal).mockResolvedValue(CONTACT)
+  })
+
   it('dit « Vous ne faites plus partie du bureau. » en tête, role="status"', async () => {
     vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
     await renderDashboard({role: 'retire'})

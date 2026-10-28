@@ -33,8 +33,7 @@ const optionalContact = (schema: z.ZodString) =>
     .pipe(schema.optional())
     .transform((value) => value ?? null)
 
-const contactShape = {
-  email: optionalContact(z.string().email()),
+const postalContactShape = {
   phone: optionalContact(
     z
       .string()
@@ -51,6 +50,11 @@ const contactShape = {
     z.string().regex(MEMBER_PROFILE_POSTAL_CODE_PATTERN)
   ),
   city: optionalContact(z.string().max(MEMBER_PROFILE_CITY_MAX_LENGTH)),
+}
+
+const contactShape = {
+  email: optionalContact(z.string().email()),
+  ...postalContactShape,
 }
 
 export const createMemberProfileServiceSchema = z.object({
@@ -81,4 +85,13 @@ export const memberProfilePageServiceSchema = z.object({
       const trimmed = value?.trim()
       return trimmed ? trimmed : undefined
     }),
+})
+
+/**
+ * Coordonnees qu'un membre corrige lui-meme (s16, ADR 040) : sans email. Les
+ * cles inconnues (`email`, `memberProfileId`) sont retirees par Zod.
+ */
+export const updateMyContactServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  ...postalContactShape,
 })

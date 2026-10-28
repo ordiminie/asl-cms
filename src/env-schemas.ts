@@ -151,9 +151,9 @@ export const clientSchema = {
     .default('true')
     .transform((val) => val === 'true'),
   /**
-   * Ferme par defaut (s12d) : `changeEmail` de Better Auth change `user.email`
-   * dans toutes les associations sans que la fiche suive. s16 le rouvrira en
-   * synchronisant fiche et compte.
+   * Ferme definitivement (s12d, ADR 040) : `changeEmail` de Better Auth change
+   * `user.email` dans toutes les associations sans que la fiche suive. L'adresse
+   * d'une fiche ne se modifie que par le bureau.
    */
   NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL: z
     .string()

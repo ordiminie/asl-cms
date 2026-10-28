@@ -1598,9 +1598,9 @@ quelqu'un, là on emprunte temporairement une vue pour déboguer.
 
 ### Acceptance criteria
 
-- [ ] Un membre connecté modifie ses coordonnées (adresse postale, téléphone, email de contact) et voit la valeur enregistrée après rechargement.
+- [ ] Un membre connecté modifie ses coordonnées (adresse postale, téléphone) et voit la valeur enregistrée après rechargement. Son adresse email est affichée, pas modifiable : pour la changer, il écrit au bureau (arbitrage du 23/10/2026, [ADR 040](decisions/040-adresse-email-de-la-fiche-modifiee-par-le-bureau-seul.md)).
 - [ ] Une saisie invalide affiche les erreurs par champ et n'enregistre rien.
-- [ ] Un membre ne peut modifier que ses propres coordonnées : une requête visant l'identifiant d'un autre membre est refusée.
+- [ ] Un membre ne peut modifier que ses propres coordonnées. Aucun identifiant de fiche n'est visible ni transmis par l'écran. Un identifiant glissé dans la requête est ignoré, et les autres associations de la personne ne sont pas touchées (ADR 040).
 - [ ] Le bureau voit les coordonnées à jour dans la fiche du membre.
 
 ### Dependencies

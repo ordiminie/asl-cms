@@ -14,6 +14,7 @@ vi.mock('@/db/tenant-scope', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfileByUserIdDao: vi.fn(),
+  updateMyMemberProfileContactDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
   getCurrentParcelsByMemberDao: vi.fn(),
@@ -21,17 +22,23 @@ vi.mock('@/db/repositories/parcel-ownership-repository', () => ({
   getMemberFormerParcelsDao: vi.fn(),
 }))
 
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {
+  getMemberProfileByUserIdDao,
+  updateMyMemberProfileContactDao,
+} from '@/db/repositories/member-profile-repository'
 import {
   getCurrentParcelsByMemberDao,
   getFormerParcelsByMemberDao,
   getMemberFormerParcelsDao,
 } from '@/db/repositories/parcel-ownership-repository'
+import {withTenant} from '@/db/tenant-scope'
 
 import {AuthorizationError} from '../errors/authorization-error'
 import {
+  getMyContactService,
   getMyParcelsService,
   isPlainMemberOfService,
+  updateMyContactService,
 } from '../member-space-service'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
@@ -192,5 +199,148 @@ describe('isPlainMemberOfService — qui voit l’écran C4', () => {
     setupAuthUserMocked(user)
 
     expect(await isPlainMemberOfService(ORG_ID)).toBe(expected)
+  })
+})
+
+const NEW_CONTACT = {
+  phone: '06 12 34 56 78',
+  addressLine: '4 chemin des Oliviers',
+  addressComplement: 'Bâtiment B',
+  postalCode: '13100',
+  city: 'Aix-en-Provence',
+}
+
+describe('[PUBLIC] updateMyContactService — autorisation d’abord (s16, critère 3)', () => {
+  it('refuse sans session, sans rien lire ni écrire', async () => {
+    setupAuthUserMocked(undefined)
+
+    await expect(
+      updateMyContactService({organizationId: ORG_ID, ...NEW_CONTACT})
+    ).rejects.toThrow(AuthorizationError)
+    expect(updateMyMemberProfileContactDao).not.toHaveBeenCalled()
+    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('[ORGANIZATION MEMBER] updateMyContactService — « Mes coordonnées » (s16)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(withRole('member'))
+    vi.mocked(updateMyMemberProfileContactDao).mockResolvedValue({
+      ...profileRow,
+      ...NEW_CONTACT,
+    })
+  })
+
+  it('écrit la fiche du compte de la session, même si l’entrée vise un autre membre', async () => {
+    await updateMyContactService({
+      organizationId: ORG_ID,
+      ...NEW_CONTACT,
+      memberProfileId: BUYER_ID,
+      email: 'autre.membre@example.test',
+    } as Parameters<typeof updateMyContactService>[0])
+
+    expect(updateMyMemberProfileContactDao).toHaveBeenCalledWith(
+      ORG_ID,
+      userTest.id,
+      NEW_CONTACT
+    )
+  })
+
+  it('n’écrit jamais l’email (ADR 040)', async () => {
+    await updateMyContactService({
+      organizationId: ORG_ID,
+      ...NEW_CONTACT,
+      email: 'autre.membre@example.test',
+    } as Parameters<typeof updateMyContactService>[0])
+
+    const written = vi.mocked(updateMyMemberProfileContactDao).mock.calls[0][2]
+    expect(written).not.toHaveProperty('email')
+  })
+
+  it('écrit sous le scope de l’association donnée', async () => {
+    let writtenUnder: string | undefined
+    vi.mocked(updateMyMemberProfileContactDao).mockImplementation(async () => {
+      writtenUnder = scope.current
+      return {...profileRow, ...NEW_CONTACT}
+    })
+
+    await updateMyContactService({organizationId: ORG_ID, ...NEW_CONTACT})
+
+    expect(withTenant).toHaveBeenCalledWith(ORG_ID, expect.any(Function))
+    expect(writtenUnder).toBe(ORG_ID)
+  })
+
+  it('rend les coordonnées enregistrées, sans identifiant de fiche ni de compte', async () => {
+    const result = await updateMyContactService({
+      organizationId: ORG_ID,
+      ...NEW_CONTACT,
+    })
+
+    expect(result).toEqual({
+      status: 'saved',
+      contact: {email: 'lucie.moreau@example.test', ...NEW_CONTACT},
+    })
+    expect(JSON.stringify(result)).not.toContain(PROFILE_ID)
+    expect(JSON.stringify(result)).not.toContain(userTest.id)
+  })
+
+  it('rend `not_found` pour un compte sans fiche dans l’association', async () => {
+    vi.mocked(updateMyMemberProfileContactDao).mockResolvedValue(undefined)
+
+    expect(
+      await updateMyContactService({organizationId: ORG_ID, ...NEW_CONTACT})
+    ).toEqual({status: 'not_found'})
+  })
+
+  it('refuse une saisie invalide, sans rien écrire', async () => {
+    await expect(
+      updateMyContactService({
+        organizationId: ORG_ID,
+        ...NEW_CONTACT,
+        postalCode: '1310',
+      })
+    ).rejects.toThrow()
+    expect(updateMyMemberProfileContactDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('getMyContactService — lecture de « Mes coordonnées » (s16)', () => {
+  it('[PUBLIC] refuse sans session, sans rien lire', async () => {
+    setupAuthUserMocked(undefined)
+
+    await expect(getMyContactService(ORG_ID)).rejects.toThrow(
+      AuthorizationError
+    )
+    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
+  })
+
+  it('[ORGANIZATION MEMBER] lit la fiche du compte de la session, sous le scope', async () => {
+    setupAuthUserMocked(withRole('member'))
+    let readUnder: string | undefined
+    vi.mocked(getMemberProfileByUserIdDao).mockImplementation(async () => {
+      readUnder = scope.current
+      return {...profileRow, ...NEW_CONTACT}
+    })
+
+    const contact = await getMyContactService(ORG_ID)
+
+    expect(getMemberProfileByUserIdDao).toHaveBeenCalledWith(
+      ORG_ID,
+      userTest.id
+    )
+    expect(readUnder).toBe(ORG_ID)
+    expect(contact).toEqual({
+      email: 'lucie.moreau@example.test',
+      ...NEW_CONTACT,
+    })
+    expect(contact).not.toHaveProperty('id')
+    expect(contact).not.toHaveProperty('userId')
+  })
+
+  it('[ORGANIZATION MEMBER] ne rend rien pour un compte sans fiche', async () => {
+    setupAuthUserMocked(withRole('member'))
+    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+
+    expect(await getMyContactService(ORG_ID)).toBeUndefined()
   })
 })

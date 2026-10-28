@@ -305,3 +305,46 @@ export const getMemberProfileByUserIdDao = async (
     )
   return row
 }
+
+/**
+ * Coordonnees qu'un membre corrige lui-meme (s16, ADR 040) : pas d'email, par
+ * construction. `null` quand la coordonnee est absente.
+ */
+export type MemberPostalContactWrite = {
+  phone: string | null
+  addressLine: string | null
+  addressComplement: string | null
+  postalCode: string | null
+  city: string | null
+}
+
+/**
+ * Met a jour le telephone et l'adresse postale de « ma fiche », designee par
+ * `(organization_id, user_id)`, jamais par un identifiant venu du navigateur.
+ * Aucun index unique n'est concerne : pas de point de sauvegarde.
+ */
+export const updateMyMemberProfileContactDao = async (
+  organizationId: string,
+  userId: string,
+  contact: MemberPostalContactWrite
+): Promise<MemberProfileModel | undefined> => {
+  const {phone, addressLine, addressComplement, postalCode, city} = contact
+  const [row] = await getDb()
+    .update(memberProfile)
+    .set({
+      phone,
+      addressLine,
+      addressComplement,
+      postalCode,
+      city,
+      updatedAt: sql`now()`,
+    })
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        eq(memberProfile.userId, userId)
+      )
+    )
+    .returning()
+  return row
+}
