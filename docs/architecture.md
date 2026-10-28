@@ -331,10 +331,10 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 35 tables du schéma
+### Classement RLS des 36 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 35 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12) sont donc toutes classées, sans reste. Toute
+Les 36 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12, plus `member_role_event` de s14) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
 Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
@@ -343,7 +343,7 @@ déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et éc
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-**Scopée par une policy RLS forcée** — 16 tables
+**Scopée par une policy RLS forcée** — 17 tables
 
 | Table                   | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -363,6 +363,7 @@ manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la 
 | `member_profile`        | Fiches des propriétaires (ADR 029, s12). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0030`). **Clé primaire UUID, seule identité** : jamais l'email ni un numéro de parcelle. `email` nul quand il est absent, unique par association sans casse ; `mail_only` **générée** (`email IS NULL`). À ne pas confondre avec `member` (Better Auth, plan identité) : une fiche existe sans compte. `user_id` nullable vers `user` en `SET NULL`, unique par association (ADR 037, s12d) : le compte ouvert pour la fiche. |
 | `parcel`                | Parcelles d'une association (ADR 029, s12). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0030`). Numéro unique **par association**. **Aucune colonne « propriétaire actuel »** : il se lit par date.                                                                                                                                                                                                                                                                                                                |
 | `parcel_ownership`      | Périodes de propriété, la relation **datée** fiche ↔ parcelle (ADR 029, s12). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0030`), sans jointure. Période demi-ouverte `[starts_on, ends_on)`, `CHECK (ends_on > starts_on)`, clés étrangères en `RESTRICT`. Non-chevauchement contrôlé par le service sous verrou de la ligne `parcel` ; une période close n'est plus jamais écrite.                                                                                                                                    |
+| `member_role_event`     | Trace des changements de rôle d'association (ADR 039, s14). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0036`), sans jointure. Une ligne par compte dont le rôle change (une passation en écrit deux) ; `member_profile_id`, `target_user_id` et `author_user_id` en `SET NULL`, noms copiés au changement : l'historique survit à la suppression d'une fiche ou d'un compte. Stockée, sans écran.                                                                                                                      |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**

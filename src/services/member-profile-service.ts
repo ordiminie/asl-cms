@@ -9,7 +9,10 @@ import {
   getMemberProfilePageDao,
   updateMemberProfileContactTxnDao,
 } from '@/db/repositories/member-profile-repository'
-import {getMemberAccountDao} from '@/db/repositories/organization-repository'
+import {
+  getMemberAccountDao,
+  getOrganizationMembersDao,
+} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
 
 import {getAuthUser} from './authentication/auth-service'
@@ -23,7 +26,13 @@ import {
 } from './member-account-service'
 import {decideMemberAccount} from './rules/member-account-rules'
 import {toMemberProfileDto} from './rules/member-profile-rules'
+import {roleCardFor} from './rules/member-role-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
+import {RoleConst} from './types/domain/auth-types'
+import {
+  MemberAccountAuthor,
+  MemberAccountRole,
+} from './types/domain/member-account-types'
 import {
   CreateMemberProfileInput,
   MEMBER_PROFILES_PAGE_SIZE,
@@ -34,6 +43,7 @@ import {
   MemberProfileWriteResult,
   UpdateMemberProfileContactInput,
 } from './types/domain/member-profile-types'
+import {MemberRoleCardDTO} from './types/domain/member-role-types'
 import {User} from './types/domain/user-types'
 import {
   createMemberProfileServiceSchema,
@@ -94,14 +104,70 @@ const readAccount = async (
   }
 }
 
-/** La fiche et l'etat de son compte, pour l'ecran. */
+/** Role du compte d'une fiche lu par la carte d'acces ; `null` sans compte. */
+const accountRoleOf = (
+  account: MemberProfileAccountDTO
+): MemberAccountRole | null =>
+  account.status === 'open' ? (account.boardRole ?? 'member') : null
+
+/** La carte « Role dans l'association » pour la personne connectee (s14). */
+const roleCardOf = (
+  authUser: User | undefined,
+  organizationId: string,
+  row: MemberProfileModel,
+  account: MemberProfileAccountDTO
+): MemberRoleCardDTO =>
+  roleCardFor(
+    {
+      role:
+        authUser?.organizations?.find(
+          (membership) => membership.organizationId === organizationId
+        )?.role ?? null,
+      isSuperAdmin: authUser?.role === RoleConst.SUPER_ADMIN,
+      isSelf: authUser !== undefined && authUser.id === row.userId,
+    },
+    {role: accountRoleOf(account)}
+  )
+
+/** La fiche, l'etat de son compte et sa carte de role, pour l'ecran. */
 const toProfileWithAccount = async (
   authUser: User | undefined,
   organizationId: string,
   row: MemberProfileModel
-): Promise<MemberProfileDTO> => ({
-  ...toMemberProfileDto(row),
-  account: await readAccount(authUser, organizationId, row.userId),
+): Promise<MemberProfileDTO> => {
+  const account = await readAccount(authUser, organizationId, row.userId)
+  return {
+    ...toMemberProfileDto(row),
+    account,
+    roleCard: roleCardOf(authUser, organizationId, row, account),
+  }
+}
+
+/**
+ * Le role au bureau du compte de chaque fiche de la liste (badge, s14) :
+ * lecture d'appartenance de tiers, sous son `can*` (ADR 014).
+ */
+const readBoardRoles = async (
+  authUser: User | undefined,
+  organizationId: string
+): Promise<Map<string, 'board' | 'owner'>> => {
+  if (!canReadMemberAccount(authUser, organizationId)) {
+    throw new AuthorizationError(MANAGE_DENIED)
+  }
+  const members = await getOrganizationMembersDao(organizationId)
+  return new Map(
+    members.flatMap((membership) =>
+      membership.role === 'member'
+        ? []
+        : [[membership.userId, membership.role] as const]
+    )
+  )
+}
+
+/** Auteur d'un changement de compte, copie dans la trace des roles (D5). */
+const authorOf = (authUser: User | undefined): MemberAccountAuthor => ({
+  userId: authUser?.id ?? null,
+  name: authUser?.name ?? null,
 })
 
 /** La fiche qui detient deja cet email, pour que l'ecran y renvoie. */
@@ -147,6 +213,7 @@ export const createMemberProfileService = async (
     const {row} = result
     const {change, userId} = await applyMemberAccountDecision({
       organizationId,
+      author: authorOf(authUser),
       profile: row,
       decision: decideMemberAccount({
         savedEmail: null,
@@ -200,6 +267,7 @@ export const updateMemberProfileContactService = async (
     }
     const {change, userId} = await applyMemberAccountDecision({
       organizationId,
+      author: authorOf(authUser),
       profile: {...result.row, userId: saved.userId},
       decision,
     })
@@ -250,9 +318,9 @@ export const getMemberProfilePageService = async (
   }
 
   const {organizationId, page, search} = parsed.data
-  await requireMemberProfileManager(organizationId)
+  const authUser = await requireMemberProfileManager(organizationId)
 
-  const [{rows, total}, counts] = await withTenant(
+  const [{rows, total}, counts, boardRoles] = await withTenant(
     organizationId,
     async () =>
       [
@@ -263,6 +331,7 @@ export const getMemberProfilePageService = async (
           offset: (page - 1) * MEMBER_PROFILES_PAGE_SIZE,
         }),
         await countMemberProfilesDao(organizationId),
+        await readBoardRoles(authUser, organizationId),
       ] as const
   )
 
@@ -270,6 +339,7 @@ export const getMemberProfilePageService = async (
     items: rows.map((row) => ({
       ...toMemberProfileDto(row),
       currentParcelNumbers: sortParcelNumbers(row.currentParcelNumbers),
+      boardRole: row.userId ? (boardRoles.get(row.userId) ?? null) : null,
     })),
     page,
     pageSize: MEMBER_PROFILES_PAGE_SIZE,

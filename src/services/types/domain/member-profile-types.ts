@@ -7,6 +7,8 @@
  * adresse a un compte (s12d, ADR 037).
  */
 
+import {MemberRoleCardDTO} from './member-role-types'
+
 /** Taille de page de la liste du bureau, tableau comme cartes (decision I). */
 export const MEMBER_PROFILES_PAGE_SIZE = 25
 
@@ -55,11 +57,20 @@ export type MemberProfileAccountDTO =
 
 export type MemberProfileDTO = MemberProfileFieldsDTO & {
   account: MemberProfileAccountDTO
+  /**
+   * Carte « Role dans l'association » (s14), calculee pour la personne
+   * connectee : lecture, droit de modifier, options.
+   */
+  roleCard: MemberRoleCardDTO
 }
 
-/** Une ligne de la liste : la fiche et les numeros de ses parcelles actuelles. */
+/**
+ * Une ligne de la liste : la fiche, les numeros de ses parcelles actuelles et
+ * le role au bureau de son compte (badge, s14).
+ */
 export type MemberProfileListItemDTO = MemberProfileFieldsDTO & {
   currentParcelNumbers: string[]
+  boardRole: 'board' | 'owner' | null
 }
 
 export type MemberProfilePageDTO = {

@@ -16,11 +16,6 @@ import {
 } from '@/components/ui/dialog'
 import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
-import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group'
-import {
-  OrganizationRole,
-  OrganizationRoleConst,
-} from '@/services/types/domain/organization-types'
 import {UserDTO} from '@/services/types/domain/user-types'
 
 import {
@@ -36,16 +31,12 @@ export function OrganizationAddMemberForm({
   existingMemberIds: string[]
 }) {
   const t = useTranslations('Organization.invite')
-  const tRoles = useTranslations('Organization.roles')
   const [email, setEmail] = useState('')
   const [searchValue, setSearchValue] = useState('')
   const [results, setResults] = useState<UserDTO[]>([])
   const [selectedUser, setSelectedUser] = useState<UserDTO | null>(null)
   const [isPending, startTransition] = useTransition()
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedRole, setSelectedRole] = useState<OrganizationRole>(
-    OrganizationRoleConst.member as OrganizationRole
-  )
 
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -95,7 +86,6 @@ export function OrganizationAddMemberForm({
         organizationId,
         selectedUser.id,
         selectedUser.email,
-        selectedRole,
         true
       )
 
@@ -105,7 +95,6 @@ export function OrganizationAddMemberForm({
         setSelectedUser(null)
         setResults([])
         setIsModalOpen(false)
-        setSelectedRole('member')
       } else {
         toast.error(res.message || "Erreur lors de l'invitation")
       }
@@ -213,54 +202,6 @@ export function OrganizationAddMemberForm({
               </div>
             </div>
           )}
-
-          {/* Sélection du rôle */}
-          <div className="mb-6">
-            <Label className="mb-3 block text-sm font-medium">
-              {t('selectRoleLabel')}
-            </Label>
-            <RadioGroup
-              value={selectedRole}
-              onValueChange={(value: string) =>
-                setSelectedRole(value as OrganizationRole)
-              }
-              className="space-y-2"
-            >
-              <div className="hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3">
-                <RadioGroupItem
-                  value={OrganizationRoleConst.admin}
-                  id="admin"
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <Label htmlFor="admin" className="cursor-pointer font-medium">
-                    {tRoles('ADMIN')}
-                  </Label>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    {t('adminDescription')}
-                  </p>
-                </div>
-              </div>
-              <div className="hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3">
-                <RadioGroupItem
-                  value={OrganizationRoleConst.member}
-                  id="member"
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <Label
-                    htmlFor="member"
-                    className="cursor-pointer font-medium"
-                  >
-                    {tRoles('MEMBER')}
-                  </Label>
-                  <p className="text-muted-foreground mt-1 text-sm">
-                    {t('memberDescription')}
-                  </p>
-                </div>
-              </div>
-            </RadioGroup>
-          </div>
 
           {/* Bouton Invite */}
           <div className="pt-4">

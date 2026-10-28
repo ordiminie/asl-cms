@@ -36,6 +36,7 @@ import type {Organization} from '@/services/types/domain/organization-types'
 
 import {ASSOCIATION_SESSION_GUARD_ID} from './association-session-guard'
 import {auth} from './auth'
+import {ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS} from './organization-roles'
 
 const pluginIds = () =>
   (auth.options.plugins ?? []).map((plugin: {id: string}) => plugin.id)
@@ -206,5 +207,41 @@ describe('lien de réinitialisation du mot de passe sur le domaine de l’associ
     expect(new URL(String(notifiedUrl())).origin).toBe(
       'http://asso-a.test:3000'
     )
+  })
+})
+
+/**
+ * s14, ADR 039 : un role ne change que par les services du projet. Les routes
+ * HTTP du plugin organisation qui ecrivent des appartenances repondent 404,
+ * avant toute lecture de session.
+ */
+describe('routes HTTP du plugin organisation fermées (s14)', () => {
+  it('déclare les routes d’appartenance dans disabledPaths, avec celles du lien magique', () => {
+    expect(auth.options.disabledPaths).toEqual(
+      expect.arrayContaining([
+        '/sign-in/magic-link',
+        ...ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS,
+      ])
+    )
+  })
+
+  it.each([
+    '/organization/update-member-role',
+    '/organization/remove-member',
+    '/organization/leave',
+    '/organization/accept-invitation',
+  ])('POST %s répond 404', async (route) => {
+    const response = await auth.handler(
+      new Request(`http://localhost:3000/api/auth${route}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          origin: 'http://localhost:3000',
+        },
+        body: JSON.stringify({memberId: 'x', role: 'owner'}),
+      })
+    )
+
+    expect(response.status).toBe(404)
   })
 })

@@ -10,6 +10,7 @@ import {
   MEMBER_PROFILE_POSTAL_CODE_PATTERN,
   type MemberAccountChange,
 } from '@/services/types/domain/member-profile-types'
+import type {MemberRoleChangeKind} from '@/services/types/domain/member-role-types'
 import {
   type OwnershipConflictDTO,
   PARCEL_NUMBER_MAX_LENGTH,
@@ -186,3 +187,17 @@ export type AttachParcelActionResult =
   /** La date est posterieure a aujourd'hui : rien n'a ete ecrit. */
   | {status: 'future_date'}
   | {status: 'error'; message: string}
+
+/**
+ * Carte « Role dans l'association » (s14) : ce que rend l'enregistrement d'un
+ * role. `message` est deja traduit ; `null` quand rien n'a change.
+ */
+export type ChangeMemberRoleActionResult =
+  | {status: 'saved'; change: MemberRoleChangeKind; message: string | null}
+  | {status: 'refused'; message: string}
+  | {status: 'error'; message: string}
+
+export type ChangeMemberRoleFormAction = (
+  prevState: ChangeMemberRoleActionResult | undefined,
+  formData: FormData
+) => Promise<ChangeMemberRoleActionResult>

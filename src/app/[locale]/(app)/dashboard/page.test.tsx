@@ -36,8 +36,10 @@ const renderServerPage = async (element: ReactElement) => {
 }
 
 /** La lecture est deroulee par `use()` derriere le `<Suspense>` : sous `act`. */
-const renderDashboard = async () => {
-  const page = await renderServerPage(await DashboardPage({}))
+const renderDashboard = async (searchParams: {role?: string} = {}) => {
+  const page = await renderServerPage(
+    await DashboardPage({searchParams: Promise.resolve(searchParams)})
+  )
   await act(async () => {
     render(page)
   })
@@ -240,5 +242,31 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
     expect(screen.queryByText('Espace personnel')).toBeNull()
     const loading = screen.getByRole('region', {name: 'Mes parcelles'})
     expect(loading).toHaveAttribute('aria-busy', 'true')
+  })
+})
+
+/** s14, A12 : après sa propre rétrogradation, l’espace personnel le dit. */
+describe('/dashboard?role=retire — rôle retiré (s14, A12)', () => {
+  it('dit « Vous ne faites plus partie du bureau. » en tête, role="status"', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    await renderDashboard({role: 'retire'})
+
+    const status = await screen.findByRole('status')
+    expect(status).toHaveTextContent('Vous ne faites plus partie du bureau.')
+    expect(status).toHaveTextContent('Votre espace personnel reste ouvert.')
+    expect(
+      status.compareDocumentPosition(screen.getByRole('heading', {level: 1})) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
+  it('ne dit rien sans le paramètre', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    await renderDashboard()
+
+    await screen.findByRole('heading', {level: 1})
+    expect(
+      screen.queryByText('Vous ne faites plus partie du bureau.')
+    ).toBeNull()
   })
 })

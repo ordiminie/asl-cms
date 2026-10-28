@@ -20,7 +20,11 @@ import type {
   MemberProfilePageDTO,
 } from '@/services/types/domain/member-profile-types'
 
-import {IncompleteBadge, MailOnlyBadge} from './member-profile-badges'
+import {
+  BoardRoleBadge,
+  IncompleteBadge,
+  MailOnlyBadge,
+} from './member-profile-badges'
 import {postalAddressLineOf} from './member-profile-format'
 import {
   MEMBER_PROFILES_PATH,
@@ -138,7 +142,10 @@ function ProfilesTable({items}: {items: MemberProfileListItemDTO[]}) {
         {items.map((item) => (
           <TableRow key={item.id} className="h-14">
             <TableCell className="px-4 text-[17px] font-semibold">
-              {item.name}
+              <span className="flex flex-wrap items-center gap-2">
+                {item.name}
+                {item.boardRole && <BoardRoleBadge role={item.boardRole} />}
+              </span>
             </TableCell>
             <TableCell>
               <CurrentParcels numbers={item.currentParcelNumbers} />
@@ -166,10 +173,11 @@ function ProfileCard({item}: {item: MemberProfileListItemDTO}) {
       className="gap-3 px-4 py-4 shadow-none"
     >
       <h2 className="text-lg leading-snug font-semibold">{item.name}</h2>
-      {item.mailOnly && (
+      {(item.boardRole || item.mailOnly) && (
         <div className="flex flex-wrap items-center gap-2">
-          <MailOnlyBadge />
-          {item.incomplete && <IncompleteBadge />}
+          {item.boardRole && <BoardRoleBadge role={item.boardRole} />}
+          {item.mailOnly && <MailOnlyBadge />}
+          {item.mailOnly && item.incomplete && <IncompleteBadge />}
         </div>
       )}
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[17px]">

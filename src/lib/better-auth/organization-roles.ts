@@ -31,3 +31,22 @@ export const organizationRoles = {
   owner: ownerAc,
   member: memberAc,
 } as const
+
+/**
+ * Routes HTTP du plugin `organization` fermees (`disabledPaths`, s14,
+ * ADR 039) : celles qui ecrivent des appartenances. Un role ne change que par
+ * les services du projet, traces et soumis au verrou du dernier compte ; un
+ * appel direct a ces routes les contournerait (le Bureau herite de
+ * `member: update`). `disabledPaths` n'agit que sur le routeur HTTP :
+ * `auth.api.createInvitation`, encore appele par l'ecran SuperAdmin, reste
+ * disponible cote serveur.
+ */
+export const ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS: readonly string[] = [
+  '/organization/create',
+  '/organization/delete',
+  '/organization/update-member-role',
+  '/organization/remove-member',
+  '/organization/leave',
+  '/organization/invite-member',
+  '/organization/accept-invitation',
+]

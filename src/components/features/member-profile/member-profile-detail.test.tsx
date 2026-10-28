@@ -26,6 +26,13 @@ const profile = (
   mailOnly: true,
   incomplete: false,
   account: {status: 'mail_only'},
+  roleCard: {
+    reading: 'no_account',
+    canEdit: false,
+    notice: null,
+    options: [],
+    self: false,
+  },
   ...overrides,
 })
 
@@ -68,6 +75,7 @@ const OWNER_PARCELS: MemberParcelsDTO = {
 const actions = {
   updateContactAction: vi.fn(),
   attachParcelAction: vi.fn(),
+  changeRoleAction: vi.fn(),
 }
 
 type DetailInput = {
@@ -887,5 +895,73 @@ describe('MemberProfileDetail — l’accès suit l’adresse (écran A, s12d)',
     rerender(shown(true))
 
     expect(screen.queryByText('Accès à l’espace fermé.')).toBeNull()
+  })
+})
+
+/**
+ * s14 : la carte « Rôle dans l’association » s’insère juste après « Accès à
+ * l’espace membre », avant « Parcelles » ; la confirmation vient en haut de la
+ * fiche.
+ */
+describe('MemberProfileDetail — carte « Rôle dans l’association » (s14)', () => {
+  const memberProfile = profile({
+    name: 'Lucie Moreau',
+    email: 'lucie@example.test',
+    mailOnly: false,
+    account: {
+      status: 'open',
+      loginEmail: 'lucie@example.test',
+      boardRole: null,
+    },
+    roleCard: {
+      reading: 'member',
+      canEdit: true,
+      notice: null,
+      options: ['member', 'board'],
+      self: false,
+    },
+  })
+
+  it('se place après « Accès à l’espace membre » et avant « Parcelles »', () => {
+    renderDetail({profile: memberProfile})
+
+    const titles = screen
+      .getAllByRole('heading', {level: 2})
+      .map((heading) => heading.textContent)
+    expect(titles).toEqual([
+      'Coordonnées',
+      'Accès à l’espace membre',
+      'Rôle dans l’association',
+      'Parcelles',
+    ])
+  })
+
+  it('A3 : confirme « Rôle enregistré. » en haut de la fiche, role="status"', async () => {
+    actions.changeRoleAction.mockResolvedValue({
+      status: 'saved',
+      change: 'assigned',
+      message:
+        'Lucie Moreau fait maintenant partie du bureau et peut gérer le site de l’association dès maintenant.',
+    })
+    renderDetail({profile: memberProfile})
+
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Modifier le rôle'})
+    )
+    await userEvent.click(screen.getByRole('radio', {name: 'Bureau'}))
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer le rôle'})
+    )
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveTextContent('Rôle enregistré.')
+    expect(status).toHaveTextContent(
+      'Lucie Moreau fait maintenant partie du bureau et peut gérer le site de l’association dès maintenant.'
+    )
+    expect(
+      status.compareDocumentPosition(
+        screen.getByRole('heading', {level: 1, name: 'Lucie Moreau'})
+      ) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
   })
 })

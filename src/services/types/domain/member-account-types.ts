@@ -30,5 +30,11 @@ export type MemberAccountDecision =
   | {kind: 'open'}
   | {kind: 'close'}
   | {kind: 'unlink'}
-  | {kind: 'replace'; role: MemberAccountRole}
+  | {kind: 'replace'}
   | {kind: 'refuse_board_removal'}
+
+/**
+ * Auteur d'un changement de compte : la personne connectee qui enregistre la
+ * fiche, copiee dans la trace des roles (s14, D5).
+ */
+export type MemberAccountAuthor = {userId: string | null; name: string | null}

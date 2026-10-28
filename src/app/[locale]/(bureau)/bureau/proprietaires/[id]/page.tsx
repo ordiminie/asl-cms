@@ -14,7 +14,11 @@ import {MemberProfileDetail} from '@/components/features/member-profile/member-p
 import {Skeleton} from '@/components/ui/skeleton'
 import {calendarDayOf} from '@/services/types/domain/water-analysis-types'
 
-import {attachParcelAction, updateMemberProfileContactAction} from '../actions'
+import {
+  attachParcelAction,
+  changeMemberRoleAction,
+  updateMemberProfileContactAction,
+} from '../actions'
 
 type MemberProfilePageProps = {
   params: Promise<{locale: string; id: string}>
@@ -96,6 +100,7 @@ async function MemberProfileSection({
       soldParcelId={soldParcelId}
       updateContactAction={updateMemberProfileContactAction}
       attachParcelAction={attachParcelAction}
+      changeRoleAction={changeMemberRoleAction}
     />
   )
 }

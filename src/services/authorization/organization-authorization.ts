@@ -286,34 +286,6 @@ export const canRemoveFromOrganization = async (
 }
 
 /**
- * Vérifie si l'utilisateur connecté peut changer le rôle d'un membre dans une organisation
- * @param resourceId - ID de l'organisation
- * @param targetUserId - ID de l'utilisateur dont on veut changer le rôle
- * @returns true si l'accès est autorisé
- */
-export const canChangeOrganizationMemberRole = async (
-  resourceId: string,
-  targetUserId: string
-): Promise<boolean> => {
-  const authUser = await getAuthUser()
-
-  // Les admins système peuvent changer tous les rôles
-  if (userCan(authUser, ActionsConst.MANAGE, SubjectsConst.ORGANIZATION)) {
-    return true
-  }
-
-  if (!authUser?.id) return false
-
-  // Un utilisateur ne peut pas changer son propre rôle
-  if (authUser.id === targetUserId) {
-    return false
-  }
-
-  // Seul le OWNER peut changer les rôles
-  return isOrganizationOwner(authUser, resourceId)
-}
-
-/**
  * Vérifie si l'utilisateur connecté peut lire les utilisateurs d'une organisation
  * @param organizationId - ID de l'organisation
  * @returns true si l'accès est autorisé

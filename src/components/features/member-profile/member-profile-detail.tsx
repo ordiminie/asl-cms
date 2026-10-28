@@ -7,7 +7,6 @@ import {useTranslations} from 'next-intl'
 import {
   type ReactNode,
   useEffect,
-  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -57,8 +56,10 @@ import {
   MemberFormErrorSummary,
 } from './member-contact-fields'
 import {IncompleteBadge, MailOnlyBadge} from './member-profile-badges'
+import {DetailCard} from './member-profile-detail-card'
 import {EmailHolder, type MemberProfileFormAction} from './member-profile-form'
 import {
+  type ChangeMemberRoleFormAction,
   createMemberContactFormSchema,
   MEMBER_CONTACT_FORM_FIELDS,
   type MemberContactFormSchemaType,
@@ -69,6 +70,7 @@ import {
   memberProfilePathOf,
   salePathOf,
 } from './member-profile-paths'
+import {MemberRoleCard} from './member-role-card'
 
 type MemberProfileDetailProps = {
   profile: MemberProfileDTO
@@ -81,6 +83,7 @@ type MemberProfileDetailProps = {
   soldParcelId?: string
   updateContactAction: MemberProfileFormAction
   attachParcelAction: AttachParcelFormAction
+  changeRoleAction: ChangeMemberRoleFormAction
 }
 
 type Notice =
@@ -95,6 +98,8 @@ type Notice =
     }
   | {kind: 'attached'; parcel: AttachedParcel}
   | {kind: 'sold'; parcel: FormerParcelDTO}
+  /** Le role est enregistre (s14) : la phrase rendue par l'action. */
+  | {kind: 'roleSaved'; message: string}
 
 /** Ce que la fiche dit a l'arrivee : une creation, ou une vente enregistree. */
 const arrivalNoticeOf = (input: {
@@ -116,9 +121,10 @@ type Editing = {focus?: MemberProfileFormField}
 const DATA_CLASS = 'font-mono font-medium tabular-nums'
 
 /**
- * Fiche d'un proprietaire (ecran 3 du design s12, ecran A de s12d) : ses
- * coordonnees, modifiables en place, l'acces a l'espace membre, qui suit
- * l'adresse email, et ses parcelles, presentes et passees.
+ * Fiche d'un proprietaire (ecran 3 du design s12, ecran A de s12d et s14) :
+ * ses coordonnees, modifiables en place, l'acces a l'espace membre, qui suit
+ * l'adresse email, son role dans l'association, et ses parcelles, presentes
+ * et passees.
  */
 export function MemberProfileDetail({
   profile,
@@ -128,6 +134,7 @@ export function MemberProfileDetail({
   soldParcelId,
   updateContactAction,
   attachParcelAction,
+  changeRoleAction,
 }: MemberProfileDetailProps) {
   const t = useTranslations('BureauMemberProfilesPage')
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -229,6 +236,12 @@ export function MemberProfileDetail({
         <AccessState name={profile.name} account={profile.account} />
       </DetailCard>
 
+      <MemberRoleCard
+        profile={profile}
+        action={changeRoleAction}
+        onSaved={(message) => setPageNotice({kind: 'roleSaved', message})}
+      />
+
       <DetailCard
         title={t('detail.parcels.title')}
         action={
@@ -321,6 +334,15 @@ function NoticeMessage({notice, name}: {notice: Notice; name: string}) {
           </Link>
         )}
       </>
+    )
+  }
+
+  if (notice.kind === 'roleSaved') {
+    return (
+      <TitledNotice
+        title={t('detail.role.saved.title')}
+        detail={notice.message}
+      />
     )
   }
 
@@ -447,32 +469,6 @@ function EmailAccessWarning({
         )}
       </AlertDescription>
     </Alert>
-  )
-}
-
-function DetailCard({
-  title,
-  action,
-  children,
-}: {
-  title: string
-  action?: ReactNode
-  children: ReactNode
-}) {
-  const titleId = useId()
-
-  return (
-    <section aria-labelledby={titleId}>
-      <Card className="gap-5 px-4 py-6 shadow-none sm:px-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 id={titleId} className="font-serif text-2xl font-semibold">
-            {title}
-          </h2>
-          {action}
-        </div>
-        {children}
-      </Card>
-    </section>
   )
 }
 

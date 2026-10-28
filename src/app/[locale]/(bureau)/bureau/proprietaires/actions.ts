@@ -1,6 +1,7 @@
 'use server'
 
 import {revalidatePath} from 'next/cache'
+import {redirect} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
@@ -9,6 +10,7 @@ import {
   ATTACH_PARCEL_FORM_FIELDS,
   type AttachParcelActionResult,
   type AttachParcelFormField,
+  type ChangeMemberRoleActionResult,
   createAttachParcelFormSchema,
   createMemberContactFormSchema,
   createMemberProfileFormSchema,
@@ -33,11 +35,13 @@ import {
   getMemberProfileService,
   updateMemberProfileContactService,
 } from '@/services/facades/member-profile-service-facade'
+import {changeMemberRoleService} from '@/services/facades/member-role-service-facade'
 import {
   attachParcelService,
   recordSaleService,
 } from '@/services/facades/parcel-ownership-service-facade'
 import type {MemberProfileWriteResult} from '@/services/types/domain/member-profile-types'
+import type {MemberRoleChangeResult} from '@/services/types/domain/member-role-types'
 
 /**
  * Server Actions des proprietaires et de leurs parcelles (s12, ecrans 2 a 5).
@@ -317,4 +321,73 @@ export async function searchBuyersAction(
     if (error instanceof AuthorizationError) return []
     throw error
   }
+}
+
+/** Destination d'une propre retrogradation (A12) : l'espace personnel. */
+const ROLE_WITHDRAWN_PATH = '/dashboard?role=retire'
+
+/** Traduit le resultat du changement de role pour la carte (s14). */
+const toRoleActionResult = (
+  result: MemberRoleChangeResult,
+  t: Translator
+): ChangeMemberRoleActionResult => {
+  if (result.status === 'not_found') {
+    return {status: 'error', message: t('errors.notFound')}
+  }
+  if (result.status === 'no_account') {
+    return {status: 'refused', message: t('detail.role.refusals.no_account')}
+  }
+  if (result.status === 'refused') {
+    const key =
+      result.reason === 'last_capable' && result.self
+        ? 'last_capable_self'
+        : result.reason
+    return {
+      status: 'refused',
+      message: t(`detail.role.refusals.${key}`, {name: result.name}),
+    }
+  }
+  if (result.change === 'none') {
+    return {status: 'saved', change: 'none', message: null}
+  }
+  return {
+    status: 'saved',
+    change: result.change,
+    message: t(`detail.role.saved.${result.change}`, {name: result.name}),
+  }
+}
+
+/**
+ * « Enregistrer le role » depuis la fiche (s14, ecran A). Le service relit la
+ * fiche sous le tenant et decide ; le compte vise n'est jamais lu du
+ * formulaire. Sa propre retrogradation renvoie vers l'espace personnel : le
+ * back-office lui est ferme des la requete suivante.
+ */
+export async function changeMemberRoleAction(
+  _prevState: ChangeMemberRoleActionResult | undefined,
+  formData: FormData
+): Promise<ChangeMemberRoleActionResult> {
+  const tenant = await requireCurrentTenantDal()
+  const t = await getTranslations('BureauMemberProfilesPage')
+
+  let result: MemberRoleChangeResult
+  try {
+    await requireActionAuth()
+
+    result = await changeMemberRoleService({
+      organizationId: tenant.id,
+      memberProfileId: readField(formData, 'memberProfileId'),
+      role: readField(formData, 'role'),
+    })
+  } catch (error) {
+    return toFailure(error, t)
+  }
+
+  if (result.status === 'saved' && result.change !== 'none') {
+    revalidateMemberProfileScreens()
+    if (result.self && result.change === 'demoted') {
+      redirect(ROLE_WITHDRAWN_PATH)
+    }
+  }
+  return toRoleActionResult(result, t)
 }

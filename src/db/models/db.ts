@@ -11,6 +11,7 @@ import * as contactMessage from './contact-message-model'
 import * as contentBlock from './content-block-model'
 import * as incidentReport from './incident-report-model'
 import * as memberProfile from './member-profile-model'
+import * as memberRoleEvent from './member-role-event-model'
 import * as menuItem from './menu-item-model'
 import * as news from './news-model'
 import * as notification from './notification-model'
@@ -56,6 +57,7 @@ const db = drizzle(pool, {
     ...associationCategory,
     ...incidentReport,
     ...memberProfile,
+    ...memberRoleEvent,
     ...parcel,
     ...userSubmission,
   },

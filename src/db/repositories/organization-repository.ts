@@ -1,4 +1,4 @@
-import {and, eq, or, sql} from 'drizzle-orm'
+import {and, count, eq, inArray, ne, or, sql} from 'drizzle-orm'
 
 import {
   invitation,
@@ -194,19 +194,6 @@ export const getUserOrganizationDao = async (
       ),
   })
   return row
-}
-
-export const updateUserOrganizationRoleDao = async (
-  userId: string,
-  organizationId: string,
-  role: OrganizationRoleEnumModel
-): Promise<void> => {
-  await getDb()
-    .update(member)
-    .set({role})
-    .where(
-      and(eq(member.userId, userId), eq(member.organizationId, organizationId))
-    )
 }
 
 export const deleteUserOrganizationDao = async (
@@ -487,13 +474,14 @@ export const createMemberIfAbsentTxnDao = async (
  * Retire la ligne `member` d'un compte dans l'association **seulement si son
  * role est celui attendu** : la condition est portee par la requete, pour
  * qu'une fermeture ne retire jamais un role du bureau change entre-temps.
+ * Rend le nombre de lignes retirees (s14) : zero dit que rien n'a change.
  */
 export const deleteMemberWithRoleDao = async (
   userId: string,
   organizationId: string,
   role: OrganizationRoleEnumModel
-): Promise<void> => {
-  await getDb()
+): Promise<number> => {
+  const rows = await getDb()
     .delete(member)
     .where(
       and(
@@ -502,16 +490,22 @@ export const deleteMemberWithRoleDao = async (
         eq(member.role, role)
       )
     )
+    .returning({id: member.id})
+  return rows.length
 }
 
-/** Change le role d'une ligne `member` seulement s'il vaut encore `from`. */
+/**
+ * Change le role d'une ligne `member` seulement s'il vaut encore `from`, et
+ * rend le nombre de lignes touchees (s14) : zero dit qu'un changement
+ * concurrent est passe avant.
+ */
 export const updateMemberRoleFromDao = async (
   userId: string,
   organizationId: string,
   from: OrganizationRoleEnumModel,
   to: OrganizationRoleEnumModel
-): Promise<void> => {
-  await getDb()
+): Promise<number> => {
+  const rows = await getDb()
     .update(member)
     .set({role: to})
     .where(
@@ -521,6 +515,8 @@ export const updateMemberRoleFromDao = async (
         eq(member.role, from)
       )
     )
+    .returning({id: member.id})
+  return rows.length
 }
 
 /**
@@ -541,3 +537,61 @@ export const getMemberAccountDao = async (
     )
   return row
 }
+
+const CAPABLE_ROLES: OrganizationRoleEnumModel[] = ['owner', 'board']
+
+/**
+ * Serialise les changements de role d'une association (s14, ADR 039) : verrou
+ * consultatif transactionnel, tenu jusqu'a la fin de la transaction de
+ * `withTenant`. A prendre avant le decompte des comptes capables.
+ */
+export const lockOrganizationRolesDao = async (
+  organizationId: string
+): Promise<void> => {
+  const lockKey = `member-roles:${organizationId}`
+  await getDb().execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`
+  )
+}
+
+/**
+ * Comptes capables d'attribuer les roles (D3) : lignes `owner` ou `board` de
+ * l'association dont le compte n'est pas SuperAdmin.
+ */
+export const countCapableMembersDao = async (
+  organizationId: string
+): Promise<number> => {
+  const [row] = await getDb()
+    .select({total: count()})
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(
+      and(
+        eq(member.organizationId, organizationId),
+        inArray(member.role, CAPABLE_ROLES),
+        ne(user.role, 'super_admin')
+      )
+    )
+  return Number(row?.total ?? 0)
+}
+
+/**
+ * Les comptes President(e) de l'association, hors SuperAdmin (la ligne
+ * `owner` de l'amorcage n'en fait pas une President(e)). Toutes les lignes,
+ * sans limite : un etat herite peut en porter plusieurs, et la passation
+ * d'exploitation (D8) les retrograde toutes.
+ */
+export const getOrganizationOwnersDao = async (
+  organizationId: string
+): Promise<{userId: string; name: string}[]> =>
+  getDb()
+    .select({userId: member.userId, name: user.name})
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(
+      and(
+        eq(member.organizationId, organizationId),
+        eq(member.role, 'owner'),
+        ne(user.role, 'super_admin')
+      )
+    )

@@ -2,6 +2,11 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('next/cache', () => ({revalidatePath: vi.fn()}))
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn((path: string) => {
+    throw new Error(`NEXT_REDIRECT:${path}`)
+  }),
+}))
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(() =>
     Promise.resolve((key: string) => `BureauMemberProfilesPage.${key}`)
@@ -14,6 +19,9 @@ vi.mock('@/services/facades/member-profile-service-facade', () => ({
   getMemberProfilePageService: vi.fn(),
   getMemberProfileService: vi.fn(),
   updateMemberProfileContactService: vi.fn(),
+}))
+vi.mock('@/services/facades/member-role-service-facade', () => ({
+  changeMemberRoleService: vi.fn(),
 }))
 vi.mock('@/services/facades/parcel-ownership-service-facade', () => ({
   attachParcelService: vi.fn(),
@@ -31,6 +39,7 @@ import {
   getMemberProfileService,
   updateMemberProfileContactService,
 } from '@/services/facades/member-profile-service-facade'
+import {changeMemberRoleService} from '@/services/facades/member-role-service-facade'
 import {
   attachParcelService,
   recordSaleService,
@@ -39,6 +48,7 @@ import type {MemberProfileDTO} from '@/services/types/domain/member-profile-type
 
 import {
   attachParcelAction,
+  changeMemberRoleAction,
   createMemberProfileAction,
   recordSaleAction,
   searchBuyersAction,
@@ -72,6 +82,13 @@ const profile = (
   mailOnly: true,
   incomplete: true,
   account: {status: 'mail_only'},
+  roleCard: {
+    reading: 'no_account',
+    canEdit: false,
+    notice: null,
+    options: [],
+    self: false,
+  },
   ...overrides,
 })
 
@@ -577,10 +594,15 @@ describe('searchBuyersAction', () => {
   it('rend les fiches qui répondent à la recherche, avec leurs parcelles actuelles', async () => {
     vi.mocked(getMemberProfilePageService).mockResolvedValue({
       items: [
-        {...profile({name: 'Paul Ferrand'}), currentParcelNumbers: []},
+        {
+          ...profile({name: 'Paul Ferrand'}),
+          currentParcelNumbers: [],
+          boardRole: null,
+        },
         {
           ...profile({id: OTHER_PROFILE_ID, name: 'Sophie Ferreira'}),
           currentParcelNumbers: ['8'],
+          boardRole: null,
         },
       ],
       page: 1,
@@ -630,5 +652,171 @@ describe('searchBuyersAction', () => {
     )
 
     await expect(searchBuyersAction('Ferr')).rejects.toThrow('pg down')
+  })
+})
+
+/**
+ * s14 : « Enregistrer le rôle ». Messages traduits ici ; une propre
+ * rétrogradation renvoie vers l'espace personnel.
+ */
+describe('changeMemberRoleAction', () => {
+  const roleForm = (role: string) => formOf({memberProfileId: PROFILE_ID, role})
+
+  it('enregistre la promotion au Bureau et revalide le segment (critère 1)', async () => {
+    vi.mocked(changeMemberRoleService).mockResolvedValue({
+      status: 'saved',
+      change: 'assigned',
+      self: false,
+      name: 'Lucie Moreau',
+    })
+
+    const result = await changeMemberRoleAction(undefined, roleForm('board'))
+
+    expect(changeMemberRoleService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      memberProfileId: PROFILE_ID,
+      role: 'board',
+    })
+    expect(result).toEqual({
+      status: 'saved',
+      change: 'assigned',
+      message: 'BureauMemberProfilesPage.detail.role.saved.assigned',
+    })
+    expect(revalidatePath).toHaveBeenCalledWith(ROUTE, 'layout')
+  })
+
+  it.each(['demoted', 'presidency_transferred'] as const)(
+    'rend la confirmation %s',
+    async (change) => {
+      vi.mocked(changeMemberRoleService).mockResolvedValue({
+        status: 'saved',
+        change,
+        self: false,
+        name: 'Paul Vidal',
+      })
+
+      expect(await changeMemberRoleAction(undefined, roleForm('x'))).toEqual({
+        status: 'saved',
+        change,
+        message: `BureauMemberProfilesPage.detail.role.saved.${change}`,
+      })
+    }
+  )
+
+  it('n’écrit rien ni ne revalide quand le choix égale le rôle enregistré', async () => {
+    vi.mocked(changeMemberRoleService).mockResolvedValue({
+      status: 'saved',
+      change: 'none',
+      self: false,
+      name: 'Paul Vidal',
+    })
+
+    expect(await changeMemberRoleAction(undefined, roleForm('board'))).toEqual({
+      status: 'saved',
+      change: 'none',
+      message: null,
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('sa propre rétrogradation renvoie vers /dashboard?role=retire (A12)', async () => {
+    vi.mocked(changeMemberRoleService).mockResolvedValue({
+      status: 'saved',
+      change: 'demoted',
+      self: true,
+      name: 'Paul Vidal',
+    })
+
+    await expect(
+      changeMemberRoleAction(undefined, roleForm('member'))
+    ).rejects.toThrow('NEXT_REDIRECT:/dashboard?role=retire')
+    expect(revalidatePath).toHaveBeenCalledWith(ROUTE, 'layout')
+  })
+
+  it.each([
+    [false, 'BureauMemberProfilesPage.detail.role.refusals.last_capable'],
+    [true, 'BureauMemberProfilesPage.detail.role.refusals.last_capable_self'],
+  ])(
+    'refuse le dernier compte capable (self = %s), sans revalider (critère 3)',
+    async (self, message) => {
+      vi.mocked(changeMemberRoleService).mockResolvedValue({
+        status: 'refused',
+        reason: 'last_capable',
+        self,
+        name: 'Paul Vidal',
+      })
+
+      expect(
+        await changeMemberRoleAction(undefined, roleForm('member'))
+      ).toEqual({status: 'refused', message})
+      expect(revalidatePath).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each([
+    'presidency_reserved',
+    'own_presidency',
+    'invalid_role',
+    'superadmin_presidency',
+  ] as const)('rend le refus %s', async (reason) => {
+    vi.mocked(changeMemberRoleService).mockResolvedValue({
+      status: 'refused',
+      reason,
+      self: false,
+      name: 'Paul Vidal',
+    })
+
+    expect(
+      await changeMemberRoleAction(undefined, roleForm('super_admin'))
+    ).toEqual({
+      status: 'refused',
+      message: `BureauMemberProfilesPage.detail.role.refusals.${reason}`,
+    })
+  })
+
+  it('dit le refus superadmin_presidency sans pronom genré', async () => {
+    const messages = (await import('../../../../../../messages/fr.json'))
+      .default
+    expect(
+      messages.BureauMemberProfilesPage.detail.role.refusals
+        .superadmin_presidency
+    ).toBe(
+      '{name} est un compte SuperAdmin de la plateforme : ce compte ne peut pas devenir Président(e). Rien n’a été enregistré.'
+    )
+  })
+
+  it('rend la fiche sans compte et la fiche introuvable', async () => {
+    vi.mocked(changeMemberRoleService).mockResolvedValue({status: 'no_account'})
+    expect(await changeMemberRoleAction(undefined, roleForm('board'))).toEqual({
+      status: 'refused',
+      message: 'BureauMemberProfilesPage.detail.role.refusals.no_account',
+    })
+
+    vi.mocked(changeMemberRoleService).mockResolvedValue({status: 'not_found'})
+    expect(await changeMemberRoleAction(undefined, roleForm('board'))).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.notFound',
+    })
+  })
+
+  it('refuse sans session, sans appeler la façade', async () => {
+    vi.mocked(requireActionAuth).mockRejectedValue(new AuthorizationError())
+
+    expect(await changeMemberRoleAction(undefined, roleForm('board'))).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.forbidden',
+    })
+    expect(changeMemberRoleService).not.toHaveBeenCalled()
+  })
+
+  it('rend le refus du service (compte rétrogradé, critère 2) comme interdit', async () => {
+    vi.mocked(changeMemberRoleService).mockRejectedValue(
+      new AuthorizationError()
+    )
+
+    expect(await changeMemberRoleAction(undefined, roleForm('board'))).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.forbidden',
+    })
   })
 })

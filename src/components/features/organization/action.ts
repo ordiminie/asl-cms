@@ -102,14 +102,19 @@ export type MemberActionResult = {
   message?: string
 }
 
+/**
+ * Ajoute ou invite un compte, **au role Membre seulement** (s14, ADR 039) :
+ * un role du bureau ne se pose que depuis la fiche du membre, par le service
+ * trace.
+ */
 export async function addUserToOrganizationAction(
   organizationId: string,
   userId: string,
   email: string,
-  role: OrganizationRole = OrganizationRoleConst.member as OrganizationRole,
   sendInvitationEmail?: boolean
 ): Promise<MemberActionResult> {
   const user = await requireActionAuth()
+  const role = OrganizationRoleConst.member as OrganizationRole
 
   try {
     const referenceId = getReferenceIdByBillingMode(user.id, organizationId)
@@ -154,7 +159,7 @@ export async function addUserToOrganizationAction(
       await createOrganizationMemberService({
         organizationId,
         userId,
-        role: role || 'member',
+        role,
         createdAt: new Date(),
       })
     }

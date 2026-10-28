@@ -1,4 +1,7 @@
+import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
+  countCapableMembersDao,
   createOrganizationDao,
   createOrganizationMemberDao,
   deleteInvitationByIdDao,
@@ -16,14 +19,13 @@ import {
   getUserInvitationsDao,
   getUserOrganizationDao,
   getUserRoleInOrganizationDao,
+  lockOrganizationRolesDao,
   searchOrganizationsWithMemberEmailsDao,
   updateOrganizationDao,
-  updateUserOrganizationRoleDao,
 } from '@/db/repositories/organization-repository'
 import {getAuthUser} from '@/services/authentication/auth-service'
 
 import {
-  canChangeOrganizationMemberRole,
   canCreateOrganization,
   canDeleteInvitation,
   canDeleteOrganization,
@@ -40,6 +42,7 @@ import {
   ValidationError,
   ValidationParsedZodError,
 } from './errors/validation-error'
+import {decideMemberRemoval} from './rules/member-role-rules'
 import {Pagination} from './types/common-type'
 import {RoleConst, UserOrganizationRoleConst} from './types/domain/auth-types'
 import {
@@ -55,7 +58,6 @@ import {uuidSchema} from './validation/common-validation'
 import {
   createOrganizationServiceSchema,
   createUserOrganizationServiceSchema,
-  organizationRoleSchema,
   organizationUuidSchema,
   updateOrganizationServiceSchema,
   userUuidSchema,
@@ -246,6 +248,9 @@ export const createOrganizationMemberService = async (
     throw new ValidationParsedZodError(parsed.error)
   }
   const params = parsed.data
+  if (params.role !== UserOrganizationRoleConst.MEMBER) {
+    throw new ValidationError(MEMBER_ROLE_ONLY_MESSAGE)
+  }
 
   const granted = await canInviteToOrganization(params.organizationId)
   if (!granted) {
@@ -291,56 +296,33 @@ export const removeUserFromOrganizationService = async (
     throw new AuthorizationError()
   }
 
-  // Empêcher la suppression du OWNER
-  const membership = await getUserOrganizationDao(
-    userIdSanitized,
-    organizationIdSanitized
-  )
-  if (membership?.role === UserOrganizationRoleConst.OWNER) {
-    throw new AuthorizationError(
-      "Le propriétaire (OWNER) ne peut pas se retirer lui-même de l'organisation."
+  await withTenant(organizationIdSanitized, async () => {
+    await lockOrganizationRolesDao(organizationIdSanitized)
+    const membership = await getUserOrganizationDao(
+      userIdSanitized,
+      organizationIdSanitized
     )
-  }
+    if (!membership) return
 
-  await deleteUserOrganizationDao(userIdSanitized, organizationIdSanitized)
-}
+    // Empêcher la suppression du OWNER
+    if (membership.role === UserOrganizationRoleConst.OWNER) {
+      throw new AuthorizationError(
+        "Le propriétaire (OWNER) ne peut pas se retirer lui-même de l'organisation."
+      )
+    }
+    const targetAccount = await getUserByIdDao(userIdSanitized)
+    const decision = decideMemberRemoval({
+      targetRole: membership.role,
+      capableCount: await countCapableMembersDao(organizationIdSanitized),
+      targetIsSuperAdmin: targetAccount?.role === RoleConst.SUPER_ADMIN,
+    })
+    if (decision.kind === 'refuse') {
+      throw new ValidationError(LAST_CAPABLE_REMOVAL_MESSAGE)
+    }
 
-export const changeUserOrganizationRoleService = async (
-  userId: string,
-  organizationId: string,
-  role: OrganizationRole
-) => {
-  const userParsed = userUuidSchema.safeParse(userId)
-  const orgParsed = organizationUuidSchema.safeParse(organizationId)
-  const roleParsed = organizationRoleSchema.safeParse(role)
-
-  if (!userParsed.success) {
-    throw new ValidationError(userParsed.error.message)
-  }
-  if (!orgParsed.success) {
-    throw new ValidationError(orgParsed.error.message)
-  }
-  if (!roleParsed.success) {
-    throw new ValidationError(roleParsed.error.message)
-  }
-
-  const userIdSanitized = userParsed.data
-  const organizationIdSanitized = orgParsed.data
-  const roleSanitized = roleParsed.data
-
-  const granted = await canChangeOrganizationMemberRole(
-    organizationIdSanitized,
-    userIdSanitized
-  )
-  if (!granted) {
-    throw new AuthorizationError()
-  }
-
-  await updateUserOrganizationRoleDao(
-    userIdSanitized,
-    organizationIdSanitized,
-    roleSanitized
-  )
+    await deleteUserOrganizationDao(userIdSanitized, organizationIdSanitized)
+    await traceMemberRemoval(organizationIdSanitized, membership)
+  })
 }
 
 export const getUserRoleInOrganizationService = async (
@@ -603,6 +585,7 @@ import {upsertOrganizationSettingsDao} from '@/db/repositories/organization-sett
 import {
   createUserDao,
   getUserByEmailDao,
+  getUserByIdDao,
   hasSuperAdminDao,
   updateUserSafeByUidDao,
 } from '@/db/repositories/user-repository'
@@ -854,5 +837,37 @@ export const bootstrapPlatformService = async (
     )
 
     return {organization, superAdminUserId: superAdmin.id}
+  })
+}
+
+const MEMBER_ROLE_ONLY_MESSAGE =
+  "Un compte n'est ajouté à une association qu'au rôle Membre : le rôle Bureau ou Président(e) se désigne depuis la fiche du membre."
+
+const LAST_CAPABLE_REMOVAL_MESSAGE =
+  "Ce compte est le dernier qui peut désigner le bureau de l'association : désignez d'abord une autre personne au bureau."
+
+/**
+ * Trace le retrait d'une ligne `member` (s14, ADR 039) : `to_role` nul,
+ * raison `removal`, auteur = la personne connectee.
+ */
+const traceMemberRemoval = async (
+  organizationId: string,
+  membership: {userId: string; role: OrganizationRole}
+): Promise<void> => {
+  const [author, target, profile] = await Promise.all([
+    getAuthUser(),
+    getUserByIdDao(membership.userId),
+    getMemberProfileByUserIdDao(organizationId, membership.userId),
+  ])
+  await insertMemberRoleEventDao({
+    organizationId,
+    memberProfileId: profile?.id ?? null,
+    targetUserId: membership.userId,
+    targetName: target?.name ?? null,
+    authorUserId: author?.id ?? null,
+    authorName: author?.name ?? null,
+    fromRole: membership.role,
+    toRole: null,
+    reason: 'removal',
   })
 }

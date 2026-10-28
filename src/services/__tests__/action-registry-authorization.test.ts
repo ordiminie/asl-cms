@@ -344,3 +344,60 @@ describe('HOME_PAGE_MANAGE — page d accueil (s44)', () => {
     expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
   })
 })
+
+/**
+ * Attribuer les roles d'association (s14, ADR 039). Une action a part de
+ * `MEMBER_PROFILE_MANAGE` : s37 la reglera seule, et elle definira ce jour-la
+ * « un compte capable d'attribuer les roles ».
+ */
+describe('MEMBER_ROLE_ASSIGN — désigner le bureau (s14)', () => {
+  const ASSIGN = ActionIdConst.MEMBER_ROLE_ASSIGN
+
+  it('porte l identifiant member.role.assign, distinct de la gestion des fiches', () => {
+    expect(ASSIGN).toBe('member.role.assign')
+    expect(ASSIGN).not.toBe(ActionIdConst.MEMBER_PROFILE_MANAGE)
+    expect(ACTION_REGISTRY.filter((action) => action.id === ASSIGN)).toEqual([
+      {id: ASSIGN, defaultRoles: ['owner', 'board']},
+    ])
+  })
+
+  it('[SUPER_ADMIN] autorise le SuperAdmin', () => {
+    expect(canPerformAction(userTestSuperAdmin, ORG_ID, ASSIGN)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, ASSIGN)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canPerformAction(user, ORG_ID, ASSIGN)).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+    expect(canPerformAction(user, ORG_ID, ASSIGN)).toBe(false)
+  })
+
+  it('[USER NOT IN ORGANIZATION] refuse le bureau d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, ASSIGN)).toBe(false)
+  })
+})

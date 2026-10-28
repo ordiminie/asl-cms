@@ -1,10 +1,8 @@
-import {UserCog} from 'lucide-react'
 import {cacheLife} from 'next/cache'
 import {getTranslations} from 'next-intl/server'
 
 import {getMembersAndInvitationsDal} from '@/app/dal/organization-dal'
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
-import {Button} from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -13,17 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 
 import {CancelAdminInvitationButton} from '../admin/organizations/cancel-admin-invitation-button'
 import {OrganizationAdminAddMemberForm} from '../admin/organizations/organization-admin-add-member-form'
 import {CancelInvitationButton} from './cancel-invitation-button'
-import {EditMemberRoleDialog} from './edit-member-role-dialog'
 import {OrganizationAddMemberForm} from './organization-add-member-form'
 import {RemoveMemberButton} from './remove-member-button'
 
@@ -90,9 +81,6 @@ export default async function OrganizationMembersTable({
             <TableHead className="hidden lg:table-cell">
               Date d&apos;ajout
             </TableHead>
-            <TableHead className="w-10 text-center">
-              {tCommon('fields.role')}
-            </TableHead>
             <TableHead className="w-10 text-center">{t('action')}</TableHead>
           </TableRow>
         </TableHeader>
@@ -144,33 +132,6 @@ export default async function OrganizationMembersTable({
                 {member.joinedAt
                   ? new Date(member.joinedAt).toLocaleDateString()
                   : ''}
-              </TableCell>
-              <TableCell className="text-center">
-                {canManageMembers &&
-                member.status === 'member' &&
-                member.memberId ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <EditMemberRoleDialog
-                          memberId={member.memberId}
-                          memberName={member.name ?? ''}
-                          currentRole={member.role ?? ''}
-                          triggerButton={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label={t('editRole')}
-                            >
-                              <UserCog className="h-4 w-4" />
-                            </Button>
-                          }
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent>{t('editRole')}</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : null}
               </TableCell>
               <TableCell className="text-center">
                 {canManageMembers ? (
