@@ -146,7 +146,7 @@ describe('Méthodes d’authentification — ni Apple ni GitHub (s46b, décision
 })
 
 describe('Changement d’adresse hérité de /account (s12d, piège 14)', () => {
-  it('est fermé par défaut : la fiche et le compte ne divergent pas avant s16', () => {
+  it('est fermé par défaut : seul le bureau change l’adresse d’une fiche (ADR 040)', () => {
     expect(
       clientSchema.NEXT_PUBLIC_BETTER_AUTH_CHANGE_EMAIL.parse(undefined)
     ).toBe(false)

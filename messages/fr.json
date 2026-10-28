@@ -3129,6 +3129,29 @@
       "mistake": "Une erreur ? Écrivez au bureau.",
       "contact": "Page Contact"
     },
+    "contact": {
+      "title": "Mes coordonnées",
+      "email": "Adresse email",
+      "emailNote": "C’est aussi l’adresse avec laquelle vous vous connectez. Pour la changer, écrivez au bureau.",
+      "contact": "Page Contact",
+      "phone": "Téléphone",
+      "address": "Adresse postale",
+      "phoneMissing": "Non renseigné",
+      "addressMissing": "Non renseignée",
+      "edit": "Modifier mes coordonnées",
+      "save": "Enregistrer mes coordonnées",
+      "saving": "Enregistrement…",
+      "cancel": "Annuler",
+      "invalid": "Vos coordonnées n’ont pas été enregistrées. Corrigez les champs signalés.",
+      "failed": {
+        "title": "Vos coordonnées n’ont pas pu être enregistrées.",
+        "detail": "Réessayez dans un instant. Rien n’a été enregistré."
+      },
+      "saved": {
+        "title": "Coordonnées enregistrées.",
+        "detail": "Le bureau voit dès maintenant vos nouvelles coordonnées."
+      }
+    },
     "denied": {
       "title": "Cette page ne vous est pas accessible",
       "description": "Elle est réservée au bureau de l’association.",
@@ -3136,7 +3159,7 @@
     },
     "security": {
       "title": "Sécurité du compte",
-      "description": "Votre adresse email, votre mot de passe et les appareils connectés à votre compte.",
+      "description": "Votre mot de passe et les appareils connectés à votre compte.",
       "link": "Gérer la sécurité du compte"
     }
   }

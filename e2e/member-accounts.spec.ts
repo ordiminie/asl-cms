@@ -19,8 +19,9 @@ import {Client} from 'pg'
  * session ouverte est coupée au **rechargement réel** suivant.
  *
  * `localhost` sert TechCorp Solutions, `127.0.0.1` Marketing Pro (seed). Les
- * fiches du seed ne sont jamais modifiées : les écritures portent un marqueur
- * d'essai, nettoyé à la fin, comptes compris.
+ * fiches du seed ne sont jamais modifiées par s12d : les écritures portent un
+ * marqueur d'essai, nettoyé à la fin, comptes compris. Les essais de s16
+ * remettent à la fin les coordonnées du seed qu'ils ont corrigées.
  */
 
 const PORT = process.env.PLAYWRIGHT_PORT ?? '3000'
@@ -627,6 +628,200 @@ test.describe('Comptes des membres — s12d', () => {
         role: 'board',
       })
     } finally {
+      await bureau.context().close()
+    }
+  })
+})
+
+type StoredContact = {
+  email: string | null
+  phone: string | null
+  address_complement: string | null
+  postal_code: string | null
+}
+
+const storedContactOf = (slug: string, name: string) =>
+  inTenant(slug, async (client) => {
+    const result = await client.query<StoredContact>(
+      `select email, phone, address_complement, postal_code
+         from member_profile where name = $1`,
+      [name]
+    )
+    return result.rows[0]
+  })
+
+const myContact = (page: Page) =>
+  page.getByRole('region', {name: 'Mes coordonnées'})
+
+const editMyContact = async (
+  page: Page,
+  values: {phone?: string; addressComplement?: string; postalCode?: string}
+) => {
+  const card = myContact(page)
+  await card.getByRole('button', {name: 'Modifier mes coordonnées'}).click()
+  if (values.phone !== undefined) {
+    await card.getByLabel(/^Téléphone/).fill(values.phone)
+  }
+  if (values.addressComplement !== undefined) {
+    await card.getByLabel(/^Complément/).fill(values.addressComplement)
+  }
+  if (values.postalCode !== undefined) {
+    await card.getByLabel(/^Code postal/).fill(values.postalCode)
+    await card.getByLabel(/^Code postal/).blur()
+  }
+  await card.getByRole('button', {name: 'Enregistrer mes coordonnées'}).click()
+}
+
+/**
+ * Coordonnées du membre — s16, critères 1 à 4 (ADR 040).
+ *
+ * Seuls une vraie base et deux domaines prouvent que l'écriture vise la fiche
+ * du compte connecté (`WHERE user_id` sous RLS), que l'autre association de
+ * la personne n'est pas touchée et que l'email ne change jamais. Les fiches
+ * du seed modifiées ici sont remises à leurs valeurs à la fin.
+ */
+test.describe('Coordonnées du membre — s16', () => {
+  test.beforeEach(async () => {
+    await resetRateLimits()
+  })
+
+  test.afterAll(async () => {
+    await inTenant(TENANT_A_SLUG, (client) =>
+      client.query(
+        `update member_profile
+            set phone = null, address_complement = null
+          where name = any($1)`,
+        [['Lucie Moreau', 'Gérard Pommier']]
+      )
+    )
+    await cleanUpRun()
+  })
+
+  test('critères 1 et 4 — le membre corrige ses coordonnées, les retrouve au rechargement, et le bureau les voit', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const member = await freshPage(browser)
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    try {
+      await loginByLink(member, TENANT_A, SEED_MOREAU_EMAIL)
+      await expect(myContact(member)).toContainText(SEED_MOREAU_EMAIL)
+      await expect(
+        myContact(member).getByRole('textbox', {name: /Adresse email/})
+      ).toHaveCount(0)
+
+      await editMyContact(member, {
+        phone: '07 45 12 89 30',
+        addressComplement: 'Bâtiment C',
+      })
+      await expect(member.getByRole('status')).toContainText(
+        'Coordonnées enregistrées.'
+      )
+
+      await member.reload({waitUntil: 'networkidle'})
+      await expect(myContact(member)).toContainText('07 45 12 89 30')
+      await expect(myContact(member)).toContainText('Bâtiment C')
+      expect(
+        await storedContactOf(TENANT_A_SLUG, 'Lucie Moreau')
+      ).toMatchObject({
+        email: SEED_MOREAU_EMAIL,
+        phone: '07 45 12 89 30',
+        address_complement: 'Bâtiment C',
+      })
+
+      const {id} = await storedProfileOf(TENANT_A_SLUG, 'Lucie Moreau')
+      await bureau.goto(`${TENANT_A}${LIST_ROUTE}/${id}`, {
+        waitUntil: 'networkidle',
+      })
+      const coordinates = bureau.getByRole('region', {name: 'Coordonnées'})
+      await expect(coordinates).toContainText('07 45 12 89 30', {
+        timeout: 15_000,
+      })
+      await expect(coordinates).toContainText('Bâtiment C')
+    } finally {
+      await member.context().close()
+      await bureau.context().close()
+    }
+  })
+
+  test('critère 2 — une saisie invalide est signalée sous le champ et rien n’est enregistré', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const before = await storedContactOf(TENANT_A_SLUG, 'Lucie Moreau')
+    const member = await freshPage(browser)
+    try {
+      await loginByLink(member, TENANT_A, SEED_MOREAU_EMAIL)
+      await editMyContact(member, {postalCode: '1310'})
+
+      await expect(myContact(member).getByRole('alert')).toContainText(
+        'Vos coordonnées n’ont pas été enregistrées. Corrigez les champs signalés.'
+      )
+      await expect(myContact(member)).toContainText(
+        'Un code postal compte 5 chiffres.'
+      )
+
+      await member.reload({waitUntil: 'networkidle'})
+      await expect(myContact(member)).toContainText(
+        `${before.postal_code} Lacanau`
+      )
+      expect(await storedContactOf(TENANT_A_SLUG, 'Lucie Moreau')).toEqual(
+        before
+      )
+    } finally {
+      await member.context().close()
+    }
+  })
+
+  test('critère 3 — corriger sur une association ne touche pas l’autre, et l’email ne change jamais', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const onB = await storedContactOf(TENANT_B_SLUG, 'Gérard Pommier')
+    const member = await freshPage(browser)
+    try {
+      await loginByLink(member, TENANT_A, SEED_POMMIER_EMAIL)
+      await editMyContact(member, {phone: '06 98 76 54 32'})
+      await expect(member.getByRole('status')).toContainText(
+        'Coordonnées enregistrées.'
+      )
+
+      expect(
+        await storedContactOf(TENANT_A_SLUG, 'Gérard Pommier')
+      ).toMatchObject({email: SEED_POMMIER_EMAIL, phone: '06 98 76 54 32'})
+      expect(await storedContactOf(TENANT_B_SLUG, 'Gérard Pommier')).toEqual(
+        onB
+      )
+      expect(onB.email).toBe(SEED_POMMIER_EMAIL)
+      expect((await accountOf(SEED_POMMIER_EMAIL)).users).toHaveLength(1)
+    } finally {
+      await member.context().close()
+    }
+  })
+
+  test('C7 — une fiche sans parcelle voit « Mes coordonnées »', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const name = nameOf('Coordonnees')
+    const email = emailOf('coordonnees')
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    const member = await freshPage(browser)
+    try {
+      await createProfile(bureau, TENANT_A, {name, email})
+
+      await loginByLink(member, TENANT_A, email)
+      await expect(
+        member.getByRole('heading', {level: 1, name: 'Votre espace membre'})
+      ).toBeVisible()
+      await expect(myContact(member)).toContainText(email)
+      await expect(myContact(member)).toContainText('3 rue du Lavoir')
+      await expect(
+        member.getByRole('region', {name: 'Mes parcelles'})
+      ).toHaveCount(0)
+    } finally {
+      await member.context().close()
       await bureau.context().close()
     }
   })

@@ -11,6 +11,7 @@ import {
   type MemberAccountChange,
 } from '@/services/types/domain/member-profile-types'
 import type {MemberRoleChangeKind} from '@/services/types/domain/member-role-types'
+import type {MyContactDTO} from '@/services/types/domain/member-space-types'
 import {
   type OwnershipConflictDTO,
   PARCEL_NUMBER_MAX_LENGTH,
@@ -201,3 +202,41 @@ export type ChangeMemberRoleFormAction = (
   prevState: ChangeMemberRoleActionResult | undefined,
   formData: FormData
 ) => Promise<ChangeMemberRoleActionResult>
+
+/**
+ * « Mes coordonnees » (s16, ADR 040) : les coordonnees que le membre corrige
+ * lui-meme, sans email. Memes regles et memes messages que la fiche du bureau.
+ */
+export function createMemberPostalContactFormSchema(t: Translate) {
+  return createMemberContactFormSchema(t).omit({email: true})
+}
+
+export type MemberPostalContactFormSchemaType = Omit<
+  MemberContactFormSchemaType,
+  'email'
+>
+
+export const MEMBER_POSTAL_CONTACT_FORM_FIELDS = [
+  'phone',
+  'addressLine',
+  'addressComplement',
+  'postalCode',
+  'city',
+] as const satisfies readonly (keyof MemberPostalContactFormSchemaType)[]
+
+export type MemberPostalContactFormField =
+  (typeof MEMBER_POSTAL_CONTACT_FORM_FIELDS)[number]
+
+/** Resultat de « Enregistrer mes coordonnees », rendu par la Server Action. */
+export type MyContactActionResult =
+  | {status: 'saved'; contact: MyContactDTO}
+  | {
+      status: 'invalid'
+      errors: {field: MemberPostalContactFormField; message: string}[]
+    }
+  | {status: 'error'; message: string}
+
+export type MyContactFormAction = (
+  prevState: MyContactActionResult | undefined,
+  formData: FormData
+) => Promise<MyContactActionResult>

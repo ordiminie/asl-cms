@@ -28,3 +28,29 @@ export type MyParcelsDTO = {
   current: MyCurrentParcelDTO[]
   former: MyFormerParcelDTO[]
 }
+
+/**
+ * Les coordonnees de « ma fiche » (s16) : ni identifiant, ni nom, ni compte.
+ * L'email est affiche, jamais modifiable par le membre (ADR 040).
+ */
+export type MyContactDTO = {
+  email: string | null
+  phone: string | null
+  addressLine: string | null
+  addressComplement: string | null
+  postalCode: string | null
+  city: string | null
+}
+
+/** Coordonnees saisies par le membre : jamais d'email (ADR 040). */
+export type UpdateMyContactInput = {
+  organizationId: string
+  phone?: string | null
+  addressLine?: string | null
+  addressComplement?: string | null
+  postalCode?: string | null
+  city?: string | null
+}
+
+export type UpdateMyContactResult =
+  {status: 'saved'; contact: MyContactDTO} | {status: 'not_found'}
