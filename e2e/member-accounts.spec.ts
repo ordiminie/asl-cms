@@ -667,6 +667,7 @@ const editMyContact = async (
   }
   if (values.postalCode !== undefined) {
     await card.getByLabel(/^Code postal/).fill(values.postalCode)
+    await card.getByLabel(/^Code postal/).blur()
   }
   await card.getByRole('button', {name: 'Enregistrer mes coordonnées'}).click()
 }
