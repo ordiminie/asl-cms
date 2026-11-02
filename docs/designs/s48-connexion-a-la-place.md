@@ -73,10 +73,10 @@ bureau, 56 px mobile).
 `docs/designs/s48-connexion-a-la-place.html` — visuel de référence. **Ne pas copier en production** :
 Execute construit avec les vrais composants.
 
-⚠️ Contrairement à s16, ce fichier **n'est pas figé en HTML statique** : c'est le source du canevas,
-qui a besoin de son moteur de rendu `docs/designs/s48-support.js` (copie de `support.js`, appelé en
-relatif) et d'un navigateur. Aucun navigateur n'est installé ici pour le dérouler. Il s'ouvre depuis
-le dossier `docs/designs/` ; pour le figer, l'ouvrir dans un navigateur puis enregistrer le DOM rendu.
+Ce fichier est **figé en HTML statique** (comme s16) : le canevas a été rendu dans jsdom, puis son DOM
+enregistré sans script. Il s'ouvre dans n'importe quel navigateur, sans réseau ni moteur de rendu ; seule la
+police Google Fonts se charge en ligne, avec repli sur les polices système. Le moteur du canevas
+(`s48-support.js`) n'est pas versionné : il reste dans `s48.zip`, non commité.
 
 ## Reused components (from the design system)
 
