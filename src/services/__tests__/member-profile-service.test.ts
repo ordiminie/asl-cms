@@ -69,6 +69,7 @@ import {
   getUserByEmailDao,
 } from '@/db/repositories/user-repository'
 
+import {getActingContext} from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {
   canManageMemberProfilesService,
@@ -155,6 +156,7 @@ const membership = (role: 'member' | 'board' | 'owner', userId: string) =>
 beforeEach(() => {
   vi.clearAllMocks()
   scope.current = undefined
+  vi.mocked(getActingContext).mockResolvedValue(undefined)
   vi.mocked(createMemberProfileTxnDao).mockResolvedValue({
     status: 'created',
     row: profileRow(),
@@ -804,10 +806,70 @@ describe('[s12d] le compte suit l’adresse de la fiche', () => {
       targetName: 'Jean et Odile Dubois',
       authorUserId: userTest.id,
       authorName: userTest.name,
+      onBehalfOfUserId: null,
+      onBehalfOfName: null,
       fromRole: 'owner',
       toRole: null,
       reason: 'email_change',
     })
+  })
+
+  it('pendant une session à la place d’un compte : trace attribuée au SuperAdmin, pour le compte du compte vu (s48)', async () => {
+    const viewer = withRole(UserOrganizationRoleConst.ADMIN)
+    vi.mocked(getActingContext).mockResolvedValueOnce({
+      user: viewer,
+      impersonator: {id: 'superadmin-support', name: 'Zoé Support'},
+    })
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(getUserOrganizationDao).mockResolvedValue(
+      membership('owner', ACCOUNT_ID)
+    )
+    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
+      status: 'updated',
+      row: linkedRow({email: 'presidence@example.test'}),
+    })
+
+    await updateMemberProfileContactService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: 'presidence@example.test',
+    })
+
+    expect(insertMemberRoleEventDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorUserId: 'superadmin-support',
+        authorName: 'Zoé Support',
+        onBehalfOfUserId: viewer.id,
+        onBehalfOfName: viewer.name,
+        reason: 'email_change',
+      })
+    )
+  })
+
+  it('lit qui agit hors du scope de tenant : la session passe par le pool (s48)', async () => {
+    const actingReadUnder: (string | undefined)[] = []
+    vi.mocked(getActingContext).mockImplementation(async () => {
+      actingReadUnder.push(scope.current)
+      return {user: withRole(UserOrganizationRoleConst.ADMIN)}
+    })
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(getUserOrganizationDao).mockResolvedValue(
+      membership('owner', ACCOUNT_ID)
+    )
+    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
+      status: 'updated',
+      row: linkedRow({email: 'presidence@example.test'}),
+    })
+
+    await updateMemberProfileContactService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: 'presidence@example.test',
+    })
+
+    expect(insertMemberRoleEventDao).toHaveBeenCalled()
+    expect(actingReadUnder.length).toBeGreaterThan(0)
+    expect(actingReadUnder.every((under) => under === undefined)).toBe(true)
   })
 
   it('ne change aucun accès quand seule la casse de l’adresse change', async () => {

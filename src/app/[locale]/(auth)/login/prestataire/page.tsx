@@ -3,6 +3,7 @@ import {Metadata} from 'next/types'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {LoginForm} from '@/components/features/auth/forms/login'
+import {ImpersonationNotice} from '@/components/features/impersonation/impersonation-notice'
 import {getAuthUser} from '@/services/authentication/auth-service'
 
 export async function generateMetadata({
@@ -27,8 +28,10 @@ export async function generateMetadata({
  */
 export default async function ProviderLoginPage({
   params,
+  searchParams,
 }: {
   params: Promise<{locale: string}>
+  searchParams?: Promise<{session?: string}>
 }) {
   const {locale} = await params
   setRequestLocale(locale)
@@ -38,5 +41,15 @@ export default async function ProviderLoginPage({
     redirect('/logout')
   }
 
-  return <LoginForm />
+  // Fin d'une session a la place d'un compte, par expiration (s48, 4c).
+  const sessionEnded = (await searchParams)?.session === 'terminee'
+
+  if (!sessionEnded) return <LoginForm />
+
+  return (
+    <div className="flex flex-col gap-4">
+      <ImpersonationNotice kind="expired" />
+      <LoginForm />
+    </div>
+  )
 }

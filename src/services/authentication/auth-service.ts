@@ -1,6 +1,7 @@
 import {headers} from 'next/headers'
 import {cache} from 'react'
 
+import {getUserByIdDao} from '@/db/repositories/user-repository'
 import {
   canOpenSessionOn,
   organizationOfRequest,
@@ -8,6 +9,7 @@ import {
 import {requestHostOf} from '@/lib/better-auth/association-origin'
 import {auth} from '@/lib/better-auth/auth'
 import {getReferenceIdByBillingMode} from '@/lib/helper/subscription-helper'
+import type {ActingContext} from '@/services/types/domain/impersonation-types'
 
 /**
  * Récupère l'utilisateur connecté a partir de la session enrichie
@@ -73,3 +75,28 @@ export const getAuthUserId = async () => {
   if (!user) return
   return user.id
 }
+
+/**
+ * Qui agit (s48, ADR 041) : le compte vu, tel que `getAuthUser()` le rend, et,
+ * si la session a ete ouverte a sa place, le SuperAdmin qui agit
+ * (`session.impersonatedBy`). L'autorisation continue de juger le compte vu ;
+ * seules les traces changent d'auteur. Un imitateur introuvable est une
+ * incoherence : on refuse plutot que d'attribuer l'acte au compte vu.
+ */
+export const getActingContext = cache(
+  async (): Promise<ActingContext | undefined> => {
+    const user = await getAuthUser()
+    if (!user) return
+    const session = await getSessionAuth()
+    const impersonatedBy = session?.session?.impersonatedBy
+    if (!impersonatedBy) return {user}
+
+    const impersonator = await getUserByIdDao(impersonatedBy)
+    if (!impersonator) {
+      throw new Error(
+        `Session à la place d'un compte : imitateur ${impersonatedBy} introuvable`
+      )
+    }
+    return {user, impersonator: {id: impersonator.id, name: impersonator.name}}
+  }
+)

@@ -120,6 +120,8 @@ const traceEmailChange = async (
     targetName: trace.name,
     authorUserId: trace.author.userId,
     authorName: trace.author.name,
+    onBehalfOfUserId: trace.author.onBehalfOfUserId ?? null,
+    onBehalfOfName: trace.author.onBehalfOfName ?? null,
     fromRole: change.from,
     toRole: change.to,
     reason: 'email_change',

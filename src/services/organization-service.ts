@@ -23,7 +23,10 @@ import {
   searchOrganizationsWithMemberEmailsDao,
   updateOrganizationDao,
 } from '@/db/repositories/organization-repository'
-import {getAuthUser} from '@/services/authentication/auth-service'
+import {
+  getActingContext,
+  getAuthUser,
+} from '@/services/authentication/auth-service'
 
 import {
   canCreateOrganization,
@@ -45,6 +48,7 @@ import {
 import {decideMemberRemoval} from './rules/member-role-rules'
 import {Pagination} from './types/common-type'
 import {RoleConst, UserOrganizationRoleConst} from './types/domain/auth-types'
+import {effectiveAuthor, TraceAuthor} from './types/domain/impersonation-types'
 import {
   CreateMember,
   CreateOrganization,
@@ -295,6 +299,7 @@ export const removeUserFromOrganizationService = async (
   if (!granted) {
     throw new AuthorizationError()
   }
+  const author = await removalTraceAuthorOf()
 
   await withTenant(organizationIdSanitized, async () => {
     await lockOrganizationRolesDao(organizationIdSanitized)
@@ -321,7 +326,7 @@ export const removeUserFromOrganizationService = async (
     }
 
     await deleteUserOrganizationDao(userIdSanitized, organizationIdSanitized)
-    await traceMemberRemoval(organizationIdSanitized, membership)
+    await traceMemberRemoval(organizationIdSanitized, membership, author)
   })
 }
 
@@ -393,6 +398,8 @@ export async function getMembersAndInvitationsService(
       role: m.role,
       joinedAt: m.createdAt,
       status: 'member' as const,
+      hasAccount: true,
+      isSuperAdmin: m.user.role === RoleConst.SUPER_ADMIN,
     }
   })
 
@@ -407,6 +414,8 @@ export async function getMembersAndInvitationsService(
     role: i.role,
     joinedAt: i.expiresAt,
     status: 'invited' as const,
+    hasAccount: false,
+    isSuperAdmin: false,
   }))
 
   return [...memberDTOs, ...invitationDTOs]
@@ -846,16 +855,41 @@ const MEMBER_ROLE_ONLY_MESSAGE =
 const LAST_CAPABLE_REMOVAL_MESSAGE =
   "Ce compte est le dernier qui peut désigner le bureau de l'association : désignez d'abord une autre personne au bureau."
 
+/** Trace sans personne connectee : auteur inconnu, colonnes nulles. */
+const NO_TRACE_AUTHOR = {
+  authorUserId: null,
+  authorName: null,
+  onBehalfOfUserId: null,
+  onBehalfOfName: null,
+}
+
+type RemovalTraceAuthor = TraceAuthor | typeof NO_TRACE_AUTHOR
+
+/**
+ * Auteur du retrait : la personne connectee, ou le SuperAdmin s'il agit a sa
+ * place (s48, ADR 041). A lire avant `withTenant` : la session passe par le
+ * pool, que le scope retient (un pool a une connexion s'interbloquerait).
+ */
+const removalTraceAuthorOf = async (): Promise<RemovalTraceAuthor> => {
+  const [viewer, acting] = await Promise.all([
+    getAuthUser(),
+    getActingContext(),
+  ])
+  return viewer
+    ? effectiveAuthor(viewer, acting?.impersonator)
+    : NO_TRACE_AUTHOR
+}
+
 /**
  * Trace le retrait d'une ligne `member` (s14, ADR 039) : `to_role` nul,
- * raison `removal`, auteur = la personne connectee.
+ * raison `removal`, auteur resolu avant le scope de tenant.
  */
 const traceMemberRemoval = async (
   organizationId: string,
-  membership: {userId: string; role: OrganizationRole}
+  membership: {userId: string; role: OrganizationRole},
+  author: RemovalTraceAuthor
 ): Promise<void> => {
-  const [author, target, profile] = await Promise.all([
-    getAuthUser(),
+  const [target, profile] = await Promise.all([
     getUserByIdDao(membership.userId),
     getMemberProfileByUserIdDao(organizationId, membership.userId),
   ])
@@ -864,8 +898,7 @@ const traceMemberRemoval = async (
     memberProfileId: profile?.id ?? null,
     targetUserId: membership.userId,
     targetName: target?.name ?? null,
-    authorUserId: author?.id ?? null,
-    authorName: author?.name ?? null,
+    ...author,
     fromRole: membership.role,
     toRole: null,
     reason: 'removal',

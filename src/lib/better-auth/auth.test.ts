@@ -30,12 +30,17 @@ vi.mock('@/services/facades/user-service-facade', () => ({
 
 import {headers} from 'next/headers'
 
+import {env} from '@/env'
 import {createTypedNotificationService} from '@/services/facades/notification-service-facade'
 import {getOrganizationByDomainService} from '@/services/facades/organization-service-facade'
 import type {Organization} from '@/services/types/domain/organization-types'
 
 import {ASSOCIATION_SESSION_GUARD_ID} from './association-session-guard'
 import {auth} from './auth'
+import {
+  IMPERSONATION_DISABLED_HTTP_PATHS,
+  IMPERSONATION_GUARD_ID,
+} from './impersonation-guard'
 import {ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS} from './organization-roles'
 
 const pluginIds = () =>
@@ -50,6 +55,12 @@ describe('configuration de Better Auth', () => {
       ids.indexOf('admin')
     )
   })
+
+  it('monte le garde d’imitation juste après le contrôle d’association (s48)', () => {
+    const ids = pluginIds()
+
+    expect(ids[1]).toBe(IMPERSONATION_GUARD_ID)
+  })
 })
 
 /** s47, ADR 035 : le plugin admin reconnaît le SuperAdmin, et lui seul. */
@@ -58,7 +69,15 @@ describe('plugin admin — rôles globaux (s47)', () => {
     (
       (auth.options.plugins ?? []).find(
         (plugin: {id: string}) => plugin.id === 'admin'
-      ) as {options?: {adminRoles?: string[]; roles?: object}}
+      ) as {
+        options?: {
+          adminRoles?: string[]
+          roles?: object
+          impersonationSessionDuration?: number
+          allowImpersonatingAdmins?: boolean
+          adminUserIds?: string[]
+        }
+      }
     ).options
 
   const canBan = async (role: string) =>
@@ -80,6 +99,17 @@ describe('plugin admin — rôles globaux (s47)', () => {
       'super_admin',
       'user',
     ])
+  })
+
+  it('borne la session à la place d’un compte par la durée de l’env (ADR 042)', () => {
+    expect(adminPluginOptions()?.impersonationSessionDuration).toBe(
+      env.IMPERSONATION_SESSION_DURATION_SECONDS
+    )
+  })
+
+  it('n’ouvre aucune porte à l’imitation d’un SuperAdmin (s48, critère 4)', () => {
+    expect(adminPluginOptions()?.allowImpersonatingAdmins).toBeUndefined()
+    expect(adminPluginOptions()?.adminUserIds).toBeUndefined()
   })
 
   it('accorde le bannissement au SuperAdmin', async () => {
@@ -244,4 +274,31 @@ describe('routes HTTP du plugin organisation fermées (s14)', () => {
 
     expect(response.status).toBe(404)
   })
+})
+
+/** s48, ADR 041 : l'imitation ne passe que par le service, qui la trace. */
+describe('routes HTTP d’imitation fermées (s48)', () => {
+  it('les déclare dans disabledPaths', () => {
+    expect(auth.options.disabledPaths).toEqual(
+      expect.arrayContaining([...IMPERSONATION_DISABLED_HTTP_PATHS])
+    )
+  })
+
+  it.each([...IMPERSONATION_DISABLED_HTTP_PATHS])(
+    'POST %s répond 404',
+    async (route) => {
+      const response = await auth.handler(
+        new Request(`http://localhost:3000/api/auth${route}`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            origin: 'http://localhost:3000',
+          },
+          body: JSON.stringify({userId: 'x'}),
+        })
+      )
+
+      expect(response.status).toBe(404)
+    }
+  )
 })

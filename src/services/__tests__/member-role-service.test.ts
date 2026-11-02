@@ -1,4 +1,4 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 const {scope, calls} = vi.hoisted(() => ({
   scope: {current: undefined as string | undefined},
@@ -53,6 +53,7 @@ import {
   getUserByIdDao,
 } from '@/db/repositories/user-repository'
 
+import {getActingContext} from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {ValidationParsedZodError} from '../errors/validation-error'
 import {
@@ -214,6 +215,8 @@ describe('[ORGANIZATION BOARD] changeMemberRoleService', () => {
       targetName: 'Paul Vidal',
       authorUserId: VIEWER_ID,
       authorName: 'Hélène Roux',
+      onBehalfOfUserId: null,
+      onBehalfOfName: null,
       fromRole: 'member',
       toRole: 'board',
       reason: 'assignment',
@@ -439,6 +442,8 @@ describe('[ORGANIZATION OWNER] changeMemberRoleService — passation', () => {
       targetName: 'Paul Vidal',
       authorUserId: VIEWER_ID,
       authorName: 'Hélène Roux',
+      onBehalfOfUserId: null,
+      onBehalfOfName: null,
       fromRole: 'board',
       toRole: 'owner',
       reason: 'presidency_transfer',
@@ -450,6 +455,8 @@ describe('[ORGANIZATION OWNER] changeMemberRoleService — passation', () => {
       targetName: 'Hélène Roux',
       authorUserId: VIEWER_ID,
       authorName: 'Hélène Roux',
+      onBehalfOfUserId: null,
+      onBehalfOfName: null,
       fromRole: 'owner',
       toRole: 'board',
       reason: 'presidency_transfer',
@@ -803,6 +810,97 @@ describe('transferPresidencyByOperatorService — plusieurs présidences hérit�
       expect.objectContaining({
         targetUserId: OTHER_OWNER_ID,
         reason: 'presidency_transfer',
+      })
+    )
+  })
+})
+
+/**
+ * s48, critère 6 (ADR 041) : pendant une session à la place d'un compte, la
+ * trace est attribuée au SuperAdmin, pour le compte du compte vu. L'autorisation
+ * juge toujours le compte vu.
+ */
+describe('[IMPERSONATION] changeMemberRoleService — attribution', () => {
+  const SUPPORT = {
+    id: '55555555-5555-4555-8555-555555555555',
+    name: 'Zoé Support',
+  }
+
+  beforeEach(() => {
+    const viewer = withMembership(UserOrganizationRoleConst.OWNER)
+    setupAuthUserMocked(viewer)
+    vi.mocked(getActingContext).mockResolvedValue({
+      user: viewer,
+      impersonator: SUPPORT,
+    })
+  })
+
+  afterEach(() => {
+    vi.mocked(getActingContext).mockReset()
+  })
+
+  it('attribue la promotion au SuperAdmin, pour le compte du compte vu', async () => {
+    rolesInDb({viewer: 'owner', target: 'member'})
+
+    await change('board')
+
+    expect(insertMemberRoleEventDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorUserId: SUPPORT.id,
+        authorName: 'Zoé Support',
+        onBehalfOfUserId: VIEWER_ID,
+        onBehalfOfName: 'Hélène Roux',
+        reason: 'assignment',
+      })
+    )
+  })
+
+  it('une passation rétrograde bien le compte vu, et les deux traces sont du SuperAdmin', async () => {
+    rolesInDb({viewer: 'owner', target: 'board'})
+    vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
+      {userId: VIEWER_ID, name: 'Hélène Roux'},
+    ])
+
+    await change('owner')
+
+    expect(updateMemberRoleFromDao).toHaveBeenCalledWith(
+      VIEWER_ID,
+      ORG_ID,
+      'owner',
+      'board'
+    )
+    expect(updateMemberRoleFromDao).not.toHaveBeenCalledWith(
+      SUPPORT.id,
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    )
+    expect(insertMemberRoleEventDao).toHaveBeenCalledTimes(2)
+    for (const [row] of vi.mocked(insertMemberRoleEventDao).mock.calls) {
+      expect(row).toMatchObject({
+        authorUserId: SUPPORT.id,
+        onBehalfOfUserId: VIEWER_ID,
+        onBehalfOfName: 'Hélène Roux',
+        reason: 'presidency_transfer',
+      })
+    }
+  })
+})
+
+describe('[ORGANIZATION BOARD] changeMemberRoleService — hors imitation', () => {
+  it('laisse le « pour le compte de » nul', async () => {
+    const viewer = withMembership(UserOrganizationRoleConst.ADMIN)
+    setupAuthUserMocked(viewer)
+    vi.mocked(getActingContext).mockResolvedValueOnce({user: viewer})
+    rolesInDb({viewer: 'board', target: 'member'})
+
+    await change('board')
+
+    expect(insertMemberRoleEventDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorUserId: VIEWER_ID,
+        onBehalfOfUserId: null,
+        onBehalfOfName: null,
       })
     )
   })

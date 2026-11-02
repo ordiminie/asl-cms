@@ -25,6 +25,10 @@ import {trustedOriginsOf} from '@/lib/better-auth/association-origin'
 import {associationSessionGuard} from '@/lib/better-auth/association-session-guard'
 import {verificationLinkOnAssociation} from '@/lib/better-auth/email-verification-link'
 import {
+  IMPERSONATION_DISABLED_HTTP_PATHS,
+  impersonationGuard,
+} from '@/lib/better-auth/impersonation-guard'
+import {
   MAGIC_LINK_DISABLED_HTTP_PATHS,
   magicLinkOptions,
 } from '@/lib/better-auth/magic-link-integration'
@@ -66,6 +70,7 @@ const options = {
   appName: APP_ISSUER,
   disabledPaths: [
     ...MAGIC_LINK_DISABLED_HTTP_PATHS,
+    ...IMPERSONATION_DISABLED_HTTP_PATHS,
     ...ORGANIZATION_MEMBERSHIP_DISABLED_HTTP_PATHS,
   ],
   database: drizzleAdapter(db, {
@@ -148,6 +153,9 @@ const options = {
     // En tete, avant admin() : la connexion est limitee a l'association du
     // domaine avant tout autre controle (ADR 034).
     associationSessionGuard(),
+    // Refus des ecritures sensibles pendant une session a la place d'un compte
+    // (s48, ADR 041).
+    impersonationGuard(),
     bearer(),
     twoFactor({
       issuer: APP_ISSUER,
@@ -172,11 +180,13 @@ const options = {
     /*
      * Deux rôles globaux (s47, ADR 035). `adminRoles` seul fait lever une
      * BetterAuthError au démarrage : chaque rôle administrateur doit aussi être
-     * déclaré dans `roles`.
+     * déclaré dans `roles`. La durée d'une session à la place d'un compte
+     * vient de l'env (s48, ADR 042).
      */
     admin({
       adminRoles: ['super_admin'],
       roles: {user: userAc, super_admin: adminAc},
+      impersonationSessionDuration: env.IMPERSONATION_SESSION_DURATION_SECONDS,
     }),
     organization({
       ac: organizationAccessControl,

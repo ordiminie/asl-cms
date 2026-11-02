@@ -5,6 +5,7 @@ import {
   createOrganizationDao,
   deleteInvitationByIdDao,
   deleteOrganizationDao,
+  getInvitationMembersDao,
   getOrganizationByIdDao,
   getOrganizationMembersDao,
   getOrganizationsByUserIdDao,
@@ -17,6 +18,7 @@ import {
   createOrganizationService,
   deleteInvitationByIdService,
   deleteOrganizationService,
+  getMembersAndInvitationsService,
   getOrganizationByIdService,
   getOrganizationMembersService,
   getOrganizationsByUserIdService,
@@ -746,5 +748,53 @@ describe('[PUBLIC] deleteInvitationByIdService', () => {
       AuthorizationError
     )
     expect(deleteInvitationByIdDao).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * s48 : l'écran SuperAdmin des membres sait quelles lignes ont un compte et
+ * lesquelles sont un SuperAdmin, pour n'offrir « Agir à sa place » qu'aux
+ * comptes visables. Lecture seule : le service d'imitation re-contrôle.
+ */
+describe('[SUPER_ADMIN] getMembersAndInvitationsService — comptes visables (s48)', () => {
+  const ORG_ID = faker.string.uuid()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupAuthUserMocked(userTestSuperAdmin)
+  })
+
+  it('marque les membres avec compte, et le SuperAdmin', async () => {
+    vi.mocked(getOrganizationMembersDao).mockResolvedValue([
+      mockMemberData[0],
+      {
+        ...mockMemberData[1],
+        user: {...mockMemberData[1].user, role: RoleConst.SUPER_ADMIN},
+      },
+    ] as never)
+    vi.mocked(getInvitationMembersDao).mockResolvedValue([
+      {
+        id: 'invitation-1',
+        organizationId: ORG_ID,
+        email: 'invite@example.com',
+        role: 'member',
+        expiresAt: new Date(),
+        user: undefined,
+      },
+    ] as never)
+
+    const rows = await getMembersAndInvitationsService(ORG_ID)
+
+    expect(
+      rows.map(({status, hasAccount, isSuperAdmin}) => ({
+        status,
+        hasAccount,
+        isSuperAdmin,
+      }))
+    ).toEqual([
+      {status: 'member', hasAccount: true, isSuperAdmin: false},
+      {status: 'member', hasAccount: true, isSuperAdmin: true},
+      {status: 'invited', hasAccount: false, isSuperAdmin: false},
+    ])
   })
 })

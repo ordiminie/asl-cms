@@ -37,4 +37,10 @@ export type MemberAccountDecision =
  * Auteur d'un changement de compte : la personne connectee qui enregistre la
  * fiche, copiee dans la trace des roles (s14, D5).
  */
-export type MemberAccountAuthor = {userId: string | null; name: string | null}
+export type MemberAccountAuthor = {
+  userId: string | null
+  name: string | null
+  /** Le compte vu quand le SuperAdmin agit a sa place (s48), sinon nul. */
+  onBehalfOfUserId?: string | null
+  onBehalfOfName?: string | null
+}

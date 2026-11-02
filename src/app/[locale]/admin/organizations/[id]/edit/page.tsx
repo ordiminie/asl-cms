@@ -9,16 +9,25 @@ import {
 } from '@/app/dal/organization-dal'
 import {OrganizationModulesCard} from '@/components/features/admin/organizations/organization-modules-card'
 import {withAuthAdmin} from '@/components/features/auth/with-auth'
+import {ImpersonationNotice} from '@/components/features/impersonation/impersonation-notice'
 import OrganizationMembersTable from '@/components/features/organization/organization-members-table'
 import {Badge} from '@/components/ui/badge'
 import {Card, CardContent, CardHeader, CardTitle} from '@/components/ui/card'
 import {Progress} from '@/components/ui/progress'
 import {getOrganizationByIdService} from '@/services/facades/organization-service-facade'
 
-async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
+async function EditOrganizationPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{id: string}>
+  searchParams?: Promise<{retour?: string}>
+}) {
   const t = await getTranslations('AdminOrganizations')
   const tOrgs = await getTranslations('Organizations')
   const {id} = await params
+  // Retour au compte SuperAdmin apres une session a sa place (s48, 4a).
+  const returned = (await searchParams)?.retour === '1'
   const [organization, usage, permissions] = await Promise.all([
     getOrganizationByIdService(id),
     getOrganizationUsageDal(id),
@@ -55,6 +64,8 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
       <div>
         <h1 className="mb-8 text-2xl font-bold">{t('editTitle')}</h1>
       </div>
+
+      {returned && <ImpersonationNotice kind="returned" />}
 
       <div className="mx-auto mt-12">
         <OrganizationModulesCard
@@ -108,6 +119,8 @@ async function EditOrganizationPage({params}: {params: Promise<{id: string}>}) {
           <Suspense fallback={<div>{tOrgs('loadingMembers')}</div>}>
             <OrganizationMembersTable
               organizationId={organization.id}
+              organizationName={organization.name}
+              organizationDomain={organization.domain}
               canManageMembers={canManageMembers}
               adminView={true}
             />

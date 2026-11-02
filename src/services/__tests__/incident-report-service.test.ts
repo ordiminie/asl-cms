@@ -55,6 +55,7 @@ import {EmailTransportError} from '@/lib/emails/transport/email-transport'
 import {logger} from '@/lib/logger'
 
 import {getAssociationSettingsService} from '../association-settings-service'
+import {getActingContext} from '../authentication/auth-service'
 import {sendIncidentReportNotificationEmailService} from '../email-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {NotFoundError} from '../errors/not-found-error'
@@ -497,10 +498,41 @@ describe.each([
         to,
         authorUserId: userTest.id,
         authorName: 'Marie Delorme',
+        onBehalfOfUserId: null,
+        onBehalfOfName: null,
       })
       expect(writtenUnder).toBe(ORG_ID)
     }
   )
+
+  it('pendant une session à la place d’un compte : le changement est attribué au SuperAdmin, pour le compte du compte vu (s48)', async () => {
+    const viewer = withRole(role)
+    vi.mocked(getActingContext).mockResolvedValueOnce({
+      user: viewer,
+      impersonator: {id: 'superadmin-support', name: 'Zoé Support'},
+    })
+    vi.mocked(getIncidentReportByIdDao).mockResolvedValue(
+      reportRow({status: 'reported'}) as never
+    )
+    vi.mocked(changeIncidentReportStatusTxnDao).mockResolvedValue(
+      reportRow({status: 'in_progress'}) as never
+    )
+
+    await changeIncidentReportStatusService({
+      organizationId: ORG_ID,
+      reportId: REPORT_ID,
+      to: 'in_progress',
+    })
+
+    expect(changeIncidentReportStatusTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorUserId: 'superadmin-support',
+        authorName: 'Zoé Support',
+        onBehalfOfUserId: viewer.id,
+        onBehalfOfName: viewer.name,
+      })
+    )
+  })
 
   it.each([
     ['reported', 'resolved'],

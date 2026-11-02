@@ -30,6 +30,13 @@ vi.mock('./list-tokens-section', () => ({
   ListTokensSection: () => <div data-testid="tokens" />,
 }))
 
+vi.mock('@/lib/helper/page-navigation.client', () => ({
+  reloadPageAt: vi.fn(),
+}))
+
+import {userEvent} from '@/__tests__/customRender'
+import {reloadPageAt} from '@/lib/helper/page-navigation.client'
+
 import {UserSecurityFactorSection} from './security-section'
 
 const user = {
@@ -62,5 +69,56 @@ describe('/account — changement d’adresse fermé (s12d)', () => {
 
     expect(screen.queryByTestId('change-email')).toBeNull()
     expect(screen.getByTestId('change-password')).toBeInTheDocument()
+  })
+})
+
+/** s48, écran 5 : pendant une session à la place d'un compte. */
+describe('/account — sections sensibles verrouillées pendant l’imitation (s48)', () => {
+  const stopAction = vi.fn()
+  const LOCKED =
+    'Indisponible pendant que vous agissez à la place de Claire Montel. Revenez à votre compte pour y accéder.'
+
+  const renderLocked = () =>
+    render(
+      <UserSecurityFactorSection
+        user={user}
+        impersonation={{subjectName: 'Claire Montel', stopAction}}
+      />
+    )
+
+  it('remplace mot de passe, adresse et double vérification par la note', () => {
+    renderLocked()
+
+    expect(screen.queryByTestId('change-email')).toBeNull()
+    expect(screen.queryByTestId('change-password')).toBeNull()
+    expect(screen.queryByTestId('two-factor')).toBeNull()
+    expect(screen.getAllByText(LOCKED)).toHaveLength(3)
+    expect(
+      screen.getAllByRole('button', {name: 'Revenir à mon compte'})
+    ).toHaveLength(3)
+  })
+
+  it('« Revenir à mon compte » rend la session d’origine et recharge la page', async () => {
+    stopAction.mockResolvedValue({
+      success: true,
+      url: '/admin/organizations/x/edit?retour=1',
+    })
+    renderLocked()
+
+    await userEvent.click(
+      screen.getAllByRole('button', {name: 'Revenir à mon compte'})[0]
+    )
+
+    expect(stopAction).toHaveBeenCalledTimes(1)
+    expect(reloadPageAt).toHaveBeenCalledWith(
+      '/admin/organizations/x/edit?retour=1'
+    )
+  })
+
+  it('hors imitation : les formulaires, sans note', () => {
+    render(<UserSecurityFactorSection user={user} />)
+
+    expect(screen.getByTestId('change-password')).toBeInTheDocument()
+    expect(screen.queryByText(LOCKED)).toBeNull()
   })
 })

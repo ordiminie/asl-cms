@@ -21,6 +21,8 @@ describe('member_role_event (ADR 039)', () => {
       fk.reference().columns.some((c) => c.name === name)
     )
 
+  // s48, ADR 041 : « pour le compte de », quand le SuperAdmin agit à la place
+  // d'un compte.
   it('porte les colonnes de l’ADR, et elles seules', () => {
     expect(config.name).toBe('member_role_event')
     expect(config.columns.map((c) => c.name).sort()).toEqual(
@@ -32,6 +34,8 @@ describe('member_role_event (ADR 039)', () => {
         'target_name',
         'author_user_id',
         'author_name',
+        'on_behalf_of_user_id',
+        'on_behalf_of_name',
         'from_role',
         'to_role',
         'reason',

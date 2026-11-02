@@ -3,9 +3,10 @@ import {JetBrains_Mono, Public_Sans, Source_Serif_4} from 'next/font/google'
 import {NextIntlClientProvider} from 'next-intl'
 import {setRequestLocale} from 'next-intl/server'
 import NextTopLoader from 'nextjs-toploader'
-import React, {CSSProperties, ReactNode} from 'react'
+import React, {CSSProperties, ReactNode, Suspense} from 'react'
 
 import {AppProviders} from '@/components/context/app-providers'
+import {ImpersonationBarSlot} from '@/components/features/impersonation/impersonation-bar-slot'
 import {AlertBanner} from '@/components/ui/alert-banner'
 import {env} from '@/env'
 import {
@@ -72,14 +73,23 @@ export default async function BaseLayout({
       <body
         className={`${sans.variable} ${serif.variable} ${mono.variable} bg-background text-foreground font-sans text-[17px] leading-[1.6] antialiased`}
       >
-        {/* Premier enfant de <body> : le bandeau pousse toute la page, barres
-            laterales comprises (ADR 027), et ne recouvre rien. */}
-        {alert && <AlertBanner message={alert.message} />}
-        {/* La barre de progression est peinte hors de la cascade CSS : elle ne
-            peut pas lire var(--primary). #2C3F63 est la jumelle hexadecimale
-            canonique de `primary` (design-system §5.3). */}
-        <NextTopLoader showSpinner={false} color="#2C3F63" height={3} />
+        {/* Le provider enveloppe tout <body> : la barre d'imitation est un
+            composant client traduit, et `useTranslations` leve hors de lui. */}
         <NextIntlClientProvider>
+          {/* Premier element de <body> : la barre d'une session a la place
+              d'un compte (s48), au-dessus de tout. Derriere son propre
+              Suspense : la session n'est lue que si le cookie de la session
+              d'origine existe. */}
+          <Suspense fallback={null}>
+            <ImpersonationBarSlot />
+          </Suspense>
+          {/* Puis le bandeau : il pousse toute la page, barres laterales
+              comprises (ADR 027), et ne recouvre rien. */}
+          {alert && <AlertBanner message={alert.message} />}
+          {/* La barre de progression est peinte hors de la cascade CSS : elle
+              ne peut pas lire var(--primary). #2C3F63 est la jumelle
+              hexadecimale canonique de `primary` (design-system §5.3). */}
+          <NextTopLoader showSpinner={false} color="#2C3F63" height={3} />
           <AppProviders>{children}</AppProviders>
         </NextIntlClientProvider>
       </body>

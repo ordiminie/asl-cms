@@ -28,6 +28,21 @@ vi.mock('@/db/tenant-scope', () => ({
 vi.mock('@/services/authorization/organization-authorization', () => ({
   canInviteToOrganization: vi.fn(),
 }))
+vi.mock('@/services/facades/impersonation-service-facade', () => ({
+  openImpersonationService: vi.fn(),
+  stopImpersonationService: vi.fn(),
+}))
+vi.mock('next-intl/server', async () => {
+  const messages = (await import('../../../../../messages/fr.json')).default
+
+  return {
+    getTranslations: async (namespace: string) => (key: string) =>
+      [...namespace.split('.'), ...key.split('.')].reduce<unknown>(
+        (node, part) => (node as Record<string, unknown>)?.[part],
+        messages
+      ) as string,
+  }
+})
 vi.mock('@/services/facades/organization-service-facade', () => ({
   createOrganizationMemberService: vi.fn(),
   deleteInvitationByIdService: vi.fn(),
@@ -44,6 +59,10 @@ import {getAuthUser} from '@/services/authentication/auth-service'
 import {canInviteToOrganization} from '@/services/authorization/organization-authorization'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {
+  openImpersonationService,
+  stopImpersonationService,
+} from '@/services/facades/impersonation-service-facade'
+import {
   createOrganizationMemberService,
   deleteInvitationByIdService,
   deleteOrganizationService,
@@ -56,7 +75,9 @@ import {
   addUserToOrganizationAction,
   deleteAdminMemberInvitationAction,
   deleteOrganizationAction,
+  openImpersonationAction,
   provisionOrganizationAction,
+  stopImpersonationAction,
   updateOrganizationAction,
   updateOrganizationModulesAction,
 } from './actions'
@@ -320,4 +341,101 @@ describe('addUserToOrganizationAction — ajout au rôle Membre seulement (s14)'
       )
     }
   )
+})
+
+/**
+ * s48, critère 3 : seul le SuperAdmin ouvre une session à la place d'un
+ * compte, côté serveur aussi. La sortie, elle, est demandée par la session
+ * imitée, donc par un compte `user`.
+ */
+describe('openImpersonationAction (s48)', () => {
+  const input = {organizationId: ORGANIZATION_ID, userId: USER_ID}
+
+  it('[USER] refuse un compte user, Bureau compris, sans appeler le service', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(account('user'))
+
+    const result = await openImpersonationAction(input)
+
+    expect(result).toEqual({success: false, message: expect.any(String)})
+    expect(openImpersonationService).not.toHaveBeenCalled()
+  })
+
+  it('[GUEST] sans session : message d’expiration, sans appeler le service', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(undefined)
+
+    expect(await openImpersonationAction(input)).toEqual({
+      success: false,
+      message: 'Votre session a expiré. Reconnectez-vous, puis recommencez.',
+    })
+    expect(openImpersonationService).not.toHaveBeenCalled()
+  })
+
+  it('[SUPER_ADMIN] ouvre la session et rend l’adresse d’atterrissage', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(account('super_admin'))
+    vi.mocked(openImpersonationService).mockResolvedValue({
+      status: 'opened',
+      url: '/bureau/pages',
+    })
+
+    const result = await openImpersonationAction({...input, reason: 'Motif'})
+
+    expect(openImpersonationService).toHaveBeenCalledWith({
+      ...input,
+      reason: 'Motif',
+    })
+    expect(result).toEqual({success: true, url: '/bureau/pages'})
+  })
+
+  it.each([
+    ['suspended', 'Ce compte est suspendu. Rien n’a été modifié.'],
+    [
+      'target_is_admin',
+      'On ne peut pas agir à la place d’un autre SuperAdmin.',
+    ],
+  ] as const)('[SUPER_ADMIN] traduit le refus %s', async (status, message) => {
+    vi.mocked(getAuthUser).mockResolvedValue(account('super_admin'))
+    vi.mocked(openImpersonationService).mockResolvedValue({status})
+
+    expect(await openImpersonationAction(input)).toEqual({
+      success: false,
+      message,
+    })
+  })
+})
+
+describe('stopImpersonationAction (s48)', () => {
+  it('rend la session d’origine et l’écran des membres', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(account('user'))
+    vi.mocked(stopImpersonationService).mockResolvedValue({
+      status: 'closed',
+      url: `/admin/organizations/${ORGANIZATION_ID}/edit?retour=1`,
+    })
+
+    expect(await stopImpersonationAction()).toEqual({
+      success: true,
+      url: `/admin/organizations/${ORGANIZATION_ID}/edit?retour=1`,
+    })
+  })
+
+  it('hors imitation : refus avec message', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(account('super_admin'))
+    vi.mocked(stopImpersonationService).mockResolvedValue({
+      status: 'not_impersonating',
+    })
+
+    expect(await stopImpersonationAction()).toEqual({
+      success: false,
+      message: expect.any(String),
+    })
+  })
+
+  it('sans session : refus, sans appeler le service', async () => {
+    vi.mocked(getAuthUser).mockResolvedValue(undefined)
+
+    expect(await stopImpersonationAction()).toEqual({
+      success: false,
+      message: expect.any(String),
+    })
+    expect(stopImpersonationService).not.toHaveBeenCalled()
+  })
 })
