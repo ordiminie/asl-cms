@@ -12,7 +12,23 @@ vi.mock('next/font/google', () => {
   return {JetBrains_Mono: font, Public_Sans: font, Source_Serif_4: font}
 })
 vi.mock('next-intl/server', () => ({setRequestLocale: vi.fn()}))
-vi.mock('next-intl', () => ({NextIntlClientProvider: () => null}))
+/*
+ * Comme use-intl : `useTranslations` leve hors de `NextIntlClientProvider`
+ * (en production, une `Error` sans message, que la frontiere d'erreur
+ * racine affiche a la place de la page).
+ */
+vi.mock('next-intl', async () => {
+  const {createContext, createElement, useContext} = await import('react')
+  const IntlContext = createContext(false)
+  return {
+    NextIntlClientProvider: ({children}: {children: ReactNode}) =>
+      createElement(IntlContext.Provider, {value: true}, children),
+    useTranslations: () => {
+      if (!useContext(IntlContext)) throw new Error('No intl context found')
+      return (key: string) => key
+    },
+  }
+})
 vi.mock('nextjs-toploader', () => ({default: () => null}))
 vi.mock('@/components/ui/alert-banner', () => ({AlertBanner: () => null}))
 vi.mock('@next/third-parties/google', () => ({GoogleAnalytics: () => null}))
@@ -20,11 +36,25 @@ vi.mock('@/components/context/app-providers', () => ({
   AppProviders: () => null,
 }))
 vi.mock('@/env', () => ({env: {}}))
-vi.mock('@/components/features/impersonation/impersonation-bar-slot', () => ({
-  ImpersonationBarSlot: () => null,
-}))
+vi.mock(
+  '@/components/features/impersonation/impersonation-bar-slot',
+  async () => {
+    const {createElement} = await import('react')
+    const {useTranslations} = await import('next-intl')
+    return {
+      ImpersonationBarSlot: () =>
+        createElement(
+          'div',
+          {'data-slot': 'impersonation-bar'},
+          useTranslations('Impersonation.bar')('title')
+        ),
+    }
+  }
+)
 
+import {NextIntlClientProvider} from 'next-intl'
 import NextTopLoader from 'nextjs-toploader'
+import {renderToStaticMarkup} from 'react-dom/server'
 
 import {ImpersonationBarSlot} from '@/components/features/impersonation/impersonation-bar-slot'
 import {AlertBanner} from '@/components/ui/alert-banner'
@@ -67,7 +97,10 @@ const bodyChildrenOf = async (alert?: {message: string}) => {
   const body = Children.toArray(element.props.children).find(
     (child) => isValidElement(child) && child.type === 'body'
   ) as ReactElement<{children: ReactNode}>
-  return Children.toArray(body.props.children).filter(isValidElement)
+  const provider = Children.toArray(body.props.children).find(
+    (child) => isValidElement(child) && child.type === NextIntlClientProvider
+  ) as ReactElement<{children: ReactNode}>
+  return Children.toArray(provider.props.children).filter(isValidElement)
 }
 
 describe('BaseLayout — bandeau d alerte en tete de <body>', () => {
@@ -100,5 +133,22 @@ describe('BaseLayout — barre d’imitation en premier enfant de <body>', () =>
     expect(slot.props.fallback).toBeNull()
     expect(slot.props.children.type).toBe(ImpersonationBarSlot)
     expect(children[1].type).toBe(AlertBanner)
+  })
+})
+
+/**
+ * s48, correctif : la barre est un composant client traduit. Hors du
+ * provider, `useTranslations` leve et la page entiere bascule sur la
+ * frontiere d'erreur racine (e2e, critere 2).
+ */
+describe('BaseLayout — barre d’imitation sous le provider de traductions', () => {
+  it('rend la barre traduite, sans erreur, en tête de <body>', async () => {
+    const element = await BaseLayout({children: null, locale: 'fr'})
+
+    const markup = renderToStaticMarkup(element)
+
+    expect(markup).toContain(
+      '<body class="font font font bg-background text-foreground font-sans text-[17px] leading-[1.6] antialiased"><div data-slot="impersonation-bar">title</div>'
+    )
   })
 })
