@@ -167,7 +167,8 @@ const readBoardRoles = async (
 
 /**
  * Auteur d'un changement de compte, copie dans la trace des roles (D5) : le
- * SuperAdmin s'il agit a la place du compte vu (s48, ADR 041).
+ * SuperAdmin s'il agit a la place du compte vu (s48, ADR 041). A lire avant
+ * `withTenant` : la session passe par le pool, que le scope retient.
  */
 const authorOf = async (
   authUser: User | undefined
@@ -219,6 +220,7 @@ export const createMemberProfileService = async (
 
   const {organizationId} = parsed.data
   const authUser = await requireMemberProfileManager(organizationId)
+  const author = await authorOf(authUser)
 
   return withTenant(organizationId, async () => {
     const result = await createMemberProfileTxnDao(parsed.data)
@@ -228,7 +230,7 @@ export const createMemberProfileService = async (
     const {row} = result
     const {change, userId} = await applyMemberAccountDecision({
       organizationId,
-      author: await authorOf(authUser),
+      author,
       profile: row,
       decision: decideMemberAccount({
         savedEmail: null,
@@ -258,6 +260,7 @@ export const updateMemberProfileContactService = async (
 
   const {organizationId, memberProfileId, ...contact} = parsed.data
   const authUser = await requireMemberProfileManager(organizationId)
+  const author = await authorOf(authUser)
 
   return withTenant(organizationId, async () => {
     const saved = await getMemberProfileByIdDao(memberProfileId)
@@ -282,7 +285,7 @@ export const updateMemberProfileContactService = async (
     }
     const {change, userId} = await applyMemberAccountDecision({
       organizationId,
-      author: await authorOf(authUser),
+      author,
       profile: {...result.row, userId: saved.userId},
       decision,
     })

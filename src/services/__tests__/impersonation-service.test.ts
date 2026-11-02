@@ -252,6 +252,50 @@ describe('openImpersonationService (s48)', () => {
     await expect(open()).rejects.toThrow()
     expect(insertImpersonationEventDao).not.toHaveBeenCalled()
   })
+
+  it('appelle Better Auth hors de tout scope de tenant (pool à une connexion)', async () => {
+    const scopeAtImpersonate: (string | undefined)[] = []
+    vi.mocked(auth.api.impersonateUser).mockImplementation((async () => {
+      scopeAtImpersonate.push(scope.current)
+      return {session: {id: 'session-imitee'}, user: {id: TARGET_ID}}
+    }) as never)
+    const scopeAtTargetRead: (string | undefined)[] = []
+    vi.mocked(getUserByIdDao).mockImplementation(async () => {
+      scopeAtTargetRead.push(scope.current)
+      return target()
+    })
+
+    expect(await open()).toEqual({status: 'opened', url: '/bureau/pages'})
+    expect(scopeAtImpersonate).toEqual([undefined])
+    expect(scopeAtTargetRead).toEqual([ORG_ID])
+    expect(insertImpersonationEventDao).toHaveBeenCalledTimes(1)
+  })
+
+  it('trace impossible : la session ouverte est refermée, l’erreur remonte', async () => {
+    const traceFailure = new Error('insert failed')
+    vi.mocked(insertImpersonationEventDao).mockRejectedValue(traceFailure)
+    vi.mocked(auth.api.stopImpersonating).mockImplementation((async () => {
+      calls.push(`stop:${scope.current}`)
+      return {}
+    }) as never)
+
+    await expect(open()).rejects.toBe(traceFailure)
+    expect(auth.api.stopImpersonating).toHaveBeenCalledWith({
+      headers: requestHeaders.current,
+    })
+    expect(calls).toEqual(['impersonate', 'stop:undefined'])
+  })
+
+  it('trace impossible et fermeture échouée : l’erreur de trace remonte', async () => {
+    const traceFailure = new Error('insert failed')
+    vi.mocked(insertImpersonationEventDao).mockRejectedValue(traceFailure)
+    vi.mocked(auth.api.stopImpersonating).mockRejectedValue(
+      new Error('stop failed')
+    )
+
+    await expect(open()).rejects.toBe(traceFailure)
+    expect(auth.api.stopImpersonating).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('stopImpersonationService (s48)', () => {
@@ -311,5 +355,16 @@ describe('stopImpersonationService (s48)', () => {
 
     await expect(stopImpersonationService()).rejects.toThrow()
     expect(insertImpersonationEventDao).not.toHaveBeenCalled()
+  })
+
+  it('appelle Better Auth hors de tout scope de tenant (pool à une connexion)', async () => {
+    vi.mocked(auth.api.stopImpersonating).mockImplementation((async () => {
+      calls.push(`stop:${scope.current}`)
+      return {}
+    }) as never)
+
+    await stopImpersonationService()
+
+    expect(calls).toEqual(['stop:undefined', `trace:${ORG_ID}`])
   })
 })

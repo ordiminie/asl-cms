@@ -37,7 +37,7 @@ import {
 } from '@/db/repositories/organization-repository'
 import {getUserByIdDao} from '@/db/repositories/user-repository'
 
-import {getActingContext} from '../authentication/auth-service'
+import {getActingContext, getAuthUser} from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {ValidationError} from '../errors/validation-error'
 import {removeUserFromOrganizationService} from '../organization-service'
@@ -59,6 +59,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   calls.length = 0
   setupAuthUserMocked({...userTestSuperAdmin, name: 'Zourite'})
+  vi.mocked(getActingContext).mockResolvedValue(undefined)
   vi.mocked(lockOrganizationRolesDao).mockImplementation(async () => {
     calls.push(`lock:${scope.current}`)
   })
@@ -194,6 +195,25 @@ describe('[GUEST] removeUserFromOrganizationService', () => {
 })
 
 describe('removeUserFromOrganizationService — session à la place d’un compte (s48)', () => {
+  it('lit la session hors du scope de tenant (pool à une connexion)', async () => {
+    const sessionReadUnder: (string | undefined)[] = []
+    const viewer = {...userTestSuperAdmin, name: 'Zourite'}
+    vi.mocked(getAuthUser).mockImplementation(async () => {
+      sessionReadUnder.push(scope.current)
+      return viewer
+    })
+    vi.mocked(getActingContext).mockImplementation(async () => {
+      sessionReadUnder.push(scope.current)
+      return {user: viewer}
+    })
+
+    await removeUserFromOrganizationService(TARGET_ID, ORG_ID)
+
+    expect(calls).toContain(`trace:${ORG_ID}`)
+    expect(sessionReadUnder.length).toBeGreaterThan(0)
+    expect(sessionReadUnder.every((under) => under === undefined)).toBe(true)
+  })
+
   it('attribue le retrait au SuperAdmin, pour le compte du compte vu', async () => {
     const viewer = {...userTestSuperAdmin, name: 'Zourite'}
     vi.mocked(getActingContext).mockResolvedValueOnce({
