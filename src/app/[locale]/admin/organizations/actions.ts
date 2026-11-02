@@ -1,12 +1,18 @@
 'use server'
 
 import {revalidatePath, updateTag} from 'next/cache'
+import {getTranslations} from 'next-intl/server'
 
 import {TENANT_CACHE_TAG} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {MemberActionResult} from '@/components/features/organization/action'
 import {withRlsBypass} from '@/db/tenant-scope'
 import {canInviteToOrganization} from '@/services/authorization/organization-authorization'
+import {AuthorizationError} from '@/services/errors/authorization-error'
+import {
+  openImpersonationService,
+  stopImpersonationService,
+} from '@/services/facades/impersonation-service-facade'
 import {
   createOrganizationMemberService,
   deleteInvitationByIdService,
@@ -16,6 +22,10 @@ import {
   updateOrganizationService,
 } from '@/services/facades/organization-service-facade'
 import {RoleConst} from '@/services/types/domain/auth-types'
+import type {
+  OpenImpersonationInput,
+  OpenImpersonationRefusal,
+} from '@/services/types/domain/impersonation-types'
 import {
   OrganizationModule,
   OrganizationRole,
@@ -277,5 +287,71 @@ export async function updateOrganizationModulesAction(
       message:
         error instanceof Error ? error.message : 'Une erreur est survenue',
     }
+  }
+}
+
+/**
+ * Resultat d'une ouverture ou d'une sortie de session a la place d'un compte
+ * (s48) : l'adresse ou recharger la page entiere, ou le message a afficher.
+ */
+export type ImpersonationActionResult =
+  {success: true; url: string} | {success: false; message: string}
+
+const REFUSAL_MESSAGE_KEY: Record<OpenImpersonationRefusal, string> = {
+  forbidden: 'errors.forbidden',
+  wrong_domain: 'errors.wrongDomain',
+  target_not_found: 'errors.targetNotFound',
+  target_is_admin: 'errors.targetIsAdmin',
+  suspended: 'errors.suspended',
+  already_impersonating: 'errors.alreadyImpersonating',
+}
+
+/**
+ * Ouvre une session a la place d'un compte de l'association (s48, ADR 041).
+ * Reserve au SuperAdmin ; le service re-controle tout. Le client recharge la
+ * page entiere a l'adresse rendue (D10).
+ */
+export async function openImpersonationAction(
+  input: OpenImpersonationInput
+): Promise<ImpersonationActionResult> {
+  const t = await getTranslations('Impersonation')
+  try {
+    await requireActionAuth({roles: [RoleConst.SUPER_ADMIN]})
+  } catch (error) {
+    if (!(error instanceof AuthorizationError)) throw error
+    return {success: false, message: t('errors.sessionExpired')}
+  }
+
+  try {
+    const result = await openImpersonationService(input)
+    if (result.status === 'opened') return {success: true, url: result.url}
+    return {success: false, message: t(REFUSAL_MESSAGE_KEY[result.status])}
+  } catch (error) {
+    console.error('[IMPERSONATION] ouverture refusée', error)
+    return {success: false, message: t('errors.unexpected')}
+  }
+}
+
+/**
+ * Sortie explicite (s48, critere 2). Demandee par la session a la place d'un
+ * compte, donc par un compte `user` : aucune exigence de role ici, le service
+ * verifie que la session est bien une session a la place d'un compte.
+ */
+export async function stopImpersonationAction(): Promise<ImpersonationActionResult> {
+  const t = await getTranslations('Impersonation')
+  try {
+    await requireActionAuth()
+  } catch (error) {
+    if (!(error instanceof AuthorizationError)) throw error
+    return {success: false, message: t('errors.sessionExpired')}
+  }
+
+  try {
+    const result = await stopImpersonationService()
+    if (result.status === 'closed') return {success: true, url: result.url}
+    return {success: false, message: t('errors.notImpersonating')}
+  } catch (error) {
+    console.error('[IMPERSONATION] sortie refusée', error)
+    return {success: false, message: t('errors.unexpected')}
   }
 }

@@ -9,6 +9,7 @@ import * as auth from './auth-model'
 import * as boardMember from './board-member-model'
 import * as contactMessage from './contact-message-model'
 import * as contentBlock from './content-block-model'
+import * as impersonationEvent from './impersonation-event-model'
 import * as incidentReport from './incident-report-model'
 import * as memberProfile from './member-profile-model'
 import * as memberRoleEvent from './member-role-event-model'
@@ -56,6 +57,7 @@ const db = drizzle(pool, {
     ...waterAnalysis,
     ...associationCategory,
     ...incidentReport,
+    ...impersonationEvent,
     ...memberProfile,
     ...memberRoleEvent,
     ...parcel,

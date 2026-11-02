@@ -37,6 +37,7 @@ import {
 } from '@/db/repositories/organization-repository'
 import {getUserByIdDao} from '@/db/repositories/user-repository'
 
+import {getActingContext} from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {ValidationError} from '../errors/validation-error'
 import {removeUserFromOrganizationService} from '../organization-service'
@@ -102,6 +103,8 @@ describe('removeUserFromOrganizationService — retrait soumis au dernier compte
       targetName: 'Paul Vidal',
       authorUserId: userTestSuperAdmin.id,
       authorName: 'Zourite',
+      onBehalfOfUserId: null,
+      onBehalfOfName: null,
       fromRole: 'board',
       toRole: null,
       reason: 'removal',
@@ -187,5 +190,27 @@ describe('[GUEST] removeUserFromOrganizationService', () => {
     ).rejects.toThrow(AuthorizationError)
     expect(lockOrganizationRolesDao).not.toHaveBeenCalled()
     expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('removeUserFromOrganizationService — session à la place d’un compte (s48)', () => {
+  it('attribue le retrait au SuperAdmin, pour le compte du compte vu', async () => {
+    const viewer = {...userTestSuperAdmin, name: 'Zourite'}
+    vi.mocked(getActingContext).mockResolvedValueOnce({
+      user: viewer,
+      impersonator: {id: 'superadmin-support', name: 'Zoé Support'},
+    })
+
+    await removeUserFromOrganizationService(TARGET_ID, ORG_ID)
+
+    expect(insertMemberRoleEventDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorUserId: 'superadmin-support',
+        authorName: 'Zoé Support',
+        onBehalfOfUserId: viewer.id,
+        onBehalfOfName: 'Zourite',
+        reason: 'removal',
+      })
+    )
   })
 })

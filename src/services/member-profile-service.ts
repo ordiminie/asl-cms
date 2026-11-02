@@ -15,7 +15,7 @@ import {
 } from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
 
-import {getAuthUser} from './authentication/auth-service'
+import {getActingContext, getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
 import {canReadMemberAccount} from './authorization/member-account-authorization'
 import {AuthorizationError} from './errors/authorization-error'
@@ -29,6 +29,7 @@ import {toMemberProfileDto} from './rules/member-profile-rules'
 import {roleCardFor} from './rules/member-role-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {RoleConst} from './types/domain/auth-types'
+import {effectiveAuthor} from './types/domain/impersonation-types'
 import {
   MemberAccountAuthor,
   MemberAccountRole,
@@ -164,11 +165,25 @@ const readBoardRoles = async (
   )
 }
 
-/** Auteur d'un changement de compte, copie dans la trace des roles (D5). */
-const authorOf = (authUser: User | undefined): MemberAccountAuthor => ({
-  userId: authUser?.id ?? null,
-  name: authUser?.name ?? null,
-})
+/**
+ * Auteur d'un changement de compte, copie dans la trace des roles (D5) : le
+ * SuperAdmin s'il agit a la place du compte vu (s48, ADR 041).
+ */
+const authorOf = async (
+  authUser: User | undefined
+): Promise<MemberAccountAuthor> => {
+  if (!authUser) return {userId: null, name: null}
+  const author = effectiveAuthor(
+    authUser,
+    (await getActingContext())?.impersonator
+  )
+  return {
+    userId: author.authorUserId,
+    name: author.authorName,
+    onBehalfOfUserId: author.onBehalfOfUserId,
+    onBehalfOfName: author.onBehalfOfName,
+  }
+}
 
 /** La fiche qui detient deja cet email, pour que l'ecran y renvoie. */
 const emailTaken = async (
@@ -213,7 +228,7 @@ export const createMemberProfileService = async (
     const {row} = result
     const {change, userId} = await applyMemberAccountDecision({
       organizationId,
-      author: authorOf(authUser),
+      author: await authorOf(authUser),
       profile: row,
       decision: decideMemberAccount({
         savedEmail: null,
@@ -267,7 +282,7 @@ export const updateMemberProfileContactService = async (
     }
     const {change, userId} = await applyMemberAccountDecision({
       organizationId,
-      author: authorOf(authUser),
+      author: await authorOf(authUser),
       profile: {...result.row, userId: saved.userId},
       decision,
     })

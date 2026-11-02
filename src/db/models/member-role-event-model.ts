@@ -30,6 +30,9 @@ export const memberRoleEventReasonEnum = pgEnum('member_role_event_reason', [
  *   suppression d'une fiche ou d'un compte et au changement d'adresse.
  *   Jamais l'email comme identite.
  * - `author_user_id` nul = acte d'exploitation (« Zourite Studio »).
+ * - `on_behalf_of_*` poses quand le SuperAdmin agit a la place d'un compte
+ *   (s48, ADR 041) : l'auteur est le SuperAdmin, ces colonnes disent pour le
+ *   compte de qui. Nulles hors imitation.
  */
 export const memberRoleEvent = pgTable(
   'member_role_event',
@@ -52,6 +55,10 @@ export const memberRoleEvent = pgTable(
       onDelete: 'set null',
     }),
     authorName: text('author_name'),
+    onBehalfOfUserId: uuid('on_behalf_of_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    onBehalfOfName: text('on_behalf_of_name'),
     fromRole: organizationRoleEnum('from_role'),
     toRole: organizationRoleEnum('to_role'),
     reason: memberRoleEventReasonEnum('reason').notNull(),

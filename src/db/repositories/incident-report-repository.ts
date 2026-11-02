@@ -132,6 +132,9 @@ export const changeIncidentReportStatusTxnDao = async (input: {
   to: string
   authorUserId: string
   authorName: string
+  /** Le compte vise quand le SuperAdmin agit a sa place (s48), sinon nul. */
+  onBehalfOfUserId?: string | null
+  onBehalfOfName?: string | null
 }): Promise<IncidentReportModel | undefined> =>
   getDb().transaction(async (tx) => {
     const [report] = await tx
@@ -152,6 +155,8 @@ export const changeIncidentReportStatusTxnDao = async (input: {
       status: input.to,
       authorUserId: input.authorUserId,
       authorName: input.authorName,
+      onBehalfOfUserId: input.onBehalfOfUserId ?? null,
+      onBehalfOfName: input.onBehalfOfName ?? null,
     })
     return report
   })

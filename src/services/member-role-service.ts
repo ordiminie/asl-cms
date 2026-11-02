@@ -17,12 +17,13 @@ import {
 } from '@/db/repositories/user-repository'
 import {withTenant} from '@/db/tenant-scope'
 
-import {getAuthUser} from './authentication/auth-service'
+import {getActingContext, getAuthUser} from './authentication/auth-service'
 import {canAssignMemberRole} from './authorization/member-role-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {decideRoleChange} from './rules/member-role-rules'
 import {RoleConst} from './types/domain/auth-types'
+import {effectiveAuthor} from './types/domain/impersonation-types'
 import {
   MemberAccountRole,
   MemberAccountRoleConst,
@@ -65,11 +66,30 @@ type RoleWrite = {
   to: MemberAccountRole
 }
 
+/**
+ * Auteur d'une trace de role : `effectiveAuthor` pour un ecran (le SuperAdmin
+ * s'il agit a la place du compte vu, s48), « Zourite Studio » pour un acte
+ * d'exploitation.
+ */
+type RoleTraceAuthor = {
+  authorUserId: string | null
+  authorName: string
+  onBehalfOfUserId: string | null
+  onBehalfOfName: string | null
+}
+
 type RoleTrace = {
   memberProfileId: string | null
   targetName: string
-  author: {userId: string | null; name: string}
+  author: RoleTraceAuthor
   reason: 'assignment' | 'presidency_transfer'
+}
+
+const OPERATOR_AUTHOR: RoleTraceAuthor = {
+  authorUserId: null,
+  authorName: OPERATOR_AUTHOR_NAME,
+  onBehalfOfUserId: null,
+  onBehalfOfName: null,
 }
 
 /**
@@ -101,8 +121,7 @@ const traceRole = async (write: RoleWrite, trace: RoleTrace): Promise<void> =>
     memberProfileId: trace.memberProfileId,
     targetUserId: write.userId,
     targetName: trace.targetName,
-    authorUserId: trace.author.userId,
-    authorName: trace.author.name,
+    ...trace.author,
     fromRole: write.from,
     toRole: write.to,
     reason: trace.reason,
@@ -169,6 +188,7 @@ type ApplyDecisionInput = {
     name: string
   }
   viewer: User
+  author: RoleTraceAuthor
 }
 
 /**
@@ -193,8 +213,8 @@ const applyDecision = async ({
   decision,
   target,
   viewer,
+  author,
 }: ApplyDecisionInput): Promise<void> => {
-  const author = {userId: viewer.id, name: viewer.name}
   const base = {organizationId, userId: target.userId, from: target.role}
 
   if (decision.kind === 'transfer_presidency') {
@@ -250,6 +270,10 @@ export const changeMemberRoleService = async (
 
   const {organizationId, memberProfileId, role} = parsed.data
   const viewer = await requireRoleAssigner(organizationId)
+  const author = effectiveAuthor(
+    viewer,
+    (await getActingContext())?.impersonator
+  )
 
   return withTenant(organizationId, async () => {
     const profile = await getMemberProfileByIdDao(memberProfileId)
@@ -301,6 +325,7 @@ export const changeMemberRoleService = async (
         name: profile.name,
       },
       viewer,
+      author,
     })
     return {
       status: 'saved',
@@ -381,7 +406,7 @@ export const transferPresidencyByOperatorService = async (
           },
       predecessors,
       organizationId,
-      {userId: null, name: OPERATOR_AUTHOR_NAME}
+      OPERATOR_AUTHOR
     )
     return {...result, changed: true}
   })

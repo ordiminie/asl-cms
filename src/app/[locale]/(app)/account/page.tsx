@@ -3,6 +3,8 @@ import Link from 'next/link'
 import {notFound} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 
+import {stopImpersonationAction} from '@/app/[locale]/admin/organizations/actions'
+import {getImpersonationBarDal} from '@/app/dal/impersonation-dal'
 import withAuth from '@/components/features/auth/with-auth'
 import {UserSecurityFactorSection} from '@/components/features/user/security-section'
 import {PagesConst} from '@/env'
@@ -22,6 +24,10 @@ async function Page() {
     notFound()
   }
 
+  // Pendant une session a la place d'un compte, les sections sensibles sont
+  // verrouillees (s48, ecran 5).
+  const impersonation = await getImpersonationBarDal()
+
   return (
     <div className="space-y-8">
       <Link
@@ -37,7 +43,17 @@ async function Page() {
         </h1>
         <p className="text-muted-foreground">{t('description')}</p>
       </div>
-      <UserSecurityFactorSection user={user} />
+      <UserSecurityFactorSection
+        user={user}
+        impersonation={
+          impersonation
+            ? {
+                subjectName: impersonation.subjectName,
+                stopAction: stopImpersonationAction,
+              }
+            : undefined
+        }
+      />
     </div>
   )
 }

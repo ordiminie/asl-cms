@@ -8,6 +8,7 @@ import z from 'zod'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {auth} from '@/lib/better-auth/auth'
 import {APP_NAME} from '@/lib/constants'
+import {getActingContext} from '@/services/authentication/auth-service'
 import {isValidationParsedZodError} from '@/services/errors/validation-error'
 import {updateUserService} from '@/services/facades/user-service-facade'
 import {updateUserSettingsService} from '@/services/facades/user-service-facade'
@@ -248,6 +249,10 @@ export async function update2FAAction(
   if (!user) {
     return {success: false, message: 'Utilisateur non trouvé'}
   }
+  const refusal = await refusalWhileImpersonating()
+  if (refusal) {
+    return {success: false, message: refusal}
+  }
 
   if (!formData) {
     return {success: false, message: 'Données invalides'}
@@ -346,6 +351,10 @@ export async function verifyTotpAction(
   if (!user) {
     return {success: false, message: 'Utilisateur non trouvé'}
   }
+  const refusal = await refusalWhileImpersonating()
+  if (refusal) {
+    return {success: false, message: refusal}
+  }
 
   if (!formData) {
     return {success: false, message: 'Données invalides'}
@@ -421,6 +430,10 @@ export async function changePasswordAction(
   const user = await requireActionAuth()
   if (!user) {
     return {success: false, message: 'Utilisateur non trouvé'}
+  }
+  const refusal = await refusalWhileImpersonating()
+  if (refusal) {
+    return {success: false, message: refusal}
   }
 
   if (!formData) {
@@ -516,6 +529,10 @@ export async function changeEmailAction(
   if (!user) {
     return {success: false, message: 'Utilisateur non trouvé'}
   }
+  const refusal = await refusalWhileImpersonating()
+  if (refusal) {
+    return {success: false, message: refusal}
+  }
 
   if (!formData) {
     return {success: false, message: 'Données invalides'}
@@ -574,4 +591,16 @@ export async function changeEmailAction(
           : "Erreur inattendue lors du changement d'email",
     }
   }
+}
+
+/**
+ * Refus des ecritures sensibles pendant une session a la place d'un compte
+ * (s48, critere 7) : defense en profondeur, en plus du plugin
+ * `impersonationGuard()`. Rend le message a afficher, ou rien hors imitation.
+ */
+async function refusalWhileImpersonating(): Promise<string | undefined> {
+  const acting = await getActingContext()
+  if (!acting?.impersonator) return undefined
+  const t = await getTranslations('Impersonation')
+  return t('account.locked', {name: acting.user.name})
 }

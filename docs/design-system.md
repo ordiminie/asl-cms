@@ -586,6 +586,14 @@ startedAt · expiresAt · onExit() · onConfirmWrite(action) · writeGuard = tru
   `aria-live="assertive"`.
 - Les rayures sont décoratives : le texte « Simulation de rôle en cours » porte seul l'information.
 
+**Sert aussi à s48 — agir à la place d'un compte** (`src/components/features/impersonation/`). Même
+barre, même place, autre texte : « Vous agissez à la place de {nom} », détail « {rôle} · {association} ·
+fin de la session à {hh:mm} » (heure en JetBrains Mono), sortie « Revenir à mon compte ». L'heure de fin
+est `session.expiresAt` (ADR 042), jamais une durée écrite dans le composant ; le compte à rebours
+remplace la ligne de détail dans les deux dernières minutes. Pas de `writeGuard` en s48 : chaque
+écriture est tracée au SuperAdmin, pour le compte du compte vu (ADR 041). Mobile : deux lignes de texte,
+bouton pleine largeur 56 px, sans icône.
+
 ### 2.7 `<AssociationMark />` — le logo ou le monogramme, le nom toujours écrit
 
 Construit en s01b : `src/components/features/association/association-mark.tsx`. **Tout endroit qui
@@ -1142,6 +1150,12 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | SEO       | ~~**Image de partage social**~~ — **tranché par s11** : image propre à la page, sinon gabarit de repli généré **1200 × 630** (1,91:1), marges 64 px, logo ou monogramme de `<AssociationMark />` 240 × 240, écart 40 px, nom en Source Serif 4 / 600 à 72 px, centré, deux lignes au plus ; fond **surface** et encre de la teinte (hex du §1.2, `src/lib/seo/share-image-colors.ts`). Rien d'autre sur l'image | s11           |
 | Divers    | **Page 404** — évoquée dans la livraison n° 1 (« renvoie vers l'accueil, les actualités et le contact »), jamais maquettée                                                                                                                                                                                                                                                                                      | s11           |
 | Divers    | ~~**Photo manquante sur une fiche du bureau**~~ — **tranché le 23/09/2026** : les initiales de la personne, jamais une silhouette ni le monogramme de l'association. Règle complète en §3.9                                                                                                                                                                                                                     | s06           |
+| Tableau   | **Deux actions sur une ligne** (s48, écran 1) — la règle dit « une seule action par ligne ». Proposition de la maquette : « Agir à sa place » (`outline`, icône `UserRoundCog`) puis « Retirer » ; en mobile, 56 px puis 44 px. À trancher, puis à inscrire au §3.5                                                                                                                                             | s48           |
+| Alert     | **Variante `alert` « muted »** (s48, écran 5) — fond `muted`, bordure `border`, icône `Lock` : non listée (seuls succès neutre et échec existent). Composée pour l'instant à la main dans `security-section.tsx`                                                                                                                                                                                                | s48           |
+| Couleur   | **Magenta de l'`<ImpersonationBar />`** — aucun token. Valeurs maquettées `oklch(0.5 0.21 345)` / `oklch(0.44 0.2 345)`, rayures à 135°, pas de 12 px, posées dans le composant (pas dans `globals.css`). Contraste du blanc mesuré : 6,8:1 et 8,4:1 (AA)                                                                                                                                                       | s48, s41      |
+| Barre     | **`<ImpersonationBar />` en mobile** — titre sur deux lignes, détail, puis bouton pleine largeur 56 px, icône retirée (≈ 170 px, sous le quart de 844 px)                                                                                                                                                                                                                                                       | s48, s41      |
+| Barre     | **Compte à rebours** — emplacement non spécifié au §2.6 ; en s48 il remplace la ligne de détail, annoncé en `aria-live="polite"`                                                                                                                                                                                                                                                                                | s48, s41      |
+| Bouton    | **Bouton qui est un lien** (s48, boîte « autre domaine ») — style `default` appliqué à un `<a>` (`Button asChild`), non décrit                                                                                                                                                                                                                                                                                  | s48           |
 | Technique | **Échelle de `z-index`** — seules deux valeurs sont posées (`PreviewBar` 50, `ImpersonationBar` 60). Avec trois bandes persistantes, les dialogues, les popovers, les tiroirs et les toasts, une échelle explicite évite les conflits au cas par cas                                                                                                                                                            | s04, s07, s41 |
 
 ### Point d'implémentation à vérifier

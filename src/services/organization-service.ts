@@ -23,7 +23,10 @@ import {
   searchOrganizationsWithMemberEmailsDao,
   updateOrganizationDao,
 } from '@/db/repositories/organization-repository'
-import {getAuthUser} from '@/services/authentication/auth-service'
+import {
+  getActingContext,
+  getAuthUser,
+} from '@/services/authentication/auth-service'
 
 import {
   canCreateOrganization,
@@ -45,6 +48,7 @@ import {
 import {decideMemberRemoval} from './rules/member-role-rules'
 import {Pagination} from './types/common-type'
 import {RoleConst, UserOrganizationRoleConst} from './types/domain/auth-types'
+import {effectiveAuthor} from './types/domain/impersonation-types'
 import {
   CreateMember,
   CreateOrganization,
@@ -393,6 +397,8 @@ export async function getMembersAndInvitationsService(
       role: m.role,
       joinedAt: m.createdAt,
       status: 'member' as const,
+      hasAccount: true,
+      isSuperAdmin: m.user.role === RoleConst.SUPER_ADMIN,
     }
   })
 
@@ -407,6 +413,8 @@ export async function getMembersAndInvitationsService(
     role: i.role,
     joinedAt: i.expiresAt,
     status: 'invited' as const,
+    hasAccount: false,
+    isSuperAdmin: false,
   }))
 
   return [...memberDTOs, ...invitationDTOs]
@@ -846,26 +854,38 @@ const MEMBER_ROLE_ONLY_MESSAGE =
 const LAST_CAPABLE_REMOVAL_MESSAGE =
   "Ce compte est le dernier qui peut désigner le bureau de l'association : désignez d'abord une autre personne au bureau."
 
+/** Trace sans personne connectee : auteur inconnu, colonnes nulles. */
+const NO_TRACE_AUTHOR = {
+  authorUserId: null,
+  authorName: null,
+  onBehalfOfUserId: null,
+  onBehalfOfName: null,
+}
+
 /**
  * Trace le retrait d'une ligne `member` (s14, ADR 039) : `to_role` nul,
- * raison `removal`, auteur = la personne connectee.
+ * raison `removal`, auteur = la personne connectee, ou le SuperAdmin s'il agit
+ * a sa place (s48, ADR 041).
  */
 const traceMemberRemoval = async (
   organizationId: string,
   membership: {userId: string; role: OrganizationRole}
 ): Promise<void> => {
-  const [author, target, profile] = await Promise.all([
+  const [viewer, acting, target, profile] = await Promise.all([
     getAuthUser(),
+    getActingContext(),
     getUserByIdDao(membership.userId),
     getMemberProfileByUserIdDao(organizationId, membership.userId),
   ])
+  const author = viewer
+    ? effectiveAuthor(viewer, acting?.impersonator)
+    : NO_TRACE_AUTHOR
   await insertMemberRoleEventDao({
     organizationId,
     memberProfileId: profile?.id ?? null,
     targetUserId: membership.userId,
     targetName: target?.name ?? null,
-    authorUserId: author?.id ?? null,
-    authorName: author?.name ?? null,
+    ...author,
     fromRole: membership.role,
     toRole: null,
     reason: 'removal',

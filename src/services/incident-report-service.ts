@@ -20,7 +20,7 @@ import {resolveSupportedLocale} from '@/lib/helper/locale-helper'
 import {logger} from '@/lib/logger'
 
 import {getAssociationSettingsService} from './association-settings-service'
-import {getAuthUser} from './authentication/auth-service'
+import {getActingContext, getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
 import {sendIncidentReportNotificationEmailService} from './email-service'
 import {AuthorizationError} from './errors/authorization-error'
@@ -36,6 +36,7 @@ import {
   CONTACT_EMAIL_SETTING_KEY,
   getAccentHue,
 } from './types/domain/association-settings-types'
+import {effectiveAuthor} from './types/domain/impersonation-types'
 import {
   countIncidentReportPages,
   CreateIncidentReportInput,
@@ -379,7 +380,11 @@ export const changeIncidentReportStatusService = async (input: {
   }
 
   const {organizationId, reportId, to} = parsed.data
-  const author = await requireReportsManager(organizationId)
+  const viewer = await requireReportsManager(organizationId)
+  const author = effectiveAuthor(
+    viewer,
+    (await getActingContext())?.impersonator
+  )
 
   return withTenant(organizationId, async () => {
     const report = await getIncidentReportByIdDao(reportId)
@@ -402,8 +407,7 @@ export const changeIncidentReportStatusService = async (input: {
       reportId,
       from,
       to,
-      authorUserId: author.id,
-      authorName: author.name,
+      ...author,
     })
     return changed
       ? {status: 'changed', reportStatus: to}

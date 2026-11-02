@@ -331,10 +331,10 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 36 tables du schéma
+### Classement RLS des 37 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 36 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12, plus `member_role_event` de s14) sont donc toutes classées, sans reste. Toute
+Les 37 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12, plus `member_role_event` de s14, plus `impersonation_event` de s48) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
 Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
@@ -343,7 +343,7 @@ déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et éc
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-**Scopée par une policy RLS forcée** — 17 tables
+**Scopée par une policy RLS forcée** — 18 tables
 
 | Table                   | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -364,6 +364,7 @@ manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la 
 | `parcel`                | Parcelles d'une association (ADR 029, s12). Porte `organization_id` **directement**, policy `tenant_isolation` forcée (`0030`). Numéro unique **par association**. **Aucune colonne « propriétaire actuel »** : il se lit par date.                                                                                                                                                                                                                                                                                                                |
 | `parcel_ownership`      | Périodes de propriété, la relation **datée** fiche ↔ parcelle (ADR 029, s12). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0030`), sans jointure. Période demi-ouverte `[starts_on, ends_on)`, `CHECK (ends_on > starts_on)`, clés étrangères en `RESTRICT`. Non-chevauchement contrôlé par le service sous verrou de la ligne `parcel` ; une période close n'est plus jamais écrite.                                                                                                                                    |
 | `member_role_event`     | Trace des changements de rôle d'association (ADR 039, s14). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0036`), sans jointure. Une ligne par compte dont le rôle change (une passation en écrit deux) ; `member_profile_id`, `target_user_id` et `author_user_id` en `SET NULL`, noms copiés au changement : l'historique survit à la suppression d'une fiche ou d'un compte. Stockée, sans écran.                                                                                                                      |
+| `impersonation_event`   | Trace des sessions ouvertes par le SuperAdmin à la place d'un compte (ADR 041, s48). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0038`), sans jointure. Une ligne par ouverture (`opened`) et une par sortie explicite (`closed`), reliées par `session_id` copié ; `admin_user_id` et `target_user_id` en `SET NULL`, noms copiés. Motif facultatif. Stockée, sans écran ; s38 l'exportera ou la déclarera exclue.                                                                                                     |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**
@@ -523,6 +524,31 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   en s12b** : derrière le reverse proxy du VPS, `Host` et `x-forwarded-host` (Better Auth n'honore ce
   dernier qu'avec `advanced.trustedProxyHeaders`, non activé) et le protocole résolu, dont dépend le
   préfixe `__Secure-` du cookie lu par `src/proxy.ts`.
+
+**Agir à la place d'un compte** (s48, ADR 041 et 042) — `src/services/impersonation-service.ts`.
+
+- **Un seul chemin** : `POST /api/auth/admin/impersonate-user` et `/admin/stop-impersonating` sont fermés
+  (`disabledPaths`, `IMPERSONATION_DISABLED_HTTP_PATHS`) ; seul le service appelle
+  `auth.api.impersonateUser` / `stopImpersonating` avec les en-têtes de la requête, puis écrit la trace
+  `impersonation_event` (`opened`, `closed`) dans la même requête. SuperAdmin seul, sur le **domaine de
+  l'association visée** (le contrôle de l'ADR 034 s'applique à la session imitée), ni SuperAdmin ni
+  compte suspendu visé, jamais deux sessions enchaînées. Point d'entrée : l'écran SuperAdmin des membres.
+- **Durée** : `IMPERSONATION_SESSION_DURATION_SECONDS` (`@/env`, défaut 1800, plafond 3600), passée à
+  `impersonationSessionDuration` du plugin `admin()` ; la barre lit `session.expiresAt`.
+- **Attribution** : `getActingContext()` (`auth-service.ts`) rend le compte vu et l'imitateur
+  (`session.impersonatedBy`, présent aussi dans le cookie cache, prouvé par
+  `impersonation.real-auth.test.ts`) ; `effectiveAuthor` donne l'auteur d'une trace : le SuperAdmin, avec
+  `on_behalf_of_user_id` / `on_behalf_of_name` = le compte vu, sur `member_role_event` et
+  `incident_report_event`. L'autorisation juge toujours le compte vu. **Tout nouvel écrivain de trace passe
+  par ce helper.** Dette déclarée : les colonnes `updated_by` / `authorId` (réglages, accueil, bandeau,
+  navigation, actualités) enregistrent le compte vu.
+- **Écritures sensibles refusées** pendant l'imitation : plugin local `impersonationGuard()` (hook `before`,
+  monté juste après `associationSessionGuard()`) sur `/change-password`, `/change-email`, `/two-factor/*`,
+  `/delete-user`, `/link-social`, `/unlink-account` ; les actions de `/account` refusent aussi d'elles-mêmes.
+- **Barre** : `ImpersonationBarSlot` en premier enfant de `<body>` (`base-layout.tsx`), derrière son
+  propre `<Suspense>` ; il ne lit la session que si le cookie `*.admin_session` est présent. Ouverture et
+  sortie rechargent la page entière. Ni l'expiration ni la déconnexion pendant la session ne sont tracées
+  (ADR 041, limites assumées).
 
 **Contraintes structurantes**
 

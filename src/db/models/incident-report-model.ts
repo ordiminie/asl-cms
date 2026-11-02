@@ -66,6 +66,9 @@ export const incidentReport = pgTable(
  * - `author_name` copie le nom **au moment du changement** : l'attribution
  *   survit a la suppression ou au renommage du compte.
  * - Porte son propre `organization_id` : la policy n'a pas de jointure a faire.
+ * - `on_behalf_of_*` poses quand le SuperAdmin agit a la place d'un compte
+ *   (s48, ADR 041) : l'auteur est le SuperAdmin, ces colonnes disent pour le
+ *   compte de qui. Nulles hors imitation.
  */
 export const incidentReportEvent = pgTable(
   'incident_report_event',
@@ -84,6 +87,10 @@ export const incidentReportEvent = pgTable(
       onDelete: 'set null',
     }),
     authorName: text('author_name'),
+    onBehalfOfUserId: uuid('on_behalf_of_user_id').references(() => user.id, {
+      onDelete: 'set null',
+    }),
+    onBehalfOfName: text('on_behalf_of_name'),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
       .notNull(),

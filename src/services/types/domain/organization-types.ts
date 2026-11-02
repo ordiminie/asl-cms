@@ -69,6 +69,12 @@ export type MemberOrInvitationDTO = {
   role: string | null
   joinedAt: Date | null
   status: 'member' | 'invited'
+  /**
+   * Lecture seule, pour l'affichage d'« Agir a sa place » (s48) : la ligne a
+   * un compte, et ce compte est un SuperAdmin. Le serveur re-controle.
+   */
+  hasAccount: boolean
+  isSuperAdmin: boolean
 }
 
 export type OrganizationSearchResult = {

@@ -62,6 +62,15 @@ export const serverSchema = {
   BETTER_AUTH_SECRET: z.string().min(1),
   BETTER_AUTH_URL: z.string().url(),
   BETTER_AUTH_TRUSTED_ORIGINS: TrustedOriginsSchema,
+  // Durée d'une session ouverte par le SuperAdmin à la place d'un compte
+  // (s48, ADR 042) : règle de plateforme, lue une fois au démarrage par le
+  // plugin admin(). Défaut 30 minutes, plafond d'une heure.
+  IMPERSONATION_SESSION_DURATION_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(3600)
+    .default(1800),
 
   // Email (ADR 005, ADR 017) : tout envoi passe par le contrat
   // `EmailTransport`. `brevo` en production ; `resend` en secours ; `file`

@@ -1,7 +1,10 @@
 import {cacheLife} from 'next/cache'
 import {getTranslations} from 'next-intl/server'
 
+import {openImpersonationAction} from '@/app/[locale]/admin/organizations/actions'
 import {getMembersAndInvitationsDal} from '@/app/dal/organization-dal'
+import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {ImpersonationDialog} from '@/components/features/impersonation/impersonation-dialog'
 import {Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar'
 import {
   Table,
@@ -11,6 +14,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {env} from '@/env'
+import {associationOriginOf} from '@/lib/better-auth/association-origin'
+import type {MemberOrInvitationDTO} from '@/services/types/domain/organization-types'
 
 import {CancelAdminInvitationButton} from '../admin/organizations/cancel-admin-invitation-button'
 import {OrganizationAdminAddMemberForm} from '../admin/organizations/organization-admin-add-member-form'
@@ -34,20 +40,96 @@ function isInvitationExpired(joinedAt: Date | null, cutoff: number): boolean {
   return new Date(joinedAt).getTime() < cutoff
 }
 
+type ImpersonationEntry = {
+  organizationName: string
+  durationMinutes: number
+  otherDomain?: {domain: string; url: string}
+}
+
+/**
+ * Ce que la boite « Agir a sa place » doit savoir de l'association (s48, D9) :
+ * si l'hote courant n'est pas le sien, elle renvoie vers son site, ou le
+ * SuperAdmin se connecte s'il ne l'est pas.
+ */
+async function impersonationEntryOf(
+  organizationId: string,
+  organizationName: string,
+  organizationDomain: string | null | undefined
+): Promise<ImpersonationEntry> {
+  const tenant = await requireCurrentTenantDal()
+  const origin = associationOriginOf(organizationDomain)
+  const onAssociationDomain = tenant.id === organizationId
+  return {
+    organizationName,
+    durationMinutes: Math.round(
+      env.IMPERSONATION_SESSION_DURATION_SECONDS / 60
+    ),
+    otherDomain:
+      onAssociationDomain || !origin || !organizationDomain
+        ? undefined
+        : {
+            domain: organizationDomain,
+            url: `${origin}/admin/organizations/${organizationId}/edit`,
+          },
+  }
+}
+
 export default async function OrganizationMembersTable({
   organizationId,
+  organizationName = '',
+  organizationDomain,
   canManageMembers = false,
   adminView = false,
 }: {
   organizationId: string
+  organizationName?: string
+  organizationDomain?: string | null
   canManageMembers?: boolean
   adminView?: boolean
 }) {
   const t = await getTranslations('Organization.members')
   const tCommon = await getTranslations('Common')
+  const tImpersonation = await getTranslations('Impersonation')
   const expiryCutoff = await getExpiryCutoff()
   //const isAdmin = await isAuthAdmin()
   const members = await getMembersAndInvitationsDal(organizationId)
+  const impersonation = adminView
+    ? await impersonationEntryOf(
+        organizationId,
+        organizationName,
+        organizationDomain
+      )
+    : undefined
+
+  const impersonationCell = (member: MemberOrInvitationDTO) => {
+    if (!impersonation) return null
+    if (member.status !== 'member' || !member.hasAccount) {
+      return (
+        <span className="text-muted-foreground text-sm">
+          {tImpersonation('table.noAccount')}
+        </span>
+      )
+    }
+    if (member.isSuperAdmin) {
+      return (
+        <span className="text-muted-foreground text-sm">
+          {tImpersonation('table.superAdminImpossible')}
+        </span>
+      )
+    }
+    return (
+      <ImpersonationDialog
+        organizationId={organizationId}
+        userId={member.userId ?? ''}
+        name={member.name ?? member.email}
+        roleLabel={tImpersonation(`roles.${member.role ?? 'member'}`)}
+        organizationName={impersonation.organizationName}
+        durationMinutes={impersonation.durationMinutes}
+        otherDomain={impersonation.otherDomain}
+        action={openImpersonationAction}
+      />
+    )
+  }
 
   return (
     <div className="overflow-x-auto">
@@ -67,8 +149,8 @@ export default async function OrganizationMembersTable({
           />
         )}
       </div>
-      <Table>
-        <TableHeader>
+      <Table className="max-sm:block">
+        <TableHeader className="max-sm:hidden">
           <TableRow>
             <TableHead>{t('avatar')}</TableHead>
             <TableHead>{tCommon('fields.name')}</TableHead>
@@ -84,10 +166,13 @@ export default async function OrganizationMembersTable({
             <TableHead className="w-10 text-center">{t('action')}</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody className="max-sm:flex max-sm:flex-col max-sm:gap-3">
           {members.map((member, i) => (
-            <TableRow key={i}>
-              <TableCell>
+            <TableRow
+              key={i}
+              className="max-sm:flex max-sm:flex-col max-sm:gap-3 max-sm:rounded-md max-sm:border max-sm:p-4"
+            >
+              <TableCell className="max-sm:hidden">
                 <Avatar>
                   {member.image ? (
                     <AvatarImage src={member.image} alt={member.name ?? ''} />
@@ -96,7 +181,7 @@ export default async function OrganizationMembersTable({
                   )}
                 </Avatar>
               </TableCell>
-              <TableCell>
+              <TableCell className="max-sm:block max-sm:p-0">
                 <div className="flex flex-col">
                   <span className="flex items-center gap-2 font-medium">
                     {member.name}
@@ -133,34 +218,37 @@ export default async function OrganizationMembersTable({
                   ? new Date(member.joinedAt).toLocaleDateString()
                   : ''}
               </TableCell>
-              <TableCell className="text-center">
-                {canManageMembers ? (
-                  member.status === 'member' ? (
-                    <RemoveMemberButton
-                      organizationId={organizationId}
-                      userId={member.userId ?? ''}
-                      userName={member.name ?? ''}
-                    />
+              <TableCell className="text-center max-sm:block max-sm:w-full max-sm:p-0">
+                <div className="flex items-center justify-end gap-2 max-sm:flex-col max-sm:items-stretch">
+                  {impersonationCell(member)}
+                  {canManageMembers ? (
+                    member.status === 'member' ? (
+                      <RemoveMemberButton
+                        organizationId={organizationId}
+                        userId={member.userId ?? ''}
+                        userName={member.name ?? ''}
+                      />
+                    ) : (
+                      <>
+                        {adminView ? (
+                          <CancelAdminInvitationButton
+                            organizationId={organizationId}
+                            invitationId={member.invitationId ?? ''}
+                            userEmail={member.email}
+                          />
+                        ) : (
+                          <CancelInvitationButton
+                            organizationId={organizationId}
+                            invitationId={member.invitationId ?? ''}
+                            userEmail={member.email}
+                          />
+                        )}
+                      </>
+                    )
                   ) : (
-                    <>
-                      {adminView ? (
-                        <CancelAdminInvitationButton
-                          organizationId={organizationId}
-                          invitationId={member.invitationId ?? ''}
-                          userEmail={member.email}
-                        />
-                      ) : (
-                        <CancelInvitationButton
-                          organizationId={organizationId}
-                          invitationId={member.invitationId ?? ''}
-                          userEmail={member.email}
-                        />
-                      )}
-                    </>
-                  )
-                ) : (
-                  <span className="text-muted-foreground text-sm">-</span>
-                )}
+                    <span className="text-muted-foreground text-sm">-</span>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}

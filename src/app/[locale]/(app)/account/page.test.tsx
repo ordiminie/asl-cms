@@ -29,6 +29,12 @@ vi.mock('@/services/authentication/auth-service', () => ({
     visibility: 'private',
   })),
 }))
+vi.mock('@/app/dal/impersonation-dal', () => ({
+  getImpersonationBarDal: vi.fn(async () => null),
+}))
+vi.mock('@/app/[locale]/admin/organizations/actions', () => ({
+  stopImpersonationAction: vi.fn(),
+}))
 vi.mock('@/components/features/user/security-section', () => ({
   UserSecurityFactorSection: () => <div data-testid="security-section" />,
 }))

@@ -3162,5 +3162,54 @@
       "description": "Votre mot de passe et les appareils connectés à votre compte.",
       "link": "Gérer la sécurité du compte"
     }
+  },
+  "Impersonation": {
+    "roles": {
+      "member": "Membre",
+      "board": "Bureau",
+      "owner": "Président(e)"
+    },
+    "table": {
+      "act": "Agir à sa place",
+      "superAdminImpossible": "Compte SuperAdmin : impossible",
+      "noAccount": "Pas encore de compte",
+      "returned": "Vous êtes revenu à votre compte SuperAdmin."
+    },
+    "dialog": {
+      "title": "Agir à la place de {name} ?",
+      "intro": "Vous verrez et ferez exactement ce que {name} voit et fait ({role}, {association}). Vos actions seront enregistrées à votre nom, avec la mention « pour le compte de {name} ».",
+      "duration": "La session s’arrête d’elle-même au bout de {minutes, plural, one {# minute} other {# minutes}}.",
+      "otherDomain": "Vous allez ouvrir le site de {association}, adresse <mono>{domain}</mono>.",
+      "reason": "Motif",
+      "optional": "Facultatif",
+      "cancel": "Annuler",
+      "submit": "Agir à la place de {name}",
+      "sending": "Ouverture…",
+      "openSite": "Ouvrir le site de {association}"
+    },
+    "errors": {
+      "suspended": "Ce compte est suspendu. Rien n’a été modifié.",
+      "targetIsAdmin": "On ne peut pas agir à la place d’un autre SuperAdmin.",
+      "sessionExpired": "Votre session a expiré. Reconnectez-vous, puis recommencez.",
+      "forbidden": "Seul le SuperAdmin peut agir à la place d’un compte. Rien n’a été modifié.",
+      "wrongDomain": "Ouvrez d’abord le site de cette association, puis recommencez.",
+      "targetNotFound": "Ce compte n’est plus membre de cette association. Rien n’a été modifié.",
+      "alreadyImpersonating": "Revenez d’abord à votre compte SuperAdmin, puis recommencez.",
+      "notImpersonating": "Vous agissez déjà avec votre propre compte.",
+      "unexpected": "L’opération n’a pas abouti. Réessayez dans un instant."
+    },
+    "bar": {
+      "title": "Vous agissez à la place de {name}",
+      "detail": "{role} · {association} · fin de la session à <mono>{time}</mono>",
+      "countdown": "La session se termine dans {minutes} min {seconds} s.",
+      "countdownSeconds": "La session se termine dans {seconds} s.",
+      "exit": "Revenir à mon compte"
+    },
+    "account": {
+      "locked": "Indisponible pendant que vous agissez à la place de {name}. Revenez à votre compte pour y accéder."
+    },
+    "login": {
+      "expired": "La session à la place d’un compte s’est terminée. Reconnectez-vous pour continuer."
+    }
   }
 }

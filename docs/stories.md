@@ -3494,6 +3494,9 @@ ADR 039 (un seul chemin de changement de rôle, tracé).
   Les stories suivantes vérifient, en design et en revue, qu'il garde un chemin pour agir.
 - **Ordre** : toutes les dépendances sont livrées ou en cours (s14) ; elle peut se jouer dès la
   fusion de s14.
+- **Écart au design, arrêté au plan (D5)** : l'alerte d'expiration de la connexion prestataire (planches
+  4c, 4d) ne cite **pas** le nom du compte visé — aucune donnée personnelle dans une URL. Elle dit « La
+  session à la place d'un compte s'est terminée. Reconnectez-vous pour continuer. »
 
 ---
 

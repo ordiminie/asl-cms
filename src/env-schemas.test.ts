@@ -152,3 +152,23 @@ describe('Changement d’adresse hérité de /account (s12d, piège 14)', () => 
     ).toBe(false)
   })
 })
+
+describe('Durée d’une session à la place d’un compte (s48, ADR 042)', () => {
+  const duration = () => serverSchema.IMPERSONATION_SESSION_DURATION_SECONDS
+
+  it('vaut 30 minutes par défaut', () => {
+    expect(duration().parse(undefined)).toBe(1800)
+  })
+
+  it('lit un entier de secondes', () => {
+    expect(duration().parse('600')).toBe(600)
+  })
+
+  it.each(['0', '-60', '90.5', '3601', 'trente'])('refuse %s', (value) => {
+    expect(duration().safeParse(value).success).toBe(false)
+  })
+
+  it('accepte le plafond d’une heure', () => {
+    expect(duration().parse('3600')).toBe(3600)
+  })
+})
