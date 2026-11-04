@@ -11,10 +11,10 @@
  * auteur « Zourite Studio ». Refuse une adresse sans compte membre de cette
  * association.
  */
-import {registerHooks} from 'node:module'
 import {pathToFileURL} from 'node:url'
 import {parseArgs} from 'node:util'
 
+import {allowServerOnly} from './allow-server-only'
 import initDotEnv from './env'
 
 export type TransferPresidencyArgs = {
@@ -45,22 +45,13 @@ export const parseTransferPresidencyArgs = (
 }
 
 /**
- * Les services sont gardes par `server-only`, que Next resout sous la
- * condition `react-server` : le script lui donne la meme resolution, comme
- * l'amorcage.
+ * Les services sont gardes par `server-only` : le script le neutralise par
+ * `allowServerOnly()`, comme l'amorcage (ADR 044).
  */
 const transferPresidency = async () => {
   const {domain, email} = parseTransferPresidencyArgs(process.argv.slice(2))
 
-  registerHooks({
-    resolve: (specifier, context, nextResolve) =>
-      specifier === 'server-only'
-        ? nextResolve(specifier, {
-            ...context,
-            conditions: [...context.conditions, 'react-server'],
-          })
-        : nextResolve(specifier, context),
-  })
+  allowServerOnly()
   await initDotEnv()
 
   const {transferPresidencyByOperatorService} =

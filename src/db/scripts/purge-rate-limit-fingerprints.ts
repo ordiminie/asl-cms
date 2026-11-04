@@ -5,22 +5,13 @@
  * src/db/scripts/purge-rate-limit-fingerprints.ts`. Point d'entree « appelable
  * seul », hors de toute requete : s12b y branche son declencheur quotidien.
  *
- * Les services sont gardes par `server-only`, que Next resout sous la condition
- * `react-server` : le script lui donne la meme resolution, et a lui seul.
+ * Les services sont gardes par `server-only` : le script le neutralise par
+ * `allowServerOnly()`, et a lui seul (ADR 044).
  */
-import {registerHooks} from 'node:module'
-
+import {allowServerOnly} from './allow-server-only'
 import initDotEnv from './env'
 
-registerHooks({
-  resolve: (specifier, context, nextResolve) =>
-    specifier === 'server-only'
-      ? nextResolve(specifier, {
-          ...context,
-          conditions: [...context.conditions, 'react-server'],
-        })
-      : nextResolve(specifier, context),
-})
+allowServerOnly()
 initDotEnv()
 
 const purge = async () => {

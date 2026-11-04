@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 /* eslint-disable no-restricted-properties */
 
-import {registerHooks} from 'node:module'
-
 import pg from 'pg'
 
+import {allowServerOnly} from './allow-server-only'
 import {resolveMigrationUrl} from './db-url'
 import initDotEnv, {maskDbUrl} from './env'
 import {TEST_TENANT_CATEGORIES} from './tenant-categories-seed'
@@ -731,19 +730,11 @@ const seed = async () => {
 /**
  * Ouvre le compte de chaque fiche a adresse des associations de test, par
  * `openMemberAccountsForOrganization`, sous le role applicatif et le scope du
- * tenant. Les services sont gardes par `server-only`, que Next resout sous la
- * condition `react-server` : meme resolution que `ops:bootstrap`.
+ * tenant. Les services sont gardes par `server-only` : le seed le neutralise
+ * par `allowServerOnly()`, comme `ops:bootstrap` (ADR 044).
  */
 const openSeedMemberAccounts = async (client: pg.Client) => {
-  registerHooks({
-    resolve: (specifier, context, nextResolve) =>
-      specifier === 'server-only'
-        ? nextResolve(specifier, {
-            ...context,
-            conditions: [...context.conditions, 'react-server'],
-          })
-        : nextResolve(specifier, context),
-  })
+  allowServerOnly()
   const {openMemberAccountsForOrganization} =
     await import('@/services/member-account-service')
 

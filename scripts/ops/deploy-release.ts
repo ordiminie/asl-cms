@@ -188,12 +188,43 @@ const replaceLink = async (name: 'current' | 'previous', target: string) => {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/** Attend que la nouvelle version reponde sur la boucle locale. */
-const verifyLocally = async () => {
-  for (let attempt = 1; attempt <= VERIFY_ATTEMPTS; attempt++) {
+export type VerifyOptions = {
+  fetchFn?: typeof fetch
+  attempts?: number
+  delayMs?: number
+}
+
+/**
+ * Les en-tetes que nginx ecrase (ADR 036) : sans eux, Next ne se trompe pas
+ * d'origine et le defaut de l'ADR 043 passe inapercu. `fetch` remplace `Host`
+ * par l'hote de l'URL, qui est la meme valeur.
+ */
+const LOCAL_HOST = new URL(LOCAL_URL).host
+const NGINX_HEADERS = {
+  Host: LOCAL_HOST,
+  'X-Forwarded-Host': LOCAL_HOST,
+  'X-Forwarded-Proto': 'https',
+}
+
+const isSuccess = (status: number) => status >= 200 && status < 300
+
+/**
+ * Attend que la nouvelle version reponde sur la boucle locale, comme derriere
+ * nginx. Seul un 2xx compte : un 308 (accueil redirige vers lui-meme) ou un
+ * 500 est le defaut corrige par s49.
+ */
+export const verifyLocally = async ({
+  fetchFn = fetch,
+  attempts = VERIFY_ATTEMPTS,
+  delayMs = VERIFY_DELAY_MS,
+}: VerifyOptions = {}) => {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const response = await fetch(LOCAL_URL, {redirect: 'manual'})
-      if (response.status < 500) {
+      const response = await fetchFn(LOCAL_URL, {
+        redirect: 'manual',
+        headers: NGINX_HEADERS,
+      })
+      if (isSuccess(response.status)) {
         console.log(`[deploy] ${LOCAL_URL} repond ${response.status}`)
         return
       }
@@ -201,9 +232,9 @@ const verifyLocally = async () => {
     } catch {
       console.warn(`[deploy] ${LOCAL_URL} injoignable (essai ${attempt})`)
     }
-    await sleep(VERIFY_DELAY_MS)
+    await sleep(delayMs)
   }
-  throw new Error(`${LOCAL_URL} ne repond pas apres ${VERIFY_ATTEMPTS} essais`)
+  throw new Error(`${LOCAL_URL} ne repond pas en 2xx apres ${attempts} essais`)
 }
 
 export const serverSteps = (release: string): DeploySteps => ({
@@ -216,7 +247,7 @@ export const serverSteps = (release: string): DeploySteps => ({
   readCurrent: readCurrentLink,
   switchCurrent: (target) => replaceLink('current', target),
   restart: () => run('systemctl', ['restart', SERVICE]),
-  verify: verifyLocally,
+  verify: () => verifyLocally(),
   recordPrevious: (target) => replaceLink('previous', target),
 })
 
