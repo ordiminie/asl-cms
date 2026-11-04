@@ -3,6 +3,13 @@
 #                sudo systemctl daemon-reload && sudo systemctl enable asl-cms
 # La version servie est celle du lien /srv/asl-cms/current ; Next lit
 # .env.production dans ce repertoire (lien vers shared/.env.production).
+#
+# Adresse (ADR 043) : Next se designe `localhost` (-H localhost), le nom que
+# porte la reecriture de next-intl ; avec une adresse numerique, il la juge
+# externe et l'accueil repond 500 derriere nginx. L'ordre IPv4 d'abord fait
+# resoudre `localhost` en 127.0.0.1 : le service n'ecoute que sur
+# 127.0.0.1:3100, la cible de nginx. Un serveur deja installe recopie l'unite,
+# puis `daemon-reload` et `restart`.
 
 [Unit]
 Description=ASL-CMS (Next.js)
@@ -15,7 +22,8 @@ User=asl-cms
 Group=asl-cms
 WorkingDirectory=/srv/asl-cms/current
 Environment=NODE_ENV=production
-ExecStart=/srv/asl-cms/current/node_modules/.bin/next start -H 127.0.0.1 -p 3100
+Environment=NODE_OPTIONS=--dns-result-order=ipv4first
+ExecStart=/srv/asl-cms/current/node_modules/.bin/next start -H localhost -p 3100
 Restart=on-failure
 RestartSec=5
 

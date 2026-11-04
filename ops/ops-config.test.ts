@@ -208,6 +208,19 @@ describe('ops/rollback.sh — retour arrière', () => {
     expect(restartAt).toBeGreaterThan(-1)
     expect(verifyAt).toBeGreaterThan(restartAt)
   })
+
+  it('vérifie avec les en-têtes que nginx écrase, comme l’orchestrateur (s49, ADR 043)', () => {
+    const verify = script.match(/curl [^\n]*"\$LOCAL_URL"/)?.[0] ?? ''
+    expect(script).toContain('LOCAL_HOST=127.0.0.1:3100\n')
+    expect(verify).toContain('-H "Host: $LOCAL_HOST"')
+    expect(verify).toContain('-H "X-Forwarded-Host: $LOCAL_HOST"')
+    expect(verify).toContain("-H 'X-Forwarded-Proto: https'")
+  })
+
+  it('n’accepte qu’un statut 2xx : un 308 ou un 500 fait échouer le retour arrière', () => {
+    expect(script).not.toContain('^[1-4][0-9][0-9]$')
+    expect(script).toContain('if [[ "$status" =~ ^2[0-9][0-9]$ ]]; then')
+  })
 })
 
 describe('ops/systemd — le service et la purge quotidienne', () => {
@@ -220,10 +233,20 @@ describe('ops/systemd — le service et la purge quotidienne', () => {
     expect(service).toContain('Environment=NODE_ENV=production')
   })
 
-  it('écoute sur 127.0.0.1:3100, jamais sur toutes les interfaces', () => {
+  it('se désigne localhost, sur le port 3100 (ADR 043)', () => {
     const execStart = service.find((line) => line.startsWith('ExecStart='))
-    expect(execStart).toMatch(/next start -H 127\.0\.0\.1 -p 3100$/)
+    expect(execStart).toMatch(/next start -H localhost -p 3100$/)
+  })
+
+  it('résout localhost en IPv4 d’abord : le socket reste 127.0.0.1:3100 (ADR 043)', () => {
+    expect(service).toContain(
+      'Environment=NODE_OPTIONS=--dns-result-order=ipv4first'
+    )
+  })
+
+  it('n’écoute jamais sur toutes les interfaces', () => {
     expect(service.join('\n')).not.toContain('0.0.0.0')
+    expect(service.join('\n')).not.toContain('::')
   })
 
   it('redémarre en cas d’échec, durci, n’écrit que dans shared/ (le cache de Next y est lié)', () => {
@@ -262,6 +285,38 @@ describe('ops/systemd — le service et la purge quotidienne', () => {
     expect(purgeTimer).toContain('OnCalendar=daily')
     expect(purgeTimer).toContain('Persistent=true')
     expect(purgeTimer).toContain('Unit=asl-cms-purge.service')
+  })
+})
+
+describe('contrat service systemd / nginx / Next (s49, ADR 043)', () => {
+  const service = directives(read('systemd/asl-cms.service'))
+  const nginx = directives(read('nginx/asl-cms-site.conf.template'))
+
+  const CAUSE =
+    'Contrat rompu (ADR 043) : Next doit se désigner par le mot `localhost` ' +
+    '(-H localhost), comme la réécriture de next-intl, sinon il la juge ' +
+    'externe et l’accueil répond 500 (ou 308) derrière nginx ; localhost ' +
+    'doit se résoudre en IPv4 (NODE_OPTIONS=--dns-result-order=ipv4first) ' +
+    'pour que Next écoute sur 127.0.0.1:3100, la cible de proxy_pass.'
+
+  it('le -H du service, l’ordre IPv4 et la cible de nginx sont cohérents', () => {
+    const execStart =
+      service.find((line) => line.startsWith('ExecStart=')) ?? ''
+    const contract = {
+      host: /\s-H\s+(\S+)/.exec(execStart)?.[1],
+      ipv4First: service.includes(
+        'Environment=NODE_OPTIONS=--dns-result-order=ipv4first'
+      ),
+      proxyPass: /^proxy_pass http:\/\/([^;/]+);$/.exec(
+        nginx.find((line) => line.startsWith('proxy_pass ')) ?? ''
+      )?.[1],
+    }
+
+    expect(contract, CAUSE).toEqual({
+      host: 'localhost',
+      ipv4First: true,
+      proxyPass: '127.0.0.1:3100',
+    })
   })
 })
 

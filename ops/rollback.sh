@@ -20,6 +20,7 @@ set -euo pipefail
 APP_ROOT=/srv/asl-cms
 SERVICE=asl-cms
 LOCAL_URL=http://127.0.0.1:3100/
+LOCAL_HOST=127.0.0.1:3100
 VERIFY_ATTEMPTS=30
 VERIFY_DELAY_SECONDS=2
 # Ecrit par l'orchestrateur (scripts/ops/deploy-release.ts, BUILD_MARKER)
@@ -71,10 +72,12 @@ if [[ -n "$current" ]]; then
 fi
 systemctl restart "$SERVICE"
 
-# Meme verification que l'orchestrateur : tout statut HTTP < 500.
+# Meme verification que l'orchestrateur : avec les en-tetes que nginx ecrase
+# (ADR 036), statut 2xx seulement. Un 308 (accueil redirige vers lui-meme) ou
+# un 500 est le defaut corrige par s49 (ADR 043).
 for ((attempt = 1; attempt <= VERIFY_ATTEMPTS; attempt++)); do
-  status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$LOCAL_URL" || true)"
-  if [[ "$status" =~ ^[1-4][0-9][0-9]$ ]]; then
+  status="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 -H "Host: $LOCAL_HOST" -H "X-Forwarded-Host: $LOCAL_HOST" -H 'X-Forwarded-Proto: https' "$LOCAL_URL" || true)"
+  if [[ "$status" =~ ^2[0-9][0-9]$ ]]; then
     echo "[rollback] $LOCAL_URL repond $status"
     echo "[rollback] Service relance sur $target"
     exit 0
@@ -83,6 +86,6 @@ for ((attempt = 1; attempt <= VERIFY_ATTEMPTS; attempt++)); do
   sleep "$VERIFY_DELAY_SECONDS"
 done
 
-echo "[rollback] $LOCAL_URL ne repond pas apres $VERIFY_ATTEMPTS essais :" >&2
+echo "[rollback] $LOCAL_URL ne repond pas en 2xx apres $VERIFY_ATTEMPTS essais :" >&2
 echo "consulter le journal du service : sudo journalctl -u $SERVICE -n 100" >&2
 exit 1

@@ -7,6 +7,7 @@ import {
   deployRelease,
   type DeploySteps,
   serverSteps,
+  verifyLocally,
 } from './deploy-release'
 
 const spawnMock = vi.hoisted(() => vi.fn())
@@ -253,5 +254,65 @@ describe('serverSteps — commandes réelles du cache partagé et du marqueur', 
     expect(commands()).toEqual([
       `runuser -u asl-cms -- touch ${SERVER_RELEASE}/${BUILD_MARKER}`,
     ])
+  })
+})
+
+describe('verifyLocally — contrôle de fin de déploiement avec les en-têtes de nginx (s49, ADR 043)', () => {
+  const respond = (status: number) =>
+    Promise.resolve(new Response(null, {status}))
+
+  const options = (fetchFn: typeof fetch) => ({
+    fetchFn,
+    attempts: 3,
+    delayMs: 0,
+  })
+
+  it('une erreur serveur (500, comme avant le correctif) fait échouer le contrôle', async () => {
+    const fetchFn = vi.fn(() => respond(500)) as unknown as typeof fetch
+
+    await expect(verifyLocally(options(fetchFn))).rejects.toThrow()
+  })
+
+  it('un accueil redirigé vers lui-même (308) fait échouer le contrôle', async () => {
+    const fetchFn = vi.fn(() => respond(308)) as unknown as typeof fetch
+
+    await expect(verifyLocally(options(fetchFn))).rejects.toThrow()
+  })
+
+  it('un 404 fait échouer le contrôle', async () => {
+    const fetchFn = vi.fn(() => respond(404)) as unknown as typeof fetch
+
+    await expect(verifyLocally(options(fetchFn))).rejects.toThrow()
+  })
+
+  it('une reponse 200 fait passer le contrôle', async () => {
+    const fetchFn = vi.fn(() => respond(200)) as unknown as typeof fetch
+
+    await expect(verifyLocally(options(fetchFn))).resolves.toBeUndefined()
+  })
+
+  it('injoignable puis 200 : le contrôle passe au deuxième essai', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockImplementation(() => respond(200)) as unknown as typeof fetch
+
+    await expect(verifyLocally(options(fetchFn))).resolves.toBeUndefined()
+    expect(fetchFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('envoie les en-têtes que nginx écrase (Host, X-Forwarded-Host, X-Forwarded-Proto: https), sans suivre les redirections', async () => {
+    const fetchFn = vi.fn(() => respond(200))
+
+    await verifyLocally(options(fetchFn as unknown as typeof fetch))
+
+    expect(fetchFn).toHaveBeenCalledWith('http://127.0.0.1:3100/', {
+      redirect: 'manual',
+      headers: {
+        Host: '127.0.0.1:3100',
+        'X-Forwarded-Host': '127.0.0.1:3100',
+        'X-Forwarded-Proto': 'https',
+      },
+    })
   })
 })
