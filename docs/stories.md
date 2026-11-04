@@ -3500,6 +3500,72 @@ ADR 039 (un seul chemin de changement de rôle, tracé).
 
 ---
 
+## Story s49-correctif-proxy-nginx — Servir le site derrière nginx sans erreur
+
+⚠️ **Story hors du tableau de périmètre du PRD**, ajoutée hors revue le 4 novembre 2026, pendant la
+recette de s12b sur le VPS. s12b est livrée (PR #44, revue passée) et son premier critère — le domaine
+d'une association répond en HTTPS et sert son site — est faux en conditions réelles : la page
+d'accueil répond 500 derrière nginx. Aucun contrôle automatique n'a pu l'attraper : l'e2e lance
+Next sans `-H` et sans proxy, et le contrôle de fin de déploiement parle à l'application sans
+`X-Forwarded-Proto` et accepte tout statut inférieur à 500. Seule la recette contre le serveur
+déployé pouvait le révéler, et c'est ce qui s'est passé. Ce correctif porte donc sa propre branche
+et sa propre PR ; la recherche, le plan et la revue de s12b restent intacts.
+
+**En tant que** prestataire (SuperAdmin) **je veux** que le site d'une association s'ouvre sur son
+domaine, derrière nginx, tel que le déploiement de s12b l'installe **afin que** la recette de s12b
+puisse se terminer et que la mise en production repose sur une configuration éprouvée.
+
+### Complexity
+
+2
+
+### Acceptance criteria
+
+- [ ] Sur le serveur déployé, la page d'accueil du domaine d'une association, demandée en HTTPS, répond
+      200 et sert le site de cette association — ni une erreur serveur, ni une redirection de
+      l'accueil vers lui-même — vérifié par le test de fumée de s12b rejoué sur deux domaines
+      d'associations distinctes ; un domaine inconnu répond toujours 404.
+- [ ] Le contrôle qui clôt un déploiement et un retour arrière échoue quand l'application répond comme
+      elle le faisait avant ce correctif (erreur serveur, ou accueil redirigé vers lui-même) — prouvé
+      par un test, pas par un essai sur le serveur.
+- [ ] L'application n'écoute toujours que sur la machine elle-même : le port 3100 n'est pas joignable de
+      l'extérieur, et nginx l'atteint — vérifié par la procédure d'exploitation (`ss`), et par le test
+      qui garde déjà cette propriété.
+- [ ] Le contrat entre le service systemd, nginx et Next est gardé par un test automatisé : il échoue si
+      l'adresse sous laquelle Next se désigne et celle de ses réécritures internes redeviennent
+      incohérentes.
+- [ ] Une décision écrite (nouvel ADR, l'ADR 036 est immuable) dit pourquoi le service est lancé ainsi,
+      avec les options écartées ; la procédure d'exploitation (`docs/exploitation/README.md`) est
+      à jour, y compris les commandes qu'elle fait taper.
+- [ ] `ops:bootstrap` aboutit sur le serveur de recette (Node 22.22.2) sans préchargement ni option
+      passée à la main, et la purge quotidienne de s08b (`asl-cms-purge`) aboutit sous le même Node
+      — ou, si la cause relève de la version de Node, la version minimale est écrite dans la
+      procédure (section 2.3) et contrôlée à la préparation du serveur.
+
+### Dependencies
+
+s12b
+
+### Agentic notes
+
+Réf. recherche `docs/research/s49-correctif-proxy-nginx.md` (cause établie dans le code de Next 16.3.0
+et confirmée sur le VPS le 4 novembre 2026), ADR 008 (locale unique sans préfixe : c'est la
+réécriture `/` → `/fr` qui est en cause), ADR 031 (redirections `/fr` → `/`), ADR 036
+(déploiement).
+
+- **Ne pas toucher à la protection de l'ADR 036** : nginx écrase `Host`, `X-Forwarded-Host`,
+  `X-Forwarded-Proto`, `X-Forwarded-For`, et l'application n'est pas joignable sans passer par lui.
+  Le correctif ne doit relâcher aucune de ces garanties pour contourner l'erreur.
+- **Le piège est la résolution de `localhost`** : sur le VPS elle donne `::1` avant `127.0.0.1`.
+  Lancer Next avec `-H localhost` seul le ferait écouter en IPv6 et nginx (qui vise `127.0.0.1`)
+  n'y arriverait plus ; `deploy.sh`, `rollback.sh` et l'orchestrateur visent aussi `127.0.0.1:3100`.
+- **Le contrôle de fin de déploiement est aveugle à ce défaut** : il accepte tout statut inférieur à
+  500 (`scripts/ops/deploy-release.ts`) et l'accueil répondait 308, pas 500, sans l'en-tête.
+- **Ordre** : le serveur de recette reste en 500 tant que cette story n'est pas déployée ; la
+  recette de s12b (association B, critères 5 et 6, tâche 10) reprend après.
+
+---
+
 # Récapitulatif — ordre et dépendances
 
 | Id   | Story                            | Cx  | Dépend de                                                                                                                                | Bloc |
@@ -3562,9 +3628,10 @@ ADR 039 (un seul chemin de changement de rôle, tracé).
 | s46b | connexion-limitee-association    | 4   | s03, s03b, s03c, s46                                                                                                                     | B    |
 | s47  | roles-globaux-reduits            | 3   | s03b, s46b                                                                                                                               | B    |
 | s48  | connexion-a-la-place             | 3   | s03, s03c, s12d, s14, s46b, s47                                                                                                          | B    |
+| s49  | correctif-proxy-nginx            | 2   | s12b                                                                                                                                     | B    |
 
-**58 stories, aucune à 5.** Répartition : quatre à 1, vingt à 2, vingt-quatre à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026).
-**Dix stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**59 stories, aucune à 5.** Répartition : quatre à 1, vingt et une à 2, vingt-quatre à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026).
+**Onze stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
@@ -3575,7 +3642,8 @@ décidé le 6 octobre 2026 et placé avant s12b avec s44, la page d'accueil choi
 s46b, la connexion limitée à l'association du domaine, scindée de s46 le 13 octobre ;
 s47, le retrait des rôles globaux du boilerplate sans équivalent dans l'association, décidé à la
 revue du découpage du 7 octobre ; s48, la connexion du SuperAdmin à la place d'un compte, garde-fou
-décidé le 28 octobre après s14.
+décidé le 28 octobre après s14; s49, le correctif de la
+mise en ligne (s12b) derrière nginx, découvert à la recette du 4 novembre.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
