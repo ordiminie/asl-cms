@@ -36,6 +36,9 @@ pnpm dev
 - `pnpm format` - Vérifie le formatage avec Prettier
 - `pnpm format:fix` - Corrige les problèmes de formatage
 - `pnpm test` - Exécute les tests avec Vitest
+- `pnpm ops:backup` / `pnpm ops:restore` - Sauvegarde et restauration de la base
+  et des fichiers sur le serveur (s12c) — voir `docs/exploitation/README.md`,
+  section 8.1
 
 ### Le build exige une base joignable
 

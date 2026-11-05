@@ -102,6 +102,16 @@ export const serverSchema = {
   // ecriture ; sa sauvegarde releve de la mise en ligne.
   LOCAL_STORAGE_ROOT: z.string().min(1),
 
+  // Sauvegarde (s12c, ADR 045) : lues par `scripts/ops/backup.ts` et
+  // `restore.ts` seulement, jamais par l'application, d'ou leur caractere
+  // optionnel ici. Le script de sauvegarde refuse de tourner sans
+  // `BACKUP_DIR`, `BACKUP_DATABASE_URL` (role `asl_backup`, BYPASSRLS, secret)
+  // ni `BACKUP_HEALTHCHECK_URL` (signal de vie externe, secret).
+  BACKUP_DIR: z.string().min(1).optional(),
+  BACKUP_RETENTION_DAYS: z.coerce.number().int().positive().optional(),
+  BACKUP_DATABASE_URL: z.string().url().optional(),
+  BACKUP_HEALTHCHECK_URL: z.string().url().optional(),
+
   // Stripe (serveur)
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),

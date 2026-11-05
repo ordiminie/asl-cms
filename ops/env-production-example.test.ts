@@ -69,8 +69,26 @@ describe('ops/env.production.example — gabarit de l’environnement de product
     expect(new URL(app).username).toBe('asl_app')
   })
 
+  it('place les sauvegardes dans shared/, hors de la racine des fichiers (s12c)', () => {
+    const backups = entries.get('BACKUP_DIR') ?? ''
+    expect(backups).toBe('/srv/asl-cms/shared/backups')
+    expect(backups.startsWith(`${entries.get('LOCAL_STORAGE_ROOT')}/`)).toBe(
+      false
+    )
+  })
+
+  it('conserve les sauvegardes 15 jours par défaut (s12c)', () => {
+    expect(entries.get('BACKUP_RETENTION_DAYS')).toBe('15')
+  })
+
+  it('sauvegarde sous le rôle dédié, jamais sous le rôle applicatif (ADR 045)', () => {
+    const backup = entries.get('BACKUP_DATABASE_URL') ?? ''
+    expect(new URL(backup).username).toBe('asl_backup')
+  })
+
   it.each([
     'BETTER_AUTH_SECRET',
+    'BACKUP_HEALTHCHECK_URL',
     'BREVO_API_KEY',
     'STRIPE_SECRET_KEY',
     'STRIPE_WEBHOOK_SECRET',

@@ -22,6 +22,9 @@ concurrency:
 env:
   DATABASE_URL: postgresql://asl_app:asl_app@localhost:5432/test
   DATABASE_MIGRATION_URL: postgresql://test:test@localhost:5432/test
+  # Rôle de sauvegarde (BYPASSRLS, lecture seule), lu par
+  # e2e/backup-restore.spec.ts (s12c, ADR 045).
+  BACKUP_DATABASE_URL: postgresql://asl_backup:asl_backup@localhost:5432/test
   BETTER_AUTH_SECRET: ci-uniquement-pas-un-secret-base-jetable
   BETTER_AUTH_URL: http://localhost:3000
   NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -91,10 +94,19 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      # pg_dump refuse un serveur plus récent que lui : le client du runner
+      # doit être celui du service (17), pour e2e/backup-restore.spec.ts.
+      - name: Client PostgreSQL 17
+        run: |
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+          pg_dump --version
 
-      # Le service postgres ne joue pas docker/db-init/ : extensions et rôle
-      # applicatif (ni superuser ni BYPASSRLS, ADR 002) sont créés ici, avant
-      # les migrations, pour que les ALTER DEFAULT PRIVILEGES s'appliquent.
+      # Le service postgres ne joue pas docker/db-init/ : extensions, rôle
+      # applicatif (ni superuser ni BYPASSRLS, ADR 002) et rôle de sauvegarde
+      # (ADR 045) sont créés ici, avant les migrations, pour que les ALTER
+      # DEFAULT PRIVILEGES s'appliquent.
       - name: Rôle applicatif et extensions
         run: |
           PGPASSWORD=test psql -h localhost -U test -d test -v ON_ERROR_STOP=1 <<'SQL'
@@ -106,9 +118,16 @@ jobs:
               CREATE ROLE asl_app LOGIN PASSWORD 'asl_app' NOSUPERUSER NOCREATEDB
                 NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
             END IF;
+            -- Rôle de sauvegarde, comme ops/postgres/bootstrap.sql (ADR 045).
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'asl_backup') THEN
+              CREATE ROLE asl_backup LOGIN PASSWORD 'asl_backup' NOSUPERUSER
+                NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
+            END IF;
           END
           $$;
+          GRANT pg_read_all_data TO asl_backup;
           GRANT CONNECT ON DATABASE test TO asl_app;
+          GRANT CONNECT ON DATABASE test TO asl_backup;
           GRANT USAGE ON SCHEMA public TO asl_app;
           GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO asl_app;
           GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO asl_app;
@@ -181,9 +200,16 @@ jobs:
               CREATE ROLE asl_app LOGIN PASSWORD 'asl_app' NOSUPERUSER NOCREATEDB
                 NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
             END IF;
+            -- Rôle de sauvegarde, comme ops/postgres/bootstrap.sql (ADR 045).
+            IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'asl_backup') THEN
+              CREATE ROLE asl_backup LOGIN PASSWORD 'asl_backup' NOSUPERUSER
+                NOCREATEDB NOCREATEROLE NOREPLICATION BYPASSRLS;
+            END IF;
           END
           $$;
+          GRANT pg_read_all_data TO asl_backup;
           GRANT CONNECT ON DATABASE test TO asl_app;
+          GRANT CONNECT ON DATABASE test TO asl_backup;
           GRANT USAGE ON SCHEMA public TO asl_app;
           GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO asl_app;
           GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO asl_app;

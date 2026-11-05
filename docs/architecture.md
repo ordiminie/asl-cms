@@ -107,6 +107,12 @@ Présentation → Façade → Service (validation + autorisation) → Repository
 - Le tenant vient du **domaine appelé** (ADR 003), résolu côté serveur et non dans le middleware.
 - Le bypass SuperAdmin (`withRlsBypass()`) est la seule porte dérobée : toute nouvelle occurrence dans
   un diff est un point d'arrêt de revue.
+- **Hors de l'application, un seul contournement : le rôle de sauvegarde `asl_backup`** (s12c,
+  ADR 045). `BYPASSRLS`, membre de `pg_read_all_data`, ni superuser ni propriétaire : il lit toutes les
+  lignes pour `pg_dump` et n'écrit rien. Il n'est utilisé que par `scripts/ops/backup.ts`
+  (`BACKUP_DATABASE_URL`), qui vérifie ses privilèges avant chaque sauvegarde
+  (`assertBackupRolePrivileges`) ; `db:check` continue de refuser `BYPASSRLS` pour le rôle
+  applicatif. La restauration est un acte humain, sous un superutilisateur, vers une base vide.
 - **La RLS n'est pas testable en test unitaire** — `src/db/models/db.ts` refuse toute connexion en test
   et les repositories sont mockés. Le test d'isolation est un **test e2e Playwright**.
 
@@ -256,6 +262,18 @@ le proxy tronque sous elle (`src/services/__tests__/board-member-service.test.ts
 publie une affiche de 4 Mo et un PDF de 8 Mo dans la même soumission. Le plafond écrit sous un champ de dépôt est
 toujours celui réellement appliqué, jamais l'enveloppe. À vérifier en même temps : la limite du serveur
 web devant l'application (s12b), qui a la sienne et tronque au-delà.
+
+**Inventaire des clés de fichier depuis s12c** (ADR 045) : `src/lib/files/file-key-inventory.ts` est la
+liste **unique** des endroits où la base référence un fichier de `LOCAL_STORAGE_ROOT` — les colonnes
+`…_key` (`organization.identity_logo_key`, `identity_favicon_key`, `page.share_image_key`,
+`news.image_key`, `board_member.photo_key`, `water_analysis.poster_key`, `report_key`) **et** les
+chemins JSON des blocs de page (`content_block.data` : `fileKey` des blocs image et PDF,
+`images[].fileKey` de la galerie), qu'aucun nom de colonne ne révèle. Le test de restauration
+(`e2e/backup-restore.spec.ts`) vérifie chaque clé listée contre les fichiers restaurés ;
+`src/db/file-key-inventory.test.ts` échoue sur toute colonne `_key` des modèles et toute propriété
+`…Key` d'un type de bloc non déclarées. **Toute story qui stocke un fichier complète l'inventaire dans
+le même commit.** La sauvegarde elle-même (base puis fichiers, répertoire daté publié par renommage,
+rétention, signal de vie externe) est décrite dans `docs/exploitation/README.md`, section 8.1.
 
 Entités ajoutées par ASL-CMS, par domaine :
 

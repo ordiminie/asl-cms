@@ -259,7 +259,11 @@ describe('ops/systemd — le service et la purge quotidienne', () => {
   })
 
   it('ne peut jamais écrire dans le code des versions ni leurs node_modules', () => {
-    const writable = [...service, ...purgeService]
+    const writable = [
+      ...service,
+      ...purgeService,
+      ...directives(read('systemd/asl-cms-backup.service')),
+    ]
       .filter((line) => line.startsWith('ReadWritePaths='))
       .join(' ')
     expect(writable).not.toContain('releases')
@@ -285,6 +289,48 @@ describe('ops/systemd — le service et la purge quotidienne', () => {
     expect(purgeTimer).toContain('OnCalendar=daily')
     expect(purgeTimer).toContain('Persistent=true')
     expect(purgeTimer).toContain('Unit=asl-cms-purge.service')
+  })
+})
+
+describe('ops/systemd — la sauvegarde tous les deux jours (s12c, ADR 045)', () => {
+  const backupService = directives(read('systemd/asl-cms-backup.service'))
+  const backupTimer = directives(read('systemd/asl-cms-backup.timer'))
+
+  it('lance le script de sauvegarde sous l’utilisateur dédié, en production', () => {
+    expect(backupService).toContain('Type=oneshot')
+    expect(backupService).toContain('User=asl-cms')
+    expect(backupService).toContain('Group=asl-cms')
+    expect(backupService).toContain('WorkingDirectory=/srv/asl-cms/current')
+    expect(backupService).toContain('Environment=NODE_ENV=production')
+    expect(
+      backupService.find((line) => line.startsWith('ExecStart='))
+    ).toContain('scripts/ops/backup.ts')
+  })
+
+  it('est durcie comme la purge et n’écrit que dans shared/', () => {
+    expect(backupService).toContain('ProtectSystem=strict')
+    expect(backupService).toContain('ProtectHome=true')
+    expect(backupService).toContain('PrivateTmp=true')
+    expect(backupService).toContain('NoNewPrivileges=true')
+    expect(
+      backupService.filter((line) => line.startsWith('ReadWritePaths='))
+    ).toEqual(['ReadWritePaths=/srv/asl-cms/shared'])
+  })
+
+  it('ne lit aucune entrée interactive', () => {
+    const input = backupService.filter((line) =>
+      line.startsWith('StandardInput=')
+    )
+    expect(input).toEqual(['StandardInput=null'])
+    expect(backupService.join('\n')).not.toMatch(/tty/i)
+  })
+
+  it('passe tous les deux jours et rattrape un passage manqué', () => {
+    expect(backupTimer).toContain('OnCalendar=*-*-1/2')
+    expect(backupTimer).toContain('Persistent=true')
+    expect(backupTimer).toContain('RandomizedDelaySec=15min')
+    expect(backupTimer).toContain('Unit=asl-cms-backup.service')
+    expect(backupTimer).toContain('WantedBy=timers.target')
   })
 })
 

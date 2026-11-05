@@ -40,3 +40,49 @@ export const assertApplicationRolePrivileges = (
       'DATABASE_MIGRATION_URL (ADR 002).'
   )
 }
+
+export type BackupRolePrivileges = RolePrivileges & {
+  /** Objets de la base dont le role est proprietaire (`pg_class`, schemas). */
+  ownedObjects: number
+}
+
+/**
+ * Verifie le role de sauvegarde (`BACKUP_DATABASE_URL`, ADR 045) avant tout
+ * `pg_dump`.
+ *
+ * Sans BYPASSRLS, `FORCE ROW LEVEL SECURITY` s'applique a `pg_dump` comme a
+ * l'application : la sauvegarde echoue, ou ne contient aucune ligne metier.
+ * Superuser, la minuterie aurait tous les pouvoirs sur la base ; proprietaire,
+ * elle pourrait modifier ou supprimer ce qu'elle est censee seulement lire.
+ */
+export const assertBackupRolePrivileges = (
+  role: BackupRolePrivileges | undefined
+): void => {
+  if (!role) {
+    throw new Error(
+      'Le role de BACKUP_DATABASE_URL est introuvable dans pg_roles : impossible de verifier ses privileges.'
+    )
+  }
+
+  const problems = [
+    role.rolbypassrls
+      ? undefined
+      : 'ne porte pas BYPASSRLS : la sauvegarde ne contiendrait aucune ligne metier',
+    role.rolsuper
+      ? 'porte SUPERUSER : une minuterie ne doit pas avoir tous les pouvoirs sur la base'
+      : undefined,
+    role.ownedObjects > 0
+      ? `est proprietaire de ${role.ownedObjects} objet(s) : il pourrait modifier ce qu'il sauvegarde`
+      : undefined,
+  ].filter(Boolean)
+
+  if (problems.length === 0) {
+    return
+  }
+
+  throw new Error(
+    `Le role de sauvegarde « ${role.rolname} » ${problems.join(' ; ')}. ` +
+      'Utiliser asl_backup (LOGIN BYPASSRLS, membre de pg_read_all_data, ' +
+      'proprietaire de rien), voir ADR 045.'
+  )
+}
