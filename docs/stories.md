@@ -3573,6 +3573,125 @@ réécriture `/` → `/fr` qui est en cause), ADR 031 (redirections `/fr` → `/
 
 ---
 
+## Story s50-navigation-liens-libres — Ajouter au menu un lien vers une adresse quelconque
+
+⚠️ **Story hors du tableau de périmètre du PRD**, ajoutée le 5 novembre 2026 à la demande de
+l'utilisatrice, pendant la recette de s12b. Elle **élargit s04b**, dont les notes interdisaient
+d'élargir le périmètre du menu : une entrée de menu ne vise aujourd'hui qu'une **page** créée dans
+« Pages » (`menu_item.page_id` est la seule cible). Les routes fixes du site — `/contact`,
+`/actualites`, `/analyses-eau`, `/le-bureau`, `/signaler` — ne sont donc adressables par aucune
+entrée de menu : un visiteur ne les trouve que s'il en connaît l'adresse. Le défaut a été vu en
+cherchant la page de contact d'une association de recette. **Une seule profondeur de menu** reste la
+règle de s04b : cette story ne crée pas de sous-menus.
+
+**En tant que** membre du bureau **je veux** ajouter au menu une entrée composée d'un libellé et d'une
+adresse, interne ou externe, **afin que** le visiteur atteigne le formulaire de contact, les actualités
+ou un site partenaire depuis le menu, sans que j'aie à fabriquer une page pour cela.
+
+### Complexity
+
+2
+
+### Acceptance criteria
+
+- [ ] Le bureau ajoute une entrée « libellé + adresse » : l'adresse est un **chemin interne** (commence
+      par `/`, par exemple `/contact`) ou une **adresse externe** en `https://`. Elle s'ordonne, se
+      retire et se masque comme une entrée pointant vers une page (s04b, critères 1 et 6).
+- [ ] Le menu rendu au visiteur affiche cette entrée à sa place ; l'entrée externe porte
+      `rel="noopener noreferrer"`.
+- [ ] Une adresse refusée n'enregistre rien et affiche l'erreur sur le champ : schéma autre que
+      `https` (`javascript:`, `data:`, `http:`…), adresse relative au protocole (`//hôte`), libellé vide.
+      Vérifié par test, y compris sur la validation côté serveur.
+- [ ] Les entrées pointant vers une page, déjà enregistrées, restent inchangées par la migration et
+      continuent de s'afficher ; une entrée ne vise **jamais à la fois** une page et une adresse libre
+      (contrainte en base, pas seulement dans le formulaire).
+- [ ] L'entrée est scopée au tenant : deux associations servent deux menus distincts — vérifié par un
+      test d'accès croisé entre deux tenants (RLS déjà forcée sur `menu_item`).
+- [ ] Ajouter, modifier ou retirer une entrée libre met le menu à jour **sans délai de
+      revalidation** (même invalidation que s04b).
+- [ ] Un membre non-bureau ne peut ni ajouter ni modifier une entrée.
+
+### Dependencies
+
+s04b
+
+### Agentic notes
+
+Réf. recette de s12b (5 novembre 2026) ; `docs/stories.md` s04b (périmètre, piège du cache du menu).
+Le modèle actuel est `src/db/models/menu-item-model.ts` : `page_id`, `rank`, `visible`.
+
+- **Migration** : étendre `menu_item` (libellé et adresse, `page_id` devenant facultatif, contrainte
+  « une page **ou** une adresse »). Générée par `pnpm db:generate`, jamais écrite à la main
+  (AGENTS.md, « Database Migration Safety »).
+- **Sécurité des adresses** : liste blanche (chemin interne ou `https://`), jamais une liste noire de
+  schémas dangereux. La même validation vaut à l'écriture et au rendu : une adresse déjà en base ne
+  doit jamais produire un `href` dangereux.
+- **Piège cache** : le menu est rendu sur toutes les pages publiques et caché (`'use cache'` +
+  `cacheTag`) ; l'invalidation par `updateTag` de s04b couvre aussi les entrées libres, à vérifier.
+- **Piège s34** : un module désactivé « n'a plus de page et aucune navigation n'y renvoie » (s34).
+  Un lien libre vers `/actualites` ou `/analyses-eau` reste affiché même si le module est désactivé :
+  à trancher au plan (avertir le bureau, ou masquer les liens vers les routes d'un module désactivé).
+- **À ne pas faire ici** : valider qu'un chemin interne désigne une route existante (le bureau peut
+  viser une page future), ouvrir un nouvel onglet pour les liens externes (public âgé : un lien
+  s'ouvre où le visiteur s'attend à rester), ou toucher au pied de page.
+- **Design** : l'écran de composition du menu existe (s04b) ; ajouter l'entrée libre est une variante
+  de son formulaire, composée des composants du design system, sans en inventer.
+
+---
+
+## Story s51-polices-hebergees — Servir les polices avec le site, sans dépendre de Google
+
+⚠️ **Story hors du tableau de périmètre du PRD**, ajoutée le 5 novembre 2026 après deux échecs de build
+le même jour. `next build` récupère trois polices sur Internet au moment de compiler
+(`next/font/google` dans `src/app/[locale]/base-layout.tsx` : Public Sans, Source Serif 4 et JetBrains
+Mono). Quand ce téléchargement échoue, le build s'arrête sur `Module not found: Can't resolve
+'@vercel/turbopack-next/internal/font/google/font'` / `next/font/google queries have exactly one
+entry` : un déploiement sur le VPS a échoué une fois (la version en service restait intacte), et le
+job e2e de la CI a échoué trois fois de suite sur la PR #54, **bloquant la CI de toute PR** tant que
+Google ne répond pas. Une dépendance externe au build n'a pas de raison d'exister pour trois fichiers
+qu'on peut livrer avec le site.
+
+**En tant que** prestataire (SuperAdmin) **je veux** que le site se construise sans accès à Google
+**afin que** ni un déploiement ni la CI n'échouent sur le téléchargement d'une police.
+
+### Complexity
+
+1
+
+### Acceptance criteria
+
+- [ ] Le dépôt ne contient plus aucun import de `next/font/google` ; les trois familles (Public Sans,
+      Source Serif 4, JetBrains Mono) sont chargées depuis des fichiers du dépôt (`next/font/local`),
+      aux mêmes graisses que celles servies aujourd'hui — vérifié par un test qui échoue si
+      `next/font/google` réapparaît.
+- [ ] Le build de production aboutit **sans aucun accès réseau vers `fonts.googleapis.com` et
+      `fonts.gstatic.com`** — vérifié en CI (e2e), sans dépendre de la disponibilité de Google.
+- [ ] Aucune page servie ne charge une ressource depuis un domaine Google Fonts : le HTML rendu et ses
+      feuilles de style ne contiennent aucune de ces adresses — vérifié en e2e sur une page publique
+      et une page du back-office.
+- [ ] Le rendu typographique est inchangé : mêmes familles et mêmes variables CSS
+      (`--font-public-sans`, …), donc aucune modification du design system.
+- [ ] Les fichiers de polices sont livrés avec leur licence (SIL Open Font License) dans le dépôt.
+
+### Dependencies
+
+s12b
+
+### Agentic notes
+
+Réf. `docs/exploitation/recette-s12b.md` (constat du 5 novembre 2026), ADR 012/033 (mode clair seul),
+`docs/design-system.md` (les trois familles y sont déjà nommées).
+
+- **Piège** : `src/app/[locale]/base-layout.test.tsx` mocke `next/font/google` ; le test doit suivre le
+  nouvel import (`next/font/local`).
+- **Taille** : ne livrer que les sous-ensembles et les graisses réellement utilisés (latin ;
+  400/500/600/700 pour Public Sans), au format `woff2`, pour ne pas alourdir le dépôt ni la page.
+- **À ne pas faire ici** : changer de police, ajouter une graisse, ou toucher au design system.
+- **Effet sur la CI** : tant que cette story n'est pas livrée, un job e2e rouge sur
+  `Module not found … font/google` est un faux négatif lié à Google, pas à la PR.
+
+---
+
 # Récapitulatif — ordre et dépendances
 
 | Id   | Story                            | Cx  | Dépend de                                                                                                                                | Bloc |
@@ -3636,9 +3755,11 @@ réécriture `/` → `/fr` qui est en cause), ADR 031 (redirections `/fr` → `/
 | s47  | roles-globaux-reduits            | 3   | s03b, s46b                                                                                                                               | B    |
 | s48  | connexion-a-la-place             | 3   | s03, s03c, s12d, s14, s46b, s47                                                                                                          | B    |
 | s49  | correctif-proxy-nginx            | 2   | s12b                                                                                                                                     | B    |
+| s50  | navigation-liens-libres          | 2   | s04b                                                                                                                                     | A    |
+| s51  | polices-hebergees                | 1   | s12b                                                                                                                                     | B    |
 
-**59 stories, aucune à 5.** Répartition : quatre à 1, vingt et une à 2, vingt-quatre à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026).
-**Onze stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**61 stories, aucune à 5.** Répartition : cinq à 1, vingt-deux à 2, vingt-quatre à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 et s51 ajoutées le 5 novembre 2026).
+**Treize stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
@@ -3650,7 +3771,9 @@ s46b, la connexion limitée à l'association du domaine, scindée de s46 le 13 o
 s47, le retrait des rôles globaux du boilerplate sans équivalent dans l'association, décidé à la
 revue du découpage du 7 octobre ; s48, la connexion du SuperAdmin à la place d'un compte, garde-fou
 décidé le 28 octobre après s14; s49, le correctif de la
-mise en ligne (s12b) derrière nginx, découvert à la recette du 4 novembre.
+mise en ligne (s12b) derrière nginx, découvert à la recette du 4 novembre ; s50, les liens libres du
+menu, demandés le 5 novembre après la recette de s12b ; s51, les polices servies avec le site, après deux
+échecs de build dus au téléchargement chez Google.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
