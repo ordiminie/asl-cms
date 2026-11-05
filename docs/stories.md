@@ -1317,10 +1317,17 @@ les associations **afin qu'**aucune perte du serveur ne fasse disparaître leurs
 - [ ] Restaurer une sauvegarde sur une base vide et un répertoire vide rend une application dans laquelle **toute clé de fichier référencée en base** désigne un fichier présent — vérifié par le même test, sur l'inventaire des colonnes de clé de fichier décrit dans les notes.
 - [ ] Ajouter une colonne de clé de fichier qui suit la convention de nommage, sans la déclarer à l'inventaire, fait échouer ce test — vérifié en ajoutant une colonne de contrôle.
 - [ ] La sauvegarde s'exécute sans intervention humaine, à une fréquence planifiée, et ne demande aucune confirmation interactive.
-- [ ] Chaque sauvegarde est copiée hors du serveur qui l'a produite ; la destination vient de la configuration, pas du code.
+- [ ] Chaque sauvegarde est écrite dans un répertoire de sauvegarde distinct de la racine des fichiers et du répertoire déployé ; sa destination vient de la configuration, pas du code.
 - [ ] Les sauvegardes plus anciennes que la durée de conservation configurée sont supprimées, sur le serveur comme à destination ; la durée vient de la configuration.
 - [ ] Une sauvegarde en échec (base, fichiers ou copie distante) sort en erreur et ne produit jamais une archive partielle présentée comme réussie.
 - [ ] L'absence de sauvegarde réussie dans la fenêtre attendue déclenche une alerte reçue par le prestataire hors du serveur, par un canal qui ne dépend ni de l'application ni de son adaptateur d'envoi d'emails — que la sauvegarde ait échoué ou qu'elle ne se soit pas lancée du tout.
+
+⚠️ **Critère 6 amendé le 5 novembre 2026** (arbitrage de l'utilisatrice : un seul serveur, un seul client).
+Il exigeait une copie **hors du serveur**. Les sauvegardes restent désormais sur le serveur qui les produit :
+la perte du disque emporte les données **et** leurs sauvegardes. Risque accepté (ADR 045), seul filet connu
+hors disque : la sauvegarde infogérée du VPS chez LWS, à vérifier. La copie hors du serveur et le chiffrement
+sont reportés à la signature d'un deuxième client. Autres arbitrages : sauvegarde tous les deux jours, rétention
+de 15 jours, alerte par email via un signal de vie externe.
 
 ### Dependencies
 
