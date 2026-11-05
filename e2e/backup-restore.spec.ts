@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-properties -- une spec e2e tourne hors de
    l'application : le fichier env.ts typé n'y est pas chargé. */
-import {spawnSync} from 'node:child_process'
+import {spawn} from 'node:child_process'
 import {randomUUID} from 'node:crypto'
 import fs from 'node:fs'
 import http from 'node:http'
@@ -385,17 +385,37 @@ const startHealthcheck = async () => {
   }
 }
 
+type RunResult = {status: number | null; stdout: string; stderr: string}
+
+/**
+ * Lance un processus sans bloquer la boucle d’événements : le faux service de
+ * signal de vie vit dans ce même processus et doit pouvoir répondre pendant que
+ * le script tourne (spawnSync le figeait, et le ping expirait).
+ */
+const run = (
+  command: string,
+  args: string[],
+  options: {env?: Record<string, string>; cwd?: string; timeout?: number}
+) =>
+  new Promise<RunResult>((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: {...process.env, ...options.env},
+      timeout: options.timeout,
+    })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.setEncoding('utf8').on('data', (chunk) => (stdout += chunk))
+    child.stderr.setEncoding('utf8').on('data', (chunk) => (stderr += chunk))
+    child.on('error', reject)
+    child.on('close', (status) => resolve({status, stdout, stderr}))
+  })
+
 const runScript = (
   script: string,
   args: string[],
   env: Record<string, string>
-) =>
-  spawnSync(TSX, [script, ...args], {
-    cwd: ROOT,
-    env: {...process.env, ...env},
-    encoding: 'utf8',
-    timeout: SCRIPT_TIMEOUT_MS,
-  })
+) => run(TSX, [script, ...args], {cwd: ROOT, env, timeout: SCRIPT_TIMEOUT_MS})
 
 /** Mot de passe hors de la ligne de commande, comme le font les scripts. */
 const pgToolArgs = (url: string) => {
@@ -458,7 +478,7 @@ test.describe('s12c — sauvegarder puis restaurer toutes les associations', () 
 
     // Critère 1 : la sauvegarde réelle, comme la lance la minuterie.
     const healthcheck = await startHealthcheck()
-    const backup = runScript('scripts/ops/backup.ts', [], {
+    const backup = await runScript('scripts/ops/backup.ts', [], {
       BACKUP_DIR: backupDir,
       BACKUP_DATABASE_URL: backupUrl(),
       BACKUP_HEALTHCHECK_URL: healthcheck.url,
@@ -483,7 +503,7 @@ test.describe('s12c — sauvegarder puis restaurer toutes les associations', () 
     await withClient(adminUrl(), (client) =>
       client.query(`create database ${quoteIdent(restoredDatabase)}`)
     )
-    const restore = runScript(
+    const restore = await runScript(
       'scripts/ops/restore.ts',
       [
         '--',
@@ -541,16 +561,16 @@ test.describe('s12c — sauvegarder puis restaurer toutes les associations', () 
 
     // Par défaut, pg_dump désactive la RLS et échoue sur la première table
     // protégée : le rôle applicatif ne la contourne pas.
-    const refused = spawnSync(
+    const refused = await run(
       'pg_dump',
       ['--format=custom', '--schema=public', `--file=${dumpFile}`, dbname],
-      {env: {...process.env, ...env}, encoding: 'utf8'}
+      {env}
     )
     expect(refused.status).not.toBe(0)
     expect(refused.stderr).toMatch(/row-level security/i)
 
     // Avec la RLS active, il « réussit »... sans aucune ligne métier.
-    const filtered = spawnSync(
+    const filtered = await run(
       'pg_dump',
       [
         '--format=plain',
@@ -560,7 +580,7 @@ test.describe('s12c — sauvegarder puis restaurer toutes les associations', () 
         `--file=${dumpFile}`,
         dbname,
       ],
-      {env: {...process.env, ...env}, encoding: 'utf8'}
+      {env}
     )
     expect(filtered.status, filtered.stderr).toBe(0)
     const script = fs.readFileSync(dumpFile, 'utf8')
@@ -568,7 +588,10 @@ test.describe('s12c — sauvegarder puis restaurer toutes les associations', () 
       const block = new RegExp(
         `COPY public\\.${quoteIdent(table).replace(/"/g, '"?')} \\([^)]*\\) FROM stdin;\\n([\\s\\S]*?)\\\\\\.\\n`
       ).exec(script)
-      expect(block?.[1] ?? '', `lignes de ${table} sous asl_app`).toBe('')
+      // pg_dump émet un bloc COPY même pour une table vide : un bloc absent
+      // ferait passer le test à vide.
+      expect(block, `bloc COPY de ${table} absent du dump`).not.toBeNull()
+      expect(block?.[1], `lignes de ${table} sous asl_app`).toBe('')
     }
   })
 })
