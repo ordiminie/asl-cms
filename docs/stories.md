@@ -3573,6 +3573,72 @@ réécriture `/` → `/fr` qui est en cause), ADR 031 (redirections `/fr` → `/
 
 ---
 
+## Story s50-navigation-liens-libres — Ajouter au menu un lien vers une adresse quelconque
+
+⚠️ **Story hors du tableau de périmètre du PRD**, ajoutée le 5 novembre 2026 à la demande de
+l'utilisatrice, pendant la recette de s12b. Elle **élargit s04b**, dont les notes interdisaient
+d'élargir le périmètre du menu : une entrée de menu ne vise aujourd'hui qu'une **page** créée dans
+« Pages » (`menu_item.page_id` est la seule cible). Les routes fixes du site — `/contact`,
+`/actualites`, `/analyses-eau`, `/le-bureau`, `/signaler` — ne sont donc adressables par aucune
+entrée de menu : un visiteur ne les trouve que s'il en connaît l'adresse. Le défaut a été vu en
+cherchant la page de contact d'une association de recette. **Une seule profondeur de menu** reste la
+règle de s04b : cette story ne crée pas de sous-menus.
+
+**En tant que** membre du bureau **je veux** ajouter au menu une entrée composée d'un libellé et d'une
+adresse, interne ou externe, **afin que** le visiteur atteigne le formulaire de contact, les actualités
+ou un site partenaire depuis le menu, sans que j'aie à fabriquer une page pour cela.
+
+### Complexity
+
+2
+
+### Acceptance criteria
+
+- [ ] Le bureau ajoute une entrée « libellé + adresse » : l'adresse est un **chemin interne** (commence
+      par `/`, par exemple `/contact`) ou une **adresse externe** en `https://`. Elle s'ordonne, se
+      retire et se masque comme une entrée pointant vers une page (s04b, critères 1 et 6).
+- [ ] Le menu rendu au visiteur affiche cette entrée à sa place ; l'entrée externe porte
+      `rel="noopener noreferrer"`.
+- [ ] Une adresse refusée n'enregistre rien et affiche l'erreur sur le champ : schéma autre que
+      `https` (`javascript:`, `data:`, `http:`…), adresse relative au protocole (`//hôte`), libellé vide.
+      Vérifié par test, y compris sur la validation côté serveur.
+- [ ] Les entrées pointant vers une page, déjà enregistrées, restent inchangées par la migration et
+      continuent de s'afficher ; une entrée ne vise **jamais à la fois** une page et une adresse libre
+      (contrainte en base, pas seulement dans le formulaire).
+- [ ] L'entrée est scopée au tenant : deux associations servent deux menus distincts — vérifié par un
+      test d'accès croisé entre deux tenants (RLS déjà forcée sur `menu_item`).
+- [ ] Ajouter, modifier ou retirer une entrée libre met le menu à jour **sans délai de
+      revalidation** (même invalidation que s04b).
+- [ ] Un membre non-bureau ne peut ni ajouter ni modifier une entrée.
+
+### Dependencies
+
+s04b
+
+### Agentic notes
+
+Réf. recette de s12b (5 novembre 2026) ; `docs/stories.md` s04b (périmètre, piège du cache du menu).
+Le modèle actuel est `src/db/models/menu-item-model.ts` : `page_id`, `rank`, `visible`.
+
+- **Migration** : étendre `menu_item` (libellé et adresse, `page_id` devenant facultatif, contrainte
+  « une page **ou** une adresse »). Générée par `pnpm db:generate`, jamais écrite à la main
+  (AGENTS.md, « Database Migration Safety »).
+- **Sécurité des adresses** : liste blanche (chemin interne ou `https://`), jamais une liste noire de
+  schémas dangereux. La même validation vaut à l'écriture et au rendu : une adresse déjà en base ne
+  doit jamais produire un `href` dangereux.
+- **Piège cache** : le menu est rendu sur toutes les pages publiques et caché (`'use cache'` +
+  `cacheTag`) ; l'invalidation par `updateTag` de s04b couvre aussi les entrées libres, à vérifier.
+- **Piège s34** : un module désactivé « n'a plus de page et aucune navigation n'y renvoie » (s34).
+  Un lien libre vers `/actualites` ou `/analyses-eau` reste affiché même si le module est désactivé :
+  à trancher au plan (avertir le bureau, ou masquer les liens vers les routes d'un module désactivé).
+- **À ne pas faire ici** : valider qu'un chemin interne désigne une route existante (le bureau peut
+  viser une page future), ouvrir un nouvel onglet pour les liens externes (public âgé : un lien
+  s'ouvre où le visiteur s'attend à rester), ou toucher au pied de page.
+- **Design** : l'écran de composition du menu existe (s04b) ; ajouter l'entrée libre est une variante
+  de son formulaire, composée des composants du design system, sans en inventer.
+
+---
+
 # Récapitulatif — ordre et dépendances
 
 | Id   | Story                            | Cx  | Dépend de                                                                                                                                | Bloc |
@@ -3636,9 +3702,10 @@ réécriture `/` → `/fr` qui est en cause), ADR 031 (redirections `/fr` → `/
 | s47  | roles-globaux-reduits            | 3   | s03b, s46b                                                                                                                               | B    |
 | s48  | connexion-a-la-place             | 3   | s03, s03c, s12d, s14, s46b, s47                                                                                                          | B    |
 | s49  | correctif-proxy-nginx            | 2   | s12b                                                                                                                                     | B    |
+| s50  | navigation-liens-libres          | 2   | s04b                                                                                                                                     | A    |
 
-**59 stories, aucune à 5.** Répartition : quatre à 1, vingt et une à 2, vingt-quatre à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026).
-**Onze stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**60 stories, aucune à 5.** Répartition : quatre à 1, vingt-deux à 2, vingt-quatre à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 ajoutée le 5 novembre 2026).
+**Douze stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
@@ -3650,7 +3717,8 @@ s46b, la connexion limitée à l'association du domaine, scindée de s46 le 13 o
 s47, le retrait des rôles globaux du boilerplate sans équivalent dans l'association, décidé à la
 revue du découpage du 7 octobre ; s48, la connexion du SuperAdmin à la place d'un compte, garde-fou
 décidé le 28 octobre après s14; s49, le correctif de la
-mise en ligne (s12b) derrière nginx, découvert à la recette du 4 novembre.
+mise en ligne (s12b) derrière nginx, découvert à la recette du 4 novembre ; s50, les liens libres du
+menu, demandés le 5 novembre après la recette de s12b.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
