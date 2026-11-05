@@ -1,0 +1,27 @@
+# Sauvegarde de la base et des fichiers de toutes les associations (s12c, ADR 045).
+# Lancee tous les deux jours par asl-cms-backup.timer ; trace :
+# journalctl -u asl-cms-backup. Le signal de vie externe (BACKUP_HEALTHCHECK_URL)
+# alerte si elle echoue ou ne passe plus.
+
+[Unit]
+Description=ASL-CMS : sauvegarde de la base et des fichiers
+After=postgresql.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=asl-cms
+Group=asl-cms
+WorkingDirectory=/srv/asl-cms/current
+Environment=NODE_ENV=production
+ExecStart=/srv/asl-cms/current/node_modules/.bin/tsx scripts/ops/backup.ts
+# Aucune entree : la sauvegarde ne demande jamais de confirmation.
+StandardInput=null
+# Sauvegardes lisibles par asl-cms seul (donnees nominatives non chiffrees).
+UMask=0027
+
+ProtectSystem=strict
+ReadWritePaths=/srv/asl-cms/shared
+PrivateTmp=true
+ProtectHome=true
+NoNewPrivileges=true

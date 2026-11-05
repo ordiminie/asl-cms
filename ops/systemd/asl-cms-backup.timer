@@ -1,0 +1,17 @@
+# Declenchement de la sauvegarde tous les deux jours (s12c, ADR 045) : les jours
+# impairs du mois. Du 31 au 1er, l'ecart n'est que d'un jour, sans consequence.
+# Persistent : un passage manque (serveur eteint) est rattrape au demarrage.
+# Le delai de grace du check Healthchecks couvre RandomizedDelaySec et la duree
+# de la sauvegarde (docs/exploitation/README.md, section 8.1).
+
+[Unit]
+Description=ASL-CMS : sauvegarde tous les deux jours
+
+[Timer]
+OnCalendar=*-*-1/2
+Persistent=true
+RandomizedDelaySec=15min
+Unit=asl-cms-backup.service
+
+[Install]
+WantedBy=timers.target

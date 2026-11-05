@@ -38,7 +38,9 @@
     "knip": "knip",
     "ops:bootstrap": "tsx src/db/scripts/bootstrap-platform.ts",
     "ops:transfer-presidency": "tsx src/db/scripts/transfer-presidency.ts",
-    "ops:deploy-release": "tsx scripts/ops/deploy-release.ts"
+    "ops:deploy-release": "tsx scripts/ops/deploy-release.ts",
+    "ops:backup": "tsx scripts/ops/backup.ts",
+    "ops:restore": "tsx scripts/ops/restore.ts"
   },
   "dependencies": {
     "@better-auth/api-key": "^1.7.1",

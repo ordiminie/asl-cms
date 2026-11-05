@@ -135,8 +135,10 @@ boilerplate là où ASL-CMS s'en écarte est une erreur, pas un choix par défau
   touchant une table métier s'exécute dans `withTenant(organizationId, ...)`.
 - **Un oubli de scope ne fuite pas : il ne retourne rien.** Devant un « zéro résultat »
   inexpliqué, c'est la première hypothèse à tester.
-- `withRlsBypass()` est la seule porte dérobée (SuperAdmin). Toute nouvelle occurrence
-  dans un diff est un point d'arrêt de revue.
+- `withRlsBypass()` est la seule porte dérobée **du code applicatif** (SuperAdmin). Toute
+  nouvelle occurrence dans un diff est un point d'arrêt de revue. Hors de l'application, un
+  seul contournement : le rôle de base `asl_backup` (`BYPASSRLS`, lecture seule, ADR 045),
+  réservé à `pnpm ops:backup`. Tout autre rôle ou option qui contourne la RLS est interdit.
 - **La RLS n'est pas testable en unitaire** : `db.ts` refuse toute connexion en test et
   les repositories sont mockés. Le test d'isolation est un **e2e Playwright**.
 - Le tenant vient du **domaine appelé**, résolu côté serveur — pas dans `src/proxy.ts`,
