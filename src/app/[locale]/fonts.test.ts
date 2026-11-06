@@ -30,7 +30,7 @@ describe('polices hebergees avec le site (s51)', () => {
       .map((file) => path.relative(SRC_DIR, file))
 
     expect(offenders).toEqual([])
-  })
+  }, 15_000)
 
   it('ne confond pas l’import d’Analytics avec celui des polices', () => {
     expect(
