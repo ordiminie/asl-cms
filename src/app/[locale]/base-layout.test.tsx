@@ -7,10 +7,7 @@ import {
 } from 'react'
 import {describe, expect, it, vi} from 'vitest'
 
-vi.mock('next/font/google', () => {
-  const font = () => ({variable: 'font'})
-  return {JetBrains_Mono: font, Public_Sans: font, Source_Serif_4: font}
-})
+vi.mock('next/font/local', () => ({default: () => ({variable: 'font'})}))
 vi.mock('next-intl/server', () => ({setRequestLocale: vi.fn()}))
 /*
  * Comme use-intl : `useTranslations` leve hors de `NextIntlClientProvider`
