@@ -1,5 +1,5 @@
 import {GoogleAnalytics} from '@next/third-parties/google'
-import {JetBrains_Mono, Public_Sans, Source_Serif_4} from 'next/font/google'
+import localFont from 'next/font/local'
 import {NextIntlClientProvider} from 'next-intl'
 import {setRequestLocale} from 'next-intl/server'
 import NextTopLoader from 'nextjs-toploader'
@@ -15,25 +15,28 @@ import {
 } from '@/services/types/domain/association-settings-types'
 import {PublicSiteAlertDTO} from '@/services/types/domain/site-alert-types'
 
-const sans = Public_Sans({
-  subsets: ['latin'],
+const sans = localFont({
+  src: './fonts/public-sans-latin.woff2',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: '400 700',
   variable: '--font-public-sans',
+  adjustFontFallback: 'Arial',
 })
 
-const serif = Source_Serif_4({
-  subsets: ['latin'],
+const serif = localFont({
+  src: './fonts/source-serif-4-latin.woff2',
   display: 'swap',
-  weight: ['400', '600', '700'],
+  weight: '400 700',
   variable: '--font-source-serif',
+  adjustFontFallback: 'Times New Roman',
 })
 
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
+const mono = localFont({
+  src: './fonts/jetbrains-mono-latin.woff2',
   display: 'swap',
-  weight: ['400', '500'],
+  weight: '400 500',
   variable: '--font-jetbrains-mono',
+  adjustFontFallback: false,
 })
 
 type Props = {

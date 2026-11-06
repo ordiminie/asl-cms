@@ -207,26 +207,29 @@ hexadécimaux du tableau ci-dessus restent réservés à l'email et au papier.
 Aucune police n'était configurée dans le boilerplate.
 
 ```ts
-// src/app/[locale]/base-layout.tsx
-import {JetBrains_Mono, Public_Sans, Source_Serif_4} from 'next/font/google'
+// src/app/[locale]/base-layout.tsx — fichiers dans src/app/[locale]/fonts/ (s51, ADR 046)
+import localFont from 'next/font/local'
 
-const sans = Public_Sans({
-  subsets: ['latin'],
+const sans = localFont({
+  src: './fonts/public-sans-latin.woff2',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
+  weight: '400 700',
   variable: '--font-public-sans',
+  adjustFontFallback: 'Arial',
 })
-const serif = Source_Serif_4({
-  subsets: ['latin'],
+const serif = localFont({
+  src: './fonts/source-serif-4-latin.woff2',
   display: 'swap',
-  weight: ['400', '600', '700'],
+  weight: '400 700',
   variable: '--font-source-serif',
+  adjustFontFallback: 'Times New Roman',
 })
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
+const mono = localFont({
+  src: './fonts/jetbrains-mono-latin.woff2',
   display: 'swap',
-  weight: ['400', '500'],
+  weight: '400 500',
   variable: '--font-jetbrains-mono',
+  adjustFontFallback: false,
 })
 
 // <body className={`${sans.variable} ${serif.variable} ${mono.variable}
@@ -1196,5 +1199,6 @@ imposent le mode sombre quoi que fasse le web. Voir §5.2.
   pas dans le thème du boilerplate.
 - **`--radius` passe de 0.625rem à 0.5rem**, et `--radius-md` vaut désormais `var(--radius)` au
   lieu de `calc(var(--radius) - 2px)`.
-- **Trois polices à installer** via `next/font/google` — aucune n'était configurée.
+- **Trois polices à installer**, servies depuis le dépôt via `next/font/local` (s51, ADR 046) —
+  aucune n'était configurée.
 - **`primary` et `input` sont remplacés**, pas ajustés : voir §1.1.
