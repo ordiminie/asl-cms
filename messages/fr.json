@@ -1538,6 +1538,124 @@
       }
     }
   },
+  "AdminMemberImport": {
+    "title": "Importer des membres",
+    "organizationCard": {
+      "title": "Membres",
+      "empty": "Aucun membre pour l’instant.",
+      "count": "{count, plural, one {# membre} other {# membres}}.",
+      "import": "Importer des membres"
+    },
+    "organization": {
+      "cardTitle": "1 · Association",
+      "label": "Association",
+      "placeholder": "Choisir une association",
+      "help": "Les membres seront créés dans cette association.",
+      "missing": "Cette association n’existe plus. Choisissez-en une autre."
+    },
+    "file": {
+      "cardTitle": "2 · Fichier",
+      "help": "Fichier CSV (.csv), 16 Mo au plus. Une ligne par client.",
+      "choose": "Choisir un fichier",
+      "chooseAnother": "Choisir un autre fichier",
+      "inputLabel": "Fichier CSV des membres"
+    },
+    "explain": {
+      "title": "Ce qui va se passer",
+      "oneMember": "Chaque ligne devient un membre, avec sa ou ses parcelles. Plusieurs lignes du même propriétaire donnent un seul membre.",
+      "noContact": "Une ligne sans adresse postale ni email est ignorée : nous ne saurions pas comment joindre cette personne. Elle apparaît dans le rapport.",
+      "mailOnly": "Une ligne sans email crée un membre sans compte de connexion : il reçoit ses documents par courrier.",
+      "noEmail": "Aucun email n’est envoyé. Vous pouvez relancer le même fichier sans rien créer en double."
+    },
+    "submit": "Importer les membres",
+    "submitting": "Import en cours…",
+    "progress": "Import de {file} en cours…",
+    "cancel": "Annuler",
+    "missingInput": "Choisissez une association et un fichier pour continuer.",
+    "missingFile": "Choisissez un autre fichier pour continuer.",
+    "missingOrganization": "Choisissez une autre association pour continuer.",
+    "retry": "Réessayer",
+    "report": {
+      "title": "Rapport d’import",
+      "done": "Import terminé. {created, plural, one {# membre créé} other {# membres créés}}, {toReview, plural, one {# ligne à relire} other {# lignes à relire}}.",
+      "doneClean": "Import terminé. Aucune ligne n’a été rejetée.",
+      "nothingNew": "Rien de nouveau : ce fichier avait déjà été importé.",
+      "allRejectedTitle": "Aucun membre n’a été créé. Toutes les lignes ont été rejetées.",
+      "allRejectedBody": "Rien n’a été importé. Complétez ces lignes dans le fichier, puis relancez-le.",
+      "summaryTitle": "Bilan",
+      "summary": {
+        "linesRead": "Lignes lues",
+        "membersCreated": "Membres créés",
+        "accountsOpened": "Comptes de connexion ouverts",
+        "mailOnlyMembers": "Membres « courrier uniquement »",
+        "parcelsAttached": "Parcelles rattachées",
+        "linesRejected": "Lignes rejetées"
+      },
+      "alreadyPresent": "Déjà présents : {count, plural, one {# membre, inchangé} other {# membres, inchangés}}.",
+      "privacy": "Ce rapport contient des données personnelles. Il n’est pas conservé : en quittant cette page, vous ne le retrouvez qu’en relançant le même fichier.",
+      "rejectionsTitle": "Lignes rejetées",
+      "rejectionsIntro": "Ces lignes n’ont pas été importées. Les autres l’ont été.",
+      "rejectionsAllIntro": "Aucune ligne n’a été importée.",
+      "noRejection": "Aucune ligne rejetée.",
+      "remarksTitle": "Lignes importées avec une remarque",
+      "remarksIntro": "Ces lignes ont été importées. Vérifiez-les si besoin.",
+      "columns": {
+        "line": "Ligne",
+        "client": "Client",
+        "reason": "Motif",
+        "remark": "Remarque"
+      },
+      "lineNumber": "Ligne {line}",
+      "noName": "(sans nom)",
+      "range": "{from} à {to} sur {total}",
+      "page": "Page {page} sur {total}",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "backToOrganization": "Retour à l’association",
+      "importAnother": "Importer un autre fichier",
+      "pageError": "Le rapport n’a pas pu s’afficher. L’import, lui, est terminé.",
+      "pageErrorNext": "Relancez le même fichier pour retrouver le rapport : rien ne sera créé en double.",
+      "reasons": {
+        "malformed_line": "La ligne n’a pas pu être lue : son nombre de colonnes ne correspond pas aux titres.",
+        "missing_customer_id": "L’identifiant client est manquant.",
+        "missing_name": "Le nom est manquant.",
+        "no_contact": "Ni adresse postale ni email : personne ne pourrait la joindre.",
+        "missing_reference": "La référence client est manquante : aucune parcelle à rattacher.",
+        "email_taken": "Cet email est déjà utilisé par un autre membre.",
+        "parcel_taken": "Une parcelle de ce client appartient déjà à un autre membre.",
+        "invalid_email": "L’adresse email n’est pas valide.",
+        "invalid_postal_code": "Le code postal n’est pas valide.",
+        "invalid_phone": "Le téléphone n’est pas valide.",
+        "invalid_field": "Une valeur de la ligne n’est pas valide."
+      },
+      "remarks": {
+        "several_emails": "Plusieurs adresses email : seule la première a été gardée.",
+        "postal_code_padded": "Code postal complété d’un zéro au début.",
+        "no_meter": "Référence sans numéro de compteur : la parcelle est enregistrée sans compteur.",
+        "same_name_and_address": "Même nom et même adresse que la ligne {line} : deux membres distincts ont été créés."
+      }
+    },
+    "errors": {
+      "forbidden": "Seul le SuperAdmin Zourite Studio peut importer des membres.",
+      "invalidData": "Choisissez une association et un fichier pour continuer.",
+      "fileType": "Le fichier doit être un fichier CSV (.csv).",
+      "fileTooLarge": "Le fichier dépasse 16 Mo.",
+      "nothingImported": "Rien n’a été importé.",
+      "chooseAnotherFile": "Choisissez un autre fichier.",
+      "unreadableTitle": "Le fichier n’a pas pu être lu.",
+      "unreadable": {
+        "empty": "Le fichier est vide.",
+        "binary": "Ce fichier n’est pas un fichier texte CSV.",
+        "no_headers": "La première ligne ne contient aucun titre de colonne.",
+        "unclosed_quote": "Un guillemet n’est jamais refermé : le fichier est mal formé.",
+        "missing_columns": "Il manque {count, plural, one {la colonne} other {les colonnes}} {columns}.",
+        "too_many_lines": "Le fichier dépasse {max} lignes."
+      },
+      "organizationMissingTitle": "Cette association n’existe plus.",
+      "chooseAnotherOrganization": "Choisissez une autre association.",
+      "failed": "L’import s’est arrêté. Les lignes déjà traitées sont enregistrées ; relancer le même fichier termine le travail sans rien doubler."
+    }
+  },
   "AdminUsers": {
     "title": "Gestion des utilisateurs",
     "user": "Utilisateur",
@@ -3045,6 +3163,8 @@
           "soldTo": "Vendue à"
         },
         "period": "du {from} au {to}",
+        "beforeImport": "avant l’import",
+        "periodBeforeImport": "d’avant l’import au {to}",
         "recordSale": "Enregistrer une vente",
         "attached": "Parcelle {number} rattachée à {name} depuis le {date}.",
         "attachedCreated": "Parcelle {number} ajoutée et rattachée à {name} depuis le {date}."
@@ -3124,7 +3244,9 @@
       "former": "Anciennes parcelles",
       "parcel": "Parcelle <mono>{number}</mono>",
       "since": "Propriétaire depuis le {date}",
+      "sinceBeforeImport": "Propriétaire depuis avant l’import",
       "period": "Propriétaire du {from} au {to}",
+      "periodBeforeImport": "Propriétaire d’avant l’import au {to}",
       "noLongerOwner": "Vous n’êtes plus propriétaire d’une parcelle du domaine depuis le {date}.",
       "mistake": "Une erreur ? Écrivez au bureau.",
       "contact": "Page Contact"

@@ -74,6 +74,7 @@ const profileRow = {
   postalCode: null,
   city: null,
   userId: userTest.id,
+  pennylaneCustomerId: null,
   mailOnly: false,
   createdAt: new Date(),
   updatedAt: new Date(),

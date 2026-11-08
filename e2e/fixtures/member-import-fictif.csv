@@ -1,0 +1,7 @@
+"Identifiant Client";"Dénomination";"Adresse";"Code Postal";"Ville";"Pays";"Liste d’e-mails";"Téléphone";"Référence Client";"Prélèvement : IBAN"
+"s13-e2e-001";"Lucie Fictive s13-e2e";"1 allée des Essais";"99100";"Fictiville";"FR";"lucie@s13-e2e.test";"06 00 00 00 01";"S13E2E-101 - 00XX000001";""
+"s13-e2e-001";"Lucie Fictive s13-e2e";"1 allée des Essais";"99100";"Fictiville";"FR";"lucie@s13-e2e.test";"06 00 00 00 01";"S13E2E-102 - 00XX000002";""
+"s13-e2e-002";"Marc Inventé s13-e2e";"2 rue du Test";"99200";"Essaiville";"FR";"";"";"S13E2E-103 - 00XX000003";""
+"s13-e2e-003";"Sans Contact s13-e2e";"";"";"";"";"";"";"S13E2E-104 - 00XX000004";""
+"s13-e2e-004";"";"4 place de l’Essai";"99400";"Fictiville";"FR";"anonyme@s13-e2e.test";"";"S13E2E-105 - 00XX000005";""
+"s13-e2e-005";"Paul Suivant s13-e2e";"";"";"";"";"paul@s13-e2e.test";"";"S13E2E-106 - 00XX000006";""

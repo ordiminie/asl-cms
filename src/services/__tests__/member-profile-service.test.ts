@@ -17,6 +17,7 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
   createMemberProfileTxnDao: vi.fn(),
   getMemberProfileByEmailDao: vi.fn(),
   getMemberProfileByIdDao: vi.fn(),
+  getMemberProfileByPennylaneIdDao: vi.fn(),
   getMemberProfilePageDao: vi.fn(),
   updateMemberProfileContactTxnDao: vi.fn(),
   setMemberProfileUserIdDao: vi.fn(),
@@ -48,6 +49,7 @@ import {
   createMemberProfileTxnDao,
   getMemberProfileByEmailDao,
   getMemberProfileByIdDao,
+  getMemberProfileByPennylaneIdDao,
   getMemberProfilePageDao,
   setMemberProfileUserIdDao,
   updateMemberProfileContactTxnDao,
@@ -74,6 +76,7 @@ import {AuthorizationError} from '../errors/authorization-error'
 import {
   canManageMemberProfilesService,
   createMemberProfileService,
+  findMemberProfileIdByPennylaneIdService,
   getMemberProfilePageService,
   getMemberProfileService,
   updateMemberProfileContactService,
@@ -83,7 +86,7 @@ import {MEMBER_PROFILES_PAGE_SIZE} from '../types/domain/member-profile-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -116,6 +119,7 @@ const profileRow = (overrides: Record<string, unknown> = {}) => ({
   postalCode: null as string | null,
   city: null as string | null,
   userId: null as string | null,
+  pennylaneCustomerId: null as string | null,
   mailOnly: true,
   createdAt: new Date('2026-09-01T08:00:00Z'),
   updatedAt: new Date('2026-09-01T08:00:00Z'),
@@ -127,6 +131,7 @@ const profileDaos = () => [
   createMemberProfileTxnDao,
   getMemberProfileByEmailDao,
   getMemberProfileByIdDao,
+  getMemberProfileByPennylaneIdDao,
   getMemberProfilePageDao,
   updateMemberProfileContactTxnDao,
 ]
@@ -218,6 +223,7 @@ describe.each([
       addressComplement: null,
       postalCode: '97400',
       city: 'Saint-Denis',
+      pennylaneCustomerId: null,
     })
     expect(writtenUnder).toBe(ORG_ID)
     expect(result).toMatchObject({status: 'saved', profile: {id: PROFILE_ID}})
@@ -232,6 +238,18 @@ describe.each([
 
     const [written] = vi.mocked(createMemberProfileTxnDao).mock.calls[0]
     expect(written).not.toHaveProperty('id')
+  })
+
+  it('should write the Pennylane customer id given by the import (s13, ADR 046)', async () => {
+    await createMemberProfileService({
+      organizationId: ORG_ID,
+      name: 'Lucie Fictive',
+      pennylaneCustomerId: ' client-fictif-001 ',
+    })
+
+    expect(createMemberProfileTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({pennylaneCustomerId: 'client-fictif-001'})
+    )
   })
 
   it('should create a profile without email: mail only, and no account is opened (critère 7)', async () => {
@@ -280,6 +298,7 @@ describe.each([
         addressComplement: null,
         postalCode: null,
         city: null,
+        pennylaneCustomerId: null,
       })
     }
   )
@@ -504,6 +523,8 @@ const calls = {
     }),
   get: () => getMemberProfileService(ORG_ID, PROFILE_ID),
   getPage: () => getMemberProfilePageService({organizationId: ORG_ID, page: 1}),
+  findByPennylaneId: () =>
+    findMemberProfileIdByPennylaneIdService(ORG_ID, 'client-fictif-001'),
 }
 
 describe.each([
@@ -1043,5 +1064,51 @@ describe('[s14] lecture des rôles pour l’écran', () => {
       null,
     ])
     expect(page.items[0]).not.toHaveProperty('userId')
+  })
+})
+
+describe('findMemberProfileIdByPennylaneIdService — clé d’import (s13, ADR 046)', () => {
+  let readUnder: string | undefined
+
+  beforeEach(() => {
+    readUnder = undefined
+    vi.mocked(getMemberProfileByPennylaneIdDao).mockImplementation(
+      async (_organizationId, pennylaneCustomerId) => {
+        readUnder = scope.current
+        return pennylaneCustomerId === 'client-fictif-001'
+          ? profileRow({pennylaneCustomerId})
+          : undefined
+      }
+    )
+  })
+
+  it.each([
+    ['[SUPER_ADMIN]', userTestSuperAdmin],
+    ['[ORGANIZATION OWNER]', withRole(UserOrganizationRoleConst.OWNER)],
+  ])(
+    '%s retrouve la fiche déjà importée, sous le scope du tenant',
+    async (_label, user) => {
+      setupAuthUserMocked(user)
+
+      expect(
+        await findMemberProfileIdByPennylaneIdService(
+          ORG_ID,
+          'client-fictif-001'
+        )
+      ).toBe(PROFILE_ID)
+      expect(getMemberProfileByPennylaneIdDao).toHaveBeenCalledWith(
+        ORG_ID,
+        'client-fictif-001'
+      )
+      expect(readUnder).toBe(ORG_ID)
+    }
+  )
+
+  it('rend undefined pour un identifiant inconnu', async () => {
+    setupAuthUserMocked(userTestSuperAdmin)
+
+    expect(
+      await findMemberProfileIdByPennylaneIdService(ORG_ID, 'client-inconnu')
+    ).toBeUndefined()
   })
 })

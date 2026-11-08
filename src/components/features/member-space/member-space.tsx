@@ -15,6 +15,7 @@ import {
 import {Skeleton} from '@/components/ui/skeleton'
 import {formatContentDate} from '@/lib/cms/format-content-date'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
+import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
 import type {
   MyContactDTO,
   MyCurrentParcelDTO,
@@ -188,7 +189,11 @@ function MyParcelsCard({parcels}: {parcels: MyParcelsDTO}) {
               <ParcelLine
                 key={parcel.number}
                 number={parcel.number}
-                detail={t('since', {date: formatContentDate(parcel.startsOn)})}
+                detail={
+                  isOwnershipBeforeImport(parcel.startsOn)
+                    ? t('sinceBeforeImport')
+                    : t('since', {date: formatContentDate(parcel.startsOn)})
+                }
               />
             ))}
           </ParcelGroup>
@@ -199,10 +204,20 @@ function MyParcelsCard({parcels}: {parcels: MyParcelsDTO}) {
               <ParcelLine
                 key={`${parcel.number}-${parcel.startsOn}`}
                 number={parcel.number}
-                detail={t('period', {
-                  from: formatContentDate(parcel.startsOn),
-                  to: formatContentDate(lastOwnershipDayOf(parcel.endsOn)),
-                })}
+                detail={
+                  isOwnershipBeforeImport(parcel.startsOn)
+                    ? t('periodBeforeImport', {
+                        to: formatContentDate(
+                          lastOwnershipDayOf(parcel.endsOn)
+                        ),
+                      })
+                    : t('period', {
+                        from: formatContentDate(parcel.startsOn),
+                        to: formatContentDate(
+                          lastOwnershipDayOf(parcel.endsOn)
+                        ),
+                      })
+                }
               />
             ))}
           </ParcelGroup>

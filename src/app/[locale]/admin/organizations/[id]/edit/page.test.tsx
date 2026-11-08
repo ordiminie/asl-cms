@@ -22,6 +22,9 @@ vi.mock('@/app/dal/organization-dal', () => ({
     limits: {users: 10},
   })),
 }))
+vi.mock('@/app/dal/member-profile-dal', () => ({
+  getMemberProfilesPageForBureauDal: vi.fn(async () => ({profileCount: 0})),
+}))
 vi.mock('@/services/facades/organization-service-facade', () => ({
   getOrganizationByIdService: vi.fn(async () => ({
     id: '11111111-1111-4111-8111-111111111111',
@@ -40,6 +43,8 @@ vi.mock(
     default: () => null,
   })
 )
+
+import {getMemberProfilesPageForBureauDal} from '@/app/dal/member-profile-dal'
 
 import EditOrganizationPage from './page'
 
@@ -66,5 +71,29 @@ describe('/admin/organizations/[id]/edit — retour au compte SuperAdmin (s48, 4
     await renderPage()
 
     expect(screen.queryByRole('status')).toBeNull()
+  })
+})
+
+describe('/admin/organizations/[id]/edit — carte « Membres » (s13, écran 0)', () => {
+  it('ouvre l’import avec l’association déjà choisie', async () => {
+    await renderPage()
+
+    expect(
+      screen.getByRole('link', {name: 'Importer des membres'})
+    ).toHaveAttribute(
+      'href',
+      '/admin/membres-import?association=11111111-1111-4111-8111-111111111111'
+    )
+    expect(screen.getByText('Aucun membre pour l’instant.')).toBeInTheDocument()
+  })
+
+  it('dit combien de membres l’association a déjà', async () => {
+    vi.mocked(getMemberProfilesPageForBureauDal).mockResolvedValueOnce({
+      profileCount: 12,
+    } as never)
+
+    await renderPage()
+
+    expect(screen.getByText('12 membres.')).toBeInTheDocument()
   })
 })

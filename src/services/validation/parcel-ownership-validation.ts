@@ -1,6 +1,9 @@
 import {z} from 'zod'
 
-import {PARCEL_NUMBER_MAX_LENGTH} from '../types/domain/parcel-ownership-types'
+import {
+  PARCEL_METER_NUMBER_MAX_LENGTH,
+  PARCEL_NUMBER_MAX_LENGTH,
+} from '../types/domain/parcel-ownership-types'
 import {newsDateSchema} from './news-validation'
 
 /**
@@ -27,11 +30,26 @@ export const parcelNumberSchema = z
   .min(1)
   .max(PARCEL_NUMBER_MAX_LENGTH)
 
+/**
+ * Le numero de compteur d'une parcelle (s13, ADR 046) : facultatif ; vide ou
+ * fait d'espaces, il est absent et sort `null`.
+ */
+export const meterNumberSchema = z
+  .string()
+  .optional()
+  .transform((value) => {
+    const trimmed = value?.trim()
+    return trimmed ? trimmed : undefined
+  })
+  .pipe(z.string().max(PARCEL_METER_NUMBER_MAX_LENGTH).optional())
+  .transform((value) => value ?? null)
+
 export const attachParcelServiceSchema = z.object({
   organizationId: uuid,
   memberProfileId: uuid,
   parcelNumber: parcelNumberSchema,
   startsOn: ownershipDateSchema,
+  meterNumber: meterNumberSchema,
 })
 
 export const recordSaleServiceSchema = z.object({

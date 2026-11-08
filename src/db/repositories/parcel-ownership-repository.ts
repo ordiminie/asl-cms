@@ -55,15 +55,17 @@ export type MemberFormerParcelRow = {
 /**
  * La parcelle de ce numero, creee si elle n'existe pas (design `4d`).
  * `ON CONFLICT DO NOTHING` puis lecture : deux rattachements simultanes de la
- * meme parcelle inconnue n'en creent qu'une.
+ * meme parcelle inconnue n'en creent qu'une. Le compteur (s13, ADR 046) n'est
+ * ecrit qu'a la creation : une parcelle existante garde le sien.
  */
 export const findOrCreateParcelTxnDao = async (
   organizationId: string,
-  number: string
+  number: string,
+  meterNumber: string | null = null
 ): Promise<{row: ParcelModel; created: boolean}> => {
   const [created] = await getDb()
     .insert(parcel)
-    .values({organizationId, number})
+    .values({organizationId, number, meterNumber})
     .onConflictDoNothing({target: [parcel.organizationId, parcel.number]})
     .returning()
   if (created) return {row: created, created: true}

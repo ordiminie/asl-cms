@@ -965,3 +965,35 @@ describe('MemberProfileDetail — carte « Rôle dans l’association » (s14)',
     ).toBeTruthy()
   })
 })
+
+describe('MemberProfileDetail — parcelle importée (s13, date sentinelle)', () => {
+  it('écrit « avant l’import » à la place de la date sentinelle, la date sinon', () => {
+    renderDetail({
+      parcels: {
+        current: [
+          {parcelId: 'p12', number: 'ZZ 101', startsOn: '1900-01-01'},
+          {parcelId: 'p13', number: 'ZZ 102', startsOn: '2009-09-11'},
+        ],
+        former: [],
+      },
+    })
+
+    const rows = within(currentTable()).getAllByRole('row').slice(1)
+    expect(rows[0]).toHaveTextContent('avant l’import')
+    expect(rows[0]).not.toHaveTextContent('01/01/1900')
+    expect(rows[1]).toHaveTextContent('11/09/2009')
+  })
+
+  it('écrit la période d’une ancienne parcelle importée sans la date sentinelle', () => {
+    renderDetail({
+      parcels: {
+        current: [],
+        former: [{...SELLER_PARCELS.former[0], startsOn: '1900-01-01'}],
+      },
+    })
+
+    const [row] = within(formerTable()).getAllByRole('row').slice(1)
+    expect(row).toHaveTextContent('d’avant l’import au 14/06/2026')
+    expect(row).not.toHaveTextContent('1900')
+  })
+})

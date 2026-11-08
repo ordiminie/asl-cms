@@ -118,7 +118,8 @@ export const attachParcelService = async (
     throw new ValidationParsedZodError(parsed.error)
   }
 
-  const {organizationId, memberProfileId, parcelNumber, startsOn} = parsed.data
+  const {organizationId, memberProfileId, parcelNumber, startsOn, meterNumber} =
+    parsed.data
   await requireMemberProfileManager(organizationId)
 
   if (isOwnershipDateInFuture(startsOn, today())) {
@@ -131,7 +132,8 @@ export const attachParcelService = async (
 
     const {row: parcel, created} = await findOrCreateParcelTxnDao(
       organizationId,
-      parcelNumber
+      parcelNumber,
+      meterNumber
     )
     await lockParcelTxnDao(parcel.id)
 

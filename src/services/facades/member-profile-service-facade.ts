@@ -10,3 +10,5 @@ export const getMemberProfileService =
   memberProfileServiceInterceptor.getMemberProfileService
 export const updateMemberProfileContactService =
   memberProfileServiceInterceptor.updateMemberProfileContactService
+export const findMemberProfileIdByPennylaneIdService =
+  memberProfileServiceInterceptor.findMemberProfileIdByPennylaneIdService

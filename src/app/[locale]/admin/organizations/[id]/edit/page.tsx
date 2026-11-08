@@ -3,10 +3,12 @@ import {notFound} from 'next/navigation'
 import {getTranslations} from 'next-intl/server'
 import {Suspense} from 'react'
 
+import {getMemberProfilesPageForBureauDal} from '@/app/dal/member-profile-dal'
 import {
   getOrganizationPermissions,
   getOrganizationUsageDal,
 } from '@/app/dal/organization-dal'
+import {OrganizationMembersCard} from '@/components/features/admin/member-import/organization-members-card'
 import {OrganizationModulesCard} from '@/components/features/admin/organizations/organization-modules-card'
 import {withAuthAdmin} from '@/components/features/auth/with-auth'
 import {ImpersonationNotice} from '@/components/features/impersonation/impersonation-notice'
@@ -39,6 +41,11 @@ async function EditOrganizationPage({
     notFound()
   }
 
+  const {profileCount} = await getMemberProfilesPageForBureauDal(
+    organization.id,
+    1
+  )
+
   const formatUsage = (used: number, limit: number | null) => {
     if (limit === null || limit === -1) {
       return `${used} / ∞`
@@ -66,6 +73,13 @@ async function EditOrganizationPage({
       </div>
 
       {returned && <ImpersonationNotice kind="returned" />}
+
+      <div className="mx-auto mt-12">
+        <OrganizationMembersCard
+          organizationId={organization.id}
+          memberCount={profileCount}
+        />
+      </div>
 
       <div className="mx-auto mt-12">
         <OrganizationModulesCard
