@@ -177,8 +177,14 @@ const newSession = async (browser: Browser, base: string, email: string) => {
 /** Depuis la fiche de l'association : l'écran 1, association déjà choisie. */
 const openImportFromOrganization = async (page: Page, slug: string) => {
   const organizationId = await tenantIdOf(slug)
-  await page.goto(`${TENANT_A}/admin/organizations/${organizationId}/edit`)
-  await page.getByRole('link', {name: 'Importer des membres'}).click()
+  await page.goto(`${TENANT_A}/admin/organizations/${organizationId}/edit`, {
+    waitUntil: 'networkidle',
+  })
+  // Deux liens portent ce nom : l'entrée de la barre latérale (sans
+  // association) et celui de la carte « Membres ». Seul le second la choisit.
+  await page
+    .locator(`a[href="/admin/membres-import?association=${organizationId}"]`)
+    .click()
   await page.waitForURL(`**/admin/membres-import?association=${organizationId}`)
   await expect(
     page.getByRole('heading', {level: 1, name: 'Importer des membres'})
@@ -189,8 +195,12 @@ const openImportFromOrganization = async (page: Page, slug: string) => {
 const importFixture = async (page: Page) => {
   const submit = page.getByRole('button', {name: 'Importer les membres'})
   await expect(submit).toBeDisabled()
-  await page.setInputFiles('#member-import-file', FIXTURE)
-  await expect(submit).toBeEnabled()
+  // Le fichier n'est pris qu'une fois le formulaire hydraté : le bouton qui
+  // s'active prouve que l'état l'a reçu.
+  await expect(async () => {
+    await page.setInputFiles('#member-import-file', FIXTURE)
+    await expect(submit).toBeEnabled({timeout: 2000})
+  }).toPass({timeout: 30_000})
   await submit.click()
   await expect(
     page.getByRole('heading', {level: 1, name: 'Rapport d’import'})
