@@ -69,3 +69,14 @@ describe('barre de /admin — lien vers le back-office de l association (s46, cr
     expect(hrefs().filter((href) => REMOVED_PATH.test(href))).toEqual([])
   })
 })
+
+describe('barre de /admin — import des membres (s13)', () => {
+  it('propose « Importer des membres », qui ouvre l’écran sans association', () => {
+    renderSidebar(undefined)
+
+    expect(hrefs()).toContain('/admin/membres-import')
+    expect(
+      document.querySelector('a[href="/admin/membres-import"]')
+    ).toHaveTextContent('Importer des membres')
+  })
+})

@@ -94,6 +94,7 @@ const profileRow = (id: string) => ({
   postalCode: '97400',
   city: 'Saint-Denis',
   userId: null,
+  pennylaneCustomerId: null,
   mailOnly: true,
   createdAt: new Date('2026-09-01T08:00:00Z'),
   updatedAt: new Date('2026-09-01T08:00:00Z'),
@@ -103,6 +104,7 @@ const parcelRow = (overrides: Record<string, unknown> = {}) => ({
   id: PARCEL_ID,
   organizationId: ORG_ID,
   number: '47',
+  meterNumber: null,
   createdAt: new Date('2026-09-01T08:00:00Z'),
   ...overrides,
 })
@@ -202,7 +204,7 @@ describe.each([
         startsOn: '1998-02-03',
       })
 
-      expect(findOrCreateParcelTxnDao).toHaveBeenCalledWith(ORG_ID, '47')
+      expect(findOrCreateParcelTxnDao).toHaveBeenCalledWith(ORG_ID, '47', null)
       expect(lockParcelTxnDao).toHaveBeenCalledWith(PARCEL_ID)
       expect(order(lockParcelTxnDao)).toBeLessThan(order(getParcelPeriodsDao))
       expect(order(getParcelPeriodsDao)).toBeLessThan(order(openPeriodTxnDao))
@@ -242,6 +244,22 @@ describe.each([
       })
       expect(openPeriodTxnDao).toHaveBeenCalledWith(
         expect.objectContaining({parcelId: OTHER_PARCEL_ID})
+      )
+    })
+
+    it('should hand the meter number to the parcel creation (s13, ADR 048)', async () => {
+      await attachParcelService({
+        organizationId: ORG_ID,
+        memberProfileId: ROY_ID,
+        parcelNumber: 'zz 101',
+        startsOn: '1900-01-01',
+        meterNumber: ' 00XX000001 ',
+      })
+
+      expect(findOrCreateParcelTxnDao).toHaveBeenCalledWith(
+        ORG_ID,
+        'ZZ 101',
+        '00XX000001'
       )
     })
 

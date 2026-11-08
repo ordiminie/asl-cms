@@ -4,6 +4,7 @@ import {
   MEMBER_PROFILE_ADDRESS_MAX_LENGTH,
   MEMBER_PROFILE_CITY_MAX_LENGTH,
   MEMBER_PROFILE_NAME_MAX_LENGTH,
+  MEMBER_PROFILE_PENNYLANE_ID_MAX_LENGTH,
   MEMBER_PROFILE_PHONE_MAX_LENGTH,
   MEMBER_PROFILE_PHONE_PATTERN,
   MEMBER_PROFILE_POSTAL_CODE_PATTERN,
@@ -61,6 +62,10 @@ export const createMemberProfileServiceSchema = z.object({
   organizationId: memberProfileOrganizationIdSchema,
   name: z.string().trim().min(1).max(MEMBER_PROFILE_NAME_MAX_LENGTH),
   ...contactShape,
+  /** Ecrit par l'import seul (s13, ADR 048) ; jamais saisi par le bureau. */
+  pennylaneCustomerId: optionalContact(
+    z.string().max(MEMBER_PROFILE_PENNYLANE_ID_MAX_LENGTH)
+  ),
 })
 
 export const updateMemberProfileContactServiceSchema = z.object({
@@ -94,4 +99,14 @@ export const memberProfilePageServiceSchema = z.object({
 export const updateMyContactServiceSchema = z.object({
   organizationId: memberProfileOrganizationIdSchema,
   ...postalContactShape,
+})
+
+/** Recherche d'une fiche par sa cle d'import Pennylane (s13, ADR 048). */
+export const findByPennylaneIdServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  pennylaneCustomerId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MEMBER_PROFILE_PENNYLANE_ID_MAX_LENGTH),
 })

@@ -79,7 +79,11 @@ const escapeLike = (value: string): string =>
  * sans condamner la transaction du scope de tenant.
  */
 export const createMemberProfileTxnDao = async (
-  input: MemberProfileContactWrite & {organizationId: string; name: string}
+  input: MemberProfileContactWrite & {
+    organizationId: string
+    name: string
+    pennylaneCustomerId?: string | null
+  }
 ): Promise<CreateMemberProfileResult> => {
   try {
     return await getDb().transaction(async (tx) => {
@@ -346,5 +350,25 @@ export const updateMyMemberProfileContactDao = async (
       )
     )
     .returning()
+  return row
+}
+
+/**
+ * La fiche de l'association qui porte cet identifiant client Pennylane (s13,
+ * ADR 048) : la cle d'idempotence de l'import.
+ */
+export const getMemberProfileByPennylaneIdDao = async (
+  organizationId: string,
+  pennylaneCustomerId: string
+): Promise<MemberProfileModel | undefined> => {
+  const [row] = await getDb()
+    .select()
+    .from(memberProfile)
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        eq(memberProfile.pennylaneCustomerId, pennylaneCustomerId)
+      )
+    )
   return row
 }

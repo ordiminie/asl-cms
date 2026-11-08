@@ -39,6 +39,10 @@ const data = {
           url: '/admin/organizations',
         },
         {
+          title: 'Importer des membres',
+          url: '/admin/membres-import',
+        },
+        {
           title: 'Plans',
           url: '/admin/plans',
         },

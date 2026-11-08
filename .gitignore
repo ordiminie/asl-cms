@@ -63,3 +63,6 @@ next-env.d.ts
 Thumbs.db
 # Store pnpm : ne doit pas atterrir sur le bind mount (voir docker-compose.yml)
 /.pnpm-store/v*/
+# Documents clients bruts (donnees personnelles) : jamais dans git, le depot est public
+/docs/inputs/
+/docs/**/*.xlsx

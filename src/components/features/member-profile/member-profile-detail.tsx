@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/table'
 import {sameEmail} from '@/services/rules/member-account-rules'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
+import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
 import type {
   MemberAccountChange,
   MemberProfileAccountDTO,
@@ -707,7 +708,7 @@ function CurrentParcels({
                       {parcel.number}
                     </TableCell>
                     <TableCell className={DATA_CLASS}>
-                      {isoToFrenchDate(parcel.startsOn)}
+                      <OwnershipStart startsOn={parcel.startsOn} />
                     </TableCell>
                     <TableCell>
                       <RecordSaleLink
@@ -730,7 +731,7 @@ function CurrentParcels({
                       {t('columns.since')}
                     </dt>
                     <dd className={DATA_CLASS}>
-                      {isoToFrenchDate(parcel.startsOn)}
+                      <OwnershipStart startsOn={parcel.startsOn} />
                     </dd>
                   </dl>
                   <RecordSaleLink
@@ -821,11 +822,23 @@ function FormerParcels({parcels}: {parcels: FormerParcelDTO[]}) {
 
 function ClosedPeriod({parcel}: {parcel: FormerParcelDTO}) {
   const t = useTranslations('BureauMemberProfilesPage.detail.parcels')
+  const to = isoToFrenchDate(lastOwnershipDayOf(parcel.endsOn))
 
-  return t('period', {
-    from: isoToFrenchDate(parcel.startsOn),
-    to: isoToFrenchDate(lastOwnershipDayOf(parcel.endsOn)),
-  })
+  return isOwnershipBeforeImport(parcel.startsOn)
+    ? t('periodBeforeImport', {to})
+    : t('period', {from: isoToFrenchDate(parcel.startsOn), to})
+}
+
+/**
+ * Debut de propriete : la date, ou « avant l'import » pour la date sentinelle
+ * des parcelles importees (s13), qui ne s'affiche jamais comme une date.
+ */
+function OwnershipStart({startsOn}: {startsOn: string}) {
+  const t = useTranslations('BureauMemberProfilesPage.detail.parcels')
+
+  return isOwnershipBeforeImport(startsOn)
+    ? t('beforeImport')
+    : isoToFrenchDate(startsOn)
 }
 
 function Buyer({parcel}: {parcel: FormerParcelDTO}) {

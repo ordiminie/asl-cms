@@ -30,6 +30,9 @@ import {organization, user} from './auth-model'
  *   tant que la fiche n'a pas de compte, vide a la fermeture. Unique par
  *   association ; `ON DELETE SET NULL` pour qu'un compte supprime laisse la
  *   fiche intacte.
+ * - `pennylane_customer_id` est la cle d'import d'un client Pennylane (s13,
+ *   ADR 048) : unique par association quand elle est presente. Elle identifie
+ *   un client Pennylane, **jamais** la fiche, dont l'identite reste `id`.
  */
 export const memberProfile = pgTable(
   'member_profile',
@@ -48,6 +51,7 @@ export const memberProfile = pgTable(
     postalCode: text('postal_code'),
     city: text('city'),
     userId: uuid('user_id').references(() => user.id, {onDelete: 'set null'}),
+    pennylaneCustomerId: text('pennylane_customer_id'),
     mailOnly: boolean('mail_only')
       .generatedAlwaysAs((): SQL => sql`"email" IS NULL`)
       .notNull(),
@@ -65,6 +69,9 @@ export const memberProfile = pgTable(
     uniqueIndex('member_profile_organization_user_idx')
       .on(table.organizationId, table.userId)
       .where(sql`${table.userId} is not null`),
+    uniqueIndex('member_profile_organization_pennylane_idx')
+      .on(table.organizationId, table.pennylaneCustomerId)
+      .where(sql`${table.pennylaneCustomerId} is not null`),
   ]
 )
 

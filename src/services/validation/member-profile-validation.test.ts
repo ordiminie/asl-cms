@@ -1,6 +1,9 @@
 import {describe, expect, it} from 'vitest'
 
-import {updateMyContactServiceSchema} from './member-profile-validation'
+import {
+  createMemberProfileServiceSchema,
+  updateMyContactServiceSchema,
+} from './member-profile-validation'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 
@@ -66,5 +69,31 @@ describe('updateMyContactServiceSchema — coordonnées du membre (s16)', () => 
     expect(result.success).toBe(true)
     expect(result.data).not.toHaveProperty('email')
     expect(result.data).not.toHaveProperty('memberProfileId')
+  })
+})
+
+describe('createMemberProfileServiceSchema — identifiant Pennylane (s13)', () => {
+  const parseCreate = (input: Record<string, unknown>) =>
+    createMemberProfileServiceSchema.safeParse({
+      organizationId: ORG_ID,
+      name: 'Lucie Fictive',
+      ...input,
+    })
+
+  it('rend `null` quand le champ est absent', () => {
+    expect(parseCreate({}).data?.pennylaneCustomerId).toBeNull()
+  })
+
+  it('rend `null` quand le champ est vide ou fait d’espaces', () => {
+    expect(
+      parseCreate({pennylaneCustomerId: '  '}).data?.pennylaneCustomerId
+    ).toBeNull()
+  })
+
+  it('garde l’identifiant renseigné, sans espaces autour', () => {
+    expect(
+      parseCreate({pennylaneCustomerId: ' client-fictif-001 '}).data
+        ?.pennylaneCustomerId
+    ).toBe('client-fictif-001')
   })
 })

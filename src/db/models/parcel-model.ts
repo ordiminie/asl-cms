@@ -21,6 +21,8 @@ import {memberProfile} from './member-profile-model'
  *   association**, jamais globalement.
  * - **Aucune colonne « proprietaire actuel »** : le proprietaire se lit
  *   toujours par date, dans `parcel_ownership`.
+ * - `meter_number` est le numero de compteur d'eau (s13, ADR 048), facultatif,
+ *   ecrit a la creation de la parcelle.
  */
 export const parcel = pgTable(
   'parcel',
@@ -32,6 +34,7 @@ export const parcel = pgTable(
       .notNull()
       .references(() => organization.id, {onDelete: 'cascade'}),
     number: text('number').notNull(),
+    meterNumber: text('meter_number'),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
       .notNull(),

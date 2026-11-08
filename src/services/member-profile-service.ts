@@ -6,6 +6,7 @@ import {
   createMemberProfileTxnDao,
   getMemberProfileByEmailDao,
   getMemberProfileByIdDao,
+  getMemberProfileByPennylaneIdDao,
   getMemberProfilePageDao,
   updateMemberProfileContactTxnDao,
 } from '@/db/repositories/member-profile-repository'
@@ -48,6 +49,7 @@ import {MemberRoleCardDTO} from './types/domain/member-role-types'
 import {User} from './types/domain/user-types'
 import {
   createMemberProfileServiceSchema,
+  findByPennylaneIdServiceSchema,
   memberProfileOrganizationIdSchema,
   memberProfilePageServiceSchema,
   memberProfileServiceSchema,
@@ -384,4 +386,31 @@ export const canManageMemberProfilesService = async (
     parsed.data,
     ActionIdConst.MEMBER_PROFILE_MANAGE
   )
+}
+
+/**
+ * L'identifiant de la fiche qui porte deja cet identifiant client Pennylane
+ * (s13, ADR 048), ou rien : la cle d'idempotence de l'import.
+ */
+export const findMemberProfileIdByPennylaneIdService = async (
+  organizationId: string,
+  pennylaneCustomerId: string
+): Promise<string | undefined> => {
+  const parsed = findByPennylaneIdServiceSchema.safeParse({
+    organizationId,
+    pennylaneCustomerId,
+  })
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  await requireMemberProfileManager(parsed.data.organizationId)
+
+  return withTenant(parsed.data.organizationId, async () => {
+    const row = await getMemberProfileByPennylaneIdDao(
+      parsed.data.organizationId,
+      parsed.data.pennylaneCustomerId
+    )
+    return row?.id
+  })
 }

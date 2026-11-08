@@ -39,3 +39,28 @@ describe('parcelNumberSchema — numéro normalisé en majuscules', () => {
     expect(parsed.parcelNumber).toBe('A12')
   })
 })
+
+describe('attachParcelServiceSchema — numéro de compteur (s13)', () => {
+  const parseAttach = (input: Record<string, unknown>) =>
+    attachParcelServiceSchema.safeParse({
+      organizationId: '11111111-1111-4111-8111-111111111111',
+      memberProfileId: '33333333-3333-4333-8333-333333333333',
+      parcelNumber: 'ZZ 101',
+      startsOn: '1998-02-03',
+      ...input,
+    })
+
+  it('rend `null` quand le champ est absent', () => {
+    expect(parseAttach({}).data?.meterNumber).toBeNull()
+  })
+
+  it('rend `null` quand le champ est vide ou fait d’espaces', () => {
+    expect(parseAttach({meterNumber: ' '}).data?.meterNumber).toBeNull()
+  })
+
+  it('garde le compteur renseigné, sans espaces autour', () => {
+    expect(parseAttach({meterNumber: ' 00XX000001 '}).data?.meterNumber).toBe(
+      '00XX000001'
+    )
+  })
+})
