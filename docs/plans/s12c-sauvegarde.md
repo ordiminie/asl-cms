@@ -86,7 +86,7 @@ Le test de restauration est écrit **en premier** (tâche 3, rouge) ; les tâche
        2 jours, délai de grâce), mise à jour d'un serveur déjà installé ; `docs/architecture.md` (inventaire des
        clés de fichier, rôle `asl_backup`, exemption) ; `docs/stories.md` (critère 6 amendé, si pas déjà fait) ;
        `AGENTS.md` si une règle change ; la mention des scripts dans `package.json`/README racine.
-9. [ ] **Exercice sur le serveur réel** — hors code, **après la recette de s12b** : installer l'unité, créer le
+9. [x] **Exercice sur le serveur réel** — hors code, **après la recette de s12b** : installer l'unité, créer le
        rôle, lancer `systemctl start asl-cms-backup`, restaurer dans une base jetable, consigner la date et la
        durée dans `docs/exploitation/` (propriété d'exploitation, vérifiée en review, pas en test). Peut suivre le
        merge de la story, comme la recette de s12b.
