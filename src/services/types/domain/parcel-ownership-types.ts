@@ -9,7 +9,7 @@
  */
 
 export const PARCEL_NUMBER_MAX_LENGTH = 30
-/** Numero de compteur porte par la parcelle (s13, ADR 046). */
+/** Numero de compteur porte par la parcelle (s13, ADR 048). */
 export const PARCEL_METER_NUMBER_MAX_LENGTH = 30
 
 export type OwnershipPeriod = {
@@ -97,7 +97,7 @@ export type AttachParcelInput = {
   memberProfileId: string
   parcelNumber: string
   startsOn: string
-  /** Ecrit a la creation de la parcelle seulement (s13, ADR 046). */
+  /** Ecrit a la creation de la parcelle seulement (s13, ADR 048). */
   meterNumber?: string
 }
 

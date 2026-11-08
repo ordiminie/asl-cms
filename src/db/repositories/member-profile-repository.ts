@@ -355,7 +355,7 @@ export const updateMyMemberProfileContactDao = async (
 
 /**
  * La fiche de l'association qui porte cet identifiant client Pennylane (s13,
- * ADR 046) : la cle d'idempotence de l'import.
+ * ADR 048) : la cle d'idempotence de l'import.
  */
 export const getMemberProfileByPennylaneIdDao = async (
   organizationId: string,

@@ -1,4 +1,4 @@
-# ADR 046 — Identifiant Pennylane sur la fiche, numéro de compteur sur la parcelle
+# ADR 048 — Identifiant Pennylane sur la fiche, numéro de compteur sur la parcelle
 
 - Status: accepted
 - Date: 2026-11-08

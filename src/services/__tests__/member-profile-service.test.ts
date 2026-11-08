@@ -240,7 +240,7 @@ describe.each([
     expect(written).not.toHaveProperty('id')
   })
 
-  it('should write the Pennylane customer id given by the import (s13, ADR 046)', async () => {
+  it('should write the Pennylane customer id given by the import (s13, ADR 048)', async () => {
     await createMemberProfileService({
       organizationId: ORG_ID,
       name: 'Lucie Fictive',
@@ -1067,7 +1067,7 @@ describe('[s14] lecture des rôles pour l’écran', () => {
   })
 })
 
-describe('findMemberProfileIdByPennylaneIdService — clé d’import (s13, ADR 046)', () => {
+describe('findMemberProfileIdByPennylaneIdService — clé d’import (s13, ADR 048)', () => {
   let readUnder: string | undefined
 
   beforeEach(() => {

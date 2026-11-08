@@ -9,7 +9,7 @@ import {Client} from 'pg'
 
 /**
  * Import initial des membres — s13, critères 1 à 7 et isolation entre
- * associations (ADR 046, ADR 047).
+ * associations (ADR 047, ADR 048).
  *
  * Ce que seuls un navigateur, deux associations et une vraie base prouvent :
  * le SuperAdmin importe à l'écran, depuis la fiche de l'association, un

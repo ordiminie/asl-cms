@@ -6,7 +6,7 @@ validated: yes
 
 Branch: `feature/s13-import-initial-membres` (à créer depuis `origin/main`, pas depuis la `main` locale : elle a un commit en trop et trois en retard). Ne pas embarquer `docs/logs/` ni `docs/research/s42-lancement-invitations.md`.
 
-Entrées : `docs/research/s13-import-initial-membres.md`, `docs/designs/s13-import-initial-membres.md` (+ `.html`), ADR 046 et 047 (écrits au plan, voyagent avec la branche).
+Entrées : `docs/research/s13-import-initial-membres.md`, `docs/designs/s13-import-initial-membres.md` (+ `.html`), ADR 047 et 048 (écrits au plan, voyagent avec la branche).
 
 ## Target story
 
@@ -25,7 +25,7 @@ Critères (docs/stories.md) :
 ### Décisions du plan (arbitrages du 8 novembre 2026)
 
 - **Format** : CSV de l'export clients Pennylane de La Fourche. Colonnes retenues par titre normalisé : `Identifiant Client`, `Dénomination`, `Référence Client`, `Liste d’e-mails`, adresse, complément, code postal, ville, pays, téléphone. Les titres exacts de adresse, téléphone et pays se relèvent sur le fichier local `docs/inputs/Base-adherents-utf8.csv` (hors git) à l'exécution ; la table de correspondance vit dans le module de mappage, pas dans le service. Les colonnes bancaires sont ignorées.
-- **Identité d'un membre** : `Identifiant Client` Pennylane, stocké sur la fiche (ADR 046). **Critère 4 amendé** : plusieurs lignes portant le même identifiant donnent **un seul** membre. Deux identifiants différents donnent deux fiches, même nom et même adresse ; c'est la règle de l'utilisatrice (« référence différente = membres séparés »). Aucune fusion d'office. Les couples nom + adresse identiques sont signalés au rapport comme **remarque** (« même nom et même adresse que la ligne N »).
+- **Identité d'un membre** : `Identifiant Client` Pennylane, stocké sur la fiche (ADR 048). **Critère 4 amendé** : plusieurs lignes portant le même identifiant donnent **un seul** membre. Deux identifiants différents donnent deux fiches, même nom et même adresse ; c'est la règle de l'utilisatrice (« référence différente = membres séparés »). Aucune fusion d'office. Les couples nom + adresse identiques sont signalés au rapport comme **remarque** (« même nom et même adresse que la ligne N »).
 - **Parcelle et compteur** : `Référence Client` découpée sur le **dernier** ` - ` ; avant = parcelle (`AE 215-352` reste entier), après = compteur stocké sur `parcel.meter_number`. Sans ` - ` : parcelle = valeur entière, compteur vide, remarque.
 - **Sans `Référence Client`** : ligne rejetée au rapport (réversible en relançant après réponse de La Fourche).
 - **Sans adresse postale ni email** : rejetée (critère 3).
@@ -54,7 +54,7 @@ Critères (docs/stories.md) :
 - Services : `src/services/member-import-service.ts`, `src/services/facades/member-import-service-facade.ts`, `src/services/types/domain/member-import-types.ts`, `src/services/validation/member-profile-validation.ts`, `src/services/validation/parcel-ownership-validation.ts` (+ tests).
 - Présentation : `src/app/[locale]/admin/membres-import/{page.tsx,actions.ts,loading.tsx,error.tsx}`, `src/components/features/admin/member-import/*`, `src/app/[locale]/admin/organizations/[id]/edit/page.tsx`, `src/components/features/layouts/sidebar/admin-sidebar.tsx`, `src/components/features/member-profile/member-profile-detail.tsx`, `src/components/features/member-space/member-space.tsx`, `messages/fr.json`.
 - Tests : `e2e/member-import.spec.ts`, `e2e/fixtures/`.
-- Docs : `docs/decisions/046-*.md`, `docs/decisions/047-*.md`, `docs/research/s13-*.md`, `docs/designs/s13-*`, ce plan, `docs/reviews/s13-*.md` (au ship).
+- Docs : `docs/decisions/048-*.md`, `docs/decisions/047-*.md`, `docs/research/s13-*.md`, `docs/designs/s13-*`, ce plan, `docs/reviews/s13-*.md` (au ship).
 
 ## Test strategy
 

@@ -390,7 +390,7 @@ export const canManageMemberProfilesService = async (
 
 /**
  * L'identifiant de la fiche qui porte deja cet identifiant client Pennylane
- * (s13, ADR 046), ou rien : la cle d'idempotence de l'import.
+ * (s13, ADR 048), ou rien : la cle d'idempotence de l'import.
  */
 export const findMemberProfileIdByPennylaneIdService = async (
   organizationId: string,

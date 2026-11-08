@@ -1,5 +1,5 @@
 /**
- * Types de domaine de l'import initial des membres (s13, ADR 046 et 047).
+ * Types de domaine de l'import initial des membres (s13, ADR 047 et 048).
  * Motifs et remarques sont des **codes** : les phrases vivent dans
  * `messages/fr.json`, jamais dans le service.
  *

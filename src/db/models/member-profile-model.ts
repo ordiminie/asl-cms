@@ -31,7 +31,7 @@ import {organization, user} from './auth-model'
  *   association ; `ON DELETE SET NULL` pour qu'un compte supprime laisse la
  *   fiche intacte.
  * - `pennylane_customer_id` est la cle d'import d'un client Pennylane (s13,
- *   ADR 046) : unique par association quand elle est presente. Elle identifie
+ *   ADR 048) : unique par association quand elle est presente. Elle identifie
  *   un client Pennylane, **jamais** la fiche, dont l'identite reste `id`.
  */
 export const memberProfile = pgTable(

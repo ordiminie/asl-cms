@@ -13,7 +13,7 @@ import {CsvRecord, CsvTable, normalizeHeader} from './csv-reader'
 
 /**
  * Mappage d'un export clients Pennylane vers les membres a importer (s13,
- * ADR 046 et 047). Fonctions pures : aucune ecriture, aucune horloge.
+ * ADR 047 et 048). Fonctions pures : aucune ecriture, aucune horloge.
  *
  * La table de correspondance des colonnes vit ici, pas dans le service : s17
  * reutilisera le lecteur avec son propre mappage. Les colonnes bancaires ne
@@ -208,7 +208,7 @@ const nameAndAddressKey = (line: ParsedLine): string =>
 
 /**
  * Deux identifiants differents, meme nom et meme adresse : deux membres, et une
- * remarque. Jamais de fusion d'office (story, ADR 046).
+ * remarque. Jamais de fusion d'office (story, ADR 048).
  */
 const sameNameAndAddressRemarks = (lines: ParsedLine[]): ImportRemarkDTO[] => {
   const firstSeen = new Map<string, ParsedLine>()

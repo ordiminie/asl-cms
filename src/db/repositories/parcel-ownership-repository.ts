@@ -55,7 +55,7 @@ export type MemberFormerParcelRow = {
 /**
  * La parcelle de ce numero, creee si elle n'existe pas (design `4d`).
  * `ON CONFLICT DO NOTHING` puis lecture : deux rattachements simultanes de la
- * meme parcelle inconnue n'en creent qu'une. Le compteur (s13, ADR 046) n'est
+ * meme parcelle inconnue n'en creent qu'une. Le compteur (s13, ADR 048) n'est
  * ecrit qu'a la creation : une parcelle existante garde le sien.
  */
 export const findOrCreateParcelTxnDao = async (

@@ -247,7 +247,7 @@ describe.each([
       )
     })
 
-    it('should hand the meter number to the parcel creation (s13, ADR 046)', async () => {
+    it('should hand the meter number to the parcel creation (s13, ADR 048)', async () => {
       await attachParcelService({
         organizationId: ORG_ID,
         memberProfileId: ROY_ID,

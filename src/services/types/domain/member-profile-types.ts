@@ -16,7 +16,7 @@ export const MEMBER_PROFILE_NAME_MAX_LENGTH = 200
 export const MEMBER_PROFILE_ADDRESS_MAX_LENGTH = 200
 export const MEMBER_PROFILE_CITY_MAX_LENGTH = 100
 export const MEMBER_PROFILE_SEARCH_MAX_LENGTH = 100
-/** Identifiant client Pennylane, cle d'import (s13, ADR 046). */
+/** Identifiant client Pennylane, cle d'import (s13, ADR 048). */
 export const MEMBER_PROFILE_PENNYLANE_ID_MAX_LENGTH = 100
 
 /** Meme regle que le telephone d'un signalement (s10, decision H). */
@@ -101,7 +101,7 @@ export type MemberProfileContactInput = {
 export type CreateMemberProfileInput = MemberProfileContactInput & {
   organizationId: string
   name: string
-  /** Cle d'import Pennylane (s13, ADR 046) : ecrite par l'import seul. */
+  /** Cle d'import Pennylane (s13, ADR 048) : ecrite par l'import seul. */
   pennylaneCustomerId?: string
 }
 

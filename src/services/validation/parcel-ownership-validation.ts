@@ -31,7 +31,7 @@ export const parcelNumberSchema = z
   .max(PARCEL_NUMBER_MAX_LENGTH)
 
 /**
- * Le numero de compteur d'une parcelle (s13, ADR 046) : facultatif ; vide ou
+ * Le numero de compteur d'une parcelle (s13, ADR 048) : facultatif ; vide ou
  * fait d'espaces, il est absent et sort `null`.
  */
 export const meterNumberSchema = z

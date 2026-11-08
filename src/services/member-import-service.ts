@@ -33,7 +33,7 @@ import {
 import {importMembersServiceSchema} from './validation/member-import-validation'
 
 /**
- * Import initial des membres d'une association (s13, ADR 046 et 047).
+ * Import initial des membres d'une association (s13, ADR 047 et 048).
  *
  * Une transaction de tenant **par membre** : sa fiche, son compte et ses
  * parcelles s'ecrivent en entier ou pas du tout, et un rejet n'arrete pas les
