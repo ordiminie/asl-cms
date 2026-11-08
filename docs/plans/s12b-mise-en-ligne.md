@@ -160,7 +160,7 @@ dans `docs/exploitation/recette-s12b.md` avant `/ks-review`.
        jour `docs/architecture.md` (ligne « Hébergement » et paragraphe sur les conteneurs, avec un
        renvoi à l'ADR 036). Vérification : `pnpm lint`, `pnpm check:rules`, `pnpm knip` (les
        nouveaux scripts sont référencés par `package.json`) et `pnpm test --run` passent.
-8. [ ] **(Serveur) Préparation.** L'utilisatrice exécute la section « Préparation » :
+8. [x] **(Serveur) Préparation.** L'utilisatrice exécute la section « Préparation » :
        - PostgreSQL et rôles ;
        - utilisateur et répertoires ;
        - `.env.production` rempli hors dépôt (`600`) ;
@@ -168,13 +168,13 @@ dans `docs/exploitation/recette-s12b.md` avant `/ks-review`.
 
        Preuves à coller : `pnpm db:check` passe sous `asl_app` ; `ss -tlnp` montre PostgreSQL sur
        `127.0.0.1` seulement ; `dig` résout les trois sous-domaines vers le VPS.
-9. [ ] **(Serveur) Premier déploiement et première association.** Enchaîner `ops/deploy.sh
+9. [x] **(Serveur) Premier déploiement et première association.** Enchaîner `ops/deploy.sh
 <branche>`, `pnpm ops:bootstrap` (association A, SuperAdmin), puis `ops/add-domain.sh` pour A
        et pour le domaine inconnu. Le service écoute sur `127.0.0.1:3100`, la minuterie de purge
        apparaît dans `systemctl list-timers`. Connexion par lien magique du SuperAdmin sur A, cookie
        `__Secure-`. Provisionner B depuis `/admin`, **puis seulement** lancer `ops/add-domain.sh` B
        (critère 5). Preuve : `pnpm test:smoke` vert depuis le poste (critères 1, 2, 5).
-10. [ ] **(Serveur) Preuves de durée et de reprise.**
+10. [x] **(Serveur) Preuves de durée et de reprise.**
         - Critère 4 : un logo téléversé sur A, un redéploiement, puis le logo toujours servi.
         - Critère 3 : un déploiement volontairement en échec à la migration
           (`DATABASE_MIGRATION_URL` invalide le temps d'un essai). Le lien `current` reste
