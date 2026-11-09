@@ -25,11 +25,16 @@ vi.mock('@/services/authentication/auth-service', () => ({
 }))
 vi.mock('@/app/dal/member-space-dal', () => ({
   getMyContactDal: vi.fn(),
+  getMyIncidentReportsDal: vi.fn(),
   getMyParcelsDal: vi.fn(),
 }))
 vi.mock('./actions', () => ({updateMyContactAction: vi.fn()}))
 
-import {getMyContactDal, getMyParcelsDal} from '@/app/dal/member-space-dal'
+import {
+  getMyContactDal,
+  getMyIncidentReportsDal,
+  getMyParcelsDal,
+} from '@/app/dal/member-space-dal'
 
 import DashboardPage from './page'
 
@@ -41,7 +46,9 @@ const renderServerPage = async (element: ReactElement) => {
 }
 
 /** La lecture est deroulee par `use()` derriere le `<Suspense>` : sous `act`. */
-const renderDashboard = async (searchParams: {role?: string} = {}) => {
+const renderDashboard = async (
+  searchParams: {role?: string; signalement?: string} = {}
+) => {
   const page = await renderServerPage(
     await DashboardPage({searchParams: Promise.resolve(searchParams)})
   )
@@ -84,6 +91,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getMyParcelsDal).mockResolvedValue(undefined)
   vi.mocked(getMyContactDal).mockResolvedValue(undefined)
+  vi.mocked(getMyIncidentReportsDal).mockResolvedValue(undefined)
 })
 
 describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
@@ -337,5 +345,93 @@ describe('/dashboard?role=retire — rôle retiré (s14, A12)', () => {
     expect(
       screen.queryByText('Vous ne faites plus partie du bureau.')
     ).toBeNull()
+  })
+})
+
+/** s22, écran A : « Mes signalements » entre « Mes coordonnées » et la sécurité. */
+describe('/dashboard — « Mes signalements » (s22, écran A)', () => {
+  const myReports = () => screen.getByRole('region', {name: 'Mes signalements'})
+  const security = () =>
+    screen.getByRole('heading', {level: 2, name: 'Sécurité du compte'})
+
+  beforeEach(() => {
+    vi.mocked(getMyContactDal).mockResolvedValue(CONTACT)
+    vi.mocked(getMyIncidentReportsDal).mockResolvedValue([
+      {
+        id: 'r1',
+        categoryName: 'Fuite d’eau',
+        location: 'chemin des Pins',
+        status: 'in_progress',
+        createdAt: new Date('2026-11-04T10:00:00Z'),
+        updatedAt: new Date('2026-11-05T10:00:00Z'),
+      },
+    ])
+  })
+
+  it('intercale la carte entre « Mes coordonnées » et « Sécurité du compte »', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+
+    await renderDashboard()
+
+    await screen.findByRole('region', {name: 'Mes signalements'})
+    expect(myReports()).toHaveTextContent('En cours')
+    expect(isBefore(myContact(), myReports())).toBe(true)
+    expect(isBefore(myReports(), security())).toBe(true)
+  })
+
+  it('la garde pour une fiche sans parcelle (C7)', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(
+      parcelsOf({current: [], former: []})
+    )
+
+    await renderDashboard()
+
+    await screen.findByRole('region', {name: 'Mes signalements'})
+    expect(isBefore(myContact(), myReports())).toBe(true)
+    expect(isBefore(myReports(), security())).toBe(true)
+  })
+
+  it('n’affiche aucune carte pour un compte sans fiche (C5)', async () => {
+    vi.mocked(getMyContactDal).mockResolvedValue(undefined)
+
+    await renderDashboard()
+
+    await screen.findByRole('heading', {level: 1})
+    expect(screen.queryByRole('region', {name: 'Mes signalements'})).toBeNull()
+  })
+
+  it('A5 : au retour d’un envoi, l’alerte de succès dans la carte', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+
+    await renderDashboard({signalement: 'envoye'})
+
+    await screen.findByRole('region', {name: 'Mes signalements'})
+    expect(within(myReports()).getByRole('status')).toHaveTextContent(
+      'Signalement envoyé. Le bureau de l’association l’a reçu.'
+    )
+  })
+
+  it('sans le paramètre, aucune alerte de succès', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+
+    await renderDashboard()
+
+    await screen.findByRole('region', {name: 'Mes signalements'})
+    expect(within(myReports()).queryByRole('status')).toBeNull()
+  })
+
+  it('A3 : la carte en squelette pendant la lecture, le bouton visible', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyIncidentReportsDal).mockReturnValue(new Promise(() => {}))
+
+    await renderDashboard()
+
+    await screen.findByRole('region', {name: 'Mes signalements'})
+    expect(myReports()).toHaveAttribute('aria-busy', 'true')
+    expect(
+      within(myReports()).getByRole('link', {
+        name: 'Signaler une fuite ou un incident',
+      })
+    ).toBeInTheDocument()
   })
 })

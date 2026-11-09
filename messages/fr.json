@@ -2840,6 +2840,8 @@
     "noCategory": "Sans catégorie",
     "categoryDeleted": "catégorie supprimée",
     "anonymous": "Anonyme",
+    "member": "Membre",
+    "memberContact": "Membre · {contact}",
     "open": "Ouvrir le signalement",
     "empty": "Aucun signalement pour l’instant. Les signalements envoyés depuis le site apparaissent ici.",
     "emptyAction": "Voir le formulaire de signalement",
@@ -2876,7 +2878,8 @@
         "reported": "Signalé depuis le site",
         "in_progress": "Passé en cours par {name}",
         "resolved": "Marqué comme résolu par {name}"
-      }
+      },
+      "memberOfAssociation": "Membre de l’association"
     },
     "errors": {
       "forbidden": "Seul le bureau de l’association peut suivre les signalements.",
@@ -3283,7 +3286,27 @@
       "title": "Sécurité du compte",
       "description": "Votre mot de passe et les appareils connectés à votre compte.",
       "link": "Gérer la sécurité du compte"
+    },
+    "reports": {
+      "title": "Mes signalements",
+      "empty": "Vous n’avez encore fait aucun signalement.",
+      "sentOn": "Envoyé le",
+      "updatedOn": "Mis à jour le",
+      "noCategory": "Sans catégorie",
+      "report": "Signaler une fuite ou un incident",
+      "sent": "Signalement envoyé. Le bureau de l’association l’a reçu."
     }
+  },
+  "MemberReportPage": {
+    "back": "Revenir à mon espace",
+    "title": "Signaler une fuite ou un incident",
+    "identity": {
+      "intro": "Le bureau saura que c’est vous : nous lui transmettons votre nom, votre adresse email et votre téléphone.",
+      "introWithoutPhone": "Le bureau saura que c’est vous : nous lui transmettons votre nom et votre adresse email.",
+      "noPhone": "téléphone non renseigné",
+      "addPhone": "Ajouter mon téléphone"
+    },
+    "cancel": "Annuler"
   },
   "Impersonation": {
     "roles": {

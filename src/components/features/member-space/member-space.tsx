@@ -1,7 +1,7 @@
 import {ArrowRight, CircleCheck, Lock, Map as MapIcon} from 'lucide-react'
 import Link from 'next/link'
 import {useFormatter, useTranslations} from 'next-intl'
-import {type ReactNode, use, useId} from 'react'
+import {type ReactNode, Suspense, use, useId} from 'react'
 
 import type {MyContactFormAction} from '@/components/features/member-profile/member-profile-form-validation'
 import {Alert, AlertDescription} from '@/components/ui/alert'
@@ -15,6 +15,7 @@ import {
 import {Skeleton} from '@/components/ui/skeleton'
 import {formatContentDate} from '@/lib/cms/format-content-date'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
+import type {MyIncidentReportDTO} from '@/services/types/domain/incident-report-types'
 import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
 import type {
   MyContactDTO,
@@ -24,6 +25,7 @@ import type {
 } from '@/services/types/domain/member-space-types'
 
 import {MyContactCard} from './my-contact-card'
+import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 
 /**
  * Espace membre (s46, s12d ecran C). Composants serveur, sans etat client :
@@ -34,17 +36,22 @@ import {MyContactCard} from './my-contact-card'
 const HEADING_CLASS = 'font-serif text-3xl font-semibold tracking-tight'
 
 /**
- * « Mes parcelles » et « Mes coordonnees », ou la page de s46 pour un compte
- * sans fiche (C5). Une fiche sans parcelle garde ses coordonnees (s16, C7).
+ * « Mes parcelles », « Mes coordonnees » et « Mes signalements » (s22), ou la
+ * page de s46 pour un compte sans fiche (C5). Une fiche sans parcelle garde
+ * ses coordonnees (s16, C7) et ses signalements.
  */
 export function MemberSpace({
   parcelsPromise,
   contactPromise,
   contactAction,
+  reportsPromise,
+  reportSent,
 }: {
   parcelsPromise: Promise<MyParcelsDTO | undefined>
   contactPromise: Promise<MyContactDTO | undefined>
   contactAction: MyContactFormAction
+  reportsPromise: Promise<MyIncidentReportDTO[] | undefined>
+  reportSent: boolean
 }) {
   const parcels = use(parcelsPromise)
   const contact = use(contactPromise)
@@ -58,6 +65,7 @@ export function MemberSpace({
     return (
       <MemberSpaceWithoutParcels>
         <MyContactCard contact={contact} action={contactAction} />
+        <MyReports reportsPromise={reportsPromise} sent={reportSent} />
       </MemberSpaceWithoutParcels>
     )
   }
@@ -68,9 +76,41 @@ export function MemberSpace({
       <Greeting name={parcels.name} />
       <MyParcelsCard parcels={parcels} />
       <MyContactCard contact={contact} action={contactAction} />
+      <MyReports reportsPromise={reportsPromise} sent={reportSent} />
       <SecurityCard />
     </div>
   )
+}
+
+/**
+ * « Mes signalements » (s22) : lue a part, derriere son propre `<Suspense>`
+ * (A3) ; le reste de l'espace n'attend pas la liste.
+ */
+function MyReports({
+  reportsPromise,
+  sent,
+}: {
+  reportsPromise: Promise<MyIncidentReportDTO[] | undefined>
+  sent: boolean
+}) {
+  return (
+    <Suspense fallback={<MyReportsCardLoading />}>
+      <MyReportsList reportsPromise={reportsPromise} sent={sent} />
+    </Suspense>
+  )
+}
+
+function MyReportsList({
+  reportsPromise,
+  sent,
+}: {
+  reportsPromise: Promise<MyIncidentReportDTO[] | undefined>
+  sent: boolean
+}) {
+  const reports = use(reportsPromise)
+  if (!reports) return null
+
+  return <MyReportsCard reports={reports} sent={sent} />
 }
 
 /** Chargement : la salutation, et la carte en `skeleton`, sans marqueur. */

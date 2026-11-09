@@ -175,14 +175,22 @@ function CategoryName({item}: {item: IncidentReportListItemDTO}) {
   )
 }
 
-/** Le nom, sinon l'email, sinon le telephone, sinon « Anonyme ». */
+/**
+ * Le nom, sinon l'email, sinon le telephone, sinon « Anonyme ». Pour un
+ * membre (s22) : le nom, puis « Membre · » et l'email ou le telephone, en
+ * texte seul.
+ */
 function Reporter({item}: {item: IncidentReportListItemDTO}) {
   const t = useTranslations('BureauReportsPage')
-  const [first, second] = [
+  const [first, ...others] = [
     item.reporterName,
     item.reporterEmail,
     item.reporterPhone,
   ].filter((value): value is string => Boolean(value))
+  const memberLine = others[0]
+    ? t('memberContact', {contact: others[0]})
+    : t('member')
+  const second = item.reportedByMember ? memberLine : others[0]
 
   if (!first) {
     return <span className="text-muted-foreground">{t('anonymous')}</span>

@@ -21,6 +21,7 @@ const report = (
   reporterPhone: null,
   status: 'reported',
   notificationFailed: false,
+  reportedByMember: false,
   createdAt: new Date('2026-09-29T05:42:00Z'),
   events: [
     {
@@ -222,5 +223,58 @@ describe('IncidentReportDetail — écran 3 du design s10', () => {
         'Cette catégorie a été supprimée depuis ; le signalement est conservé.'
       )
     ).toBeInTheDocument()
+  })
+})
+
+describe('IncidentReportDetail — signalement d’un membre (s22, C2)', () => {
+  it('ajoute « Membre de l’association » sous le nom, liens conservés', () => {
+    render(
+      <IncidentReportDetail
+        report={report({
+          reportedByMember: true,
+          reporterName: 'Lucie Moreau',
+          reporterEmail: 'lucie.moreau@exemple.fr',
+          reporterPhone: '06 12 34 56 78',
+        })}
+        changeStatusAction={changeStatusAction}
+      />
+    )
+
+    const name = screen.getByText('Lucie Moreau')
+    const member = screen.getByText('Membre de l’association')
+    expect(
+      name.compareDocumentPosition(member) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('link', {name: 'lucie.moreau@exemple.fr'})
+    ).toHaveAttribute('href', 'mailto:lucie.moreau@exemple.fr')
+    expect(screen.getByRole('link', {name: '06 12 34 56 78'})).toHaveAttribute(
+      'href',
+      'tel:0612345678'
+    )
+  })
+
+  it('reste inchangé pour un signalement public', () => {
+    render(
+      <IncidentReportDetail
+        report={report({reporterName: 'Paul Ferrand'})}
+        changeStatusAction={changeStatusAction}
+      />
+    )
+
+    expect(screen.getByText('Paul Ferrand')).toBeInTheDocument()
+    expect(screen.queryByText('Membre de l’association')).toBeNull()
+  })
+
+  it('garde « Aucune coordonnée laissée » pour un signalement public anonyme', () => {
+    render(
+      <IncidentReportDetail
+        report={report()}
+        changeStatusAction={changeStatusAction}
+      />
+    )
+
+    expect(screen.getByText('Aucune coordonnée laissée')).toBeInTheDocument()
+    expect(screen.queryByText('Membre de l’association')).toBeNull()
   })
 })

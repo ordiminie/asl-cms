@@ -3,7 +3,8 @@ import {createServiceInterceptor} from './create-service-interceptor'
 
 /**
  * La description d'un signalement et les coordonnees de son auteur sont des
- * donnees personnelles : ni arguments ni resultats dans les journaux.
+ * donnees personnelles : ni arguments ni resultats dans les journaux. Vaut
+ * aussi pour les fonctions du membre (s22), qui nomment sa fiche.
  */
 const incidentReportServiceInterceptor = createServiceInterceptor(
   incidentReportServiceMethods,

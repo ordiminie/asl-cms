@@ -47,6 +47,20 @@ export const createIncidentReportServiceSchema = z.object({
   ),
 })
 
+/**
+ * Ce qu'un membre connecte envoie (s22) : **aucun champ d'identite ni
+ * `memberId`** — Zod retire ce qui y serait glisse ; la fiche vient de la
+ * session et du domaine appele (ADR 049).
+ */
+export const createMyIncidentReportServiceSchema =
+  createIncidentReportServiceSchema.pick({
+    organizationId: true,
+    locale: true,
+    categoryId: true,
+    location: true,
+    description: true,
+  })
+
 export const incidentReportsPageServiceSchema = z.object({
   organizationId: incidentReportOrganizationIdSchema,
   page: incidentReportPageNumberSchema,

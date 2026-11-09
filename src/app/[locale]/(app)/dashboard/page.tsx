@@ -1,6 +1,10 @@
 import {Suspense} from 'react'
 
-import {getMyContactDal, getMyParcelsDal} from '@/app/dal/member-space-dal'
+import {
+  getMyContactDal,
+  getMyIncidentReportsDal,
+  getMyParcelsDal,
+} from '@/app/dal/member-space-dal'
 import withAuth, {
   type WithAuthProps,
 } from '@/components/features/auth/with-auth'
@@ -15,8 +19,11 @@ import {updateMyContactAction} from './actions'
 /** Retour d'une propre retrogradation depuis la fiche (s14, A12). */
 const ROLE_WITHDRAWN = 'retire'
 
+/** Retour d'une declaration depuis l'espace (s22, A5). */
+const REPORT_SENT = 'envoye'
+
 type DashboardPageProps = WithAuthProps & {
-  searchParams: Promise<{role?: string}>
+  searchParams: Promise<{role?: string; signalement?: string}>
 }
 
 /**
@@ -24,12 +31,15 @@ type DashboardPageProps = WithAuthProps & {
  * connecte, « Mes coordonnees » (s16), puis la securite du compte. La fiche se lit cote serveur, par la
  * session et le domaine appele, derriere un `<Suspense>` ; un compte sans
  * fiche dans l'association retrouve la page de s46 (C5). Apres sa propre
- * retrogradation, `?role=retire` le dit en tete (s14, A12).
+ * retrogradation, `?role=retire` le dit en tete (s14, A12). « Mes
+ * signalements » (s22) se lit a part ; apres une declaration,
+ * `?signalement=envoye` le dit dans la carte (A5).
  */
 async function Page({user, searchParams}: DashboardPageProps) {
   const parcelsPromise = getMyParcelsDal()
   const contactPromise = getMyContactDal()
-  const {role} = await searchParams
+  const reportsPromise = getMyIncidentReportsDal()
+  const {role, signalement} = await searchParams
 
   return (
     <div className="space-y-6">
@@ -39,6 +49,8 @@ async function Page({user, searchParams}: DashboardPageProps) {
           parcelsPromise={parcelsPromise}
           contactPromise={contactPromise}
           contactAction={updateMyContactAction}
+          reportsPromise={reportsPromise}
+          reportSent={signalement === REPORT_SENT}
         />
       </Suspense>
     </div>

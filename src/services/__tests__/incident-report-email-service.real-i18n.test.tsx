@@ -135,6 +135,25 @@ describe('sendIncidentReportNotificationEmailService — avertir le bureau', () 
     expect(text).not.toMatch(/<[a-z]/i)
   })
 
+  it('porte l’identité copiée de la fiche d’un membre, gabarit inchangé (s22)', async () => {
+    await sendIncidentReportNotificationEmailService(
+      notification({
+        report: {
+          ...notification().report,
+          reporterName: 'Lucie Moreau',
+          reporterEmail: 'lucie.moreau@exemple.fr',
+          reporterPhone: '06 12 34 56 78',
+        },
+      })
+    )
+
+    const {text} = memoryTransport.messages[0]
+    expect(text).toContain('Lucie Moreau')
+    expect(text).toContain('lucie.moreau@exemple.fr')
+    expect(text).toContain('06 12 34 56 78')
+    expect(text).not.toContain('non renseigné')
+  })
+
   it('pose un pré-en-tête de 90 caractères au plus', async () => {
     await sendIncidentReportNotificationEmailService(
       notification({

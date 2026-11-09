@@ -1024,3 +1024,320 @@ test.describe('Signalements — isolation entre associations', () => {
     expect(await storedReportOfTenantA(location)).toBeUndefined()
   })
 })
+
+/**
+ * s22 — un membre déclare depuis son espace, sans ressaisir son identité, et
+ * suit le statut de ses seules déclarations (ADR 049). Les comptes de Lucie
+ * Moreau et de Gérard Pommier (deux fiches, une par association, un seul
+ * compte) sont posés par le seed et se connectent par un vrai lien reçu.
+ */
+const SEED_MOREAU = {
+  email: 'lucie.moreau@example.test',
+  name: 'Lucie Moreau',
+  profileId: 'a1200000-0000-4000-8000-000000000006',
+}
+const SEED_POMMIER = {
+  email: 'gerard.pommier@example.test',
+  profileIdA: 'a1200000-0000-4000-8000-000000000007',
+}
+const MY_REPORT_ROUTE = '/dashboard/signaler'
+const LINK_SENT_TITLE = 'Consultez votre boîte mail'
+
+const messagesTo = (before: Set<string>, to: string): OutboxMessage[] =>
+  [...outboxFiles()]
+    .filter((file) => !before.has(file))
+    .map(
+      (file) =>
+        JSON.parse(
+          fs.readFileSync(path.join(outboxDir(), file), 'utf8')
+        ) as OutboxMessage
+    )
+    .filter((message) => message.to === to)
+
+/** Un membre, connecté par le lien reçu, arrivé sur son espace. */
+const newMemberSession = async (
+  browser: Browser,
+  base: string,
+  email: string
+) => {
+  const page = await newVisitor(browser)
+  await page
+    .context()
+    .addCookies([{name: 'NEXT_LOCALE', value: 'fr', url: base}])
+  const before = outboxFiles()
+  await page.goto(`${base}/login`, {waitUntil: 'networkidle'})
+  const address = page.getByLabel('Adresse email')
+  await address.fill(email)
+  await expect(address).toHaveValue(email)
+  await page
+    .getByRole('button', {name: 'Recevoir mon lien de connexion'})
+    .click()
+  await expect(
+    page.getByRole('heading', {level: 1, name: LINK_SENT_TITLE})
+  ).toBeVisible({timeout: 15_000})
+  await expect
+    .poll(() => messagesTo(before, email).length, {timeout: 10_000})
+    .toBe(1)
+  const link = messagesTo(before, email)[0].text.match(
+    /https?:\/\/\S+\/magic-link\/verify\?\S+/
+  )?.[0]
+  expect(link, 'la version texte porte l’URL en clair').toBeTruthy()
+  await page.goto(link as string)
+  await expect(page).toHaveURL(`${base}/dashboard`, {timeout: 15_000})
+  return page
+}
+
+const myReportsCard = (page: Page) =>
+  page.getByRole('region', {name: 'Mes signalements'})
+
+const myReportLine = (page: Page, location: string) =>
+  myReportsCard(page).getByRole('listitem').filter({hasText: location})
+
+/** Déclare depuis l'espace : catégorie, lieu, description, rien d'autre. */
+const declareAsMember = async (
+  page: Page,
+  base: string,
+  input: {category?: string; location: string; description: string}
+) => {
+  await page.goto(`${base}/dashboard`, {waitUntil: 'networkidle'})
+  await myReportsCard(page)
+    .getByRole('link', {name: 'Signaler une fuite ou un incident'})
+    .click()
+  await expect(page).toHaveURL(`${base}${MY_REPORT_ROUTE}`, {timeout: 60_000})
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: 'Signaler une fuite ou un incident',
+    })
+  ).toBeVisible({timeout: 15_000})
+  await page.waitForLoadState('networkidle')
+  await expect(page.getByRole('textbox')).toHaveCount(2)
+  if (input.category) {
+    await categorySelect(page).click()
+    await page.getByRole('option', {name: input.category}).click()
+  }
+  await field(page, 'Où ?').fill(input.location)
+  await field(page, 'Que se passe-t-il ?').fill(input.description)
+  await page.getByRole('button', {name: 'Envoyer le signalement'}).click()
+  await expect(page).toHaveURL(`${base}/dashboard?signalement=envoye`, {
+    timeout: 15_000,
+  })
+}
+
+/**
+ * Les liens de connexion sont plafonnés par adresse et par jour : chaque essai
+ * repart de compteurs vides (précédent : `member-accounts.spec.ts`).
+ */
+const resetRateLimits = () =>
+  asMaintenance((client) =>
+    client.query(
+      `delete from rate_limit_event
+        where organization_id in (select id from organization where slug = any($1))`,
+      [['techcorp-solutions', 'marketing-pro']]
+    )
+  )
+
+test.describe('Signalements de membre — depuis l’espace (s22)', () => {
+  test.beforeEach(async () => {
+    await resetRateLimits()
+  })
+
+  test.afterAll(async () => {
+    await cleanUpRun()
+  })
+
+  const moreauLeak = markerOf('Robinet commun, allée des Rosiers')
+  const pommierRoad = markerOf('Nid-de-poule, rue des Tilleuls')
+
+  test('critères 1 et 5 — Moreau déclare sans ressaisie ; le bureau la voit « Membre » ; mêmes adresses notifiées', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const contact = await storedContactOfTenantA()
+    const before = outboxFiles()
+
+    const moreau = await newMemberSession(browser, TENANT_A, SEED_MOREAU.email)
+    try {
+      await declareAsMember(moreau, TENANT_A, {
+        category: "Fuite d'eau",
+        location: moreauLeak,
+        description: 'L’eau sort du robinet commun en continu.',
+      })
+      await expect(
+        myReportsCard(moreau)
+          .getByRole('status')
+          .filter({hasText: 'Signalement envoyé.'})
+      ).toBeVisible({timeout: 15_000})
+      await expect(myReportLine(moreau, moreauLeak)).toContainText('Signalé')
+    } finally {
+      await moreau.context().close()
+    }
+
+    const stored = await storedReportOfTenantA(moreauLeak)
+    expect(stored?.member_id).toBe(SEED_MOREAU.profileId)
+    expect(stored?.reporter_email).toBe(SEED_MOREAU.email)
+
+    await expect
+      .poll(() => emailsAbout(before, moreauLeak).length, {timeout: 10_000})
+      .toBe(2)
+    const emails = emailsAbout(before, moreauLeak)
+    expect(emails.map((email) => email.to).sort()).toEqual(
+      [contact, FORAGE_ADDRESS].sort()
+    )
+    for (const email of emails) {
+      expect(email.text).toContain(SEED_MOREAU.name)
+      expect(email.text).toContain(SEED_MOREAU.email)
+    }
+
+    const board = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      await openReportsList(board)
+      await expect(rowOf(board, moreauLeak)).toContainText(SEED_MOREAU.name)
+      await expect(rowOf(board, moreauLeak)).toContainText(
+        `Membre · ${SEED_MOREAU.email}`
+      )
+    } finally {
+      await board.context().close()
+    }
+  })
+
+  test('critère 3 — entre deux membres de la même association, chacun ne voit que les siennes', async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000)
+    const pommierA = await newMemberSession(
+      browser,
+      TENANT_A,
+      SEED_POMMIER.email
+    )
+    try {
+      await declareAsMember(pommierA, TENANT_A, {
+        category: 'Voirie et chemins',
+        location: pommierRoad,
+        description: 'Un trou profond.',
+      })
+      await expect(myReportLine(pommierA, pommierRoad)).toBeVisible({
+        timeout: 15_000,
+      })
+      await expect(myReportsCard(pommierA)).not.toContainText(moreauLeak)
+    } finally {
+      await pommierA.context().close()
+    }
+    expect((await storedReportOfTenantA(pommierRoad))?.member_id).toBe(
+      SEED_POMMIER.profileIdA
+    )
+
+    const moreau = await newMemberSession(browser, TENANT_A, SEED_MOREAU.email)
+    try {
+      await expect(myReportLine(moreau, moreauLeak)).toBeVisible({
+        timeout: 15_000,
+      })
+      await expect(myReportsCard(moreau)).not.toContainText(pommierRoad)
+    } finally {
+      await moreau.context().close()
+    }
+  })
+
+  test('critère 3 — Pommier, membre des deux associations, ne voit chez Marketing Pro aucune déclaration de TechCorp', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const pommierB = await newMemberSession(
+      browser,
+      TENANT_B,
+      SEED_POMMIER.email
+    )
+    try {
+      await expect(myReportsCard(pommierB)).toBeVisible({timeout: 15_000})
+      await expect(myReportsCard(pommierB)).not.toContainText(pommierRoad)
+      await expect(myReportsCard(pommierB)).not.toContainText(moreauLeak)
+    } finally {
+      await pommierB.context().close()
+    }
+
+    const ids = await tenantIds()
+    const seenFrom = (organizationId: string) =>
+      inTenantScope(organizationId, async (client) => {
+        const result = await client.query(
+          `select id from incident_report where location in ($1, $2)`,
+          [pommierRoad, moreauLeak]
+        )
+        return result.rowCount
+      })
+    expect(await seenFrom(ids.a)).toBe(2)
+    expect(await seenFrom(ids.b)).toBe(0)
+  })
+
+  test('critères 2 et 4 — le bureau passe en cours, le membre le voit au rechargement', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const board = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      await openReportsList(board)
+      await rowOf(board, moreauLeak)
+        .getByRole('link', {name: 'Ouvrir le signalement'})
+        .click()
+      await expect(board.getByText('Membre de l’association')).toBeVisible({
+        timeout: 60_000,
+      })
+      await board.getByRole('button', {name: 'Passer en cours'}).click()
+      await expect(
+        board
+          .getByRole('status')
+          .filter({hasText: 'Signalement passé en cours.'})
+      ).toBeVisible({timeout: 15_000})
+    } finally {
+      await board.context().close()
+    }
+
+    const moreau = await newMemberSession(browser, TENANT_A, SEED_MOREAU.email)
+    try {
+      await expect(myReportLine(moreau, moreauLeak)).toContainText('En cours', {
+        timeout: 15_000,
+      })
+      await expect(myReportLine(moreau, moreauLeak)).toContainText(
+        'Mis à jour le'
+      )
+      await expect(myReportsCard(moreau).getByRole('status')).toHaveCount(0)
+    } finally {
+      await moreau.context().close()
+    }
+  })
+
+  test('critère 8 de s10 — un signalement public aux coordonnées exactes de Moreau n’est pas lié', async ({
+    browser,
+  }) => {
+    const location = markerOf('Portail coincé')
+    await reportAndReadEmails(
+      browser,
+      {
+        category: 'Voirie et chemins',
+        location,
+        description: 'Le portail ne ferme plus.',
+        name: SEED_MOREAU.name,
+        email: SEED_MOREAU.email,
+      },
+      1
+    )
+
+    const stored = await storedReportOfTenantA(location)
+    expect(stored?.reporter_email).toBe(SEED_MOREAU.email)
+    expect(stored?.member_id).toBeNull()
+  })
+
+  test('un compte sans fiche dans l’association n’a pas la carte', async ({
+    browser,
+  }) => {
+    const member = await newSession(browser, TENANT_A, MEMBER_A.email)
+    try {
+      await member.goto(`${TENANT_A}/dashboard`, {waitUntil: 'load'})
+      await expect(
+        member.getByRole('heading', {level: 2, name: 'Sécurité du compte'})
+      ).toBeVisible({timeout: 15_000})
+      await expect(myReportsCard(member)).toHaveCount(0)
+    } finally {
+      await member.context().close()
+    }
+  })
+})

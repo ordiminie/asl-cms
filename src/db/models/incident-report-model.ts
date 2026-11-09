@@ -10,6 +10,7 @@ import {
 
 import {associationCategory} from './association-category-model'
 import {organization, user} from './auth-model'
+import {memberProfile} from './member-profile-model'
 
 /**
  * Signalement envoye depuis la page publique `/signaler` (s10, ADR 028). Table
@@ -22,8 +23,10 @@ import {organization, user} from './auth-model'
  *   d'effacer les signalements (la suppression d'une categorie est logique).
  * - `status` est un texte ferme par le code : `reported`, `in_progress`,
  *   `resolved`, dans cet ordre seulement.
- * - `member_id` est pose **sans cle etrangere** et **aucun code ne l'ecrit** :
- *   la fiche membre n'existe pas encore (s12) ; s22 ajoutera la contrainte.
+ * - `member_id` designe la **fiche** du membre declarant (`member_profile`,
+ *   s22, ADR 049), jamais `member` ni `user`. Pose depuis la session et le
+ *   domaine appele, jamais par le signalement public (critere 8 de s10).
+ *   `ON DELETE RESTRICT` : un signalement ne redevient pas anonyme en silence.
  */
 export const incidentReport = pgTable(
   'incident_report',
@@ -43,7 +46,9 @@ export const incidentReport = pgTable(
     reporterEmail: text('reporter_email'),
     reporterPhone: text('reporter_phone'),
     status: text('status').default('reported').notNull(),
-    memberId: uuid('member_id'),
+    memberId: uuid('member_id').references(() => memberProfile.id, {
+      onDelete: 'restrict',
+    }),
     notificationFailed: boolean('notification_failed').default(false).notNull(),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
@@ -52,6 +57,11 @@ export const incidentReport = pgTable(
   (table) => [
     index('incident_report_organization_created_at_idx').on(
       table.organizationId,
+      table.createdAt.desc()
+    ),
+    index('incident_report_organization_member_created_at_idx').on(
+      table.organizationId,
+      table.memberId,
       table.createdAt.desc()
     ),
   ]

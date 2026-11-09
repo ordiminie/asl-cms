@@ -174,7 +174,7 @@ function Section({title, children}: {title: string; children: ReactNode}) {
 
 function ReporterContact({report}: {report: IncidentReportDTO}) {
   const t = useTranslations('BureauReportsPage.detail')
-  const {reporterName, reporterEmail, reporterPhone} = report
+  const {reporterName, reporterEmail, reporterPhone, reportedByMember} = report
 
   if (!reporterName && !reporterEmail && !reporterPhone) {
     return <p className="text-muted-foreground text-[17px]">{t('noContact')}</p>
@@ -183,6 +183,9 @@ function ReporterContact({report}: {report: IncidentReportDTO}) {
   return (
     <div className="flex flex-col gap-1 text-[17px]">
       {reporterName && <p className="font-semibold">{reporterName}</p>}
+      {reportedByMember && (
+        <p className="text-muted-foreground">{t('memberOfAssociation')}</p>
+      )}
       {reporterEmail && (
         <a
           href={`mailto:${reporterEmail}`}

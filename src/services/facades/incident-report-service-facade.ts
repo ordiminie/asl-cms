@@ -6,7 +6,13 @@ export const changeIncidentReportStatusService =
   incidentReportServiceInterceptor.changeIncidentReportStatusService
 export const createIncidentReportService =
   incidentReportServiceInterceptor.createIncidentReportService
+export const createMyIncidentReportService =
+  incidentReportServiceInterceptor.createMyIncidentReportService
 export const getIncidentReportService =
   incidentReportServiceInterceptor.getIncidentReportService
 export const getIncidentReportsPageService =
   incidentReportServiceInterceptor.getIncidentReportsPageService
+export const getMyIncidentReportsService =
+  incidentReportServiceInterceptor.getMyIncidentReportsService
+export const getMyReportIdentityService =
+  incidentReportServiceInterceptor.getMyReportIdentityService
