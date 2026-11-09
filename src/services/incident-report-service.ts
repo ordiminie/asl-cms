@@ -9,10 +9,13 @@ import {
   createIncidentReportTxnDao,
   getIncidentReportByIdDao,
   getIncidentReportsPageDao,
+  getMyIncidentReportsDao,
   IncidentReportRow,
   listIncidentReportEventsDao,
   markIncidentReportNotificationFailedDao,
+  MyIncidentReportRow,
 } from '@/db/repositories/incident-report-repository'
+import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
@@ -40,6 +43,7 @@ import {effectiveAuthor} from './types/domain/impersonation-types'
 import {
   countIncidentReportPages,
   CreateIncidentReportInput,
+  CreateMyIncidentReportInput,
   INCIDENT_REPORTS_BUREAU_PAGE_SIZE,
   IncidentReportDTO,
   IncidentReportEventDTO,
@@ -48,6 +52,10 @@ import {
   IncidentReportStatusChangeResult,
   IncidentReportStatusCounts,
   IncidentReportSubmissionResult,
+  MyIncidentReportDTO,
+  MyIncidentReportSubmissionResult,
+  MyReportIdentityDTO,
+  myReportUpdatedAtOf,
   REPORT_STATUSES,
   ReportStatus,
   resolveReportRecipients,
@@ -55,6 +63,7 @@ import {
 import {
   changeIncidentReportStatusServiceSchema,
   createIncidentReportServiceSchema,
+  createMyIncidentReportServiceSchema,
   hasReachedReportStatus,
   incidentReportOrganizationIdSchema,
   incidentReportServiceSchema,
@@ -69,6 +78,7 @@ const CATEGORY_NOT_OFFERED =
   "La catégorie choisie n'est pas proposée par l'association"
 const CATEGORY_REQUIRED = 'Une catégorie est obligatoire'
 const TRANSITION_REFUSED = 'Ce changement de statut n’est pas permis'
+const MEMBER_REPORT_DENIED = 'Connectez-vous pour signaler depuis votre espace'
 
 const toListItemDto = (row: IncidentReportRow): IncidentReportListItemDTO => ({
   id: row.id,
@@ -81,7 +91,17 @@ const toListItemDto = (row: IncidentReportRow): IncidentReportListItemDTO => ({
   reporterPhone: row.reporterPhone,
   status: row.status as ReportStatus,
   notificationFailed: row.notificationFailed,
+  reportedByMember: row.memberId !== null,
   createdAt: row.createdAt,
+})
+
+const toMyReportDto = (row: MyIncidentReportRow): MyIncidentReportDTO => ({
+  id: row.id,
+  categoryName: row.categoryName,
+  location: row.location,
+  status: row.status as ReportStatus,
+  createdAt: row.createdAt,
+  updatedAt: myReportUpdatedAtOf(row.status as ReportStatus, row.lastEventAt),
 })
 
 const toEventDto = (event: {
@@ -230,6 +250,28 @@ const flagNotificationFailed = async (
 }
 
 /**
+ * Avertit le bureau d'un signalement ecrit. Un echec de notification **ne
+ * fait pas echouer** la soumission : le temoin est pose, l'echec journalise.
+ */
+const notifyBoardOfNewReport = async (
+  report: IncidentReportModel,
+  category: AssociationCategoryModel | null,
+  locale: string
+): Promise<IncidentReportSubmissionResult> => {
+  try {
+    await notifyBoard(report, category, locale)
+    return {status: 'created', id: report.id, notificationFailed: false}
+  } catch (error) {
+    logger.error('[INCIDENT-REPORT] Notification au bureau non envoyee', {
+      reportId: report.id,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    await flagNotificationFailed(report.organizationId, report.id)
+    return {status: 'created', id: report.id, notificationFailed: true}
+  }
+}
+
+/**
  * Enregistre un signalement envoye depuis `/signaler`, puis avertit le bureau.
  *
  * **Sans controle d'autorisation, et c'est delibere** : l'auteur est un
@@ -266,17 +308,7 @@ export const createIncidentReportService = async (
     return {report, category}
   })
 
-  try {
-    await notifyBoard(report, category, locale)
-    return {status: 'created', id: report.id, notificationFailed: false}
-  } catch (error) {
-    logger.error('[INCIDENT-REPORT] Notification au bureau non envoyee', {
-      reportId: report.id,
-      error: error instanceof Error ? error.message : String(error),
-    })
-    await flagNotificationFailed(organizationId, report.id)
-    return {status: 'created', id: report.id, notificationFailed: true}
-  }
+  return notifyBoardOfNewReport(report, category, locale)
 }
 
 /** Une page de la file du bureau, la plus recente d'abord. */
@@ -425,3 +457,104 @@ export const canManageIncidentReportsService = async (
   const authUser = await getAuthUser()
   return canPerformAction(authUser, parsed.data, ActionIdConst.REPORT_MANAGE)
 }
+
+/**
+ * Un membre connecte declare un incident depuis son espace (s22, ADR 049).
+ * Meme workflow que le public : categorie lue dans le scope du tenant,
+ * premier evenement **sans auteur**, notification aux memes adresses.
+ *
+ * La fiche se resout par **la session et le domaine appele** : aucune
+ * identite ni `memberId` n'est lu de l'entree. Le declarant est copie de la
+ * fiche dans `reporter_*`. Sans fiche dans l'association : `not_found`.
+ */
+export const createMyIncidentReportService = async (
+  input: CreateMyIncidentReportInput
+): Promise<MyIncidentReportSubmissionResult> => {
+  const parsed = createMyIncidentReportServiceSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const authUser = await getAuthUser()
+  if (!authUser) {
+    throw new AuthorizationError(MEMBER_REPORT_DENIED)
+  }
+
+  const {organizationId, locale, categoryId, location, description} =
+    parsed.data
+  const written = await withTenant(organizationId, async () => {
+    const profile = await getMemberProfileByUserIdDao(
+      organizationId,
+      authUser.id
+    )
+    if (!profile) return undefined
+
+    const category = await resolveReportCategory(organizationId, categoryId)
+    const report = await createIncidentReportTxnDao({
+      organizationId,
+      categoryId: category?.id ?? null,
+      location,
+      description,
+      memberId: profile.id,
+      reporterName: profile.name,
+      reporterEmail: profile.email,
+      reporterPhone: profile.phone,
+    })
+    return {report, category}
+  })
+  if (!written) return {status: 'not_found'}
+
+  return notifyBoardOfNewReport(written.report, written.category, locale)
+}
+
+/**
+ * Lecture **cote membre** (s22) : aucun identifiant de fiche en entree. La
+ * fiche se resout par la session et le domaine appele, sous `withTenant` ;
+ * `read` ne recoit que celle-la. Rien pour un compte sans fiche.
+ */
+const readForMyProfile = async <T>(
+  organizationId: string,
+  read: (profile: {
+    id: string
+    name: string
+    email: string | null
+    phone: string | null
+  }) => Promise<T>
+): Promise<T | undefined> => {
+  const parsed = incidentReportOrganizationIdSchema.safeParse(organizationId)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const authUser = await getAuthUser()
+  if (!authUser) {
+    throw new AuthorizationError(MEMBER_REPORT_DENIED)
+  }
+
+  return withTenant(parsed.data, async () => {
+    const profile = await getMemberProfileByUserIdDao(parsed.data, authUser.id)
+    return profile ? read(profile) : undefined
+  })
+}
+
+/**
+ * Les signalements du membre connecte, le plus recent d'abord, tous (s22,
+ * criteres 2 et 4) : le statut est lu sans cache, donc a jour.
+ */
+export const getMyIncidentReportsService = async (
+  organizationId: string
+): Promise<MyIncidentReportDTO[] | undefined> =>
+  readForMyProfile(organizationId, async (profile) => {
+    const rows = await getMyIncidentReportsDao(profile.id)
+    return rows.map((row) => toMyReportDto(row))
+  })
+
+/** Ce que le bureau recevra du declarant : nom, email, telephone de la fiche. */
+export const getMyReportIdentityService = async (
+  organizationId: string
+): Promise<MyReportIdentityDTO | undefined> =>
+  readForMyProfile(organizationId, async (profile) => ({
+    name: profile.name,
+    email: profile.email,
+    phone: profile.phone,
+  }))

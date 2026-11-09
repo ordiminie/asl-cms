@@ -18,8 +18,12 @@ vi.mock('@/db/repositories/incident-report-repository', () => ({
   createIncidentReportTxnDao: vi.fn(),
   getIncidentReportByIdDao: vi.fn(),
   getIncidentReportsPageDao: vi.fn(),
+  getMyIncidentReportsDao: vi.fn(),
   listIncidentReportEventsDao: vi.fn(),
   markIncidentReportNotificationFailedDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/member-profile-repository', () => ({
+  getMemberProfileByUserIdDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/association-category-repository', () => ({
   listActiveCategoriesDao: vi.fn(),
@@ -46,9 +50,11 @@ import {
   createIncidentReportTxnDao,
   getIncidentReportByIdDao,
   getIncidentReportsPageDao,
+  getMyIncidentReportsDao,
   listIncidentReportEventsDao,
   markIncidentReportNotificationFailedDao,
 } from '@/db/repositories/incident-report-repository'
+import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
 import * as organizationRepository from '@/db/repositories/organization-repository'
 import * as userRepository from '@/db/repositories/user-repository'
 import {EmailTransportError} from '@/lib/emails/transport/email-transport'
@@ -63,15 +69,18 @@ import {
   canManageIncidentReportsService,
   changeIncidentReportStatusService,
   createIncidentReportService,
+  createMyIncidentReportService,
   getIncidentReportService,
   getIncidentReportsPageService,
+  getMyIncidentReportsService,
+  getMyReportIdentityService,
 } from '../incident-report-service'
 import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {INCIDENT_REPORTS_BUREAU_PAGE_SIZE} from '../types/domain/incident-report-types'
 import {OrganizationRole} from '../types/domain/organization-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
-import {userTest} from './service-test-data'
+import {userTest, userTestSuperAdmin} from './service-test-data'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
@@ -231,6 +240,7 @@ describe('[PUBLIC] createIncidentReportService — le visiteur anonyme signale (
 
     const [input] = vi.mocked(createIncidentReportTxnDao).mock.calls[0]
     expect(input).not.toHaveProperty('memberId')
+    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
     for (const [name, dao] of Object.entries(userRepository)) {
       expect(dao, name).not.toHaveBeenCalled()
     }
@@ -787,5 +797,317 @@ describe('notification au bureau — destinataires (critères 1, 7 ; décision F
         report: expect.objectContaining({categoryName: "Fuite d'eau"}),
       })
     )
+  })
+})
+
+const PROFILE_ID = '77777777-7777-4777-8777-777777777777'
+
+const profileRow = (overrides: Record<string, unknown> = {}) => ({
+  id: PROFILE_ID,
+  organizationId: ORG_ID,
+  name: 'Lucie Moreau',
+  email: 'lucie.moreau@example.test',
+  phone: '06 12 34 56 78',
+  addressLine: null,
+  addressComplement: null,
+  postalCode: null,
+  city: null,
+  userId: userTest.id,
+  pennylaneCustomerId: null,
+  mailOnly: false,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  ...overrides,
+})
+
+describe('[PUBLIC] createMyIncidentReportService — le visiteur sans compte (s22)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(undefined)
+  })
+
+  it('should refuse a guest, without reading a profile nor writing', async () => {
+    await expect(createMyIncidentReportService(submission())).rejects.toThrow(
+      AuthorizationError
+    )
+
+    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
+    writeDaos().forEach((dao) => expect(dao).not.toHaveBeenCalled())
+    expect(sendIncidentReportNotificationEmailService).not.toHaveBeenCalled()
+  })
+})
+
+describe('[SUPER_ADMIN] createMyIncidentReportService — sans fiche dans l’association (s22)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(userTestSuperAdmin)
+    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+  })
+
+  it('should say not found, without writing nor sending', async () => {
+    await expect(createMyIncidentReportService(submission())).resolves.toEqual({
+      status: 'not_found',
+    })
+
+    writeDaos().forEach((dao) => expect(dao).not.toHaveBeenCalled())
+    expect(sendIncidentReportNotificationEmailService).not.toHaveBeenCalled()
+  })
+})
+
+describe('[ORGANIZATION MEMBER] createMyIncidentReportService — le membre déclare depuis son espace (s22, critères 1 et 5)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(
+      profileRow() as never
+    )
+    vi.mocked(createIncidentReportTxnDao).mockResolvedValue(
+      reportRow({
+        memberId: PROFILE_ID,
+        reporterName: 'Lucie Moreau',
+        reporterEmail: 'lucie.moreau@example.test',
+        reporterPhone: '06 12 34 56 78',
+      }) as never
+    )
+  })
+
+  it('should resolve the profile from the session under the tenant scope', async () => {
+    let readUnder: string | undefined
+    vi.mocked(getMemberProfileByUserIdDao).mockImplementation(async () => {
+      readUnder = scope.current
+      return profileRow() as never
+    })
+
+    await createMyIncidentReportService(submission())
+
+    expect(getMemberProfileByUserIdDao).toHaveBeenCalledWith(
+      ORG_ID,
+      userTest.id
+    )
+    expect(readUnder).toBe(ORG_ID)
+  })
+
+  it('should not find a profile without writing (compte sans fiche)', async () => {
+    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+
+    await expect(createMyIncidentReportService(submission())).resolves.toEqual({
+      status: 'not_found',
+    })
+    expect(createIncidentReportTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('should link the profile and copy its contact details, ignoring any identity slipped in the input', async () => {
+    let writtenUnder: string | undefined
+    vi.mocked(createIncidentReportTxnDao).mockImplementation(async () => {
+      writtenUnder = scope.current
+      return reportRow({memberId: PROFILE_ID}) as never
+    })
+
+    const result = await createMyIncidentReportService(
+      submission({
+        memberId: '99999999-9999-4999-8999-999999999999',
+        name: 'Quelqu’un d’autre',
+        email: 'autre@example.test',
+        phone: '01 00 00 00 00',
+      }) as never
+    )
+
+    expect(result).toEqual({
+      status: 'created',
+      id: REPORT_ID,
+      notificationFailed: false,
+    })
+    expect(writtenUnder).toBe(ORG_ID)
+    expect(createIncidentReportTxnDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      categoryId: CATEGORY_ID,
+      location: 'Chemin des Pins, devant la parcelle 47',
+      description: 'L’eau sort de la chaussée.\nÇa coule fort.',
+      memberId: PROFILE_ID,
+      reporterName: 'Lucie Moreau',
+      reporterEmail: 'lucie.moreau@example.test',
+      reporterPhone: '06 12 34 56 78',
+    })
+  })
+
+  it('should refuse a category of another association, without writing', async () => {
+    await expect(
+      createMyIncidentReportService(
+        submission({categoryId: FOREIGN_CATEGORY_ID})
+      )
+    ).rejects.toThrow()
+
+    expect(createIncidentReportTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('should reject an empty location without writing', async () => {
+    await expect(
+      createMyIncidentReportService(submission({location: '  '}))
+    ).rejects.toThrow()
+
+    expect(createIncidentReportTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('should notify the same configured addresses as the public report (critère 5)', async () => {
+    vi.mocked(listActiveCategoriesDao).mockResolvedValue([
+      categoryRow({routingEmail: 'forage@amis-etang.test'}),
+    ])
+
+    await createMyIncidentReportService(submission())
+
+    expect(
+      vi
+        .mocked(sendIncidentReportNotificationEmailService)
+        .mock.calls.map(([notification]) => notification.to)
+    ).toEqual(['bureau@amis-etang.test', 'forage@amis-etang.test'])
+    expect(sendIncidentReportNotificationEmailService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        report: expect.objectContaining({
+          reporterName: 'Lucie Moreau',
+          reporterEmail: 'lucie.moreau@example.test',
+          reporterPhone: '06 12 34 56 78',
+        }),
+      })
+    )
+  })
+
+  it('should keep the report and succeed when the notification fails, flagging it', async () => {
+    vi.mocked(sendIncidentReportNotificationEmailService).mockRejectedValue(
+      new EmailTransportError('brevo', 'refus')
+    )
+
+    await expect(createMyIncidentReportService(submission())).resolves.toEqual({
+      status: 'created',
+      id: REPORT_ID,
+      notificationFailed: true,
+    })
+    expect(markIncidentReportNotificationFailedDao).toHaveBeenCalledWith(
+      REPORT_ID
+    )
+  })
+})
+
+describe('[PUBLIC] getMyIncidentReportsService / getMyReportIdentityService (s22)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(undefined)
+  })
+
+  it('should refuse a guest, without reading anything', async () => {
+    await expect(getMyIncidentReportsService(ORG_ID)).rejects.toThrow(
+      AuthorizationError
+    )
+    await expect(getMyReportIdentityService(ORG_ID)).rejects.toThrow(
+      AuthorizationError
+    )
+    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
+    expect(getMyIncidentReportsDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('[SUPER_ADMIN] getMyIncidentReportsService — sans fiche (s22)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(userTestSuperAdmin)
+    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+  })
+
+  it('should give nothing for an account without a profile in the association', async () => {
+    await expect(getMyIncidentReportsService(ORG_ID)).resolves.toBeUndefined()
+    await expect(getMyReportIdentityService(ORG_ID)).resolves.toBeUndefined()
+    expect(getMyIncidentReportsDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('[ORGANIZATION MEMBER] getMyIncidentReportsService — le membre suit ses signalements (s22, critères 2, 3, 4)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(
+      profileRow() as never
+    )
+  })
+
+  it('should read only the reports of the profile resolved from the session, under the tenant scope', async () => {
+    let readUnder: string | undefined
+    vi.mocked(getMyIncidentReportsDao).mockImplementation(async () => {
+      readUnder = scope.current
+      return []
+    })
+
+    await expect(getMyIncidentReportsService(ORG_ID)).resolves.toEqual([])
+
+    expect(getMemberProfileByUserIdDao).toHaveBeenCalledWith(
+      ORG_ID,
+      userTest.id
+    )
+    expect(getMyIncidentReportsDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(readUnder).toBe(ORG_ID)
+  })
+
+  it('should give the current status and two dates only, nothing internal', async () => {
+    const createdAt = new Date('2026-09-29T05:42:00Z')
+    const lastEventAt = new Date('2026-09-30T08:00:00Z')
+    vi.mocked(getMyIncidentReportsDao).mockResolvedValue([
+      {
+        id: REPORT_ID,
+        categoryName: "Fuite d'eau",
+        location: 'Chemin des Pins',
+        status: 'in_progress',
+        createdAt,
+        lastEventAt,
+      },
+      {
+        id: 'r2',
+        categoryName: null,
+        location: 'Portail',
+        status: 'reported',
+        createdAt,
+        lastEventAt: createdAt,
+      },
+    ])
+
+    const reports = await getMyIncidentReportsService(ORG_ID)
+
+    expect(reports).toEqual([
+      {
+        id: REPORT_ID,
+        categoryName: "Fuite d'eau",
+        location: 'Chemin des Pins',
+        status: 'in_progress',
+        createdAt,
+        updatedAt: lastEventAt,
+      },
+      {
+        id: 'r2',
+        categoryName: null,
+        location: 'Portail',
+        status: 'reported',
+        createdAt,
+        updatedAt: null,
+      },
+    ])
+  })
+
+  it('should give the identity the board receives, from the profile', async () => {
+    await expect(getMyReportIdentityService(ORG_ID)).resolves.toEqual({
+      name: 'Lucie Moreau',
+      email: 'lucie.moreau@example.test',
+      phone: '06 12 34 56 78',
+    })
+  })
+})
+
+describe('[ORGANIZATION OWNER] la file distingue un signalement de membre (s22)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+  })
+
+  it('should say which reports were declared by a member', async () => {
+    vi.mocked(getIncidentReportsPageDao).mockResolvedValue({
+      rows: [reportRow({memberId: PROFILE_ID}), reportRow({id: 'public'})],
+      total: 2,
+    } as never)
+
+    const list = await getIncidentReportsPageService(ORG_ID, 1)
+
+    expect(list.items.map((item) => item.reportedByMember)).toEqual([
+      true,
+      false,
+    ])
   })
 })

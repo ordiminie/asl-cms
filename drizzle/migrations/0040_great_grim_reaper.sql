@@ -1,0 +1,2 @@
+ALTER TABLE "incident_report" ADD CONSTRAINT "incident_report_member_id_member_profile_id_fk" FOREIGN KEY ("member_id") REFERENCES "public"."member_profile"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "incident_report_organization_member_created_at_idx" ON "incident_report" USING btree ("organization_id","member_id","created_at" DESC NULLS LAST);

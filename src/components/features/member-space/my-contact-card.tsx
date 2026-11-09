@@ -32,6 +32,9 @@ import type {MyContactDTO} from '@/services/types/domain/member-space-types'
 
 const ID_PREFIX = 'my-contact'
 
+/** Ancre de la carte, cible de « Ajouter mon telephone » (s22, B6). */
+export const MY_CONTACT_ANCHOR = 'mes-coordonnees'
+
 const BUTTON_CLASS = 'h-14 w-full text-base sm:h-12 sm:w-auto'
 
 type Notice = 'failed' | null
@@ -55,7 +58,7 @@ export function MyContactCard({
   }, [savedNotice])
 
   return (
-    <section aria-labelledby={titleId}>
+    <section id={MY_CONTACT_ANCHOR} aria-labelledby={titleId}>
       <Card className="gap-6 px-4 py-6 shadow-none sm:px-6">
         <h2 id={titleId} className="font-serif text-xl font-semibold">
           {t('title')}

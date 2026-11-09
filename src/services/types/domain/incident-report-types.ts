@@ -60,6 +60,8 @@ export type IncidentReportListItemDTO = {
   status: ReportStatus
   /** L'email d'avertissement au bureau n'est pas parti vers l'un des destinataires. */
   notificationFailed: boolean
+  /** Declare par un membre connecte, lie a sa fiche (s22, ADR 049). */
+  reportedByMember: boolean
   createdAt: Date
 }
 
@@ -143,3 +145,52 @@ export const resolveReportRecipients = (
 /** Lien `tel:` d'un numero saisi librement : chiffres et `+` seulement. */
 export const telHrefOf = (phone: string): string =>
   `tel:${phone.replace(/[^0-9+]/g, '')}`
+
+/**
+ * Un signalement vu par **son declarant** (s22) : le statut courant et deux
+ * dates. Jamais la description, le temoin d'envoi, l'association, ni le nom
+ * du membre du bureau ou les colonnes d'imitation.
+ */
+export type MyIncidentReportDTO = {
+  id: string
+  /** Nul quand le signalement a ete envoye sans categorie. */
+  categoryName: string | null
+  location: string
+  status: ReportStatus
+  createdAt: Date
+  /** Nul tant que le statut n'a pas change. */
+  updatedAt: Date | null
+}
+
+/**
+ * Ce qu'un membre connecte envoie depuis son espace (s22). **Aucune
+ * identite, aucun `memberId`** : la fiche se resout par la session et le
+ * domaine appele (ADR 049).
+ */
+export type CreateMyIncidentReportInput = {
+  organizationId: string
+  locale: string
+  categoryId?: string
+  location: string
+  description: string
+}
+
+/** `not_found` : le compte connecte n'a pas de fiche dans l'association. */
+export type MyIncidentReportSubmissionResult =
+  IncidentReportSubmissionResult | {status: 'not_found'}
+
+/** Ce que le bureau recoit du declarant : les coordonnees de sa fiche. */
+export type MyReportIdentityDTO = {
+  name: string
+  email: string | null
+  phone: string | null
+}
+
+/**
+ * « Mis a jour le » cote membre : la date du dernier evenement, **seulement
+ * si** le statut a change depuis la declaration.
+ */
+export const myReportUpdatedAtOf = (
+  status: ReportStatus,
+  lastEventAt: Date | null
+): Date | null => (status === ReportStatusConst.REPORTED ? null : lastEventAt)

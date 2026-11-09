@@ -1,4 +1,4 @@
-import {and, asc, count, desc, eq, getTableColumns} from 'drizzle-orm'
+import {and, asc, count, desc, eq, getTableColumns, sql} from 'drizzle-orm'
 
 import {associationCategory} from '@/db/models/association-category-model'
 import {
@@ -53,8 +53,9 @@ const selectReportWithCategory = () =>
 
 /**
  * Ecrit le signalement **et** son premier evenement, `reported`, sans auteur
- * (« depuis le site »), dans la meme transaction. Aucune colonne de membre ni
- * d'adresse n'est ecrite (critere 8, ADR 025).
+ * (« depuis le site »), dans la meme transaction. Aucune colonne d'adresse
+ * n'est ecrite (ADR 025) ; `memberId` n'est donne que par le chemin du membre
+ * connecte (s22, ADR 049), jamais par le signalement public (critere 8).
  */
 export const createIncidentReportTxnDao = async (
   input: Pick<
@@ -66,7 +67,8 @@ export const createIncidentReportTxnDao = async (
     | 'reporterName'
     | 'reporterEmail'
     | 'reporterPhone'
-  >
+  > &
+    Partial<Pick<IncidentReportModel, 'memberId'>>
 ): Promise<IncidentReportModel> =>
   getDb().transaction(async (tx) => {
     const [report] = await tx
@@ -201,3 +203,43 @@ export const countIncidentReportsByCategoryDao = async (
       .map((row) => [row.categoryId, row.total])
   )
 }
+
+/**
+ * Un signalement vu par son declarant (s22) : ni description, ni coordonnees,
+ * ni temoin d'envoi. `lastEventAt` est la date du dernier evenement.
+ */
+export type MyIncidentReportRow = {
+  id: string
+  categoryName: string | null
+  location: string
+  status: string
+  createdAt: Date
+  lastEventAt: Date | null
+}
+
+/**
+ * Tous les signalements d'une fiche, le plus recent d'abord, sans pagination
+ * (arbitrage V1 de s22). Sous `withTenant` : la RLS borne a l'association.
+ */
+export const getMyIncidentReportsDao = async (
+  memberId: string
+): Promise<MyIncidentReportRow[]> =>
+  getDb()
+    .select({
+      id: incidentReport.id,
+      categoryName: associationCategory.name,
+      location: incidentReport.location,
+      status: incidentReport.status,
+      createdAt: incidentReport.createdAt,
+      lastEventAt:
+        sql<Date | null>`(select max(${incidentReportEvent.createdAt}) from ${incidentReportEvent} where ${incidentReportEvent.reportId} = ${incidentReport.id})`.mapWith(
+          incidentReportEvent.createdAt
+        ),
+    })
+    .from(incidentReport)
+    .leftJoin(
+      associationCategory,
+      eq(incidentReport.categoryId, associationCategory.id)
+    )
+    .where(eq(incidentReport.memberId, memberId))
+    .orderBy(...INCIDENT_REPORT_ORDER)

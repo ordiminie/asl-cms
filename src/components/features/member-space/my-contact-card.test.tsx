@@ -80,6 +80,16 @@ describe('MyContactCard — lecture (C1, C2)', () => {
   })
 })
 
+describe('MyContactCard — ancre « Ajouter mon téléphone » (s22, B6)', () => {
+  it('porte l’ancre #mes-coordonnees sur sa région', () => {
+    render(<MyContactCard contact={FULL} action={action} />)
+
+    expect(
+      screen.getByRole('region', {name: 'Mes coordonnées'})
+    ).toHaveAttribute('id', 'mes-coordonnees')
+  })
+})
+
 describe('MyContactCard — modification (C3)', () => {
   it('n’offre aucun champ email : l’adresse reste un texte', async () => {
     const user = userEvent.setup()

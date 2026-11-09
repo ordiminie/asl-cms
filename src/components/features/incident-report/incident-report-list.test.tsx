@@ -21,6 +21,7 @@ const item = (
   reporterPhone: null,
   status: 'reported',
   notificationFailed: false,
+  reportedByMember: false,
   createdAt: new Date('2026-09-29T05:42:00Z'),
   ...overrides,
 })
@@ -167,5 +168,59 @@ describe('IncidentReportList — écran 2 du design s10', () => {
     expect(
       screen.getByRole('link', {name: 'Voir le formulaire de signalement'})
     ).toHaveAttribute('href', '/signaler')
+  })
+})
+
+describe('IncidentReportList — signalement d’un membre (s22, C1)', () => {
+  const memberItem = (overrides: Partial<IncidentReportListItemDTO> = {}) =>
+    item({
+      reportedByMember: true,
+      reporterName: 'Lucie Moreau',
+      reporterEmail: 'lucie.moreau@exemple.fr',
+      reporterPhone: '06 12 34 56 78',
+      ...overrides,
+    })
+
+  it('écrit le nom puis « Membre · » et l’email, en texte seul', () => {
+    render(<IncidentReportList list={page([memberItem()])} />)
+
+    const [row] = tableRows()
+    const reporterCell = within(row).getAllByRole('cell')[2]
+    expect(reporterCell).toHaveTextContent('Lucie Moreau')
+    expect(
+      within(reporterCell).getByText('Membre · lucie.moreau@exemple.fr')
+    ).toBeInTheDocument()
+    expect(reporterCell.querySelector('[data-slot="badge"], svg')).toBeNull()
+  })
+
+  it('écrit le téléphone quand le membre n’a que lui', () => {
+    render(
+      <IncidentReportList list={page([memberItem({reporterEmail: null})])} />
+    )
+
+    const [row] = tableRows()
+    expect(within(row).getAllByRole('cell')[2]).toHaveTextContent(
+      'Membre · 06 12 34 56 78'
+    )
+  })
+
+  it('le dit aussi dans la carte empilée du mobile', () => {
+    render(<IncidentReportList list={page([memberItem()])} />)
+
+    const [card] = screen.getAllByTestId('incident-report-card')
+    expect(card).toHaveTextContent('Membre · lucie.moreau@exemple.fr')
+  })
+
+  it('ne dit rien pour un signalement public aux mêmes coordonnées', () => {
+    render(
+      <IncidentReportList
+        list={page([memberItem({reportedByMember: false})])}
+      />
+    )
+
+    const [row] = tableRows()
+    const reporterCell = within(row).getAllByRole('cell')[2]
+    expect(reporterCell).not.toHaveTextContent('Membre')
+    expect(reporterCell).toHaveTextContent('lucie.moreau@exemple.fr')
   })
 })

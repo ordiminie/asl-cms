@@ -4,10 +4,18 @@ import {cache} from 'react'
 
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {
+  getMyIncidentReportsService,
+  getMyReportIdentityService,
+} from '@/services/facades/incident-report-service-facade'
+import {
   getMyContactService,
   getMyParcelsService,
   isPlainMemberOfService,
 } from '@/services/facades/member-space-service-facade'
+import {
+  MyIncidentReportDTO,
+  MyReportIdentityDTO,
+} from '@/services/types/domain/incident-report-types'
 import {
   MyContactDTO,
   MyParcelsDTO,
@@ -40,5 +48,25 @@ export const getMyContactDal = cache(
   async (): Promise<MyContactDTO | undefined> => {
     const tenant = await requireCurrentTenantDal()
     return getMyContactService(tenant.id)
+  }
+)
+
+/**
+ * « Mes signalements » du compte connecte, sur l'association du domaine
+ * (s22). Sans cache : le statut change par le bureau se voit a la lecture
+ * suivante (critere 4).
+ */
+export const getMyIncidentReportsDal = cache(
+  async (): Promise<MyIncidentReportDTO[] | undefined> => {
+    const tenant = await requireCurrentTenantDal()
+    return getMyIncidentReportsService(tenant.id)
+  }
+)
+
+/** Ce que le bureau recevra du declarant connecte (s22). */
+export const getMyReportIdentityDal = cache(
+  async (): Promise<MyReportIdentityDTO | undefined> => {
+    const tenant = await requireCurrentTenantDal()
+    return getMyReportIdentityService(tenant.id)
   }
 )

@@ -29,6 +29,8 @@ const renderSpace = async (parcels: MyParcelsDTO) => {
           parcelsPromise={parcelsPromise}
           contactPromise={contactPromise}
           contactAction={vi.fn()}
+          reportsPromise={Promise.resolve([])}
+          reportSent={false}
         />
       </Suspense>
     )

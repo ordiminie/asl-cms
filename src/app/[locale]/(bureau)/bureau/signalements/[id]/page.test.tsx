@@ -62,6 +62,7 @@ describe('/bureau/signalements/[id] — accès par rôle', () => {
       reporterPhone: null,
       status: 'reported',
       notificationFailed: false,
+      reportedByMember: false,
       createdAt: new Date('2026-09-29T05:42:00Z'),
       events: [],
     })
