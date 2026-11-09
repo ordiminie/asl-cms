@@ -288,6 +288,20 @@
       "when": 1794233759191,
       "tag": "0040_great_grim_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794251985503,
+      "tag": "0041_bouncy_hulk",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794251994837,
+      "tag": "0042_member_note_rls",
+      "breakpoints": true
     }
   ]
 }

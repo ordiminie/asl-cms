@@ -119,6 +119,13 @@ export const ActionIdConst = {
    * roles ».
    */
   MEMBER_ROLE_ASSIGN: 'member.role.assign',
+  /**
+   * Tenir les notes internes et les echanges d'un membre (s24, ADR 050) :
+   * lire le fil, ajouter, modifier, supprimer. Une entree a part de
+   * `MEMBER_PROFILE_MANAGE` : une note est plus sensible qu'une coordonnee, et
+   * s37 pourra la regler seule. Un membre simple n'y a aucun acces.
+   */
+  MEMBER_NOTE_MANAGE: 'member.note.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -172,6 +179,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.MEMBER_ROLE_ASSIGN,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.MEMBER_NOTE_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]
