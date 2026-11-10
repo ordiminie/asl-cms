@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0;background:oklch(0.972 0.005 240)} a{color:oklch(0.45 0.13 250)} a:hover{color:oklch(0.35 0.06 240)}</style>
+</helmet>
+<div style="width: max-content; min-width: 100%; padding: 64px; box-sizing: border-box; font-family: 'Public Sans', sans-serif; color: oklch(0.22 0.015 250); display: flex; flex-direction: column; gap: 96px;">
+<header style="max-width: 960px; display: flex; flex-direction: column; gap: 16px;">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: oklch(0.45 0.02 245);">docs/designs/s25-campagnes-email.html</div>
+<h1 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 48px; font-weight: 600; line-height: 1.1;">s25 — Campagnes email</h1>
+<p style="margin: 0; font-size: 18px; line-height: 1.65; max-width: 68ch;">En tant que membre du bureau, je veux envoyer une campagne email aux membres afin de les informer sans passer par ma messagerie personnelle. Chaque écran en bureau (1 280 px) et mobile (390 px), thème clair seul&nbsp;; l’email en clair et en sombre forcé. Choisissez l’état au-dessus de chaque écran.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 15px; align-items: center;">
+<span style="font-weight: 600;">Marges&nbsp;:</span>
+<span style="display: flex; gap: 8px; align-items: center;"><span style="border: 2px solid oklch(0.48 0.17 27); color: oklch(0.48 0.17 27); border-radius: 4px; padding: 0 8px; font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">ÉCART</span>s’écarte d’une règle du design system</span>
+<span style="display: flex; gap: 8px; align-items: center;"><span style="border: 2px solid oklch(0.35 0.06 240); color: oklch(0.35 0.06 240); border-radius: 4px; padding: 0 8px; font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">PROPOSITION</span>à valider</span>
+<span style="display: flex; gap: 8px; align-items: center;"><span style="border: 2px solid oklch(0.66 0.014 245); color: oklch(0.45 0.02 245); border-radius: 4px; padding: 0 8px; font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">NOTE</span>précision</span>
+<span style="display: flex; gap: 8px; align-items: center;"><span style="border: 2px solid oklch(0.6 0.13 65); background: oklch(0.94 0.06 75); color: oklch(0.3 0.08 60); border-radius: 4px; padding: 0 8px; font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">AU PLAN</span>besoin non couvert, non comblé</span>
+</div>
+</header>
+
+<sc-for list="{{ sections }}" as="sec" hint-placeholder-count="2">
+<section id="{{ sec.id }}" data-screen-label="{{ sec.label }}" style="display: flex; flex-direction: column; gap: 24px;">
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 500; background: oklch(0.22 0.015 250); color: oklch(1 0 0); border-radius: 4px; padding: 2px 8px;">{{ sec.num }}</span>
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 34px; font-weight: 600; line-height: 1.15;">{{ sec.title }}</h2>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: oklch(0.45 0.02 245);">{{ sec.route }}</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+<sc-for list="{{ sec.tabs }}" as="t" hint-placeholder-count="3">
+<sc-if value="{{ t.active }}"><button aria-pressed="true" style="height: 40px; padding: 0 16px; border-radius: 8px; border: 2px solid oklch(0.35 0.06 240); background: oklch(0.35 0.06 240); color: oklch(0.985 0.003 240); font: 600 15px 'Public Sans', sans-serif; cursor: pointer; white-space: nowrap;">{{ t.label }}</button></sc-if>
+<sc-if value="{{ t.inactive }}"><button aria-pressed="false" onClick="{{ t.on }}" style="height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid oklch(0.66 0.014 245); background: oklch(1 0 0); color: oklch(0.22 0.015 250); font: 500 15px 'Public Sans', sans-serif; cursor: pointer; white-space: nowrap;" style-hover="background: oklch(0.965 0.006 240);">{{ t.label }}</button></sc-if>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; gap: 48px; align-items: flex-start;">
+<sc-if value="{{ sec.isBo }}">
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.45 0.02 245);">Bureau · 1 280 px</span>
+<div style="width: 1280px; border: 1px solid oklch(0.9 0.008 245); background: oklch(1 0 0);"><dc-import name="BO" screen="{{ sec.n }}" state="{{ sec.cur }}" mobile="{{ false }}" hint-size="1280px,800px"></dc-import></div></div>
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.45 0.02 245);">Mobile · 390 px</span>
+<div style="width: 390px; border: 1px solid oklch(0.9 0.008 245); background: oklch(1 0 0);"><dc-import name="BO" screen="{{ sec.n }}" state="{{ sec.cur }}" mobile="{{ true }}" hint-size="390px,844px"></dc-import></div></div>
+</sc-if>
+<sc-if value="{{ sec.isPub }}">
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.45 0.02 245);">Bureau · 1 280 px</span>
+<div style="width: 1280px; border: 1px solid oklch(0.9 0.008 245);"><dc-import name="Desinscription" state="{{ sec.cur }}" mobile="{{ false }}" hint-size="1280px,640px"></dc-import></div></div>
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.45 0.02 245);">Mobile · 390 px</span>
+<div style="width: 390px; border: 1px solid oklch(0.9 0.008 245);"><dc-import name="Desinscription" state="{{ sec.cur }}" mobile="{{ true }}" hint-size="390px,844px"></dc-import></div></div>
+</sc-if>
+<sc-if value="{{ sec.isMail }}">
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.45 0.02 245);">Bureau · clair</span>
+<div style="width: 680px; border: 1px solid oklch(0.9 0.008 245);"><dc-import name="Email" variant="{{ sec.variant }}" inbox="{{ sec.inbox }}" dark="{{ false }}" mobile="{{ false }}" hint-size="680px,1100px"></dc-import></div></div>
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.45 0.02 245);">Bureau · sombre forcé</span>
+<div style="width: 680px; border: 1px solid oklch(0.9 0.008 245);"><dc-import name="Email" variant="{{ sec.variant }}" inbox="{{ sec.inbox }}" dark="{{ true }}" mobile="{{ false }}" hint-size="680px,1100px"></dc-import></div></div>
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.45 0.02 245);">Mobile · clair</span>
+<div style="width: 390px; border: 1px solid oklch(0.9 0.008 245);"><dc-import name="Email" variant="{{ sec.variant }}" inbox="{{ sec.inbox }}" dark="{{ false }}" mobile="{{ true }}" hint-size="390px,1300px"></dc-import></div></div>
+<div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: oklch(0.45 0.02 245);">Mobile · sombre forcé</span>
+<div style="width: 390px; border: 1px solid oklch(0.9 0.008 245);"><dc-import name="Email" variant="{{ sec.variant }}" inbox="{{ sec.inbox }}" dark="{{ true }}" mobile="{{ true }}" hint-size="390px,1300px"></dc-import></div></div>
+</sc-if>
+<aside style="width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; padding-top: 28px;">
+<sc-for list="{{ sec.notes }}" as="n" hint-placeholder-count="2">
+<div style="background: oklch(1 0 0); border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+<span style="align-self: flex-start; border: 2px solid {{ n.border }}; background: {{ n.bg }}; color: {{ n.color }}; border-radius: 4px; padding: 0 8px; font-weight: 700; font-size: 13px; font-family: 'JetBrains Mono', monospace; white-space: nowrap;">{{ n.tag }}</span>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; text-wrap: pretty;">{{ n.text }}</p>
+</div>
+</sc-for>
+</aside>
+</div>
+</section>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { s0: 'a', s1: 'a', s2: 'a', s3: 'a', s4: 'a', s5: 'a', s6: 'a', sE: 'E2' };
+  renderVals() {
+    const T = {
+      'ÉCART': { border: 'oklch(0.48 0.17 27)', bg: 'oklch(1 0 0)', color: 'oklch(0.48 0.17 27)' },
+      'PROPOSITION': { border: 'oklch(0.35 0.06 240)', bg: 'oklch(1 0 0)', color: 'oklch(0.35 0.06 240)' },
+      'NOTE': { border: 'oklch(0.66 0.14 245 / 0)', bg: 'oklch(1 0 0)', color: 'oklch(0.45 0.02 245)' },
+      'AU PLAN': { border: 'oklch(0.6 0.13 65)', bg: 'oklch(0.94 0.06 75)', color: 'oklch(0.3 0.08 60)' },
+    };
+    T['NOTE'].border = 'oklch(0.66 0.014 245)';
+    const N = (tag, text) => ({ tag, text, ...T[tag] });
+    const defs = [
+      { key: 's0', num: '0', n: '0', kind: 'bo', title: 'Point d’entrée', route: 'barre latérale du back-office',
+        states: [['a', 'Actif · tiroir mobile ouvert']],
+        notes: [
+          N('PROPOSITION', 'Manque 1 — « Campagnes » dans « L’association », juste après « Propriétaires », sans icône. Confirmé : c’est une action de l’association envers ses membres, au plus près de leur liste. Pas de troisième groupe.'),
+          N('NOTE', 'Item actif sur toutes les routes /bureau/campagnes… : fond sidebar-accent + libellé en 600. Les entrées de « Le site » sont figurées à titre indicatif et ne changent pas.'),
+          N('NOTE', 'Mobile (sous 1 024 px) : la barre devient un tiroir ouvert par « Menu », fermé par « Fermer » (mot écrit, pas d’icône seule).'),
+        ] },
+      { key: 's1', num: '1', n: '1', kind: 'bo', title: 'Archive des campagnes', route: '/bureau/campagnes',
+        states: [['a', 'a · rempli'], ['b', 'b · vide'], ['c', 'c · chargement'], ['d', 'd · erreur']],
+        notes: [
+          N('NOTE', 'L’objet est montré sans le préfixe « ASL Les Pins — », identique sur toutes les lignes.'),
+          N('NOTE', '« Page 1 sur 2 » est montré pour illustrer la pagination : avec quatre campagnes elle n’apparaîtrait pas (25 lignes par page, 10 cartes en mobile).'),
+          N('NOTE', 'État vide : l’action principale du haut disparaît au profit de « Écrire la première campagne » — un seul default à l’écran.'),
+          N('NOTE', 'Destinataires = décompte figé au moment de l’envoi (296, 298…) : il varie d’une campagne à l’autre.'),
+        ] },
+      { key: 's2', num: '2', n: '2', kind: 'bo', title: 'Composer une campagne', route: '/bureau/campagnes/nouvelle',
+        states: [['a', 'a · modèle, texte provisoire'], ['b', 'b · libre, vierge'], ['c', 'c · erreurs de saisie'], ['d', 'd · compteur dépassé'], ['e', 'e · variable inconnue'], ['f', 'f · modèle appliqué'], ['g', 'g · aucun destinataire'], ['h', 'h · remplacer le texte ?'], ['i', 'i · décompte en chargement']],
+        notes: [
+          N('ÉCART', 'Manque 2 — radio-group à 5 choix (cibles 56 px) au lieu du select que §2.1 impose au-delà de 3 options : un select masquerait la phrase d’usage de chaque modèle. Écart assumé, à valider.'),
+          N('PROPOSITION', 'Manque 3 — alert warning « Texte provisoire » sous le choix + première ligne en gras dans le corps du modèle. Aucun composant nouveau.'),
+          N('AU PLAN', 'Manque 3 (suite) — rien n’empêche d’envoyer la ligne « [Texte provisoire…] ». La bloquer comme une variable inconnue est une règle produit à trancher.'),
+          N('NOTE', 'Manque 4 — la liste écrite suffit. Des boutons sm (40 px) passeraient sous la cible de 44 px et demanderaient une insertion au curseur que markdown-editor n’offre pas.'),
+          N('AU PLAN', 'Manque 5 — l’adresse de réponse est une ligne meta en lecture seule. Le design system ne dit pas où se montre une donnée issue des Réglages ; aucun lien vers Réglages ajouté.'),
+          N('ÉCART', 'Le compteur porte sur le champ seul (« 0 / 60 » à vide). Avec le préfixe « ASL Les Pins — » (15 caractères), l’objet reçu peut atteindre 75 caractères, au-delà des 60 de §5.6. Plafonner le champ à 45 ? À trancher.'),
+          N('NOTE', 'États e et g : « Voir l’aperçu » reste visible et actif ; l’alerte destructive arrive au clic (§3.10).'),
+          N('NOTE', 'Somme du décompte lisible : 296 + 71 + 15 = 382. État g : 0 + 367 + 15 = 382.'),
+        ] },
+      { key: 's3', num: '3', n: '3', kind: 'bo', title: 'Aperçu, puis envoi', route: '/bureau/campagnes/nouvelle/apercu',
+        states: [['a', 'a · aperçu modèle'], ['b', 'b · aperçu libre'], ['c', 'c · chargement'], ['d', 'd · variable inconnue'], ['e', 'e · confirmation'], ['f', 'f · envoi en cours'], ['g', 'g · envoi terminé'], ['h', 'h · envoi interrompu'], ['i', 'i · aucun email parti'], ['j', 'j · échec avant envoi']],
+        notes: [
+          N('NOTE', 'Manque 6 — progress déterminée (120 / 296 réellement comptés), libellé « 120 sur 296 membres » sans pourcentage écrit. Les boutons disparaissent : pas de double validation.'),
+          N('AU PLAN', 'Manque 6 (suite) — aucun « Réessayer » après interruption (risque de doublon). La reprise de l’envoi aux seuls 176 restants est un besoin technique non couvert.'),
+          N('NOTE', 'Le membre d’aperçu est réel et tiré des 296 joignables ; le select ne liste que des membres joignables.'),
+          N('NOTE', 'État g = redirection vers l’écran 4 avec l’alerte de succès (role="status").'),
+          N('NOTE', 'Alert-dialog mobile : ancré en bas, boutons 56 px empilés, le principal en premier, pas de croix ; Échap ferme.'),
+        ] },
+      { key: 's4', num: '4', n: '4', kind: 'bo', title: 'Une campagne archivée', route: '/bureau/campagnes/{id}',
+        states: [['a', 'a · normale'], ['b', 'b · chargement'], ['c', 'c · introuvable']],
+        notes: [
+          N('NOTE', 'Contenu archivé tel qu’écrit : {nom}, {parcelle}, {date} restent visibles. Aucune action (modifier, supprimer, renvoyer).'),
+          N('NOTE', 'Le badge « Envoyée » porte le mot ; il n’y a pas d’autre état possible dans cette story.'),
+        ] },
+      { key: 's5', num: '5', n: '5', kind: 'bo', title: 'Mention « désinscrit » sur la fiche', route: '/bureau/proprietaires/{id}',
+        states: [['a', 'a · désinscrit'], ['b', 'b · non désinscrit'], ['c', 'c · désinscrit et sans email']],
+        notes: [
+          N('PROPOSITION', 'Manque 7 — badge outline « Désinscrit des campagnes » + phrase meta datée, sans carte nouvelle ni action. Un refus n’est pas un statut de workflow (§3.10) : le badge reste un écart léger, à confirmer.'),
+          N('NOTE', 'Les cartes existantes sont figurées par leur titre ; elles ne changent pas.'),
+          N('AU PLAN', 'Lever le refus depuis la fiche (ré-inscription par le bureau) : non dessiné.'),
+        ] },
+      { key: 's6', num: '6', n: '6', kind: 'pub', title: 'Page publique de désinscription', route: '/desinscription/{jeton}',
+        states: [['a', 'a · demande'], ['b', 'b · confirmée'], ['c', 'c · déjà désinscrit'], ['d', 'd · lien invalide'], ['e', 'e · échec technique']],
+        notes: [
+          N('AU PLAN', 'Manque 8 — la page de préférences d’envoi (§9) reste un manque bloquant. Cette page appellerait : préférences par type d’envoi, ré-inscription par le membre, désinscription depuis l’espace membre. Rien de cela n’est dessiné.'),
+          N('NOTE', 'Aucune phrase sur ce que le membre continuera de recevoir. Pas de champ email : le lien est personnel.'),
+          N('NOTE', 'Texte 18 px du site public, un seul h1, aucun menu. Bouton en taille normale (jamais sm côté membre), 56 px pleine largeur en mobile.'),
+        ] },
+      { key: 'sE', num: 'E', kind: 'mail', title: 'L’email d’habillage', route: 'email reçu · 600 px · tables · hexadécimal',
+        states: [['E1', 'E1 · message libre'], ['E2', 'E2 · convocation à l’AG']],
+        notes: [
+          N('NOTE', 'E2 : le cadre de boîte de réception (objet + texte d’aperçu) précède l’email ; le pré-en-tête est masqué dans le corps.'),
+          N('NOTE', 'Sombre forcé : fond d’en-tête, teinte de l’association et filets sacrifiés. Corps, bouton de désinscription, URL en clair et pied restent lisibles.'),
+          N('NOTE', 'Mentions du pied (raison sociale, adresse, SIRET) illustratives : leur saisie relève des Réglages.'),
+          N('NOTE', 'E1 : aucune image (facultative en mode libre). Date en clair côté membre : « 12 novembre 2026 ».'),
+          N('ÉCART', 'La ligne « [Texte provisoire — à remplacer avant l’envoi] » part réellement si le bureau ne la supprime pas (voir écran 2, Manque 3).'),
+        ] },
+    ];
+    const sections = defs.map(d => {
+      const cur = this.state[d.key];
+      return {
+        ...d, cur, id: 'ecran-' + d.num, label: d.num === 'E' ? 'Email' : 'Écran ' + d.num,
+        isBo: d.kind === 'bo', isPub: d.kind === 'pub', isMail: d.kind === 'mail',
+        variant: cur === 'E1' ? 'libre' : 'ag', inbox: cur === 'E2',
+        tabs: d.states.map(([id, label]) => ({ label, active: id === cur, inactive: id !== cur, on: () => this.setState({ [d.key]: id }) })),
+      };
+    });
+    return { sections };
+  }
+}
+</script>
+</body>
+</html>

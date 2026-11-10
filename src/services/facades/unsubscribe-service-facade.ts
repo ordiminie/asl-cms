@@ -1,0 +1,8 @@
+import unsubscribeServiceInterceptor from './interceptors/unsubscribe-service-logger-interceptor'
+
+export const getUnsubscribePageStateService =
+  unsubscribeServiceInterceptor.getUnsubscribePageStateService
+export const confirmUnsubscribeService =
+  unsubscribeServiceInterceptor.confirmUnsubscribeService
+export const getMemberUnsubscribeService =
+  unsubscribeServiceInterceptor.getMemberUnsubscribeService

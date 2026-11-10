@@ -126,6 +126,11 @@ export const ActionIdConst = {
    * s37 pourra la regler seule. Un membre simple n'y a aucun acces.
    */
   MEMBER_NOTE_MANAGE: 'member.note.manage',
+  /**
+   * Composer, envoyer et consulter les campagnes email (s25, ADR 051). Un
+   * membre simple n'y a aucun acces.
+   */
+  CAMPAIGN_MANAGE: 'campaign.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -183,6 +188,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.MEMBER_NOTE_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.CAMPAIGN_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

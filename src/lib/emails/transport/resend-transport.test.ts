@@ -41,6 +41,31 @@ describe('createResendTransport', () => {
     })
   })
 
+  it('transmet les en-têtes et l’adresse de réponse au SDK', async () => {
+    sendMock.mockResolvedValue({data: {id: '1'}, error: null})
+
+    await createResendTransport({apiKey: 're_test'}).send({
+      ...message,
+      headers: {'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'},
+      replyTo: 'bureau@asl-les-pins.test',
+    })
+
+    expect(sendMock.mock.calls[0][0]).toMatchObject({
+      headers: {'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'},
+      replyTo: 'bureau@asl-les-pins.test',
+    })
+  })
+
+  it('n’ajoute aucun champ nouveau quand ils sont absents', async () => {
+    sendMock.mockResolvedValue({data: {id: '1'}, error: null})
+
+    await createResendTransport({apiKey: 're_test'}).send(message)
+
+    expect(Object.keys(sendMock.mock.calls[0][0]).sort()).toEqual(
+      ['from', 'to', 'subject', 'html', 'text'].sort()
+    )
+  })
+
   it('traduit l’erreur renvoyée par le SDK en EmailTransportError', async () => {
     sendMock.mockResolvedValue({
       data: null,

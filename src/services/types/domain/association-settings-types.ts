@@ -21,7 +21,7 @@ export type AssociationSettingPage = 'settings' | 'identity'
  * Carte de la page « Reglages » qui regroupe le parametre. Absente : la carte
  * d'origine, celle des adresses de notification.
  */
-export type AssociationSettingSection = 'seo'
+export type AssociationSettingSection = 'seo' | 'legal'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -169,6 +169,22 @@ export const ASSOCIATION_DESCRIPTION_SETTING_KEY = 'association.description'
 /** Code de verification de la Search Console de Google (s11). */
 export const GOOGLE_VERIFICATION_SETTING_KEY = 'search.google_verification'
 
+/**
+ * Raison sociale de l'association, au pied de page des campagnes (s25).
+ * **Sans defaut** : vide, le pied porte le nom de l'association seul.
+ */
+export const ASSOCIATION_LEGAL_NAME_SETTING_KEY = 'association.legal_name'
+/**
+ * Mentions du pied de page des campagnes (adresse, SIRET...), s25. **Sans
+ * defaut** : vide, aucune mention n'est ecrite ; l'envoi n'est pas bloque.
+ */
+export const ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY =
+  'association.legal_mentions'
+/** Plafond de la raison sociale. */
+export const ASSOCIATION_LEGAL_NAME_MAX_LENGTH = 120
+/** Plafond des mentions du pied de page. */
+export const ASSOCIATION_LEGAL_MENTIONS_MAX_LENGTH = 500
+
 /** Plafond d'une description, valeur d'usage des moteurs de recherche. */
 export const ASSOCIATION_DESCRIPTION_MAX_LENGTH = SEO_DESCRIPTION_MAX
 /** Plafond d'un code de verification : bien au-dela des ~43 de Google. */
@@ -294,6 +310,30 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     whenEmptyKey: 'fields.googleVerification.whenEmpty',
     page: 'settings',
     section: 'seo',
+  },
+  {
+    key: ASSOCIATION_LEGAL_NAME_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: ASSOCIATION_LEGAL_NAME_MAX_LENGTH,
+    multiline: false,
+    labelKey: 'fields.legalName.label',
+    helpKey: 'fields.legalName.help',
+    whenEmptyKey: 'fields.legalName.whenEmpty',
+    page: 'settings',
+    section: 'legal',
+  },
+  {
+    key: ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: ASSOCIATION_LEGAL_MENTIONS_MAX_LENGTH,
+    multiline: true,
+    labelKey: 'fields.legalMentions.label',
+    helpKey: 'fields.legalMentions.help',
+    whenEmptyKey: 'fields.legalMentions.whenEmpty',
+    page: 'settings',
+    section: 'legal',
   },
 ]
 

@@ -18,7 +18,13 @@ import {
 
 import {AssociationMark} from './association-mark'
 
-type NavItem = {href: string; labelKey: string; icon?: LucideIcon}
+type NavItem = {
+  href: string
+  labelKey: string
+  icon?: LucideIcon
+  /** Actif aussi sur les routes en dessous (s25 : `/bureau/campagnes…`). */
+  matchesSubroutes?: boolean
+}
 
 /** Les groupes de la barre laterale, dans l'ordre du design (s04 : « Le site » en tete). */
 const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
@@ -40,6 +46,11 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
     labelKey: 'group',
     items: [
       {href: '/bureau/proprietaires', labelKey: 'memberProfiles'},
+      {
+        href: '/bureau/campagnes',
+        labelKey: 'campaigns',
+        matchesSubroutes: true,
+      },
       {href: '/bureau/identite', labelKey: 'identity'},
       {href: '/bureau/reglages', labelKey: 'settings'},
     ],
@@ -47,8 +58,10 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
 ]
 
 /** Actif si la route courante est cette page, prefixe de langue ou non. */
-const isCurrentPage = (pathname: string, href: string) =>
-  pathname === href || pathname.endsWith(href)
+const isCurrentPage = (pathname: string, item: NavItem) =>
+  pathname === item.href ||
+  pathname.endsWith(item.href) ||
+  (item.matchesSubroutes === true && pathname.includes(`${item.href}/`))
 
 type BureauSidebarProps = {
   associationName: string
@@ -61,7 +74,7 @@ type BureauSidebarProps = {
  * Actualites, Analyses
  * d'eau (s09), Navigation,
  * Messages recus (s08) et
- * « L'association » › Proprietaires (s12), Identite, Reglages ; l'item actif
+ * « L'association » › Proprietaires (s12), Campagnes (s25), Identite, Reglages ; l'item actif
  * suit la route. Tiroir
  * sur petit ecran.
  */
@@ -88,8 +101,9 @@ export function BureauSidebar({
               {t(group.labelKey)}
             </SidebarGroupLabel>
             <SidebarMenu>
-              {group.items.map(({href, labelKey, icon: Icon}) => {
-                const isActive = isCurrentPage(pathname, href)
+              {group.items.map((item) => {
+                const {href, labelKey, icon: Icon} = item
+                const isActive = isCurrentPage(pathname, item)
                 return (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton

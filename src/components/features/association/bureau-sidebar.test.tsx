@@ -177,8 +177,39 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
     const labels = Array.from(group?.querySelectorAll('a') ?? []).map(
       (anchor) => anchor.textContent
     )
-    expect(labels).toEqual(['Propriétaires', 'Identité', 'Réglages'])
+    expect(labels).toEqual([
+      'Propriétaires',
+      'Campagnes',
+      'Identité',
+      'Réglages',
+    ])
   })
+})
+
+describe('BureauSidebar — « Campagnes » (s25)', () => {
+  it('ajoute l’entrée au groupe « L’association », après « Propriétaires », sans icône', () => {
+    renderSidebarAt('/bureau/campagnes')
+
+    const entry = screen.getByRole('link', {name: 'Campagnes'})
+    expect(entry).toHaveAttribute('href', '/bureau/campagnes')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+    expect(
+      screen.getByRole('link', {name: 'Propriétaires'})
+    ).not.toHaveAttribute('aria-current')
+  })
+
+  it.each(['/bureau/campagnes/nouvelle', '/bureau/campagnes/3c1e'])(
+    'reste actif sur %s',
+    (pathname) => {
+      renderSidebarAt(pathname)
+
+      expect(screen.getByRole('link', {name: 'Campagnes'})).toHaveAttribute(
+        'aria-current',
+        'page'
+      )
+    }
+  )
 })
 
 describe('BureauSidebar — « Page d’accueil » (s44)', () => {

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 import {
   type ReactNode,
+  Suspense,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -35,6 +36,7 @@ import {
 } from '@/components/ui/table'
 import {sameEmail} from '@/services/rules/member-account-rules'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
+import type {MemberUnsubscribeDTO} from '@/services/types/domain/campaign-types'
 import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
 import type {MemberNotesPageDTO} from '@/services/types/domain/member-note-types'
 import type {
@@ -74,6 +76,7 @@ import {
   salePathOf,
 } from './member-profile-paths'
 import {MemberRoleCard} from './member-role-card'
+import {MemberUnsubscribedMention} from './member-unsubscribed-mention'
 
 type MemberProfileDetailProps = MemberNoteActions & {
   profile: MemberProfileDTO
@@ -89,6 +92,8 @@ type MemberProfileDetailProps = MemberNoteActions & {
   changeRoleAction: ChangeMemberRoleFormAction
   /** Le fil des notes internes (s24), lu sans etre attendu. */
   notesPromise: Promise<MemberNotesPageDTO | undefined>
+  /** Le refus des campagnes (s25), lu a part de la fiche, sans etre attendu. */
+  unsubscribePromise: Promise<MemberUnsubscribeDTO | null>
 }
 
 type Notice =
@@ -141,6 +146,7 @@ export function MemberProfileDetail({
   attachParcelAction,
   changeRoleAction,
   notesPromise,
+  unsubscribePromise,
   ...noteActions
 }: MemberProfileDetailProps) {
   const t = useTranslations('BureauMemberProfilesPage')
@@ -212,6 +218,9 @@ export function MemberProfileDetail({
             {profile.incomplete && <IncompleteBadge />}
           </div>
         )}
+        <Suspense fallback={null}>
+          <MemberUnsubscribedMention promise={unsubscribePromise} />
+        </Suspense>
       </div>
 
       <DetailCard title={t('detail.contact.title')}>

@@ -33,6 +33,7 @@ import SubscriptionCompletedMail from '@/lib/emails/subscription-completed-email
 import SubscriptionDeletedMail from '@/lib/emails/subscription-deleted-email'
 import SubscriptionUpdatedMail from '@/lib/emails/subscription-updated-email'
 import {getEmailTransport} from '@/lib/emails/transport'
+import {parseEmailAddress} from '@/lib/emails/transport/email-transport'
 import VerificationEmail from '@/lib/emails/verification-email'
 import WelcomeFollowUpEmail from '@/lib/emails/welcome-follow-up-email'
 import type {SupportedLocale} from '@/lib/helper/locale-helper'
@@ -125,6 +126,12 @@ export type SendEmailPayload = {
   text: string
   from?: string
   react?: ReactNode | Promise<ReactNode>
+  /** En-tetes supplementaires (`List-Unsubscribe`, RFC 8058). */
+  headers?: Record<string, string>
+  /** Adresse de reponse (adresse de contact de l'association). */
+  replyTo?: string
+  /** Nom d'expediteur, compose en `Nom <adresse de la plateforme>`. */
+  senderName?: string
 }
 
 export interface SendEmailOptions {
@@ -157,13 +164,30 @@ export const sendEmailService = async (
   const html = template ? await render(template) : undefined
 
   await getEmailTransport().send({
-    from: fromEmail,
+    from: senderOf(fromEmail, payload.senderName),
     to: payload.to,
     subject,
     text: payload.text,
     ...(html ? {html} : {}),
+    ...(payload.headers ? {headers: payload.headers} : {}),
+    ...(payload.replyTo ? {replyTo: payload.replyTo} : {}),
   })
 }
+
+const senderOf = (fromEmail: string, senderName?: string): string => {
+  if (!senderName) return fromEmail
+  const {email} = parseEmailAddress(fromEmail)
+  const name = senderName.replace(/["<>\r\n]/g, '').trim()
+  return name ? `${name} <${email}>` : fromEmail
+}
+
+/**
+ * Les envois aux membres sont-ils permis par les reglages d'application ?
+ * Lu **avant** d'ecrire quoi que ce soit : une campagne « envoyee » sans email
+ * parti est le pire cas (s25).
+ */
+export const isClientEmailEnabledService = async (): Promise<boolean> =>
+  shouldSendEmail('client')
 
 interface SendOrganizationInvitationParams {
   email: string

@@ -10,6 +10,7 @@ import {
   getMemberProfileForBureauDal,
 } from '@/app/dal/member-profile-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {getMemberUnsubscribeForBureauDal} from '@/app/dal/unsubscribe-dal'
 import {BureauAccessDenied} from '@/components/features/association/bureau-access-denied'
 import {MemberProfileDetail} from '@/components/features/member-profile/member-profile-detail'
 import {Skeleton} from '@/components/ui/skeleton'
@@ -108,6 +109,11 @@ async function MemberProfileSection({
     memberProfileId,
     notesPage
   )
+  // Le refus des campagnes (s25), lu a part de la fiche et sans l'attendre.
+  const unsubscribePromise = getMemberUnsubscribeForBureauDal(
+    tenant.id,
+    memberProfileId
+  )
   const parcels = await getMemberParcelsForBureauDal(tenant.id, memberProfileId)
 
   // Lue apres la session, donc au rendu de la requete : la date proposee au
@@ -125,6 +131,7 @@ async function MemberProfileSection({
       attachParcelAction={attachParcelAction}
       changeRoleAction={changeMemberRoleAction}
       notesPromise={notesPromise}
+      unsubscribePromise={unsubscribePromise}
       addNoteAction={addMemberNoteAction}
       addExchangeAction={addMemberExchangeAction}
       updateNoteAction={updateMemberNoteAction}

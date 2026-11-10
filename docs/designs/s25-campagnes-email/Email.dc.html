@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="background: {{ c.outer }}; padding: {{ outerPad }}; font-family: Helvetica, Arial, sans-serif;">
+<sc-if value="{{ inbox }}" hint-placeholder-val="{{ false }}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto 16px; border-collapse: separate; background: {{ c.bg }}; border: 1px solid {{ c.rule }}; border-radius: 8px;">
+<tbody>
+<tr><td style="padding: 8px 16px; font-size: 13px; color: {{ c.muted }}; border-bottom: 1px solid {{ c.rule }}; font-family: 'JetBrains Mono', monospace;">Boîte de réception — ce que le membre voit avant d’ouvrir</td></tr>
+<tr><td style="padding: 12px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tbody><tr>
+<td style="font-size: 16px; font-weight: 700; color: {{ c.text }};">ASL Les Pins</td>
+<td style="font-size: 15px; color: {{ c.muted }}; text-align: right;">14:32</td>
+</tr></tbody></table>
+<div style="font-size: 16px; font-weight: 700; color: {{ c.text }}; margin-top: 4px;">{{ subject }}</div>
+<div style="font-size: 15px; color: {{ c.muted }}; margin-top: 4px;">{{ preheader }}</div>
+</td></tr>
+</tbody>
+</table>
+</sc-if>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background: {{ c.bg }}; border-collapse: collapse; border: 1px solid {{ c.rule }};">
+<tbody>
+<tr><td style="display: none; font-size: 1px; color: {{ c.bg }}; max-height: 0; overflow: hidden;">{{ preheader }}</td></tr>
+<tr><td style="background: {{ c.hdrBg }}; border-bottom: 2px solid {{ c.hdrRule }}; padding: 16px {{ px }};">
+<table role="presentation" cellpadding="0" cellspacing="0"><tbody><tr>
+<td style="width: 36px; height: 36px; background: #17849B; color: #FFFFFF; font-family: Georgia, serif; font-size: 16px; font-weight: 700; text-align: center; vertical-align: middle; border-radius: 4px;">LP</td>
+<td style="padding-left: 12px; font-family: Georgia, serif; font-size: 20px; font-weight: 700; color: {{ c.hdrName }};">ASL Les Pins</td>
+</tr></tbody></table>
+</td></tr>
+<tr><td style="padding: 32px {{ px }}; color: {{ c.text }}; font-size: 17px; line-height: 1.6;">
+<h1 style="margin: 0 0 24px; font-family: Georgia, serif; font-size: 24px; line-height: 1.25; font-weight: 700; color: {{ c.text }};">{{ title }}</h1>
+<sc-if value="{{ isAg }}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0 0 16px; font-weight: 700;">[Texte provisoire — à remplacer avant l’envoi]</p>
+<p style="margin: 0 0 16px;">Bonjour {{ nom }},</p>
+<p style="margin: 0 0 16px;">Le bureau vous convoque à l’assemblée générale ordinaire de l’ASL Les Pins, le <strong>samedi 5 décembre 2026 à 10 h</strong>, salle des fêtes de la mairie.</p>
+<p style="margin: 0 0 8px;">Ordre du jour&nbsp;:</p>
+<ol style="margin: 0 0 16px; padding-left: 24px;">
+<li style="margin-bottom: 4px;">Approbation des comptes 2025-2026</li>
+<li style="margin-bottom: 4px;">Vote du budget 2027</li>
+<li style="margin-bottom: 4px;">Travaux de voirie de l’allée des Chênes</li>
+<li>Questions diverses</li>
+</ol>
+<p style="margin: 0 0 16px;">Vous êtes convoqué en tant que propriétaire de la parcelle {{ parcelle }}. Si vous ne pouvez pas venir, vous pouvez vous faire représenter par un autre membre&nbsp;: <a href="#" style="color: {{ c.link }}; text-decoration: underline;">formulaire de pouvoir</a>.</p>
+<p style="margin: 0 0 16px;">Message envoyé le {{ date }}.</p>
+<p style="margin: 0;">Le bureau de l’ASL Les Pins</p>
+</sc-if>
+<sc-if value="{{ isLibre }}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0 0 16px;">Bonjour {{ nom }},</p>
+<p style="margin: 0 0 16px;">Le portail de l’allée des Pins sera repeint du <strong>mercredi 18 au vendredi 20 novembre</strong>. Merci de laisser le passage libre pendant ces trois jours&nbsp;: l’accès piéton reste ouvert par la petite porte.</p>
+<p style="margin: 0;">Le bureau de l’ASL Les Pins</p>
+</sc-if>
+</td></tr>
+<tr><td style="background: {{ c.ftBg }}; border-top: 1px solid {{ c.rule }}; padding: 24px {{ px }}; color: {{ c.ftText }}; font-size: 15px; line-height: 1.6;">
+<p style="margin: 0 0 8px; font-size: 17px; font-weight: 700;">ASL Les Pins</p>
+<p style="margin: 0 0 16px;">Association syndicale libre des Pins<br>4 allée des Pins, 33680 Lacanau<br>SIRET 000 000 000 00000</p>
+<p style="margin: 0 0 16px;">Vous recevez cet email parce que vous êtes membre de l’ASL Les Pins.</p>
+<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse: separate;"><tbody><tr>
+<td style="border: 1px solid #8E939C; border-radius: 8px; height: 48px; padding: 0 24px; vertical-align: middle;"><a href="#" style="color: {{ c.btnText }}; font-size: 16px; font-weight: 700; text-decoration: none; line-height: 48px; display: block;">Ne plus recevoir ces campagnes</a></td>
+</tr></tbody></table>
+<p style="margin: 8px 0 16px; word-break: break-all;"><a href="#" style="color: {{ c.link }}; text-decoration: underline;">https://lespins.example/desinscription/k7Q2xP9m</a></p>
+<p style="margin: 0;">Se désinscrire ne vous prive d’aucune information obligatoire.</p>
+</td></tr>
+</tbody>
+</table>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:680,&quot;height&quot;:1100},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ag&quot;,&quot;libre&quot;],&quot;default&quot;:&quot;ag&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;dark&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;mobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;vars&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;replaced&quot;,&quot;raw&quot;],&quot;default&quot;:&quot;replaced&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;inbox&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;frame&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;client&quot;,&quot;bare&quot;],&quot;default&quot;:&quot;client&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const dark = !!this.props.dark, m = !!this.props.mobile, raw = this.props.vars === 'raw';
+    const v = this.props.variant ?? 'ag', frame = this.props.frame ?? 'client';
+    const c = dark
+      ? { outer: '#0E1013', bg: '#171A1E', text: '#E8EBEF', muted: '#9DA6AE', rule: '#32363A', link: '#8CC3FC', hdrBg: '#171A1E', hdrRule: '#32363A', hdrName: '#E8EBEF', ftBg: '#171A1E', ftText: '#9DA6AE', btnText: '#E8EBEF' }
+      : { outer: '#F6F7F8', bg: '#FFFFFF', text: '#151B21', muted: '#4C5760', rule: '#DFE1E5', link: '#00579A', hdrBg: '#E8F5F8', hdrRule: '#17849B', hdrName: '#185A66', ftBg: '#F6F7F8', ftText: '#52565E', btnText: '#151B21' };
+    if (frame === 'bare') c.outer = 'transparent';
+    const isAg = v === 'ag';
+    const title = isAg ? 'Convocation à l’assemblée générale' : 'Peinture du portail du 18 au 20 novembre';
+    return {
+      c, isAg, isLibre: !isAg, title,
+      subject: 'ASL Les Pins — ' + title,
+      preheader: isAg ? 'Samedi 5 décembre à 10 h, salle des fêtes. Ordre du jour et pouvoir à l’intérieur.' : 'Merci de laisser le passage libre pendant les trois jours de travaux.',
+      inbox: !!this.props.inbox,
+      outerPad: frame === 'bare' ? '0' : (m ? '16px 0' : '32px 24px'),
+      px: m ? '16px' : '32px',
+      nom: raw ? '{nom}' : 'Claire Aubert',
+      parcelle: raw ? '{parcelle}' : '12, 14',
+      date: raw ? '{date}' : '12 novembre 2026',
+    };
+  }
+}
+</script>
+</body>
+</html>
