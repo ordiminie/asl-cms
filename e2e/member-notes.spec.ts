@@ -40,6 +40,8 @@ const SEED_MOREAU = {
 const SEED_SCI_PINS = 'b1200000-0000-4000-8000-000000000001'
 
 const PROFILE_ROUTE = (id: string) => `/bureau/proprietaires/${id}`
+/** Refus montré à un membre de l'association (`MemberSpacePage.denied`). */
+const DENIED_TITLE = 'Cette page ne vous est pas accessible'
 const DENIED_TEXT = 'Elle est réservée au bureau de l’association.'
 const LINK_SENT_TITLE = 'Consultez votre boîte mail'
 
@@ -265,7 +267,7 @@ const openMoreau = async (page: Page) => {
 }
 
 const notesCard = (page: Page): Locator =>
-  page.getByRole('region', {name: 'Notes et échanges'})
+  page.getByRole('region', {name: 'Notes et échanges', exact: true})
 
 const thread = (page: Page): Locator =>
   notesCard(page).getByRole('list', {
@@ -291,10 +293,10 @@ const fillExchange = async (
   input: {date: string; channel: string; body: string}
 ) => {
   const card = notesCard(page)
-  await card.getByLabel('Date de l’échange').fill(input.date)
-  await card.getByRole('combobox', {name: 'Canal'}).click()
-  await page.getByRole('option', {name: input.channel}).click()
-  await card.getByLabel('Résumé').fill(input.body)
+  await card.getByLabel('Date de l’échange', {exact: true}).fill(input.date)
+  await card.getByRole('combobox', {name: 'Canal', exact: true}).click()
+  await page.getByRole('option', {name: input.channel, exact: true}).click()
+  await card.getByLabel('Résumé', {exact: true}).fill(input.body)
   await card.getByRole('button', {name: 'Enregistrer l’échange'}).click()
 }
 
@@ -347,14 +349,26 @@ test.describe('Notes et échanges — le bureau tient le fil d’une fiche', () 
         channel: 'Téléphone',
         body,
       })
+      // Deux signaux pour la même erreur (état f) : le message sous le champ
+      // et la ligne du résumé ancré, qui reprend le libellé du champ.
       await expect(
-        notesCard(bureau).getByText('Cette date n’est pas encore arrivée.')
+        notesCard(bureau).getByText('Cette date n’est pas encore arrivée.', {
+          exact: true,
+        })
+      ).toBeVisible()
+      await expect(
+        notesCard(bureau).getByRole('link', {
+          name: 'Date de l’échange : cette date n’est pas encore arrivée.',
+          exact: true,
+        })
       ).toBeVisible()
       expect(
         (await storedNotesOfRun()).filter((note) => note.kind === 'exchange')
       ).toHaveLength(0)
 
-      await notesCard(bureau).getByLabel('Date de l’échange').fill('12/03/2026')
+      await notesCard(bureau)
+        .getByLabel('Date de l’échange', {exact: true})
+        .fill('12/03/2026')
       await notesCard(bureau)
         .getByRole('button', {name: 'Enregistrer l’échange'})
         .click()
@@ -427,9 +441,11 @@ test.describe('Notes et échanges — le bureau tient le fil d’une fiche', () 
         name: 'Supprimer cette note ?',
       })
       await expect(
-        dialog.getByRole('button', {name: 'Garder la note'})
+        dialog.getByRole('button', {name: 'Garder la note', exact: true})
       ).toBeFocused()
-      await dialog.getByRole('button', {name: 'Supprimer la note'}).click()
+      await dialog
+        .getByRole('button', {name: 'Supprimer la note', exact: true})
+        .click()
       await expect(notesCard(bureau).getByRole('status')).toContainText(
         'Note supprimée.',
         {timeout: 15_000}
@@ -470,9 +486,12 @@ test.describe('Notes et échanges — étanchéité côté membre et entre assoc
       await moreau.goto(`${TENANT_A}${PROFILE_ROUTE(SEED_MOREAU.profileId)}`, {
         waitUntil: 'load',
       })
-      await expect(moreau.getByText(DENIED_TEXT)).toBeVisible({
-        timeout: 20_000,
-      })
+      // Un membre de l'association voit le refus de l'espace membre (C4,
+      // s12d), pas celui de s01b.
+      await expect(
+        moreau.getByRole('heading', {level: 1, name: DENIED_TITLE})
+      ).toBeVisible({timeout: 20_000})
+      await expect(moreau.getByText(DENIED_TEXT, {exact: true})).toBeVisible()
       await expect(moreau.getByText(MARKER)).toHaveCount(0)
       await expect(
         moreau.getByRole('heading', {level: 2, name: 'Notes et échanges'})
