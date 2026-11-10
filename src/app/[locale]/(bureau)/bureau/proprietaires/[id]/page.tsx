@@ -3,6 +3,7 @@ import {notFound} from 'next/navigation'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {Suspense} from 'react'
 
+import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
   canManageCurrentMemberProfilesDal,
   getMemberParcelsForBureauDal,
@@ -19,10 +20,22 @@ import {
   changeMemberRoleAction,
   updateMemberProfileContactAction,
 } from '../actions'
+import {
+  addMemberExchangeAction,
+  addMemberNoteAction,
+  deleteMemberNoteAction,
+  updateMemberNoteAction,
+} from '../notes-actions'
 
 type MemberProfilePageProps = {
   params: Promise<{locale: string; id: string}>
-  searchParams: Promise<{cree?: string; vente?: string}>
+  searchParams: Promise<{cree?: string; vente?: string; notes?: string}>
+}
+
+/** La page du fil des notes lue dans `?notes=` : un entier, au moins 1. */
+const notesPageOf = (value?: string): number => {
+  const page = Number(value)
+  return Number.isInteger(page) && page >= 1 ? page : 1
 }
 
 export async function generateMetadata({
@@ -49,7 +62,7 @@ export default async function BureauMemberProfilePage({
 }: MemberProfilePageProps) {
   const {locale, id} = await params
   setRequestLocale(locale)
-  const {cree, vente} = await searchParams
+  const {cree, vente, notes} = await searchParams
 
   return (
     <Suspense fallback={<ProfileSkeleton />}>
@@ -57,6 +70,7 @@ export default async function BureauMemberProfilePage({
         memberProfileId={id}
         created={cree === '1'}
         soldParcelId={vente}
+        notesPage={notesPageOf(notes)}
       />
     </Suspense>
   )
@@ -66,10 +80,12 @@ async function MemberProfileSection({
   memberProfileId,
   created,
   soldParcelId,
+  notesPage,
 }: {
   memberProfileId: string
   created: boolean
   soldParcelId?: string
+  notesPage: number
 }) {
   const [tenant, allowed] = await Promise.all([
     requireCurrentTenantDal(),
@@ -85,6 +101,13 @@ async function MemberProfileSection({
     notFound()
   }
 
+  // Le fil des notes (s24) n'est pas attendu : la carte le deroule derriere
+  // son propre `<Suspense>`, le reste de la fiche s'affiche sans lui.
+  const notesPromise = getMemberNotesForBureauDal(
+    tenant.id,
+    memberProfileId,
+    notesPage
+  )
   const parcels = await getMemberParcelsForBureauDal(tenant.id, memberProfileId)
 
   // Lue apres la session, donc au rendu de la requete : la date proposee au
@@ -101,6 +124,11 @@ async function MemberProfileSection({
       updateContactAction={updateMemberProfileContactAction}
       attachParcelAction={attachParcelAction}
       changeRoleAction={changeMemberRoleAction}
+      notesPromise={notesPromise}
+      addNoteAction={addMemberNoteAction}
+      addExchangeAction={addMemberExchangeAction}
+      updateNoteAction={updateMemberNoteAction}
+      deleteNoteAction={deleteMemberNoteAction}
     />
   )
 }

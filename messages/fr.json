@@ -3172,7 +3172,114 @@
         "attached": "Parcelle {number} rattachée à {name} depuis le {date}.",
         "attachedCreated": "Parcelle {number} ajoutée et rattachée à {name} depuis le {date}."
       },
-      "sold": "Vente enregistrée. La parcelle {number} est à {name} depuis le {date}."
+      "sold": "Vente enregistrée. La parcelle {number} est à {name} depuis le {date}.",
+      "notes": {
+        "title": "Notes et échanges",
+        "internal": "Visible du bureau seulement. Le propriétaire ne les voit pas.",
+        "addNote": "Ajouter une note",
+        "addExchange": "Consigner un échange",
+        "addFirstNote": "Ajouter la première note",
+        "empty": "Aucune note ni échange pour l’instant.",
+        "loading": "Chargement des notes et échanges…",
+        "listLabel": "Notes et échanges, du plus récent au plus ancien",
+        "kinds": {
+          "note": "Note",
+          "exchange": "Échange"
+        },
+        "channels": {
+          "phone": "Téléphone",
+          "mail": "Courrier",
+          "in_person": "En personne",
+          "email": "Email"
+        },
+        "writtenBy": "Écrit par {name}",
+        "modified": "Modifiée le {date} à {time}",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "editLabel": {
+          "note": "Modifier la note du {date}",
+          "exchange": "Modifier l’échange du {date}"
+        },
+        "deleteLabel": {
+          "note": "Supprimer la note du {date}",
+          "exchange": "Supprimer l’échange du {date}"
+        },
+        "fields": {
+          "body": {
+            "note": "Note",
+            "exchange": "Résumé"
+          },
+          "entryDate": "Date de l’échange",
+          "entryDateHelp": "Au format jj/mm/aaaa.",
+          "channel": "Canal",
+          "channelPlaceholder": "Choisissez un canal"
+        },
+        "counter": "{count} / {max}",
+        "tooLong": "{count, plural, one {# caractère de trop.} other {# caractères de trop.}}",
+        "summaryItem": "{label} : {message}",
+        "save": {
+          "note": "Enregistrer la note",
+          "exchange": "Enregistrer l’échange",
+          "edit": "Enregistrer les modifications"
+        },
+        "saving": "Enregistrement…",
+        "cancel": "Annuler",
+        "validation": {
+          "bodyRequired": {
+            "note": "Écrivez le texte de la note.",
+            "exchange": "Écrivez le résumé de l’échange."
+          },
+          "channelRequired": "Choisissez un canal.",
+          "dateFuture": "Cette date n’est pas encore arrivée."
+        },
+        "saved": {
+          "note": {
+            "created": "Note enregistrée.",
+            "updated": "Note modifiée.",
+            "deleted": "Note supprimée."
+          },
+          "exchange": {
+            "created": "Échange enregistré.",
+            "updated": "Échange modifié.",
+            "deleted": "Échange supprimé."
+          }
+        },
+        "failed": {
+          "save": {
+            "note": "La note n’a pas pu être enregistrée. Ce que vous avez écrit est conservé dans le formulaire. Réessayez dans un instant.",
+            "exchange": "L’échange n’a pas pu être enregistré. Ce que vous avez écrit est conservé dans le formulaire. Réessayez dans un instant."
+          },
+          "delete": {
+            "note": "La note n’a pas pu être supprimée. Elle est toujours sur la fiche. Réessayez dans un instant.",
+            "exchange": "L’échange n’a pas pu être supprimé. Il est toujours sur la fiche. Réessayez dans un instant."
+          }
+        },
+        "deleteDialog": {
+          "title": {
+            "note": "Supprimer cette note ?",
+            "exchange": "Supprimer cet échange ?"
+          },
+          "description": {
+            "note": "Note écrite par {name} le {date}. Elle sera effacée de la fiche.",
+            "exchange": "Échange consigné par {name} le {date}. Il sera effacé de la fiche."
+          },
+          "keep": {
+            "note": "Garder la note",
+            "exchange": "Garder l’échange"
+          },
+          "confirm": {
+            "note": "Supprimer la note",
+            "exchange": "Supprimer l’échange"
+          },
+          "deleting": "Suppression…"
+        },
+        "pagination": {
+          "label": "Pages des notes et échanges",
+          "previous": "Précédent",
+          "position": "Page {page} sur {total}",
+          "next": "Suivant"
+        }
+      }
     },
     "attachDialog": {
       "title": "Rattacher une parcelle à {name}",

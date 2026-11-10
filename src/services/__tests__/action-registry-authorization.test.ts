@@ -401,3 +401,64 @@ describe('MEMBER_ROLE_ASSIGN — désigner le bureau (s14)', () => {
     expect(canPerformAction(user, ORG_ID, ASSIGN)).toBe(false)
   })
 })
+
+/**
+ * Notes internes d'un membre (s24, ADR 050). Une action a part de
+ * `MEMBER_PROFILE_MANAGE` : une note est plus sensible qu'une coordonnee, et
+ * s37 pourra la regler seule. Un membre simple n'y a aucun acces (critere 4).
+ */
+describe('MEMBER_NOTE_MANAGE — notes internes d’un membre (s24)', () => {
+  const NOTES = ActionIdConst.MEMBER_NOTE_MANAGE
+
+  it('porte l identifiant member.note.manage, distinct de la gestion des fiches', () => {
+    expect(NOTES).toBe('member.note.manage')
+    expect(NOTES).not.toBe(ActionIdConst.MEMBER_PROFILE_MANAGE)
+    expect(ACTION_REGISTRY.filter((action) => action.id === NOTES)).toEqual([
+      {id: NOTES, defaultRoles: ['owner', 'board']},
+    ])
+  })
+
+  it('[SUPER_ADMIN] autorise le SuperAdmin', () => {
+    expect(canPerformAction(userTestSuperAdmin, ORG_ID, NOTES)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, NOTES)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canPerformAction(user, ORG_ID, NOTES)).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+    expect(canPerformAction(user, ORG_ID, NOTES)).toBe(false)
+  })
+
+  it('[USER NOT IN ORGANIZATION] refuse le bureau d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, NOTES)).toBe(false)
+  })
+
+  it('[GUEST] refuse un visiteur sans session', () => {
+    expect(canPerformAction(undefined, ORG_ID, NOTES)).toBe(false)
+  })
+})

@@ -36,6 +36,7 @@ import {
 import {sameEmail} from '@/services/rules/member-account-rules'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
 import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
+import type {MemberNotesPageDTO} from '@/services/types/domain/member-note-types'
 import type {
   MemberAccountChange,
   MemberProfileAccountDTO,
@@ -56,6 +57,7 @@ import {
   MemberContactFields,
   MemberFormErrorSummary,
 } from './member-contact-fields'
+import {type MemberNoteActions, MemberNotesCard} from './member-notes-card'
 import {IncompleteBadge, MailOnlyBadge} from './member-profile-badges'
 import {DetailCard} from './member-profile-detail-card'
 import {EmailHolder, type MemberProfileFormAction} from './member-profile-form'
@@ -73,7 +75,7 @@ import {
 } from './member-profile-paths'
 import {MemberRoleCard} from './member-role-card'
 
-type MemberProfileDetailProps = {
+type MemberProfileDetailProps = MemberNoteActions & {
   profile: MemberProfileDTO
   parcels: MemberParcelsDTO
   /** Le jour calendaire de Paris, ISO : la date proposee au rattachement. */
@@ -85,6 +87,8 @@ type MemberProfileDetailProps = {
   updateContactAction: MemberProfileFormAction
   attachParcelAction: AttachParcelFormAction
   changeRoleAction: ChangeMemberRoleFormAction
+  /** Le fil des notes internes (s24), lu sans etre attendu. */
+  notesPromise: Promise<MemberNotesPageDTO | undefined>
 }
 
 type Notice =
@@ -136,6 +140,8 @@ export function MemberProfileDetail({
   updateContactAction,
   attachParcelAction,
   changeRoleAction,
+  notesPromise,
+  ...noteActions
 }: MemberProfileDetailProps) {
   const t = useTranslations('BureauMemberProfilesPage')
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -264,6 +270,13 @@ export function MemberProfileDetail({
           <FormerParcels parcels={parcels.former} />
         )}
       </DetailCard>
+
+      <MemberNotesCard
+        memberProfileId={profile.id}
+        notesPromise={notesPromise}
+        today={today}
+        {...noteActions}
+      />
 
       <AttachParcelDialog
         profile={profile}

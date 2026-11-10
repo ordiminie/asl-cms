@@ -24,6 +24,15 @@ vi.mock('@/app/dal/member-profile-dal', () => ({
   getMemberParcelsForBureauDal: vi.fn(),
   getMemberProfileForBureauDal: vi.fn(),
 }))
+vi.mock('@/app/dal/member-note-dal', () => ({
+  getMemberNotesForBureauDal: vi.fn(),
+}))
+vi.mock('../notes-actions', () => ({
+  addMemberNoteAction: vi.fn(),
+  addMemberExchangeAction: vi.fn(),
+  updateMemberNoteAction: vi.fn(),
+  deleteMemberNoteAction: vi.fn(),
+}))
 vi.mock('../actions', () => ({
   attachParcelAction: vi.fn(),
   changeMemberRoleAction: vi.fn(),
@@ -31,6 +40,7 @@ vi.mock('../actions', () => ({
 }))
 
 import {render, screen} from '@/__tests__/customRender'
+import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
   canManageCurrentMemberProfilesDal,
   getMemberParcelsForBureauDal,
@@ -67,7 +77,7 @@ const profile = {
 
 /** Le composant de page est asynchrone : on resout son arbre avant de rendre. */
 const renderPage = async (
-  searchParams: {cree?: string; vente?: string} = {}
+  searchParams: {cree?: string; vente?: string; notes?: string} = {}
 ) => {
   const element = (await BureauMemberProfilePage({
     params: Promise.resolve({locale: 'fr', id: PROFILE_ID}),
@@ -87,6 +97,7 @@ beforeEach(() => {
     current: [],
     former: [],
   })
+  vi.mocked(getMemberNotesForBureauDal).mockReturnValue(new Promise(() => {}))
 })
 
 describe('/bureau/proprietaires/[id] — accès par rôle', () => {
@@ -162,5 +173,62 @@ describe('/bureau/proprietaires/[id] — accès par rôle', () => {
 
     await expect(renderPage()).rejects.toThrow('NEXT_NOT_FOUND')
     expect(getMemberParcelsForBureauDal).not.toHaveBeenCalled()
+  })
+})
+
+describe('/bureau/proprietaires/[id] — notes et échanges (s24)', () => {
+  beforeEach(() => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+  })
+
+  it('lit le fil de la fiche pour le tenant courant, page 1 par défaut, sans l’attendre', async () => {
+    await renderPage()
+
+    expect(getMemberNotesForBureauDal).toHaveBeenCalledWith(
+      TENANT_ID,
+      PROFILE_ID,
+      1
+    )
+    expect(
+      screen.getByRole('heading', {level: 2, name: 'Notes et échanges'})
+    ).toBeInTheDocument()
+  })
+
+  it('lit la page demandée par ?notes=', async () => {
+    await renderPage({notes: '2'})
+
+    expect(getMemberNotesForBureauDal).toHaveBeenCalledWith(
+      TENANT_ID,
+      PROFILE_ID,
+      2
+    )
+  })
+
+  it.each(['0', '-3', 'abc', '1.5'])(
+    'ramène un paramètre ?notes=%s invalide à la page 1',
+    async (notes) => {
+      await renderPage({notes})
+
+      expect(getMemberNotesForBureauDal).toHaveBeenCalledWith(
+        TENANT_ID,
+        PROFILE_ID,
+        1
+      )
+    }
+  )
+
+  it('ne lit aucune note pour un membre simple', async () => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(false)
+
+    await renderPage()
+
+    expect(getMemberNotesForBureauDal).not.toHaveBeenCalled()
+  })
+
+  it('ne lit aucune note pour une fiche introuvable', async () => {
+    vi.mocked(getMemberProfileForBureauDal).mockResolvedValue(undefined)
+
+    await expect(renderPage()).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(getMemberNotesForBureauDal).not.toHaveBeenCalled()
   })
 })

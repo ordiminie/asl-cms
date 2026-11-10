@@ -76,7 +76,21 @@ const actions = {
   updateContactAction: vi.fn(),
   attachParcelAction: vi.fn(),
   changeRoleAction: vi.fn(),
+  addNoteAction: vi.fn(),
+  addExchangeAction: vi.fn(),
+  updateNoteAction: vi.fn(),
+  deleteNoteAction: vi.fn(),
 }
+
+/**
+ * Le fil des notes (s24), deja resolu : `use()` lit une promesse marquee
+ * `fulfilled` sans suspendre, la fiche se rend d'un seul tenant.
+ */
+const EMPTY_NOTES = {items: [], page: 1, pageSize: 10, total: 0, totalPages: 0}
+const RESOLVED_NOTES = Object.assign(Promise.resolve(EMPTY_NOTES), {
+  status: 'fulfilled',
+  value: EMPTY_NOTES,
+})
 
 type DetailInput = {
   profile?: MemberProfileDTO
@@ -92,6 +106,7 @@ const detailOf = (input: DetailInput = {}) => (
     today="2026-09-29"
     created={input.created ?? false}
     soldParcelId={input.soldParcelId}
+    notesPromise={RESOLVED_NOTES}
     {...actions}
   />
 )
@@ -933,6 +948,7 @@ describe('MemberProfileDetail — carte « Rôle dans l’association » (s14)',
       'Accès à l’espace membre',
       'Rôle dans l’association',
       'Parcelles',
+      'Notes et échanges',
     ])
   })
 
@@ -995,5 +1011,17 @@ describe('MemberProfileDetail — parcelle importée (s13, date sentinelle)', ()
     const [row] = within(formerTable()).getAllByRole('row').slice(1)
     expect(row).toHaveTextContent('d’avant l’import au 14/06/2026')
     expect(row).not.toHaveTextContent('1900')
+  })
+})
+
+describe('MemberProfileDetail — carte « Notes et échanges » (s24)', () => {
+  it('monte la carte des notes internes après « Parcelles »', () => {
+    renderDetail()
+
+    const titles = screen
+      .getAllByRole('heading', {level: 2})
+      .map((heading) => heading.textContent)
+    expect(titles.at(-1)).toBe('Notes et échanges')
+    expect(titles.indexOf('Parcelles')).toBe(titles.length - 2)
   })
 })
