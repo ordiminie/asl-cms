@@ -27,6 +27,7 @@ document.
 s44 à s46b **avant s12b et avant s12d**, s47 avant s12b. Elles nettoient ce qui reste du boilerplate
 avant la mise en ligne ; s46 fixe l'adresse de l'espace membre que s12d remplit, et s46b la
 destination après connexion. s48, ajoutée le 28 octobre 2026, peut se jouer dès la fusion de s14.
+**s52**, scindée de s26 le 11 novembre 2026, se joue **juste après s26 et avant s29 et s42**, qui en dépendent.
 Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
 
 ## Règles transverses à toutes les stories
@@ -347,7 +348,7 @@ codée en dur » : les stories s08, s10, s17, s22 et s29 lisent leurs adresses e
 
 **Le registre grandit avec les besoins** (décision du 17 septembre 2026) : il déclare les clés que le
 cadrage définit déjà — les deux adresses de `CDCT §4.6`, qui sont la raison d'être de cette story et que
-s08 et s10 lisent — et la teinte ; les clés propres à une story arrivent avec elle (seuil d'envoi en s26,
+s08 et s10 lisent — et la teinte ; les clés propres à une story arrivent avec elle (plafond quotidien des campagnes en s26, budget d'envoi en s52,
 activation des relances en s29…). Aucune clé n'est déclarée pour démontrer un type : nombre et booléen
 se prouvent sur le registre et sa clé de test, pas par des réglages sans usage affichés en back-office.
 Les types viendront aussi avec leurs stories : texte libre (s42), URL (s21, s33), liste de statuts (s19).
@@ -436,7 +437,7 @@ base du design system §7.
 PRD, ADR 005). C'est la première story qui envoie un email à un membre : elle pose le contrat
 `EmailTransport` et son implémentation Brevo, avec un transport de développement et de test qui
 n'envoie rien. Les emails transactionnels (lien magique) et les campagnes (s25) peuvent avoir deux
-chemins distincts, mais un seul adaptateur. Le **budget quotidien** par association appartient à s26 :
+chemins distincts, mais un seul adaptateur. Le **budget quotidien** par association appartient à s52 :
 ne pas l'anticiper.
 
 **Domaine du lien** : cette story construit le lien comme aujourd'hui ; le rendre propre au domaine de
@@ -1378,7 +1379,7 @@ rouge, comme s39 pour l'export. Une énumération recopiée
 dans le test finit par oublier une famille — c'est le défaut que s38 et s39 traitent pour l'export.
 
 **Piège n°3 — une alerte qui passe par ce qu'elle surveille.** L'application envoie ses emails par
-Brevo, derrière l'adaptateur de s03 et le budget quotidien par association de s26. L'alerte n'y
+Brevo, derrière l'adaptateur de s03 et le budget quotidien par association de s52. L'alerte n'y
 passe pas : elle ne concerne aucune association, elle ne doit pas consommer leur budget, et elle doit
 partir même si l'application est tombée. Le critère vise une **absence de succès**, pas seulement un
 échec signalé, parce qu'un cron qui ne tourne plus ne produit aucune erreur — c'est le « silence »
@@ -2022,15 +2023,23 @@ Le gabarit commun (logo, mentions légales, adresse de désinscription) est alim
 paramètres du tenant (s02), pas par des constantes.
 
 Transport Brevo (voir s03) : plafond de 300 emails/jour. Cette story envoie **sans** gestion du
-dépassement — c'est s26 qui l'ajoute. Concevoir le déclenchement d'envoi de façon à pouvoir
+dépassement — s26 étale les campagnes, s52 tient le budget de tous les envois. Concevoir le déclenchement d'envoi de façon à pouvoir
 l'intercepter, sinon s26 imposera de tout reprendre.
 
 ---
 
-## Story s26-envoi-echelonne — Scinder une campagne au-delà de 300 destinataires
+## Story s26-envoi-echelonne — Étaler une campagne en envois quotidiens de 100 destinataires
 
-**En tant que** membre du bureau **je veux** que les grosses campagnes se scindent toutes seules
-**afin de** ne pas dépasser le quota d'envoi ni générer de surcoût.
+⚠️ **Scindée le 11 novembre 2026, avant son plan**, au seuil que prévoyaient ses notes (dix tâches) :
+la recherche (`docs/research/s26-envoi-echelonne.md`) a compté le planificateur, la scission en parts,
+l'idempotence par destinataire, la reprise, un budget transverse dans l'adaptateur et sa file de report.
+Cette story garde le **planificateur de l'ADR 006**, l'**étalement d'une campagne** et le **suivi par
+destinataire**. Le **budget quotidien de tout email sortant** et le report des envois isolés passent à
+**s52-budget-envoi-adaptateur**, qui en dépend.
+
+**En tant que** membre du bureau **je veux** que les grosses campagnes s'étalent toutes seules sur
+plusieurs jours, et voir qui a reçu la campagne **afin de** ne pas dépasser le quota d'envoi ni
+générer de surcoût, et de savoir à qui elle est parvenue.
 
 ### Complexity
 
@@ -2038,15 +2047,19 @@ l'intercepter, sinon s26 imposera de tout reprendre.
 
 ### Acceptance criteria
 
-- [ ] Une campagne dont le nombre de destinataires actifs dépasse le seuil d'envoi du tenant (300 par défaut, quota Brevo) part en deux envois : le jour même puis le lendemain, sans aucune action du bureau.
-- [ ] Le bureau voit l'état de la campagne (première part envoyée, seconde part programmée pour telle date) et le nombre de destinataires de chaque part.
-- [ ] Une campagne dont le nombre de destinataires est inférieur ou égal au seuil part en un seul envoi.
-- [ ] Le seuil est un paramètre de tenant : le porter à 500 fait partir en un seul envoi une campagne de 400 destinataires, sans redéploiement.
-- [ ] Une campagne dépassant deux fois le seuil est scindée en autant de parts quotidiennes que nécessaire, chacune sous le seuil.
-- [ ] Le seuil est un **budget quotidien d'envoi par association**, décompté dans l'adaptateur d'envoi par **tout** email sortant qui le traverse, et pas seulement par les campagnes — vérifié avec un émetteur de test distinct des campagnes.
-- [ ] Un envoi qui dépasserait le budget du jour est reporté au lendemain plutôt que refusé ou perdu, et le bureau voit qu'il est en attente.
-- [ ] Un redémarrage du serveur entre les deux parts ne perd pas la seconde part et ne la duplique pas.
-- [ ] Un destinataire ne reçoit jamais deux fois la même campagne, même si le traitement est relancé.
+- [ ] Une campagne dont le nombre de destinataires dépasse le **plafond quotidien des campagnes** du tenant (100 par défaut) part en parts quotidiennes : la première le jour même, les suivantes les jours suivants, sans aucune action du bureau.
+- [ ] Une campagne dont le nombre de destinataires est inférieur ou égal au plafond part en un seul envoi.
+- [ ] Une campagne de 250 destinataires part en trois parts (100, 100, 50) ; le nombre de parts n'est jamais codé en dur : il découle du nombre de destinataires et du plafond.
+- [ ] Le plafond est un **paramètre de tenant** : le porter à 500 fait partir en un seul envoi une campagne de 400 destinataires, sans redéploiement.
+- [ ] Le plafond est un plafond **par jour et par association pour l'ensemble des campagnes** : deux campagnes lancées le même jour se partagent les 100 envois du jour, la seconde commençant là où la première s'arrête ou le lendemain.
+- [ ] **Indicateur par destinataire.** Le bureau voit, pour chaque destinataire d'une campagne, s'il l'a reçue : _reçue_ (avec la date d'envoi), _programmée pour le <jour>_, _à vérifier_ ou _en échec_. Il voit aussi, pour la campagne, le nombre de destinataires de chaque part et l'état de chacune (envoyée, programmée pour telle date).
+- [ ] La liste des destinataires d'une campagne est paginée et ne laisse apparaître que les destinataires de cette campagne et de cette association ; elle n'affiche pas les jetons de désinscription.
+- [ ] Un redémarrage du serveur entre deux parts, ou pendant une part, ne perd aucune part et n'en duplique aucune : à la reprise, les destinataires déjà reçus ne sont pas réécrits.
+- [ ] Un destinataire ne reçoit **jamais deux fois** la même campagne, même si le traitement est relancé ou déclenché deux fois en parallèle. Le cas d'un arrêt survenu entre l'envoi et son enregistrement est rendu visible (_à vérifier_), jamais rejoué en silence.
+- [ ] Une campagne en cours d'étalement n'est pas présentée comme interrompue : une part programmée pour demain est _programmée_, pas _bloquée_.
+- [ ] Un échec d'envoi arrête la part en cours sans perdre les suivantes : les destinataires non traités restent _programmés_, et une nouvelle tentative a lieu au passage suivant du planificateur, dans une limite de tentatives après laquelle le bureau voit la campagne _en échec_.
+- [ ] La table du planificateur et celle des parts sont isolées par tenant : une association ne voit, ne déclenche ni ne reprend jamais le travail d'une autre — prouvé par un test d'accès croisé entre deux tenants.
+- [ ] Le planificateur est déclenché sur le serveur par une minuterie systemd installée et documentée comme les autres (`docs/exploitation/`) ; un passage ne traite que ce qui est dû, et deux passages simultanés ne traitent jamais deux fois la même part.
 
 ### Dependencies
 
@@ -2054,56 +2067,62 @@ s02, s12b, s25
 
 ### Agentic notes
 
-Réf. `V5 §8.2`, `CDCT §8.2`, et critère de succès du PRD (« automatiquement scindée sur deux jours,
-sans action du bureau »).
+Réf. `V5 §8.2`, `CDCT §8.2`, critère de succès du PRD (« automatiquement scindée sur deux jours,
+sans action du bureau »), `docs/research/s26-envoi-echelonne.md`, ADR 006, ADR 036 §5, ADR 051.
 
-Risque (complexité 4, relevée de 3 en revue du découpage) : la story cumule une **planification
-durable** qui survit au redémarrage, l'**idempotence par destinataire**, un **budget transverse**
-décompté dans l'adaptateur que toutes les autres stories traversent, et une **file de report** avec
-un état visible. C'est le trio qui vaut déjà un 4 à s29, plus le budget. Si le plan dépasse dix
-tâches, séparer le budget et la file de report de la scission de campagne sur deux jours.
+**Arbitrages du 11 novembre 2026 (utilisatrice) :** les campagnes s'étalent à **100 destinataires par
+jour** (et non 300) : le reste du quota Brevo (300/jour par compte) est ainsi **laissé aux emails de
+connexion** et aux autres envois, sans qu'une campagne puisse l'épuiser. Le bureau doit pouvoir **voir qui
+a reçu la campagne et qui ne l'a pas reçue**. Le budget transverse de 300 décompté par tous les envois
+est la story s52.
 
-Le critère de budget se prouve sur l'**adaptateur d'envoi**, pas sur une énumération des émetteurs :
-s29 (relances) et s42 (lancement) sont livrées après cette story et ne pourraient pas servir de
-preuve. Chacune porte de son côté un critère affirmant qu'elle passe bien par l'adaptateur.
+Le `V5 §8.2` ne décrit que le cas à deux jours parce que La Fourche compte 300 membres avec email. La
+règle générale — découper en parts quotidiennes toutes sous le plafond — couvre ce cas sans le
+contredire. Avec un plafond de 100, la campagne « tous les membres » de La Fourche (**exactement 300
+membres avec email**, s13) part en **trois jours**, non plus en un envoi : le **critère de succès du
+PRD (« scindée sur deux jours ») est donc amendé** par cette décision, à tenir dans la review et à
+signaler à l'utilisatrice à la livraison. Le jeu de tests couvre 100, 101, 200, 201 et 300, pas seulement
+un cas large.
 
-Piège explicite : c'est une **logique de déclenchement**, pas une limite affichée à l'utilisateur.
-Un message « vous avez trop de destinataires » est un échec de la story.
+Piège explicite : c'est une **logique de déclenchement**, pas une limite affichée à l'utilisateur. Un
+message « vous avez trop de destinataires » est un échec de la story. Un `setTimeout` en mémoire ne
+satisfait ni la reprise après redémarrage ni l'idempotence.
 
-Le `V5 §8.2` ne décrit que le cas à deux jours parce que La Fourche compte 300 membres avec email.
-La règle générale — découper en parts quotidiennes toutes sous le seuil — couvre ce cas sans le
-contredire, et évite qu'une association plus grande parmi les cinq prospects dépasse silencieusement
-le quota. Ne pas coder « deux parts » en dur.
+**Cette story pose le planificateur de l'ADR 006** : la table `scheduled_job` (`organization_id`,
+`kind`, `run_after`, `payload`, `attempts`, `locked_at`, `completed_at`, clé d'idempotence unique
+`(organization_id, kind, idempotency_key)`, RLS forcée), son worker (lot de tâches dues, verrou
+`FOR UPDATE SKIP LOCKED`, un `withTenant` par association, jamais `withRlsBypass`) et son déclenchement
+par minuterie systemd (ADR 036 §5). Le choix **route interne à secret partagé** (ADR 006) ou **script
+lancé par la minuterie** (modèle de la purge de s08b, ADR 036) est à trancher en `/ks-plan` ; la
+cadence doit être **inférieure à la journée** pour que reprise et report aient un sens. s29, s38 et
+s52 réutilisent ce planificateur, sans en créer un second.
 
-Le seuil de 300 est le quota Brevo actuel : paramètre de tenant (s02), pas une constante — un autre
-client pourra avoir un autre plan.
+**Garantie de non-doublon : décision recommandée, à confirmer au plan.** Poser l'état « en cours
+d'envoi » **avant** l'envoi, par destinataire. Un arrêt entre l'envoi et son enregistrement laisse alors
+la ligne _à vérifier_ — visible du bureau, jamais renvoyée — plutôt que de risquer un second email. C'est
+ce que l'indicateur par destinataire rend exploitable. Aujourd'hui (`deliverCampaignService`), l'envoi
+précède le marquage dans une autre transaction : le critère « jamais deux fois » n'y est pas tenu.
 
-À savoir en test : La Fourche compte **exactement 300 membres avec email** (s13). La campagne « tous
-les membres » est donc pile au seuil — elle part en un seul envoi aujourd'hui, et bascule en deux
-parts dès le 301e membre. Le jeu de tests doit couvrir 300 et 301, pas seulement un cas large.
+À faire évoluer : `effectiveCampaignStatus` classe `sending` sans progrès depuis 10 minutes en
+`interrupted` ; une part programmée pour demain doit en sortir. `finishCampaignTxnDao` ne doit clore la
+campagne qu'à la **dernière** part. La date `{date}` des emails d'une part ultérieure (date de création
+de la campagne ou date réelle d'envoi) est à trancher en `/ks-plan`, ainsi que le sort d'un membre qui se
+désinscrit entre deux parts.
 
-**Le quota Brevo est par compte et par jour, tous envois confondus** — pas par campagne. Scinder
-chaque campagne indépendamment ne borne donc rien : une campagne de 250, plus 60 invitations, plus 40
-relances le même jour dépassent les 300 sans qu'aucune n'ait fauté seule. C'est pourquoi cette story
-possède un **budget**, décompté par l'adaptateur d'envoi que toutes les stories traversent déjà
-(posé en s03), et non un simple découpage de campagne. Défaut relevé en revue du découpage.
+Le plafond de 100 est le **quota Brevo (300/jour) moins la part laissée aux autres envois** : paramètre
+de tenant (s02), clé déclarée dans le registre de s02 avec cette story, pas une constante — un autre
+client pourra avoir un autre plan. Le plafond partagé entre campagnes du jour se calcule sur les
+envois de la journée de `Europe/Paris` (`calendarDayOf`) ; pas de table de budget ici (c'est s52).
 
-⚠️ **À vérifier en `/ks-architect`** : si plusieurs associations partagent un même compte Brevo, le
-quota est partagé lui aussi et le budget doit être arbitré entre tenants. Un compte par association
-lève la question mais change le coût — c'est un arbitrage d'architecture, pas de story.
+⚠️ **À vérifier en `/ks-architect`** (hérité) : si plusieurs associations partagent un même compte Brevo,
+le quota est partagé et le budget doit être arbitré entre tenants. Aujourd'hui, un client, une clé.
 
-Idempotence et persistance de la seconde part : la planification survit au redémarrage. Inngest est
-écarté par l'ADR 006, qui retient une table `scheduled_job` et un cron système : s'y conformer. Un
-`setTimeout` en mémoire ne satisfait aucun des deux derniers critères.
+**Écran : un changement d'écran (état par destinataire) à passer par `/ks-design`** ; aucun composant du
+design system ne couvre aujourd'hui l'état « programmée / à vérifier » — un manque éventuel est un
+« design system gap » à remonter, pas à combler.
 
-**Cette story pose le planificateur de l'ADR 006** : la table `scheduled_job`, la route interne
-authentifiée par secret partagé, et son déclenchement par le cron système, installé à l'endroit
-choisi et documenté par s12b. C'est la première story dont un critère exige une tâche durable ; s29
-et s38 le réutilisent sans en créer un second. Le compter dans le seuil de dix tâches ci-dessus : s'il
-fait déborder le plan, c'est lui qui part avec le budget et la file de report. La scission se fait
-alors dans `docs/stories.md`, avant `/ks-plan`, avec un nouvel id et la mise à jour des dépendances
-de s29, s30, s38 et s42 — jamais comme une story qui n'existerait que dans un plan. Mineurs m4
-(planificateur) et m15 (report de la scission) de la revue du découpage.
+Seuil de dix tâches : si le plan le dépasse encore, séparer la **reprise automatique** d'une campagne
+interrompue (échec d'un envoi réel) du reste, dans `docs/stories.md` avant `/ks-plan`.
 
 ---
 
@@ -2291,7 +2310,7 @@ sur le VPS LWS (2 vCore, 4 Go) — un moteur à navigateur headless y est un ris
 - [ ] Désactivée, aucune relance automatique ne part, et le reste des campagnes fonctionne normalement.
 - [ ] Une facture réglée entre deux relances interrompt la série ; aucune relance ultérieure ne part.
 - [ ] Un membre ne reçoit jamais deux fois la même relance, même si le traitement est rejoué (idempotence vérifiée par un test).
-- [ ] Les relances passent par l'adaptateur d'envoi et sont décomptées du budget quotidien du tenant (s26) : une relance qui dépasserait le budget est reportée, pas perdue.
+- [ ] Les relances passent par l'adaptateur d'envoi et sont décomptées du budget quotidien du tenant (s52) : une relance qui dépasserait le budget est reportée, pas perdue.
 - [ ] Les relances ne ciblent que les membres en impayé au sens du prédicat de s19 ; aucun membre à jour, ni aucun membre dont le statut est en attente de classement, n'en reçoit.
 - [ ] La relance automatique déclare sa nature dans le mécanisme de s27b, avec la valeur de seed `statutaire` pour le premier tenant. Avec la nature `statutaire`, un membre désinscrit en impayé reçoit la relance ; avec `facultative`, il ne la reçoit pas — vérifié sur les deux cas.
 - [ ] Une page de back-office liste, par impayé : nom du membre, numéro de parcelle, date de la facture, nombre et dates des relances déjà envoyées.
@@ -2299,7 +2318,7 @@ sur le VPS LWS (2 vCore, 4 Go) — un moteur à navigateur headless y est un ris
 
 ### Dependencies
 
-s02, s19, s25, s26, s27, s27b, s28
+s02, s19, s25, s26, s27, s27b, s28, s52
 
 ### Agentic notes
 
@@ -2341,7 +2360,7 @@ Hors périmètre de cette story : la détection automatique d'une nouvelle factu
 ### Acceptance criteria
 
 - [ ] La fiche d'une campagne envoyée affiche le nombre d'envois, d'ouvertures et de clics, avec les taux correspondants.
-- [ ] Une campagne scindée en deux parts (s26) présente des statistiques consolidées sur l'ensemble de la campagne.
+- [ ] Une campagne étalée en plusieurs parts (s26) présente des statistiques consolidées sur l'ensemble de la campagne.
 - [ ] Des statistiques indisponibles ou pas encore consolidées côté fournisseur s'affichent comme telles, sans chiffre inventé ni zéro trompeur.
 - [ ] Les statistiques d'une association ne sont jamais visibles d'une autre.
 
@@ -2749,7 +2768,7 @@ droits n'a aucun moyen de revenir en arrière sans le prestataire.
 
 ### Dependencies
 
-s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42
+s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42, s52
 
 ### Agentic notes
 
@@ -2954,7 +2973,7 @@ pendant une simulation reste possible mais est attribuée au SuperAdmin (critèr
 ⚠️ **Absorbe s15-inviter-membre le 23 octobre 2026** (arbitrage de l'utilisatrice, après la recherche
 de s15). L'invitation unitaire n'avait de valeur propre que pour un propriétaire arrivé après le
 lancement ; construite seule, elle aurait tranché trop tôt des questions qui relèvent du lancement
-(habillage des envois de s25, budget quotidien de s26). Les critères de s15 sont repris ci-dessous ;
+(habillage des envois de s25, budget quotidien de s52). Les critères de s15 sont repris ci-dessous ;
 la recherche faite pour s15 est le point de départ de celle de s42.
 
 **En tant que** membre du bureau **je veux** annoncer le site à tous les propriétaires d'un seul geste
@@ -2973,7 +2992,7 @@ la recherche faite pour s15 est le point de départ de celle de s42.
 - [ ] Aucun membre de la liste n'est omis des deux canaux : la somme des destinataires email et des courriers produits égale l'effectif de l'association.
 - [ ] Le bureau suit l'adoption : nombre d'invitations envoyées, nombre de membres s'étant connectés au moins une fois, liste des membres jamais connectés.
 - [ ] Relancer les membres jamais connectés renvoie une invitation à eux seuls, sans réinviter ceux qui se sont déjà connectés.
-- [ ] L'opération passe par l'adaptateur d'envoi et respecte le budget quotidien du tenant (s26) : au-delà du seuil, elle se scinde et se reporte comme n'importe quel envoi.
+- [ ] L'opération passe par l'adaptateur d'envoi et respecte le budget quotidien du tenant (s52) : au-delà du budget, elle se scinde et se reporte comme n'importe quel envoi.
 - [ ] **Invitation individuelle** (ex-s15) : depuis la fiche d'un membre disposant d'une adresse email, le bureau déclenche l'envoi d'une invitation ; le membre reçoit un email portant un lien de connexion valide. C'est le chemin d'un propriétaire arrivé après le lancement.
 - [ ] L'invitation individuelle part par le même canal transactionnel que le lien magique (s03), dont elle reprend l'en-tête au logo de l'association (s01b, ou son nom à défaut), et porte le nom de l'association.
 - [ ] Le texte de l'invitation est un paramètre de tenant : le modifier change l'email suivant, sans redéploiement.
@@ -2986,7 +3005,7 @@ la recherche faite pour s15 est le point de départ de celle de s42.
 
 ### Dependencies
 
-s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28
+s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28, s52
 
 ### Agentic notes
 
@@ -3692,74 +3711,140 @@ Réf. `docs/exploitation/recette-s12b.md` (constat du 5 novembre 2026), ADR 012/
 
 ---
 
+## Story s52-budget-envoi-adaptateur — Tenir le quota d'envoi de tous les emails
+
+⚠️ **Story hors du tableau de périmètre du PRD**, scindée de s26 le 11 novembre 2026. Le quota Brevo est
+**par compte et par jour, tous envois confondus** : étaler une campagne (s26) ne borne rien si les
+invitations, les relances et le reste s'y ajoutent. Cette story tient ce budget **dans l'adaptateur
+d'envoi** que tous les emails traversent, et reporte au lendemain ce qui le dépasserait.
+
+**En tant que** prestataire (SuperAdmin) et membre du bureau **je veux** que le total des emails d'une
+association ne dépasse jamais le quota du jour, et que ce qui ne part pas aujourd'hui parte demain
+**afin de** ne pas générer de surcoût ni perdre un envoi.
+
+### Complexity
+
+3
+
+### Acceptance criteria
+
+- [ ] Chaque association dispose d'un **budget quotidien d'envoi** (300 par défaut, paramètre de tenant, sans redéploiement), décompté dans l'adaptateur d'envoi par **tout** email sortant qui le traverse — pas seulement les campagnes. Vérifié avec un émetteur de test distinct des campagnes, sur l'adaptateur et non sur une énumération d'émetteurs.
+- [ ] Le décompte est **atomique et transverse** : deux envois simultanés ne peuvent pas, ensemble, dépasser le budget ; le compteur vit en base, pas en mémoire (un redémarrage ne le remet pas à zéro).
+- [ ] **Les emails de connexion ne sont jamais reportés ni refusés pour cause de budget** : lien de connexion et autres emails de sécurité partent toujours, même budget épuisé. Ils sont décomptés ; une **réserve** (valeur de tenant, 100 par défaut) est mise de côté pour eux, de sorte que les envois reportables ne peuvent pas consommer plus que `budget − réserve`.
+- [ ] Un envoi reportable qui dépasserait le budget du jour n'est ni refusé ni perdu : il est **reporté au lendemain** et le bureau voit qu'il est en attente (nature, date de report).
+- [ ] Un envoi reporté part effectivement le jour suivant, sans action humaine, et une seule fois — même si le planificateur est déclenché deux fois ou redémarré entre-temps.
+- [ ] Les campagnes de s26 passent par ce budget : une campagne dont une part dépasserait le reliquat du jour est reportée, pas écartée ; le plafond de 100 de s26 reste valable comme plafond propre aux campagnes.
+- [ ] Un email dont le contenu est conservé pour être rejoué (envoi reporté) n'expose jamais ce contenu dans un journal, ni à une autre association ; il est purgé une fois parti.
+- [ ] Les emails de plateforme sans association (SuperAdmin, système) ne consomment le budget d'aucune association.
+- [ ] Les budgets sont isolés par tenant : un test d'accès croisé prouve qu'une association ne lit ni ne consomme le budget d'une autre.
+- [ ] La limite du jour se calcule sur le jour de `Europe/Paris` ; la frontière de remise à zéro de Brevo est vérifiée et consignée dans les notes de la story avant le plan.
+
+### Dependencies
+
+s26
+
+### Agentic notes
+
+Réf. ADR 005 (« le quota est une propriété du transport »), ADR 006, `docs/research/s26-envoi-echelonne.md`
+(pièges 1, 2, 3, 7 et 8).
+
+**Piège n°1 — l'adaptateur ne connaît pas l'association.** `sendEmailService` n'a pas d'`organizationId` ;
+un paramètre optionnel laisse passer des envois non comptés en silence, le mode d'échec que cette story
+veut empêcher. À trancher en `/ks-plan` : paramètre obligatoire, avec une valeur explicite « plateforme »
+pour les emails sans association, plutôt qu'un oubli silencieux.
+
+**Piège n°2 — le report d'un email unitaire suppose de conserver le message.** Destinataire, objet,
+texte, HTML : des données personnelles en base. Les stocker dans `scheduled_job.payload` ou dans une
+table dédiée est à trancher en `/ks-plan` ; dans les deux cas, purge après envoi et jamais dans un
+journal.
+
+**Décision du 11 novembre 2026 (utilisatrice) :** garder une réserve pour les emails de connexion. Les
+envois de campagne sont déjà plafonnés à 100/jour par s26 ; la réserve s'applique en plus aux envois
+reportables que cette story intercepte.
+
+**Réutilise le planificateur de s26** (`scheduled_job`) pour rejouer les envois reportés ; ne crée pas
+de second planificateur. Table du compteur : `daily_send_budget` (nom prévu par `docs/architecture.md`)
+ou généralisation de `rate_limit_event` — le compteur du limiteur n'est pas conditionnel, un budget
+exige un incrément **refusé au plafond dans la même instruction**. À trancher en `/ks-plan`.
+
+**Preuve sur l'adaptateur.** s29 (relances) et s42 (lancement) sont livrées après cette story et ne
+peuvent pas servir de preuve ; chacune porte de son côté un critère affirmant qu'elle passe bien par
+l'adaptateur.
+
+⚠️ Comme s26 : si plusieurs associations partagent un même compte Brevo, le quota est partagé et le
+budget doit être arbitré entre tenants — hors périmètre tant qu'il y a un client et une clé.
+
+---
+
 # Récapitulatif — ordre et dépendances
 
-| Id   | Story                            | Cx  | Dépend de                                                                                                                                | Bloc |
-| ---- | -------------------------------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| s01  | provisionner-association         | 4   | —                                                                                                                                        | A    |
-| s01b | logo-association                 | 3   | s01                                                                                                                                      | A    |
-| s02  | parametres-association           | 3   | s01, s01b                                                                                                                                | A    |
-| s03  | connexion-lien-magique           | 3   | s01, s01b, s02                                                                                                                           | A    |
-| s03b | roles-registre-actions           | 3   | s01, s01b, s02                                                                                                                           | A    |
-| s03c | session-multi-domaine            | 3   | s03                                                                                                                                      | A    |
-| s04  | pages-cms                        | 4   | s01, s02, s03b                                                                                                                           | A    |
-| s04b | navigation-publique              | 2   | s04                                                                                                                                      | A    |
-| s05  | actualites                       | 2   | s04                                                                                                                                      | A    |
-| s06  | presentation-bureau              | 2   | s04                                                                                                                                      | A    |
-| s07  | bandeau-alerte                   | 1   | s01, s03b                                                                                                                                | A    |
-| s08  | formulaire-contact               | 2   | s02, s04                                                                                                                                 | A    |
-| s08b | limitation-debit-formulaires     | 1   | s08                                                                                                                                      | A    |
-| s09  | analyses-eau                     | 2   | s04                                                                                                                                      | A    |
-| s10  | signalements-publics             | 3   | s02, s04, s08b                                                                                                                           | A    |
-| s11  | seo                              | 2   | s02, s04, s05, s09                                                                                                                       | A    |
-| s12  | membres-parcelles                | 4   | s01, s03, s03b                                                                                                                           | B    |
-| s12a | retrait-supabase                 | 2   | s01b                                                                                                                                     | B    |
-| s12b | mise-en-ligne                    | 3   | s01, s01b, s03, s03c, s08b, s12a, s44, s45, s46, s46b, s47                                                                               | B    |
-| s12c | sauvegarde                       | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                           | B    |
-| s12d | comptes-membres                  | 3   | s03, s03c, s12, s46, s46b                                                                                                                | B    |
-| s13  | import-initial-membres           | 3   | s12, s12d, s12c                                                                                                                          | B    |
-| s14  | attribuer-roles                  | 2   | s03b, s12, s12d                                                                                                                          | B    |
-| s16  | coordonnees-membre               | 1   | s12, s12d                                                                                                                                | B    |
-| s17  | import-releves-eau               | 3   | s02, s12, s13                                                                                                                            | B    |
-| s18  | historique-consommation          | 2   | s17                                                                                                                                      | B    |
-| s19  | factures-liste                   | 3   | s02, s12, s12d                                                                                                                           | B    |
-| s20  | factures-pennylane               | 3   | s02, s19                                                                                                                                 | B    |
-| s21  | redirection-paiement             | 1   | s02, s19                                                                                                                                 | B    |
-| s22  | signalement-membre               | 2   | s10, s12, s12d                                                                                                                           | B    |
-| s23  | questions-bureau                 | 2   | s02, s10, s12, s12d                                                                                                                      | B    |
-| s24  | notes-internes-membre            | 2   | s12                                                                                                                                      | B    |
-| s25  | campagnes-email                  | 3   | s02, s03, s12                                                                                                                            | C    |
-| s26  | envoi-echelonne                  | 4   | s02, s12b, s25                                                                                                                           | C    |
-| s27  | groupes-destinataires            | 3   | s19, s25                                                                                                                                 | C    |
-| s27b | nature-envois                    | 2   | s25, s27                                                                                                                                 | C    |
-| s28  | publipostage-pdf                 | 3   | s12, s25                                                                                                                                 | C    |
-| s29  | relances-impayes                 | 4   | s02, s19, s25, s26, s27, s27b, s28                                                                                                       | C    |
-| s30  | stats-campagnes                  | 2   | s25, s26                                                                                                                                 | C    |
-| s31  | documents-partages               | 2   | s01b, s03, s03b, s12, s12d                                                                                                               | D    |
-| s32  | documents-nominatifs             | 4   | s12, s12d, s31                                                                                                                           | D    |
-| s33  | vote-asl-community               | 3   | s02, s12, s31                                                                                                                            | E    |
-| s34  | module-voirie                    | 2   | s01, s04, s04b                                                                                                                           | F    |
-| s35  | petites-annonces                 | 3   | s10, s12, s12d                                                                                                                           | F    |
-| s36  | modeles-documents                | 3   | s27, s28, s32                                                                                                                            | F    |
-| s37  | permissions-configurables        | 4   | s03b                                                                                                                                     | F    |
-| s38  | export-donnees                   | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42 | F    |
-| s39  | completude-export                | 2   | s38                                                                                                                                      | F    |
-| s40  | export-membre                    | 2   | s12, s12d, s24, s38, s39                                                                                                                 | F    |
-| s41  | simulation-role                  | 2   | s01, s03b, s24, s37, s38, s39                                                                                                            | F    |
-| s42  | lancement-invitations            | 4   | s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28                                                                                 | F    |
-| s43  | locale-unique                    | 2   | s11                                                                                                                                      | A    |
-| s44  | page-accueil                     | 3   | s02, s04, s04b, s05, s07, s11                                                                                                            | A    |
-| s45  | retrait-pages-publiques-heritees | 3   | s43, s44                                                                                                                                 | A    |
-| s46  | comptes-herites-minimum          | 3   | s03, s03b, s43, s45                                                                                                                      | B    |
-| s46b | connexion-limitee-association    | 4   | s03, s03b, s03c, s46                                                                                                                     | B    |
-| s47  | roles-globaux-reduits            | 3   | s03b, s46b                                                                                                                               | B    |
-| s48  | connexion-a-la-place             | 3   | s03, s03c, s12d, s14, s46b, s47                                                                                                          | B    |
-| s49  | correctif-proxy-nginx            | 2   | s12b                                                                                                                                     | B    |
-| s50  | navigation-liens-libres          | 2   | s04b                                                                                                                                     | A    |
-| s51  | polices-hebergees                | 1   | s12b                                                                                                                                     | B    |
+| Id   | Story                            | Cx  | Dépend de                                                                                                                                     | Bloc |
+| ---- | -------------------------------- | --- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| s01  | provisionner-association         | 4   | —                                                                                                                                             | A    |
+| s01b | logo-association                 | 3   | s01                                                                                                                                           | A    |
+| s02  | parametres-association           | 3   | s01, s01b                                                                                                                                     | A    |
+| s03  | connexion-lien-magique           | 3   | s01, s01b, s02                                                                                                                                | A    |
+| s03b | roles-registre-actions           | 3   | s01, s01b, s02                                                                                                                                | A    |
+| s03c | session-multi-domaine            | 3   | s03                                                                                                                                           | A    |
+| s04  | pages-cms                        | 4   | s01, s02, s03b                                                                                                                                | A    |
+| s04b | navigation-publique              | 2   | s04                                                                                                                                           | A    |
+| s05  | actualites                       | 2   | s04                                                                                                                                           | A    |
+| s06  | presentation-bureau              | 2   | s04                                                                                                                                           | A    |
+| s07  | bandeau-alerte                   | 1   | s01, s03b                                                                                                                                     | A    |
+| s08  | formulaire-contact               | 2   | s02, s04                                                                                                                                      | A    |
+| s08b | limitation-debit-formulaires     | 1   | s08                                                                                                                                           | A    |
+| s09  | analyses-eau                     | 2   | s04                                                                                                                                           | A    |
+| s10  | signalements-publics             | 3   | s02, s04, s08b                                                                                                                                | A    |
+| s11  | seo                              | 2   | s02, s04, s05, s09                                                                                                                            | A    |
+| s12  | membres-parcelles                | 4   | s01, s03, s03b                                                                                                                                | B    |
+| s12a | retrait-supabase                 | 2   | s01b                                                                                                                                          | B    |
+| s12b | mise-en-ligne                    | 3   | s01, s01b, s03, s03c, s08b, s12a, s44, s45, s46, s46b, s47                                                                                    | B    |
+| s12c | sauvegarde                       | 3   | s01b, s04, s05, s06, s09, s12b                                                                                                                | B    |
+| s12d | comptes-membres                  | 3   | s03, s03c, s12, s46, s46b                                                                                                                     | B    |
+| s13  | import-initial-membres           | 3   | s12, s12d, s12c                                                                                                                               | B    |
+| s14  | attribuer-roles                  | 2   | s03b, s12, s12d                                                                                                                               | B    |
+| s16  | coordonnees-membre               | 1   | s12, s12d                                                                                                                                     | B    |
+| s17  | import-releves-eau               | 3   | s02, s12, s13                                                                                                                                 | B    |
+| s18  | historique-consommation          | 2   | s17                                                                                                                                           | B    |
+| s19  | factures-liste                   | 3   | s02, s12, s12d                                                                                                                                | B    |
+| s20  | factures-pennylane               | 3   | s02, s19                                                                                                                                      | B    |
+| s21  | redirection-paiement             | 1   | s02, s19                                                                                                                                      | B    |
+| s22  | signalement-membre               | 2   | s10, s12, s12d                                                                                                                                | B    |
+| s23  | questions-bureau                 | 2   | s02, s10, s12, s12d                                                                                                                           | B    |
+| s24  | notes-internes-membre            | 2   | s12                                                                                                                                           | B    |
+| s25  | campagnes-email                  | 3   | s02, s03, s12                                                                                                                                 | C    |
+| s26  | envoi-echelonne                  | 4   | s02, s12b, s25                                                                                                                                | C    |
+| s27  | groupes-destinataires            | 3   | s19, s25                                                                                                                                      | C    |
+| s27b | nature-envois                    | 2   | s25, s27                                                                                                                                      | C    |
+| s28  | publipostage-pdf                 | 3   | s12, s25                                                                                                                                      | C    |
+| s29  | relances-impayes                 | 4   | s02, s19, s25, s26, s27, s27b, s28, s52                                                                                                       | C    |
+| s30  | stats-campagnes                  | 2   | s25, s26                                                                                                                                      | C    |
+| s31  | documents-partages               | 2   | s01b, s03, s03b, s12, s12d                                                                                                                    | D    |
+| s32  | documents-nominatifs             | 4   | s12, s12d, s31                                                                                                                                | D    |
+| s33  | vote-asl-community               | 3   | s02, s12, s31                                                                                                                                 | E    |
+| s34  | module-voirie                    | 2   | s01, s04, s04b                                                                                                                                | F    |
+| s35  | petites-annonces                 | 3   | s10, s12, s12d                                                                                                                                | F    |
+| s36  | modeles-documents                | 3   | s27, s28, s32                                                                                                                                 | F    |
+| s37  | permissions-configurables        | 4   | s03b                                                                                                                                          | F    |
+| s38  | export-donnees                   | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42, s52 | F    |
+| s39  | completude-export                | 2   | s38                                                                                                                                           | F    |
+| s40  | export-membre                    | 2   | s12, s12d, s24, s38, s39                                                                                                                      | F    |
+| s41  | simulation-role                  | 2   | s01, s03b, s24, s37, s38, s39                                                                                                                 | F    |
+| s42  | lancement-invitations            | 4   | s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28, s52                                                                                 | F    |
+| s43  | locale-unique                    | 2   | s11                                                                                                                                           | A    |
+| s44  | page-accueil                     | 3   | s02, s04, s04b, s05, s07, s11                                                                                                                 | A    |
+| s45  | retrait-pages-publiques-heritees | 3   | s43, s44                                                                                                                                      | A    |
+| s46  | comptes-herites-minimum          | 3   | s03, s03b, s43, s45                                                                                                                           | B    |
+| s46b | connexion-limitee-association    | 4   | s03, s03b, s03c, s46                                                                                                                          | B    |
+| s47  | roles-globaux-reduits            | 3   | s03b, s46b                                                                                                                                    | B    |
+| s48  | connexion-a-la-place             | 3   | s03, s03c, s12d, s14, s46b, s47                                                                                                               | B    |
+| s49  | correctif-proxy-nginx            | 2   | s12b                                                                                                                                          | B    |
+| s50  | navigation-liens-libres          | 2   | s04b                                                                                                                                          | A    |
+| s51  | polices-hebergees                | 1   | s12b                                                                                                                                          | B    |
+| s52  | budget-envoi-adaptateur          | 3   | s26                                                                                                                                           | C    |
 
-**61 stories, aucune à 5.** Répartition : cinq à 1, vingt-deux à 2, vingt-quatre à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 et s51 ajoutées le 5 novembre 2026).
-**Treize stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**62 stories, aucune à 5.** Répartition : cinq à 1, vingt-deux à 2, vingt-cinq à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 et s51 ajoutées le 5 novembre 2026, s52 scindée de s26 le 11 novembre 2026).
+**Quatorze stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
@@ -3773,7 +3858,7 @@ revue du découpage du 7 octobre ; s48, la connexion du SuperAdmin à la place d
 décidé le 28 octobre après s14; s49, le correctif de la
 mise en ligne (s12b) derrière nginx, découvert à la recette du 4 novembre ; s50, les liens libres du
 menu, demandés le 5 novembre après la recette de s12b ; s51, les polices servies avec le site, après deux
-échecs de build dus au téléchargement chez Google.
+échecs de build dus au téléchargement chez Google ; s52, le budget d'envoi de tous les emails, scindé de s26 le 11 novembre.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
@@ -3786,7 +3871,7 @@ Sa surface est énumérée dans le tableau mesuré de `docs/adaptation-socle-des
 Les dix stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
 blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
 daté), s26
-(planification, budget transverse et file de report), s29 (planification et idempotence des
+(planificateur, étalement des campagnes et suivi par destinataire), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
 s38 (moteur d'export et son archive), s42 (invitation individuelle et lancement de masse, absorbe s15), s46b (inscription fermée, connexion limitée à l'association du
 domaine, destination par rôle) — portent chacune leur risque
