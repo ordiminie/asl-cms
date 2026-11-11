@@ -48,6 +48,16 @@ vi.mock('@/components/features/association/bureau-menu-button', () =>
 vi.mock('@/components/features/association/bureau-sidebar', () =>
   named('BureauSidebar')
 )
+vi.mock('@/app/dal/unsubscribe-dal', () => named('getUnsubscribePageStateDal'))
+vi.mock('@/app/dal/association-settings-dal', () =>
+  named('getAssociationSettingsDal')
+)
+vi.mock('@/components/features/campaigns/unsubscribe-panel', () =>
+  named('UnsubscribePanel')
+)
+vi.mock('./(public)/desinscription/[jeton]/actions', () =>
+  named('confirmUnsubscribeAction')
+)
 vi.mock('@/components/ui/sidebar', () =>
   named('SidebarInset', 'SidebarProvider', 'SidebarTrigger')
 )
@@ -81,5 +91,17 @@ describe('layouts authentifies : noindex, nofollow (s11)', () => {
       params: Promise.resolve({locale: 'fr'}),
     })
     expect(metadata.robots).toEqual(NOINDEX)
+  })
+})
+
+/**
+ * La page publique de desinscription porte un jeton dans son URL (s25,
+ * ADR 051) : jamais indexee, et sans referent.
+ */
+describe('desinscription des campagnes : noindex, sans referent (s25)', () => {
+  it('(public)/desinscription/[jeton]', async () => {
+    const {metadata} = await import('./(public)/desinscription/[jeton]/page')
+    expect(metadata.robots).toEqual({index: false, follow: false})
+    expect(metadata.referrer).toBe('no-referrer')
   })
 })

@@ -106,3 +106,60 @@ describe('sendEmailService — tout envoi passe par EmailTransport', () => {
     ).rejects.toBeInstanceOf(EmailTransportError)
   })
 })
+
+describe('sendEmailService — en-têtes, réponse et nom d’expéditeur (s25)', () => {
+  beforeEach(() => {
+    memoryTransport.messages.length = 0
+    vi.mocked(getEmailTransport).mockReturnValue(memoryTransport)
+  })
+
+  it('compose l’expéditeur « Nom <adresse> » et passe en-têtes et réponse', async () => {
+    await sendEmailService(
+      {
+        to: 'membre@exemple.test',
+        subject: 'Objet',
+        text: 'Texte',
+        senderName: 'ASL Les Pins',
+        replyTo: 'bureau@asl-les-pins.test',
+        headers: {'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'},
+      },
+      {recipientType: 'client'}
+    )
+
+    const [sent] = memoryTransport.messages
+    expect(sent.from).toMatch(/^ASL Les Pins <[^<>\s]+@[^<>\s]+>$/)
+    expect(sent.replyTo).toBe('bureau@asl-les-pins.test')
+    expect(sent.headers).toEqual({
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    })
+  })
+
+  it('n’ajoute ni en-têtes ni réponse sans demande', async () => {
+    await sendEmailService(
+      {to: 'a@exemple.test', subject: 'Objet', text: 'Texte'},
+      {recipientType: 'system'}
+    )
+
+    expect(memoryTransport.messages[0]).not.toHaveProperty('headers')
+    expect(memoryTransport.messages[0]).not.toHaveProperty('replyTo')
+    expect(memoryTransport.messages[0].from).not.toContain('<')
+  })
+})
+
+describe('isClientEmailEnabledService', () => {
+  it('reflète l’interrupteur des envois aux membres', async () => {
+    const {getBooleanSettingService} =
+      await import('@/services/app-settings-service')
+    const {isClientEmailEnabledService} =
+      await import('@/services/email-service')
+
+    vi.mocked(getBooleanSettingService).mockResolvedValue(true)
+    await expect(isClientEmailEnabledService()).resolves.toBe(true)
+
+    vi.mocked(getBooleanSettingService).mockImplementation(async (key) =>
+      key === 'email.enabled_for_clients' ? false : true
+    )
+    await expect(isClientEmailEnabledService()).resolves.toBe(false)
+    vi.mocked(getBooleanSettingService).mockResolvedValue(true)
+  })
+})

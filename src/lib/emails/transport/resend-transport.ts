@@ -23,6 +23,8 @@ export const createResendTransport = ({
           subject: message.subject,
           html: message.html,
           text: message.text,
+          ...(message.headers ? {headers: message.headers} : {}),
+          ...(message.replyTo ? {replyTo: message.replyTo} : {}),
         } as Parameters<typeof resend.emails.send>[0])
       } catch (error) {
         throw new EmailTransportError('resend', 'Resend injoignable', {

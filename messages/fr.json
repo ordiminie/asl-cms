@@ -913,6 +913,36 @@
         "urlIntro": "Ou copiez ce lien :",
         "footer": "Cet email vous est envoyé parce qu’un visiteur a fait un signalement depuis le site de {name}, et que cette adresse est celle que l’association a choisie pour être avertie."
       }
+    },
+    "campaign": {
+      "provisionalLine": "**[Texte provisoire — à remplacer avant l’envoi]**",
+      "footer": {
+        "reason": "Vous recevez cet email parce que vous êtes membre de {name}.",
+        "unsubscribe": "Ne plus recevoir ces campagnes",
+        "notice": "Se désinscrire ne vous prive d’aucune information obligatoire."
+      },
+      "templates": {
+        "reminder": {
+          "subject": "Rappel : un paiement reste en attente",
+          "preheader": "Sauf erreur de notre part, un règlement n’est pas encore arrivé.",
+          "body": "**[Texte provisoire — à remplacer avant l’envoi]**\n\nBonjour {nom},\n\nSauf erreur de notre part, un paiement concernant la parcelle {parcelle} reste en attente à ce jour.\n\nSi vous l’avez réglé entre-temps, ne tenez pas compte de ce message. Pour toute question, répondez simplement à cet email.\n\nMessage envoyé le {date}.\n\nLe bureau de l’association"
+        },
+        "invoice": {
+          "subject": "Votre facture est disponible",
+          "preheader": "Vous pouvez la consulter et la régler depuis votre espace membre.",
+          "body": "**[Texte provisoire — à remplacer avant l’envoi]**\n\nBonjour {nom},\n\nVotre facture pour la parcelle {parcelle} est disponible. Vous pouvez la consulter et la régler depuis votre espace membre.\n\nPour toute question, répondez simplement à cet email.\n\nMessage envoyé le {date}.\n\nLe bureau de l’association"
+        },
+        "general_assembly": {
+          "subject": "Convocation à l’assemblée générale",
+          "preheader": "Date, lieu et ordre du jour à l’intérieur.",
+          "body": "**[Texte provisoire — à remplacer avant l’envoi]**\n\nBonjour {nom},\n\nLe bureau vous convoque à l’assemblée générale ordinaire de l’association, le **[date et heure]**, [lieu].\n\nOrdre du jour :\n\n1. Approbation des comptes\n2. Vote du budget\n3. Questions diverses\n\nVous êtes convoqué en tant que propriétaire de la parcelle {parcelle}. Si vous ne pouvez pas venir, vous pouvez vous faire représenter par un autre membre.\n\nMessage envoyé le {date}.\n\nLe bureau de l’association"
+        },
+        "post_assembly_documents": {
+          "subject": "Documents de l’assemblée générale",
+          "preheader": "Le procès-verbal et les documents de l’assemblée sont publiés.",
+          "body": "**[Texte provisoire — à remplacer avant l’envoi]**\n\nBonjour {nom},\n\nLe procès-verbal et les documents de la dernière assemblée générale sont publiés. Vous pouvez les consulter depuis votre espace membre.\n\nPour toute question, répondez simplement à cet email.\n\nMessage envoyé le {date}.\n\nLe bureau de l’association"
+        }
+      }
     }
   },
   "Tasks": {
@@ -1926,7 +1956,8 @@
       "alert": "Bandeau d’alerte",
       "messages": "Messages reçus",
       "reports": "Signalements",
-      "memberProfiles": "Propriétaires"
+      "memberProfiles": "Propriétaires",
+      "campaigns": "Campagnes"
     },
     "cards": {
       "logo": {
@@ -2035,6 +2066,16 @@
         "help": "Google vous le donne quand vous déclarez le site dans la Search Console : c’est la suite de lettres et de chiffres après content=. Collez-la ici.",
         "whenEmpty": "Vide : le site n’est pas déclaré auprès de Google. Il peut tout de même apparaître dans ses résultats.",
         "extracted": "Nous avons gardé le code seul : {code}."
+      },
+      "legalName": {
+        "label": "Raison sociale",
+        "help": "Le nom officiel de l’association, tel qu’il figure dans ses statuts. Il s’écrit au pied de page de chaque campagne email.",
+        "whenEmpty": "Vide : le pied de page des campagnes porte le nom de l’association."
+      },
+      "legalMentions": {
+        "label": "Mentions du pied de page",
+        "help": "Adresse du siège, numéro d’enregistrement ou toute mention que l’association doit faire figurer au bas de ses emails. Elles s’écrivent au pied de page de chaque campagne.",
+        "whenEmpty": "Vide : aucune mention n’est ajoutée au pied de page. L’envoi reste possible."
       }
     },
     "hues": {
@@ -2069,6 +2110,10 @@
       "seo": {
         "title": "Référencement",
         "description": "Ce que Google affiche de votre site, et ce qu’on voit quand un lien est partagé."
+      },
+      "legal": {
+        "title": "Mentions des emails",
+        "description": "Ce qui s’écrit au pied de page des campagnes envoyées aux membres."
       }
     },
     "submit": "Enregistrer les réglages",
@@ -3279,6 +3324,10 @@
           "position": "Page {page} sur {total}",
           "next": "Suivant"
         }
+      },
+      "unsubscribed": {
+        "badge": "Désinscrit des campagnes",
+        "since": "A refusé les campagnes email le {date} (depuis le lien d’un email)."
       }
     },
     "attachDialog": {
@@ -3463,5 +3512,186 @@
     "login": {
       "expired": "La session à la place d’un compte s’est terminée. Reconnectez-vous pour continuer."
     }
+  },
+  "CampaignsBureau": {
+    "composer": {
+      "validation": {
+        "templateRequired": "Choisissez un modèle, ou le message libre.",
+        "subjectRequired": "Écrivez l’objet de la campagne.",
+        "bodyRequired": "Écrivez le message.",
+        "tooLong": "{count, plural, one {# caractère de trop.} other {# caractères de trop.}}"
+      },
+      "title": "Écrire une campagne",
+      "errorSummary": "{count, plural, one {# champ à corriger.} other {# champs à corriger.}} Rien n’a été envoyé.",
+      "errorItem": "{field} : {message}",
+      "fieldNames": {
+        "templateId": "Modèle",
+        "subject": "Objet",
+        "preheader": "Texte d’aperçu",
+        "bodyMarkdown": "Message"
+      },
+      "unknownVariableTitle": "Variable inconnue : {variables}.",
+      "unknownVariableDescription": "Elle n’est pas remplacée dans l’email. Corrigez-la, ou remplacez-la par {parcelle}, {nom} ou {date}.",
+      "noRecipientAlert": "Il n’y a personne à qui envoyer cette campagne.",
+      "template": {
+        "title": "1 · Modèle",
+        "legend": "Modèle de la campagne",
+        "provisional": "Texte provisoire.",
+        "provisionalDescription": "Le contenu de ce modèle reste à rédiger avec le bureau : relisez-le et adaptez-le avant l’envoi.",
+        "applied": "Modèle appliqué. L’objet et le message ont été remplacés.",
+        "replaceTitle": "Remplacer votre texte ?",
+        "replaceDescription": "Le texte déjà écrit sera effacé.",
+        "keep": "Garder mon texte",
+        "replace": "Remplacer le texte"
+      },
+      "message": {
+        "title": "2 · Message",
+        "subject": "Objet",
+        "subjectHelp": "Le nom de l’association est ajouté devant l’objet : « {prefix}… ».",
+        "preheader": "Texte d’aperçu (facultatif)",
+        "preheaderHelp": "La ligne grise que la messagerie affiche à côté de l’objet. Facultatif.",
+        "counter": "{count} / {max}",
+        "body": "Message",
+        "variablesTitle": "Variables disponibles",
+        "variables": {
+          "nom": "le nom du membre",
+          "parcelle": "ses parcelles actuelles",
+          "date": "la date d’envoi"
+        },
+        "variablesNote": "Elles sont remplacées pour chaque destinataire. Une variable que nous ne connaissons pas bloque l’envoi.",
+        "replyTo": "Les réponses arrivent à {email}.",
+        "noReplyTo": "Aucune adresse de contact n’est renseignée dans les Réglages : les réponses n’arrivent nulle part."
+      },
+      "recipients": {
+        "title": "3 · Destinataires",
+        "target": "Tous les membres",
+        "reachable": "Recevront cette campagne",
+        "withoutEmail": "Sans adresse email",
+        "withoutEmailNote": "Cette campagne ne les joint pas.",
+        "unsubscribed": "Désinscrits (exclus)",
+        "total": "Membres au total",
+        "none": "Aucun membre ne peut recevoir cette campagne : aucun n’a d’adresse email, ou tous sont désinscrits."
+      },
+      "preview": "Voir l’aperçu",
+      "cancel": "Annuler"
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut envoyer une campagne.",
+      "failed": "Une erreur technique a empêché l’opération. Votre message est conservé : réessayez dans un instant."
+    },
+    "metadata": {
+      "title": "Campagnes",
+      "newTitle": "Écrire une campagne"
+    },
+    "title": "Campagnes",
+    "description": "Les campagnes déjà envoyées aux membres.",
+    "write": "Écrire une campagne",
+    "empty": "Aucune campagne envoyée pour l’instant.",
+    "writeFirst": "Écrire la première campagne",
+    "loadFailed": "La liste des campagnes n’a pas pu être chargée. Rien n’est perdu : vos campagnes envoyées sont conservées. Rechargez la page.",
+    "columns": {
+      "subject": "Objet",
+      "sentAt": "Envoyée le",
+      "author": "Par",
+      "template": "Modèle",
+      "recipients": "Destinataires",
+      "action": "Action"
+    },
+    "open": "Consulter",
+    "sentAt": "{date} à {time}",
+    "unknownAuthor": "Non renseigné",
+    "pagination": {
+      "label": "Pages des campagnes",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "position": "Page {page} sur {total}"
+    },
+    "templateNames": {
+      "free": "Message libre",
+      "reminder": "Relance manuelle",
+      "invoice": "Facture disponible",
+      "general_assembly": "Convocation à l’AG",
+      "post_assembly_documents": "Documents après l’AG"
+    },
+    "templateUsages": {
+      "free": "Vous écrivez le message en entier.",
+      "reminder": "Rappeler un paiement en attente à un membre.",
+      "invoice": "Prévenir qu’une facture est consultable.",
+      "general_assembly": "Convoquer à l’assemblée générale.",
+      "post_assembly_documents": "Annoncer la publication des documents de l’assemblée."
+    },
+    "status": {
+      "sending": "En cours",
+      "sent": "Envoyée",
+      "interrupted": "Interrompue"
+    },
+    "detail": {
+      "summary": "Résumé",
+      "content": "Contenu envoyé",
+      "fields": {
+        "sentAt": "Envoyée le",
+        "author": "Par",
+        "template": "Modèle",
+        "target": "Cible",
+        "recipients": "Destinataires",
+        "withoutEmail": "Sans adresse email",
+        "unsubscribed": "Désinscrits exclus"
+      },
+      "targetKinds": {
+        "all_members": "Tous les membres"
+      },
+      "subjectLine": "Objet : {subject}",
+      "preheaderLine": "Texte d’aperçu : {preheader}",
+      "contentNote": "Chaque membre a reçu ce message avec ses propres valeurs.",
+      "back": "Retour aux campagnes",
+      "success": "Campagne envoyée à {count, plural, one {# membre} other {# membres}}. Elle est archivée ci-dessous.",
+      "progress": "Envoi en cours : {sent} sur {total} membres.",
+      "progressNote": "L’envoi continue même si vous quittez cette page.",
+      "interruptedTitle": "L’envoi s’est arrêté après {sent} membres sur {total}.",
+      "interruptedDescription": "Les {sent} premiers ont reçu le message ; les {rest} autres ne l’ont pas reçu. Contactez l’équipe technique avant de réessayer : relancer l’envoi écrirait deux fois aux {sent} premiers.",
+      "notFound": "Cette campagne n’existe pas ou n’appartient pas à votre association."
+    },
+    "breadcrumb": {
+      "label": "Fil d’Ariane",
+      "list": "Campagnes",
+      "new": "Nouvelle campagne",
+      "preview": "Aperçu"
+    },
+    "preview": {
+      "title": "Aperçu avant l’envoi",
+      "identity": "Aperçu avec les données de {name}, membre de l’association.",
+      "otherMember": "Voir avec un autre membre",
+      "nothingSent": "Rien n’est envoyé tant que vous n’avez pas confirmé.",
+      "subjectLine": "Objet : {subject}",
+      "frameTitle": "Aperçu de l’email",
+      "recall": "{recipients} membres recevront cette campagne · {withoutEmail} sans email et {unsubscribed} désinscrits n’en recevront pas.",
+      "send": "Envoyer à {count, plural, one {# membre} other {# membres}}",
+      "edit": "Modifier le message",
+      "confirmTitle": "Envoyer la campagne ?",
+      "confirmDescription": "{count, plural, one {# membre va} other {# membres vont}} recevoir « {subject} ». L’envoi ne peut pas être annulé.",
+      "confirmBack": "Revenir à l’aperçu",
+      "disabledTitle": "L’envoi est désactivé sur cet environnement : aucun email n’est parti.",
+      "disabledDescription": "La campagne n’a pas été archivée.",
+      "failedTitle": "La campagne n’a pas pu être envoyée.",
+      "failedDescription": "Rien n’est parti et votre message est conservé. Réessayez dans un instant."
+    }
+  },
+  "UnsubscribePage": {
+    "metadata": {
+      "title": "Désinscription des campagnes"
+    },
+    "title": "Ne plus recevoir les campagnes de {name}",
+    "invalidTitle": "Ce lien ne fonctionne pas",
+    "ask": "Vous êtes sur le point de ne plus recevoir les campagnes que le bureau envoie par email aux membres.",
+    "confirm": "Me désinscrire",
+    "keep": "Je garde les campagnes",
+    "done": "C’est enregistré. Vous ne recevrez plus les campagnes de {name}.",
+    "already": "Vous êtes déjà désinscrit. Rien d’autre à faire.",
+    "invalid": "Ce lien de désinscription n’est pas valide.",
+    "invalidContact": "Rien n’a été modifié. Vous pouvez écrire au bureau de l’association : {email}.",
+    "invalidNoContact": "Rien n’a été modifié.",
+    "failedTitle": "Votre demande n’a pas pu être enregistrée.",
+    "failedDescription": "Rien n’a changé. Réessayez dans un instant.",
+    "siteLink": "Aller sur le site de l’association"
   }
 }

@@ -30,6 +30,8 @@ const eslintConfig = defineConfig([
     'playwright-report/**',
     '.claude/**',
     'drizzle/**',
+    // Maquettes exportées de Claude Design : code généré, pas le nôtre.
+    'docs/designs/**',
   ]),
   // Custom rules
   {

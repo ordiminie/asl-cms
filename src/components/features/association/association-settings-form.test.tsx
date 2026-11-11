@@ -551,3 +551,24 @@ describe('AssociationSettingsForm — carte « Referencement » (s11)', () => {
     ).toBe('Réseau d’eau privé.')
   })
 })
+
+describe('AssociationSettingsForm — carte « Mentions des emails » (s25)', () => {
+  it('rend la raison sociale et les mentions dans leur propre carte, avec ce qui s’applique à vide', () => {
+    productionForm()
+
+    const card = screen
+      .getByRole('heading', {name: 'Mentions des emails'})
+      .closest('[data-slot="card"]') as HTMLElement
+    expect(card).not.toBeNull()
+    const legalName = within(card).getByLabelText(/Raison sociale/)
+    const mentions = within(card).getByLabelText(/Mentions du pied de page/)
+    expect(legalName.tagName).toBe('INPUT')
+    expect(mentions.tagName).toBe('TEXTAREA')
+    expect(
+      within(card).getByText(
+        'Vide : le pied de page des campagnes porte le nom de l’association.'
+      )
+    ).toBeInTheDocument()
+    expect(within(card).queryByLabelText('Adresse de contact')).toBeNull()
+  })
+})

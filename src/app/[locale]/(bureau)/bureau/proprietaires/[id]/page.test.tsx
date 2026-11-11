@@ -27,6 +27,9 @@ vi.mock('@/app/dal/member-profile-dal', () => ({
 vi.mock('@/app/dal/member-note-dal', () => ({
   getMemberNotesForBureauDal: vi.fn(),
 }))
+vi.mock('@/app/dal/unsubscribe-dal', () => ({
+  getMemberUnsubscribeForBureauDal: vi.fn(),
+}))
 vi.mock('../notes-actions', () => ({
   addMemberNoteAction: vi.fn(),
   addMemberExchangeAction: vi.fn(),
@@ -47,6 +50,7 @@ import {
   getMemberProfileForBureauDal,
 } from '@/app/dal/member-profile-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {getMemberUnsubscribeForBureauDal} from '@/app/dal/unsubscribe-dal'
 
 import BureauMemberProfilePage from './page'
 
@@ -98,6 +102,9 @@ beforeEach(() => {
     former: [],
   })
   vi.mocked(getMemberNotesForBureauDal).mockReturnValue(new Promise(() => {}))
+  vi.mocked(getMemberUnsubscribeForBureauDal).mockReturnValue(
+    new Promise(() => {})
+  )
 })
 
 describe('/bureau/proprietaires/[id] — accès par rôle', () => {
@@ -230,5 +237,31 @@ describe('/bureau/proprietaires/[id] — notes et échanges (s24)', () => {
 
     await expect(renderPage()).rejects.toThrow('NEXT_NOT_FOUND')
     expect(getMemberNotesForBureauDal).not.toHaveBeenCalled()
+  })
+})
+
+describe('/bureau/proprietaires/[id] — désinscription des campagnes (s25)', () => {
+  beforeEach(() => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+  })
+
+  it('lit le refus de la fiche pour le tenant courant, sans l’attendre', async () => {
+    await renderPage()
+
+    expect(getMemberUnsubscribeForBureauDal).toHaveBeenCalledWith(
+      TENANT_ID,
+      PROFILE_ID
+    )
+    expect(
+      screen.getByRole('heading', {level: 1, name: 'Hélène Roy'})
+    ).toBeInTheDocument()
+  })
+
+  it('ne lit aucun refus pour un membre simple', async () => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(false)
+
+    await renderPage()
+
+    expect(getMemberUnsubscribeForBureauDal).not.toHaveBeenCalled()
   })
 })

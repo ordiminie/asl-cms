@@ -5,6 +5,8 @@ import {
   ACCENT_HUE_SETTING_KEY,
   ACCENT_HUES,
   ASSOCIATION_DESCRIPTION_SETTING_KEY,
+  ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
+  ASSOCIATION_LEGAL_NAME_SETTING_KEY,
   ASSOCIATION_MEMBER_COUNT_SETTING_KEY,
   ASSOCIATION_SETTING_ERROR_CODES,
   ASSOCIATION_SETTINGS_REGISTRY,
@@ -100,7 +102,45 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      {
+        key: ASSOCIATION_LEGAL_NAME_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  it('les mentions du pied de page des campagnes sont facultatives, sans défaut, dans la carte « legal » (s25)', () => {
+    const legalName = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      ASSOCIATION_LEGAL_NAME_SETTING_KEY
+    )
+    const mentions = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY
+    )
+
+    expect(legalName).toMatchObject({
+      type: 'text',
+      required: false,
+      multiline: false,
+      section: 'legal',
+    })
+    expect(legalName?.default).toBeUndefined()
+    expect(mentions).toMatchObject({
+      type: 'text',
+      required: false,
+      multiline: true,
+      section: 'legal',
+    })
+    expect(mentions?.default).toBeUndefined()
   })
 
   it('le seuil des formulaires publics est un entier de 1 a 20 par heure, 3 par defaut', () => {
@@ -268,6 +308,8 @@ describe('registre de production', () => {
       CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
       ASSOCIATION_DESCRIPTION_SETTING_KEY,
       GOOGLE_VERIFICATION_SETTING_KEY,
+      ASSOCIATION_LEGAL_NAME_SETTING_KEY,
+      ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -636,6 +678,8 @@ describe('registre — carte « Referencement » (s11)', () => {
     ).toEqual([
       ASSOCIATION_DESCRIPTION_SETTING_KEY,
       GOOGLE_VERIFICATION_SETTING_KEY,
+      ASSOCIATION_LEGAL_NAME_SETTING_KEY,
+      ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
     ])
   })
 

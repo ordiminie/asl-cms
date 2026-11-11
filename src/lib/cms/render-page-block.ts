@@ -24,7 +24,7 @@ export const PAGE_BLOCK_FILE_ROUTE = '/api/pages/files'
  * system produit (gras, italique, titre 2/3, liste, lien). Pas le schéma GFM
  * par défaut — ni tableau, ni code, ni attribut de style.
  */
-const RESTRICTED_SANITIZE_SCHEMA = {
+export const RESTRICTED_SANITIZE_SCHEMA = {
   tagNames: [
     'p',
     'br',

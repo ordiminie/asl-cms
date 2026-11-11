@@ -55,7 +55,49 @@ describe('createFileTransport', () => {
   })
 })
 
+describe('createFileTransport — en-têtes', () => {
+  let dir: string
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'outbox-test-'))
+  })
+
+  afterEach(async () => {
+    await fs.rm(dir, {recursive: true, force: true})
+  })
+
+  it('écrit les en-têtes et l’adresse de réponse, que les e2e lisent', async () => {
+    await createFileTransport(dir).send({
+      ...message,
+      headers: {'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'},
+      replyTo: 'bureau@asl-les-pins.test',
+    })
+
+    const [file] = await fs.readdir(dir)
+    const written = JSON.parse(await fs.readFile(path.join(dir, file), 'utf8'))
+    expect(written.headers).toEqual({
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    })
+    expect(written.replyTo).toBe('bureau@asl-les-pins.test')
+  })
+})
+
 describe('createMemoryTransport', () => {
+  it('garde les en-têtes et l’adresse de réponse', async () => {
+    const transport = createMemoryTransport()
+
+    await transport.send({
+      ...message,
+      headers: {'X-Test': '1'},
+      replyTo: 'bureau@asl-les-pins.test',
+    })
+
+    expect(transport.messages[0]).toMatchObject({
+      headers: {'X-Test': '1'},
+      replyTo: 'bureau@asl-les-pins.test',
+    })
+  })
+
   it('garde les messages envoyés, dans l’ordre', async () => {
     const transport = createMemoryTransport()
 

@@ -13,6 +13,10 @@ export type EmailMessage = {
   html?: string
   /** Version texte, toujours fournie (design system §5). */
   text: string
+  /** En-tetes supplementaires (`List-Unsubscribe`, RFC 8058). */
+  headers?: Record<string, string>
+  /** Adresse de reponse, une adresse seule. */
+  replyTo?: string
 }
 
 export type EmailTransport = {

@@ -24,7 +24,9 @@ describe('createBrevoTransport', () => {
   })
 
   it('envoie la requête exacte de l’API transactionnelle de Brevo', async () => {
-    fetchMock.mockResolvedValue(new Response('{"messageId":"1"}', {status: 201}))
+    fetchMock.mockResolvedValue(
+      new Response('{"messageId":"1"}', {status: 201})
+    )
 
     await createBrevoTransport({apiKey: 'xkeysib-test'}).send(message)
 
@@ -59,6 +61,37 @@ describe('createBrevoTransport', () => {
       name: 'ASL Les Pins',
       email: 'contact@asl-les-pins.test',
     })
+  })
+
+  it('transmet les en-têtes et l’adresse de réponse quand ils sont fournis', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', {status: 201}))
+
+    await createBrevoTransport({apiKey: 'k'}).send({
+      ...message,
+      headers: {
+        'List-Unsubscribe': '<https://asl.test/api/campaigns/unsubscribe/x>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
+      replyTo: 'bureau@asl-les-pins.test',
+    })
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.headers).toEqual({
+      'List-Unsubscribe': '<https://asl.test/api/campaigns/unsubscribe/x>',
+      'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+    })
+    expect(body.replyTo).toEqual({email: 'bureau@asl-les-pins.test'})
+  })
+
+  it('n’ajoute ni en-têtes ni réponse quand ils sont absents', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', {status: 201}))
+
+    await createBrevoTransport({apiKey: 'k'}).send(message)
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(Object.keys(body).sort()).toEqual(
+      ['sender', 'to', 'subject', 'htmlContent', 'textContent'].sort()
+    )
   })
 
   it('lève une EmailTransportError sur une réponse non 2xx', async () => {

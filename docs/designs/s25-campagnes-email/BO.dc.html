@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 100%; min-height: {{ minH }}; max-height: {{ maxH }}; display: flex; background: oklch(1 0 0); font-family: 'Public Sans', sans-serif; color: oklch(0.22 0.015 250); position: relative; overflow: hidden; font-size: 17px; line-height: 1.6;">
+<sc-if value="{{ desk }}" hint-placeholder-val="{{ true }}">
+<aside style="width: 248px; flex-shrink: 0; background: oklch(0.985 0.004 250); border-right: 1px solid oklch(0.91 0.008 245); padding: 24px 16px; display: flex; flex-direction: column; gap: 24px;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<div style="width: 32px; height: 32px; border-radius: 4px; background: oklch(0.958 0.024 195); color: oklch(0.38 0.08 195); border: 1px solid oklch(0.88 0.045 195); display: flex; align-items: center; justify-content: center; font-family: 'Source Serif 4', serif; font-weight: 700; font-size: 15px;">LP</div>
+<span style="font-weight: 600; font-size: 17px;">ASL Les Pins</span>
+</div>
+<nav style="display: flex; flex-direction: column; gap: 24px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<div style="font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245); padding: 0 12px 4px;">Le site</div>
+<sc-for list="{{ navSite }}" as="it" hint-placeholder-count="3"><div style="height: 44px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; font-size: 16px;">{{ it.l }}</div></sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<div style="font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245); padding: 0 12px 4px;">L’association</div>
+<sc-for list="{{ navAsso }}" as="it" hint-placeholder-count="4">
+<sc-if value="{{ it.act }}"><div aria-current="page" style="height: 44px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; font-size: 16px; font-weight: 600; background: oklch(0.93 0.012 245);">{{ it.l }}</div></sc-if>
+<sc-if value="{{ it.idle }}"><div style="height: 44px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; font-size: 16px;">{{ it.l }}</div></sc-if>
+</sc-for>
+</div>
+</nav>
+</aside>
+</sc-if>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+<sc-if value="{{ mob }}" hint-placeholder-val="{{ false }}">
+<div style="height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid oklch(0.91 0.008 245); background: oklch(0.985 0.004 250);">
+<div style="display: flex; align-items: center; gap: 12px;">
+<div style="width: 32px; height: 32px; border-radius: 4px; background: oklch(0.958 0.024 195); color: oklch(0.38 0.08 195); border: 1px solid oklch(0.88 0.045 195); display: flex; align-items: center; justify-content: center; font-family: 'Source Serif 4', serif; font-weight: 700; font-size: 15px;">LP</div>
+<span style="font-weight: 600; white-space: nowrap;">ASL Les Pins</span>
+</div>
+<button style="height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid oklch(0.66 0.014 245); background: oklch(1 0 0); font: 600 16px 'Public Sans', sans-serif; color: oklch(0.22 0.015 250);">Menu</button>
+</div>
+</sc-if>
+<main style="padding: {{ pad }}; display: flex; flex-direction: column; gap: 24px; min-width: 0;">
+
+<sc-if value="{{ isS0 }}" hint-placeholder-val="{{ false }}">
+<div style="min-height: 600px; border: 1px dashed oklch(0.66 0.014 245); border-radius: 8px; background: repeating-linear-gradient(135deg, oklch(0.972 0.005 240) 0 8px, oklch(1 0 0) 8px 16px); display: flex; align-items: center; justify-content: center;">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: oklch(0.45 0.02 245); background: oklch(1 0 0); padding: 4px 8px;">contenu de /bureau/campagnes… (écrans 1 à 4)</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ isS1 }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: {{ dir }}; justify-content: space-between; align-items: {{ alignHead }}; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<h1 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 34px; font-weight: 600; line-height: 1.15;">Campagnes</h1>
+<p style="margin: 0; color: oklch(0.45 0.02 245);">Les campagnes déjà envoyées aux membres.</p>
+</div>
+<sc-if value="{{ s1HeadBtn }}"><button style="height: {{ btnH }}; width: {{ btnW }}; padding: 0 24px; border-radius: 8px; border: none; background: oklch(0.35 0.06 240); color: oklch(0.985 0.003 240); font: 600 16px 'Public Sans', sans-serif; flex-shrink: 0;">Écrire une campagne</button></sc-if>
+</div>
+<sc-if value="{{ s1Error }}">
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px; display: flex; gap: 12px;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="oklch(0.48 0.17 27)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+<div><div style="font-weight: 700; color: oklch(0.48 0.17 27);">La liste des campagnes n’a pas pu être chargée.</div><div>Rien n’est perdu&nbsp;: vos campagnes envoyées sont conservées. Rechargez la page.</div></div>
+</div>
+</sc-if>
+<sc-if value="{{ s1Empty }}">
+<div style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: 48px 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center;">
+<p style="margin: 0;">Aucune campagne envoyée pour l’instant.</p>
+<button style="height: {{ btnH }}; width: {{ btnW }}; padding: 0 24px; border-radius: 8px; border: none; background: oklch(0.35 0.06 240); color: oklch(0.985 0.003 240); font: 600 16px 'Public Sans', sans-serif;">Écrire la première campagne</button>
+</div>
+</sc-if>
+<sc-if value="{{ s1Table }}">
+<div style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; overflow: hidden;">
+<table style="width: 100%; border-collapse: collapse; font-size: 17px;">
+<thead><tr style="height: 48px; background: oklch(0.972 0.005 240); text-align: left;">
+<th style="padding: 0 16px; font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245);">Objet</th>
+<th style="padding: 0 16px; font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245);">Envoyée le</th>
+<th style="padding: 0 16px; font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245);">Par</th>
+<th style="padding: 0 16px; font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245);">Modèle</th>
+<th style="padding: 0 16px; font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245); text-align: right;">Destinataires</th>
+<th style="padding: 0 16px; font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245);"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden;">Action</span></th>
+</tr></thead>
+<tbody>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+<tr style="height: 56px; background: {{ r.bg }}; border-top: 1px solid oklch(0.9 0.008 245);">
+<td style="padding: 0 16px; font-weight: 600;">{{ r.obj }}</td>
+<td style="padding: 0 16px; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap;">{{ r.date }}</td>
+<td style="padding: 0 16px;">{{ r.by }}</td>
+<td style="padding: 0 16px;">{{ r.tpl }}</td>
+<td style="padding: 0 16px; font-family: 'JetBrains Mono', monospace; font-size: 15px; font-variant-numeric: tabular-nums; text-align: right;">{{ r.n }}</td>
+<td style="padding: 0 16px; text-align: right;"><a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline; font-weight: 500;">Consulter</a></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</sc-if>
+<sc-if value="{{ s1TableSkel }}">
+<div style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; overflow: hidden;">
+<div style="height: 48px; background: oklch(0.972 0.005 240);"></div>
+<sc-for list="{{ skel5 }}" as="s" hint-placeholder-count="5">
+<div style="height: 56px; border-top: 1px solid oklch(0.9 0.008 245); display: grid; grid-template-columns: 3fr 2fr 2fr 2fr 1fr 1fr; gap: 24px; align-items: center; padding: 0 16px;">
+<div style="height: 16px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div><div style="height: 16px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div><div style="height: 16px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div><div style="height: 16px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div><div style="height: 16px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div><div style="height: 16px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ s1Cards }}">
+<div style="display: flex; flex-direction: column; gap: 16px;">
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+<div style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="font-weight: 600; font-size: 17px;">{{ r.obj }}</div>
+<div style="display: grid; grid-template-columns: auto 1fr; column-gap: 16px; row-gap: 4px; font-size: 15px;">
+<span style="color: oklch(0.45 0.02 245);">Envoyée le</span><span style="font-family: 'JetBrains Mono', monospace; text-align: right;">{{ r.date }}</span>
+<span style="color: oklch(0.45 0.02 245);">Par</span><span style="text-align: right;">{{ r.by }}</span>
+<span style="color: oklch(0.45 0.02 245);">Modèle</span><span style="text-align: right;">{{ r.tpl }}</span>
+<span style="color: oklch(0.45 0.02 245);">Destinataires</span><span style="font-family: 'JetBrains Mono', monospace; text-align: right;">{{ r.n }}</span>
+</div>
+<a href="#" style="height: 56px; display: flex; align-items: center; justify-content: center; border: 1px solid oklch(0.66 0.014 245); border-radius: 8px; color: oklch(0.45 0.13 250); text-decoration: underline; font-weight: 600; font-size: 16px;">Consulter</a>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ s1CardsSkel }}">
+<div style="display: flex; flex-direction: column; gap: 16px;">
+<sc-for list="{{ skel3 }}" as="s" hint-placeholder-count="3">
+<div style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+<div style="height: 20px; width: 70%; border-radius: 4px; background: oklch(0.972 0.005 240);"></div>
+<div style="height: 64px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div>
+<div style="height: 56px; border-radius: 8px; background: oklch(0.972 0.005 240);"></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ s1Pager }}">
+<nav aria-label="Pagination" style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+<button aria-disabled="true" style="height: 48px; padding: 0 16px; border-radius: 8px; border: 1px solid oklch(0.9 0.008 245); background: oklch(1 0 0); font: 600 16px 'Public Sans', sans-serif; color: oklch(0.45 0.02 245);">Précédent</button>
+<span style="font-size: 15px; color: oklch(0.45 0.02 245);">Page 1 sur 2</span>
+<button style="height: 48px; padding: 0 16px; border-radius: 8px; border: 1px solid oklch(0.66 0.014 245); background: oklch(1 0 0); font: 600 16px 'Public Sans', sans-serif; color: oklch(0.22 0.015 250);">Suivant</button>
+</nav>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ isS2 }}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; max-width: 720px; display: flex; flex-direction: column; gap: 32px;">
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<nav aria-label="Fil d’Ariane" style="font-size: 15px; display: flex; gap: 8px; flex-wrap: wrap;"><a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Campagnes</a><span style="color: oklch(0.45 0.02 245);">›</span><span aria-current="page">Nouvelle campagne</span></nav>
+<h1 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 34px; font-weight: 600; line-height: 1.15;">Écrire une campagne</h1>
+</div>
+<sc-if value="{{ s2ErrSummary }}">
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+<div style="font-weight: 700; color: oklch(0.48 0.17 27);">2 champs à corriger. Rien n’a été envoyé.</div>
+<ul style="margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 4px;">
+<li><a href="#objet" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Objet&nbsp;: écrivez l’objet de la campagne.</a></li>
+<li><a href="#message" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Message&nbsp;: écrivez le message.</a></li>
+</ul>
+</div>
+</sc-if>
+<sc-if value="{{ s2VarAlert }}">
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+<div style="font-weight: 700; color: oklch(0.48 0.17 27);">Variable inconnue&nbsp;: <span style="font-family: 'JetBrains Mono', monospace;">{parcele}</span>.</div>
+<div>Elle n’est pas remplacée dans l’email. Corrigez-la, ou remplacez-la par <span style="font-family: 'JetBrains Mono', monospace;">{parcelle}</span>, <span style="font-family: 'JetBrains Mono', monospace;">{nom}</span> ou <span style="font-family: 'JetBrains Mono', monospace;">{date}</span>.</div>
+<a href="#message" style="color: oklch(0.45 0.13 250); text-decoration: underline; font-size: 16px;">Aller au message</a>
+</div>
+</sc-if>
+<sc-if value="{{ s2ZeroAlert }}">
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px;">
+<div style="font-weight: 700; color: oklch(0.48 0.17 27);">Il n’y a personne à qui envoyer cette campagne.</div>
+</div>
+</sc-if>
+
+<section style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ cardPad }}; display: flex; flex-direction: column; gap: 16px;">
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1.25;">1 · Modèle</h2>
+<div role="radiogroup" aria-label="Modèle" style="display: flex; flex-direction: column; gap: 8px;">
+<sc-for list="{{ tpls }}" as="t" hint-placeholder-count="5">
+<sc-if value="{{ t.sel }}">
+<div role="radio" aria-checked="true" style="min-height: 56px; border: 2px solid oklch(0.35 0.06 240); border-radius: 8px; padding: 11px 15px; display: flex; gap: 12px; align-items: flex-start;">
+<span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid oklch(0.35 0.06 240); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 4px; box-sizing: border-box;"><span style="width: 8px; height: 8px; border-radius: 50%; background: oklch(0.35 0.06 240);"></span></span>
+<span style="display: flex; flex-direction: column;"><span style="font-weight: 600;">{{ t.name }}</span><span style="font-size: 15px; color: oklch(0.45 0.02 245);">{{ t.use }}</span></span>
+</div>
+</sc-if>
+<sc-if value="{{ t.unsel }}">
+<div role="radio" aria-checked="false" style="min-height: 56px; border: 1px solid oklch(0.66 0.014 245); border-radius: 8px; padding: 12px 16px; display: flex; gap: 12px; align-items: flex-start;">
+<span style="width: 20px; height: 20px; border-radius: 50%; border: 1px solid oklch(0.66 0.014 245); flex-shrink: 0; margin-top: 4px; box-sizing: border-box;"></span>
+<span style="display: flex; flex-direction: column;"><span style="font-weight: 600;">{{ t.name }}</span><span style="font-size: 15px; color: oklch(0.45 0.02 245);">{{ t.use }}</span></span>
+</div>
+</sc-if>
+</sc-for>
+</div>
+<sc-if value="{{ s2Provisional }}">
+<div role="note" style="background: oklch(0.94 0.06 75); border: 2px solid oklch(0.6 0.13 65); border-radius: 8px; padding: 16px; color: oklch(0.3 0.08 60); display: flex; gap: 12px;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+<div><strong style="font-weight: 700;">Texte provisoire.</strong> Le contenu de ce modèle reste à rédiger avec le bureau&nbsp;: relisez-le et adaptez-le avant l’envoi.</div>
+</div>
+</sc-if>
+<sc-if value="{{ s2FillOk }}">
+<div role="status" style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: 16px; display: flex; gap: 12px;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="oklch(0.35 0.06 240)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+<div><strong style="font-weight: 600;">Modèle appliqué.</strong> L’objet et le message ont été remplacés.</div>
+</div>
+</sc-if>
+</section>
+
+<section style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ cardPad }}; display: flex; flex-direction: column; gap: 24px;">
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1.25;">2 · Message</h2>
+<div id="objet" style="display: flex; flex-direction: column; gap: 8px;">
+<label style="font-size: 16px; font-weight: 500;">Objet</label>
+<p style="margin: 0; font-size: 15px; color: oklch(0.45 0.02 245);">Le nom de l’association est ajouté devant l’objet&nbsp;: «&nbsp;ASL Les Pins — …&nbsp;».</p>
+<div style="min-height: {{ inH }}; border: {{ objBorder }}; border-radius: 8px; padding: 0 16px; display: flex; align-items: center; font-size: 17px; box-sizing: border-box;">{{ subj }}</div>
+<div style="display: flex; justify-content: space-between; gap: 16px; font-size: 15px;">
+<span style="color: oklch(0.48 0.17 27); font-size: 16px; font-weight: 600;">{{ objMsg }}</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; color: {{ objCountColor }}; font-weight: {{ objCountW }}; white-space: nowrap;">{{ objCount }}</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<label style="font-size: 16px; font-weight: 500;">Texte d’aperçu <span style="font-weight: 400; color: oklch(0.45 0.02 245);">(facultatif)</span></label>
+<p style="margin: 0; font-size: 15px; color: oklch(0.45 0.02 245);">La ligne grise que la messagerie affiche à côté de l’objet. Facultatif.</p>
+<div style="min-height: {{ inH }}; border: 1px solid oklch(0.66 0.014 245); border-radius: 8px; padding: 0 16px; display: flex; align-items: center; font-size: 17px; box-sizing: border-box;">{{ pre }}</div>
+<div style="display: flex; justify-content: flex-end; font-size: 15px;"><span style="font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; color: oklch(0.45 0.02 245);">{{ preCount }}</span></div>
+</div>
+<div id="message" style="display: flex; flex-direction: column; gap: 8px;">
+<label style="font-size: 16px; font-weight: 500;">Message</label>
+<div style="border: {{ msgBorder }}; border-radius: 8px; overflow: hidden;">
+<div style="display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-bottom: 1px solid oklch(0.9 0.008 245); background: oklch(0.972 0.005 240);">
+<span style="min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;">G</span>
+<span style="min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-style: italic; font-size: 16px;">I</span>
+<span style="min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px;">T2</span>
+<span style="min-width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px;">T3</span>
+<span style="height: 44px; padding: 0 8px; display: flex; align-items: center; font-size: 15px;">Liste</span>
+<span style="height: 44px; padding: 0 8px; display: flex; align-items: center; font-size: 15px;">Lien</span>
+</div>
+<div style="min-height: 240px; padding: 16px; white-space: pre-wrap; font-size: 17px; line-height: 1.6;">{{ body }}</div>
+</div>
+<sc-if value="{{ msgErr }}"><span style="color: oklch(0.48 0.17 27); font-size: 16px; font-weight: 500;">Écrivez le message.</span></sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid oklch(0.9 0.008 245);">
+<div style="font-size: 16px; font-weight: 500;">Variables disponibles</div>
+<div style="display: grid; grid-template-columns: auto 1fr; column-gap: 16px; row-gap: 4px;">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px;">{nom}</span><span>le nom du membre</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px;">{parcelle}</span><span>ses parcelles actuelles</span>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 15px;">{date}</span><span>la date d’envoi</span>
+</div>
+<p style="margin: 0; font-size: 15px; color: oklch(0.45 0.02 245);">Elles sont remplacées pour chaque destinataire. Une variable que nous ne connaissons pas bloque l’envoi.</p>
+</div>
+<p style="margin: 0; font-size: 15px; color: oklch(0.45 0.02 245);">Les réponses arrivent à <span style="font-family: 'JetBrains Mono', monospace;">contact@lespins.example</span>.</p>
+</section>
+
+<section style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ cardPad }}; display: flex; flex-direction: column; gap: 16px;">
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1.25;">3 · Destinataires</h2>
+<div style="font-weight: 600;">Tous les membres</div>
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; justify-content: space-between; gap: 16px; align-items: baseline;"><span>Recevront cette campagne</span><sc-if value="{{ countSkel }}"><span style="width: 48px; height: 20px; border-radius: 4px; background: oklch(0.972 0.005 240);"></span></sc-if><sc-if value="{{ countShow }}"><span style="font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; font-weight: 500;">{{ cnt.ok }}</span></sc-if></div>
+<div style="display: flex; justify-content: space-between; gap: 16px; align-items: baseline;"><span style="display: flex; flex-direction: column;"><span>Sans adresse email</span><span style="font-size: 15px; color: oklch(0.45 0.02 245);">Cette campagne ne les joint pas.</span></span><sc-if value="{{ countSkel }}"><span style="width: 48px; height: 20px; border-radius: 4px; background: oklch(0.972 0.005 240);"></span></sc-if><sc-if value="{{ countShow }}"><span style="font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;">{{ cnt.noMail }}</span></sc-if></div>
+<div style="display: flex; justify-content: space-between; gap: 16px; align-items: baseline;"><span>Désinscrits (exclus)</span><sc-if value="{{ countSkel }}"><span style="width: 48px; height: 20px; border-radius: 4px; background: oklch(0.972 0.005 240);"></span></sc-if><sc-if value="{{ countShow }}"><span style="font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;">{{ cnt.unsub }}</span></sc-if></div>
+</div>
+<div style="border-top: 1px solid oklch(0.9 0.008 245); padding-top: 12px; display: flex; justify-content: space-between; font-size: 15px; color: oklch(0.45 0.02 245);"><span>Membres au total</span><span style="font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;">382</span></div>
+<sc-if value="{{ s2Zero }}"><p style="margin: 0;">Aucun membre ne peut recevoir cette campagne&nbsp;: aucun n’a d’adresse email, ou tous sont désinscrits.</p></sc-if>
+</section>
+
+<div style="display: flex; flex-direction: {{ dir }}; gap: 16px; align-items: {{ alignAct }};">
+<button style="height: {{ btnH }}; min-width: 256px; width: {{ btnW }}; padding: 0 24px; border-radius: 8px; border: none; background: oklch(0.35 0.06 240); color: oklch(0.985 0.003 240); font: 600 16px 'Public Sans', sans-serif;">Voir l’aperçu</button>
+<a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline; font-weight: 500; min-height: 44px; display: flex; align-items: center; justify-content: center;">Annuler</a>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isS3 }}" hint-placeholder-val="{{ false }}">
+<div style="width: 100%; max-width: 720px; display: flex; flex-direction: column; gap: 24px;">
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<nav aria-label="Fil d’Ariane" style="font-size: 15px; display: flex; gap: 8px; flex-wrap: wrap;"><a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Campagnes</a><span style="color: oklch(0.45 0.02 245);">›</span><a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Nouvelle campagne</a><span style="color: oklch(0.45 0.02 245);">›</span><span aria-current="page">Aperçu</span></nav>
+<h1 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 34px; font-weight: 600; line-height: 1.15;">Aperçu avant l’envoi</h1>
+</div>
+<sc-if value="{{ s3Interrupted }}">
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+<div style="font-weight: 700; color: oklch(0.48 0.17 27);">L’envoi s’est arrêté après 120 membres sur 296.</div>
+<div>Les 120 premiers ont reçu le message&nbsp;; les 176 autres ne l’ont pas reçu. Contactez l’équipe technique avant de réessayer&nbsp;: relancer l’envoi écrirait deux fois aux 120 premiers.</div>
+</div>
+</sc-if>
+<sc-if value="{{ s3Disabled }}">
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+<div style="font-weight: 700; color: oklch(0.48 0.17 27);">L’envoi est désactivé sur cet environnement&nbsp;: aucun email n’est parti.</div>
+<div>La campagne n’a pas été archivée.</div>
+</div>
+</sc-if>
+<sc-if value="{{ s3Failed }}">
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+<div style="font-weight: 700; color: oklch(0.48 0.17 27);">La campagne n’a pas pu être envoyée.</div>
+<div>Rien n’est parti et votre message est conservé. Réessayez dans un instant.</div>
+</div>
+</sc-if>
+<section style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ cardPad }}; display: flex; flex-direction: column; gap: 16px;">
+<p style="margin: 0;">Aperçu avec les données de <strong style="font-weight: 600;">Claire Aubert</strong>, membre de l’association.</p>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<label style="font-size: 16px; font-weight: 500;">Voir avec un autre membre</label>
+<select style="height: {{ inH }}; border: 1px solid oklch(0.66 0.014 245); border-radius: 8px; padding: 0 12px; font: 400 17px 'Public Sans', sans-serif; color: oklch(0.22 0.015 250); background: oklch(1 0 0); max-width: 360px; width: 100%;"><option>Claire Aubert</option><option>Paul Renaud</option><option>Marie Delorme</option></select>
+<p style="margin: 0; font-size: 15px; color: oklch(0.45 0.02 245);">Rien n’est envoyé tant que vous n’avez pas confirmé.</p>
+</div>
+</section>
+<sc-if value="{{ s3Provisional }}">
+<div role="note" style="background: oklch(0.94 0.06 75); border: 2px solid oklch(0.6 0.13 65); border-radius: 8px; padding: 16px; color: oklch(0.3 0.08 60); display: flex; gap: 12px;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+<div><strong style="font-weight: 700;">Texte provisoire.</strong> Le contenu de ce modèle reste à rédiger avec le bureau&nbsp;: relisez-le et adaptez-le avant l’envoi.</div>
+</div>
+</sc-if>
+<sc-if value="{{ s3VarAlert }}">
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+<div style="font-weight: 700; color: oklch(0.48 0.17 27);">Variable inconnue&nbsp;: <span style="font-family: 'JetBrains Mono', monospace;">{parcele}</span>.</div>
+<div>Elle n’est pas remplacée dans l’email. Corrigez-la, ou remplacez-la par <span style="font-family: 'JetBrains Mono', monospace;">{parcelle}</span>, <span style="font-family: 'JetBrains Mono', monospace;">{nom}</span> ou <span style="font-family: 'JetBrains Mono', monospace;">{date}</span>.</div>
+<a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline; font-size: 16px;">Modifier le message</a>
+</div>
+</sc-if>
+<sc-if value="{{ s3Frame }}">
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 15px;">
+<div><span style="color: oklch(0.45 0.02 245);">Objet&nbsp;: </span><strong style="font-weight: 600;">{{ s3Subject }}</strong></div>
+<div style="color: oklch(0.45 0.02 245);">{{ s3Pre }}</div>
+</div>
+<div style="background: oklch(0.972 0.005 240); border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ emailPad }};">
+<dc-import name="Email" variant="{{ s3Variant }}" vars="replaced" frame="bare" mobile="{{ mob }}" hint-size="100%,900px"></dc-import>
+</div>
+</sc-if>
+<sc-if value="{{ s3Skel }}">
+<div style="background: oklch(0.972 0.005 240); border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="height: 20px; width: 60%; border-radius: 4px; background: oklch(0.9 0.008 245);"></div>
+<div style="height: 64px; border-radius: 4px; background: oklch(0.93 0.012 245);"></div>
+<div style="height: 360px; border-radius: 4px; background: oklch(0.93 0.012 245);"></div>
+<div style="height: 160px; border-radius: 4px; background: oklch(0.93 0.012 245);"></div>
+</div>
+</sc-if>
+<sc-if value="{{ s3Recall }}">
+<p style="margin: 0;"><strong style="font-weight: 600;">296 membres</strong> recevront cette campagne · 71 sans email et 15 désinscrits n’en recevront pas.</p>
+</sc-if>
+<sc-if value="{{ s3Acts }}">
+<div style="display: flex; flex-direction: {{ dir }}; gap: 16px;">
+<button style="height: {{ btnH }}; width: {{ btnW }}; padding: 0 24px; border-radius: 8px; border: none; background: oklch(0.35 0.06 240); color: oklch(0.985 0.003 240); font: 600 16px 'Public Sans', sans-serif;">Envoyer à 296 membres</button>
+<button style="height: {{ btnH }}; width: {{ btnW }}; padding: 0 24px; border-radius: 8px; border: 1px solid oklch(0.66 0.014 245); background: oklch(1 0 0); color: oklch(0.22 0.015 250); font: 600 16px 'Public Sans', sans-serif;">Modifier le message</button>
+</div>
+</sc-if>
+<sc-if value="{{ s3ModifyOnly }}">
+<div style="display: flex;"><button style="height: {{ btnH }}; width: {{ btnW }}; padding: 0 24px; border-radius: 8px; border: 1px solid oklch(0.66 0.014 245); background: oklch(1 0 0); color: oklch(0.22 0.015 250); font: 600 16px 'Public Sans', sans-serif;">Modifier le message</button></div>
+</sc-if>
+<sc-if value="{{ s3BackOnly }}">
+<a href="#" style="display: flex; align-items: center; gap: 8px; color: oklch(0.45 0.13 250); text-decoration: underline; font-weight: 500; min-height: 44px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>Retour aux campagnes</a>
+</sc-if>
+<sc-if value="{{ s3Progress }}">
+<div role="status" style="display: flex; flex-direction: column; gap: 8px;">
+<div style="font-weight: 600;">Envoi en cours&nbsp;: <span style="font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;">120</span> sur <span style="font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums;">296</span> membres.</div>
+<div role="progressbar" aria-valuemin="0" aria-valuemax="296" aria-valuenow="120" style="height: 8px; border-radius: 4px; background: oklch(0.93 0.012 245); overflow: hidden;"><div style="height: 100%; width: {{ progW }}; background: oklch(0.35 0.06 240);"></div></div>
+<p style="margin: 0; font-size: 15px; color: oklch(0.45 0.02 245);">Ne fermez pas cette page tant que l’envoi n’est pas terminé.</p>
+</div>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isS4 }}" hint-placeholder-val="{{ false }}">
+<div style="width: 100%; max-width: 720px; display: flex; flex-direction: column; gap: 24px;">
+<sc-if value="{{ s4Success }}">
+<div role="status" style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: 16px; display: flex; gap: 12px;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="oklch(0.35 0.06 240)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 4px;"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+<div><strong style="font-weight: 600;">Campagne envoyée à 296 membres.</strong> Elle est archivée ci-dessous.</div>
+</div>
+</sc-if>
+<sc-if value="{{ s4NotFound }}">
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<nav aria-label="Fil d’Ariane" style="font-size: 15px;"><a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Campagnes</a></nav>
+<div role="alert" style="border: 2px solid oklch(0.48 0.17 27); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+<div style="font-weight: 700; color: oklch(0.48 0.17 27);">Cette campagne n’existe pas ou n’appartient pas à votre association.</div>
+<a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Retour aux campagnes</a>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ s4Body }}">
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<nav aria-label="Fil d’Ariane" style="font-size: 15px; display: flex; gap: 8px; flex-wrap: wrap;"><a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Campagnes</a><span style="color: oklch(0.45 0.02 245);">›</span><span aria-current="page">Convocation à l’assemblée générale</span></nav>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<h1 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 34px; font-weight: 600; line-height: 1.15;">Convocation à l’assemblée générale</h1>
+<span style="border: 1px solid oklch(0.66 0.014 245); border-radius: 4px; padding: 0 8px; font-size: 15px; font-weight: 500; line-height: 28px;">Envoyée</span>
+</div>
+</div>
+<section style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ cardPad }}; display: flex; flex-direction: column; gap: 16px;">
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1.25;">Résumé</h2>
+<sc-if value="{{ s4Skel }}">
+<div style="display: flex; flex-direction: column; gap: 12px;"><div style="height: 20px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div><div style="height: 20px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div><div style="height: 20px; border-radius: 4px; background: oklch(0.972 0.005 240);"></div><div style="height: 20px; width: 60%; border-radius: 4px; background: oklch(0.972 0.005 240);"></div></div>
+</sc-if>
+<sc-if value="{{ s4Data }}">
+<dl style="margin: 0; display: grid; grid-template-columns: {{ dlCols }}; column-gap: 24px; row-gap: 8px;">
+<dt style="font-size: 15px; color: oklch(0.45 0.02 245);">Envoyée le</dt><dd style="margin: 0 0 {{ ddGap }}; font-family: 'JetBrains Mono', monospace; font-size: 16px;">12/11/2026 à 14:32</dd>
+<dt style="font-size: 15px; color: oklch(0.45 0.02 245);">Par</dt><dd style="margin: 0 0 {{ ddGap }};">Marie Delorme</dd>
+<dt style="font-size: 15px; color: oklch(0.45 0.02 245);">Modèle</dt><dd style="margin: 0 0 {{ ddGap }};">Convocation à l’AG</dd>
+<dt style="font-size: 15px; color: oklch(0.45 0.02 245);">Cible</dt><dd style="margin: 0 0 {{ ddGap }};">Tous les membres</dd>
+<dt style="font-size: 15px; color: oklch(0.45 0.02 245);">Destinataires</dt><dd style="margin: 0 0 {{ ddGap }}; font-family: 'JetBrains Mono', monospace; font-size: 16px;">296</dd>
+<dt style="font-size: 15px; color: oklch(0.45 0.02 245);">Sans adresse email</dt><dd style="margin: 0 0 {{ ddGap }}; font-family: 'JetBrains Mono', monospace; font-size: 16px;">71</dd>
+<dt style="font-size: 15px; color: oklch(0.45 0.02 245);">Désinscrits exclus</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; font-size: 16px;">15</dd>
+</dl>
+</sc-if>
+</section>
+<section style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ cardPad }}; display: flex; flex-direction: column; gap: 16px;">
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1.25;">Contenu envoyé</h2>
+<sc-if value="{{ s4Skel }}"><div style="height: 480px; border-radius: 8px; background: oklch(0.972 0.005 240);"></div></sc-if>
+<sc-if value="{{ s4Data }}">
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 15px;">
+<div><span style="color: oklch(0.45 0.02 245);">Objet&nbsp;: </span><strong style="font-weight: 600;">ASL Les Pins — Convocation à l’assemblée générale</strong></div>
+<div><span style="color: oklch(0.45 0.02 245);">Texte d’aperçu&nbsp;: </span>Samedi 5 décembre à 10 h, salle des fêtes. Ordre du jour et pouvoir à l’intérieur.</div>
+</div>
+<p style="margin: 0;">Chaque membre a reçu ce message avec ses propres valeurs.</p>
+<div style="background: oklch(0.972 0.005 240); border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ emailPad }};">
+<dc-import name="Email" variant="ag" vars="raw" frame="bare" mobile="{{ mob }}" hint-size="100%,900px"></dc-import>
+</div>
+</sc-if>
+</section>
+<a href="#" style="display: flex; align-items: center; gap: 8px; color: oklch(0.45 0.13 250); text-decoration: underline; font-weight: 500; min-height: 44px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>Retour aux campagnes</a>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isS5 }}" hint-placeholder-val="{{ false }}">
+<div style="width: 100%; max-width: 720px; display: flex; flex-direction: column; gap: 24px;">
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<nav aria-label="Fil d’Ariane" style="font-size: 15px; display: flex; gap: 8px;"><a href="#" style="color: oklch(0.45 0.13 250); text-decoration: underline;">Propriétaires</a><span style="color: oklch(0.45 0.02 245);">›</span><span aria-current="page">Claire Aubert</span></nav>
+<h1 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 34px; font-weight: 600; line-height: 1.15;">Claire Aubert</h1>
+<sc-if value="{{ s5Badges }}">
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<sc-if value="{{ s5NoMail }}"><span style="border: 1px solid oklch(0.66 0.014 245); border-radius: 4px; padding: 0 8px; font-size: 15px; font-weight: 500; line-height: 28px;">Sans email</span></sc-if>
+<span style="border: 1px solid oklch(0.66 0.014 245); border-radius: 4px; padding: 0 8px; font-size: 15px; font-weight: 500; line-height: 28px;">Désinscrit des campagnes</span>
+</div>
+<p style="margin: 0; font-size: 15px; color: oklch(0.45 0.02 245);">A refusé les campagnes email le <span style="font-family: 'JetBrains Mono', monospace;">12/11/2026</span> (depuis le lien d’un email).</p>
+</div>
+</sc-if>
+</div>
+<sc-for list="{{ ficheCards }}" as="fc" hint-placeholder-count="5">
+<section style="border: 1px solid oklch(0.9 0.008 245); border-radius: 8px; padding: {{ cardPad }}; display: flex; flex-direction: column; gap: 12px;">
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1.25;">{{ fc }}</h2>
+<div style="height: 48px; border-radius: 4px; background: repeating-linear-gradient(135deg, oklch(0.972 0.005 240) 0 8px, oklch(1 0 0) 8px 16px); display: flex; align-items: center; padding: 0 12px;"><span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; color: oklch(0.45 0.02 245);">carte existante, inchangée</span></div>
+</section>
+</sc-for>
+</div>
+</sc-if>
+
+</main>
+</div>
+
+<sc-if value="{{ drawer }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: oklch(0.22 0.015 250 / 0.5); display: flex;">
+<aside style="width: 300px; background: oklch(0.985 0.004 250); border-right: 1px solid oklch(0.91 0.008 245); padding: 16px; display: flex; flex-direction: column; gap: 24px; box-shadow: 0 10px 15px -3px oklch(0.22 0.015 250 / 0.2);">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: center; gap: 12px;"><div style="width: 32px; height: 32px; border-radius: 4px; background: oklch(0.958 0.024 195); color: oklch(0.38 0.08 195); border: 1px solid oklch(0.88 0.045 195); display: flex; align-items: center; justify-content: center; font-family: 'Source Serif 4', serif; font-weight: 700; font-size: 15px;">LP</div><span style="font-weight: 600; white-space: nowrap;">ASL Les Pins</span></div>
+<button style="height: 44px; padding: 0 12px; border-radius: 8px; border: 1px solid oklch(0.66 0.014 245); background: oklch(1 0 0); font: 600 16px 'Public Sans', sans-serif; color: oklch(0.22 0.015 250);">Fermer</button>
+</div>
+<nav style="display: flex; flex-direction: column; gap: 24px;">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<div style="font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245); padding: 0 12px 4px;">Le site</div>
+<sc-for list="{{ navSite }}" as="it" hint-placeholder-count="3"><div style="height: 48px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px;">{{ it.l }}</div></sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<div style="font-size: 15px; font-weight: 600; color: oklch(0.45 0.02 245); padding: 0 12px 4px;">L’association</div>
+<sc-for list="{{ navAsso }}" as="it" hint-placeholder-count="4">
+<sc-if value="{{ it.act }}"><div aria-current="page" style="height: 48px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px; font-weight: 600; background: oklch(0.93 0.012 245);">{{ it.l }}</div></sc-if>
+<sc-if value="{{ it.idle }}"><div style="height: 48px; display: flex; align-items: center; padding: 0 12px; border-radius: 8px;">{{ it.l }}</div></sc-if>
+</sc-for>
+</div>
+</nav>
+</aside>
+</div>
+</sc-if>
+
+<sc-if value="{{ dlgReplace }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: oklch(0.22 0.015 250 / 0.5); display: flex; align-items: {{ dlgAlign }}; justify-content: center; padding: {{ dlgOuterPad }};">
+<div role="alertdialog" aria-modal="true" style="width: {{ dlgW }}; background: oklch(1 0 0); border-radius: {{ dlgRad }}; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 10px 15px -3px oklch(0.22 0.015 250 / 0.2), 0 4px 6px -4px oklch(0.22 0.015 250 / 0.2); box-sizing: border-box;">
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1.25;">Remplacer votre texte&nbsp;?</h2>
+<p style="margin: 0;">Le texte déjà écrit sera effacé.</p>
+<div style="display: flex; flex-direction: {{ dlgDir }}; justify-content: flex-end; gap: 12px;">
+<button style="height: {{ btnH }}; padding: 0 24px; border-radius: 8px; border: 1px solid oklch(0.66 0.014 245); background: oklch(1 0 0); color: oklch(0.22 0.015 250); font: 600 16px 'Public Sans', sans-serif;">Garder mon texte</button>
+<button style="height: {{ btnH }}; padding: 0 24px; border-radius: 8px; border: none; background: oklch(0.48 0.17 27); color: oklch(0.99 0.01 27); font: 600 16px 'Public Sans', sans-serif;">Remplacer le texte</button>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ dlgSend }}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: oklch(0.22 0.015 250 / 0.5); display: flex; align-items: {{ dlgAlign }}; justify-content: center; padding: {{ dlgOuterPad }};">
+<div role="alertdialog" aria-modal="true" style="width: {{ dlgW }}; background: oklch(1 0 0); border-radius: {{ dlgRad }}; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 10px 15px -3px oklch(0.22 0.015 250 / 0.2), 0 4px 6px -4px oklch(0.22 0.015 250 / 0.2); box-sizing: border-box;">
+<h2 style="margin: 0; font-family: 'Source Serif 4', serif; font-size: 24px; font-weight: 600; line-height: 1.25;">Envoyer la campagne&nbsp;?</h2>
+<p style="margin: 0;">296 membres vont recevoir «&nbsp;ASL Les Pins — Convocation à l’assemblée générale&nbsp;». L’envoi ne peut pas être annulé.</p>
+<div style="display: flex; flex-direction: {{ dlgDir }}; justify-content: flex-end; gap: 12px;">
+<button style="height: {{ btnH }}; padding: 0 24px; border-radius: 8px; border: 1px solid oklch(0.66 0.014 245); background: oklch(1 0 0); color: oklch(0.22 0.015 250); font: 600 16px 'Public Sans', sans-serif;">Revenir à l’aperçu</button>
+<button style="height: {{ btnH }}; padding: 0 24px; border-radius: 8px; border: none; background: oklch(0.48 0.17 27); color: oklch(0.99 0.01 27); font: 600 16px 'Public Sans', sans-serif;">Envoyer à 296 membres</button>
+</div>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;0&quot;,&quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;,&quot;5&quot;],&quot;default&quot;:&quot;2&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;state&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;mobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const scr = String(this.props.screen ?? '2'), st = String(this.props.state ?? 'a'), m = !!this.props.mobile;
+    const k = scr + st, is = (...a) => a.includes(k);
+    const act = scr === '5' ? 'Propriétaires' : 'Campagnes';
+    const navSite = ['Pages', 'Actualités', 'Documents'].map(l => ({ l }));
+    const navAsso = ['Propriétaires', 'Campagnes', 'Identité', 'Réglages'].map(l => ({ l, act: l === act, idle: l !== act }));
+
+    const rows = [
+      { obj: 'Convocation à l’assemblée générale', date: '12/11/2026 14:32', by: 'Marie Delorme', tpl: 'Convocation à l’AG', n: '296' },
+      { obj: 'Peinture du portail du 18 au 20 novembre', date: '03/11/2026 09:15', by: 'Paul Renaud', tpl: 'Message libre', n: '298' },
+      { obj: 'Votre facture 2026 est disponible', date: '15/10/2026 18:02', by: 'Marie Delorme', tpl: 'Facture disponible', n: '301' },
+      { obj: 'Documents de l’assemblée générale 2026', date: '30/06/2026 11:40', by: 'Paul Renaud', tpl: 'Documents après l’AG', n: '305' },
+    ].map((r, i) => ({ ...r, bg: i % 2 ? 'oklch(0.99 0.002 250)' : 'oklch(1 0 0)' }));
+
+    const AG = {
+      subj: 'Convocation à l’assemblée générale',
+      pre: 'Samedi 5 décembre à 10 h, salle des fêtes. Ordre du jour et pouvoir à l’intérieur.',
+      body: '**[Texte provisoire — à remplacer avant l’envoi]**\n\nBonjour {nom},\n\nLe bureau vous convoque à l’assemblée générale ordinaire de l’ASL Les Pins, le **samedi 5 décembre 2026 à 10 h**, salle des fêtes de la mairie.\n\nOrdre du jour :\n1. Approbation des comptes 2025-2026\n2. Vote du budget 2027\n3. Travaux de voirie de l’allée des Chênes\n4. Questions diverses\n\nVous êtes convoqué en tant que propriétaire de la parcelle {parcelle}. Si vous ne pouvez pas venir, vous pouvez vous faire représenter : [formulaire de pouvoir](https://lespins.example/pouvoir).\n\nMessage envoyé le {date}.\n\nLe bureau de l’ASL Les Pins',
+    };
+    const LIB = {
+      subj: 'Peinture du portail du 18 au 20 novembre',
+      pre: 'Merci de laisser le passage libre pendant les trois jours de travaux.',
+      body: 'Bonjour {nom},\n\nLe portail de l’allée des Pins sera repeint du **mercredi 18 au vendredi 20 novembre**. Merci de laisser le passage libre pendant ces trois jours : l’accès piéton reste ouvert par la petite porte.\n\nLe bureau de l’ASL Les Pins',
+    };
+    const EMPTY = { subj: '', pre: '', body: '' };
+    const s2ag = is('2a', '2f', '2g', '2i');
+    let f = s2ag ? AG : is('2b', '2c') ? EMPTY : LIB;
+    if (k === '2d') f = { ...LIB, subj: 'Peinture du portail des Pins du mercredi 18 au vendredi 20 novembre' };
+    if (k === '2e') f = { ...LIB, body: LIB.body.replace('Le bureau de', 'Les travaux concernent l’accès à la parcelle {parcele}.\n\nLe bureau de') };
+    const sl = f.subj.length, over = sl - 60;
+    const objErr = is('2c') || over > 0;
+    const selId = s2ag ? 'ag' : 'libre';
+    const tpls = [
+      ['libre', 'Message libre', 'Vous écrivez le message en entier.'],
+      ['relance', 'Relance manuelle', 'Rappeler un paiement en attente à un membre.'],
+      ['facture', 'Facture disponible', 'Prévenir qu’une facture est consultable.'],
+      ['ag', 'Convocation à l’AG', 'Convoquer à l’assemblée générale.'],
+      ['docs', 'Documents après l’AG', 'Annoncer la publication des documents de l’assemblée.'],
+    ].map(([id, name, use]) => ({ name, use, sel: id === selId, unsel: id !== selId }));
+
+    const s3show = scr === '3' && st !== 'g';
+    const s4show = scr === '4' || k === '3g';
+    const dialog = is('2h', '3e');
+    const drawer = k === '0a' && m;
+
+    return {
+      desk: !m, mob: m,
+      minH: m ? '844px' : '800px',
+      maxH: (dialog || drawer) ? (m ? '844px' : '800px') : 'none',
+      pad: m ? '24px 16px 48px' : '32px 48px 64px',
+      cardPad: m ? '16px' : '24px',
+      btnH: m ? '56px' : '48px', inH: m ? '56px' : '48px',
+      btnW: m ? '100%' : 'auto',
+      dir: m ? 'column' : 'row',
+      alignHead: m ? 'stretch' : 'flex-end',
+      alignAct: m ? 'stretch' : 'center',
+      emailPad: m ? '0' : '24px',
+      navSite, navAsso, rows,
+      skel5: [1, 2, 3, 4, 5], skel3: [1, 2, 3],
+      isS0: scr === '0', isS1: scr === '1', isS2: scr === '2', isS3: s3show, isS4: s4show, isS5: scr === '5',
+      s1HeadBtn: st !== 'b', s1Error: k === '1d', s1Empty: k === '1b',
+      s1Table: k === '1a' && !m, s1Cards: k === '1a' && m,
+      s1TableSkel: k === '1c' && !m, s1CardsSkel: k === '1c' && m, s1Pager: k === '1a',
+      s2ErrSummary: k === '2c', s2VarAlert: k === '2e', s2ZeroAlert: k === '2g',
+      tpls, s2Provisional: s2ag, s2FillOk: k === '2f',
+      subj: f.subj, pre: f.pre, body: f.body,
+      objBorder: objErr ? '2px solid oklch(0.48 0.17 27)' : '1px solid oklch(0.66 0.014 245)',
+      objMsg: k === '2c' ? 'Écrivez l’objet de la campagne.' : over > 0 ? over + ' caractères de trop.' : '',
+      objCount: sl + ' / 60',
+      objCountColor: over > 0 ? 'oklch(0.48 0.17 27)' : 'oklch(0.45 0.02 245)',
+      objCountW: over > 0 ? 600 : 400,
+      preCount: f.pre.length + ' / 90',
+      msgBorder: k === '2c' ? '2px solid oklch(0.48 0.17 27)' : '1px solid oklch(0.66 0.014 245)',
+      msgErr: k === '2c',
+      countSkel: k === '2i', countShow: k !== '2i',
+      cnt: k === '2g' ? { ok: '0', noMail: '367', unsub: '15' } : { ok: '296', noMail: '71', unsub: '15' },
+      s2Zero: k === '2g',
+      s3Interrupted: k === '3h', s3Disabled: k === '3i', s3Failed: k === '3j',
+      s3Provisional: s3show && !is('3b', '3d'),
+      s3VarAlert: k === '3d',
+      s3Frame: s3show && !is('3c', '3d'), s3Skel: k === '3c',
+      s3Variant: k === '3b' ? 'libre' : 'ag',
+      s3Subject: 'ASL Les Pins — ' + (k === '3b' ? LIB.subj : AG.subj),
+      s3Pre: k === '3b' ? LIB.pre : AG.pre,
+      s3Recall: s3show && !is('3d', '3h', '3i'),
+      s3Acts: is('3a', '3b', '3c', '3e', '3j'), s3ModifyOnly: is('3d', '3i'), s3BackOnly: k === '3h',
+      s3Progress: k === '3f', progW: (120 / 296 * 100).toFixed(1) + '%',
+      s4Success: k === '3g', s4NotFound: k === '4c', s4Body: s4show && k !== '4c',
+      s4Skel: k === '4b', s4Data: s4show && k !== '4b' && k !== '4c',
+      dlCols: m ? '1fr' : '200px 1fr', ddGap: m ? '8px' : '0',
+      s5Badges: is('5a', '5c'), s5NoMail: k === '5c',
+      ficheCards: ['Coordonnées', 'Accès à l’espace membre', 'Rôle', 'Parcelles', 'Notes et échanges'],
+      drawer, dlgReplace: k === '2h', dlgSend: k === '3e',
+      dlgAlign: m ? 'flex-end' : 'flex-start',
+      dlgOuterPad: m ? '0' : '160px 24px 24px',
+      dlgW: m ? '100%' : '512px',
+      dlgRad: m ? '12px 12px 0 0' : '12px',
+      dlgDir: m ? 'column-reverse' : 'row',
+    };
+  }
+}
+</script>
+</body>
+</html>

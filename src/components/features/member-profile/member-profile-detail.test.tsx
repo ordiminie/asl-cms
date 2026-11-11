@@ -92,11 +92,18 @@ const RESOLVED_NOTES = Object.assign(Promise.resolve(EMPTY_NOTES), {
   value: EMPTY_NOTES,
 })
 
+/** Aucun refus des campagnes (s25), deja resolu. */
+const NOT_UNSUBSCRIBED = Object.assign(Promise.resolve(null), {
+  status: 'fulfilled',
+  value: null,
+})
+
 type DetailInput = {
   profile?: MemberProfileDTO
   parcels?: MemberParcelsDTO
   created?: boolean
   soldParcelId?: string
+  unsubscribePromise?: Promise<{createdAt: string} | null>
 }
 
 const detailOf = (input: DetailInput = {}) => (
@@ -107,6 +114,7 @@ const detailOf = (input: DetailInput = {}) => (
     created={input.created ?? false}
     soldParcelId={input.soldParcelId}
     notesPromise={RESOLVED_NOTES}
+    unsubscribePromise={input.unsubscribePromise ?? NOT_UNSUBSCRIBED}
     {...actions}
   />
 )
@@ -1023,5 +1031,44 @@ describe('MemberProfileDetail — carte « Notes et échanges » (s24)', () => {
       .map((heading) => heading.textContent)
     expect(titles.at(-1)).toBe('Notes et échanges')
     expect(titles.indexOf('Parcelles')).toBe(titles.length - 2)
+  })
+})
+
+describe('MemberProfileDetail — désinscription des campagnes (s25)', () => {
+  const unsubscribedSince = (createdAt: string) =>
+    Object.assign(Promise.resolve({createdAt}), {
+      status: 'fulfilled',
+      value: {createdAt},
+    })
+
+  it('a · désinscrit : la mention se monte sous le titre de la fiche', () => {
+    renderDetail({
+      unsubscribePromise: unsubscribedSince('2026-11-12T13:32:00.000Z'),
+    })
+
+    const heading = screen.getByRole('heading', {level: 1})
+    const badge = screen.getByText('Désinscrit des campagnes')
+    expect(
+      heading.compareDocumentPosition(badge) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(heading.parentElement?.contains(badge)).toBe(true)
+  })
+
+  it('b · non désinscrit : aucune mention', () => {
+    renderDetail()
+
+    expect(screen.queryByText('Désinscrit des campagnes')).toBeNull()
+  })
+
+  it('c · désinscrit et sans email : les deux badges', () => {
+    renderDetail({
+      profile: profile({email: null, mailOnly: true}),
+      unsubscribePromise: unsubscribedSince('2026-11-12T13:32:00.000Z'),
+    })
+
+    expect(screen.getByText('Désinscrit des campagnes')).toBeInTheDocument()
+    expect(
+      screen.getByText('Courrier uniquement', {selector: '[data-slot="badge"]'})
+    ).toBeInTheDocument()
   })
 })

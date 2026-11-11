@@ -15,6 +15,8 @@ const toBrevoBody = (message: EmailMessage) => ({
   subject: message.subject,
   ...(message.html ? {htmlContent: message.html} : {}),
   textContent: message.text,
+  ...(message.headers ? {headers: message.headers} : {}),
+  ...(message.replyTo ? {replyTo: {email: message.replyTo}} : {}),
 })
 
 /**
