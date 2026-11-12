@@ -35,7 +35,8 @@ export const createResendTransport = ({
       if (result.error) {
         throw new EmailTransportError(
           'resend',
-          `Resend a refuse l'envoi (${result.error.name})`
+          `Resend a refuse l'envoi (${result.error.name})`,
+          {refused: true}
         )
       }
     },

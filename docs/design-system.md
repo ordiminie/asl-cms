@@ -822,6 +822,38 @@ ne crée ni token ni composant : elle compose l'existant. Elle vaut pour tout é
 - **« Aller au contenu »** : premier élément focalisable, visible au focus, vers `<main id="contenu">`
   (§1.5).
 
+### 3.13 Formes retenues par s26 — l'envoi étalé d'une campagne
+
+Écarts de la maquette `docs/designs/s26-envoi-echelonne.md` (gaps 1 à 7), versés ici par le plan de
+s26. Aucun ne crée de token ni de composant : ils composent l'existant.
+
+- **Filtre de tableau** (§3.5) — un `select` « Afficher », libellé visible au-dessus, 48 px (56 px
+  sur mobile), le **décompte dans chaque option** (« À vérifier (2) ») ; sous le champ, un résumé
+  écrit en `meta` annoncé (`aria-live="polite"`) : « 2 destinataires — à vérifier ». Changer de
+  filtre **revient à la page 1**. Implémenté avec le `select` du socle ; la maquette dessinait un
+  `select` natif.
+- **`alert` neutre sans icône** — pour annoncer l'avenir (« Les envois continuent seuls… ») : fond
+  `muted`, **aucune icône** (`CircleCheck` est réservé au succès, aucune icône autorisée ne dit « à
+  venir »). C'est la même variante que l'`alert` « muted » de s48 (§9, avec `Lock`) : **une seule
+  variante à décrire pour les deux**, encore composée à la main.
+- **`alert` `warning` pour un report** — « plafond du jour atteint, la première part partira demain »
+  n'est pas un refus : la campagne part. Palette `warning` + `AlertTriangle`, jamais `destructive`. La
+  règle de §3.10 (« limite atteinte → `destructive` ») vaut pour une action **refusée** seulement.
+- **Compteur** — `dl` de paires libellé `meta` (15 px, `muted-foreground`) / valeur `data` 17 px ;
+  quatre colonnes en bureau, **une paire par ligne** sous 640 px. Pas de composant « statistique ».
+- **Plan écrit** — une liste de lignes « 100 membres le 12/11/2026 », nombres et dates en `data`,
+  filet gauche 2 px `border`. Ni calendrier ni frise. Les mots « aujourd'hui, demain, après-demain »
+  ne servent que sur trois jours consécutifs depuis aujourd'hui ; au-delà, les dates `jj/mm/aaaa`.
+- **« Précédent » inactif en page 1** — rendu comme le bouton `outline` du socle, désactivé et
+  annoncé (`aria-disabled="true"`) : le bureau lit qu'il est au bout de la liste.
+- **États d'un envoi** — composition de §3.10 nommée pour s29 et s30 : terminé (« Reçue »,
+  « Envoyée », « Désinscrit ») en `outline` texte `muted-foreground`, la date de réception écrite en
+  `data` **hors du badge** ; à venir ou en cours (« Programmée pour le 13/11 », « En cours d'envoi »)
+  en `secondary` ; « À vérifier » en `outline` + point plein `primary` ; « En échec » en
+  `destructive`. Une part programmée pour demain n'est **jamais** « Bloquée » ni « Interrompue ».
+- **Aucune sortie de « À vérifier »** dans l'application : le bureau est renvoyé à l'équipe
+  technique. Un écran de résolution est à décider si le besoin apparaît.
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs
@@ -1154,7 +1186,7 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 | Divers    | **Page 404** — évoquée dans la livraison n° 1 (« renvoie vers l'accueil, les actualités et le contact »), jamais maquettée                                                                                                                                                                                                                                                                                      | s11           |
 | Divers    | ~~**Photo manquante sur une fiche du bureau**~~ — **tranché le 23/09/2026** : les initiales de la personne, jamais une silhouette ni le monogramme de l'association. Règle complète en §3.9                                                                                                                                                                                                                     | s06           |
 | Tableau   | **Deux actions sur une ligne** (s48, écran 1) — la règle dit « une seule action par ligne ». Proposition de la maquette : « Agir à sa place » (`outline`, icône `UserRoundCog`) puis « Retirer » ; en mobile, 56 px puis 44 px. À trancher, puis à inscrire au §3.5                                                                                                                                             | s48           |
-| Alert     | **Variante `alert` « muted »** (s48, écran 5) — fond `muted`, bordure `border`, icône `Lock` : non listée (seuls succès neutre et échec existent). Composée pour l'instant à la main dans `security-section.tsx`                                                                                                                                                                                                | s48           |
+| Alert     | **Variante `alert` « muted »** (s48, écran 5 ; s26, écran 2) — fond `muted`, bordure `border`, icône `Lock` en s48, **sans icône** en s26 : non listée (seuls succès neutre et échec existent). Composée pour l'instant à la main dans `security-section.tsx` et `campaign-detail.tsx` ; une seule variante à décrire pour les deux (§3.13)                                                                     | s48           |
 | Couleur   | **Magenta de l'`<ImpersonationBar />`** — aucun token. Valeurs maquettées `oklch(0.5 0.21 345)` / `oklch(0.44 0.2 345)`, rayures à 135°, pas de 12 px, posées dans le composant (pas dans `globals.css`). Contraste du blanc mesuré : 6,8:1 et 8,4:1 (AA)                                                                                                                                                       | s48, s41      |
 | Barre     | **`<ImpersonationBar />` en mobile** — titre sur deux lignes, détail, puis bouton pleine largeur 56 px, icône retirée (≈ 170 px, sous le quart de 844 px)                                                                                                                                                                                                                                                       | s48, s41      |
 | Barre     | **Compte à rebours** — emplacement non spécifié au §2.6 ; en s48 il remplace la ligne de détail, annoncé en `aria-live="polite"`                                                                                                                                                                                                                                                                                | s48, s41      |

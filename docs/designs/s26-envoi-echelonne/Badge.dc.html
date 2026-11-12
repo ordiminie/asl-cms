@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<sc-if value="{{ isOut }}"><span style="display:inline-flex;align-items:center;padding:4px 12px;border:1px solid oklch(0.9 0.008 245);border-radius:4px;background:oklch(1 0 0);color:oklch(0.45 0.02 245);font:500 15px/20px 'Public Sans',sans-serif;white-space:nowrap">{{ text }}</span></sc-if>
+<sc-if value="{{ isSec }}"><span style="display:inline-flex;align-items:center;padding:4px 12px;border:1px solid oklch(0.965 0.006 240);border-radius:4px;background:oklch(0.965 0.006 240);color:oklch(0.3 0.02 245);font:500 15px/20px 'Public Sans',sans-serif;white-space:nowrap">{{ text }}</span></sc-if>
+<sc-if value="{{ isVer }}"><span style="display:inline-flex;align-items:center;gap:8px;padding:4px 12px;border:1px solid oklch(0.66 0.014 245);border-radius:4px;background:oklch(1 0 0);color:oklch(0.22 0.015 250);font:500 15px/20px 'Public Sans',sans-serif;white-space:nowrap"><span style="width:8px;height:8px;border-radius:4px;background:oklch(0.35 0.06 240);flex:none"></span>{{ text }}</span></sc-if>
+<sc-if value="{{ isErr }}"><span style="display:inline-flex;align-items:center;padding:4px 12px;border:1px solid oklch(0.48 0.17 27);border-radius:4px;background:oklch(0.48 0.17 27);color:oklch(0.99 0.01 27);font:500 15px/20px 'Public Sans',sans-serif;white-space:nowrap">{{ text }}</span></sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;240px&quot;,&quot;height&quot;:&quot;40px&quot;},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;recue&quot;,&quot;envoyee&quot;,&quot;programmee&quot;,&quot;encours&quot;,&quot;verifier&quot;,&quot;echec&quot;],&quot;default&quot;:&quot;recue&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;text&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Reçue&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const k = this.props.kind ?? 'recue';
+    return { text: this.props.text ?? 'Reçue', isOut: k === 'recue' || k === 'envoyee', isSec: k === 'programmee' || k === 'encours', isVer: k === 'verifier', isErr: k === 'echec' };
+  }
+}
+</script>
+</body>
+</html>

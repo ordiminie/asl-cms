@@ -21,7 +21,7 @@ export type AssociationSettingPage = 'settings' | 'identity'
  * Carte de la page « Reglages » qui regroupe le parametre. Absente : la carte
  * d'origine, celle des adresses de notification.
  */
-export type AssociationSettingSection = 'seo' | 'legal'
+export type AssociationSettingSection = 'seo' | 'legal' | 'sending'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -180,6 +180,18 @@ export const ASSOCIATION_LEGAL_NAME_SETTING_KEY = 'association.legal_name'
  */
 export const ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY =
   'association.legal_mentions'
+/**
+ * Emails de campagne envoyes au plus par jour (Paris) et par association,
+ * toutes campagnes confondues (s26, ADR 052). Au-dela, la campagne s'etale
+ * en parts quotidiennes.
+ */
+export const CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY = 'campaign.daily_send_cap'
+/**
+ * Tentatives d'envoi d'une part avant que la campagne passe en echec (s26,
+ * ADR 052).
+ */
+export const CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY =
+  'campaign.send_max_attempts'
 /** Plafond de la raison sociale. */
 export const ASSOCIATION_LEGAL_NAME_MAX_LENGTH = 120
 /** Plafond des mentions du pied de page. */
@@ -334,6 +346,37 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     whenEmptyKey: 'fields.legalMentions.whenEmpty',
     page: 'settings',
     section: 'legal',
+  },
+  {
+    key: CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '100'},
+    min: 1,
+    integer: true,
+    unitKey: 'units.sendsPerDay',
+    labelKey: 'fields.campaignDailySendCap.label',
+    helpKey: 'fields.campaignDailySendCap.help',
+    errorMessageKeys: {
+      invalidNumber: 'fields.campaignDailySendCap.errors.invalidNumber',
+      belowMin: 'fields.campaignDailySendCap.errors.belowMin',
+    },
+    page: 'settings',
+    section: 'sending',
+  },
+  {
+    key: CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '3'},
+    min: 1,
+    max: 10,
+    integer: true,
+    unitKey: 'units.attempts',
+    labelKey: 'fields.campaignSendMaxAttempts.label',
+    helpKey: 'fields.campaignSendMaxAttempts.help',
+    page: 'settings',
+    section: 'sending',
   },
 ]
 
@@ -623,6 +666,22 @@ export const getMagicLinkDailyRequestLimit = (
 export const getContactMessagesPerHourLimit = (
   settings: ResolvedAssociationSettings
 ): number => numberSettingOf(settings, CONTACT_MESSAGES_PER_HOUR_SETTING_KEY)
+
+/**
+ * Plafond quotidien des emails de campagne de l'association (s26) : valeur
+ * du bureau, sinon defaut du registre.
+ */
+export const getCampaignDailySendCap = (
+  settings: ResolvedAssociationSettings
+): number => numberSettingOf(settings, CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY)
+
+/**
+ * Tentatives d'envoi d'une part avant l'echec de la campagne (s26) : valeur
+ * du bureau, sinon defaut du registre.
+ */
+export const getCampaignSendMaxAttempts = (
+  settings: ResolvedAssociationSettings
+): number => numberSettingOf(settings, CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY)
 
 const textSettingOf = (
   settings: ResolvedAssociationSettings,

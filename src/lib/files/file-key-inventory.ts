@@ -31,6 +31,15 @@ export const FILE_KEY_COLUMNS: readonly FileKeyColumn[] = [
 ]
 
 /**
+ * Colonnes `_key` qui ne designent **pas** un fichier : la garde les accepte
+ * sans les verifier apres restauration. Chacune est justifiee ici.
+ * `scheduled_job.idempotency_key` : cle d'idempotence d'une tache (ADR 052).
+ */
+export const NOT_FILE_KEY_COLUMNS: readonly FileKeyColumn[] = [
+  {table: 'scheduled_job', column: 'idempotency_key'},
+]
+
+/**
  * Cle de fichier logee dans une colonne `jsonb`, pour un type de bloc donne.
  * `path` suit les proprietes separees par des points ; `[]` parcourt un
  * tableau (`images[].fileKey` : chaque image d'une galerie).

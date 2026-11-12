@@ -30,8 +30,11 @@ export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number]
 
 export const CAMPAIGN_RECIPIENT_STATUSES = [
   'pending',
+  'sending',
   'sent',
+  'to_verify',
   'failed',
+  'unsubscribed',
 ] as const
 export type CampaignRecipientStatus =
   (typeof CAMPAIGN_RECIPIENT_STATUSES)[number]
@@ -55,16 +58,61 @@ export const CAMPAIGN_BODY_MAX = 20000
 export const CAMPAIGNS_PAGE_SIZE = 25
 
 /**
- * Delai sans progression au-dela duquel une campagne `sending` s'affiche
- * `interrupted` (redemarrage pendant l'envoi, ADR 051). Aucune reprise en V1.
+ * Age au-dela duquel une ligne laissee `sending` (arret entre l'envoi et son
+ * enregistrement) passe `to_verify` (ADR 052). Jamais renvoyee.
  */
-export const CAMPAIGN_STALE_AFTER_MS = 10 * 60 * 1000
+export const CAMPAIGN_RECIPIENT_SENDING_STALE_MS = 15 * 60 * 1000
+
+/**
+ * Pas de la reprise d'une part en echec (ADR 052) : la tentative n repart
+ * apres n x 30 minutes.
+ */
+export const CAMPAIGN_PART_RETRY_STEP_MS = 30 * 60 * 1000
 
 /** Intervalle de relecture de la page d'une campagne en cours d'envoi. */
 export const CAMPAIGN_PROGRESS_REFRESH_MS = 3000
 
 /** Octets aleatoires d'un jeton de desinscription (256 bits). */
 export const UNSUBSCRIBE_TOKEN_BYTES = 32
+
+export const CAMPAIGN_PART_STATUSES = [
+  'scheduled',
+  'sending',
+  'sent',
+  'failed',
+] as const
+export type CampaignPartStatus = (typeof CAMPAIGN_PART_STATUSES)[number]
+
+/**
+ * L'etat d'une campagne tel que le bureau le lit (s26, ADR 052) : lu des
+ * statuts et des decomptes, jamais d'une duree sans progres.
+ */
+export type CampaignDisplayState = 'sending' | 'sent' | 'to_verify' | 'failed'
+
+/** L'etat d'une part : une part servie avec des lignes a verifier l'affiche. */
+export type CampaignPartDisplayState =
+  'scheduled' | 'sending' | 'sent' | 'to_verify' | 'failed'
+
+/** Les destinataires d'une campagne, par statut ; la somme fait le total. */
+export type CampaignRecipientCountsDTO = {
+  received: number
+  scheduled: number
+  sending: number
+  toVerify: number
+  failed: number
+  unsubscribed: number
+}
+
+/** Une part d'envoi telle que le bureau la lit. */
+export type CampaignPartDTO = {
+  number: number
+  /** Jour de Paris ISO `YYYY-MM-DD`. */
+  day: string
+  recipientCount: number
+  receivedCount: number
+  toVerifyCount: number
+  displayState: CampaignPartDisplayState
+}
 
 /**
  * Une campagne archivee telle que le bureau la lit. Liste blanche : ni
@@ -84,7 +132,11 @@ export type CampaignDTO = {
   unsubscribedCount: number
   sentCount: number
   status: CampaignStatus
-  /** Jour d'envoi ISO `YYYY-MM-DD` (Paris). */
+  displayState: CampaignDisplayState
+  recipientCounts: CampaignRecipientCountsDTO
+  /** Les parts, dans l'ordre ; une seule pour un envoi unique. */
+  parts: CampaignPartDTO[]
+  /** Jour de lancement ISO `YYYY-MM-DD` (Paris). */
   sendDate: string
   authorName: string | null
   createdAt: string
@@ -133,6 +185,19 @@ export type CampaignPreviewDTO = {
   counts: CampaignTargetCountsDTO
 }
 
+/** Une part annoncee : un jour de Paris et son nombre de destinataires. */
+export type CampaignPlannedPartDTO = {day: string; count: number}
+
+/** Le plan d'envoi annonce par l'apercu (ecran 1 de s26). */
+export type CampaignPlanDTO = {
+  /** Le jour de Paris de la lecture, ISO `YYYY-MM-DD`. */
+  today: string
+  dailySendCap: number
+  /** Envois de campagne deja programmes aujourd'hui, toutes campagnes. */
+  allottedToday: number
+  parts: CampaignPlannedPartDTO[]
+}
+
 export type CampaignContentInput = {
   organizationId: string
   templateId: CampaignTemplateId
@@ -151,6 +216,53 @@ export type SendCampaignInput = CampaignContentInput & {
 }
 
 export type CampaignsPageInput = {organizationId: string; page: number}
+
+/** Les filtres de la liste des destinataires (ecran 2 de s26). */
+export const CAMPAIGN_RECIPIENT_FILTERS = [
+  'all',
+  'received',
+  'scheduled',
+  'to_verify',
+  'failed',
+] as const
+export type CampaignRecipientFilter =
+  (typeof CAMPAIGN_RECIPIENT_FILTERS)[number]
+
+/** Lignes par page de la liste des destinataires. */
+export const CAMPAIGN_RECIPIENTS_PAGE_SIZE = 25
+
+export type CampaignRecipientsInput = {
+  organizationId: string
+  campaignId: string
+  filter: CampaignRecipientFilter
+  page: number
+}
+
+/** Un destinataire tel que le bureau le lit : aucun jeton. */
+export type CampaignRecipientDTO = {
+  id: string
+  /** `null` : la fiche a ete supprimee depuis l'envoi. */
+  name: string | null
+  parcelNumbers: string[]
+  status: CampaignRecipientStatus
+  /** Instant de reception, ISO ; `null` tant que rien n'est parti. */
+  sentAt: string | null
+  /** Le jour de la part du destinataire, ISO `YYYY-MM-DD`. */
+  scheduledFor: string
+}
+
+export type CampaignRecipientsPageDTO = {
+  items: CampaignRecipientDTO[]
+  filter: CampaignRecipientFilter
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export type CampaignRecipientsReadResult =
+  | {status: 'found'; recipients: CampaignRecipientsPageDTO}
+  | {status: 'not_found'}
 
 export type CampaignByIdInput = {organizationId: string; campaignId: string}
 
@@ -201,7 +313,7 @@ export type CampaignFormError = {field: CampaignFormField; message: string}
 
 /** Ce que l'action « Voir l'apercu » rend au composeur ; la saisie reste. */
 export type PreviewCampaignActionResult =
-  | {status: 'ok'; preview: CampaignPreviewDTO}
+  | {status: 'ok'; preview: CampaignPreviewDTO; plan: CampaignPlanDTO}
   | {status: 'invalid'; errors: CampaignFormError[]}
   | {status: 'unknown_variables'; variables: string[]}
   | {status: 'no_recipient'}

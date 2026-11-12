@@ -4,6 +4,8 @@ import {describe, expect, it} from 'vitest'
 import {organization, user} from './models/auth-model'
 import {
   campaign,
+  campaignPart,
+  campaignPartStatusEnum,
   campaignRecipient,
   campaignRecipientStatusEnum,
   campaignStatusEnum,
@@ -60,7 +62,49 @@ describe('enums de campagne (ADR 051)', () => {
       'pending',
       'sent',
       'failed',
+      'sending',
+      'to_verify',
+      'unsubscribed',
     ])
+  })
+
+  it('énumère les statuts d’une part (s26, ADR 052)', () => {
+    expect(campaignPartStatusEnum.enumName).toBe('campaign_part_status')
+    expect([...campaignPartStatusEnum.enumValues]).toEqual([
+      'scheduled',
+      'sending',
+      'sent',
+      'failed',
+    ])
+  })
+})
+
+describe('campaign_part (s26, ADR 052)', () => {
+  const t = describeTable(campaignPart)
+
+  it('porte les colonnes du plan, et elles seules', () => {
+    expect(t.config.name).toBe('campaign_part')
+    expect(t.config.columns.map((c) => c.name).sort()).toEqual(
+      [
+        'id',
+        'organization_id',
+        'campaign_id',
+        'number',
+        'scheduled_for',
+        'recipient_count',
+        'status',
+        'finished_at',
+      ].sort()
+    )
+    expect(t.column('scheduled_for')?.getSQLType()).toBe('date')
+    expect(t.column('status')?.getSQLType()).toBe('campaign_part_status')
+  })
+
+  it('suit son association et sa campagne (cascade), un numéro unique par campagne', () => {
+    expect(t.foreignKeyOn('organization_id')?.onDelete).toBe('cascade')
+    expect(t.referencedTableOf('campaign_id')).toBe('campaign')
+    expect(t.foreignKeyOn('campaign_id')?.onDelete).toBe('cascade')
+    expect(t.uniqueColumns()).toContainEqual(['campaign_id', 'number'])
   })
 })
 
@@ -159,11 +203,16 @@ describe('campaign_recipient (ADR 051)', () => {
         'organization_id',
         'campaign_id',
         'member_profile_id',
+        'part_id',
         'status',
         'unsubscribe_token',
         'sent_at',
+        'claimed_at',
       ].sort()
     )
+    expect(t.column('part_id')?.notNull).toBe(true)
+    expect(t.referencedTableOf('part_id')).toBe('campaign_part')
+    expect(t.column('claimed_at')?.notNull).toBe(false)
     expect(t.column('status')?.getSQLType()).toBe('campaign_recipient_status')
     expect(t.column('unsubscribe_token')?.notNull).toBe(true)
     expect(t.column('sent_at')?.notNull).toBe(false)

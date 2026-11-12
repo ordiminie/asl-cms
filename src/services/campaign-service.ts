@@ -6,18 +6,35 @@ import {render} from 'react-email'
 import {z} from 'zod'
 
 import {
+  claimRecipientForSendTxnDao,
+  countUnfinishedCampaignPartsDao,
   createCampaignWithRecipientsTxnDao,
+  failCampaignPartsFromTxnDao,
+  failUnreceivedRecipientsTxnDao,
+  finishCampaignPartTxnDao,
   finishCampaignTxnDao,
+  getAllottedRecipientsByDayDao,
   getCampaignByIdDao,
+  getCampaignPartDao,
+  getCampaignPartsDao,
+  getCampaignRecipientsPageDao,
   getCampaignsPageDao,
   getCampaignTargetRowsDao,
   getCurrentParcelNumbersForMembersDao,
-  getPendingRecipientsDao,
+  getPendingPartRecipientsDao,
+  getRecipientStatusCountsDao,
+  lockCampaignScheduleTxnDao,
   markRecipientFailedTxnDao,
   markRecipientSentTxnDao,
+  markRecipientToVerifyTxnDao,
+  markRecipientUnsubscribedTxnDao,
+  markStaleSendingRecipientsToVerifyTxnDao,
   type PendingRecipientRowModel,
+  releaseRecipientClaimTxnDao,
+  startCampaignPartTxnDao,
 } from '@/db/repositories/campaign-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
+import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
 import CampaignMail, {
@@ -27,6 +44,7 @@ import CampaignMail, {
 import {renderCampaignText} from '@/lib/emails/campaign-text'
 import {pngLogoUrlOf} from '@/lib/emails/logo-url'
 import {renderCampaignBodyHtml} from '@/lib/emails/render-campaign-body'
+import {isEmailTransportError} from '@/lib/emails/transport/email-transport'
 import {PRODUCT_LOCALE} from '@/lib/helper/locale-helper'
 import {logger} from '@/lib/logger'
 
@@ -47,20 +65,35 @@ import {
   substituteVariables,
   toCampaignDto,
 } from './rules/campaign-rules'
+import {
+  partRunAfter,
+  planCampaignParts,
+  retryDelayMs,
+} from './rules/campaign-schedule-rules'
+import {runDueScheduledJobsService} from './scheduled-job-service'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
   ASSOCIATION_LEGAL_NAME_SETTING_KEY,
   CONTACT_EMAIL_SETTING_KEY,
   getAccentHue,
+  getCampaignDailySendCap,
+  getCampaignSendMaxAttempts,
   type ResolvedAssociationSettings,
 } from './types/domain/association-settings-types'
 import {
+  CAMPAIGN_RECIPIENT_SENDING_STALE_MS,
+  CAMPAIGN_RECIPIENTS_PAGE_SIZE,
   CAMPAIGN_SUBJECT_MAX_TOTAL,
   CampaignByIdInput,
   CampaignComposerContextDTO,
   CampaignListPageDTO,
+  CampaignPlanDTO,
   CampaignReadResult,
+  CampaignRecipientFilter,
+  CampaignRecipientsInput,
+  CampaignRecipientsReadResult,
+  CampaignRecipientStatus,
   CAMPAIGNS_PAGE_SIZE,
   CampaignsPageInput,
   CampaignTargetCountsDTO,
@@ -72,9 +105,16 @@ import {
   UNSUBSCRIBE_TOKEN_BYTES,
 } from './types/domain/campaign-types'
 import {effectiveAuthor} from './types/domain/impersonation-types'
+import {
+  CAMPAIGN_DELIVER_PART_JOB_KIND,
+  ScheduledJob,
+  ScheduledJobHandlers,
+  ScheduledJobOutcome,
+} from './types/domain/scheduled-job-types'
 import {calendarDayOf} from './types/domain/water-analysis-types'
 import {
   campaignByIdServiceSchema,
+  campaignRecipientsServiceSchema,
   campaignsPageServiceSchema,
   createPreviewCampaignServiceSchema,
   createSendCampaignServiceSchema,
@@ -87,9 +127,9 @@ import {
  * donnees personnelles : jamais dans un journal (intercepteur sans details,
  * erreurs journalisees sans message).
  *
- * `deliverCampaignService` n'a **pas** de facade : la livraison n'est lancee
- * que par la fonction rendue par `sendCampaignService`, apres l'autorisation
- * et la creation des lignes.
+ * `deliverCampaignPartService` n'a **pas** de facade de campagne : c'est le
+ * gestionnaire du planificateur (s26, ADR 052), lance par une tache creee
+ * apres l'autorisation et la creation des lignes.
  */
 
 const CAMPAIGNS_DENIED =
@@ -120,10 +160,15 @@ const requireCampaignManager = async (organizationId: string) => {
   return authUser
 }
 
-/** L'association telle qu'un envoi la montre, et son origine publique. */
+/**
+ * L'association telle qu'un envoi la montre, son origine publique et son
+ * rythme d'envoi (s26 : plafond quotidien, tentatives d'une part).
+ */
 type CampaignAssociation = CampaignEmailAssociation & {
   replyTo: string | null
   origin: string
+  dailySendCap: number
+  sendMaxAttempts: number
 }
 
 /** Un reglage texte renseigne, ou rien. */
@@ -157,6 +202,8 @@ const readAssociation = async (
     ),
     replyTo: textSettingOf(settings, CONTACT_EMAIL_SETTING_KEY),
     origin,
+    dailySendCap: getCampaignDailySendCap(settings),
+    sendMaxAttempts: getCampaignSendMaxAttempts(settings),
   }
 }
 
@@ -353,9 +400,19 @@ export const sendCampaignService = async (
   if (unknown.length > 0)
     return {status: 'unknown_variables', variables: unknown}
 
+  const now = new Date()
+  const today = calendarDayOf(now)
   return withTenant(data.organizationId, async () => {
     const target = await readTarget(data.organizationId)
     if (target.recipients.length === 0) return {status: 'no_recipient'}
+
+    await lockCampaignScheduleTxnDao(data.organizationId)
+    const plan = planCampaignParts(
+      target.recipients.length,
+      association.dailySendCap,
+      await getAllottedRecipientsByDayDao(data.organizationId, today),
+      today
+    )
 
     const result = await createCampaignWithRecipientsTxnDao(
       {
@@ -370,9 +427,14 @@ export const sendCampaignService = async (
         withoutEmailCount: target.withoutEmail,
         unsubscribedCount: target.unsubscribed,
         status: 'sending',
-        sendDate: calendarDayOf(new Date()),
+        sendDate: today,
         ...author,
       },
+      plan.map((part, index) => ({
+        number: index + 1,
+        scheduledFor: part.day,
+        recipientCount: part.count,
+      })),
       target.recipients.map((row) => ({
         memberProfileId: row.memberProfileId,
         unsubscribeToken: newUnsubscribeToken(),
@@ -381,14 +443,64 @@ export const sendCampaignService = async (
     if (!result) throw new NotFoundError(ASSOCIATION_NOT_FOUND)
 
     const campaignId = result.campaign.id
+    for (const part of result.parts) {
+      await enqueueScheduledJobTxnDao({
+        organizationId: data.organizationId,
+        kind: CAMPAIGN_DELIVER_PART_JOB_KIND,
+        idempotencyKey: part.id,
+        runAfter: partRunAfter(part.scheduledFor, now),
+        payload: {partId: part.id, campaignId},
+      })
+    }
     return {
       status: 'created',
       campaignId,
       deliver: result.created
-        ? () => deliverCampaignService(data.organizationId, campaignId)
+        ? () => runImmediatePass(data.organizationId)
         : null,
     }
   })
+}
+
+/**
+ * Le plan d'envoi que l'apercu annonce (ecran 1 de s26) : lecture seule, sans
+ * verrou. Le plan reel est recalcule sous verrou a la creation.
+ */
+export const previewCampaignPlanService = async (
+  organizationId: string
+): Promise<CampaignPlanDTO> => {
+  const orgId = parseOrThrow(z.string().uuid(), organizationId)
+  await requireCampaignManager(orgId)
+  const association = await readAssociation(orgId)
+
+  const today = calendarDayOf(new Date())
+  return withTenant(orgId, async () => {
+    const target = await readTarget(orgId)
+    const allotted = await getAllottedRecipientsByDayDao(orgId, today)
+    return {
+      today,
+      dailySendCap: association.dailySendCap,
+      allottedToday: allotted[today] ?? 0,
+      parts: planCampaignParts(
+        target.recipients.length,
+        association.dailySendCap,
+        allotted,
+        today
+      ),
+    }
+  })
+}
+
+/** Les campagnes lues, avec leurs parts et leurs decomptes (s26). */
+const withPartsAndCounts = async (
+  rows: Awaited<ReturnType<typeof getCampaignsPageDao>>['rows']
+) => {
+  const ids = rows.map((row) => row.id)
+  const [parts, counts] = await Promise.all([
+    getCampaignPartsDao(ids),
+    getRecipientStatusCountsDao(ids),
+  ])
+  return rows.map((row) => toCampaignDto(row, parts, counts))
 }
 
 /** Une page de l'archive, la plus recente d'abord (critere 8). */
@@ -398,15 +510,16 @@ export const listCampaignsService = async (
   const data = parseOrThrow(campaignsPageServiceSchema, input)
   await requireCampaignManager(data.organizationId)
 
-  const {rows, total} = await withTenant(data.organizationId, () =>
-    getCampaignsPageDao({
+  const {items, total} = await withTenant(data.organizationId, async () => {
+    const {rows, total} = await getCampaignsPageDao({
       organizationId: data.organizationId,
       limit: CAMPAIGNS_PAGE_SIZE,
       offset: (data.page - 1) * CAMPAIGNS_PAGE_SIZE,
     })
-  )
+    return {items: await withPartsAndCounts(rows), total}
+  })
   return {
-    items: rows.map(toCampaignDto),
+    items,
     page: data.page,
     pageSize: CAMPAIGNS_PAGE_SIZE,
     total,
@@ -421,12 +534,72 @@ export const getCampaignService = async (
   const data = parseOrThrow(campaignByIdServiceSchema, input)
   await requireCampaignManager(data.organizationId)
 
-  const row = await withTenant(data.organizationId, () =>
-    getCampaignByIdDao(data.organizationId, data.campaignId)
-  )
-  return row
-    ? {status: 'found', campaign: toCampaignDto(row)}
-    : {status: 'not_found'}
+  const campaign = await withTenant(data.organizationId, async () => {
+    const row = await getCampaignByIdDao(data.organizationId, data.campaignId)
+    return row ? (await withPartsAndCounts([row]))[0] : undefined
+  })
+  return campaign ? {status: 'found', campaign} : {status: 'not_found'}
+}
+
+const STATUSES_OF_FILTER: Record<
+  CampaignRecipientFilter,
+  CampaignRecipientStatus[] | null
+> = {
+  all: null,
+  received: ['sent'],
+  scheduled: ['pending', 'sending'],
+  to_verify: ['to_verify'],
+  failed: ['failed'],
+}
+
+/**
+ * Les destinataires d'une campagne de l'association, pagines et filtres par
+ * etat (ecran 2 de s26, critere 6). Une campagne d'une autre association est
+ * introuvable, sans qu'aucune ligne ne soit lue. Aucun jeton n'en sort.
+ */
+export const getCampaignRecipientsService = async (
+  input: CampaignRecipientsInput
+): Promise<CampaignRecipientsReadResult> => {
+  const data = parseOrThrow(campaignRecipientsServiceSchema, input)
+  await requireCampaignManager(data.organizationId)
+
+  const page = await withTenant(data.organizationId, async () => {
+    const campaign = await getCampaignByIdDao(
+      data.organizationId,
+      data.campaignId
+    )
+    if (!campaign) return undefined
+    return getCampaignRecipientsPageDao({
+      organizationId: data.organizationId,
+      campaignId: data.campaignId,
+      statuses: STATUSES_OF_FILTER[data.filter],
+      limit: CAMPAIGN_RECIPIENTS_PAGE_SIZE,
+      offset: (data.page - 1) * CAMPAIGN_RECIPIENTS_PAGE_SIZE,
+    })
+  })
+  if (!page) return {status: 'not_found'}
+
+  return {
+    status: 'found',
+    recipients: {
+      items: page.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        parcelNumbers: row.parcelNumbers,
+        status: row.status,
+        sentAt: row.sentAt ? row.sentAt.toISOString() : null,
+        scheduledFor: row.scheduledFor,
+      })),
+      filter: data.filter,
+      page: data.page,
+      pageSize: CAMPAIGN_RECIPIENTS_PAGE_SIZE,
+      total: page.total,
+      totalPages: Math.max(
+        1,
+        Math.ceil(page.total / CAMPAIGN_RECIPIENTS_PAGE_SIZE)
+      ),
+    },
+  }
 }
 
 const listUnsubscribeHeaders = (
@@ -441,10 +614,8 @@ const sendToRecipient = async (
   association: CampaignAssociation,
   campaign: {subject: string; preheader: string | null; bodyMarkdown: string},
   sendDate: string,
-  recipient: PendingRecipientRowModel
+  recipient: PendingRecipientRowModel & {email: string; name: string}
 ): Promise<void> => {
-  if (!recipient.email) throw new Error('Destinataire sans adresse')
-
   const email = await buildCampaignEmail(
     association,
     campaign,
@@ -468,75 +639,6 @@ const sendToRecipient = async (
   )
 }
 
-const interrupt = async (
-  organizationId: string,
-  campaignId: string,
-  failedRecipientId?: string
-): Promise<void> => {
-  await withTenant(organizationId, async () => {
-    if (failedRecipientId) await markRecipientFailedTxnDao(failedRecipientId)
-    await finishCampaignTxnDao(campaignId, 'interrupted')
-  })
-}
-
-/**
- * La livraison d'une campagne (ADR 051), **sans facade et sans session** :
- * sequentielle, un `withTenant` court par destinataire (jamais une
- * transaction de tout l'envoi), arretee au **premier echec** (`interrupted`,
- * restants `pending`). Aucune reprise en V1 (s26).
- */
-export const deliverCampaignService = async (
-  organizationId: string,
-  campaignId: string
-): Promise<void> => {
-  try {
-    const campaign = await withTenant(organizationId, () =>
-      getCampaignByIdDao(organizationId, campaignId)
-    )
-    if (!campaign || campaign.status !== 'sending') return
-
-    if (!(await isClientEmailEnabledService())) {
-      await interrupt(organizationId, campaignId)
-      return
-    }
-
-    const association = await readAssociation(organizationId)
-    const recipients = await withTenant(organizationId, () =>
-      getPendingRecipientsDao(campaignId)
-    )
-
-    for (const recipient of recipients) {
-      try {
-        await sendToRecipient(
-          association,
-          campaign,
-          campaign.sendDate,
-          recipient
-        )
-      } catch (error) {
-        logger.error('[CAMPAIGN] Envoi interrompu au premier echec', {
-          campaignId,
-          error: error instanceof Error ? error.name : 'unknown',
-        })
-        await interrupt(organizationId, campaignId, recipient.recipientId)
-        return
-      }
-      await withTenant(organizationId, () =>
-        markRecipientSentTxnDao(recipient.recipientId)
-      )
-    }
-
-    await withTenant(organizationId, () =>
-      finishCampaignTxnDao(campaignId, 'sent')
-    )
-  } catch (error) {
-    logger.error('[CAMPAIGN] Livraison en echec', {
-      campaignId,
-      error: error instanceof Error ? error.name : 'unknown',
-    })
-  }
-}
-
 /**
  * L'utilisateur connecte peut-il gerer les campagnes de cette association ?
  * Pour les ecrans : un refus se lit, il ne se leve pas.
@@ -549,4 +651,183 @@ export const canManageCampaignsService = async (
 
   const authUser = await getAuthUser()
   return canPerformAction(authUser, parsed.data, ActionIdConst.CAMPAIGN_MANAGE)
+}
+
+/**
+ * Le passage immediat des taches dues de l'association, pose dans `after()`
+ * par l'action : la premiere part n'attend pas la minuterie.
+ */
+const runImmediatePass = async (organizationId: string): Promise<void> => {
+  await runDueScheduledJobsService({
+    handlers: campaignScheduledJobHandlers,
+    now: new Date(),
+    organizationId,
+  })
+}
+
+type CampaignContent = {
+  id: string
+  subject: string
+  preheader: string | null
+  bodyMarkdown: string
+}
+
+type PartToDeliver = {
+  id: string
+  campaignId: string
+  number: number
+  scheduledFor: string
+}
+
+/** Un refus certain du fournisseur : l'email n'est pas parti. */
+const isCertainRefusal = (error: unknown): boolean =>
+  isEmailTransportError(error) && error.refused
+
+/**
+ * Un destinataire de la part. `pending -> sending` **avant** l'envoi ; une
+ * ligne deja prise ailleurs est laissee. Rend `false` sur un echec d'envoi :
+ * la ligne est rendue en attente (refus certain) ou mise a verifier.
+ */
+const deliverToRecipient = async (
+  organizationId: string,
+  association: CampaignAssociation,
+  campaign: CampaignContent,
+  part: PartToDeliver,
+  recipient: PendingRecipientRowModel
+): Promise<boolean> => {
+  const inTenant = <T>(callback: () => Promise<T>) =>
+    withTenant(organizationId, callback)
+
+  if (recipient.unsubscribed) {
+    await inTenant(() => markRecipientUnsubscribedTxnDao(recipient.recipientId))
+    return true
+  }
+  const {email, name} = recipient
+  if (!email || name === null) {
+    await inTenant(() => markRecipientFailedTxnDao(recipient.recipientId))
+    return true
+  }
+  if (
+    !(await inTenant(() => claimRecipientForSendTxnDao(recipient.recipientId)))
+  ) {
+    return true
+  }
+
+  try {
+    await sendToRecipient(association, campaign, part.scheduledFor, {
+      ...recipient,
+      email,
+      name,
+    })
+  } catch (error) {
+    logger.error("[CAMPAIGN] Envoi d'une part interrompu", {
+      campaignId: campaign.id,
+      partId: part.id,
+      refused: isCertainRefusal(error),
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+    await inTenant(() =>
+      isCertainRefusal(error)
+        ? releaseRecipientClaimTxnDao(recipient.recipientId)
+        : markRecipientToVerifyTxnDao(recipient.recipientId)
+    )
+    return false
+  }
+  await inTenant(() => markRecipientSentTxnDao(recipient.recipientId))
+  return true
+}
+
+/**
+ * Un echec arrete la part. Tentatives restantes : nouvelle tentative a
+ * +30 min x tentative. Epuisees : la part, les suivantes et les non-recus
+ * passent en echec, la campagne `interrupted`.
+ */
+const failedAttemptOutcome = async (
+  job: ScheduledJob,
+  now: Date,
+  part: PartToDeliver,
+  maxAttempts: number
+): Promise<ScheduledJobOutcome> => {
+  if (job.attempts < maxAttempts) {
+    return {
+      status: 'retry',
+      runAfter: new Date(now.getTime() + retryDelayMs(job.attempts)),
+    }
+  }
+  await withTenant(job.organizationId, async () => {
+    await failCampaignPartsFromTxnDao(part.campaignId, part.number)
+    await failUnreceivedRecipientsTxnDao(part.campaignId)
+    await finishCampaignTxnDao(part.campaignId, 'interrupted')
+  })
+  return {status: 'failed'}
+}
+
+/** La part est servie ; la campagne n'est `sent` qu'a la derniere. */
+const finishPart = async (
+  organizationId: string,
+  part: PartToDeliver
+): Promise<void> => {
+  await withTenant(organizationId, async () => {
+    await finishCampaignPartTxnDao(part.id, 'sent')
+    if ((await countUnfinishedCampaignPartsDao(part.campaignId)) === 0) {
+      await finishCampaignTxnDao(part.campaignId, 'sent')
+    }
+  })
+}
+
+/**
+ * La livraison d'une part (ADR 052), gestionnaire de `campaign.deliver_part`,
+ * **sans session**. Dans l'ordre : balayage des lignes `sending` de plus de
+ * 15 min (`to_verify`, jamais renvoyees), part `sending`, puis chaque
+ * destinataire `pending` de la part, sequentiellement, un `withTenant` court
+ * par etape. `{date}` vaut le jour de la part. Des envois desactives par les
+ * reglages rendent la tache sans compter de tentative.
+ */
+export const deliverCampaignPartService = async (
+  job: ScheduledJob,
+  now: Date
+): Promise<ScheduledJobOutcome> => {
+  const organizationId = job.organizationId
+  const part = await withTenant(organizationId, () =>
+    getCampaignPartDao(job.payload.partId)
+  )
+  if (!part || part.status === 'sent' || part.status === 'failed') {
+    return {status: 'completed'}
+  }
+  if (!(await isClientEmailEnabledService())) return {status: 'released'}
+
+  const association = await readAssociation(organizationId)
+  const {campaign, recipients} = await withTenant(organizationId, async () => {
+    await markStaleSendingRecipientsToVerifyTxnDao(
+      part.id,
+      new Date(now.getTime() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS)
+    )
+    await startCampaignPartTxnDao(part.id)
+    return {
+      campaign: await getCampaignByIdDao(organizationId, part.campaignId),
+      recipients: await getPendingPartRecipientsDao(part.id),
+    }
+  })
+  if (!campaign) return {status: 'completed'}
+
+  for (const recipient of recipients) {
+    const delivered = await deliverToRecipient(
+      organizationId,
+      association,
+      campaign,
+      part,
+      recipient
+    )
+    if (!delivered) {
+      return failedAttemptOutcome(job, now, part, association.sendMaxAttempts)
+    }
+  }
+
+  await finishPart(organizationId, part)
+  return {status: 'completed'}
+}
+
+/** Les gestionnaires du planificateur que portent les campagnes (s26). */
+export const campaignScheduledJobHandlers: ScheduledJobHandlers = {
+  [CAMPAIGN_DELIVER_PART_JOB_KIND]: deliverCampaignPartService,
 }

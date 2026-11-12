@@ -1,8 +1,9 @@
 import campaignServiceInterceptor from './interceptors/campaign-service-logger-interceptor'
 
 /**
- * `deliverCampaignService` n'est **pas** expose : la livraison n'est lancee
- * que par la fonction que rend `sendCampaignService` (ADR 051).
+ * `deliverCampaignPartService` n'est **pas** expose : la livraison d'une part
+ * n'est lancee que par le planificateur (ADR 052), dont la facade compose les
+ * gestionnaires.
  */
 export const getCampaignComposerContextService =
   campaignServiceInterceptor.getCampaignComposerContextService
@@ -13,5 +14,9 @@ export const sendCampaignService =
 export const listCampaignsService =
   campaignServiceInterceptor.listCampaignsService
 export const getCampaignService = campaignServiceInterceptor.getCampaignService
+export const getCampaignRecipientsService =
+  campaignServiceInterceptor.getCampaignRecipientsService
+export const previewCampaignPlanService =
+  campaignServiceInterceptor.previewCampaignPlanService
 export const canManageCampaignsService =
   campaignServiceInterceptor.canManageCampaignsService

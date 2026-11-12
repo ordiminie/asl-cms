@@ -41,6 +41,7 @@ import {
   CAMPAIGN_VARIABLES,
   type CampaignComposerContextDTO,
   type CampaignFormField,
+  type CampaignPlanDTO,
   type CampaignPreviewDTO,
   type CampaignTemplateId,
   type PreviewCampaignActionResult,
@@ -135,6 +136,7 @@ export function CampaignComposer({
   const [submissionId] = useState(() => crypto.randomUUID())
   const [step, setStep] = useState<'compose' | 'preview'>('compose')
   const [preview, setPreview] = useState<CampaignPreviewDTO | null>(null)
+  const [plan, setPlan] = useState<CampaignPlanDTO | null>(null)
   const [notice, setNotice] = useState<ComposeNotice | null>(null)
   const [submitFailed, setSubmitFailed] = useState(false)
   const [applied, setApplied] = useState(false)
@@ -171,6 +173,7 @@ export function CampaignComposer({
     if (result.status === 'ok') {
       setNotice(null)
       setPreview(result.preview)
+      setPlan(result.plan)
       return
     }
     if (result.status === 'invalid') return applyServerErrors(result.errors)
@@ -219,6 +222,7 @@ export function CampaignComposer({
       <CampaignPreviewStep
         context={context}
         preview={preview}
+        plan={plan}
         values={values}
         provisional={templateId !== 'free'}
         onChangeMember={(memberProfileId) =>

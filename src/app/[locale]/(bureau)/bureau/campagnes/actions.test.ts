@@ -24,6 +24,7 @@ vi.mock('@/app/dal/tenant-dal', () => ({requireCurrentTenantDal: vi.fn()}))
 vi.mock('@/app/dal/user-dal', () => ({requireActionAuth: vi.fn()}))
 vi.mock('@/services/facades/campaign-service-facade', () => ({
   previewCampaignService: vi.fn(),
+  previewCampaignPlanService: vi.fn(),
   sendCampaignService: vi.fn(),
 }))
 
@@ -35,6 +36,7 @@ import {requireActionAuth} from '@/app/dal/user-dal'
 import {logger} from '@/lib/logger'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {
+  previewCampaignPlanService,
   previewCampaignService,
   sendCampaignService,
 } from '@/services/facades/campaign-service-facade'
@@ -215,17 +217,25 @@ describe('previewCampaignAction', () => {
       text: 'texte',
       counts: {recipients: 2, withoutEmail: 1, unsubscribed: 0, total: 3},
     }
+    const plan = {
+      today: '2026-11-12',
+      dailySendCap: 100,
+      allottedToday: 0,
+      parts: [{day: '2026-11-12', count: 2}],
+    }
     vi.mocked(previewCampaignService).mockResolvedValue({
       status: 'ok',
       preview,
     })
+    vi.mocked(previewCampaignPlanService).mockResolvedValue(plan)
 
     const result = await previewCampaignAction(
       undefined,
       formOf({...content, memberProfileId: PROFILE_ID})
     )
 
-    expect(result).toEqual({status: 'ok', preview})
+    expect(result).toEqual({status: 'ok', preview, plan})
+    expect(previewCampaignPlanService).toHaveBeenCalledWith(TENANT_ID)
     expect(previewCampaignService).toHaveBeenCalledWith({
       organizationId: TENANT_ID,
       ...content,
@@ -253,6 +263,7 @@ describe('previewCampaignAction', () => {
     await expect(
       previewCampaignAction(undefined, formOf(content))
     ).resolves.toEqual({status: 'unknown_variables', variables: ['parcele']})
+    expect(previewCampaignPlanService).not.toHaveBeenCalled()
   })
 
   it('sans session → refus, aucune façade', async () => {

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Public+Sans:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,600&amp;display=swap"><style>body{margin:0;background:oklch(0.972 0.005 240)}a{color:oklch(0.45 0.13 250)}a:hover{color:oklch(0.35 0.06 240)}</style></helmet>
+<header style="padding:64px 64px 32px;display:flex;flex-direction:column;gap:16px;max-width:1280px;font:400 17px/1.6 'Public Sans',sans-serif;color:oklch(0.22 0.015 250)">
+  <div style="font:500 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245)">docs/designs/s26-envoi-echelonne.html</div>
+  <h1 style="margin:0;font:600 48px/1.1 'Source Serif 4',serif">s26 — Envoi échelonné des campagnes</h1>
+  <p style="margin:0;max-width:72ch">ASL Les Pins · 296 membres joignables · plafond 100 par jour. Chaque état&nbsp;: bureau 1&nbsp;280&nbsp;px puis mobile 390&nbsp;px. Thème clair seul. Les zones en pointillés sont inchangées (s02, s25) et montrées en réduit. Le filtre «&nbsp;Afficher&nbsp;» de l’écran 2 est manipulable.</p>
+  <section style="margin-top:16px;padding:24px;background:oklch(1 0 0);border:1px solid oklch(0.9 0.008 245);border-radius:8px;display:flex;flex-direction:column;gap:12px">
+    <h2 style="margin:0;font:600 24px/1.25 'Source Serif 4',serif">Les cinq points à confirmer</h2>
+    <ol style="margin:0;padding-left:24px;display:flex;flex-direction:column;gap:8px">
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">PROPOSITION</b> — États d’un destinataire&nbsp;: composition confirmée avec l’existant. Reçue = <code>outline</code> muet + date en <code>data</code> hors du badge (gap 8)&nbsp;; Programmée pour le 13/11 = <code>secondary</code>&nbsp;; À vérifier = <code>outline</code> + point <code>primary</code>&nbsp;; En échec = <code>destructive</code>.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">ÉCART</b> — Filtre de tableau&nbsp;: <code>select</code> natif «&nbsp;Afficher&nbsp;» (libellé visible, 48/56 px), décompte dans chaque option, résumé écrit en <code>meta</code> sous le champ (aria-live). Changer de filtre revient à la page 1. À décrire en §3.5.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">PROPOSITION</b> — Compteur à quatre valeurs&nbsp;: <code>dl</code> de paires libellé (<code>meta</code>) / valeur (<code>data</code> 17 px), 4 colonnes en bureau. En mobile, «&nbsp;une ligne&nbsp;» lu comme une paire par ligne&nbsp;: quatre paires ne tiennent pas sur 326 px à 15 px.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">ÉCART</b> — Bandeau qui annonce l’avenir&nbsp;: <code>alert</code> neutre <b>sans icône</b> (fond <code>muted</code>)&nbsp;; <code>CircleCheck</code> reste réservé au succès, aucune icône autorisée ne dit «&nbsp;à venir&nbsp;».</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">PROPOSITION</b> — Plan d’envoi écrit&nbsp;: liste de lignes «&nbsp;100 membres le 12/11/2026&nbsp;», nombres alignés à droite en <code>data</code>, filet gauche 2 px <code>border</code>. Pas de calendrier, pas de frise.</li>
+    </ol>
+  </section>
+</header>
+
+<section id="ecran-1" data-screen-label="Écran 1" style="padding:32px 64px 64px;display:flex;flex-direction:column;gap:32px;font:400 17px/1.6 'Public Sans',sans-serif;color:oklch(0.22 0.015 250)">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1280px">
+    <h2 style="margin:0;font:600 34px/1.15 'Source Serif 4',serif">Écran 1 — Aperçu&nbsp;: annoncer l’étalement</h2>
+    <div style="font:400 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245)">/bureau/campagnes/nouvelle/apercu</div>
+    <ul style="margin:8px 0 0;padding-left:24px;display:flex;flex-direction:column;gap:4px">
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">NOTE</b> — 1b&nbsp;: sans ciblage (hors périmètre), un envoi unique suppose une association de 100 membres joignables au plus&nbsp;: illustré avec 84.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">AU PLAN</b> — 1d&nbsp;: libellé quand la première part est reportée — proposé «&nbsp;Elle part en 3 jours, à partir de demain&nbsp;».</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">ÉCART</b> — 1d&nbsp;: §3.10 dit «&nbsp;limite atteinte → <code>alert</code> <code>destructive</code>&nbsp;»&nbsp;; ici <code>warning</code> car ce n’est pas un refus. À acter en §3.10.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">AU PLAN</b> — 1e&nbsp;: «&nbsp;aujourd’hui, demain, après-demain&nbsp;» ne tient pas au-delà de 3 parts (1c, 1d)&nbsp;: proposé de passer aux dates dans ces cas.</li>
+    </ul>
+  </div>
+  <sc-for list="{{ s1 }}" as="r" hint-placeholder-count="2">
+    <div id="{{ r.id }}" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="padding:4px 12px;border-radius:4px;background:oklch(0.35 0.06 240);color:oklch(0.985 0.003 240);font:500 15px 'JetBrains Mono',monospace">{{ r.id }}</span><span style="font-weight:600">{{ r.label }}</span></div>
+      <div style="display:flex;gap:48px;align-items:flex-start">
+        <div style="width:1280px;flex:none;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);overflow:hidden"><dc-import name="S1Apercu" state="{{ r.st }}" mobile="{{ false }}" hint-size="1280px,900px"></dc-import></div>
+        <div style="width:390px;flex:none;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);overflow:hidden"><dc-import name="S1Apercu" state="{{ r.st }}" mobile="{{ true }}" hint-size="390px,1100px"></dc-import></div>
+      </div>
+    </div>
+  </sc-for>
+</section>
+
+<section id="ecran-2" data-screen-label="Écran 2" style="padding:32px 64px 64px;display:flex;flex-direction:column;gap:32px;font:400 17px/1.6 'Public Sans',sans-serif;color:oklch(0.22 0.015 250)">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1280px">
+    <h2 style="margin:0;font:600 34px/1.15 'Source Serif 4',serif">Écran 2 — Une campagne étalée</h2>
+    <div style="font:400 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245)">/bureau/campagnes/{id}</div>
+    <ul style="margin:8px 0 0;padding-left:24px;display:flex;flex-direction:column;gap:4px">
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">AU PLAN</b> — 2d&nbsp;: la part 3 suit-elle la part 2 en échec&nbsp;? Supposé oui (196 en échec, conforme à «&nbsp;196 ne l’ont pas reçue&nbsp;»).</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">PROPOSITION</b> — 2c&nbsp;: la part 3 porte l’état «&nbsp;À vérifier&nbsp;» (94 reçus, 2 à vérifier)&nbsp;; le lien sous l’alerte applique le filtre.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">NOTE</b> — 2j (ajouté)&nbsp;: juste après la confirmation, l’<code>alert</code> de succès remplace le bandeau d’état. La <code>progress</code> bloquante de s25 (part du jour) n’est pas redessinée.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">ÉCART</b> — Pagination&nbsp;: «&nbsp;Précédent&nbsp;» en page 1 rendu inactif (<code>aria-disabled</code>, bordure <code>border</code>)&nbsp;; le design system ne décrit pas cet état.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">NOTE</b> — Résumé&nbsp;: seule la paire «&nbsp;Plafond&nbsp;» est nouvelle&nbsp;; les autres libellés reprennent s25 à l’identique.</li>
+    </ul>
+  </div>
+  <sc-for list="{{ s2 }}" as="r" hint-placeholder-count="2">
+    <div id="{{ r.id }}" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="padding:4px 12px;border-radius:4px;background:oklch(0.35 0.06 240);color:oklch(0.985 0.003 240);font:500 15px 'JetBrains Mono',monospace">{{ r.id }}</span><span style="font-weight:600">{{ r.label }}</span></div>
+      <div style="display:flex;gap:48px;align-items:flex-start">
+        <div style="width:1280px;flex:none;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);overflow:hidden"><dc-import name="S2Campagne" state="{{ r.st }}" mobile="{{ false }}" hint-size="1280px,1400px"></dc-import></div>
+        <sc-if value="{{ r.m }}">
+          <div style="width:390px;flex:none;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);overflow:hidden"><dc-import name="S2Campagne" state="{{ r.st }}" mobile="{{ true }}" hint-size="390px,2000px"></dc-import></div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-for>
+</section>
+
+<section id="ecran-3" data-screen-label="Écran 3" style="padding:32px 64px 64px;display:flex;flex-direction:column;gap:32px;font:400 17px/1.6 'Public Sans',sans-serif;color:oklch(0.22 0.015 250)">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1280px">
+    <h2 style="margin:0;font:600 34px/1.15 'Source Serif 4',serif">Écran 3 — L’archive montre l’état</h2>
+    <div style="font:400 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245)">/bureau/campagnes</div>
+    <ul style="margin:8px 0 0;padding-left:24px;display:flex;flex-direction:column;gap:4px">
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">AU PLAN</b> — «&nbsp;Envoyée le&nbsp;» pour une campagne en cours = date de lancement (12/11/2026). Renommer la colonne «&nbsp;Lancée le&nbsp;»&nbsp;?</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">NOTE</b> — 3b, 3c, 3d inchangés (s25), reproduits pour contexte&nbsp;; pagination s25 non montrée (5 lignes).</li>
+    </ul>
+  </div>
+  <sc-for list="{{ s3 }}" as="r" hint-placeholder-count="2">
+    <div id="{{ r.id }}" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="padding:4px 12px;border-radius:4px;background:oklch(0.35 0.06 240);color:oklch(0.985 0.003 240);font:500 15px 'JetBrains Mono',monospace">{{ r.id }}</span><span style="font-weight:600">{{ r.label }}</span></div>
+      <div style="display:flex;gap:48px;align-items:flex-start">
+        <div style="width:1280px;flex:none;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);overflow:hidden"><dc-import name="S3Archive" state="{{ r.st }}" mobile="{{ false }}" hint-size="1280px,640px"></dc-import></div>
+        <div style="width:390px;flex:none;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);overflow:hidden"><dc-import name="S3Archive" state="{{ r.st }}" mobile="{{ true }}" hint-size="390px,1200px"></dc-import></div>
+      </div>
+    </div>
+  </sc-for>
+</section>
+
+<section id="ecran-4" data-screen-label="Écran 4" style="padding:32px 64px 96px;display:flex;flex-direction:column;gap:32px;font:400 17px/1.6 'Public Sans',sans-serif;color:oklch(0.22 0.015 250)">
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:1280px">
+    <h2 style="margin:0;font:600 34px/1.15 'Source Serif 4',serif">Écran 4 — Réglages&nbsp;: le plafond quotidien</h2>
+    <div style="font:400 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245)">/bureau/reglages</div>
+    <ul style="margin:8px 0 0;padding-left:24px;display:flex;flex-direction:column;gap:4px">
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">AU PLAN</b> — 4d&nbsp;: message «&nbsp;Réglage enregistré…&nbsp;» à confirmer (brief).</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">AU PLAN</b> — Aucune borne haute fixée&nbsp;: un plafond au-dessus de la limite de la messagerie relève de s52.</li>
+      <li><b style="font:500 15px 'JetBrains Mono',monospace">NOTE</b> — Carte «&nbsp;Envois&nbsp;» et champ «&nbsp;Adresse de réponse&nbsp;» supposés existants&nbsp;; seul le champ «&nbsp;Plafond quotidien des campagnes&nbsp;» est nouveau.</li>
+    </ul>
+  </div>
+  <sc-for list="{{ s4 }}" as="r" hint-placeholder-count="2">
+    <div id="{{ r.id }}" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="padding:4px 12px;border-radius:4px;background:oklch(0.35 0.06 240);color:oklch(0.985 0.003 240);font:500 15px 'JetBrains Mono',monospace">{{ r.id }}</span><span style="font-weight:600">{{ r.label }}</span></div>
+      <div style="display:flex;gap:48px;align-items:flex-start">
+        <div style="width:1280px;flex:none;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);overflow:hidden"><dc-import name="S4Reglages" state="{{ r.st }}" mobile="{{ false }}" hint-size="1280px,900px"></dc-import></div>
+        <div style="width:390px;flex:none;border:1px solid oklch(0.9 0.008 245);background:oklch(1 0 0);overflow:hidden"><dc-import name="S4Reglages" state="{{ r.st }}" mobile="{{ true }}" hint-size="390px,1200px"></dc-import></div>
+      </div>
+    </div>
+  </sc-for>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const R = (n, st, label, m = true) => ({ id: n + st, st, label, m });
+    return {
+      s1: [R(1, 'a', 'Trois jours'), R(1, 'b', 'Un seul envoi (≤ 100)'), R(1, 'c', 'Plafond du jour déjà entamé — quatre parts'), R(1, 'd', 'Plafond du jour atteint — report annoncé'), R(1, 'e', 'Confirmation (alert-dialog)')],
+      s2: [R(2, 'a', 'En cours — part 3 programmée'), R(2, 'b', 'Terminée', false), R(2, 'c', 'À vérifier'), R(2, 'd', 'En échec'), R(2, 'e', 'Chargement', false), R(2, 'f', 'Campagne introuvable', false), R(2, 'g', 'Liste vide pour le filtre « À vérifier »', false), R(2, 'h', 'Un seul envoi — pas de carte « Envois par jour »', false), R(2, 'j', 'Juste après la confirmation (ajouté)', false)],
+      s3: [R(3, 'a', 'Liste mélangée'), R(3, 'b', 'Vide (s25)'), R(3, 'c', 'Chargement (s25)'), R(3, 'd', 'Erreur (s25)')],
+      s4: [R(4, 'a', 'Valeur par défaut'), R(4, 'b', 'Valeur personnalisée'), R(4, 'c', 'Erreur de saisie'), R(4, 'd', 'Enregistré')]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -7,7 +7,11 @@ import {
   CampaignListError,
   CampaignListSkeleton,
 } from './campaign-list'
-import {campaignListOf, campaignOf} from './campaign-test-data'
+import {
+  campaignListOf,
+  campaignOf,
+  spreadCampaignOf,
+} from './campaign-test-data'
 
 const tableRows = () =>
   within(screen.getByRole('table')).getAllByRole('row').slice(1)
@@ -46,6 +50,58 @@ describe('CampaignList — écran 1 du design s25', () => {
     expect(
       within(first).getByRole('link', {name: 'Consulter'})
     ).toHaveAttribute('href', '/bureau/campagnes/a')
+  })
+
+  it('a · liste mélangée (s26) : « Lancée le », « n sur N » tant que tous ne l’ont pas reçue, badge d’état', () => {
+    render(
+      <CampaignList
+        list={campaignListOf([
+          spreadCampaignOf('a'),
+          campaignOf('b'),
+          campaignOf('c', {
+            displayState: 'to_verify',
+            recipientCounts: {
+              received: 294,
+              scheduled: 0,
+              sending: 0,
+              toVerify: 2,
+              failed: 0,
+              unsubscribed: 0,
+            },
+          }),
+          campaignOf('d', {
+            status: 'interrupted',
+            displayState: 'failed',
+            recipientCounts: {
+              received: 100,
+              scheduled: 0,
+              sending: 0,
+              toVerify: 0,
+              failed: 196,
+              unsubscribed: 0,
+            },
+          }),
+        ])}
+      />
+    )
+
+    expect(
+      screen.getByRole('columnheader', {name: 'Lancée le'})
+    ).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', {name: 'État'})).toBeInTheDocument()
+    const states = tableRows().map((row) => {
+      const cells = within(row).getAllByRole('cell')
+      return [cells[4].textContent, cells[5].textContent]
+    })
+    expect(states).toEqual([
+      ['200 sur 296', 'En cours d’envoi'],
+      ['296', 'Envoyée'],
+      ['294 sur 296', 'À vérifier'],
+      ['100 sur 296', 'En échec'],
+    ])
+    expect(screen.getAllByTestId('campaign-card')[0]).toHaveTextContent(
+      'En cours d’envoi'
+    )
   })
 
   it('l’objet est montré sans le préfixe de l’association', () => {

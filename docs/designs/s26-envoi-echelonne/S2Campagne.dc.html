@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Public+Sans:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,600&amp;display=swap"></helmet>
+<div style="display:flex;width:100%;min-height:100%;background:oklch(1 0 0);color:oklch(0.22 0.015 250);font:400 17px/1.6 'Public Sans',sans-serif">
+  <sc-if value="{{ desktop }}" hint-placeholder-val="{{ true }}">
+    <aside style="width:248px;flex:none;background:oklch(0.985 0.004 250);border-right:1px solid oklch(0.91 0.008 245);padding:24px 16px;display:flex;flex-direction:column;gap:32px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;flex:none;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);border:1px solid oklch(0.88 0.045 195);display:grid;place-items:center;font:600 16px/1 'Public Sans',sans-serif">LP</span><span style="font-weight:600">ASL Les Pins</span></div>
+      <nav style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:15px;color:oklch(0.45 0.02 245);padding:0 12px 4px">L’association</div>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Propriétaires</a>
+        <a aria-current="page" style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none;background:oklch(0.93 0.012 245);border-left:2px solid oklch(0.55 0.1 195);font-weight:600">Campagnes</a>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Identité</a>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Réglages</a>
+      </nav>
+    </aside>
+  </sc-if>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <sc-if value="{{ mobile }}">
+      <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid oklch(0.91 0.008 245);background:oklch(0.985 0.004 250)">
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:32px;height:32px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);border:1px solid oklch(0.88 0.045 195);display:grid;place-items:center;font:600 15px/1 'Public Sans',sans-serif">LP</span><span style="font-weight:600">ASL Les Pins</span></div>
+        <button style="height:44px;padding:0 16px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;background:oklch(1 0 0);color:inherit;font:600 16px/1 'Public Sans',sans-serif">Menu</button>
+      </header>
+    </sc-if>
+    <main style="padding:{{ mainPad }}">
+      <div style="max-width:720px;display:flex;flex-direction:column;gap:24px">
+        <nav aria-label="Fil d’Ariane" style="display:flex;flex-wrap:wrap;gap:8px;font-size:15px;color:oklch(0.45 0.02 245)"><a style="color:oklch(0.45 0.13 250);text-decoration:underline">Campagnes</a><span>›</span><span>{{ crumb }}</span></nav>
+
+        <sc-if value="{{ notfound }}">
+          <h1 style="margin:0;font:600 34px/1.15 'Source Serif 4',serif">Campagne introuvable</h1>
+          <div role="alert" style="display:flex;flex-direction:column;gap:12px;padding:16px;border:2px solid oklch(0.48 0.17 27);border-radius:8px">
+            <p style="margin:0;color:oklch(0.48 0.17 27);font-weight:600">Cette campagne n’existe pas ou n’appartient pas à votre association.</p>
+            <a style="display:inline-flex;align-items:center;gap:8px;min-height:44px;color:oklch(0.45 0.13 250);text-decoration:underline"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>Retour aux campagnes</a>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ found }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px">
+            <h1 style="margin:0;font:600 34px/1.15 'Source Serif 4',serif;text-wrap:pretty">Convocation à l’assemblée générale</h1>
+            <dc-import name="Badge" kind="{{ badgeKind }}" text="{{ badgeText }}" hint-size="140px,30px"></dc-import>
+          </div>
+
+          <sc-if value="{{ alCont }}" hint-placeholder-val="{{ true }}">
+            <div role="status" style="padding:16px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(0.972 0.005 240)"><p style="margin:0">Les envois continuent seuls. Prochaine part&nbsp;: le <span style="font:400 16px 'JetBrains Mono',monospace">{{ nextDay }}</span>, <span style="font:400 16px 'JetBrains Mono',monospace">{{ nextNb }}</span> membres. Vous n’avez rien à faire.</p></div>
+          </sc-if>
+          <sc-if value="{{ alSuccess }}">
+            <div role="status" style="display:flex;gap:12px;padding:16px;border:1px solid oklch(0.9 0.008 245);border-radius:8px">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="oklch(0.35 0.06 240)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:4px"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+              <p style="margin:0"><strong style="font-weight:600">Campagne lancée.</strong> 100 membres la reçoivent aujourd’hui, la suite part seule les 13 et 14 novembre. Suivez-la ci-dessous.</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ alDone }}">
+            <div role="status" style="display:flex;gap:12px;padding:16px;border:1px solid oklch(0.9 0.008 245);border-radius:8px">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="oklch(0.35 0.06 240)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:4px"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+              <p style="margin:0">Campagne terminée&nbsp;: les <span style="font:400 16px 'JetBrains Mono',monospace">{{ total }}</span> membres l’ont reçue.</p>
+            </div>
+          </sc-if>
+          <sc-if value="{{ alWarn }}">
+            <div role="alert" style="display:flex;gap:12px;padding:16px;border:1px solid oklch(0.6 0.13 65);border-radius:8px;background:oklch(0.94 0.06 75);color:oklch(0.3 0.08 60)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:4px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <p style="margin:0"><strong style="font-weight:600">Attention&nbsp;:</strong> 2 destinataires sont à vérifier. L’envoi s’est arrêté au moment où l’on ne savait pas si leur email était parti. Nous ne le renvoyons pas, pour ne pas leur écrire deux fois. Contactez l’équipe technique pour les vérifier.</p>
+                <a href="#" onClick="{{ showVerif }}" style="align-self:flex-start;min-height:44px;display:inline-flex;align-items:center;color:oklch(0.3 0.08 60);text-decoration:underline;font-weight:600">Afficher les destinataires à vérifier (2)</a>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ alErr }}">
+            <div role="alert" style="display:flex;flex-direction:column;gap:8px;padding:16px;border:2px solid oklch(0.48 0.17 27);border-radius:8px">
+              <p style="margin:0;color:oklch(0.48 0.17 27);font-weight:600">La part du <span style="font:500 16px 'JetBrains Mono',monospace">13/11/2026</span> n’a pas pu partir après plusieurs essais.</p>
+              <p style="margin:0">100 membres ont reçu la campagne&nbsp;; 196 ne l’ont pas reçue. Rien n’est renvoyé à ceux qui l’ont déjà reçue. Contactez l’équipe technique.</p>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ loading }}">
+            <section aria-busy="true" style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:16px">
+              <div style="height:32px;width:40%;border-radius:8px;background:oklch(0.972 0.005 240)"></div>
+              <div style="height:8px;border-radius:4px;background:oklch(0.972 0.005 240)"></div>
+              <div style="height:24px;width:70%;border-radius:8px;background:oklch(0.972 0.005 240)"></div>
+            </section>
+            <section aria-busy="true" style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:8px">
+              <div style="height:32px;width:40%;border-radius:8px;background:oklch(0.972 0.005 240);margin-bottom:8px"></div>
+              <div style="height:48px;border-radius:8px;background:oklch(0.972 0.005 240)"></div><div style="height:48px;border-radius:8px;background:oklch(0.972 0.005 240)"></div><div style="height:48px;border-radius:8px;background:oklch(0.972 0.005 240)"></div>
+            </section>
+            <section aria-busy="true" style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:8px">
+              <div style="height:32px;width:40%;border-radius:8px;background:oklch(0.972 0.005 240);margin-bottom:8px"></div>
+              <div style="height:48px;border-radius:8px;background:oklch(0.972 0.005 240)"></div><div style="height:48px;border-radius:8px;background:oklch(0.972 0.005 240)"></div><div style="height:48px;border-radius:8px;background:oklch(0.972 0.005 240)"></div><div style="height:48px;border-radius:8px;background:oklch(0.972 0.005 240)"></div><div style="height:48px;border-radius:8px;background:oklch(0.972 0.005 240)"></div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+            <section style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:16px">
+              <h2 style="margin:0;font:600 24px/1.25 'Source Serif 4',serif">Avancement</h2>
+              <p style="margin:0"><strong style="font-weight:600"><span style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ recu }}</span> sur <span style="font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ total }}</span></strong> membres ont reçu la campagne.</p>
+              <div role="progressbar" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ recu }}" aria-label="Membres qui ont reçu la campagne" style="height:8px;border-radius:4px;background:oklch(0.9 0.008 245);overflow:hidden"><div style="height:100%;width:{{ pct }};background:oklch(0.35 0.06 240)"></div></div>
+              <dl style="margin:0;display:grid;grid-template-columns:{{ cntCols }};gap:{{ cntGap }}">
+                <div style="display:flex;flex-direction:{{ pairDir }};justify-content:space-between;gap:4px"><dt style="font-size:15px;color:oklch(0.45 0.02 245)">Reçue</dt><dd style="margin:0;font:500 17px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ recu }}</dd></div>
+                <div style="display:flex;flex-direction:{{ pairDir }};justify-content:space-between;gap:4px"><dt style="font-size:15px;color:oklch(0.45 0.02 245)">Programmée</dt><dd style="margin:0;font:500 17px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ prog }}</dd></div>
+                <div style="display:flex;flex-direction:{{ pairDir }};justify-content:space-between;gap:4px"><dt style="font-size:15px;color:oklch(0.45 0.02 245)">À vérifier</dt><dd style="margin:0;font:500 17px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ verif }}</dd></div>
+                <div style="display:flex;flex-direction:{{ pairDir }};justify-content:space-between;gap:4px"><dt style="font-size:15px;color:oklch(0.45 0.02 245)">En échec</dt><dd style="margin:0;font:500 17px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ echec }}</dd></div>
+              </dl>
+            </section>
+
+            <sc-if value="{{ hasParts }}" hint-placeholder-val="{{ true }}">
+              <section style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:16px">
+                <h2 style="margin:0;font:600 24px/1.25 'Source Serif 4',serif">Envois par jour</h2>
+                <sc-if value="{{ desktop }}" hint-placeholder-val="{{ true }}">
+                  <div role="table" style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+                    <div role="row" style="display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr) minmax(0,2fr);align-items:center;height:48px;padding:0 16px;gap:16px;background:oklch(0.972 0.005 240);border-bottom:1px solid oklch(0.9 0.008 245);font:600 16px/1.2 'Public Sans',sans-serif;color:oklch(0.45 0.02 245)"><span role="columnheader">Part</span><span role="columnheader">Jour</span><span role="columnheader">Destinataires</span><span role="columnheader">État</span></div>
+                    <sc-for list="{{ parts }}" as="p" hint-placeholder-count="3">
+                      <div role="row" style="display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr) minmax(0,2fr);align-items:center;min-height:56px;padding:0 16px;gap:16px;border-top:1px solid oklch(0.9 0.008 245);background:{{ p.bg }}"><span role="cell" style="font:400 16px 'JetBrains Mono',monospace">{{ p.n }}</span><span role="cell" style="font:400 16px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ p.jour }}</span><span role="cell" style="font:400 16px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ p.nb }}</span><span role="cell"><dc-import name="Badge" kind="{{ p.kind }}" text="{{ p.label }}" hint-size="120px,30px"></dc-import></span></div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ mobile }}">
+                  <div style="display:flex;flex-direction:column;gap:12px">
+                    <sc-for list="{{ parts }}" as="p" hint-placeholder-count="3">
+                      <div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:8px">
+                        <div style="font-weight:600">Part {{ p.n }}</div>
+                        <div style="display:flex;justify-content:space-between;gap:12px"><span style="font-size:15px;color:oklch(0.45 0.02 245)">Jour</span><span style="font:400 16px 'JetBrains Mono',monospace">{{ p.jour }}</span></div>
+                        <div style="display:flex;justify-content:space-between;gap:12px"><span style="font-size:15px;color:oklch(0.45 0.02 245)">Destinataires</span><span style="font:400 16px 'JetBrains Mono',monospace">{{ p.nb }}</span></div>
+                        <div><dc-import name="Badge" kind="{{ p.kind }}" text="{{ p.label }}" hint-size="120px,30px"></dc-import></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </section>
+            </sc-if>
+
+            <section style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:16px">
+              <h2 style="margin:0;font:600 24px/1.25 'Source Serif 4',serif">Destinataires</h2>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <label for="{{ selId }}" style="font:500 16px/1.4 'Public Sans',sans-serif">Afficher</label>
+                <select id="{{ selId }}" value="{{ filter }}" onChange="{{ onFilter }}" style="height:{{ fieldH }};width:100%;max-width:320px;padding:0 12px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;background:oklch(1 0 0);color:inherit;font:400 17px 'Public Sans',sans-serif">
+                  <option value="tous">Tous ({{ total }})</option>
+                  <option value="recue">Reçue ({{ recu }})</option>
+                  <option value="programmee">Programmée ({{ prog }})</option>
+                  <option value="verifier">À vérifier ({{ verif }})</option>
+                  <option value="echec">En échec ({{ echec }})</option>
+                </select>
+                <p aria-live="polite" style="margin:0;font-size:15px;color:oklch(0.45 0.02 245)">{{ summary }}</p>
+              </div>
+              <sc-if value="{{ empty }}">
+                <p style="margin:0;padding:24px 16px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;text-align:center;color:oklch(0.45 0.02 245)">{{ emptyText }}</p>
+              </sc-if>
+              <sc-if value="{{ hasRows }}" hint-placeholder-val="{{ true }}">
+                <sc-if value="{{ desktop }}" hint-placeholder-val="{{ true }}">
+                  <div role="table" style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;overflow:hidden">
+                    <div role="row" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,2.4fr);align-items:center;height:48px;padding:0 16px;gap:16px;background:oklch(0.972 0.005 240);border-bottom:1px solid oklch(0.9 0.008 245);font:600 16px/1.2 'Public Sans',sans-serif;color:oklch(0.45 0.02 245)"><span role="columnheader">Nom</span><span role="columnheader">Parcelle</span><span role="columnheader">État</span></div>
+                    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+                      <div role="row" style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,2.4fr);align-items:center;min-height:56px;padding:0 16px;gap:16px;border-top:1px solid oklch(0.9 0.008 245);background:{{ r.bg }}"><span role="cell">{{ r.nom }}</span><span role="cell" style="font:400 16px 'JetBrains Mono',monospace">{{ r.parcelle }}</span><span role="cell" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><dc-import name="Badge" kind="{{ r.kind }}" text="{{ r.label }}" hint-size="80px,30px"></dc-import><span style="font:400 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245);font-variant-numeric:tabular-nums">{{ r.date }}</span></span></div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ mobile }}">
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+                      <div style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:8px">
+                        <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline"><span style="font-weight:600">{{ r.nom }}</span><span style="font:400 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245)">{{ r.parcelle }}</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><dc-import name="Badge" kind="{{ r.kind }}" text="{{ r.label }}" hint-size="80px,30px"></dc-import><span style="font:400 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245)">{{ r.date }}</span></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <nav aria-label="Pagination" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                  <button aria-disabled="true" style="height:48px;padding:0 16px;border:1px solid oklch(0.9 0.008 245);border-radius:8px;background:oklch(1 0 0);color:oklch(0.45 0.02 245);font:600 16px/1 'Public Sans',sans-serif">Précédent</button>
+                  <span style="font:400 15px 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245)">{{ pageInfo }}</span>
+                  <button style="height:48px;padding:0 16px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;background:oklch(1 0 0);color:inherit;font:600 16px/1 'Public Sans',sans-serif">Suivant</button>
+                </nav>
+              </sc-if>
+            </section>
+
+            <section style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:16px">
+              <h2 style="margin:0;font:600 24px/1.25 'Source Serif 4',serif">Résumé</h2>
+              <dl style="margin:0;display:grid;grid-template-columns:{{ resCols }};gap:8px 24px">
+                <dt style="color:oklch(0.45 0.02 245);font-size:15px">Lancée le</dt><dd style="margin:0;font:400 16px 'JetBrains Mono',monospace">12/11/2026 14:32</dd>
+                <dt style="color:oklch(0.45 0.02 245);font-size:15px">Par</dt><dd style="margin:0">Marie Delorme</dd>
+                <dt style="color:oklch(0.45 0.02 245);font-size:15px">Modèle</dt><dd style="margin:0">Convocation</dd>
+                <dt style="color:oklch(0.45 0.02 245);font-size:15px">Destinataires</dt><dd style="margin:0;font:400 16px 'JetBrains Mono',monospace">{{ total }}</dd>
+                <dt style="color:oklch(0.45 0.02 245);font-size:15px">Plafond</dt><dd style="margin:0"><span style="font:400 16px 'JetBrains Mono',monospace">100</span> envois par jour</dd>
+              </dl>
+            </section>
+            <section style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:16px">
+              <h2 style="margin:0;font:600 24px/1.25 'Source Serif 4',serif">Contenu envoyé</h2>
+              <div style="border:1px dashed oklch(0.66 0.014 245);border-radius:8px;background:oklch(0.972 0.005 240);padding:32px 16px;font:400 15px/1.5 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245);text-align:center">cadre email — inchangé (s25)</div>
+            </section>
+          </sc-if>
+        </sc-if>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;1400px&quot;},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;d&quot;,&quot;e&quot;,&quot;f&quot;,&quot;g&quot;,&quot;h&quot;,&quot;j&quot;],&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;mobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { filter: null };
+  cfg(st) {
+    const P = (n, j, nb, k, t) => ({ n: String(n), jour: j, nb: String(nb), kind: k, label: t });
+    const E = 'envoyee', Ev = 'Envoyée', PR = 'programmee';
+    const three = (k3, t3, k2 = E, t2 = Ev) => [P(1, '12/11/2026', 100, E, Ev), P(2, '13/11/2026', 100, k2, t2), P(3, '14/11/2026', 96, k3, t3)];
+    const enc = ['encours', 'En cours d’envoi'];
+    switch (st) {
+      case 'b': return { total: 296, recu: 296, prog: 0, verif: 0, echec: 0, badge: [E, Ev], al: 'done', parts: three(E, Ev), mode: 'b' };
+      case 'c': return { total: 296, recu: 294, prog: 0, verif: 2, echec: 0, badge: ['verifier', 'À vérifier'], al: 'warn', parts: three('verifier', 'À vérifier'), mode: 'c' };
+      case 'd': return { total: 296, recu: 100, prog: 0, verif: 0, echec: 196, badge: ['echec', 'En échec'], al: 'err', parts: three('echec', 'En échec', 'echec', 'En échec'), mode: 'd' };
+      case 'h': return { total: 84, recu: 84, prog: 0, verif: 0, echec: 0, badge: [E, Ev], al: 'done', parts: [P(1, '12/11/2026', 84, E, Ev)], mode: 'h' };
+      case 'j': return { total: 296, recu: 100, prog: 196, verif: 0, echec: 0, badge: enc, al: 'success', parts: three(PR, 'Programmée pour le 14/11', PR, 'Programmée pour le 13/11'), mode: 'j' };
+      default: return { total: 296, recu: 200, prog: 96, verif: 0, echec: 0, badge: enc, al: 'cont', parts: three(PR, 'Programmée pour le 14/11'), mode: 'a', next: ['14/11/2026', '96'] };
+    }
+  }
+  names() {
+    if (this._n) return this._n;
+    const F = ['Anne', 'Bernard', 'Camille', 'Denis', 'Élise', 'François', 'Gisèle', 'Hugo', 'Inès', 'Jacques', 'Karine', 'Louis', 'Mireille', 'Nicolas', 'Odile', 'Pierre', 'Quentin', 'Rose', 'Sylvie', 'Thierry', 'Lucie', 'Vincent', 'Yvette', 'Xavier', 'Zoé'];
+    const L = ['Arnaud', 'Barbier', 'Carron', 'Dumas', 'Estève', 'Fabre', 'Garnier', 'Hébert', 'Imbert', 'Jourdan', 'Klein', 'Laurent', 'Marchand', 'Noël', 'Olivier', 'Perrin', 'Roux', 'Simon', 'Tessier', 'Vidal'];
+    const out = [];
+    for (let i = 0; i < 25; i++) out.push({ l: L[(i * 13) % 20], f: F[(i * 7) % 25], p: 'ABCD'[i % 4] + '-' + String(102 + i * 37).padStart(4, '0') });
+    out.sort((a, b) => a.l.localeCompare(b.l, 'fr'));
+    return (this._n = out);
+  }
+  rowFor(mode, i) {
+    const p = i % 3, D = ['12/11/2026', '13/11/2026', '14/11/2026'];
+    const R = d => ({ kind: 'recue', label: 'Reçue', date: 'le ' + d });
+    const PR = d => ({ kind: 'programmee', label: 'Programmée pour le ' + d, date: '' });
+    const V = { kind: 'verifier', label: 'À vérifier', date: '' }, X = { kind: 'echec', label: 'En échec', date: '' };
+    if (mode === 'b') return R(D[p]);
+    if (mode === 'h') return R(D[0]);
+    if (mode === 'c') return (i === 5 || i === 17) ? V : R(D[p]);
+    if (mode === 'd') return p === 0 ? R(D[0]) : X;
+    if (mode === 'j') return p === 0 ? R(D[0]) : PR(p === 1 ? '13/11' : '14/11');
+    return p < 2 ? R(D[p]) : PR('14/11');
+  }
+  rowOfKind(c, k, i) {
+    const D = ['12/11/2026', '13/11/2026', '14/11/2026'];
+    if (k === 'recue') return { kind: 'recue', label: 'Reçue', date: 'le ' + (c.mode === 'h' || c.mode === 'd' || c.mode === 'j' ? D[0] : D[i % (c.mode === 'a' ? 2 : 3)]) };
+    if (k === 'programmee') return { kind: 'programmee', label: 'Programmée pour le ' + (c.mode === 'j' ? '13/11' : '14/11'), date: '' };
+    if (k === 'verifier') return { kind: 'verifier', label: 'À vérifier', date: '' };
+    return { kind: 'echec', label: 'En échec', date: '' };
+  }
+  renderVals() {
+    const st = this.props.state ?? 'a', m = !!this.props.mobile;
+    const c = this.cfg(st);
+    const filter = this.state.filter ?? (st === 'g' ? 'verifier' : 'tous');
+    const counts = { tous: c.total, recue: c.recu, programmee: c.prog, verifier: c.verif, echec: c.echec };
+    const count = counts[filter], per = m ? 10 : 25, n = Math.min(per, count);
+    const N = this.names();
+    const rows = [];
+    for (let i = 0; i < n; i++) {
+      const nm = N[i % 25];
+      const s = filter === 'tous' ? this.rowFor(c.mode, i) : this.rowOfKind(c, filter, i);
+      rows.push({ nom: nm.f + ' ' + nm.l, parcelle: nm.p, ...s, bg: i % 2 ? 'oklch(0.99 0.002 250)' : 'oklch(1 0 0)' });
+    }
+    const pl = count > 1;
+    const lab = { tous: 'tous', recue: pl ? 'reçus' : 'reçu', programmee: pl ? 'programmés' : 'programmé', verifier: 'à vérifier', echec: 'en échec' }[filter];
+    const emptyText = { tous: 'Aucun destinataire.', recue: 'Aucun destinataire ne l’a encore reçue.', programmee: 'Aucun destinataire programmé.', verifier: 'Aucun destinataire à vérifier.', echec: 'Aucun destinataire en échec.' }[filter];
+    const parts = c.parts.map((p, i) => ({ ...p, bg: i % 2 ? 'oklch(0.99 0.002 250)' : 'oklch(1 0 0)' }));
+    const nextNb = c.mode === 'j' ? '100' : '96', nextDay = c.mode === 'j' ? '13/11/2026' : '14/11/2026';
+    return {
+      desktop: !m, mobile: m,
+      crumb: st === 'f' ? 'Campagne introuvable' : 'Convocation à l’assemblée générale',
+      notfound: st === 'f', found: st !== 'f', loading: st === 'e', ready: st !== 'e' && st !== 'f',
+      badgeKind: c.badge[0], badgeText: c.badge[1],
+      alCont: st !== 'e' && c.al === 'cont', alSuccess: c.al === 'success', alDone: c.al === 'done', alWarn: c.al === 'warn', alErr: c.al === 'err',
+      nextDay, nextNb,
+      total: String(c.total), recu: String(c.recu), prog: String(c.prog), verif: String(c.verif), echec: String(c.echec),
+      pct: (c.recu / c.total * 100) + '%',
+      hasParts: c.parts.length > 1, parts,
+      filter, onFilter: e => this.setState({ filter: e.target.value }),
+      showVerif: e => { e.preventDefault(); this.setState({ filter: 'verifier' }); },
+      selId: 'afficher-' + st + (m ? '-m' : ''),
+      summary: count === 0 ? '0 destinataire — ' + lab : count + ' destinataire' + (pl ? 's' : '') + ' — ' + lab,
+      empty: count === 0, emptyText, hasRows: count > 0, rows,
+      pageInfo: 'Page 1 sur ' + Math.max(1, Math.ceil(count / per)),
+      mainPad: m ? '24px 16px 48px' : '32px 48px 64px', cardPad: m ? '16px' : '24px', fieldH: m ? '56px' : '48px',
+      cntCols: m ? '1fr' : 'repeat(4,minmax(0,1fr))', cntGap: m ? '8px' : '16px', pairDir: m ? 'row' : 'column',
+      resCols: m ? '1fr' : 'max-content minmax(0,1fr)'
+    };
+  }
+}
+</script>
+</body>
+</html>

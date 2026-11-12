@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Public+Sans:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,600&amp;display=swap"></helmet>
+<div style="position:relative;display:flex;width:100%;min-height:100%;background:oklch(1 0 0);color:oklch(0.22 0.015 250);font:400 17px/1.6 'Public Sans',sans-serif">
+  <sc-if value="{{ desktop }}" hint-placeholder-val="{{ true }}">
+    <aside style="width:248px;flex:none;background:oklch(0.985 0.004 250);border-right:1px solid oklch(0.91 0.008 245);padding:24px 16px;display:flex;flex-direction:column;gap:32px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;flex:none;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);border:1px solid oklch(0.88 0.045 195);display:grid;place-items:center;font:600 16px/1 'Public Sans',sans-serif">LP</span><span style="font-weight:600">ASL Les Pins</span></div>
+      <nav style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:15px;color:oklch(0.45 0.02 245);padding:0 12px 4px">L’association</div>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Propriétaires</a>
+        <a aria-current="page" style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none;background:oklch(0.93 0.012 245);border-left:2px solid oklch(0.55 0.1 195);font-weight:600">Campagnes</a>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Identité</a>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Réglages</a>
+      </nav>
+    </aside>
+  </sc-if>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <sc-if value="{{ mobile }}">
+      <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid oklch(0.91 0.008 245);background:oklch(0.985 0.004 250)">
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:32px;height:32px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);border:1px solid oklch(0.88 0.045 195);display:grid;place-items:center;font:600 15px/1 'Public Sans',sans-serif">LP</span><span style="font-weight:600">ASL Les Pins</span></div>
+        <button style="height:44px;padding:0 16px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;background:oklch(1 0 0);color:inherit;font:600 16px/1 'Public Sans',sans-serif">Menu</button>
+      </header>
+    </sc-if>
+    <main style="padding:{{ mainPad }}">
+      <div style="max-width:720px;display:flex;flex-direction:column;gap:24px">
+        <nav aria-label="Fil d’Ariane" style="display:flex;flex-wrap:wrap;gap:8px;font-size:15px;color:oklch(0.45 0.02 245)"><a style="color:oklch(0.45 0.13 250);text-decoration:underline">Campagnes</a><span>›</span><a style="color:oklch(0.45 0.13 250);text-decoration:underline">Nouvelle campagne</a><span>›</span><span>Aperçu</span></nav>
+        <h1 style="margin:0;font:600 34px/1.15 'Source Serif 4',serif">Aperçu avant l’envoi</h1>
+        <div style="border:1px dashed oklch(0.66 0.014 245);border-radius:8px;background:oklch(0.972 0.005 240);padding:48px 24px;font:400 15px/1.5 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245);text-align:center">identité de l’aperçu + cadre email — inchangés (s25), montrés en réduit</div>
+        <sc-if value="{{ full }}">
+          <div role="alert" style="display:flex;gap:12px;padding:16px;border:1px solid oklch(0.6 0.13 65);border-radius:8px;background:oklch(0.94 0.06 75);color:oklch(0.3 0.08 60)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:4px"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+            <p style="margin:0"><strong style="font-weight:600">Attention&nbsp;:</strong> les envois de campagne du jour sont déjà complets. La première part partira demain, le <span style="font:400 16px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">13/11/2026</span>.</p>
+          </div>
+        </sc-if>
+        <section aria-label="Destinataires et plan d’envoi" style="display:flex;flex-direction:column;gap:12px;padding-top:24px;border-top:1px solid oklch(0.9 0.008 245)">
+          <p style="margin:0"><strong style="font-weight:600">{{ total }} membres</strong> recevront cette campagne · {{ sans }} sans email et {{ des }} désinscrits n’en recevront pas.</p>
+          <sc-if value="{{ started }}"><p style="margin:0"><span style="font:400 16px 'JetBrains Mono',monospace">40</span> envois de campagne sont déjà partis aujourd’hui&nbsp;: celle-ci commence avec les <span style="font:400 16px 'JetBrains Mono',monospace">60</span> qui restent.</p></sc-if>
+          <sc-if value="{{ single }}"><p style="margin:0">Elle part <strong style="font-weight:600">en une seule fois, aujourd’hui</strong>. Vous n’avez rien à faire.</p></sc-if>
+          <sc-if value="{{ multi }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-if value="{{ today }}" hint-placeholder-val="{{ true }}"><p style="margin:0"><strong style="font-weight:600">Elle part en {{ days }} jours</strong>&nbsp;:</p></sc-if>
+              <sc-if value="{{ later }}"><p style="margin:0"><strong style="font-weight:600">Elle part en {{ days }} jours, à partir de demain</strong>&nbsp;:</p></sc-if>
+              <ul style="list-style:none;margin:0;padding:0 0 0 16px;display:flex;flex-direction:column;gap:4px;border-left:2px solid oklch(0.9 0.008 245)">
+                <sc-for list="{{ plan }}" as="p" hint-placeholder-count="3">
+                  <li style="display:flex;flex-wrap:wrap;gap:8px;align-items:baseline"><span style="font:500 16px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;min-width:32px;text-align:right">{{ p.n }}</span><span>membres le</span><span style="font:400 16px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums">{{ p.d }}</span></li>
+                </sc-for>
+              </ul>
+              <p style="margin:0">Vous n’avez rien à faire.</p>
+            </div>
+          </sc-if>
+        </section>
+        <div style="display:flex;flex-direction:{{ actDir }};gap:16px">
+          <button style="height:{{ btnH }};width:{{ btnW }};padding:0 24px;border:0;border-radius:8px;background:oklch(0.35 0.06 240);color:oklch(0.985 0.003 240);font:600 17px/1 'Public Sans',sans-serif">Envoyer à {{ total }} membres</button>
+          <button style="height:{{ btnH }};width:{{ btnW }};padding:0 24px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;background:oklch(1 0 0);color:inherit;font:600 17px/1 'Public Sans',sans-serif">Revenir à la rédaction</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <sc-if value="{{ dialog }}">
+    <div style="position:absolute;inset:0;background:oklch(0.22 0.015 250 / 0.5);display:flex;align-items:{{ dlgAlign }};justify-content:center;padding:{{ dlgPad }}">
+      <div role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" style="width:100%;max-width:{{ dlgMax }};background:oklch(1 0 0);border-radius:{{ dlgRadius }};padding:24px;display:flex;flex-direction:column;gap:16px;box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1),0 4px 6px -4px rgb(0 0 0 / 0.1)">
+        <h2 id="dlg-t" style="margin:0;font:600 24px/1.25 'Source Serif 4',serif">Envoyer la campagne&nbsp;?</h2>
+        <p style="margin:0">296 membres vont recevoir «&nbsp;ASL Les Pins — Convocation à l’assemblée générale&nbsp;», en 3 jours&nbsp;: 100 aujourd’hui, 100 demain, 96 après-demain. L’envoi ne peut pas être annulé.</p>
+        <div style="display:flex;flex-wrap:wrap;flex-direction:{{ dlgDir }};gap:12px;justify-content:flex-start">
+          <button style="white-space:nowrap;flex:none;height:{{ btnH }};padding:0 24px;border:0;border-radius:8px;background:oklch(0.48 0.17 27);color:oklch(0.99 0.01 27);font:600 17px/1 'Public Sans',sans-serif">Envoyer à 296 membres</button>
+          <button style="white-space:nowrap;flex:none;height:{{ btnH }};padding:0 24px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;background:oklch(1 0 0);color:inherit;font:600 17px/1 'Public Sans',sans-serif">Revenir à l’aperçu</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;900px&quot;},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;d&quot;,&quot;e&quot;],&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;mobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.props.state ?? 'a', m = !!this.props.mobile;
+    const L = (n, d) => ({ n: String(n), d });
+    let c = { total: '296', sans: '71', des: '15', days: '3', plan: [L(100, '12/11/2026'), L(100, '13/11/2026'), L(96, '14/11/2026')] };
+    if (st === 'b') c = { total: '84', sans: '12', des: '3', days: '1', plan: [] };
+    if (st === 'c') c = { ...c, days: '4', plan: [L(60, '12/11/2026'), L(100, '13/11/2026'), L(100, '14/11/2026'), L(36, '15/11/2026')] };
+    if (st === 'd') c = { ...c, plan: [L(100, '13/11/2026'), L(100, '14/11/2026'), L(96, '15/11/2026')] };
+    return {
+      desktop: !m, mobile: m, ...c,
+      single: st === 'b', multi: st !== 'b', today: st !== 'd', later: st === 'd', started: st === 'c', full: st === 'd', dialog: st === 'e',
+      mainPad: m ? '24px 16px 48px' : '32px 48px 64px', btnH: m ? '56px' : '48px', actDir: m ? 'column' : 'row', btnW: m ? '100%' : 'auto',
+      dlgAlign: m ? 'flex-end' : 'center', dlgPad: m ? '0' : '32px', dlgMax: m ? '100%' : '576px', dlgRadius: m ? '12px 12px 0 0' : '12px', dlgDir: m ? 'column' : 'row-reverse'
+    };
+  }
+}
+</script>
+</body>
+</html>

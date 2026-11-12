@@ -84,4 +84,23 @@ describe('createResendTransport', () => {
       createResendTransport({apiKey: 're_test'}).send(message)
     ).rejects.toBeInstanceOf(EmailTransportError)
   })
+
+  it('une erreur rendue par le SDK est un refus certain (s26)', async () => {
+    sendMock.mockResolvedValue({
+      data: null,
+      error: {name: 'validation_error', message: 'refused'},
+    })
+
+    await expect(
+      createResendTransport({apiKey: 're_test'}).send(message)
+    ).rejects.toMatchObject({refused: true})
+  })
+
+  it('une exception du SDK n’est pas un refus certain (s26)', async () => {
+    sendMock.mockRejectedValue(new Error('network'))
+
+    await expect(
+      createResendTransport({apiKey: 're_test'}).send(message)
+    ).rejects.toMatchObject({refused: false})
+  })
 })

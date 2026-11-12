@@ -11,6 +11,7 @@ const SCRIPTS = [
   'bootstrap-platform.ts',
   'transfer-presidency.ts',
   'purge-rate-limit-fingerprints.ts',
+  'run-scheduled-jobs.ts',
   'seed.ts',
 ]
 

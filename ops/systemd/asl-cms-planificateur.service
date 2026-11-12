@@ -1,0 +1,22 @@
+# Planificateur des taches differees (s26, ADR 006, ADR 052) : un passage prend
+# les taches dues de chaque association (parts de campagne) et les execute.
+# Lance toutes les cinq minutes par asl-cms-planificateur.timer ;
+# trace : journalctl -u asl-cms-planificateur
+
+[Unit]
+Description=ASL-CMS : passage du planificateur des taches
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=asl-cms
+Group=asl-cms
+WorkingDirectory=/srv/asl-cms/current
+Environment=NODE_ENV=production
+ExecStart=/srv/asl-cms/current/node_modules/.bin/tsx src/db/scripts/run-scheduled-jobs.ts
+
+ProtectSystem=strict
+ReadWritePaths=/srv/asl-cms/shared
+PrivateTmp=true
+ProtectHome=true
+NoNewPrivileges=true
