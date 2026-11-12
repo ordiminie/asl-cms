@@ -1,9 +1,8 @@
 import {describe, expect, it} from 'vitest'
 
-import {CAMPAIGN_STALE_AFTER_MS} from '../types/domain/campaign-types'
+import * as rules from './campaign-rules'
 import {
   computeCampaignTarget,
-  effectiveCampaignStatus,
   escapeHtml,
   finalSubject,
   findUnknownVariables,
@@ -118,64 +117,76 @@ describe('plafond et objet final', () => {
   })
 })
 
-describe('effectiveCampaignStatus', () => {
-  const now = new Date('2026-11-10T12:00:00.000Z')
-
-  it('montre interrompue une campagne en cours sans progrès depuis longtemps', () => {
-    const updatedAt = new Date(now.getTime() - CAMPAIGN_STALE_AFTER_MS - 1)
-    expect(
-      effectiveCampaignStatus(
-        {status: 'sending', updatedAt: updatedAt.toISOString()},
-        now
-      )
-    ).toBe('interrupted')
-  })
-
-  it('laisse en cours une campagne qui progresse', () => {
-    const updatedAt = new Date(now.getTime() - 1000)
-    expect(
-      effectiveCampaignStatus(
-        {status: 'sending', updatedAt: updatedAt.toISOString()},
-        now
-      )
-    ).toBe('sending')
-  })
-
-  it('ne change pas une campagne terminée', () => {
-    expect(
-      effectiveCampaignStatus(
-        {status: 'sent', updatedAt: '2020-01-01T00:00:00.000Z'},
-        now
-      )
-    ).toBe('sent')
+describe('statut affiché — plus de statut « effectif » (s26, ADR 052)', () => {
+  it('une campagne en cours sans progrès depuis un jour n’est pas déclarée interrompue', () => {
+    expect(rules).not.toHaveProperty('effectiveCampaignStatus')
   })
 })
 
+const row = (overrides: Record<string, unknown> = {}) => ({
+  id: 'c1',
+  organizationId: 'org',
+  submissionId: 'sub',
+  subject: 'Objet',
+  preheader: null,
+  bodyMarkdown: 'Bonjour {nom}',
+  templateId: 'free',
+  targetKind: 'all_members',
+  recipientCount: 296,
+  withoutEmailCount: 1,
+  unsubscribedCount: 0,
+  sentCount: 200,
+  status: 'sending' as const,
+  sendDate: '2026-11-12',
+  authorUserId: 'u1',
+  authorName: 'Marie',
+  onBehalfOfUserId: 'u2',
+  onBehalfOfName: 'Jean',
+  createdAt: new Date('2026-11-12T13:32:00.000Z'),
+  updatedAt: new Date('2026-11-12T13:40:00.000Z'),
+  finishedAt: null,
+  ...overrides,
+})
+
+const parts = [
+  {
+    id: 'p1',
+    campaignId: 'c1',
+    number: 1,
+    scheduledFor: '2026-11-12',
+    recipientCount: 100,
+    status: 'sent' as const,
+  },
+  {
+    id: 'p2',
+    campaignId: 'c1',
+    number: 2,
+    scheduledFor: '2026-11-13',
+    recipientCount: 100,
+    status: 'sent' as const,
+  },
+  {
+    id: 'p3',
+    campaignId: 'c1',
+    number: 3,
+    scheduledFor: '2026-11-14',
+    recipientCount: 96,
+    status: 'scheduled' as const,
+  },
+]
+
+const counts = [
+  {campaignId: 'c1', partId: 'p1', status: 'sent' as const, total: 100},
+  {campaignId: 'c1', partId: 'p2', status: 'sent' as const, total: 98},
+  {campaignId: 'c1', partId: 'p2', status: 'to_verify' as const, total: 2},
+  {campaignId: 'c1', partId: 'p3', status: 'pending' as const, total: 95},
+  {campaignId: 'c1', partId: 'p3', status: 'unsubscribed' as const, total: 1},
+  {campaignId: 'other', partId: 'x', status: 'sent' as const, total: 50},
+]
+
 describe('toCampaignDto — liste blanche', () => {
-  it('ne rend ni association, ni soumission, ni compte auteur, ni imitation', () => {
-    const dto = toCampaignDto({
-      id: 'c1',
-      organizationId: 'org',
-      submissionId: 'sub',
-      subject: 'Objet',
-      preheader: null,
-      bodyMarkdown: 'Bonjour {nom}',
-      templateId: 'free',
-      targetKind: 'all_members',
-      recipientCount: 2,
-      withoutEmailCount: 1,
-      unsubscribedCount: 0,
-      sentCount: 2,
-      status: 'sent',
-      sendDate: '2026-11-10',
-      authorUserId: 'u1',
-      authorName: 'Marie',
-      onBehalfOfUserId: 'u2',
-      onBehalfOfName: 'Jean',
-      createdAt: new Date('2026-11-10T10:00:00.000Z'),
-      updatedAt: new Date('2026-11-10T10:01:00.000Z'),
-      finishedAt: new Date('2026-11-10T10:01:00.000Z'),
-    })
+  it('ne rend ni association, ni soumission, ni compte auteur, ni imitation, ni jeton', () => {
+    const dto = toCampaignDto(row({status: 'sent'}), [], [])
 
     expect(Object.keys(dto).sort()).toEqual(
       [
@@ -190,6 +201,9 @@ describe('toCampaignDto — liste blanche', () => {
         'unsubscribedCount',
         'sentCount',
         'status',
+        'displayState',
+        'recipientCounts',
+        'parts',
         'sendDate',
         'authorName',
         'createdAt',
@@ -197,8 +211,83 @@ describe('toCampaignDto — liste blanche', () => {
         'finishedAt',
       ].sort()
     )
+    expect(JSON.stringify(dto)).not.toMatch(/unsubscribeToken|token/i)
     expect(dto.bodyMarkdown).toBe('Bonjour {nom}')
-    expect(dto.finishedAt).toBe('2026-11-10T10:01:00.000Z')
+  })
+
+  it('les décomptes par statut sont ceux de la campagne, et leur somme fait les destinataires', () => {
+    const dto = toCampaignDto(row(), parts, counts)
+
+    expect(dto.recipientCounts).toEqual({
+      received: 198,
+      scheduled: 95,
+      sending: 0,
+      toVerify: 2,
+      failed: 0,
+      unsubscribed: 1,
+    })
+    expect(
+      Object.values(dto.recipientCounts).reduce((sum, n) => sum + n, 0)
+    ).toBe(296)
+  })
+
+  it('chaque part porte son jour, ses destinataires et son état', () => {
+    const dto = toCampaignDto(row(), parts, counts)
+
+    expect(dto.parts).toEqual([
+      {
+        number: 1,
+        day: '2026-11-12',
+        recipientCount: 100,
+        receivedCount: 100,
+        toVerifyCount: 0,
+        displayState: 'sent',
+      },
+      {
+        number: 2,
+        day: '2026-11-13',
+        recipientCount: 100,
+        receivedCount: 98,
+        toVerifyCount: 2,
+        displayState: 'to_verify',
+      },
+      {
+        number: 3,
+        day: '2026-11-14',
+        recipientCount: 96,
+        receivedCount: 0,
+        toVerifyCount: 0,
+        displayState: 'scheduled',
+      },
+    ])
+  })
+})
+
+describe('displayState — l’état de la campagne lu des statuts', () => {
+  it('en cours tant qu’elle est sending, même avec une part programmée à demain', () => {
+    expect(toCampaignDto(row(), parts, counts).displayState).toBe('sending')
+  })
+
+  it('envoyée quand elle est close sans ligne à vérifier', () => {
+    expect(
+      toCampaignDto(
+        row({status: 'sent'}),
+        [],
+        [{campaignId: 'c1', partId: 'p1', status: 'sent', total: 296}]
+      ).displayState
+    ).toBe('sent')
+  })
+
+  it('à vérifier quand elle est close avec des lignes à vérifier', () => {
+    expect(
+      toCampaignDto(row({status: 'sent'}), parts, counts).displayState
+    ).toBe('to_verify')
+  })
+
+  it('en échec quand elle est interrompue', () => {
+    expect(
+      toCampaignDto(row({status: 'interrupted'}), parts, counts).displayState
+    ).toBe('failed')
   })
 })
 

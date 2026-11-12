@@ -104,11 +104,27 @@ describe('createBrevoTransport', () => {
     ).rejects.toBeInstanceOf(EmailTransportError)
   })
 
+  it('une réponse non 2xx est un refus certain : l’email n’est pas parti (s26)', async () => {
+    fetchMock.mockResolvedValue(new Response('{}', {status: 429}))
+
+    await expect(
+      createBrevoTransport({apiKey: 'k'}).send(message)
+    ).rejects.toMatchObject({refused: true})
+  })
+
   it('lève une EmailTransportError quand le réseau échoue', async () => {
     fetchMock.mockRejectedValue(new TypeError('fetch failed'))
 
     await expect(
       createBrevoTransport({apiKey: 'k'}).send(message)
     ).rejects.toBeInstanceOf(EmailTransportError)
+  })
+
+  it('un réseau en échec n’est pas un refus certain : l’issue est inconnue (s26)', async () => {
+    fetchMock.mockRejectedValue(new TypeError('fetch failed'))
+
+    await expect(
+      createBrevoTransport({apiKey: 'k'}).send(message)
+    ).rejects.toMatchObject({refused: false})
   })
 })

@@ -32,18 +32,24 @@ export const EMAIL_TRANSPORT_NAMES = [
 
 export type EmailTransportName = (typeof EMAIL_TRANSPORT_NAMES)[number]
 
-/** Echec d'envoi d'un transport, quel que soit le fournisseur. */
+/**
+ * Echec d'envoi d'un transport, quel que soit le fournisseur. `refused` : le
+ * fournisseur a repondu et refuse l'envoi, l'email n'est **certainement pas**
+ * parti (s26, ADR 052). Sans reponse (reseau, delai), l'issue est inconnue.
+ */
 export class EmailTransportError extends Error {
   readonly transport: EmailTransportName
+  readonly refused: boolean
 
   constructor(
     transport: EmailTransportName,
     message: string,
-    options?: {cause?: unknown}
+    options?: {cause?: unknown; refused?: boolean}
   ) {
     super(message, options)
     this.name = 'EmailTransportError'
     this.transport = transport
+    this.refused = options?.refused ?? false
   }
 }
 

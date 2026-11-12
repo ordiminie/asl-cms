@@ -1,9 +1,14 @@
 import {
-  CAMPAIGN_STALE_AFTER_MS,
   CAMPAIGN_SUBJECT_MAX_TOTAL,
   CAMPAIGN_SUBJECT_SEPARATOR,
   CAMPAIGN_VARIABLES,
+  CampaignDisplayState,
   CampaignDTO,
+  CampaignPartDisplayState,
+  CampaignPartDTO,
+  CampaignPartStatus,
+  CampaignRecipientCountsDTO,
+  CampaignRecipientStatus,
   CampaignStatus,
   CampaignTargetKind,
   CampaignTemplateId,
@@ -119,20 +124,6 @@ export const finalSubject = (
   subject: string
 ): string => `${subjectPrefixOf(associationName)}${subject}`
 
-/**
- * Le statut affiche : une campagne `sending` sans progres depuis
- * `CAMPAIGN_STALE_AFTER_MS` est `interrupted` (redemarrage). `now` vient de
- * l'appelant, jamais d'un scope `'use cache'`.
- */
-export const effectiveCampaignStatus = (
-  campaign: {status: CampaignStatus; updatedAt: string},
-  now: Date
-): CampaignStatus => {
-  if (campaign.status !== 'sending') return campaign.status
-  const idle = now.getTime() - new Date(campaign.updatedAt).getTime()
-  return idle > CAMPAIGN_STALE_AFTER_MS ? 'interrupted' : 'sending'
-}
-
 /** La ligne telle que le repository la rend, ecrite sans le modele Drizzle. */
 export type CampaignRow = {
   id: string
@@ -158,28 +149,126 @@ export type CampaignRow = {
   finishedAt: Date | null
 }
 
+/** Une part telle que le repository la rend. */
+export type CampaignPartRow = {
+  id: string
+  campaignId: string
+  number: number
+  scheduledFor: string
+  recipientCount: number
+  status: CampaignPartStatus
+}
+
+/** Un decompte de destinataires par campagne, part et statut. */
+export type CampaignRecipientCountRow = {
+  campaignId: string
+  partId: string
+  status: CampaignRecipientStatus
+  total: number
+}
+
+const COUNT_KEY_OF: Record<
+  CampaignRecipientStatus,
+  keyof CampaignRecipientCountsDTO
+> = {
+  sent: 'received',
+  pending: 'scheduled',
+  sending: 'sending',
+  to_verify: 'toVerify',
+  failed: 'failed',
+  unsubscribed: 'unsubscribed',
+}
+
+/** Les decomptes par statut d'un ensemble de lignes. */
+export const recipientCountsOf = (
+  rows: readonly CampaignRecipientCountRow[]
+): CampaignRecipientCountsDTO => {
+  const counts: CampaignRecipientCountsDTO = {
+    received: 0,
+    scheduled: 0,
+    sending: 0,
+    toVerify: 0,
+    failed: 0,
+    unsubscribed: 0,
+  }
+  for (const row of rows) counts[COUNT_KEY_OF[row.status]] += row.total
+  return counts
+}
+
+const partDisplayStateOf = (
+  status: CampaignPartStatus,
+  toVerify: number
+): CampaignPartDisplayState =>
+  status === 'sent' && toVerify > 0 ? 'to_verify' : status
+
+/**
+ * L'etat affiche d'une campagne (ADR 052) : en cours tant qu'elle est
+ * `sending` (une part programmee a demain n'est pas un arret), a verifier si
+ * elle est close avec des lignes `to_verify`, en echec si interrompue.
+ */
+export const campaignDisplayStateOf = (
+  status: CampaignStatus,
+  counts: CampaignRecipientCountsDTO
+): CampaignDisplayState => {
+  if (status === 'interrupted') return 'failed'
+  if (status === 'sent') return counts.toVerify > 0 ? 'to_verify' : 'sent'
+  return 'sending'
+}
+
+const toPartDto = (
+  part: CampaignPartRow,
+  countRows: readonly CampaignRecipientCountRow[]
+): CampaignPartDTO => {
+  const counts = recipientCountsOf(
+    countRows.filter((row) => row.partId === part.id)
+  )
+  return {
+    number: part.number,
+    day: part.scheduledFor,
+    recipientCount: part.recipientCount,
+    receivedCount: counts.received,
+    toVerifyCount: counts.toVerify,
+    displayState: partDisplayStateOf(part.status, counts.toVerify),
+  }
+}
+
 /**
  * La campagne telle que le bureau la lit : une liste blanche, recopiee champ
- * par champ.
+ * par champ, avec ses decomptes et ses parts (s26). Les parts et decomptes
+ * d'autres campagnes passes avec elle sont ignores.
  */
-export const toCampaignDto = (row: CampaignRow): CampaignDTO => ({
-  id: row.id,
-  subject: row.subject,
-  preheader: row.preheader,
-  bodyMarkdown: row.bodyMarkdown,
-  templateId: row.templateId as CampaignTemplateId | null,
-  targetKind: row.targetKind as CampaignTargetKind,
-  recipientCount: row.recipientCount,
-  withoutEmailCount: row.withoutEmailCount,
-  unsubscribedCount: row.unsubscribedCount,
-  sentCount: row.sentCount,
-  status: row.status,
-  sendDate: row.sendDate,
-  authorName: row.authorName,
-  createdAt: row.createdAt.toISOString(),
-  updatedAt: row.updatedAt.toISOString(),
-  finishedAt: row.finishedAt ? row.finishedAt.toISOString() : null,
-})
+export const toCampaignDto = (
+  row: CampaignRow,
+  partRows: readonly CampaignPartRow[],
+  countRows: readonly CampaignRecipientCountRow[]
+): CampaignDTO => {
+  const ownCounts = countRows.filter((count) => count.campaignId === row.id)
+  const recipientCounts = recipientCountsOf(ownCounts)
+  return {
+    id: row.id,
+    subject: row.subject,
+    preheader: row.preheader,
+    bodyMarkdown: row.bodyMarkdown,
+    templateId: row.templateId as CampaignTemplateId | null,
+    targetKind: row.targetKind as CampaignTargetKind,
+    recipientCount: row.recipientCount,
+    withoutEmailCount: row.withoutEmailCount,
+    unsubscribedCount: row.unsubscribedCount,
+    sentCount: row.sentCount,
+    status: row.status,
+    displayState: campaignDisplayStateOf(row.status, recipientCounts),
+    recipientCounts,
+    parts: partRows
+      .filter((part) => part.campaignId === row.id)
+      .sort((a, b) => a.number - b.number)
+      .map((part) => toPartDto(part, ownCounts)),
+    sendDate: row.sendDate,
+    authorName: row.authorName,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    finishedAt: row.finishedAt ? row.finishedAt.toISOString() : null,
+  }
+}
 
 const CAMPAIGN_DATE_FORMAT = new Intl.DateTimeFormat('fr', {
   day: 'numeric',

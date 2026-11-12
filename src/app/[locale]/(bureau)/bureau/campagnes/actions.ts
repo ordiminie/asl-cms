@@ -9,6 +9,7 @@ import {requireActionAuth} from '@/app/dal/user-dal'
 import {CAMPAIGNS_ROUTE_PATTERN} from '@/components/features/campaigns/campaign-paths'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {
+  previewCampaignPlanService,
   previewCampaignService,
   sendCampaignService,
 } from '@/services/facades/campaign-service-facade'
@@ -91,7 +92,10 @@ const contentOf = (values: CampaignFormValues) => ({
   bodyMarkdown: values.bodyMarkdown,
 })
 
-/** « Voir l'apercu » : le rendu final pour un membre reel ; n'ecrit rien. */
+/**
+ * « Voir l'apercu » : le rendu final pour un membre reel et le plan d'envoi
+ * annonce (s26) ; n'ecrit rien.
+ */
 export async function previewCampaignAction(
   _prevState: PreviewCampaignActionResult | undefined,
   formData: FormData
@@ -106,11 +110,15 @@ export async function previewCampaignAction(
     if (!validation.valid) return validation.result
 
     const memberProfileId = readField(formData, 'memberProfileId')
-    return await previewCampaignService({
+    const result = await previewCampaignService({
       organizationId: tenant.id,
       ...contentOf(validation.values),
       ...(memberProfileId ? {memberProfileId} : {}),
     })
+    if (result.status !== 'ok') return result
+
+    const plan = await previewCampaignPlanService(tenant.id)
+    return {status: 'ok', preview: result.preview, plan}
   } catch (error) {
     return failureOf(error, t)
   }

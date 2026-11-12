@@ -47,7 +47,8 @@ export const createBrevoTransport = ({
     if (!response.ok) {
       throw new EmailTransportError(
         'brevo',
-        `Brevo a refuse l'envoi (HTTP ${response.status})`
+        `Brevo a refuse l'envoi (HTTP ${response.status})`,
+        {refused: true}
       )
     }
   },

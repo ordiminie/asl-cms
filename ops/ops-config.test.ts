@@ -263,6 +263,7 @@ describe('ops/systemd — le service et la purge quotidienne', () => {
       ...service,
       ...purgeService,
       ...directives(read('systemd/asl-cms-backup.service')),
+      ...directives(read('systemd/asl-cms-planificateur.service')),
     ]
       .filter((line) => line.startsWith('ReadWritePaths='))
       .join(' ')
@@ -331,6 +332,73 @@ describe('ops/systemd — la sauvegarde tous les deux jours (s12c, ADR 045)', ()
     expect(backupTimer).toContain('RandomizedDelaySec=15min')
     expect(backupTimer).toContain('Unit=asl-cms-backup.service')
     expect(backupTimer).toContain('WantedBy=timers.target')
+  })
+})
+
+describe('ops/systemd — le planificateur toutes les cinq minutes (s26, ADR 052)', () => {
+  const plannerService = directives(
+    read('systemd/asl-cms-planificateur.service')
+  )
+  const plannerTimer = directives(read('systemd/asl-cms-planificateur.timer'))
+  const purgeService = directives(read('systemd/asl-cms-purge.service'))
+
+  it('lance le script du planificateur sous l’utilisateur dédié, en production', () => {
+    expect(plannerService).toContain('Type=oneshot')
+    expect(plannerService).toContain('User=asl-cms')
+    expect(plannerService).toContain('Group=asl-cms')
+    expect(plannerService).toContain('WorkingDirectory=/srv/asl-cms/current')
+    expect(plannerService).toContain('Environment=NODE_ENV=production')
+    expect(plannerService.find((line) => line.startsWith('ExecStart='))).toBe(
+      'ExecStart=/srv/asl-cms/current/node_modules/.bin/tsx src/db/scripts/run-scheduled-jobs.ts'
+    )
+  })
+
+  it('est durci exactement comme la purge et n’écrit que dans shared/', () => {
+    const hardening = (lines: string[]) =>
+      lines.filter((line) =>
+        /^(ProtectSystem|ReadWritePaths|PrivateTmp|ProtectHome|NoNewPrivileges)=/.test(
+          line
+        )
+      )
+    expect(hardening(plannerService)).toEqual(hardening(purgeService))
+    expect(
+      plannerService.filter((line) => line.startsWith('ReadWritePaths='))
+    ).toEqual(['ReadWritePaths=/srv/asl-cms/shared'])
+  })
+
+  it('passe toutes les cinq minutes, rattrape un passage manqué, avec un délai court', () => {
+    expect(plannerTimer).toContain('OnCalendar=*:0/5')
+    expect(plannerTimer).toContain('Persistent=true')
+    expect(plannerTimer).toContain('Unit=asl-cms-planificateur.service')
+    expect(plannerTimer).toContain('WantedBy=timers.target')
+    const delay = plannerTimer.find((line) =>
+      line.startsWith('RandomizedDelaySec=')
+    )
+    expect(delay).toMatch(/^RandomizedDelaySec=\d+s$/)
+    expect(Number(delay?.match(/\d+/)?.[0])).toBeLessThan(5 * 60)
+  })
+
+  it('la documentation d’exploitation dit comment installer et contrôler la minuterie', () => {
+    const doc = readFileSync(
+      path.join(OPS_DIR, '..', 'docs/exploitation/README.md'),
+      'utf8'
+    )
+    expect(doc).toContain(
+      'sudo cp ops/systemd/asl-cms-planificateur.service ops/systemd/asl-cms-planificateur.timer /etc/systemd/system/'
+    )
+    expect(doc).toContain(
+      'sudo systemctl enable --now asl-cms-planificateur.timer'
+    )
+    expect(doc).toContain("systemctl list-timers 'asl-cms-*'")
+    expect(doc).toContain('journalctl -u asl-cms-planificateur')
+    expect(doc).toMatch(/« À vérifier »/)
+  })
+
+  it('la cadence reste inférieure à la journée : une part du lendemain part peu après minuit', () => {
+    expect(plannerTimer).not.toContain('OnCalendar=daily')
+    expect(
+      plannerTimer.filter((line) => line.startsWith('OnCalendar='))
+    ).toEqual(['OnCalendar=*:0/5'])
   })
 })
 

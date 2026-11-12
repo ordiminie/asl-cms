@@ -26,13 +26,15 @@ import {
   campaignsListPathOf,
   NEW_CAMPAIGN_PATH,
 } from './campaign-paths'
+import {CampaignStateBadge} from './campaign-state-badges'
 
 type CampaignListProps = {list: CampaignListPageDTO}
 
 /**
- * L'archive des campagnes (ecran 1 du design s25) : la plus recente d'abord,
- * 25 par page. Un tableau en desktop, des cartes empilees sous 640 px (§3.5),
- * la meme pagination serveur. Les decomptes sont ceux figes a l'envoi.
+ * L'archive des campagnes (ecran 1 du design s25, ecran 3 de s26) : la plus
+ * recente d'abord, 25 par page. Un tableau en desktop, des cartes empilees
+ * sous 640 px (§3.5), la meme pagination serveur. Une campagne que tous n'ont
+ * pas encore recue montre « n sur N » ; l'etat se lit sur son badge.
  */
 export function CampaignList({list}: CampaignListProps) {
   const t = useTranslations('CampaignsBureau')
@@ -109,9 +111,21 @@ function useSentAtLabel() {
     t('sentAt', sentAtPartsOf(campaign.createdAt))
 }
 
+function useRecipientsLabel() {
+  const t = useTranslations('CampaignsBureau')
+  return (campaign: CampaignDTO) =>
+    campaign.recipientCounts.received === campaign.recipientCount
+      ? String(campaign.recipientCount)
+      : t('receivedOutOf', {
+          received: campaign.recipientCounts.received,
+          total: campaign.recipientCount,
+        })
+}
+
 function CampaignRow({campaign}: {campaign: CampaignDTO}) {
   const t = useTranslations('CampaignsBureau')
   const sentAt = useSentAtLabel()
+  const recipients = useRecipientsLabel()
 
   return (
     <TableRow className="h-14">
@@ -127,8 +141,11 @@ function CampaignRow({campaign}: {campaign: CampaignDTO}) {
       <TableCell className="text-[17px]">
         {t(`templateNames.${campaign.templateId ?? 'free'}`)}
       </TableCell>
-      <TableCell className="text-[17px] tabular-nums">
-        {campaign.recipientCount}
+      <TableCell className="font-mono text-[17px] tabular-nums">
+        {recipients(campaign)}
+      </TableCell>
+      <TableCell>
+        <CampaignStateBadge state={campaign.displayState} />
       </TableCell>
       <TableCell>
         <OpenCampaign id={campaign.id} className="h-11" />
@@ -140,6 +157,7 @@ function CampaignRow({campaign}: {campaign: CampaignDTO}) {
 function CampaignCard({campaign}: {campaign: CampaignDTO}) {
   const t = useTranslations('CampaignsBureau')
   const sentAt = useSentAtLabel()
+  const recipients = useRecipientsLabel()
 
   return (
     <Card data-testid="campaign-card" className="gap-3 px-4 py-4 shadow-none">
@@ -152,7 +170,11 @@ function CampaignCard({campaign}: {campaign: CampaignDTO}) {
         <dt className="text-muted-foreground">{t('columns.template')}</dt>
         <dd>{t(`templateNames.${campaign.templateId ?? 'free'}`)}</dd>
         <dt className="text-muted-foreground">{t('columns.recipients')}</dt>
-        <dd className="tabular-nums">{campaign.recipientCount}</dd>
+        <dd className="font-mono tabular-nums">{recipients(campaign)}</dd>
+        <dt className="text-muted-foreground">{t('columns.state')}</dt>
+        <dd>
+          <CampaignStateBadge state={campaign.displayState} />
+        </dd>
       </dl>
       <OpenCampaign id={campaign.id} className="h-14 w-full" />
     </Card>
@@ -194,7 +216,7 @@ function Pagination({list, label}: {list: CampaignListPageDTO; label: string}) {
       className="flex flex-wrap items-center justify-between gap-3"
       aria-label={label}
     >
-      <PageLink
+      <CampaignPageLink
         href={campaignsListPathOf(list.page - 1)}
         disabled={list.page <= 1}
         label={t('previous')}
@@ -202,7 +224,7 @@ function Pagination({list, label}: {list: CampaignListPageDTO; label: string}) {
       <span className="text-muted-foreground text-[15px]">
         {t('position', {page: list.page, total: list.totalPages})}
       </span>
-      <PageLink
+      <CampaignPageLink
         href={campaignsListPathOf(list.page + 1)}
         disabled={list.page >= list.totalPages}
         label={t('next')}
@@ -211,7 +233,8 @@ function Pagination({list, label}: {list: CampaignListPageDTO; label: string}) {
   )
 }
 
-function PageLink({
+/** Un lien de page ; desactive, il reste un bouton annonce (`aria-disabled`). */
+export function CampaignPageLink({
   href,
   disabled,
   label,
@@ -247,6 +270,7 @@ const CAMPAIGN_COLUMNS = [
   'author',
   'template',
   'recipients',
+  'state',
   'action',
 ] as const
 

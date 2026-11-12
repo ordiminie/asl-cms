@@ -12,6 +12,8 @@ import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingDefinition,
   AssociationSettingsRegistry,
+  CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
+  CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
   CONTACT_EMAIL_SETTING_KEY,
   CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   DEFAULT_ACCENT_HUE,
@@ -19,6 +21,8 @@ import {
   FORAGE_EMAIL_SETTING_KEY,
   getAccentHue,
   getAssociationDescription,
+  getCampaignDailySendCap,
+  getCampaignSendMaxAttempts,
   getContactMessagesPerHourLimit,
   getGoogleVerificationCode,
   getMagicLinkDailyRequestLimit,
@@ -45,7 +49,7 @@ const testDefinition = (key: string) =>
   definitionOf(TEST_SETTINGS_REGISTRY, key)
 
 describe('registre de production', () => {
-  it('declare les cles de s02, s03, s06, s08b et s11, avec leurs types et leur page', () => {
+  it('declare les cles de s02, s03, s06, s08b, s11, s25 et s26, avec leurs types et leur page', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.map(({key, type, required, page}) => ({
         key,
@@ -114,7 +118,111 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      {
+        key: CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  it('le plafond quotidien des campagnes est un entier d’au moins 1, 100 par défaut, carte « Envois » (s26)', () => {
+    const definition = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY
+    )
+    expect(CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY).toBe('campaign.daily_send_cap')
+    expect(definition).toMatchObject({
+      type: 'number',
+      integer: true,
+      min: 1,
+      default: {value: '100'},
+      unitKey: 'units.sendsPerDay',
+      section: 'sending',
+    })
+    expect(definition.type === 'number' && definition.max).toBeUndefined()
+    expect(parseSettingValue(definition, '0')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '2.5')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '500')).toMatchObject({valid: true})
+  })
+
+  it('les tentatives d’envoi d’une part sont un entier de 1 à 10, 3 par défaut, carte « Envois » (s26)', () => {
+    const definition = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY
+    )
+    expect(CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY).toBe(
+      'campaign.send_max_attempts'
+    )
+    expect(definition).toMatchObject({
+      type: 'number',
+      integer: true,
+      min: 1,
+      max: 10,
+      default: {value: '3'},
+      unitKey: 'units.attempts',
+      section: 'sending',
+    })
+    expect(parseSettingValue(definition, '0')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '11')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '10')).toMatchObject({valid: true})
+  })
+
+  it('les accesseurs des envois rendent la valeur du bureau, sinon le défaut', () => {
+    const defaults = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+    expect(getCampaignDailySendCap(defaults)).toBe(100)
+    expect(getCampaignSendMaxAttempts(defaults)).toBe(3)
+
+    const custom = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {key: CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY, value: '500'},
+      {key: CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY, value: '5'},
+    ])
+    expect(getCampaignDailySendCap(custom)).toBe(500)
+    expect(getCampaignSendMaxAttempts(custom)).toBe(5)
+  })
+
+  it('la carte « Envois » et ses deux champs ont leurs libellés en français', () => {
+    const fields = fr.AssociationSettings.fields as Record<
+      string,
+      {label: string; help: string; errors?: Record<string, string>}
+    >
+    for (const key of [
+      CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
+      CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
+    ]) {
+      const definition = definitionOf(ASSOCIATION_SETTINGS_REGISTRY, key)
+      const [, field] = definition.labelKey.split('.')
+      expect(fields[field]?.label, key).toEqual(expect.any(String))
+      expect(fields[field]?.help.length, key).toBeGreaterThan(20)
+      if (definition.type === 'number' && definition.unitKey) {
+        const [, unit] = definition.unitKey.split('.')
+        expect(
+          (fr.AssociationSettings.units as Record<string, string>)[unit],
+          key
+        ).toEqual(expect.any(String))
+      }
+    }
+    expect(fields.campaignDailySendCap.label).toBe(
+      'Plafond quotidien des campagnes'
+    )
+    expect(fields.campaignDailySendCap.errors?.belowMin).toBe(
+      'Saisissez un nombre entier supérieur à 0.'
+    )
+    expect(
+      (
+        fr.BureauSettingsPage.cards as Record<
+          string,
+          {title: string; description?: string}
+        >
+      ).sending
+    ).toMatchObject({title: 'Envois', description: expect.any(String)})
   })
 
   it('les mentions du pied de page des campagnes sont facultatives, sans défaut, dans la carte « legal » (s25)', () => {
@@ -310,6 +418,8 @@ describe('registre de production', () => {
       GOOGLE_VERIFICATION_SETTING_KEY,
       ASSOCIATION_LEGAL_NAME_SETTING_KEY,
       ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
+      CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
+      CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -680,6 +790,8 @@ describe('registre — carte « Referencement » (s11)', () => {
       GOOGLE_VERIFICATION_SETTING_KEY,
       ASSOCIATION_LEGAL_NAME_SETTING_KEY,
       ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
+      CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
+      CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
     ])
   })
 

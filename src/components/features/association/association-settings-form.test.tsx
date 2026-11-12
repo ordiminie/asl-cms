@@ -144,6 +144,30 @@ describe('AssociationSettingsForm — rendu genere par le registre (critere 2)',
     )
   })
 
+  it('affiche la carte « Envois » et ses deux champs numériques, générés depuis le registre (s26)', async () => {
+    productionForm()
+
+    const card = screen
+      .getByRole('heading', {level: 3, name: 'Envois'})
+      .closest('[data-slot="card"]') as HTMLElement
+    const cap = within(card).getByLabelText(/Plafond quotidien des campagnes/)
+    expect(cap).toHaveAttribute('inputmode', 'numeric')
+    expect(cap.closest('[data-setting]')).toHaveTextContent('envois par jour')
+    expect(cap.closest('[data-setting]')).toHaveTextContent(
+      'toutes campagnes confondues'
+    )
+    const attempts = within(card).getByLabelText(
+      /Nombre de tentatives d’envoi d’une part/
+    )
+    expect(attempts.closest('[data-setting]')).toHaveTextContent('tentatives')
+
+    await userEvent.type(cap, '0')
+    await userEvent.tab()
+    expect(
+      await within(card).findByText('Saisissez un nombre entier supérieur à 0.')
+    ).toBeInTheDocument()
+  })
+
   it('ecrit « facultatif » en clair sur les seuls reglages facultatifs', () => {
     productionForm()
 

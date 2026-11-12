@@ -3,6 +3,7 @@ import {z} from 'zod'
 import {
   CAMPAIGN_BODY_MAX,
   CAMPAIGN_PREHEADER_MAX,
+  CAMPAIGN_RECIPIENT_FILTERS,
   CAMPAIGN_TEMPLATE_IDS,
 } from '../types/domain/campaign-types'
 
@@ -44,6 +45,13 @@ export const campaignsPageServiceSchema = z.object({
 export const campaignByIdServiceSchema = z.object({
   organizationId: uuid,
   campaignId: uuid,
+})
+
+export const campaignRecipientsServiceSchema = z.object({
+  organizationId: uuid,
+  campaignId: uuid,
+  filter: z.enum(CAMPAIGN_RECIPIENT_FILTERS),
+  page: z.number().int().min(1),
 })
 
 /** Un jeton de desinscription : 32 octets en base64url, sans remplissage. */

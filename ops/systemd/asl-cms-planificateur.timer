@@ -1,0 +1,17 @@
+# Declenchement du planificateur toutes les cinq minutes (s26, ADR 052).
+# Une part du lendemain part dans les cinq minutes qui suivent minuit a Paris.
+# Persistent : un passage manque (serveur eteint) est rattrape au demarrage.
+# Une minuterie arretee ne produit aucune erreur, seulement du silence :
+# `systemctl list-timers 'asl-cms-*'` fait partie de la recette.
+
+[Unit]
+Description=ASL-CMS : planificateur toutes les cinq minutes
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+RandomizedDelaySec=30s
+Unit=asl-cms-planificateur.service
+
+[Install]
+WantedBy=timers.target

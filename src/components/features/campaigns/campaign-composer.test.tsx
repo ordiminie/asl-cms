@@ -15,6 +15,7 @@ import {
 } from '@/__tests__/customRender'
 import type {
   CampaignComposerContextDTO,
+  CampaignPlanDTO,
   CampaignPreviewDTO,
   PreviewCampaignActionResult,
   SendCampaignActionResult,
@@ -69,6 +70,20 @@ const previewOf = (
   counts: {recipients: 296, withoutEmail: 71, unsubscribed: 15, total: 382},
   ...overrides,
 })
+
+const planOf = (overrides: Partial<CampaignPlanDTO> = {}): CampaignPlanDTO => ({
+  today: '2026-11-12',
+  dailySendCap: 500,
+  allottedToday: 0,
+  parts: [{day: '2026-11-12', count: 296}],
+  ...overrides,
+})
+
+const THREE_DAYS = [
+  {day: '2026-11-12', count: 100},
+  {day: '2026-11-13', count: 100},
+  {day: '2026-11-14', count: 96},
+]
 
 let previewAction: ReturnType<
   typeof vi.fn<
@@ -126,6 +141,7 @@ beforeEach(() => {
   previewAction = vi.fn(async () => ({
     status: 'ok' as const,
     preview: previewOf(),
+    plan: planOf(),
   }))
   sendAction = vi.fn(async () => ({
     status: 'created' as const,
@@ -362,10 +378,10 @@ describe('CampaignComposer — écran 3 (aperçu)', () => {
     expect(frame.getAttribute('srcdoc')).toContain('Bonjour Claire Aubert')
     expect(frame.getAttribute('sandbox')).toBe('')
     expect(
-      screen.getByText(
-        '296 membres recevront cette campagne · 71 sans email et 15 désinscrits n’en recevront pas.'
-      )
-    ).toBeInTheDocument()
+      screen.getByRole('region', {name: 'Destinataires et plan d’envoi'})
+    ).toHaveTextContent(
+      '296 membres recevront cette campagne · 71 sans email et 15 désinscrits n’en recevront pas.'
+    )
     expect(screen.queryByText('Texte provisoire.')).toBeNull()
   })
 
@@ -386,6 +402,7 @@ describe('CampaignComposer — écran 3 (aperçu)', () => {
     previewAction.mockResolvedValue({
       status: 'ok',
       preview: previewOf({member: {id: PROFILE_B, name: 'Paul Renaud'}}),
+      plan: planOf(),
     })
 
     await userEvent.click(
@@ -572,5 +589,162 @@ describe('CampaignComposer — écran 3 (aperçu)', () => {
         container.querySelectorAll('[data-slot="skeleton"]').length
       ).toBeGreaterThan(0)
     )
+  })
+})
+
+describe('CampaignComposer — écran 1 de s26 (plan d’envoi)', () => {
+  const withPlan = (plan: CampaignPlanDTO) => {
+    previewAction.mockResolvedValue({status: 'ok', preview: previewOf(), plan})
+  }
+  const planSection = () =>
+    screen.getByRole('region', {name: 'Destinataires et plan d’envoi'})
+
+  const openConfirm = async () => {
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Envoyer à 296 membres'})
+    )
+    return screen.findByRole('alertdialog')
+  }
+
+  it('b · au plus le plafond : un envoi unique, aujourd’hui, rien à faire', async () => {
+    renderComposer()
+    await openPreview()
+
+    expect(planSection()).toHaveTextContent(
+      '296 membres recevront cette campagne · 71 sans email et 15 désinscrits n’en recevront pas.'
+    )
+    expect(planSection()).toHaveTextContent(
+      'Elle part en une seule fois, aujourd’hui. Vous n’avez rien à faire.'
+    )
+    expect(within(planSection()).queryByRole('list')).toBeNull()
+  })
+
+  it('a · trois jours : le plan écrit, une ligne par part, nombres et dates en données', async () => {
+    withPlan(planOf({dailySendCap: 100, parts: THREE_DAYS}))
+    renderComposer()
+    await openPreview()
+
+    expect(planSection()).toHaveTextContent('Elle part en 3 jours :')
+    const items = within(planSection()).getAllByRole('listitem')
+    expect(items.map((item) => item.textContent)).toEqual([
+      '100 membres le 12/11/2026',
+      '100 membres le 13/11/2026',
+      '96 membres le 14/11/2026',
+    ])
+    expect(within(items[2]).getByText('96')).toHaveClass('font-mono')
+    expect(within(items[2]).getByText('14/11/2026')).toHaveClass('font-mono')
+    expect(planSection()).toHaveTextContent('Vous n’avez rien à faire.')
+  })
+
+  it('e · la confirmation répète le plan de l’aperçu, en mots sur trois jours', async () => {
+    withPlan(planOf({dailySendCap: 100, parts: THREE_DAYS}))
+    renderComposer()
+    await openPreview()
+
+    const dialog = await openConfirm()
+
+    expect(dialog).toHaveTextContent(
+      '296 membres vont recevoir « ASL Les Pins — Peinture du portail », en 3 jours : 100 aujourd’hui, 100 demain, 96 après-demain. L’envoi ne peut pas être annulé.'
+    )
+    expect(
+      within(dialog).getByRole('button', {name: 'Envoyer à 296 membres'})
+    ).toHaveClass('bg-destructive')
+  })
+
+  it('e · en mobile, la confirmation est ancrée en bas', async () => {
+    renderComposer()
+    await openPreview()
+
+    const dialog = await openConfirm()
+
+    expect(dialog.className).toMatch(/max-sm:bottom-/)
+    expect(dialog.className).toMatch(/max-sm:top-auto/)
+  })
+
+  it('c · plafond du jour entamé : le déjà-parti est dit, quatre parts, confirmation en dates', async () => {
+    withPlan(
+      planOf({
+        dailySendCap: 100,
+        allottedToday: 40,
+        parts: [
+          {day: '2026-11-12', count: 60},
+          {day: '2026-11-13', count: 100},
+          {day: '2026-11-14', count: 100},
+          {day: '2026-11-15', count: 36},
+        ],
+      })
+    )
+    renderComposer()
+    await openPreview()
+
+    expect(planSection()).toHaveTextContent(
+      '40 envois de campagne sont déjà partis aujourd’hui : celle-ci commence avec les 60 qui restent.'
+    )
+    expect(planSection()).toHaveTextContent('Elle part en 4 jours :')
+    expect(within(planSection()).getAllByRole('listitem')).toHaveLength(4)
+
+    const dialog = await openConfirm()
+    expect(dialog).toHaveTextContent(
+      'en 4 jours : 60 le 12/11/2026, 100 le 13/11/2026, 100 le 14/11/2026, 36 le 15/11/2026.'
+    )
+  })
+
+  it('d · plafond du jour atteint : avertissement, la première part part demain', async () => {
+    withPlan(
+      planOf({
+        dailySendCap: 100,
+        allottedToday: 100,
+        parts: [
+          {day: '2026-11-13', count: 100},
+          {day: '2026-11-14', count: 100},
+          {day: '2026-11-15', count: 96},
+        ],
+      })
+    )
+    renderComposer()
+    await openPreview()
+
+    const warning = screen.getByRole('alert')
+    expect(warning).toHaveTextContent(
+      'Attention : les envois de campagne du jour sont déjà complets. La première part partira demain, le 13/11/2026.'
+    )
+    expect(warning).toHaveClass('bg-warning')
+    expect(planSection()).toHaveTextContent(
+      'Elle part en 3 jours, à partir de demain :'
+    )
+    expect(planSection()).not.toHaveTextContent('déjà partis aujourd’hui')
+
+    const dialog = await openConfirm()
+    expect(dialog).toHaveTextContent(
+      'en 3 jours : 100 le 13/11/2026, 100 le 14/11/2026, 96 le 15/11/2026.'
+    )
+  })
+
+  it('aucun état ne dit « trop de destinataires » : une grosse campagne s’étale', async () => {
+    withPlan(
+      planOf({
+        dailySendCap: 100,
+        parts: Array.from({length: 6}, (_, index) => ({
+          day: `2026-11-${12 + index}`,
+          count: 100,
+        })),
+      })
+    )
+    renderComposer()
+    await openPreview()
+
+    expect(document.body).not.toHaveTextContent(/trop de destinataires/i)
+    expect(
+      screen.getByRole('button', {name: 'Envoyer à 296 membres'})
+    ).toBeEnabled()
+  })
+
+  it('les actions s’empilent en mobile et le bouton principal fait 56 px', async () => {
+    renderComposer()
+    await openPreview()
+
+    const send = screen.getByRole('button', {name: 'Envoyer à 296 membres'})
+    expect(send).toHaveClass('h-14', 'w-full', 'sm:w-auto')
+    expect(send.parentElement).toHaveClass('flex-col', 'sm:flex-row')
   })
 })

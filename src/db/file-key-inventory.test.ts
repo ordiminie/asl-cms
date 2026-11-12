@@ -11,6 +11,7 @@ import {
   type FileKeyColumn,
   type FileKeyJsonPath,
   fileKeysAtPath,
+  NOT_FILE_KEY_COLUMNS,
 } from '@/lib/files/file-key-inventory'
 import {pageBlockSchema} from '@/services/types/domain/page-block-types'
 
@@ -189,10 +190,50 @@ describe('inventaire des colonnes de clé de fichier', () => {
     expect(missing).toEqual([])
   })
 
-  it('déclare toute colonne `_key` du schéma', () => {
-    expect(undeclaredColumns(modelFileKeyColumns(), FILE_KEY_COLUMNS)).toEqual(
-      []
+  it('déclare toute colonne `_key` du schéma, fichier ou exclusion explicite', () => {
+    expect(
+      undeclaredColumns(modelFileKeyColumns(), [
+        ...FILE_KEY_COLUMNS,
+        ...NOT_FILE_KEY_COLUMNS,
+      ])
+    ).toEqual([])
+  })
+
+  it('n’exclut que des colonnes `_key` qui existent dans un pgTable (ADR 052)', () => {
+    const found = modelFileKeyColumns()
+    const stale = NOT_FILE_KEY_COLUMNS.filter(
+      (entry) => !found.some((column) => sameColumn(column, entry))
     )
+
+    expect(stale).toEqual([])
+    expect(NOT_FILE_KEY_COLUMNS).toContainEqual({
+      table: 'scheduled_job',
+      column: 'idempotency_key',
+    })
+  })
+
+  it('une colonne n’est jamais à la fois fichier et exclue', () => {
+    expect(
+      FILE_KEY_COLUMNS.filter((entry) =>
+        NOT_FILE_KEY_COLUMNS.some((excluded) => sameColumn(excluded, entry))
+      )
+    ).toEqual([])
+  })
+
+  it('l’exclusion ne couvre pas une autre colonne `_key` non déclarée', () => {
+    const source = `
+      export const t = pgTable('scheduled_job', {
+        idempotencyKey: text('idempotency_key'),
+        otherKey: text('other_key'),
+      })
+    `
+
+    expect(
+      undeclaredColumns(fileKeyColumnsIn(source), [
+        ...FILE_KEY_COLUMNS,
+        ...NOT_FILE_KEY_COLUMNS,
+      ])
+    ).toEqual([{table: 'scheduled_job', column: 'other_key'}])
   })
 
   // Critere 4 : la colonne de controle. Une colonne qui suit la convention,

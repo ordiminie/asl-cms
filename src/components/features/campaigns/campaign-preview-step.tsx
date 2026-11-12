@@ -3,7 +3,7 @@
 import {AlertTriangle} from 'lucide-react'
 import {useRouter} from 'next/navigation'
 import {useTranslations} from 'next-intl'
-import {useId, useRef, useState} from 'react'
+import {type ReactNode, useId, useRef, useState} from 'react'
 
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {
@@ -27,14 +27,18 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {Skeleton} from '@/components/ui/skeleton'
+import {addDays} from '@/services/rules/campaign-schedule-rules'
 import type {
   CampaignComposerContextDTO,
+  CampaignPlanDTO,
   CampaignPreviewDTO,
+  CampaignTargetCountsDTO,
   SendCampaignActionResult,
 } from '@/services/types/domain/campaign-types'
 import type {CampaignFormValues} from '@/services/validation/campaign-validation'
 
 import {ComposerFrame, ProvisionalAlert} from './campaign-composer'
+import {dayLabelOf} from './campaign-format'
 import {sentCampaignPathOf} from './campaign-paths'
 
 type SendFailure = 'disabled' | 'failed'
@@ -43,6 +47,8 @@ type CampaignPreviewStepProps = {
   context: CampaignComposerContextDTO
   /** `null` pendant le chargement de l'apercu (etat c). */
   preview: CampaignPreviewDTO | null
+  /** Le plan d'envoi annonce (s26) ; `null` pendant le chargement. */
+  plan: CampaignPlanDTO | null
   values: CampaignFormValues
   provisional: boolean
   onChangeMember: (memberProfileId: string) => void
@@ -53,14 +59,16 @@ type CampaignPreviewStepProps = {
 const EMAIL_FRAME_HEIGHT = 720
 
 /**
- * L'apercu avant l'envoi (ecran 3 du design s25) : le rendu final avec un
- * membre joignable reel (critere 5), le rappel du decompte, puis la
- * confirmation par `alert-dialog`. Un envoi en cours ne se relance pas : un
- * second clic n'appelle pas l'action une seconde fois.
+ * L'apercu avant l'envoi (ecran 3 du design s25, ecran 1 de s26) : le rendu
+ * final avec un membre joignable reel (critere 5), le decompte et le plan
+ * d'envoi, puis la confirmation par `alert-dialog`, qui repete le plan. Un
+ * envoi en cours ne se relance pas : un second clic n'appelle pas l'action
+ * une seconde fois.
  */
 export function CampaignPreviewStep({
   context,
   preview,
+  plan,
   values,
   provisional,
   onChangeMember,
@@ -101,6 +109,7 @@ export function CampaignPreviewStep({
       </h1>
 
       {failure && <SendFailureAlert failure={failure} />}
+      {plan && isPostponed(plan) && <PostponedAlert plan={plan} />}
 
       {preview ? (
         <div className="flex flex-col gap-3">
@@ -166,13 +175,7 @@ export function CampaignPreviewStep({
         )}
       </Card>
 
-      <p className="text-[17px]">
-        {t('recall', {
-          recipients: counts.recipients,
-          withoutEmail: counts.withoutEmail,
-          unsubscribed: counts.unsubscribed,
-        })}
-      </p>
+      <PlanSection counts={counts} plan={plan} />
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
@@ -199,10 +202,11 @@ export function CampaignPreviewStep({
           <AlertDialogHeader>
             <AlertDialogTitle>{t('confirmTitle')}</AlertDialogTitle>
             <AlertDialogDescription className="text-[17px]">
-              {t('confirmDescription', {
-                count: counts.recipients,
-                subject: preview?.subject ?? values.subject,
-              })}
+              <ConfirmDescription
+                count={counts.recipients}
+                subject={preview?.subject ?? values.subject}
+                plan={plan}
+              />
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -236,5 +240,173 @@ function SendFailureAlert({failure}: {failure: SendFailure}) {
         {t(`${failure}Description`)}
       </AlertDescription>
     </Alert>
+  )
+}
+
+const data = (chunks: ReactNode) => (
+  <span className="font-mono text-[16px] tabular-nums">{chunks}</span>
+)
+const strong = (chunks: ReactNode) => (
+  <strong className="font-semibold">{chunks}</strong>
+)
+
+const isSinglePartToday = (plan: CampaignPlanDTO): boolean =>
+  plan.parts.length === 1 && plan.parts[0].day === plan.today
+
+/** La premiere part ne part pas aujourd'hui : le plafond du jour est atteint. */
+const isPostponed = (plan: CampaignPlanDTO): boolean =>
+  plan.parts.length > 0 && plan.parts[0].day !== plan.today
+
+const startOf = (plan: CampaignPlanDTO): 'today' | 'tomorrow' | 'other' => {
+  const first = plan.parts[0]?.day
+  if (first === plan.today) return 'today'
+  return first === addDays(plan.today, 1) ? 'tomorrow' : 'other'
+}
+
+/** Le plafond du jour est atteint : la campagne partira, mais pas aujourd'hui (1d). */
+function PostponedAlert({plan}: {plan: CampaignPlanDTO}) {
+  const t = useTranslations('CampaignsBureau.preview.plan')
+
+  return (
+    <Alert className="border-warning-border bg-warning text-warning-foreground border [&>svg]:size-5">
+      <AlertTriangle aria-hidden="true" />
+      <AlertDescription className="text-warning-foreground text-[17px]">
+        <p>
+          {t.rich('full', {
+            strong,
+            data,
+            tomorrow: String(startOf(plan) === 'tomorrow'),
+            date: dayLabelOf(plan.parts[0].day),
+          })}
+        </p>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+/**
+ * « Destinataires et plan d'envoi » (ecran 1 de s26) : le decompte, le
+ * deja-parti du jour, puis l'envoi unique ou le plan ecrit, une ligne par
+ * part, nombres et dates en `data`.
+ */
+function PlanSection({
+  counts,
+  plan,
+}: {
+  counts: CampaignTargetCountsDTO
+  plan: CampaignPlanDTO | null
+}) {
+  const t = useTranslations('CampaignsBureau.preview.plan')
+  const started =
+    plan !== null && plan.allottedToday > 0 && plan.parts[0]?.day === plan.today
+
+  return (
+    <section
+      aria-label={t('label')}
+      className="border-border flex flex-col gap-3 border-t pt-6 text-[17px]"
+    >
+      <p>
+        {t.rich('recall', {
+          strong,
+          recipients: counts.recipients,
+          withoutEmail: counts.withoutEmail,
+          unsubscribed: counts.unsubscribed,
+        })}
+      </p>
+      {plan === null ? (
+        <Skeleton className="h-6 w-72" />
+      ) : (
+        <>
+          {started && (
+            <p>
+              {t.rich('alreadySent', {
+                data,
+                allotted: plan.allottedToday,
+                left: plan.parts[0].count,
+              })}
+            </p>
+          )}
+          {isSinglePartToday(plan) ? (
+            <p>{t.rich('single', {strong})}</p>
+          ) : (
+            <WrittenPlan plan={plan} />
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+function WrittenPlan({plan}: {plan: CampaignPlanDTO}) {
+  const t = useTranslations('CampaignsBureau.preview.plan')
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p>
+        {t.rich('title', {
+          strong,
+          days: plan.parts.length,
+          start: startOf(plan),
+          date: dayLabelOf(plan.parts[0].day),
+        })}
+      </p>
+      <ul className="border-border flex flex-col gap-1 border-l-2 pl-4">
+        {plan.parts.map((part) => (
+          <li key={part.day} className="flex flex-wrap items-baseline gap-2">
+            {t.rich('item', {
+              data,
+              count: part.count,
+              date: dayLabelOf(part.day),
+            })}
+          </li>
+        ))}
+      </ul>
+      <p>{t('nothingToDo')}</p>
+    </div>
+  )
+}
+
+const RELATIVE_DAY_KEYS = ['today', 'tomorrow', 'afterTomorrow'] as const
+
+/**
+ * Les parts dites en mots (« aujourd'hui, demain, apres-demain ») tant que le
+ * plan tient en trois jours consecutifs a partir d'aujourd'hui ; en dates
+ * `jj/mm/aaaa` au-dela, ou quand la premiere part est reportee.
+ */
+const relativeKeysOf = (plan: CampaignPlanDTO) =>
+  plan.parts.length <= RELATIVE_DAY_KEYS.length &&
+  plan.parts.every((part, index) => part.day === addDays(plan.today, index))
+    ? RELATIVE_DAY_KEYS
+    : null
+
+function ConfirmDescription({
+  count,
+  subject,
+  plan,
+}: {
+  count: number
+  subject: string
+  plan: CampaignPlanDTO | null
+}) {
+  const t = useTranslations('CampaignsBureau.preview')
+
+  if (!plan || isSinglePartToday(plan)) {
+    return <>{t('confirmDescription', {count, subject})}</>
+  }
+  const relative = relativeKeysOf(plan)
+  const parts = plan.parts.map((part, index) =>
+    relative
+      ? t(`confirmPart.${relative[index]}`, {count: part.count})
+      : t('confirmPart.day', {count: part.count, date: dayLabelOf(part.day)})
+  )
+  return (
+    <>
+      {t('confirmPlanDescription', {
+        count,
+        subject,
+        days: plan.parts.length,
+        plan: parts.join(', '),
+      })}
+    </>
   )
 }

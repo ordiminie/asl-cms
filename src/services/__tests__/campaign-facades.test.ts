@@ -9,13 +9,16 @@ describe('façades des campagnes (s25, ADR 051)', () => {
       [
         'canManageCampaignsService',
         'getCampaignComposerContextService',
+        'getCampaignRecipientsService',
         'getCampaignService',
         'listCampaignsService',
+        'previewCampaignPlanService',
         'previewCampaignService',
         'sendCampaignService',
       ].sort()
     )
-    expect(campaignFacade).not.toHaveProperty('deliverCampaignService')
+    expect(campaignFacade).not.toHaveProperty('deliverCampaignPartService')
+    expect(campaignFacade).not.toHaveProperty('campaignScheduledJobHandlers')
   })
 
   it('expose la lecture et la confirmation de la désinscription', () => {

@@ -10,6 +10,7 @@ vi.mock('@/services/facades/campaign-service-facade', () => ({
   getCampaignComposerContextService: vi.fn(),
   listCampaignsService: vi.fn(),
   getCampaignService: vi.fn(),
+  getCampaignRecipientsService: vi.fn(),
 }))
 vi.mock('@/services/facades/unsubscribe-service-facade', () => ({
   getUnsubscribePageStateService: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('@/services/facades/unsubscribe-service-facade', () => ({
 import {
   canManageCampaignsService,
   getCampaignComposerContextService,
+  getCampaignRecipientsService,
   getCampaignService,
   listCampaignsService,
 } from '@/services/facades/campaign-service-facade'
@@ -31,6 +33,7 @@ import {
   canManageCurrentCampaignsDal,
   getCampaignComposerContextDal,
   getCampaignDal,
+  getCampaignRecipientsDal,
   getCampaignsPageDal,
 } from './campaign-dal'
 import {requireCurrentTenantDal} from './tenant-dal'
@@ -78,6 +81,22 @@ describe('campaign-dal (s25)', () => {
     expect(getCampaignService).toHaveBeenCalledWith({
       organizationId: ORG_A,
       campaignId: CAMPAIGN_ID,
+    })
+  })
+
+  it('lit une page des destinataires d’une campagne, filtrée (s26)', async () => {
+    vi.mocked(getCampaignRecipientsService).mockResolvedValue({
+      status: 'not_found',
+    })
+
+    await expect(
+      getCampaignRecipientsDal(ORG_A, CAMPAIGN_ID, 'to_verify', 2)
+    ).resolves.toEqual({status: 'not_found'})
+    expect(getCampaignRecipientsService).toHaveBeenCalledWith({
+      organizationId: ORG_A,
+      campaignId: CAMPAIGN_ID,
+      filter: 'to_verify',
+      page: 2,
     })
   })
 

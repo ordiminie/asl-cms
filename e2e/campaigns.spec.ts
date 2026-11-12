@@ -1,5 +1,6 @@
 /* eslint-disable no-restricted-properties -- une spec e2e tourne hors de
    l'application : le fichier env.ts typé n'y est pas chargé. */
+import {execFileSync} from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -409,10 +410,13 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
       await expect(bureau).toHaveURL(
         `${TENANT_A}${CAMPAIGNS_ROUTE}/${campaignId}`
       )
+      const title = bureau.getByRole('heading', {level: 1, name: subject})
+      await expect(title).toBeVisible()
+      // L'en-tete porte le badge d'etat de la campagne ; la page precedente
+      // (archive) reste montee, masquee, apres une navigation cliente.
       await expect(
-        bureau.getByRole('heading', {level: 1, name: subject})
+        title.locator('xpath=..').getByText('Envoyée', {exact: true})
       ).toBeVisible()
-      await expect(bureau.getByText('Envoyée', {exact: true})).toBeVisible()
       await expect(bureau.getByText('Bonjour {nom},')).toBeVisible()
     } finally {
       await bureau.context().close()
@@ -717,6 +721,406 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
       await expect(page.getByText(MARKER)).toHaveCount(0)
     } finally {
       await context.close()
+    }
+  })
+})
+
+/**
+ * Envoi étalé — s26, critères 1, 2, 5, 7, 8, 9, 11 et 12 (ADR 052).
+ *
+ * Le plafond quotidien de TechCorp est abaissé à 2 pour l'essai : une
+ * campagne s'étale alors en parts de deux destinataires, la première part
+ * aujourd'hui (passage immédiat en `after()`), les suivantes programmées. Le
+ * planificateur est relancé par son script, comme la minuterie le ferait.
+ * L'atomicité du `SKIP LOCKED` et du passage `pending -> sending` ne se prouve
+ * qu'ici, contre une vraie base.
+ */
+const SCHEDULER_SCRIPT = 'src/db/scripts/run-scheduled-jobs.ts'
+const CAP_KEY = 'campaign.daily_send_cap'
+const SPREAD_MARKER = `s26-${RUN}`
+const SPREAD_FICHES = Array.from({length: 5}, (_, index) => ({
+  name: `Étalé ${index + 1} ${SPREAD_MARKER}`,
+  email: `etale-${index + 1}-${RUN}@example.test`,
+}))
+
+const runScheduler = (): string =>
+  execFileSync('pnpm', ['tsx', SCHEDULER_SCRIPT], {
+    env: {...process.env, DATABASE_URL: databaseUrl()},
+    encoding: 'utf8',
+    timeout: 90_000,
+  })
+
+type SpreadRecipient = {
+  id: string
+  email: string | null
+  status: string
+  part_number: number
+}
+
+const spreadStateOf = async (campaignId: string) => {
+  const {a} = await tenantIds()
+  return inTenantScope(a, async (client) => {
+    const parts = await client.query<{
+      id: string
+      number: number
+      status: string
+      recipient_count: number
+    }>(
+      `select id, number, status, recipient_count from campaign_part
+        where campaign_id = $1 order by number`,
+      [campaignId]
+    )
+    const recipients = await client.query<SpreadRecipient>(
+      `select r.id, p.email, r.status, cp.number as part_number
+         from campaign_recipient r
+         left join member_profile p on p.id = r.member_profile_id
+         join campaign_part cp on cp.id = r.part_id
+        where r.campaign_id = $1
+        order by cp.number, r.id`,
+      [campaignId]
+    )
+    const jobs = await client.query<{idempotency_key: string}>(
+      `select idempotency_key from scheduled_job
+        where kind = 'campaign.deliver_part' and payload->>'campaignId' = $1`,
+      [campaignId]
+    )
+    return {parts: parts.rows, recipients: recipients.rows, jobs: jobs.rows}
+  })
+}
+
+/**
+ * L'état d'une part et de sa tâche après un passage, avec la sortie du
+ * script : de quoi lire un échec en CI sans relancer.
+ */
+const diagnosisOf = async (
+  campaignId: string,
+  partId: string,
+  output: string
+): Promise<string> => {
+  const {a} = await tenantIds()
+  const job = await inTenantScope(a, async (client) => {
+    const result = await client.query(
+      `select attempts, run_after, locked_at, completed_at, failed_at
+         from scheduled_job
+        where kind = 'campaign.deliver_part' and idempotency_key = $1`,
+      [partId]
+    )
+    return result.rows[0]
+  })
+  const state = await spreadStateOf(campaignId)
+  const part = state.parts.find((candidate) => candidate.id === partId)
+  return JSON.stringify(
+    {
+      part: part?.status,
+      recipients: state.recipients
+        .filter((recipient) => recipient.part_number === part?.number)
+        .map((recipient) => recipient.status),
+      job,
+      output: output.trim().split('\n').slice(-15),
+    },
+    null,
+    2
+  )
+}
+
+/** Rend la tâche d'une part due maintenant, comme un passage de minuit. */
+const makePartDue = async (partId: string) => {
+  const {a} = await tenantIds()
+  await inTenantScope(a, (client) =>
+    client.query(
+      `update scheduled_job
+          set run_after = now() - interval '1 minute', locked_at = null,
+              completed_at = null
+        where kind = 'campaign.deliver_part' and idempotency_key = $1`,
+      [partId]
+    )
+  )
+}
+
+test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
+  let spreadCampaignId = ''
+
+  test.beforeAll(async () => {
+    const {a} = await tenantIds()
+    await asMaintenance(async (client) => {
+      await client.query(`delete from campaign where subject like $1`, [
+        `%${SPREAD_MARKER}%`,
+      ])
+      await client.query(`delete from member_profile where name like $1`, [
+        `%${SPREAD_MARKER}%`,
+      ])
+    })
+    await inTenantScope(a, async (client) => {
+      for (const fiche of SPREAD_FICHES) {
+        await client.query(
+          `insert into member_profile (organization_id, name, email)
+           values ($1, $2, $3)`,
+          [a, fiche.name, fiche.email]
+        )
+      }
+      await client.query(
+        `insert into organization_setting (organization_id, key, value)
+         values ($1, $2, '2')
+         on conflict (organization_id, key) do update set value = '2'`,
+        [a, CAP_KEY]
+      )
+    })
+  })
+
+  test.afterAll(async () => {
+    const {a} = await tenantIds()
+    await inTenantScope(a, (client) =>
+      client.query(
+        `delete from organization_setting where organization_id = $1 and key = $2`,
+        [a, CAP_KEY]
+      )
+    )
+    await asMaintenance(async (client) => {
+      await client.query(`delete from campaign where subject like $1`, [
+        `%${SPREAD_MARKER}%`,
+      ])
+      await client.query(`delete from member_profile where name like $1`, [
+        `%${SPREAD_MARKER}%`,
+      ])
+    })
+  })
+
+  test('critères 1, 2 et 5 — plafond 2 : des parts de deux, la première reçue, les suivantes programmées', async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000)
+    const expected = await countsInDatabase()
+    const partsCount = Math.ceil(expected.recipients / 2)
+    expect(partsCount).toBeGreaterThanOrEqual(3)
+    const subject = `Étalement ${SPREAD_MARKER}`
+    const before = outboxFiles()
+
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      spreadCampaignId = await composeAndSend(bureau, {
+        subject,
+        body: 'Bonjour {nom}, envoi du {date}.',
+        expectedRecipients: expected.recipients,
+      })
+
+      const state = await spreadStateOf(spreadCampaignId)
+      expect(state.parts.map((part) => part.recipient_count)).toEqual(
+        Array.from({length: partsCount}, (_, index) =>
+          index < partsCount - 1 || expected.recipients % 2 === 0 ? 2 : 1
+        )
+      )
+      expect(state.jobs).toHaveLength(partsCount)
+
+      const firstPart = state.recipients
+        .filter((recipient) => recipient.part_number === 1)
+        .map((recipient) => recipient.email)
+      await expect
+        .poll(
+          () =>
+            firstPart.filter((email) => messagesTo(before, email).length === 1)
+              .length,
+          {
+            timeout: 30_000,
+          }
+        )
+        .toBe(2)
+      const toCampaign = () =>
+        state.recipients.flatMap((recipient) =>
+          messagesTo(before, recipient.email)
+        )
+      expect(toCampaign()).toHaveLength(2)
+
+      await expect
+        .poll(
+          async () => (await spreadStateOf(spreadCampaignId)).parts[0].status,
+          {
+            timeout: 30_000,
+          }
+        )
+        .toBe('sent')
+      const after = await spreadStateOf(spreadCampaignId)
+      expect(after.parts.slice(1).map((part) => part.status)).toEqual(
+        Array.from({length: partsCount - 1}, () => 'scheduled')
+      )
+
+      await bureau.goto(`${TENANT_A}${CAMPAIGNS_ROUTE}/${spreadCampaignId}`, {
+        waitUntil: 'networkidle',
+      })
+      await expect(
+        bureau
+          .getByRole('heading', {level: 1, name: subject})
+          .locator('xpath=..')
+          .getByText('En cours d’envoi', {exact: true})
+      ).toBeVisible()
+      await expect(
+        bureau.getByRole('heading', {level: 2, name: 'Envois par jour'})
+      ).toBeVisible()
+      await expect(
+        bureau
+          .getByRole('heading', {level: 2, name: 'Envois par jour'})
+          .locator('xpath=..')
+          .getByRole('table')
+          .getByText(/^Programmée pour le \d{2}\/\d{2}$/)
+          .first()
+      ).toBeVisible()
+      await expect(bureau.getByText(/interrompue|bloquée/i)).toHaveCount(0)
+    } finally {
+      await bureau.context().close()
+    }
+  })
+
+  test('critères 8 et 12 — relancer le planificateur ne réécrit à personne ; une part due part seule', async () => {
+    test.setTimeout(180_000)
+    expect(
+      spreadCampaignId,
+      'le test précédent a lancé la campagne'
+    ).toBeTruthy()
+    const state = await spreadStateOf(spreadCampaignId)
+    const received = state.recipients
+      .filter((recipient) => recipient.part_number === 1)
+      .map((recipient) => recipient.email)
+
+    let before = outboxFiles()
+    await makePartDue(state.parts[0].id)
+    expect(runScheduler()).toMatch(/Taches traitees : \d+/)
+    expect(
+      state.recipients.flatMap((recipient) =>
+        messagesTo(before, recipient.email)
+      )
+    ).toHaveLength(0)
+
+    before = outboxFiles()
+    await makePartDue(state.parts[1].id)
+    const output = runScheduler()
+    const diagnosis = await diagnosisOf(
+      spreadCampaignId,
+      state.parts[1].id,
+      output
+    )
+    expect(
+      (await spreadStateOf(spreadCampaignId)).parts[1].status,
+      diagnosis
+    ).toBe('sent')
+    const secondPart = state.recipients
+      .filter((recipient) => recipient.part_number === 2)
+      .map((recipient) => recipient.email)
+    expect(
+      secondPart.map((email) => messagesTo(before, email).length),
+      diagnosis
+    ).toEqual([1, 1])
+    for (const email of received) {
+      expect(messagesTo(before, email)).toHaveLength(0)
+    }
+    const after = await spreadStateOf(spreadCampaignId)
+    expect(after.parts[1].status).toBe('sent')
+    expect(after.parts[2].status).toBe('scheduled')
+  })
+
+  test('critère 7 — un arrêt entre l’envoi et son enregistrement laisse « À vérifier », sans renvoi', async () => {
+    test.setTimeout(180_000)
+    const {a} = await tenantIds()
+    const state = await spreadStateOf(spreadCampaignId)
+    const third = state.recipients.filter(
+      (recipient) => recipient.part_number === 3
+    )
+    const [stuck, ...others] = third
+    await inTenantScope(a, (client) =>
+      client.query(
+        `update campaign_recipient
+            set status = 'sending', claimed_at = now() - interval '16 minutes'
+          where id = $1`,
+        [stuck.id]
+      )
+    )
+
+    const before = outboxFiles()
+    await makePartDue(state.parts[2].id)
+    const output = runScheduler()
+    const diagnosis = await diagnosisOf(
+      spreadCampaignId,
+      state.parts[2].id,
+      output
+    )
+
+    const after = await spreadStateOf(spreadCampaignId)
+    expect(
+      after.recipients.find((r) => r.id === stuck.id)?.status,
+      diagnosis
+    ).toBe('to_verify')
+    expect(messagesTo(before, stuck.email)).toHaveLength(0)
+    for (const other of others) {
+      expect(messagesTo(before, other.email), diagnosis).toHaveLength(1)
+    }
+  })
+
+  test('critère 11 — accès croisé : l’autre association ne voit ni parts, ni tâches, ni destinataires ; une URL forgée est introuvable', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const ids = await tenantIds()
+    const state = await spreadStateOf(spreadCampaignId)
+    expect(state.parts.length).toBeGreaterThan(0)
+
+    const seenFromB = await inTenantScope(ids.b, async (client) => ({
+      parts: await client.query(
+        `select id from campaign_part where campaign_id = $1`,
+        [spreadCampaignId]
+      ),
+      jobs: await client.query(
+        `select id from scheduled_job where organization_id = $1`,
+        [ids.a]
+      ),
+      recipients: await client.query(
+        `select id from campaign_recipient where campaign_id = $1`,
+        [spreadCampaignId]
+      ),
+    }))
+    expect(seenFromB.parts.rowCount, 'un oubli de scope ne fuite pas').toBe(0)
+    expect(seenFromB.jobs.rowCount).toBe(0)
+    expect(seenFromB.recipients.rowCount).toBe(0)
+
+    const withoutScope = await withAppRoleClient(async (client) => ({
+      parts: await client.query(`select id from campaign_part`),
+      jobs: await client.query(`select id from scheduled_job`),
+    }))
+    expect(withoutScope.parts.rowCount).toBe(0)
+    expect(withoutScope.jobs.rowCount).toBe(0)
+
+    await expect(
+      inTenantScope(ids.b, (client) =>
+        client.query(
+          `insert into scheduled_job
+             (organization_id, kind, idempotency_key, run_after, payload)
+           values ($1, 'campaign.deliver_part', $2, now(), '{}'::jsonb)`,
+          [ids.a, `intrus-${RUN}`]
+        )
+      )
+    ).rejects.toThrow(/row-level security/)
+    await expect(
+      inTenantScope(ids.b, (client) =>
+        client.query(
+          `insert into campaign_part
+             (organization_id, campaign_id, number, scheduled_for, recipient_count)
+           values ($1, $2, 99, current_date, 1)`,
+          [ids.a, spreadCampaignId]
+        )
+      )
+    ).rejects.toThrow(/row-level security/)
+
+    const boardB = await newSession(browser, TENANT_B, BOARD_B)
+    try {
+      await boardB.goto(
+        `${TENANT_B}${CAMPAIGNS_ROUTE}/${spreadCampaignId}?statut=a-verifier`,
+        {waitUntil: 'networkidle'}
+      )
+      await expect(
+        boardB.getByText(
+          'Cette campagne n’existe pas ou n’appartient pas à votre association.'
+        )
+      ).toBeVisible({timeout: 15_000})
+      await expect(boardB.getByText(SPREAD_MARKER)).toHaveCount(0)
+    } finally {
+      await boardB.context().close()
     }
   })
 })

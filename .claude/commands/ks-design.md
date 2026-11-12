@@ -42,7 +42,7 @@ Check that docs/design-system.md exists AND is non-empty.
 - `--gemini` — you write the brief, the user produces the screens in Gemini and brings back the result
 
 **Every screen comes in two versions: desktop and mobile (390 px)**, with the same content and the same states, following the design system's rules below 1 024 px (drawer, 56 px actions, 16 px margins…). Whatever the path, the brief asks for both and the mockup shows both. A screen delivered in one version only is incomplete.
-**Every scren comes in light and dark version**, with the same content and the same states, following the design system's rules. Whatever the path, the brief asks for both and the mockup shows both. A screen delivered in one version only is incomplete.
+**Web screens are light mode only** (ADR 033, which replaces ADR 012): no dark version is asked for, briefed or mockuped. The only dark variants are the forced-dark email twins of the design system §5.2, required for an email template and for nothing else.
 
 ### Step 3 — Read the story
 
@@ -57,7 +57,7 @@ Read docs/stories.md, resolve the target story id (`s<number>-<slug>`) and isola
 
 **CLAUDE DESIGN path (default)** — you write the brief; the user opens the canvas:
 
-1. Write docs/designs/<id>-brief.md (structure: @templates/design-brief.md): every screen with layout, exact fields and actions, the four states, a **desktop and a mobile (390 px) version**, and the design system constraints COPIED IN (tokens — both light and dark sets, ADR 012 — components, do/don't) so the brief is self-contained. Out-of-scope stated. This file is a deliverable of this step — not a chat message.
+1. Write docs/designs/<id>-brief.md (structure: @templates/design-brief.md): every screen with layout, exact fields and actions, the four states, a **desktop and a mobile (390 px) version**, and the design system constraints COPIED IN (tokens — light set only, ADR 033 — components, do/don't) so the brief is self-contained. Out-of-scope stated. This file is a deliverable of this step — not a chat message.
 2. **The `design` skill has `disable-model-invocation` — confirmed 2026-09-21 on s04.** The Skill tool refuses a model-initiated call outright (`cannot be invoked via the Skill tool ... reserved for explicit user invocation`) and explicitly forbids replicating its workflow another way. Don't attempt it, don't retry it, and don't imply you opened a canvas. Instead: stop here and give the user the exact command to type themselves: `/design docs/designs/<id>-brief.md`. This is a one-shot manual step, not a checkpoint to loop back on.
 3. Once the user has validated the result on the canvas, they tell you so and hand back the canvas URL (and export, if any). Apply any further requested changes to the canvas is on them; you resume at step 4.
 4. Once validated: record/normalize the mockup into docs/designs/<id>.html, and write docs/designs/<id>.md (structure: @templates/design-screen.md) describing the screen, pointing to the HTML and to the canvas URL, and noting the validation date.

@@ -1,4 +1,4 @@
-import {getTranslations} from 'next-intl/server'
+import {createTranslator} from 'next-intl'
 import {type CSSProperties, Fragment} from 'react'
 import {
   Body,
@@ -16,6 +16,7 @@ import {
 import type {SupportedLocale} from '@/lib/helper/locale-helper'
 import type {AccentHue} from '@/services/types/domain/association-settings-types'
 
+import fr from '../../../messages/fr.json'
 import type {CampaignFooterTexts} from './campaign-text'
 import {
   EMAIL_COLORS,
@@ -55,9 +56,14 @@ const LOGO_SIZE = 36
 const blankToNull = (value: string | null): string | null =>
   value && value.trim() !== '' ? value.trim() : null
 
+/** Les messages de chaque locale du produit (ADR 008 : `fr` seule). */
+const MESSAGES: Record<SupportedLocale, typeof fr> = {fr}
+
 /**
  * Les phrases du pied « facultatif » (ecran E du design s25), partagees par le
- * gabarit et la version texte : un seul endroit les compose.
+ * gabarit et la version texte : un seul endroit les compose. Traduites par
+ * `createTranslator`, sans requete : le planificateur (script de la minuterie,
+ * ADR 052) compose les campagnes hors de Next, ou `next-intl/server` leve.
  */
 export const getCampaignFooterTexts = async (
   locale: SupportedLocale,
@@ -66,7 +72,11 @@ export const getCampaignFooterTexts = async (
     'name' | 'legalName' | 'legalMentions'
   >
 ): Promise<CampaignFooterTexts> => {
-  const t = await getTranslations({locale, namespace: 'email.campaign.footer'})
+  const t = createTranslator({
+    locale,
+    messages: MESSAGES[locale],
+    namespace: 'email.campaign.footer',
+  })
   return {
     associationName: association.name,
     legalName: blankToNull(association.legalName),

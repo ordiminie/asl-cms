@@ -2076,6 +2076,18 @@
         "label": "Mentions du pied de page",
         "help": "Adresse du siège, numéro d’enregistrement ou toute mention que l’association doit faire figurer au bas de ses emails. Elles s’écrivent au pied de page de chaque campagne.",
         "whenEmpty": "Vide : aucune mention n’est ajoutée au pied de page. L’envoi reste possible."
+      },
+      "campaignDailySendCap": {
+        "label": "Plafond quotidien des campagnes",
+        "help": "Nombre maximum d’emails de campagne envoyés par jour, toutes campagnes confondues. Le reste de la limite d’envoi de votre messagerie est gardé pour les emails de connexion et les autres messages. Par défaut : 100.",
+        "errors": {
+          "invalidNumber": "Saisissez un nombre entier supérieur à 0.",
+          "belowMin": "Saisissez un nombre entier supérieur à 0."
+        }
+      },
+      "campaignSendMaxAttempts": {
+        "label": "Nombre de tentatives d’envoi d’une part",
+        "help": "Nombre d’essais d’envoi d’une part de campagne qui n’a pas pu partir, à quelques dizaines de minutes d’intervalle. Après le dernier essai, la campagne est indiquée en échec ; rien n’est renvoyé à ceux qui l’ont déjà reçue. Par défaut : 3."
       }
     },
     "hues": {
@@ -2089,7 +2101,9 @@
     "units": {
       "requestsPerDay": "demandes par jour",
       "members": "membres",
-      "messagesPerHour": "messages par heure"
+      "messagesPerHour": "messages par heure",
+      "sendsPerDay": "envois par jour",
+      "attempts": "tentatives"
     },
     "counter": "{count} / {max}"
   },
@@ -2114,6 +2128,10 @@
       "legal": {
         "title": "Mentions des emails",
         "description": "Ce qui s’écrit au pied de page des campagnes envoyées aux membres."
+      },
+      "sending": {
+        "title": "Envois",
+        "description": "Le rythme d’envoi des campagnes. Un changement s’applique aux prochains envois ; une campagne déjà lancée garde son plan."
       }
     },
     "submit": "Enregistrer les réglages",
@@ -3591,11 +3609,12 @@
     "loadFailed": "La liste des campagnes n’a pas pu être chargée. Rien n’est perdu : vos campagnes envoyées sont conservées. Rechargez la page.",
     "columns": {
       "subject": "Objet",
-      "sentAt": "Envoyée le",
+      "sentAt": "Lancée le",
       "author": "Par",
       "template": "Modèle",
       "recipients": "Destinataires",
-      "action": "Action"
+      "action": "Action",
+      "state": "État"
     },
     "open": "Consulter",
     "sentAt": "{date} à {time}",
@@ -3620,22 +3639,19 @@
       "general_assembly": "Convoquer à l’assemblée générale.",
       "post_assembly_documents": "Annoncer la publication des documents de l’assemblée."
     },
-    "status": {
-      "sending": "En cours",
-      "sent": "Envoyée",
-      "interrupted": "Interrompue"
-    },
     "detail": {
       "summary": "Résumé",
       "content": "Contenu envoyé",
       "fields": {
-        "sentAt": "Envoyée le",
+        "sentAt": "Lancée le",
         "author": "Par",
         "template": "Modèle",
         "target": "Cible",
         "recipients": "Destinataires",
         "withoutEmail": "Sans adresse email",
-        "unsubscribed": "Désinscrits exclus"
+        "unsubscribed": "Désinscrits exclus",
+        "dailySendCap": "Plafond",
+        "dailySendCapValue": "<data>{cap}</data> envois par jour"
       },
       "targetKinds": {
         "all_members": "Tous les membres"
@@ -3644,12 +3660,37 @@
       "preheaderLine": "Texte d’aperçu : {preheader}",
       "contentNote": "Chaque membre a reçu ce message avec ses propres valeurs.",
       "back": "Retour aux campagnes",
-      "success": "Campagne envoyée à {count, plural, one {# membre} other {# membres}}. Elle est archivée ci-dessous.",
-      "progress": "Envoi en cours : {sent} sur {total} membres.",
-      "progressNote": "L’envoi continue même si vous quittez cette page.",
-      "interruptedTitle": "L’envoi s’est arrêté après {sent} membres sur {total}.",
-      "interruptedDescription": "Les {sent} premiers ont reçu le message ; les {rest} autres ne l’ont pas reçu. Contactez l’équipe technique avant de réessayer : relancer l’envoi écrirait deux fois aux {sent} premiers.",
-      "notFound": "Cette campagne n’existe pas ou n’appartient pas à votre association."
+      "progress": {
+        "title": "Avancement",
+        "sentence": "<strong><data>{received}</data> sur <data>{total}</data></strong> membres ont reçu la campagne.",
+        "valueText": "{received} sur {total} membres ont reçu la campagne.",
+        "counter": {
+          "received": "Reçue",
+          "scheduled": "Programmée",
+          "toVerify": "À vérifier",
+          "failed": "En échec"
+        }
+      },
+      "notFound": "Cette campagne n’existe pas ou n’appartient pas à votre association.",
+      "banner": {
+        "launched": "<strong>Campagne lancée.</strong> {count, plural, one {# membre la reçoit} other {# membres la reçoivent}} {today, select, true {aujourd’hui} other {le {date}}}{rest, plural, =0 {} one {, la suite part seule le {days}} other {, la suite part seule les {days}}}. Suivez-la ci-dessous.",
+        "done": "Campagne terminée : les <data>{count}</data> membres l’ont reçue.",
+        "continues": "Les envois continuent seuls. Prochaine part : le <data>{date}</data>, <data>{count}</data> membres. Vous n’avez rien à faire.",
+        "toVerify": "<strong>Attention :</strong> {count, plural, one {# destinataire est à vérifier} other {# destinataires sont à vérifier}}. L’envoi s’est arrêté au moment où l’on ne savait pas si leur email était parti. Nous ne le renvoyons pas, pour ne pas leur écrire deux fois. Contactez l’équipe technique pour les vérifier.",
+        "showToVerify": "Afficher les destinataires à vérifier ({count})",
+        "failedTitle": "La part du <data>{date}</data> n’a pas pu partir après plusieurs essais.",
+        "failedDescription": "{received} membres ont reçu la campagne ; {notReceived} ne l’ont pas reçue. Rien n’est renvoyé à ceux qui l’ont déjà reçue. Contactez l’équipe technique."
+      },
+      "parts": {
+        "title": "Envois par jour",
+        "columns": {
+          "number": "Part",
+          "day": "Jour",
+          "recipients": "Destinataires",
+          "state": "État"
+        },
+        "cardTitle": "Part {number}"
+      }
     },
     "breadcrumb": {
       "label": "Fil d’Ariane",
@@ -3664,17 +3705,90 @@
       "nothingSent": "Rien n’est envoyé tant que vous n’avez pas confirmé.",
       "subjectLine": "Objet : {subject}",
       "frameTitle": "Aperçu de l’email",
-      "recall": "{recipients} membres recevront cette campagne · {withoutEmail} sans email et {unsubscribed} désinscrits n’en recevront pas.",
       "send": "Envoyer à {count, plural, one {# membre} other {# membres}}",
       "edit": "Modifier le message",
       "confirmTitle": "Envoyer la campagne ?",
       "confirmDescription": "{count, plural, one {# membre va} other {# membres vont}} recevoir « {subject} ». L’envoi ne peut pas être annulé.",
+      "confirmPlanDescription": "{count, plural, one {# membre va} other {# membres vont}} recevoir « {subject} », en {days} jours : {plan}. L’envoi ne peut pas être annulé.",
+      "confirmPart": {
+        "today": "{count} aujourd’hui",
+        "tomorrow": "{count} demain",
+        "afterTomorrow": "{count} après-demain",
+        "day": "{count} le {date}"
+      },
+      "plan": {
+        "label": "Destinataires et plan d’envoi",
+        "recall": "<strong>{recipients, plural, one {# membre} other {# membres}}</strong> recevront cette campagne · {withoutEmail} sans email et {unsubscribed} désinscrits n’en recevront pas.",
+        "alreadySent": "<data>{allotted}</data> envois de campagne sont déjà partis aujourd’hui : celle-ci commence avec les <data>{left}</data> qui restent.",
+        "single": "Elle part <strong>en une seule fois, aujourd’hui</strong>. Vous n’avez rien à faire.",
+        "title": "<strong>Elle part {days, plural, one {en une seule fois} other {en # jours}}{start, select, today {} tomorrow {, à partir de demain} other {, à partir du {date}}}</strong> :",
+        "item": "<data>{count}</data> {count, plural, one {membre} other {membres}} le <data>{date}</data>",
+        "nothingToDo": "Vous n’avez rien à faire.",
+        "full": "<strong>Attention :</strong> les envois de campagne du jour sont déjà complets. La première part partira {tomorrow, select, true {demain, le} other {le}} <data>{date}</data>."
+      },
       "confirmBack": "Revenir à l’aperçu",
       "disabledTitle": "L’envoi est désactivé sur cet environnement : aucun email n’est parti.",
       "disabledDescription": "La campagne n’a pas été archivée.",
       "failedTitle": "La campagne n’a pas pu être envoyée.",
       "failedDescription": "Rien n’est parti et votre message est conservé. Réessayez dans un instant."
-    }
+    },
+    "states": {
+      "sending": "En cours d’envoi",
+      "sent": "Envoyée",
+      "to_verify": "À vérifier",
+      "failed": "En échec"
+    },
+    "partStates": {
+      "scheduled": "Programmée pour le {date}",
+      "sending": "En cours d’envoi",
+      "sent": "Envoyée",
+      "to_verify": "À vérifier",
+      "failed": "En échec"
+    },
+    "recipientStates": {
+      "sent": "Reçue",
+      "receivedOn": "le {date}",
+      "pending": "Programmée pour le {date}",
+      "sending": "En cours d’envoi",
+      "to_verify": "À vérifier",
+      "failed": "En échec",
+      "unsubscribed": "Désinscrit"
+    },
+    "recipients": {
+      "title": "Destinataires",
+      "filterLabel": "Afficher",
+      "filters": {
+        "all": "Tous ({count})",
+        "received": "Reçue ({count})",
+        "scheduled": "Programmée ({count})",
+        "to_verify": "À vérifier ({count})",
+        "failed": "En échec ({count})"
+      },
+      "summary": "{count, plural, one {# destinataire} other {# destinataires}} — {label}",
+      "summaryLabels": {
+        "all": "tous",
+        "received": "{count, plural, one {reçu} other {reçus}}",
+        "scheduled": "{count, plural, one {programmé} other {programmés}}",
+        "to_verify": "à vérifier",
+        "failed": "en échec"
+      },
+      "empty": {
+        "all": "Aucun destinataire.",
+        "received": "Aucun destinataire ne l’a encore reçue.",
+        "scheduled": "Aucun destinataire programmé.",
+        "to_verify": "Aucun destinataire à vérifier.",
+        "failed": "Aucun destinataire en échec."
+      },
+      "columns": {
+        "name": "Nom",
+        "parcel": "Parcelle",
+        "state": "État"
+      },
+      "deletedProfile": "Fiche supprimée",
+      "paginationLabel": "Pages des destinataires",
+      "loadFailed": "La liste des destinataires n’a pas pu être chargée. Rechargez la page."
+    },
+    "receivedOutOf": "{received} sur {total}"
   },
   "UnsubscribePage": {
     "metadata": {

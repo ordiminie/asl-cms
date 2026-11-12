@@ -1,0 +1,1 @@
+ALTER TABLE "campaign_recipient" ALTER COLUMN "part_id" SET NOT NULL;

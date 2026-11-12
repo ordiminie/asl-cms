@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;family=Public+Sans:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,600&amp;display=swap"></helmet>
+<div style="display:flex;width:100%;min-height:100%;background:oklch(1 0 0);color:oklch(0.22 0.015 250);font:400 17px/1.6 'Public Sans',sans-serif">
+  <sc-if value="{{ desktop }}" hint-placeholder-val="{{ true }}">
+    <aside style="width:248px;flex:none;background:oklch(0.985 0.004 250);border-right:1px solid oklch(0.91 0.008 245);padding:24px 16px;display:flex;flex-direction:column;gap:32px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="width:40px;height:40px;flex:none;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);border:1px solid oklch(0.88 0.045 195);display:grid;place-items:center;font:600 16px/1 'Public Sans',sans-serif">LP</span><span style="font-weight:600">ASL Les Pins</span></div>
+      <nav style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:15px;color:oklch(0.45 0.02 245);padding:0 12px 4px">L’association</div>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Propriétaires</a>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Campagnes</a>
+        <a style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none">Identité</a>
+        <a aria-current="page" style="display:flex;align-items:center;height:44px;padding:0 12px;border-radius:8px;color:inherit;text-decoration:none;background:oklch(0.93 0.012 245);border-left:2px solid oklch(0.55 0.1 195);font-weight:600">Réglages</a>
+      </nav>
+    </aside>
+  </sc-if>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <sc-if value="{{ mobile }}">
+      <header style="display:flex;align-items:center;justify-content:space-between;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid oklch(0.91 0.008 245);background:oklch(0.985 0.004 250)">
+        <div style="display:flex;align-items:center;gap:12px"><span style="width:32px;height:32px;border-radius:8px;background:oklch(0.958 0.024 195);color:oklch(0.38 0.08 195);border:1px solid oklch(0.88 0.045 195);display:grid;place-items:center;font:600 15px/1 'Public Sans',sans-serif">LP</span><span style="font-weight:600">ASL Les Pins</span></div>
+        <button style="height:44px;padding:0 16px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;background:oklch(1 0 0);color:inherit;font:600 16px/1 'Public Sans',sans-serif">Menu</button>
+      </header>
+    </sc-if>
+    <main style="padding:{{ mainPad }}">
+      <form style="max-width:720px;display:flex;flex-direction:column;gap:24px">
+        <h1 style="margin:0;font:600 34px/1.15 'Source Serif 4',serif">Réglages</h1>
+        <sc-if value="{{ err }}">
+          <div role="alert" tabindex="-1" style="display:flex;flex-direction:column;gap:8px;padding:16px;border:2px solid oklch(0.48 0.17 27);border-radius:8px">
+            <p style="margin:0;color:oklch(0.48 0.17 27);font-weight:600">Les réglages n’ont pas été enregistrés&nbsp;: un champ est à corriger.</p>
+            <a href="#plafond" style="color:oklch(0.45 0.13 250);text-decoration:underline;min-height:44px;display:inline-flex;align-items:center">Plafond quotidien des campagnes&nbsp;: saisissez un nombre entier supérieur à 0.</a>
+          </div>
+        </sc-if>
+        <sc-if value="{{ saved }}">
+          <div role="status" style="display:flex;gap:12px;padding:16px;border:1px solid oklch(0.9 0.008 245);border-radius:8px">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="oklch(0.35 0.06 240)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:4px"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>
+            <p style="margin:0">Réglage enregistré. Il s’applique aux prochains envois&nbsp;; une campagne déjà lancée garde son plan.</p>
+          </div>
+        </sc-if>
+        <div style="border:1px dashed oklch(0.66 0.014 245);border-radius:8px;background:oklch(0.972 0.005 240);padding:24px 16px;font:400 15px/1.5 'JetBrains Mono',monospace;color:oklch(0.45 0.02 245);text-align:center">cartes précédentes — inchangées (s02)</div>
+        <section style="border:1px solid oklch(0.9 0.008 245);border-radius:8px;padding:{{ cardPad }};display:flex;flex-direction:column;gap:24px">
+          <h2 style="margin:0;font:600 24px/1.25 'Source Serif 4',serif">Envois</h2>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label for="reponse-{{ uid }}" style="font:500 16px/1.4 'Public Sans',sans-serif">Adresse de réponse des campagnes</label>
+            <input id="reponse-{{ uid }}" type="email" defaultValue="bureau@asl-lespins.fr" style="height:{{ fieldH }};padding:0 12px;border:1px solid oklch(0.66 0.014 245);border-radius:8px;font:400 17px 'Public Sans',sans-serif;color:inherit;background:oklch(1 0 0)">
+            <p style="margin:0;font-size:15px;color:oklch(0.45 0.02 245)">Paramètre existant (s25), montré pour situer le nouveau champ.</p>
+          </div>
+          <div id="plafond" style="display:flex;flex-direction:column;gap:8px">
+            <label for="plafond-{{ uid }}" style="font:500 16px/1.4 'Public Sans',sans-serif">Plafond quotidien des campagnes</label>
+            <input id="plafond-{{ uid }}" type="text" inputMode="numeric" defaultValue="{{ value }}" aria-invalid="{{ ariaInvalid }}" aria-describedby="plafond-aide-{{ uid }}" style="height:{{ fieldH }};padding:0 12px;border:{{ inputBorder }};border-radius:8px;font:400 17px 'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;color:inherit;background:oklch(1 0 0)">
+            <sc-if value="{{ err }}"><p style="margin:0;font:500 16px/1.4 'Public Sans',sans-serif;color:oklch(0.48 0.17 27)">Saisissez un nombre entier supérieur à 0.</p></sc-if>
+            <p id="plafond-aide-{{ uid }}" style="margin:0;font-size:15px;color:oklch(0.45 0.02 245)">Nombre maximum d’emails de campagne envoyés par jour, toutes campagnes confondues. Le reste de la limite d’envoi de votre messagerie est gardé pour les emails de connexion et les autres messages. Par défaut&nbsp;: 100.</p>
+            <sc-if value="{{ custom }}"><a href="#" style="align-self:flex-start;min-height:44px;display:inline-flex;align-items:center;color:oklch(0.45 0.13 250);text-decoration:underline">Revenir à la valeur par défaut</a></sc-if>
+          </div>
+        </section>
+        <div style="display:flex">
+          <button type="button" style="height:{{ fieldH }};width:{{ btnW }};padding:0 24px;border:0;border-radius:8px;background:oklch(0.35 0.06 240);color:oklch(0.985 0.003 240);font:600 17px/1 'Public Sans',sans-serif">Enregistrer les réglages</button>
+        </div>
+      </form>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;1280px&quot;,&quot;height&quot;:&quot;900px&quot;},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;,&quot;d&quot;],&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;mobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.props.state ?? 'a', m = !!this.props.mobile;
+    const err = st === 'c';
+    return {
+      desktop: !m, mobile: m, uid: st + (m ? 'm' : 'd'),
+      value: st === 'b' ? '150' : st === 'c' ? '0' : '100',
+      custom: st === 'b', err, saved: st === 'd', ariaInvalid: err ? 'true' : 'false',
+      inputBorder: err ? '2px solid oklch(0.48 0.17 27)' : '1px solid oklch(0.66 0.014 245)',
+      mainPad: m ? '24px 16px 48px' : '32px 48px 64px', cardPad: m ? '16px' : '24px', fieldH: m ? '56px' : '48px', btnW: m ? '100%' : 'auto'
+    };
+  }
+}
+</script>
+</body>
+</html>
