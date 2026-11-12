@@ -1379,7 +1379,7 @@ rouge, comme s39 pour l'export. Une énumération recopiée
 dans le test finit par oublier une famille — c'est le défaut que s38 et s39 traitent pour l'export.
 
 **Piège n°3 — une alerte qui passe par ce qu'elle surveille.** L'application envoie ses emails par
-Brevo, derrière l'adaptateur de s03 et le budget quotidien par association de s52. L'alerte n'y
+Brevo, derrière l'adaptateur de s03 et le budget quotidien par association de s52 (à venir : s12c s'exécute avant et n'en dépend pas). L'alerte n'y
 passe pas : elle ne concerne aucune association, elle ne doit pas consommer leur budget, et elle doit
 partir même si l'application est tombée. Le critère vise une **absence de succès**, pas seulement un
 échec signalé, parce qu'un cron qui ne tourne plus ne produit aucune erreur — c'est le « silence »
@@ -2028,7 +2028,7 @@ l'intercepter, sinon s26 imposera de tout reprendre.
 
 ---
 
-## Story s26-envoi-echelonne — Étaler une campagne en envois quotidiens de 100 destinataires
+## Story s26-envoi-echelonne — Étaler une campagne en envois quotidiens plafonnés
 
 ⚠️ **Scindée le 11 novembre 2026, avant son plan**, au seuil que prévoyaient ses notes (dix tâches) :
 la recherche (`docs/research/s26-envoi-echelonne.md`) a compté le planificateur, la scission en parts,
@@ -2057,7 +2057,7 @@ générer de surcoût, et de savoir à qui elle est parvenue.
 - [ ] Un redémarrage du serveur entre deux parts, ou pendant une part, ne perd aucune part et n'en duplique aucune : à la reprise, les destinataires déjà reçus ne sont pas réécrits.
 - [ ] Un destinataire ne reçoit **jamais deux fois** la même campagne, même si le traitement est relancé ou déclenché deux fois en parallèle. Le cas d'un arrêt survenu entre l'envoi et son enregistrement est rendu visible (_à vérifier_), jamais rejoué en silence.
 - [ ] Une campagne en cours d'étalement n'est pas présentée comme interrompue : une part programmée pour demain est _programmée_, pas _bloquée_.
-- [ ] Un échec d'envoi arrête la part en cours sans perdre les suivantes : les destinataires non traités restent _programmés_, et une nouvelle tentative a lieu au passage suivant du planificateur, dans une limite de tentatives après laquelle le bureau voit la campagne _en échec_.
+- [ ] Un échec d'envoi arrête la part en cours sans perdre les suivantes : les destinataires non traités restent _programmés_, et une nouvelle tentative a lieu au passage suivant du planificateur, dans une limite de tentatives (paramètre du tenant, valeur par défaut à fixer au `/ks-plan`) après laquelle le bureau voit la campagne _en échec_.
 - [ ] La table du planificateur et celle des parts sont isolées par tenant : une association ne voit, ne déclenche ni ne reprend jamais le travail d'une autre — prouvé par un test d'accès croisé entre deux tenants.
 - [ ] Le planificateur est déclenché sur le serveur par une minuterie systemd installée et documentée comme les autres (`docs/exploitation/`) ; un passage ne traite que ce qui est dû, et deux passages simultanés ne traitent jamais deux fois la même part.
 
@@ -2067,8 +2067,8 @@ s02, s12b, s25
 
 ### Agentic notes
 
-Réf. `V5 §8.2`, `CDCT §8.2`, critère de succès du PRD (« automatiquement scindée sur deux jours,
-sans action du bureau »), `docs/research/s26-envoi-echelonne.md`, ADR 006, ADR 036 §5, ADR 051.
+Réf. `V5 §8.2`, `CDCT §8.2`, critère de succès du PRD (« scindée en envois quotidiens de 100 au plus,
+sans action du bureau », amendé le 11 novembre 2026), `docs/research/s26-envoi-echelonne.md`, ADR 006, ADR 036 §5, ADR 051.
 
 **Arbitrages du 11 novembre 2026 (utilisatrice) :** les campagnes s'étalent à **100 destinataires par
 jour** (et non 300) : le reste du quota Brevo (300/jour par compte) est ainsi **laissé aux emails de
@@ -2080,8 +2080,9 @@ Le `V5 §8.2` ne décrit que le cas à deux jours parce que La Fourche compte 30
 règle générale — découper en parts quotidiennes toutes sous le plafond — couvre ce cas sans le
 contredire. Avec un plafond de 100, la campagne « tous les membres » de La Fourche (**exactement 300
 membres avec email**, s13) part en **trois jours**, non plus en un envoi : le **critère de succès du
-PRD (« scindée sur deux jours ») est donc amendé** par cette décision, à tenir dans la review et à
-signaler à l'utilisatrice à la livraison. Le jeu de tests couvre 100, 101, 200, 201 et 300, pas seulement
+PRD, qui disait « deux jours », a été amendé** par cette décision (PRD mis à jour le 11 novembre 2026).
+L'ADR 006 écrit encore « sur deux jours (J puis J+1) » pour s26 : c'est antérieur à l'arbitrage, et
+c'est la présente story qui fait foi. Il en va de même du `CDCT §8.2` (« au-delà de 300 destinataires actifs … en 2 envois ») : antérieur à l'arbitrage, il ne prime pas sur cette story. Le jeu de tests couvre 100, 101, 200, 201 et 300, pas seulement
 un cas large.
 
 Piège explicite : c'est une **logique de déclenchement**, pas une limite affichée à l'utilisateur. Un
@@ -3713,7 +3714,7 @@ Réf. `docs/exploitation/recette-s12b.md` (constat du 5 novembre 2026), ADR 012/
 
 ## Story s52-budget-envoi-adaptateur — Tenir le quota d'envoi de tous les emails
 
-⚠️ **Story hors du tableau de périmètre du PRD**, scindée de s26 le 11 novembre 2026. Le quota Brevo est
+⚠️ **Story issue de la ligne « Envoi échelonné » du PRD**, scindée de s26 le 11 novembre 2026 : le PRD réclame déjà un budget quotidien décompté par tout email sortant. Le quota Brevo est
 **par compte et par jour, tous envois confondus** : étaler une campagne (s26) ne borne rien si les
 invitations, les relances et le reste s'y ajoutent. Cette story tient ce budget **dans l'adaptateur
 d'envoi** que tous les emails traversent, et reporte au lendemain ce qui le dépasserait.
@@ -3724,7 +3725,7 @@ association ne dépasse jamais le quota du jour, et que ce qui ne part pas aujou
 
 ### Complexity
 
-3
+4 — risque : un compteur atomique en base, un changement de signature de l'adaptateur qui touche tous les appelants, du contenu personnel stocké puis purgé pour les envois reportés, et le rejeu par le planificateur de s26. Un oubli de décompte laisse dépasser le plafond sans erreur.
 
 ### Acceptance criteria
 
@@ -3737,7 +3738,7 @@ association ne dépasse jamais le quota du jour, et que ce qui ne part pas aujou
 - [ ] Un email dont le contenu est conservé pour être rejoué (envoi reporté) n'expose jamais ce contenu dans un journal, ni à une autre association ; il est purgé une fois parti.
 - [ ] Les emails de plateforme sans association (SuperAdmin, système) ne consomment le budget d'aucune association.
 - [ ] Les budgets sont isolés par tenant : un test d'accès croisé prouve qu'une association ne lit ni ne consomme le budget d'une autre.
-- [ ] La limite du jour se calcule sur le jour de `Europe/Paris` ; la frontière de remise à zéro de Brevo est vérifiée et consignée dans les notes de la story avant le plan.
+- [ ] La limite du jour se calcule sur le jour de `Europe/Paris`, et un test fixe la frontière de changement de jour (23h59 / 00h00 heure de Paris).
 
 ### Dependencies
 
@@ -3747,6 +3748,10 @@ s26
 
 Réf. ADR 005 (« le quota est une propriété du transport »), ADR 006, `docs/research/s26-envoi-echelonne.md`
 (pièges 1, 2, 3, 7 et 8).
+
+**Avant le plan :** vérifier chez Brevo à quel instant le quota quotidien se remet à zéro, et consigner la réponse ici ; elle fixe la frontière de jour que le test du critère sur `Europe/Paris` doit reproduire.
+
+**Écran :** la vue des envois en attente, visible du bureau, passe par `/ks-design s52` ; l'écran qui la porte est à désigner à ce moment-là, sans inventer de composant hors du design system.
 
 **Piège n°1 — l'adaptateur ne connaît pas l'association.** `sendEmailService` n'a pas d'`organizationId` ;
 un paramètre optionnel laisse passer des envois non comptés en silence, le mode d'échec que cette story
@@ -3841,10 +3846,10 @@ budget doit être arbitré entre tenants — hors périmètre tant qu'il y a un 
 | s49  | correctif-proxy-nginx            | 2   | s12b                                                                                                                                          | B    |
 | s50  | navigation-liens-libres          | 2   | s04b                                                                                                                                          | A    |
 | s51  | polices-hebergees                | 1   | s12b                                                                                                                                          | B    |
-| s52  | budget-envoi-adaptateur          | 3   | s26                                                                                                                                           | C    |
+| s52  | budget-envoi-adaptateur          | 4   | s26                                                                                                                                           | C    |
 
-**62 stories, aucune à 5.** Répartition : cinq à 1, vingt-deux à 2, vingt-cinq à 3, dix à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 et s51 ajoutées le 5 novembre 2026, s52 scindée de s26 le 11 novembre 2026).
-**Quatorze stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
+**62 stories, aucune à 5.** Répartition : cinq à 1, vingt-deux à 2, vingt-quatre à 3, onze à 4 (s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 et s51 ajoutées le 5 novembre 2026, s52 scindée de s26 le 11 novembre 2026).
+**Treize stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
 s39, garde-fou de non-régression de l'export, qui ne livre aucune valeur observable par un
 utilisateur de l'association ; s12a, le retrait de Supabase, qui solde la contrainte du PRD sur le
 remplacement des briques du boilerplate ; s12b, la mise en ligne, qu'exige le critère de succès
@@ -3858,7 +3863,7 @@ revue du découpage du 7 octobre ; s48, la connexion du SuperAdmin à la place d
 décidé le 28 octobre après s14; s49, le correctif de la
 mise en ligne (s12b) derrière nginx, découvert à la recette du 4 novembre ; s50, les liens libres du
 menu, demandés le 5 novembre après la recette de s12b ; s51, les polices servies avec le site, après deux
-échecs de build dus au téléchargement chez Google ; s52, le budget d'envoi de tous les emails, scindé de s26 le 11 novembre.
+échecs de build dus au téléchargement chez Google. s52, scindée de s26 le 11 novembre, n'en fait pas partie : elle porte la part « budget quotidien » de la ligne « Envoi échelonné » du PRD.
 
 L'application du design system au boilerplate — longtemps portée par une story `s00` — **a été sortie
 du découpage** (arbitrage du 9 septembre 2026). Ce n'était pas une tranche de produit mais une
@@ -3868,13 +3873,13 @@ travail vit dans `docs/adaptation-socle-design-system.md`, et la contrainte qu'e
 stories d'écran reste, en règle transverse « Socle habillé ».
 Sa surface est énumérée dans le tableau mesuré de `docs/adaptation-socle-design-system.md`, et elle est préalable à toute story porteuse d'écran
 (voir « Règles transverses »).
-Les dix stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
+Les onze stories à 4 — s01 (isolation multi-tenant), s04 (back-office éditorial : modèle en
 blocs typés et réordonnancement accessible), s12 (modèle membre↔parcelle
 daté), s26
 (planificateur, étalement des campagnes et suivi par destinataire), s29 (planification et idempotence des
 relances), s32 (cloisonnement physique des documents nominatifs), s37 (autorisation transverse),
 s38 (moteur d'export et son archive), s42 (invitation individuelle et lancement de masse, absorbe s15), s46b (inscription fermée, connexion limitée à l'association du
-domaine, destination par rôle) — portent chacune leur risque
+domaine, destination par rôle), s52 (budget atomique en base, adaptateur d'envoi, report des envois) — portent chacune leur risque
 explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-design` avant
 `/ks-plan`.
 
