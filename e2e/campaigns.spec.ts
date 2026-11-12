@@ -410,10 +410,13 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
       await expect(bureau).toHaveURL(
         `${TENANT_A}${CAMPAIGNS_ROUTE}/${campaignId}`
       )
+      const title = bureau.getByRole('heading', {level: 1, name: subject})
+      await expect(title).toBeVisible()
+      // L'en-tete porte le badge d'etat de la campagne ; la page precedente
+      // (archive) reste montee, masquee, apres une navigation cliente.
       await expect(
-        bureau.getByRole('heading', {level: 1, name: subject})
+        title.locator('xpath=..').getByText('Envoyée', {exact: true})
       ).toBeVisible()
-      await expect(bureau.getByText('Envoyée', {exact: true})).toBeVisible()
       await expect(bureau.getByText('Bonjour {nom},')).toBeVisible()
     } finally {
       await bureau.context().close()
@@ -886,7 +889,11 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
           }
         )
         .toBe(2)
-      expect(messagesSince(before)).toHaveLength(2)
+      const toCampaign = () =>
+        state.recipients.flatMap((recipient) =>
+          messagesTo(before, recipient.email)
+        )
+      expect(toCampaign()).toHaveLength(2)
 
       await expect
         .poll(
@@ -904,11 +911,23 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
       await bureau.goto(`${TENANT_A}${CAMPAIGNS_ROUTE}/${spreadCampaignId}`, {
         waitUntil: 'networkidle',
       })
-      await expect(bureau.getByText('En cours d’envoi').first()).toBeVisible()
+      await expect(
+        bureau
+          .getByRole('heading', {level: 1, name: subject})
+          .locator('xpath=..')
+          .getByText('En cours d’envoi', {exact: true})
+      ).toBeVisible()
       await expect(
         bureau.getByRole('heading', {level: 2, name: 'Envois par jour'})
       ).toBeVisible()
-      await expect(bureau.getByText(/Programmée pour le/).first()).toBeVisible()
+      await expect(
+        bureau
+          .getByRole('heading', {level: 2, name: 'Envois par jour'})
+          .locator('xpath=..')
+          .getByRole('table')
+          .getByText(/^Programmée pour le \d{2}\/\d{2}$/)
+          .first()
+      ).toBeVisible()
       await expect(bureau.getByText(/interrompue|bloquée/i)).toHaveCount(0)
     } finally {
       await bureau.context().close()
@@ -929,7 +948,11 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
     let before = outboxFiles()
     await makePartDue(state.parts[0].id)
     expect(runScheduler()).toMatch(/Taches traitees : \d+/)
-    expect(messagesSince(before)).toHaveLength(0)
+    expect(
+      state.recipients.flatMap((recipient) =>
+        messagesTo(before, recipient.email)
+      )
+    ).toHaveLength(0)
 
     before = outboxFiles()
     await makePartDue(state.parts[1].id)
