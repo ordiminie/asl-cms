@@ -788,6 +788,41 @@ const spreadStateOf = async (campaignId: string) => {
   })
 }
 
+/**
+ * L'état d'une part et de sa tâche après un passage, avec la sortie du
+ * script : de quoi lire un échec en CI sans relancer.
+ */
+const diagnosisOf = async (
+  campaignId: string,
+  partId: string,
+  output: string
+): Promise<string> => {
+  const {a} = await tenantIds()
+  const job = await inTenantScope(a, async (client) => {
+    const result = await client.query(
+      `select attempts, run_after, locked_at, completed_at, failed_at
+         from scheduled_job
+        where kind = 'campaign.deliver_part' and idempotency_key = $1`,
+      [partId]
+    )
+    return result.rows[0]
+  })
+  const state = await spreadStateOf(campaignId)
+  const part = state.parts.find((candidate) => candidate.id === partId)
+  return JSON.stringify(
+    {
+      part: part?.status,
+      recipients: state.recipients
+        .filter((recipient) => recipient.part_number === part?.number)
+        .map((recipient) => recipient.status),
+      job,
+      output: output.trim().split('\n').slice(-15),
+    },
+    null,
+    2
+  )
+}
+
 /** Rend la tâche d'une part due maintenant, comme un passage de minuit. */
 const makePartDue = async (partId: string) => {
   const {a} = await tenantIds()
@@ -956,13 +991,23 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
 
     before = outboxFiles()
     await makePartDue(state.parts[1].id)
-    runScheduler()
+    const output = runScheduler()
+    const diagnosis = await diagnosisOf(
+      spreadCampaignId,
+      state.parts[1].id,
+      output
+    )
+    expect(
+      (await spreadStateOf(spreadCampaignId)).parts[1].status,
+      diagnosis
+    ).toBe('sent')
     const secondPart = state.recipients
       .filter((recipient) => recipient.part_number === 2)
       .map((recipient) => recipient.email)
-    expect(secondPart.map((email) => messagesTo(before, email).length)).toEqual(
-      [1, 1]
-    )
+    expect(
+      secondPart.map((email) => messagesTo(before, email).length),
+      diagnosis
+    ).toEqual([1, 1])
     for (const email of received) {
       expect(messagesTo(before, email)).toHaveLength(0)
     }
@@ -990,15 +1035,21 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
 
     const before = outboxFiles()
     await makePartDue(state.parts[2].id)
-    runScheduler()
+    const output = runScheduler()
+    const diagnosis = await diagnosisOf(
+      spreadCampaignId,
+      state.parts[2].id,
+      output
+    )
 
     const after = await spreadStateOf(spreadCampaignId)
-    expect(after.recipients.find((r) => r.id === stuck.id)?.status).toBe(
-      'to_verify'
-    )
+    expect(
+      after.recipients.find((r) => r.id === stuck.id)?.status,
+      diagnosis
+    ).toBe('to_verify')
     expect(messagesTo(before, stuck.email)).toHaveLength(0)
     for (const other of others) {
-      expect(messagesTo(before, other.email)).toHaveLength(1)
+      expect(messagesTo(before, other.email), diagnosis).toHaveLength(1)
     }
   })
 

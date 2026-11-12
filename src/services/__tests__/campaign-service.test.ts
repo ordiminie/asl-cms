@@ -102,7 +102,7 @@ import {
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {withTenant} from '@/db/tenant-scope'
-import CampaignMail from '@/lib/emails/campaign-email'
+import CampaignMail, {getCampaignFooterTexts} from '@/lib/emails/campaign-email'
 import {EmailTransportError} from '@/lib/emails/transport/email-transport'
 import {logger} from '@/lib/logger'
 
@@ -1310,6 +1310,27 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     vi.mocked(sendEmailService).mockClear()
     await resume(PART_1, 3)
     expect(sendEmailService).not.toHaveBeenCalled()
+  })
+
+  it('un échec de composition avant tout envoi laisse la ligne en attente, jamais à vérifier (CI s26)', async () => {
+    vi.mocked(getCampaignFooterTexts).mockRejectedValueOnce(
+      new Error('`getTranslations` is not supported in Client Components.')
+    )
+    const now = new Date()
+
+    const outcome = await deliverCampaignPartService(jobFor(PART_1), now)
+
+    expect(outcome).toEqual({
+      status: 'retry',
+      runAfter: new Date(now.getTime() + 30 * MINUTE),
+    })
+    expect(statusesOf(store)).toMatchObject({
+      r1: 'pending',
+      r2: 'pending',
+      r3: 'pending',
+    })
+    expect(sendEmailService).not.toHaveBeenCalled()
+    expect(claimRecipientForSendTxnDao).not.toHaveBeenCalled()
   })
 
   it('un refus certain du fournisseur → ligne rendue en attente, part reprise 30 min plus tard', async () => {

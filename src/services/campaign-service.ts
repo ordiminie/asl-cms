@@ -52,7 +52,11 @@ import {logger} from '@/lib/logger'
 import {getAssociationSettingsService} from './association-settings-service'
 import {getActingContext, getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
-import {isClientEmailEnabledService, sendEmailService} from './email-service'
+import {
+  isClientEmailEnabledService,
+  type SendEmailPayload,
+  sendEmailService,
+} from './email-service'
 import {AuthorizationError} from './errors/authorization-error'
 import {NotFoundError} from './errors/not-found-error'
 import {ValidationParsedZodError} from './errors/validation-error'
@@ -611,33 +615,31 @@ const listUnsubscribeHeaders = (
   'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
 })
 
-const sendToRecipient = async (
+/** L'email d'un destinataire, compose sans rien envoyer. */
+const composeRecipientEmail = async (
   association: CampaignAssociation,
   campaign: {subject: string; preheader: string | null; bodyMarkdown: string},
   sendDate: string,
   recipient: PendingRecipientRowModel & {email: string; name: string}
-): Promise<void> => {
+): Promise<SendEmailPayload> => {
   const email = await buildCampaignEmail(
     association,
     campaign,
     valuesOf(recipient.name, recipient.parcelNumbers, sendDate),
     unsubscribeUrlOf(association.origin, recipient.unsubscribeToken)
   )
-  await sendEmailService(
-    {
-      to: recipient.email,
-      subject: email.subject,
-      text: email.text,
-      react: email.template,
-      senderName: association.name,
-      ...(association.replyTo ? {replyTo: association.replyTo} : {}),
-      headers: listUnsubscribeHeaders(
-        association.origin,
-        recipient.unsubscribeToken
-      ),
-    },
-    {recipientType: 'client'}
-  )
+  return {
+    to: recipient.email,
+    subject: email.subject,
+    text: email.text,
+    react: await email.template,
+    senderName: association.name,
+    ...(association.replyTo ? {replyTo: association.replyTo} : {}),
+    headers: listUnsubscribeHeaders(
+      association.origin,
+      recipient.unsubscribeToken
+    ),
+  }
 }
 
 /**
@@ -685,9 +687,11 @@ const isCertainRefusal = (error: unknown): boolean =>
   isEmailTransportError(error) && error.refused
 
 /**
- * Un destinataire de la part. `pending -> sending` **avant** l'envoi ; une
- * ligne deja prise ailleurs est laissee. Rend `false` sur un echec d'envoi :
- * la ligne est rendue en attente (refus certain) ou mise a verifier.
+ * Un destinataire de la part. L'email est compose **avant** la prise : un
+ * echec de composition laisse la ligne `pending` (rien n'est parti). Puis
+ * `pending -> sending` **avant** l'envoi ; une ligne deja prise ailleurs est
+ * laissee. Rend `false` sur un echec : la ligne est laissee ou rendue en
+ * attente (composition, refus certain) ou mise a verifier (issue inconnue).
  */
 const deliverToRecipient = async (
   organizationId: string,
@@ -708,6 +712,26 @@ const deliverToRecipient = async (
     await inTenant(() => markRecipientFailedTxnDao(recipient.recipientId))
     return true
   }
+  const logFailure = (error: unknown) =>
+    logger.error("[CAMPAIGN] Envoi d'une part interrompu", {
+      campaignId: campaign.id,
+      partId: part.id,
+      refused: isCertainRefusal(error),
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+
+  let payload: SendEmailPayload
+  try {
+    payload = await composeRecipientEmail(
+      association,
+      campaign,
+      part.scheduledFor,
+      {...recipient, email, name}
+    )
+  } catch (error) {
+    logFailure(error)
+    return false
+  }
   if (
     !(await inTenant(() => claimRecipientForSendTxnDao(recipient.recipientId)))
   ) {
@@ -715,18 +739,9 @@ const deliverToRecipient = async (
   }
 
   try {
-    await sendToRecipient(association, campaign, part.scheduledFor, {
-      ...recipient,
-      email,
-      name,
-    })
+    await sendEmailService(payload, {recipientType: 'client'})
   } catch (error) {
-    logger.error("[CAMPAIGN] Envoi d'une part interrompu", {
-      campaignId: campaign.id,
-      partId: part.id,
-      refused: isCertainRefusal(error),
-      error: error instanceof Error ? error.name : 'unknown',
-    })
+    logFailure(error)
     await inTenant(() =>
       isCertainRefusal(error)
         ? releaseRecipientClaimTxnDao(recipient.recipientId)
