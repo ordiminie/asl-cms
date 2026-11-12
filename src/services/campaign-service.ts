@@ -762,12 +762,20 @@ const failedAttemptOutcome = async (
   return {status: 'failed'}
 }
 
-/** La part est servie ; la campagne n'est `sent` qu'a la derniere. */
+/**
+ * La part est servie ; la campagne n'est `sent` qu'a la derniere. Un dernier
+ * balayage passe a verifier les lignes `sending` devenues perimees pendant la
+ * part : une part ne se clot jamais sur une ligne en cours abandonnee.
+ */
 const finishPart = async (
   organizationId: string,
   part: PartToDeliver
 ): Promise<void> => {
   await withTenant(organizationId, async () => {
+    await markStaleSendingRecipientsToVerifyTxnDao(
+      part.id,
+      new Date(Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS)
+    )
     await finishCampaignPartTxnDao(part.id, 'sent')
     if ((await countUnfinishedCampaignPartsDao(part.campaignId)) === 0) {
       await finishCampaignTxnDao(part.campaignId, 'sent')
@@ -777,8 +785,8 @@ const finishPart = async (
 
 /**
  * La livraison d'une part (ADR 052), gestionnaire de `campaign.deliver_part`,
- * **sans session**. Dans l'ordre : balayage des lignes `sending` de plus de
- * 15 min (`to_verify`, jamais renvoyees), part `sending`, puis chaque
+ * **sans session**. Dans l'ordre : balayage des lignes `sending` perimees
+ * (`to_verify`, jamais renvoyees), part `sending`, puis chaque
  * destinataire `pending` de la part, sequentiellement, un `withTenant` court
  * par etape. `{date}` vaut le jour de la part. Des envois desactives par les
  * reglages rendent la tache sans compter de tentative.

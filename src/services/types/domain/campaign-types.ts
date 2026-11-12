@@ -59,9 +59,13 @@ export const CAMPAIGNS_PAGE_SIZE = 25
 
 /**
  * Age au-dela duquel une ligne laissee `sending` (arret entre l'envoi et son
- * enregistrement) passe `to_verify` (ADR 052). Jamais renvoyee.
+ * enregistrement) passe `to_verify` (ADR 052). Jamais renvoyee. **Strictement
+ * inferieur** au verrou perime d'une tache (`SCHEDULED_JOB_LOCK_STALE_MS`) :
+ * une ligne prise apres la pose du verrou est donc deja perimee quand la
+ * tache redevient reprenable. L'ADR 052 ecrit « 15 minutes » ; le seuil est
+ * abaisse pour tenir sa promesse (revue de s26, M1).
  */
-export const CAMPAIGN_RECIPIENT_SENDING_STALE_MS = 15 * 60 * 1000
+export const CAMPAIGN_RECIPIENT_SENDING_STALE_MS = 5 * 60 * 1000
 
 /**
  * Pas de la reprise d'une part en echec (ADR 052) : la tentative n repart

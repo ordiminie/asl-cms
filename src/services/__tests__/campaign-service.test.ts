@@ -124,10 +124,12 @@ import {ValidationParsedZodError} from '../errors/validation-error'
 import {runDueScheduledJobsService} from '../scheduled-job-service'
 import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {
+  CAMPAIGN_RECIPIENT_SENDING_STALE_MS,
   CAMPAIGN_RECIPIENTS_PAGE_SIZE,
   CAMPAIGNS_PAGE_SIZE,
 } from '../types/domain/campaign-types'
 import {OrganizationRole} from '../types/domain/organization-types'
+import {SCHEDULED_JOB_LOCK_STALE_MS} from '../types/domain/scheduled-job-types'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
 import {userTest, userTestSuperAdmin} from './service-test-data'
@@ -1174,9 +1176,37 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     expect(sentTo()).toEqual(['m2@example.fr', 'm3@example.fr'])
   })
 
-  it('une ligne en cours d’envoi depuis 14 minutes n’est pas balayée, ni renvoyée', async () => {
+  it('invariant : une ligne en cours d’envoi est périmée avant le verrou de sa tâche (M1)', () => {
+    expect(CAMPAIGN_RECIPIENT_SENDING_STALE_MS).toBeLessThan(
+      SCHEDULED_JOB_LOCK_STALE_MS
+    )
+  })
+
+  it('plantage puis reprise dès le verrou périmé : la ligne prise après la pose du verrou passe à vérifier, la campagne ne se clôt pas sur une ligne en cours (M1)', async () => {
+    store.parts = [{...twoParts()[0], recipientCount: 3}]
+    const lockedAt = Date.now()
+    vi.setSystemTime(new Date(lockedAt + 60 * 1000))
+    vi.mocked(markRecipientSentTxnDao).mockRejectedValueOnce(
+      new Error('arrêt du processus')
+    )
+    await expect(deliver(PART_1)).rejects.toThrow()
+    expect(store.recipients[0].status).toBe('sending')
+
+    vi.setSystemTime(new Date(lockedAt + SCHEDULED_JOB_LOCK_STALE_MS + 1))
+    vi.mocked(sendEmailService).mockClear()
+    await deliver(PART_1, 2)
+
+    expect(store.recipients[0].status).toBe('to_verify')
+    expect(sentTo()).not.toContain('m1@example.fr')
+    expect(store.parts[0].status).toBe('sent')
+    expect(store.campaignStatus).toBe('sent')
+    expect(store.recipients.some((r) => r.status === 'sending')).toBe(false)
+  })
+
+  it('une ligne en cours d’envoi plus récente que le seuil n’est pas balayée, ni renvoyée', async () => {
     store.recipients[0].status = 'sending'
-    store.recipients[0].claimedAt = Date.now() - 14 * MINUTE
+    store.recipients[0].claimedAt =
+      Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS + MINUTE
 
     await deliver(PART_1)
 
@@ -1184,14 +1214,29 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     expect(sentTo()).not.toContain('m1@example.fr')
   })
 
-  it('une ligne en cours d’envoi depuis 16 minutes est balayée à vérifier', async () => {
+  it('une ligne en cours d’envoi au-delà du seuil est balayée à vérifier', async () => {
     store.recipients[0].status = 'sending'
-    store.recipients[0].claimedAt = Date.now() - 16 * MINUTE
+    store.recipients[0].claimedAt =
+      Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS - MINUTE
 
     await deliver(PART_1)
 
     expect(store.recipients[0].status).toBe('to_verify')
     expect(sentTo()).not.toContain('m1@example.fr')
+  })
+
+  it('balaie encore avant de clore la part : une ligne devenue périmée pendant la part passe à vérifier (M1)', async () => {
+    store.recipients[0].status = 'sending'
+    store.recipients[0].claimedAt =
+      Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS + MINUTE
+    vi.mocked(sendEmailService).mockImplementation(async () => {
+      vi.setSystemTime(new Date(Date.now() + MINUTE))
+    })
+
+    await deliver(PART_1)
+
+    expect(store.recipients[0].status).toBe('to_verify')
+    expect(store.parts[0].status).toBe('sent')
   })
 
   it('un refus certain du fournisseur → ligne rendue en attente, part reprise 30 min plus tard', async () => {
