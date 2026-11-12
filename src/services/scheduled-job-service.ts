@@ -40,6 +40,7 @@ type ClaimedJobRow = {
   kind: string
   payload: Record<string, string>
   attempts: number
+  previousLockedAt: Date | null
 }
 
 const toScheduledJob = (row: ClaimedJobRow): ScheduledJob => ({
@@ -48,6 +49,7 @@ const toScheduledJob = (row: ClaimedJobRow): ScheduledJob => ({
   kind: row.kind,
   payload: row.payload,
   attempts: row.attempts,
+  resumedAfterStaleLock: row.previousLockedAt !== null,
 })
 
 const writeOutcome = async (

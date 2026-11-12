@@ -42,6 +42,7 @@ import {
   markRecipientSentTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
+  markSendingRecipientsToVerifyTxnDao,
   markStaleSendingRecipientsToVerifyTxnDao,
   releaseRecipientClaimTxnDao,
   startCampaignPartTxnDao,
@@ -465,6 +466,18 @@ describe('issues d’un envoi', () => {
       staleBefore.toISOString(),
     ])
     expect(swept).toBe(1)
+  })
+
+  it('markSendingRecipientsToVerifyTxnDao balaie toutes les lignes sending de la part, quel que soit leur âge (M1)', async () => {
+    responses.current = [[[RECIPIENT_ID], ['autre']]]
+
+    const swept = await markSendingRecipientsToVerifyTxnDao(PART_1)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('"campaign_recipient"."part_id" = $')
+    expect(sql).not.toContain('claimed_at')
+    expect(params).toEqual(['to_verify', PART_1, 'sending'])
+    expect(swept).toBe(2)
   })
 
   it('failUnreceivedRecipientsTxnDao passe en échec les lignes encore en attente de la campagne', async () => {

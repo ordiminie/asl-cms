@@ -28,6 +28,7 @@ import {
   markRecipientSentTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
+  markSendingRecipientsToVerifyTxnDao,
   markStaleSendingRecipientsToVerifyTxnDao,
   type PendingRecipientRowModel,
   releaseRecipientClaimTxnDao,
@@ -763,19 +764,38 @@ const failedAttemptOutcome = async (
 }
 
 /**
- * La part est servie ; la campagne n'est `sent` qu'a la derniere. Un dernier
- * balayage passe a verifier les lignes `sending` devenues perimees pendant la
- * part : une part ne se clot jamais sur une ligne en cours abandonnee.
+ * Les lignes `sending` laissees par un passage precedent passent a verifier.
+ * Reprise sur un verrou perime : son detenteur est mort, **toutes** ses
+ * lignes en cours sont abandonnees, quel que soit leur age. Premiere
+ * execution : seules les lignes plus vieilles que le seuil.
+ */
+const sweepAbandonedRecipients = async (
+  job: ScheduledJob,
+  partId: string,
+  now: Date
+): Promise<void> => {
+  if (job.resumedAfterStaleLock) {
+    await markSendingRecipientsToVerifyTxnDao(partId)
+    return
+  }
+  await markStaleSendingRecipientsToVerifyTxnDao(
+    partId,
+    new Date(now.getTime() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS)
+  )
+}
+
+/**
+ * La part est servie ; la campagne n'est `sent` qu'a la derniere. Une part ne
+ * se clot **jamais** sur une ligne `sending` : ce passage a fini les siennes,
+ * toute ligne encore en cours est abandonnee et passe a verifier, visible du
+ * bureau, jamais renvoyee.
  */
 const finishPart = async (
   organizationId: string,
   part: PartToDeliver
 ): Promise<void> => {
   await withTenant(organizationId, async () => {
-    await markStaleSendingRecipientsToVerifyTxnDao(
-      part.id,
-      new Date(Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS)
-    )
+    await markSendingRecipientsToVerifyTxnDao(part.id)
     await finishCampaignPartTxnDao(part.id, 'sent')
     if ((await countUnfinishedCampaignPartsDao(part.campaignId)) === 0) {
       await finishCampaignTxnDao(part.campaignId, 'sent')
@@ -785,8 +805,8 @@ const finishPart = async (
 
 /**
  * La livraison d'une part (ADR 052), gestionnaire de `campaign.deliver_part`,
- * **sans session**. Dans l'ordre : balayage des lignes `sending` perimees
- * (`to_verify`, jamais renvoyees), part `sending`, puis chaque
+ * **sans session**. Dans l'ordre : balayage des lignes `sending` abandonnees
+ * (`to_verify`, jamais renvoyees ; toutes sur une reprise), part `sending`, puis chaque
  * destinataire `pending` de la part, sequentiellement, un `withTenant` court
  * par etape. `{date}` vaut le jour de la part. Des envois desactives par les
  * reglages rendent la tache sans compter de tentative.
@@ -806,10 +826,7 @@ export const deliverCampaignPartService = async (
 
   const association = await readAssociation(organizationId)
   const {campaign, recipients} = await withTenant(organizationId, async () => {
-    await markStaleSendingRecipientsToVerifyTxnDao(
-      part.id,
-      new Date(now.getTime() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS)
-    )
+    await sweepAbandonedRecipients(job, part.id, now)
     await startCampaignPartTxnDao(part.id)
     return {
       campaign: await getCampaignByIdDao(organizationId, part.campaignId),

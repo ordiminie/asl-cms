@@ -470,6 +470,27 @@ export const markStaleSendingRecipientsToVerifyTxnDao = async (
   return rows.length
 }
 
+/**
+ * Toutes les lignes `sending` d'une part passent `to_verify`, quel que soit
+ * leur age : a la reprise d'une tache dont le detenteur est mort, ou a la
+ * cloture d'une part. Rend leur nombre.
+ */
+export const markSendingRecipientsToVerifyTxnDao = async (
+  partId: string
+): Promise<number> => {
+  const rows = await getDb()
+    .update(campaignRecipient)
+    .set({status: 'to_verify'})
+    .where(
+      and(
+        eq(campaignRecipient.partId, partId),
+        eq(campaignRecipient.status, 'sending')
+      )
+    )
+    .returning({id: campaignRecipient.id})
+  return rows.length
+}
+
 /** Tentatives epuisees : les lignes encore en attente ne partiront pas. */
 export const failUnreceivedRecipientsTxnDao = async (
   campaignId: string

@@ -61,6 +61,7 @@ const jobRow = (id: string, organizationId = ORG_ID) => ({
   failedAt: null,
   createdAt: NOW,
   updatedAt: NOW,
+  previousLockedAt: null as Date | null,
 })
 
 /** Une file en memoire : une tache prise n'est plus rendue a un autre passage. */
@@ -138,12 +139,53 @@ describe('runDueScheduledJobsService — un passage du planificateur', () => {
       kind: KIND,
       payload: {partId: 'part-a'},
       attempts: 1,
+      resumedAfterStaleLock: false,
     })
     expect(handler.mock.calls[0][1]).toEqual(NOW)
     expect(claimScopes).toBeGreaterThan(0)
     expect(completeJobTxnDao).toHaveBeenCalledWith('a')
     expect(completeJobTxnDao).toHaveBeenCalledWith('b')
     expect(result).toEqual({organizations: 1, processed: 2, failed: []})
+  })
+
+  it('signale au gestionnaire une tâche reprise sur un verrou laissé par un détenteur mort (M1)', async () => {
+    queueOf([
+      {...jobRow('a'), previousLockedAt: new Date(NOW.getTime() - 16 * MINUTE)},
+      jobRow('b'),
+    ])
+
+    await runDueScheduledJobsService({
+      handlers: {[KIND]: handler},
+      now: NOW,
+      organizationId: ORG_ID,
+    })
+
+    expect(
+      handler.mock.calls.map(([job]) => [job.id, job.resumedAfterStaleLock])
+    ).toEqual([
+      ['a', true],
+      ['b', false],
+    ])
+  })
+
+  it('un gestionnaire qui lève garde le verrou : la prise suivante est une reprise', async () => {
+    queueOf([jobRow('a')])
+    handler.mockRejectedValueOnce(new Error('inattendu'))
+
+    await runDueScheduledJobsService({
+      handlers: {[KIND]: handler},
+      now: NOW,
+      organizationId: ORG_ID,
+    })
+
+    for (const dao of [
+      completeJobTxnDao,
+      rescheduleJobTxnDao,
+      failJobTxnDao,
+      releaseJobTxnDao,
+    ]) {
+      expect(dao).not.toHaveBeenCalled()
+    }
   })
 
   it('deux passages simultanés ne traitent jamais une tâche deux fois', async () => {

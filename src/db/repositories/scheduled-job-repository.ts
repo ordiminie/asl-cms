@@ -1,4 +1,15 @@
-import {and, asc, eq, inArray, isNull, lt, lte, or, sql} from 'drizzle-orm'
+import {
+  and,
+  asc,
+  eq,
+  getTableColumns,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  or,
+  sql,
+} from 'drizzle-orm'
 
 import {
   AddScheduledJobModel,
@@ -49,45 +60,76 @@ export const enqueueScheduledJobTxnDao = async (
 }
 
 /**
+ * Une tache prise, avec le verrou qu'elle portait avant la prise : non nul,
+ * son detenteur precedent est mort ou a echoue sans la rendre (toute issue
+ * ecrite leve le verrou), et la tache est une **reprise**.
+ */
+export type ClaimedScheduledJobModel = ScheduledJobModel & {
+  previousLockedAt: Date | null
+}
+
+/**
  * Prend les taches dues de l'association : echeance passee, ni closes ni
  * epuisees, sans verrou ou au verrou perime. `FOR UPDATE SKIP LOCKED` : deux
  * passages simultanes ne prennent jamais la meme tache. Le verrou et la
- * tentative sont poses **dans la meme instruction** que la prise.
+ * tentative sont poses **dans la meme instruction** que la prise ; le verrou
+ * precedent est rendu.
  */
 export const claimDueJobsTxnDao = async (
   input: ClaimDueJobsInput
-): Promise<ScheduledJobModel[]> => {
+): Promise<ClaimedScheduledJobModel[]> => {
   if (input.kinds.length === 0) return []
 
   const due = getDb()
-    .select({id: scheduledJob.id})
-    .from(scheduledJob)
-    .where(
-      and(
-        eq(scheduledJob.organizationId, input.organizationId),
-        inArray(scheduledJob.kind, input.kinds),
-        lte(scheduledJob.runAfter, input.now),
-        isNull(scheduledJob.completedAt),
-        isNull(scheduledJob.failedAt),
-        or(
-          isNull(scheduledJob.lockedAt),
-          lt(scheduledJob.lockedAt, input.staleBefore)
+    .$with('due')
+    .as(
+      getDb()
+        .select({
+          id: scheduledJob.id,
+          previousLockedAt: sql<Date | null>`${scheduledJob.lockedAt}`.as(
+            'previous_locked_at'
+          ),
+        })
+        .from(scheduledJob)
+        .where(
+          and(
+            eq(scheduledJob.organizationId, input.organizationId),
+            inArray(scheduledJob.kind, input.kinds),
+            lte(scheduledJob.runAfter, input.now),
+            isNull(scheduledJob.completedAt),
+            isNull(scheduledJob.failedAt),
+            or(
+              isNull(scheduledJob.lockedAt),
+              lt(scheduledJob.lockedAt, input.staleBefore)
+            )
+          )
         )
-      )
+        .orderBy(asc(scheduledJob.runAfter), asc(scheduledJob.id))
+        .limit(input.limit)
+        .for('update', {skipLocked: true})
     )
-    .orderBy(asc(scheduledJob.runAfter), asc(scheduledJob.id))
-    .limit(input.limit)
-    .for('update', {skipLocked: true})
 
-  return getDb()
+  const rows = await getDb()
+    .with(due)
     .update(scheduledJob)
     .set({
       lockedAt: input.now,
       attempts: sql`${scheduledJob.attempts} + 1`,
       updatedAt: sql`now()`,
     })
-    .where(inArray(scheduledJob.id, due))
-    .returning()
+    .from(due)
+    .where(eq(scheduledJob.id, due.id))
+    .returning({
+      ...getTableColumns(scheduledJob),
+      previousLockedAt: due.previousLockedAt,
+    })
+  return rows.map((row) => ({
+    ...row,
+    previousLockedAt:
+      row.previousLockedAt === null || row.previousLockedAt === undefined
+        ? null
+        : new Date(row.previousLockedAt),
+  }))
 }
 
 /** La tache a abouti : close, verrou leve. */

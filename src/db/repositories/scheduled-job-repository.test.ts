@@ -109,10 +109,10 @@ describe('claimDueJobsTxnDao — prise des tâches dues', () => {
 
     expect(sent).toHaveLength(1)
     const [{sql}] = sent
-    expect(sql).toMatch(/^update "scheduled_job" set /)
+    expect(sql).toMatch(/\) update "scheduled_job" set /)
     expect(sql).toContain('"locked_at" = $')
     expect(sql).toContain('"attempts" = "scheduled_job"."attempts" + 1')
-    expect(sql).toMatch(/where "scheduled_job"\."id" in \(select /)
+    expect(sql).toContain('where "scheduled_job"."id" = "due"."id"')
     expect(sql).toContain('for update skip locked')
     expect(sql).toMatch(/returning/)
     expect(jobs).toMatchObject([
@@ -133,6 +133,27 @@ describe('claimDueJobsTxnDao — prise des tâches dues', () => {
     expect(params).toEqual(
       expect.arrayContaining([ORG_ID, 'campaign.deliver_part', 20])
     )
+  })
+
+  it('rend le verrou précédent : non nul, la tâche est reprise après un détenteur mort (M1)', async () => {
+    responses.current = [[[...jobRow(), NOW.toISOString()]]]
+
+    const [job] = await claim()
+
+    const [{sql}] = sent
+    expect(sql).toMatch(/^with "due" as \(select /)
+    expect(sql).toContain('"locked_at" as "previous_locked_at"')
+    expect(sql).toContain('from "due"')
+    expect(sql).toContain('"scheduled_job"."id" = "due"."id"')
+    expect(job.previousLockedAt).toEqual(NOW)
+  })
+
+  it('une première prise rend un verrou précédent nul', async () => {
+    responses.current = [[[...jobRow(), null]]]
+
+    const [job] = await claim()
+
+    expect(job.previousLockedAt).toBeNull()
   })
 
   it('reprend une tâche sans verrou ou au verrou périmé, jamais une tâche tenue', async () => {

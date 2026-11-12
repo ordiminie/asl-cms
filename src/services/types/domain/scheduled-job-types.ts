@@ -14,6 +14,12 @@ export type ScheduledJob = {
   payload: Record<string, string>
   /** Tentatives comptees, celle en cours comprise. */
   attempts: number
+  /**
+   * La tache portait encore un verrou, perime, quand ce passage l'a prise :
+   * son detenteur precedent est mort ou a echoue sans la rendre. Ce qu'il
+   * avait commence ne sera jamais termine par lui.
+   */
+  resumedAfterStaleLock: boolean
 }
 
 /** Ce qu'un gestionnaire rend ; le planificateur l'ecrit. */

@@ -30,6 +30,7 @@ vi.mock('@/db/repositories/campaign-repository', () => ({
   markRecipientToVerifyTxnDao: vi.fn(),
   markRecipientUnsubscribedTxnDao: vi.fn(),
   markStaleSendingRecipientsToVerifyTxnDao: vi.fn(),
+  markSendingRecipientsToVerifyTxnDao: vi.fn(),
   failUnreceivedRecipientsTxnDao: vi.fn(),
   startCampaignPartTxnDao: vi.fn(),
   finishCampaignPartTxnDao: vi.fn(),
@@ -93,6 +94,7 @@ import {
   markRecipientSentTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
+  markSendingRecipientsToVerifyTxnDao,
   markStaleSendingRecipientsToVerifyTxnDao,
   releaseRecipientClaimTxnDao,
   startCampaignPartTxnDao,
@@ -968,6 +970,15 @@ const fakeStore = () => {
       return stale.length
     }
   )
+  vi.mocked(markSendingRecipientsToVerifyTxnDao).mockImplementation(
+    async (partId) => {
+      const sending = store.recipients.filter(
+        (r) => r.partId === partId && r.status === 'sending'
+      )
+      for (const row of sending) row.status = 'to_verify'
+      return sending.length
+    }
+  )
   vi.mocked(failUnreceivedRecipientsTxnDao).mockImplementation(async () => {
     for (const row of store.recipients) {
       if (row.status === 'pending') row.status = 'failed'
@@ -1042,16 +1053,25 @@ const twoParts = (): FakePart[] => [
   },
 ]
 
-const jobFor = (partId: string, attempts = 1) => ({
+const jobFor = (
+  partId: string,
+  attempts = 1,
+  resumedAfterStaleLock = false
+) => ({
   id: `job-${partId}`,
   organizationId: ORG_ID,
   kind: 'campaign.deliver_part',
   payload: {partId, campaignId: CAMPAIGN_ID},
   attempts,
+  resumedAfterStaleLock,
 })
 
 const deliver = (partId: string, attempts = 1) =>
   deliverCampaignPartService(jobFor(partId, attempts), new Date())
+
+/** Reprise d'une tache dont le verrou, perime, a ete pris sur un detenteur mort. */
+const resume = (partId: string, attempts = 2) =>
+  deliverCampaignPartService(jobFor(partId, attempts, true), new Date())
 
 const statusesOf = (store: ReturnType<typeof fakeStore>) =>
   Object.fromEntries(store.recipients.map((r) => [r.id, r.status]))
@@ -1148,7 +1168,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     await deliver(PART_1)
 
     expect(sentTo()).toEqual(['m2@example.fr', 'm3@example.fr'])
-    expect(store.recipients[0].status).toBe('sending')
+    expect(store.recipients[0].status).toBe('to_verify')
   })
 
   it('deux passages parallèles sur la même part envoient chaque email une seule fois', async () => {
@@ -1203,40 +1223,93 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     expect(store.recipients.some((r) => r.status === 'sending')).toBe(false)
   })
 
-  it('une ligne en cours d’envoi plus récente que le seuil n’est pas balayée, ni renvoyée', async () => {
+  it('première exécution : une ligne récente n’est pas balayée au démarrage, ni renvoyée', async () => {
     store.recipients[0].status = 'sending'
     store.recipients[0].claimedAt =
       Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS + MINUTE
-
-    await deliver(PART_1)
-
-    expect(store.recipients[0].status).toBe('sending')
-    expect(sentTo()).not.toContain('m1@example.fr')
-  })
-
-  it('une ligne en cours d’envoi au-delà du seuil est balayée à vérifier', async () => {
-    store.recipients[0].status = 'sending'
-    store.recipients[0].claimedAt =
-      Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS - MINUTE
-
-    await deliver(PART_1)
-
-    expect(store.recipients[0].status).toBe('to_verify')
-    expect(sentTo()).not.toContain('m1@example.fr')
-  })
-
-  it('balaie encore avant de clore la part : une ligne devenue périmée pendant la part passe à vérifier (M1)', async () => {
-    store.recipients[0].status = 'sending'
-    store.recipients[0].claimedAt =
-      Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS + MINUTE
+    const atFirstSend: string[] = []
     vi.mocked(sendEmailService).mockImplementation(async () => {
-      vi.setSystemTime(new Date(Date.now() + MINUTE))
+      atFirstSend.push(store.recipients[0].status)
     })
 
     await deliver(PART_1)
 
-    expect(store.recipients[0].status).toBe('to_verify')
+    expect(atFirstSend[0]).toBe('sending')
+    expect(markSendingRecipientsToVerifyTxnDao).toHaveBeenCalledTimes(1)
+    expect(sentTo()).not.toContain('m1@example.fr')
+  })
+
+  it('une ligne en cours d’envoi au-delà du seuil est balayée à vérifier dès le démarrage', async () => {
+    store.recipients[0].status = 'sending'
+    store.recipients[0].claimedAt =
+      Date.now() - CAMPAIGN_RECIPIENT_SENDING_STALE_MS - MINUTE
+    const atFirstSend: string[] = []
+    vi.mocked(sendEmailService).mockImplementation(async () => {
+      atFirstSend.push(store.recipients[0].status)
+    })
+
+    await deliver(PART_1)
+
+    expect(atFirstSend[0]).toBe('to_verify')
+    expect(sentTo()).not.toContain('m1@example.fr')
+  })
+
+  it('une part ne se clôt jamais sur une ligne en cours d’envoi : elle passe à vérifier (M1)', async () => {
+    store.recipients[0].status = 'sending'
+    store.recipients[0].claimedAt = Date.now()
+
+    await deliver(PART_1)
+
     expect(store.parts[0].status).toBe('sent')
+    expect(store.recipients[0].status).toBe('to_verify')
+    expect(
+      store.recipients.filter(
+        (r) => r.partId === PART_1 && r.status === 'sending'
+      )
+    ).toEqual([])
+  })
+
+  it('plantage 12 min après la pose du verrou, reprise dès le verrou périmé : ligne à vérifier, jamais renvoyée (M1)', async () => {
+    store.parts = [{...twoParts()[0], recipientCount: 3}]
+    const lockedAt = Date.now()
+    store.recipients[0].status = 'sending'
+    store.recipients[0].claimedAt = lockedAt + 12 * MINUTE
+
+    vi.setSystemTime(new Date(lockedAt + SCHEDULED_JOB_LOCK_STALE_MS + 1))
+    const atFirstSend: string[] = []
+    vi.mocked(sendEmailService).mockImplementation(async () => {
+      atFirstSend.push(store.recipients[0].status)
+    })
+    await resume(PART_1)
+
+    expect(atFirstSend[0]).toBe('to_verify')
+    expect(store.recipients[0].status).toBe('to_verify')
+    expect(sentTo()).toEqual(['m2@example.fr', 'm3@example.fr'])
+    expect(store.campaignStatus).toBe('sent')
+    expect(store.recipients.some((r) => r.status === 'sending')).toBe(false)
+  })
+
+  it('un gestionnaire qui lève 12 min après le verrou, puis reprise : même issue, aucun doublon (M1)', async () => {
+    store.parts = [{...twoParts()[0], recipientCount: 3}]
+    const lockedAt = Date.now()
+    vi.setSystemTime(new Date(lockedAt + 12 * MINUTE))
+    vi.mocked(markRecipientSentTxnDao).mockRejectedValueOnce(
+      new Error('base injoignable')
+    )
+    await expect(deliver(PART_1)).rejects.toThrow()
+    expect(store.recipients[0].status).toBe('sending')
+
+    vi.setSystemTime(new Date(lockedAt + SCHEDULED_JOB_LOCK_STALE_MS + 1))
+    vi.mocked(sendEmailService).mockClear()
+    await resume(PART_1)
+
+    expect(store.recipients[0].status).toBe('to_verify')
+    expect(sentTo()).toEqual(['m2@example.fr', 'm3@example.fr'])
+    expect(store.recipients.some((r) => r.status === 'sending')).toBe(false)
+
+    vi.mocked(sendEmailService).mockClear()
+    await resume(PART_1, 3)
+    expect(sendEmailService).not.toHaveBeenCalled()
   })
 
   it('un refus certain du fournisseur → ligne rendue en attente, part reprise 30 min plus tard', async () => {
