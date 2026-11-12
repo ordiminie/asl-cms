@@ -68,5 +68,26 @@ Aucun.
 
 Points hérités des revues précédentes, non bloquants : la gestion du `catch` de `runOrganizationJobs` (verrou conservé, tentative comptée) est assumée ; `docs/designs/s25.zip`, `docs/designs/s26.zip` et `docs/logs/` ne sont pas suivis et ne doivent pas être commités.
 
+## 6. Revue 4 : après les correctifs de CI (`dd05ad11`, `91027197`)
+
+Diff complet relu, avec focus sur les deux derniers commits. L'e2e de la CI avait révélé un défaut de production que les trois premières revues n'avaient pas vu.
+
+**Défaut corrigé (`91027197`).** `getCampaignFooterTexts` appelait `getTranslations` de `next-intl/server`, qui lève hors de Next : le script du planificateur (minuterie systemd) ne pouvait composer aucun email de campagne. Les destinataires des parts 2 et suivantes seraient passés `to_verify` sans rien recevoir, sans erreur visible (sortie 0), sans doublon. La part 1 passait car elle part depuis le serveur (`after()`).
+
+- **Pied d'email : conforme.** `createTranslator` de `next-intl` avec `messages/fr.json` (ADR 008, `fr` seule), identique dans Next et dans le script, mêmes clés et même texte qu'avant. Le test `campaign-email-footer.test.ts` simule `next-intl/server` en erreur et vérifie les chaînes exactes : il échouerait au retour de `getTranslations`.
+- **Composition avant la prise : conforme.** Ordre : composer, puis `pending → sending`, puis envoi, puis `sent` / `refused → pending` / autre erreur → `to_verify`. La composition n'a pas d'effet de bord. Un échec de composition laisse la ligne `pending` et reprogramme la part (+30 min × tentative) ; un échec sans fin aboutit au chemin d'échec définitif à la dernière tentative. Pas de double envoi, « jamais deux fois » intact.
+- **API propres à Next atteignables depuis le script : aucune.** Fermeture des imports de la façade du planificateur (168 fichiers) cherchée pour `next/headers`, `next/cache`, `next-intl/server`, `getLocale`, `getTranslations`, `cookies`, `headers`, `unstable_cache`, `use cache`, `after`. Les occurrences sont hors du chemin de livraison (autres fonctions d'`email-service`, `auth-service`, autres gabarits). `after()` n'est que dans `runImmediatePass`, côté action.
+- **e2e (`dd05ad11`, `91027197`) : conformes.** Localisateurs ciblés (en-tête du `h1`, tableau « Envois par jour », décomptes bornés aux destinataires de la campagne). Aucune assertion affaiblie. `diagnosisOf` n'expose que des statuts, des compteurs et la fin de la sortie du script, sans donnée personnelle, via `inTenantScope`.
+- **Règles et ADR : conformes.** Aucun nouveau `withRlsBypass`, aucun service n'importe une façade, aucune variable d'environnement nouvelle, rien en dur.
+
+**Tests (lancés par le reviewer) :** 337 fichiers passent, 2 échouent par timeout de worker sur le montage 9p (`src/app/[locale]/fonts.test.ts`, `src/lib/better-auth/magic-link-integration-imports.test.ts`) ; relancés seuls, 7/7 passent. Compté comme vert (faux positif connu), pas comme défaut de la story. Run de l'implémenteur : 339 fichiers, 4239 tests verts. `tsc` propre. Ni build ni e2e.
+
+**Constats de la revue 4 (aucun critique, aucun majeur) :**
+
+- **m4.** `email-service.ts` importe `next-intl/server` statiquement. Sans effet aujourd'hui (l'import ne lève pas, seul l'appel le ferait), mais un futur appel à `getTranslations` sur un chemin du planificateur rouvrirait ce défaut. Piste : une garde de test sur la fermeture des imports de `run-scheduled-jobs.ts`, ou une note dans l'ADR du planificateur. À prévoir avant s29 et s52, dont les emails partiront aussi du script.
+- **m5.** Une composition qui échoue en permanence pour un destinataire bloque toute la part jusqu'à épuisement des tentatives, puis la campagne passe `interrupted`. Cohérent avec la politique d'échec existante.
+
+Les constats m1 à m3 des revues précédentes restent mineurs et non bloquants. L'e2e n'a toujours pas tourné en local : sa validation est celle de la CI de la PR.
+
 Max severity: minor
 Ship allowed: yes
