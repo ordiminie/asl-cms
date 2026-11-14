@@ -12,7 +12,6 @@ import {
   or,
   sql,
 } from 'drizzle-orm'
-import {alias} from 'drizzle-orm/pg-core'
 
 import {
   AddCampaignModel,
@@ -809,7 +808,8 @@ export type OpenCampaignPartRowModel = {
   pendingCount: number
 }
 
-const siblingPart = alias(campaignPart, 'sibling_part')
+const siblingPart = sql.identifier('sibling_part')
+const siblingCampaignId = sql.identifier(campaignPart.campaignId.name)
 
 /**
  * Les parts non closes de l'association, avec l'objet de leur campagne, le
@@ -826,7 +826,7 @@ export const getOpenCampaignPartsDao = async (
       campaignSubject: campaign.subject,
       number: campaignPart.number,
       partCount:
-        sql<number>`(select count(*) from ${siblingPart} where ${siblingPart.campaignId} = ${campaignPart.campaignId})`.mapWith(
+        sql<number>`(select count(*) from ${campaignPart} ${siblingPart} where ${siblingPart}.${siblingCampaignId} = ${campaignPart.campaignId})`.mapWith(
           Number
         ),
       scheduledFor: campaignPart.scheduledFor,

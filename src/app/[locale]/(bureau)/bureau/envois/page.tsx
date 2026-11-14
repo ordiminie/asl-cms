@@ -11,6 +11,7 @@ import {
   EmailSendingOverview,
   EmailSendingSkeleton,
 } from '@/components/features/email-sending/email-sending-overview'
+import {logger} from '@/lib/logger'
 
 type EmailSendingPageProps = {
   params: Promise<{locale: string}>
@@ -61,7 +62,7 @@ async function EmailSendingSection({page}: {page: number}) {
   }
 
   const overview = await getEmailSendingOverviewDal(tenant.id).catch(
-    () => undefined
+    (error: unknown) => logOverviewReadFailure(tenant.id, error)
   )
 
   return overview ? (
@@ -69,4 +70,17 @@ async function EmailSendingSection({page}: {page: number}) {
   ) : (
     <EmailSendingError />
   )
+}
+
+/**
+ * La lecture en echec reste visible dans les journaux du serveur : l'erreur
+ * et l'association, ni adresse ni contenu. L'ecran affiche l'erreur.
+ */
+function logOverviewReadFailure(organizationId: string, error: unknown) {
+  logger.error('[EMAIL-SENDING] lecture des envois en echec', {
+    organizationId,
+    errorName: error instanceof Error ? error.name : typeof error,
+    errorMessage: error instanceof Error ? error.message : String(error),
+  })
+  return undefined
 }

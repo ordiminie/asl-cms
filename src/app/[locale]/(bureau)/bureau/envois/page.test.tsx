@@ -15,11 +15,15 @@ vi.mock('@/app/dal/campaign-dal', () => ({
 vi.mock('@/app/dal/email-sending-dal', () => ({
   getEmailSendingOverviewDal: vi.fn(),
 }))
+vi.mock('@/lib/logger', () => ({
+  logger: {debug: vi.fn(), error: vi.fn(), info: vi.fn(), warn: vi.fn()},
+}))
 
 import {render, screen} from '@/__tests__/customRender'
 import {canManageCurrentCampaignsDal} from '@/app/dal/campaign-dal'
 import {getEmailSendingOverviewDal} from '@/app/dal/email-sending-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {logger} from '@/lib/logger'
 
 import BureauEmailSendingPage from './page'
 
@@ -86,5 +90,20 @@ describe('/bureau/envois — accès et lecture (s52, écran 1)', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Les envois n’ont pas pu être lus.'
     )
+  })
+  it('une lecture en échec est journalisée avec l’association, sans donnée personnelle', async () => {
+    vi.mocked(canManageCurrentCampaignsDal).mockResolvedValue(true)
+    vi.mocked(getEmailSendingOverviewDal).mockRejectedValue(
+      new Error('relation "sibling_part" does not exist')
+    )
+
+    await renderPage()
+
+    expect(logger.error).toHaveBeenCalledTimes(1)
+    expect(logger.error).toHaveBeenCalledWith(expect.any(String), {
+      organizationId: TENANT_ID,
+      errorName: 'Error',
+      errorMessage: 'relation "sibling_part" does not exist',
+    })
   })
 })

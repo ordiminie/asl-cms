@@ -881,4 +881,15 @@ describe('getOpenCampaignPartsDao — parts non closes et leur report (s52, envo
       },
     ])
   })
+
+  it('compte les parts de la campagne dans une sous-requête qui nomme la vraie table campaign_part', async () => {
+    responses.current = [[]]
+
+    await getOpenCampaignPartsDao(ORG_ID)
+
+    const [{sql}] = sent
+    expect(sql).toContain(
+      '(select count(*) from "campaign_part" "sibling_part" where "sibling_part"."campaign_id" = "campaign_part"."campaign_id")'
+    )
+  })
 })
