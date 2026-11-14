@@ -159,19 +159,36 @@ const budgetOf = (organizationId: string): Promise<Budget> =>
     }
   })
 
-/** Pose le compteur reportable du jour : le budget est épuisé ou rendu. */
-const setReportableCount = (organizationId: string, value: number) =>
+/**
+ * Pose les deux compteurs du jour. Le compteur de connexion compte aussi : la
+ * bannière « réserve épuisée » prime sur « limite atteinte » dès que les
+ * envois du jour atteignent la limite, et d'autres specs envoient des liens
+ * de connexion à TechCorp avant celle-ci.
+ */
+const setBudget = (organizationId: string, budget: Budget) =>
   inTenantScope(organizationId, (client) =>
     client.query(
-      `insert into email_send_budget (organization_id, day, reportable_count)
-       values ($1, ${PARIS_DAY_SQL}, $2)
+      `insert into email_send_budget
+         (organization_id, day, reportable_count, login_count)
+       values ($1, ${PARIS_DAY_SQL}, $2, $3)
        on conflict (organization_id, day)
-       do update set reportable_count = excluded.reportable_count`,
-      [organizationId, value]
+       do update set reportable_count = excluded.reportable_count,
+                     login_count = excluded.login_count`,
+      [organizationId, budget.reportable, budget.login]
     )
   )
 
-/** Les reportés de l'essai, repérés par l'objet de leur message. */
+/**
+ * Les reportés de l'essai, repérés par le message de contact qu'ils
+ * désignent : l'objet de la notification est celui de l'association, il ne
+ * porte pas l'objet du message.
+ */
+const DEFERRED_OF_RUN_SQL = `deferred_email.reference_type = 'contact_message'
+  and deferred_email.reference_id in (
+    select contact_message.id from contact_message
+     where contact_message.subject like $1
+  )`
+
 const deferredOfRun = (organizationId: string) =>
   inTenantScope(organizationId, async (client) => {
     const result = await client.query<{
@@ -181,7 +198,7 @@ const deferredOfRun = (organizationId: string) =>
       status: string
     }>(
       `select id, nature, send_on::text, status from deferred_email
-        where subject like $1`,
+        where ${DEFERRED_OF_RUN_SQL}`,
       [`%${MARKER}%`]
     )
     return result.rows
@@ -290,10 +307,10 @@ test.describe('Budget d’envoi quotidien — report, rejeu en attente, isolatio
         [a, LIMIT_KEY, RESERVE_KEY]
       )
     )
-    await setReportableCount(a, budgetBeforeRun.reportable)
+    await setBudget(a, budgetBeforeRun)
     await asMaintenance(async (client) => {
       const deferred = await client.query<{id: string}>(
-        `delete from deferred_email where subject like $1 returning id`,
+        `delete from deferred_email where ${DEFERRED_OF_RUN_SQL} returning id`,
         [`%${MARKER}%`]
       )
       await client.query(
@@ -344,7 +361,7 @@ test.describe('Budget d’envoi quotidien — report, rejeu en attente, isolatio
         bureau.getByLabel(/Envois gardés pour la connexion/)
       ).toHaveAttribute('readonly', '')
 
-      await setReportableCount(a, 1)
+      await setBudget(a, {reportable: 1, login: 0})
       const subject = `Budget épuisé ${MARKER}`
       const before = outboxFiles()
       const visitor = await (await newContext(browser, TENANT_A)).newPage()
