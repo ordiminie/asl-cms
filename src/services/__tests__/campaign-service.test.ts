@@ -307,7 +307,7 @@ beforeEach(() => {
   })
   vi.mocked(markRecipientFailedTxnDao).mockResolvedValue({id: 'r'})
   vi.mocked(finishCampaignTxnDao).mockResolvedValue({id: CAMPAIGN_ID})
-  vi.mocked(sendEmailService).mockResolvedValue()
+  vi.mocked(sendEmailService).mockResolvedValue({status: 'sent'})
   vi.mocked(getCampaignPartsDao).mockResolvedValue([])
   vi.mocked(getRecipientStatusCountsDao).mockResolvedValue([])
   vi.mocked(getCampaignRecipientsPageDao).mockResolvedValue({
@@ -720,11 +720,11 @@ describe('sendCampaignService — étalement en parts quotidiennes (s26, critèr
       },
       expect.objectContaining({
         idempotencyKey: 'part-2',
-        runAfter: new Date('2026-11-12T23:00:00.000Z'),
+        runAfter: new Date('2026-11-13T01:00:00.000Z'),
       }),
       expect.objectContaining({
         idempotencyKey: 'part-3',
-        runAfter: new Date('2026-11-13T23:00:00.000Z'),
+        runAfter: new Date('2026-11-14T01:00:00.000Z'),
       }),
     ])
   })
@@ -1108,6 +1108,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     })
     vi.mocked(sendEmailService).mockImplementation(async (payload) => {
       order.push(`send:${payload.to}`)
+      return {status: 'sent'}
     })
 
     const outcome = await deliver(PART_1)
@@ -1134,7 +1135,8 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
   it('chaque envoi porte expéditeur, Reply-To, en-têtes List-Unsubscribe et URL du jeton', async () => {
     await deliver(PART_1)
 
-    const [payload, options] = vi.mocked(sendEmailService).mock.calls[0]
+    const [payload, context, options] =
+      vi.mocked(sendEmailService).mock.calls[0]
     expect(payload).toMatchObject({
       to: 'm1@example.fr',
       subject: 'ASL Les Pins — Peinture du portail',
@@ -1146,6 +1148,11 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
       },
     })
     expect(payload.text).toContain(`${ORIGIN}/desinscription/token-r1`)
+    expect(context).toEqual({
+      scope: 'tenant',
+      organizationId: ORG_ID,
+      nature: 'campaign',
+    })
     expect(options).toEqual({recipientType: 'client'})
   })
 
@@ -1230,6 +1237,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     const atFirstSend: string[] = []
     vi.mocked(sendEmailService).mockImplementation(async () => {
       atFirstSend.push(store.recipients[0].status)
+      return {status: 'sent'}
     })
 
     await deliver(PART_1)
@@ -1246,6 +1254,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     const atFirstSend: string[] = []
     vi.mocked(sendEmailService).mockImplementation(async () => {
       atFirstSend.push(store.recipients[0].status)
+      return {status: 'sent'}
     })
 
     await deliver(PART_1)
@@ -1279,6 +1288,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     const atFirstSend: string[] = []
     vi.mocked(sendEmailService).mockImplementation(async () => {
       atFirstSend.push(store.recipients[0].status)
+      return {status: 'sent'}
     })
     await resume(PART_1)
 
@@ -1335,7 +1345,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
 
   it('un refus certain du fournisseur → ligne rendue en attente, part reprise 30 min plus tard', async () => {
     vi.mocked(sendEmailService)
-      .mockResolvedValueOnce()
+      .mockResolvedValueOnce({status: 'sent'})
       .mockRejectedValueOnce(
         new EmailTransportError('brevo', 'refus', {refused: true})
       )
@@ -1451,6 +1461,43 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     expect(store.parts[0].status).toBe('scheduled')
   })
 
+  it('budget du jour épuisé au milieu de la part : le reste attend demain 02:00, rien en échec, aucune tentative comptée (s52, critère 6)', async () => {
+    vi.mocked(sendEmailService)
+      .mockResolvedValueOnce({status: 'sent'})
+      .mockResolvedValueOnce({status: 'deferred', until: '2026-11-13'})
+    const now = new Date()
+
+    const outcome = await deliverCampaignPartService(jobFor(PART_1), now)
+
+    expect(outcome).toEqual({
+      status: 'deferred',
+      runAfter: new Date('2026-11-13T01:00:00.000Z'),
+    })
+    expect(statusesOf(store)).toMatchObject({
+      r1: 'sent',
+      r2: 'pending',
+      r3: 'pending',
+    })
+    expect(sendEmailService).toHaveBeenCalledTimes(2)
+    expect(store.parts[0].status).not.toBe('sent')
+    expect(store.parts[0].status).not.toBe('failed')
+    expect(store.campaignStatus).toBe('sending')
+  })
+
+  it('un envoi ignoré par les réglages n’est jamais compté comme reçu : ligne rendue, tâche rendue (s52)', async () => {
+    vi.mocked(sendEmailService).mockResolvedValueOnce({status: 'skipped'})
+
+    const outcome = await deliver(PART_1)
+
+    expect(outcome).toEqual({status: 'released'})
+    expect(statusesOf(store)).toMatchObject({
+      r1: 'pending',
+      r2: 'pending',
+      r3: 'pending',
+    })
+    expect(markRecipientSentTxnDao).not.toHaveBeenCalled()
+  })
+
   it('n’écrit ni adresse ni contenu dans un journal', async () => {
     vi.mocked(sendEmailService).mockRejectedValueOnce(
       new EmailTransportError('brevo', 'injoignable')
@@ -1511,6 +1558,7 @@ describe('lectures — décomptes et parts de chaque campagne (s26)', () => {
         scheduledFor: '2026-11-12',
         recipientCount: 1,
         status: 'sent',
+        nextRunAfter: null,
       },
       {
         id: 'p2',
@@ -1519,6 +1567,7 @@ describe('lectures — décomptes et parts de chaque campagne (s26)', () => {
         scheduledFor: '2026-11-13',
         recipientCount: 1,
         status: 'scheduled',
+        nextRunAfter: new Date('2026-11-13T01:00:00.000Z'),
       },
     ])
     vi.mocked(getRecipientStatusCountsDao).mockResolvedValue([

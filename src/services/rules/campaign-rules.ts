@@ -15,6 +15,7 @@ import {
   CampaignVariable,
   CampaignVariableValues,
 } from '../types/domain/campaign-types'
+import {calendarDayOf} from '../types/domain/water-analysis-types'
 
 /**
  * Regles pures des campagnes (s25, ADR 051). Aucun acces a la base : le
@@ -157,6 +158,8 @@ export type CampaignPartRow = {
   scheduledFor: string
   recipientCount: number
   status: CampaignPartStatus
+  /** Echeance de la tache encore ouverte de la part (s52). */
+  nextRunAfter?: Date | null
 }
 
 /** Un decompte de destinataires par campagne, part et statut. */
@@ -215,6 +218,19 @@ export const campaignDisplayStateOf = (
   return 'sending'
 }
 
+/**
+ * Le jour ou part le reste d'une part non close dont la tache attend un jour
+ * suivant le sien : un report faute de budget (s52, ADR 053 §5). Rien sinon.
+ */
+export const deferredDayOf = (
+  part: Pick<CampaignPartRow, 'status' | 'scheduledFor' | 'nextRunAfter'>
+): string | null => {
+  if (part.status === 'sent' || part.status === 'failed') return null
+  if (!part.nextRunAfter) return null
+  const day = calendarDayOf(part.nextRunAfter)
+  return day > part.scheduledFor ? day : null
+}
+
 const toPartDto = (
   part: CampaignPartRow,
   countRows: readonly CampaignRecipientCountRow[]
@@ -222,13 +238,18 @@ const toPartDto = (
   const counts = recipientCountsOf(
     countRows.filter((row) => row.partId === part.id)
   )
+  const deferredUntil = deferredDayOf(part)
   return {
     number: part.number,
     day: part.scheduledFor,
     recipientCount: part.recipientCount,
     receivedCount: counts.received,
     toVerifyCount: counts.toVerify,
-    displayState: partDisplayStateOf(part.status, counts.toVerify),
+    displayState: deferredUntil
+      ? 'scheduled'
+      : partDisplayStateOf(part.status, counts.toVerify),
+    deferredUntil,
+    deferredCount: deferredUntil ? counts.scheduled : 0,
   }
 }
 

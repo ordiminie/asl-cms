@@ -1957,7 +1957,8 @@
       "messages": "Messages reçus",
       "reports": "Signalements",
       "memberProfiles": "Propriétaires",
-      "campaigns": "Campagnes"
+      "campaigns": "Campagnes",
+      "sends": "Envois"
     },
     "cards": {
       "logo": {
@@ -2014,6 +2015,7 @@
   "AssociationSettings": {
     "optional": "facultatif",
     "usesDefault": "Vide : la valeur par défaut s'applique ({value}).",
+    "superAdminOnly": "Réglé par l’équipe technique de la plateforme : vous ne pouvez pas le modifier.",
     "errors": {
       "required": "Ce réglage est obligatoire : il ne peut pas rester vide.",
       "invalidEmail": "Cette adresse n'est pas valide. Exemple : nom@domaine.fr",
@@ -2024,7 +2026,8 @@
       "invalidChoice": "Choisissez une des options proposées dans la liste.",
       "unknownKey": "Ce réglage n'existe pas ou n'est plus proposé.",
       "tooLong": "{excess, plural, one {# caractère de trop.} other {# caractères de trop.}}",
-      "invalidCode": "Ce code ne ressemble pas à celui de Google : il ne contient que des lettres, des chiffres, des tirets et des soulignés."
+      "invalidCode": "Ce code ne ressemble pas à celui de Google : il ne contient que des lettres, des chiffres, des tirets et des soulignés.",
+      "notBelow": "Saisissez un nombre inférieur à {max}."
     },
     "fields": {
       "contactEmail": {
@@ -2077,9 +2080,20 @@
         "help": "Adresse du siège, numéro d’enregistrement ou toute mention que l’association doit faire figurer au bas de ses emails. Elles s’écrivent au pied de page de chaque campagne.",
         "whenEmpty": "Vide : aucune mention n’est ajoutée au pied de page. L’envoi reste possible."
       },
+      "emailDailySendLimit": {
+        "label": "Limite d’envoi quotidienne de la messagerie",
+        "help": "Nombre maximum d’emails envoyés par jour pour l’association, tous envois confondus : connexion, campagnes, notifications. Gardez-la égale à la limite de votre messagerie. Par défaut : 300."
+      },
+      "emailLoginReserve": {
+        "label": "Envois gardés pour la connexion",
+        "help": "Part de la limite réservée aux emails de connexion, qui partent toujours. Les autres envois s’arrêtent avant et reprennent le lendemain. Par défaut : 100.",
+        "errors": {
+          "notBelow": "Gardez moins d’envois que la limite quotidienne ({max})."
+        }
+      },
       "campaignDailySendCap": {
         "label": "Plafond quotidien des campagnes",
-        "help": "Nombre maximum d’emails de campagne envoyés par jour, toutes campagnes confondues. Le reste de la limite d’envoi de votre messagerie est gardé pour les emails de connexion et les autres messages. Par défaut : 100.",
+        "help": "Nombre maximum d’emails de campagne envoyés par jour, toutes campagnes confondues. Par défaut : 100.",
         "errors": {
           "invalidNumber": "Saisissez un nombre entier supérieur à 0.",
           "belowMin": "Saisissez un nombre entier supérieur à 0."
@@ -3678,6 +3692,7 @@
         "continues": "Les envois continuent seuls. Prochaine part : le <data>{date}</data>, <data>{count}</data> membres. Vous n’avez rien à faire.",
         "toVerify": "<strong>Attention :</strong> {count, plural, one {# destinataire est à vérifier} other {# destinataires sont à vérifier}}. L’envoi s’est arrêté au moment où l’on ne savait pas si leur email était parti. Nous ne le renvoyons pas, pour ne pas leur écrire deux fois. Contactez l’équipe technique pour les vérifier.",
         "showToVerify": "Afficher les destinataires à vérifier ({count})",
+        "deferred": "<strong>La limite d’envoi du jour est atteinte.</strong> {count, plural, one {# membre de la part du {date} recevra la campagne demain, le {until}.} other {# membres de la part du {date} recevront la campagne demain, le {until}.}} Vous n’avez rien à faire.",
         "failedTitle": "La part du <data>{date}</data> n’a pas pu partir après plusieurs essais.",
         "failedDescription": "{received} membres ont reçu la campagne ; {notReceived} ne l’ont pas reçue. Rien n’est renvoyé à ceux qui l’ont déjà reçue. Contactez l’équipe technique."
       },
@@ -3689,7 +3704,8 @@
           "recipients": "Destinataires",
           "state": "État"
         },
-        "cardTitle": "Part {number}"
+        "cardTitle": "Part {number}",
+        "deferredLine": "{received} reçues · {deferred} reportées au {date}"
       }
     },
     "breadcrumb": {
@@ -3807,5 +3823,72 @@
     "failedTitle": "Votre demande n’a pas pu être enregistrée.",
     "failedDescription": "Rien n’a changé. Réessayez dans un instant.",
     "siteLink": "Aller sur le site de l’association"
+  },
+  "EmailSendingBureau": {
+    "metadata": {
+      "title": "Envois d’emails"
+    },
+    "breadcrumb": {
+      "association": "L'association",
+      "current": "Envois"
+    },
+    "title": "Envois d’emails",
+    "intro": "Votre messagerie envoie au plus {limit} emails par jour. Ce qui dépasse part le lendemain, sans action de votre part.",
+    "banner": {
+      "limitReached": "<strong>La limite d’envoi du jour est atteinte.</strong> {count, plural, =0 {Les prochains envois partiront demain, sans action de votre part.} one {# email partira demain, le {date}, sans action de votre part.} other {# emails partiront demain, le {date}, sans action de votre part.}} Les emails de connexion continuent de partir.",
+      "reserveExhausted": "<strong>Les {reserve} envois gardés pour la connexion sont épuisés.</strong> D’ici minuit, votre messagerie peut refuser des emails de connexion. Si cela se reproduit, prévenez l’équipe technique : la limite ou la réserve est peut-être à revoir.",
+      "loadFailed": "<strong>Les envois n’ont pas pu être lus.</strong> Rien n’est perdu : les envois en attente partiront quand même. Rechargez la page dans un instant."
+    },
+    "today": {
+      "title": "Aujourd’hui, {weekday} {date}",
+      "loadingTitle": "Aujourd’hui",
+      "progress": "{sent} sur {limit} emails envoyés aujourd’hui",
+      "counter": {
+        "sent": "Envoyés aujourd’hui",
+        "login": "Dont emails de connexion",
+        "remaining": "Autres envois encore possibles",
+        "reset": "Limite remise à zéro"
+      },
+      "resetValue": "à minuit",
+      "reserveNote": "{reserve} envois sont gardés chaque jour pour les emails de connexion. Ils partent toujours, même quand les autres envois attendent demain."
+    },
+    "pending": {
+      "title": "En attente",
+      "description": "Ces envois partiront seuls le jour indiqué. Vous n’avez rien à faire.",
+      "empty": "Aucun envoi en attente. Tous les emails sont partis.",
+      "columns": {
+        "send": "Envoi",
+        "nature": "Nature",
+        "recipients": "Destinataires",
+        "state": "État",
+        "action": "Action"
+      },
+      "natures": {
+        "campaign": "Campagne",
+        "board_notification": "Notification au bureau"
+      },
+      "titles": {
+        "campaign": "« {subject} »",
+        "contact_message": "Message reçu depuis le formulaire de contact",
+        "incident_report": "Signalement reçu depuis le site",
+        "other": "Notification au bureau"
+      },
+      "details": {
+        "part": "Part {number} sur {total}",
+        "contact_message": "À l’adresse de contact"
+      },
+      "state": "Programmée pour le {date}",
+      "actions": {
+        "campaign": "Voir la campagne",
+        "contact_message": "Voir le message",
+        "incident_report": "Voir le signalement"
+      }
+    },
+    "pagination": {
+      "label": "Pages des envois en attente",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "position": "Page {page} sur {total} · {count, plural, one {# envoi en attente} other {# envois en attente}}"
+    }
   }
 }

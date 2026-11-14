@@ -242,6 +242,8 @@ describe('toCampaignDto — liste blanche', () => {
         receivedCount: 100,
         toVerifyCount: 0,
         displayState: 'sent',
+        deferredUntil: null,
+        deferredCount: 0,
       },
       {
         number: 2,
@@ -250,6 +252,8 @@ describe('toCampaignDto — liste blanche', () => {
         receivedCount: 98,
         toVerifyCount: 2,
         displayState: 'to_verify',
+        deferredUntil: null,
+        deferredCount: 0,
       },
       {
         number: 3,
@@ -258,8 +262,57 @@ describe('toCampaignDto — liste blanche', () => {
         receivedCount: 0,
         toVerifyCount: 0,
         displayState: 'scheduled',
+        deferredUntil: null,
+        deferredCount: 0,
       },
     ])
+  })
+
+  it('une part entamée dont la tâche attend un jour suivant : programmée pour ce jour, ses reportés comptés (s52, écran 3)', () => {
+    const deferredParts = [
+      {
+        id: 'p2',
+        campaignId: 'c1',
+        number: 2,
+        scheduledFor: '2026-11-14',
+        recipientCount: 100,
+        status: 'sending' as const,
+        nextRunAfter: new Date('2026-11-15T01:00:00.000Z'),
+      },
+      {
+        id: 'p3',
+        campaignId: 'c1',
+        number: 3,
+        scheduledFor: '2026-11-15',
+        recipientCount: 96,
+        status: 'scheduled' as const,
+        nextRunAfter: new Date('2026-11-15T01:00:00.000Z'),
+      },
+    ]
+    const deferredCounts = [
+      {campaignId: 'c1', partId: 'p2', status: 'sent' as const, total: 60},
+      {campaignId: 'c1', partId: 'p2', status: 'pending' as const, total: 40},
+      {campaignId: 'c1', partId: 'p3', status: 'pending' as const, total: 96},
+    ]
+
+    const [entamee, suivante] = toCampaignDto(
+      row(),
+      deferredParts,
+      deferredCounts
+    ).parts
+
+    expect(entamee).toMatchObject({
+      day: '2026-11-14',
+      receivedCount: 60,
+      displayState: 'scheduled',
+      deferredUntil: '2026-11-15',
+      deferredCount: 40,
+    })
+    expect(suivante).toMatchObject({
+      displayState: 'scheduled',
+      deferredUntil: null,
+      deferredCount: 0,
+    })
   })
 })
 

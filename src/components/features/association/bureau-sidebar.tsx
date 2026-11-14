@@ -51,6 +51,7 @@ const NAV_GROUPS: {labelKey: string; items: NavItem[]}[] = [
         labelKey: 'campaigns',
         matchesSubroutes: true,
       },
+      {href: '/bureau/envois', labelKey: 'sends'},
       {href: '/bureau/identite', labelKey: 'identity'},
       {href: '/bureau/reglages', labelKey: 'settings'},
     ],
@@ -74,7 +75,7 @@ type BureauSidebarProps = {
  * Actualites, Analyses
  * d'eau (s09), Navigation,
  * Messages recus (s08) et
- * « L'association » › Proprietaires (s12), Campagnes (s25), Identite, Reglages ; l'item actif
+ * « L'association » › Proprietaires (s12), Campagnes (s25), Envois (s52), Identite, Reglages ; l'item actif
  * suit la route. Tiroir
  * sur petit ecran.
  */

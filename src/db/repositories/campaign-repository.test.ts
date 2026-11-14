@@ -35,6 +35,7 @@ import {
   getCampaignsPageDao,
   getCampaignTargetRowsDao,
   getCurrentParcelNumbersForMembersDao,
+  getOpenCampaignPartsDao,
   getPendingPartRecipientsDao,
   getRecipientStatusCountsDao,
   lockCampaignScheduleTxnDao,
@@ -585,11 +586,29 @@ describe('finishCampaignTxnDao', () => {
 
 describe('getCampaignPartsDao — les parts des campagnes lues', () => {
   it('lit les parts des campagnes demandées, dans l’ordre', async () => {
-    responses.current = [[[PART_1, CAMPAIGN_ID, 1, '2026-11-12', 100, 'sent']]]
+    responses.current = [
+      [
+        [PART_1, CAMPAIGN_ID, 1, '2026-11-12', 100, 'sent', null],
+        [
+          'part-2',
+          CAMPAIGN_ID,
+          2,
+          '2026-11-13',
+          100,
+          'sending',
+          '2026-11-14T01:00:00.000Z',
+        ],
+      ],
+    ]
 
     const parts = await getCampaignPartsDao([CAMPAIGN_ID])
 
     expect(sent[0].sql).toContain('"campaign_part"."campaign_id" in ($')
+    expect(sent[0].sql).toContain('left join "scheduled_job" on')
+    expect(sent[0].sql).toContain(
+      '"scheduled_job"."idempotency_key" = "campaign_part"."id"::text'
+    )
+    expect(sent[0].sql).toContain('"scheduled_job"."completed_at" is null')
     expect(sent[0].sql).toContain(
       'order by "campaign_part"."campaign_id" asc, "campaign_part"."number" asc'
     )
@@ -601,6 +620,16 @@ describe('getCampaignPartsDao — les parts des campagnes lues', () => {
         scheduledFor: '2026-11-12',
         recipientCount: 100,
         status: 'sent',
+        nextRunAfter: null,
+      },
+      {
+        id: 'part-2',
+        campaignId: CAMPAIGN_ID,
+        number: 2,
+        scheduledFor: '2026-11-13',
+        recipientCount: 100,
+        status: 'sending',
+        nextRunAfter: new Date('2026-11-14T01:00:00.000Z'),
       },
     ])
   })
@@ -705,6 +734,52 @@ describe('getCampaignRecipientsPageDao — la liste paginée des destinataires',
         name: null,
         parcelNumbers: [],
       }),
+    ])
+  })
+})
+
+describe('getOpenCampaignPartsDao — parts non closes et leur tâche (s52, envois en attente)', () => {
+  it('lit les parts ouvertes de l’association, leur campagne, leur tâche et leurs destinataires en attente', async () => {
+    responses.current = [
+      [
+        [
+          PART_1,
+          CAMPAIGN_ID,
+          'Convocation',
+          3,
+          3,
+          '2026-11-14',
+          'sending',
+          '2026-11-15T01:00:00.000Z',
+          40,
+        ],
+      ],
+    ]
+
+    const parts = await getOpenCampaignPartsDao(ORG_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('from "campaign_part"')
+    expect(sql).toContain('inner join "campaign" on')
+    expect(sql).toContain('left join "scheduled_job" on')
+    expect(sql).toContain('"campaign_part"."organization_id" = $')
+    expect(sql).toContain('"campaign_part"."status" in ($')
+    expect(sql).not.toMatch(/"email"|"unsubscribe_token"|"body_markdown"/)
+    expect(params).toEqual(
+      expect.arrayContaining([ORG_ID, 'scheduled', 'sending', 'pending'])
+    )
+    expect(parts).toEqual([
+      {
+        partId: PART_1,
+        campaignId: CAMPAIGN_ID,
+        campaignSubject: 'Convocation',
+        number: 3,
+        partCount: 3,
+        scheduledFor: '2026-11-14',
+        status: 'sending',
+        nextRunAfter: new Date('2026-11-15T01:00:00.000Z'),
+        pendingCount: 40,
+      },
     ])
   })
 })

@@ -145,9 +145,9 @@ describe('partRunAfter — échéance de la tâche d’une part', () => {
     expect(partRunAfter('2026-11-12', now)).toEqual(now)
   })
 
-  it('une part d’un jour suivant part à minuit, heure de Paris', () => {
+  it('une part d’un jour suivant part à 02:00, heure de Paris (ADR 053 §6)', () => {
     expect(partRunAfter('2026-11-13', now).toISOString()).toBe(
-      '2026-11-12T23:00:00.000Z'
+      '2026-11-13T01:00:00.000Z'
     )
   })
 })
@@ -157,5 +157,22 @@ describe('retryDelayMs — reprise après un échec', () => {
     expect(retryDelayMs(1)).toBe(30 * 60 * 1000)
     expect(retryDelayMs(2)).toBe(60 * 60 * 1000)
     expect(retryDelayMs(3)).toBe(90 * 60 * 1000)
+  })
+})
+
+describe('partRunAfter — la marge de 02:00, en hiver et en été (ADR 053 §6)', () => {
+  it('une part d’un jour suivant part à 02:00 heure de Paris, jamais à minuit', () => {
+    const now = new Date('2026-11-12T13:32:00.000Z')
+    expect(partRunAfter('2026-11-13', now).toISOString()).toBe(
+      '2026-11-13T01:00:00.000Z'
+    )
+    expect(
+      partRunAfter('2026-07-02', new Date('2026-07-01T10:00:00Z')).toISOString()
+    ).toBe('2026-07-02T00:00:00.000Z')
+  })
+
+  it('une part en retard part maintenant', () => {
+    const now = new Date('2026-11-14T08:00:00.000Z')
+    expect(partRunAfter('2026-11-13', now)).toEqual(now)
   })
 })

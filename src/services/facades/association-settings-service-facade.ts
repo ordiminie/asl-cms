@@ -4,3 +4,5 @@ export const getAssociationSettingsService =
   associationSettingsServiceInterceptor.getAssociationSettingsService
 export const updateAssociationSettingsService =
   associationSettingsServiceInterceptor.updateAssociationSettingsService
+export const canEditSuperAdminOnlySettingsService =
+  associationSettingsServiceInterceptor.canEditSuperAdminOnlySettingsService

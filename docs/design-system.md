@@ -854,6 +854,21 @@ s26. Aucun ne crée de token ni de composant : ils composent l'existant.
 - **Aucune sortie de « À vérifier »** dans l'application : le bureau est renvoyé à l'équipe
   technique. Un écran de résolution est à décider si le besoin apparaît.
 
+**Versés par s52** (budget d'envoi, gaps 1, 2, 4 et 5 de `docs/designs/s52-budget-envoi-adaptateur.md`) :
+
+- **`progress` pour la consommation d'un quota** — la carte « Aujourd'hui » de `/bureau/envois` montre
+  « 222 sur 300 emails envoyés aujourd'hui » : même règle que l'envoi de campagne (§2.1), la source
+  compte vraiment ; **aucun pourcentage écrit**, la phrase porte le décompte.
+- **Vide d'une file d'attente, sans action** — « Aucun envoi en attente. Tous les emails sont partis. » :
+  rien à combler, donc pas d'action. Exception assumée à la règle du vide (§3.2), réservée aux files
+  qui se vident seules.
+- **Part entamée** — sa ligne garde son jour et son nombre ; sous le numéro, en `meta`, le partage
+  « 60 reçues · 40 reportées au 15/11 » ; son badge dit l'état de ce qui reste (« Programmée pour le
+  15/11 », `secondary`). Jamais « Bloquée », « Interrompue » ni « En échec » : la part n'a pas échoué.
+- **Nature d'un envoi** — vocabulaire fixé dans `messages/fr.json` (`EmailSendingBureau.pending.natures`) :
+  « Campagne », « Notification au bureau » ; s29 ajoutera « Relance », s42 « Invitation ». Libellé en
+  texte simple dans sa colonne, jamais un badge (le badge est réservé à l'état).
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs

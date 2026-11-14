@@ -75,6 +75,7 @@ import {
   planCampaignParts,
   retryDelayMs,
 } from './rules/campaign-schedule-rules'
+import {budgetDayOf, deferredRunAfter} from './rules/email-budget-rules'
 import {runDueScheduledJobsService} from './scheduled-job-service'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
@@ -109,6 +110,7 @@ import {
   SendCampaignResult,
   UNSUBSCRIBE_TOKEN_BYTES,
 } from './types/domain/campaign-types'
+import type {EmailSendResult} from './types/domain/email-send-types'
 import {effectiveAuthor} from './types/domain/impersonation-types'
 import {
   CAMPAIGN_DELIVER_PART_JOB_KIND,
@@ -687,11 +689,20 @@ const isCertainRefusal = (error: unknown): boolean =>
   isEmailTransportError(error) && error.refused
 
 /**
+ * L'issue d'un destinataire : servi (envoye, ou ecarte sans envoi), echec
+ * (la part s'arrete et compte une tentative), reporte faute de budget du jour
+ * ou ignore par les reglages (la part s'arrete sans tentative ; s52).
+ */
+type RecipientDelivery = 'done' | 'failed' | 'deferred' | 'skipped'
+
+/**
  * Un destinataire de la part. L'email est compose **avant** la prise : un
  * echec de composition laisse la ligne `pending` (rien n'est parti). Puis
  * `pending -> sending` **avant** l'envoi ; une ligne deja prise ailleurs est
- * laissee. Rend `false` sur un echec : la ligne est laissee ou rendue en
- * attente (composition, refus certain) ou mise a verifier (issue inconnue).
+ * laissee. Sur un echec, la ligne est laissee ou rendue en attente
+ * (composition, refus certain) ou mise a verifier (issue inconnue). Un report
+ * faute de budget ou un envoi ignore rend la ligne en attente : elle est sa
+ * propre file de report (ADR 053 §5), jamais comptee comme recue.
  */
 const deliverToRecipient = async (
   organizationId: string,
@@ -699,18 +710,18 @@ const deliverToRecipient = async (
   campaign: CampaignContent,
   part: PartToDeliver,
   recipient: PendingRecipientRowModel
-): Promise<boolean> => {
+): Promise<RecipientDelivery> => {
   const inTenant = <T>(callback: () => Promise<T>) =>
     withTenant(organizationId, callback)
 
   if (recipient.unsubscribed) {
     await inTenant(() => markRecipientUnsubscribedTxnDao(recipient.recipientId))
-    return true
+    return 'done'
   }
   const {email, name} = recipient
   if (!email || name === null) {
     await inTenant(() => markRecipientFailedTxnDao(recipient.recipientId))
-    return true
+    return 'done'
   }
   const logFailure = (error: unknown) =>
     logger.error("[CAMPAIGN] Envoi d'une part interrompu", {
@@ -730,16 +741,21 @@ const deliverToRecipient = async (
     )
   } catch (error) {
     logFailure(error)
-    return false
+    return 'failed'
   }
   if (
     !(await inTenant(() => claimRecipientForSendTxnDao(recipient.recipientId)))
   ) {
-    return true
+    return 'done'
   }
 
+  let result: EmailSendResult
   try {
-    await sendEmailService(payload, {recipientType: 'client'})
+    result = await sendEmailService(
+      payload,
+      {scope: 'tenant', organizationId, nature: 'campaign'},
+      {recipientType: 'client'}
+    )
   } catch (error) {
     logFailure(error)
     await inTenant(() =>
@@ -747,10 +763,14 @@ const deliverToRecipient = async (
         ? releaseRecipientClaimTxnDao(recipient.recipientId)
         : markRecipientToVerifyTxnDao(recipient.recipientId)
     )
-    return false
+    return 'failed'
+  }
+  if (result.status !== 'sent') {
+    await inTenant(() => releaseRecipientClaimTxnDao(recipient.recipientId))
+    return result.status
   }
   await inTenant(() => markRecipientSentTxnDao(recipient.recipientId))
-  return true
+  return 'done'
 }
 
 /**
@@ -851,16 +871,20 @@ export const deliverCampaignPartService = async (
   if (!campaign) return {status: 'completed'}
 
   for (const recipient of recipients) {
-    const delivered = await deliverToRecipient(
+    const delivery = await deliverToRecipient(
       organizationId,
       association,
       campaign,
       part,
       recipient
     )
-    if (!delivered) {
+    if (delivery === 'failed') {
       return failedAttemptOutcome(job, now, part, association.sendMaxAttempts)
     }
+    if (delivery === 'deferred') {
+      return {status: 'deferred', runAfter: deferredRunAfter(budgetDayOf(now))}
+    }
+    if (delivery === 'skipped') return {status: 'released'}
   }
 
   await finishPart(organizationId, part)

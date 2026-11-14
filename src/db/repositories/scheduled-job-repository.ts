@@ -173,3 +173,22 @@ export const releaseJobTxnDao = async (jobId: string): Promise<void> => {
     })
     .where(eq(scheduledJob.id, jobId))
 }
+
+/**
+ * Reporte la tache faute de budget d'envoi (s52, ADR 053) : echeance
+ * reportee, verrou leve, la tentative comptee a la prise est rendue.
+ */
+export const deferJobTxnDao = async (
+  jobId: string,
+  runAfter: Date
+): Promise<void> => {
+  await getDb()
+    .update(scheduledJob)
+    .set({
+      lockedAt: null,
+      runAfter,
+      attempts: sql`greatest(${scheduledJob.attempts} - 1, 0)`,
+      updatedAt: sql`now()`,
+    })
+    .where(eq(scheduledJob.id, jobId))
+}

@@ -6,6 +6,7 @@ import {getAllOrganizationIdsDao} from '@/db/repositories/organization-repositor
 import {
   claimDueJobsTxnDao,
   completeJobTxnDao,
+  deferJobTxnDao,
   failJobTxnDao,
   releaseJobTxnDao,
   rescheduleJobTxnDao,
@@ -65,6 +66,8 @@ const writeOutcome = async (
       return failJobTxnDao(jobId)
     case 'released':
       return releaseJobTxnDao(jobId)
+    case 'deferred':
+      return deferJobTxnDao(jobId, outcome.runAfter)
   }
 }
 

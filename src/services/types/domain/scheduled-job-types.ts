@@ -29,6 +29,11 @@ export type ScheduledJobOutcome =
   | {status: 'failed'}
   /** Rendue sans avoir ete tentee : la tentative n'est pas comptee. */
   | {status: 'released'}
+  /**
+   * Reportee faute de budget d'envoi du jour (s52, ADR 053) : reprogrammee a
+   * `runAfter`, sans compter de tentative. Un report n'est pas un echec.
+   */
+  | {status: 'deferred'; runAfter: Date}
 
 export type ScheduledJobHandler = (
   job: ScheduledJob,
@@ -64,3 +69,9 @@ export const SCHEDULED_JOBS_BATCH_SIZE = 20
 
 /** La livraison d'une part de campagne (s26). Cle : l'identifiant de la part. */
 export const CAMPAIGN_DELIVER_PART_JOB_KIND = 'campaign.deliver_part'
+
+/**
+ * Le rejeu d'un email reporte faute de budget (s52, ADR 053). Cle et
+ * `payload` : l'identifiant de la ligne `deferred_email`, jamais son contenu.
+ */
+export const EMAIL_DELIVER_DEFERRED_JOB_KIND = 'email.deliver_deferred'

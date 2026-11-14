@@ -14,7 +14,13 @@ export type PlannedCampaignPart = {day: string; count: number}
 export type AllottedByDay = Readonly<Record<string, number>>
 
 const DAY_MS = 24 * 60 * 60 * 1000
+const HOUR_MS = 60 * 60 * 1000
 const PARIS_TIME_ZONE = 'Europe/Paris'
+/**
+ * Heure de Paris avant laquelle rien de reportable ne part un jour suivant
+ * (ADR 053 §6) : couvre une remise a zero du fournisseur a minuit UTC.
+ */
+const NEXT_DAY_SEND_HOUR = 2
 
 /** Le jour calendaire `days` jours apres (ou avant) `day`, sans fuseau. */
 export const addDays = (day: string, days: number): string =>
@@ -89,12 +95,49 @@ export const parisDayStart = (day: string): Date => {
   return new Date(utcMidnight.getTime() - parisOffsetMsAt(utcMidnight))
 }
 
+/** Jour et heure de Paris d'un instant, pour comparaison lexicale. */
+const parisDayAndHour = (instant: Date): string => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: PARIS_TIME_ZONE,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+    })
+      .formatToParts(instant)
+      .map(({type, value}) => [type, value])
+  )
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}`
+}
+
+/**
+ * Le premier instant du jour `day` ou Paris lit 02:00 ou plus. Paris est a
+ * UTC+1 ou UTC+2 : l'instant est l'un des deux candidats, le plus tot qui
+ * convient. Le jour du passage a l'heure d'ete, 02:00 n'existe pas : 03:00.
+ * Jamais avant minuit UTC du meme jour.
+ */
+export const parisTwoAm = (day: string): Date => {
+  const wallClockAsUtc = Date.parse(
+    `${day}T${String(NEXT_DAY_SEND_HOUR).padStart(2, '0')}:00:00Z`
+  )
+  const target = `${day}T${String(NEXT_DAY_SEND_HOUR).padStart(2, '0')}`
+  const candidates = [2, 1].map(
+    (offsetHours) => new Date(wallClockAsUtc - offsetHours * HOUR_MS)
+  )
+  return (
+    candidates.find((candidate) => parisDayAndHour(candidate) >= target) ??
+    candidates[1]
+  )
+}
+
 /**
  * L'echeance de la tache d'une part : maintenant pour une part du jour (ou en
- * retard), minuit a Paris pour une part d'un jour suivant.
+ * retard), 02:00 a Paris pour une part d'un jour suivant (ADR 053 §6).
  */
 export const partRunAfter = (day: string, now: Date): Date => {
-  const start = parisDayStart(day)
+  const start = parisTwoAm(day)
   return start.getTime() > now.getTime() ? start : now
 }
 

@@ -337,7 +337,7 @@ Entités ajoutées par ASL-CMS, par domaine :
   membre**, `member_id` nullable sans clé étrangère, jamais écrit — s22 (variante membre identifiée)
   posera la contrainte. Destinataires de l'avertissement : l'adresse de contact des Réglages, lue à
   l'envoi, **plus** l'adresse de routage de la catégorie, dédupliquées, un envoi par destinataire.
-- **Communication** — `email_template`, `campaign`, `recipient_group`, `unsubscribe`, `daily_send_budget`,
+- **Communication** — `email_template`, `campaign`, `recipient_group`, `unsubscribe`, `email_send_budget`,
   et `scheduled_job` (ADR 006). Chaque modèle porte une **nature** : un désinscrit sort des envois
   facultatifs, reste dans les envois statutaires. La classification est une **donnée de configuration**,
   à confirmer par le conseil RGPD — pas une constante.
@@ -349,10 +349,10 @@ Entités ajoutées par ASL-CMS, par domaine :
   (`src/services/authorization/action-registry-authorization.ts`) le lit pour trancher. s37
   ajoutera la table de surcharge par tenant, qui composera avec ce registre sans le remplacer.
 
-### Classement RLS des 43 tables du schéma
+### Classement RLS des 45 tables du schéma
 
 Le critère 9 de s01 exige que l'ensemble des tables **exemptées** soit exactement celui listé ici.
-Les 43 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12, plus `member_role_event` de s14, plus `impersonation_event` de s48, plus `member_note` de s24, plus `campaign`, `campaign_recipient` et `member_unsubscribe` de s25, plus `scheduled_job` et `campaign_part` de s26) sont donc toutes classées, sans reste. Toute
+Les 45 tables du schéma (20 après le retrait ADR 009, plus `organization_setting` de s02, plus `rate_limit_event` de s03, plus `page` et `content_block` de s04, plus `menu_item` de s04b, plus `news` de s05, plus `board_member` de s06, plus `contact_message` de s08, plus `water_analysis` de s09, plus `association_category`, `incident_report` et `incident_report_event` de s10, plus `member_profile`, `parcel` et `parcel_ownership` de s12, plus `member_role_event` de s14, plus `impersonation_event` de s48, plus `member_note` de s24, plus `campaign`, `campaign_recipient` et `member_unsubscribe` de s25, plus `scheduled_job` et `campaign_part` de s26, plus `email_send_budget` et `deferred_email` de s52) sont donc toutes classées, sans reste. Toute
 addition à cette liste se justifie en revue, et chaque ligne ci-dessous porte sa justification.
 
 Le classement est tenu par un test (`src/db/rls-inventory.test.ts`, hors du glob de schéma de
@@ -361,7 +361,7 @@ déclarations `pgTable` et les `FORCE ROW LEVEL SECURITY` des migrations, et éc
 manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la dérive de
 `rate_limit_event`, scopée en s03 mais classée seulement en s05, qui l'a motivé.
 
-**Scopée par une policy RLS forcée** — 24 tables
+**Scopée par une policy RLS forcée** — 26 tables
 
 | Table                   | Pourquoi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -389,6 +389,8 @@ manque au classement ou si un décompte ci-dessous ne correspond plus. C'est la 
 | `member_unsubscribe`    | Le refus d'une fiche de recevoir les campagnes (ADR 051, s25), une ligne par fiche, jamais par adresse. Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0044`). Fiche en `CASCADE`, campagne d'origine en `SET NULL`. s38 et s40 devront la déclarer.                                                                                                                                                                                                                                                                       |
 | `scheduled_job`         | Planificateur en base (ADR 006, ADR 052, s26) : une tâche due par ligne (`kind`, `run_after`, `payload` jsonb **d'identifiants seulement**, `attempts`, `locked_at`, `completed_at`, `failed_at`). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0046`) : le passage ouvre un `withTenant` par association, jamais `withRlsBypass`. `UNIQUE (organization_id, kind, idempotency_key)`. s29, s38 et s52 la réutilisent.                                                                                                    |
 | `campaign_part`         | Une part quotidienne d'une campagne (ADR 052, s26) : jour de Paris, nombre de destinataires, statut `scheduled` / `sending` / `sent` / `failed`. Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0046`), sans jointure. `UNIQUE (campaign_id, number)` ; campagne en `CASCADE`. Chaque `campaign_recipient` porte son `part_id` (rattrapage des campagnes de s25 : `0047`).                                                                                                                                                 |
+| `email_send_budget`     | Budget d'envoi quotidien d'une association (ADR 053, s52) : une ligne par `(organization_id, day)` (jour de Paris), `reportable_count` et `login_count`. Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0050`). Un envoi reportable s'accorde par un incrément **conditionnel** (`ON CONFLICT DO UPDATE … WHERE reportable_count + 1 <= limite − réserve`) ; la connexion s'incrémente sans plafond. Remplace la `daily_send_budget` prévue.                                                                               |
+| `deferred_email`        | Email reporté faute de budget (ADR 053, s52) : message **déjà rendu** (destinataire, objet, texte, HTML, en-têtes), `send_on` (jour de Paris), statut `pending` / `sending` / `to_verify`, référence d'affichage (type + id). Porte son propre `organization_id`, policy `tenant_isolation` forcée (`0050`). **Supprimé une fois parti** ; la vue du bureau ne lit ni l'adresse ni le contenu. Rejoué par la tâche `email.deliver_deferred` du planificateur.                                                                                      |
 
 **Plan identité — exemptées** (ADR 014) : ces tables ne portent aucune donnée de l'association et
 répondent à « qui est cet utilisateur, et où a-t-il le droit d'aller ». Elles sont lues **avant**
@@ -438,6 +440,18 @@ fournit toujours la version texte et confie le message au transport actif. **Auc
 un SDK de fournisseur** : `resend` n'est importé que par son adaptateur (un test le vérifie). Un échec
 d'envoi est une `EmailTransportError`, quel que soit le fournisseur.
 
+**Le budget quotidien se tient dans l'adaptateur** (s52, ADR 053). `sendEmailService(payload, context)`
+reçoit une portée **obligatoire** — `{scope: 'tenant', organizationId, nature}` ou
+`{scope: 'platform', nature}` — et rend `sent | deferred | skipped`. Un envoi de plateforme ne touche
+aucun budget. Un envoi d'association est décompté sur `email_send_budget` (jour de Paris) : `login` (lien
+de connexion) toujours accordé et décompté ; tout autre envoi accordé par un incrément conditionnel
+plafonné à `limite − réserve` (réglages `email.daily_send_limit` et `email.login_reserve`, modifiables par
+le SuperAdmin seul). Refusé, il est **reporté** : le message rendu est conservé dans `deferred_email` avec
+sa tâche `email.deliver_deferred` (même transaction), rejouée au plus tôt le lendemain à **02:00 heure de
+Paris**, puis supprimé une fois parti. Une campagne n'est jamais copiée : son destinataire reste
+`pending` et la tâche de la part est reportée sans tentative comptée. Le bureau lit le jour et les envois
+en attente sur `/bureau/envois`.
+
 | `EMAIL_TRANSPORT` | Implémentation                                                 | Usage                                  | Variable exigée  |
 | ----------------- | -------------------------------------------------------------- | -------------------------------------- | ---------------- |
 | `brevo`           | `POST https://api.brevo.com/v3/smtp/email` par `fetch`         | **production** (doit y être déclaré)   | `BREVO_API_KEY`  |
@@ -470,7 +484,8 @@ returning count`, sans verrou applicatif) ; le changement de jour remet le compt
   accès internet** : aucune IP n'est lue ici (la première entrée de `x-forwarded-for` est fournie par le
   client) — l'ouverture du lien, elle, est limitée par IP côté Better Auth (point suivant).
   Compromis accepté : un tiers peut épuiser les demandes du jour d'un membre, que l'écran B renvoie vers le
-  bureau. Le budget quotidien Brevo (et le transport de secours au-delà) reste l'affaire de s26.
+  bureau. Le budget quotidien d'envoi est tenu par l'adaptateur (s52, ADR 053) : le lien de connexion y
+  est décompté sans jamais être refusé.
 - **L'ouverture du lien est limitée par Better Auth, par IP : 30 par minute** (`rateLimit` passé à
   `magicLink()`, `MAGIC_LINK_VERIFY_RATE_LIMIT` dans `magic-link-constants.ts`). Le plugin pose lui-même une
   règle de débit sur ses deux routes, et son défaut — 5 par minute — ne garde en pratique que

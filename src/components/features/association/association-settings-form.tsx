@@ -29,6 +29,7 @@ import {
   AssociationSettingSection,
   ChoiceSettingDefinition,
   extractGoogleVerificationCode,
+  isSuperAdminOnlySetting,
   NumberSettingDefinition,
   ResolvedAssociationSettings,
   TextSettingDefinition,
@@ -51,6 +52,12 @@ type AssociationSettingsFormProps = {
   definitions: readonly AssociationSettingDefinition[]
   settings: ResolvedAssociationSettings
   saveAction: AssociationSettingsSaveAction
+  /**
+   * Le SuperAdmin agit (s52, ADR 053) : les reglages qui lui sont reserves
+   * sont modifiables. Sinon ils s'affichent en lecture seule et ne sont
+   * jamais envoyes.
+   */
+  canEditSuperAdminOnly?: boolean
 }
 
 /** Valeurs indexees par cle du registre. */
@@ -104,10 +111,15 @@ const settingsCardsOf = (
  */
 const initialValue = (
   definition: AssociationSettingDefinition,
-  settings: ResolvedAssociationSettings
+  settings: ResolvedAssociationSettings,
+  readOnlyKeys: ReadonlySet<string>
 ): string => {
   const resolved = settings[definition.key]
-  if (definition.type === 'boolean' || definition.type === 'choice') {
+  if (
+    definition.type === 'boolean' ||
+    definition.type === 'choice' ||
+    readOnlyKeys.has(definition.key)
+  ) {
     return resolved?.value === null || resolved?.value === undefined
       ? ''
       : String(resolved.value)
@@ -117,13 +129,26 @@ const initialValue = (
 
 const initialFormValues = (
   definitions: readonly AssociationSettingDefinition[],
-  settings: ResolvedAssociationSettings
+  settings: ResolvedAssociationSettings,
+  readOnlyKeys: ReadonlySet<string>
 ): AssociationSettingsFormValues =>
   Object.fromEntries(
     definitions.map((definition) => [
       toSettingFieldName(definition.key),
-      initialValue(definition, settings),
+      initialValue(definition, settings, readOnlyKeys),
     ])
+  )
+
+const readOnlyKeysOf = (
+  definitions: readonly AssociationSettingDefinition[],
+  canEditSuperAdminOnly: boolean
+): ReadonlySet<string> =>
+  new Set(
+    canEditSuperAdminOnly
+      ? []
+      : definitions
+          .filter(isSuperAdminOnlySetting)
+          .map((definition) => definition.key)
   )
 
 const storedKeysOf = (
@@ -148,10 +173,12 @@ const changesToSend = (
   definitions: readonly AssociationSettingDefinition[],
   values: AssociationSettingsFormValues,
   baseline: AssociationSettingsFormValues,
-  storedKeys: ReadonlySet<string>
+  storedKeys: ReadonlySet<string>,
+  readOnlyKeys: ReadonlySet<string>
 ): Values =>
   Object.fromEntries(
     definitions
+      .filter((definition) => !readOnlyKeys.has(definition.key))
       .map((definition) => {
         const name = toSettingFieldName(definition.key)
         return [definition.key, values[name] ?? '', baseline[name]] as const
@@ -182,12 +209,43 @@ const nextStoredKeys = (
 
 const settingErrorOf = (
   definition: AssociationSettingDefinition,
-  errors: FieldErrors<AssociationSettingsFormValues>
-): AssociationSettingError | undefined =>
-  toSettingError(
+  errors: FieldErrors<AssociationSettingsFormValues>,
+  values: Partial<AssociationSettingsFormValues> = {},
+  settings: ResolvedAssociationSettings = {}
+): AssociationSettingError | undefined => {
+  const error = toSettingError(
     definition,
     errors[toSettingFieldName(definition.key)]?.message
   )
+  if (
+    error?.code !== 'notBelow' ||
+    definition.type !== 'number' ||
+    !definition.lessThanKey
+  ) {
+    return error
+  }
+  return {
+    code: error.code,
+    max: referenceValueOf(definition.lessThanKey, values, settings),
+  }
+}
+
+/**
+ * La valeur d'une cle de reference d'un controle croise (s52) : telle que
+ * saisie, sinon telle qu'en vigueur.
+ */
+const referenceValueOf = (
+  key: string,
+  values: Partial<AssociationSettingsFormValues>,
+  settings: ResolvedAssociationSettings
+): number | undefined => {
+  const typed = values[toSettingFieldName(key)]?.trim()
+  const value = typed || settings[key]?.value
+  const number = Number(value)
+  return value === undefined || value === null || Number.isNaN(number)
+    ? undefined
+    : number
+}
 
 /**
  * Formulaire des reglages d'une association (s02, ecran B), **genere par le
@@ -200,18 +258,22 @@ export function AssociationSettingsForm({
   definitions,
   settings,
   saveAction,
+  canEditSuperAdminOnly = false,
 }: AssociationSettingsFormProps) {
   const t = useTranslations('BureauSettingsPage')
+  const [readOnlyKeys] = useState(() =>
+    readOnlyKeysOf(definitions, canEditSuperAdminOnly)
+  )
   const form = useForm<AssociationSettingsFormValues>({
     resolver: zodResolver(createAssociationSettingsFormSchema(definitions)),
-    defaultValues: initialFormValues(definitions, settings),
+    defaultValues: initialFormValues(definitions, settings, readOnlyKeys),
     mode: 'onBlur',
     reValidateMode: 'onChange',
     shouldFocusError: false,
   })
   const watchedValues = useWatch({control: form.control})
   const [baseline, setBaseline] = useState<AssociationSettingsFormValues>(() =>
-    initialFormValues(definitions, settings)
+    initialFormValues(definitions, settings, readOnlyKeys)
   )
   const [storedKeys, setStoredKeys] = useState(() =>
     storedKeysOf(definitions, settings)
@@ -261,7 +323,13 @@ export function AssociationSettingsForm({
   const onValid = async (values: AssociationSettingsFormValues) => {
     setShowSummary(false)
     setFeedback({status: 'idle'})
-    const sent = changesToSend(definitions, values, baseline, storedKeys)
+    const sent = changesToSend(
+      definitions,
+      values,
+      baseline,
+      storedKeys,
+      readOnlyKeys
+    )
     try {
       applyResult(
         await saveAction(undefined, changesToFormData(sent)),
@@ -325,7 +393,13 @@ export function AssociationSettingsForm({
                   <SettingField
                     definition={definition}
                     value={field.value ?? ''}
-                    error={settingErrorOf(definition, errors)}
+                    error={settingErrorOf(
+                      definition,
+                      errors,
+                      watchedValues,
+                      settings
+                    )}
+                    readOnly={readOnlyKeys.has(definition.key)}
                     currentValue={savedValues[definition.key] ?? ''}
                     defaultValue={effectiveDefault(
                       definition,
@@ -394,6 +468,8 @@ type SettingFieldProps = {
   currentValue: string
   defaultValue?: string
   disabled: boolean
+  /** Reglage reserve au SuperAdmin, lu par le bureau (s52). */
+  readOnly?: boolean
   onChange: (value: string) => void
   onBlur: () => void
 }
@@ -437,6 +513,7 @@ function SettingField(fieldProps: SettingFieldProps) {
   const describedBy = error ? `${helpId} ${errorId}` : helpId
   const showDefault =
     !error &&
+    !props.readOnly &&
     !definition.required &&
     value.trim() === '' &&
     defaultValue !== undefined &&
@@ -525,6 +602,9 @@ function SettingField(fieldProps: SettingFieldProps) {
           {t(definition.whenEmptyKey)}
         </p>
       )}
+      {props.readOnly && (
+        <p className="text-muted-foreground text-base">{t('superAdminOnly')}</p>
+      )}
       {showDefault && (
         <p className="text-foreground text-base">
           {definition.whenEmptyKey
@@ -566,6 +646,7 @@ function TextControl({
   value,
   error,
   disabled,
+  readOnly,
   onChange,
   onBlur,
   type,
@@ -584,9 +665,10 @@ function TextControl({
       inputMode={inputMode}
       value={value}
       disabled={disabled}
+      readOnly={readOnly}
       aria-invalid={error ? true : undefined}
       aria-describedby={describedBy}
-      className={cn(invalidClass, className)}
+      className={cn(invalidClass, readOnly && 'bg-muted', className)}
       onChange={(event) => onChange(event.target.value)}
       onBlur={onBlur}
     />

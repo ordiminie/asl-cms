@@ -17,6 +17,8 @@ import {
   CONTACT_EMAIL_SETTING_KEY,
   CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   DEFAULT_ACCENT_HUE,
+  EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+  EMAIL_LOGIN_RESERVE_SETTING_KEY,
   extractGoogleVerificationCode,
   FORAGE_EMAIL_SETTING_KEY,
   getAccentHue,
@@ -24,11 +26,14 @@ import {
   getCampaignDailySendCap,
   getCampaignSendMaxAttempts,
   getContactMessagesPerHourLimit,
+  getEmailDailySendLimit,
+  getEmailLoginReserve,
   getGoogleVerificationCode,
   getMagicLinkDailyRequestLimit,
   getSettingsForPage,
   GOOGLE_VERIFICATION_SETTING_KEY,
   hasSettingReferenceCycle,
+  isSuperAdminOnlySetting,
   MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
   parseSettingValue,
   resolveSettings,
@@ -115,6 +120,18 @@ describe('registre de production', () => {
       {
         key: ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
         type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: EMAIL_LOGIN_RESERVE_SETTING_KEY,
+        type: 'number',
         required: false,
         page: 'settings',
       },
@@ -418,6 +435,8 @@ describe('registre de production', () => {
       GOOGLE_VERIFICATION_SETTING_KEY,
       ASSOCIATION_LEGAL_NAME_SETTING_KEY,
       ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
+      EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+      EMAIL_LOGIN_RESERVE_SETTING_KEY,
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
     ])
@@ -790,6 +809,8 @@ describe('registre — carte « Referencement » (s11)', () => {
       GOOGLE_VERIFICATION_SETTING_KEY,
       ASSOCIATION_LEGAL_NAME_SETTING_KEY,
       ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY,
+      EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+      EMAIL_LOGIN_RESERVE_SETTING_KEY,
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
     ])
@@ -918,5 +939,156 @@ describe('lecture des reglages de referencement (s11)', () => {
       {key: GOOGLE_VERIFICATION_SETTING_KEY, value: 'abc def'},
     ])
     expect(getGoogleVerificationCode(settings)).toBeUndefined()
+  })
+})
+
+describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
+  const limit = () =>
+    definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      EMAIL_DAILY_SEND_LIMIT_SETTING_KEY
+    )
+  const reserve = () =>
+    definitionOf(ASSOCIATION_SETTINGS_REGISTRY, EMAIL_LOGIN_RESERVE_SETTING_KEY)
+
+  it('la limite est un entier d’au moins 1, 300 par défaut, en tête de la carte « Envois », réservée au SuperAdmin', () => {
+    expect(EMAIL_DAILY_SEND_LIMIT_SETTING_KEY).toBe('email.daily_send_limit')
+    expect(limit()).toMatchObject({
+      type: 'number',
+      integer: true,
+      min: 1,
+      default: {value: '300'},
+      unitKey: 'units.sendsPerDay',
+      section: 'sending',
+      editableBy: 'super_admin',
+    })
+    expect(parseSettingValue(limit(), '0')).toMatchObject({valid: false})
+    expect(parseSettingValue(limit(), '1')).toMatchObject({valid: true})
+    const sending = getSettingsForPage(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      'settings'
+    ).filter((definition) => definition.section === 'sending')
+    expect(sending.map(({key}) => key).slice(0, 2)).toEqual([
+      EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+      EMAIL_LOGIN_RESERVE_SETTING_KEY,
+    ])
+  })
+
+  it('la réserve est un entier d’au moins 0, 100 par défaut, réservée au SuperAdmin', () => {
+    expect(EMAIL_LOGIN_RESERVE_SETTING_KEY).toBe('email.login_reserve')
+    expect(reserve()).toMatchObject({
+      type: 'number',
+      integer: true,
+      min: 0,
+      default: {value: '100'},
+      section: 'sending',
+      editableBy: 'super_admin',
+      lessThanKey: EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+    })
+    expect(parseSettingValue(reserve(), '-1')).toMatchObject({valid: false})
+    expect(parseSettingValue(reserve(), '0')).toMatchObject({valid: true})
+  })
+
+  it('seules la limite et la réserve sont réservées au SuperAdmin', () => {
+    expect(
+      ASSOCIATION_SETTINGS_REGISTRY.filter(isSuperAdminOnlySetting).map(
+        ({key}) => key
+      )
+    ).toEqual([
+      EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+      EMAIL_LOGIN_RESERVE_SETTING_KEY,
+    ])
+  })
+
+  it('les accesseurs rendent 300 et 100 par défaut, sinon la valeur réglée', () => {
+    const defaults = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+    expect(getEmailDailySendLimit(defaults)).toBe(300)
+    expect(getEmailLoginReserve(defaults)).toBe(100)
+
+    const custom = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {key: EMAIL_DAILY_SEND_LIMIT_SETTING_KEY, value: '500'},
+      {key: EMAIL_LOGIN_RESERVE_SETTING_KEY, value: '50'},
+    ])
+    expect(getEmailDailySendLimit(custom)).toBe(500)
+    expect(getEmailLoginReserve(custom)).toBe(50)
+  })
+
+  it('refuse une réserve égale à la limite, l’erreur sur le champ de la réserve', () => {
+    expect(
+      validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, {
+        [EMAIL_DAILY_SEND_LIMIT_SETTING_KEY]: '300',
+        [EMAIL_LOGIN_RESERVE_SETTING_KEY]: '300',
+      })
+    ).toEqual({
+      valid: false,
+      errors: {[EMAIL_LOGIN_RESERVE_SETTING_KEY]: {code: 'notBelow', max: 300}},
+    })
+  })
+
+  it('le contrôle croisé lit la valeur enregistrée de l’autre clé', () => {
+    const stored = [{key: EMAIL_LOGIN_RESERVE_SETTING_KEY, value: '80'}]
+    expect(
+      validateSettingsChanges(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        {[EMAIL_DAILY_SEND_LIMIT_SETTING_KEY]: '80'},
+        stored
+      )
+    ).toEqual({
+      valid: false,
+      errors: {[EMAIL_LOGIN_RESERVE_SETTING_KEY]: {code: 'notBelow', max: 80}},
+    })
+    expect(
+      validateSettingsChanges(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        {[EMAIL_DAILY_SEND_LIMIT_SETTING_KEY]: '81'},
+        stored
+      )
+    ).toMatchObject({valid: true})
+  })
+
+  it('sans valeur enregistrée, le contrôle croisé lit le défaut du registre', () => {
+    expect(
+      validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, {
+        [EMAIL_DAILY_SEND_LIMIT_SETTING_KEY]: '100',
+      })
+    ).toMatchObject({
+      valid: false,
+      errors: {[EMAIL_LOGIN_RESERVE_SETTING_KEY]: {code: 'notBelow'}},
+    })
+  })
+
+  it('ne contrôle rien quand ni la limite ni la réserve ne changent', () => {
+    expect(
+      validateSettingsChanges(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        {[CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY]: '100'},
+        [
+          {key: EMAIL_DAILY_SEND_LIMIT_SETTING_KEY, value: '50'},
+          {key: EMAIL_LOGIN_RESERVE_SETTING_KEY, value: '50'},
+        ]
+      )
+    ).toMatchObject({valid: true})
+  })
+
+  it('libellés, aides et message du contrôle croisé en français, aide du plafond raccourcie', () => {
+    const fields = fr.AssociationSettings.fields as Record<
+      string,
+      {label: string; help: string; errors?: Record<string, string>}
+    >
+    expect(fields.emailDailySendLimit.label).toBe(
+      'Limite d’envoi quotidienne de la messagerie'
+    )
+    expect(fields.emailDailySendLimit.help).toContain('Par défaut : 300.')
+    expect(fields.emailLoginReserve.label).toBe(
+      'Envois gardés pour la connexion'
+    )
+    expect(fields.emailLoginReserve.help).toContain('Par défaut : 100.')
+    expect(fields.emailLoginReserve.errors?.notBelow).toBe(
+      'Gardez moins d’envois que la limite quotidienne ({max}).'
+    )
+    expect(fields.campaignDailySendCap.help).toBe(
+      'Nombre maximum d’emails de campagne envoyés par jour, toutes campagnes confondues. Par défaut : 100.'
+    )
+    expect(fr.AssociationSettings.superAdminOnly).toEqual(expect.any(String))
   })
 })

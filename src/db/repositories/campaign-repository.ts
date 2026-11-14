@@ -11,6 +11,7 @@ import {
   ne,
   sql,
 } from 'drizzle-orm'
+import {alias} from 'drizzle-orm/pg-core'
 
 import {
   AddCampaignModel,
@@ -25,7 +26,9 @@ import {
 } from '@/db/models/campaign-model'
 import {memberProfile} from '@/db/models/member-profile-model'
 import {parcel, parcelOwnership} from '@/db/models/parcel-model'
+import {scheduledJob} from '@/db/models/scheduled-job-model'
 import {getDb} from '@/db/tenant-scope'
+import {CAMPAIGN_DELIVER_PART_JOB_KIND} from '@/services/types/domain/scheduled-job-types'
 
 /**
  * Campagnes email (s25, ADR 051). Sous RLS forcee : hors
@@ -66,6 +69,14 @@ export type CampaignPartRowModel = {
   scheduledFor: string
   recipientCount: number
   status: CampaignPartStatusModel
+}
+
+/**
+ * Une part lue avec l'echeance de sa tache encore ouverte, ou rien (s52) :
+ * apres le jour de la part, elle dit que le reste a ete reporte.
+ */
+export type CampaignPartWithJobRowModel = CampaignPartRowModel & {
+  nextRunAfter: Date | null
 }
 
 export type CampaignRecipientInput = {
@@ -640,10 +651,10 @@ export const finishCampaignTxnDao = async (
 /** Les parts des campagnes donnees, dans l'ordre de leur numero. */
 export const getCampaignPartsDao = async (
   campaignIds: string[]
-): Promise<CampaignPartRowModel[]> => {
+): Promise<CampaignPartWithJobRowModel[]> => {
   if (campaignIds.length === 0) return []
 
-  return getDb()
+  const rows = await getDb()
     .select({
       id: campaignPart.id,
       campaignId: campaignPart.campaignId,
@@ -651,10 +662,25 @@ export const getCampaignPartsDao = async (
       scheduledFor: campaignPart.scheduledFor,
       recipientCount: campaignPart.recipientCount,
       status: campaignPart.status,
+      nextRunAfter: scheduledJob.runAfter,
     })
     .from(campaignPart)
+    .leftJoin(
+      scheduledJob,
+      and(
+        eq(scheduledJob.organizationId, campaignPart.organizationId),
+        eq(scheduledJob.kind, CAMPAIGN_DELIVER_PART_JOB_KIND),
+        sql`${scheduledJob.idempotencyKey} = ${campaignPart.id}::text`,
+        isNull(scheduledJob.completedAt),
+        isNull(scheduledJob.failedAt)
+      )
+    )
     .where(inArray(campaignPart.campaignId, campaignIds))
     .orderBy(asc(campaignPart.campaignId), asc(campaignPart.number))
+  return rows.map((row) => ({
+    ...row,
+    nextRunAfter: row.nextRunAfter ? new Date(row.nextRunAfter) : null,
+  }))
 }
 
 export type RecipientStatusCountRowModel = {
@@ -760,4 +786,70 @@ export const getCampaignRecipientsPageDao = async (
     })),
     total,
   }
+}
+
+export type OpenCampaignPartRowModel = {
+  partId: string
+  campaignId: string
+  campaignSubject: string
+  number: number
+  partCount: number
+  scheduledFor: string
+  status: CampaignPartStatusModel
+  /** Echeance de la tache encore ouverte de la part, ou rien. */
+  nextRunAfter: Date | null
+  pendingCount: number
+}
+
+const siblingPart = alias(campaignPart, 'sibling_part')
+
+/**
+ * Les parts non closes de l'association, avec l'objet de leur campagne,
+ * l'echeance de leur tache ouverte et leurs destinataires en attente (s52,
+ * envois en attente du bureau). Ni adresse ni contenu.
+ */
+export const getOpenCampaignPartsDao = async (
+  organizationId: string
+): Promise<OpenCampaignPartRowModel[]> => {
+  const rows = await getDb()
+    .select({
+      partId: campaignPart.id,
+      campaignId: campaignPart.campaignId,
+      campaignSubject: campaign.subject,
+      number: campaignPart.number,
+      partCount:
+        sql<number>`(select count(*) from ${siblingPart} where ${siblingPart.campaignId} = ${campaignPart.campaignId})`.mapWith(
+          Number
+        ),
+      scheduledFor: campaignPart.scheduledFor,
+      status: campaignPart.status,
+      nextRunAfter: scheduledJob.runAfter,
+      pendingCount:
+        sql<number>`(select count(*) from ${campaignRecipient} where ${campaignRecipient.partId} = ${campaignPart.id} and ${campaignRecipient.status} = ${'pending'})`.mapWith(
+          Number
+        ),
+    })
+    .from(campaignPart)
+    .innerJoin(campaign, eq(campaign.id, campaignPart.campaignId))
+    .leftJoin(
+      scheduledJob,
+      and(
+        eq(scheduledJob.organizationId, campaignPart.organizationId),
+        eq(scheduledJob.kind, CAMPAIGN_DELIVER_PART_JOB_KIND),
+        sql`${scheduledJob.idempotencyKey} = ${campaignPart.id}::text`,
+        isNull(scheduledJob.completedAt),
+        isNull(scheduledJob.failedAt)
+      )
+    )
+    .where(
+      and(
+        eq(campaignPart.organizationId, organizationId),
+        inArray(campaignPart.status, ['scheduled', 'sending'])
+      )
+    )
+    .orderBy(asc(campaignPart.scheduledFor), asc(campaignPart.number))
+  return rows.map((row) => ({
+    ...row,
+    nextRunAfter: row.nextRunAfter ? new Date(row.nextRunAfter) : null,
+  }))
 }

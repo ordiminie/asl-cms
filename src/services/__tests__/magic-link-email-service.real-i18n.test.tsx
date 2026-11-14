@@ -29,6 +29,31 @@ vi.mock('@/lib/stripe/stripe-utils', () => ({
   getFormattedPriceFromSubscription: vi.fn(),
   getSubscriptionDetails: vi.fn(),
 }))
+vi.mock('@/db/tenant-scope', () => ({
+  withTenant: vi.fn((_organizationId: string, callback: () => unknown) =>
+    callback()
+  ),
+}))
+vi.mock('@/db/repositories/email-send-budget-repository', () => ({
+  claimReportableSendTxnDao: vi.fn(async () => true),
+  countLoginSendTxnDao: vi.fn(async () => undefined),
+  refundReportableSendTxnDao: vi.fn(async () => undefined),
+}))
+vi.mock('@/db/repositories/deferred-email-repository', () => ({
+  createDeferredEmailTxnDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/scheduled-job-repository', () => ({
+  enqueueScheduledJobTxnDao: vi.fn(),
+}))
+vi.mock('@/services/association-settings-service', async () => {
+  const settings =
+    await import('@/services/types/domain/association-settings-types')
+  return {
+    getAssociationSettingsService: vi.fn(async () =>
+      settings.resolveSettings(settings.ASSOCIATION_SETTINGS_REGISTRY, [])
+    ),
+  }
+})
 
 import {getEmailTransport} from '@/lib/emails/transport'
 import {sendMagicLinkEmailService} from '@/services/email-service'
@@ -44,6 +69,7 @@ describe('sendMagicLinkEmailService — objet, pré-en-tête et version texte', 
 
   it('envoie l’email de l’association par le transport', async () => {
     await sendMagicLinkEmailService({
+      organizationId: '11111111-1111-4111-8111-111111111111',
       email: 'membre@exemple.test',
       url,
       association: {name: 'ASL Les Pins', hue: 195},
@@ -63,6 +89,7 @@ describe('sendMagicLinkEmailService — objet, pré-en-tête et version texte', 
 
   it('écrit objet, texte et HTML dans la locale reçue, même sans cookie de locale', async () => {
     await sendMagicLinkEmailService({
+      organizationId: '11111111-1111-4111-8111-111111111111',
       email: 'membre@exemple.test',
       url,
       association: {name: 'ASL Les Pins', hue: 195},

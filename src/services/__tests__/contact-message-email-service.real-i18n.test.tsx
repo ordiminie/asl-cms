@@ -29,6 +29,31 @@ vi.mock('@/lib/stripe/stripe-utils', () => ({
   getFormattedPriceFromSubscription: vi.fn(),
   getSubscriptionDetails: vi.fn(),
 }))
+vi.mock('@/db/tenant-scope', () => ({
+  withTenant: vi.fn((_organizationId: string, callback: () => unknown) =>
+    callback()
+  ),
+}))
+vi.mock('@/db/repositories/email-send-budget-repository', () => ({
+  claimReportableSendTxnDao: vi.fn(async () => true),
+  countLoginSendTxnDao: vi.fn(async () => undefined),
+  refundReportableSendTxnDao: vi.fn(async () => undefined),
+}))
+vi.mock('@/db/repositories/deferred-email-repository', () => ({
+  createDeferredEmailTxnDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/scheduled-job-repository', () => ({
+  enqueueScheduledJobTxnDao: vi.fn(),
+}))
+vi.mock('@/services/association-settings-service', async () => {
+  const settings =
+    await import('@/services/types/domain/association-settings-types')
+  return {
+    getAssociationSettingsService: vi.fn(async () =>
+      settings.resolveSettings(settings.ASSOCIATION_SETTINGS_REGISTRY, [])
+    ),
+  }
+})
 
 import {env} from '@/env'
 import {EmailTransportError, getEmailTransport} from '@/lib/emails/transport'
@@ -38,6 +63,8 @@ const MESSAGE_URL =
   'https://amis-etang.test/bureau/messages/33333333-3333-4333-8333-333333333333'
 
 const notification = (overrides: Record<string, unknown> = {}) => ({
+  organizationId: '11111111-1111-4111-8111-111111111111',
+  messageId: '22222222-2222-4222-8222-222222222222',
   to: 'bureau@amis-etang.test',
   locale: 'fr' as const,
   association: {name: "Les Amis de l'Étang", hue: 195 as const},

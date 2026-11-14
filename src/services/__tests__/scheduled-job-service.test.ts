@@ -20,6 +20,7 @@ vi.mock('@/db/repositories/scheduled-job-repository', () => ({
   enqueueScheduledJobTxnDao: vi.fn(),
   claimDueJobsTxnDao: vi.fn(),
   completeJobTxnDao: vi.fn(),
+  deferJobTxnDao: vi.fn(),
   rescheduleJobTxnDao: vi.fn(),
   failJobTxnDao: vi.fn(),
   releaseJobTxnDao: vi.fn(),
@@ -29,6 +30,7 @@ import {getAllOrganizationIdsDao} from '@/db/repositories/organization-repositor
 import {
   claimDueJobsTxnDao,
   completeJobTxnDao,
+  deferJobTxnDao,
   failJobTxnDao,
   releaseJobTxnDao,
   rescheduleJobTxnDao,
@@ -224,6 +226,22 @@ describe('runDueScheduledJobsService — un passage du planificateur', () => {
     expect(rescheduleJobTxnDao).toHaveBeenCalledWith('a', later)
     expect(failJobTxnDao).toHaveBeenCalledWith('b')
     expect(releaseJobTxnDao).toHaveBeenCalledWith('c')
+    expect(completeJobTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('une tâche reportée faute de budget est reprogrammée sans tentative comptée (s52, ADR 053)', async () => {
+    const tomorrow = new Date('2026-11-13T01:00:00.000Z')
+    queueOf([jobRow('a')])
+    handler.mockResolvedValueOnce({status: 'deferred', runAfter: tomorrow})
+
+    await runDueScheduledJobsService({
+      handlers: {[KIND]: handler},
+      now: NOW,
+      organizationId: ORG_ID,
+    })
+
+    expect(deferJobTxnDao).toHaveBeenCalledWith('a', tomorrow)
+    expect(rescheduleJobTxnDao).not.toHaveBeenCalled()
     expect(completeJobTxnDao).not.toHaveBeenCalled()
   })
 

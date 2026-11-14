@@ -39,7 +39,15 @@ type AssociationSettingDefinitionBase = {
   whenEmptyKey?: string
   page: AssociationSettingPage
   section?: AssociationSettingSection
+  /**
+   * Droit de modification restreint (s52, ADR 053) : `super_admin`, seul le
+   * SuperAdmin (ou une session ouverte a la place d'un compte par lui) peut le
+   * modifier ; le bureau le lit. Absent : le bureau le modifie.
+   */
+  editableBy?: AssociationSettingEditor
 }
+
+export type AssociationSettingEditor = 'super_admin'
 
 export type EmailSettingDefinition = AssociationSettingDefinitionBase & {
   type: 'email'
@@ -51,6 +59,11 @@ export type NumberSettingDefinition = AssociationSettingDefinitionBase & {
   max?: number
   integer?: boolean
   unitKey?: string
+  /**
+   * Controle croise (s52) : la valeur en vigueur doit rester strictement
+   * inferieure a celle de cette autre cle ; le refus porte sur ce champ-ci.
+   */
+  lessThanKey?: string
 }
 
 export type BooleanSettingDefinition = AssociationSettingDefinitionBase & {
@@ -104,6 +117,7 @@ export const ASSOCIATION_SETTING_ERROR_CODES = [
   'tooLong',
   'invalidCode',
   'unknownKey',
+  'notBelow',
 ] as const
 
 export type AssociationSettingErrorCode =
@@ -192,6 +206,16 @@ export const CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY = 'campaign.daily_send_cap'
  */
 export const CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY =
   'campaign.send_max_attempts'
+/**
+ * Emails envoyes au plus par jour (Paris) et par association, tous envois
+ * confondus (s52, ADR 053) : la limite du compte de messagerie.
+ */
+export const EMAIL_DAILY_SEND_LIMIT_SETTING_KEY = 'email.daily_send_limit'
+/**
+ * Part de la limite gardee pour les emails de connexion (s52, ADR 053) : les
+ * envois reportables consomment au plus `limite - reserve`.
+ */
+export const EMAIL_LOGIN_RESERVE_SETTING_KEY = 'email.login_reserve'
 /** Plafond de la raison sociale. */
 export const ASSOCIATION_LEGAL_NAME_MAX_LENGTH = 120
 /** Plafond des mentions du pied de page. */
@@ -346,6 +370,36 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     whenEmptyKey: 'fields.legalMentions.whenEmpty',
     page: 'settings',
     section: 'legal',
+  },
+  {
+    key: EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '300'},
+    min: 1,
+    integer: true,
+    unitKey: 'units.sendsPerDay',
+    labelKey: 'fields.emailDailySendLimit.label',
+    helpKey: 'fields.emailDailySendLimit.help',
+    page: 'settings',
+    section: 'sending',
+    editableBy: 'super_admin',
+  },
+  {
+    key: EMAIL_LOGIN_RESERVE_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '100'},
+    min: 0,
+    integer: true,
+    unitKey: 'units.sendsPerDay',
+    labelKey: 'fields.emailLoginReserve.label',
+    helpKey: 'fields.emailLoginReserve.help',
+    errorMessageKeys: {notBelow: 'fields.emailLoginReserve.errors.notBelow'},
+    page: 'settings',
+    section: 'sending',
+    editableBy: 'super_admin',
+    lessThanKey: EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
   },
   {
     key: CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
@@ -590,14 +644,57 @@ export const resolveSettings = (
   )
 }
 
+/** Vrai si seul le SuperAdmin peut modifier ce parametre (s52, ADR 053). */
+export const isSuperAdminOnlySetting = (
+  definition: AssociationSettingDefinition
+): boolean => definition.editableBy === 'super_admin'
+
+/**
+ * Controles croises (s52) : une cle `lessThanKey` doit rester strictement
+ * inferieure a sa reference, valeurs en vigueur apres le lot (enregistrees,
+ * modifiees, ou defaut). Ne juge que les paires touchees par le lot.
+ */
+const crossCheckErrors = (
+  registry: AssociationSettingsRegistry,
+  changes: Readonly<Record<string, string>>,
+  upserts: readonly AssociationSettingRow[],
+  deletions: readonly string[],
+  stored: readonly AssociationSettingRow[]
+): Record<string, AssociationSettingError> => {
+  const touched = new Set([...upserts.map(({key}) => key), ...deletions])
+  const after = resolveSettings(registry, [
+    ...stored.filter(({key}) => !(key in changes)),
+    ...upserts,
+  ])
+  const errors: Record<string, AssociationSettingError> = {}
+  for (const definition of registry) {
+    if (definition.type !== 'number' || !definition.lessThanKey) continue
+    if (!touched.has(definition.key) && !touched.has(definition.lessThanKey)) {
+      continue
+    }
+    const value = after[definition.key]?.value
+    const reference = after[definition.lessThanKey]?.value
+    if (
+      typeof value === 'number' &&
+      typeof reference === 'number' &&
+      value >= reference
+    ) {
+      errors[definition.key] = {code: 'notBelow', max: reference}
+    }
+  }
+  return errors
+}
+
 /**
  * Valide un lot de modifications, tout ou rien. Un parametre facultatif vide
  * est a supprimer (retour au defaut) ; un parametre obligatoire vide est
- * refuse ; une cle hors registre est refusee.
+ * refuse ; une cle hors registre est refusee. `stored` (valeurs enregistrees)
+ * sert aux controles croises : une cle absente du lot garde sa valeur.
  */
 export const validateSettingsChanges = (
   registry: AssociationSettingsRegistry,
-  changes: Readonly<Record<string, string>>
+  changes: Readonly<Record<string, string>>,
+  stored: readonly AssociationSettingRow[] = []
 ): AssociationSettingsChangesValidation => {
   const upserts: AssociationSettingRow[] = []
   const deletions: string[] = []
@@ -619,6 +716,13 @@ export const validateSettingsChanges = (
     const parsed = parseSettingValue(definition, raw)
     if (parsed.valid) upserts.push({key, value: parsed.normalized})
     else errors[key] = parsed.error
+  }
+
+  if (Object.keys(errors).length === 0) {
+    Object.assign(
+      errors,
+      crossCheckErrors(registry, changes, upserts, deletions, stored)
+    )
   }
 
   return Object.keys(errors).length > 0
@@ -702,3 +806,19 @@ export const getGoogleVerificationCode = (
   settings: ResolvedAssociationSettings
 ): string | undefined =>
   textSettingOf(settings, GOOGLE_VERIFICATION_SETTING_KEY)
+
+/**
+ * Emails envoyes au plus par jour par l'association, tous envois confondus
+ * (s52) : valeur du SuperAdmin, sinon defaut du registre.
+ */
+export const getEmailDailySendLimit = (
+  settings: ResolvedAssociationSettings
+): number => numberSettingOf(settings, EMAIL_DAILY_SEND_LIMIT_SETTING_KEY)
+
+/**
+ * Envois gardes chaque jour pour les emails de connexion (s52) : valeur du
+ * SuperAdmin, sinon defaut du registre.
+ */
+export const getEmailLoginReserve = (
+  settings: ResolvedAssociationSettings
+): number => numberSettingOf(settings, EMAIL_LOGIN_RESERVE_SETTING_KEY)

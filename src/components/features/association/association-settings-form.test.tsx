@@ -18,6 +18,8 @@ import {
   ASSOCIATION_DESCRIPTION_SETTING_KEY,
   ASSOCIATION_SETTINGS_REGISTRY,
   CONTACT_EMAIL_SETTING_KEY,
+  EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+  EMAIL_LOGIN_RESERVE_SETTING_KEY,
   FORAGE_EMAIL_SETTING_KEY,
   getSettingsForPage,
   GOOGLE_VERIFICATION_SETTING_KEY,
@@ -594,5 +596,88 @@ describe('AssociationSettingsForm — carte « Mentions des emails » (s25)', ()
       )
     ).toBeInTheDocument()
     expect(within(card).queryByLabelText('Adresse de contact')).toBeNull()
+  })
+})
+
+describe('AssociationSettingsForm — limite et réserve réservées au SuperAdmin (s52)', () => {
+  const sendingForm = (
+    canEditSuperAdminOnly: boolean,
+    saveAction: AssociationSettingsSaveAction = saved(),
+    rows = [
+      {key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT},
+      {key: EMAIL_DAILY_SEND_LIMIT_SETTING_KEY, value: '280'},
+    ]
+  ) =>
+    render(
+      <AssociationSettingsForm
+        definitions={getSettingsForPage(
+          ASSOCIATION_SETTINGS_REGISTRY,
+          'settings'
+        )}
+        settings={resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, rows)}
+        saveAction={saveAction}
+        canEditSuperAdminOnly={canEditSuperAdminOnly}
+      />
+    )
+  const sendingCard = () =>
+    screen
+      .getByRole('heading', {level: 3, name: 'Envois'})
+      .closest('[data-slot="card"]') as HTMLElement
+  const limitField = () =>
+    within(sendingCard()).getByLabelText(
+      /Limite d’envoi quotidienne de la messagerie/
+    )
+  const reserveField = () =>
+    within(sendingCard()).getByLabelText(/Envois gardés pour la connexion/)
+
+  it('le bureau lit la limite et la réserve en vigueur, sans pouvoir les modifier', () => {
+    sendingForm(false)
+
+    expect(limitField()).toHaveAttribute('readonly')
+    expect(limitField()).toHaveValue('280')
+    expect(reserveField()).toHaveAttribute('readonly')
+    expect(reserveField()).toHaveValue('100')
+    expect(limitField().closest('[data-setting]')).toHaveTextContent(
+      'Réglé par l’équipe technique de la plateforme'
+    )
+    expect(
+      within(sendingCard()).getByLabelText(/Plafond quotidien des campagnes/)
+    ).not.toHaveAttribute('readonly')
+  })
+
+  it('le bureau n’envoie jamais la limite ni la réserve', async () => {
+    const saveAction = saved()
+    sendingForm(false, saveAction)
+
+    await submit()
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    const formData = vi.mocked(saveAction).mock.calls[0][1]
+    expect(formData.has(EMAIL_DAILY_SEND_LIMIT_SETTING_KEY)).toBe(false)
+    expect(formData.has(EMAIL_LOGIN_RESERVE_SETTING_KEY)).toBe(false)
+  })
+
+  it('le SuperAdmin les modifie ; une réserve égale à la limite est refusée sous la réserve', async () => {
+    const saveAction = saved()
+    sendingForm(true, saveAction)
+
+    expect(limitField()).not.toHaveAttribute('readonly')
+    await userEvent.type(reserveField(), '280')
+    await submit()
+
+    expect(
+      await within(sendingCard()).findByText(
+        'Gardez moins d’envois que la limite quotidienne (280).'
+      )
+    ).toBeInTheDocument()
+    expect(saveAction).not.toHaveBeenCalled()
+
+    await userEvent.clear(reserveField())
+    await userEvent.type(reserveField(), '80')
+    await submit()
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    const formData = vi.mocked(saveAction).mock.calls[0][1]
+    expect(formData.get(EMAIL_DAILY_SEND_LIMIT_SETTING_KEY)).toBe('280')
+    expect(formData.get(EMAIL_LOGIN_RESERVE_SETTING_KEY)).toBe('80')
   })
 })

@@ -3,7 +3,21 @@ import {getLocale, getTranslations} from 'next-intl/server'
 import type {ReactNode} from 'react'
 import {render} from 'react-email'
 
+import {
+  claimDeferredEmailForSendTxnDao,
+  createDeferredEmailTxnDao,
+  deleteDeferredEmailTxnDao,
+  markDeferredEmailToVerifyTxnDao,
+  releaseDeferredEmailTxnDao,
+} from '@/db/repositories/deferred-email-repository'
+import {
+  claimReportableSendTxnDao,
+  countLoginSendTxnDao,
+  refundReportableSendTxnDao,
+} from '@/db/repositories/email-send-budget-repository'
+import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
+import {withTenant} from '@/db/tenant-scope'
 import {env} from '@/env'
 import {MAGIC_LINK_EXPIRES_IN_MINUTES} from '@/lib/better-auth/magic-link-constants'
 import AdminNotificationEmail from '@/lib/emails/admin-notification-email'
@@ -33,10 +47,14 @@ import SubscriptionCompletedMail from '@/lib/emails/subscription-completed-email
 import SubscriptionDeletedMail from '@/lib/emails/subscription-deleted-email'
 import SubscriptionUpdatedMail from '@/lib/emails/subscription-updated-email'
 import {getEmailTransport} from '@/lib/emails/transport'
-import {parseEmailAddress} from '@/lib/emails/transport/email-transport'
+import {
+  isEmailTransportError,
+  parseEmailAddress,
+} from '@/lib/emails/transport/email-transport'
 import VerificationEmail from '@/lib/emails/verification-email'
 import WelcomeFollowUpEmail from '@/lib/emails/welcome-follow-up-email'
 import type {SupportedLocale} from '@/lib/helper/locale-helper'
+import {logger} from '@/lib/logger'
 import {
   getFormattedPriceFromSubscription,
   getSubscriptionDetails,
@@ -46,9 +64,34 @@ import {
   getBooleanSettingService,
   getStringSettingService,
 } from './app-settings-service'
+import {getAssociationSettingsService} from './association-settings-service'
+import {retryDelayMs} from './rules/campaign-schedule-rules'
+import {
+  budgetDayOf,
+  deferredRunAfter,
+  deferredSendOn,
+  isDeferredByCaller,
+  isNeverDeferred,
+  reportableAllowance,
+} from './rules/email-budget-rules'
 import {getPlanByPriceIdService} from './subscription-service'
 import {AppSettingKeys} from './types/domain/app-settings-types'
+import {
+  getEmailDailySendLimit,
+  getEmailLoginReserve,
+} from './types/domain/association-settings-types'
 import {receivedAtPartsOf} from './types/domain/contact-message-types'
+import type {
+  EmailSendContext,
+  EmailSendResult,
+  TenantEmailSendContext,
+} from './types/domain/email-send-types'
+import {
+  EMAIL_DELIVER_DEFERRED_JOB_KIND,
+  type ScheduledJob,
+  type ScheduledJobHandlers,
+  type ScheduledJobOutcome,
+} from './types/domain/scheduled-job-types'
 
 const DEFAULT_EMAIL_FROM = 'onboarding@resend.dev'
 
@@ -108,12 +151,15 @@ export const sendSimpleEmailService = async ({
   text: string
 }) => {
   const fromEmail = await getEmailFrom()
-  await sendEmailService({
-    to,
-    subject,
-    text,
-    from: fromEmail,
-  })
+  await sendEmailService(
+    {
+      to,
+      subject,
+      text,
+      from: fromEmail,
+    },
+    {scope: 'platform', nature: 'onboarding'}
+  )
 }
 
 /**
@@ -138,40 +184,190 @@ export interface SendEmailOptions {
   recipientType?: EmailRecipientType
 }
 
-/**
- * Point d'envoi unique du produit : tout email part par le contrat
- * `EmailTransport` (ADR 005, ADR 017), jamais par un fournisseur directement.
- * Un echec du transport remonte tel quel (`EmailTransportError`).
- */
-export const sendEmailService = async (
-  payload: SendEmailPayload,
-  options?: SendEmailOptions
-) => {
-  const recipientType = options?.recipientType ?? 'client'
-  const canSend = await shouldSendEmail(recipientType)
-  if (!canSend) {
-    console.log('[EMAIL] Disabled by settings, skipping:', payload.subject)
-    return
-  }
+/** Un email pret a partir : objet prefixe, gabarit deja rendu en HTML. */
+export type ComposedEmail = {
+  to: string
+  subject: string
+  text: string
+  html?: string
+  headers?: Record<string, string>
+  replyTo?: string
+  senderName?: string
+}
 
+const composeEmail = async (
+  payload: SendEmailPayload
+): Promise<ComposedEmail> => {
   const subject =
     env.NEXT_PUBLIC_NODE_ENV === 'development'
       ? `[DEV] ${payload.subject}`
       : payload.subject
-
-  const fromEmail = await getEmailFrom()
   const template = payload.react ? await payload.react : undefined
   const html = template ? await render(template) : undefined
-
-  await getEmailTransport().send({
-    from: senderOf(fromEmail, payload.senderName),
+  return {
     to: payload.to,
     subject,
     text: payload.text,
     ...(html ? {html} : {}),
     ...(payload.headers ? {headers: payload.headers} : {}),
     ...(payload.replyTo ? {replyTo: payload.replyTo} : {}),
+    ...(payload.senderName ? {senderName: payload.senderName} : {}),
+  }
+}
+
+/** Confie un email compose au transport actif (ADR 005, ADR 017). */
+export const transmitComposedEmail = async (
+  email: ComposedEmail
+): Promise<void> => {
+  const fromEmail = await getEmailFrom()
+  await getEmailTransport().send({
+    from: senderOf(fromEmail, email.senderName),
+    to: email.to,
+    subject: email.subject,
+    text: email.text,
+    ...(email.html ? {html: email.html} : {}),
+    ...(email.headers ? {headers: email.headers} : {}),
+    ...(email.replyTo ? {replyTo: email.replyTo} : {}),
   })
+}
+
+/** Un refus certain du fournisseur : l'email n'est pas parti. */
+const isCertainProviderRefusal = (error: unknown): boolean =>
+  isEmailTransportError(error) && error.refused
+
+/**
+ * Envoi reportable accorde par le budget du jour, puis transmis. Un refus
+ * certain du fournisseur rend l'unite ; une issue inconnue la garde (le
+ * budget est un majorant). L'echec remonte tel quel.
+ */
+const transmitWithinBudget = async (
+  email: ComposedEmail,
+  organizationId: string,
+  day: string
+): Promise<void> => {
+  try {
+    await transmitComposedEmail(email)
+  } catch (error) {
+    if (isCertainProviderRefusal(error)) {
+      await withTenant(organizationId, () =>
+        refundReportableSendTxnDao({organizationId, day})
+      )
+    }
+    throw error
+  }
+}
+
+/** Les envois reportables accordes par jour a l'association. */
+const reportableAllowanceOf = async (
+  organizationId: string
+): Promise<number> => {
+  const settings = await getAssociationSettingsService(organizationId)
+  return reportableAllowance(
+    getEmailDailySendLimit(settings),
+    getEmailLoginReserve(settings)
+  )
+}
+
+/**
+ * Conserve un email reporte et cree sa tache de rejeu **dans la meme
+ * transaction** (ADR 053 §4) : jamais l'un sans l'autre.
+ */
+const keepDeferredEmail = async (
+  email: ComposedEmail,
+  context: TenantEmailSendContext,
+  day: string
+): Promise<void> => {
+  const {organizationId} = context
+  await withTenant(organizationId, async () => {
+    const {id} = await createDeferredEmailTxnDao({
+      organizationId,
+      nature: context.nature,
+      recipient: email.to,
+      subject: email.subject,
+      textBody: email.text,
+      htmlBody: email.html ?? null,
+      headers: email.headers ?? null,
+      replyTo: email.replyTo ?? null,
+      senderName: email.senderName ?? null,
+      sendOn: deferredSendOn(day),
+      referenceType: context.reference?.type ?? null,
+      referenceId: context.reference?.id ?? null,
+    })
+    await enqueueScheduledJobTxnDao({
+      organizationId,
+      kind: EMAIL_DELIVER_DEFERRED_JOB_KIND,
+      idempotencyKey: id,
+      runAfter: deferredRunAfter(day),
+      payload: {deferredEmailId: id},
+    })
+  })
+}
+
+/**
+ * Un envoi d'association, decompte du budget du jour (ADR 053) : `login`
+ * toujours accorde et decompte ; reportable accorde par l'increment
+ * conditionnel, sinon reporte au lendemain — conserve pour rejeu, sauf une
+ * campagne, dont l'appelant tient la file.
+ */
+const sendTenantEmail = async (
+  email: ComposedEmail,
+  context: TenantEmailSendContext,
+  now: Date
+): Promise<EmailSendResult> => {
+  const {organizationId} = context
+  const day = budgetDayOf(now)
+
+  if (isNeverDeferred(context.nature)) {
+    await withTenant(organizationId, () =>
+      countLoginSendTxnDao({organizationId, day})
+    )
+    await transmitComposedEmail(email)
+    return {status: 'sent'}
+  }
+
+  const allowance = await reportableAllowanceOf(organizationId)
+  const granted = await withTenant(organizationId, () =>
+    claimReportableSendTxnDao({organizationId, day, allowance})
+  )
+  if (!granted) {
+    if (!isDeferredByCaller(context.nature)) {
+      await keepDeferredEmail(email, context, day)
+    }
+    return {status: 'deferred', until: deferredSendOn(day)}
+  }
+
+  await transmitWithinBudget(email, organizationId, day)
+  return {status: 'sent'}
+}
+
+/**
+ * Point d'envoi unique du produit : tout email part par le contrat
+ * `EmailTransport` (ADR 005, ADR 017), jamais par un fournisseur directement.
+ * La **portee est obligatoire** (ADR 053) : un envoi d'association decompte
+ * son budget quotidien et peut etre reporte ; un envoi de plateforme n'en
+ * decompte aucun. Un echec du transport remonte tel quel
+ * (`EmailTransportError`). Rien du message n'est journalise.
+ */
+export const sendEmailService = async (
+  payload: SendEmailPayload,
+  context: EmailSendContext,
+  options?: SendEmailOptions
+): Promise<EmailSendResult> => {
+  const recipientType = options?.recipientType ?? 'client'
+  const canSend = await shouldSendEmail(recipientType)
+  if (!canSend) {
+    logger.info('[EMAIL] Envois desactives par les reglages, envoi ignore', {
+      nature: context.nature,
+    })
+    return {status: 'skipped'}
+  }
+
+  const email = await composeEmail(payload)
+  if (context.scope === 'platform') {
+    await transmitComposedEmail(email)
+    return {status: 'sent'}
+  }
+  return sendTenantEmail(email, context, new Date())
 }
 
 const senderOf = (fromEmail: string, senderName?: string): string => {
@@ -207,22 +403,25 @@ export const sendOrganizationInvitation = async ({
   const t = await getTranslations('email.user.organizationInvitation')
   const fromEmail = await getEmailFrom()
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject', {teamName}),
-    from: fromEmail,
-    text: `${t('invitationMessage', {
-      invitedByUsername,
-      invitedByEmail,
-      teamName,
-    })} ${t('acceptInvitation')} ${inviteLink}`,
-    react: InvitationOrganizationLinkMail({
-      invitedByUsername,
-      invitedByEmail,
-      teamName,
-      inviteLink,
-    }),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject', {teamName}),
+      from: fromEmail,
+      text: `${t('invitationMessage', {
+        invitedByUsername,
+        invitedByEmail,
+        teamName,
+      })} ${t('acceptInvitation')} ${inviteLink}`,
+      react: InvitationOrganizationLinkMail({
+        invitedByUsername,
+        invitedByEmail,
+        teamName,
+        inviteLink,
+      }),
+    },
+    {scope: 'platform', nature: 'onboarding'}
+  )
 }
 
 /**
@@ -233,11 +432,14 @@ export const sendOrganizationInvitation = async ({
  * journalises ; l'intercepteur de la facade n'en logge pas les arguments.
  */
 export const sendMagicLinkEmailService = async ({
+  organizationId,
   email,
   url,
   association,
   locale,
 }: {
+  /** Association du domaine appele : le lien decompte son budget (s52). */
+  organizationId: string
   email: string
   url: string
   association: MagicLinkEmailAssociation
@@ -263,6 +465,7 @@ export const sendMagicLinkEmailService = async ({
       text,
       react: MagicLinkMail({url, association, locale}),
     },
+    {scope: 'tenant', organizationId, nature: 'login'},
     {recipientType: 'system'}
   )
 }
@@ -285,6 +488,7 @@ export const sendVerificationEmailService = async ({
       text: t('preview'),
       react: VerificationEmail({url}),
     },
+    {scope: 'platform', nature: 'account_security'},
     {recipientType: 'system'}
   )
 }
@@ -307,6 +511,7 @@ export const sendResetPasswordLinkEmailService = async ({
       text: t('preview'),
       react: ResetPasswordEmail({url}),
     },
+    {scope: 'platform', nature: 'account_security'},
     {recipientType: 'system'}
   )
 }
@@ -331,6 +536,7 @@ export const sendOTPEmailService = async ({
       text: `${t('description')} ${otp}${otpLink ? `\n\n${t('verifyAutomatically')} : ${otpLink}` : ''}`,
       react: OtpEmail({otp, otpLink}),
     },
+    {scope: 'platform', nature: 'account_security'},
     {recipientType: 'system'}
   )
 }
@@ -353,6 +559,7 @@ export const sendEmailChangeEmailVerificationService = async ({
       text: t('preview'),
       react: EmailChangeEmailVerification({url}),
     },
+    {scope: 'platform', nature: 'account_security'},
     {recipientType: 'system'}
   )
 }
@@ -376,19 +583,22 @@ export const sendNotificationEmailService = async ({
   })
   const fromEmail = await getEmailFrom()
 
-  await sendEmailService({
-    to: email,
-    subject: t('subject', {title}),
-    from: fromEmail,
-    text: t('preview'),
-    react: NotificationEmail({
-      title,
-      message,
-      type,
-      preview: t('preview'),
-      language,
-    }),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('subject', {title}),
+      from: fromEmail,
+      text: t('preview'),
+      react: NotificationEmail({
+        title,
+        message,
+        type,
+        preview: t('preview'),
+        language,
+      }),
+    },
+    {scope: 'platform', nature: 'platform_notification'}
+  )
 }
 
 export const sendSubscriptionCompletedEmailService = async (
@@ -440,21 +650,24 @@ export const sendSubscriptionCompletedEmailService = async (
     ? new Date(subscription.periodEnd).toLocaleDateString(locale)
     : 'Non disponible'
 
-  await sendEmailService({
-    to: user.email,
-    subject: t('subject', {planName}),
-    from: fromEmail,
-    text: t('preview', {planName}),
-    react: SubscriptionCompletedMail({
-      planName,
-      status,
-      seats,
-      price,
-      limits,
-      nextBilling,
-      periodEnd,
-    }),
-  })
+  await sendEmailService(
+    {
+      to: user.email,
+      subject: t('subject', {planName}),
+      from: fromEmail,
+      text: t('preview', {planName}),
+      react: SubscriptionCompletedMail({
+        planName,
+        status,
+        seats,
+        price,
+        limits,
+        nextBilling,
+        periodEnd,
+      }),
+    },
+    {scope: 'platform', nature: 'billing'}
+  )
 }
 
 export const sendSubscriptionUpdatedEmailService = async (
@@ -506,21 +719,24 @@ export const sendSubscriptionUpdatedEmailService = async (
     ? new Date(subscription.periodEnd).toLocaleDateString(locale)
     : 'Non disponible'
 
-  await sendEmailService({
-    to: user.email,
-    subject: t('subject', {planName}),
-    from: fromEmail,
-    text: t('preview', {planName}),
-    react: SubscriptionUpdatedMail({
-      planName,
-      status,
-      seats,
-      price,
-      limits,
-      nextBilling,
-      periodEnd,
-    }),
-  })
+  await sendEmailService(
+    {
+      to: user.email,
+      subject: t('subject', {planName}),
+      from: fromEmail,
+      text: t('preview', {planName}),
+      react: SubscriptionUpdatedMail({
+        planName,
+        status,
+        seats,
+        price,
+        limits,
+        nextBilling,
+        periodEnd,
+      }),
+    },
+    {scope: 'platform', nature: 'billing'}
+  )
 }
 
 export const sendSubscriptionCanceledEmailService = async (
@@ -570,21 +786,24 @@ export const sendSubscriptionCanceledEmailService = async (
     ? new Date(subscription.periodEnd).toLocaleDateString(locale)
     : 'Non disponible'
 
-  await sendEmailService({
-    to: user.email,
-    subject: t('subject', {planName}),
-    from: fromEmail,
-    text: t('preview', {planName}),
-    react: SubscriptionCanceledMail({
-      planName,
-      status,
-      seats,
-      price,
-      limits,
-      canceledAt,
-      periodEnd,
-    }),
-  })
+  await sendEmailService(
+    {
+      to: user.email,
+      subject: t('subject', {planName}),
+      from: fromEmail,
+      text: t('preview', {planName}),
+      react: SubscriptionCanceledMail({
+        planName,
+        status,
+        seats,
+        price,
+        limits,
+        canceledAt,
+        periodEnd,
+      }),
+    },
+    {scope: 'platform', nature: 'billing'}
+  )
 }
 
 export const sendSubscriptionDeletedEmailService = async (
@@ -630,20 +849,23 @@ export const sendSubscriptionDeletedEmailService = async (
   // Date de suppression
   const deletedAt = new Date().toLocaleDateString(locale)
 
-  await sendEmailService({
-    to: user.email,
-    subject: t('subject', {planName}),
-    from: fromEmail,
-    text: t('preview', {planName}),
-    react: SubscriptionDeletedMail({
-      planName,
-      status,
-      seats,
-      price,
-      limits,
-      deletedAt,
-    }),
-  })
+  await sendEmailService(
+    {
+      to: user.email,
+      subject: t('subject', {planName}),
+      from: fromEmail,
+      text: t('preview', {planName}),
+      react: SubscriptionDeletedMail({
+        planName,
+        status,
+        seats,
+        price,
+        limits,
+        deletedAt,
+      }),
+    },
+    {scope: 'platform', nature: 'billing'}
+  )
 }
 
 export const sendWelcomeFollowUpEmailService = async ({
@@ -663,18 +885,21 @@ export const sendWelcomeFollowUpEmailService = async ({
   })
   const fromEmail = await getEmailFrom()
 
-  await sendEmailService({
-    to: email,
-    subject: t('title'),
-    from: fromEmail,
-    text: t('message'),
-    react: WelcomeFollowUpEmail({
-      userName,
-      userEmail: email,
-      appUrl,
-      language,
-    }),
-  })
+  await sendEmailService(
+    {
+      to: email,
+      subject: t('title'),
+      from: fromEmail,
+      text: t('message'),
+      react: WelcomeFollowUpEmail({
+        userName,
+        userEmail: email,
+        appUrl,
+        language,
+      }),
+    },
+    {scope: 'platform', nature: 'onboarding'}
+  )
 }
 
 export const sendInternalEmailService = async ({
@@ -699,6 +924,7 @@ export const sendInternalEmailService = async ({
         content: data,
       }),
     },
+    {scope: 'platform', nature: 'platform_notification'},
     {recipientType: 'admin'}
   )
 }
@@ -726,6 +952,7 @@ export const sendAdminInternalEmailService = async ({
         data,
       }),
     },
+    {scope: 'platform', nature: 'platform_notification'},
     {recipientType: 'admin'}
   )
 }
@@ -739,12 +966,18 @@ export const sendAdminInternalEmailService = async ({
  * transport remonte a l'appelant.
  */
 export const sendContactMessageNotificationEmailService = async ({
+  organizationId,
+  messageId,
   to,
   locale,
   association,
   message,
   messageUrl,
 }: {
+  /** Association du message : l'avertissement decompte son budget (s52). */
+  organizationId: string
+  /** Le message, designe au bureau si l'avertissement est reporte. */
+  messageId: string
   to: string
   locale: SupportedLocale
   association: ContactMessageEmailAssociation
@@ -785,6 +1018,12 @@ export const sendContactMessageNotificationEmailService = async ({
       subject,
       text,
       react: ContactMessageMail({association, message, messageUrl, locale}),
+    },
+    {
+      scope: 'tenant',
+      organizationId,
+      nature: 'board_notification',
+      reference: {type: 'contact_message', id: messageId},
     },
     {recipientType: 'system'}
   )
@@ -834,12 +1073,18 @@ const incidentReportSubjectOf = (
  * explicite. Un echec du transport remonte a l'appelant.
  */
 export const sendIncidentReportNotificationEmailService = async ({
+  organizationId,
+  reportId,
   to,
   locale,
   association,
   report,
   reportUrl,
 }: {
+  /** Association du signalement : l'avertissement decompte son budget (s52). */
+  organizationId: string
+  /** Le signalement, designe au bureau si l'avertissement est reporte. */
+  reportId: string
   to: string
   locale: SupportedLocale
   association: IncidentReportEmailAssociation
@@ -882,6 +1127,115 @@ export const sendIncidentReportNotificationEmailService = async ({
       text,
       react: IncidentReportMail({association, report, reportUrl, locale}),
     },
+    {
+      scope: 'tenant',
+      organizationId,
+      nature: 'board_notification',
+      reference: {type: 'incident_report', id: reportId},
+    },
     {recipientType: 'system'}
   )
+}
+
+type ClaimedDeferredEmail = NonNullable<
+  Awaited<ReturnType<typeof claimDeferredEmailForSendTxnDao>>
+>
+
+const composedOfDeferred = (row: ClaimedDeferredEmail): ComposedEmail => ({
+  to: row.recipient,
+  subject: row.subject,
+  text: row.textBody,
+  ...(row.htmlBody ? {html: row.htmlBody} : {}),
+  ...(row.headers ? {headers: row.headers} : {}),
+  ...(row.replyTo ? {replyTo: row.replyTo} : {}),
+  ...(row.senderName ? {senderName: row.senderName} : {}),
+})
+
+/**
+ * L'envoi a echoue : refus certain, la ligne attend une nouvelle tentative ;
+ * issue inconnue, elle est a verifier, jamais renvoyee. Seul le nom de
+ * l'erreur est journalise, jamais le message (critere 7).
+ */
+const deferredSendFailureOutcome = async (
+  job: ScheduledJob,
+  deferredEmailId: string,
+  day: string,
+  now: Date,
+  error: unknown
+): Promise<ScheduledJobOutcome> => {
+  const refused = isCertainProviderRefusal(error)
+  logger.error("[EMAIL] Rejeu d'un email reporte interrompu", {
+    jobId: job.id,
+    refused,
+    error: error instanceof Error ? error.name : 'unknown',
+  })
+  await withTenant(job.organizationId, () =>
+    refused
+      ? releaseDeferredEmailTxnDao({
+          id: deferredEmailId,
+          sendOn: day,
+          countAttempt: true,
+        })
+      : markDeferredEmailToVerifyTxnDao(deferredEmailId)
+  )
+  return refused
+    ? {
+        status: 'retry',
+        runAfter: new Date(now.getTime() + retryDelayMs(job.attempts)),
+      }
+    : {status: 'completed'}
+}
+
+/**
+ * Rejeu d'un email reporte (s52, ADR 053 §4), gestionnaire de
+ * `email.deliver_deferred`, **sans session**. Dans l'ordre : reprise sur un
+ * verrou perime (la ligne `sending` passe a verifier, jamais renvoyee) ; prise
+ * `pending → sending` (deja prise ou absente : rien) ; budget du jour (de
+ * nouveau epuise : ligne rendue et tache reportee au lendemain 02:00, sans
+ * tentative comptee) ; envoi ; la ligne est **supprimee** une fois partie.
+ */
+export const deliverDeferredEmailService = async (
+  job: ScheduledJob,
+  now: Date
+): Promise<ScheduledJobOutcome> => {
+  const {organizationId} = job
+  const deferredEmailId = job.payload.deferredEmailId
+  const row = await withTenant(organizationId, async () => {
+    if (job.resumedAfterStaleLock) {
+      await markDeferredEmailToVerifyTxnDao(deferredEmailId)
+    }
+    return claimDeferredEmailForSendTxnDao(deferredEmailId)
+  })
+  if (!row) return {status: 'completed'}
+
+  const day = budgetDayOf(now)
+  const allowance = await reportableAllowanceOf(organizationId)
+  const granted = await withTenant(organizationId, () =>
+    claimReportableSendTxnDao({organizationId, day, allowance})
+  )
+  if (!granted) {
+    await withTenant(organizationId, () =>
+      releaseDeferredEmailTxnDao({
+        id: deferredEmailId,
+        sendOn: deferredSendOn(day),
+        countAttempt: false,
+      })
+    )
+    return {status: 'deferred', runAfter: deferredRunAfter(day)}
+  }
+
+  try {
+    await transmitWithinBudget(composedOfDeferred(row), organizationId, day)
+  } catch (error) {
+    return deferredSendFailureOutcome(job, deferredEmailId, day, now, error)
+  }
+  await withTenant(organizationId, () =>
+    deleteDeferredEmailTxnDao(deferredEmailId)
+  )
+  return {status: 'completed'}
+}
+
+/** Les gestionnaires du planificateur que porte l'envoi d'emails (s52). */
+export const emailScheduledJobHandlers: ScheduledJobHandlers = {
+  [EMAIL_DELIVER_DEFERRED_JOB_KIND]: deliverDeferredEmailService,
 }
