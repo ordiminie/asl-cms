@@ -101,6 +101,11 @@ export const campaign = pgTable(
  * forcee, policy `tenant_isolation`. Une tache `campaign.deliver_part` la
  * livre ; l'etat visible du bureau se lit ici, jamais dans le jsonb de la
  * tache.
+ *
+ * s52 (revue, n° 1) : une part entamee dont le budget du jour reporte le
+ * reste garde son jour ; `deferred_to` dit le jour ou part ce reste et
+ * `deferred_count` combien de destinataires il compte. Le plan d'envoi
+ * compte ce reste ce jour-la, sous le plafond des campagnes.
  */
 export const campaignPart = pgTable(
   'campaign_part',
@@ -119,6 +124,10 @@ export const campaignPart = pgTable(
     recipientCount: integer('recipient_count').notNull(),
     status: campaignPartStatusEnum('status').default('scheduled').notNull(),
     finishedAt: timestamp('finished_at', {withTimezone: true}),
+    /** Jour de Paris ou part le reste reporte faute de budget, ou rien. */
+    deferredTo: date('deferred_to', {mode: 'string'}),
+    /** Destinataires du reste reporte, figes au report. */
+    deferredCount: integer('deferred_count'),
   },
   (table) => [
     unique('campaign_part_campaign_number_unique').on(

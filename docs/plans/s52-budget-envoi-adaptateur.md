@@ -161,3 +161,54 @@ sending` atomique), `deleteDeferredEmailTxnDao`, `markDeferredEmailToVerifyTxnDa
 - `pnpm lint`, `tsc`, `pnpm test --run` verts ; e2e verts en CI ; revue `/ks-review` passée.
 - **À prévoir au déploiement** : aucune nouvelle minuterie (le planificateur de s26 rejoue les reportés) ;
   rappel — `asl-cms-planificateur` n'est toujours pas installé sur le VPS (mémoire projet).
+
+## Correctifs de revue
+
+Revue `docs/reviews/s52-budget-envoi-adaptateur.md` (2026-11-14) : deux défauts majeurs, mineurs n° 3, 6, 7
+et 8 corrigés ; n° 4, 5 et 9 laissés tels quels, à la demande de Marie-Ève. Un commit de correctifs sur la
+branche, migration `0051` comprise.
+
+- [x] **Majeur n° 1 — plafond des campagnes le lendemain d'un report.** Arbitrage de Marie-Ève
+      (2026-11-14) : **les parts glissent**. Le reste reporté part d'abord, le lendemain, et la suite de la
+      campagne glisse d'un jour, sans qu'aucun jour ne dépasse `campaign.daily_send_cap`, toutes campagnes
+      confondues (question 4 du design, tranchée). Mise en œuvre :
+  - `campaign_part.deferred_to` / `deferred_count` (modèle, `pnpm db:generate` → `0051`) : le jour et la
+    taille du reste, figés au report (`markCampaignPartDeferredTxnDao`). La part entamée garde son jour.
+  - `getAllottedRecipientsByDayDao` compte ce reste ce jour-là : le plan d'une nouvelle campagne le voit.
+  - Au report, sous le verrou du plan (`lockCampaignScheduleTxnDao`), la règle pure
+    `slidePartsAfterDeferral` place chaque part programmée au premier jour qui la tient sous le plafond,
+    après le reste de sa campagne ; `moveCampaignPartTxnDao` déplace la part et l'échéance de sa tâche
+    ouverte non prise (02:00 Paris, `partRunAfter`). Une part ne glisse jamais avant son jour ; une part
+    plus grande qu'un plafond abaissé depuis prend un jour libre. Le plafond lu est celui du jour du
+    report.
+  - Sans report, rien ne change (tests de s26 intacts). Aucune tentative comptée ; le reste n'est ni
+    perdu ni renvoyé (les destinataires restent `pending`, pris un par un). `{date}` d'une part glissée
+    vaut son nouveau jour, celui où elle part (ADR 052).
+  - Limite connue : un reste reporté une seconde fois quitte le jour où il devait partir ; ce qui en est
+    parti ce jour-là n'y est plus compté. C'est le jour courant, budget épuisé : un envoi de plus n'y part
+    que sur une unité rendue.
+  - **ADR** : complète l'ADR 053 §5 sans le contredire (destinataire rendu `pending`, tâche reprogrammée
+    sans tentative, la ligne de destinataire reste la file de report) et applique au report la règle de
+    l'ADR 052 (« le plafond est un budget du jour, partagé entre campagnes »). Pas d'ADR 054 ; l'ADR 053
+    n'est pas modifié.
+  - Écrans : inchangés. Chaque part affiche son jour (glissé le cas échéant) ; le bandeau et la sous-ligne
+    « 60 reçues · 40 reportées au 15/11 » restent justes.
+- [x] **Majeur n° 2 — rejeu sans limite d'un email refusé.** Sur un refus certain, le rejeu retente
+      jusqu'à `campaign.send_max_attempts` (réglage de tenant lu comme les campagnes, 3 par défaut ; pas
+      de valeur en dur, ADR 010), comptées par `job.attempts`. Au-delà : la tâche finit `failed`, la ligne
+      `deferred_email` passe `failed` (`markDeferredEmailFailedTxnDao`) et son adresse et son contenu sont
+      effacés dans la même instruction (critère 7). Le statut est un `text` à liste fermée : aucune
+      migration. `/bureau/envois` la montre « En échec » (`badge` `destructive`, §3.13), hors du total en
+      attente et de la date du prochain envoi.
+- [x] **Mineur n° 3 — `deferredDayOf`.** Lit `campaign_part.deferred_to`, posé par le report seul : une
+      nouvelle tentative à +30 min qui passe minuit n'est plus montrée comme un report. Les deux lectures
+      de parts ne joignent plus `scheduled_job`.
+- [x] **Mineur n° 6 — marge de 02:00.** Écrit dans `docs/architecture.md` : la marge ne protège que les
+      rejeux et les parts d'un jour suivant ; un envoi reportable direct entre 00:00 et 02:00 heure de
+      Paris compte sur le nouveau jour de Paris, alors que Brevo (s'il compte en UTC) est encore sur la
+      veille. Volume faible, accepté.
+- [x] **Mineur n° 7 — témoin `notification_failed`.** Un rejeu de notification au bureau en échec
+      définitif, ou d'issue inconnue (`to_verify`), pose le témoin du message de contact ou du signalement
+      d'origine, comme l'envoi direct. Une nouvelle tentative encore possible ne le pose pas.
+- [x] **Mineur n° 8 — `parisDayStart`.** Retiré avec son test (et `parisOffsetMsAt`, qu'il était seul à
+      utiliser).

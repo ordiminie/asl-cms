@@ -24,6 +24,7 @@ import {
   createDeferredEmailTxnDao,
   deleteDeferredEmailTxnDao,
   listPendingDeferredEmailsDao,
+  markDeferredEmailFailedTxnDao,
   markDeferredEmailToVerifyTxnDao,
   releaseDeferredEmailTxnDao,
 } from './deferred-email-repository'
@@ -172,7 +173,7 @@ describe('après la prise — purge, à vérifier, rendue', () => {
 })
 
 describe('listPendingDeferredEmailsDao — ce que le bureau voit (critère 4, 7)', () => {
-  it('ne sélectionne jamais l’adresse ni le contenu du message', async () => {
+  it('ne sélectionne jamais l’adresse ni le contenu du message, et rend l’état de chaque envoi', async () => {
     responses.current = [
       [
         [
@@ -181,6 +182,7 @@ describe('listPendingDeferredEmailsDao — ce que le bureau voit (critère 4, 7)
           'contact_message',
           REFERENCE_ID,
           '2026-11-15',
+          'failed',
         ],
       ],
     ]
@@ -189,12 +191,14 @@ describe('listPendingDeferredEmailsDao — ce que le bureau voit (critère 4, 7)
 
     const [{sql, params}] = sent
     expect(sql).toMatch(
-      /^select "id", "nature", "reference_type", "reference_id", "send_on" from "deferred_email"/
+      /^select "id", "nature", "reference_type", "reference_id", "send_on", "status" from "deferred_email"/
     )
     for (const column of CONTENT_COLUMNS) {
       expect(sql).not.toContain(`"${column}"`)
     }
-    expect(params).toEqual(expect.arrayContaining([ORG_ID, 'pending']))
+    expect(params).toEqual(
+      expect.arrayContaining([ORG_ID, 'pending', 'failed'])
+    )
     expect(rows).toEqual([
       {
         id: EMAIL_ID,
@@ -202,7 +206,25 @@ describe('listPendingDeferredEmailsDao — ce que le bureau voit (critère 4, 7)
         referenceType: 'contact_message',
         referenceId: REFERENCE_ID,
         sendOn: '2026-11-15',
+        status: 'failed',
       },
     ])
+  })
+})
+
+describe('markDeferredEmailFailedTxnDao — tentatives épuisées (revue s52, n° 2)', () => {
+  it('sending → failed seulement, et efface l’adresse et le contenu du message (critère 7)', async () => {
+    await markDeferredEmailFailedTxnDao(EMAIL_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toMatch(/^update "deferred_email" set /)
+    expect(sql).toMatch(/"deferred_email"\."status" = \$\d+\)$/)
+    for (const column of CONTENT_COLUMNS) {
+      expect(sql).toContain(`"${column}" = `)
+    }
+    expect(params).toEqual(
+      expect.arrayContaining(['failed', EMAIL_ID, 'sending'])
+    )
+    expect(params).not.toContain('bureau@asl.test')
   })
 })

@@ -46,8 +46,15 @@ vi.mock('@/db/repositories/deferred-email-repository', () => ({
   createDeferredEmailTxnDao: vi.fn(),
   claimDeferredEmailForSendTxnDao: vi.fn(),
   deleteDeferredEmailTxnDao: vi.fn(),
+  markDeferredEmailFailedTxnDao: vi.fn(),
   markDeferredEmailToVerifyTxnDao: vi.fn(),
   releaseDeferredEmailTxnDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/contact-message-repository', () => ({
+  markContactMessageNotificationFailedDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/incident-report-repository', () => ({
+  markIncidentReportNotificationFailedDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/scheduled-job-repository', () => ({
   enqueueScheduledJobTxnDao: vi.fn(),
@@ -56,9 +63,11 @@ vi.mock('@/services/association-settings-service', () => ({
   getAssociationSettingsService: vi.fn(),
 }))
 
+import {markContactMessageNotificationFailedDao} from '@/db/repositories/contact-message-repository'
 import {
   claimDeferredEmailForSendTxnDao,
   deleteDeferredEmailTxnDao,
+  markDeferredEmailFailedTxnDao,
   markDeferredEmailToVerifyTxnDao,
   releaseDeferredEmailTxnDao,
 } from '@/db/repositories/deferred-email-repository'
@@ -66,6 +75,7 @@ import {
   claimReportableSendTxnDao,
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
+import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
 import {EmailTransportError, getEmailTransport} from '@/lib/emails/transport'
 import {logger} from '@/lib/logger'
 import {getAssociationSettingsService} from '@/services/association-settings-service'
@@ -75,6 +85,7 @@ import {
 } from '@/services/email-service'
 import {
   ASSOCIATION_SETTINGS_REGISTRY,
+  CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
   resolveSettings,
 } from '@/services/types/domain/association-settings-types'
 import {
@@ -86,6 +97,7 @@ const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const DEFERRED_ID = '22222222-2222-4222-8222-222222222222'
 const NOW = new Date('2026-11-15T09:00:00.000Z')
 const SECRET_TEXT = 'Message de Claire : fuite au 12 chemin des Pins'
+const REFERENCE_ID = '33333333-3333-4333-8333-333333333333'
 
 type StoredDeferred = {
   id: string
@@ -99,7 +111,7 @@ type StoredDeferred = {
   replyTo: string | null
   senderName: string | null
   sendOn: string
-  status: 'pending' | 'sending' | 'to_verify'
+  status: 'pending' | 'sending' | 'to_verify' | 'failed'
   attempts: number
   referenceType: string | null
   referenceId: string | null
@@ -126,7 +138,7 @@ const storedRow = (
   status,
   attempts: 0,
   referenceType: 'contact_message',
-  referenceId: '33333333-3333-4333-8333-333333333333',
+  referenceId: REFERENCE_ID,
   createdAt: NOW,
   updatedAt: NOW,
 })
@@ -166,6 +178,20 @@ beforeEach(() => {
   vi.mocked(markDeferredEmailToVerifyTxnDao).mockImplementation(async (id) => {
     const row = store.rows.get(id)
     if (row?.status === 'sending') row.status = 'to_verify'
+  })
+  vi.mocked(markDeferredEmailFailedTxnDao).mockImplementation(async (id) => {
+    expect(scope.current).toBe(ORG_ID)
+    const row = store.rows.get(id)
+    if (row?.status !== 'sending') return
+    Object.assign(row, {
+      status: 'failed',
+      recipient: '',
+      subject: '',
+      textBody: '',
+      htmlBody: null,
+      replyTo: null,
+      senderName: null,
+    })
   })
   vi.mocked(releaseDeferredEmailTxnDao).mockImplementation(
     async ({id, sendOn, countAttempt}) => {
@@ -309,5 +335,85 @@ describe('deliverDeferredEmailService — rejeu d’un email reporté (s52)', ()
     )
     expect(logged).not.toContain(SECRET_TEXT)
     expect(logged).not.toContain('bureau@asl-les-pins.test')
+  })
+
+  const refusingTransport = () =>
+    vi.mocked(getEmailTransport).mockReturnValue({
+      send: vi.fn(() =>
+        Promise.reject(
+          new EmailTransportError('brevo', 'refus', {refused: true})
+        )
+      ),
+    })
+
+  it('refus certain à la dernière tentative (campaign.send_max_attempts, 3 par défaut) : la tâche échoue, la ligne passe en échec, adresse et contenu effacés (revue n° 2)', async () => {
+    refusingTransport()
+
+    const outcome = await deliverDeferredEmailService(jobOf({attempts: 3}), NOW)
+
+    expect(outcome).toEqual({status: 'failed'})
+    const row = store.rows.get(DEFERRED_ID)
+    expect(row?.status).toBe('failed')
+    expect(JSON.stringify(row)).not.toContain(SECRET_TEXT)
+    expect(JSON.stringify(row)).not.toContain('bureau@asl-les-pins.test')
+    expect(refundReportableSendTxnDao).toHaveBeenCalledTimes(1)
+  })
+
+  it('le nombre de tentatives est le réglage de l’association, jamais une valeur en dur (ADR 010)', async () => {
+    refusingTransport()
+    vi.mocked(getAssociationSettingsService).mockResolvedValue(
+      resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+        {key: CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY, value: '5'},
+      ])
+    )
+
+    const third = await deliverDeferredEmailService(jobOf({attempts: 3}), NOW)
+    expect(third).toMatchObject({status: 'retry'})
+    expect(store.rows.get(DEFERRED_ID)?.status).toBe('pending')
+
+    const fifth = await deliverDeferredEmailService(jobOf({attempts: 5}), NOW)
+    expect(fifth).toEqual({status: 'failed'})
+    expect(store.rows.get(DEFERRED_ID)?.status).toBe('failed')
+  })
+
+  it('une nouvelle tentative possible ne pose pas le témoin d’échec du message', async () => {
+    refusingTransport()
+
+    await deliverDeferredEmailService(jobOf({attempts: 1}), NOW)
+
+    expect(markContactMessageNotificationFailedDao).not.toHaveBeenCalled()
+  })
+
+  it('notification d’un message de contact en échec définitif : le témoin notification_failed du message est posé, comme à l’envoi direct (revue n° 7)', async () => {
+    refusingTransport()
+    vi.mocked(markContactMessageNotificationFailedDao).mockImplementation(
+      async () => {
+        expect(scope.current).toBe(ORG_ID)
+      }
+    )
+
+    await deliverDeferredEmailService(jobOf({attempts: 3}), NOW)
+
+    expect(markContactMessageNotificationFailedDao).toHaveBeenCalledWith(
+      REFERENCE_ID
+    )
+    expect(markIncidentReportNotificationFailedDao).not.toHaveBeenCalled()
+  })
+
+  it('notification d’un signalement à vérifier (issue inconnue) : le témoin du signalement est posé', async () => {
+    store.rows.set(DEFERRED_ID, {
+      ...storedRow(),
+      referenceType: 'incident_report',
+    })
+    vi.mocked(getEmailTransport).mockReturnValue({
+      send: vi.fn(() => Promise.reject(new Error('délai dépassé'))),
+    })
+
+    await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(markIncidentReportNotificationFailedDao).toHaveBeenCalledWith(
+      REFERENCE_ID
+    )
+    expect(markContactMessageNotificationFailedDao).not.toHaveBeenCalled()
   })
 })

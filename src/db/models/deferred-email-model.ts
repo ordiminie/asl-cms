@@ -17,7 +17,10 @@ import {organization} from './auth-model'
  * conserve **deja rendu** (objet, texte, HTML, en-tetes) jusqu'a son rejeu par
  * la tache `email.deliver_deferred` ; la ligne est **supprimee** une fois
  * partie (critere 7). `to_verify` : arret entre l'envoi et son
- * enregistrement, jamais renvoye (ADR 052).
+ * enregistrement, jamais renvoye (ADR 052). `failed` : refuse par le
+ * fournisseur a chaque tentative (`campaign.send_max_attempts`), jamais
+ * renvoye ; l'adresse et le contenu sont effaces, seuls la nature, la
+ * reference et le jour restent pour le bureau.
  *
  * Donnees personnelles : jamais lues hors du rejeu, jamais journalisees ; la
  * vue du bureau ne lit que la nature, la reference et le jour d'envoi.
@@ -43,7 +46,9 @@ export const deferredEmail = pgTable(
     senderName: text('sender_name'),
     /** Jour de Paris ou l'email doit partir. */
     sendOn: date('send_on', {mode: 'string'}).notNull(),
-    status: text('status', {enum: ['pending', 'sending', 'to_verify']})
+    status: text('status', {
+      enum: ['pending', 'sending', 'to_verify', 'failed'],
+    })
       .default('pending')
       .notNull(),
     attempts: integer('attempts').default(0).notNull(),

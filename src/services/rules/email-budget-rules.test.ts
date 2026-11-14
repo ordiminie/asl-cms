@@ -139,6 +139,7 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
           referenceType: 'incident_report',
           referenceId: REPORT,
           sendOn: '2026-11-15',
+          status: 'pending',
         },
         {
           id: 'd2',
@@ -146,6 +147,7 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
           referenceType: 'incident_report',
           referenceId: REPORT,
           sendOn: '2026-11-15',
+          status: 'pending',
         },
         {
           id: 'd3',
@@ -153,6 +155,7 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
           referenceType: 'contact_message',
           referenceId: MESSAGE,
           sendOn: '2026-11-15',
+          status: 'pending',
         },
         {
           id: 'd4',
@@ -160,6 +163,7 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
           referenceType: null,
           referenceId: null,
           sendOn: '2026-11-16',
+          status: 'pending',
         },
       ],
       [
@@ -184,6 +188,7 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
         partCount: 3,
         recipientCount: 40,
         sendOn: '2026-11-15',
+        state: 'scheduled',
       },
       {
         key: `incident_report:${REPORT}:2026-11-15`,
@@ -194,6 +199,7 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
         partCount: null,
         recipientCount: 2,
         sendOn: '2026-11-15',
+        state: 'scheduled',
       },
       {
         key: `contact_message:${MESSAGE}:2026-11-15`,
@@ -204,6 +210,7 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
         partCount: null,
         recipientCount: 1,
         sendOn: '2026-11-15',
+        state: 'scheduled',
       },
       {
         key: 'd4',
@@ -214,7 +221,39 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
         partCount: null,
         recipientCount: 1,
         sendOn: '2026-11-16',
+        state: 'scheduled',
       },
+    ])
+  })
+
+  it('un envoi en échec forme sa propre ligne, à l’état « en échec », à part des envois programmés (revue n° 2)', () => {
+    const groups = groupPendingSends(
+      [
+        {
+          id: 'd1',
+          nature: 'board_notification',
+          referenceType: 'contact_message',
+          referenceId: MESSAGE,
+          sendOn: '2026-11-15',
+          status: 'failed',
+        },
+        {
+          id: 'd2',
+          nature: 'board_notification',
+          referenceType: 'contact_message',
+          referenceId: MESSAGE,
+          sendOn: '2026-11-15',
+          status: 'pending',
+        },
+      ],
+      []
+    )
+
+    expect(
+      groups.map(({state, recipientCount}) => ({state, recipientCount}))
+    ).toEqual([
+      {state: 'failed', recipientCount: 1},
+      {state: 'scheduled', recipientCount: 1},
     ])
   })
 

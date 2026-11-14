@@ -199,6 +199,12 @@ Le HTML est généré par un court script dans la page : sans JavaScript, la maq
 4. **Une part entamée garde-t-elle son jour ?** La maquette garde « Part 2 · 14/11 » et reporte 40
    membres au 15/11, où la part 3 (96) est déjà programmée : 136 envois de campagne le 15/11, au-delà du
    plafond de 100. Le plafond de s26 s'applique-t-il au report ? Question 9 de la recherche.
+   **Tranché par Marie-Ève le 2026-11-14 (après revue) : les parts glissent.** La part entamée garde son
+   jour (« Part 2 · 14/11 », « 60 reçues · 40 reportées au 15/11 ») ; les 40 reportés partent **d'abord**,
+   le 15/11, et la suite de la campagne glisse d'un jour : la part 3 (96) passe au 16/11. Le plafond de
+   s26 s'applique au report : aucun jour ne dépasse `campaign.daily_send_cap`, toutes campagnes
+   confondues (une part d'une autre campagne glisse aussi si le jour ne la tient plus). L'écran n'a pas
+   changé de forme : chaque part montre son jour, glissé le cas échéant.
 5. **Message de 1c** — « prévenez l'équipe technique » : qui, et comment ? Même renvoi que « À vérifier »
    en s26.
 6. **Lien « Voir le message » / « Voir le signalement »** — droits : le membre du bureau qui lit cette

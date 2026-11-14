@@ -58,8 +58,8 @@ const referenceOf = (row: PendingDeferredEmail): PendingSendDTO['reference'] =>
 /**
  * Les envois en attente du bureau (s52, ecran 1) : une part de campagne
  * reportee = une ligne ; une notification = une ligne, ses destinataires
- * regroupes par objet et par jour. Les parts d'abord, puis les emails dans
- * l'ordre recu.
+ * regroupes par objet, par jour et par etat (un envoi en echec a sa ligne).
+ * Les parts d'abord, puis les emails dans l'ordre recu.
  */
 export const groupPendingSends = (
   deferredEmails: readonly PendingDeferredEmail[],
@@ -77,12 +77,14 @@ export const groupPendingSends = (
       partCount: part.partCount,
       recipientCount: part.recipientCount,
       sendOn: part.sendOn,
+      state: 'scheduled',
     })
   }
   for (const row of deferredEmails) {
     const reference = referenceOf(row)
+    const state = row.status === 'failed' ? 'failed' : 'scheduled'
     const key = reference
-      ? `${reference.type}:${reference.id}:${row.sendOn}`
+      ? `${reference.type}:${reference.id}:${row.sendOn}${state === 'failed' ? ':failed' : ''}`
       : row.id
     const existing = groups.get(key)
     if (existing) {
@@ -98,6 +100,7 @@ export const groupPendingSends = (
       partCount: null,
       recipientCount: 1,
       sendOn: row.sendOn,
+      state,
     })
   }
   return [...groups.values()]

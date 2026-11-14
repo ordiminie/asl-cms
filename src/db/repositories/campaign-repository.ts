@@ -9,6 +9,7 @@ import {
   isNull,
   lt,
   ne,
+  or,
   sql,
 } from 'drizzle-orm'
 import {alias} from 'drizzle-orm/pg-core'
@@ -72,11 +73,11 @@ export type CampaignPartRowModel = {
 }
 
 /**
- * Une part lue avec l'echeance de sa tache encore ouverte, ou rien (s52) :
- * apres le jour de la part, elle dit que le reste a ete reporte.
+ * Une part lue avec le jour de son reste reporte faute de budget, ou rien
+ * (s52) : pose par le report seul, jamais par une nouvelle tentative.
  */
-export type CampaignPartWithJobRowModel = CampaignPartRowModel & {
-  nextRunAfter: Date | null
+export type CampaignPartWithDeferralRowModel = CampaignPartRowModel & {
+  deferredTo: string | null
 }
 
 export type CampaignRecipientInput = {
@@ -267,7 +268,8 @@ export const lockCampaignScheduleTxnDao = async (
 
 /**
  * Destinataires deja programmes par jour, toutes campagnes de l'association,
- * a partir de `fromDay` : les parts non echouees.
+ * a partir de `fromDay` : les parts non echouees a leur jour, et le reste
+ * reporte d'une part au jour ou il part (revue s52, n° 1).
  */
 export const getAllottedRecipientsByDayDao = async (
   organizationId: string,
@@ -287,7 +289,27 @@ export const getAllottedRecipientsByDayDao = async (
       )
     )
     .groupBy(campaignPart.scheduledFor)
-  return Object.fromEntries(rows.map((row) => [row.day, Number(row.total)]))
+  const deferredRows = await getDb()
+    .select({
+      day: campaignPart.deferredTo,
+      total: sql<string>`sum(${campaignPart.deferredCount})`,
+    })
+    .from(campaignPart)
+    .where(
+      and(
+        eq(campaignPart.organizationId, organizationId),
+        gte(campaignPart.deferredTo, fromDay),
+        ne(campaignPart.status, 'failed')
+      )
+    )
+    .groupBy(campaignPart.deferredTo)
+
+  const allotted: Record<string, number> = {}
+  for (const row of [...rows, ...deferredRows]) {
+    if (!row.day) continue
+    allotted[row.day] = (allotted[row.day] ?? 0) + Number(row.total)
+  }
+  return allotted
 }
 
 export const getCampaignByIdDao = async (
@@ -651,10 +673,10 @@ export const finishCampaignTxnDao = async (
 /** Les parts des campagnes donnees, dans l'ordre de leur numero. */
 export const getCampaignPartsDao = async (
   campaignIds: string[]
-): Promise<CampaignPartWithJobRowModel[]> => {
+): Promise<CampaignPartWithDeferralRowModel[]> => {
   if (campaignIds.length === 0) return []
 
-  const rows = await getDb()
+  return getDb()
     .select({
       id: campaignPart.id,
       campaignId: campaignPart.campaignId,
@@ -662,25 +684,11 @@ export const getCampaignPartsDao = async (
       scheduledFor: campaignPart.scheduledFor,
       recipientCount: campaignPart.recipientCount,
       status: campaignPart.status,
-      nextRunAfter: scheduledJob.runAfter,
+      deferredTo: campaignPart.deferredTo,
     })
     .from(campaignPart)
-    .leftJoin(
-      scheduledJob,
-      and(
-        eq(scheduledJob.organizationId, campaignPart.organizationId),
-        eq(scheduledJob.kind, CAMPAIGN_DELIVER_PART_JOB_KIND),
-        sql`${scheduledJob.idempotencyKey} = ${campaignPart.id}::text`,
-        isNull(scheduledJob.completedAt),
-        isNull(scheduledJob.failedAt)
-      )
-    )
     .where(inArray(campaignPart.campaignId, campaignIds))
     .orderBy(asc(campaignPart.campaignId), asc(campaignPart.number))
-  return rows.map((row) => ({
-    ...row,
-    nextRunAfter: row.nextRunAfter ? new Date(row.nextRunAfter) : null,
-  }))
 }
 
 export type RecipientStatusCountRowModel = {
@@ -796,22 +804,22 @@ export type OpenCampaignPartRowModel = {
   partCount: number
   scheduledFor: string
   status: CampaignPartStatusModel
-  /** Echeance de la tache encore ouverte de la part, ou rien. */
-  nextRunAfter: Date | null
+  /** Jour de Paris ou part le reste reporte de la part, ou rien. */
+  deferredTo: string | null
   pendingCount: number
 }
 
 const siblingPart = alias(campaignPart, 'sibling_part')
 
 /**
- * Les parts non closes de l'association, avec l'objet de leur campagne,
- * l'echeance de leur tache ouverte et leurs destinataires en attente (s52,
- * envois en attente du bureau). Ni adresse ni contenu.
+ * Les parts non closes de l'association, avec l'objet de leur campagne, le
+ * jour de leur reste reporte et leurs destinataires en attente (s52, envois
+ * en attente du bureau). Ni adresse ni contenu.
  */
 export const getOpenCampaignPartsDao = async (
   organizationId: string
-): Promise<OpenCampaignPartRowModel[]> => {
-  const rows = await getDb()
+): Promise<OpenCampaignPartRowModel[]> =>
+  getDb()
     .select({
       partId: campaignPart.id,
       campaignId: campaignPart.campaignId,
@@ -823,7 +831,7 @@ export const getOpenCampaignPartsDao = async (
         ),
       scheduledFor: campaignPart.scheduledFor,
       status: campaignPart.status,
-      nextRunAfter: scheduledJob.runAfter,
+      deferredTo: campaignPart.deferredTo,
       pendingCount:
         sql<number>`(select count(*) from ${campaignRecipient} where ${campaignRecipient.partId} = ${campaignPart.id} and ${campaignRecipient.status} = ${'pending'})`.mapWith(
           Number
@@ -831,25 +839,103 @@ export const getOpenCampaignPartsDao = async (
     })
     .from(campaignPart)
     .innerJoin(campaign, eq(campaign.id, campaignPart.campaignId))
-    .leftJoin(
-      scheduledJob,
-      and(
-        eq(scheduledJob.organizationId, campaignPart.organizationId),
-        eq(scheduledJob.kind, CAMPAIGN_DELIVER_PART_JOB_KIND),
-        sql`${scheduledJob.idempotencyKey} = ${campaignPart.id}::text`,
-        isNull(scheduledJob.completedAt),
-        isNull(scheduledJob.failedAt)
-      )
-    )
     .where(
       and(
         eq(campaignPart.organizationId, organizationId),
-        inArray(campaignPart.status, ['scheduled', 'sending'])
+        inArray(campaignPart.status, UNFINISHED_PART_STATUSES)
       )
     )
     .orderBy(asc(campaignPart.scheduledFor), asc(campaignPart.number))
-  return rows.map((row) => ({
-    ...row,
-    nextRunAfter: row.nextRunAfter ? new Date(row.nextRunAfter) : null,
-  }))
+
+/**
+ * Le budget du jour reporte le reste d'une part (revue s52, n° 1) : le jour
+ * ou il part et le nombre de destinataires encore en attente, figes dans la
+ * meme instruction. Le plan d'envoi le compte ce jour-la.
+ */
+export const markCampaignPartDeferredTxnDao = async (
+  partId: string,
+  deferredTo: string
+): Promise<void> => {
+  await getDb()
+    .update(campaignPart)
+    .set({
+      deferredTo,
+      deferredCount: sql`(select count(*) from ${campaignRecipient} where ${campaignRecipient.partId} = ${partId} and ${campaignRecipient.status} = ${'pending'})`,
+    })
+    .where(eq(campaignPart.id, partId))
+}
+
+/** Une part ouverte telle que le glissement apres un report la lit. */
+export type SlidableCampaignPartRowModel = {
+  id: string
+  campaignId: string
+  scheduledFor: string
+  recipientCount: number
+  status: CampaignPartStatusModel
+  deferredTo: string | null
+}
+
+/**
+ * Les parts ouvertes de l'association programmees a partir de `fromDay`, ou
+ * dont le reste reporte part a partir de ce jour, dans l'ordre de leur jour.
+ * Ni adresse ni contenu.
+ */
+export const getSlidableCampaignPartsDao = async (
+  organizationId: string,
+  fromDay: string
+): Promise<SlidableCampaignPartRowModel[]> =>
+  getDb()
+    .select({
+      id: campaignPart.id,
+      campaignId: campaignPart.campaignId,
+      scheduledFor: campaignPart.scheduledFor,
+      recipientCount: campaignPart.recipientCount,
+      status: campaignPart.status,
+      deferredTo: campaignPart.deferredTo,
+    })
+    .from(campaignPart)
+    .where(
+      and(
+        eq(campaignPart.organizationId, organizationId),
+        inArray(campaignPart.status, UNFINISHED_PART_STATUSES),
+        or(
+          gte(campaignPart.scheduledFor, fromDay),
+          gte(campaignPart.deferredTo, fromDay)
+        )
+      )
+    )
+    .orderBy(asc(campaignPart.scheduledFor), asc(campaignPart.number))
+
+/**
+ * Une part encore programmee glisse a un jour suivant, et sa tache ouverte,
+ * non prise, avec elle. Une part deja entamee ou close ne bouge pas.
+ */
+export const moveCampaignPartTxnDao = async (input: {
+  organizationId: string
+  partId: string
+  day: string
+  runAfter: Date
+}): Promise<void> => {
+  await getDb()
+    .update(campaignPart)
+    .set({scheduledFor: input.day})
+    .where(
+      and(
+        eq(campaignPart.id, input.partId),
+        eq(campaignPart.status, 'scheduled')
+      )
+    )
+  await getDb()
+    .update(scheduledJob)
+    .set({runAfter: input.runAfter, updatedAt: sql`now()`})
+    .where(
+      and(
+        eq(scheduledJob.organizationId, input.organizationId),
+        eq(scheduledJob.kind, CAMPAIGN_DELIVER_PART_JOB_KIND),
+        eq(scheduledJob.idempotencyKey, input.partId),
+        isNull(scheduledJob.completedAt),
+        isNull(scheduledJob.failedAt),
+        isNull(scheduledJob.lockedAt)
+      )
+    )
 }

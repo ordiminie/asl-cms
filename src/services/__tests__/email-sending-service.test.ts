@@ -81,6 +81,7 @@ beforeEach(() => {
         referenceType: 'incident_report',
         referenceId: REPORT_ID,
         sendOn: '2026-11-15',
+        status: 'pending',
       },
       {
         id: 'd2',
@@ -88,6 +89,7 @@ beforeEach(() => {
         referenceType: 'incident_report',
         referenceId: REPORT_ID,
         sendOn: '2026-11-15',
+        status: 'pending',
       },
     ]
   })
@@ -102,7 +104,7 @@ beforeEach(() => {
         partCount: 3,
         scheduledFor: '2026-11-14',
         status: 'sending',
-        nextRunAfter: new Date('2026-11-15T01:00:00.000Z'),
+        deferredTo: '2026-11-15',
         pendingCount: 40,
       },
       {
@@ -113,7 +115,7 @@ beforeEach(() => {
         partCount: 3,
         scheduledFor: '2026-11-15',
         status: 'scheduled',
-        nextRunAfter: new Date('2026-11-15T01:00:00.000Z'),
+        deferredTo: null,
         pendingCount: 96,
       },
     ]
@@ -149,6 +151,7 @@ describe('getEmailSendingOverviewService — envois d’emails du bureau (s52, �
           partCount: 3,
           recipientCount: 40,
           sendOn: '2026-11-15',
+          state: 'scheduled',
         },
         {
           key: `incident_report:${REPORT_ID}:2026-11-15`,
@@ -159,6 +162,7 @@ describe('getEmailSendingOverviewService — envois d’emails du bureau (s52, �
           partCount: null,
           recipientCount: 2,
           sendOn: '2026-11-15',
+          state: 'scheduled',
         },
       ],
     })
@@ -190,6 +194,30 @@ describe('getEmailSendingOverviewService — envois d’emails du bureau (s52, �
       sentToday: 300,
       reserveExhausted: true,
       remainingReportable: 0,
+    })
+  })
+
+  it('un envoi en échec est montré « en échec », hors du total en attente et de la date du prochain envoi (revue n° 2)', async () => {
+    vi.mocked(getOpenCampaignPartsDao).mockResolvedValue([])
+    vi.mocked(listPendingDeferredEmailsDao).mockResolvedValue([
+      {
+        id: 'd1',
+        nature: 'board_notification',
+        referenceType: 'incident_report',
+        referenceId: REPORT_ID,
+        sendOn: '2026-11-13',
+        status: 'failed',
+      },
+    ])
+
+    const overview = await getEmailSendingOverviewService(ORG_ID, NOW)
+
+    expect(overview.pending).toEqual([
+      expect.objectContaining({state: 'failed', recipientCount: 1}),
+    ])
+    expect(overview).toMatchObject({
+      pendingRecipientTotal: 0,
+      nextSendOn: null,
     })
   })
 

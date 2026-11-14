@@ -94,10 +94,19 @@ describe('campaign_part (s26, ADR 052)', () => {
         'recipient_count',
         'status',
         'finished_at',
+        'deferred_to',
+        'deferred_count',
       ].sort()
     )
     expect(t.column('scheduled_for')?.getSQLType()).toBe('date')
     expect(t.column('status')?.getSQLType()).toBe('campaign_part_status')
+  })
+
+  it('porte le jour et la taille du reste reporté faute de budget, vides sans report (revue s52, n° 1)', () => {
+    expect(t.column('deferred_to')?.getSQLType()).toBe('date')
+    expect(t.column('deferred_to')?.notNull).toBe(false)
+    expect(t.column('deferred_count')?.getSQLType()).toBe('integer')
+    expect(t.column('deferred_count')?.notNull).toBe(false)
   })
 
   it('suit son association et sa campagne (cascade), un numéro unique par campagne', () => {

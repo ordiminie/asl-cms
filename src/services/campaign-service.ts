@@ -23,13 +23,16 @@ import {
   getCurrentParcelNumbersForMembersDao,
   getPendingPartRecipientsDao,
   getRecipientStatusCountsDao,
+  getSlidableCampaignPartsDao,
   lockCampaignScheduleTxnDao,
+  markCampaignPartDeferredTxnDao,
   markRecipientFailedTxnDao,
   markRecipientSentTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
   markSendingRecipientsToVerifyTxnDao,
   markStaleSendingRecipientsToVerifyTxnDao,
+  moveCampaignPartTxnDao,
   type PendingRecipientRowModel,
   releaseRecipientClaimTxnDao,
   startCampaignPartTxnDao,
@@ -74,8 +77,13 @@ import {
   partRunAfter,
   planCampaignParts,
   retryDelayMs,
+  slidePartsAfterDeferral,
 } from './rules/campaign-schedule-rules'
-import {budgetDayOf, deferredRunAfter} from './rules/email-budget-rules'
+import {
+  budgetDayOf,
+  deferredRunAfter,
+  deferredSendOn,
+} from './rules/email-budget-rules'
 import {runDueScheduledJobsService} from './scheduled-job-service'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
@@ -820,6 +828,64 @@ const sweepAbandonedRecipients = async (
 }
 
 /**
+ * Le budget du jour a reporte le reste de la part (revue s52, n° 1) : sous le
+ * verrou du plan d'envoi, le reste est compte le lendemain, puis les parts
+ * programmees glissent au premier jour qui les tient sous le plafond des
+ * campagnes, avec leur tache. Le reste part d'abord ; aucun jour ne depasse
+ * le plafond, toutes campagnes confondues. Aucune tentative n'est comptee.
+ */
+const deferPartOutcome = async (
+  organizationId: string,
+  part: PartToDeliver,
+  dailySendCap: number,
+  now: Date
+): Promise<ScheduledJobOutcome> => {
+  const day = budgetDayOf(now)
+  const sendOn = deferredSendOn(day)
+  await withTenant(organizationId, async () => {
+    await lockCampaignScheduleTxnDao(organizationId)
+    await markCampaignPartDeferredTxnDao(part.id, sendOn)
+    const allottedByDay = await getAllottedRecipientsByDayDao(
+      organizationId,
+      sendOn
+    )
+    const openParts = await getSlidableCampaignPartsDao(organizationId, sendOn)
+
+    const floorByCampaign: Record<string, string> = {}
+    for (const open of openParts) {
+      const floor = floorByCampaign[open.campaignId]
+      if (open.deferredTo && (!floor || open.deferredTo > floor)) {
+        floorByCampaign[open.campaignId] = open.deferredTo
+      }
+    }
+    const moves = slidePartsAfterDeferral({
+      parts: openParts
+        .filter(
+          (open) => open.status === 'scheduled' && open.scheduledFor >= sendOn
+        )
+        .map((open) => ({
+          id: open.id,
+          campaignId: open.campaignId,
+          day: open.scheduledFor,
+          count: open.recipientCount,
+        })),
+      allottedByDay,
+      dailyCap: dailySendCap,
+      floorByCampaign,
+    })
+    for (const move of moves) {
+      await moveCampaignPartTxnDao({
+        organizationId,
+        partId: move.id,
+        day: move.day,
+        runAfter: partRunAfter(move.day, now),
+      })
+    }
+  })
+  return {status: 'deferred', runAfter: deferredRunAfter(day)}
+}
+
+/**
  * La part est servie ; la campagne n'est `sent` qu'a la derniere. Une part ne
  * se clot **jamais** sur une ligne `sending` : ce passage a fini les siennes,
  * toute ligne encore en cours est abandonnee et passe a verifier, visible du
@@ -882,7 +948,12 @@ export const deliverCampaignPartService = async (
       return failedAttemptOutcome(job, now, part, association.sendMaxAttempts)
     }
     if (delivery === 'deferred') {
-      return {status: 'deferred', runAfter: deferredRunAfter(budgetDayOf(now))}
+      return deferPartOutcome(
+        organizationId,
+        part,
+        association.dailySendCap,
+        now
+      )
     }
     if (delivery === 'skipped') return {status: 'released'}
   }

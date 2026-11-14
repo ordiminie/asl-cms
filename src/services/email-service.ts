@@ -3,10 +3,12 @@ import {getLocale, getTranslations} from 'next-intl/server'
 import type {ReactNode} from 'react'
 import {render} from 'react-email'
 
+import {markContactMessageNotificationFailedDao} from '@/db/repositories/contact-message-repository'
 import {
   claimDeferredEmailForSendTxnDao,
   createDeferredEmailTxnDao,
   deleteDeferredEmailTxnDao,
+  markDeferredEmailFailedTxnDao,
   markDeferredEmailToVerifyTxnDao,
   releaseDeferredEmailTxnDao,
 } from '@/db/repositories/deferred-email-repository'
@@ -15,6 +17,7 @@ import {
   countLoginSendTxnDao,
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
+import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
 import {withTenant} from '@/db/tenant-scope'
@@ -77,6 +80,7 @@ import {
 import {getPlanByPriceIdService} from './subscription-service'
 import {AppSettingKeys} from './types/domain/app-settings-types'
 import {
+  getCampaignSendMaxAttempts,
   getEmailDailySendLimit,
   getEmailLoginReserve,
 } from './types/domain/association-settings-types'
@@ -1152,13 +1156,76 @@ const composedOfDeferred = (row: ClaimedDeferredEmail): ComposedEmail => ({
 })
 
 /**
- * L'envoi a echoue : refus certain, la ligne attend une nouvelle tentative ;
- * issue inconnue, elle est a verifier, jamais renvoyee. Seul le nom de
- * l'erreur est journalise, jamais le message (critere 7).
+ * Le message a l'origine d'une notification au bureau dont le rejeu n'a pas
+ * abouti porte le temoin d'echec, comme a l'envoi direct (revue s52, n° 7).
+ * Un temoin qui ne se pose pas est journalise, sans rien du message.
+ */
+const flagSourceNotificationFailed = async (
+  organizationId: string,
+  row: ClaimedDeferredEmail
+): Promise<void> => {
+  const {referenceType, referenceId} = row
+  if (!referenceId) return
+  const markFailed =
+    referenceType === 'contact_message'
+      ? markContactMessageNotificationFailedDao
+      : referenceType === 'incident_report'
+        ? markIncidentReportNotificationFailedDao
+        : undefined
+  if (!markFailed) return
+  try {
+    await withTenant(organizationId, () => markFailed(referenceId))
+  } catch (error) {
+    logger.error("[EMAIL] Temoin d'echec de notification non pose", {
+      referenceType,
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+  }
+}
+
+/** Les tentatives d'envoi permises, reglage de l'association (ADR 010). */
+const sendMaxAttemptsOf = async (organizationId: string): Promise<number> =>
+  getCampaignSendMaxAttempts(
+    await getAssociationSettingsService(organizationId)
+  )
+
+/**
+ * Refus certain du fournisseur : tentatives restantes, la ligne attend une
+ * nouvelle tentative ; epuisees (`campaign.send_max_attempts`, comme une part
+ * de campagne), la ligne passe en echec, son adresse et son contenu effaces,
+ * et la tache echoue (revue s52, n° 2).
+ */
+const refusedDeferredSendOutcome = async (
+  job: ScheduledJob,
+  row: ClaimedDeferredEmail,
+  day: string,
+  now: Date
+): Promise<ScheduledJobOutcome> => {
+  if (job.attempts < (await sendMaxAttemptsOf(job.organizationId))) {
+    await withTenant(job.organizationId, () =>
+      releaseDeferredEmailTxnDao({id: row.id, sendOn: day, countAttempt: true})
+    )
+    return {
+      status: 'retry',
+      runAfter: new Date(now.getTime() + retryDelayMs(job.attempts)),
+    }
+  }
+  await withTenant(job.organizationId, () =>
+    markDeferredEmailFailedTxnDao(row.id)
+  )
+  await flagSourceNotificationFailed(job.organizationId, row)
+  return {status: 'failed'}
+}
+
+/**
+ * L'envoi a echoue : refus certain, voir `refusedDeferredSendOutcome` ; issue
+ * inconnue, la ligne est a verifier, jamais renvoyee, et le message source
+ * porte le temoin d'echec. Seul le nom de l'erreur est journalise, jamais le
+ * message (critere 7).
  */
 const deferredSendFailureOutcome = async (
   job: ScheduledJob,
-  deferredEmailId: string,
+  row: ClaimedDeferredEmail,
   day: string,
   now: Date,
   error: unknown
@@ -1169,21 +1236,13 @@ const deferredSendFailureOutcome = async (
     refused,
     error: error instanceof Error ? error.name : 'unknown',
   })
+  if (refused) return refusedDeferredSendOutcome(job, row, day, now)
+
   await withTenant(job.organizationId, () =>
-    refused
-      ? releaseDeferredEmailTxnDao({
-          id: deferredEmailId,
-          sendOn: day,
-          countAttempt: true,
-        })
-      : markDeferredEmailToVerifyTxnDao(deferredEmailId)
+    markDeferredEmailToVerifyTxnDao(row.id)
   )
-  return refused
-    ? {
-        status: 'retry',
-        runAfter: new Date(now.getTime() + retryDelayMs(job.attempts)),
-      }
-    : {status: 'completed'}
+  await flagSourceNotificationFailed(job.organizationId, row)
+  return {status: 'completed'}
 }
 
 /**
@@ -1193,6 +1252,7 @@ const deferredSendFailureOutcome = async (
  * `pending → sending` (deja prise ou absente : rien) ; budget du jour (de
  * nouveau epuise : ligne rendue et tache reportee au lendemain 02:00, sans
  * tentative comptee) ; envoi ; la ligne est **supprimee** une fois partie.
+ * Un refus du fournisseur a chaque tentative la laisse en echec.
  */
 export const deliverDeferredEmailService = async (
   job: ScheduledJob,
@@ -1227,7 +1287,7 @@ export const deliverDeferredEmailService = async (
   try {
     await transmitWithinBudget(composedOfDeferred(row), organizationId, day)
   } catch (error) {
-    return deferredSendFailureOutcome(job, deferredEmailId, day, now, error)
+    return deferredSendFailureOutcome(job, row, day, now, error)
   }
   await withTenant(organizationId, () =>
     deleteDeferredEmailTxnDao(deferredEmailId)

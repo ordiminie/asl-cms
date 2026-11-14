@@ -3878,6 +3878,7 @@
         "contact_message": "À l’adresse de contact"
       },
       "state": "Programmée pour le {date}",
+      "failedState": "En échec",
       "actions": {
         "campaign": "Voir la campagne",
         "contact_message": "Voir le message",

@@ -25,6 +25,7 @@ const campaignPart: PendingSendDTO = {
   partCount: 3,
   recipientCount: 40,
   sendOn: '2026-11-15',
+  state: 'scheduled',
 }
 
 const contactNotification: PendingSendDTO = {
@@ -36,6 +37,7 @@ const contactNotification: PendingSendDTO = {
   partCount: null,
   recipientCount: 1,
   sendOn: '2026-11-15',
+  state: 'scheduled',
 }
 
 const reportNotification: PendingSendDTO = {
@@ -147,6 +149,28 @@ describe('EmailSendingOverview — 1a, limite du jour atteinte, envois en attent
     ).toHaveAttribute('href', `/bureau/signalements/${REPORT_ID}`)
     expect(pending).not.toHaveTextContent('@')
     expect(screen.queryByRole('button', {name: /Envoyer/})).toBeNull()
+  })
+
+  it('un envoi refusé à chaque tentative est « En échec » (destructive), jamais « Programmée » (revue n° 2)', () => {
+    const failed: PendingSendDTO = {
+      ...reportNotification,
+      key: `incident_report:${REPORT_ID}:2026-11-15:failed`,
+      state: 'failed',
+    }
+    render(
+      <EmailSendingOverview
+        overview={overviewOf({pending: [failed]})}
+        page={1}
+      />
+    )
+
+    const [row] = within(within(card('En attente')).getByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+    expect(row).not.toHaveTextContent('Programmée')
+    const badge = within(row).getByText('En échec')
+    expect(badge).toHaveAttribute('data-slot', 'badge')
+    expect(badge).toHaveClass('bg-destructive')
   })
 
   it('cartes empilées sous 640 px, titre de l’envoi en tête', () => {

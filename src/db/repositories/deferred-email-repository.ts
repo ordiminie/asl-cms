@@ -1,4 +1,4 @@
-import {and, asc, eq, sql} from 'drizzle-orm'
+import {and, asc, eq, inArray, sql} from 'drizzle-orm'
 
 import {
   AddDeferredEmailModel,
@@ -17,11 +17,11 @@ export type CreateDeferredEmailInput = Omit<
   'id' | 'status' | 'attempts' | 'createdAt' | 'updatedAt'
 >
 
-/** Un email en attente, vu du bureau : ni adresse ni contenu. */
+/** Un email en attente ou en echec, vu du bureau : ni adresse ni contenu. */
 export type PendingDeferredEmailRow = Pick<
   DeferredEmailModel,
   'id' | 'nature' | 'referenceType' | 'referenceId' | 'sendOn'
->
+> & {status: 'pending' | 'failed'}
 
 /** Conserve un email reporte, en attente. */
 export const createDeferredEmailTxnDao = async (
@@ -90,23 +90,61 @@ export const releaseDeferredEmailTxnDao = async ({
     .where(and(eq(deferredEmail.id, id), eq(deferredEmail.status, 'sending')))
 }
 
-/** Les emails en attente de l'association, sans adresse ni contenu. */
+const BUREAU_VISIBLE_STATUSES: PendingDeferredEmailRow['status'][] = [
+  'pending',
+  'failed',
+]
+
+/**
+ * Les emails en attente ou en echec de l'association, sans adresse ni
+ * contenu.
+ */
 export const listPendingDeferredEmailsDao = async (
   organizationId: string
-): Promise<PendingDeferredEmailRow[]> =>
-  getDb()
+): Promise<PendingDeferredEmailRow[]> => {
+  const rows = await getDb()
     .select({
       id: deferredEmail.id,
       nature: deferredEmail.nature,
       referenceType: deferredEmail.referenceType,
       referenceId: deferredEmail.referenceId,
       sendOn: deferredEmail.sendOn,
+      status: deferredEmail.status,
     })
     .from(deferredEmail)
     .where(
       and(
         eq(deferredEmail.organizationId, organizationId),
-        eq(deferredEmail.status, 'pending')
+        inArray(deferredEmail.status, BUREAU_VISIBLE_STATUSES)
       )
     )
     .orderBy(asc(deferredEmail.sendOn), asc(deferredEmail.createdAt))
+  return rows.map((row) => ({
+    ...row,
+    status: row.status === 'failed' ? 'failed' : 'pending',
+  }))
+}
+
+/**
+ * Tentatives epuisees : la ligne prise passe `failed`, jamais renvoyee. Son
+ * adresse et son contenu sont effaces dans la meme instruction (critere 7) :
+ * le bureau ne garde que la nature, la reference et le jour.
+ */
+export const markDeferredEmailFailedTxnDao = async (
+  id: string
+): Promise<void> => {
+  await getDb()
+    .update(deferredEmail)
+    .set({
+      status: 'failed',
+      recipient: '',
+      subject: '',
+      textBody: '',
+      htmlBody: null,
+      headers: null,
+      replyTo: null,
+      senderName: null,
+      updatedAt: sql`now()`,
+    })
+    .where(and(eq(deferredEmail.id, id), eq(deferredEmail.status, 'sending')))
+}

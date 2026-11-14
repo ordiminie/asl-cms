@@ -3,6 +3,7 @@ import {describe, expect, it} from 'vitest'
 import * as rules from './campaign-rules'
 import {
   computeCampaignTarget,
+  deferredDayOf,
   escapeHtml,
   finalSubject,
   findUnknownVariables,
@@ -268,7 +269,7 @@ describe('toCampaignDto — liste blanche', () => {
     ])
   })
 
-  it('une part entamée dont la tâche attend un jour suivant : programmée pour ce jour, ses reportés comptés (s52, écran 3)', () => {
+  it('une part entamée dont le budget a reporté le reste : programmée pour le jour du reste, ses reportés comptés (s52, écran 3)', () => {
     const deferredParts = [
       {
         id: 'p2',
@@ -277,16 +278,16 @@ describe('toCampaignDto — liste blanche', () => {
         scheduledFor: '2026-11-14',
         recipientCount: 100,
         status: 'sending' as const,
-        nextRunAfter: new Date('2026-11-15T01:00:00.000Z'),
+        deferredTo: '2026-11-15',
       },
       {
         id: 'p3',
         campaignId: 'c1',
         number: 3,
-        scheduledFor: '2026-11-15',
+        scheduledFor: '2026-11-16',
         recipientCount: 96,
         status: 'scheduled' as const,
-        nextRunAfter: new Date('2026-11-15T01:00:00.000Z'),
+        deferredTo: null,
       },
     ]
     const deferredCounts = [
@@ -313,6 +314,35 @@ describe('toCampaignDto — liste blanche', () => {
       deferredUntil: null,
       deferredCount: 0,
     })
+  })
+})
+
+describe('deferredDayOf — seul un report faute de budget est un report (revue s52, n° 3)', () => {
+  const part = {
+    status: 'sending' as const,
+    scheduledFor: '2026-11-14',
+    deferredTo: null,
+  }
+
+  it('une nouvelle tentative à +30 min qui passe minuit n’est pas un report', () => {
+    expect(
+      deferredDayOf({
+        ...part,
+        nextRunAfter: new Date('2026-11-14T23:20:00.000Z'),
+      } as Parameters<typeof deferredDayOf>[0])
+    ).toBeNull()
+  })
+
+  it('un reste reporté par le budget part le jour posé au report', () => {
+    expect(deferredDayOf({...part, deferredTo: '2026-11-15'})).toBe(
+      '2026-11-15'
+    )
+  })
+
+  it('une part close n’a plus de report à montrer', () => {
+    expect(
+      deferredDayOf({...part, status: 'sent', deferredTo: '2026-11-15'})
+    ).toBeNull()
   })
 })
 

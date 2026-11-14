@@ -239,11 +239,18 @@ function usePendingTexts() {
   }
 }
 
-function PendingStateBadge({sendOn}: {sendOn: string}) {
+function PendingStateBadge({send}: {send: PendingSendDTO}) {
   const t = useTranslations('EmailSendingBureau.pending')
+  if (send.state === 'failed') {
+    return (
+      <Badge variant="destructive" className="text-[15px]">
+        {t('failedState')}
+      </Badge>
+    )
+  }
   return (
     <Badge variant="secondary" className="text-[15px]">
-      {t('state', {date: shortDayLabelOf(sendOn)})}
+      {t('state', {date: shortDayLabelOf(send.sendOn)})}
     </Badge>
   )
 }
@@ -306,7 +313,7 @@ function PendingTable({sends}: {sends: readonly PendingSendDTO[]}) {
                   {send.recipientCount}
                 </TableCell>
                 <TableCell>
-                  <PendingStateBadge sendOn={send.sendOn} />
+                  <PendingStateBadge send={send} />
                 </TableCell>
                 <TableCell>
                   <PendingAction action={texts.action} />
@@ -352,7 +359,7 @@ function PendingCards({sends}: {sends: readonly PendingSendDTO[]}) {
               <dd className="font-mono tabular-nums">{send.recipientCount}</dd>
               <dt className="text-muted-foreground">{t('columns.state')}</dt>
               <dd>
-                <PendingStateBadge sendOn={send.sendOn} />
+                <PendingStateBadge send={send} />
               </dd>
             </dl>
             <PendingAction action={texts.action} />

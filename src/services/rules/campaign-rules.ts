@@ -15,7 +15,6 @@ import {
   CampaignVariable,
   CampaignVariableValues,
 } from '../types/domain/campaign-types'
-import {calendarDayOf} from '../types/domain/water-analysis-types'
 
 /**
  * Regles pures des campagnes (s25, ADR 051). Aucun acces a la base : le
@@ -158,8 +157,8 @@ export type CampaignPartRow = {
   scheduledFor: string
   recipientCount: number
   status: CampaignPartStatus
-  /** Echeance de la tache encore ouverte de la part (s52). */
-  nextRunAfter?: Date | null
+  /** Jour ou part le reste reporte faute de budget (s52), ou rien. */
+  deferredTo?: string | null
 }
 
 /** Un decompte de destinataires par campagne, part et statut. */
@@ -219,16 +218,17 @@ export const campaignDisplayStateOf = (
 }
 
 /**
- * Le jour ou part le reste d'une part non close dont la tache attend un jour
- * suivant le sien : un report faute de budget (s52, ADR 053 §5). Rien sinon.
+ * Le jour ou part le reste d'une part non close que le budget du jour a
+ * reporte (s52, ADR 053 §5), pose par le report lui-meme : une nouvelle
+ * tentative qui passe minuit n'en est pas un (revue s52, n° 3). Rien sinon.
  */
 export const deferredDayOf = (
-  part: Pick<CampaignPartRow, 'status' | 'scheduledFor' | 'nextRunAfter'>
+  part: Pick<CampaignPartRow, 'status' | 'scheduledFor' | 'deferredTo'>
 ): string | null => {
   if (part.status === 'sent' || part.status === 'failed') return null
-  if (!part.nextRunAfter) return null
-  const day = calendarDayOf(part.nextRunAfter)
-  return day > part.scheduledFor ? day : null
+  return part.deferredTo && part.deferredTo > part.scheduledFor
+    ? part.deferredTo
+    : null
 }
 
 const toPartDto = (

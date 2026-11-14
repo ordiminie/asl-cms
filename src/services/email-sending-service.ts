@@ -90,9 +90,10 @@ export const getEmailSendingOverviewService = async (
     deferredEmails,
     deferredCampaignPartsOf(openParts)
   )
+  const scheduled = pending.filter((group) => group.state === 'scheduled')
   const sentToday = counts.reportableCount + counts.loginCount
   const remaining = remainingReportable(limit, reserve, counts.reportableCount)
-  const sendDays = pending.map((group) => group.sendOn).sort()
+  const sendDays = scheduled.map((group) => group.sendOn).sort()
   return {
     day,
     limit,
@@ -103,7 +104,7 @@ export const getEmailSendingOverviewService = async (
     limitReached: remaining === 0,
     reserveExhausted: sentToday >= limit,
     pending,
-    pendingRecipientTotal: pending.reduce(
+    pendingRecipientTotal: scheduled.reduce(
       (total, group) => total + group.recipientCount,
       0
     ),

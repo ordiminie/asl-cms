@@ -65,6 +65,8 @@ export type PendingDeferredEmail = {
   referenceType: string | null
   referenceId: string | null
   sendOn: string
+  /** `failed` : refuse a chaque tentative, il ne partira plus (revue s52). */
+  status: 'pending' | 'failed'
 }
 
 /** Le reste d'une part de campagne reportee faute de budget. */
@@ -98,6 +100,8 @@ export type PendingSendDTO = {
   recipientCount: number
   /** Jour de Paris ou l'envoi partira. */
   sendOn: string
+  /** Programme, ou en echec : il ne partira plus. */
+  state: 'scheduled' | 'failed'
 }
 
 /** La page « Envois d'emails » du bureau (s52, ecran 1). */
