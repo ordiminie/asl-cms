@@ -8,6 +8,7 @@ import {
   updateCategoryTxnDao,
 } from '@/db/repositories/association-category-repository'
 import {countIncidentReportsByCategoryDao} from '@/db/repositories/incident-report-repository'
+import {countMemberQuestionsByCategoryDao} from '@/db/repositories/member-question-repository'
 import {withTenant} from '@/db/tenant-scope'
 
 import {getAuthUser} from './authentication/auth-service'
@@ -42,10 +43,12 @@ import {
 /**
  * Categories administrables, generiques par domaine (s10, ADR 028). Chaque
  * domaine est gouverne par l'action de son usage : les categories de
- * signalement par `report.manage`. s23 et s35 ajouteront leur ligne ici.
+ * signalement par `report.manage`, les sujets des questions par
+ * `question.manage` (s23). s35 ajoutera sa ligne ici.
  */
 const MANAGE_ACTION_OF_DOMAIN: Record<CategoryDomain, string> = {
   [CategoryDomainConst.REPORT]: ActionIdConst.REPORT_MANAGE,
+  [CategoryDomainConst.QUESTION]: ActionIdConst.QUESTION_MANAGE,
 }
 
 /**
@@ -57,6 +60,7 @@ const USAGE_COUNTS_OF_DOMAIN: Record<
   (organizationId: string) => Promise<Record<string, number>>
 > = {
   [CategoryDomainConst.REPORT]: countIncidentReportsByCategoryDao,
+  [CategoryDomainConst.QUESTION]: countMemberQuestionsByCategoryDao,
 }
 
 const MANAGE_DENIED =

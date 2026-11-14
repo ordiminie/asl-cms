@@ -16,6 +16,7 @@ import * as impersonationEvent from './impersonation-event-model'
 import * as incidentReport from './incident-report-model'
 import * as memberNote from './member-note-model'
 import * as memberProfile from './member-profile-model'
+import * as memberQuestion from './member-question-model'
 import * as memberRoleEvent from './member-role-event-model'
 import * as menuItem from './menu-item-model'
 import * as news from './news-model'
@@ -66,6 +67,7 @@ const db = drizzle(pool, {
     ...memberProfile,
     ...memberRoleEvent,
     ...memberNote,
+    ...memberQuestion,
     ...campaign,
     ...scheduledJob,
     ...emailSendBudget,

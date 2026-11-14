@@ -1,5 +1,6 @@
 import type {
   DeferredCampaignPart,
+  EmailSendReferenceType,
   PendingDeferredEmail,
   PendingSendDTO,
   TenantEmailNature,
@@ -45,12 +46,16 @@ export const deferredSendOn = (day: string): string => addDays(day, 1)
 export const deferredRunAfter = (day: string): Date =>
   parisTwoAm(deferredSendOn(day))
 
-const REFERENCE_TYPES = new Set(['contact_message', 'incident_report'])
+const REFERENCE_TYPES = new Set<string>([
+  'contact_message',
+  'incident_report',
+  'member_question',
+] satisfies EmailSendReferenceType[])
 
 const referenceOf = (row: PendingDeferredEmail): PendingSendDTO['reference'] =>
   row.referenceType && row.referenceId && REFERENCE_TYPES.has(row.referenceType)
     ? {
-        type: row.referenceType as 'contact_message' | 'incident_report',
+        type: row.referenceType as EmailSendReferenceType,
         id: row.referenceId,
       }
     : null

@@ -32,7 +32,8 @@ export type PlatformEmailNature = (typeof PLATFORM_EMAIL_NATURES)[number]
  * Objet dont un email d'association parle, pour le designer au bureau sans
  * rien lire de son contenu (envois en attente).
  */
-export type EmailSendReferenceType = 'contact_message' | 'incident_report'
+export type EmailSendReferenceType =
+  'contact_message' | 'incident_report' | 'member_question'
 
 export type EmailSendReference = {type: EmailSendReferenceType; id: string}
 

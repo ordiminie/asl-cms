@@ -287,3 +287,28 @@ describe('EmailSendingError — 1e, erreur de lecture', () => {
     expect(screen.queryByRole('heading', {level: 2})).toBeNull()
   })
 })
+
+describe('EmailSendingOverview — question d’un membre (s23)', () => {
+  it('« Question d’un membre », action « Voir la question » vers le bureau', () => {
+    const QUESTION_ID = '66666666-6666-4666-8666-666666666666'
+    const questionNotification: PendingSendDTO = {
+      ...contactNotification,
+      key: `member_question:${QUESTION_ID}:2026-11-15`,
+      reference: {type: 'member_question', id: QUESTION_ID},
+    }
+    render(
+      <EmailSendingOverview
+        overview={overviewOf({pending: [questionNotification]})}
+        page={1}
+      />
+    )
+
+    const [row] = within(within(card('En attente')).getByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+    expect(row).toHaveTextContent('Question d’un membre')
+    expect(
+      within(row).getByRole('link', {name: /Voir la question/})
+    ).toHaveAttribute('href', `/bureau/questions/${QUESTION_ID}`)
+  })
+})

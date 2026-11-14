@@ -235,6 +235,16 @@ function usePendingTexts() {
         },
       }
     }
+    if (reference?.type === 'member_question') {
+      return {
+        title: t('titles.member_question'),
+        detail: null,
+        action: {
+          href: `/bureau/questions/${reference.id}`,
+          label: t('actions.member_question'),
+        },
+      }
+    }
     return {title: t('titles.other'), detail: null, action: null}
   }
 }

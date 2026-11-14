@@ -15,6 +15,9 @@ vi.mock('@/db/tenant-scope', () => ({
 vi.mock('@/db/repositories/incident-report-repository', () => ({
   countIncidentReportsByCategoryDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-question-repository', () => ({
+  countMemberQuestionsByCategoryDao: vi.fn(),
+}))
 vi.mock('@/db/repositories/association-category-repository', () => ({
   createCategoryWithinLimitTxnDao: vi.fn(),
   getCategoryByIdDao: vi.fn(),
@@ -31,6 +34,7 @@ import {
   updateCategoryTxnDao,
 } from '@/db/repositories/association-category-repository'
 import {countIncidentReportsByCategoryDao} from '@/db/repositories/incident-report-repository'
+import {countMemberQuestionsByCategoryDao} from '@/db/repositories/member-question-repository'
 
 import {
   createAssociationCategoryService,
@@ -59,6 +63,7 @@ const ORG_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_ORG_ID = '22222222-2222-4222-8222-222222222222'
 const CATEGORY_ID = '33333333-3333-4333-8333-333333333333'
 const REPORT = CategoryDomainConst.REPORT
+const QUESTION = CategoryDomainConst.QUESTION
 
 const withRole = (role: OrganizationRole, organizationId = ORG_ID): User => ({
   ...userTest,
@@ -102,6 +107,7 @@ beforeEach(() => {
   scope.current = undefined
   vi.mocked(listActiveCategoriesDao).mockResolvedValue([categoryRow()])
   vi.mocked(countIncidentReportsByCategoryDao).mockResolvedValue({})
+  vi.mocked(countMemberQuestionsByCategoryDao).mockResolvedValue({})
   vi.mocked(getCategoryByIdDao).mockResolvedValue(categoryRow())
   vi.mocked(createCategoryWithinLimitTxnDao).mockResolvedValue({
     status: 'created',
@@ -436,5 +442,114 @@ describe('[PUBLIC] listActiveReportCategoriesPublicService — le formulaire du 
       listActiveReportCategoriesPublicService('pas-un-uuid')
     ).rejects.toThrow()
     expect(listActiveCategoriesDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('[s23] domaine question — sujets des questions', () => {
+  it.each([
+    ['[ORGANIZATION OWNER]', UserOrganizationRoleConst.OWNER],
+    ['[ORGANIZATION ADMIN]', UserOrganizationRoleConst.ADMIN],
+  ])(
+    '%s lists the question categories with their question counts',
+    async (_label, role) => {
+      setupAuthUserMocked(withRole(role))
+      vi.mocked(listActiveCategoriesDao).mockResolvedValue([
+        categoryRow({domain: QUESTION, name: 'Voirie'}),
+      ])
+      let countedUnder: string | undefined
+      vi.mocked(countMemberQuestionsByCategoryDao).mockImplementation(
+        async () => {
+          countedUnder = scope.current
+          return {[CATEGORY_ID]: 2}
+        }
+      )
+
+      const list = await listAssociationCategoriesService(ORG_ID, QUESTION)
+
+      expect(listActiveCategoriesDao).toHaveBeenCalledWith(ORG_ID, QUESTION)
+      expect(list.items).toEqual([
+        expect.objectContaining({domain: QUESTION, usageCount: 2}),
+      ])
+      expect(countMemberQuestionsByCategoryDao).toHaveBeenCalledWith(ORG_ID)
+      expect(countIncidentReportsByCategoryDao).not.toHaveBeenCalled()
+      expect(countedUnder).toBe(ORG_ID)
+    }
+  )
+
+  it('[ORGANIZATION MEMBER] should NOT manage the question categories', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+
+    await expect(
+      listAssociationCategoriesService(ORG_ID, QUESTION)
+    ).rejects.toThrow(AuthorizationError)
+    await expect(
+      createAssociationCategoryService({
+        organizationId: ORG_ID,
+        domain: QUESTION,
+        name: 'Voirie',
+      })
+    ).rejects.toThrow(AuthorizationError)
+    allDaos().forEach((dao) => expect(dao).not.toHaveBeenCalled())
+    expect(countMemberQuestionsByCategoryDao).not.toHaveBeenCalled()
+  })
+
+  it('should create, update and delete within the question domain only', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+
+    await createAssociationCategoryService({
+      organizationId: ORG_ID,
+      domain: QUESTION,
+      name: 'Voirie',
+    })
+    await updateAssociationCategoryService({
+      organizationId: ORG_ID,
+      domain: QUESTION,
+      categoryId: CATEGORY_ID,
+      name: 'Voirie',
+    })
+    await deleteAssociationCategoryService({
+      organizationId: ORG_ID,
+      domain: QUESTION,
+      categoryId: CATEGORY_ID,
+    })
+
+    expect(createCategoryWithinLimitTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({domain: QUESTION}),
+      MAX_CATEGORIES_PER_DOMAIN
+    )
+    expect(updateCategoryTxnDao).toHaveBeenCalledWith(
+      CATEGORY_ID,
+      QUESTION,
+      expect.anything()
+    )
+    expect(softDeleteCategoryDao).toHaveBeenCalledWith(CATEGORY_ID, QUESTION)
+  })
+
+  it('should refuse the 11th question category, the limit being per domain', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(createCategoryWithinLimitTxnDao).mockResolvedValue({
+      status: 'limit_reached',
+    })
+
+    await expect(
+      createAssociationCategoryService({
+        organizationId: ORG_ID,
+        domain: QUESTION,
+        name: 'Onzième',
+      })
+    ).rejects.toThrow(CategoryLimitReachedError)
+    expect(createCategoryWithinLimitTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({domain: QUESTION}),
+      MAX_CATEGORIES_PER_DOMAIN
+    )
+  })
+
+  it('[PUBLIC] the public report form never reads the question domain', async () => {
+    setupAuthUserMocked(undefined)
+
+    await listActiveReportCategoriesPublicService(ORG_ID)
+
+    expect(listActiveCategoriesDao).toHaveBeenCalledWith(ORG_ID, REPORT)
+    expect(listActiveCategoriesDao).not.toHaveBeenCalledWith(ORG_ID, QUESTION)
   })
 })

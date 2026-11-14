@@ -4,7 +4,14 @@ import {zodResolver} from '@hookform/resolvers/zod'
 import {AlertTriangle, CircleCheck} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
-import {useEffect, useRef, useState} from 'react'
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import {useForm, useWatch} from 'react-hook-form'
 
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
@@ -73,11 +80,36 @@ type CategoryFormAction = (
   formData: FormData
 ) => Promise<CategoryActionResult>
 
+/**
+ * Les espaces de libelles des ecrans de categories : signalements (s10) et
+ * sujets des questions des membres (s23). Memes cles, textes adaptes.
+ */
+export type CategoryLabelsNamespace =
+  'BureauReportCategoriesPage' | 'BureauQuestionCategoriesPage'
+
+const CategoryLabelsContext = createContext<CategoryLabelsNamespace>(
+  'BureauReportCategoriesPage'
+)
+
+/** Les libelles de l'ecran, ou d'une de ses sections (`dialog`…). */
+const useCategoryTranslations = (section?: string) => {
+  const namespace = useContext(CategoryLabelsContext)
+  return useTranslations(section ? `${namespace}.${section}` : namespace)
+}
+
 type ReportCategoriesManagerProps = {
   list: AssociationCategoryListDTO
   createAction: CategoryFormAction
   updateAction: CategoryFormAction
   deleteAction: (categoryId: string) => Promise<CategoryDeleteResult>
+  /** Espace de libelles ; par defaut, celui des signalements (s10). */
+  labels?: CategoryLabelsNamespace
+  /** Le lien de retour du fil d'Ariane ; par defaut, la file des signalements. */
+  backHref?: string
+  /** Une phrase sous le compteur (s23 : le routage des questions). */
+  intro?: ReactNode
+  /** Une colonne du nombre d'objets portant chaque categorie (s23). */
+  showUsageCount?: boolean
 }
 
 type Editing = {mode: 'add'} | {mode: 'edit'; category: ManagedCategoryDTO}
@@ -97,14 +129,31 @@ const FIELD_INVALID_CLASS = 'aria-invalid:border-2'
  * `destructive` ancre sous le titre. Ajout et modification dans un `dialog` a
  * deux champs ; la suppression part du `dialog` de modification et passe par
  * un `alert-dialog` qui dit combien de signalements sont conserves.
+ *
+ * Parametre par son espace de libelles et son lien de retour, il sert aussi
+ * les sujets des questions des membres (s23), sans copie de l'ecran.
  */
 export function ReportCategoriesManager({
+  labels = 'BureauReportCategoriesPage',
+  ...props
+}: ReportCategoriesManagerProps) {
+  return (
+    <CategoryLabelsContext.Provider value={labels}>
+      <CategoriesScreen {...props} />
+    </CategoryLabelsContext.Provider>
+  )
+}
+
+function CategoriesScreen({
   list,
   createAction,
   updateAction,
   deleteAction,
-}: ReportCategoriesManagerProps) {
-  const t = useTranslations('BureauReportCategoriesPage')
+  backHref = REPORTS_PATH,
+  intro,
+  showUsageCount = false,
+}: Omit<ReportCategoriesManagerProps, 'labels'>) {
+  const t = useCategoryTranslations()
   const [editing, setEditing] = useState<Editing | null>(null)
   const [deleting, setDeleting] = useState<ManagedCategoryDTO | null>(null)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -149,7 +198,7 @@ export function ReportCategoriesManager({
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href={REPORTS_PATH}>{t('breadcrumb.reports')}</Link>
+              <Link href={backHref}>{t('breadcrumb.parent')}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -167,6 +216,7 @@ export function ReportCategoriesManager({
           <p className="text-muted-foreground text-[15px]">
             {t('count', {count: list.items.length, max: list.max})}
           </p>
+          {intro && <p className="text-[17px]">{intro}</p>}
         </div>
         <Button
           type="button"
@@ -189,6 +239,7 @@ export function ReportCategoriesManager({
             <CardContent className="px-0">
               <CategoriesTable
                 items={list.items}
+                showUsageCount={showUsageCount}
                 onEdit={(category) => setEditing({mode: 'edit', category})}
               />
             </CardContent>
@@ -198,6 +249,7 @@ export function ReportCategoriesManager({
               <li key={category.id}>
                 <CategoryCard
                   category={category}
+                  showUsageCount={showUsageCount}
                   onEdit={() => setEditing({mode: 'edit', category})}
                 />
               </li>
@@ -234,7 +286,7 @@ function NoticeAlert({
   ref: React.Ref<HTMLDivElement>
   notice: Notice
 }) {
-  const t = useTranslations('BureauReportCategoriesPage')
+  const t = useCategoryTranslations()
 
   if (notice.kind === 'saved' || notice.kind === 'deleted') {
     return (
@@ -265,7 +317,7 @@ function NoticeAlert({
 }
 
 function RoutingEmail({email}: {email: string | null}) {
-  const t = useTranslations('BureauReportCategoriesPage')
+  const t = useCategoryTranslations()
 
   return email ? (
     <span className="break-all">{email}</span>
@@ -276,12 +328,14 @@ function RoutingEmail({email}: {email: string | null}) {
 
 function CategoriesTable({
   items,
+  showUsageCount,
   onEdit,
 }: {
   items: ManagedCategoryDTO[]
+  showUsageCount: boolean
   onEdit: (category: ManagedCategoryDTO) => void
 }) {
-  const t = useTranslations('BureauReportCategoriesPage')
+  const t = useCategoryTranslations()
 
   return (
     <Table>
@@ -289,6 +343,7 @@ function CategoriesTable({
         <TableRow>
           <TableHead className="px-4">{t('columns.name')}</TableHead>
           <TableHead>{t('columns.routingEmail')}</TableHead>
+          {showUsageCount && <TableHead>{t('columns.usage')}</TableHead>}
           <TableHead>{t('columns.action')}</TableHead>
         </TableRow>
       </TableHeader>
@@ -301,6 +356,11 @@ function CategoriesTable({
             <TableCell className="text-[17px]">
               <RoutingEmail email={category.routingEmail} />
             </TableCell>
+            {showUsageCount && (
+              <TableCell className="text-[17px] tabular-nums">
+                {t('usage', {count: category.usageCount})}
+              </TableCell>
+            )}
             <TableCell>
               <Button
                 type="button"
@@ -320,12 +380,14 @@ function CategoriesTable({
 
 function CategoryCard({
   category,
+  showUsageCount,
   onEdit,
 }: {
   category: ManagedCategoryDTO
+  showUsageCount: boolean
   onEdit: () => void
 }) {
-  const t = useTranslations('BureauReportCategoriesPage')
+  const t = useCategoryTranslations()
 
   return (
     <Card className="gap-3 px-4 py-4 shadow-none">
@@ -335,6 +397,14 @@ function CategoryCard({
         <dd>
           <RoutingEmail email={category.routingEmail} />
         </dd>
+        {showUsageCount && (
+          <>
+            <dt className="text-muted-foreground">{t('columns.usage')}</dt>
+            <dd className="tabular-nums">
+              {t('usage', {count: category.usageCount})}
+            </dd>
+          </>
+        )}
       </dl>
       <Button
         type="button"
@@ -367,7 +437,7 @@ function CategoryDialog({
   createAction: CategoryFormAction
   updateAction: CategoryFormAction
 }) {
-  const t = useTranslations('BureauReportCategoriesPage.dialog')
+  const t = useCategoryTranslations('dialog')
 
   return (
     <Dialog open={editing !== null} onOpenChange={(open) => !open && onClose()}>
@@ -410,7 +480,7 @@ function CategoryForm({
   onDelete: (category: ManagedCategoryDTO) => void
   action: CategoryFormAction
 }) {
-  const t = useTranslations('BureauReportCategoriesPage')
+  const t = useCategoryTranslations()
   const category = editing.mode === 'edit' ? editing.category : undefined
   const form = useForm<CategoryFormSchemaType>({
     resolver: zodResolver(createCategoryFormSchema(t)),
@@ -555,7 +625,7 @@ function CategoryForm({
 }
 
 function ErrorSummary({fields}: {fields: CategoryFormField[]}) {
-  const t = useTranslations('BureauReportCategoriesPage.dialog')
+  const t = useCategoryTranslations('dialog')
 
   return (
     <Alert
@@ -590,7 +660,7 @@ function DeleteCategoryDialog({
   onCancel: () => void
   onConfirm: (category: ManagedCategoryDTO) => Promise<void>
 }) {
-  const t = useTranslations('BureauReportCategoriesPage.deleteDialog')
+  const t = useCategoryTranslations('deleteDialog')
   const [isPending, setIsPending] = useState(false)
 
   return (

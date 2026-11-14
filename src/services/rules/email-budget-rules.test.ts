@@ -261,3 +261,26 @@ describe('groupPendingSends — une part = une ligne, une notification = une lig
     expect(groupPendingSends([], [])).toEqual([])
   })
 })
+
+describe('groupPendingSends — question d’un membre (s23)', () => {
+  const QUESTION = '66666666-6666-4666-8666-666666666666'
+
+  it('désigne la question reportée, pour mener le bureau vers elle', () => {
+    const [group] = groupPendingSends(
+      [
+        {
+          id: 'd1',
+          nature: 'board_notification',
+          referenceType: 'member_question',
+          referenceId: QUESTION,
+          sendOn: '2026-11-15',
+          status: 'pending',
+        },
+      ],
+      []
+    )
+
+    expect(group.key).toBe(`member_question:${QUESTION}:2026-11-15`)
+    expect(group.reference).toEqual({type: 'member_question', id: QUESTION})
+  })
+})

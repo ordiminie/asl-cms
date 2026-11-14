@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s23 — Questions au bureau (maquette)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:wght@600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --background:oklch(1 0 0);--foreground:oklch(0.22 0.015 250);--card:oklch(1 0 0);
+  --muted:oklch(0.972 0.005 240);--muted-foreground:oklch(0.45 0.02 245);
+  --border:oklch(0.9 0.008 245);--input:oklch(0.66 0.014 245);--ring:oklch(0.55 0.11 235);
+  --primary:oklch(0.35 0.06 240);--primary-foreground:oklch(0.985 0.003 240);
+  --secondary:oklch(0.965 0.006 240);--secondary-foreground:oklch(0.3 0.02 245);
+  --destructive:oklch(0.48 0.17 27);--destructive-foreground:oklch(0.99 0.01 27);
+  --link:oklch(0.45 0.13 250);
+  --sidebar:oklch(0.985 0.004 250);--sidebar-foreground:oklch(0.26 0.015 250);
+  --sidebar-accent:oklch(0.93 0.012 245);--sidebar-border:oklch(0.91 0.008 245);
+  --accent-hue:195;--accent-solid:oklch(0.55 0.1 var(--accent-hue));
+  --radius:0.5rem;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--muted);color:var(--foreground);font-family:'Public Sans',ui-sans-serif,system-ui,sans-serif;font-size:17px;line-height:1.6}
+a{color:var(--link);text-decoration:underline;text-underline-offset:4px}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.board{max-width:1280px;margin:0 auto;padding:32px 16px;display:flex;flex-direction:column;gap:48px}
+.board>header h1{font-family:'Source Serif 4',Georgia,serif;font-size:34px;line-height:1.15;font-weight:600;margin:0 0 8px}
+.board>header p{margin:0;color:var(--muted-foreground);font-size:15px}
+.plate{display:flex;flex-direction:column;gap:16px}
+.plate>h2{font-size:20px;line-height:1.3;font-weight:600;margin:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.1em;background:var(--primary);color:var(--primary-foreground);border-radius:4px;padding:4px 8px}
+.note{font-size:15px;color:var(--muted-foreground);margin:0}
+.versions{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+.frame{background:var(--background);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.frame-label{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.1em;color:var(--muted-foreground);padding:8px 16px;border-bottom:1px solid var(--border);background:var(--muted)}
+.desk-scroll{max-width:100%;overflow-x:auto}
+.desk{width:1000px}
+.mob{width:390px;max-width:100%}
+.space{padding:32px 24px;display:flex;flex-direction:column;gap:24px}
+.mob .space{padding:24px 16px}
+.col{max-width:68ch;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+.h1{font-family:'Source Serif 4',Georgia,serif;font-size:34px;line-height:1.15;font-weight:600;margin:0;text-wrap:pretty}
+.card{border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;flex-direction:column;gap:16px;background:var(--card)}
+.mob .card{padding:16px}
+.card-title{font-family:'Source Serif 4',Georgia,serif;font-size:20px;font-weight:600;margin:0}
+.meta{font-size:15px;line-height:1.5;color:var(--muted-foreground)}
+.data{font-family:'JetBrains Mono',monospace;font-size:15px;font-variant-numeric:tabular-nums}
+.back{display:inline-flex;align-items:center;gap:8px;height:48px;font-weight:600;color:var(--primary)}
+.field{display:flex;flex-direction:column;gap:8px}
+.label{font-size:16px;font-weight:500;line-height:1.4}
+.input,.select,.textarea{font:inherit;font-size:17px;border:1px solid var(--input);border-radius:var(--radius);padding:0 12px;height:48px;background:var(--background);color:var(--foreground);width:100%}
+.mob .input,.mob .select{height:56px}
+.select{display:flex;align-items:center;justify-content:space-between}
+.textarea{height:auto;min-height:144px;padding:12px;white-space:pre-wrap}
+.help{font-size:16px;color:var(--muted-foreground)}
+.count{font-size:15px;color:var(--muted-foreground);text-align:right;font-variant-numeric:tabular-nums}
+.err-field{border:2px solid var(--destructive)}
+.err-msg{font-size:16px;font-weight:500;color:var(--destructive)}
+.sep{border-top:1px solid var(--border);padding-top:16px}
+.actions{display:flex;gap:12px;flex-wrap:wrap}
+.mob .actions{flex-direction:column}
+.btn{font:inherit;font-size:16px;font-weight:600;line-height:1;height:48px;padding:0 24px;border-radius:var(--radius);display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;cursor:pointer;text-decoration:none}
+.mob .btn{height:56px;font-size:17px;width:100%}
+.btn-default{background:var(--primary);color:var(--primary-foreground)}
+.btn-outline{background:var(--background);color:var(--foreground);border-color:var(--input)}
+.btn-disabled{opacity:.5}
+.alert{border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;gap:12px;align-items:flex-start}
+.alert-destructive{border:2px solid var(--destructive)}
+.alert-destructive strong{color:var(--destructive)}
+.alert p{margin:0}
+.ico{flex:none;width:20px;height:20px;color:var(--primary)}
+.ico-d{color:var(--destructive)}
+.badge{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:600;border-radius:999px;padding:4px 12px;border:1px solid var(--border);white-space:nowrap}
+.badge-destructive{background:var(--destructive);color:var(--destructive-foreground);border-color:var(--destructive)}
+.badge-secondary{background:var(--secondary);color:var(--secondary-foreground)}
+.skel{background:var(--muted);border-radius:var(--radius)}
+/* back-office */
+.bo{display:flex;min-height:560px}
+.sidebar{width:248px;flex:none;background:var(--sidebar);border-right:1px solid var(--sidebar-border);padding:16px 12px;display:flex;flex-direction:column;gap:4px;font-size:16px;color:var(--sidebar-foreground)}
+.sidebar .grp{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.1em;color:var(--muted-foreground);padding:12px 8px 4px}
+.sidebar .item{padding:8px;border-radius:var(--radius);display:flex;gap:8px;align-items:center}
+.sidebar .on{background:var(--sidebar-accent);font-weight:600;box-shadow:inset 4px 0 0 var(--accent-solid)}
+.bo-main{flex:1;padding:24px 32px;display:flex;flex-direction:column;gap:24px;min-width:0}
+.mob .bo-main{padding:16px}
+.mob-bar{display:flex;align-items:center;justify-content:space-between;height:56px;padding:0 16px;border-bottom:1px solid var(--border)}
+.crumb{font-size:15px;color:var(--muted-foreground)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;font-size:16px}
+th{text-align:left;font-size:15px;font-weight:600;color:var(--muted-foreground);padding:12px;border-bottom:1px solid var(--border)}
+td{padding:12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr.unread td:first-child{font-weight:600}
+.excerpt{display:block;max-width:34ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stack{display:flex;flex-direction:column;gap:12px}
+.scard{border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:flex;flex-direction:column;gap:8px}
+.pair{display:flex;flex-direction:column}
+.pair .k{font-size:15px;font-weight:600;color:var(--muted-foreground)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.row:last-child{border-bottom:0}
+.rlinks{display:flex;gap:16px}
+.quote{white-space:pre-wrap;margin:0}
+.dl{display:grid;grid-template-columns:max-content 1fr;gap:8px 24px;margin:0}
+.dl dt{font-size:15px;font-weight:600;color:var(--muted-foreground)}
+.dl dd{margin:0}
+.mob .dl{grid-template-columns:1fr;gap:4px}
+.mob .dl dd{margin-bottom:8px}
+</style>
+</head>
+<body>
+<main class="board">
+<header>
+  <h1>s23 — Poser une question au bureau</h1>
+  <p>Maquette de référence, basse fidélité, clair seul (ADR 033). Tokens du design system uniquement. Chaque planche : desktop puis mobile (390 px).</p>
+</header>
+
+<!-- ============ ÉCRAN A — espace membre ============ -->
+<section class="plate" id="A1">
+  <h2><span class="chip">A1</span> Espace membre — carte « Une question pour le bureau ? »</h2>
+  <p class="note">Sous « Mes signalements », avant « Sécurité du compte ». Une phrase et un bouton <code>outline</code>. Aucune liste des questions envoyées (hors périmètre).</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="space"><div class="col" style="max-width:1000px">
+        <div class="card" aria-hidden="true"><p class="card-title">Mes signalements</p><div class="meta">… (s22, inchangé)</div></div>
+        <section class="card">
+          <h2 class="card-title">Une question pour le bureau ?</h2>
+          <p style="margin:0">Choisissez le sujet : votre question arrive directement à la personne du bureau qui s'en occupe.</p>
+          <div><a class="btn btn-outline" href="#B1">Poser une question au bureau</a></div>
+        </section>
+        <div class="card" aria-hidden="true"><p class="card-title">Sécurité du compte</p><div class="meta">… (inchangé)</div></div>
+      </div></div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="space">
+        <section class="card">
+          <h2 class="card-title">Une question pour le bureau ?</h2>
+          <p style="margin:0">Choisissez le sujet : votre question arrive directement à la personne du bureau qui s'en occupe.</p>
+          <a class="btn btn-outline" href="#B1">Poser une question au bureau</a>
+        </section>
+      </div></div>
+  </div>
+</section>
+
+<section class="plate" id="A2">
+  <h2><span class="chip">A2</span> Espace membre — après l'envoi (succès)</h2>
+  <p class="note">Retour sur <code>/dashboard?question=envoyee</code> : <code>alert</code> neutre ancrée dans la carte, <code>CircleCheck</code> en <code>primary</code>. Affichée une fois.</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="space"><div class="col" style="max-width:1000px">
+        <section class="card">
+          <h2 class="card-title">Une question pour le bureau ?</h2>
+          <div class="alert" role="status"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            <p><strong>Question envoyée.</strong> Le bureau vous répondra à votre adresse email.</p></div>
+          <div><a class="btn btn-outline" href="#B1">Poser une autre question</a></div>
+        </section>
+      </div></div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="space">
+        <section class="card">
+          <h2 class="card-title">Une question pour le bureau ?</h2>
+          <div class="alert" role="status"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+            <p><strong>Question envoyée.</strong> Le bureau vous répondra à votre adresse email.</p></div>
+          <a class="btn btn-outline" href="#B1">Poser une autre question</a>
+        </section>
+      </div></div>
+  </div>
+</section>
+
+<!-- ============ ÉCRAN B — poser une question ============ -->
+<section class="plate" id="B1">
+  <h2><span class="chip">B1</span> Poser une question — formulaire vierge</h2>
+  <p class="note">Page dédiée de l'espace membre, colonne 68 ch. Deux champs seulement. Aucun champ d'identité : le bloc « Ce que le bureau reçoit » le dit avant l'envoi (patron s22).</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="space"><div class="col">
+        <a class="back" href="#A1">← Revenir à mon espace</a>
+        <h1 class="h1">Poser une question au bureau</h1>
+        <form class="card">
+          <div class="field"><span class="label">Sujet de votre question</span>
+            <div class="select"><span class="meta">Choisissez…</span><span aria-hidden="true">▾</span></div>
+            <span class="help">Votre question part vers la personne du bureau chargée de ce sujet.</span></div>
+          <div class="field"><span class="label">Votre question</span>
+            <div class="textarea"></div>
+            <span class="count">0 / 2 000</span></div>
+          <div class="sep"><p style="margin:0">Le bureau saura que c'est vous : nous lui transmettons votre nom et votre adresse email.</p>
+            <p class="meta" style="margin:4px 0 0">Lucie Moreau · lucie.moreau@exemple.fr</p></div>
+          <div class="actions"><span class="btn btn-default">Envoyer la question</span><span class="btn btn-outline">Annuler</span></div>
+        </form>
+      </div></div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="space">
+        <a class="back" href="#A1">← Revenir à mon espace</a>
+        <h1 class="h1">Poser une question au bureau</h1>
+        <form class="card">
+          <div class="field"><span class="label">Sujet de votre question</span>
+            <div class="select"><span class="meta">Choisissez…</span><span aria-hidden="true">▾</span></div>
+            <span class="help">Votre question part vers la personne du bureau chargée de ce sujet.</span></div>
+          <div class="field"><span class="label">Votre question</span>
+            <div class="textarea"></div>
+            <span class="count">0 / 2 000</span></div>
+          <div class="sep"><p style="margin:0">Le bureau saura que c'est vous : nous lui transmettons votre nom et votre adresse email.</p>
+            <p class="meta" style="margin:4px 0 0">Lucie Moreau · lucie.moreau@exemple.fr</p></div>
+          <div class="actions"><span class="btn btn-default">Envoyer la question</span><span class="btn btn-outline">Annuler</span></div>
+        </form>
+      </div></div>
+  </div>
+</section>
+
+<section class="plate" id="B2">
+  <h2><span class="chip">B2</span> Poser une question — erreurs de saisie</h2>
+  <p class="note">Résumé ancré (§3.9), bordure 2 px + message sous chaque champ. Le texte saisi est conservé.</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="space"><div class="col">
+        <h1 class="h1">Poser une question au bureau</h1>
+        <form class="card">
+          <div class="alert alert-destructive" role="alert"><svg class="ico ico-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <div><strong>Deux points à corriger</strong><p><a href="#B2">Choisissez le sujet de votre question</a><br><a href="#B2">Écrivez votre question</a></p></div></div>
+          <div class="field"><span class="label">Sujet de votre question</span>
+            <div class="select err-field"><span class="meta">Choisissez…</span><span aria-hidden="true">▾</span></div>
+            <span class="err-msg">Choisissez le sujet de votre question.</span></div>
+          <div class="field"><span class="label">Votre question</span>
+            <div class="textarea err-field"></div>
+            <span class="err-msg">Écrivez votre question.</span></div>
+          <div class="actions"><span class="btn btn-default">Envoyer la question</span><span class="btn btn-outline">Annuler</span></div>
+        </form>
+      </div></div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="space">
+        <form class="card">
+          <div class="alert alert-destructive" role="alert"><svg class="ico ico-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            <div><strong>Deux points à corriger</strong><p><a href="#B2">Choisissez le sujet de votre question</a><br><a href="#B2">Écrivez votre question</a></p></div></div>
+          <div class="field"><span class="label">Sujet de votre question</span>
+            <div class="select err-field"><span class="meta">Choisissez…</span><span aria-hidden="true">▾</span></div>
+            <span class="err-msg">Choisissez le sujet de votre question.</span></div>
+          <div class="field"><span class="label">Votre question</span>
+            <div class="textarea err-field"></div>
+            <span class="err-msg">Écrivez votre question.</span></div>
+          <div class="actions"><span class="btn btn-default">Envoyer la question</span><span class="btn btn-outline">Annuler</span></div>
+        </form>
+      </div></div>
+  </div>
+</section>
+
+<section class="plate" id="B3">
+  <h2><span class="chip">B3</span> Poser une question — envoi en cours, puis échec technique</h2>
+  <p class="note">Envoi : libellé remplacé, largeur conservée, état <code>disabled</code> du composant. Échec : ce qui s'est passé, rien n'est perdu, quoi faire.</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="space"><div class="col">
+        <div class="actions"><span class="btn btn-default btn-disabled" style="min-width:208px">Envoi en cours…</span><span class="btn btn-outline btn-disabled">Annuler</span></div>
+        <div class="alert alert-destructive" role="alert"><svg class="ico ico-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          <div><strong>Votre question n'a pas pu être envoyée.</strong><p>Rien n'est perdu : votre texte est toujours là. Réessayez dans un instant.</p></div></div>
+        <div class="field"><span class="label">Votre question</span>
+          <div class="textarea">Bonjour, le portail du chemin des Crêtes ne se ferme plus depuis lundi. Qui faut-il prévenir ?</div>
+          <span class="count">96 / 2 000</span></div>
+      </div></div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="space">
+        <div class="actions"><span class="btn btn-default btn-disabled">Envoi en cours…</span></div>
+        <div class="alert alert-destructive" role="alert"><svg class="ico ico-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          <div><strong>Votre question n'a pas pu être envoyée.</strong><p>Rien n'est perdu : votre texte est toujours là. Réessayez dans un instant.</p></div></div>
+        <div class="field"><span class="label">Votre question</span>
+          <div class="textarea">Bonjour, le portail du chemin des Crêtes ne se ferme plus depuis lundi. Qui faut-il prévenir ?</div>
+          <span class="count">96 / 2 000</span></div>
+      </div></div>
+  </div>
+</section>
+
+<section class="plate" id="B4">
+  <h2><span class="chip">B4</span> Poser une question — l'association n'a aucun sujet</h2>
+  <p class="note">Validé avec le plan le 14/11/2026 : sans catégorie, pas de formulaire. Ce qui manque et l'action pour le combler (§3.2) : la page Contact du site.</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="space"><div class="col">
+        <a class="back" href="#A1">← Revenir à mon espace</a>
+        <h1 class="h1">Poser une question au bureau</h1>
+        <div class="card"><p style="margin:0">Le bureau n'a pas encore choisi les sujets de questions. En attendant, écrivez-lui depuis la page Contact du site.</p>
+          <div><a class="btn btn-outline" href="#B4">Écrire au bureau</a></div></div>
+      </div></div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="space">
+        <a class="back" href="#A1">← Revenir à mon espace</a>
+        <h1 class="h1">Poser une question au bureau</h1>
+        <div class="card"><p style="margin:0">Le bureau n'a pas encore choisi les sujets de questions. En attendant, écrivez-lui depuis la page Contact du site.</p>
+          <a class="btn btn-outline" href="#B4">Écrire au bureau</a></div>
+      </div></div>
+  </div>
+</section>
+
+<!-- ============ ÉCRAN C — bureau : questions reçues ============ -->
+<section class="plate" id="C1">
+  <h2><span class="chip">C1</span> Bureau — « Questions des membres » (file)</h2>
+  <p class="note">Nouvelle entrée de la barre latérale, groupe « L'association », icône <code>Inbox</code> réservée aux messages : <b>pas d'icône</b>. Plus récente d'abord, 25 par page (10 en cartes sous 640 px). Catégorie supprimée : son nom + « catégorie supprimée ». Échec d'envoi : badge <code>destructive</code>.</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk" style="width:1200px"><div class="frame-label">DESKTOP</div>
+      <div class="bo">
+        <nav class="sidebar" aria-label="Bureau"><span class="grp">LE SITE</span><span class="item">Messages reçus</span><span class="item">Signalements</span>
+          <span class="grp">L'ASSOCIATION</span><span class="item">Propriétaires</span><span class="item on">Questions des membres</span><span class="item">Campagnes</span><span class="item">Envois</span><span class="item">Réglages</span></nav>
+        <div class="bo-main">
+          <div class="crumb">L'association › Questions des membres</div>
+          <div class="toolbar"><h1 class="h1">Questions des membres</h1><a class="btn btn-outline" href="#D1">Gérer les sujets</a></div>
+          <table>
+            <thead><tr><th>Reçue le</th><th>Membre</th><th>Sujet</th><th>Question</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="data">14/11/2026</td><td><b>Lucie Moreau</b><br><span class="meta">lucie.moreau@exemple.fr</span></td><td>Voirie et portails</td><td><span class="excerpt">Bonjour, le portail du chemin des Crêtes ne se ferme plus depuis lundi…</span></td><td><a href="#C2">Lire</a></td></tr>
+              <tr><td class="data">12/11/2026</td><td><b>Paul Garnier</b><br><span class="meta">paul.garnier@exemple.fr</span></td><td>Factures et cotisation<br><span class="badge badge-destructive">Notification non envoyée</span></td><td><span class="excerpt">Je n'ai pas reçu la facture de l'eau pour 2026, est-ce normal ?</span></td><td><a href="#C2">Lire</a></td></tr>
+              <tr><td class="data">03/11/2026</td><td><b>Inès Roche</b><br><span class="meta">Sans adresse email</span></td><td>Travaux <span class="meta">— catégorie supprimée</span></td><td><span class="excerpt">Peut-on prévoir l'élagage avant l'hiver ?</span></td><td><a href="#C2">Lire</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="mob-bar"><span>☰ Menu</span><span class="meta">TechCorp Solutions</span></div>
+      <div class="bo-main">
+        <h1 class="h1">Questions des membres</h1>
+        <a class="btn btn-outline" href="#D1">Gérer les sujets</a>
+        <div class="stack">
+          <article class="scard"><b>Lucie Moreau</b>
+            <div class="pair"><span class="k">Reçue le</span><span class="data">14/11/2026</span></div>
+            <div class="pair"><span class="k">Sujet</span><span>Voirie et portails</span></div>
+            <div class="pair"><span class="k">Question</span><span>Bonjour, le portail du chemin des Crêtes ne se ferme plus…</span></div>
+            <a class="btn btn-outline" href="#C2">Lire la question</a></article>
+          <article class="scard"><b>Paul Garnier</b><span class="badge badge-destructive" style="align-self:flex-start">Notification non envoyée</span>
+            <div class="pair"><span class="k">Reçue le</span><span class="data">12/11/2026</span></div>
+            <div class="pair"><span class="k">Sujet</span><span>Factures et cotisation</span></div>
+            <a class="btn btn-outline" href="#C2">Lire la question</a></article>
+        </div>
+      </div></div>
+  </div>
+</section>
+
+<section class="plate" id="C2">
+  <h2><span class="chip">C2</span> Bureau — détail d'une question</h2>
+  <p class="note">Identité du membre (lien vers sa fiche, <code>mailto:</code>), sujet, date, puis le texte entier. Pas de réponse dans l'outil : le bureau répond par email.</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="bo-main" style="max-width:860px">
+        <a class="back" href="#C1">← Revenir aux questions</a>
+        <h1 class="h1">Question de Lucie Moreau</h1>
+        <dl class="dl">
+          <dt>Membre</dt><dd><a href="#C2">Lucie Moreau</a> · <a href="#C2">lucie.moreau@exemple.fr</a></dd>
+          <dt>Sujet</dt><dd>Voirie et portails</dd>
+          <dt>Reçue le</dt><dd class="data">14/11/2026 09:42</dd>
+        </dl>
+        <section class="card"><h2 class="card-title">Question</h2>
+          <p class="quote">Bonjour,
+le portail du chemin des Crêtes ne se ferme plus depuis lundi. Qui faut-il prévenir ?
+Merci, Lucie</p></section>
+        <div><a class="btn btn-default" href="#C2">Répondre par email</a></div>
+      </div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="bo-main">
+        <a class="back" href="#C1">← Revenir aux questions</a>
+        <h1 class="h1">Question de Lucie Moreau</h1>
+        <dl class="dl">
+          <dt>Membre</dt><dd><a href="#C2">Lucie Moreau</a><br><a href="#C2">lucie.moreau@exemple.fr</a></dd>
+          <dt>Sujet</dt><dd>Voirie et portails</dd>
+          <dt>Reçue le</dt><dd class="data">14/11/2026 09:42</dd>
+        </dl>
+        <section class="card"><h2 class="card-title">Question</h2>
+          <p class="quote">Bonjour,
+le portail du chemin des Crêtes ne se ferme plus depuis lundi. Qui faut-il prévenir ?
+Merci, Lucie</p></section>
+        <a class="btn btn-default" href="#C2">Répondre par email</a>
+      </div></div>
+  </div>
+</section>
+
+<section class="plate" id="C3">
+  <h2><span class="chip">C3</span> Bureau — aucune question reçue</h2>
+  <p class="note">Vide = ce qui manque + l'action. S'il n'existe encore aucun sujet, l'action mène aux sujets (les membres ne peuvent rien envoyer sans eux).</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="bo-main">
+        <h1 class="h1">Questions des membres</h1>
+        <div class="card"><p style="margin:0">Aucune question reçue pour l'instant. Les membres ne peuvent pas encore en poser : aucun sujet n'est ouvert.</p>
+          <div><a class="btn btn-default" href="#D1">Créer les sujets</a></div></div>
+        <div class="skel" style="height:24px;width:40%"></div><div class="skel" style="height:56px"></div><div class="skel" style="height:56px"></div>
+        <p class="meta" style="margin:0">↑ chargement de la file : <code>skeleton</code> sur la liste seule.</p>
+      </div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="bo-main">
+        <h1 class="h1">Questions des membres</h1>
+        <div class="card"><p style="margin:0">Aucune question reçue pour l'instant. Les membres ne peuvent pas encore en poser : aucun sujet n'est ouvert.</p>
+          <a class="btn btn-default" href="#D1">Créer les sujets</a></div>
+      </div></div>
+  </div>
+</section>
+
+<!-- ============ ÉCRAN D — bureau : sujets ============ -->
+<section class="plate" id="D1">
+  <h2><span class="chip">D1</span> Bureau — « Sujets des questions » (catégories)</h2>
+  <p class="note">Même écran que les catégories de signalement (s10, <code>report-categories-manager</code>), textes adaptés. Adresse facultative ; sans elle, l'adresse de contact des Réglages. Compteur « 3 sur 10 ».</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="bo-main" style="max-width:860px">
+        <a class="back" href="#C1">← Revenir aux questions</a>
+        <div class="toolbar"><h1 class="h1">Sujets des questions</h1><span class="meta">3 sur 10</span></div>
+        <p style="margin:0">Chaque question part vers l'adresse de son sujet. Un sujet sans adresse envoie à l'adresse de contact de l'association (<span class="data">contact@techcorp.fr</span>).</p>
+        <div class="card">
+          <div class="row"><div><b>Factures et cotisation</b><br><span class="meta">tresorerie@techcorp.fr · 4 questions</span></div><div class="rlinks"><a href="#D1">Modifier</a><a href="#D1">Supprimer</a></div></div>
+          <div class="row"><div><b>Voirie et portails</b><br><span class="meta">voirie@techcorp.fr · 1 question</span></div><div class="rlinks"><a href="#D1">Modifier</a><a href="#D1">Supprimer</a></div></div>
+          <div class="row"><div><b>Autre sujet</b><br><span class="meta">Adresse de contact · 0 question</span></div><div class="rlinks"><a href="#D1">Modifier</a><a href="#D1">Supprimer</a></div></div>
+        </div>
+        <div class="card"><h2 class="card-title">Ajouter un sujet</h2>
+          <div class="field"><span class="label">Nom du sujet</span><div class="input"></div><span class="count">0 / 40</span></div>
+          <div class="field"><span class="label">Adresse qui reçoit ces questions (facultatif)</span><div class="input"></div><span class="help">Laissée vide : l'adresse de contact de l'association.</span></div>
+          <div><span class="btn btn-default">Ajouter le sujet</span></div></div>
+      </div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="bo-main">
+        <h1 class="h1">Sujets des questions</h1><span class="meta">3 sur 10</span>
+        <div class="card">
+          <div class="row"><div><b>Factures et cotisation</b><br><span class="meta">tresorerie@techcorp.fr · 4 questions</span></div><div class="rlinks"><a href="#D1">Modifier</a><a href="#D1">Supprimer</a></div></div>
+          <div class="row"><div><b>Voirie et portails</b><br><span class="meta">voirie@techcorp.fr · 1 question</span></div><div class="rlinks"><a href="#D1">Modifier</a><a href="#D1">Supprimer</a></div></div>
+        </div>
+        <span class="btn btn-default">Ajouter un sujet</span>
+      </div></div>
+  </div>
+</section>
+
+<section class="plate" id="D2">
+  <h2><span class="chip">D2</span> Bureau — 11ᵉ sujet refusé, puis suppression</h2>
+  <p class="note">Limite (§3.10) : bouton actif, refus en <code>alert destructive</code> sous le titre. Suppression : <code>alert-dialog</code> qui dit combien de questions restent consultables.</p>
+  <div class="versions">
+    <div class="desk-scroll"><div class="frame desk"><div class="frame-label">DESKTOP</div>
+      <div class="bo-main" style="max-width:860px">
+        <div class="toolbar"><h1 class="h1">Sujets des questions</h1><span class="meta">10 sur 10</span></div>
+        <div class="alert alert-destructive" role="alert"><svg class="ico ico-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          <div><strong>Vous avez déjà 10 sujets, le maximum.</strong><p>Supprimez-en un avant d'en ajouter un autre.</p></div></div>
+        <div class="card" role="alertdialog" aria-label="Supprimer le sujet" style="max-width:520px">
+          <h2 class="card-title">Supprimer « Voirie et portails » ?</h2>
+          <p style="margin:0">Les 4 questions déjà reçues dans ce sujet restent consultables, avec la mention « catégorie supprimée ». Les membres ne pourront plus le choisir.</p>
+          <div class="actions"><span class="btn btn-default">Supprimer le sujet</span><span class="btn btn-outline">Annuler</span></div></div>
+      </div></div></div>
+    <div class="frame mob"><div class="frame-label">MOBILE 390</div>
+      <div class="bo-main">
+        <div class="alert alert-destructive" role="alert"><svg class="ico ico-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+          <div><strong>Vous avez déjà 10 sujets, le maximum.</strong><p>Supprimez-en un avant d'en ajouter un autre.</p></div></div>
+        <div class="card" role="alertdialog" aria-label="Supprimer le sujet">
+          <h2 class="card-title">Supprimer « Voirie et portails » ?</h2>
+          <p style="margin:0">Les 4 questions déjà reçues dans ce sujet restent consultables, avec la mention « catégorie supprimée ».</p>
+          <div class="actions"><span class="btn btn-default">Supprimer le sujet</span><span class="btn btn-outline">Annuler</span></div></div>
+      </div></div>
+  </div>
+</section>
+</main>
+</body>
+</html>

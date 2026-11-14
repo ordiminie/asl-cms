@@ -22,8 +22,15 @@ const ROLE_WITHDRAWN = 'retire'
 /** Retour d'une declaration depuis l'espace (s22, A5). */
 const REPORT_SENT = 'envoye'
 
+/** Retour d'une question envoyee depuis l'espace (s23, A2). */
+const QUESTION_SENT = 'envoyee'
+
 type DashboardPageProps = WithAuthProps & {
-  searchParams: Promise<{role?: string; signalement?: string}>
+  searchParams: Promise<{
+    role?: string
+    signalement?: string
+    question?: string
+  }>
 }
 
 /**
@@ -33,13 +40,14 @@ type DashboardPageProps = WithAuthProps & {
  * fiche dans l'association retrouve la page de s46 (C5). Apres sa propre
  * retrogradation, `?role=retire` le dit en tete (s14, A12). « Mes
  * signalements » (s22) se lit a part ; apres une declaration,
- * `?signalement=envoye` le dit dans la carte (A5).
+ * `?signalement=envoye` le dit dans la carte (A5). Apres une question au
+ * bureau (s23), `?question=envoyee` le dit dans sa carte (A2).
  */
 async function Page({user, searchParams}: DashboardPageProps) {
   const parcelsPromise = getMyParcelsDal()
   const contactPromise = getMyContactDal()
   const reportsPromise = getMyIncidentReportsDal()
-  const {role, signalement} = await searchParams
+  const {role, signalement, question} = await searchParams
 
   return (
     <div className="space-y-6">
@@ -51,6 +59,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
           contactAction={updateMyContactAction}
           reportsPromise={reportsPromise}
           reportSent={signalement === REPORT_SENT}
+          questionSent={question === QUESTION_SENT}
         />
       </Suspense>
     </div>

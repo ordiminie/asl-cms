@@ -8,8 +8,10 @@ import {
 
 import {TEST_TENANT_CATEGORIES} from './tenant-categories-seed'
 
-const categoriesOf = (slug: string) =>
-  TEST_TENANT_CATEGORIES.filter((row) => row.organizationSlug === slug)
+const categoriesOf = (slug: string, domain = 'report') =>
+  TEST_TENANT_CATEGORIES.filter(
+    (row) => row.organizationSlug === slug && row.domain === domain
+  )
 
 describe('TEST_TENANT_CATEGORIES — catégories des tenants de test (s10, ADR 028)', () => {
   it('donne à chaque tenant de test ses propres catégories', () => {
@@ -40,8 +42,12 @@ describe('TEST_TENANT_CATEGORIES — catégories des tenants de test (s10, ADR 0
   })
 
   it('reste dans les règles du modèle : domaine connu, nom court et unique, plafond tenu, adresses fictives', () => {
-    for (const slug of ['techcorp-solutions', 'marketing-pro']) {
-      const rows = categoriesOf(slug)
+    for (const [slug, domain] of [
+      ['techcorp-solutions', 'report'],
+      ['marketing-pro', 'report'],
+      ['techcorp-solutions', 'question'],
+    ]) {
+      const rows = categoriesOf(slug, domain)
       const names = rows.map((row) => row.name.toLowerCase())
 
       expect(rows.length, slug).toBeLessThanOrEqual(MAX_CATEGORIES_PER_DOMAIN)
@@ -55,5 +61,28 @@ describe('TEST_TENANT_CATEGORIES — catégories des tenants de test (s10, ADR 0
         }
       }
     }
+  })
+})
+
+describe('TEST_TENANT_CATEGORIES — sujets des questions du premier tenant (s23)', () => {
+  it('donne deux sujets à TechCorp : l’un avec son adresse, l’autre sans', () => {
+    expect(categoriesOf('techcorp-solutions', 'question')).toEqual([
+      {
+        organizationSlug: 'techcorp-solutions',
+        domain: 'question',
+        name: 'Factures et cotisation',
+        routingEmail: 'tresorerie@techcorp-solutions.test',
+      },
+      {
+        organizationSlug: 'techcorp-solutions',
+        domain: 'question',
+        name: 'Voirie et portails',
+        routingEmail: null,
+      },
+    ])
+  })
+
+  it('n’en donne aucun aux autres tenants de test', () => {
+    expect(categoriesOf('marketing-pro', 'question')).toEqual([])
   })
 })
