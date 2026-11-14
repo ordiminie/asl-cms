@@ -178,6 +178,7 @@ export async function sendMagicLink(
   const association = await emailAssociationOf(organization, origin, services)
   await revokeEarlierMagicLinks(email, token, ctx)
   await services.sendMagicLinkEmailService({
+    organizationId: organization.id,
     email,
     url: rebaseMagicLinkUrl(url, origin),
     association,

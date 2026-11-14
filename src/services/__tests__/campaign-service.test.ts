@@ -39,6 +39,9 @@ vi.mock('@/db/repositories/campaign-repository', () => ({
   getCampaignPartsDao: vi.fn(),
   getRecipientStatusCountsDao: vi.fn(),
   getCampaignRecipientsPageDao: vi.fn(),
+  markCampaignPartDeferredTxnDao: vi.fn(),
+  getSlidableCampaignPartsDao: vi.fn(),
+  moveCampaignPartTxnDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/scheduled-job-repository', () => ({
   enqueueScheduledJobTxnDao: vi.fn(),
@@ -89,13 +92,16 @@ import {
   getCurrentParcelNumbersForMembersDao,
   getPendingPartRecipientsDao,
   getRecipientStatusCountsDao,
+  getSlidableCampaignPartsDao,
   lockCampaignScheduleTxnDao,
+  markCampaignPartDeferredTxnDao,
   markRecipientFailedTxnDao,
   markRecipientSentTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
   markSendingRecipientsToVerifyTxnDao,
   markStaleSendingRecipientsToVerifyTxnDao,
+  moveCampaignPartTxnDao,
   releaseRecipientClaimTxnDao,
   startCampaignPartTxnDao,
 } from '@/db/repositories/campaign-repository'
@@ -307,7 +313,7 @@ beforeEach(() => {
   })
   vi.mocked(markRecipientFailedTxnDao).mockResolvedValue({id: 'r'})
   vi.mocked(finishCampaignTxnDao).mockResolvedValue({id: CAMPAIGN_ID})
-  vi.mocked(sendEmailService).mockResolvedValue()
+  vi.mocked(sendEmailService).mockResolvedValue({status: 'sent'})
   vi.mocked(getCampaignPartsDao).mockResolvedValue([])
   vi.mocked(getRecipientStatusCountsDao).mockResolvedValue([])
   vi.mocked(getCampaignRecipientsPageDao).mockResolvedValue({
@@ -720,11 +726,11 @@ describe('sendCampaignService — étalement en parts quotidiennes (s26, critèr
       },
       expect.objectContaining({
         idempotencyKey: 'part-2',
-        runAfter: new Date('2026-11-12T23:00:00.000Z'),
+        runAfter: new Date('2026-11-13T01:00:00.000Z'),
       }),
       expect.objectContaining({
         idempotencyKey: 'part-3',
-        runAfter: new Date('2026-11-13T23:00:00.000Z'),
+        runAfter: new Date('2026-11-14T01:00:00.000Z'),
       }),
     ])
   })
@@ -898,6 +904,8 @@ type FakePart = {
   scheduledFor: string
   recipientCount: number
   status: 'scheduled' | 'sending' | 'sent' | 'failed'
+  deferredTo?: string | null
+  deferredCount?: number | null
 }
 
 /**
@@ -1020,7 +1028,63 @@ const fakeStore = () => {
       return {id: CAMPAIGN_ID}
     }
   )
+  vi.mocked(markCampaignPartDeferredTxnDao).mockImplementation(
+    async (partId, deferredTo) => {
+      const part = store.parts.find((p) => p.id === partId)
+      if (!part) return
+      part.deferredTo = deferredTo
+      part.deferredCount = store.recipients.filter(
+        (r) => r.partId === partId && r.status === 'pending'
+      ).length
+    }
+  )
+  vi.mocked(getAllottedRecipientsByDayDao).mockImplementation(
+    async (_organizationId, fromDay) => allottedOf(store, fromDay)
+  )
+  vi.mocked(getSlidableCampaignPartsDao).mockImplementation(
+    async (_organizationId, fromDay) =>
+      store.parts
+        .filter(
+          (p) =>
+            ['scheduled', 'sending'].includes(p.status) &&
+            (p.scheduledFor >= fromDay || (p.deferredTo ?? '') >= fromDay)
+        )
+        .map((p) => ({
+          id: p.id,
+          campaignId: p.campaignId,
+          scheduledFor: p.scheduledFor,
+          recipientCount: p.recipientCount,
+          status: p.status,
+          deferredTo: p.deferredTo ?? null,
+        }))
+  )
+  vi.mocked(moveCampaignPartTxnDao).mockImplementation(
+    async ({partId, day}) => {
+      const part = store.parts.find((p) => p.id === partId)
+      if (part?.status === 'scheduled') part.scheduledFor = day
+    }
+  )
   return store
+}
+
+/** Destinataires de campagne par jour, comme le plan d'envoi les compte. */
+const allottedOf = (
+  store: {parts: FakePart[]},
+  fromDay: string
+): Record<string, number> => {
+  const allotted: Record<string, number> = {}
+  for (const part of store.parts) {
+    if (part.status === 'failed') continue
+    if (part.scheduledFor >= fromDay) {
+      allotted[part.scheduledFor] =
+        (allotted[part.scheduledFor] ?? 0) + part.recipientCount
+    }
+    if (part.deferredTo && part.deferredTo >= fromDay) {
+      allotted[part.deferredTo] =
+        (allotted[part.deferredTo] ?? 0) + (part.deferredCount ?? 0)
+    }
+  }
+  return allotted
 }
 
 const recipientsOf = (partId: string, count: number, from = 1) =>
@@ -1108,6 +1172,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     })
     vi.mocked(sendEmailService).mockImplementation(async (payload) => {
       order.push(`send:${payload.to}`)
+      return {status: 'sent'}
     })
 
     const outcome = await deliver(PART_1)
@@ -1134,7 +1199,8 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
   it('chaque envoi porte expéditeur, Reply-To, en-têtes List-Unsubscribe et URL du jeton', async () => {
     await deliver(PART_1)
 
-    const [payload, options] = vi.mocked(sendEmailService).mock.calls[0]
+    const [payload, context, options] =
+      vi.mocked(sendEmailService).mock.calls[0]
     expect(payload).toMatchObject({
       to: 'm1@example.fr',
       subject: 'ASL Les Pins — Peinture du portail',
@@ -1146,6 +1212,11 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
       },
     })
     expect(payload.text).toContain(`${ORIGIN}/desinscription/token-r1`)
+    expect(context).toEqual({
+      scope: 'tenant',
+      organizationId: ORG_ID,
+      nature: 'campaign',
+    })
     expect(options).toEqual({recipientType: 'client'})
   })
 
@@ -1230,6 +1301,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     const atFirstSend: string[] = []
     vi.mocked(sendEmailService).mockImplementation(async () => {
       atFirstSend.push(store.recipients[0].status)
+      return {status: 'sent'}
     })
 
     await deliver(PART_1)
@@ -1246,6 +1318,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     const atFirstSend: string[] = []
     vi.mocked(sendEmailService).mockImplementation(async () => {
       atFirstSend.push(store.recipients[0].status)
+      return {status: 'sent'}
     })
 
     await deliver(PART_1)
@@ -1279,6 +1352,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     const atFirstSend: string[] = []
     vi.mocked(sendEmailService).mockImplementation(async () => {
       atFirstSend.push(store.recipients[0].status)
+      return {status: 'sent'}
     })
     await resume(PART_1)
 
@@ -1335,7 +1409,7 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
 
   it('un refus certain du fournisseur → ligne rendue en attente, part reprise 30 min plus tard', async () => {
     vi.mocked(sendEmailService)
-      .mockResolvedValueOnce()
+      .mockResolvedValueOnce({status: 'sent'})
       .mockRejectedValueOnce(
         new EmailTransportError('brevo', 'refus', {refused: true})
       )
@@ -1451,6 +1525,108 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     expect(store.parts[0].status).toBe('scheduled')
   })
 
+  it('budget du jour épuisé au milieu de la part : le reste attend demain 02:00, rien en échec, aucune tentative comptée (s52, critère 6)', async () => {
+    vi.mocked(sendEmailService)
+      .mockResolvedValueOnce({status: 'sent'})
+      .mockResolvedValueOnce({status: 'deferred', until: '2026-11-13'})
+    const now = new Date()
+
+    const outcome = await deliverCampaignPartService(jobFor(PART_1), now)
+
+    expect(outcome).toEqual({
+      status: 'deferred',
+      runAfter: new Date('2026-11-13T01:00:00.000Z'),
+    })
+    expect(statusesOf(store)).toMatchObject({
+      r1: 'sent',
+      r2: 'pending',
+      r3: 'pending',
+    })
+    expect(sendEmailService).toHaveBeenCalledTimes(2)
+    expect(store.parts[0].status).not.toBe('sent')
+    expect(store.parts[0].status).not.toBe('failed')
+    expect(store.campaignStatus).toBe('sending')
+  })
+
+  it('après un report, le plafond des campagnes tient le lendemain : le reste part d’abord, la part suivante glisse d’un jour avec sa tâche (revue s52, n° 1)', async () => {
+    vi.mocked(getAssociationSettingsService).mockResolvedValue({
+      'contact.email': {value: 'bureau@asl-les-pins.test'},
+      'campaign.daily_send_cap': {value: 3},
+    } as never)
+    vi.mocked(sendEmailService)
+      .mockResolvedValueOnce({status: 'sent'})
+      .mockResolvedValueOnce({status: 'deferred', until: '2026-11-13'})
+
+    const outcome = await deliver(PART_1)
+
+    expect(outcome).toEqual({
+      status: 'deferred',
+      runAfter: new Date('2026-11-13T01:00:00.000Z'),
+    })
+    expect(store.parts[0]).toMatchObject({
+      scheduledFor: '2026-11-12',
+      deferredTo: '2026-11-13',
+      deferredCount: 2,
+    })
+    expect(store.parts[1].scheduledFor).toBe('2026-11-14')
+    expect(moveCampaignPartTxnDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      partId: PART_2,
+      day: '2026-11-14',
+      runAfter: new Date('2026-11-14T01:00:00.000Z'),
+    })
+    for (const total of Object.values(allottedOf(store, '2026-11-13'))) {
+      expect(total).toBeLessThanOrEqual(3)
+    }
+    expect(
+      vi.mocked(lockCampaignScheduleTxnDao).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(getSlidableCampaignPartsDao).mock.invocationCallOrder[0]
+    )
+  })
+
+  it('après un report, la suite de la campagne glisse d’un jour ; une autre campagne qui a la place garde son jour', async () => {
+    store.parts.push({
+      id: 'other-part',
+      campaignId: 'other-campaign',
+      number: 1,
+      scheduledFor: '2026-11-13',
+      recipientCount: 10,
+      status: 'scheduled',
+    })
+    vi.mocked(sendEmailService)
+      .mockResolvedValueOnce({status: 'sent'})
+      .mockResolvedValueOnce({status: 'deferred', until: '2026-11-13'})
+
+    await deliver(PART_1)
+
+    expect(store.parts[0].deferredTo).toBe('2026-11-13')
+    expect(store.parts[1].scheduledFor).toBe('2026-11-14')
+    expect(store.parts[2].scheduledFor).toBe('2026-11-13')
+    expect(moveCampaignPartTxnDao).toHaveBeenCalledTimes(1)
+  })
+
+  it('une part servie sans report ne touche pas au plan', async () => {
+    await deliver(PART_1)
+
+    expect(markCampaignPartDeferredTxnDao).not.toHaveBeenCalled()
+    expect(moveCampaignPartTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('un envoi ignoré par les réglages n’est jamais compté comme reçu : ligne rendue, tâche rendue (s52)', async () => {
+    vi.mocked(sendEmailService).mockResolvedValueOnce({status: 'skipped'})
+
+    const outcome = await deliver(PART_1)
+
+    expect(outcome).toEqual({status: 'released'})
+    expect(statusesOf(store)).toMatchObject({
+      r1: 'pending',
+      r2: 'pending',
+      r3: 'pending',
+    })
+    expect(markRecipientSentTxnDao).not.toHaveBeenCalled()
+  })
+
   it('n’écrit ni adresse ni contenu dans un journal', async () => {
     vi.mocked(sendEmailService).mockRejectedValueOnce(
       new EmailTransportError('brevo', 'injoignable')
@@ -1511,6 +1687,7 @@ describe('lectures — décomptes et parts de chaque campagne (s26)', () => {
         scheduledFor: '2026-11-12',
         recipientCount: 1,
         status: 'sent',
+        deferredTo: null,
       },
       {
         id: 'p2',
@@ -1519,6 +1696,7 @@ describe('lectures — décomptes et parts de chaque campagne (s26)', () => {
         scheduledFor: '2026-11-13',
         recipientCount: 1,
         status: 'scheduled',
+        deferredTo: null,
       },
     ])
     vi.mocked(getRecipientStatusCountsDao).mockResolvedValue([

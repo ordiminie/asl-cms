@@ -2,7 +2,10 @@ import {Metadata} from 'next'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 
 import {canManageCurrentAssociationIdentityDal} from '@/app/dal/association-identity-dal'
-import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
+import {
+  canEditSuperAdminOnlySettingsDal,
+  getAssociationSettingsDal,
+} from '@/app/dal/association-settings-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {AssociationSettingsForm} from '@/components/features/association/association-settings-form'
 import {BureauAccessDenied} from '@/components/features/association/bureau-access-denied'
@@ -55,7 +58,10 @@ export default async function BureauSettingsPage({
     return <BureauAccessDenied />
   }
 
-  const settings = await getAssociationSettingsDal(tenant.id)
+  const [settings, canEditSuperAdminOnly] = await Promise.all([
+    getAssociationSettingsDal(tenant.id),
+    canEditSuperAdminOnlySettingsDal(),
+  ])
 
   return (
     <div className="flex w-full max-w-190 flex-col gap-8 px-4 pt-6 pb-12 sm:px-8 sm:pt-8">
@@ -84,6 +90,7 @@ export default async function BureauSettingsPage({
         )}
         settings={settings}
         saveAction={updateAssociationSettingsAction}
+        canEditSuperAdminOnly={canEditSuperAdminOnly}
       />
     </div>
   )

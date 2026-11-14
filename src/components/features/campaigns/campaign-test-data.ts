@@ -18,6 +18,8 @@ export const partOf = (
   receivedCount: recipientCount,
   toVerifyCount: 0,
   displayState: 'sent',
+  deferredUntil: null,
+  deferredCount: 0,
   ...overrides,
 })
 

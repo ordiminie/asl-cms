@@ -7,6 +7,11 @@ vi.mock('../scheduled-job-service', () => ({
     failed: [],
   })),
 }))
+vi.mock('../email-service', () => ({
+  emailScheduledJobHandlers: {
+    'email.deliver_deferred': vi.fn(),
+  },
+}))
 vi.mock('../campaign-service', () => ({
   deliverCampaignPartService: vi.fn(),
   campaignScheduledJobHandlers: {
@@ -15,6 +20,7 @@ vi.mock('../campaign-service', () => ({
 }))
 
 import {campaignScheduledJobHandlers} from '../campaign-service'
+import {emailScheduledJobHandlers} from '../email-service'
 import * as scheduledJobFacade from '../facades/scheduled-job-service-facade'
 import {runDueScheduledJobsService} from '../scheduled-job-service'
 
@@ -42,6 +48,19 @@ describe('façade du planificateur (s26, ADR 052)', () => {
       }),
       now: NOW,
     })
+  })
+
+  it('enregistre le rejeu des emails reportés : sans lui, la tâche ne serait jamais prise (s52)', async () => {
+    await scheduledJobFacade.runDueScheduledJobsService(NOW)
+
+    expect(runDueScheduledJobsService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handlers: expect.objectContaining({
+          'email.deliver_deferred':
+            emailScheduledJobHandlers['email.deliver_deferred'],
+        }),
+      })
+    )
   })
 
   it('peut ne passer qu’une association', async () => {

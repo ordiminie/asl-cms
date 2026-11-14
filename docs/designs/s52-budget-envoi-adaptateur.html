@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Maquette — s52 Envois d'emails et limite du jour</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Tokens : docs/design-system.md §1.1 et §1.9, jeu clair seul (ADR 033). */
+      :root {
+        --accent-hue: 195;
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.22 0.015 250);
+        --card: oklch(1 0 0);
+        --muted: oklch(0.972 0.005 240);
+        --muted-foreground: oklch(0.45 0.02 245);
+        --border: oklch(0.9 0.008 245);
+        --input: oklch(0.66 0.014 245);
+        --ring: oklch(0.55 0.11 235);
+        --primary: oklch(0.35 0.06 240);
+        --primary-foreground: oklch(0.985 0.003 240);
+        --secondary: oklch(0.965 0.006 240);
+        --secondary-foreground: oklch(0.3 0.02 245);
+        --destructive: oklch(0.48 0.17 27);
+        --destructive-foreground: oklch(0.99 0.01 27);
+        --destructive-text: oklch(0.48 0.17 27);
+        --link: oklch(0.45 0.13 250);
+        --warning: oklch(0.94 0.06 75);
+        --warning-border: oklch(0.6 0.13 65);
+        --warning-foreground: oklch(0.3 0.08 60);
+        --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+        --sidebar: oklch(0.985 0.004 250);
+        --sidebar-foreground: oklch(0.26 0.015 250);
+        --sidebar-accent: oklch(0.93 0.012 245);
+        --sidebar-border: oklch(0.91 0.008 245);
+        --table-stripe: oklch(0.99 0.002 250);
+        --radius: 0.5rem;
+        --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+        --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--muted);
+        color: var(--foreground);
+        font-family: var(--font-sans);
+        font-size: 17px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: var(--link);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+      }
+      h1,
+      h2 {
+        font-family: var(--font-serif);
+        font-weight: 600;
+        text-wrap: pretty;
+        margin: 0;
+      }
+      .data {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ---- Planches (hors produit) ---- */
+      .doc {
+        padding: 48px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 48px;
+      }
+      .doc code,
+      .screen > h2 {
+        overflow-wrap: anywhere;
+      }
+      .doc-intro {
+        max-width: 68ch;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .doc-intro h1 {
+        font-size: 34px;
+        line-height: 1.15;
+      }
+      .overline {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .screen {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        border-top: 1px solid var(--border);
+        padding-top: 32px;
+      }
+      .screen > h2 {
+        font-size: 26px;
+        line-height: 1.2;
+      }
+      .state {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .state-label {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        flex-wrap: wrap;
+        font-size: 16px;
+        font-weight: 500;
+      }
+      .chip {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-radius: 4px;
+        padding: 4px 8px;
+      }
+      .note {
+        font-size: 15px;
+        color: var(--muted-foreground);
+        max-width: 68ch;
+        margin: 0;
+      }
+      .frames {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        align-items: flex-start;
+      }
+      .frame {
+        container-type: inline-size;
+        background: var(--background);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .frame-d {
+        width: min(1280px, 100%);
+      }
+      .frame-m {
+        width: min(390px, 100%);
+      }
+      .frame-caption {
+        font-size: 15px;
+        color: var(--muted-foreground);
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--border);
+        background: var(--muted);
+      }
+
+      /* ---- Gabarit du back-office (§1.6) ---- */
+      .shell {
+        display: grid;
+        grid-template-columns: 248px 1fr;
+        min-height: 640px;
+      }
+      .sidebar {
+        background: var(--sidebar);
+        color: var(--sidebar-foreground);
+        border-right: 1px solid var(--sidebar-border);
+        padding: 16px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .mark {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 16px;
+        line-height: 1.3;
+      }
+      .mark-square {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: var(--radius);
+        background: var(--accent-solid);
+        color: var(--primary-foreground);
+        font-family: var(--font-serif);
+        font-weight: 600;
+        font-size: 15px;
+        display: grid;
+        place-items: center;
+      }
+      .nav-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .nav-group-label {
+        font-size: 15px;
+        color: var(--muted-foreground);
+        padding: 0 12px;
+      }
+      .nav-item {
+        display: block;
+        padding: 8px 12px;
+        border-radius: var(--radius);
+        color: inherit;
+        text-decoration: none;
+        font-size: 16px;
+        font-weight: 500;
+      }
+      .nav-item[aria-current='page'] {
+        background: var(--sidebar-accent);
+        font-weight: 600;
+      }
+      .topbar {
+        display: none;
+      }
+      .shell > div {
+        min-width: 0;
+      }
+      .main {
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+        min-width: 0;
+      }
+      .breadcrumb {
+        font-size: 15px;
+        color: var(--muted-foreground);
+      }
+      .page-head {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .page-head h1 {
+        font-size: 34px;
+        line-height: 1.15;
+      }
+      .lead {
+        margin: 0;
+        max-width: 68ch;
+      }
+
+      /* ---- Composants du socle, rendu de référence ---- */
+      .card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .card h3 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.3;
+        font-weight: 600;
+      }
+      .card-desc {
+        margin: 0;
+        color: var(--muted-foreground);
+        font-size: 15px;
+      }
+      .alert {
+        border-radius: var(--radius);
+        padding: 16px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        border: 1px solid var(--border);
+      }
+      .alert p {
+        margin: 0;
+      }
+      .alert strong {
+        display: block;
+      }
+      .alert svg {
+        flex: none;
+        margin-top: 3px;
+      }
+      .alert-warning {
+        background: var(--warning);
+        border: 2px solid var(--warning-border);
+        color: var(--warning-foreground);
+      }
+      .alert-destructive {
+        border: 2px solid var(--destructive);
+        color: var(--destructive-text);
+      }
+      .alert-destructive strong {
+        font-weight: 700;
+      }
+      .alert-success svg {
+        color: var(--primary);
+      }
+      .alert-muted {
+        background: var(--muted);
+      }
+      .progress {
+        height: 8px;
+        border-radius: 999px;
+        background: var(--secondary);
+        overflow: hidden;
+      }
+      .progress > span {
+        display: block;
+        height: 100%;
+        background: var(--primary);
+      }
+      .progress-label {
+        margin: 0;
+        font-weight: 600;
+      }
+      .pairs {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin: 0;
+      }
+      .pairs div {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .pairs dt {
+        font-size: 15px;
+        color: var(--muted-foreground);
+      }
+      .pairs dd {
+        margin: 0;
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: 17px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 17px;
+      }
+      th {
+        background: var(--muted);
+        font-size: 15px;
+        font-weight: 600;
+        text-align: left;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      td {
+        padding: 12px 16px;
+        height: 56px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+      }
+      tbody tr:nth-child(even) {
+        background: var(--table-stripe);
+      }
+      .num {
+        text-align: right;
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+      }
+      th.num {
+        font-family: var(--font-sans);
+      }
+      td.cell-title {
+        min-width: 16rem;
+      }
+      td .sub {
+        display: block;
+        font-size: 15px;
+        font-weight: 400;
+        color: var(--muted-foreground);
+      }
+      .pairs dd.text {
+        font-family: var(--font-sans);
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 15px;
+        font-weight: 500;
+        border-radius: 999px;
+        padding: 2px 10px;
+        border: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .badge-secondary {
+        background: var(--secondary);
+        color: var(--secondary-foreground);
+        border-color: transparent;
+      }
+      .badge-done {
+        color: var(--muted-foreground);
+      }
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .pagination .meta {
+        font-size: 15px;
+        color: var(--muted-foreground);
+      }
+      .btn-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        font: 600 16px/1 var(--font-sans);
+        height: 48px;
+        padding: 0 20px;
+        border-radius: var(--radius);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        border: 1px solid var(--input);
+        background: var(--background);
+        color: var(--foreground);
+      }
+      .btn-default {
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border-color: var(--primary);
+      }
+      .btn[aria-disabled='true'] {
+        color: var(--muted-foreground);
+        border-color: var(--border);
+        cursor: not-allowed;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .field label {
+        font-size: 16px;
+        font-weight: 500;
+      }
+      .input-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .input {
+        height: 48px;
+        width: 160px;
+        border: 1px solid var(--input);
+        border-radius: var(--radius);
+        padding: 0 12px;
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-size: 17px;
+        display: flex;
+        align-items: center;
+        background: var(--background);
+      }
+      .input-error {
+        border: 2px solid var(--destructive);
+      }
+      .unit {
+        color: var(--muted-foreground);
+        font-size: 16px;
+      }
+      .help {
+        margin: 0;
+        font-size: 15px;
+        color: var(--muted-foreground);
+        max-width: 68ch;
+      }
+      .field-error {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--destructive-text);
+      }
+      .fields {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+      .skeleton {
+        background: var(--secondary);
+        border-radius: var(--radius);
+        height: 20px;
+      }
+      .skeleton-row {
+        display: grid;
+        grid-template-columns: 2fr 3fr 1fr 2fr;
+        gap: 16px;
+      }
+
+      /* ---- Sous 1 024 px : tiroir (§1.6), marges 16 px, actions 56 px ---- */
+      @container (max-width: 1023px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+        .sidebar {
+          display: none;
+        }
+        .topbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 16px;
+          border-bottom: 1px solid var(--border);
+        }
+        .main {
+          padding: 24px 16px;
+          gap: 24px;
+        }
+        .btn {
+          height: 56px;
+          font-size: 17px;
+        }
+        .input {
+          height: 56px;
+        }
+        .pairs {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      /* ---- Sous 640 px : cartes empilées (§3.5), une paire par ligne (§3.13) ---- */
+      @container (max-width: 639px) {
+        .page-head h1 {
+          font-size: 28px;
+        }
+        .card {
+          padding: 16px;
+        }
+        .pairs {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+        .pairs div {
+          flex-direction: row;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        table,
+        thead,
+        tbody,
+        tr,
+        td {
+          display: block;
+        }
+        thead {
+          display: none;
+        }
+        tbody tr {
+          border: 1px solid var(--border);
+          border-radius: var(--radius);
+          padding: 12px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          background: var(--card) !important;
+        }
+        tbody {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        td {
+          height: auto;
+          border: 0;
+          padding: 0;
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          text-align: left;
+        }
+        td.cell-title {
+          min-width: 0;
+        }
+        td::before {
+          content: attr(data-label);
+          font-family: var(--font-sans);
+          font-size: 15px;
+          color: var(--muted-foreground);
+          flex: none;
+        }
+        td.cell-title {
+          font-weight: 600;
+          display: block;
+        }
+        td.cell-title::before {
+          content: none;
+        }
+        td.cell-action {
+          display: block;
+        }
+        td.cell-action::before {
+          content: none;
+        }
+        td.cell-action .btn {
+          width: 100%;
+        }
+        .num {
+          text-align: right;
+        }
+        .pagination {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .pagination .btn-row .btn {
+          flex: 1;
+        }
+        .btn-row.stack {
+          flex-direction: column;
+        }
+        .btn-row.stack .btn {
+          width: 100%;
+        }
+        .input {
+          width: 140px;
+        }
+        .skeleton-row {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="doc" id="contenu">
+      <header class="doc-intro">
+        <span class="overline">Maquette · référence, pas du code</span>
+        <h1>s52 — Envois d'emails et limite du jour</h1>
+        <p class="lead">
+          Trois écrans du bureau, chacun en version bureau (1 280 px) et mobile
+          (390 px), mode clair seul (ADR 033). Données fictives : « ASL Les Pins
+          » (monogramme LP, teinte 195), samedi 14/11/2026, limite de la
+          messagerie 300 envois par jour dont 100 gardés pour la connexion.
+          Tokens et composants : <code>docs/design-system.md</code>
+          uniquement. Description et écarts :
+          <code>docs/designs/s52-budget-envoi-adaptateur.md</code>.
+        </p>
+        <p class="note">
+          Planches : <a href="#e1">Écran 1 — Envois d'emails</a> ·
+          <a href="#e2">Écran 2 — Réglages, carte « Envois »</a> ·
+          <a href="#e3">Écran 3 — Campagne, part reportée</a>
+        </p>
+      </header>
+
+      <section class="screen" id="e1">
+        <h2>
+          Écran 1 — Envois d'emails (<span class="data">/bureau/envois</span>)
+        </h2>
+        <p class="note">
+          Nouvelle entrée « Envois » dans le groupe « L'association », après «
+          Campagnes ». La page dit ce qui est parti aujourd'hui et ce qui attend
+          demain. Elle n'a aucune action propre : les envois reportés partent
+          seuls.
+        </p>
+        <div
+          class="state"
+          data-render="e1a"
+          data-title="1a — Limite du jour atteinte, envois en attente (cas courant)"
+        ></div>
+        <div
+          class="state"
+          data-render="e1b"
+          data-title="1b — Rien en attente"
+        ></div>
+        <div
+          class="state"
+          data-render="e1c"
+          data-title="1c — Réserve de connexion épuisée"
+        ></div>
+        <div class="state" data-render="e1d" data-title="1d — Chargement"></div>
+        <div
+          class="state"
+          data-render="e1e"
+          data-title="1e — Erreur de lecture"
+        ></div>
+      </section>
+
+      <section class="screen" id="e2">
+        <h2>
+          Écran 2 — Réglages, carte « Envois » (<span class="data"
+            >/bureau/reglages</span
+          >)
+        </h2>
+        <p class="note">
+          Deux champs « Nombre » s'ajoutent en tête de la carte créée par s26.
+          Les deux champs de s26 restent dessous, inchangés. La page reste
+          générée par le registre des réglages (§3.1) : aucun composant nouveau.
+        </p>
+        <div
+          class="state"
+          data-render="e2a"
+          data-title="2a — Valeurs par défaut"
+        ></div>
+        <div
+          class="state"
+          data-render="e2b"
+          data-title="2b — Erreur : réserve trop grande"
+        ></div>
+        <div class="state" data-render="e2c" data-title="2c — Enregistré"></div>
+      </section>
+
+      <section class="screen" id="e3">
+        <h2>
+          Écran 3 — Campagne, part reportée (<span class="data"
+            >/bureau/campagnes/{id}</span
+          >)
+        </h2>
+        <p class="note">
+          Seul ce qui change par rapport à l'écran 2 de s26 est dessiné : le
+          bandeau et la carte « Envois par jour ». Les cartes « Destinataires »
+          et « Résumé » sont inchangées.
+        </p>
+        <div
+          class="state"
+          data-render="e3a"
+          data-title="3a — Une part entamée, le reste reporté au lendemain"
+        ></div>
+      </section>
+    </main>
+
+    <script>
+      const nbsp = ' '
+      const icon = {
+        alert:
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+        check:
+          '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>',
+        menu: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>',
+      }
+
+      const nav = (active) => {
+        const item = (label, key) =>
+          `<a class="nav-item" href="#" ${key === active ? 'aria-current="page"' : ''}>${label}</a>`
+        return `
+          <nav class="sidebar" aria-label="Navigation du bureau">
+            <div class="mark"><span class="mark-square">LP</span>ASL Les Pins</div>
+            <div class="nav-group">
+              <span class="nav-group-label">Le site</span>
+              ${item('Pages')}${item("Page d'accueil")}${item('Actualités')}${item("Analyses d'eau")}${item('Navigation')}${item('Messages reçus')}${item('Signalements')}${item('Le bureau')}${item('Bandeau d’alerte')}
+            </div>
+            <div class="nav-group">
+              <span class="nav-group-label">L'association</span>
+              ${item('Propriétaires')}${item('Campagnes', 'campaigns')}${item('Envois', 'sends')}${item('Identité')}${item('Réglages', 'settings')}
+            </div>
+          </nav>`
+      }
+
+      const shell = (active, crumb, body) => `
+        <div class="shell">
+          ${nav(active)}
+          <div>
+            <div class="topbar">
+              <div class="mark"><span class="mark-square">LP</span>ASL Les Pins</div>
+              <button class="btn" type="button">${icon.menu}Menu</button>
+            </div>
+            <div class="main">
+              <span class="breadcrumb">${crumb}</span>
+              ${body}
+            </div>
+          </div>
+        </div>`
+
+      const pairs = (rows) =>
+        `<dl class="pairs">${rows.map(([dt, dd]) => `<div><dt>${dt}</dt><dd${typeof dd === 'number' ? '' : ' class="text"'}>${dd}</dd></div>`).join('')}</dl>`
+
+      const todayCard = ({sent, login, left, pct}) => `
+        <section class="card" aria-labelledby="t-today">
+          <h3 id="t-today">Aujourd'hui, samedi 14/11/2026</h3>
+          <p class="progress-label">${sent} sur 300 emails envoyés aujourd'hui</p>
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="300" aria-valuenow="${sent}" aria-label="Emails envoyés aujourd'hui"><span style="width:${pct}%"></span></div>
+          ${pairs([
+            ['Envoyés aujourd’hui', sent],
+            ['Dont emails de connexion', login],
+            ['Autres envois encore possibles', left],
+            ['Limite remise à zéro', 'à minuit'],
+          ])}
+          <p class="card-desc">100 envois sont gardés chaque jour pour les emails de connexion. Ils partent toujours, même quand les autres envois attendent demain.</p>
+        </section>`
+
+      const pendingRows = [
+        [
+          'Campagne',
+          '« Convocation à l’assemblée générale »',
+          'Part 3 sur 3',
+          40,
+          'Voir la campagne',
+        ],
+        [
+          'Notification au bureau',
+          'Message reçu depuis le formulaire de contact',
+          'À l’adresse de contact',
+          1,
+          'Voir le message',
+        ],
+        [
+          'Notification au bureau',
+          'Signalement « Fuite allée des Chênes »',
+          'Au responsable du forage',
+          1,
+          'Voir le signalement',
+        ],
+      ]
+
+      const pendingCard = (rows) => `
+        <section class="card" aria-labelledby="t-pending">
+          <h3 id="t-pending">En attente</h3>
+          ${
+            rows.length === 0
+              ? '<p class="lead">Aucun envoi en attente. Tous les emails sont partis.</p>'
+              : `<p class="card-desc">Ces envois partiront seuls le jour indiqué. Vous n’avez rien à faire.</p>
+          <table>
+            <thead><tr><th>Envoi</th><th>Nature</th><th class="num">Destinataires</th><th>État</th><th><span class="sr">Action</span></th></tr></thead>
+            <tbody>
+              ${rows
+                .map(
+                  ([nature, title, sub, count, action]) => `
+              <tr>
+                <td class="cell-title">${title}<span class="sub">${sub}</span></td>
+                <td data-label="Nature">${nature}</td>
+                <td data-label="Destinataires" class="num">${count}</td>
+                <td data-label="État"><span class="badge badge-secondary">Programmée pour le 15/11</span></td>
+                <td class="cell-action"><a href="#">${action}</a></td>
+              </tr>`
+                )
+                .join('')}
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span class="meta">Page 1 sur 1 · 3 envois en attente</span>
+            <div class="btn-row">
+              <button class="btn" type="button" aria-disabled="true">Précédent</button>
+              <button class="btn" type="button" aria-disabled="true">Suivant</button>
+            </div>
+          </div>`
+          }
+        </section>`
+
+      const head1 = `
+        <div class="page-head">
+          <h1>Envois d'emails</h1>
+          <p class="lead">Votre messagerie envoie au plus 300 emails par jour. Ce qui dépasse part le lendemain, sans action de votre part.</p>
+        </div>`
+
+      const screens = {
+        e1a: () =>
+          shell(
+            'sends',
+            'L’association › Envois',
+            `${head1}
+            <div class="alert alert-warning" role="status">${icon.alert}<p><strong>La limite d’envoi du jour est atteinte.</strong>42 emails partiront demain, le 15/11/2026, sans action de votre part. Les emails de connexion continuent de partir.</p></div>
+            ${todayCard({sent: 222, login: 22, left: 0, pct: 74})}
+            ${pendingCard(pendingRows)}`
+          ),
+        e1b: () =>
+          shell(
+            'sends',
+            'L’association › Envois',
+            `${head1}
+            ${todayCard({sent: 87, login: 9, left: 122, pct: 29})}
+            ${pendingCard([])}`
+          ),
+        e1c: () =>
+          shell(
+            'sends',
+            'L’association › Envois',
+            `${head1}
+            <div class="alert alert-warning" role="status">${icon.alert}<p><strong>Les 100 envois gardés pour la connexion sont épuisés.</strong>D’ici minuit, votre messagerie peut refuser des emails de connexion. Si cela se reproduit, prévenez l’équipe technique : la limite ou la réserve est peut-être à revoir.</p></div>
+            ${todayCard({sent: 300, login: 100, left: 0, pct: 100})}
+            ${pendingCard(pendingRows)}`
+          ),
+        e1d: () =>
+          shell(
+            'sends',
+            'L’association › Envois',
+            `${head1}
+            <section class="card" aria-busy="true" aria-labelledby="t-l1"><h3 id="t-l1">Aujourd'hui, samedi 14/11/2026</h3><div class="skeleton" style="width:60%"></div><div class="skeleton" style="height:8px"></div><div class="skeleton-row"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div></section>
+            <section class="card" aria-busy="true" aria-labelledby="t-l2"><h3 id="t-l2">En attente</h3><div class="skeleton-row"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div><div class="skeleton-row"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div></section>`
+          ),
+        e1e: () =>
+          shell(
+            'sends',
+            'L’association › Envois',
+            `${head1}
+            <div class="alert alert-destructive" role="alert"><p><strong>Les envois n’ont pas pu être lus.</strong>Rien n’est perdu : les envois en attente partiront quand même. Rechargez la page dans un instant.</p></div>`
+          ),
+
+        e2a: () => settings({}),
+        e2b: () => settings({error: true}),
+        e2c: () => settings({saved: true}),
+
+        e3a: () =>
+          shell(
+            'campaigns',
+            'L’association › Campagnes › Convocation à l’assemblée générale',
+            `<div class="page-head">
+              <h1>Convocation à l’assemblée générale</h1>
+              <div><span class="badge badge-secondary">En cours d’envoi</span></div>
+            </div>
+            <div class="alert alert-warning" role="status">${icon.alert}<p><strong>La limite d’envoi du jour est atteinte.</strong>40 membres de la part du 14/11/2026 recevront la campagne demain, le 15/11/2026. Vous n’avez rien à faire.</p></div>
+            <section class="card" aria-labelledby="t-adv">
+              <h3 id="t-adv">Avancement</h3>
+              <p class="progress-label">160 sur 296 membres ont reçu la campagne</p>
+              <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="296" aria-valuenow="160" aria-label="Membres ayant reçu la campagne"><span style="width:54%"></span></div>
+              ${pairs([
+                ['Reçue', 160],
+                ['Programmée', 136],
+                ['À vérifier', 0],
+                ['En échec', 0],
+              ])}
+            </section>
+            <section class="card" aria-labelledby="t-parts">
+              <h3 id="t-parts">Envois par jour</h3>
+              <table>
+                <thead><tr><th>Part</th><th>Jour</th><th class="num">Destinataires</th><th>État</th></tr></thead>
+                <tbody>
+                  <tr><td class="cell-title">Part 1</td><td data-label="Jour" class="data">13/11/2026</td><td data-label="Destinataires" class="num">100</td><td data-label="État"><span class="badge badge-done">Envoyée</span></td></tr>
+                  <tr><td class="cell-title">Part 2<span class="sub">60 reçues · 40 reportées au 15/11</span></td><td data-label="Jour" class="data">14/11/2026</td><td data-label="Destinataires" class="num">100</td><td data-label="État"><span class="badge badge-secondary">Programmée pour le 15/11</span></td></tr>
+                  <tr><td class="cell-title">Part 3</td><td data-label="Jour" class="data">15/11/2026</td><td data-label="Destinataires" class="num">96</td><td data-label="État"><span class="badge badge-secondary">Programmée pour le 15/11</span></td></tr>
+                </tbody>
+              </table>
+            </section>`
+          ),
+      }
+
+      function settings({error = false, saved = false}) {
+        const field = (id, label, value, help, err) => `
+          <div class="field">
+            <label for="${id}">${label}</label>
+            <div class="input-row"><span class="input ${err ? 'input-error' : ''}" id="${id}" role="textbox" aria-invalid="${err ? 'true' : 'false'}">${value}</span><span class="unit">envois par jour</span></div>
+            ${err ? `<p class="field-error">${err}</p>` : ''}
+            <p class="help">${help}</p>
+          </div>`
+        return shell(
+          'settings',
+          'L’association › Réglages',
+          `<div class="page-head"><h1>Réglages</h1></div>
+          ${
+            error
+              ? `<div class="alert alert-destructive" role="alert"><p><strong>Les réglages n’ont pas été enregistrés.</strong><a href="#res">Envois gardés pour la connexion : gardez moins d’envois que la limite quotidienne.</a></p></div>`
+              : ''
+          }
+          ${saved ? `<div class="alert alert-success" role="status">${icon.check}<p><strong>Réglages enregistrés.</strong>Ils s’appliquent dès les prochains envois.</p></div>` : ''}
+          <section class="card" aria-labelledby="t-env">
+            <h3 id="t-env">Envois</h3>
+            <p class="card-desc">Ces réglages s’appliquent aux prochains envois ; une campagne déjà lancée garde son plan.</p>
+            <div class="fields">
+              ${field('lim', 'Limite d’envoi quotidienne de la messagerie', '300', 'Nombre maximum d’emails envoyés par jour pour l’association, tous envois confondus : connexion, campagnes, notifications. Gardez-la égale à la limite de votre messagerie. Par défaut : 300.')}
+              ${field('res', 'Envois gardés pour la connexion', error ? '300' : '100', 'Part de la limite réservée aux emails de connexion, qui partent toujours. Les autres envois s’arrêtent avant et reprennent le lendemain. Par défaut : 100.', error ? 'Gardez moins d’envois que la limite quotidienne (300).' : '')}
+              ${field('cap', 'Plafond quotidien des campagnes', '100', 'Nombre maximum d’emails de campagne envoyés par jour, toutes campagnes confondues. Par défaut : 100.')}
+              <div class="field">
+                <label for="att">Nombre de tentatives d’envoi d’une part</label>
+                <div class="input-row"><span class="input" id="att" role="textbox">3</span><span class="unit">tentatives</span></div>
+                <p class="help">Par défaut : 3.</p>
+              </div>
+            </div>
+            <div class="btn-row stack"><button class="btn btn-default" type="button">Enregistrer les réglages</button></div>
+          </section>`
+        )
+      }
+
+      document.querySelectorAll('[data-render]').forEach((slot) => {
+        const html = screens[slot.dataset.render]()
+        slot.innerHTML = `
+          <div class="state-label"><span class="chip">${slot.dataset.render.slice(1)}</span>${slot.dataset.title.replace(/^\S+ — /, '')}</div>
+          <div class="frames">
+            <div class="frame frame-d"><div class="frame-caption">Bureau · 1 280 px</div>${html}</div>
+            <div class="frame frame-m"><div class="frame-caption">Mobile · 390 px</div>${html}</div>
+          </div>`
+      })
+      document.querySelectorAll('.sr').forEach((el) => {
+        el.style.cssText =
+          'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)'
+      })
+    </script>
+  </body>
+</html>

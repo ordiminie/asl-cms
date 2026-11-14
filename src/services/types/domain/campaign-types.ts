@@ -116,6 +116,13 @@ export type CampaignPartDTO = {
   receivedCount: number
   toVerifyCount: number
   displayState: CampaignPartDisplayState
+  /**
+   * Jour de Paris ou part le reste d'une part entamee, reporte faute de
+   * budget d'envoi (s52) ; rien sinon.
+   */
+  deferredUntil: string | null
+  /** Destinataires de la part reportes a `deferredUntil`. */
+  deferredCount: number
 }
 
 /**

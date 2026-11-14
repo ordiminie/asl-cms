@@ -106,6 +106,8 @@ const notifyBoard = async (
 
   const logoUrl = pngLogoUrlOf(organization.identityLogoKey, origin)
   await sendContactMessageNotificationEmailService({
+    organizationId: message.organizationId,
+    messageId: message.id,
     to: String(to),
     locale: resolveSupportedLocale(locale),
     association: {

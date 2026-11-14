@@ -35,15 +35,19 @@ import {
   getCampaignsPageDao,
   getCampaignTargetRowsDao,
   getCurrentParcelNumbersForMembersDao,
+  getOpenCampaignPartsDao,
   getPendingPartRecipientsDao,
   getRecipientStatusCountsDao,
+  getSlidableCampaignPartsDao,
   lockCampaignScheduleTxnDao,
+  markCampaignPartDeferredTxnDao,
   markRecipientFailedTxnDao,
   markRecipientSentTxnDao,
   markRecipientToVerifyTxnDao,
   markRecipientUnsubscribedTxnDao,
   markSendingRecipientsToVerifyTxnDao,
   markStaleSendingRecipientsToVerifyTxnDao,
+  moveCampaignPartTxnDao,
   releaseRecipientClaimTxnDao,
   startCampaignPartTxnDao,
 } from './campaign-repository'
@@ -298,6 +302,113 @@ describe('getAllottedRecipientsByDayDao — le plafond du jour déjà pris', () 
       expect.arrayContaining([ORG_ID, '2026-11-12', 'failed'])
     )
     expect(allotted).toEqual({'2026-11-12': 40, '2026-11-13': 100})
+  })
+
+  it('compte aussi le reste reporté d’une part au jour où il part (revue s52, n° 1)', async () => {
+    responses.current = [
+      [
+        ['2026-11-14', '100'],
+        ['2026-11-15', 96],
+      ],
+      [['2026-11-15', '40']],
+    ]
+
+    const allotted = await getAllottedRecipientsByDayDao(ORG_ID, '2026-11-14')
+
+    const {sql, params} = sent[1]
+    expect(sql).toContain('sum("deferred_count")')
+    expect(sql).toContain('"campaign_part"."organization_id" = $')
+    expect(sql).toContain('"campaign_part"."deferred_to" >= $')
+    expect(sql).toContain('"campaign_part"."status" <> $')
+    expect(sql).toContain('group by "campaign_part"."deferred_to"')
+    expect(params).toEqual(
+      expect.arrayContaining([ORG_ID, '2026-11-14', 'failed'])
+    )
+    expect(allotted).toEqual({'2026-11-14': 100, '2026-11-15': 136})
+  })
+})
+
+describe('report d’une part et glissement des suivantes (revue s52, n° 1)', () => {
+  it('markCampaignPartDeferredTxnDao pose le jour du reste et le nombre de destinataires encore en attente, en une instruction', async () => {
+    await markCampaignPartDeferredTxnDao(PART_1, '2026-11-15')
+
+    const [{sql, params}] = sent
+    expect(sql).toMatch(
+      /^update "campaign_part" set "deferred_to" = \$1, "deferred_count" = \(select count\(\*\) from "campaign_recipient"/
+    )
+    expect(params).toEqual(
+      expect.arrayContaining(['2026-11-15', PART_1, 'pending'])
+    )
+  })
+
+  it('getSlidableCampaignPartsDao lit les parts ouvertes de l’association à partir du jour du reste, sans contenu', async () => {
+    responses.current = [
+      [
+        [PART_1, CAMPAIGN_ID, '2026-11-14', 100, 'sending', '2026-11-15'],
+        ['part-3', CAMPAIGN_ID, '2026-11-15', 96, 'scheduled', null],
+      ],
+    ]
+
+    const parts = await getSlidableCampaignPartsDao(ORG_ID, '2026-11-15')
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('from "campaign_part"')
+    expect(sql).toContain('"campaign_part"."organization_id" = $')
+    expect(sql).toContain('"campaign_part"."status" in ($')
+    expect(sql).toContain('"campaign_part"."scheduled_for" >= $')
+    expect(sql).toContain('"campaign_part"."deferred_to" >= $')
+    expect(params).toEqual(
+      expect.arrayContaining([ORG_ID, 'scheduled', 'sending', '2026-11-15'])
+    )
+    expect(parts).toEqual([
+      {
+        id: PART_1,
+        campaignId: CAMPAIGN_ID,
+        scheduledFor: '2026-11-14',
+        recipientCount: 100,
+        status: 'sending',
+        deferredTo: '2026-11-15',
+      },
+      {
+        id: 'part-3',
+        campaignId: CAMPAIGN_ID,
+        scheduledFor: '2026-11-15',
+        recipientCount: 96,
+        status: 'scheduled',
+        deferredTo: null,
+      },
+    ])
+  })
+
+  it('moveCampaignPartTxnDao change le jour d’une part encore programmée et l’échéance de sa tâche ouverte non prise', async () => {
+    const runAfter = new Date('2026-11-16T01:00:00.000Z')
+
+    await moveCampaignPartTxnDao({
+      organizationId: ORG_ID,
+      partId: 'part-3',
+      day: '2026-11-16',
+      runAfter,
+    })
+
+    const [part, job] = sent
+    expect(part.sql).toMatch(
+      /^update "campaign_part" set "scheduled_for" = \$1/
+    )
+    expect(part.params).toEqual(
+      expect.arrayContaining(['2026-11-16', 'part-3', 'scheduled'])
+    )
+    expect(job.sql).toMatch(/^update "scheduled_job" set "run_after" = \$1/)
+    expect(job.sql).toContain('"scheduled_job"."completed_at" is null')
+    expect(job.sql).toContain('"scheduled_job"."failed_at" is null')
+    expect(job.sql).toContain('"scheduled_job"."locked_at" is null')
+    expect(job.params).toEqual(
+      expect.arrayContaining([
+        runAfter.toISOString(),
+        ORG_ID,
+        'campaign.deliver_part',
+        'part-3',
+      ])
+    )
   })
 })
 
@@ -585,11 +696,18 @@ describe('finishCampaignTxnDao', () => {
 
 describe('getCampaignPartsDao — les parts des campagnes lues', () => {
   it('lit les parts des campagnes demandées, dans l’ordre', async () => {
-    responses.current = [[[PART_1, CAMPAIGN_ID, 1, '2026-11-12', 100, 'sent']]]
+    responses.current = [
+      [
+        [PART_1, CAMPAIGN_ID, 1, '2026-11-12', 100, 'sent', null],
+        ['part-2', CAMPAIGN_ID, 2, '2026-11-13', 100, 'sending', '2026-11-14'],
+      ],
+    ]
 
     const parts = await getCampaignPartsDao([CAMPAIGN_ID])
 
     expect(sent[0].sql).toContain('"campaign_part"."campaign_id" in ($')
+    expect(sent[0].sql).toContain('"deferred_to"')
+    expect(sent[0].sql).not.toContain('"scheduled_job"')
     expect(sent[0].sql).toContain(
       'order by "campaign_part"."campaign_id" asc, "campaign_part"."number" asc'
     )
@@ -601,6 +719,16 @@ describe('getCampaignPartsDao — les parts des campagnes lues', () => {
         scheduledFor: '2026-11-12',
         recipientCount: 100,
         status: 'sent',
+        deferredTo: null,
+      },
+      {
+        id: 'part-2',
+        campaignId: CAMPAIGN_ID,
+        number: 2,
+        scheduledFor: '2026-11-13',
+        recipientCount: 100,
+        status: 'sending',
+        deferredTo: '2026-11-14',
       },
     ])
   })
@@ -706,5 +834,62 @@ describe('getCampaignRecipientsPageDao — la liste paginée des destinataires',
         parcelNumbers: [],
       }),
     ])
+  })
+})
+
+describe('getOpenCampaignPartsDao — parts non closes et leur report (s52, envois en attente)', () => {
+  it('lit les parts ouvertes de l’association, leur campagne, le jour de leur reste reporté et leurs destinataires en attente', async () => {
+    responses.current = [
+      [
+        [
+          PART_1,
+          CAMPAIGN_ID,
+          'Convocation',
+          3,
+          3,
+          '2026-11-14',
+          'sending',
+          '2026-11-15',
+          40,
+        ],
+      ],
+    ]
+
+    const parts = await getOpenCampaignPartsDao(ORG_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('from "campaign_part"')
+    expect(sql).toContain('inner join "campaign" on')
+    expect(sql).not.toContain('"scheduled_job"')
+    expect(sql).toContain('"campaign_part"."organization_id" = $')
+    expect(sql).toContain('"campaign_part"."status" in ($')
+    expect(sql).not.toMatch(/"email"|"unsubscribe_token"|"body_markdown"/)
+    expect(params).toEqual(
+      expect.arrayContaining([ORG_ID, 'scheduled', 'sending', 'pending'])
+    )
+    expect(parts).toEqual([
+      {
+        partId: PART_1,
+        campaignId: CAMPAIGN_ID,
+        campaignSubject: 'Convocation',
+        number: 3,
+        partCount: 3,
+        scheduledFor: '2026-11-14',
+        status: 'sending',
+        deferredTo: '2026-11-15',
+        pendingCount: 40,
+      },
+    ])
+  })
+
+  it('compte les parts de la campagne dans une sous-requête qui nomme la vraie table campaign_part', async () => {
+    responses.current = [[]]
+
+    await getOpenCampaignPartsDao(ORG_ID)
+
+    const [{sql}] = sent
+    expect(sql).toContain(
+      '(select count(*) from "campaign_part" "sibling_part" where "sibling_part"."campaign_id" = "campaign_part"."campaign_id")'
+    )
   })
 })

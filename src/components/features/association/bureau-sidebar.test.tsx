@@ -180,6 +180,7 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
     expect(labels).toEqual([
       'Propriétaires',
       'Campagnes',
+      'Envois',
       'Identité',
       'Réglages',
     ])
@@ -237,6 +238,26 @@ describe('BureauSidebar — « Page d’accueil » (s44)', () => {
     )
     expect(screen.getByRole('link', {name: 'Pages'})).not.toHaveAttribute(
       'aria-current'
+    )
+  })
+})
+
+describe('BureauSidebar — entrée « Envois » (s52)', () => {
+  it('suit « Campagnes » dans le groupe « L’association », active sur sa route', () => {
+    renderSidebarAt('/bureau/envois')
+
+    const sends = screen.getByRole('link', {name: 'Envois'})
+    expect(sends).toHaveAttribute('href', '/bureau/envois')
+    expect(sends).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', {name: 'Campagnes'})).not.toHaveAttribute(
+      'aria-current'
+    )
+
+    const links = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    expect(links.indexOf('/bureau/envois')).toBe(
+      links.indexOf('/bureau/campagnes') + 1
     )
   })
 })

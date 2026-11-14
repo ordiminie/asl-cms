@@ -3751,6 +3751,13 @@ Réf. ADR 005 (« le quota est une propriété du transport »), ADR 006, `docs/
 
 **Avant le plan :** vérifier chez Brevo à quel instant le quota quotidien se remet à zéro, et consigner la réponse ici ; elle fixe la frontière de jour que le test du critère sur `Europe/Paris` doit reproduire.
 
+**Vérification Brevo (14 novembre 2026) :** non confirmée sur la source officielle. Une source secondaire
+indique que la limite quotidienne de l'offre gratuite se remet à zéro à **minuit UTC** ; la page d'aide
+de Brevo (« limites de l'offre gratuite ») répond 403 et n'a pas pu être relue. Arbitrage de
+l'utilisatrice (ADR 053) : le jour du budget reste celui de `Europe/Paris` (critère 10), avec une
+**marge** — rien de reportable n'est rejoué avant **02:00 heure de Paris**, ce qui couvre une remise à zéro
+à minuit UTC en hiver comme en été. À reconfirmer auprès du support Brevo.
+
 **Écran :** la vue des envois en attente, visible du bureau, passe par `/ks-design s52` ; l'écran qui la porte est à désigner à ce moment-là, sans inventer de composant hors du design system.
 
 **Piège n°1 — l'adaptateur ne connaît pas l'association.** `sendEmailService` n'a pas d'`organizationId` ;

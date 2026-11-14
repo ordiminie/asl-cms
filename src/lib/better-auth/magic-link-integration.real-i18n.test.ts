@@ -37,6 +37,25 @@ vi.mock('@/lib/stripe/stripe-utils', () => ({
   getFormattedPriceFromSubscription: vi.fn(),
   getSubscriptionDetails: vi.fn(),
 }))
+vi.mock('@/db/tenant-scope', () => ({
+  withTenant: vi.fn((_organizationId: string, callback: () => unknown) =>
+    callback()
+  ),
+}))
+vi.mock('@/db/repositories/email-send-budget-repository', () => ({
+  claimReportableSendTxnDao: vi.fn(async () => true),
+  countLoginSendTxnDao: vi.fn(async () => undefined),
+  refundReportableSendTxnDao: vi.fn(async () => undefined),
+}))
+vi.mock('@/db/repositories/deferred-email-repository', () => ({
+  createDeferredEmailTxnDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/scheduled-job-repository', () => ({
+  enqueueScheduledJobTxnDao: vi.fn(),
+}))
+vi.mock('@/services/association-settings-service', () => ({
+  getAssociationSettingsService: vi.fn(),
+}))
 vi.mock('@/services/facades/organization-service-facade', () => ({
   getOrganizationByDomainService: vi.fn(),
 }))

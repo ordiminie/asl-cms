@@ -197,6 +197,8 @@ const notifyBoard = async (
 
   const logoUrl = pngLogoUrlOf(organization.identityLogoKey, origin)
   const notification = {
+    organizationId: report.organizationId,
+    reportId: report.id,
     locale: resolveSupportedLocale(locale),
     association: {
       name: organization.name,

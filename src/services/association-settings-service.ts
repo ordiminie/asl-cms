@@ -6,7 +6,7 @@ import {
 } from '@/db/repositories/organization-setting-repository'
 import {withTenant} from '@/db/tenant-scope'
 
-import {getAuthUser} from './authentication/auth-service'
+import {getActingContext, getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
@@ -14,10 +14,12 @@ import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingError,
+  isSuperAdminOnlySetting,
   ResolvedAssociationSettings,
   resolveSettings,
   validateSettingsChanges,
 } from './types/domain/association-settings-types'
+import {RoleConst} from './types/domain/auth-types'
 import {
   associationSettingsOrganizationIdSchema,
   updateAssociationSettingsServiceSchema,
@@ -82,22 +84,57 @@ export const updateAssociationSettingsService = async (
     )
   }
 
-  const validation = validateSettingsChanges(
-    ASSOCIATION_SETTINGS_REGISTRY,
-    parsed.data.changes
-  )
-  if (!validation.valid) {
-    return {status: 'rejected', errors: validation.errors}
+  if (
+    touchesSuperAdminOnlySetting(parsed.data.changes) &&
+    !(await canEditSuperAdminOnlySettingsService())
+  ) {
+    throw new AuthorizationError(
+      "Seul le SuperAdmin peut modifier la limite d'envoi et la réserve de connexion"
+    )
   }
 
-  await withTenant(parsed.data.organizationId, () =>
-    saveOrganizationSettingsTxnDao({
-      organizationId: parsed.data.organizationId,
+  const tenantId = parsed.data.organizationId
+  return withTenant(tenantId, async () => {
+    const stored = await getOrganizationSettingsDao(tenantId)
+    const validation = validateSettingsChanges(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      parsed.data.changes,
+      stored
+    )
+    if (!validation.valid) {
+      return {status: 'rejected', errors: validation.errors}
+    }
+
+    await saveOrganizationSettingsTxnDao({
+      organizationId: tenantId,
       upserts: validation.upserts,
       deletions: validation.deletions,
       updatedBy: authUser?.id ?? null,
     })
+    return {status: 'saved'}
+  })
+}
+
+const touchesSuperAdminOnlySetting = (
+  changes: Record<string, string>
+): boolean =>
+  ASSOCIATION_SETTINGS_REGISTRY.some(
+    (definition) =>
+      isSuperAdminOnlySetting(definition) && definition.key in changes
   )
 
-  return {status: 'saved'}
-}
+/**
+ * Le SuperAdmin agit (s52, ADR 053) : connecte sous son propre compte, ou
+ * pendant une session ouverte a la place d'un compte (s48 : seul un
+ * SuperAdmin peut l'ouvrir). Seul lui modifie les reglages `editableBy:
+ * 'super_admin'` ; la page « Reglages » les montre en lecture seule sinon.
+ */
+export const canEditSuperAdminOnlySettingsService =
+  async (): Promise<boolean> => {
+    const acting = await getActingContext()
+    if (!acting) return false
+    return (
+      acting.user.role === RoleConst.SUPER_ADMIN ||
+      acting.impersonator !== undefined
+    )
+  }

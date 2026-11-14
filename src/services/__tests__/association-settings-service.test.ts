@@ -24,13 +24,17 @@ import {
 import {withTenant} from '@/db/tenant-scope'
 
 import {
+  canEditSuperAdminOnlySettingsService,
   getAssociationSettingsService,
   updateAssociationSettingsService,
 } from '../association-settings-service'
+import {getActingContext} from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {
   ACCENT_HUE_SETTING_KEY,
   CONTACT_EMAIL_SETTING_KEY,
+  EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
+  EMAIL_LOGIN_RESERVE_SETTING_KEY,
   FORAGE_EMAIL_SETTING_KEY,
 } from '../types/domain/association-settings-types'
 import {UserOrganizationRoleConst} from '../types/domain/auth-types'
@@ -211,5 +215,116 @@ describe('updateAssociationSettingsService — validation du registre', () => {
       })
     ).rejects.toThrow()
     expect(saveOrganizationSettingsTxnDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateAssociationSettingsService — limite et réserve réservées au SuperAdmin (s52, ADR 053)', () => {
+  const restrictedChanges = {
+    [EMAIL_DAILY_SEND_LIMIT_SETTING_KEY]: '250',
+    [EMAIL_LOGIN_RESERVE_SETTING_KEY]: '50',
+  }
+
+  it.each<[string, User]>([
+    ['[ORGANIZATION OWNER] la présidente', withRole('owner')],
+    [
+      '[ORGANIZATION ADMIN] le bureau',
+      withRole(UserOrganizationRoleConst.ADMIN),
+    ],
+  ])('%s ne peut pas les modifier, rien n’est écrit', async (_label, user) => {
+    setupAuthUserMocked(user)
+    vi.mocked(getActingContext).mockResolvedValue({user})
+
+    await expect(
+      updateAssociationSettingsService(ORG_ID, restrictedChanges)
+    ).rejects.toThrow(AuthorizationError)
+    expect(saveOrganizationSettingsTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('[ORGANIZATION ADMIN] le bureau modifie toujours les autres réglages', async () => {
+    const user = withRole(UserOrganizationRoleConst.ADMIN)
+    setupAuthUserMocked(user)
+    vi.mocked(getActingContext).mockResolvedValue({user})
+
+    await expect(
+      updateAssociationSettingsService(ORG_ID, {
+        [CONTACT_EMAIL_SETTING_KEY]: 'bureau@asl.test',
+      })
+    ).resolves.toEqual({status: 'saved'})
+  })
+
+  it('[SUPER_ADMIN] les modifie', async () => {
+    setupAuthUserMocked(userTestSuperAdmin)
+    vi.mocked(getActingContext).mockResolvedValue({user: userTestSuperAdmin})
+
+    const result = await updateAssociationSettingsService(
+      ORG_ID,
+      restrictedChanges
+    )
+
+    expect(result).toEqual({status: 'saved'})
+    expect(saveOrganizationSettingsTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        upserts: [
+          {key: EMAIL_DAILY_SEND_LIMIT_SETTING_KEY, value: '250'},
+          {key: EMAIL_LOGIN_RESERVE_SETTING_KEY, value: '50'},
+        ],
+      })
+    )
+  })
+
+  it('[IMPERSONATION] un SuperAdmin connecté à la place du bureau les modifie', async () => {
+    const user = withRole(UserOrganizationRoleConst.ADMIN)
+    setupAuthUserMocked(user)
+    vi.mocked(getActingContext).mockResolvedValue({
+      user,
+      impersonator: {id: 'superadmin', name: 'Zoé Support'},
+    })
+
+    await expect(
+      updateAssociationSettingsService(ORG_ID, restrictedChanges)
+    ).resolves.toEqual({status: 'saved'})
+  })
+
+  it('[SUPER_ADMIN] une réserve qui atteint la limite enregistrée est refusée', async () => {
+    setupAuthUserMocked(userTestSuperAdmin)
+    vi.mocked(getActingContext).mockResolvedValue({user: userTestSuperAdmin})
+    vi.mocked(getOrganizationSettingsDao).mockResolvedValue([
+      row(EMAIL_DAILY_SEND_LIMIT_SETTING_KEY, '120'),
+    ])
+
+    const result = await updateAssociationSettingsService(ORG_ID, {
+      [EMAIL_LOGIN_RESERVE_SETTING_KEY]: '120',
+    })
+
+    expect(result).toEqual({
+      status: 'rejected',
+      errors: {[EMAIL_LOGIN_RESERVE_SETTING_KEY]: {code: 'notBelow', max: 120}},
+    })
+    expect(saveOrganizationSettingsTxnDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('canEditSuperAdminOnlySettingsService — qui modifie la limite et la réserve (s52)', () => {
+  it('[PUBLIC] non', async () => {
+    vi.mocked(getActingContext).mockResolvedValue(undefined)
+    await expect(canEditSuperAdminOnlySettingsService()).resolves.toBe(false)
+  })
+
+  it('[ORGANIZATION ADMIN] le bureau : non', async () => {
+    vi.mocked(getActingContext).mockResolvedValue({
+      user: withRole(UserOrganizationRoleConst.ADMIN),
+    })
+    await expect(canEditSuperAdminOnlySettingsService()).resolves.toBe(false)
+  })
+
+  it('[SUPER_ADMIN] oui, et pendant une session à la place d’un compte aussi', async () => {
+    vi.mocked(getActingContext).mockResolvedValue({user: userTestSuperAdmin})
+    await expect(canEditSuperAdminOnlySettingsService()).resolves.toBe(true)
+
+    vi.mocked(getActingContext).mockResolvedValue({
+      user: withRole(UserOrganizationRoleConst.ADMIN),
+      impersonator: {id: 'superadmin', name: 'Zoé Support'},
+    })
+    await expect(canEditSuperAdminOnlySettingsService()).resolves.toBe(true)
   })
 })

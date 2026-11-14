@@ -4,7 +4,10 @@ import {cacheLife, cacheTag} from 'next/cache'
 import {cache} from 'react'
 
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
-import {getAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
+import {
+  canEditSuperAdminOnlySettingsService,
+  getAssociationSettingsService,
+} from '@/services/facades/association-settings-service-facade'
 import {ResolvedAssociationSettings} from '@/services/types/domain/association-settings-types'
 
 /**
@@ -41,4 +44,12 @@ export const getCurrentAssociationSettingsDal = cache(
 
     return getAssociationSettingsDal(tenant.id)
   }
+)
+
+/**
+ * Le compte connecte peut modifier les reglages reserves au SuperAdmin (s52).
+ * Donnee par utilisateur : aucun cache.
+ */
+export const canEditSuperAdminOnlySettingsDal = cache(
+  async (): Promise<boolean> => canEditSuperAdminOnlySettingsService()
 )

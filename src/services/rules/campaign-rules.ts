@@ -157,6 +157,8 @@ export type CampaignPartRow = {
   scheduledFor: string
   recipientCount: number
   status: CampaignPartStatus
+  /** Jour ou part le reste reporte faute de budget (s52), ou rien. */
+  deferredTo?: string | null
 }
 
 /** Un decompte de destinataires par campagne, part et statut. */
@@ -215,6 +217,20 @@ export const campaignDisplayStateOf = (
   return 'sending'
 }
 
+/**
+ * Le jour ou part le reste d'une part non close que le budget du jour a
+ * reporte (s52, ADR 053 §5), pose par le report lui-meme : une nouvelle
+ * tentative qui passe minuit n'en est pas un (revue s52, n° 3). Rien sinon.
+ */
+export const deferredDayOf = (
+  part: Pick<CampaignPartRow, 'status' | 'scheduledFor' | 'deferredTo'>
+): string | null => {
+  if (part.status === 'sent' || part.status === 'failed') return null
+  return part.deferredTo && part.deferredTo > part.scheduledFor
+    ? part.deferredTo
+    : null
+}
+
 const toPartDto = (
   part: CampaignPartRow,
   countRows: readonly CampaignRecipientCountRow[]
@@ -222,13 +238,18 @@ const toPartDto = (
   const counts = recipientCountsOf(
     countRows.filter((row) => row.partId === part.id)
   )
+  const deferredUntil = deferredDayOf(part)
   return {
     number: part.number,
     day: part.scheduledFor,
     recipientCount: part.recipientCount,
     receivedCount: counts.received,
     toVerifyCount: counts.toVerify,
-    displayState: partDisplayStateOf(part.status, counts.toVerify),
+    displayState: deferredUntil
+      ? 'scheduled'
+      : partDisplayStateOf(part.status, counts.toVerify),
+    deferredUntil,
+    deferredCount: deferredUntil ? counts.scheduled : 0,
   }
 }
 

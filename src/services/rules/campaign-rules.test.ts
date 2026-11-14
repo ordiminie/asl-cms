@@ -3,6 +3,7 @@ import {describe, expect, it} from 'vitest'
 import * as rules from './campaign-rules'
 import {
   computeCampaignTarget,
+  deferredDayOf,
   escapeHtml,
   finalSubject,
   findUnknownVariables,
@@ -242,6 +243,8 @@ describe('toCampaignDto — liste blanche', () => {
         receivedCount: 100,
         toVerifyCount: 0,
         displayState: 'sent',
+        deferredUntil: null,
+        deferredCount: 0,
       },
       {
         number: 2,
@@ -250,6 +253,8 @@ describe('toCampaignDto — liste blanche', () => {
         receivedCount: 98,
         toVerifyCount: 2,
         displayState: 'to_verify',
+        deferredUntil: null,
+        deferredCount: 0,
       },
       {
         number: 3,
@@ -258,8 +263,86 @@ describe('toCampaignDto — liste blanche', () => {
         receivedCount: 0,
         toVerifyCount: 0,
         displayState: 'scheduled',
+        deferredUntil: null,
+        deferredCount: 0,
       },
     ])
+  })
+
+  it('une part entamée dont le budget a reporté le reste : programmée pour le jour du reste, ses reportés comptés (s52, écran 3)', () => {
+    const deferredParts = [
+      {
+        id: 'p2',
+        campaignId: 'c1',
+        number: 2,
+        scheduledFor: '2026-11-14',
+        recipientCount: 100,
+        status: 'sending' as const,
+        deferredTo: '2026-11-15',
+      },
+      {
+        id: 'p3',
+        campaignId: 'c1',
+        number: 3,
+        scheduledFor: '2026-11-16',
+        recipientCount: 96,
+        status: 'scheduled' as const,
+        deferredTo: null,
+      },
+    ]
+    const deferredCounts = [
+      {campaignId: 'c1', partId: 'p2', status: 'sent' as const, total: 60},
+      {campaignId: 'c1', partId: 'p2', status: 'pending' as const, total: 40},
+      {campaignId: 'c1', partId: 'p3', status: 'pending' as const, total: 96},
+    ]
+
+    const [entamee, suivante] = toCampaignDto(
+      row(),
+      deferredParts,
+      deferredCounts
+    ).parts
+
+    expect(entamee).toMatchObject({
+      day: '2026-11-14',
+      receivedCount: 60,
+      displayState: 'scheduled',
+      deferredUntil: '2026-11-15',
+      deferredCount: 40,
+    })
+    expect(suivante).toMatchObject({
+      displayState: 'scheduled',
+      deferredUntil: null,
+      deferredCount: 0,
+    })
+  })
+})
+
+describe('deferredDayOf — seul un report faute de budget est un report (revue s52, n° 3)', () => {
+  const part = {
+    status: 'sending' as const,
+    scheduledFor: '2026-11-14',
+    deferredTo: null,
+  }
+
+  it('une nouvelle tentative à +30 min qui passe minuit n’est pas un report', () => {
+    expect(
+      deferredDayOf({
+        ...part,
+        nextRunAfter: new Date('2026-11-14T23:20:00.000Z'),
+      } as Parameters<typeof deferredDayOf>[0])
+    ).toBeNull()
+  })
+
+  it('un reste reporté par le budget part le jour posé au report', () => {
+    expect(deferredDayOf({...part, deferredTo: '2026-11-15'})).toBe(
+      '2026-11-15'
+    )
+  })
+
+  it('une part close n’a plus de report à montrer', () => {
+    expect(
+      deferredDayOf({...part, status: 'sent', deferredTo: '2026-11-15'})
+    ).toBeNull()
   })
 })
 

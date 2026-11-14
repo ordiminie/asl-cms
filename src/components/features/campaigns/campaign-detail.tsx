@@ -28,11 +28,17 @@ import {renderRestrictedMarkdown} from '@/lib/cms/render-page-block'
 import {finalSubject} from '@/services/rules/campaign-rules'
 import type {
   CampaignDTO,
+  CampaignPartDTO,
   CampaignRecipientFilter,
   CampaignRecipientsPageDTO,
 } from '@/services/types/domain/campaign-types'
 
-import {dayLabelOf, daysInWordsOf, sentAtPartsOf} from './campaign-format'
+import {
+  dayLabelOf,
+  daysInWordsOf,
+  sentAtPartsOf,
+  shortDayLabelOf,
+} from './campaign-format'
 import {CampaignPageLink} from './campaign-list'
 import {campaignRecipientsPathOf, CAMPAIGNS_PATH} from './campaign-paths'
 import {CampaignProgressRefresh} from './campaign-progress-refresh'
@@ -147,6 +153,8 @@ function StateBanner({
   if (campaign.displayState === 'to_verify') {
     return <ToVerifyAlert campaign={campaign} />
   }
+  const deferred = campaign.parts.find((part) => part.deferredUntil)
+  if (deferred) return <DeferredAlert part={deferred} />
   if (campaign.displayState === 'sent') return <DoneAlert campaign={campaign} />
   return <ContinuesAlert campaign={campaign} />
 }
@@ -209,6 +217,33 @@ function ContinuesAlert({campaign}: {campaign: CampaignDTO}) {
             data,
             date: dayLabelOf(next.day),
             count: next.recipientCount,
+          })}
+        </p>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+/**
+ * Une part entamee dont le reste attend le lendemain, faute de budget
+ * d'envoi (s52, ecran 3) : un report, jamais un refus — `warning`.
+ */
+function DeferredAlert({part}: {part: CampaignPartDTO}) {
+  const t = useTranslations('CampaignsBureau.detail.banner')
+
+  return (
+    <Alert
+      role="status"
+      className="border-warning-border bg-warning text-warning-foreground [&>svg]:size-5"
+    >
+      <AlertTriangle aria-hidden="true" />
+      <AlertDescription className="text-warning-foreground text-[17px]">
+        <p>
+          {t.rich('deferred', {
+            strong,
+            count: part.deferredCount,
+            date: dayLabelOf(part.day),
+            until: dayLabelOf(part.deferredUntil ?? part.day),
           })}
         </p>
       </AlertDescription>
@@ -338,7 +373,10 @@ function PartsCard({campaign}: {campaign: CampaignDTO}) {
           <TableBody>
             {campaign.parts.map((part) => (
               <TableRow key={part.number} className="h-14">
-                <TableCell className="font-mono">{part.number}</TableCell>
+                <TableCell>
+                  <span className="font-mono">{part.number}</span>
+                  <PartDeferredLine part={part} />
+                </TableCell>
                 <TableCell className="font-mono tabular-nums">
                   {dayLabelOf(part.day)}
                 </TableCell>
@@ -346,7 +384,10 @@ function PartsCard({campaign}: {campaign: CampaignDTO}) {
                   {part.recipientCount}
                 </TableCell>
                 <TableCell>
-                  <PartStateBadge state={part.displayState} day={part.day} />
+                  <PartStateBadge
+                    state={part.displayState}
+                    day={part.deferredUntil ?? part.day}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -360,9 +401,12 @@ function PartsCard({campaign}: {campaign: CampaignDTO}) {
             data-testid="campaign-part-card"
             className="border-border flex flex-col gap-2 rounded-lg border p-4"
           >
-            <p className="font-semibold">
-              {t('cardTitle', {number: part.number})}
-            </p>
+            <div>
+              <p className="font-semibold">
+                {t('cardTitle', {number: part.number})}
+              </p>
+              <PartDeferredLine part={part} />
+            </div>
             <p className="flex justify-between gap-3">
               <span className="text-muted-foreground text-[15px]">
                 {t('columns.day')}
@@ -375,7 +419,10 @@ function PartsCard({campaign}: {campaign: CampaignDTO}) {
               </span>
               <span className="font-mono">{part.recipientCount}</span>
             </p>
-            <PartStateBadge state={part.displayState} day={part.day} />
+            <PartStateBadge
+              state={part.displayState}
+              day={part.deferredUntil ?? part.day}
+            />
           </li>
         ))}
       </ul>
@@ -634,5 +681,21 @@ export function CampaignDetailSkeleton() {
       <Skeleton className="h-56 w-full" />
       <Skeleton className="h-72 w-full" />
     </div>
+  )
+}
+
+/** Le partage d'une part entamee : recus et reportes (s52, ecran 3). */
+function PartDeferredLine({part}: {part: CampaignPartDTO}) {
+  const t = useTranslations('CampaignsBureau.detail.parts')
+  if (!part.deferredUntil) return null
+
+  return (
+    <p className="text-muted-foreground text-[15px]">
+      {t('deferredLine', {
+        received: part.receivedCount,
+        deferred: part.deferredCount,
+        date: shortDayLabelOf(part.deferredUntil),
+      })}
+    </p>
   )
 }

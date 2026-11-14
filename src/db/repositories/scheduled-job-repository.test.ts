@@ -23,6 +23,7 @@ vi.mock('@/db/tenant-scope', () => ({
 import {
   claimDueJobsTxnDao,
   completeJobTxnDao,
+  deferJobTxnDao,
   enqueueScheduledJobTxnDao,
   failJobTxnDao,
   releaseJobTxnDao,
@@ -207,5 +208,21 @@ describe('issues d’une tâche', () => {
     )
     expect(sql).not.toContain('"completed_at"')
     expect(sql).not.toContain('"failed_at"')
+  })
+
+  it('deferJobTxnDao reporte l’échéance sans compter la tentative (s52, ADR 053)', async () => {
+    const tomorrow = new Date('2026-11-13T01:00:00.000Z')
+
+    await deferJobTxnDao(JOB_ID, tomorrow)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('"run_after" = $')
+    expect(sql).toContain(
+      '"attempts" = greatest("scheduled_job"."attempts" - 1, 0)'
+    )
+    expect(sql).not.toContain('"completed_at"')
+    expect(params).toEqual(
+      expect.arrayContaining([null, tomorrow.toISOString(), JOB_ID])
+    )
   })
 })

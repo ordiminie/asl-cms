@@ -451,3 +451,68 @@ describe('CampaignDetailSkeleton — écran 2, état e', () => {
     ).toBeGreaterThan(0)
   })
 })
+
+describe('CampaignDetail — part reportée faute de budget d’envoi (s52, écran 3)', () => {
+  const deferredCampaign = () =>
+    spreadCampaignOf('a', {
+      recipientCounts: {
+        received: 160,
+        scheduled: 136,
+        sending: 0,
+        toVerify: 0,
+        failed: 0,
+        unsubscribed: 0,
+      },
+      parts: [
+        partOf(1, '2026-11-13', 100),
+        partOf(2, '2026-11-14', 100, {
+          receivedCount: 60,
+          displayState: 'scheduled',
+          deferredUntil: '2026-11-15',
+          deferredCount: 40,
+        }),
+        partOf(3, '2026-11-15', 96, {
+          receivedCount: 0,
+          displayState: 'scheduled',
+        }),
+      ],
+    })
+
+  it('bandeau warning : un report, jamais un refus', () => {
+    renderDetail(deferredCampaign())
+
+    const banner = screen
+      .getByText(/La limite d’envoi du jour est atteinte\./)
+      .closest('[data-slot="alert"]') as HTMLElement
+    expect(banner).toHaveTextContent(
+      'La limite d’envoi du jour est atteinte. 40 membres de la part du 14/11/2026 recevront la campagne demain, le 15/11/2026. Vous n’avez rien à faire.'
+    )
+    expect(banner).toHaveClass('bg-warning')
+    expect(banner).not.toHaveAttribute('role', 'alert')
+  })
+
+  it('la part garde son jour et son nombre ; sous-ligne « reçues · reportées », état « Programmée pour le 15/11 »', () => {
+    renderDetail(deferredCampaign())
+
+    const parts = card('Envois par jour')
+    const row = within(parts).getAllByRole('row')[2]
+    expect(row).toHaveTextContent('14/11/2026')
+    expect(row).toHaveTextContent('100')
+    expect(row).toHaveTextContent('60 reçues · 40 reportées au 15/11')
+    expect(row).toHaveTextContent('Programmée pour le 15/11')
+    expect(parts).not.toHaveTextContent(/En échec|Bloquée|Interrompue/)
+
+    const [, mobileCard] = within(parts).getAllByTestId('campaign-part-card')
+    expect(mobileCard).toHaveTextContent('60 reçues · 40 reportées au 15/11')
+    expect(mobileCard).toHaveTextContent('Programmée pour le 15/11')
+  })
+
+  it('sans report, ni bandeau de limite ni sous-ligne', () => {
+    renderDetail(spreadCampaignOf('a'))
+
+    expect(
+      screen.queryByText(/La limite d’envoi du jour est atteinte/)
+    ).toBeNull()
+    expect(screen.queryByText(/reportées au/)).toBeNull()
+  })
+})

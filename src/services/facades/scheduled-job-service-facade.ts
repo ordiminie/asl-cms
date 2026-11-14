@@ -1,4 +1,5 @@
 import {campaignScheduledJobHandlers} from '../campaign-service'
+import {emailScheduledJobHandlers} from '../email-service'
 import {
   RunDueScheduledJobsResult,
   ScheduledJobHandlers,
@@ -12,6 +13,7 @@ import scheduledJobServiceInterceptor from './interceptors/scheduled-job-service
  */
 const scheduledJobHandlers: ScheduledJobHandlers = {
   ...campaignScheduledJobHandlers,
+  ...emailScheduledJobHandlers,
 }
 
 /** Un passage : toutes les associations, ou une seule. */
