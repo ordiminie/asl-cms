@@ -30,8 +30,11 @@ Bloqué en review sur un critique → retour /ks-execute (fix mode). Sinon → /
 
 /ks-orchestrator <story> — enchaîne les 6 temps du cycle en une commande.
 Il ne remplace rien : mêmes contrats, mêmes subagents, mêmes gates que les
-commandes unitaires. Il s'arrête sur 2 questions bloquantes : valider le plan
-(écrit dans le fichier plan), confirmer le ship. Cycle routinier → orchestrateur ;
-besoin de piloter ou inspecter une phase → commandes unitaires.
+commandes unitaires. Design fait par l'agent (avec contrôle visuel), puis
+exécution et revue en boucle jusqu'à « Ship allowed: yes », puis ouverture de
+la PR. Il ne s'arrête que pour valider le plan et pour un arbitrage de ta part
+(choix métier non tranché, majeurs restants, boucle qui ne converge plus).
+Le merge reste à toi. Cycle routinier → orchestrateur ; besoin de piloter ou
+inspecter une phase → commandes unitaires.
 
 Où en est le projet (avancement par story, prochaine commande) : /ks-status

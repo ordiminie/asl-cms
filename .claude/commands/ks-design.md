@@ -6,6 +6,7 @@ allowed-tools:
   - Glob
   - Grep
   - Write
+  - Edit
   - AskUserQuestion
   - Skill
   - Bash
@@ -55,6 +56,14 @@ Read docs/stories.md, resolve the target story id (`s<number>-<slug>`) and isola
 - docs/designs/<id>.md (structure: @templates/design-screen.md)
 - docs/designs/<id>.html — a static HTML mockup of the screen, desktop and mobile, using EXCLUSIVELY the design system's tokens (colors, typography, spacing). Low fidelity. Goal: communicate layout + states, not be production code.
 
+Then **check the render visually** before concluding — a mockup you haven't looked at is not done:
+
+1. Render docs/designs/<id>.html at **1280 px** and at **390 px** with Playwright (`pnpm exec playwright screenshot`, or a throwaway script in the scratchpad). Screenshots and scripts stay out of the repo — never add a file to git for this.
+2. Read the screenshots (Read tool on the image) and check: no horizontal overflow at 390 px; no color, font or spacing outside the design system tokens; both versions and the four states present; no orphan label or empty block; readable contrast.
+3. Fix the HTML, **two passes at most**, then stop.
+4. If the browser is unavailable (Playwright's Chromium not installed, launch fails): say so plainly, NEVER claim you looked at the render, and fall back to a read-only check (search the HTML for values outside the tokens, confirm both versions and the four states are there). Never run `pnpm build` or the e2e suite for this.
+5. Record the outcome in docs/designs/<id>.md, one line: `Contrôle visuel : fait le <date> à 1280 et 390 px` or `Contrôle visuel : non fait — <reason>`.
+
 **CLAUDE DESIGN path (default)** — you write the brief; the user opens the canvas:
 
 1. Write docs/designs/<id>-brief.md (structure: @templates/design-brief.md): every screen with layout, exact fields and actions, the four states, a **desktop and a mobile (390 px) version**, and the design system constraints COPIED IN (tokens — light set only, ADR 033 — components, do/don't) so the brief is self-contained. Out-of-scope stated. This file is a deliverable of this step — not a chat message.
@@ -79,5 +88,7 @@ Timebox: defined enough to unblock the Plan, not pixel-perfect.
 docs/designs/<id>.html is a REFERENCE, not code to copy. In Execute, the screen is built with the boilerplate's real components. The mockup communicates intent (layout, states); it doesn't replace the component system and never gets pasted into production.
 
 End with: "Design ready (docs/designs/<id>.md + .html). Next step: /ks-plan <id>"
+
+On the AGENT path, add to that line whether the render was checked visually (1280 and 390 px) or not, and why not.
 
 On the CLAUDE DESIGN path, if you stop at step 2 (brief written, canvas not yet opened), end instead with: "Brief ready in docs/designs/<id>-brief.md. Run `/design docs/designs/<id>-brief.md` yourself to open the canvas, then tell me once you've validated it so I can finish the story's design doc."

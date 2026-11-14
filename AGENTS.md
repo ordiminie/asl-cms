@@ -58,7 +58,7 @@ ownership or stop; never make concurrent edits to the same targets.
 
 Utilities:
 
-- `/ks-orchestrator` runs a story's full cycle with human checkpoints (plan validation, ship confirmation)
+- `/ks-orchestrator` runs a story's full cycle in one command (agent design, execute ⇄ review loop until the gate passes, PR); it stops only for plan validation and arbitrations
 - `/ks-help` prints the pipeline map (French, user-facing cheat sheet)
 - `/ks-status` derives the project's pipeline state from the files (framing, per-story progress, next command)
 
