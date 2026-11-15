@@ -279,3 +279,124 @@ describe('ReportCategoriesManager — écran 4 du design s10', () => {
     expect(screen.queryByRole('table')).toBeNull()
   })
 })
+
+describe('ReportCategoriesManager — paramétré pour les sujets des questions (s23, écran D)', () => {
+  const INTRO =
+    'Chaque question part vers l’adresse de son sujet. Un sujet sans adresse envoie à l’adresse de contact de l’association (contact@techcorp.test).'
+
+  const renderQuestionManager = (items: ManagedCategoryDTO[]) =>
+    render(
+      <ReportCategoriesManager
+        list={listOf(items.map((item) => ({...item, domain: 'question'})))}
+        labels="BureauQuestionCategoriesPage"
+        backHref="/bureau/questions"
+        intro={INTRO}
+        showUsageCount
+        {...actions}
+      />
+    )
+
+  it('D1 : titre « Sujets des questions », retour aux questions, phrase de routage, compteur', () => {
+    renderQuestionManager([category({name: 'Voirie et portails'})])
+
+    expect(
+      screen.getByRole('heading', {level: 1, name: 'Sujets des questions'})
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', {name: 'Questions des membres'})
+    ).toHaveAttribute('href', '/bureau/questions')
+    expect(screen.getByText(INTRO)).toBeInTheDocument()
+    expect(screen.getByText('1 sur 10')).toBeInTheDocument()
+    expect(screen.getByRole('button', {name: 'Ajouter un sujet'})).toBeEnabled()
+  })
+
+  it('D1 : une adresse vide se lit « Adresse de contact », chaque ligne dit son nombre de questions', () => {
+    renderQuestionManager([
+      category({usageCount: 0}),
+      category({
+        id: '44444444-4444-4444-8444-444444444444',
+        name: 'Factures et cotisation',
+        routingEmail: 'tresorerie@techcorp.test',
+        usageCount: 4,
+      }),
+    ])
+
+    const [first, second] = tableRows()
+    expect(within(first).getAllByRole('cell')[1]).toHaveTextContent(
+      /^Adresse de contact$/
+    )
+    expect(within(first).getAllByRole('cell')[2]).toHaveTextContent(
+      /^0 question$/
+    )
+    expect(within(second).getAllByRole('cell')[1]).toHaveTextContent(
+      /^tresorerie@techcorp\.test$/
+    )
+    expect(within(second).getAllByRole('cell')[2]).toHaveTextContent(
+      /^4 questions$/
+    )
+  })
+
+  it('D2 : le 11ᵉ sujet est refusé avec le message explicite (critère 3)', async () => {
+    const user = userEvent.setup()
+    renderQuestionManager(tenCategories())
+
+    await user.click(screen.getByRole('button', {name: 'Ajouter un sujet'}))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Vous avez déjà 10 sujets, le maximum. Supprimez-en un avant d’en ajouter un autre.'
+    )
+  })
+
+  it('D2 : le refus du serveur pour le 11ᵉ sujet est dit de même', async () => {
+    actions.createAction.mockResolvedValue({status: 'limit_reached', max: 10})
+    const user = userEvent.setup()
+    renderQuestionManager([category()])
+
+    await user.click(screen.getByRole('button', {name: 'Ajouter un sujet'}))
+    const dialog = screen.getByRole('dialog', {name: 'Ajouter un sujet'})
+    await user.type(
+      within(dialog).getByRole('textbox', {name: 'Nom du sujet'}),
+      'Onzième'
+    )
+    expect(
+      within(dialog).getByText(
+        'Laissée vide : l’adresse de contact de l’association.'
+      )
+    ).toBeInTheDocument()
+    await user.click(
+      within(dialog).getByRole('button', {name: 'Enregistrer le sujet'})
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Vous avez déjà 10 sujets, le maximum.'
+    )
+  })
+
+  it('D2 : la suppression dit combien de questions restent consultables (critère 5)', async () => {
+    const user = userEvent.setup()
+    renderQuestionManager([
+      category({name: 'Voirie et portails', usageCount: 4}),
+    ])
+
+    await user.click(screen.getAllByRole('button', {name: 'Modifier'})[0])
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Supprimer le sujet',
+      })
+    )
+
+    const confirm = await screen.findByRole('alertdialog')
+    expect(confirm).toHaveTextContent('Supprimer « Voirie et portails » ?')
+    expect(confirm).toHaveTextContent(
+      'Les 4 questions déjà reçues dans ce sujet restent consultables, avec la mention « catégorie supprimée ».'
+    )
+
+    await user.click(
+      within(confirm).getByRole('button', {name: 'Supprimer le sujet'})
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Sujet « Voirie et portails » supprimé.'
+    )
+  })
+})

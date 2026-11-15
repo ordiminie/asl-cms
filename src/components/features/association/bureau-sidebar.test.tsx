@@ -179,6 +179,7 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
     )
     expect(labels).toEqual([
       'Propriétaires',
+      'Questions des membres',
       'Campagnes',
       'Envois',
       'Identité',
@@ -260,4 +261,33 @@ describe('BureauSidebar — entrée « Envois » (s52)', () => {
       links.indexOf('/bureau/campagnes') + 1
     )
   })
+})
+
+describe('BureauSidebar — « Questions des membres » (s23)', () => {
+  it('ajoute l’entrée au groupe « L’association », après « Propriétaires », sans icône', () => {
+    renderSidebarAt('/bureau/questions')
+
+    const entry = screen.getByRole('link', {name: 'Questions des membres'})
+    expect(entry).toHaveAttribute('href', '/bureau/questions')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+
+    const links = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    expect(links.indexOf('/bureau/questions')).toBe(
+      links.indexOf('/bureau/proprietaires') + 1
+    )
+  })
+
+  it.each(['/bureau/questions/sujets', '/bureau/questions/3c1e'])(
+    'reste actif sur %s',
+    (pathname) => {
+      renderSidebarAt(pathname)
+
+      expect(
+        screen.getByRole('link', {name: 'Questions des membres'})
+      ).toHaveAttribute('aria-current', 'page')
+    }
+  )
 })

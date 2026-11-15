@@ -56,6 +56,9 @@ vi.mock('@/db/repositories/contact-message-repository', () => ({
 vi.mock('@/db/repositories/incident-report-repository', () => ({
   markIncidentReportNotificationFailedDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-question-repository', () => ({
+  markMemberQuestionNotificationFailedDao: vi.fn(),
+}))
 vi.mock('@/db/repositories/scheduled-job-repository', () => ({
   enqueueScheduledJobTxnDao: vi.fn(),
 }))
@@ -76,6 +79,7 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
+import {markMemberQuestionNotificationFailedDao} from '@/db/repositories/member-question-repository'
 import {EmailTransportError, getEmailTransport} from '@/lib/emails/transport'
 import {logger} from '@/lib/logger'
 import {getAssociationSettingsService} from '@/services/association-settings-service'
@@ -415,5 +419,26 @@ describe('deliverDeferredEmailService — rejeu d’un email reporté (s52)', ()
       REFERENCE_ID
     )
     expect(markContactMessageNotificationFailedDao).not.toHaveBeenCalled()
+  })
+
+  it('notification d’une question de membre en échec définitif : le témoin de la question est posé (s23)', async () => {
+    store.rows.set(DEFERRED_ID, {
+      ...storedRow(),
+      referenceType: 'member_question',
+    })
+    refusingTransport()
+    vi.mocked(markMemberQuestionNotificationFailedDao).mockImplementation(
+      async () => {
+        expect(scope.current).toBe(ORG_ID)
+      }
+    )
+
+    await deliverDeferredEmailService(jobOf({attempts: 3}), NOW)
+
+    expect(markMemberQuestionNotificationFailedDao).toHaveBeenCalledWith(
+      REFERENCE_ID
+    )
+    expect(markContactMessageNotificationFailedDao).not.toHaveBeenCalled()
+    expect(markIncidentReportNotificationFailedDao).not.toHaveBeenCalled()
   })
 })

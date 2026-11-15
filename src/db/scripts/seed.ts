@@ -560,7 +560,8 @@ const seed = async () => {
     )
   }
 
-  // 14. Categories de signalement des tenants de test (s10, ADR 028)
+  // 14. Categories des tenants de test : signalements (s10, ADR 028) et
+  // sujets des questions des membres (s23)
   //
   // `association_category` est sous RLS forcee : meme porte que ci-dessus.
   // La cible de conflit est l'index unique partiel des noms actifs : un

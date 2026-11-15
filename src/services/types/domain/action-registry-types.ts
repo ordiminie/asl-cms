@@ -131,6 +131,12 @@ export const ActionIdConst = {
    * membre simple n'y a aucun acces.
    */
   CAMPAIGN_MANAGE: 'campaign.manage',
+  /**
+   * Gerer les questions des membres (s23) : consulter les questions recues et
+   * administrer les sujets du domaine `question`. Une seule entree, sur le
+   * precedent de `REPORT_MANAGE`. Un membre simple n'y a aucun acces.
+   */
+  QUESTION_MANAGE: 'question.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -192,6 +198,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.CAMPAIGN_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.QUESTION_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

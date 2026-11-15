@@ -914,6 +914,28 @@
         "footer": "Cet email vous est envoyé parce qu’un visiteur a fait un signalement depuis le site de {name}, et que cette adresse est celle que l’association a choisie pour être avertie."
       }
     },
+    "question": {
+      "notification": {
+        "subject": "{name} — Question : {category}",
+        "preview": "{member} pose une question sur le sujet « {category} »",
+        "title": "Nouvelle question d’un membre",
+        "intro": "Un membre a posé une question au bureau depuis son espace sur le site.",
+        "labels": {
+          "category": "Sujet",
+          "member": "Membre",
+          "email": "Adresse email",
+          "receivedAt": "Reçue le",
+          "question": "Question"
+        },
+        "noEmail": "Sans adresse email",
+        "receivedAt": "{date} à {hour} h {minute}",
+        "action": "Ouvrir la question",
+        "urlIntro": "Ou copiez ce lien :",
+        "reply": "Répondez directement au membre, à {email} : répondre à cet email lui écrit.",
+        "replyWithoutEmail": "Ce membre n’a pas d’adresse email : répondez-lui par courrier ou par téléphone.",
+        "footer": "Cet email vous est envoyé parce qu’un membre a posé une question au bureau depuis son espace sur le site de {name}, et que cette adresse est celle que l’association a choisie pour la recevoir."
+      }
+    },
     "campaign": {
       "provisionalLine": "**[Texte provisoire — à remplacer avant l’envoi]**",
       "footer": {
@@ -1957,6 +1979,7 @@
       "messages": "Messages reçus",
       "reports": "Signalements",
       "memberProfiles": "Propriétaires",
+      "memberQuestions": "Questions des membres",
       "campaigns": "Campagnes",
       "sends": "Envois"
     },
@@ -2825,6 +2848,46 @@
       "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
     }
   },
+  "BureauMemberQuestionsPage": {
+    "metadata": {
+      "title": "Questions des membres"
+    },
+    "title": "Questions des membres",
+    "manageCategories": "Gérer les sujets",
+    "columns": {
+      "receivedAt": "Reçue le",
+      "member": "Membre",
+      "category": "Sujet",
+      "question": "Question",
+      "action": "Action"
+    },
+    "noEmail": "Sans adresse email",
+    "categoryDeleted": "— catégorie supprimée",
+    "notificationFailed": "Notification non envoyée",
+    "open": "Lire",
+    "openCard": "Lire la question",
+    "empty": "Aucune question reçue pour l’instant.",
+    "emptyNoCategories": "Aucune question reçue pour l’instant. Les membres ne peuvent pas encore en poser : aucun sujet n’est ouvert.",
+    "emptyAction": "Créer les sujets",
+    "pagination": {
+      "previous": "Précédent",
+      "next": "Suivant",
+      "position": "Page {page} sur {total}"
+    },
+    "detail": {
+      "metadataTitle": "Question d’un membre",
+      "back": "Revenir aux questions",
+      "title": "Question de {name}",
+      "labels": {
+        "member": "Membre",
+        "category": "Sujet",
+        "receivedAt": "Reçue le",
+        "question": "Question"
+      },
+      "receivedAt": "{shortDate} {hour}:{minute}",
+      "reply": "Répondre par email"
+    }
+  },
   "ReportPage": {
     "metadata": {
       "title": "Signaler une fuite ou un incident",
@@ -2970,7 +3033,7 @@
     },
     "breadcrumb": {
       "label": "Fil d’Ariane",
-      "reports": "Signalements",
+      "parent": "Signalements",
       "categories": "Catégories"
     },
     "title": "Catégories de signalement",
@@ -3021,6 +3084,70 @@
     },
     "errors": {
       "forbidden": "Seul le bureau de l’association peut gérer les catégories.",
+      "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
+    }
+  },
+  "BureauQuestionCategoriesPage": {
+    "metadata": {
+      "title": "Sujets des questions"
+    },
+    "breadcrumb": {
+      "label": "Fil d’Ariane",
+      "parent": "Questions des membres",
+      "categories": "Sujets"
+    },
+    "title": "Sujets des questions",
+    "count": "{count} sur {max}",
+    "intro": "Chaque question part vers l’adresse de son sujet. Un sujet sans adresse envoie à l’adresse de contact de l’association ({email}).",
+    "introWithoutContact": "Chaque question part vers l’adresse de son sujet. Un sujet sans adresse envoie à l’adresse de contact de l’association, à renseigner dans les Réglages.",
+    "add": "Ajouter un sujet",
+    "columns": {
+      "name": "Sujet",
+      "routingEmail": "Adresse qui reçoit ces questions",
+      "usage": "Questions reçues",
+      "action": "Action"
+    },
+    "none": "Adresse de contact",
+    "usage": "{count, plural, =0 {0 question} one {# question} other {# questions}}",
+    "edit": "Modifier",
+    "empty": "Aucun sujet. Les membres ne peuvent pas encore poser de question au bureau.",
+    "limitReached": "Vous avez déjà {max} sujets, le maximum. Supprimez-en un avant d’en ajouter un autre.",
+    "saved": "Sujet « {name} » enregistré.",
+    "deleted": "Sujet « {name} » supprimé.",
+    "dialog": {
+      "addTitle": "Ajouter un sujet",
+      "editTitle": "Modifier le sujet",
+      "summary": "Le sujet n’a pas été enregistré.",
+      "optional": "Facultatif",
+      "counter": "{count} / {max}",
+      "fields": {
+        "name": {
+          "label": "Nom du sujet"
+        },
+        "routingEmail": {
+          "label": "Adresse qui reçoit ces questions",
+          "help": "Laissée vide : l’adresse de contact de l’association."
+        }
+      },
+      "cancel": "Annuler",
+      "save": "Enregistrer le sujet",
+      "saving": "Enregistrement…",
+      "delete": "Supprimer le sujet"
+    },
+    "deleteDialog": {
+      "title": "Supprimer « {name} » ?",
+      "description": "Les membres ne pourront plus le choisir. {count, plural, =0 {Aucune question n’a été reçue dans ce sujet.} one {La question déjà reçue dans ce sujet reste consultable, avec la mention « catégorie supprimée ».} other {Les # questions déjà reçues dans ce sujet restent consultables, avec la mention « catégorie supprimée ».}}",
+      "cancel": "Annuler",
+      "confirm": "Supprimer le sujet"
+    },
+    "validation": {
+      "nameRequired": "Donnez un nom au sujet.",
+      "nameMax": "Le nom ne doit pas dépasser 40 caractères.",
+      "emailInvalid": "Cette adresse semble incomplète. Corrigez-la, ou laissez le champ vide.",
+      "duplicate": "Un sujet porte déjà ce nom."
+    },
+    "errors": {
+      "forbidden": "Seul le bureau de l’association peut gérer les sujets.",
       "failed": "Le changement n’a pas été enregistré. Rien n’est perdu : réessayez."
     }
   },
@@ -3483,6 +3610,13 @@
       "noCategory": "Sans catégorie",
       "report": "Signaler une fuite ou un incident",
       "sent": "Signalement envoyé. Le bureau de l’association l’a reçu."
+    },
+    "question": {
+      "title": "Une question pour le bureau ?",
+      "description": "Choisissez le sujet : votre question arrive directement à la personne du bureau qui s’en occupe.",
+      "ask": "Poser une question au bureau",
+      "askAnother": "Poser une autre question",
+      "sent": "Question envoyée. Le bureau vous répondra à votre adresse email."
     }
   },
   "MemberReportPage": {
@@ -3493,6 +3627,46 @@
       "introWithoutPhone": "Le bureau saura que c’est vous : nous lui transmettons votre nom et votre adresse email.",
       "noPhone": "téléphone non renseigné",
       "addPhone": "Ajouter mon téléphone"
+    },
+    "cancel": "Annuler"
+  },
+  "MemberQuestionPage": {
+    "back": "Revenir à mon espace",
+    "title": "Poser une question au bureau",
+    "fields": {
+      "categoryId": {
+        "label": "Sujet de votre question",
+        "placeholder": "Choisissez…",
+        "help": "Votre question part vers la personne du bureau chargée de ce sujet."
+      },
+      "body": {
+        "label": "Votre question",
+        "counter": "{count, number} / {max, number}"
+      }
+    },
+    "validation": {
+      "categoryRequired": "Choisissez le sujet de votre question.",
+      "bodyRequired": "Écrivez votre question.",
+      "bodyMax": "Votre question dépasse {max, number} caractères : raccourcissez-la."
+    },
+    "summary": {
+      "title": "{count, plural, one {Un point à corriger} =2 {Deux points à corriger} other {# points à corriger}}",
+      "kept": "Votre texte est conservé."
+    },
+    "errors": {
+      "generic": "Votre question n’a pas pu être envoyée. Rien n’est perdu : votre texte est toujours là. Réessayez dans un instant."
+    },
+    "submit": {
+      "idle": "Envoyer la question",
+      "pending": "Envoi en cours…"
+    },
+    "identity": {
+      "intro": "Le bureau saura que c’est vous : nous lui transmettons votre nom et votre adresse email.",
+      "noEmail": "Sans adresse email"
+    },
+    "noCategories": {
+      "text": "Le bureau n’a pas encore choisi les sujets de questions. En attendant, écrivez-lui depuis la page Contact du site.",
+      "action": "Écrire au bureau"
     },
     "cancel": "Annuler"
   },
@@ -3871,6 +4045,7 @@
         "campaign": "« {subject} »",
         "contact_message": "Message reçu depuis le formulaire de contact",
         "incident_report": "Signalement reçu depuis le site",
+        "member_question": "Question d’un membre",
         "other": "Notification au bureau"
       },
       "details": {
@@ -3882,7 +4057,8 @@
       "actions": {
         "campaign": "Voir la campagne",
         "contact_message": "Voir le message",
-        "incident_report": "Voir le signalement"
+        "incident_report": "Voir le signalement",
+        "member_question": "Voir la question"
       }
     },
     "pagination": {

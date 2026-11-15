@@ -47,7 +47,7 @@ const renderServerPage = async (element: ReactElement) => {
 
 /** La lecture est deroulee par `use()` derriere le `<Suspense>` : sous `act`. */
 const renderDashboard = async (
-  searchParams: {role?: string; signalement?: string} = {}
+  searchParams: {role?: string; signalement?: string; question?: string} = {}
 ) => {
   const page = await renderServerPage(
     await DashboardPage({searchParams: Promise.resolve(searchParams)})
@@ -433,5 +433,74 @@ describe('/dashboard — « Mes signalements » (s22, écran A)', () => {
         name: 'Signaler une fuite ou un incident',
       })
     ).toBeInTheDocument()
+  })
+})
+
+/** s23, écran A : « Une question pour le bureau ? » sous « Mes signalements ». */
+describe('/dashboard — « Une question pour le bureau ? » (s23, écran A)', () => {
+  const myQuestion = () =>
+    screen.getByRole('region', {name: 'Une question pour le bureau ?'})
+  const myReports = () => screen.getByRole('region', {name: 'Mes signalements'})
+  const security = () =>
+    screen.getByRole('heading', {level: 2, name: 'Sécurité du compte'})
+
+  beforeEach(() => {
+    vi.mocked(getMyContactDal).mockResolvedValue(CONTACT)
+    vi.mocked(getMyIncidentReportsDal).mockResolvedValue([])
+  })
+
+  it('A1 : place la carte sous « Mes signalements », avant la sécurité, avec un bouton outline', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+
+    await renderDashboard()
+
+    await screen.findByRole('region', {name: 'Mes signalements'})
+    expect(isBefore(myReports(), myQuestion())).toBe(true)
+    expect(isBefore(myQuestion(), security())).toBe(true)
+    expect(myQuestion()).toHaveTextContent(
+      'Choisissez le sujet : votre question arrive directement à la personne du bureau qui s’en occupe.'
+    )
+    const ask = within(myQuestion()).getByRole('link', {
+      name: 'Poser une question au bureau',
+    })
+    expect(ask).toHaveAttribute('href', '/dashboard/question')
+    expect(ask).not.toHaveClass('bg-primary')
+    expect(within(myQuestion()).queryByRole('status')).toBeNull()
+  })
+
+  it('la garde pour une fiche sans parcelle (C7)', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(
+      parcelsOf({current: [], former: []})
+    )
+
+    await renderDashboard()
+
+    await screen.findByRole('region', {name: 'Mes signalements'})
+    expect(isBefore(myQuestion(), security())).toBe(true)
+  })
+
+  it('n’affiche pas la carte pour un compte sans fiche', async () => {
+    vi.mocked(getMyContactDal).mockResolvedValue(undefined)
+
+    await renderDashboard()
+
+    await screen.findByRole('heading', {level: 1})
+    expect(
+      screen.queryByRole('region', {name: 'Une question pour le bureau ?'})
+    ).toBeNull()
+  })
+
+  it('A2 : au retour d’un envoi, l’alerte de succès dans la carte et « Poser une autre question »', async () => {
+    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+
+    await renderDashboard({question: 'envoyee'})
+
+    await screen.findByRole('region', {name: 'Mes signalements'})
+    expect(within(myQuestion()).getByRole('status')).toHaveTextContent(
+      'Question envoyée. Le bureau vous répondra à votre adresse email.'
+    )
+    expect(
+      within(myQuestion()).getByRole('link', {name: 'Poser une autre question'})
+    ).toHaveAttribute('href', '/dashboard/question')
   })
 })

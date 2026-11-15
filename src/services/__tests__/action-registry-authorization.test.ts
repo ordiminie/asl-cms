@@ -521,3 +521,56 @@ describe('CAMPAIGN_MANAGE — campagnes email (s25)', () => {
     expect(canPerformAction(undefined, ORG_ID, CAMPAIGNS)).toBe(false)
   })
 })
+
+/**
+ * Gerer les questions des membres (s23) : consulter les questions recues et
+ * administrer les sujets du domaine `question`.
+ */
+describe('QUESTION_MANAGE — questions des membres (s23)', () => {
+  const MANAGE = ActionIdConst.QUESTION_MANAGE
+
+  it('porte l identifiant question.manage', () => {
+    expect(MANAGE).toBe('question.manage')
+    expect(ACTION_REGISTRY.some((action) => action.id === MANAGE)).toBe(true)
+  })
+
+  it('[SUPER_ADMIN] autorise le SuperAdmin', () => {
+    expect(canPerformAction(userTestSuperAdmin, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+
+  it('[USER NOT IN ORGANIZATION] refuse le bureau d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+})

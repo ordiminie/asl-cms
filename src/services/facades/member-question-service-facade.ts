@@ -1,0 +1,14 @@
+import memberQuestionServiceInterceptor from './interceptors/member-question-service-logger-interceptor'
+
+export const canManageMemberQuestionsService =
+  memberQuestionServiceInterceptor.canManageMemberQuestionsService
+export const createMyQuestionService =
+  memberQuestionServiceInterceptor.createMyQuestionService
+export const getMemberQuestionService =
+  memberQuestionServiceInterceptor.getMemberQuestionService
+export const getMemberQuestionsPageService =
+  memberQuestionServiceInterceptor.getMemberQuestionsPageService
+export const getMyQuestionIdentityService =
+  memberQuestionServiceInterceptor.getMyQuestionIdentityService
+export const listMyQuestionCategoriesService =
+  memberQuestionServiceInterceptor.listMyQuestionCategoriesService

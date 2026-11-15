@@ -25,6 +25,7 @@ import type {
 } from '@/services/types/domain/member-space-types'
 
 import {MyContactCard} from './my-contact-card'
+import {MyQuestionCard} from './my-question-card'
 import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 
 /**
@@ -36,8 +37,9 @@ import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 const HEADING_CLASS = 'font-serif text-3xl font-semibold tracking-tight'
 
 /**
- * « Mes parcelles », « Mes coordonnees » et « Mes signalements » (s22), ou la
- * page de s46 pour un compte sans fiche (C5). Une fiche sans parcelle garde
+ * « Mes parcelles », « Mes coordonnees », « Mes signalements » (s22) et
+ * « Une question pour le bureau ? » (s23), ou la page de s46 pour un compte
+ * sans fiche (C5). Une fiche sans parcelle garde
  * ses coordonnees (s16, C7) et ses signalements.
  */
 export function MemberSpace({
@@ -46,12 +48,15 @@ export function MemberSpace({
   contactAction,
   reportsPromise,
   reportSent,
+  questionSent = false,
 }: {
   parcelsPromise: Promise<MyParcelsDTO | undefined>
   contactPromise: Promise<MyContactDTO | undefined>
   contactAction: MyContactFormAction
   reportsPromise: Promise<MyIncidentReportDTO[] | undefined>
   reportSent: boolean
+  /** Retour d'une question envoyee (s23, A2). */
+  questionSent?: boolean
 }) {
   const parcels = use(parcelsPromise)
   const contact = use(contactPromise)
@@ -66,6 +71,7 @@ export function MemberSpace({
       <MemberSpaceWithoutParcels>
         <MyContactCard contact={contact} action={contactAction} />
         <MyReports reportsPromise={reportsPromise} sent={reportSent} />
+        <MyQuestionCard sent={questionSent} />
       </MemberSpaceWithoutParcels>
     )
   }
@@ -77,6 +83,7 @@ export function MemberSpace({
       <MyParcelsCard parcels={parcels} />
       <MyContactCard contact={contact} action={contactAction} />
       <MyReports reportsPromise={reportsPromise} sent={reportSent} />
+      <MyQuestionCard sent={questionSent} />
       <SecurityCard />
     </div>
   )

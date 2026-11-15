@@ -9,9 +9,13 @@
 
 export const CategoryDomainConst = {
   REPORT: 'report',
+  QUESTION: 'question',
 } as const
 
-export const CATEGORY_DOMAINS = [CategoryDomainConst.REPORT] as const
+export const CATEGORY_DOMAINS = [
+  CategoryDomainConst.REPORT,
+  CategoryDomainConst.QUESTION,
+] as const
 
 export type CategoryDomain = (typeof CATEGORY_DOMAINS)[number]
 

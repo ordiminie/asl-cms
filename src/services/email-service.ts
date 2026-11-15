@@ -18,6 +18,7 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
+import {markMemberQuestionNotificationFailedDao} from '@/db/repositories/member-question-repository'
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
 import {withTenant} from '@/db/tenant-scope'
@@ -42,6 +43,11 @@ import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization
 import MagicLinkMail, {
   type MagicLinkEmailAssociation,
 } from '@/lib/emails/magic-link-email'
+import MemberQuestionMail, {
+  MEMBER_QUESTION_SUBJECT_MAX_LENGTH,
+  type MemberQuestionEmailAssociation,
+  type MemberQuestionEmailQuestion,
+} from '@/lib/emails/member-question-email'
 import NotificationEmail from '@/lib/emails/notification-email'
 import OtpEmail from '@/lib/emails/otp-email'
 import ResetPasswordEmail from '@/lib/emails/reset-password-email'
@@ -87,6 +93,7 @@ import {
 import {receivedAtPartsOf} from './types/domain/contact-message-types'
 import type {
   EmailSendContext,
+  EmailSendReferenceType,
   EmailSendResult,
   TenantEmailSendContext,
 } from './types/domain/email-send-types'
@@ -1034,11 +1041,36 @@ export const sendContactMessageNotificationEmailService = async ({
 }
 
 /**
+ * Objet « {association} — … : {categorie} » de 60 caracteres au plus. Trop
+ * long, c'est **la categorie** qui se raccourcit d'abord (12 caracteres
+ * gardes au moins) ; si le nom de l'association deborde encore, c'est lui qui
+ * se raccourcit, l'objet commencant toujours par lui.
+ */
+const categorySubjectOf = (
+  subjectOf: (name: string, category: string) => string,
+  associationName: string,
+  categoryName: string,
+  max: number
+): string => {
+  const full = subjectOf(associationName, categoryName)
+  const overflow = full.length - max
+  if (overflow <= 0) return full
+
+  const minCategory = 12
+  const category = fitToLength(
+    categoryName,
+    Math.max(minCategory, categoryName.length - overflow)
+  )
+  return fitSubjectToLength(
+    (name) => subjectOf(name, category),
+    associationName,
+    max
+  )
+}
+
+/**
  * Objet de l'avertissement d'un signalement : « {association} — Signalement :
- * {categorie} », ou « … — Nouveau signalement » sans categorie. Trop long,
- * c'est **la categorie** qui se raccourcit d'abord ; si le nom de
- * l'association deborde encore, c'est lui qui se raccourcit, l'objet
- * commencant toujours par lui.
+ * {categorie} », ou « … — Nouveau signalement » sans categorie.
  */
 const incidentReportSubjectOf = (
   t: (key: string, values?: Record<string, string>) => string,
@@ -1053,19 +1085,12 @@ const incidentReportSubjectOf = (
       max
     )
   }
-
-  const withCategory = (category: string) => (name: string) =>
-    t('subject', {name, category})
-  const full = withCategory(categoryName)(associationName)
-  const overflow = full.length - max
-  if (overflow <= 0) return full
-
-  const minCategory = 12
-  const category = fitToLength(
+  return categorySubjectOf(
+    (name, category) => t('subject', {name, category}),
+    associationName,
     categoryName,
-    Math.max(minCategory, categoryName.length - overflow)
+    max
   )
-  return fitSubjectToLength(withCategory(category), associationName, max)
 }
 
 /**
@@ -1141,6 +1166,82 @@ export const sendIncidentReportNotificationEmailService = async ({
   )
 }
 
+/**
+ * Avertit le bureau d'une question posee par un membre depuis son espace
+ * (s23). L'adresse `to` est **l'unique** destinataire resolu par l'appelant
+ * (adresse du sujet, sinon contact : routage exclusif, D1) — jamais
+ * `EMAIL_TO`. La reponse est dirigee vers le membre quand sa fiche a une
+ * adresse. `recipientType: 'system'` ; decompte le budget du tenant et peut
+ * etre reportee (s52). Un echec du transport remonte a l'appelant.
+ */
+export const sendMemberQuestionNotificationEmailService = async ({
+  organizationId,
+  questionId,
+  to,
+  locale,
+  association,
+  question,
+  questionUrl,
+}: {
+  /** Association de la question : l'avertissement decompte son budget. */
+  organizationId: string
+  /** La question, designee au bureau si l'avertissement est reporte. */
+  questionId: string
+  to: string
+  locale: SupportedLocale
+  association: MemberQuestionEmailAssociation
+  question: MemberQuestionEmailQuestion
+  questionUrl: string
+}): Promise<EmailSendResult> => {
+  const t = await getTranslations({
+    locale,
+    namespace: 'email.question.notification',
+  })
+  const subject = categorySubjectOf(
+    (name, category) => t('subject', {name, category}),
+    association.name,
+    question.categoryName,
+    MEMBER_QUESTION_SUBJECT_MAX_LENGTH
+  )
+  const receivedAt = t(
+    'receivedAt',
+    receivedAtPartsOf(question.createdAt, locale)
+  )
+  const text = [
+    t('title'),
+    t('intro'),
+    [
+      `${t('labels.category')} : ${question.categoryName}`,
+      `${t('labels.member')} : ${question.memberName}`,
+      `${t('labels.email')} : ${question.memberEmail ?? t('noEmail')}`,
+      `${t('labels.receivedAt')} : ${receivedAt}`,
+    ].join('\n'),
+    `${t('labels.question')} :\n${question.body}`,
+    `${t('urlIntro')}\n${questionUrl}`,
+    question.memberEmail
+      ? t('reply', {email: question.memberEmail})
+      : t('replyWithoutEmail'),
+    t('footer', {name: association.name}),
+  ].join('\n\n')
+
+  return sendEmailService(
+    {
+      to,
+      subject,
+      text,
+      react: MemberQuestionMail({association, question, questionUrl, locale}),
+      ...(question.memberEmail ? {replyTo: question.memberEmail} : {}),
+    },
+    {
+      scope: 'tenant',
+      organizationId,
+      nature: 'board_notification',
+      reference: {type: 'member_question', id: questionId},
+    },
+    {recipientType: 'system'}
+  )
+}
+
 type ClaimedDeferredEmail = NonNullable<
   Awaited<ReturnType<typeof claimDeferredEmailForSendTxnDao>>
 >
@@ -1155,6 +1256,18 @@ const composedOfDeferred = (row: ClaimedDeferredEmail): ComposedEmail => ({
   ...(row.senderName ? {senderName: row.senderName} : {}),
 })
 
+/** Le DAO qui pose le temoin d'echec, par type d'objet designe. */
+const MARK_SOURCE_NOTIFICATION_FAILED = new Map<
+  string,
+  (referenceId: string) => Promise<void>
+>(
+  Object.entries({
+    contact_message: markContactMessageNotificationFailedDao,
+    incident_report: markIncidentReportNotificationFailedDao,
+    member_question: markMemberQuestionNotificationFailedDao,
+  } satisfies Record<EmailSendReferenceType, (id: string) => Promise<void>>)
+)
+
 /**
  * Le message a l'origine d'une notification au bureau dont le rejeu n'a pas
  * abouti porte le temoin d'echec, comme a l'envoi direct (revue s52, n° 7).
@@ -1166,12 +1279,9 @@ const flagSourceNotificationFailed = async (
 ): Promise<void> => {
   const {referenceType, referenceId} = row
   if (!referenceId) return
-  const markFailed =
-    referenceType === 'contact_message'
-      ? markContactMessageNotificationFailedDao
-      : referenceType === 'incident_report'
-        ? markIncidentReportNotificationFailedDao
-        : undefined
+  const markFailed = referenceType
+    ? MARK_SOURCE_NOTIFICATION_FAILED.get(referenceType)
+    : undefined
   if (!markFailed) return
   try {
     await withTenant(organizationId, () => markFailed(referenceId))

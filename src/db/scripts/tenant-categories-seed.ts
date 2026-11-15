@@ -1,5 +1,9 @@
+import type {CategoryDomain} from '../../services/types/domain/association-category-types'
+
 /**
- * Categories de signalement des tenants de test (s10, ADR 028).
+ * Categories des tenants de test (s10, ADR 028) : de signalement, et les
+ * sujets des questions des membres du premier tenant (s23), l'un avec son
+ * adresse, l'autre sans (routage exclusif, critere 2).
  *
  * Valeurs fictives, propres a chaque association de test, jamais celles d'un
  * client : les categories d'une vraie association sont saisies par son bureau.
@@ -9,7 +13,7 @@
  */
 export type TestTenantCategory = {
   organizationSlug: string
-  domain: 'report'
+  domain: CategoryDomain
   name: string
   routingEmail: string | null
 }
@@ -43,6 +47,18 @@ export const TEST_TENANT_CATEGORIES: readonly TestTenantCategory[] = [
     organizationSlug: 'marketing-pro',
     domain: 'report',
     name: 'Portail et clôtures',
+    routingEmail: null,
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    domain: 'question',
+    name: 'Factures et cotisation',
+    routingEmail: 'tresorerie@techcorp-solutions.test',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    domain: 'question',
+    name: 'Voirie et portails',
     routingEmail: null,
   },
 ]

@@ -33,3 +33,17 @@ export const getReportCategoriesForBureauDal = cache(
   async (organizationId: string): Promise<AssociationCategoryListDTO> =>
     listAssociationCategoriesService(organizationId, CategoryDomainConst.REPORT)
 )
+
+/**
+ * Les sujets des questions des membres vus par le bureau, avec le nombre de
+ * questions que chacun porte (s23). Donnee d'administration : aucun
+ * `'use cache'`. Le service verifie `question.manage` et ouvre le scope du
+ * tenant.
+ */
+export const getQuestionCategoriesForBureauDal = cache(
+  async (organizationId: string): Promise<AssociationCategoryListDTO> =>
+    listAssociationCategoriesService(
+      organizationId,
+      CategoryDomainConst.QUESTION
+    )
+)
