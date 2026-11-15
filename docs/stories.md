@@ -30,7 +30,7 @@ destination après connexion. s48, ajoutée le 28 octobre 2026, peut se jouer d�
 **s52**, scindée de s26 le 11 novembre 2026, se joue **juste après s26 et avant s29 et s42**, qui en dépendent.
 **s53 à s57**, ajoutées le 15 novembre 2026 après les réponses de La Fourche, se jouent ainsi : s53
 **avant s18, s19 et s33**, qui lisent « mes terrains » ; s54 **après s25** (elle étend le calcul de la
-cible) et **avant s27, s29 et s42** ; s55 **avant s28** ; s56 après s53, s54 et s55 ; s57 après s53.
+cible) et **avant s27, s29 et s42** ; s55 **avant s28** ; s56 après s20, s53, s54 et s55 ; s57 après s19, s32, s53 et s54.
 Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
 
 ## Règles transverses à toutes les stories
@@ -61,6 +61,9 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
   être partagé dans un foyer ; le numéro de parcelle n'est pas unique par personne et se transmet à
   la vente. Toute clé de rattachement — stockage nominatif, rapprochement Pennylane, dédoublonnage
   d'import, export — s'indexe sur cette clé primaire. Voir `V5 §5.1`.
+  **Exception assumée, une seule (s53)** : le **compte de connexion** suit l'adresse email — une même
+  adresse sur plusieurs fiches les relie à un seul compte, chaque regroupement étant signalé au bureau.
+  La fiche, elle, garde sa clé primaire : l'email relie des fiches à un compte, il n'identifie jamais une fiche.
 - **Désinscription : elle ne couvre que les communications facultatives.** Un membre qui se
   désinscrit cesse de recevoir les envois facultatifs, dont les campagnes libres ; il continue de
   recevoir les communications statutaires et contractuelles — convocation à l'AG, mise à disposition
@@ -95,7 +98,7 @@ réponses de La Fourche (`docs/Admin-MEL/questions-*.md` et `demande-fichier-rel
 | Fichier exemple des relevés d'eau (format imposé par Pennylane)  | le parseur de s17, et par ricochet s18 (historique de consommation) — donc l'angle n°1 du PRD | aucun — s17 attend le fichier réel                                                                 | **Toujours en attente** : La Fourche refait le fichier, puis le transmettra. Relevé en janvier, remise au bureau entre janvier et mars : s17 doit être prête avant.                                                                                                                  |
 | Accès ASL Community + validation statutaire du vote électronique | s33 en entier                                                                                 | aucun, mais le module n'est pas en doute : seul son fournisseur l'est (voir s33)                   | Inchangé, et un point s'ajoute : **vérifier avec ASL Community comment ils gèrent le multi-vote** (une cotisation = un droit de vote, plusieurs terrains = plusieurs droits).                                                                                                       |
 | Arbitrage RGPD sur la rétention des données d'un ex-propriétaire | la coupure d'accès de s12                                                                     | s12 livre le modèle daté sans purge                                                                | **Règle fonctionnelle reçue** : l'ancien propriétaire garde son accès six mois, puis il est fermé ; l'espace reste consultable par le bureau. Codée par s57 avec un délai paramétrable. La confirmation du conseil RGPD sur la durée reste attendue.                                  |
-| Avis RGPD sur l'accès d'un tiers (proche connecté avec sa propre adresse) aux données d'un membre | la connexion par une adresse supplémentaire (s54) ; les notes internes dans la copie en ligne (s40) | s54 livre tout le reste avec la connexion des adresses supplémentaires coupée par un paramètre du tenant, désactivé au seed ; s40 exclut les notes internes de la copie en ligne, la copie complète passe par le bureau | **Ouvert le 15 novembre 2026** (PRD, _Constraints_). Ni s54 ni s40 n'attendent l'avis ; l'activer chez une association est une décision prise après l'avis. |
+| Avis RGPD sur l'accès d'un tiers (proche connecté avec sa propre adresse) aux données d'un membre | la connexion par une adresse supplémentaire (s54) ; les notes internes dans la copie en ligne (s40) | s54 livre tout le reste avec la connexion des adresses supplémentaires coupée par un paramètre du tenant, désactivé au seed ; s40 exclut les notes internes de la copie en ligne, la copie complète passe par le bureau | **Ouvert le 15 novembre 2026** (PRD, _Constraints_). Ni s54 ni s40 n'attendent l'avis ; l'activer chez une association est une décision prise après l'avis. L'avis demandé couvre aussi les **envois** aux adresses supplémentaires (relances, factures), jugés hors réserve par défaut (s54). |
 
 ---
 
@@ -2047,7 +2050,9 @@ l'improviser ici.
 **Sensible RGPD** : ce sont des notes sur des personnes physiques, écrites par des bénévoles. Deux
 conséquences pour l'implémentation : l'étanchéité côté membre est un test, pas une intention ; et
 ces notes doivent être **incluses dans l'export de données** : au titre de la portabilité dans l'export
-d'association (s38), et au titre du droit d'accès dans la copie du membre (s40).
+d'association (s38), et au titre du droit d'accès dans la copie que **le bureau** produit pour le membre (s40).
+La copie demandée en ligne exclut tout le fil — notes **et** échanges —, car un proche peut ouvrir le même
+espace avec sa propre adresse (s54).
 Le noter dans le plan de s38.
 
 Ne pas exposer ces notes dans une réponse d'API partagée avec la présentation membre — le risque
@@ -2233,7 +2238,7 @@ interrompue (échec d'un envoi réel) du reste, dans `docs/stories.md` avant `/k
 - [ ] La cible « impayés » fonctionne avec la saisie manuelle des factures comme avec une implémentation externe : changer d'implémentation ne change pas la cible.
 - [ ] Le bureau crée un groupe nommé et y ajoute ou retire des membres depuis la liste des membres.
 - [ ] Un groupe est sélectionnable comme cible d'une campagne, à la place de « tous les membres » ou des impayés.
-- [ ] Le nombre de destinataires du groupe est affiché avant l'envoi, en distinguant ceux qui ont un email de ceux qui n'en ont pas.
+- [ ] Le nombre de destinataires du groupe est affiché avant l'envoi, **compté en fiches** : celles qui ont au moins une adresse active, celles qui n'en ont pas ; le nombre d'adresses destinataires (s54) est affiché à part.
 - [ ] Supprimer un groupe n'affecte ni les membres qu'il contenait ni les campagnes déjà envoyées.
 - [ ] Un membre désinscrit (s25) est exclu des deux nouvelles cibles comme de « tous les membres » : l'exclusion se fait au calcul de la cible, quel qu'en soit le type.
 - [ ] Un groupe est propre à son association et n'est jamais visible d'une autre.
@@ -2444,7 +2449,8 @@ Hors périmètre de cette story : la détection automatique d'une nouvelle factu
 
 - **L'échéance est la même pour tous**, avec une facture par terrain et par an : les trois relances d'une
   série tombent aux mêmes trois dates pour tous les impayés, soit potentiellement plusieurs centaines
-  d'envois le même jour. Le budget de s52 (100 par jour) les étale ; ajouter un test de volume (200 impayés
+  d'envois le même jour. Le budget de s52 (300 par jour, dont une réserve de 100 pour les emails de connexion, soit 200 envois
+  reportables) les étale ; ajouter un test de volume (200 impayés
   relancés le même jour) et vérifier que le report ne fait pas se télescoper la relance suivante.
 - **Un propriétaire de plusieurs terrains** (s53) peut avoir plusieurs factures impayées : une relance par
   accès, qui regroupe ses factures, vaut mieux qu'un email par facture pour ce public ; à trancher en
@@ -2892,7 +2898,7 @@ s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24
 Réf. `PRD` (« Export et portabilité des données », angle n°5 : « Pas de verrouillage »), RGPD (droit
 à la portabilité).
 
-Risque (complexité 4) : vingt-sept dépendances, six familles de contenu, exécution en tâche de
+Risque (complexité 4) : trente et une dépendances, six familles de contenu, exécution en tâche de
 fond avec notification, écriture en flux sur un VPS à 4 Go. Le harnais de complétude en a été sorti
 (s39) en revue du découpage — la story se lisait comme une 5 déjà scindée une fois (s40) mais pas
 assez. Ce qui reste est un moteur d'export et son archive, pas une traversée du produit.
@@ -2917,8 +2923,8 @@ désactivé chez un tenant, et l'export ne doit être otage d'aucun. Leurs donn�
 l'archive par le test de complétude de s39 dès que le module est livré, sans rouvrir cette story.
 C'est cohérent avec le critère 9. Les trois modules retirés ramenaient la story de vingt-sept
 dépendances à vingt-quatre ; la scission de s04 en a rendu une — s04b, productrice du menu et du
-pied de page (D-02) — d'où vingt-cinq à l'époque. La liste ci-dessus fait foi : vingt-sept
-aujourd'hui, avec s01b et s27b.
+pied de page (D-02) — d'où vingt-cinq à l'époque. La liste ci-dessus fait foi : trente et une
+aujourd'hui, avec s01b, s27b, s52, s53, s54 et s55.
 
 Le critère 9 énonce une propriété **du mécanisme**, pas du résultat d'un test local : c'est le
 harnais de s39 qui la vérifie mécaniquement, une story plus loin. La clause qui le disait vivait dans
@@ -3006,12 +3012,11 @@ l'association détient sur moi **afin d'**exercer mon droit d'accès.
 ### Acceptance criteria
 
 - [ ] Un membre connecté demande sa copie et la reçoit dans le même format ouvert que l'export d'association (CSV, JSON, fichiers d'origine, README).
-- [ ] La copie demandée en ligne contient toutes les données le concernant, historique d'échanges compris, **sauf les notes internes** écrites sur lui par le bureau (s24) ; elle indique que ces notes s'obtiennent auprès du bureau.
-- [ ] La copie produite par le bureau pour un membre est complète, notes internes de s24 comprises.
+- [ ] La copie demandée en ligne contient toutes les données le concernant — coordonnées, factures, relevés, documents, ses questions au bureau (s23) et ses signalements (s22) — **sauf le fil privé du bureau de s24** (notes internes **et** échanges consignés par le bureau) ; elle indique que ce fil s'obtient auprès du bureau.
 - [ ] La copie couvre **toutes les fiches reliées au compte** qui la demande (s53) : un propriétaire de plusieurs terrains reçoit en une fois les données de chacun.
 - [ ] La copie ne contient **aucune** donnée d'un autre membre — vérifié sur une association comportant plusieurs membres, y compris pour un membre multi-parcelles et pour une fiche portant plusieurs adresses (s54).
 - [ ] Les données rattachées à une parcelle qu'il a vendue lui restent acquises pour la période où il en était propriétaire, et pas au-delà.
-- [ ] Le bureau peut produire cette copie complète pour un membre qui en fait la demande, par courrier ou en personne, avec ou sans compte.
+- [ ] Le bureau produit, pour un membre qui en fait la demande par courrier ou en personne, avec ou sans compte, une **copie complète**, fil de s24 compris (notes et échanges).
 - [ ] La demande et sa livraison sont tracées, avec leur date, pour prouver le respect du délai légal.
 - [ ] Cette trace est soit incluse dans l'export d'association (s38), soit **déclarée au registre des exclusions avec son motif** : le test de complétude de s39 continue de passer.
 
@@ -3025,9 +3030,9 @@ Réf. `PRD` (« Export et portabilité des données »), RGPD article 15 (droit 
 
 **Notes internes : règle retenue le 15 novembre 2026, en attente de l'avis du conseil RGPD** (réserve en
 tête de document) : avec s54, un proche du propriétaire se connecte avec sa propre adresse et ouvre le même
-espace. Pour qu'il n'obtienne pas les notes internes du bureau sur le propriétaire, la copie en ligne les
-exclut ; la copie complète passe par le bureau, qui vérifie l'identité du demandeur. Si l'avis permet
-d'inclure les notes dans la copie en ligne, c'est une nouvelle story, pas une retouche de celle-ci.
+espace. Pour qu'il n'obtienne pas ce que le bureau écrit sur le propriétaire, la copie en ligne exclut tout le
+fil de s24, notes et échanges ; la copie complète passe par le bureau, qui vérifie l'identité du demandeur. Si l'avis permet
+d'inclure ce fil dans la copie en ligne, c'est une nouvelle story, pas une retouche de celle-ci.
 
 Sortie de s38 en revue du découpage : l'export d'association et l'export individuel sont deux
 valeurs, deux utilisateurs et deux surfaces d'autorisation. s38 sert la présidente (portabilité,
@@ -3039,7 +3044,7 @@ Réutiliser la machinerie de s38 (formats, écriture en flux, README) : ce n'est
 d'export, c'est le même filtré sur un membre.
 
 Le piège est l'inverse de celui de s38 : là-bas on cherche l'exhaustivité, ici la **stricte
-limitation**. Les notes internes de s24 entrent dans la copie produite par le bureau — ce sont des
+limitation**. Le fil de s24 (notes et échanges) entre dans la copie produite par le bureau — ce sont des
 données personnelles le concernant, même si l'interface ne les lui montre jamais — mais rien qui concerne un autre membre,
 pas même dans un fichier partagé. Écrire le test d'isolation avant le code.
 
@@ -3939,14 +3944,14 @@ terrains, leurs factures et leurs relevés **afin de** ne pas gérer autant d'ac
 - [ ] Après connexion, ce propriétaire arrive sur « Mes terrains », qui liste ses terrains (fiche, parcelle, compteur), sans changer de compte. Les factures et la consommation de chaque terrain s'y ajoutent avec s19 et s18, qui portent ce critère.
 - [ ] Quand le bureau saisit sur une fiche une adresse déjà portée par une autre fiche de l'association (un deuxième terrain acheté plus tard, une fiche créée à la main), le site nomme le titulaire du compte existant et demande de confirmer qu'il s'agit de la même personne : confirmé, la fiche est reliée à ce compte ; refusé, rien n'est enregistré. Aucun compte n'est fusionné.
 - [ ] Un membre ne voit que les fiches reliées à son compte : accès croisé testé en forgeant l'identifiant d'une fiche d'un autre membre, de la même association comme d'une autre.
-- [ ] L'import de s13 ne rejette plus une ligne parce que son adresse est portée par une autre fiche : relancer le fichier réel (25 lignes, 10 adresses partagées) crée une fiche par client Pennylane, reliées au même compte ; chaque regroupement par adresse partagée est signalé au rapport, pour que le bureau puisse déceler une faute de frappe.
+- [ ] L'import de s13 ne rejette plus une ligne parce que son adresse est portée par une autre fiche : une fixture anonymisée versionnée, qui reproduit le cas du fichier réel (25 lignes, 10 adresses partagées), crée une fiche par client Pennylane, reliées au même compte ; chaque regroupement par adresse partagée est signalé au rapport, pour que le bureau puisse déceler une faute de frappe.
 - [ ] Retirer l'adresse d'une fiche ne ferme pas l'accès aux autres fiches du même compte : l'accès se ferme quand plus aucune fiche ne porte l'adresse.
 - [ ] Une campagne n'envoie qu'**un seul message par adresse**, même quand plusieurs fiches la portent (dédoublonnage au calcul de la cible de s25, que les relances et le lancement réutilisent).
 - [ ] Le bureau voit, dans la liste des membres, le nombre de terrains que porte chaque compte.
 
 ### Dependencies
 
-s12, s12d, s13, s16
+s12, s12d, s13, s16, s25
 
 ### Agentic notes
 
@@ -4006,17 +4011,18 @@ permet de se connecter **afin que** les enfants d'un propriétaire âgé gèrent
 - [ ] Une fiche porte une ou plusieurs adresses email ; chaque adresse active permet de se connecter et ouvre le même espace membre, sous la réserve du critère suivant.
 - [ ] **Réserve RGPD** (tête de document) : la connexion par une adresse **supplémentaire** — toute adresse autre que l'adresse titulaire de la fiche, c'est-à-dire celle déjà reliée à un compte avant cette story ou, pour une fiche nouvelle, la première saisie ou importée — dépend d'un paramètre du tenant, **désactivé au seed** tant que l'avis du conseil RGPD n'est pas rendu. Désactivé, une adresse supplémentaire reçoit les envois mais ne permet pas de se connecter, avec un message explicite ; activé, elle se connecte comme l'adresse titulaire. Vérifié dans les deux états.
 - [ ] Les campagnes (s25, s26) et les emails déjà émis par le site vers un membre partent à **toutes** les adresses actives de la fiche : aucune distinction entre adresse principale et secondaires pour les envois. Les relances (s29) et les invitations (s42), livrées après, portent ce critère de leur côté.
-- [ ] Le membre ajoute et modifie ses propres adresses depuis son espace ; le bureau modifie et supprime celles de n'importe quel membre.
-- [ ] Une adresse est **active d'office** quand elle vient du fichier (import de s13, puis de s56) ou qu'elle est saisie par le bureau, comme avant cette story. Une adresse ajoutée par le membre n'est active qu'après confirmation par un lien envoyé à cette adresse : une faute de frappe n'ouvre pas l'espace à un inconnu. Une adresse non active ne reçoit rien et ne permet pas de se connecter.
+- [ ] Le membre ajoute et modifie ses propres adresses depuis son espace ; le bureau ajoute, modifie et supprime celles de n'importe quel membre.
+- [ ] Une adresse est **active d'office** quand elle vient du fichier (import de s13, puis de s56) ou qu'elle est saisie par le bureau, comme avant cette story. Une adresse ajoutée **ou modifiée** par le membre n'est active qu'après confirmation par un lien envoyé à cette adresse : une faute de frappe n'ouvre pas l'espace à un inconnu. Une adresse non active ne reçoit rien et ne permet pas de se connecter.
 - [ ] **Non-régression** : toutes les adresses présentes à la livraison sont actives et titulaires de leur fiche. Un membre qui se connectait avant cette story se connecte encore, et reçoit toujours les campagnes — vérifié sur une fiche et un compte créés avant la migration.
 - [ ] Le membre ne peut pas ajouter une adresse déjà portée par une fiche de l'association qui n'est pas reliée à son compte : refus avec un message explicite l'invitant à s'adresser au bureau. Seul le bureau relie une fiche à un compte existant, par la confirmation de s53. Aucun compte n'est fusionné.
-- [ ] Retirer une adresse ferme l'accès de cette adresse seule, à la requête suivante (ADR 038), sans toucher aux autres adresses ni à l'historique.
+- [ ] **Succession de l'adresse titulaire** : une fiche qui porte au moins une adresse active a exactement une adresse titulaire. Modifier ou remplacer l'adresse titulaire — par le bureau, par l'import annuel (s56) ou par le membre une fois la nouvelle adresse confirmée — transfère le titre à la nouvelle adresse ; jusqu'à la confirmation, l'ancienne reste titulaire. Supprimer l'adresse titulaire ne promeut **aucune** adresse d'office : la fiche est signalée « sans adresse titulaire » au bureau, qui désigne la nouvelle parmi les adresses actives. Dans une cellule d'import à plusieurs adresses, la première est titulaire. Chaque cas est testé, paramètre de la réserve désactivé.
+- [ ] Retirer une adresse d'une fiche ferme l'accès de cette adresse **à cette fiche**, à la requête suivante (ADR 038), sans toucher aux autres adresses ni à l'historique ; si la même adresse est portée par d'autres fiches, son accès à celles-ci reste ouvert (s53).
 - [ ] L'import de s13 reprend **toutes** les adresses d'une cellule qui en contient plusieurs ; la remarque « adresse ignorée » disparaît du rapport. L'import annuel (s56) porte le même critère.
 - [ ] Les adresses d'une fiche s'affichent dans la fiche du bureau, avec leur origine (fichier Pennylane ou saisie sur le site).
 
 ### Dependencies
 
-s03, s12d, s16, s25, s53
+s03, s12d, s16, s25, s26, s53
 
 ### Agentic notes
 
@@ -4045,6 +4051,16 @@ adresse accède aux factures, à la consommation et aux documents nominatifs du 
 critère 2 permet de livrer la story sans attendre l'avis : tout le reste (plusieurs adresses, envois à
 toutes, import, confirmation) fonctionne désactivé. L'activer est une décision de l'association **après**
 l'avis, pas un défaut. Ne pas coder l'activation en dur, ne pas l'activer au seed.
+
+**Envois aux adresses supplémentaires** : ils ne sont pas coupés par le paramètre. La Fourche demande que
+« tout le monde reçoive toutes les communications », et l'association tient ces adresses du propriétaire
+(fichier, bureau) ou de son espace (confirmation par lien). Ils sont jugés **hors réserve par défaut**, mais la
+question est posée au conseil RGPD dans le même avis, relances d'impayés et mise à disposition de facture
+comprises. Si l'avis les inclut, ce sera une nouvelle story.
+
+La succession de l'adresse titulaire n'est pas un détail : sans elle, un propriétaire qui change d'adresse
+(cas nominal de s56) deviendrait « supplémentaire » et ne pourrait plus se connecter tant que le paramètre
+est coupé. Ne jamais promouvoir d'office l'adresse d'un proche : ce serait contourner la réserve.
 
 Le critère « membre sans email » de s12 (« joignable par courrier uniquement ») reste vrai : une fiche sans
 aucune adresse. Déclarer les colonnes à l'inventaire de s12c et à l'export de s38.
@@ -4104,7 +4120,8 @@ coordonnées des membres soient à jour sans ressaisie ni passage par le prestat
 ### Acceptance criteria
 
 - [ ] La présidente dépose le fichier annuel depuis le back-office de son association, sans passer par le SuperAdmin ; l'action est déclarée au registre, avec Président(e) par défaut.
-- [ ] Les fiches existantes sont rapprochées par l'identifiant client Pennylane (ADR 048) ; leurs adresses postales, leur téléphone et leurs adresses email sont mis à jour.
+- [ ] Les fiches existantes sont rapprochées par l'identifiant client Pennylane (ADR 048) ; leurs adresses postales, leur téléphone et leurs adresses email sont mis à jour, **sauf une valeur modifiée sur le site après le dernier import**, qui est conservée et signalée au rapport (défaut à confirmer avec La Fourche, voir les notes).
+- [ ] Quand le fichier remplace l'adresse titulaire d'une fiche (s54), la nouvelle adresse devient titulaire et l'ancienne n'est plus active : le propriétaire qui a changé d'adresse se connecte avec la nouvelle, paramètre de la réserve RGPD désactivé. Le rapport signale le remplacement.
 - [ ] Comme l'import initial : toutes les adresses email d'une cellule qui en contient plusieurs sont reprises (s54), et les adresses de terrain et de domicile sont renseignées depuis leurs colonnes (s55).
 - [ ] Une ligne dont l'identifiant est inconnu n'est **pas** créée : elle est listée au rapport comme « membre à créer à la main ».
 - [ ] L'import ne change jamais la propriété d'une parcelle : les ventes se saisissent par le bureau (s12).
@@ -4113,7 +4130,7 @@ coordonnées des membres soient à jour sans ressaisie ni passage par le prestat
 
 ### Dependencies
 
-s13, s53, s54, s55
+s13, s20, s53, s54, s55
 
 ### Agentic notes
 
@@ -4126,7 +4143,7 @@ créer, une ligne déjà présente y est ignorée. Un nouveau membre créé à l
 le bureau le renseigne sur la fiche (s20), faute de quoi la mise à jour annuelle ne le retrouve pas.
 
 **Question ouverte à trancher avec La Fourche** : quand le fichier et une correction faite par le membre sur le
-site (s16) divergent, qui l'emporte ? Défaut proposé : le fichier ne remplace pas une valeur modifiée sur le site
+site (s16) divergent, qui l'emporte ? Défaut retenu dans le critère 2, à confirmer : le fichier ne remplace pas une valeur modifiée sur le site
 après le dernier import, et le rapport la signale.
 
 À évaluer en `/ks-research` de s20 : l'API Pennylane expose les clients. Si elle fournit les mêmes champs, cette
@@ -4146,8 +4163,8 @@ reste ouvert indéfiniment.
 
 ### Acceptance criteria
 
-- [ ] Quand un membre n'est plus propriétaire d'aucun terrain (toutes ses périodes de propriété sont closes, s12), son accès reste ouvert pendant un délai paramétré du tenant, dont la valeur de seed est six mois à partir de la fin de la dernière période.
-- [ ] Passé le délai, l'accès est fermé sans rien supprimer : fiche, historique, factures, relevés et documents sont conservés, et le bureau consulte l'espace devenu inactif de ce membre.
+- [ ] Quand un membre n'est plus propriétaire d'aucun terrain (toutes ses périodes de propriété sont closes, s12), l'accès de **toutes** les adresses et de tous les comptes reliés à ses fiches (s53, s54 — celle d'un proche comprise) reste ouvert pendant un délai paramétré du tenant, dont la valeur de seed est six mois à partir de la fin de la dernière période.
+- [ ] Passé le délai, l'accès est fermé sans rien supprimer : fiche, historique, factures, relevés et documents sont conservés, et le bureau consulte l'espace devenu inactif de ce membre depuis la fiche membre du back-office, qui donne accès à ses factures, relevés et documents comme pour un membre actif. Passé le délai, aucune adresse reliée ne se connecte plus.
 - [ ] Le contrôle se fait à chaque lecture de session (ADR 038), sans tâche planifiée : testé avec une horloge doublée un jour avant et un jour après l'échéance.
 - [ ] Un propriétaire qui vend un terrain mais en garde un autre conserve son accès : le délai ne s'applique qu'à qui n'a plus aucun terrain.
 - [ ] Pendant le délai, le vendeur voit les factures et les documents d'avant la vente (s19, s32) et pas ceux d'après ; une facture impayée reste visible, le site n'agit pas sur la dette.
@@ -4156,7 +4173,7 @@ reste ouvert indéfiniment.
 
 ### Dependencies
 
-s12, s12d, s19, s32, s53
+s12, s12d, s19, s32, s53, s54
 
 ### Agentic notes
 
@@ -4243,11 +4260,11 @@ Le notaire gère le prorata et les dettes : aucune logique de prorata ni de sold
 | s50  | navigation-liens-libres          | 2   | s04b                                                                                                                                          | A    |
 | s51  | polices-hebergees                | 1   | s12b                                                                                                                                          | B    |
 | s52  | budget-envoi-adaptateur          | 4   | s26                                                                                                                                           | C    |
-| s53  | un-acces-plusieurs-terrains      | 4   | s12, s12d, s13, s16                                                                                                                           | B    |
-| s54  | adresses-email-multiples         | 4   | s03, s12d, s16, s25, s53                                                                                                                      | B    |
+| s53  | un-acces-plusieurs-terrains      | 4   | s12, s12d, s13, s16, s25                                                                                                                      | B    |
+| s54  | adresses-email-multiples         | 4   | s03, s12d, s16, s25, s26, s53                                                                                                                 | B    |
 | s55  | adresses-typees-entreprise       | 2   | s12, s13, s16                                                                                                                                 | B    |
-| s56  | import-annuel-coordonnees        | 3   | s13, s53, s54, s55                                                                                                                            | B    |
-| s57  | acces-ancien-proprietaire        | 3   | s12, s12d, s19, s32, s53                                                                                                                      | B    |
+| s56  | import-annuel-coordonnees        | 3   | s13, s20, s53, s54, s55                                                                                                                       | B    |
+| s57  | acces-ancien-proprietaire        | 3   | s12, s12d, s19, s32, s53, s54                                                                                                                 | B    |
 
 **67 stories, aucune à 5.** Répartition : cinq à 1, vingt-trois à 2, vingt-six à 3, treize à 4 (s53 à s57 ajoutées le 15 novembre 2026, s15 fondue dans s42 le 23 octobre 2026, s48 ajoutée le 28 octobre 2026, s49 ajoutée le 4 novembre 2026, s50 et s51 ajoutées le 5 novembre 2026, s52 scindée de s26 le 11 novembre 2026).
 **s53 à s57**, ajoutées après les réponses de La Fourche, ont chacune leur ligne au PRD depuis la revue du découpage du 15 novembre 2026. **Treize stories sont hors du tableau de périmètre du PRD**, chacune justifiée dans son en-tête :
@@ -4287,7 +4304,7 @@ explicité dans leurs notes agentiques, à trancher en `/ks-architect` ou `/ks-d
 Quatre écarts avec les scores du PRD, tous documentés dans la story concernée plutôt que lissés :
 s04 à 4 contre 3, que le modèle en blocs typés de l'ADR 007 porte au-dessus du chiffrage du PRD ;
 s27 à 3 contre 2 (elle porte le calcul de la cible « impayés » en plus des groupes composés à la
-main) ; s38 à 4 contre 3 (vingt-sept dépendances, six familles de contenu, exécution en tâche de
+main) ; s38 à 4 contre 3 (trente et une dépendances, six familles de contenu, exécution en tâche de
 fond, écriture en flux sur un VPS à 4 Go) ; et l'identité visuelle, chiffrée 2 par le PRD, portée par
 s01b à 3 — le logo et le favicon y tirent le stockage de fichiers de l'ADR 004, que le PRD ne
 chiffrait pas — et, pour la teinte, par s02, dont le 3 couvre d'abord le registre de paramètres. Le
