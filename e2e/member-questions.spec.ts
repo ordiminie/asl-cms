@@ -457,7 +457,9 @@ test.describe('Questions des membres au bureau (s23)', () => {
           name: `Question de ${SEED_MOREAU.name}`,
         })
       ).toBeVisible({timeout: 60_000})
-      await expect(board.getByText(routedQuestion)).toBeVisible()
+      await expect(board.getByTestId('member-question-body')).toHaveText(
+        routedQuestion
+      )
       await expect(
         board.getByRole('link', {name: 'Répondre par email'})
       ).toHaveAttribute('href', `mailto:${SEED_MOREAU.email}`)
