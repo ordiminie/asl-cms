@@ -1,10 +1,13 @@
 # Revue du découpage : ASL-CMS (Lp)
 
-> J'ai relu `docs/stories.md` (HEAD de main, commit f3692dc7, 67 stories) face à `docs/prd.md` (HEAD), avec la grille de `templates/stories-review-checklist.md`. Chaque constat est classé critique, majeur ou mineur.
-> C'est la sixième passe du 15/11/2026. Elle vérifie les corrections de M1, M2 et m1 à m11 de la cinquième passe.
-> Le fichier dépasse la limite de lecture, je l'ai donc lu par passes ciblées. J'ai lu en entier l'en-tête (l. 1-106), s24 à s27b, s29, s38 à s41, s52 à s57 et le récapitulatif. J'ai contrôlé les autres stories par recherche ciblée (`s53`, `s54`, `titulaire`). Je n'ai pas fait de diff git (pas de shell). J'ai donc lu les corrections comme du texte neuf, sans les comparer à l'ancien.
+> J'ai relu `docs/stories.md` (HEAD de main, commit 9e2260aa, 67 stories) face à `docs/prd.md` (HEAD), avec la grille de `templates/stories-review-checklist.md`. Chaque constat est classé critique, majeur ou mineur.
+> C'est la septième passe, le 16/11/2026. Elle vérifie les corrections de m1 à m8 de la sixième passe et les décisions de l'utilisatrice du 16/11 sur m1, m2 et m8. Je ne remets pas ces décisions en cause : je vérifie que le texte les applique de façon cohérente et testable.
+> Ce que j'ai lu : l'en-tête en entier (l. 1-106), s29, s40, s53 à s57 et le récapitulatif (l. 4207-4377). J'ai contrôlé le reste par recherche ciblée (`titulaire`, `supprim… adresse`, `sans adresse`), ce qui m'a fait lire s12 c4 (l. 1072) et un critère de s12d (l. 1454). Je n'ai pas de shell, donc pas de diff git : j'ai lu les corrections comme du texte neuf.
 
-**En bref : 0 critique, 0 majeur, 8 mineurs.** Les deux majeurs et les onze mineurs de la passe précédente sont corrigés. Les corrections de M1 et M2 tiennent sur le fond. Elles laissent des imprécisions mineures autour de l'adresse titulaire (m1, m2, m6) et deux mentions périmées (m3, m4).
+**En bref : 0 critique, 2 majeurs, 4 mineurs.** Les huit mineurs de la sixième passe sont corrigés. Deux des trois décisions du 16/11, appliquées à la lettre, entrent en contradiction avec des critères existants :
+
+- la règle « pas de suppression de l'adresse titulaire sans remplaçante » contredit s12d, une story déjà livrée (M1) ;
+- la règle « une adresse titulaire ailleurs ne peut pas être supplémentaire » contredit la règle de s53 « même adresse = même personne » (M2).
 
 ## Couverture du périmètre
 
@@ -30,7 +33,7 @@ Le PRD n'a pas changé depuis la passe précédente : 42 lignes au cœur (l. 62-
 | Modèle membre ↔ parcelle daté | s12 | oui |
 | Accès de l'ancien propriétaire | s57 | oui |
 | Coordonnées | s16 (+ s54, s55) | oui |
-| Un seul accès pour plusieurs terrains | s53 (+ s18, s19, s32, s40) | oui |
+| Un seul accès pour plusieurs terrains | s53 (+ s18, s19, s32, s40) | oui (voir M2 : un sous-cas est restreint par s54 c8 sans que s53 le dise) |
 | Plusieurs adresses connectables | s54 (+ s29, s42) | oui (connexion supplémentaire derrière le paramètre de la réserve RGPD) |
 | Adresse terrain / domicile / entreprise | s55 (+ s28) | oui |
 | Questions au bureau | s23 | oui |
@@ -63,29 +66,31 @@ Le PRD n'a pas changé depuis la passe précédente : 42 lignes au cœur (l. 62-
 ## Périmètre
 
 - [x] Aucune story ne fait revenir un élément du cimetière.
-  - s54 n'est pas un plan B de connexion : une fiche sans adresse reste gérée par courrier (note l. 4065).
+  - s54 reste hors du « plan B de connexion » : une fiche sans adresse reste gérée par courrier (note l. 4073-4074, s56 c4).
   - s57 ne code ni purge, ni prorata, ni solde.
-  - s56 ne crée aucun membre (c5).
+  - s56 ne crée aucun membre (c7).
   - s33 et s53 ne comptent aucune voix.
-- [x] Aucune story ne dépasse le périmètre. Les treize stories hors tableau sont toutes justifiées dans le récapitulatif (l. 4270-4284).
+- [x] Aucune story ne dépasse le périmètre. Les treize stories hors tableau sont justifiées dans le récapitulatif (l. 4280-4294).
 
 ## Qualité des stories
 
 - [x] Chaque story est une tranche de bout en bout. La seule transverse, s39, est assumée et bornée.
-- [x] Chaque critère peut devenir un test. Trois critères gardent une imprécision mineure (m1, m2, m8).
-- [x] Les notes agentiques sont présentes et utiles. Celle de s24 est maintenant alignée sur s40. Une note de s29 est en léger décalage avec son critère c6 (m7).
+- [ ] Chaque critère peut devenir un test : **non, pas entièrement**.
+  - s54 c9 et le critère de s12d l. 1454 ne peuvent pas passer ensemble (M1).
+  - s54 c8 et s53 c3/c5 non plus, pour l'adresse partagée en position mixte (M2).
+  - s56 c4 garde trois imprécisions (m3).
+- [x] Les notes agentiques sont présentes et utiles. La note de s29 (l. 2455-2457) est maintenant alignée sur c6.
 - [x] Complexité notée, aucun 5. Les treize stories à 4 énoncent leur risque.
 
 ## La liste dans son ensemble
 
-- [x] Ordre des dépendances : pas de cycle et pas de référence en avant bloquante. L'en-tête ne décrit plus fidèlement la place de s25 (m4), sans effet bloquant, puisque les dépendances déclarées permettent un tri topologique.
+- [x] Ordre des dépendances : pas de cycle et pas de référence en avant bloquante. L'en-tête (l. 31-34) décrit maintenant la place de s25 (avant s18 et s19) et celle de s54 (après s26).
 - [x] Ids bien formés (`s<numéro>[lettre]-<slug>`), uniques et conformes au récapitulatif.
 - [x] Décomptes vérifiés :
   - 67 lignes : cinq à 1, vingt-trois à 2, vingt-six à 3, treize à 4 ;
   - la liste des treize stories à 4 est exacte ;
-  - s38 déclare bien 31 dépendances, et le texte (l. 2901, l. 2926-2927, l. 4307) dit maintenant « trente et une » ;
-  - le tableau des réserves annonce « Six points » et en compte six.
-- [x] Pas de recouvrement : le doublon interne à s40 est fusionné (c6), et le retrait d'une adresse est cohérent entre s53 c6 et s54 c9.
+  - les dépendances de s40 sont identiques dans la story (l. 3025) et au récapitulatif (l. 4259), s22 et s23 compris.
+- [x] Pas de recouvrement entre stories. Les contradictions relevées plus bas sont des conflits de règles entre s53, s54, s56 et s12d, pas deux stories qui revendiquent la même tranche.
 
 ## Constats
 
@@ -95,76 +100,59 @@ Aucun.
 
 ### Majeurs
 
-Aucun.
+- **M1 — s54 c9 (l. 4021) contredit s12d (l. 1454), une story livrée : le bureau ne peut plus retirer la seule adresse d'une fiche.**
+  - Ce que dit s54 c9 : « Le bureau ne supprime l'adresse titulaire qu'en désignant, dans la même opération, celle qui la remplace […]. Sans remplaçante, le site refuse la suppression. » Le critère ne prévoit aucune exception.
+  - Une fiche qui n'a qu'une adresse n'a donc plus de remplaçante possible parmi les adresses actives. Le bureau ne peut plus la ramener à l'état « courrier uniquement ».
+  - Or s12d, déjà livrée, garantit : « Renseigner une adresse email sur une fiche "courrier uniquement" lui ouvre un compte […] ; **la retirer referme l'accès** sans supprimer la fiche ». Son test casse dès s54. Le critère de non-régression de s54 (c6, l. 4018) ne protège que la connexion et les campagnes : il ne le voit pas.
+  - Ce n'est pas cohérent avec le reste du texte :
+    - l'invariant de c9 (« une fiche qui porte au moins une adresse active a exactement une adresse titulaire ») reste vrai pour une fiche sans aucune adresse ;
+    - la note l. 4073 maintient la fiche « sans aucune adresse » ;
+    - s56 c4 (l. 4133) produit lui-même cet état par l'import (« la fiche reste sans adresse, gérée par courrier »). Le fichier peut donc faire ce que le bureau ne peut pas faire.
+  - Il y a aussi un enjeu RGPD : un propriétaire qui demande l'effacement de son adresse (rectification) ne peut pas être servi par le bureau.
+  - Correction attendue : une phrase dans s54 c9, par exemple « sauf si c'est la dernière adresse active de la fiche : la fiche repasse "courrier uniquement" (s12d) ». Si le retrait de cette capacité est voulu, il faut le dire, retirer explicitement le critère de s12d et prévoir la mise à jour de son test.
+
+- **M2 — s54 c8 (l. 4020) contredit s53 c1, c3 et c5 (l. 3943, 3945, 3947) : le propriétaire de plusieurs terrains est bloqué comme un proche.**
+  - s53 pose qu'une adresse portée par plusieurs fiches désigne **toujours la même personne**, avec un seul compte. Le site n'a donc aucun moyen de distinguer « le proche qui est lui-même membre » de « la même personne qui possède un deuxième terrain ».
+  - s54 c8 bloque toute adresse titulaire d'une autre fiche quand elle serait supplémentaire sur la fiche visée. La décision vise le proche, mais elle frappe aussi le multi-propriétaire dès que son adresse n'occupe pas la même position sur ses fiches. Deux cas :
+    - (a) **voie du bureau, s53 c3** : le bureau saisit l'adresse `a@` (titulaire de la fiche A) sur une fiche B qui a déjà une adresse titulaire `b@`, par exemple un conjoint. s53 c3 demande « même personne ? » puis relie la fiche au compte. s54 c8 bloque avec un message. Les deux critères ne peuvent pas passer ensemble.
+    - (b) **voie de l'import, s53 c5 et s54 c11** : la cellule de la fiche A contient « `a@` », celle de la fiche B « `b@`, `a@` ». `a@` est titulaire de A et serait supplémentaire sur B, donc elle est écartée et listée au rapport. La fiche B n'est pas reliée au compte de `a@`, et le propriétaire ne voit pas ce terrain. La fixture de s53 c5 (« 10 adresses partagées », qui reproduit le fichier réel) peut contenir ce cas. Son test, vert à la livraison de s53, peut alors casser à celle de s54.
+  - Correction attendue, sans revenir sur la décision : écrire dans s53 (c3 et c5, ou la note l. 3984-3990) que s54 c8 restreint la règle de l'adresse partagée. Une adresse partagée n'est acceptée que si elle a la même position, titulaire ou supplémentaire, sur chaque fiche ; le cas mixte est refusé ou écarté au rapport, même quand il s'agit de la même personne. Demander aussi que le test de s53 c5 soit rejoué après s54. Si ce n'est pas l'effet voulu, la règle de c8 doit être affinée par l'utilisatrice : ce n'est pas au découpage d'en décider.
 
 ### Mineurs
 
-- **m1 — s54 c8 (l. 4018) : l'invariant du critère contredit son propre cas de suppression.**
-  - Le critère pose qu'« une fiche qui porte au moins une adresse active a **exactement** une adresse titulaire ».
-  - Il dit ensuite que supprimer l'adresse titulaire ne promeut aucune adresse : la fiche est « sans adresse titulaire » tant que le bureau n'a pas désigné la nouvelle « parmi les adresses actives ».
-  - Dans cet état, la fiche a des adresses actives et zéro titulaire. Un test de l'invariant échoue donc sur le cas que le même critère exige.
-  - Correction attendue : écrire « **au plus** une adresse titulaire ». Préciser aussi que, dans l'état « sans adresse titulaire », aucune adresse de la fiche ne se connecte tant que le paramètre de la réserve est désactivé.
+- **m1 — s54 c8 : la décision ne couvre qu'un sens, et le cas « proche lui-même membre » revient par l'ordre inverse.**
+  - c8 empêche d'**ajouter comme supplémentaire** une adresse déjà titulaire ailleurs. Il n'empêche pas l'inverse : une adresse déjà supplémentaire sur la fiche du parent qui devient **titulaire** d'une nouvelle fiche.
+  - Ce changement de titre peut arriver par plusieurs voies : l'enfant achète un terrain plus tard et le bureau crée sa fiche (s53 c3) ; une modification de l'adresse titulaire (s54 c9) ; le fichier annuel (s56 c3) ; la désignation arbitraire de s56 c4.
+  - On retrouve alors exactement la situation que la décision voulait éviter, avec les effets déjà décrits à la passe précédente : accès maintenu par s57, copie de s40 c3 élargie aux fiches du parent, droits de vote de s33 rattachés au même compte.
+  - Correction attendue : dire dans c8 si le blocage vaut aussi dans ce sens (« une adresse supplémentaire d'une fiche ne peut pas devenir titulaire d'une autre fiche »), et le tester sur les mêmes voies.
 
-- **m2 — s56 c3 face à s54 c8 : le « remplacement » de l'adresse titulaire par le fichier n'est pas défini.**
-  - s56 c3 dit que « la nouvelle adresse devient titulaire ». Trois cas restent sans règle :
-    - (a) l'ancienne adresse titulaire disparaît du fichier, mais une adresse supplémentaire déjà présente (celle d'un enfant, venue du fichier) y reste. S'agit-il d'un remplacement, donc d'une promotion de l'adresse du proche, que la note de s54 l. 4063 interdit (« ne jamais promouvoir d'office ») ? Ou d'une suppression, qui laisse la fiche sans titulaire (s54 c8) ?
-    - (b) la règle « dans une cellule d'import à plusieurs adresses, la première est titulaire » (s54 c8) s'applique-t-elle aussi à une fiche **existante** lors de l'import annuel ? Si oui, un simple changement d'ordre dans la cellule déplace le titre.
-    - (c) une adresse venue du fichier, non titulaire, qui disparaît du nouveau fichier est-elle retirée ? s56 c7 ne protège que les adresses ajoutées sur le site.
-  - La lecture prudente est probablement la bonne : « nouvelle » veut dire « absente de la fiche jusque-là ». Mais le cas (a) touche directement la réserve RGPD.
-  - Correction attendue : une phrase dans s56 c3, par exemple « remplacement = ancienne titulaire absente du fichier et adresse nouvelle pour la fiche ; une adresse supplémentaire existante n'hérite jamais du titre par le fichier ». Dire aussi ce que devient une adresse venue du fichier qui disparaît.
+- **m2 — s56 c4 renvoie à une correction par le bureau que s54 ne permet pas.**
+  - s56 c4 notifie le bureau de chaque désignation arbitraire « pour vérifier le choix […] et le corriger au besoin (s54) ».
+  - s54 c9 donne au bureau deux opérations : modifier la valeur de l'adresse titulaire, ou la supprimer en désignant une remplaçante. Aucune ne permet de **changer de titulaire entre deux adresses actives en gardant les deux**. Pour corriger le choix du site (le mauvais enfant désigné), le bureau devrait supprimer une adresse qu'il veut garder.
+  - Correction attendue : ajouter à s54 c9 « le bureau désigne une autre adresse active comme titulaire ; l'ancienne devient supplémentaire », avec son test.
 
-- **m3 — Tableau des réserves, ligne « Avis RGPD sur l'accès d'un tiers » (l. 101) : texte périmé.**
-  - Les colonnes « Bloque » et « Contournement prévu » parlent encore des « notes internes dans la copie en ligne » et disent que « s40 exclut les notes internes ».
-  - Depuis la correction de M2, s40 c2 et la note de s24 (l. 2054) excluent **tout le fil de s24**, notes **et** échanges.
-  - Il faut aligner la ligne, sans quoi le tableau dit moins que la story.
+- **m3 — s56 c4 (l. 4133) et c3 (l. 4132) : trois imprécisions qui gênent le test.**
+  - (a) **Canal de la notification.** Le texte ne dit pas comment le bureau est notifié : rapport éphémère de l'ADR 047, notification en back-office ou email. Un email serait décompté du budget de s52 (règle transverse), et s56 ne dépend pas de s52. L'ordre de l'en-tête la place probablement après, mais rien ne le déclare.
+  - (b) **Adresses candidates et ordre d'application de c4 et c5.** Si la désignation de c4 retient une adresse venue d'un fichier précédent et absente du nouveau fichier, elle devient titulaire et échappe à c5, qui ne vise que les adresses « non titulaires ». Il faut préciser que les candidates sont les adresses qui restent actives après l'import : présentes dans le fichier, ou ajoutées sur le site.
+  - (c) **Plusieurs adresses nouvelles.** s56 c3 dit « la nouvelle adresse devient titulaire ». Si la cellule en apporte plusieurs, laquelle prend le titre ? Probablement la première, par analogie avec la règle de création de s54 c9, mais ce n'est pas écrit.
 
-- **m4 — En-tête l. 31-34 : la place de s25 n'est plus décrite.**
-  - La correction de m5 a ajouté s25 aux dépendances de s53. Or s53 doit passer avant s18 et s19. s25 (bloc C) doit donc s'exécuter avant s18 et s19 (bloc B).
-  - La phrase « pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution » devient fausse pour s25.
-  - L'en-tête place aussi s54 « après s25 », alors que s54 dépend maintenant de s26.
-  - Sans effet bloquant : les dépendances déclarées suffisent au tri. C'est sans effet pratique si s25 et s26 sont déjà livrées. Il faut tout de même corriger la phrase (« s53 après s25 », « s54 après s26 »).
-
-- **m5 — s40 c2 : dépendances non déclarées.**
-  - Le critère nomme « ses questions au bureau (s23) et ses signalements (s22) ».
-  - s40 ne dépend ni de s22 ni de s23. s23 n'arrive que par s38, et s22 par rien.
-  - Sans effet bloquant, puisque les deux ids précèdent s40. Il faut les ajouter à la liste et au récapitulatif.
-
-- **m6 — s53 c3 et s54 c2 : « titulaire » a deux sens.**
-  - s53 c3 dit que le site « nomme le **titulaire du compte** existant », c'est-à-dire la personne.
-  - s54 introduit l'« **adresse titulaire** » d'une fiche, une notion différente.
-  - Les deux sont désormais au cœur des mêmes tests. Il faut renommer l'un des deux, par exemple « le détenteur du compte » dans s53.
-
-- **m7 — s29, note l. 2455-2457, face à c6 : une décision déjà prise est présentée comme ouverte.**
-  - La note laisse « à trancher en `/ks-design` » le choix entre une relance par accès et un email par facture.
-  - Or c6 tranche déjà : une adresse ne reçoit pas deux fois la même relance pour une même échéance, et l'échéance est commune à tous (même note). Il y a donc une relance par adresse.
-  - Il faut préciser que le design ne décide que de la présentation des factures regroupées dans cette relance, pas du nombre d'envois.
-
-- **m8 — s53, règle de l'adresse partagée (l. 3984-3988), face au cas d'usage de s54 : le proche qui est lui-même membre.**
-  - La règle pose qu'une adresse portée par plusieurs fiches désigne « toujours **une seule personne** ».
-  - Or le cas d'usage de s54 est l'enfant qui gère l'espace de son parent avec sa propre adresse. Si cet enfant possède lui-même un terrain dans l'association, ajouter son adresse à la fiche du parent déclenche la confirmation « même personne » de s53 c3, renvoyée par s54 c7. Le bureau doit alors mentir ou refuser.
-  - Selon le choix, les effets divergent :
-    - s57 : la vente de tous les terrains du parent laisse l'accès ouvert, puisque le « même membre » possède encore le terrain de l'enfant ;
-    - s40 c3 : la copie de l'enfant inclut toutes les fiches du parent, fil de s24 exclu ;
-    - s33 : les droits de vote sont rattachés au même compte.
-  - Il faut écrire que ce cas n'est pas servi en V1 (refus, s'adresser au bureau), ou le renvoyer explicitement à l'ADR de la table de liaison de s53/s54, à trancher en `/ks-research`.
+- **m4 — Tableau des réserves (l. 101), s54 c2 et la note l. 4052-4056 ne mentionnent pas l'exception de s56 c4.**
+  - La désignation arbitraire peut faire d'une adresse ajoutée par un proche (s54 c4 et c5) l'adresse titulaire. Elle se connecte alors **paramètre de la réserve désactivé**, avant l'avis du conseil RGPD. La note de s54 (l. 4066-4068) l'assume comme exception décidée le 16/11.
+  - Le tableau des réserves dit pourtant encore que la connexion supplémentaire est « coupée par un paramètre du tenant » et que « ni s54 ni s40 n'attendent l'avis ». La note de s54 dit aussi que l'activer « est une décision de l'association **après** l'avis ».
+  - Ce n'est pas une contestation de la décision : le tableau, qui sert de référence pour la réserve, en dit moins que la story. Correction attendue : citer s56 c4 dans la ligne « Avis RGPD sur l'accès d'un tiers » et inclure ce cas dans la question posée au conseil. Le test « dans les deux états » de s54 c2 peut aussi couvrir une adresse devenue titulaire par s56 c4.
 
 ### Suivi de la revue précédente
 
-| Constat (cinquième passe) | État |
+| Constat (sixième passe) | État |
 | --- | --- |
-| M1 (succession de l'adresse titulaire) | corrigé : s54 c8 nouveau, c5 étendu à « ou modifiée », s56 c3 nouveau, note l. 4061-4063. Restent les imprécisions m1, m2 et m6. |
-| M2 (fil de s24 dans la copie en ligne) | corrigé : s40 c2 exclut notes **et** échanges, s40 c6 et la note l. 3031-3035 sont alignés, la note de s24 (l. 2050-2055) aussi. Reste le tableau des réserves (m3). |
-| m1 (s29, budget de 100) | corrigé (l. 2452-2453 : 300, réserve 100, 200 reportables) |
-| m2 (s38, décompte des dépendances) | corrigé (« trente et une », l. 2901, l. 2926-2927, l. 4307) |
-| m3 (s53 c5, fichier réel) | corrigé (fixture anonymisée versionnée) |
-| m4 (retrait d'une adresse) | corrigé (s54 c9 « à cette fiche », cohérent avec s53 c6) |
-| m5 (dépendances incomplètes) | corrigé (s25 dans s53, s26 dans s54, s20 dans s56, en-tête l. 33). La correction fait naître m4. |
-| m6 (s56 c2, valeur modifiée sur le site) | corrigé (exception dans le critère) |
-| m7 (s57 et plusieurs adresses) | corrigé (s57 c1 « toutes les adresses », dépendance à s54, s54 c4 « ajoute ») |
-| m8 (identité d'un membre, s27 c5) | corrigé (exception nommée l. 64-66, décompte « en fiches » dans s27 c5) |
-| m9 (écran de s57 c2) | corrigé (fiche membre du back-office) |
-| m10 (doublon dans s40) | corrigé (critère unique c6, « avec ou sans compte ») |
-| m11 (envois aux adresses supplémentaires) | corrigé (tableau des réserves et note de s54 l. 4055-4059) |
+| m1 (invariant contredit par la suppression) | corrigé selon la décision du 16/11 : s54 c9 et la note l. 4069-4071 disent que l'état « sans titulaire » n'existe pas. La correction fait naître M1 (dernière adresse) et m2 (changement de titulaire). |
+| m2 (remplacement par le fichier) | corrigé : s56 c3, c4 (désignation et notification) et c5 (adresse venue du fichier qui disparaît) ; s54 c9 dit que l'ordre dans la cellule ne déplace pas le titre d'une fiche existante. Restent m3 et m4. |
+| m3 (tableau des réserves périmé) | corrigé (l. 101 : « tout le fil de s24 », notes et échanges) |
+| m4 (place de s25 dans l'en-tête) | corrigé (l. 31-33 : s53 après s25, s25 avant s18 et s19, s54 après s26) |
+| m5 (dépendances de s40) | corrigé (s22 et s23 ajoutés, l. 3025 et l. 4259) |
+| m6 (deux sens de « titulaire ») | corrigé (s53 c3 : « détenteur du compte ») |
+| m7 (note de s29 face à c6) | corrigé (l. 2455-2457 : le design ne décide que de la présentation) |
+| m8 (proche lui-même membre) | corrigé selon la décision du 16/11 : s54 c8 et la note de s53 l. 3988-3990. La correction fait naître M2 (même personne en position mixte) et m1 (sens inverse). |
 
 ## Verdict
 
@@ -172,9 +160,14 @@ Aucun.
 - Aucune fuite du cimetière.
 - Ids conformes, décomptes exacts, aucun 5.
 - L'ordre est exécutable : pas de cycle, pas de référence en avant bloquante.
-- Les treize constats de la cinquième passe sont corrigés.
+- Les huit mineurs de la sixième passe sont corrigés sur le fond.
 
-Aucun constat n'est critique ni majeur : le découpage passe le gate. Je recommande de traiter m1, m2 et m8 avant le `/ks-research` de s53, s54 et s56. Ils touchent la réserve RGPD et l'accès aux données d'un tiers, et ils se corrigent en une phrase chacun. Les autres mineurs sont rédactionnels.
+Aucun constat n'est critique : le découpage passe le gate. Je recommande tout de même de traiter M1 et M2 avant le `/ks-research` de s54 et de s56 :
 
-Max severity: minor
+- M1 fait régresser un critère livré (s12d) ;
+- M2 restreint en silence la ligne « Un seul accès pour plusieurs terrains » et peut casser le test de s53 c5.
+
+Chacun se règle en une phrase, mais M2 demande une décision de l'utilisatrice sur la portée de la règle du 16/11. m1 à m4 se règlent en une phrase chacun ; m4 est le plus pressant des quatre, parce qu'il touche la réserve RGPD.
+
+Max severity: major
 Stories ready: yes
