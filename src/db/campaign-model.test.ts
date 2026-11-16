@@ -2,6 +2,7 @@ import {getTableConfig} from 'drizzle-orm/pg-core'
 import {describe, expect, it} from 'vitest'
 
 import {organization, user} from './models/auth-model'
+import * as campaignModels from './models/campaign-model'
 import {
   campaign,
   campaignPart,
@@ -9,7 +10,6 @@ import {
   campaignRecipient,
   campaignRecipientStatusEnum,
   campaignStatusEnum,
-  memberUnsubscribe,
 } from './models/campaign-model'
 import {memberProfile} from './models/member-profile-model'
 
@@ -212,6 +212,7 @@ describe('campaign_recipient (ADR 051)', () => {
         'organization_id',
         'campaign_id',
         'member_profile_id',
+        'email',
         'part_id',
         'status',
         'unsubscribe_token',
@@ -226,6 +227,7 @@ describe('campaign_recipient (ADR 051)', () => {
     expect(t.column('unsubscribe_token')?.notNull).toBe(true)
     expect(t.column('sent_at')?.notNull).toBe(false)
     expect(t.column('member_profile_id')?.notNull).toBe(false)
+    expect(t.column('email')?.notNull).toBe(true)
   })
 
   it('suit son association et sa campagne, survit à la fiche (SET NULL)', () => {
@@ -238,11 +240,16 @@ describe('campaign_recipient (ADR 051)', () => {
     expect(t.foreignKeyOn('member_profile_id')?.onDelete).toBe('set null')
   })
 
-  it('n’écrit jamais deux fois à la même fiche, et un jeton est unique', () => {
-    expect(t.uniqueColumns()).toContainEqual([
+  it('n’écrit jamais deux fois à la même adresse, et un jeton est unique (ADR 057)', () => {
+    expect(t.uniqueColumns()).not.toContainEqual([
       'campaign_id',
       'member_profile_id',
     ])
+    const byAddress = t.config.indexes.find(
+      (i) => i.config.name === 'campaign_recipient_campaign_email_idx'
+    )
+    expect(byAddress?.config.unique).toBe(true)
+    expect(byAddress?.config.columns).toHaveLength(2)
     expect(t.uniqueColumns()).toContainEqual([
       'organization_id',
       'unsubscribe_token',
@@ -254,31 +261,8 @@ describe('campaign_recipient (ADR 051)', () => {
   })
 })
 
-describe('member_unsubscribe (ADR 051)', () => {
-  const t = describeTable(memberUnsubscribe)
-
-  it('porte le refus d’une fiche, une ligne par fiche', () => {
-    expect(t.config.name).toBe('member_unsubscribe')
-    expect(t.config.columns.map((c) => c.name).sort()).toEqual(
-      [
-        'id',
-        'organization_id',
-        'member_profile_id',
-        'campaign_id',
-        'created_at',
-      ].sort()
-    )
-    expect(t.column('member_profile_id')?.notNull).toBe(true)
-    expect(t.uniqueColumns()).toContainEqual([
-      'organization_id',
-      'member_profile_id',
-    ])
-  })
-
-  it('disparaît avec la fiche (CASCADE), survit à la campagne (SET NULL)', () => {
-    expect(t.foreignKeyOn('organization_id')?.onDelete).toBe('cascade')
-    expect(t.foreignKeyOn('member_profile_id')?.onDelete).toBe('cascade')
-    expect(t.referencedTableOf('campaign_id')).toBe('campaign')
-    expect(t.foreignKeyOn('campaign_id')?.onDelete).toBe('set null')
+describe('member_unsubscribe (ADR 057)', () => {
+  it('a disparu : le refus est porté par l’adresse de fiche', () => {
+    expect('memberUnsubscribe' in campaignModels).toBe(false)
   })
 })

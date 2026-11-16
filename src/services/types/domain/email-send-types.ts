@@ -5,11 +5,16 @@
  * decompte aucun (critere 8).
  */
 
-/** Natures d'un envoi d'association. s29 et s42 y ajoutent la leur. */
+/**
+ * Natures d'un envoi d'association. s29 et s42 y ajoutent la leur. s54 : le
+ * lien de confirmation d'une adresse ajoutee ou modifiee par un membre
+ * (ADR 056 §6), decompte et reporte au lendemain si le budget est epuise.
+ */
 export const TENANT_EMAIL_NATURES = [
   'login',
   'campaign',
   'board_notification',
+  'member_email_confirmation',
 ] as const
 
 export type TenantEmailNature = (typeof TENANT_EMAIL_NATURES)[number]

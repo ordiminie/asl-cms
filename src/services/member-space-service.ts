@@ -111,6 +111,12 @@ const postalContactOf = (profile: MyPostalContactDTO): MyPostalContactDTO => ({
   city: profile.city,
 })
 
+/** Une fiche telle que « Mes coordonnees » la lit : sans email (s54). */
+type ContactProfile = MyPostalContactDTO & {
+  name: string
+  currentParcelNumbers: string[]
+}
+
 const postalKeyOf = (profile: MyPostalContactDTO): string =>
   JSON.stringify(postalContactOf(profile))
 
@@ -120,7 +126,7 @@ const postalKeyOf = (profile: MyPostalContactDTO): string =>
  * fiches dont le nom n'est pas celui du compte.
  */
 const contactGroupsOf = (
-  profiles: MyMemberProfileRow[],
+  profiles: ContactProfile[],
   accountName: string
 ): MyContactGroupDTO[] => {
   const groups = new Map<string, MyContactGroupDTO>()
@@ -152,13 +158,12 @@ const contactGroupsOf = (
  * groupes quand elles divergent.
  */
 const toMyContact = (
-  profiles: MyMemberProfileRow[],
+  profiles: ContactProfile[],
   accountName: string
 ): MyContactDTO => {
   const [first] = profiles
   const groups = contactGroupsOf(profiles, accountName)
   return {
-    email: first.email,
     ...postalContactOf(first),
     landCount: profiles.length,
     divergent: groups.length > 0,

@@ -26,13 +26,21 @@ vi.mock('@/services/authentication/auth-service', () => ({
 }))
 vi.mock('@/app/dal/member-space-dal', () => ({
   getMyContactDal: vi.fn(),
+  getMyEmailsDal: vi.fn(() => Promise.resolve(undefined)),
   getMyIncidentReportsDal: vi.fn(),
   getMyLandsDal: vi.fn(),
 }))
 vi.mock('./actions', () => ({updateMyContactAction: vi.fn()}))
+vi.mock('./email-actions', () => ({
+  addMyEmailAction: vi.fn(),
+  cancelMyPendingEmailAction: vi.fn(),
+  correctMyPendingEmailAction: vi.fn(),
+  updateMyEmailAction: vi.fn(),
+}))
 
 import {
   getMyContactDal,
+  getMyEmailsDal,
   getMyIncidentReportsDal,
   getMyLandsDal,
 } from '@/app/dal/member-space-dal'
@@ -75,7 +83,6 @@ const parcelsOf = (overrides: Partial<MyLandDTO> = {}): MyLandsDTO => ({
 })
 
 const CONTACT: MyContactDTO = {
-  email: 'claire.meunier@exemple.fr',
   phone: '06 12 34 56 78',
   addressLine: '4 chemin des Oliviers',
   addressComplement: null,
@@ -162,7 +169,7 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
     expect(screen.queryByText('Bonjour Claire Meunier')).toBeNull()
     expect(screen.queryByText('Espace personnel')).toBeNull()
     expect(screen.queryByRole('region', {name: 'Mes terrains'})).toBeNull()
-    expect(myContact()).toHaveTextContent('claire.meunier@exemple.fr')
+    expect(myContact()).toHaveTextContent('06 12 34 56 78')
     expect(
       isBefore(
         myContact(),
@@ -228,7 +235,6 @@ describe('/dashboard — « Mes terrains » (s12d, écran C)', () => {
     await renderDashboard()
 
     await screen.findByRole('region', {name: 'Mes coordonnées'})
-    expect(myContact()).toHaveTextContent('claire.meunier@exemple.fr')
     expect(myContact()).toHaveTextContent('06 12 34 56 78')
     expect(isBefore(myParcels(), myContact())).toBe(true)
     expect(
@@ -238,6 +244,42 @@ describe('/dashboard — « Mes terrains » (s12d, écran C)', () => {
       )
     ).toBe(true)
     expect(screen.getByText(SECURITY_DESCRIPTION)).toBeInTheDocument()
+  })
+
+  it('s54 : « Mes adresses email » juste après « Mes coordonnées »', async () => {
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyEmailsDal).mockResolvedValue({
+      landCount: 1,
+      confirmationDays: 7,
+      emails: [
+        {
+          email: 'claire.meunier@exemple.fr',
+          status: 'active',
+          own: true,
+          holder: true,
+          pendingId: null,
+          ownEmailId: 'e1',
+          replacesOwn: false,
+          sentAt: null,
+          expiresAt: null,
+          onlyParcelNumbers: null,
+        },
+      ],
+    })
+
+    await renderDashboard()
+
+    const emails = await screen.findByRole('region', {
+      name: 'Mes adresses email',
+    })
+    expect(emails).toHaveTextContent('claire.meunier@exemple.fr')
+    expect(isBefore(myContact(), emails)).toBe(true)
+    expect(
+      isBefore(
+        emails,
+        screen.getByRole('heading', {level: 2, name: 'Sécurité du compte'})
+      )
+    ).toBe(true)
   })
 
   it('garde la carte « Sécurité du compte » de s46 sous « Mes terrains »', async () => {

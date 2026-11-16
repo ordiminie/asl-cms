@@ -233,7 +233,9 @@ export const createMyQuestionService = async (
       categoryId: category.id,
       body,
     })
-    return {question, category, profile}
+    // s54 : l'adresse de la personne connectee (un proche, peut-etre), pour
+    // que le bureau lui reponde, pas la titulaire de la fiche.
+    return {question, category, profile: {...profile, email: authUser.email}}
   })
   if (!written) return {status: 'not_found'}
 
@@ -253,7 +255,7 @@ export const createMyQuestionService = async (
  */
 const readForMyProfile = async <T>(
   organizationId: string,
-  read: (profile: MemberProfileIdentity) => Promise<T>
+  read: (profile: MemberProfileIdentity, sessionEmail: string) => Promise<T>
 ): Promise<T | undefined> => {
   const parsed = memberQuestionOrganizationIdSchema.safeParse(organizationId)
   if (!parsed.success) {
@@ -265,7 +267,7 @@ const readForMyProfile = async <T>(
     const [profile] = orderMyProfiles(
       await getMemberProfilesByUserIdDao(parsed.data, authUser.id)
     )
-    return profile ? read(profile) : undefined
+    return profile ? read(profile, authUser.email) : undefined
   })
 }
 
@@ -281,13 +283,16 @@ export const listMyQuestionCategoriesService = async (
     return rows.map((row) => ({id: row.id, name: row.name}))
   })
 
-/** Ce que le bureau recevra du membre : le nom et l'email de sa fiche. */
+/**
+ * Ce que le bureau recevra du membre : le nom de sa fiche et l'adresse de la
+ * personne connectee (s54).
+ */
 export const getMyQuestionIdentityService = async (
   organizationId: string
 ): Promise<MyQuestionIdentityDTO | undefined> =>
-  readForMyProfile(organizationId, async (profile) => ({
+  readForMyProfile(organizationId, async (profile, sessionEmail) => ({
     name: profile.name,
-    email: profile.email,
+    email: sessionEmail,
   }))
 
 /** Une page de la file du bureau, la plus recente d'abord (critere 4). */

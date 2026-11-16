@@ -25,6 +25,7 @@ const profile = (
   city: 'Lacanau',
   mailOnly: true,
   incomplete: false,
+  emails: [],
   account: {status: 'mail_only'},
   roleCard: {
     reading: 'no_account',
@@ -47,19 +48,6 @@ const OPEN_PROFILE = profile({
     otherProfiles: [],
   },
 })
-
-const boardProfile = (boardRole: 'board' | 'owner') =>
-  profile({
-    email: 'helene@example.test',
-    mailOnly: false,
-    account: {
-      status: 'open',
-      loginEmail: 'helene@example.test',
-      boardRole,
-      accountName: 'Hélène Roy',
-      otherProfiles: [],
-    },
-  })
 
 /** Une fiche d'un compte qui porte deux autres terrains (s53). */
 const sharedProfile = (boardRole: 'board' | 'owner' | null = null) =>
@@ -110,6 +98,10 @@ const actions = {
   addExchangeAction: vi.fn(),
   updateNoteAction: vi.fn(),
   deleteNoteAction: vi.fn(),
+  addEmailAction: vi.fn(),
+  updateEmailAction: vi.fn(),
+  removeEmailAction: vi.fn(),
+  designateHolderAction: vi.fn(),
 }
 
 /**
@@ -193,13 +185,48 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
     expect(screen.queryByText('Fiche incomplète')).not.toBeInTheDocument()
   })
 
-  it('ne porte aucun badge pour une fiche qui a un email', () => {
+  it('ne porte aucun badge pour une fiche qui a un email, listé dans sa carte (s54)', () => {
     renderDetail({
-      profile: profile({email: 'claire@example.fr', mailOnly: false}),
+      profile: profile({
+        email: 'claire@example.fr',
+        mailOnly: false,
+        emails: [
+          {
+            id: 'e1',
+            email: 'claire@example.fr',
+            role: 'holder',
+            status: 'active',
+            origin: 'site',
+            addedByName: null,
+            expiresAt: null,
+            replacesEmailId: null,
+            boardRole: null,
+            otherProfiles: [],
+          },
+        ],
+      }),
     })
 
     expect(screen.queryByText('Courrier uniquement')).not.toBeInTheDocument()
-    expect(screen.getByText('claire@example.fr')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', {name: 'Adresses email'})).getAllByText(
+        'claire@example.fr'
+      ).length
+    ).toBeGreaterThan(0)
+  })
+
+  it('place la carte « Adresses email » entre « Coordonnées » et « Accès à l’espace membre » (s54, écran 4)', () => {
+    renderDetail()
+
+    const titles = screen
+      .getAllByRole('heading', {level: 2})
+      .map((heading) => heading.textContent)
+    expect(titles.indexOf('Adresses email')).toBe(
+      titles.indexOf('Coordonnées') + 1
+    )
+    expect(titles.indexOf('Accès à l’espace membre')).toBe(
+      titles.indexOf('Adresses email') + 1
+    )
   })
 
   it('accorde « Non renseignée » et « Non renseigné » aux libellés', () => {
@@ -216,7 +243,7 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
     const valueOf = (label: string) =>
       within(contact).getByText(label).nextElementSibling
 
-    expect(valueOf('Adresse email')).toHaveTextContent(/^Non renseignée$/)
+    expect(within(contact).queryByText('Adresse email')).toBeNull()
     expect(valueOf('Téléphone')).toHaveTextContent(/^Non renseigné$/)
     expect(valueOf('Adresse postale')).toHaveTextContent(/^Non renseignée$/)
   })
@@ -268,7 +295,6 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
 
     expect(sentFields(actions.updateContactAction)).toEqual({
       memberProfileId: PROFILE_ID,
-      email: '',
       phone: '06 12 34 56 78',
       addressLine: '8 chemin des Pins',
       addressComplement: '',
@@ -748,29 +774,11 @@ describe('MemberProfileDetail — carte « Accès à l’espace membre » (s12d)
     expect(accessCard()).not.toHaveTextContent('Membre du bureau')
   })
 
-  it.each([
-    [
-      'board',
-      'Membre du bureau : son adresse peut être modifiée, pas supprimée.',
-    ],
-    ['owner', 'Président(e) : son adresse peut être modifiée, pas supprimée.'],
-  ] as const)('dit le rôle %s au bureau', (role, text) => {
-    renderDetail({profile: boardProfile(role)})
+  it('ne dit plus le rôle au bureau ni les autres fiches : la carte des adresses les porte, par adresse (s54)', () => {
+    renderDetail({profile: sharedProfile('board')})
 
-    expect(accessCard()).toHaveTextContent(text)
-  })
-
-  it('montre l’état enregistré pendant une modification non validée', async () => {
-    renderDetail({profile: OPEN_PROFILE})
-
-    await userEvent.click(
-      screen.getByRole('button', {name: 'Modifier les coordonnées'})
-    )
-    await userEvent.clear(screen.getByLabelText(/Adresse email/))
-
-    expect(accessCard()).toHaveTextContent(
-      'Compte ouvert. Hélène Roy peut se connecter à son espace avec helene@example.test.'
-    )
+    expect(accessCard()).not.toHaveTextContent('Membre du bureau')
+    expect(accessCard()).not.toHaveTextContent('Ce compte réunit aussi')
   })
 })
 
@@ -793,169 +801,6 @@ describe('MemberProfileDetail — création (écran B, s12d)', () => {
   })
 })
 
-describe('MemberProfileDetail — l’accès suit l’adresse (écran A, s12d)', () => {
-  const editContact = async () => {
-    await userEvent.click(
-      screen.getByRole('button', {name: 'Modifier les coordonnées'})
-    )
-    return screen.getByLabelText(/Adresse email/)
-  }
-
-  const save = () =>
-    userEvent.click(
-      screen.getByRole('button', {name: 'Enregistrer les coordonnées'})
-    )
-
-  it('avertit sous le champ, avant l’enregistrement, quand l’adresse est vidée (A3)', async () => {
-    renderDetail({profile: OPEN_PROFILE})
-    const email = await editContact()
-
-    await userEvent.clear(email)
-
-    expect(
-      screen.getByText(
-        /Sans adresse email, Hélène Roy ne pourra plus se connecter à son espace\. Sa fiche, ses parcelles et son historique sont conservés\. Les envois partiront par courrier\./
-      )
-    ).toBeInTheDocument()
-    expect(actions.updateContactAction).not.toHaveBeenCalled()
-  })
-
-  it('avertit quand l’adresse est remplacée (A6)', async () => {
-    renderDetail({profile: OPEN_PROFILE})
-    const email = await editContact()
-
-    await userEvent.clear(email)
-    await userEvent.type(email, 'h.roy@example.test')
-
-    expect(
-      screen.getByText(
-        /Hélène Roy ne pourra plus se connecter avec helene@example\.test\. Son espace s’ouvrira avec h\.roy@example\.test\./
-      )
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByText('Son rôle au bureau suit la nouvelle adresse.')
-    ).toBeNull()
-  })
-
-  it('dit au bureau que le rôle suit la nouvelle adresse (A10)', async () => {
-    renderDetail({profile: boardProfile('board')})
-    const email = await editContact()
-
-    await userEvent.clear(email)
-    await userEvent.type(email, 'h.roy@example.test')
-
-    expect(
-      screen.getByText(/Son rôle au bureau suit la nouvelle adresse\./)
-    ).toBeInTheDocument()
-  })
-
-  it('n’avertit pas quand seule la casse change', async () => {
-    renderDetail({profile: OPEN_PROFILE})
-    const email = await editContact()
-
-    await userEvent.clear(email)
-    await userEvent.type(email, 'Helene@Example.test')
-
-    expect(screen.queryByText(/ne pourra plus se connecter/)).toBeNull()
-  })
-
-  it('n’écrit pas « Facultatif » sur l’adresse d’un membre du bureau', async () => {
-    renderDetail({profile: boardProfile('owner')})
-    await editContact()
-
-    expect(
-      screen.getByText('Adresse email', {selector: 'label'})
-    ).not.toHaveTextContent('Facultatif')
-  })
-
-  it.each([
-    ['closed', '', 'Accès à l’espace fermé.'],
-    [
-      'opened',
-      'helene@example.test',
-      'Compte ouvert : Hélène Roy peut désormais se connecter avec helene@example.test.',
-    ],
-    [
-      'replaced',
-      'H.Roy@example.test',
-      'Hélène Roy se connecte désormais avec h.roy@example.test. L’accès avec helene@example.test est fermé.',
-    ],
-  ] as const)(
-    'confirme le changement d’accès %s (A4, A5, A7)',
-    async (accountChange, next, text) => {
-      actions.updateContactAction.mockResolvedValue({
-        status: 'saved',
-        memberProfileId: PROFILE_ID,
-        accountChange,
-      })
-      renderDetail({
-        profile: accountChange === 'opened' ? profile() : OPEN_PROFILE,
-      })
-      const email = await editContact()
-
-      await userEvent.clear(email)
-      if (next) await userEvent.type(email, next)
-      await save()
-
-      const status = await screen.findByRole('status')
-      expect(status).toHaveTextContent('Coordonnées enregistrées.')
-      expect(status).toHaveTextContent(text)
-    }
-  )
-
-  it('refuse de vider l’adresse d’un membre du bureau : résumé, message sous le champ, rien n’est enregistré (A9)', async () => {
-    actions.updateContactAction.mockResolvedValue({
-      status: 'board_email_required',
-    })
-    renderDetail({profile: boardProfile('board')})
-    const email = await editContact()
-
-    await userEvent.clear(email)
-    await save()
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Hélène Roy fait partie du bureau : son adresse lui sert à se connecter. Vous pouvez la modifier, pas la supprimer. Rien n’a été enregistré.'
-    )
-    expect(
-      screen.getByText(
-        'Saisissez une adresse email : celle d’un membre du bureau ne peut pas être supprimée.'
-      )
-    ).toBeInTheDocument()
-    expect(email).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.queryByRole('status')).toBeNull()
-  })
-
-  it('oublie la confirmation d’accès quand la fiche est masquée par <Activity>', async () => {
-    actions.updateContactAction.mockResolvedValue({
-      status: 'saved',
-      memberProfileId: PROFILE_ID,
-      accountChange: 'closed',
-    })
-    const shown = (visible: boolean) => (
-      <Activity mode={visible ? 'visible' : 'hidden'}>
-        {detailOf({profile: OPEN_PROFILE})}
-      </Activity>
-    )
-    const {rerender} = render(shown(true))
-    const email = await editContact()
-    await userEvent.clear(email)
-    await save()
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Accès à l’espace fermé.'
-    )
-
-    rerender(shown(false))
-    rerender(shown(true))
-
-    expect(screen.queryByText('Accès à l’espace fermé.')).toBeNull()
-  })
-})
-
-/**
- * s14 : la carte « Rôle dans l’association » s’insère juste après « Accès à
- * l’espace membre », avant « Parcelles » ; la confirmation vient en haut de la
- * fiche.
- */
 describe('MemberProfileDetail — carte « Rôle dans l’association » (s14)', () => {
   const memberProfile = profile({
     name: 'Lucie Moreau',
@@ -985,6 +830,7 @@ describe('MemberProfileDetail — carte « Rôle dans l’association » (s14)',
       .map((heading) => heading.textContent)
     expect(titles).toEqual([
       'Coordonnées',
+      'Adresses email',
       'Accès à l’espace membre',
       'Rôle dans l’association',
       'Parcelles',
@@ -1106,164 +952,6 @@ describe('MemberProfileDetail — désinscription des campagnes (s25)', () => {
 })
 
 describe('MemberProfileDetail — un compte, plusieurs terrains (s53)', () => {
-  const HOLDER_ID = '77777777-7777-4777-8777-777777777777'
-  const accessCard = () =>
-    screen.getByRole('region', {name: 'Accès à l’espace membre'})
-  const editContact = async () => {
-    await userEvent.click(
-      screen.getByRole('button', {name: 'Modifier les coordonnées'})
-    )
-    return screen.getByLabelText(/Adresse email/)
-  }
-  const save = () =>
-    userEvent.click(
-      screen.getByRole('button', {name: 'Enregistrer les coordonnées'})
-    )
-
-  it('3c : la carte « Accès » nomme les autres fiches du compte, chacune liée', () => {
-    renderDetail({profile: sharedProfile()})
-
-    expect(accessCard()).toHaveTextContent('Ce compte réunit aussi :')
-    expect(
-      within(accessCard()).getByRole('link', {
-        name: 'Bernard Lefèvre, parcelle 12',
-      })
-    ).toHaveAttribute('href', '/bureau/proprietaires/fiche-12')
-    expect(
-      within(accessCard()).getByRole('link', {
-        name: 'Bernard Lefèvre, parcelle 27',
-      })
-    ).toBeInTheDocument()
-  })
-
-  it('une fiche seule sur son compte ne dit rien d’autres fiches', () => {
-    renderDetail({profile: OPEN_PROFILE})
-
-    expect(accessCard()).not.toHaveTextContent('Ce compte réunit aussi')
-  })
-
-  it('3a : une adresse déjà celle d’un compte demande confirmation, puis « Oui » renvoie avec le compte', async () => {
-    actions.updateContactAction
-      .mockResolvedValueOnce({
-        status: 'email_shared',
-        holder: {
-          userId: HOLDER_ID,
-          name: 'Bernard Lefèvre',
-          profiles: [
-            {id: 'fiche-12', name: 'Bernard Lefèvre', parcelNumbers: ['12']},
-          ],
-        },
-      })
-      .mockResolvedValueOnce({
-        status: 'saved',
-        memberProfileId: PROFILE_ID,
-        accountChange: 'linked',
-        accountName: 'Bernard Lefèvre',
-      })
-    renderDetail()
-    const email = await editContact()
-
-    await userEvent.type(email, 'bernard.lefevre@exemple.fr')
-    await save()
-
-    expect(
-      await screen.findByText(
-        'Cette adresse est déjà celle du compte de Bernard Lefèvre.'
-      )
-    ).toBeInTheDocument()
-    await userEvent.click(
-      screen.getByRole('button', {name: 'Oui, relier à son compte'})
-    )
-
-    expect(actions.updateContactAction).toHaveBeenCalledTimes(2)
-    const second = actions.updateContactAction.mock.calls[1][1] as FormData
-    expect(second.get('confirmedAccountUserId')).toBe(HOLDER_ID)
-    expect(second.get('memberProfileId')).toBe(PROFILE_ID)
-    const status = await screen.findByRole('status')
-    expect(status).toHaveTextContent('Coordonnées enregistrées.')
-    expect(status).toHaveTextContent(
-      'Fiche reliée au compte de Bernard Lefèvre : ce terrain apparaît dans son espace.'
-    )
-  })
-
-  it('3a : « Non, corriger l’adresse » ne renvoie rien et rend le focus au champ', async () => {
-    actions.updateContactAction.mockResolvedValue({
-      status: 'email_shared',
-      holder: {userId: HOLDER_ID, name: 'Bernard Lefèvre', profiles: []},
-    })
-    renderDetail()
-    const email = await editContact()
-
-    await userEvent.type(email, 'bernard.lefevre@exemple.fr')
-    await save()
-    await userEvent.click(
-      await screen.findByRole('button', {name: 'Non, corriger l’adresse'})
-    )
-
-    expect(actions.updateContactAction).toHaveBeenCalledTimes(1)
-    expect(email).toHaveFocus()
-    expect(
-      screen.queryByText(
-        'Cette adresse est déjà celle du compte de Bernard Lefèvre.'
-      )
-    ).toBeNull()
-  })
-
-  it('3d : vider l’adresse d’une fiche d’un compte partagé dit que l’accès reste ouvert pour les autres terrains', async () => {
-    renderDetail({profile: sharedProfile()})
-    const email = await editContact()
-
-    await userEvent.clear(email)
-
-    expect(
-      screen.getByText(
-        /Sans adresse email, cette fiche quitte le compte de Bernard Lefèvre\. Son accès à l’espace reste ouvert pour ses 2 autres terrains\. Les envois de cette fiche partiront par courrier\./
-      )
-    ).toBeInTheDocument()
-  })
-
-  it('3d : un membre du bureau qui garde d’autres terrains peut vider l’adresse de cette fiche', async () => {
-    actions.updateContactAction.mockResolvedValue({
-      status: 'saved',
-      memberProfileId: PROFILE_ID,
-      accountChange: 'closed',
-      accountName: null,
-    })
-    renderDetail({profile: sharedProfile('board')})
-    const email = await editContact()
-
-    expect(
-      screen.getByText('Adresse email', {selector: 'label'})
-    ).toHaveTextContent('Facultatif')
-    await userEvent.clear(email)
-    expect(
-      screen.getByText(/cette fiche quitte le compte de Bernard Lefèvre/)
-    ).toBeInTheDocument()
-    await save()
-
-    const status = await screen.findByRole('status')
-    expect(status).toHaveTextContent(
-      'Fiche retirée du compte de Bernard Lefèvre. Son accès reste ouvert pour ses autres terrains.'
-    )
-  })
-
-  it('adresse remplacée sur un compte partagé : l’ancienne garde les autres terrains, le rôle ne suit pas', async () => {
-    renderDetail({profile: sharedProfile('board')})
-    const email = await editContact()
-
-    await userEvent.clear(email)
-    await userEvent.type(email, 'sci.lespins@exemple.fr')
-
-    expect(
-      screen.getByText(
-        /bernard\.lefevre@exemple\.fr ne donnera plus accès à ce terrain ; ses autres terrains restent accessibles avec elle\./
-      )
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByText('Son rôle au bureau suit la nouvelle adresse.')
-    ).toBeNull()
-  })
-
   it('3b : à l’arrivée d’une fiche créée et reliée à un compte partagé, le dit', () => {
     renderDetail({created: true, profile: sharedProfile()})
 

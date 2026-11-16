@@ -11,12 +11,15 @@ import {
   isValidationParsedZodError,
   ValidationParsedZodError,
 } from './errors/validation-error'
+import {addMemberProfileEmailService} from './member-profile-email-service'
 import {
   createMemberProfileService,
   findMemberProfileIdByPennylaneIdService,
 } from './member-profile-service'
 import {getOrganizationByIdService} from './organization-service'
 import {attachParcelService} from './parcel-ownership-service'
+import {importedEmailsPlan} from './rules/member-email-rules'
+import {MemberEmailOriginConst} from './types/domain/member-email-types'
 import {
   ImportFileRefusalConst,
   ImportMemberCandidate,
@@ -40,7 +43,9 @@ import {importMembersServiceSchema} from './validation/member-import-validation'
  * Une transaction de tenant **par membre** : sa fiche, son compte et ses
  * parcelles s'ecrivent en entier ou pas du tout, et un rejet n'arrete pas les
  * suivants. Une adresse deja celle d'un compte de l'association relie la
- * fiche a ce compte, et le regroupement est signale au rapport (s53). Tout passe par les services existants, jamais par un DAO direct
+ * fiche a ce compte, et le regroupement est signale au rapport (s53). Toutes
+ * les adresses d'une cellule sont reprises (s54) : la premiere titulaire, les
+ * suivantes supplementaires. Tout passe par les services existants, jamais par un DAO direct
  * (ADR 029) ; chacun rappelle ses propres gardes. Le journal ne recoit que des
  * comptages : le rapport porte des donnees personnelles.
  */
@@ -130,6 +135,43 @@ const createProfile = async (
   }
 }
 
+/**
+ * Les adresses suivantes de la cellule (s54, critere 11) : supplementaires,
+ * actives, d'origine fichier. Une adresse deja celle d'un compte de
+ * l'association rejoint ce compte (s53), avec le role de la cellule sur
+ * cette fiche (critere 8) ; l'import confirme de lui-meme, le service
+ * revérifie.
+ */
+const addCellEmails = async (
+  organizationId: string,
+  memberProfileId: string,
+  member: ImportMemberCandidate
+): Promise<void> => {
+  const cell = [member.email, ...(member.additionalEmails ?? [])].filter(
+    (email): email is string => Boolean(email)
+  )
+  for (const {email, role} of importedEmailsPlan([], cell).slice(1)) {
+    const input = {
+      organizationId,
+      memberProfileId,
+      email,
+      role,
+      origin: MemberEmailOriginConst.FILE,
+    }
+    const first = await addMemberProfileEmailService(input)
+    const result =
+      first.status === 'email_shared'
+        ? await addMemberProfileEmailService({
+            ...input,
+            confirmedAccountUserId: first.holder.userId,
+          })
+        : first
+    if (result.status !== 'saved' && result.status !== 'already_listed') {
+      throw new MemberRejected(ImportRejectionConst.INVALID_FIELD)
+    }
+  }
+}
+
 /** Rattache les parcelles ; rend le nombre de rattachements nouveaux. */
 const attachParcels = async (
   organizationId: string,
@@ -175,6 +217,7 @@ const writeMember = async (
     }
   }
   const profile = await createProfile(organizationId, member)
+  await addCellEmails(organizationId, profile.id, member)
   return {
     kind: 'created',
     accountOpened: profile.accountOpened,

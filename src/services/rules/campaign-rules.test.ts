@@ -459,3 +459,77 @@ describe('formatCampaignDate — la valeur de {date}', () => {
     expect(formatCampaignDate('2026-01-01')).toBe('1 janvier 2026')
   })
 })
+
+/**
+ * s54 (ADR 057) : la cible lit une ligne par (fiche, adresse active). Le
+ * groupement par adresse est inchange ; chaque adresse est un destinataire,
+ * et le refus est celui de l'adresse.
+ */
+describe('computeCampaignTarget — plusieurs adresses par fiche (s54, ADR 057)', () => {
+  const row = (
+    memberProfileId: string,
+    email: string | null,
+    unsubscribed = false
+  ) => ({
+    memberProfileId,
+    name: `Fiche ${memberProfileId}`,
+    email,
+    unsubscribed,
+    currentParcelNumbers: [],
+    accountName: null,
+  })
+
+  it('une fiche à deux adresses actives donne deux destinataires, chacun avec son adresse (critère 3)', () => {
+    const target = computeCampaignTarget([
+      row('dubois', 'jean@exemple.fr'),
+      row('dubois', 'claire@exemple.fr'),
+    ])
+
+    expect(target.recipients.map((recipient) => recipient.email)).toEqual([
+      'jean@exemple.fr',
+      'claire@exemple.fr',
+    ])
+    expect(target.withoutEmail).toBe(0)
+  })
+
+  it('une adresse portée par deux fiches reste un seul destinataire (s53)', () => {
+    const target = computeCampaignTarget([
+      row('lot-12', 'bernard@exemple.fr'),
+      row('lot-27', 'Bernard@Exemple.fr'),
+      row('lot-27', 'fille@exemple.fr'),
+    ])
+
+    expect(target.recipients).toHaveLength(2)
+    expect(
+      target.recipients.filter(
+        (recipient) => recipient.email?.toLowerCase() === 'bernard@exemple.fr'
+      )
+    ).toHaveLength(1)
+  })
+
+  it('le proche désinscrit ne coupe pas la titulaire : elle reste servie', () => {
+    const target = computeCampaignTarget([
+      row('dubois', 'jean@exemple.fr'),
+      row('dubois', 'claire@exemple.fr', true),
+    ])
+
+    expect(target.recipients.map((recipient) => recipient.email)).toEqual([
+      'jean@exemple.fr',
+    ])
+    expect(target.unsubscribed).toBe(1)
+  })
+
+  it('compte en fiches celles sans adresse active, en adresses les refus', () => {
+    const target = computeCampaignTarget([
+      row('courrier', null),
+      row('dubois', 'claire@exemple.fr', true),
+      row('martin', 'claire@exemple.fr'),
+    ])
+
+    expect(target).toMatchObject({
+      recipients: [],
+      withoutEmail: 1,
+      unsubscribed: 1,
+    })
+  })
+})

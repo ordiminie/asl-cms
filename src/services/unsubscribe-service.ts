@@ -3,11 +3,10 @@ import 'server-only'
 import {z} from 'zod'
 
 import {
-  createUnsubscribeIfAbsentTxnDao,
-  getMemberProfileIdsSharingEmailDao,
   getRecipientByTokenDao,
   getUnsubscribeByMemberDao,
   type RecipientByTokenRowModel,
+  unsubscribeEmailIfAbsentTxnDao,
 } from '@/db/repositories/member-unsubscribe-repository'
 import {withTenant} from '@/db/tenant-scope'
 
@@ -29,7 +28,8 @@ import {
 
 /**
  * Desinscription des campagnes (s25, ADR 051 ; l'adresse entiere depuis s53,
- * ADR 055).
+ * ADR 055 ; portee par l'adresse de fiche depuis s54, ADR 057 : le proche qui
+ * se desinscrit ne coupe pas le titulaire).
  *
  * **Sans controle d'autorisation, et c'est delibere** : le jeton aleatoire
  * de 256 bits est le seul titre, comme le visiteur anonyme de
@@ -73,9 +73,9 @@ export const getUnsubscribePageStateService = async (
 }
 
 /**
- * Enregistre le refus de la fiche du jeton **et de chaque fiche de
- * l'association qui porte la meme adresse a cet instant** (s53, ADR 055) :
- * une ligne par fiche, jamais par adresse. Idempotent.
+ * Date le refus de l'adresse de la ligne du jeton, sur **toutes** les fiches
+ * de l'association qui la portent a cet instant (ADR 057) ; les autres
+ * adresses de ces fiches ne sont pas touchees. Idempotent.
  */
 export const confirmUnsubscribeService = async (
   input: UnsubscribeRequestInput
@@ -86,20 +86,11 @@ export const confirmUnsubscribeService = async (
     if (!recipient) return {status: 'invalid'}
     if (recipient.unsubscribedAt) return {status: 'already'}
 
-    const profileIds = await getMemberProfileIdsSharingEmailDao(
+    const dated = await unsubscribeEmailIfAbsentTxnDao(
       organizationId,
-      recipient.memberProfileId
+      recipient.email
     )
-    let created = false
-    for (const memberProfileId of profileIds) {
-      const row = await createUnsubscribeIfAbsentTxnDao({
-        organizationId,
-        memberProfileId,
-        campaignId: recipient.campaignId,
-      })
-      created = created || row !== undefined
-    }
-    return created ? {status: 'unsubscribed'} : {status: 'already'}
+    return dated > 0 ? {status: 'unsubscribed'} : {status: 'already'}
   })
 }
 
@@ -109,7 +100,8 @@ const memberUnsubscribeServiceSchema = z.object({
 })
 
 /**
- * Le refus d'une fiche, pour la mention de la fiche du bureau (ecran 5).
+ * Le refus d'une fiche, pour la mention de la fiche du bureau (ecran 5) :
+ * depuis s54, quand toutes ses adresses actives ont refuse.
  * **Avec** autorisation, celle-ci : `member.profile.manage` sur
  * l'association. Lu a part de la fiche : la desinscription n'entre jamais
  * dans `toMemberProfileDto`.

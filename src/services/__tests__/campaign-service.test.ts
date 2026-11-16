@@ -575,6 +575,40 @@ describe('sendCampaignService — envoi (critères 1, 7, 9)', () => {
     expect(withTenant).toHaveBeenCalledWith(ORG_ID, expect.any(Function))
   })
 
+  it('une fiche à deux adresses actives donne deux lignes, chacune avec son adresse (s54, ADR 057)', async () => {
+    vi.mocked(getCampaignTargetRowsDao).mockResolvedValue([
+      {
+        memberProfileId: PROFILE_A,
+        name: 'Jean Dubois',
+        email: 'jean@example.fr',
+        unsubscribed: false,
+        currentParcelNumbers: ['21'],
+        accountName: 'Jean Dubois',
+      },
+      {
+        memberProfileId: PROFILE_A,
+        name: 'Jean Dubois',
+        email: 'claire@example.fr',
+        unsubscribed: false,
+        currentParcelNumbers: ['21'],
+        accountName: 'Claire Dubois',
+      },
+    ])
+
+    await sendCampaignService(sendInput)
+
+    const [campaign, , recipients] = vi.mocked(
+      createCampaignWithRecipientsTxnDao
+    ).mock.calls[0]
+    expect(campaign).toMatchObject({recipientCount: 2, withoutEmailCount: 0})
+    expect(
+      recipients.map(({memberProfileId, email}) => ({memberProfileId, email}))
+    ).toEqual([
+      {memberProfileId: PROFILE_A, email: 'jean@example.fr'},
+      {memberProfileId: PROFILE_A, email: 'claire@example.fr'},
+    ])
+  })
+
   it('n’envoie rien lui-même : la livraison est rendue à l’appelant', async () => {
     await sendCampaignService(sendInput)
 
@@ -1271,6 +1305,16 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     for (const [organizationId] of vi.mocked(withTenant).mock.calls) {
       expect(organizationId).toBe(ORG_ID)
     }
+  })
+
+  it('une adresse retirée entre la création et la livraison ne reçoit rien (s54, ADR 057)', async () => {
+    store.recipients = [{...recipientsOf(PART_1, 1)[0], email: null}]
+
+    await deliver(PART_1)
+
+    expect(sendEmailService).not.toHaveBeenCalled()
+    expect(claimRecipientForSendTxnDao).not.toHaveBeenCalled()
+    expect(statusesOf(store)).toMatchObject({r1: 'failed'})
   })
 
   it('une adresse partagée reçoit {nom} = nom du compte et {parcelle} = toutes ses parcelles (s53, ADR 055)', async () => {

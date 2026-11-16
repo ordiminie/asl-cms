@@ -103,17 +103,18 @@ export const isOwnershipDateInFuture = (date: string, today: string): boolean =>
   date > today
 
 /**
- * Fiche incomplete (decision G) : joignable par courrier uniquement, et
- * aucune adresse postale exploitable — adresse, code postal et commune tous
- * absents. Aucun envoi ne peut l'atteindre.
+ * Fiche incomplete (decision G) : joignable par courrier uniquement (aucune
+ * adresse email active, ADR 056), et aucune adresse postale exploitable —
+ * adresse, code postal et commune tous absents. Aucun envoi ne peut
+ * l'atteindre.
  */
 export const isIncomplete = (profile: {
-  email: string | null
+  mailOnly: boolean
   addressLine: string | null
   postalCode: string | null
   city: string | null
 }): boolean =>
-  profile.email === null &&
+  profile.mailOnly &&
   profile.addressLine === null &&
   profile.postalCode === null &&
   profile.city === null

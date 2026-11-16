@@ -55,6 +55,17 @@ const SHARED_FIXTURE = path.resolve(
 const SHARED_CUSTOMER_ID_PREFIX = 's53-e2e-'
 const SHARED_PARCEL_PREFIX = 'S53E2E-'
 const SHARED_EMAIL_DOMAIN = '@s53-e2e.test'
+/**
+ * s54, critère 11 : une cellule à trois adresses, et une adresse titulaire
+ * d'aucune fiche mais supplémentaire de deux. Construit à la main, anonymisé.
+ */
+const MULTIPLE_FIXTURE = path.resolve(
+  process.cwd(),
+  'e2e/fixtures/member-import-adresses-multiples.csv'
+)
+const MULTIPLE_CUSTOMER_ID_PREFIX = 's54-e2e-'
+const MULTIPLE_PARCEL_PREFIX = 'S54E2E-'
+const MULTIPLE_EMAIL_DOMAIN = '@s54-e2e.test'
 const CUSTOMER_ID_PREFIX = 's13-e2e-'
 const PARCEL_PREFIX = 'S13E2E-'
 const EMAIL_DOMAIN = '@s13-e2e.test'
@@ -131,9 +142,14 @@ const importedRowsOf = async (slug: string): Promise<ImportedRows> => {
     ['app.organization_id', organizationId],
     async (client) => {
       const profiles = await client.query(
-        `select id, pennylane_customer_id, mail_only from member_profile
-          where pennylane_customer_id like $1
-          order by pennylane_customer_id`,
+        `select p.id, p.pennylane_customer_id,
+                not exists (
+                  select 1 from member_profile_email e
+                   where e.member_profile_id = p.id and e.status = 'active'
+                ) as mail_only
+           from member_profile p
+          where p.pennylane_customer_id like $1
+          order by p.pennylane_customer_id`,
         [`${CUSTOMER_ID_PREFIX}%`]
       )
       const ownerships = await client.query(
@@ -184,6 +200,11 @@ const cleanUp = async () => {
     parcelPrefix: SHARED_PARCEL_PREFIX,
     customerIdPrefix: SHARED_CUSTOMER_ID_PREFIX,
     emailDomain: SHARED_EMAIL_DOMAIN,
+  })
+  await cleanUpPrefix({
+    parcelPrefix: MULTIPLE_PARCEL_PREFIX,
+    customerIdPrefix: MULTIPLE_CUSTOMER_ID_PREFIX,
+    emailDomain: MULTIPLE_EMAIL_DOMAIN,
   })
 }
 
@@ -488,6 +509,97 @@ test.describe('s53 — l’import relie les adresses partagées', () => {
       ])
     )
     expect(users.rowCount).toBe(15)
+    await page.context().close()
+  })
+})
+
+test.describe('s54 — l’import reprend toutes les adresses d’une cellule', () => {
+  test('critères 8 et 11 — trois adresses : la première titulaire, les suivantes supplémentaires, origine fichier ; une adresse partagée garde un seul compte', async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000)
+    const page = await newSession(browser, TENANT_A, SUPER_ADMIN)
+    await openImportFromOrganization(page, TENANT_A_SLUG)
+    await importFixture(page, MULTIPLE_FIXTURE)
+
+    await expectFigures(page, {
+      'Lignes lues': '2',
+      'Membres créés': '2',
+      'Lignes rejetées': '0',
+    })
+    await expect(page.getByText(/seule la première a été gardée/)).toHaveCount(
+      0
+    )
+
+    const organizationId = await tenantIdOf(TENANT_A_SLUG)
+    const emails = (await inTransaction(
+      ['app.organization_id', organizationId],
+      async (client) => {
+        const result = await client.query<{
+          customer: string
+          email: string
+          role: string
+          status: string
+          origin: string
+          linked: boolean
+        }>(
+          `select p.pennylane_customer_id as customer, lower(e.email) as email,
+                  e.role, e.status, e.origin,
+                  exists (
+                    select 1 from member_profile_account a
+                      join "user" u on u.id = a.user_id
+                     where a.member_profile_id = p.id
+                       and lower(u.email) = lower(e.email)
+                  ) as linked
+             from member_profile_email e
+             join member_profile p on p.id = e.member_profile_id
+            where p.pennylane_customer_id like $1
+            order by p.pennylane_customer_id, e.role, lower(e.email)`,
+          [`${MULTIPLE_CUSTOMER_ID_PREFIX}%`]
+        )
+        return result.rows
+      }
+    )) as {
+      customer: string
+      email: string
+      role: string
+      status: string
+      origin: string
+      linked: boolean
+    }[]
+
+    const first = `${MULTIPLE_CUSTOMER_ID_PREFIX}001`
+    const second = `${MULTIPLE_CUSTOMER_ID_PREFIX}002`
+    expect(
+      emails.map(({customer, email, role}) => ({customer, email, role}))
+    ).toEqual([
+      {customer: first, email: 'jean@s54-e2e.test', role: 'holder'},
+      {customer: first, email: 'claire@s54-e2e.test', role: 'additional'},
+      {customer: first, email: 'marc@s54-e2e.test', role: 'additional'},
+      {customer: second, email: 'sci@s54-e2e.test', role: 'holder'},
+      {customer: second, email: 'claire@s54-e2e.test', role: 'additional'},
+    ])
+    for (const row of emails) {
+      expect(row).toMatchObject({
+        status: 'active',
+        origin: 'file',
+        linked: true,
+      })
+    }
+
+    const accounts = (await inTransaction(
+      ['app.organization_id', organizationId],
+      async (client) => {
+        const result = await client.query<{accounts: number}>(
+          `select count(distinct a.user_id)::int as accounts
+             from member_profile_account a
+             join "user" u on u.id = a.user_id
+            where lower(u.email) = 'claire@s54-e2e.test'`
+        )
+        return result.rows[0]
+      }
+    )) as {accounts: number}
+    expect(accounts.accounts, 'une adresse, un seul compte (s53)').toBe(1)
     await page.context().close()
   })
 })

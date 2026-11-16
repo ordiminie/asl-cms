@@ -30,11 +30,13 @@ import {
   getEmailLoginReserve,
   getGoogleVerificationCode,
   getMagicLinkDailyRequestLimit,
+  getMemberEmailConfirmationDays,
   getSettingsForPage,
   GOOGLE_VERIFICATION_SETTING_KEY,
   hasSettingReferenceCycle,
   isSuperAdminOnlySetting,
   MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
+  MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
   parseSettingValue,
   resolveSettings,
   validateSettingsChanges,
@@ -54,7 +56,7 @@ const testDefinition = (key: string) =>
   definitionOf(TEST_SETTINGS_REGISTRY, key)
 
 describe('registre de production', () => {
-  it('declare les cles de s02, s03, s06, s08b, s11, s25 et s26, avec leurs types et leur page', () => {
+  it('declare les cles de s02, s03, s06, s08b, s11, s25, s26 et s54, avec leurs types et leur page', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.map(({key, type, required, page}) => ({
         key,
@@ -147,7 +149,39 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      {
+        key: MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
+        type: 'number',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  it('le délai de confirmation d’une adresse ajoutée par le membre est un entier de jours, 7 par défaut, carte « Envois » (s54)', () => {
+    const definition = definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY
+    )
+    expect(MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY).toBe(
+      'member.email_confirmation_days'
+    )
+    expect(definition).toMatchObject({
+      type: 'number',
+      integer: true,
+      min: 1,
+      default: {value: '7'},
+      unitKey: 'units.days',
+      section: 'sending',
+    })
+    expect(parseSettingValue(definition, '0')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '1.5')).toMatchObject({valid: false})
+    expect(parseSettingValue(definition, '14')).toMatchObject({valid: true})
+    expect(
+      getMemberEmailConfirmationDays(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+      )
+    ).toBe(7)
   })
 
   it('le plafond quotidien des campagnes est un entier d’au moins 1, 100 par défaut, carte « Envois » (s26)', () => {
@@ -439,6 +473,7 @@ describe('registre de production', () => {
       EMAIL_LOGIN_RESERVE_SETTING_KEY,
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
+      MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -813,6 +848,7 @@ describe('registre — carte « Referencement » (s11)', () => {
       EMAIL_LOGIN_RESERVE_SETTING_KEY,
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
+      MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
     ])
   })
 

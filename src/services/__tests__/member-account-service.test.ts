@@ -212,7 +212,10 @@ describe('closeMemberAccount — fermer sans rien supprimer d’autre', () => {
       'member'
     )
     expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
-    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      KNOWN_USER_ID
+    )
   })
 })
 
@@ -242,6 +245,10 @@ describe('replaceMemberAccount — l’adresse change', () => {
       memberProfileId: PROFILE_ID,
       userId: NEW_USER_ID,
     })
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      OLD_USER_ID
+    )
   })
 
   it('déplace le rôle du bureau vers le nouveau compte', async () => {
@@ -380,7 +387,10 @@ describe('applyMemberAccountDecision — délier sans fermer', () => {
       decision: {kind: 'unlink'},
     })
 
-    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      OLD_USER_ID
+    )
     expect(unlinkedUnder).toBe(ORG_ID)
     expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
     expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
@@ -675,7 +685,10 @@ describe('closeMemberAccount — un compte à plusieurs fiches (s53, critère 6)
       userId: KNOWN_USER_ID,
     })
 
-    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      KNOWN_USER_ID
+    )
     expect(countLinkedProfilesDao).toHaveBeenCalledWith(ORG_ID, KNOWN_USER_ID)
     expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
   })
@@ -837,5 +850,82 @@ describe('applyMemberAccountDecision — rejoindre le compte d’une adresse par
       'member'
     )
     expect(result).toEqual({change: 'linked', userId: KNOWN_USER_ID})
+  })
+})
+
+/**
+ * s54 (ADR 056 §3) : un compte par adresse active. Deux adresses d'une fiche
+ * = deux comptes relies a la meme fiche ; retirer l'une delie **ce** compte
+ * de **cette** fiche, l'autre garde son lien (critere 10).
+ */
+describe('un compte par adresse (s54, critères 1 et 10)', () => {
+  const CLAIRE_ID = '99999999-9999-4999-8999-999999999999'
+
+  it('deux adresses d’une fiche ouvrent deux comptes reliés à la même fiche', async () => {
+    vi.mocked(createUserIfAbsentTxnDao)
+      .mockResolvedValueOnce({id: NEW_USER_ID})
+      .mockResolvedValueOnce({id: CLAIRE_ID})
+
+    await openMemberAccount({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: 'jean@example.test',
+      name: 'Jean Dubois',
+    })
+    await openMemberAccount({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: 'claire@example.test',
+      name: 'Jean Dubois',
+    })
+
+    expect(linkMemberProfileAccountDao).toHaveBeenNthCalledWith(1, {
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: NEW_USER_ID,
+    })
+    expect(linkMemberProfileAccountDao).toHaveBeenNthCalledWith(2, {
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: CLAIRE_ID,
+    })
+    expect(unlinkMemberProfileAccountDao).not.toHaveBeenCalled()
+  })
+
+  it('retirer une adresse ne délie que son compte de cette fiche', async () => {
+    vi.mocked(countLinkedProfilesDao).mockResolvedValue(0)
+
+    await closeMemberAccount({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: CLAIRE_ID,
+    })
+
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledTimes(1)
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      CLAIRE_ID
+    )
+    expect(deleteMemberWithRoleDao).toHaveBeenCalledWith(
+      CLAIRE_ID,
+      ORG_ID,
+      'member'
+    )
+  })
+
+  it('l’adresse retirée garde sa ligne member si elle porte une autre fiche', async () => {
+    vi.mocked(countLinkedProfilesDao).mockResolvedValue(1)
+
+    await closeMemberAccount({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: CLAIRE_ID,
+    })
+
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      CLAIRE_ID
+    )
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
   })
 })

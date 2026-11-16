@@ -155,7 +155,10 @@ export async function createMemberProfileAction(
   }
 }
 
-/** « Enregistrer les coordonnees » depuis la fiche (ecran 3, etat `3e`). */
+/**
+ * « Enregistrer les coordonnees » depuis la fiche (ecran 3, etat `3e`) :
+ * telephone et adresse postale. Les adresses email ont leur carte (s54).
+ */
 export async function updateMemberProfileContactAction(
   _prevState: MemberProfileActionResult | undefined,
   formData: FormData
@@ -180,7 +183,6 @@ export async function updateMemberProfileContactAction(
       organizationId: tenant.id,
       memberProfileId: readField(formData, 'memberProfileId'),
       ...validation.data,
-      confirmedAccountUserId: readConfirmedAccount(formData),
     })
     return toActionResult(result, t)
   } catch (error) {

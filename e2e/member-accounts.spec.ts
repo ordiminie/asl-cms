@@ -8,6 +8,16 @@ import {Browser, expect, Page, test} from '@playwright/test'
 import dotenv from 'dotenv'
 import {Client} from 'pg'
 
+import {
+  ADDED,
+  addProfileEmail,
+  BOARD_EMAIL_REFUSED,
+  emailsCard,
+  emailsNotice,
+  REMOVED,
+  removeProfileEmail,
+} from './support/member-email-card'
+
 /**
  * Comptes des membres — s12d, critères 1 à 6 (ADR 037, ADR 038).
  *
@@ -153,13 +163,24 @@ type StoredProfile = {
   user_id: string | null
 }
 
-/** La fiche et son compte, lu par la table de liaison (s53, ADR 054). */
+/**
+ * La fiche, son adresse titulaire active (s54, ADR 056) et le compte de
+ * cette adresse, lu par la table de liaison (s53, ADR 054).
+ */
 const storedProfileOf = (slug: string, name: string) =>
   inTenant(slug, async (client) => {
     const result = await client.query<StoredProfile>(
-      `select p.id, p.name, p.email, a.user_id
+      `select p.id, p.name, e.email,
+              (select a.user_id
+                 from member_profile_account a
+                 join "user" u on u.id = a.user_id
+                where a.member_profile_id = p.id
+                  and lower(u.email) = lower(e.email)
+                limit 1) as user_id
          from member_profile p
-         left join member_profile_account a on a.member_profile_id = p.id
+         left join member_profile_email e
+           on e.member_profile_id = p.id
+          and e.role = 'holder' and e.status = 'active'
         where p.name = $1`,
       [name]
     )
@@ -340,13 +361,6 @@ const attachParcel = async (page: Page, number: string, startsOn: string) => {
   await expect(dialog).toBeHidden({timeout: 15_000})
 }
 
-/** Change l'adresse depuis la fiche ouverte et attend la confirmation. */
-const saveEmail = async (page: Page, email: string) => {
-  await page.getByRole('button', {name: 'Modifier les coordonnées'}).click()
-  await page.getByRole('textbox', {name: /^Adresse email/}).fill(email)
-  await page.getByRole('button', {name: 'Enregistrer les coordonnées'}).click()
-}
-
 const accessCard = (page: Page) =>
   page.getByRole('region', {name: 'Accès à l’espace membre'})
 
@@ -379,10 +393,8 @@ test.describe('Comptes des membres — s12d', () => {
         'Joignable par courrier uniquement.'
       )
 
-      await saveEmail(bureau, email)
-      await expect(bureau.getByRole('status')).toContainText(
-        `Compte ouvert : ${name} peut désormais se connecter avec ${email}.`
-      )
+      await addProfileEmail(bureau, email)
+      await expect(emailsNotice(bureau)).toContainText(ADDED)
       await bureau.reload({waitUntil: 'networkidle'})
       await expect(accessCard(bureau)).toContainText(
         `Compte ouvert. ${name} peut se connecter à son espace avec ${email}.`
@@ -403,10 +415,8 @@ test.describe('Comptes des membres — s12d', () => {
       await expect(myParcels(member)).toContainText(`Parcelle ${number}`)
       await member.context().close()
 
-      await saveEmail(bureau, '')
-      await expect(bureau.getByRole('status')).toContainText(
-        'Accès à l’espace fermé.'
-      )
+      await removeProfileEmail(bureau, email)
+      await expect(emailsNotice(bureau)).toContainText(REMOVED)
 
       const closed = await accountOf(email)
       expect(closed.users, 'le compte n’est jamais supprimé').toHaveLength(1)
@@ -476,10 +486,8 @@ test.describe('Comptes des membres — s12d', () => {
       expect((await storedProfileOf(TENANT_A_SLUG, name))?.user_id).toBe(userId)
       expect((await storedProfileOf(TENANT_B_SLUG, name))?.user_id).toBe(userId)
 
-      await saveEmail(bureauA, '')
-      await expect(bureauA.getByRole('status')).toContainText(
-        'Accès à l’espace fermé.'
-      )
+      await removeProfileEmail(bureauA, email)
+      await expect(emailsNotice(bureauA)).toContainText(REMOVED)
       expect((await accountOf(email)).members).toEqual([
         {slug: TENANT_B_SLUG, role: 'member'},
       ])
@@ -580,10 +588,8 @@ test.describe('Comptes des membres — s12d', () => {
         member.getByRole('heading', {level: 1, name: `Bonjour ${name}`})
       ).toBeVisible()
 
-      await saveEmail(bureau, '')
-      await expect(bureau.getByRole('status')).toContainText(
-        'Accès à l’espace fermé.'
-      )
+      await removeProfileEmail(bureau, email)
+      await expect(emailsNotice(bureau)).toContainText(REMOVED)
 
       // Un rechargement réel, pas une navigation cliente servie par
       // `staleTimes` : la requête suivante relit l'appartenance (ADR 038).
@@ -615,16 +621,14 @@ test.describe('Comptes des membres — s12d', () => {
     const bureau = await bureauSession(browser, TENANT_B, BOARD_B)
     try {
       await createProfile(bureau, TENANT_B, {name, email: BOARD_B})
-      await expect(accessCard(bureau)).toContainText(
-        'Membre du bureau : son adresse peut être modifiée, pas supprimée.'
-      )
-
-      await saveEmail(bureau, '')
       await expect(
-        bureau.getByRole('region', {name: 'Coordonnées'}).getByRole('alert')
-      ).toContainText(
-        `${name} fait partie du bureau : son adresse lui sert à se connecter. Vous pouvez la modifier, pas la supprimer. Rien n’a été enregistré.`
-      )
+        emailsCard(bureau).getByRole('table').getByText('Bureau')
+      ).toBeVisible()
+
+      const refusal = await removeProfileEmail(bureau, BOARD_B)
+      await expect(refusal).toContainText(BOARD_EMAIL_REFUSED, {
+        timeout: 15_000,
+      })
 
       expect((await storedProfileOf(TENANT_B_SLUG, name))?.email).toBe(BOARD_B)
       expect((await accountOf(BOARD_B)).members).toContainEqual({
@@ -647,8 +651,11 @@ type StoredContact = {
 const storedContactOf = (slug: string, name: string) =>
   inTenant(slug, async (client) => {
     const result = await client.query<StoredContact>(
-      `select email, phone, address_complement, postal_code
-         from member_profile where name = $1`,
+      `select (select e.email from member_profile_email e
+                where e.member_profile_id = p.id
+                  and e.role = 'holder' and e.status = 'active') as email,
+              p.phone, p.address_complement, p.postal_code
+         from member_profile p where p.name = $1`,
       [name]
     )
     return result.rows[0]
@@ -988,7 +995,7 @@ test.describe('Un accès, plusieurs terrains — s53', () => {
       })
       const after = await accountOf(SEED_LEFEVRE_EMAIL)
       expect(after.users, 'aucun compte fusionné ni créé').toEqual([before])
-      await expect(accessCard(bureau)).toContainText('Ce compte réunit aussi :')
+      await expect(emailsCard(bureau)).toContainText('Se connecte aussi à :')
     } finally {
       await bureau.context().close()
       await asMaintenance((client) =>
@@ -1121,21 +1128,9 @@ test.describe('Un accès, plusieurs terrains — s53', () => {
         `Parcelle ${parcelOf('D2')}`
       )
 
-      await bureau
-        .getByRole('button', {name: 'Modifier les coordonnées'})
-        .click()
-      await bureau.getByRole('textbox', {name: /^Adresse email/}).fill('')
-      await expect(
-        bureau.getByText(
-          /Sans adresse email, cette fiche quitte le compte de .* Son accès à l’espace reste ouvert pour son autre terrain\./
-        )
-      ).toBeVisible()
-      await bureau
-        .getByRole('button', {name: 'Enregistrer les coordonnées'})
-        .click()
-      await expect(bureau.getByRole('status')).toContainText(
-        'Son accès reste ouvert pour ses autres terrains.'
-      )
+      const confirm = await removeProfileEmail(bureau, email)
+      await expect(confirm).toBeHidden({timeout: 15_000})
+      await expect(emailsNotice(bureau)).toContainText(REMOVED)
       expect((await accountOf(email)).members).toEqual([
         {slug: TENANT_A_SLUG, role: 'member'},
       ])
@@ -1157,6 +1152,220 @@ test.describe('Un accès, plusieurs terrains — s53', () => {
       )
     } finally {
       await member.context().close()
+      await bureau.context().close()
+    }
+  })
+})
+
+/** Fiches du seed de s54 (`tenant-member-profiles-seed.ts`). */
+const SEED_FERRAND_EMAIL = 'p.ferrand@techcorp-solutions.test'
+const SEED_MEUNIER_ID = 'a1200000-0000-4000-8000-000000000001'
+const SEED_FERRAND_ID = 'a1200000-0000-4000-8000-000000000005'
+
+const myEmails = (page: Page) =>
+  page.getByRole('region', {name: 'Mes adresses email'})
+
+/** Le lien de confirmation reçu par l'adresse (s54, écran 2). */
+const confirmationLinkOf = (message: OutboxMessage) => {
+  const link = message.text.match(/https?:\/\/\S+\/confirmer-adresse\/\S+/)?.[0]
+  expect(link, 'la version texte porte l’URL en clair').toBeTruthy()
+  return link as string
+}
+
+/** Les rôles d'une adresse, fiche par fiche, lus sous le scope du tenant. */
+const rolesOf = (slug: string, email: string) =>
+  inTenant(slug, async (client) => {
+    const result = await client.query<{
+      member_profile_id: string
+      role: string
+      status: string
+    }>(
+      `select member_profile_id, role, status
+         from member_profile_email
+        where lower(email) = lower($1)
+        order by member_profile_id`,
+      [email]
+    )
+    return result.rows
+  })
+
+test.describe('Plusieurs adresses par membre — s54', () => {
+  test.beforeEach(async () => {
+    await resetRateLimits()
+  })
+
+  test.afterAll(async () => {
+    await cleanUpRun()
+  })
+
+  test('critères 1, 2, 4, 5 et 10 — deux adresses ouvrent le même espace ; une adresse ajoutée par le membre ne sert qu’après le lien ; la retirer ferme cette fiche seulement', async ({
+    browser,
+  }) => {
+    test.setTimeout(300_000)
+    const name = nameOf('Multiples')
+    const otherName = nameOf('Multiples autre')
+    const holder = emailOf('titulaire')
+    const relative = emailOf('proche')
+    const added = emailOf('ajoutee')
+    const number = parcelOf('E1')
+    const otherNumber = parcelOf('E2')
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    const first = await freshPage(browser)
+    const second = await freshPage(browser)
+    try {
+      await createProfile(bureau, TENANT_A, {name, email: holder})
+      await attachParcel(bureau, number, '01/03/2020')
+      await addProfileEmail(bureau, relative)
+      await expect(emailsNotice(bureau)).toContainText(ADDED)
+      await expect(emailsCard(bureau).getByRole('table')).toContainText(
+        'Supplémentaire'
+      )
+
+      // Critère 2 : chacune se connecte et ouvre le même espace.
+      for (const [page, address] of [
+        [first, holder],
+        [second, relative],
+      ] as const) {
+        await loginByLink(page, TENANT_A, address)
+        await expect(
+          page.getByRole('heading', {level: 1, name: `Bonjour ${name}`})
+        ).toBeVisible()
+        await expect(myParcels(page)).toContainText(`Parcelle ${number}`)
+        await expect(myEmails(page)).toContainText(holder)
+        await expect(myEmails(page)).toContainText(relative)
+      }
+
+      // Critères 4 et 5 : l'ajout par le membre attend le lien.
+      const before = outboxFiles()
+      await myEmails(second)
+        .getByRole('button', {name: 'Ajouter une adresse'})
+        .click()
+      await myEmails(second).getByLabel('Nouvelle adresse email').fill(added)
+      await myEmails(second)
+        .getByRole('button', {name: 'Envoyer le lien de confirmation'})
+        .click()
+      await expect(myEmails(second).getByRole('status')).toContainText(
+        `Lien envoyé à ${added}.`,
+        {timeout: 15_000}
+      )
+      expect((await rolesOf(TENANT_A_SLUG, added))[0]).toMatchObject({
+        status: 'pending',
+      })
+      const pendingLogin = await freshPage(browser)
+      await expectNoLinkSent(pendingLogin, TENANT_A, added)
+      await pendingLogin.context().close()
+
+      await expect
+        .poll(() => newMessagesTo(before, added).length, {timeout: 15_000})
+        .toBe(1)
+      const link = confirmationLinkOf(newMessagesTo(before, added)[0])
+      const visitor = await freshPage(browser)
+      await visitor.goto(link, {waitUntil: 'networkidle'})
+      await expect(
+        visitor.getByRole('heading', {
+          level: 1,
+          name: 'Confirmer votre adresse',
+        })
+      ).toBeVisible({timeout: 15_000})
+      expect(
+        (await rolesOf(TENANT_A_SLUG, added))[0],
+        'le chargement du lien ne confirme rien'
+      ).toMatchObject({status: 'pending'})
+      await visitor
+        .getByRole('button', {name: 'Confirmer cette adresse'})
+        .click()
+      await expect(visitor.getByRole('status')).toContainText(
+        'Adresse confirmée.',
+        {timeout: 15_000}
+      )
+      await visitor.context().close()
+      expect((await rolesOf(TENANT_A_SLUG, added))[0]).toMatchObject({
+        role: 'additional',
+        status: 'active',
+      })
+
+      const third = await freshPage(browser)
+      await loginByLink(third, TENANT_A, added)
+      await expect(
+        third.getByRole('heading', {level: 1, name: `Bonjour ${name}`})
+      ).toBeVisible()
+      await third.context().close()
+
+      // Critère 10 : l'adresse retirée perd cette fiche, garde les autres.
+      await createLinkedProfile(bureau, TENANT_A, {
+        name: otherName,
+        email: relative,
+        accountName: name,
+      })
+      await attachParcel(bureau, otherNumber, '01/03/2020')
+      const fiche = await storedProfileOf(TENANT_A_SLUG, name)
+      await bureau.goto(`${TENANT_A}${LIST_ROUTE}/${fiche?.id}`, {
+        waitUntil: 'networkidle',
+      })
+      await removeProfileEmail(bureau, relative)
+      await expect(emailsNotice(bureau)).toContainText(REMOVED)
+
+      await second.reload()
+      await expect(second).toHaveURL(`${TENANT_A}/dashboard`, {
+        timeout: 15_000,
+      })
+      await expect(myParcels(second)).toContainText(`Parcelle ${otherNumber}`)
+      await expect(myParcels(second)).not.toContainText(`Parcelle ${number}`)
+
+      await first.reload()
+      await expect(myParcels(first)).toContainText(`Parcelle ${number}`)
+    } finally {
+      await first.context().close()
+      await second.context().close()
+      await bureau.context().close()
+    }
+  })
+
+  test('critère 8 — une adresse titulaire d’une fiche et supplémentaire d’une autre, lue par le bureau', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    expect(await rolesOf(TENANT_A_SLUG, SEED_FERRAND_EMAIL)).toEqual(
+      [
+        {
+          member_profile_id: SEED_MEUNIER_ID,
+          role: 'additional',
+          status: 'active',
+        },
+        {
+          member_profile_id: SEED_FERRAND_ID,
+          role: 'holder',
+          status: 'active',
+        },
+      ].sort((a, b) => a.member_profile_id.localeCompare(b.member_profile_id))
+    )
+    const [account] = (await accountOf(SEED_FERRAND_EMAIL)).users
+    const links = await linksOf(TENANT_A_SLUG, SEED_FERRAND_EMAIL)
+    expect(links.map((link) => link.member_profile_id).sort()).toEqual(
+      [SEED_MEUNIER_ID, SEED_FERRAND_ID].sort()
+    )
+    expect(new Set(links.map((link) => link.user_id))).toEqual(
+      new Set([account.id])
+    )
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    try {
+      for (const [id, role] of [
+        [SEED_MEUNIER_ID, 'Supplémentaire'],
+        [SEED_FERRAND_ID, 'Titulaire'],
+      ] as const) {
+        await bureau.goto(`${TENANT_A}${LIST_ROUTE}/${id}`, {
+          waitUntil: 'networkidle',
+        })
+        const row = emailsCard(bureau)
+          .getByRole('table')
+          .getByRole('row')
+          .filter({hasText: SEED_FERRAND_EMAIL})
+        await expect(row).toContainText(role, {timeout: 15_000})
+        await expect(row).toContainText('Saisie sur le site')
+      }
+    } finally {
       await bureau.context().close()
     }
   })

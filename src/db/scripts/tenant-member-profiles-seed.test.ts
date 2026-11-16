@@ -62,7 +62,9 @@ describe('seed des propriétaires et des parcelles (s12, ADR 029)', () => {
 
   it('donne à TechCorp une fiche courrier uniquement avec adresse, et une fiche incomplète (critères 7 et 8)', () => {
     const mailOnly = profilesOf(TECHCORP).filter((row) => row.email === null)
-    const incomplete = mailOnly.filter((row) => isIncomplete(row))
+    const incomplete = mailOnly.filter((row) =>
+      isIncomplete({...row, mailOnly: true})
+    )
 
     expect(mailOnly.length).toBeGreaterThanOrEqual(2)
     expect(incomplete.map((row) => row.name)).toEqual(['Hélène Roy'])
@@ -218,5 +220,37 @@ describe('seed des propriétaires et des parcelles (s12, ADR 029)', () => {
       ['62'],
       ['63'],
     ])
+  })
+})
+
+/**
+ * s54 (ADR 056) : une fiche a plusieurs adresses actives, chacune avec un
+ * role propre a la fiche.
+ */
+describe('seed des adresses multiples (s54)', () => {
+  const FERRAND_EMAIL = 'p.ferrand@techcorp-solutions.test'
+
+  it('donne à TechCorp une fiche à deux adresses actives, une titulaire et une supplémentaire', () => {
+    const ferrand = profileNamed(TECHCORP, 'Paul Ferrand')
+
+    expect(ferrand.email).toBe(FERRAND_EMAIL)
+    expect(ferrand.additionalEmails).toEqual(['julie.ferrand@example.test'])
+  })
+
+  it('porte une adresse titulaire d’une fiche et supplémentaire d’une autre (critère 8)', () => {
+    const meunier = profileNamed(TECHCORP, 'Claire Meunier')
+
+    expect(meunier.email).not.toBe(FERRAND_EMAIL)
+    expect(meunier.additionalEmails).toEqual([FERRAND_EMAIL])
+  })
+
+  it('n’écrit que des adresses fictives en .test, jamais deux fois sur une fiche', () => {
+    for (const profile of TEST_MEMBER_PROFILES) {
+      const all = [profile.email, ...(profile.additionalEmails ?? [])]
+        .filter((email): email is string => Boolean(email))
+        .map((email) => email.toLowerCase())
+      expect(new Set(all).size).toBe(all.length)
+      for (const email of all) expect(email).toMatch(/@[a-z0-9-]+\.test$/)
+    }
   })
 })

@@ -105,7 +105,9 @@ describe('getMemberQuestionsPageDao', () => {
       'join "member_profile" on "member_question"."member_id" = "member_profile"."id"'
     )
     expect(sql).toContain('"member_profile"."name"')
-    expect(sql).toContain('"member_profile"."email"')
+    expect(sql).toContain(
+      'mpe_holder."member_profile_id" = "member_profile"."id"'
+    )
   })
 })
 

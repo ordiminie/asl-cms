@@ -2,7 +2,6 @@
 
 import {zodResolver} from '@hookform/resolvers/zod'
 import {AlertTriangle, CircleCheck, Info} from 'lucide-react'
-import Link from 'next/link'
 import {useFormatter, useTranslations} from 'next-intl'
 import {type ReactNode, useEffect, useId, useRef, useState} from 'react'
 import {FormProvider, useForm} from 'react-hook-form'
@@ -31,9 +30,9 @@ import type {
  * « Mes coordonnees » (s16, ecran C ; s53, ecran 2) : lecture, puis
  * modification en place. Ce sont celles de la personne : pour un compte a
  * plusieurs terrains, elles valent pour tous, et l'enregistrement les ecrit
- * toutes. L'adresse email reste un texte, jamais un champ (ADR 040). Aucun
- * identifiant de fiche n'est rendu ni envoye : l'action resout les fiches par
- * la session.
+ * toutes. Les adresses email ont leur propre carte, « Mes adresses email »
+ * (s54, ADR 056). Aucun identifiant de fiche n'est rendu ni envoye : l'action
+ * resout les fiches par la session.
  */
 
 const ID_PREFIX = 'my-contact'
@@ -94,7 +93,6 @@ export function MyContactCard({
             </AlertDescription>
           </Alert>
         )}
-        <EmailReading email={contact.email} />
         {editing ? (
           <ContactEditor
             contact={contact}
@@ -142,34 +140,6 @@ function Pair({term, children}: {term: string; children: ReactNode}) {
 
 function Missing({children}: {children: ReactNode}) {
   return <span className="text-muted-foreground">{children}</span>
-}
-
-/** L'adresse de connexion : un texte, et comment la faire changer. */
-function EmailReading({email}: {email: string | null}) {
-  const t = useTranslations('MemberSpacePage.contact')
-
-  return (
-    <dl>
-      <Pair term={t('email')}>
-        {email ? (
-          <span className="font-mono text-[17px] font-medium [overflow-wrap:anywhere]">
-            {email}
-          </span>
-        ) : (
-          <Missing>{t('addressMissing')}</Missing>
-        )}
-        <p className="text-muted-foreground mt-1 text-[15px]">
-          {t('emailNote')}{' '}
-          <Link
-            href="/contact"
-            className="text-primary font-semibold underline underline-offset-4"
-          >
-            {t('contact')}
-          </Link>
-        </p>
-      </Pair>
-    </dl>
-  )
 }
 
 const postalLinesOf = (contact: MyPostalContactDTO): string[] =>

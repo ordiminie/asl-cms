@@ -69,8 +69,8 @@ export type MyContactGroupDTO = MyPostalContactDTO & {
  * le membre (ADR 040). Elles valent pour `landCount` terrains ; `divergent`
  * quand les fiches n'ont pas toutes les memes, avec un groupe par jeu.
  */
+/** « Mes coordonnees » : sans email, les adresses ont leur carte (s54). */
 export type MyContactDTO = MyPostalContactDTO & {
-  email: string | null
   landCount: number
   divergent: boolean
   groups: MyContactGroupDTO[]

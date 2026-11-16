@@ -22,7 +22,7 @@ const report = (overrides: Partial<ImportReportDTO> = {}): ImportReportDTO => ({
     {line: 5, client: 'Sans Contact', reason: 'no_contact'},
     {line: 6, client: '', reason: 'missing_name'},
   ],
-  remarks: [{line: 2, client: 'Lucie Fictive', remark: 'several_emails'}],
+  remarks: [{line: 2, client: 'Lucie Fictive', remark: 'no_meter'}],
   ...overrides,
 })
 
@@ -61,7 +61,9 @@ describe('MemberImportReport — écran 2', () => {
     expect(
       within(
         screen.getByRole('table', {name: 'Lignes importées avec une remarque'})
-      ).getByText('Plusieurs adresses email : seule la première a été gardée.')
+      ).getByText(
+        'Référence sans numéro de compteur : la parcelle est enregistrée sans compteur.'
+      )
     ).toBeInTheDocument()
     expect(
       screen.getAllByText(/Ce rapport contient des données personnelles/)

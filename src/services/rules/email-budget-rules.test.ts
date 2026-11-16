@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
+import {TENANT_EMAIL_NATURES} from '../types/domain/email-send-types'
 import {parisTwoAm} from './campaign-schedule-rules'
 import {
   budgetDayOf,
@@ -282,5 +283,13 @@ describe('groupPendingSends — question d’un membre (s23)', () => {
 
     expect(group.key).toBe(`member_question:${QUESTION}:2026-11-15`)
     expect(group.reference).toEqual({type: 'member_question', id: QUESTION})
+  })
+})
+
+describe('nature du lien de confirmation d’une adresse (s54, ADR 056 §6)', () => {
+  it('est un envoi d’association, décompté et copié pour le lendemain si le budget est épuisé', () => {
+    expect(TENANT_EMAIL_NATURES).toContain('member_email_confirmation')
+    expect(isNeverDeferred('member_email_confirmation')).toBe(false)
+    expect(isDeferredByCaller('member_email_confirmation')).toBe(false)
   })
 })

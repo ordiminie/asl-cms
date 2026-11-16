@@ -152,7 +152,10 @@ function ProfilesTable({items}: {items: MemberProfileListItemDTO[]}) {
             </TableCell>
             <TableCell className="text-[17px] break-all">
               {item.email ?? <MailOnlyBadge />}
-              <AccountProfiles count={item.accountProfileCount} />
+              <ContactMeta
+                accountProfileCount={item.accountProfileCount}
+                otherEmailCount={item.otherEmailCount}
+              />
             </TableCell>
             <TableCell>{item.incomplete && <IncompleteBadge />}</TableCell>
             <TableCell>
@@ -191,7 +194,10 @@ function ProfileCard({item}: {item: MemberProfileListItemDTO}) {
           {item.email ?? postalAddressLineOf(item) ?? (
             <span className="text-muted-foreground">{t('noAddress')}</span>
           )}
-          <AccountProfiles count={item.accountProfileCount} />
+          <ContactMeta
+            accountProfileCount={item.accountProfileCount}
+            otherEmailCount={item.otherEmailCount}
+          />
         </dd>
       </dl>
       <OpenProfile id={item.id} className="h-14 w-full" />
@@ -200,16 +206,28 @@ function ProfileCard({item}: {item: MemberProfileListItemDTO}) {
 }
 
 /**
- * « Compte de {n} terrains » sous l'adresse, seulement a partir de deux
- * (s53, etat 4a) : un terrain = une fiche reliee au compte.
+ * La ligne `meta` sous l'adresse titulaire : « Compte de {n} terrains »,
+ * seulement a partir de deux (s53, etat 4a), puis « + {n} autres adresses »
+ * quand la fiche en porte d'autres actives (s54, etat 5a), separes par « · ».
  */
-function AccountProfiles({count}: {count: number}) {
+function ContactMeta({
+  accountProfileCount,
+  otherEmailCount,
+}: {
+  accountProfileCount: number
+  otherEmailCount: number
+}) {
   const t = useTranslations('BureauMemberProfilesPage')
+  const parts = [
+    accountProfileCount >= 2 &&
+      t('accountProfiles', {count: accountProfileCount}),
+    otherEmailCount > 0 && t('otherEmails', {count: otherEmailCount}),
+  ].filter((part): part is string => Boolean(part))
 
-  if (count < 2) return null
+  if (parts.length === 0) return null
   return (
     <span className="text-muted-foreground block text-[15px] break-normal">
-      {t('accountProfiles', {count})}
+      {parts.join(' · ')}
     </span>
   )
 }

@@ -30,7 +30,7 @@ type Translate = (key: string) => string
 const optionalText = (max: number, message: string) =>
   z.string().refine((value) => value.trim().length <= max, {message})
 
-const contactShape = (t: Translate) => ({
+const emailShape = (t: Translate) => ({
   email: z
     .string()
     .refine(
@@ -38,6 +38,9 @@ const contactShape = (t: Translate) => ({
         isBlank(value) || z.string().email().safeParse(value.trim()).success,
       {message: t('validation.emailInvalid')}
     ),
+})
+
+const contactShape = (t: Translate) => ({
   phone: z
     .string()
     .refine(
@@ -65,8 +68,11 @@ const contactShape = (t: Translate) => ({
   city: optionalText(MEMBER_PROFILE_CITY_MAX_LENGTH, t('validation.cityMax')),
 })
 
+/**
+ * Coordonnees modifiees depuis la fiche : sans email depuis s54, les adresses
+ * ont leur carte (ADR 056).
+ */
 export const memberContactFormSchema = z.object({
-  email: z.string(),
   phone: z.string(),
   addressLine: z.string(),
   addressComplement: z.string(),
@@ -74,8 +80,10 @@ export const memberContactFormSchema = z.object({
   city: z.string(),
 })
 
+/** La creation d'une fiche : l'email saisi devient sa titulaire (s54). */
 export const memberProfileFormSchema = z.object({
   name: z.string(),
+  email: z.string(),
   ...memberContactFormSchema.shape,
 })
 
@@ -94,6 +102,7 @@ export function createMemberProfileFormSchema(t: Translate) {
         (value) => value.trim().length <= MEMBER_PROFILE_NAME_MAX_LENGTH,
         {message: t('validation.nameMax')}
       ),
+    ...emailShape(t),
     ...contactShape(t),
   })
 }
@@ -106,7 +115,6 @@ export type MemberProfileFormSchemaType = z.infer<
 >
 
 export const MEMBER_CONTACT_FORM_FIELDS = [
-  'email',
   'phone',
   'addressLine',
   'addressComplement',
@@ -116,6 +124,7 @@ export const MEMBER_CONTACT_FORM_FIELDS = [
 
 export const MEMBER_PROFILE_FORM_FIELDS = [
   'name',
+  'email',
   ...MEMBER_CONTACT_FORM_FIELDS,
 ] as const satisfies readonly (keyof MemberProfileFormSchemaType)[]
 
@@ -221,13 +230,10 @@ export type ChangeMemberRoleFormAction = (
  * lui-meme, sans email. Memes regles et memes messages que la fiche du bureau.
  */
 export function createMemberPostalContactFormSchema(t: Translate) {
-  return createMemberContactFormSchema(t).omit({email: true})
+  return createMemberContactFormSchema(t)
 }
 
-export type MemberPostalContactFormSchemaType = Omit<
-  MemberContactFormSchemaType,
-  'email'
->
+export type MemberPostalContactFormSchemaType = MemberContactFormSchemaType
 
 export const MEMBER_POSTAL_CONTACT_FORM_FIELDS = [
   'phone',

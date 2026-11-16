@@ -1,6 +1,9 @@
 import 'server-only'
 
-import {getMemberProfileByIdDao} from '@/db/repositories/member-profile-repository'
+import {
+  getHolderAccountUserIdDao,
+  getMemberProfileByIdDao,
+} from '@/db/repositories/member-profile-repository'
 import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
@@ -278,11 +281,12 @@ export const changeMemberRoleService = async (
   return withTenant(organizationId, async () => {
     const profile = await getMemberProfileByIdDao(memberProfileId)
     if (!profile) return {status: 'not_found'}
-    if (profile.userId === null) return {status: 'no_account'}
+    const targetUserId = await getHolderAccountUserIdDao(profile.id)
+    if (targetUserId === null) return {status: 'no_account'}
 
     await lockOrganizationRolesDao(organizationId)
     const targetRole = await getUserRoleInOrganizationDao(
-      profile.userId,
+      targetUserId,
       organizationId
     )
     if (targetRole === null) return {status: 'no_account'}
@@ -291,8 +295,8 @@ export const changeMemberRoleService = async (
       viewer.id,
       organizationId
     )
-    const self = viewer.id === profile.userId
-    const targetAccount = await getUserByIdDao(profile.userId)
+    const self = viewer.id === targetUserId
+    const targetAccount = await getUserByIdDao(targetUserId)
     const decision = decideRoleChange({
       viewerRole,
       viewerIsSuperAdmin: viewer.role === RoleConst.SUPER_ADMIN,
@@ -319,7 +323,7 @@ export const changeMemberRoleService = async (
       organizationId,
       decision,
       target: {
-        userId: profile.userId,
+        userId: targetUserId,
         role: targetRole,
         memberProfileId: profile.id,
         name: profile.name,

@@ -7,7 +7,6 @@ import type {MyContactDTO} from '@/services/types/domain/member-space-types'
 import {MyContactCard} from './my-contact-card'
 
 const FULL: MyContactDTO = {
-  email: 'lucie.moreau@exemple.fr',
   phone: '06 12 34 56 78',
   addressLine: '4 chemin des Oliviers',
   addressComplement: 'Bâtiment B',
@@ -19,7 +18,6 @@ const FULL: MyContactDTO = {
 }
 
 const EMPTY: MyContactDTO = {
-  email: 'lucie.moreau@exemple.fr',
   phone: null,
   addressLine: null,
   addressComplement: null,
@@ -55,23 +53,19 @@ beforeEach(() => {
 })
 
 describe('MyContactCard — lecture (C1, C2)', () => {
-  it('C1 : affiche l’adresse email, le téléphone et l’adresse postale', () => {
+  it('C1 : affiche le téléphone et l’adresse postale ; plus d’adresse email, elle a sa carte (s54)', () => {
     render(<MyContactCard contact={FULL} action={action} />)
 
     expect(
       screen.getByRole('heading', {level: 2, name: 'Mes coordonnées'})
     ).toBeInTheDocument()
-    expect(screen.getByText('lucie.moreau@exemple.fr')).toBeInTheDocument()
+    expect(screen.queryByText('Adresse email')).not.toBeInTheDocument()
     expect(
-      screen.getByText(
-        'C’est aussi l’adresse avec laquelle vous vous connectez. Pour la changer, écrivez au bureau.',
+      screen.queryByText(
+        'C’est aussi l’adresse avec laquelle vous vous connectez',
         {exact: false}
       )
-    ).toBeInTheDocument()
-    expect(screen.getByRole('link', {name: 'Page Contact'})).toHaveAttribute(
-      'href',
-      '/contact'
-    )
+    ).not.toBeInTheDocument()
     expect(screen.getByText('06 12 34 56 78')).toBeInTheDocument()
     expect(screen.getByText('4 chemin des Oliviers')).toBeInTheDocument()
     expect(screen.getByText('Bâtiment B')).toBeInTheDocument()
@@ -105,10 +99,6 @@ describe('MyContactCard — modification (C3)', () => {
 
     expect(screen.getByLabelText(/Téléphone/)).toHaveValue('06 12 34 56 78')
     expect(screen.queryByLabelText(/Adresse email/)).not.toBeInTheDocument()
-    expect(
-      screen.queryByDisplayValue('lucie.moreau@exemple.fr')
-    ).not.toBeInTheDocument()
-    expect(screen.getByText('lucie.moreau@exemple.fr')).toBeInTheDocument()
   })
 
   it('pose l’autocomplete sur les cinq champs', async () => {

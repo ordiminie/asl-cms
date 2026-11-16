@@ -43,6 +43,9 @@ import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization
 import MagicLinkMail, {
   type MagicLinkEmailAssociation,
 } from '@/lib/emails/magic-link-email'
+import MemberEmailConfirmationMail, {
+  memberEmailConfirmationValuesOf,
+} from '@/lib/emails/member-email-confirmation-email'
 import MemberQuestionMail, {
   MEMBER_QUESTION_SUBJECT_MAX_LENGTH,
   type MemberQuestionEmailAssociation,
@@ -478,6 +481,75 @@ export const sendMagicLinkEmailService = async ({
     },
     {scope: 'tenant', organizationId, nature: 'login'},
     {recipientType: 'system'}
+  )
+}
+
+const CONFIRMATION_DAY_FORMAT = new Intl.DateTimeFormat('fr', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'Europe/Paris',
+})
+
+/**
+ * Email « Confirmez votre adresse email » (s54, ecran 2) : gabarit du lien
+ * magique, version texte complete (URL en clair). Envoi d'association de
+ * nature `member_email_confirmation` (ADR 056 §6) : decompte du budget,
+ * reporte au lendemain s'il est epuise — l'issue est rendue a l'appelant
+ * (« le lien partira demain matin »). Ni l'URL ni le jeton ne sont
+ * journalises.
+ */
+export const sendMemberEmailConfirmationEmailService = async ({
+  organizationId,
+  email,
+  url,
+  association,
+  authorName,
+  profileName,
+  parcelNumbers,
+  expiresAt,
+  locale,
+}: {
+  organizationId: string
+  email: string
+  url: string
+  association: MagicLinkEmailAssociation
+  authorName: string
+  profileName: string
+  parcelNumbers: string[]
+  expiresAt: Date
+  locale: SupportedLocale
+}): Promise<EmailSendResult> => {
+  const t = await getTranslations({
+    locale,
+    namespace: 'email.user.memberEmailConfirmation',
+  })
+  const props = {
+    association,
+    authorName,
+    profileName,
+    parcelNumbers,
+    expiresOn: CONFIRMATION_DAY_FORMAT.format(expiresAt),
+  }
+  const values = memberEmailConfirmationValuesOf(props)
+  const text = [
+    t('title'),
+    t('greeting'),
+    t.markup('intro', {...values, strong: (chunks) => chunks}),
+    `${t('urlIntro')}\n${url}`,
+    t('expiry', values),
+    t('footer', values),
+  ].join('\n\n')
+
+  return sendEmailService(
+    {
+      to: email,
+      subject: t('subject', values),
+      text,
+      react: MemberEmailConfirmationMail({...props, url, locale}),
+    },
+    {scope: 'tenant', organizationId, nature: 'member_email_confirmation'},
+    {recipientType: 'client'}
   )
 }
 

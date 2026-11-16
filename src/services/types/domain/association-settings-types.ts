@@ -216,6 +216,12 @@ export const EMAIL_DAILY_SEND_LIMIT_SETTING_KEY = 'email.daily_send_limit'
  * envois reportables consomment au plus `limite - reserve`.
  */
 export const EMAIL_LOGIN_RESERVE_SETTING_KEY = 'email.login_reserve'
+/**
+ * Jours de validite du lien de confirmation d'une adresse ajoutee ou
+ * modifiee par le membre (s54, ADR 056 §5) ; une attente echue est ignoree.
+ */
+export const MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY =
+  'member.email_confirmation_days'
 /** Plafond de la raison sociale. */
 export const ASSOCIATION_LEGAL_NAME_MAX_LENGTH = 120
 /** Plafond des mentions du pied de page. */
@@ -429,6 +435,23 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     unitKey: 'units.attempts',
     labelKey: 'fields.campaignSendMaxAttempts.label',
     helpKey: 'fields.campaignSendMaxAttempts.help',
+    page: 'settings',
+    section: 'sending',
+  },
+  {
+    key: MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
+    type: 'number',
+    required: false,
+    default: {value: '7'},
+    min: 1,
+    integer: true,
+    unitKey: 'units.days',
+    labelKey: 'fields.memberEmailConfirmationDays.label',
+    helpKey: 'fields.memberEmailConfirmationDays.help',
+    errorMessageKeys: {
+      invalidNumber: 'fields.memberEmailConfirmationDays.errors.invalidNumber',
+      belowMin: 'fields.memberEmailConfirmationDays.errors.belowMin',
+    },
     page: 'settings',
     section: 'sending',
   },
@@ -822,3 +845,12 @@ export const getEmailDailySendLimit = (
 export const getEmailLoginReserve = (
   settings: ResolvedAssociationSettings
 ): number => numberSettingOf(settings, EMAIL_LOGIN_RESERVE_SETTING_KEY)
+
+/**
+ * Jours de validite d'un lien de confirmation d'adresse (s54) : valeur du
+ * bureau, sinon defaut du registre.
+ */
+export const getMemberEmailConfirmationDays = (
+  settings: ResolvedAssociationSettings
+): number =>
+  numberSettingOf(settings, MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY)

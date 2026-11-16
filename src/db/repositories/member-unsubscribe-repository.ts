@@ -1,14 +1,15 @@
-import {and, eq, sql} from 'drizzle-orm'
-import {alias} from 'drizzle-orm/pg-core'
+import {and, eq, isNull, sql} from 'drizzle-orm'
 
-import {campaignRecipient, memberUnsubscribe} from '@/db/models/campaign-model'
-import {memberProfile} from '@/db/models/member-profile-model'
+import {campaignRecipient} from '@/db/models/campaign-model'
+import {memberProfileEmail} from '@/db/models/member-profile-email-model'
 import {getDb} from '@/db/tenant-scope'
 
 /**
- * Desinscription des campagnes (s25, ADR 051). Sous RLS forcee : un jeton est
- * resolu **dans le tenant du domaine appele** ; celui d'une autre association
- * ne rend rien.
+ * Desinscription des campagnes (s25, ADR 051). Depuis s54 (ADR 057), le
+ * refus est porte par l'adresse de fiche (`member_profile_email
+ * .unsubscribed_at`) ; `member_unsubscribe` est retiree. Sous RLS forcee : un
+ * jeton est resolu **dans le tenant du domaine appele** ; celui d'une autre
+ * association ne rend rien.
  */
 
 /** Une ligne de destinataire retrouvee par son jeton, avec le refus eventuel. */
@@ -17,8 +18,14 @@ export type RecipientByTokenRowModel = {
   organizationId: string
   campaignId: string
   memberProfileId: string | null
+  /** L'adresse visee par la ligne (ADR 057). */
+  email: string
+  /** Le premier refus d'une adresse de l'association egale a celle-ci. */
   unsubscribedAt: Date | null
 }
+
+const dateOf = (value: string | Date | null): Date | null =>
+  value === null ? null : new Date(value)
 
 export const getRecipientByTokenDao = async (
   token: string
@@ -29,70 +36,63 @@ export const getRecipientByTokenDao = async (
       organizationId: campaignRecipient.organizationId,
       campaignId: campaignRecipient.campaignId,
       memberProfileId: campaignRecipient.memberProfileId,
-      unsubscribedAt: memberUnsubscribe.createdAt,
+      email: campaignRecipient.email,
+      unsubscribedAt: sql<
+        string | null
+      >`(select min(mpe_refusal."unsubscribed_at") from "member_profile_email" mpe_refusal where mpe_refusal."organization_id" = "campaign_recipient"."organization_id" and lower(trim(mpe_refusal."email")) = lower(trim("campaign_recipient"."email")))`,
     })
     .from(campaignRecipient)
-    .leftJoin(
-      memberUnsubscribe,
-      eq(memberUnsubscribe.memberProfileId, campaignRecipient.memberProfileId)
-    )
     .where(eq(campaignRecipient.unsubscribeToken, token))
     .limit(1)
-  return row
+  return row ? {...row, unsubscribedAt: dateOf(row.unsubscribedAt)} : undefined
 }
 
+/**
+ * Date le refus de **toutes** les adresses de l'association egales, sans
+ * casse, a celle-ci (ADR 057) ; un refus deja pose n'est pas reecrit. Rend le
+ * nombre d'adresses datees.
+ */
+export const unsubscribeEmailIfAbsentTxnDao = async (
+  organizationId: string,
+  email: string
+): Promise<number> => {
+  const rows = await getDb()
+    .update(memberProfileEmail)
+    .set({unsubscribedAt: sql`now()`})
+    .where(
+      and(
+        eq(memberProfileEmail.organizationId, organizationId),
+        sql`lower(trim(${memberProfileEmail.email})) = lower(trim(${email}))`,
+        isNull(memberProfileEmail.unsubscribedAt)
+      )
+    )
+    .returning({id: memberProfileEmail.id})
+  return rows.length
+}
+
+/**
+ * Le refus d'une fiche, pour la mention du bureau : seulement quand **toutes**
+ * ses adresses actives ont refuse les campagnes (aucune ne les recoit plus),
+ * date du plus recent. Une fiche dont une adresse recoit encore n'a pas de
+ * refus.
+ */
 export const getUnsubscribeByMemberDao = async (
   memberProfileId: string
 ): Promise<{createdAt: Date} | undefined> => {
   const [row] = await getDb()
-    .select({createdAt: memberUnsubscribe.createdAt})
-    .from(memberUnsubscribe)
-    .where(eq(memberUnsubscribe.memberProfileId, memberProfileId))
-  return row
-}
-
-/** Enregistre le refus d'une fiche ; un refus deja present n'est pas reecrit. */
-export const createUnsubscribeIfAbsentTxnDao = async (input: {
-  organizationId: string
-  memberProfileId: string
-  campaignId: string | null
-}): Promise<{memberProfileId: string} | undefined> => {
-  const [row] = await getDb()
-    .insert(memberUnsubscribe)
-    .values(input)
-    .onConflictDoNothing({
-      target: [
-        memberUnsubscribe.organizationId,
-        memberUnsubscribe.memberProfileId,
-      ],
+    .select({
+      active: sql<number>`count(*)::int`,
+      refused: sql<number>`count(${memberProfileEmail.unsubscribedAt})::int`,
+      latest: sql<string | null>`max(${memberProfileEmail.unsubscribedAt})`,
     })
-    .returning({memberProfileId: memberUnsubscribe.memberProfileId})
-  return row
-}
-
-/**
- * Les fiches de l'association qui portent, sans casse, la meme adresse que
- * cette fiche, elle comprise (s53, ADR 055) : la desinscription couvre
- * l'adresse. Une fiche sans adresse ne rend qu'elle-meme.
- */
-export const getMemberProfileIdsSharingEmailDao = async (
-  organizationId: string,
-  memberProfileId: string
-): Promise<string[]> => {
-  const source = alias(memberProfile, 'source_profile')
-  const rows = await getDb()
-    .select({id: memberProfile.id})
-    .from(memberProfile)
-    .innerJoin(
-      source,
-      sql`lower(trim(${source.email})) = lower(trim(${memberProfile.email}))`
-    )
+    .from(memberProfileEmail)
     .where(
       and(
-        eq(source.id, memberProfileId),
-        eq(memberProfile.organizationId, organizationId)
+        eq(memberProfileEmail.memberProfileId, memberProfileId),
+        eq(memberProfileEmail.status, 'active')
       )
     )
-  const ids = rows.map((row) => row.id)
-  return ids.includes(memberProfileId) ? ids : [memberProfileId, ...ids]
+  if (!row || row.active === 0 || row.refused < row.active) return undefined
+  const createdAt = dateOf(row.latest)
+  return createdAt ? {createdAt} : undefined
 }

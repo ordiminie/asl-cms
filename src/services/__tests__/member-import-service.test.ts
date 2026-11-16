@@ -35,6 +35,9 @@ vi.mock('../member-profile-service', () => ({
   createMemberProfileService: vi.fn(),
   findMemberProfileIdByPennylaneIdService: vi.fn(),
 }))
+vi.mock('../member-profile-email-service', () => ({
+  addMemberProfileEmailService: vi.fn(),
+}))
 vi.mock('../parcel-ownership-service', () => ({
   attachParcelService: vi.fn(),
 }))
@@ -49,6 +52,7 @@ import {logger} from '@/lib/logger'
 import {AuthorizationError} from '../errors/authorization-error'
 import {ValidationParsedZodError} from '../errors/validation-error'
 import {importMembersService} from '../member-import-service'
+import {addMemberProfileEmailService} from '../member-profile-email-service'
 import {
   createMemberProfileService,
   findMemberProfileIdByPennylaneIdService,
@@ -191,6 +195,24 @@ const installFakeServices = () => {
       accountChange: holder ? 'linked' : email ? 'opened' : null,
       profile: {id, mailOnly: !input.email},
     } as Awaited<ReturnType<typeof createMemberProfileService>>
+  })
+
+  vi.mocked(addMemberProfileEmailService).mockImplementation(async (input) => {
+    const email = input.email.toLowerCase()
+    const holder = db.accounts.get(email)
+    if (holder && input.confirmedAccountUserId !== holder) {
+      return {
+        status: 'email_shared',
+        holder: {userId: holder, name: 'Compte existant', profiles: []},
+      }
+    }
+    db.pending.push(`email:${input.memberProfileId}:${email}`)
+    if (!holder) db.accounts.set(email, `compte-${input.memberProfileId}`)
+    return {
+      status: 'saved',
+      change: 'added',
+      email,
+    } as Awaited<ReturnType<typeof addMemberProfileEmailService>>
   })
 
   vi.mocked(attachParcelService).mockImplementation(async (input) => {
@@ -505,5 +527,117 @@ describe.each([
     ).rejects.toThrow(AuthorizationError)
     expect(getOrganizationByIdService).not.toHaveBeenCalled()
     expect(createMemberProfileService).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * s54 (critere 11) : toutes les adresses d'une cellule sont reprises. La
+ * premiere est la titulaire de la fiche creee, les suivantes ses
+ * supplementaires, actives et d'origine fichier ; une adresse deja portee
+ * par une autre fiche rejoint le meme compte, avec le role de la cellule
+ * (critere 8).
+ */
+describe('[SUPER_ADMIN] importMembersService — plusieurs adresses par cellule (s54)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(userTestSuperAdmin)
+  })
+
+  it('cellule à trois adresses : la première titulaire, les deux suivantes supplémentaires, origine fichier', async () => {
+    await run(
+      csv(
+        line({
+          id: 'c-010',
+          name: 'Jean Dubois',
+          address: '21 allée des Essais',
+          email: 'jean@exemple.test, claire@exemple.test marc@exemple.test',
+          reference: 'ZZ 121 - 00XX000021',
+        })
+      )
+    )
+
+    expect(createMemberProfileService).toHaveBeenCalledWith(
+      expect.objectContaining({email: 'jean@exemple.test'})
+    )
+    expect(
+      vi.mocked(addMemberProfileEmailService).mock.calls.map(([input]) => ({
+        email: input.email,
+        role: input.role,
+        origin: input.origin,
+        memberProfileId: input.memberProfileId,
+      }))
+    ).toEqual([
+      {
+        email: 'claire@exemple.test',
+        role: 'additional',
+        origin: 'file',
+        memberProfileId: 'fiche-c-010',
+      },
+      {
+        email: 'marc@exemple.test',
+        role: 'additional',
+        origin: 'file',
+        memberProfileId: 'fiche-c-010',
+      },
+    ])
+    expect(db.committed).toEqual(
+      expect.arrayContaining([
+        'email:fiche-c-010:claire@exemple.test',
+        'email:fiche-c-010:marc@exemple.test',
+      ])
+    )
+  })
+
+  it('adresse titulaire d’une fiche et supplémentaire d’une autre : un seul compte, le rôle de chaque cellule (critère 8)', async () => {
+    await run(
+      csv(
+        line({
+          id: 'c-020',
+          name: 'Bernard Lefèvre',
+          address: '12 allée des Essais',
+          email: 'bernard@exemple.test',
+          reference: 'ZZ 112 - 00XX000012',
+        }),
+        line({
+          id: 'c-021',
+          name: 'SCI Les Pins',
+          address: '27 allée des Essais',
+          email: 'sci@exemple.test, Bernard@exemple.test',
+          reference: 'ZZ 127 - 00XX000027',
+        })
+      )
+    )
+
+    const sharedAdd = vi
+      .mocked(addMemberProfileEmailService)
+      .mock.calls.map(([input]) => input)
+      .filter((input) => input.email.toLowerCase() === 'bernard@exemple.test')
+    expect(sharedAdd.at(-1)).toMatchObject({
+      memberProfileId: 'fiche-c-021',
+      role: 'additional',
+      origin: 'file',
+      confirmedAccountUserId: 'compte-fiche-c-020',
+    })
+    expect(db.committed).toEqual(
+      expect.arrayContaining(['email:fiche-c-021:bernard@exemple.test'])
+    )
+  })
+
+  it('un membre déjà importé garde ses adresses : l’ordre de la cellule ne déplace pas le titre (critère 9)', async () => {
+    db.profiles.set('c-030', 'fiche-existante')
+
+    await run(
+      csv(
+        line({
+          id: 'c-030',
+          name: 'Déjà Là',
+          address: '30 allée des Essais',
+          email: 'autre@exemple.test, deja@exemple.test',
+          reference: 'ZZ 130 - 00XX000030',
+        })
+      )
+    )
+
+    expect(createMemberProfileService).not.toHaveBeenCalled()
+    expect(addMemberProfileEmailService).not.toHaveBeenCalled()
   })
 })

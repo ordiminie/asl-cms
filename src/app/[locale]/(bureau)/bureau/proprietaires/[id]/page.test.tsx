@@ -41,6 +41,12 @@ vi.mock('../actions', () => ({
   changeMemberRoleAction: vi.fn(),
   updateMemberProfileContactAction: vi.fn(),
 }))
+vi.mock('./actions', () => ({
+  addMemberProfileEmailAction: vi.fn(),
+  designateMemberProfileHolderAction: vi.fn(),
+  removeMemberProfileEmailAction: vi.fn(),
+  updateMemberProfileEmailAction: vi.fn(),
+}))
 
 import {render, screen} from '@/__tests__/customRender'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
@@ -69,6 +75,7 @@ const profile = {
   city: 'Lacanau',
   mailOnly: true,
   incomplete: false,
+  emails: [],
   account: {status: 'mail_only' as const},
   roleCard: {
     reading: 'no_account' as const,

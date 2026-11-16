@@ -1,4 +1,14 @@
-import {and, asc, eq, gt, isNotNull, isNull, lte, or} from 'drizzle-orm'
+import {
+  and,
+  asc,
+  eq,
+  getTableColumns,
+  gt,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+} from 'drizzle-orm'
 import {alias} from 'drizzle-orm/pg-core'
 
 import {
@@ -7,6 +17,11 @@ import {
 } from '@/db/models/member-profile-model'
 import {parcel, ParcelModel, parcelOwnership} from '@/db/models/parcel-model'
 import {getDb} from '@/db/tenant-scope'
+
+import {
+  activeHolderEmailSql,
+  mailOnlySql,
+} from './member-profile-email-repository'
 
 /**
  * Parcelles et periodes de propriete d'une association (s12, ADR 029). Sous
@@ -227,9 +242,17 @@ export const getFormerParcelsByMemberDao = async (
 export const getParcelOwnerAtDao = async (
   parcelId: string,
   date: string
-): Promise<MemberProfileModel | undefined> => {
+): Promise<
+  (MemberProfileModel & {email: string | null; mailOnly: boolean}) | undefined
+> => {
   const [row] = await getDb()
-    .select({profile: memberProfile})
+    .select({
+      profile: {
+        ...getTableColumns(memberProfile),
+        email: activeHolderEmailSql(),
+        mailOnly: mailOnlySql(),
+      },
+    })
     .from(parcelOwnership)
     .innerJoin(
       memberProfile,

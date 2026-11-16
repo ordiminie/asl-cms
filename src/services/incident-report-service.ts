@@ -499,7 +499,9 @@ export const createMyIncidentReportService = async (
       description,
       memberId: profile.id,
       reporterName: profile.name,
-      reporterEmail: profile.email,
+      // s54 : l'adresse de la personne connectee, pas la titulaire de la
+      // fiche — le bureau repond au proche qui a signale.
+      reporterEmail: authUser.email,
       reporterPhone: profile.phone,
     })
     return {report, category}
@@ -524,7 +526,10 @@ type MyReportProfile = {
  */
 const readForMyProfiles = async <T>(
   organizationId: string,
-  read: (profiles: [MyReportProfile, ...MyReportProfile[]]) => Promise<T>
+  read: (
+    profiles: [MyReportProfile, ...MyReportProfile[]],
+    sessionEmail: string
+  ) => Promise<T>
 ): Promise<T | undefined> => {
   const parsed = incidentReportOrganizationIdSchema.safeParse(organizationId)
   if (!parsed.success) {
@@ -540,7 +545,7 @@ const readForMyProfiles = async <T>(
     const [first, ...others] = orderMyProfiles(
       await getMemberProfilesByUserIdDao(parsed.data, authUser.id)
     )
-    return first ? read([first, ...others]) : undefined
+    return first ? read([first, ...others], authUser.email) : undefined
   })
 }
 
@@ -560,14 +565,15 @@ export const getMyIncidentReportsService = async (
   })
 
 /**
- * Ce que le bureau recevra du declarant : nom, email, telephone de la
- * premiere fiche (s53), celle ou le signalement se rattache.
+ * Ce que le bureau recevra du declarant : nom et telephone de la premiere
+ * fiche (s53), celle ou le signalement se rattache, et l'adresse de la
+ * personne connectee (s54).
  */
 export const getMyReportIdentityService = async (
   organizationId: string
 ): Promise<MyReportIdentityDTO | undefined> =>
-  readForMyProfiles(organizationId, async ([profile]) => ({
+  readForMyProfiles(organizationId, async ([profile], sessionEmail) => ({
     name: profile.name,
-    email: profile.email,
+    email: sessionEmail,
     phone: profile.phone,
   }))

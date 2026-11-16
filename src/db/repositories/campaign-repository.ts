@@ -13,7 +13,6 @@ import {
   sql,
 } from 'drizzle-orm'
 
-import {user} from '@/db/models/auth-model'
 import {
   AddCampaignModel,
   campaign,
@@ -23,9 +22,8 @@ import {
   campaignRecipient,
   CampaignRecipientStatusModel,
   CampaignStatusModel,
-  memberUnsubscribe,
 } from '@/db/models/campaign-model'
-import {memberProfileAccount} from '@/db/models/member-profile-account-model'
+import {memberProfileEmail} from '@/db/models/member-profile-email-model'
 import {memberProfile} from '@/db/models/member-profile-model'
 import {parcel, parcelOwnership} from '@/db/models/parcel-model'
 import {scheduledJob} from '@/db/models/scheduled-job-model'
@@ -38,15 +36,19 @@ import {CAMPAIGN_DELIVER_PART_JOB_KIND} from '@/services/types/domain/scheduled-
  * ecritures s'executent dans la transaction du scope de tenant.
  */
 
-/** Une fiche telle que le calcul de cible la lit. */
+/**
+ * Une ligne de la cible : une par **(fiche, adresse active)**, et une par
+ * fiche sans adresse active, `email` nul (s54, ADR 057).
+ */
 export type CampaignTargetRowModel = {
   memberProfileId: string
   name: string
   email: string | null
+  /** Le refus porte par l'adresse (`unsubscribed_at`, ADR 057). */
   unsubscribed: boolean
   /** Parcelles actuelles de la fiche : l'ordre d'une adresse (s53). */
   currentParcelNumbers: string[]
-  /** Nom du compte relie a la fiche (s53), `null` sans compte. */
+  /** Nom du compte de l'adresse relie a la fiche, `null` sans compte. */
   accountName: string | null
 }
 
@@ -54,7 +56,9 @@ export type CampaignPageRows = {rows: CampaignModel[]; total: number}
 
 /**
  * Un destinataire encore a servir, avec ce que le rendu remplace. Une fiche
- * supprimee depuis la creation laisse la ligne, sans nom ni adresse.
+ * supprimee depuis la creation laisse la ligne, sans nom ; une adresse qui
+ * n'est plus active nulle part dans l'association, sans adresse (s54, ADR
+ * 057) : rien ne lui est envoye.
  */
 export type PendingRecipientRowModel = {
   recipientId: string
@@ -63,8 +67,8 @@ export type PendingRecipientRowModel = {
   email: string | null
   unsubscribeToken: string
   /**
-   * Une fiche de l'adresse a refuse les campagnes depuis la creation (s26 ;
-   * l'adresse entiere depuis s53, ADR 055).
+   * L'adresse a refuse les campagnes depuis la creation (s26 ; l'adresse
+   * entiere depuis s53, ADR 055 ; portee par l'adresse depuis s54, ADR 057).
    */
   unsubscribed: boolean
   /** Parcelles actuelles de toutes les fiches de l'adresse (s53, ADR 055). */
@@ -95,6 +99,8 @@ export type CampaignPartWithDeferralRowModel = CampaignPartRowModel & {
 
 export type CampaignRecipientInput = {
   memberProfileId: string
+  /** L'adresse visee, ecrite a la creation (s54, ADR 057). */
+  email: string
   unsubscribeToken: string
 }
 
@@ -118,6 +124,21 @@ export type CreatedCampaign = {
   parts: CreatedCampaignPart[]
 }
 
+/**
+ * Le compte relie a la fiche dont l'adresse de connexion est l'adresse de la
+ * ligne (sous-requete correlee, alias explicites : aucune jointure ne
+ * multiplie la fiche).
+ */
+const accountNameOfEmailSql = (emailColumn: string) =>
+  sql<
+    string | null
+  >`(select u_target."name" from "member_profile_account" mpa_target inner join "user" u_target on u_target."id" = mpa_target."user_id" where mpa_target."member_profile_id" = "member_profile"."id" and lower(u_target."email") = lower(${sql.raw(emailColumn)}) limit 1)`
+
+/**
+ * La cible : une ligne par fiche et par adresse **active** (s54, ADR 057),
+ * titulaire d'abord ; une fiche sans adresse active donne une ligne sans
+ * adresse. Le refus est celui de l'adresse.
+ */
 export const getCampaignTargetRowsDao = async (
   organizationId: string
 ): Promise<CampaignTargetRowModel[]> => {
@@ -125,28 +146,34 @@ export const getCampaignTargetRowsDao = async (
     .select({
       memberProfileId: memberProfile.id,
       name: memberProfile.name,
-      email: memberProfile.email,
-      unsubscribed: sql<boolean>`${memberUnsubscribe.id} is not null`,
-      accountName: user.name,
+      email: memberProfileEmail.email,
+      unsubscribed: sql<
+        boolean | null
+      >`${memberProfileEmail.unsubscribedAt} is not null`,
+      accountName: accountNameOfEmailSql('"member_profile_email"."email"'),
     })
     .from(memberProfile)
     .leftJoin(
-      memberUnsubscribe,
-      eq(memberUnsubscribe.memberProfileId, memberProfile.id)
+      memberProfileEmail,
+      and(
+        eq(memberProfileEmail.memberProfileId, memberProfile.id),
+        eq(memberProfileEmail.status, 'active')
+      )
     )
-    .leftJoin(
-      memberProfileAccount,
-      eq(memberProfileAccount.memberProfileId, memberProfile.id)
-    )
-    .leftJoin(user, eq(user.id, memberProfileAccount.userId))
     .where(eq(memberProfile.organizationId, organizationId))
-    .orderBy(asc(memberProfile.name), asc(memberProfile.id))
+    .orderBy(
+      asc(memberProfile.name),
+      asc(memberProfile.id),
+      asc(memberProfileEmail.role),
+      asc(memberProfileEmail.id)
+    )
 
-  const numbers = await getCurrentParcelNumbersForMembersDao(
-    rows.map((row) => row.memberProfileId)
-  )
+  const numbers = await getCurrentParcelNumbersForMembersDao([
+    ...new Set(rows.map((row) => row.memberProfileId)),
+  ])
   return rows.map((row) => ({
     ...row,
+    unsubscribed: row.email !== null && row.unsubscribed === true,
     currentParcelNumbers: numbers[row.memberProfileId] ?? [],
   }))
 }
@@ -273,6 +300,7 @@ export const createCampaignWithRecipientsTxnDao = async (
         organizationId: input.organizationId,
         campaignId: created.id,
         memberProfileId: recipient.memberProfileId,
+        email: recipient.email,
         partId: recipient.partId,
         unsubscribeToken: recipient.unsubscribeToken,
       }))
@@ -382,9 +410,11 @@ export const getCampaignsPageDao = async (input: {
 
 /**
  * Les destinataires encore `pending` d'une part, dans l'ordre stable de leur
- * identifiant, avec le refus eventuel de leur fiche. Une fiche supprimee
- * depuis (`member_profile_id` a NULL) laisse la ligne, sans adresse : la
- * livraison la traite au lieu de la perdre.
+ * identifiant, avec l'adresse de la ligne (s54, ADR 057) relue **active**
+ * dans l'association : refus de l'adresse, fiches qui la portent, compte et
+ * parcelles. Une adresse retiree depuis, ou une fiche supprimee
+ * (`member_profile_id` a NULL), laisse la ligne sans adresse ou sans nom : la
+ * livraison la traite au lieu de la perdre, sans rien envoyer.
  */
 export const getPendingPartRecipientsDao = async (
   partId: string
@@ -395,25 +425,14 @@ export const getPendingPartRecipientsDao = async (
       organizationId: campaignRecipient.organizationId,
       memberProfileId: memberProfile.id,
       name: memberProfile.name,
-      email: memberProfile.email,
+      email: campaignRecipient.email,
       unsubscribeToken: campaignRecipient.unsubscribeToken,
-      unsubscribed: sql<boolean>`${memberUnsubscribe.id} is not null`,
-      accountName: user.name,
     })
     .from(campaignRecipient)
     .leftJoin(
       memberProfile,
       eq(memberProfile.id, campaignRecipient.memberProfileId)
     )
-    .leftJoin(
-      memberUnsubscribe,
-      eq(memberUnsubscribe.memberProfileId, campaignRecipient.memberProfileId)
-    )
-    .leftJoin(
-      memberProfileAccount,
-      eq(memberProfileAccount.memberProfileId, memberProfile.id)
-    )
-    .leftJoin(user, eq(user.id, memberProfileAccount.userId))
     .where(
       and(
         eq(campaignRecipient.partId, partId),
@@ -423,12 +442,11 @@ export const getPendingPartRecipientsDao = async (
     .orderBy(asc(campaignRecipient.id))
   if (rows.length === 0) return []
 
-  const addresses = await getAddressProfilesDao(
+  const addresses = await getActiveAddressProfilesDao(
     rows[0].organizationId,
-    rows.flatMap((row) => (row.email ? [row.email] : []))
+    rows.map((row) => row.email)
   )
-  const addressOf = (email: string | null) =>
-    email ? (addresses.get(emailKeyOf(email)) ?? []) : []
+  const addressOf = (email: string) => addresses.get(emailKeyOf(email)) ?? []
   const numbers = await getCurrentParcelNumbersForMembersDao([
     ...new Set([
       ...rows.flatMap((row) =>
@@ -440,65 +458,77 @@ export const getPendingPartRecipientsDao = async (
 
   return rows.map((row) => {
     const sameAddress = addressOf(row.email)
-    const profileIds =
-      sameAddress.length > 0
-        ? sameAddress.map((profile) => profile.id)
-        : row.memberProfileId
-          ? [row.memberProfileId]
-          : []
+    const profileIds = [...new Set(sameAddress.map((profile) => profile.id))]
+    const own = sameAddress.find(
+      (profile) => profile.id === row.memberProfileId
+    )
     return {
       recipientId: row.recipientId,
       memberProfileId: row.memberProfileId,
       name: row.name,
-      email: row.email,
+      email: sameAddress.length > 0 && row.name !== null ? row.email : null,
       unsubscribeToken: row.unsubscribeToken,
-      accountName: row.accountName,
-      unsubscribed:
-        row.unsubscribed || sameAddress.some((profile) => profile.unsubscribed),
-      parcelNumbers: profileIds.flatMap((id) => numbers[id] ?? []),
-      addressProfileCount: Math.max(1, sameAddress.length),
+      accountName: (own ?? sameAddress[0])?.accountName ?? null,
+      unsubscribed: sameAddress.some((profile) => profile.unsubscribed),
+      parcelNumbers: (profileIds.length > 0
+        ? profileIds
+        : row.memberProfileId
+          ? [row.memberProfileId]
+          : []
+      ).flatMap((id) => numbers[id] ?? []),
+      addressProfileCount: Math.max(1, profileIds.length),
     }
   })
 }
 
 const emailKeyOf = (email: string): string => email.trim().toLowerCase()
 
+type ActiveAddressProfile = {
+  id: string
+  unsubscribed: boolean
+  accountName: string | null
+}
+
 /**
- * Les fiches de l'association qui portent ces adresses, sans casse, avec
- * leur refus des campagnes, par adresse (s53, ADR 055) : la livraison relit
- * l'adresse entiere.
+ * Les adresses **actives** de l'association egales, sans casse, a celles-ci,
+ * par adresse : la fiche qui la porte, le refus de l'adresse (ADR 057) et le
+ * nom du compte de l'adresse relie a cette fiche.
  */
-const getAddressProfilesDao = async (
+const getActiveAddressProfilesDao = async (
   organizationId: string,
   emails: string[]
-): Promise<Map<string, {id: string; unsubscribed: boolean}[]>> => {
+): Promise<Map<string, ActiveAddressProfile[]>> => {
   const keys = [...new Set(emails.map(emailKeyOf))]
   if (keys.length === 0) return new Map()
 
-  const emailKey = sql<string>`lower(trim(${memberProfile.email}))`
+  const emailKey = sql<string>`lower(trim(${memberProfileEmail.email}))`
   const rows = await getDb()
     .select({
-      id: memberProfile.id,
+      id: memberProfileEmail.memberProfileId,
       emailKey,
-      unsubscribed: sql<boolean>`${memberUnsubscribe.id} is not null`,
+      unsubscribed: sql<boolean>`${memberProfileEmail.unsubscribedAt} is not null`,
+      accountName: sql<
+        string | null
+      >`(select u_address."name" from "member_profile_account" mpa_address inner join "user" u_address on u_address."id" = mpa_address."user_id" where mpa_address."member_profile_id" = "member_profile_email"."member_profile_id" and lower(u_address."email") = lower("member_profile_email"."email") limit 1)`,
     })
-    .from(memberProfile)
-    .leftJoin(
-      memberUnsubscribe,
-      eq(memberUnsubscribe.memberProfileId, memberProfile.id)
-    )
+    .from(memberProfileEmail)
     .where(
       and(
-        eq(memberProfile.organizationId, organizationId),
+        eq(memberProfileEmail.organizationId, organizationId),
+        eq(memberProfileEmail.status, 'active'),
         inArray(emailKey, keys)
       )
     )
 
-  const byAddress = new Map<string, {id: string; unsubscribed: boolean}[]>()
+  const byAddress = new Map<string, ActiveAddressProfile[]>()
   for (const row of rows) {
     byAddress.set(row.emailKey, [
       ...(byAddress.get(row.emailKey) ?? []),
-      {id: row.id, unsubscribed: row.unsubscribed},
+      {
+        id: row.id,
+        unsubscribed: row.unsubscribed,
+        accountName: row.accountName,
+      },
     ])
   }
   return byAddress

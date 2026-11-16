@@ -464,6 +464,7 @@ export const sendCampaignService = async (
       })),
       target.recipients.map((row) => ({
         memberProfileId: row.memberProfileId,
+        email: row.email,
         unsubscribeToken: newUnsubscribeToken(),
       }))
     )

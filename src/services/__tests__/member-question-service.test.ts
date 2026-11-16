@@ -173,7 +173,11 @@ beforeEach(() => {
 
 describe('[ORGANIZATION MEMBER] createMyQuestionService — le membre pose sa question (critères 1, 2)', () => {
   beforeEach(() => {
-    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+    // s54 : la personne connectee (un proche) n'est pas la titulaire.
+    setupAuthUserMocked({
+      ...withRole(UserOrganizationRoleConst.MEMBER),
+      email: 'claire.moreau@exemple.fr',
+    })
   })
 
   it('should write the question for the session profile, under the tenant scope', async () => {
@@ -228,7 +232,7 @@ describe('[ORGANIZATION MEMBER] createMyQuestionService — le membre pose sa qu
         question: expect.objectContaining({
           categoryName: 'Voirie',
           memberName: 'Lucie Moreau',
-          memberEmail: 'lucie.moreau@exemple.fr',
+          memberEmail: 'claire.moreau@exemple.fr',
         }),
       })
     )
@@ -259,7 +263,7 @@ describe('[ORGANIZATION MEMBER] createMyQuestionService — le membre pose sa qu
       expect.objectContaining({
         question: expect.objectContaining({
           memberName: 'Lucie Moreau',
-          memberEmail: 'lucie.moreau@exemple.fr',
+          memberEmail: 'claire.moreau@exemple.fr',
         }),
       })
     )
@@ -423,10 +427,15 @@ describe('[ORGANIZATION MEMBER] lectures du membre — sujets et identité', () 
     )
   })
 
-  it('should read the identity the board will receive: name and email of the profile', async () => {
+  it('should read the identity the board will receive: the fiche’s name, the address of the person signed in (s54)', async () => {
+    setupAuthUserMocked({
+      ...withRole(UserOrganizationRoleConst.MEMBER),
+      email: 'claire.moreau@exemple.fr',
+    })
+
     await expect(getMyQuestionIdentityService(ORG_ID)).resolves.toEqual({
       name: 'Lucie Moreau',
-      email: 'lucie.moreau@exemple.fr',
+      email: 'claire.moreau@exemple.fr',
     })
   })
 

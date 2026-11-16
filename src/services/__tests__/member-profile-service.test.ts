@@ -12,8 +12,13 @@ vi.mock('@/db/tenant-scope', () => ({
     }
   }),
 }))
+vi.mock('@/db/repositories/member-profile-email-repository', () => ({
+  getMemberProfileEmailsDao: vi.fn(),
+  insertMemberProfileEmailDao: vi.fn(),
+}))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   countMemberProfilesDao: vi.fn(),
+  getLinkedAccountsDao: vi.fn(),
   createMemberProfileTxnDao: vi.fn(),
   getMemberProfilesByEmailDao: vi.fn(),
   getMemberProfilesByUserIdDao: vi.fn(),
@@ -48,9 +53,14 @@ vi.mock('@/db/repositories/organization-repository', () => ({
 }))
 
 import {
+  getMemberProfileEmailsDao,
+  insertMemberProfileEmailDao,
+} from '@/db/repositories/member-profile-email-repository'
+import {
   countLinkedProfilesDao,
   countMemberProfilesDao,
   createMemberProfileTxnDao,
+  getLinkedAccountsDao,
   getMemberProfileByIdDao,
   getMemberProfileByPennylaneIdDao,
   getMemberProfilePageDao,
@@ -60,7 +70,6 @@ import {
   unlinkMemberProfileAccountDao,
   updateMemberProfileContactTxnDao,
 } from '@/db/repositories/member-profile-repository'
-import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
   createMemberIfAbsentTxnDao,
   createOrganizationMemberDao,
@@ -124,13 +133,42 @@ const profileRow = (overrides: Record<string, unknown> = {}) => ({
   addressComplement: null as string | null,
   postalCode: null as string | null,
   city: null as string | null,
-  userId: null as string | null,
   pennylaneCustomerId: null as string | null,
   mailOnly: true,
   createdAt: new Date('2026-09-01T08:00:00Z'),
   updatedAt: new Date('2026-09-01T08:00:00Z'),
   ...overrides,
 })
+
+/** Une adresse de fiche, dans l'ordre des colonnes du modele (s54). */
+const emailRow = (overrides: Record<string, unknown> = {}) => ({
+  id: 'email-1',
+  organizationId: ORG_ID,
+  memberProfileId: PROFILE_ID,
+  email: 'odile@example.test',
+  role: 'holder' as const,
+  status: 'active' as const,
+  origin: 'site' as const,
+  addedByUserId: null,
+  addedByName: null,
+  replacesEmailId: null,
+  confirmationTokenHash: null,
+  expiresAt: null,
+  unsubscribedAt: null,
+  createdAt: new Date('2026-09-01T08:00:00Z'),
+  updatedAt: new Date('2026-09-01T08:00:00Z'),
+  ...overrides,
+})
+
+/** La fiche porte cette titulaire, reliee a ce compte (s54). */
+const givenLinkedHolder = (email: string, userId: string | null) => {
+  vi.mocked(getMemberProfileEmailsDao).mockResolvedValue([
+    emailRow({email}),
+  ] as never)
+  vi.mocked(getLinkedAccountsDao).mockResolvedValue(
+    userId ? [{userId, email, name: 'Compte'}] : []
+  )
+}
 
 const profileDaos = () => [
   countMemberProfilesDao,
@@ -144,6 +182,7 @@ const profileDaos = () => [
 
 /** Les ecritures de compte : aucune pour une fiche qui reste sans email. */
 const accountDaos = () => [
+  insertMemberProfileEmailDao,
   createUserDao,
   createUserIfAbsentTxnDao,
   getUserByEmailDao,
@@ -192,6 +231,24 @@ beforeEach(() => {
   vi.mocked(getUserOrganizationDao).mockResolvedValue(undefined)
   vi.mocked(getMemberAccountDao).mockResolvedValue(undefined)
   vi.mocked(getOrganizationMembersDao).mockResolvedValue([])
+  // s54 : les adresses ecrites et les comptes relies sont relus par l'ecran.
+  vi.mocked(insertMemberProfileEmailDao).mockImplementation(
+    async (row) => emailRow(row) as never
+  )
+  vi.mocked(getMemberProfileEmailsDao).mockImplementation(
+    async () =>
+      vi
+        .mocked(insertMemberProfileEmailDao)
+        .mock.calls.map(([row]) => emailRow(row)) as never
+  )
+  vi.mocked(getLinkedAccountsDao).mockImplementation(async () => {
+    const inserted = vi.mocked(insertMemberProfileEmailDao).mock.calls.at(-1)
+    return vi.mocked(linkMemberProfileAccountDao).mock.calls.map(([link]) => ({
+      userId: link.userId,
+      email: inserted?.[0].email ?? '',
+      name: 'Compte',
+    }))
+  })
 })
 
 describe.each([
@@ -226,13 +283,20 @@ describe.each([
     expect(createMemberProfileTxnDao).toHaveBeenCalledWith({
       organizationId: ORG_ID,
       name: 'Claire Meunier',
-      email: 'claire@example.org',
       phone: '0262 12 34 56',
       addressLine: '12 chemin des Pins',
       addressComplement: null,
       postalCode: '97400',
       city: 'Saint-Denis',
       pennylaneCustomerId: null,
+    })
+    expect(insertMemberProfileEmailDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      email: 'claire@example.org',
+      role: 'holder',
+      status: 'active',
+      origin: 'site',
     })
     expect(writtenUnder).toBe(ORG_ID)
     expect(result).toMatchObject({status: 'saved', profile: {id: PROFILE_ID}})
@@ -261,6 +325,24 @@ describe.each([
     )
   })
 
+  it('should give the file origin to the holder email of an imported profile (s54)', async () => {
+    vi.mocked(createMemberProfileTxnDao).mockResolvedValue({
+      status: 'created',
+      row: profileRow({pennylaneCustomerId: 'client-fictif-001'}),
+    })
+
+    await createMemberProfileService({
+      organizationId: ORG_ID,
+      name: 'Lucie Fictive',
+      email: 'lucie@example.org',
+      pennylaneCustomerId: 'client-fictif-001',
+    })
+
+    expect(insertMemberProfileEmailDao).toHaveBeenCalledWith(
+      expect.objectContaining({role: 'holder', origin: 'file'})
+    )
+  })
+
   it('should create a profile without email: mail only, and no account is opened (critère 7)', async () => {
     const result = await createMemberProfileService({
       organizationId: ORG_ID,
@@ -271,11 +353,11 @@ describe.each([
     })
 
     expect(createMemberProfileTxnDao).toHaveBeenCalledWith(
-      expect.objectContaining({email: null})
+      expect.not.objectContaining({email: expect.anything()})
     )
     expect(result).toMatchObject({
       status: 'saved',
-      profile: {email: null, mailOnly: true},
+      profile: {email: null, mailOnly: true, emails: []},
     })
     for (const dao of accountDaos()) {
       expect(dao).not.toHaveBeenCalled()
@@ -298,10 +380,10 @@ describe.each([
         city: '',
       })
 
+      expect(insertMemberProfileEmailDao).not.toHaveBeenCalled()
       expect(createMemberProfileTxnDao).toHaveBeenCalledWith({
         organizationId: ORG_ID,
         name: 'Paul Ferrand',
-        email: null,
         phone: null,
         addressLine: null,
         addressComplement: null,
@@ -366,11 +448,13 @@ describe.each([
         row: profileRow({phone: '0692 00 00 00', city: 'Saint-Paul'}),
       }
     })
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
+      profileRow({phone: '0692 00 00 00', city: 'Saint-Paul'})
+    )
 
     const result = await updateMemberProfileContactService({
       organizationId: ORG_ID,
       memberProfileId: PROFILE_ID,
-      email: '',
       phone: '0692 00 00 00',
       addressLine: '3 rue des Lilas',
       postalCode: '97460',
@@ -378,7 +462,6 @@ describe.each([
     })
 
     expect(updateMemberProfileContactTxnDao).toHaveBeenCalledWith(PROFILE_ID, {
-      email: null,
       phone: '0692 00 00 00',
       addressLine: '3 rue des Lilas',
       addressComplement: null,
@@ -426,6 +509,8 @@ describe.each([
           ...profileRow(),
           currentParcelNumbers: ['30', '5', '6'],
           accountProfileCount: 0,
+          otherEmailCount: 0,
+          holderUserId: null,
         },
         {
           ...profileRow({
@@ -435,6 +520,8 @@ describe.each([
           }),
           currentParcelNumbers: [],
           accountProfileCount: 0,
+          otherEmailCount: 0,
+          holderUserId: null,
         },
       ],
       total: 27,
@@ -557,13 +644,16 @@ describe('[s12d] le compte suit l’adresse de la fiche', () => {
     setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
   })
 
-  const linkedRow = (overrides: Record<string, unknown> = {}) =>
-    profileRow({
+  const linkedRow = (overrides: Record<string, unknown> = {}) => {
+    const {userId = ACCOUNT_ID, ...rest} = overrides as {userId?: string}
+    const row = profileRow({
       email: 'odile@example.test',
       mailOnly: false,
-      userId: ACCOUNT_ID,
-      ...overrides,
+      ...rest,
     })
+    givenLinkedHolder(row.email as string, userId)
+    return row
+  }
 
   it('ouvre un compte dès la création d’une fiche avec adresse, sous le scope (critère 2)', async () => {
     vi.mocked(createMemberProfileTxnDao).mockResolvedValue({
@@ -626,267 +716,6 @@ describe('[s12d] le compte suit l’adresse de la fiche', () => {
     })
   })
 
-  it('ouvre un compte quand une fiche courrier reçoit une adresse (critère 1)', async () => {
-    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
-      status: 'updated',
-      row: profileRow({email: 'odile@example.test', mailOnly: false}),
-    })
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: 'odile@example.test',
-    })
-
-    expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
-      expect.objectContaining({
-        organizationId: ORG_ID,
-        userId: NEW_ACCOUNT_ID,
-        role: 'member',
-      })
-    )
-    expect(result).toMatchObject({status: 'saved', accountChange: 'opened'})
-  })
-
-  it('ferme l’accès quand l’adresse d’un propriétaire est retirée, sans toucher la fiche (critère 1)', async () => {
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('member', ACCOUNT_ID)
-    )
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: '',
-    })
-
-    expect(deleteMemberWithRoleDao).toHaveBeenCalledWith(
-      ACCOUNT_ID,
-      ORG_ID,
-      'member'
-    )
-    expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
-    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
-    expect(result).toMatchObject({status: 'saved', accountChange: 'closed'})
-  })
-
-  it('vide le lien quand l’adresse est retirée et que le compte lié n’a plus de ligne ici', async () => {
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
-      status: 'updated',
-      row: linkedRow({email: null, mailOnly: true}),
-    })
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: '',
-    })
-
-    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
-    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
-    expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
-    expect(getMemberAccountDao).not.toHaveBeenCalled()
-    expect(result).toMatchObject({
-      status: 'saved',
-      accountChange: null,
-      profile: {account: {status: 'mail_only'}},
-    })
-  })
-
-  it('ouvre et lie le nouveau compte quand l’adresse change et que le compte lié n’a plus de ligne ici', async () => {
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
-      status: 'updated',
-      row: linkedRow({email: 'odile.marchand@example.test'}),
-    })
-    vi.mocked(getMemberAccountDao).mockResolvedValue({
-      email: 'odile.marchand@example.test',
-      name: 'Odile Marchand',
-      role: 'member',
-    })
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: 'odile.marchand@example.test',
-    })
-
-    expect(createUserIfAbsentTxnDao).toHaveBeenCalledWith({
-      email: 'odile.marchand@example.test',
-      name: expect.any(String),
-    })
-    expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
-      expect.objectContaining({
-        organizationId: ORG_ID,
-        userId: NEW_ACCOUNT_ID,
-        role: 'member',
-      })
-    )
-    expect(linkMemberProfileAccountDao).toHaveBeenCalledTimes(1)
-    expect(linkMemberProfileAccountDao).toHaveBeenCalledWith({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      userId: NEW_ACCOUNT_ID,
-    })
-    expect(getMemberAccountDao).toHaveBeenCalledWith(NEW_ACCOUNT_ID, ORG_ID)
-    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
-    expect(result).toMatchObject({status: 'saved', accountChange: 'opened'})
-  })
-
-  it('refuse de vider l’adresse d’un membre du bureau et n’écrit rien', async () => {
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('board', ACCOUNT_ID)
-    )
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: '',
-      city: 'Saint-Paul',
-    })
-
-    expect(result).toEqual({status: 'board_email_required'})
-    expect(updateMemberProfileContactTxnDao).not.toHaveBeenCalled()
-    for (const dao of accountDaos()) {
-      expect(dao).not.toHaveBeenCalled()
-    }
-  })
-
-  it('reporte le rôle de la présidence sur la nouvelle adresse', async () => {
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('owner', ACCOUNT_ID)
-    )
-    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
-      status: 'updated',
-      row: linkedRow({email: 'presidence@example.test'}),
-    })
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: 'presidence@example.test',
-    })
-
-    expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
-      expect.objectContaining({userId: NEW_ACCOUNT_ID, role: 'owner'})
-    )
-    expect(deleteMemberWithRoleDao).toHaveBeenCalledWith(
-      ACCOUNT_ID,
-      ORG_ID,
-      'owner'
-    )
-    expect(result).toMatchObject({status: 'saved', accountChange: 'replaced'})
-  })
-
-  it('trace le départ de la présidence de l’ancienne adresse, auteur = la personne connectée (s14, D5)', async () => {
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('owner', ACCOUNT_ID)
-    )
-    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
-      status: 'updated',
-      row: linkedRow({email: 'presidence@example.test'}),
-    })
-
-    await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: 'presidence@example.test',
-    })
-
-    expect(insertMemberRoleEventDao).toHaveBeenCalledWith({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      targetUserId: ACCOUNT_ID,
-      targetName: 'Jean et Odile Dubois',
-      authorUserId: userTest.id,
-      authorName: userTest.name,
-      onBehalfOfUserId: null,
-      onBehalfOfName: null,
-      fromRole: 'owner',
-      toRole: null,
-      reason: 'email_change',
-    })
-  })
-
-  it('pendant une session à la place d’un compte : trace attribuée au SuperAdmin, pour le compte du compte vu (s48)', async () => {
-    const viewer = withRole(UserOrganizationRoleConst.ADMIN)
-    vi.mocked(getActingContext).mockResolvedValueOnce({
-      user: viewer,
-      impersonator: {id: 'superadmin-support', name: 'Zoé Support'},
-    })
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('owner', ACCOUNT_ID)
-    )
-    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
-      status: 'updated',
-      row: linkedRow({email: 'presidence@example.test'}),
-    })
-
-    await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: 'presidence@example.test',
-    })
-
-    expect(insertMemberRoleEventDao).toHaveBeenCalledWith(
-      expect.objectContaining({
-        authorUserId: 'superadmin-support',
-        authorName: 'Zoé Support',
-        onBehalfOfUserId: viewer.id,
-        onBehalfOfName: viewer.name,
-        reason: 'email_change',
-      })
-    )
-  })
-
-  it('lit qui agit hors du scope de tenant : la session passe par le pool (s48)', async () => {
-    const actingReadUnder: (string | undefined)[] = []
-    vi.mocked(getActingContext).mockImplementation(async () => {
-      actingReadUnder.push(scope.current)
-      return {user: withRole(UserOrganizationRoleConst.ADMIN)}
-    })
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('owner', ACCOUNT_ID)
-    )
-    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
-      status: 'updated',
-      row: linkedRow({email: 'presidence@example.test'}),
-    })
-
-    await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: 'presidence@example.test',
-    })
-
-    expect(insertMemberRoleEventDao).toHaveBeenCalled()
-    expect(actingReadUnder.length).toBeGreaterThan(0)
-    expect(actingReadUnder.every((under) => under === undefined)).toBe(true)
-  })
-
-  it('ne change aucun accès quand seule la casse de l’adresse change', async () => {
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('member', ACCOUNT_ID)
-    )
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: 'Odile@Example.test',
-    })
-
-    expect(result).toMatchObject({status: 'saved', accountChange: null})
-    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
-    expect(unlinkMemberProfileAccountDao).not.toHaveBeenCalled()
-  })
-
   it('montre au bureau le compte ouvert et le rôle au bureau de la fiche', async () => {
     vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
     vi.mocked(getMemberAccountDao).mockResolvedValue({
@@ -910,6 +739,7 @@ describe('[s12d] le compte suit l’adresse de la fiche', () => {
 
   it('montre « courrier uniquement » quand le compte lié n’a plus d’accès ici', async () => {
     vi.mocked(getMemberProfileByIdDao).mockResolvedValue(linkedRow())
+    vi.mocked(getMemberAccountDao).mockResolvedValue(undefined)
 
     const profile = await getMemberProfileService(ORG_ID, PROFILE_ID)
 
@@ -922,13 +752,16 @@ describe('[s12d] le compte suit l’adresse de la fiche', () => {
  * personne connectée, et la liste porte le rôle du bureau de chaque fiche.
  */
 describe('[s14] lecture des rôles pour l’écran', () => {
-  const linkedRow = (overrides: Record<string, unknown> = {}) =>
-    profileRow({
+  const linkedRow = (overrides: Record<string, unknown> = {}) => {
+    const {userId = ACCOUNT_ID, ...rest} = overrides as {userId?: string}
+    const row = profileRow({
       email: 'odile@example.test',
       mailOnly: false,
-      userId: ACCOUNT_ID,
-      ...overrides,
+      ...rest,
     })
+    givenLinkedHolder(row.email as string, userId)
+    return row
+  }
 
   it('[ORGANIZATION BOARD] la carte d’une fiche Membre propose Membre et Bureau', async () => {
     setupAuthUserMocked(withRole(UserOrganizationRoleConst.ADMIN))
@@ -1024,16 +857,22 @@ describe('[s14] lecture des rôles pour l’écran', () => {
           ...linkedRow(),
           currentParcelNumbers: [],
           accountProfileCount: 0,
+          otherEmailCount: 0,
+          holderUserId: ACCOUNT_ID,
         },
         {
           ...linkedRow({id: OTHER_PROFILE_ID, userId: NEW_ACCOUNT_ID}),
           currentParcelNumbers: [],
           accountProfileCount: 0,
+          otherEmailCount: 0,
+          holderUserId: NEW_ACCOUNT_ID,
         },
         {
-          ...profileRow({id: 'courrier', userId: null}),
+          ...profileRow({id: 'courrier'}),
           currentParcelNumbers: [],
           accountProfileCount: 0,
+          otherEmailCount: 0,
+          holderUserId: null,
         },
       ],
       total: 3,
@@ -1055,6 +894,7 @@ describe('[s14] lecture des rôles pour l’écran', () => {
       null,
     ])
     expect(page.items[0]).not.toHaveProperty('userId')
+    expect(page.items[0]).not.toHaveProperty('holderUserId')
   })
 })
 
@@ -1120,8 +960,9 @@ describe('[s53] adresse déjà celle d’un compte de l’association', () => {
       name: 'Bernard Lefèvre',
       email: SHARED_EMAIL,
       mailOnly: false,
-      userId: HOLDER_ID,
     }),
+    userId: HOLDER_ID,
+    role: 'holder' as const,
     currentParcelNumbers: ['12'],
     ...overrides,
   })
@@ -1277,106 +1118,11 @@ describe('[s53] adresse déjà celle d’un compte de l’association', () => {
     expect(createMemberProfileTxnDao).not.toHaveBeenCalled()
   })
 
-  it('modification : une adresse portée par un autre compte demande confirmation, rien n’est écrit', async () => {
-    givenHolder()
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
-      profileRow({name: 'SCI Les Pins'})
-    )
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: SHARED_EMAIL,
-    })
-
-    expect(result).toMatchObject({
-      status: 'email_shared',
-      holder: {userId: HOLDER_ID, name: 'Bernard Lefèvre'},
-    })
-    for (const dao of writeDaos()) {
-      expect(dao).not.toHaveBeenCalled()
-    }
-  })
-
-  it('modification confirmée : la fiche rejoint le compte détenteur', async () => {
-    givenHolder()
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
-      profileRow({name: 'SCI Les Pins'})
-    )
-    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
-      status: 'updated',
-      row: profileRow({
-        name: 'SCI Les Pins',
-        email: SHARED_EMAIL,
-        mailOnly: false,
-      }),
-    })
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: SHARED_EMAIL,
-      confirmedAccountUserId: HOLDER_ID,
-    })
-
-    expect(linkMemberProfileAccountDao).toHaveBeenCalledWith({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      userId: HOLDER_ID,
-    })
-    expect(result).toMatchObject({status: 'saved', accountChange: 'linked'})
-  })
-
-  it('modification d’une fiche déjà reliée au compte qui porte l’adresse : aucune confirmation', async () => {
-    givenHolder()
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
-      profileRow({
-        email: SHARED_EMAIL,
-        mailOnly: false,
-        userId: HOLDER_ID,
-      })
-    )
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('member', HOLDER_ID)
-    )
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: SHARED_EMAIL,
-      city: 'Saint-Paul',
-    })
-
-    expect(updateMemberProfileContactTxnDao).toHaveBeenCalled()
-    expect(result).toMatchObject({status: 'saved', accountChange: null})
-  })
-
-  it('un membre du bureau qui garde une autre fiche peut vider l’adresse de celle-ci, et garde son accès', async () => {
-    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
-      profileRow({email: SHARED_EMAIL, mailOnly: false, userId: HOLDER_ID})
-    )
-    vi.mocked(getUserOrganizationDao).mockResolvedValue(
-      membership('board', HOLDER_ID)
-    )
-    vi.mocked(countLinkedProfilesDao)
-      .mockResolvedValueOnce(2)
-      .mockResolvedValueOnce(1)
-
-    const result = await updateMemberProfileContactService({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      email: '',
-    })
-
-    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
-    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
-    expect(result).toMatchObject({status: 'saved', accountChange: 'closed'})
-  })
-
   it('carte « Accès » : nomme le compte et les autres fiches qu’il réunit (3c)', async () => {
     vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
-      profileRow({email: SHARED_EMAIL, mailOnly: false, userId: HOLDER_ID})
+      profileRow({email: SHARED_EMAIL, mailOnly: false})
     )
+    givenLinkedHolder(SHARED_EMAIL, HOLDER_ID)
     givenHolder()
     vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
       {...holderProfile(), id: PROFILE_ID, currentParcelNumbers: ['31']},
@@ -1401,14 +1147,18 @@ describe('[s53] adresse déjà celle d’un compte de l’association', () => {
     vi.mocked(getMemberProfilePageDao).mockResolvedValue({
       rows: [
         {
-          ...profileRow({userId: HOLDER_ID}),
+          ...profileRow(),
           currentParcelNumbers: [],
           accountProfileCount: 3,
+          otherEmailCount: 2,
+          holderUserId: HOLDER_ID,
         },
         {
           ...profileRow({id: OTHER_PROFILE_ID}),
           currentParcelNumbers: [],
           accountProfileCount: 0,
+          otherEmailCount: 0,
+          holderUserId: null,
         },
       ],
       total: 2,
@@ -1420,6 +1170,7 @@ describe('[s53] adresse déjà celle d’un compte de l’association', () => {
     })
 
     expect(page.items.map((item) => item.accountProfileCount)).toEqual([3, 0])
+    expect(page.items.map((item) => item.otherEmailCount)).toEqual([2, 0])
   })
 
   it.each([

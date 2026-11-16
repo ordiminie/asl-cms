@@ -25,6 +25,7 @@ const item = (
   currentParcelNumbers: ['12', '13'],
   boardRole: null,
   accountProfileCount: 1,
+  otherEmailCount: 0,
   ...overrides,
 })
 
@@ -329,5 +330,48 @@ describe('MemberProfileList — compte de plusieurs terrains (s53, état 4a)', (
     )
 
     expect(screen.queryByText(/Compte de \d+ terrains/)).toBeNull()
+  })
+})
+
+describe('MemberProfileList — autres adresses de la fiche (s54, état 5a)', () => {
+  it('écrit « + 2 autres adresses » sous la titulaire, au tableau et sur la carte', () => {
+    render(
+      <MemberProfileList
+        list={page([
+          item({email: 'jean.dubois@exemple.fr', otherEmailCount: 2}),
+        ])}
+      />
+    )
+
+    const [row] = tableRows()
+    expect(within(row).getByText('+ 2 autres adresses')).toBeInTheDocument()
+    expect(
+      within(cards()[0]).getByText('+ 2 autres adresses')
+    ).toBeInTheDocument()
+  })
+
+  it('met le compte de plusieurs terrains et les autres adresses sur la même ligne, séparés par « · »', () => {
+    render(
+      <MemberProfileList
+        list={page([
+          item({
+            email: 'bernard.lefevre@exemple.fr',
+            accountProfileCount: 3,
+            otherEmailCount: 1,
+          }),
+        ])}
+      />
+    )
+
+    const [row] = tableRows()
+    expect(
+      within(row).getByText('Compte de 3 terrains · + 1 autre adresse')
+    ).toBeInTheDocument()
+  })
+
+  it('n’écrit rien sans autre adresse active', () => {
+    render(<MemberProfileList list={page([item({otherEmailCount: 0})])} />)
+
+    expect(screen.queryByText(/autres? adresses?/)).toBeNull()
   })
 })
