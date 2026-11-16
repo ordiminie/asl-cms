@@ -29,8 +29,8 @@ avant la mise en ligne ; s46 fixe l'adresse de l'espace membre que s12d remplit,
 destination après connexion. s48, ajoutée le 28 octobre 2026, peut se jouer dès la fusion de s14.
 **s52**, scindée de s26 le 11 novembre 2026, se joue **juste après s26 et avant s29 et s42**, qui en dépendent.
 **s53 à s57**, ajoutées le 15 novembre 2026 après les réponses de La Fourche, se jouent ainsi : s53
-**avant s18, s19 et s33**, qui lisent « mes terrains » ; s54 **après s25** (elle étend le calcul de la
-cible) et **avant s27, s29 et s42** ; s55 **avant s28** ; s56 après s20, s53, s54 et s55 ; s57 après s19, s32, s53 et s54.
+**après s25** et **avant s18, s19 et s33**, qui lisent « mes terrains » — s25 se joue donc avant s18 et s19 ;
+s54 **après s26** (elle étend le calcul de la cible) et **avant s27, s29 et s42** ; s55 **avant s28** ; s56 après s20, s53, s54 et s55 ; s57 après s19, s32, s53 et s54.
 Pour toutes les autres stories, l'ordre des ids reste l'ordre d'exécution.
 
 ## Règles transverses à toutes les stories
@@ -98,7 +98,7 @@ réponses de La Fourche (`docs/Admin-MEL/questions-*.md` et `demande-fichier-rel
 | Fichier exemple des relevés d'eau (format imposé par Pennylane)  | le parseur de s17, et par ricochet s18 (historique de consommation) — donc l'angle n°1 du PRD | aucun — s17 attend le fichier réel                                                                 | **Toujours en attente** : La Fourche refait le fichier, puis le transmettra. Relevé en janvier, remise au bureau entre janvier et mars : s17 doit être prête avant.                                                                                                                  |
 | Accès ASL Community + validation statutaire du vote électronique | s33 en entier                                                                                 | aucun, mais le module n'est pas en doute : seul son fournisseur l'est (voir s33)                   | Inchangé, et un point s'ajoute : **vérifier avec ASL Community comment ils gèrent le multi-vote** (une cotisation = un droit de vote, plusieurs terrains = plusieurs droits).                                                                                                       |
 | Arbitrage RGPD sur la rétention des données d'un ex-propriétaire | la coupure d'accès de s12                                                                     | s12 livre le modèle daté sans purge                                                                | **Règle fonctionnelle reçue** : l'ancien propriétaire garde son accès six mois, puis il est fermé ; l'espace reste consultable par le bureau. Codée par s57 avec un délai paramétrable. La confirmation du conseil RGPD sur la durée reste attendue.                                  |
-| Avis RGPD sur l'accès d'un tiers (proche connecté avec sa propre adresse) aux données d'un membre | la connexion par une adresse supplémentaire (s54) ; les notes internes dans la copie en ligne (s40) | s54 livre tout le reste avec la connexion des adresses supplémentaires coupée par un paramètre du tenant, désactivé au seed ; s40 exclut les notes internes de la copie en ligne, la copie complète passe par le bureau | **Ouvert le 15 novembre 2026** (PRD, _Constraints_). Ni s54 ni s40 n'attendent l'avis ; l'activer chez une association est une décision prise après l'avis. L'avis demandé couvre aussi les **envois** aux adresses supplémentaires (relances, factures), jugés hors réserve par défaut (s54). |
+| Avis RGPD sur l'accès d'un tiers (proche connecté avec sa propre adresse) aux données d'un membre | la connexion par une adresse supplémentaire (s54) ; le fil privé du bureau (notes et échanges de s24) dans la copie en ligne (s40) | s54 livre tout le reste avec la connexion des adresses supplémentaires coupée par un paramètre du tenant, désactivé au seed ; s40 exclut tout le fil de s24 de la copie en ligne, la copie complète passe par le bureau | **Ouvert le 15 novembre 2026** (PRD, _Constraints_). Ni s54 ni s40 n'attendent l'avis ; l'activer chez une association est une décision prise après l'avis. L'avis demandé couvre aussi les **envois** aux adresses supplémentaires (relances, factures), jugés hors réserve par défaut (s54). |
 
 ---
 
@@ -2452,9 +2452,9 @@ Hors périmètre de cette story : la détection automatique d'une nouvelle factu
   d'envois le même jour. Le budget de s52 (300 par jour, dont une réserve de 100 pour les emails de connexion, soit 200 envois
   reportables) les étale ; ajouter un test de volume (200 impayés
   relancés le même jour) et vérifier que le report ne fait pas se télescoper la relance suivante.
-- **Un propriétaire de plusieurs terrains** (s53) peut avoir plusieurs factures impayées : une relance par
-  accès, qui regroupe ses factures, vaut mieux qu'un email par facture pour ce public ; à trancher en
-  `/ks-design`.
+- **Un propriétaire de plusieurs terrains** (s53) peut avoir plusieurs factures impayées : le critère 6
+  tranche déjà le nombre d'envois (une relance par adresse et par échéance, qui regroupe ses factures) ;
+  `/ks-design` ne décide que de la présentation des factures regroupées dans cette relance.
 - **Toutes les adresses de la fiche** reçoivent la relance (s54). Un statut à classer est signalé à la
   présidente par email (s19) et ne déclenche aucune relance.
 
@@ -3022,7 +3022,7 @@ l'association détient sur moi **afin d'**exercer mon droit d'accès.
 
 ### Dependencies
 
-s12, s12d, s24, s38, s39, s53, s54
+s12, s12d, s22, s23, s24, s38, s39, s53, s54
 
 ### Agentic notes
 
@@ -3942,7 +3942,7 @@ terrains, leurs factures et leurs relevés **afin de** ne pas gérer autant d'ac
 
 - [ ] Une même adresse email peut figurer sur plusieurs fiches d'une association : ces fiches désignent alors **une seule personne**, qui a un seul compte de connexion relié à chacune d'elles.
 - [ ] Après connexion, ce propriétaire arrive sur « Mes terrains », qui liste ses terrains (fiche, parcelle, compteur), sans changer de compte. Les factures et la consommation de chaque terrain s'y ajoutent avec s19 et s18, qui portent ce critère.
-- [ ] Quand le bureau saisit sur une fiche une adresse déjà portée par une autre fiche de l'association (un deuxième terrain acheté plus tard, une fiche créée à la main), le site nomme le titulaire du compte existant et demande de confirmer qu'il s'agit de la même personne : confirmé, la fiche est reliée à ce compte ; refusé, rien n'est enregistré. Aucun compte n'est fusionné.
+- [ ] Quand le bureau saisit sur une fiche une adresse déjà portée par une autre fiche de l'association (un deuxième terrain acheté plus tard, une fiche créée à la main), le site nomme le détenteur du compte existant et demande de confirmer qu'il s'agit de la même personne : confirmé, la fiche est reliée à ce compte ; refusé, rien n'est enregistré. Aucun compte n'est fusionné.
 - [ ] Un membre ne voit que les fiches reliées à son compte : accès croisé testé en forgeant l'identifiant d'une fiche d'un autre membre, de la même association comme d'une autre.
 - [ ] L'import de s13 ne rejette plus une ligne parce que son adresse est portée par une autre fiche : une fixture anonymisée versionnée, qui reproduit le cas du fichier réel (25 lignes, 10 adresses partagées), crée une fiche par client Pennylane, reliées au même compte ; chaque regroupement par adresse partagée est signalé au rapport, pour que le bureau puisse déceler une faute de frappe.
 - [ ] Retirer l'adresse d'une fiche ne ferme pas l'accès aux autres fiches du même compte : l'accès se ferme quand plus aucune fiche ne porte l'adresse.
@@ -3985,6 +3985,8 @@ d'office des fiches d'adresses différentes.
 une adresse portée par plusieurs fiches désigne toujours **une seule personne**, donc un seul compte. Le
 bureau est seul à pouvoir relier une fiche à un compte existant, par la confirmation explicite du critère 3.
 Le membre, lui, ne peut pas ajouter une adresse déjà portée par une fiche non reliée à son compte (s54).
+Le proche qui possède lui-même un terrain n'est pas servi (décision du 16 novembre 2026) : son adresse,
+titulaire de sa propre fiche, ne peut pas devenir l'adresse supplémentaire de la fiche d'un parent (s54).
 C'est le chemin des nouveaux membres « rajoutés manuellement au fil de l'eau » (s56).
 
 À trancher en `/ks-design` : un membre qui corrige ses coordonnées (s16) corrige-t-il une fiche ou toutes ses
@@ -4015,7 +4017,8 @@ permet de se connecter **afin que** les enfants d'un propriétaire âgé gèrent
 - [ ] Une adresse est **active d'office** quand elle vient du fichier (import de s13, puis de s56) ou qu'elle est saisie par le bureau, comme avant cette story. Une adresse ajoutée **ou modifiée** par le membre n'est active qu'après confirmation par un lien envoyé à cette adresse : une faute de frappe n'ouvre pas l'espace à un inconnu. Une adresse non active ne reçoit rien et ne permet pas de se connecter.
 - [ ] **Non-régression** : toutes les adresses présentes à la livraison sont actives et titulaires de leur fiche. Un membre qui se connectait avant cette story se connecte encore, et reçoit toujours les campagnes — vérifié sur une fiche et un compte créés avant la migration.
 - [ ] Le membre ne peut pas ajouter une adresse déjà portée par une fiche de l'association qui n'est pas reliée à son compte : refus avec un message explicite l'invitant à s'adresser au bureau. Seul le bureau relie une fiche à un compte existant, par la confirmation de s53. Aucun compte n'est fusionné.
-- [ ] **Succession de l'adresse titulaire** : une fiche qui porte au moins une adresse active a exactement une adresse titulaire. Modifier ou remplacer l'adresse titulaire — par le bureau, par l'import annuel (s56) ou par le membre une fois la nouvelle adresse confirmée — transfère le titre à la nouvelle adresse ; jusqu'à la confirmation, l'ancienne reste titulaire. Supprimer l'adresse titulaire ne promeut **aucune** adresse d'office : la fiche est signalée « sans adresse titulaire » au bureau, qui désigne la nouvelle parmi les adresses actives. Dans une cellule d'import à plusieurs adresses, la première est titulaire. Chaque cas est testé, paramètre de la réserve désactivé.
+- [ ] **Proche lui-même membre** : une adresse qui est l'adresse titulaire d'une autre fiche de l'association ne peut pas être ajoutée comme adresse supplémentaire, ni par le membre, ni par le bureau, ni par l'import (s13, s56) : le site bloque avec un message explicite, et l'import écarte l'adresse et la liste au rapport. Testé pour les trois voies.
+- [ ] **Succession de l'adresse titulaire** : une fiche qui porte au moins une adresse active a exactement une adresse titulaire. Modifier ou remplacer l'adresse titulaire — par le bureau, par l'import annuel (s56) ou par le membre une fois la nouvelle adresse confirmée — transfère le titre à la nouvelle adresse ; jusqu'à la confirmation, l'ancienne reste titulaire. Le bureau ne supprime l'adresse titulaire qu'en désignant, dans la même opération, celle qui la remplace : une nouvelle adresse qu'il saisit, ou une adresse active de la fiche qu'il choisit. Sans remplaçante, le site refuse la suppression ; aucune adresse n'est promue d'office par le site, sauf par l'import annuel quand l'adresse titulaire disparaît du fichier (s56). À la création d'une fiche, dans une cellule d'import à plusieurs adresses, la première est titulaire ; pour une fiche existante, l'ordre des adresses dans la cellule ne déplace pas le titre. Chaque cas est testé, paramètre de la réserve désactivé.
 - [ ] Retirer une adresse d'une fiche ferme l'accès de cette adresse **à cette fiche**, à la requête suivante (ADR 038), sans toucher aux autres adresses ni à l'historique ; si la même adresse est portée par d'autres fiches, son accès à celles-ci reste ouvert (s53).
 - [ ] L'import de s13 reprend **toutes** les adresses d'une cellule qui en contient plusieurs ; la remarque « adresse ignorée » disparaît du rapport. L'import annuel (s56) porte le même critère.
 - [ ] Les adresses d'une fiche s'affichent dans la fiche du bureau, avec leur origine (fichier Pennylane ou saisie sur le site).
@@ -4060,7 +4063,12 @@ comprises. Si l'avis les inclut, ce sera une nouvelle story.
 
 La succession de l'adresse titulaire n'est pas un détail : sans elle, un propriétaire qui change d'adresse
 (cas nominal de s56) deviendrait « supplémentaire » et ne pourrait plus se connecter tant que le paramètre
-est coupé. Ne jamais promouvoir d'office l'adresse d'un proche : ce serait contourner la réserve.
+est coupé. Ne jamais promouvoir d'office l'adresse d'un proche : ce serait contourner la réserve. Seule
+exception, décidée le 16 novembre 2026 : l'import annuel, quand l'adresse titulaire disparaît du fichier, en
+désigne une autre et notifie le bureau, qui vérifie le choix avec les personnes concernées (s56). Le bureau
+retire l'adresse titulaire pour la remplacer, jamais pour la laisser vacante (décision du 16 novembre 2026) :
+une fiche qui a une adresse active a donc toujours son adresse titulaire, et l'état « sans adresse
+titulaire » n'existe pas.
 
 Le critère « membre sans email » de s12 (« joignable par courrier uniquement ») reste vrai : une fiche sans
 aucune adresse. Déclarer les colonnes à l'inventaire de s12c et à l'export de s38.
@@ -4122,6 +4130,8 @@ coordonnées des membres soient à jour sans ressaisie ni passage par le prestat
 - [ ] La présidente dépose le fichier annuel depuis le back-office de son association, sans passer par le SuperAdmin ; l'action est déclarée au registre, avec Président(e) par défaut.
 - [ ] Les fiches existantes sont rapprochées par l'identifiant client Pennylane (ADR 048) ; leurs adresses postales, leur téléphone et leurs adresses email sont mis à jour, **sauf une valeur modifiée sur le site après le dernier import**, qui est conservée et signalée au rapport (défaut à confirmer avec La Fourche, voir les notes).
 - [ ] Quand le fichier remplace l'adresse titulaire d'une fiche (s54), la nouvelle adresse devient titulaire et l'ancienne n'est plus active : le propriétaire qui a changé d'adresse se connecte avec la nouvelle, paramètre de la réserve RGPD désactivé. Le rapport signale le remplacement.
+- [ ] Quand l'adresse titulaire d'une fiche est absente du fichier et qu'aucune adresse nouvelle ne la remplace, elle n'est plus active, et le site désigne arbitrairement une autre adresse active de la fiche comme titulaire. Le bureau est notifié de chaque désignation (fiche, ancienne et nouvelle adresse titulaire), pour vérifier le choix avec les personnes concernées et le corriger au besoin (s54). Sans autre adresse active, la fiche reste sans adresse, gérée par courrier (s12).
+- [ ] Une adresse venue d'un fichier précédent, non titulaire, absente du nouveau fichier n'est plus active (défaut à confirmer avec La Fourche).
 - [ ] Comme l'import initial : toutes les adresses email d'une cellule qui en contient plusieurs sont reprises (s54), et les adresses de terrain et de domicile sont renseignées depuis leurs colonnes (s55).
 - [ ] Une ligne dont l'identifiant est inconnu n'est **pas** créée : elle est listée au rapport comme « membre à créer à la main ».
 - [ ] L'import ne change jamais la propriété d'une parcelle : les ventes se saisissent par le bureau (s12).
@@ -4246,7 +4256,7 @@ Le notaire gère le prorata et les dettes : aucune logique de prorata ni de sold
 | s37  | permissions-configurables        | 4   | s03b                                                                                                                                          | F    |
 | s38  | export-donnees                   | 4   | s01b, s02, s04, s04b, s05, s06, s07, s08, s09, s10, s12, s14, s17, s19, s23, s24, s25, s26, s27, s27b, s29, s30, s31, s32, s36, s37, s42, s52, s53, s54, s55 | F    |
 | s39  | completude-export                | 2   | s38                                                                                                                                           | F    |
-| s40  | export-membre                    | 2   | s12, s12d, s24, s38, s39, s53, s54                                                                                                            | F    |
+| s40  | export-membre                    | 2   | s12, s12d, s22, s23, s24, s38, s39, s53, s54                                                                                                    | F    |
 | s41  | simulation-role                  | 2   | s01, s03b, s24, s37, s38, s39                                                                                                                 | F    |
 | s42  | lancement-invitations            | 4   | s02, s03, s03c, s12, s12d, s13, s25, s26, s27, s27b, s28, s52, s53, s54                                                                       | F    |
 | s43  | locale-unique                    | 2   | s11                                                                                                                                           | A    |
