@@ -829,6 +829,40 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
   })
 })
 
+/**
+ * s53, critère 8 : la liste du bureau dit combien de terrains porte le compte
+ * de chaque fiche, à partir de deux. Le seed porte Bernard Lefèvre (trois
+ * fiches, une adresse) ; Claire Meunier a un compte d'une seule fiche.
+ */
+test.describe('Propriétaires — compte de plusieurs terrains (s53)', () => {
+  test('critère 8 — « Compte de 3 terrains » sous l’adresse de chaque fiche du compte, rien pour un compte d’une fiche', async ({
+    browser,
+  }) => {
+    test.setTimeout(90_000)
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      await openList(bureau, TENANT_A, 'Lefèvre')
+      const bernard = listRowOf(bureau, 'Bernard Lefèvre')
+      await expect(bernard).toHaveCount(2)
+      for (const row of await bernard.all()) {
+        await expect(row).toContainText('Compte de 3 terrains')
+      }
+
+      await openList(bureau, TENANT_A, 'Chênes')
+      await expect(listRowOf(bureau, 'SCI Les Chênes')).toContainText(
+        'Compte de 3 terrains'
+      )
+
+      await openList(bureau, TENANT_A, 'Meunier')
+      const meunier = listRowOf(bureau, 'Claire Meunier')
+      await expect(meunier).toHaveCount(1)
+      await expect(meunier).not.toContainText('terrains')
+    } finally {
+      await bureau.context().close()
+    }
+  })
+})
+
 test.describe('Propriétaires — isolation entre associations', () => {
   test.afterAll(async () => {
     await cleanUpRun()

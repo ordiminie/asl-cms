@@ -20,7 +20,7 @@ vi.mock('@/db/repositories/member-question-repository', () => ({
   markMemberQuestionNotificationFailedDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
-  getMemberProfileByUserIdDao: vi.fn(),
+  getMemberProfilesByUserIdDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/association-category-repository', () => ({
   listActiveCategoriesDao: vi.fn(),
@@ -37,7 +37,7 @@ vi.mock('../email-service', () => ({
 }))
 
 import {listActiveCategoriesDao} from '@/db/repositories/association-category-repository'
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {
   createMemberQuestionDao,
   getMemberQuestionByIdDao,
@@ -148,9 +148,9 @@ beforeEach(() => {
   vi.clearAllMocks()
   scope.current = undefined
   vi.mocked(listActiveCategoriesDao).mockResolvedValue([categoryRow()])
-  vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(
-    profileRow() as never
-  )
+  vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+    {...profileRow(), currentParcelNumbers: []},
+  ] as never)
   vi.mocked(createMemberQuestionDao).mockResolvedValue(questionRow() as never)
   vi.mocked(organizationRepository.getOrganizationByIdDao).mockResolvedValue({
     id: ORG_ID,
@@ -190,7 +190,7 @@ describe('[ORGANIZATION MEMBER] createMyQuestionService — le membre pose sa qu
       id: QUESTION_ID,
       notificationFailed: false,
     })
-    expect(getMemberProfileByUserIdDao).toHaveBeenCalledWith(
+    expect(getMemberProfilesByUserIdDao).toHaveBeenCalledWith(
       ORG_ID,
       userTest.id
     )
@@ -358,7 +358,7 @@ describe('[ORGANIZATION MEMBER] createMyQuestionService — le membre pose sa qu
   })
 
   it('should say not_found for an account without a profile, without writing', async () => {
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
 
     await expect(createMyQuestionService(submission())).resolves.toEqual({
       status: 'not_found',
@@ -376,7 +376,7 @@ describe('[PUBLIC] createMyQuestionService — le visiteur sans compte', () => {
     await expect(createMyQuestionService(submission())).rejects.toThrow(
       AuthorizationError
     )
-    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
+    expect(getMemberProfilesByUserIdDao).not.toHaveBeenCalled()
     expect(createMemberQuestionDao).not.toHaveBeenCalled()
   })
 
@@ -393,7 +393,7 @@ describe('[PUBLIC] createMyQuestionService — le visiteur sans compte', () => {
 describe('[SUPER_ADMIN] createMyQuestionService — sans fiche dans l’association', () => {
   beforeEach(() => {
     setupAuthUserMocked(userTestSuperAdmin)
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
   })
 
   it('should say not_found, without writing', async () => {
@@ -431,7 +431,7 @@ describe('[ORGANIZATION MEMBER] lectures du membre — sujets et identité', () 
   })
 
   it('should read nothing for an account without a profile', async () => {
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
 
     await expect(listMyQuestionCategoriesService(ORG_ID)).resolves.toBe(
       undefined
@@ -575,5 +575,25 @@ describe.each([
 
   it('should say the user cannot manage the questions', async () => {
     await expect(canManageMemberQuestionsService(ORG_ID)).resolves.toBe(false)
+  })
+})
+
+describe('[ORGANIZATION MEMBER] question d’un compte à deux fiches (s53)', () => {
+  it('rattache la question à la première fiche du compte', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {
+        ...profileRow(),
+        id: '99999999-9999-4999-8999-999999999999',
+        currentParcelNumbers: [],
+      },
+      {...profileRow(), currentParcelNumbers: ['12']},
+    ] as never)
+
+    await createMyQuestionService(submission())
+
+    expect(createMemberQuestionDao).toHaveBeenCalledWith(
+      expect.objectContaining({memberId: profileRow().id})
+    )
   })
 })

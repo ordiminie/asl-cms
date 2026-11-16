@@ -35,6 +35,8 @@ export type CurrentParcelRow = {
   parcelId: string
   number: string
   startsOn: string
+  /** Numero du compteur d'eau de la parcelle (s13), `null` si absent. */
+  meterNumber: string | null
 }
 
 export type FormerParcelRow = {
@@ -165,6 +167,7 @@ export const getCurrentParcelsByMemberDao = async (
       parcelId: parcel.id,
       number: parcel.number,
       startsOn: parcelOwnership.startsOn,
+      meterNumber: parcel.meterNumber,
     })
     .from(parcelOwnership)
     .innerJoin(parcel, eq(parcel.id, parcelOwnership.parcelId))

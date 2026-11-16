@@ -1673,7 +1673,6 @@
         "missing_name": "Le nom est manquant.",
         "no_contact": "Ni adresse postale ni email : personne ne pourrait la joindre.",
         "missing_reference": "La référence client est manquante : aucune parcelle à rattacher.",
-        "email_taken": "Cet email est déjà utilisé par un autre membre.",
         "parcel_taken": "Une parcelle de ce client appartient déjà à un autre membre.",
         "invalid_email": "L’adresse email n’est pas valide.",
         "invalid_postal_code": "Le code postal n’est pas valide.",
@@ -1684,7 +1683,9 @@
         "several_emails": "Plusieurs adresses email : seule la première a été gardée.",
         "postal_code_padded": "Code postal complété d’un zéro au début.",
         "no_meter": "Référence sans numéro de compteur : la parcelle est enregistrée sans compteur.",
-        "same_name_and_address": "Même nom et même adresse que la ligne {line} : deux membres distincts ont été créés."
+        "same_name_and_address": "Même nom et même adresse que la ligne {line} : deux membres distincts ont été créés.",
+        "shared_email": "Même adresse email que la ligne {line} : les deux fiches sont reliées au même compte. Vérifiez qu’il s’agit de la même personne.",
+        "shared_email_existing": "Adresse email déjà portée par une fiche existante : cette fiche est reliée au même compte. Vérifiez qu’il s’agit de la même personne."
       }
     },
     "errors": {
@@ -3224,7 +3225,15 @@
     },
     "mailOnlyNotice": "Sans adresse email, ce propriétaire sera joignable par courrier uniquement. Son adresse postale est alors indispensable.",
     "summary": "{count, plural, one {# champ à corriger} other {# champs à corriger}}. Rien n’a été enregistré.",
-    "emailTaken": "Cette adresse est déjà celle de la fiche de {name}.",
+    "emailShared": {
+      "title": "Cette adresse est déjà celle du compte de {name}.",
+      "profiles": "Ce compte sert à se connecter à l’espace de ces terrains :",
+      "question": "S’agit-il de la même personne ?",
+      "consequence": "Si oui, cette fiche rejoint ce compte : ce terrain, ses factures et ses documents y seront visibles. Rien n’a encore été enregistré.",
+      "confirm": "Oui, relier à son compte",
+      "decline": "Non, corriger l’adresse",
+      "profile": "{name}, {count, plural, =0 {sans parcelle actuelle} one {parcelle {numbers}} other {parcelles {numbers}}}"
+    },
     "openProfileOf": "Ouvrir la fiche de {name}",
     "form": {
       "metadataTitle": "Ajouter un propriétaire",
@@ -3264,14 +3273,18 @@
       "accountChange": {
         "opened": "Compte ouvert : {name} peut désormais se connecter avec {email}.",
         "closed": "Accès à l’espace fermé.",
-        "replaced": "{name} se connecte désormais avec {email}. L’accès avec {previous} est fermé."
+        "replaced": "{name} se connecte désormais avec {email}. L’accès avec {previous} est fermé.",
+        "linked": "Fiche reliée au compte de {account} : ce terrain apparaît dans son espace.",
+        "closedShared": "Fiche retirée du compte de {account}. Son accès reste ouvert pour ses autres terrains.",
+        "replacedShared": "Ce terrain s’ouvre désormais avec {email}. {previous} garde l’accès aux autres terrains de son compte."
       },
       "access": {
         "title": "Accès à l’espace membre",
         "open": "<strong>Compte ouvert.</strong> {name} peut se connecter à son espace avec {email}.",
         "mailOnly": "<strong>Joignable par courrier uniquement.</strong> Aucun compte : ajoutez une adresse email pour lui ouvrir son espace.",
         "board": "Membre du bureau : son adresse peut être modifiée, pas supprimée.",
-        "owner": "Président(e) : son adresse peut être modifiée, pas supprimée."
+        "owner": "Président(e) : son adresse peut être modifiée, pas supprimée.",
+        "sharedWith": "Ce compte réunit aussi :"
       },
       "role": {
         "title": "Rôle dans l’association",
@@ -3334,7 +3347,9 @@
       "emailWarnings": {
         "removed": "<strong>Attention.</strong> Sans adresse email, {name} ne pourra plus se connecter à son espace. Sa fiche, ses parcelles et son historique sont conservés. Les envois partiront par courrier.",
         "replaced": "<strong>Attention.</strong> {name} ne pourra plus se connecter avec {previous}. Son espace s’ouvrira avec {email}.",
-        "roleFollows": "Son rôle au bureau suit la nouvelle adresse."
+        "roleFollows": "Son rôle au bureau suit la nouvelle adresse.",
+        "removedShared": "<strong>Attention.</strong> Sans adresse email, cette fiche quitte le compte de {account}. Son accès à l’espace reste ouvert pour {count, plural, one {son autre terrain} other {ses # autres terrains}}. Les envois de cette fiche partiront par courrier.",
+        "replacedShared": "<strong>Attention.</strong> {previous} ne donnera plus accès à ce terrain ; ses autres terrains restent accessibles avec elle. Ce terrain s’ouvrira avec {email}."
       },
       "boardEmailRequired": {
         "summary": "{name} fait partie du bureau : son adresse lui sert à se connecter. Vous pouvez la modifier, pas la supprimer. Rien n’a été enregistré.",
@@ -3487,7 +3502,8 @@
       "unsubscribed": {
         "badge": "Désinscrit des campagnes",
         "since": "A refusé les campagnes email le {date} (depuis le lien d’un email)."
-      }
+      },
+      "linkedOnCreate": "Fiche reliée au compte de {account} : ce terrain apparaît dans son espace."
     },
     "attachDialog": {
       "title": "Rattacher une parcelle à {name}",
@@ -3542,7 +3558,8 @@
         "overlap": "La vente n’a pas été enregistrée. La parcelle {number} a déjà un propriétaire enregistré à partir du {from} : {name}. Une vente au {date} lui donnerait deux propriétaires en même temps. Vérifiez la date, ou consultez la fiche de {name}.",
         "overlapUnknown": "La vente n’a pas été enregistrée. La parcelle {number} a déjà un propriétaire enregistré après cette date."
       }
-    }
+    },
+    "accountProfiles": "Compte de {count} terrains"
   },
   "MemberSpaceLayout": {
     "skipToContent": "Aller au contenu"
@@ -3557,7 +3574,7 @@
     "markerParcels": "{count, plural, =0 {Aucune parcelle actuelle} one {Parcelle {numbers}} other {Parcelles {numbers}}}",
     "greeting": "Bonjour {name}",
     "parcels": {
-      "title": "Mes parcelles",
+      "title": "Mes terrains",
       "current": "Parcelles actuelles",
       "former": "Anciennes parcelles",
       "parcel": "Parcelle <mono>{number}</mono>",
@@ -3567,7 +3584,14 @@
       "periodBeforeImport": "Propriétaire d’avant l’import au {to}",
       "noLongerOwner": "Vous n’êtes plus propriétaire d’une parcelle du domaine depuis le {date}.",
       "mistake": "Une erreur ? Écrivez au bureau.",
-      "contact": "Page Contact"
+      "contact": "Page Contact",
+      "together": "Vos {count} terrains sont réunis ici : vous vous connectez une seule fois.",
+      "landTitle": "{count, plural, one {Parcelle <mono>{numbers}</mono>} other {Parcelles <mono>{numbers}</mono>}}",
+      "landFormerTitle": "{count, plural, one {Ancienne parcelle <mono>{numbers}</mono>} other {Anciennes parcelles <mono>{numbers}</mono>}}",
+      "landName": "Au nom de {name}",
+      "meter": "Compteur <mono>{number}</mono>",
+      "meterMissing": "Compteur non renseigné",
+      "mistakeSeveral": "Un terrain manque, ou n’est pas à vous ? Écrivez au bureau."
     },
     "contact": {
       "title": "Mes coordonnées",
@@ -3590,7 +3614,14 @@
       "saved": {
         "title": "Coordonnées enregistrées.",
         "detail": "Le bureau voit dès maintenant vos nouvelles coordonnées."
-      }
+      },
+      "forLands": "Elles valent pour vos {count} terrains.",
+      "divergent": {
+        "title": "Vos terrains n’ont pas tous les mêmes coordonnées.",
+        "detail": "En les modifiant, vous les mettez à jour pour vos {count} terrains."
+      },
+      "groupTitle": "{count, plural, =0 {Sans parcelle actuelle} one {Parcelle {numbers}} other {Parcelles {numbers}}}{names, select, none {} other { · {names}}}",
+      "savedSeveral": "Elles valent désormais pour vos {count} terrains. Le bureau les voit dès maintenant."
     },
     "denied": {
       "title": "Cette page ne vous est pas accessible",
@@ -3617,7 +3648,8 @@
       "ask": "Poser une question au bureau",
       "askAnother": "Poser une autre question",
       "sent": "Question envoyée. Le bureau vous répondra à votre adresse email."
-    }
+    },
+    "markerLands": "{count} terrains"
   },
   "MemberReportPage": {
     "back": "Revenir à mon espace",

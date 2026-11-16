@@ -1,9 +1,9 @@
 'use client'
 
 import {zodResolver} from '@hookform/resolvers/zod'
-import {AlertTriangle, CircleCheck} from 'lucide-react'
+import {AlertTriangle, CircleCheck, Info} from 'lucide-react'
 import Link from 'next/link'
-import {useTranslations} from 'next-intl'
+import {useFormatter, useTranslations} from 'next-intl'
 import {type ReactNode, useEffect, useId, useRef, useState} from 'react'
 import {FormProvider, useForm} from 'react-hook-form'
 
@@ -21,12 +21,18 @@ import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Card} from '@/components/ui/card'
 import {cn} from '@/lib/utils'
-import type {MyContactDTO} from '@/services/types/domain/member-space-types'
+import type {
+  MyContactDTO,
+  MyContactGroupDTO,
+  MyPostalContactDTO,
+} from '@/services/types/domain/member-space-types'
 
 /**
- * « Mes coordonnees » (s16, ecran C) : lecture, puis modification en place.
- * L'adresse email reste un texte, jamais un champ (ADR 040). Aucun
- * identifiant de fiche n'est rendu ni envoye : l'action resout la fiche par
+ * « Mes coordonnees » (s16, ecran C ; s53, ecran 2) : lecture, puis
+ * modification en place. Ce sont celles de la personne : pour un compte a
+ * plusieurs terrains, elles valent pour tous, et l'enregistrement les ecrit
+ * toutes. L'adresse email reste un texte, jamais un champ (ADR 040). Aucun
+ * identifiant de fiche n'est rendu ni envoye : l'action resout les fiches par
  * la session.
  */
 
@@ -60,9 +66,16 @@ export function MyContactCard({
   return (
     <section id={MY_CONTACT_ANCHOR} aria-labelledby={titleId}>
       <Card className="gap-6 px-4 py-6 shadow-none sm:px-6">
-        <h2 id={titleId} className="font-serif text-xl font-semibold">
-          {t('title')}
-        </h2>
+        <div className="flex flex-col gap-1">
+          <h2 id={titleId} className="font-serif text-xl font-semibold">
+            {t('title')}
+          </h2>
+          {contact.landCount > 1 && (
+            <p className="text-muted-foreground text-[15px]">
+              {t('forLands', {count: contact.landCount})}
+            </p>
+          )}
+        </div>
         {savedNotice && !editing && (
           <Alert
             ref={statusRef}
@@ -73,7 +86,11 @@ export function MyContactCard({
             <CircleCheck aria-hidden="true" className="text-primary" />
             <AlertDescription className="text-foreground text-base">
               <p className="font-semibold">{t('saved.title')}</p>
-              <p>{t('saved.detail')}</p>
+              <p>
+                {contact.landCount > 1
+                  ? t('savedSeveral', {count: contact.landCount})
+                  : t('saved.detail')}
+              </p>
             </AlertDescription>
           </Alert>
         )}
@@ -91,7 +108,11 @@ export function MyContactCard({
           />
         ) : (
           <>
-            <ContactReading contact={contact} />
+            {contact.divergent ? (
+              <DivergentContactReading contact={contact} />
+            ) : (
+              <ContactReading contact={contact} />
+            )}
             <Button
               type="button"
               variant="outline"
@@ -151,14 +172,14 @@ function EmailReading({email}: {email: string | null}) {
   )
 }
 
-const postalLinesOf = (contact: MyContactDTO): string[] =>
+const postalLinesOf = (contact: MyPostalContactDTO): string[] =>
   [
     contact.addressLine,
     contact.addressComplement,
     [contact.postalCode, contact.city].filter(Boolean).join(' '),
   ].filter((line): line is string => Boolean(line))
 
-function ContactReading({contact}: {contact: MyContactDTO}) {
+function ContactReading({contact}: {contact: MyPostalContactDTO}) {
   const t = useTranslations('MemberSpacePage.contact')
   const postalLines = postalLinesOf(contact)
 
@@ -179,6 +200,50 @@ function ContactReading({contact}: {contact: MyContactDTO}) {
         )}
       </Pair>
     </dl>
+  )
+}
+
+/**
+ * Les terrains n'ont pas tous les memes coordonnees (s53, 2b) : une
+ * information neutre, puis un groupe par jeu, titre par ses parcelles.
+ */
+function DivergentContactReading({contact}: {contact: MyContactDTO}) {
+  const t = useTranslations('MemberSpacePage.contact')
+
+  return (
+    <>
+      <Alert className="[&>svg]:size-5">
+        <Info aria-hidden="true" className="text-primary" strokeWidth={1.75} />
+        <AlertDescription className="text-foreground text-base">
+          <p>
+            <strong>{t('divergent.title')}</strong>{' '}
+            {t('divergent.detail', {count: contact.landCount})}
+          </p>
+        </AlertDescription>
+      </Alert>
+      {contact.groups.map((group, index) => (
+        <ContactGroup key={index} group={group} />
+      ))}
+    </>
+  )
+}
+
+function ContactGroup({group}: {group: MyContactGroupDTO}) {
+  const t = useTranslations('MemberSpacePage.contact')
+  const format = useFormatter()
+  const titleId = useId()
+
+  return (
+    <section aria-labelledby={titleId} className="flex flex-col gap-3">
+      <h3 id={titleId} className="text-[17px] font-semibold">
+        {t('groupTitle', {
+          count: group.parcelNumbers.length,
+          numbers: format.list(group.parcelNumbers, {type: 'conjunction'}),
+          names: group.names.length > 0 ? group.names.join(', ') : 'none',
+        })}
+      </h3>
+      <ContactReading contact={group} />
+    </section>
   )
 }
 

@@ -5,7 +5,7 @@ vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
-  getMemberProfileByUserIdDao: vi.fn(),
+  getMemberProfilesByUserIdDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/user-repository', () => ({
   getUserByIdDao: vi.fn(),

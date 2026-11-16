@@ -3,7 +3,7 @@ import 'server-only'
 import {AssociationCategoryModel} from '@/db/models/association-category-model'
 import {MemberQuestionModel} from '@/db/models/member-question-model'
 import {listActiveCategoriesDao} from '@/db/repositories/association-category-repository'
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {
   createMemberQuestionDao,
   getMemberQuestionByIdDao,
@@ -28,6 +28,7 @@ import {
   ValidationError,
   ValidationParsedZodError,
 } from './errors/validation-error'
+import {orderMyProfiles} from './rules/my-profiles-order-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   CategoryDomainConst,
@@ -220,9 +221,8 @@ export const createMyQuestionService = async (
   const authUser = await requireSessionUser()
   const {organizationId, locale, categoryId, body} = parsed.data
   const written = await withTenant(organizationId, async () => {
-    const profile = await getMemberProfileByUserIdDao(
-      organizationId,
-      authUser.id
+    const [profile] = orderMyProfiles(
+      await getMemberProfilesByUserIdDao(organizationId, authUser.id)
     )
     if (!profile) return undefined
 
@@ -247,8 +247,9 @@ export const createMyQuestionService = async (
 
 /**
  * Lecture **cote membre** : aucun identifiant de fiche en entree. La fiche se
- * resout par la session et le domaine appele, sous `withTenant`. Rien pour un
- * compte sans fiche.
+ * resout par la session et le domaine appele, sous `withTenant` : la premiere
+ * du compte dans l'ordre de l'ADR 054 §7 (s53). Rien pour un compte sans
+ * fiche.
  */
 const readForMyProfile = async <T>(
   organizationId: string,
@@ -261,7 +262,9 @@ const readForMyProfile = async <T>(
 
   const authUser = await requireSessionUser()
   return withTenant(parsed.data, async () => {
-    const profile = await getMemberProfileByUserIdDao(parsed.data, authUser.id)
+    const [profile] = orderMyProfiles(
+      await getMemberProfilesByUserIdDao(parsed.data, authUser.id)
+    )
     return profile ? read(profile) : undefined
   })
 }

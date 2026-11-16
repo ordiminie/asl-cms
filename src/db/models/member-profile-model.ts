@@ -1,6 +1,7 @@
 import {SQL, sql} from 'drizzle-orm'
 import {
   boolean,
+  index,
   pgTable,
   text,
   timestamp,
@@ -8,7 +9,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 
-import {organization, user} from './auth-model'
+import {organization} from './auth-model'
 
 /**
  * Fiche d'un proprietaire (s12, ADR 029). Table metier : RLS forcee, policy
@@ -21,15 +22,15 @@ import {organization, user} from './auth-model'
  * - `name` est un seul champ, tel qu'il s'ecrit sur un courrier : « Jean et
  *   Odile Dubois », « SCI Les Pins ».
  * - `email` est nul quand l'adresse est absente : aucune chaine vide, aucune
- *   adresse fictive n'est jamais ecrite. Unique par association, sans casse.
+ *   adresse fictive n'est jamais ecrite. **Non unique** (s53, ADR 054) : une
+ *   adresse portee par plusieurs fiches d'une association designe une seule
+ *   personne, reliee a chacune par un seul compte.
  * - `mail_only` est **generee** (`email IS NULL`) : l'attribut que s25 et s28
  *   liront ne peut pas diverger de l'email.
  * - Aucune colonne de parcelle : le lien fiche ↔ parcelle est date, dans
  *   `parcel_ownership`.
- * - `user_id` designe le compte ouvert pour la fiche (s12d, ADR 037) : nul
- *   tant que la fiche n'a pas de compte, vide a la fermeture. Unique par
- *   association ; `ON DELETE SET NULL` pour qu'un compte supprime laisse la
- *   fiche intacte.
+ * - Aucune colonne de compte : le lien fiche ↔ compte vit dans
+ *   `member_profile_account` (s53, ADR 054, remplace l'ADR 037).
  * - `pennylane_customer_id` est la cle d'import d'un client Pennylane (s13,
  *   ADR 048) : unique par association quand elle est presente. Elle identifie
  *   un client Pennylane, **jamais** la fiche, dont l'identite reste `id`.
@@ -50,7 +51,6 @@ export const memberProfile = pgTable(
     addressComplement: text('address_complement'),
     postalCode: text('postal_code'),
     city: text('city'),
-    userId: uuid('user_id').references(() => user.id, {onDelete: 'set null'}),
     pennylaneCustomerId: text('pennylane_customer_id'),
     mailOnly: boolean('mail_only')
       .generatedAlwaysAs((): SQL => sql`"email" IS NULL`)
@@ -63,12 +63,9 @@ export const memberProfile = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex('member_profile_organization_email_idx')
+    index('member_profile_organization_email_idx')
       .on(table.organizationId, sql`lower(${table.email})`)
       .where(sql`${table.email} is not null`),
-    uniqueIndex('member_profile_organization_user_idx')
-      .on(table.organizationId, table.userId)
-      .where(sql`${table.userId} is not null`),
     uniqueIndex('member_profile_organization_pennylane_idx')
       .on(table.organizationId, table.pennylaneCustomerId)
       .where(sql`${table.pennylaneCustomerId} is not null`),

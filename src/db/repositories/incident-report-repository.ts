@@ -1,4 +1,13 @@
-import {and, asc, count, desc, eq, getTableColumns, sql} from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  sql,
+} from 'drizzle-orm'
 
 import {associationCategory} from '@/db/models/association-category-model'
 import {
@@ -218,11 +227,12 @@ export type MyIncidentReportRow = {
 }
 
 /**
- * Tous les signalements d'une fiche, le plus recent d'abord, sans pagination
- * (arbitrage V1 de s22). Sous `withTenant` : la RLS borne a l'association.
+ * Tous les signalements de ces fiches — celles d'un compte (s53) — le plus
+ * recent d'abord, sans pagination (arbitrage V1 de s22). Sous `withTenant` :
+ * la RLS borne a l'association.
  */
 export const getMyIncidentReportsDao = async (
-  memberId: string
+  memberIds: string[]
 ): Promise<MyIncidentReportRow[]> =>
   getDb()
     .select({
@@ -241,5 +251,5 @@ export const getMyIncidentReportsDao = async (
       associationCategory,
       eq(incidentReport.categoryId, associationCategory.id)
     )
-    .where(eq(incidentReport.memberId, memberId))
+    .where(inArray(incidentReport.memberId, memberIds))
     .orderBy(...INCIDENT_REPORT_ORDER)

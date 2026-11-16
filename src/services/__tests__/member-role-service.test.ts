@@ -27,7 +27,7 @@ vi.mock('@/db/repositories/organization-repository', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfileByIdDao: vi.fn(),
-  getMemberProfileByUserIdDao: vi.fn(),
+  getMemberProfilesByUserIdDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
@@ -38,7 +38,7 @@ vi.mock('@/db/repositories/user-repository', () => ({
 }))
 
 import {getMemberProfileByIdDao} from '@/db/repositories/member-profile-repository'
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
   countCapableMembersDao,
@@ -415,9 +415,12 @@ describe('[ORGANIZATION OWNER] changeMemberRoleService — passation', () => {
     vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
       {userId: VIEWER_ID, name: 'Hélène Roux'},
     ])
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(
-      profileRow({id: 'profil-presidente', userId: VIEWER_ID}) as never
-    )
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {
+        ...profileRow({id: 'profil-presidente', userId: VIEWER_ID}),
+        currentParcelNumbers: [],
+      },
+    ] as never)
 
     const result = await change('owner')
 
@@ -488,7 +491,7 @@ describe('[ORGANIZATION OWNER] changeMemberRoleService — présidence unique (r
 
   beforeEach(() => {
     setupAuthUserMocked(withMembership(UserOrganizationRoleConst.OWNER))
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
   })
 
   it('refuse de transmettre la présidence à un SuperAdmin, sans écriture', async () => {
@@ -596,7 +599,7 @@ describe('transferPresidencyByOperatorService — recours d’exploitation (D8)'
     vi.mocked(getOrganizationOwnersDao).mockResolvedValue([
       {userId: VIEWER_ID, name: 'Hélène Roux'},
     ])
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
   })
 
   it('refuse un domaine inconnu', async () => {
@@ -742,7 +745,7 @@ describe('transferPresidencyByOperatorService — plusieurs présidences hérit�
       domain: 'clos-fleuri.test',
     } as never)
     vi.mocked(getUserByEmailDao).mockResolvedValue(successor as never)
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
   })
 
   it('rétrograde toutes les lignes owner hors SuperAdmin, une trace chacune', async () => {

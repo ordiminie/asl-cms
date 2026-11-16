@@ -41,7 +41,6 @@ export const ImportRejectionConst = {
   MISSING_NAME: 'missing_name',
   NO_CONTACT: 'no_contact',
   MISSING_REFERENCE: 'missing_reference',
-  EMAIL_TAKEN: 'email_taken',
   PARCEL_TAKEN: 'parcel_taken',
   INVALID_EMAIL: 'invalid_email',
   INVALID_POSTAL_CODE: 'invalid_postal_code',
@@ -58,6 +57,13 @@ export const ImportRemarkConst = {
   POSTAL_CODE_PADDED: 'postal_code_padded',
   NO_METER: 'no_meter',
   SAME_NAME_AND_ADDRESS: 'same_name_and_address',
+  /**
+   * La fiche rejoint le compte ouvert par une ligne precedente du fichier, a
+   * la meme adresse (s53, ADR 054).
+   */
+  SHARED_EMAIL: 'shared_email',
+  /** La fiche rejoint le compte d'une fiche deja en base, a la meme adresse. */
+  SHARED_EMAIL_EXISTING: 'shared_email_existing',
 } as const
 
 export type ImportRemark =
@@ -74,7 +80,10 @@ export type ImportRemarkDTO = {
   line: number
   client: string
   remark: ImportRemark
-  /** Pour `same_name_and_address` : la premiere ligne de meme nom et adresse. */
+  /**
+   * Pour `same_name_and_address` : la premiere ligne de meme nom et adresse ;
+   * pour `shared_email` : la premiere ligne du fichier a la meme adresse.
+   */
   relatedLine?: number
 }
 

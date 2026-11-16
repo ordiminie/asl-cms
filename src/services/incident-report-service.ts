@@ -15,7 +15,7 @@ import {
   markIncidentReportNotificationFailedDao,
   MyIncidentReportRow,
 } from '@/db/repositories/incident-report-repository'
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
@@ -32,6 +32,7 @@ import {
   ValidationError,
   ValidationParsedZodError,
 } from './errors/validation-error'
+import {orderMyProfiles} from './rules/my-profiles-order-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {CategoryDomainConst} from './types/domain/association-category-types'
 import {getIdentityVersionFromKey} from './types/domain/association-identity-types'
@@ -485,9 +486,8 @@ export const createMyIncidentReportService = async (
   const {organizationId, locale, categoryId, location, description} =
     parsed.data
   const written = await withTenant(organizationId, async () => {
-    const profile = await getMemberProfileByUserIdDao(
-      organizationId,
-      authUser.id
+    const [profile] = orderMyProfiles(
+      await getMemberProfilesByUserIdDao(organizationId, authUser.id)
     )
     if (!profile) return undefined
 
@@ -509,19 +509,22 @@ export const createMyIncidentReportService = async (
   return notifyBoardOfNewReport(written.report, written.category, locale)
 }
 
+type MyReportProfile = {
+  id: string
+  name: string
+  email: string | null
+  phone: string | null
+}
+
 /**
- * Lecture **cote membre** (s22) : aucun identifiant de fiche en entree. La
- * fiche se resout par la session et le domaine appele, sous `withTenant` ;
- * `read` ne recoit que celle-la. Rien pour un compte sans fiche.
+ * Lecture **cote membre** (s22) : aucun identifiant de fiche en entree. Les
+ * fiches se resolvent par la session et le domaine appele, sous `withTenant`,
+ * dans l'ordre de l'ADR 054 §7 (s53) ; `read` ne recoit que celles-la. Rien
+ * pour un compte sans fiche.
  */
-const readForMyProfile = async <T>(
+const readForMyProfiles = async <T>(
   organizationId: string,
-  read: (profile: {
-    id: string
-    name: string
-    email: string | null
-    phone: string | null
-  }) => Promise<T>
+  read: (profiles: [MyReportProfile, ...MyReportProfile[]]) => Promise<T>
 ): Promise<T | undefined> => {
   const parsed = incidentReportOrganizationIdSchema.safeParse(organizationId)
   if (!parsed.success) {
@@ -534,28 +537,36 @@ const readForMyProfile = async <T>(
   }
 
   return withTenant(parsed.data, async () => {
-    const profile = await getMemberProfileByUserIdDao(parsed.data, authUser.id)
-    return profile ? read(profile) : undefined
+    const [first, ...others] = orderMyProfiles(
+      await getMemberProfilesByUserIdDao(parsed.data, authUser.id)
+    )
+    return first ? read([first, ...others]) : undefined
   })
 }
 
 /**
- * Les signalements du membre connecte, le plus recent d'abord, tous (s22,
- * criteres 2 et 4) : le statut est lu sans cache, donc a jour.
+ * Les signalements du membre connecte, le plus recent d'abord, tous, sur
+ * toutes ses fiches (s22, criteres 2 et 4 ; s53) : le statut est lu sans
+ * cache, donc a jour.
  */
 export const getMyIncidentReportsService = async (
   organizationId: string
 ): Promise<MyIncidentReportDTO[] | undefined> =>
-  readForMyProfile(organizationId, async (profile) => {
-    const rows = await getMyIncidentReportsDao(profile.id)
+  readForMyProfiles(organizationId, async (profiles) => {
+    const rows = await getMyIncidentReportsDao(
+      profiles.map((profile) => profile.id)
+    )
     return rows.map((row) => toMyReportDto(row))
   })
 
-/** Ce que le bureau recevra du declarant : nom, email, telephone de la fiche. */
+/**
+ * Ce que le bureau recevra du declarant : nom, email, telephone de la
+ * premiere fiche (s53), celle ou le signalement se rattache.
+ */
 export const getMyReportIdentityService = async (
   organizationId: string
 ): Promise<MyReportIdentityDTO | undefined> =>
-  readForMyProfile(organizationId, async (profile) => ({
+  readForMyProfiles(organizationId, async ([profile]) => ({
     name: profile.name,
     email: profile.email,
     phone: profile.phone,

@@ -20,6 +20,7 @@ vi.mock('@/db/tenant-scope', () => ({
 
 import {
   createUnsubscribeIfAbsentTxnDao,
+  getMemberProfileIdsSharingEmailDao,
   getRecipientByTokenDao,
   getUnsubscribeByMemberDao,
 } from './member-unsubscribe-repository'
@@ -109,5 +110,30 @@ describe('createUnsubscribeIfAbsentTxnDao', () => {
         campaignId: null,
       })
     ).resolves.toBeUndefined()
+  })
+})
+
+describe('getMemberProfileIdsSharingEmailDao (s53, ADR 055)', () => {
+  const SCI_ID = '55555555-5555-4555-8555-555555555555'
+
+  it('rend les fiches de l’association à la même adresse, sans casse, elle comprise', async () => {
+    responses.current = [[[PROFILE_ID], [SCI_ID]]]
+
+    const ids = await getMemberProfileIdsSharingEmailDao(ORG_ID, PROFILE_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('lower(trim("source_profile"."email"))')
+    expect(sql).toContain('lower(trim("member_profile"."email"))')
+    expect(sql).toContain('"member_profile"."organization_id" = $')
+    expect(params).toEqual(expect.arrayContaining([ORG_ID, PROFILE_ID]))
+    expect(ids).toEqual([PROFILE_ID, SCI_ID])
+  })
+
+  it('une fiche sans adresse ne rend qu’elle-même', async () => {
+    responses.current = [[]]
+
+    expect(
+      await getMemberProfileIdsSharingEmailDao(ORG_ID, PROFILE_ID)
+    ).toEqual([PROFILE_ID])
   })
 })

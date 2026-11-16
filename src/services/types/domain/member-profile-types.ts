@@ -54,8 +54,35 @@ export type MemberProfileFieldsDTO = MemberProfileContact & {
  * role au bureau eventuel, ou courrier uniquement.
  */
 export type MemberProfileAccountDTO =
-  | {status: 'open'; loginEmail: string; boardRole: 'board' | 'owner' | null}
+  | {
+      status: 'open'
+      loginEmail: string
+      boardRole: 'board' | 'owner' | null
+      /** Nom du compte (`user.name`), pas celui de la fiche (s53). */
+      accountName: string
+      /** Les autres fiches reliees au meme compte (s53, design 3c). */
+      otherProfiles: MemberAccountProfileDTO[]
+    }
   | {status: 'mail_only'}
+
+/** Une fiche d'un compte, designee pour le bureau (s53). */
+export type MemberAccountProfileDTO = {
+  id: string
+  name: string
+  /** Numeros des parcelles actuelles, en ordre numerique. */
+  parcelNumbers: string[]
+}
+
+/**
+ * Le compte qui porte deja l'adresse saisie (s53, ADR 054 §4) : son
+ * identifiant, que le second envoi renvoie pour confirmer, son nom et ses
+ * fiches.
+ */
+export type MemberAccountHolderDTO = {
+  userId: string
+  name: string
+  profiles: MemberAccountProfileDTO[]
+}
 
 export type MemberProfileDTO = MemberProfileFieldsDTO & {
   account: MemberProfileAccountDTO
@@ -73,6 +100,8 @@ export type MemberProfileDTO = MemberProfileFieldsDTO & {
 export type MemberProfileListItemDTO = MemberProfileFieldsDTO & {
   currentParcelNumbers: string[]
   boardRole: 'board' | 'owner' | null
+  /** Nombre de fiches que porte le compte de la fiche ; 0 sans compte (s53). */
+  accountProfileCount: number
 }
 
 export type MemberProfilePageDTO = {
@@ -90,6 +119,11 @@ export type MemberProfilePageDTO = {
 
 /** Ce que le bureau saisit. Une chaine vide vaut une coordonnee absente. */
 export type MemberProfileContactInput = {
+  /**
+   * Le compte que le bureau a confirme rejoindre quand l'adresse est deja la
+   * sienne (s53, ADR 054 §4) : revérifie au serveur, jamais cru tel quel.
+   */
+  confirmedAccountUserId?: string
   email?: string
   phone?: string
   addressLine?: string
@@ -117,8 +151,8 @@ export type MemberProfilePageInput = {
 }
 
 /**
- * Resultat d'une ecriture. `email_taken` porte l'identifiant de la fiche qui
- * detient deja l'adresse, pour que l'ecran y renvoie (design `2e`).
+ * Resultat d'une ecriture. `email_shared` : l'adresse est deja celle d'un
+ * compte de l'association ; rien n'est ecrit, le bureau confirme (s53, 3a).
  */
 export type MemberProfileWriteResult =
   | {
@@ -127,7 +161,7 @@ export type MemberProfileWriteResult =
       /** Ce que l'enregistrement a fait du compte (s12d). */
       accountChange: MemberAccountChange
     }
-  | {status: 'email_taken'; memberProfileId: string}
+  | {status: 'email_shared'; holder: MemberAccountHolderDTO}
   | {status: 'not_found'}
   /** Vider l'adresse d'un membre du bureau : refuse, rien n'est ecrit (s12d). */
   | {status: 'board_email_required'}
@@ -136,4 +170,10 @@ export type MemberProfileWriteResult =
  * Ce que l'enregistrement d'une fiche a fait de son compte (s12d) : pour les
  * messages de l'ecran. `null` quand l'acces ne change pas.
  */
-export type MemberAccountChange = 'opened' | 'closed' | 'replaced' | null
+export type MemberAccountChange =
+  | 'opened'
+  | 'closed'
+  | 'replaced'
+  /** La fiche a rejoint le compte qui portait deja son adresse (s53). */
+  | 'linked'
+  | null

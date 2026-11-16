@@ -1,13 +1,15 @@
 import 'server-only'
 
-import {MemberProfileModel} from '@/db/models/member-profile-model'
 import {
+  countLinkedProfilesDao,
   countMemberProfilesDao,
   createMemberProfileTxnDao,
-  getMemberProfileByEmailDao,
   getMemberProfileByIdDao,
   getMemberProfileByPennylaneIdDao,
   getMemberProfilePageDao,
+  getMemberProfilesByEmailDao,
+  MemberProfileWithAccountRow,
+  MyMemberProfileRow,
   updateMemberProfileContactTxnDao,
 } from '@/db/repositories/member-profile-repository'
 import {
@@ -24,10 +26,12 @@ import {ValidationParsedZodError} from './errors/validation-error'
 import {
   applyMemberAccountDecision,
   getLinkedAccountRole,
+  getMyMemberProfiles,
 } from './member-account-service'
 import {decideMemberAccount} from './rules/member-account-rules'
 import {toMemberProfileDto} from './rules/member-profile-rules'
 import {roleCardFor} from './rules/member-role-rules'
+import {orderMyProfiles} from './rules/my-profiles-order-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {RoleConst} from './types/domain/auth-types'
 import {effectiveAuthor} from './types/domain/impersonation-types'
@@ -38,6 +42,8 @@ import {
 import {
   CreateMemberProfileInput,
   MEMBER_PROFILES_PAGE_SIZE,
+  MemberAccountHolderDTO,
+  MemberAccountProfileDTO,
   MemberProfileAccountDTO,
   MemberProfileDTO,
   MemberProfilePageDTO,
@@ -60,9 +66,11 @@ import {
  * Fiches des proprietaires (s12, ADR 029). Chaque fonction : validation, puis
  * `member.profile.manage`, puis le repository sous le scope du tenant.
  *
- * Le compte d'une fiche suit son adresse (s12d, ADR 037) : l'ecriture de la
- * fiche et celle du compte tiennent dans le meme `withTenant`, par
- * `member-account-service`. Rien n'est envoye a l'ouverture.
+ * Le compte d'une fiche suit son adresse (s12d) : l'ecriture de la fiche et
+ * celle du compte tiennent dans le meme `withTenant`, par
+ * `member-account-service`. Rien n'est envoye a l'ouverture. Une adresse deja
+ * celle d'un compte de l'association n'y relie la fiche que sur confirmation
+ * du bureau (s53, ADR 054 §4).
  */
 
 const MANAGE_DENIED =
@@ -84,13 +92,27 @@ const requireMemberProfileManager = async (
   return authUser
 }
 
+const sortParcelNumbers = (numbers: string[]): string[] =>
+  [...numbers].sort((a, b) => a.localeCompare(b, 'fr', {numeric: true}))
+
+/** Une fiche d'un compte, telle que le bureau la lit (s53). */
+const toAccountProfile = (
+  profile: MyMemberProfileRow
+): MemberAccountProfileDTO => ({
+  id: profile.id,
+  name: profile.name,
+  parcelNumbers: sortParcelNumbers(profile.currentParcelNumbers),
+})
+
 /**
  * L'etat du compte d'une fiche (carte « Acces a l'espace membre ») : lecture
- * de l'appartenance d'un tiers, sous son `can*` (ADR 014).
+ * de l'appartenance d'un tiers, sous son `can*` (ADR 014). Nomme le compte et
+ * les autres fiches qu'il reunit (s53, 3c).
  */
 const readAccount = async (
   authUser: User | undefined,
   organizationId: string,
+  memberProfileId: string,
   userId: string | null
 ): Promise<MemberProfileAccountDTO> => {
   if (!canReadMemberAccount(authUser, organizationId)) {
@@ -100,10 +122,15 @@ const readAccount = async (
 
   const account = await getMemberAccountDao(userId, organizationId)
   if (!account) return {status: 'mail_only'}
+  const profiles = await getMyMemberProfiles(organizationId, userId)
   return {
     status: 'open',
     loginEmail: account.email,
     boardRole: account.role === 'member' ? null : account.role,
+    accountName: account.name,
+    otherProfiles: profiles
+      .filter((profile) => profile.id !== memberProfileId)
+      .map(toAccountProfile),
   }
 }
 
@@ -117,7 +144,7 @@ const accountRoleOf = (
 const roleCardOf = (
   authUser: User | undefined,
   organizationId: string,
-  row: MemberProfileModel,
+  row: MemberProfileWithAccountRow,
   account: MemberProfileAccountDTO
 ): MemberRoleCardDTO =>
   roleCardFor(
@@ -136,9 +163,14 @@ const roleCardOf = (
 const toProfileWithAccount = async (
   authUser: User | undefined,
   organizationId: string,
-  row: MemberProfileModel
+  row: MemberProfileWithAccountRow
 ): Promise<MemberProfileDTO> => {
-  const account = await readAccount(authUser, organizationId, row.userId)
+  const account = await readAccount(
+    authUser,
+    organizationId,
+    row.id,
+    row.userId
+  )
   return {
     ...toMemberProfileDto(row),
     account,
@@ -188,24 +220,59 @@ const authorOf = async (
   }
 }
 
-/** La fiche qui detient deja cet email, pour que l'ecran y renvoie. */
-const emailTaken = async (
+/**
+ * Le compte de l'association qui porte deja cette adresse par une autre fiche
+ * (s53, ADR 054 §4), lu dans la transaction de l'ecriture ; rien si aucune
+ * autre fiche reliee ne la porte, ou si c'est deja le compte de la fiche.
+ */
+const findEmailHolder = async (
   organizationId: string,
-  email: string | null
-): Promise<MemberProfileWriteResult> => {
-  const holder = email
-    ? await getMemberProfileByEmailDao(organizationId, email)
-    : undefined
-  if (!holder) {
-    throw new Error(
-      'Email refusé comme déjà pris, mais aucune fiche ne le porte'
+  email: string | null,
+  current: {memberProfileId: string | null; userId: string | null}
+): Promise<MemberAccountHolderDTO | undefined> => {
+  if (email === null) return undefined
+
+  const holders = orderMyProfiles(
+    (await getMemberProfilesByEmailDao(organizationId, email)).filter(
+      (profile) =>
+        profile.id !== current.memberProfileId && profile.userId !== null
     )
+  )
+  const userId = holders[0]?.userId
+  if (!userId || userId === current.userId) return undefined
+
+  const account = await getMemberAccountDao(userId, organizationId)
+  const profiles = await getMyMemberProfiles(organizationId, userId)
+  return {
+    userId,
+    name: account?.name ?? holders[0].name,
+    profiles: profiles.map(toAccountProfile),
   }
-  return {status: 'email_taken', memberProfileId: holder.id}
 }
 
-const sortParcelNumbers = (numbers: string[]): string[] =>
-  [...numbers].sort((a, b) => a.localeCompare(b, 'fr', {numeric: true}))
+/**
+ * Le compte detenteur que l'ecriture peut rejoindre : celui que le bureau a
+ * confirme, s'il est encore le detenteur ; sinon il faut redemander.
+ */
+const confirmedHolder = (
+  holder: MemberAccountHolderDTO | undefined,
+  confirmedAccountUserId: string | undefined
+): {kind: 'none'} | {kind: 'confirmed'; userId: string} | {kind: 'ask'} => {
+  if (!holder) return {kind: 'none'}
+  if (holder.userId === confirmedAccountUserId) {
+    return {kind: 'confirmed', userId: holder.userId}
+  }
+  return {kind: 'ask'}
+}
+
+/** Nombre d'autres fiches reliees au compte de la fiche (ADR 054 §5). */
+const otherLinkedProfilesOf = async (
+  organizationId: string,
+  userId: string | null
+): Promise<number> =>
+  userId === null
+    ? 0
+    : Math.max(0, (await countLinkedProfilesDao(organizationId, userId)) - 1)
 
 /**
  * Cree une fiche. Son identifiant est genere par la base : il ne depend ni de
@@ -220,24 +287,33 @@ export const createMemberProfileService = async (
     throw new ValidationParsedZodError(parsed.error)
   }
 
-  const {organizationId} = parsed.data
+  const {confirmedAccountUserId, ...fields} = parsed.data
+  const {organizationId} = fields
   const authUser = await requireMemberProfileManager(organizationId)
   const author = await authorOf(authUser)
 
   return withTenant(organizationId, async () => {
-    const result = await createMemberProfileTxnDao(parsed.data)
-    if (result.status === 'email_taken') {
-      return emailTaken(organizationId, parsed.data.email)
+    const holder = await findEmailHolder(organizationId, fields.email, {
+      memberProfileId: null,
+      userId: null,
+    })
+    const shared = confirmedHolder(holder, confirmedAccountUserId)
+    if (shared.kind === 'ask' && holder) {
+      return {status: 'email_shared', holder}
     }
-    const {row} = result
+
+    const {row} = await createMemberProfileTxnDao(fields)
     const {change, userId} = await applyMemberAccountDecision({
       organizationId,
       author,
-      profile: row,
+      profile: {...row, userId: null},
       decision: decideMemberAccount({
         savedEmail: null,
         nextEmail: row.email,
         linkedRole: null,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId:
+          shared.kind === 'confirmed' ? shared.userId : null,
       }),
     })
     return {
@@ -260,7 +336,8 @@ export const updateMemberProfileContactService = async (
     throw new ValidationParsedZodError(parsed.error)
   }
 
-  const {organizationId, memberProfileId, ...contact} = parsed.data
+  const {organizationId, memberProfileId, confirmedAccountUserId, ...contact} =
+    parsed.data
   const authUser = await requireMemberProfileManager(organizationId)
   const author = await authorOf(authUser)
 
@@ -268,10 +345,25 @@ export const updateMemberProfileContactService = async (
     const saved = await getMemberProfileByIdDao(memberProfileId)
     if (!saved) return {status: 'not_found'}
 
+    const holder = await findEmailHolder(organizationId, contact.email, {
+      memberProfileId,
+      userId: saved.userId,
+    })
+    const shared = confirmedHolder(holder, confirmedAccountUserId)
+    if (shared.kind === 'ask' && holder) {
+      return {status: 'email_shared', holder}
+    }
+
     const decision = decideMemberAccount({
       savedEmail: saved.email,
       nextEmail: contact.email,
       linkedRole: await getLinkedAccountRole(organizationId, saved.userId),
+      otherLinkedProfiles: await otherLinkedProfilesOf(
+        organizationId,
+        saved.userId
+      ),
+      nextEmailAccountUserId:
+        shared.kind === 'confirmed' ? shared.userId : null,
     })
     if (decision.kind === 'refuse_board_removal') {
       return {status: 'board_email_required'}
@@ -282,9 +374,6 @@ export const updateMemberProfileContactService = async (
       contact
     )
     if (result.status === 'not_found') return {status: 'not_found'}
-    if (result.status === 'email_taken') {
-      return emailTaken(organizationId, contact.email)
-    }
     const {change, userId} = await applyMemberAccountDecision({
       organizationId,
       author,
@@ -360,6 +449,7 @@ export const getMemberProfilePageService = async (
       ...toMemberProfileDto(row),
       currentParcelNumbers: sortParcelNumbers(row.currentParcelNumbers),
       boardRole: row.userId ? (boardRoles.get(row.userId) ?? null) : null,
+      accountProfileCount: row.accountProfileCount,
     })),
     page,
     pageSize: MEMBER_PROFILES_PAGE_SIZE,

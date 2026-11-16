@@ -12,6 +12,7 @@ import {
   sql,
 } from 'drizzle-orm'
 
+import {memberProfileAccount} from '@/db/models/member-profile-account-model'
 import {
   memberProfile,
   MemberProfileModel,
@@ -25,10 +26,9 @@ import {getDb} from '@/db/tenant-scope'
  *
  * Ce repository ne touche ni `user` ni `member` (Better Auth) : l'ouverture
  * et la fermeture du compte d'une fiche vivent dans `member-account-service`
- * (s12d, ADR 037) ; il n'ecrit ici que le lien `user_id`.
+ * (s12d) ; il n'ecrit ici que le lien fiche ↔ compte, dans
+ * `member_profile_account` (s53, ADR 054).
  */
-
-const EMAIL_INDEX = 'member_profile_organization_email_idx'
 
 /** `null` quand la coordonnee est absente : jamais une chaine vide. */
 export type MemberProfileContactWrite = {
@@ -40,15 +40,27 @@ export type MemberProfileContactWrite = {
   city: string | null
 }
 
-export type CreateMemberProfileResult =
-  {status: 'created'; row: MemberProfileModel} | {status: 'email_taken'}
+export type CreateMemberProfileResult = {
+  status: 'created'
+  row: MemberProfileModel
+}
 
 export type UpdateMemberProfileContactResult =
-  | {status: 'updated'; row: MemberProfileModel}
-  | {status: 'not_found'}
-  | {status: 'email_taken'}
+  {status: 'updated'; row: MemberProfileModel} | {status: 'not_found'}
 
-export type MemberProfileListRow = MemberProfileModel & {
+/** Une fiche et le compte qui lui est relie, `null` sans compte (ADR 054). */
+export type MemberProfileWithAccountRow = MemberProfileModel & {
+  userId: string | null
+}
+
+export type MemberProfileListRow = MemberProfileWithAccountRow & {
+  currentParcelNumbers: string[]
+  /** Nombre de fiches reliees au compte de la fiche ; 0 sans compte. */
+  accountProfileCount: number
+}
+
+/** Une fiche d'un compte, avec les numeros de ses parcelles actuelles. */
+export type MyMemberProfileRow = MemberProfileModel & {
   currentParcelNumbers: string[]
 }
 
@@ -57,26 +69,14 @@ export type MemberProfilePageRows = {
   total: number
 }
 
-/**
- * Violation de l'index unique des emails d'une association. Drizzle enveloppe
- * l'erreur du pilote : le code Postgres est sur l'erreur ou sur sa cause.
- */
-const isEmailTakenViolation = (error: unknown): boolean => {
-  const candidates = [error, (error as {cause?: unknown})?.cause]
-  return candidates.some((candidate) => {
-    const pgError = candidate as {code?: string; constraint?: string}
-    return pgError?.code === '23505' && pgError.constraint === EMAIL_INDEX
-  })
-}
-
 /** Neutralise les jokers de `LIKE` dans un texte saisi. */
 const escapeLike = (value: string): string =>
   value.replace(/[\\%_]/g, (char) => `\\${char}`)
 
 /**
- * Cree une fiche. L'identifiant est genere par la base. L'insertion vit dans
- * un point de sauvegarde : un email deja pris est rendu comme un resultat,
- * sans condamner la transaction du scope de tenant.
+ * Cree une fiche. L'identifiant est genere par la base. L'adresse n'est plus
+ * unique (ADR 054) : une adresse deja portee est detectee par le service,
+ * avant l'ecriture.
  */
 export const createMemberProfileTxnDao = async (
   input: MemberProfileContactWrite & {
@@ -84,65 +84,76 @@ export const createMemberProfileTxnDao = async (
     name: string
     pennylaneCustomerId?: string | null
   }
-): Promise<CreateMemberProfileResult> => {
-  try {
-    return await getDb().transaction(async (tx) => {
-      const [row] = await tx.insert(memberProfile).values(input).returning()
-      return {status: 'created', row} as const
-    })
-  } catch (error) {
-    if (isEmailTakenViolation(error)) return {status: 'email_taken'}
-    throw error
-  }
-}
+): Promise<CreateMemberProfileResult> =>
+  getDb().transaction(async (tx) => {
+    const [row] = await tx.insert(memberProfile).values(input).returning()
+    return {status: 'created', row} as const
+  })
 
 /** Met a jour les coordonnees d'une fiche, et elles seules. */
 export const updateMemberProfileContactTxnDao = async (
   memberProfileId: string,
   contact: MemberProfileContactWrite
-): Promise<UpdateMemberProfileContactResult> => {
-  try {
-    return await getDb().transaction(async (tx) => {
-      const [row] = await tx
-        .update(memberProfile)
-        .set({...contact, updatedAt: sql`now()`})
-        .where(eq(memberProfile.id, memberProfileId))
-        .returning()
-      return row
-        ? ({status: 'updated', row} as const)
-        : ({status: 'not_found'} as const)
-    })
-  } catch (error) {
-    if (isEmailTakenViolation(error)) return {status: 'email_taken'}
-    throw error
-  }
-}
+): Promise<UpdateMemberProfileContactResult> =>
+  getDb().transaction(async (tx) => {
+    const [row] = await tx
+      .update(memberProfile)
+      .set({...contact, updatedAt: sql`now()`})
+      .where(eq(memberProfile.id, memberProfileId))
+      .returning()
+    return row
+      ? ({status: 'updated', row} as const)
+      : ({status: 'not_found'} as const)
+  })
 
+/** Une fiche et le compte qui lui est relie (ADR 054). */
 export const getMemberProfileByIdDao = async (
   memberProfileId: string
-): Promise<MemberProfileModel | undefined> => {
+): Promise<MemberProfileWithAccountRow | undefined> => {
   const [row] = await getDb()
-    .select()
+    .select({profile: memberProfile, userId: memberProfileAccount.userId})
     .from(memberProfile)
+    .leftJoin(
+      memberProfileAccount,
+      eq(memberProfileAccount.memberProfileId, memberProfile.id)
+    )
     .where(eq(memberProfile.id, memberProfileId))
-  return row
+  return row ? {...row.profile, userId: row.userId} : undefined
 }
 
-/** La fiche de l'association qui porte cet email, sans tenir compte de la casse. */
-export const getMemberProfileByEmailDao = async (
+/**
+ * **Toutes** les fiches de l'association qui portent cet email, sans tenir
+ * compte de la casse, chacune avec son compte et ses parcelles actuelles
+ * (s53, ADR 054 §4) : le service y lit le detenteur d'une adresse partagee.
+ */
+export const getMemberProfilesByEmailDao = async (
   organizationId: string,
   email: string
-): Promise<MemberProfileModel | undefined> => {
-  const [row] = await getDb()
-    .select()
+): Promise<
+  (MemberProfileWithAccountRow & {currentParcelNumbers: string[]})[]
+> => {
+  const rows = await getDb()
+    .select({profile: memberProfile, userId: memberProfileAccount.userId})
     .from(memberProfile)
+    .leftJoin(
+      memberProfileAccount,
+      eq(memberProfileAccount.memberProfileId, memberProfile.id)
+    )
     .where(
       and(
         eq(memberProfile.organizationId, organizationId),
         sql`lower(${memberProfile.email}) = lower(${email})`
       )
     )
-  return row
+    .orderBy(asc(memberProfile.id))
+  const numbers = await getCurrentParcelNumbersByProfile(
+    rows.map((row) => row.profile.id)
+  )
+  return rows.map((row) => ({
+    ...row.profile,
+    userId: row.userId,
+    currentParcelNumbers: numbers[row.profile.id] ?? [],
+  }))
 }
 
 /** Le nom, ou le numero d'une parcelle **actuelle** (periode ouverte). */
@@ -215,8 +226,12 @@ export const getMemberProfilePageDao = async (input: {
   )
 
   const profiles = await getDb()
-    .select()
+    .select({profile: memberProfile, userId: memberProfileAccount.userId})
     .from(memberProfile)
+    .leftJoin(
+      memberProfileAccount,
+      eq(memberProfileAccount.memberProfileId, memberProfile.id)
+    )
     .where(where)
     .orderBy(asc(memberProfile.name), asc(memberProfile.id))
     .limit(input.limit)
@@ -226,16 +241,44 @@ export const getMemberProfilePageDao = async (input: {
     .from(memberProfile)
     .where(where)
   const numbers = await getCurrentParcelNumbersByProfile(
-    profiles.map((profile) => profile.id)
+    profiles.map((row) => row.profile.id)
+  )
+  const profileCounts = await countProfilesByAccount(
+    input.organizationId,
+    profiles.flatMap((row) => (row.userId === null ? [] : [row.userId]))
   )
 
   return {
-    rows: profiles.map((profile) => ({
-      ...profile,
-      currentParcelNumbers: numbers[profile.id] ?? [],
+    rows: profiles.map((row) => ({
+      ...row.profile,
+      userId: row.userId,
+      currentParcelNumbers: numbers[row.profile.id] ?? [],
+      accountProfileCount:
+        row.userId === null ? 0 : (profileCounts[row.userId] ?? 0),
     })),
     total,
   }
+}
+
+/** Le nombre de fiches reliees a chaque compte (critere 8 de s53). */
+const countProfilesByAccount = async (
+  organizationId: string,
+  userIds: string[]
+): Promise<Record<string, number>> => {
+  if (userIds.length === 0) return {}
+
+  const rows = await getDb()
+    .select({userId: memberProfileAccount.userId, profiles: count()})
+    .from(memberProfileAccount)
+    .where(
+      and(
+        eq(memberProfileAccount.organizationId, organizationId),
+        inArray(memberProfileAccount.userId, [...new Set(userIds)])
+      )
+    )
+    .groupBy(memberProfileAccount.userId)
+
+  return Object.fromEntries(rows.map((row) => [row.userId, row.profiles]))
 }
 
 /**
@@ -255,15 +298,48 @@ export const countMemberProfilesDao = async (
   return row
 }
 
-/** Ecrit ou vide le compte lie a une fiche (s12d, ADR 037). */
-export const setMemberProfileUserIdDao = async (
-  memberProfileId: string,
-  userId: string | null
+/**
+ * Relie une fiche a un compte (s53, ADR 054) : une fiche a au plus un compte,
+ * un nouveau lien remplace l'ancien.
+ */
+export const linkMemberProfileAccountDao = async (input: {
+  organizationId: string
+  memberProfileId: string
+  userId: string
+}): Promise<void> => {
+  await getDb()
+    .insert(memberProfileAccount)
+    .values(input)
+    .onConflictDoUpdate({
+      target: memberProfileAccount.memberProfileId,
+      set: {userId: input.userId},
+    })
+}
+
+/** Retire le lien d'une fiche a son compte ; le compte n'est pas touche. */
+export const unlinkMemberProfileAccountDao = async (
+  memberProfileId: string
 ): Promise<void> => {
   await getDb()
-    .update(memberProfile)
-    .set({userId, updatedAt: sql`now()`})
-    .where(eq(memberProfile.id, memberProfileId))
+    .delete(memberProfileAccount)
+    .where(eq(memberProfileAccount.memberProfileId, memberProfileId))
+}
+
+/** Le nombre de fiches de l'association reliees a ce compte. */
+export const countLinkedProfilesDao = async (
+  organizationId: string,
+  userId: string
+): Promise<number> => {
+  const [{total}] = await getDb()
+    .select({total: count()})
+    .from(memberProfileAccount)
+    .where(
+      and(
+        eq(memberProfileAccount.organizationId, organizationId),
+        eq(memberProfileAccount.userId, userId)
+      )
+    )
+  return total
 }
 
 /** Les fiches a adresse de l'association qui n'ont pas encore de compte. */
@@ -277,11 +353,15 @@ export const getUnlinkedMemberProfilesWithEmailDao = async (
       email: memberProfile.email,
     })
     .from(memberProfile)
+    .leftJoin(
+      memberProfileAccount,
+      eq(memberProfileAccount.memberProfileId, memberProfile.id)
+    )
     .where(
       and(
         eq(memberProfile.organizationId, organizationId),
         isNotNull(memberProfile.email),
-        isNull(memberProfile.userId)
+        isNull(memberProfileAccount.id)
       )
     )
     .orderBy(asc(memberProfile.id))
@@ -290,24 +370,44 @@ export const getUnlinkedMemberProfilesWithEmailDao = async (
   )
 }
 
+/** Les identifiants des fiches de l'association reliees a ce compte. */
+const linkedProfileIds = (organizationId: string, userId: string) =>
+  getDb()
+    .select({id: memberProfileAccount.memberProfileId})
+    .from(memberProfileAccount)
+    .where(
+      and(
+        eq(memberProfileAccount.organizationId, organizationId),
+        eq(memberProfileAccount.userId, userId)
+      )
+    )
+
 /**
- * La fiche de l'association liee a ce compte (s12d, ADR 037) : « ma fiche »,
- * resolue depuis la session, jamais depuis un identifiant venu du navigateur.
+ * **Toutes** les fiches de l'association reliees a ce compte (s53, ADR 054),
+ * avec leurs parcelles actuelles : « mes fiches », resolues depuis la session,
+ * jamais depuis un identifiant venu du navigateur. Non triees : l'ordre est
+ * la regle `orderMyProfiles`.
  */
-export const getMemberProfileByUserIdDao = async (
+export const getMemberProfilesByUserIdDao = async (
   organizationId: string,
   userId: string
-): Promise<MemberProfileModel | undefined> => {
-  const [row] = await getDb()
+): Promise<MyMemberProfileRow[]> => {
+  const profiles = await getDb()
     .select()
     .from(memberProfile)
     .where(
       and(
         eq(memberProfile.organizationId, organizationId),
-        eq(memberProfile.userId, userId)
+        inArray(memberProfile.id, linkedProfileIds(organizationId, userId))
       )
     )
-  return row
+  const numbers = await getCurrentParcelNumbersByProfile(
+    profiles.map((profile) => profile.id)
+  )
+  return profiles.map((profile) => ({
+    ...profile,
+    currentParcelNumbers: numbers[profile.id] ?? [],
+  }))
 }
 
 /**
@@ -323,17 +423,18 @@ export type MemberPostalContactWrite = {
 }
 
 /**
- * Met a jour le telephone et l'adresse postale de « ma fiche », designee par
+ * Met a jour le telephone et l'adresse postale de **toutes** les fiches
+ * reliees au compte (s53, arbitrage du 16/11), designees par
  * `(organization_id, user_id)`, jamais par un identifiant venu du navigateur.
- * Aucun index unique n'est concerne : pas de point de sauvegarde.
+ * Rend les fiches ecrites.
  */
-export const updateMyMemberProfileContactDao = async (
+export const updateMyMemberProfilesContactDao = async (
   organizationId: string,
   userId: string,
   contact: MemberPostalContactWrite
-): Promise<MemberProfileModel | undefined> => {
+): Promise<MemberProfileModel[]> => {
   const {phone, addressLine, addressComplement, postalCode, city} = contact
-  const [row] = await getDb()
+  return getDb()
     .update(memberProfile)
     .set({
       phone,
@@ -346,11 +447,10 @@ export const updateMyMemberProfileContactDao = async (
     .where(
       and(
         eq(memberProfile.organizationId, organizationId),
-        eq(memberProfile.userId, userId)
+        inArray(memberProfile.id, linkedProfileIds(organizationId, userId))
       )
     )
     .returning()
-  return row
 }
 
 /**

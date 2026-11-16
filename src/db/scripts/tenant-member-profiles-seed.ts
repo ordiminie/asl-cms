@@ -17,6 +17,12 @@
  * Moreau a une parcelle actuelle et une ancienne (« Mes parcelles ») ; Gerard
  * Pommier a une fiche, et la meme adresse, dans les deux associations : un
  * seul compte, deux espaces (critere 3).
+ *
+ * s53 : Bernard Lefevre porte **trois fiches** chez TechCorp, une par client
+ * Pennylane (deux a son nom, une « SCI Les Chenes »), toutes a la meme
+ * adresse : un seul compte, relie a chacune au seed, et « Mes terrains »
+ * en montre trois (parcelles 61, 62 et 63). C'est la seule adresse partagee
+ * du seed.
  */
 export type TestMemberProfile = {
   id: string
@@ -54,6 +60,11 @@ const FERREIRA_ID = 'b1200000-0000-4000-8000-000000000002'
 const POMMIER_MARKETING_ID = 'b1200000-0000-4000-8000-000000000003'
 
 const POMMIER_EMAIL = 'gerard.pommier@example.test'
+
+const LEFEVRE_FIRST_ID = 'a1200000-0000-4000-8000-000000000008'
+const LEFEVRE_SECOND_ID = 'a1200000-0000-4000-8000-000000000009'
+const LEFEVRE_SCI_ID = 'a1200000-0000-4000-8000-00000000000a'
+const LEFEVRE_EMAIL = 'bernard.lefevre@example.test'
 
 const NO_CONTACT = {
   email: null,
@@ -123,6 +134,36 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     organizationSlug: TECHCORP,
     name: 'Gérard Pommier',
     email: POMMIER_EMAIL,
+  },
+  {
+    ...NO_CONTACT,
+    id: LEFEVRE_FIRST_ID,
+    organizationSlug: TECHCORP,
+    name: 'Bernard Lefèvre',
+    email: LEFEVRE_EMAIL,
+    addressLine: '2 chemin des Chênes',
+    postalCode: '33680',
+    city: 'Lacanau',
+  },
+  {
+    ...NO_CONTACT,
+    id: LEFEVRE_SECOND_ID,
+    organizationSlug: TECHCORP,
+    name: 'Bernard Lefèvre',
+    email: LEFEVRE_EMAIL,
+    addressLine: '2 chemin des Chênes',
+    postalCode: '33680',
+    city: 'Lacanau',
+  },
+  {
+    ...NO_CONTACT,
+    id: LEFEVRE_SCI_ID,
+    organizationSlug: TECHCORP,
+    name: 'SCI Les Chênes',
+    email: LEFEVRE_EMAIL,
+    addressLine: '2 chemin des Chênes',
+    postalCode: '33680',
+    city: 'Lacanau',
   },
   {
     ...NO_CONTACT,
@@ -239,6 +280,30 @@ export const TEST_PARCEL_OWNERSHIPS: readonly TestParcelOwnership[] = [
     parcelNumber: '33',
     memberProfileId: POMMIER_TECHCORP_ID,
     startsOn: '2016-08-22',
+    endsOn: null,
+  },
+  {
+    id: 'a1200000-0000-4000-8000-0000000000ac',
+    organizationSlug: TECHCORP,
+    parcelNumber: '61',
+    memberProfileId: LEFEVRE_FIRST_ID,
+    startsOn: '1998-02-03',
+    endsOn: null,
+  },
+  {
+    id: 'a1200000-0000-4000-8000-0000000000ad',
+    organizationSlug: TECHCORP,
+    parcelNumber: '62',
+    memberProfileId: LEFEVRE_SECOND_ID,
+    startsOn: '2004-06-01',
+    endsOn: null,
+  },
+  {
+    id: 'a1200000-0000-4000-8000-0000000000ae',
+    organizationSlug: TECHCORP,
+    parcelNumber: '63',
+    memberProfileId: LEFEVRE_SCI_ID,
+    startsOn: '2011-04-02',
     endsOn: null,
   },
   {

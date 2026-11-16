@@ -527,9 +527,11 @@ export const updateMemberRoleFromDao = async (
 export const getMemberAccountDao = async (
   userId: string,
   organizationId: string
-): Promise<{email: string; role: OrganizationRoleEnumModel} | undefined> => {
+): Promise<
+  {email: string; name: string; role: OrganizationRoleEnumModel} | undefined
+> => {
   const [row] = await getDb()
-    .select({email: user.email, role: member.role})
+    .select({email: user.email, name: user.name, role: member.role})
     .from(member)
     .innerJoin(user, eq(user.id, member.userId))
     .where(

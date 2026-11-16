@@ -13,6 +13,7 @@ import {
   sql,
 } from 'drizzle-orm'
 
+import {user} from '@/db/models/auth-model'
 import {
   AddCampaignModel,
   campaign,
@@ -24,6 +25,7 @@ import {
   CampaignStatusModel,
   memberUnsubscribe,
 } from '@/db/models/campaign-model'
+import {memberProfileAccount} from '@/db/models/member-profile-account-model'
 import {memberProfile} from '@/db/models/member-profile-model'
 import {parcel, parcelOwnership} from '@/db/models/parcel-model'
 import {scheduledJob} from '@/db/models/scheduled-job-model'
@@ -42,6 +44,10 @@ export type CampaignTargetRowModel = {
   name: string
   email: string | null
   unsubscribed: boolean
+  /** Parcelles actuelles de la fiche : l'ordre d'une adresse (s53). */
+  currentParcelNumbers: string[]
+  /** Nom du compte relie a la fiche (s53), `null` sans compte. */
+  accountName: string | null
 }
 
 export type CampaignPageRows = {rows: CampaignModel[]; total: number}
@@ -56,9 +62,17 @@ export type PendingRecipientRowModel = {
   name: string | null
   email: string | null
   unsubscribeToken: string
-  /** La fiche a refuse les campagnes depuis la creation (s26). */
+  /**
+   * Une fiche de l'adresse a refuse les campagnes depuis la creation (s26 ;
+   * l'adresse entiere depuis s53, ADR 055).
+   */
   unsubscribed: boolean
+  /** Parcelles actuelles de toutes les fiches de l'adresse (s53, ADR 055). */
   parcelNumbers: string[]
+  /** Nom du compte relie a la fiche (s53), `null` sans compte. */
+  accountName: string | null
+  /** Nombre de fiches de l'association qui portent cette adresse (s53). */
+  addressProfileCount: number
 }
 
 /** Une part telle que sa livraison la lit. */
@@ -106,21 +120,36 @@ export type CreatedCampaign = {
 
 export const getCampaignTargetRowsDao = async (
   organizationId: string
-): Promise<CampaignTargetRowModel[]> =>
-  getDb()
+): Promise<CampaignTargetRowModel[]> => {
+  const rows = await getDb()
     .select({
       memberProfileId: memberProfile.id,
       name: memberProfile.name,
       email: memberProfile.email,
       unsubscribed: sql<boolean>`${memberUnsubscribe.id} is not null`,
+      accountName: user.name,
     })
     .from(memberProfile)
     .leftJoin(
       memberUnsubscribe,
       eq(memberUnsubscribe.memberProfileId, memberProfile.id)
     )
+    .leftJoin(
+      memberProfileAccount,
+      eq(memberProfileAccount.memberProfileId, memberProfile.id)
+    )
+    .leftJoin(user, eq(user.id, memberProfileAccount.userId))
     .where(eq(memberProfile.organizationId, organizationId))
     .orderBy(asc(memberProfile.name), asc(memberProfile.id))
+
+  const numbers = await getCurrentParcelNumbersForMembersDao(
+    rows.map((row) => row.memberProfileId)
+  )
+  return rows.map((row) => ({
+    ...row,
+    currentParcelNumbers: numbers[row.memberProfileId] ?? [],
+  }))
+}
 
 /** Les numeros des parcelles **actuelles** (periodes ouvertes) de chaque fiche. */
 export const getCurrentParcelNumbersForMembersDao = async (
@@ -363,11 +392,13 @@ export const getPendingPartRecipientsDao = async (
   const rows = await getDb()
     .select({
       recipientId: campaignRecipient.id,
+      organizationId: campaignRecipient.organizationId,
       memberProfileId: memberProfile.id,
       name: memberProfile.name,
       email: memberProfile.email,
       unsubscribeToken: campaignRecipient.unsubscribeToken,
       unsubscribed: sql<boolean>`${memberUnsubscribe.id} is not null`,
+      accountName: user.name,
     })
     .from(campaignRecipient)
     .leftJoin(
@@ -378,6 +409,11 @@ export const getPendingPartRecipientsDao = async (
       memberUnsubscribe,
       eq(memberUnsubscribe.memberProfileId, campaignRecipient.memberProfileId)
     )
+    .leftJoin(
+      memberProfileAccount,
+      eq(memberProfileAccount.memberProfileId, memberProfile.id)
+    )
+    .leftJoin(user, eq(user.id, memberProfileAccount.userId))
     .where(
       and(
         eq(campaignRecipient.partId, partId),
@@ -385,16 +421,87 @@ export const getPendingPartRecipientsDao = async (
       )
     )
     .orderBy(asc(campaignRecipient.id))
+  if (rows.length === 0) return []
 
-  const numbers = await getCurrentParcelNumbersForMembersDao(
-    rows.flatMap((row) => (row.memberProfileId ? [row.memberProfileId] : []))
+  const addresses = await getAddressProfilesDao(
+    rows[0].organizationId,
+    rows.flatMap((row) => (row.email ? [row.email] : []))
   )
-  return rows.map((row) => ({
-    ...row,
-    parcelNumbers: row.memberProfileId
-      ? (numbers[row.memberProfileId] ?? [])
-      : [],
-  }))
+  const addressOf = (email: string | null) =>
+    email ? (addresses.get(emailKeyOf(email)) ?? []) : []
+  const numbers = await getCurrentParcelNumbersForMembersDao([
+    ...new Set([
+      ...rows.flatMap((row) =>
+        row.memberProfileId ? [row.memberProfileId] : []
+      ),
+      ...[...addresses.values()].flat().map((profile) => profile.id),
+    ]),
+  ])
+
+  return rows.map((row) => {
+    const sameAddress = addressOf(row.email)
+    const profileIds =
+      sameAddress.length > 0
+        ? sameAddress.map((profile) => profile.id)
+        : row.memberProfileId
+          ? [row.memberProfileId]
+          : []
+    return {
+      recipientId: row.recipientId,
+      memberProfileId: row.memberProfileId,
+      name: row.name,
+      email: row.email,
+      unsubscribeToken: row.unsubscribeToken,
+      accountName: row.accountName,
+      unsubscribed:
+        row.unsubscribed || sameAddress.some((profile) => profile.unsubscribed),
+      parcelNumbers: profileIds.flatMap((id) => numbers[id] ?? []),
+      addressProfileCount: Math.max(1, sameAddress.length),
+    }
+  })
+}
+
+const emailKeyOf = (email: string): string => email.trim().toLowerCase()
+
+/**
+ * Les fiches de l'association qui portent ces adresses, sans casse, avec
+ * leur refus des campagnes, par adresse (s53, ADR 055) : la livraison relit
+ * l'adresse entiere.
+ */
+const getAddressProfilesDao = async (
+  organizationId: string,
+  emails: string[]
+): Promise<Map<string, {id: string; unsubscribed: boolean}[]>> => {
+  const keys = [...new Set(emails.map(emailKeyOf))]
+  if (keys.length === 0) return new Map()
+
+  const emailKey = sql<string>`lower(trim(${memberProfile.email}))`
+  const rows = await getDb()
+    .select({
+      id: memberProfile.id,
+      emailKey,
+      unsubscribed: sql<boolean>`${memberUnsubscribe.id} is not null`,
+    })
+    .from(memberProfile)
+    .leftJoin(
+      memberUnsubscribe,
+      eq(memberUnsubscribe.memberProfileId, memberProfile.id)
+    )
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        inArray(emailKey, keys)
+      )
+    )
+
+  const byAddress = new Map<string, {id: string; unsubscribed: boolean}[]>()
+  for (const row of rows) {
+    byAddress.set(row.emailKey, [
+      ...(byAddress.get(row.emailKey) ?? []),
+      {id: row.id, unsubscribed: row.unsubscribed},
+    ])
+  }
+  return byAddress
 }
 
 export const getCampaignPartDao = async (

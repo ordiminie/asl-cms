@@ -1,8 +1,12 @@
 import 'server-only'
 
 import {
+  countLinkedProfilesDao,
+  getMemberProfilesByUserIdDao,
   getUnlinkedMemberProfilesWithEmailDao,
-  setMemberProfileUserIdDao,
+  linkMemberProfileAccountDao,
+  MyMemberProfileRow,
+  unlinkMemberProfileAccountDao,
 } from '@/db/repositories/member-profile-repository'
 import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
@@ -18,6 +22,7 @@ import {
 } from '@/db/repositories/user-repository'
 import {withTenant} from '@/db/tenant-scope'
 
+import {orderMyProfiles} from './rules/my-profiles-order-rules'
 import {
   MemberAccountAuthor,
   MemberAccountDecision,
@@ -27,9 +32,11 @@ import {
 import {MemberAccountChange} from './types/domain/member-profile-types'
 
 /**
- * Ouverture et fermeture du compte d'une fiche (s12d, ADR 037). Capacite
- * creee une fois, reutilisee par s13 (import), s15 (invitation) et s42
- * (lancement).
+ * Ouverture et fermeture du compte d'une fiche (s12d). Capacite creee une
+ * fois, reutilisee par s13 (import), s15 (invitation) et s42 (lancement).
+ * Depuis s53 (ADR 054, remplace l'ADR 037), le lien vit dans
+ * `member_profile_account` : un compte peut porter plusieurs fiches, et sa
+ * ligne `member` ne part qu'avec la derniere.
  *
  * Sans facade : appele par d'autres services, dans leur `withTenant` et
  * apres leur controle d'autorisation, jamais par la presentation. Chaque
@@ -140,19 +147,33 @@ export const openMemberAccount = async ({
 }: OpenMemberAccountInput): Promise<{userId: string}> =>
   withTenant(organizationId, async () => {
     const userId = await findOrCreateUserId(normalizedEmail(email), name)
-    await createMemberIfAbsentTxnDao({
-      organizationId,
-      userId,
-      role: MemberAccountRoleConst.MEMBER,
-      createdAt: new Date(),
-    })
-    await setMemberProfileUserIdDao(memberProfileId, userId)
+    await linkToAccount(organizationId, memberProfileId, userId)
     return {userId}
   })
 
 /**
- * Ferme le compte d'une fiche : retire la ligne `member` de cette
- * association seulement si son role est `member`, puis vide le lien.
+ * Relie une fiche a un compte deja ouvert dans l'association (s53, ADR 054
+ * §4) : la ligne `member` est posee si absente (role existant intact), aucun
+ * compte n'est cherche ni cree par l'adresse.
+ */
+const linkToAccount = async (
+  organizationId: string,
+  memberProfileId: string,
+  userId: string
+): Promise<void> => {
+  await createMemberIfAbsentTxnDao({
+    organizationId,
+    userId,
+    role: MemberAccountRoleConst.MEMBER,
+    createdAt: new Date(),
+  })
+  await linkMemberProfileAccountDao({organizationId, memberProfileId, userId})
+}
+
+/**
+ * Ferme l'acces d'une fiche : retire son lien, puis la ligne `member` de
+ * cette association **seulement si** plus aucune fiche n'est reliee au
+ * compte et que son role est `member` (s53, critere 6).
  */
 export const closeMemberAccount = async ({
   organizationId,
@@ -164,24 +185,28 @@ export const closeMemberAccount = async ({
   userId: string
 }): Promise<void> =>
   withTenant(organizationId, async () => {
+    await unlinkMemberProfileAccountDao(memberProfileId)
+    if ((await countLinkedProfilesDao(organizationId, userId)) > 0) return
     await deleteMemberWithRoleDao(
       userId,
       organizationId,
       MemberAccountRoleConst.MEMBER
     )
-    await setMemberProfileUserIdDao(memberProfileId, null)
   })
 
 /**
- * L'adresse d'une fiche change : l'ancien acces se ferme, un acces s'ouvre
- * sur la nouvelle adresse. Pour le bureau et la presidence, le role suit la
- * nouvelle adresse, et ce deplacement est trace (D5, ADR 039). Le verrou des
- * roles est pris d'abord, comme pour tout changement de role, puis le role
- * de l'ancien compte est relu sous ce verrou : un role lu avant par
- * l'appelant pourrait annuler une retrogradation concurrente. Un ancien
- * compte sans ligne ici ne deplace rien : la nouvelle adresse ouvre un acces
- * de simple membre. Le depart de l'ancien compte n'est trace que si sa ligne
- * a bien ete retiree.
+ * L'adresse d'une fiche change : la fiche quitte l'ancien compte et rejoint
+ * celui de la nouvelle adresse (`targetUserId` quand le bureau a confirme un
+ * compte deja ouvert, s53). Si la fiche etait la **derniere** de l'ancien
+ * compte, son acces se ferme et, pour le bureau et la presidence, le role
+ * suit la nouvelle adresse, deplacement trace (D5, ADR 039) ; sinon l'ancien
+ * compte garde son role et ses autres fiches, la nouvelle adresse ouvre un
+ * acces de simple membre (ADR 054 §6). Le verrou des roles est pris d'abord,
+ * comme pour tout changement de role, puis le role de l'ancien compte est
+ * relu sous ce verrou : un role lu avant par l'appelant pourrait annuler une
+ * retrogradation concurrente. Un ancien compte sans ligne ici ne deplace
+ * rien. Le depart de l'ancien compte n'est trace que si sa ligne a bien ete
+ * retiree.
  */
 export const replaceMemberAccount = async ({
   organizationId,
@@ -190,9 +215,11 @@ export const replaceMemberAccount = async ({
   email,
   name,
   author,
+  targetUserId,
 }: OpenMemberAccountInput & {
   previousUserId: string
   author: MemberAccountAuthor
+  targetUserId?: string
 }): Promise<{userId: string}> =>
   withTenant(organizationId, async () => {
     await lockOrganizationRolesDao(organizationId)
@@ -200,14 +227,19 @@ export const replaceMemberAccount = async ({
       previousUserId,
       organizationId
     )
-    const role = previous?.role ?? MemberAccountRoleConst.MEMBER
-    const userId = await findOrCreateUserId(normalizedEmail(email), name)
+    const userId =
+      targetUserId ?? (await findOrCreateUserId(normalizedEmail(email), name))
+    await linkMemberProfileAccountDao({organizationId, memberProfileId, userId})
+    const lastProfile =
+      userId === previousUserId ||
+      (await countLinkedProfilesDao(organizationId, previousUserId)) === 0
+    const role =
+      lastProfile && previous ? previous.role : MemberAccountRoleConst.MEMBER
     const {before, after} = await ensureMembership(organizationId, userId, role)
     const removed =
-      previous && userId !== previousUserId
+      previous && lastProfile && userId !== previousUserId
         ? await deleteMemberWithRoleDao(previousUserId, organizationId, role)
         : 0
-    await setMemberProfileUserIdDao(memberProfileId, userId)
 
     if (role !== MemberAccountRoleConst.MEMBER) {
       const trace = {organizationId, memberProfileId, name, author}
@@ -261,6 +293,16 @@ export const applyMemberAccountDecision = async ({
   if (decision.kind === 'open' && profile.email !== null) {
     const {userId} = await openMemberAccount({...base, email: profile.email})
     return {change: 'opened', userId}
+  }
+  if (decision.kind === 'link_shared' && profile.email !== null) {
+    const userId = await joinSharedAccount({
+      ...base,
+      email: profile.email,
+      previousUserId: profile.userId,
+      targetUserId: decision.userId,
+      author,
+    })
+    return {change: 'linked', userId}
   }
   if (decision.kind === 'close' && profile.userId !== null) {
     await closeMemberAccount({...base, userId: profile.userId})
@@ -319,5 +361,53 @@ export const unlinkMemberAccount = async ({
   memberProfileId: string
 }): Promise<void> =>
   withTenant(organizationId, async () => {
-    await setMemberProfileUserIdDao(memberProfileId, null)
+    await unlinkMemberProfileAccountDao(memberProfileId)
   })
+
+/**
+ * La fiche rejoint le compte qui porte deja son adresse (s53, ADR 054 §4) :
+ * simple lien pour une fiche sans compte, remplacement sinon.
+ */
+const joinSharedAccount = async ({
+  previousUserId,
+  targetUserId,
+  ...input
+}: OpenMemberAccountInput & {
+  previousUserId: string | null
+  targetUserId: string
+  author: MemberAccountAuthor
+}): Promise<string> => {
+  if (previousUserId === null) {
+    await withTenant(input.organizationId, () =>
+      linkToAccount(input.organizationId, input.memberProfileId, targetUserId)
+    )
+    return targetUserId
+  }
+  const {userId} = await replaceMemberAccount({
+    ...input,
+    previousUserId,
+    targetUserId,
+  })
+  return userId
+}
+
+/**
+ * Les fiches de l'association reliees a ce compte, dans l'ordre de l'ADR 054
+ * §7 : « mes fiches », resolues depuis la session, jamais depuis un
+ * identifiant venu du navigateur. Sous le scope du tenant ; pour les services
+ * de l'espace membre, apres leur controle d'autorisation.
+ */
+export const getMyMemberProfiles = async (
+  organizationId: string,
+  userId: string
+): Promise<MyMemberProfileRow[]> =>
+  withTenant(organizationId, async () =>
+    orderMyProfiles(await getMemberProfilesByUserIdDao(organizationId, userId))
+  )
+
+/** La premiere fiche du compte dans l'ordre de l'ADR 054 §7, ou rien. */
+export const getFirstMemberProfile = async (
+  organizationId: string,
+  userId: string
+): Promise<MyMemberProfileRow | undefined> =>
+  (await getMyMemberProfiles(organizationId, userId))[0]

@@ -684,9 +684,24 @@ describe.each([
   describe('getMemberParcelsService (critère 5)', () => {
     it('should list the current and the former parcels of a profile, by parcel number', async () => {
       vi.mocked(getCurrentParcelsByMemberDao).mockResolvedValue([
-        {parcelId: 'p30', number: '30', startsOn: '2015-05-01'},
-        {parcelId: 'p5', number: '5', startsOn: '2010-01-01'},
-        {parcelId: 'p6', number: '6', startsOn: '2012-01-01'},
+        {
+          parcelId: 'p30',
+          number: '30',
+          startsOn: '2015-05-01',
+          meterNumber: null,
+        },
+        {
+          parcelId: 'p5',
+          number: '5',
+          startsOn: '2010-01-01',
+          meterNumber: null,
+        },
+        {
+          parcelId: 'p6',
+          number: '6',
+          startsOn: '2012-01-01',
+          meterNumber: null,
+        },
       ])
       vi.mocked(getFormerParcelsByMemberDao).mockResolvedValue([
         {

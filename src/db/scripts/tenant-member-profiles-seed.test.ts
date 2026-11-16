@@ -18,6 +18,8 @@ import {
 
 const TECHCORP = 'techcorp-solutions'
 const MARKETING = 'marketing-pro'
+/** Le compte à trois fiches de s53 : la seule adresse partagée du seed. */
+const LEFEVRE_EMAIL = 'bernard.lefevre@example.test'
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
@@ -163,12 +165,20 @@ describe('seed des propriétaires et des parcelles (s12, ADR 029)', () => {
       }
     }
 
-    for (const slug of [TECHCORP, MARKETING]) {
+    const sharedEmailsOf = (slug: string) => {
       const emails = profilesOf(slug)
         .map((row) => row.email?.toLowerCase())
-        .filter(Boolean)
-      expect(new Set(emails).size, slug).toBe(emails.length)
+        .filter((email): email is string => Boolean(email))
+      return [
+        ...new Set(
+          emails.filter(
+            (email) => emails.indexOf(email) !== emails.lastIndexOf(email)
+          )
+        ),
+      ]
     }
+    expect(sharedEmailsOf(TECHCORP)).toEqual([LEFEVRE_EMAIL])
+    expect(sharedEmailsOf(MARKETING)).toEqual([])
   })
 
   it('donne à TechCorp une propriétaire à adresse avec une parcelle actuelle et une ancienne (s12d, écran C2)', () => {
@@ -193,5 +203,20 @@ describe('seed des propriétaires et des parcelles (s12, ADR 029)', () => {
     expect(atTechcorp.id).not.toBe(atMarketing.id)
     expect(currentParcelsOf(TECHCORP, atTechcorp.id)).toHaveLength(1)
     expect(currentParcelsOf(MARKETING, atMarketing.id)).toHaveLength(1)
+  })
+
+  it('porte dans TechCorp un compte à trois fiches : même adresse, une parcelle actuelle chacune (s53, critères 1 et 2)', () => {
+    const shared = profilesOf(TECHCORP).filter(
+      (row) => row.email?.toLowerCase() === LEFEVRE_EMAIL
+    )
+
+    expect(shared).toHaveLength(3)
+    expect(new Set(shared.map((row) => row.id)).size).toBe(3)
+    expect(shared.map((row) => row.name)).toContain('SCI Les Chênes')
+    expect(shared.map((row) => currentParcelsOf(TECHCORP, row.id))).toEqual([
+      ['61'],
+      ['62'],
+      ['63'],
+    ])
   })
 })

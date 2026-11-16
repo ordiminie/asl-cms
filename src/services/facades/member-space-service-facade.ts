@@ -1,7 +1,6 @@
 import memberSpaceServiceInterceptor from './interceptors/member-space-service-logger-interceptor'
 
-export const getMyParcelsService =
-  memberSpaceServiceInterceptor.getMyParcelsService
+export const getMyLandsService = memberSpaceServiceInterceptor.getMyLandsService
 export const isPlainMemberOfService =
   memberSpaceServiceInterceptor.isPlainMemberOfService
 export const getMyContactService =
