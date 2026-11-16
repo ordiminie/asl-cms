@@ -24,6 +24,7 @@ const item = (
   incomplete: false,
   currentParcelNumbers: ['12', '13'],
   boardRole: null,
+  accountProfileCount: 1,
   ...overrides,
 })
 
@@ -290,5 +291,43 @@ describe('MemberProfileList — badge de rôle (s14, B1 et B2)', () => {
     ).toBeTruthy()
     expect(heading).not.toContainElement(badge)
     expect(within(lucie).queryByText('Bureau')).toBeNull()
+  })
+})
+
+describe('MemberProfileList — compte de plusieurs terrains (s53, état 4a)', () => {
+  it('écrit « Compte de 3 terrains » sous l’adresse, au tableau et sur la carte', () => {
+    render(
+      <MemberProfileList
+        list={page([
+          item({
+            name: 'SCI Les Pins',
+            email: 'bernard.lefevre@exemple.fr',
+            accountProfileCount: 3,
+          }),
+        ])}
+      />
+    )
+
+    const [row] = tableRows()
+    expect(within(row).getByText('Compte de 3 terrains')).toBeInTheDocument()
+    expect(
+      within(cards()[0]).getByText('Compte de 3 terrains')
+    ).toBeInTheDocument()
+  })
+
+  it('n’écrit rien pour un compte d’un seul terrain ni pour une fiche sans compte', () => {
+    render(
+      <MemberProfileList
+        list={page([
+          item({accountProfileCount: 1}),
+          mailOnly({
+            id: '44444444-4444-4444-8444-444444444444',
+            accountProfileCount: 0,
+          }),
+        ])}
+      />
+    )
+
+    expect(screen.queryByText(/Compte de \d+ terrains/)).toBeNull()
   })
 })

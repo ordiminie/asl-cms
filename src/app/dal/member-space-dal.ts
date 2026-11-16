@@ -9,7 +9,7 @@ import {
 } from '@/services/facades/incident-report-service-facade'
 import {
   getMyContactService,
-  getMyParcelsService,
+  getMyLandsService,
   isPlainMemberOfService,
 } from '@/services/facades/member-space-service-facade'
 import {
@@ -18,7 +18,7 @@ import {
 } from '@/services/types/domain/incident-report-types'
 import {
   MyContactDTO,
-  MyParcelsDTO,
+  MyLandsDTO,
 } from '@/services/types/domain/member-space-types'
 
 /**
@@ -27,11 +27,11 @@ import {
  * navigateur (ADR 038). `cache()` dedoublonne dans la requete.
  */
 
-/** « Mes parcelles » du compte connecte, sur l'association du domaine appele. */
-export const getMyParcelsDal = cache(
-  async (): Promise<MyParcelsDTO | undefined> => {
+/** « Mes terrains » du compte connecte, sur l'association du domaine (s53). */
+export const getMyLandsDal = cache(
+  async (): Promise<MyLandsDTO | undefined> => {
     const tenant = await requireCurrentTenantDal()
-    return getMyParcelsService(tenant.id)
+    return getMyLandsService(tenant.id)
   }
 )
 

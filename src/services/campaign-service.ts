@@ -64,11 +64,13 @@ import {AuthorizationError} from './errors/authorization-error'
 import {NotFoundError} from './errors/not-found-error'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {
+  addressValuesOf,
   computeCampaignTarget,
   finalSubject,
   findUnknownVariables,
   formatCampaignDate,
   joinParcelNumbers,
+  sameAddressRowsOf,
   subjectMaxLength,
   substituteVariables,
   toCampaignDto,
@@ -343,19 +345,29 @@ export const previewCampaignService = async (
     return {status: 'unknown_variables', variables: unknown}
 
   return withTenant(data.organizationId, async () => {
-    const target = await readTarget(data.organizationId)
+    const rows = await getCampaignTargetRowsDao(data.organizationId)
+    const target = computeCampaignTarget(rows)
     const member =
       target.recipients.find(
         (row) => row.memberProfileId === data.memberProfileId
       ) ?? target.recipients[0]
     if (!member) return {status: 'no_recipient'}
 
-    const parcels = await getCurrentParcelNumbersForMembersDao([
-      member.memberProfileId,
-    ])
+    const sameAddress = sameAddressRowsOf(rows, member)
+    const parcels = await getCurrentParcelNumbersForMembersDao(
+      sameAddress.map((row) => row.memberProfileId)
+    )
+    const address = addressValuesOf({
+      name: member.name,
+      accountName: member.accountName,
+      addressProfileCount: sameAddress.length,
+      parcelNumbers: sameAddress.flatMap(
+        (row) => parcels[row.memberProfileId] ?? []
+      ),
+    })
     const values = valuesOf(
-      member.name,
-      parcels[member.memberProfileId] ?? [],
+      address.name,
+      address.parcelNumbers,
       calendarDayOf(new Date())
     )
     const email = await buildCampaignEmail(
@@ -632,10 +644,11 @@ const composeRecipientEmail = async (
   sendDate: string,
   recipient: PendingRecipientRowModel & {email: string; name: string}
 ): Promise<SendEmailPayload> => {
+  const address = addressValuesOf(recipient)
   const email = await buildCampaignEmail(
     association,
     campaign,
-    valuesOf(recipient.name, recipient.parcelNumbers, sendDate),
+    valuesOf(address.name, address.parcelNumbers, sendDate),
     unsubscribeUrlOf(association.origin, recipient.unsubscribeToken)
   )
   return {

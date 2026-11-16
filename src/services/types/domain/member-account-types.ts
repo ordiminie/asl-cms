@@ -1,5 +1,5 @@
 /**
- * Types de domaine du compte d'une fiche (s12d, ADR 037). Ecrits sans
+ * Types de domaine du compte d'une fiche (s12d ; lien par table, s53, ADR 054). Ecrits sans
  * importer le modele Drizzle (`rule-architecture`).
  */
 
@@ -22,6 +22,16 @@ export type MemberAccountDecisionInput = {
    * fiche n'a pas de compte.
    */
   linkedRole: MemberAccountRole | null
+  /**
+   * Nombre d'**autres** fiches de l'association reliees au compte de la
+   * fiche (s53, ADR 054) : 0 quand la fiche est la derniere, ou sans compte.
+   */
+  otherLinkedProfiles: number
+  /**
+   * Compte de l'association qui porte deja l'adresse demandee par une autre
+   * fiche (s53, ADR 054 §4) ; `null` si aucun.
+   */
+  nextEmailAccountUserId: string | null
 }
 
 /** Ce que l'enregistrement d'une fiche fait de son compte. */
@@ -31,6 +41,8 @@ export type MemberAccountDecision =
   | {kind: 'close'}
   | {kind: 'unlink'}
   | {kind: 'replace'}
+  /** L'adresse est celle d'un compte de l'association : la fiche le rejoint. */
+  | {kind: 'link_shared'; userId: string}
   | {kind: 'refuse_board_removal'}
 
 /**

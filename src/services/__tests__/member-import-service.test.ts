@@ -12,6 +12,8 @@ const db = vi.hoisted(() => ({
   committed: [] as string[],
   profiles: new Map<string, string>(),
   owners: new Map<string, string>(),
+  /** Le compte de chaque adresse deja ouverte dans l'association (s53). */
+  accounts: new Map<string, string>(),
 }))
 
 vi.mock('@/db/tenant-scope', () => ({
@@ -118,7 +120,7 @@ const FILE = csv(
   }),
   // Ligne 5 : ni adresse ni email (critere 3)
   line({id: 'c-003', name: 'Sans Contact', reference: 'ZZ 104 - 00XX000004'}),
-  // Ligne 6 : email deja porte par une autre fiche
+  // Ligne 6 : email deja porte par une fiche existante (s53 : rejoint son compte)
   line({
     id: 'c-004',
     name: 'Nora Doublon',
@@ -166,8 +168,13 @@ const installFakeServices = () => {
   )
 
   vi.mocked(createMemberProfileService).mockImplementation(async (input) => {
-    if (input.email === 'pris@exemple.test') {
-      return {status: 'email_taken', memberProfileId: 'autre-fiche'}
+    const email = input.email?.toLowerCase()
+    const holder = email ? db.accounts.get(email) : undefined
+    if (holder && input.confirmedAccountUserId !== holder) {
+      return {
+        status: 'email_shared',
+        holder: {userId: holder, name: 'Compte existant', profiles: []},
+      }
     }
     if (input.postalCode && !/^\d{5}$/.test(input.postalCode)) {
       const parsed = z
@@ -178,9 +185,10 @@ const installFakeServices = () => {
     const id = `fiche-${input.pennylaneCustomerId}`
     db.pending.push(`profile:${id}`)
     db.profiles.set(input.pennylaneCustomerId ?? '', id)
+    if (email && !holder) db.accounts.set(email, `compte-${id}`)
     return {
       status: 'saved',
-      accountChange: input.email ? 'opened' : null,
+      accountChange: holder ? 'linked' : email ? 'opened' : null,
       profile: {id, mailOnly: !input.email},
     } as Awaited<ReturnType<typeof createMemberProfileService>>
   })
@@ -217,6 +225,7 @@ beforeEach(() => {
   db.committed = []
   db.profiles = new Map()
   db.owners = new Map()
+  db.accounts = new Map([['pris@exemple.test', 'compte-existant']])
   installFakeServices()
 })
 
@@ -230,11 +239,11 @@ describe('[SUPER_ADMIN] importMembersService', () => {
 
     expect(report).toMatchObject({
       linesRead: 6,
-      membersCreated: 3,
+      membersCreated: 4,
       accountsOpened: 2,
       mailOnlyMembers: 1,
-      parcelsAttached: 4,
-      linesRejected: 2,
+      parcelsAttached: 5,
+      linesRejected: 1,
       alreadyPresent: 0,
     })
     expect(db.committed).toEqual([
@@ -243,6 +252,8 @@ describe('[SUPER_ADMIN] importMembersService', () => {
       'parcel:ZZ 102',
       'profile:fiche-c-002',
       'parcel:ZZ 103',
+      'profile:fiche-c-004',
+      'parcel:ZZ 105',
       'profile:fiche-c-005',
       'parcel:ZZ 106',
     ])
@@ -274,7 +285,6 @@ describe('[SUPER_ADMIN] importMembersService', () => {
 
     expect(report.rejections).toEqual([
       {line: 5, client: 'Sans Contact', reason: 'no_contact'},
-      {line: 6, client: 'Nora Doublon', reason: 'email_taken'},
     ])
     expect(db.profiles.get('c-005')).toBe('fiche-c-005')
   })
@@ -291,9 +301,12 @@ describe('[SUPER_ADMIN] importMembersService', () => {
       accountsOpened: 0,
       mailOnlyMembers: 0,
       parcelsAttached: 0,
-      alreadyPresent: 3,
-      linesRejected: 2,
+      alreadyPresent: 4,
+      linesRejected: 1,
     })
+    expect(
+      report.remarks.filter(({remark}) => remark.startsWith('shared_email'))
+    ).toEqual([])
   })
 
   it('n’écrit rien pour une ligne dont la parcelle appartient à un autre membre', async () => {
@@ -308,7 +321,7 @@ describe('[SUPER_ADMIN] importMembersService', () => {
     })
     expect(db.committed).not.toContain('profile:fiche-c-001')
     expect(db.committed).not.toContain('parcel:ZZ 101')
-    expect(report.membersCreated).toBe(2)
+    expect(report.membersCreated).toBe(3)
   })
 
   it('traduit une erreur de validation en motif (code postal non valide)', async () => {
@@ -391,6 +404,89 @@ describe('[SUPER_ADMIN] importMembersService', () => {
       await importMembersService({organizationId: ORG_ID, content: FILE})
     ).toEqual({status: 'organization_not_found'})
     expect(createMemberProfileService).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * s53, critere 5 : une adresse partagee n'est plus rejetee. Une fiche par
+ * client Pennylane, toutes reliees au meme compte, et chaque regroupement
+ * signale au rapport.
+ */
+describe('[SUPER_ADMIN] importMembersService — adresses partagées (s53)', () => {
+  beforeEach(() => {
+    setupAuthUserMocked(userTestSuperAdmin)
+  })
+
+  const SHARED = csv(
+    line({
+      id: 'p-001',
+      name: 'Bernard Fictif',
+      address: '3 chemin des Essais',
+      email: 'bernard@exemple.test',
+      reference: 'ZZ 201 - 00XX000201',
+    }),
+    line({
+      id: 'p-002',
+      name: 'SCI Fictive',
+      address: '3 chemin des Essais',
+      email: 'Bernard@Exemple.test',
+      reference: 'ZZ 202 - 00XX000202',
+    })
+  )
+
+  it('crée deux fiches reliées au même compte et signale le regroupement (critère 5)', async () => {
+    const report = await run(SHARED)
+
+    expect(db.committed).toEqual([
+      'profile:fiche-p-001',
+      'parcel:ZZ 201',
+      'profile:fiche-p-002',
+      'parcel:ZZ 202',
+    ])
+    expect(createMemberProfileService).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pennylaneCustomerId: 'p-002',
+        confirmedAccountUserId: 'compte-fiche-p-001',
+      })
+    )
+    expect(report).toMatchObject({
+      membersCreated: 2,
+      accountsOpened: 1,
+      linesRejected: 0,
+      rejections: [],
+    })
+    expect(report.remarks).toContainEqual({
+      line: 3,
+      client: 'SCI Fictive',
+      remark: 'shared_email',
+      relatedLine: 2,
+    })
+    expect(
+      report.remarks.filter(({remark}) => remark.startsWith('shared_email'))
+    ).toHaveLength(1)
+  })
+
+  it('signale une adresse déjà portée par une fiche existante, hors du fichier', async () => {
+    const report = await run()
+
+    expect(report.remarks).toContainEqual({
+      line: 6,
+      client: 'Nora Doublon',
+      remark: 'shared_email_existing',
+    })
+  })
+
+  it('relancer le fichier ne crée rien et ne signale plus de regroupement', async () => {
+    await run(SHARED)
+    const committed = [...db.committed]
+
+    const report = await run(SHARED)
+
+    expect(db.committed).toEqual(committed)
+    expect(report).toMatchObject({membersCreated: 0, alreadyPresent: 2})
+    expect(
+      report.remarks.filter(({remark}) => remark.startsWith('shared_email'))
+    ).toEqual([])
   })
 })
 

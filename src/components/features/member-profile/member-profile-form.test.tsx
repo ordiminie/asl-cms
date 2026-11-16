@@ -15,6 +15,20 @@ const PROFILE_ID = '33333333-3333-4333-8333-333333333333'
 const MAIL_ONLY_NOTICE =
   'Sans adresse email, ce propriétaire sera joignable par courrier uniquement. Son adresse postale est alors indispensable.'
 
+const HOLDER_ID = '77777777-7777-4777-8777-777777777777'
+
+const EMAIL_SHARED = {
+  status: 'email_shared',
+  holder: {
+    userId: HOLDER_ID,
+    name: 'Bernard Lefèvre',
+    profiles: [
+      {id: 'fiche-12', name: 'Bernard Lefèvre', parcelNumbers: ['12']},
+      {id: 'fiche-27', name: 'Bernard Lefèvre', parcelNumbers: ['27', '28']},
+    ],
+  },
+} as const
+
 const saveAction = vi.fn()
 
 const renderForm = () => render(<MemberProfileForm saveAction={saveAction} />)
@@ -127,27 +141,94 @@ describe('MemberProfileForm — écran 2 du design s12', () => {
     expect(router.push).not.toHaveBeenCalled()
   })
 
-  it('dit quelle fiche porte déjà l’email, avec le lien vers elle (état 2e)', async () => {
-    saveAction.mockResolvedValue({
-      status: 'email_taken',
-      memberProfileId: 'other-id',
-      name: 'Claire Meunier',
-    })
+  it('demande confirmation quand l’adresse est celle d’un compte, sans rien enregistrer (état 3a, s53)', async () => {
+    saveAction.mockResolvedValue(EMAIL_SHARED)
     renderForm()
 
-    await userEvent.type(field('Nom'), 'Claire M.')
-    await userEvent.type(field(/Adresse email/), 'claire.meunier@example.fr')
+    await userEvent.type(field('Nom'), 'SCI Les Pins')
+    await userEvent.type(field(/Adresse email/), 'bernard.lefevre@exemple.fr')
     await submit()
 
     expect(
       await screen.findByText(
-        'Cette adresse est déjà celle de la fiche de Claire Meunier.'
+        'Cette adresse est déjà celle du compte de Bernard Lefèvre.'
       )
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('link', {name: 'Ouvrir la fiche de Claire Meunier'})
-    ).toHaveAttribute('href', '/bureau/proprietaires/other-id')
+      screen.getByRole('link', {name: 'Bernard Lefèvre, parcelle 12'})
+    ).toHaveAttribute('href', '/bureau/proprietaires/fiche-12')
+    expect(
+      screen.getByRole('link', {name: 'Bernard Lefèvre, parcelles 27 et 28'})
+    ).toHaveAttribute('href', '/bureau/proprietaires/fiche-27')
+    expect(screen.getByText(/Rien n’a encore été enregistré\./)).toBeVisible()
     expect(router.push).not.toHaveBeenCalled()
+  })
+
+  it('« Oui, relier à son compte » renvoie la saisie avec le compte confirmé (3a → 3b)', async () => {
+    saveAction.mockResolvedValueOnce(EMAIL_SHARED).mockResolvedValueOnce({
+      status: 'saved',
+      memberProfileId: PROFILE_ID,
+      accountChange: 'linked',
+    })
+    renderForm()
+
+    await userEvent.type(field('Nom'), 'SCI Les Pins')
+    await userEvent.type(field(/Adresse email/), 'bernard.lefevre@exemple.fr')
+    await submit()
+    await userEvent.click(
+      await screen.findByRole('button', {name: 'Oui, relier à son compte'})
+    )
+
+    expect(saveAction).toHaveBeenCalledTimes(2)
+    const second = saveAction.mock.calls[1][1] as FormData
+    expect(second.get('confirmedAccountUserId')).toBe(HOLDER_ID)
+    expect(second.get('name')).toBe('SCI Les Pins')
+    expect(second.get('email')).toBe('bernard.lefevre@exemple.fr')
+    expect(sentFields()).not.toHaveProperty('confirmedAccountUserId')
+    expect(router.push).toHaveBeenCalledWith(
+      `/bureau/proprietaires/${PROFILE_ID}?cree=1`
+    )
+  })
+
+  it('« Non, corriger l’adresse » ferme l’encart, rend le focus au champ et n’appelle rien', async () => {
+    saveAction.mockResolvedValue(EMAIL_SHARED)
+    renderForm()
+
+    await userEvent.type(field('Nom'), 'SCI Les Pins')
+    await userEvent.type(field(/Adresse email/), 'bernard.lefevre@exemple.fr')
+    await submit()
+    await userEvent.click(
+      await screen.findByRole('button', {name: 'Non, corriger l’adresse'})
+    )
+
+    expect(saveAction).toHaveBeenCalledTimes(1)
+    expect(
+      screen.queryByText(
+        'Cette adresse est déjà celle du compte de Bernard Lefèvre.'
+      )
+    ).not.toBeInTheDocument()
+    expect(field(/Adresse email/)).toHaveFocus()
+    expect(field('Nom')).toHaveValue('SCI Les Pins')
+  })
+
+  it('referme l’encart dès qu’une saisie change', async () => {
+    saveAction.mockResolvedValue(EMAIL_SHARED)
+    renderForm()
+
+    await userEvent.type(field('Nom'), 'SCI Les Pins')
+    await userEvent.type(field(/Adresse email/), 'bernard.lefevre@exemple.fr')
+    await submit()
+    await screen.findByText(
+      'Cette adresse est déjà celle du compte de Bernard Lefèvre.'
+    )
+
+    await userEvent.type(field(/Adresse email/), 'x')
+
+    expect(
+      screen.queryByText(
+        'Cette adresse est déjà celle du compte de Bernard Lefèvre.'
+      )
+    ).not.toBeInTheDocument()
   })
 
   it('affiche les erreurs rendues par le serveur sous leur champ', async () => {
@@ -275,10 +356,7 @@ describe('MemberProfileForm — l’écran conservé revient vierge après une c
         errors: [{field: 'phone', message: 'Téléphone refusé par le serveur.'}],
       },
     ],
-    [
-      'un email déjà pris',
-      {status: 'email_taken', memberProfileId: 'other-id', name: 'Claire M.'},
-    ],
+    ['une adresse déjà celle d’un compte', EMAIL_SHARED],
     ['un échec', {status: 'error', message: 'L’enregistrement a échoué.'}],
   ])('garde la saisie après %s', async (_refusal, result) => {
     saveAction.mockResolvedValue(result)

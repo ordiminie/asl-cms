@@ -5,8 +5,20 @@ import {AlertTriangle} from 'lucide-react'
 import Link from 'next/link'
 import {useRouter} from 'next/navigation'
 import {useTranslations} from 'next-intl'
-import {type ReactNode, useId, useLayoutEffect, useRef, useState} from 'react'
-import {FormProvider, useForm} from 'react-hook-form'
+import {
+  type ReactNode,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
+import {
+  type FieldValues,
+  FormProvider,
+  useForm,
+  type UseFormReturn,
+} from 'react-hook-form'
 
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {
@@ -19,6 +31,8 @@ import {
 } from '@/components/ui/breadcrumb'
 import {Button} from '@/components/ui/button'
 import {Card} from '@/components/ui/card'
+import {joinParcelNumbers} from '@/services/rules/campaign-rules'
+import type {MemberAccountHolderDTO} from '@/services/types/domain/member-profile-types'
 
 import {
   MemberContactFields,
@@ -26,6 +40,7 @@ import {
   MemberTextField,
 } from './member-contact-fields'
 import {
+  CONFIRMED_ACCOUNT_FIELD,
   createMemberProfileFormSchema,
   MEMBER_PROFILE_FORM_FIELDS,
   type MemberProfileActionResult,
@@ -89,7 +104,7 @@ export function MemberProfileForm({
   })
   const [submitted, setSubmitted] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
-  const [holder, setHolder] = useState<{id: string; name: string} | null>(null)
+  const [holder, setHolder] = useState<MemberAccountHolderDTO | null>(null)
   const {isSubmitting} = form.formState
   const savedRef = useRef(false)
   const {reset} = form
@@ -107,12 +122,20 @@ export function MemberProfileForm({
     [reset]
   )
 
-  const onValid = async (values: MemberProfileFormSchemaType) => {
+  useCloseOnChange(form, holder !== null, setHolder)
+
+  const save = async (
+    values: MemberProfileFormSchemaType,
+    confirmedAccountUserId?: string
+  ) => {
     setFailure(null)
     setHolder(null)
     const formData = new FormData()
     for (const field of MEMBER_PROFILE_FORM_FIELDS) {
       formData.set(field, values[field])
+    }
+    if (confirmedAccountUserId) {
+      formData.set(CONFIRMED_ACCOUNT_FIELD, confirmedAccountUserId)
     }
 
     const result = await saveAction(undefined, formData)
@@ -120,8 +143,8 @@ export function MemberProfileForm({
       for (const error of result.errors) {
         form.setError(error.field, {message: error.message})
       }
-    } else if (result.status === 'email_taken') {
-      setHolder({id: result.memberProfileId, name: result.name})
+    } else if (result.status === 'email_shared') {
+      setHolder(result.holder)
     } else if (result.status === 'error') {
       setFailure(result.message)
     } else if (result.status === 'saved') {
@@ -159,7 +182,7 @@ export function MemberProfileForm({
           noValidate
           onSubmit={(event) => {
             setSubmitted(true)
-            return form.handleSubmit(onValid)(event)
+            return form.handleSubmit((values) => save(values))(event)
           }}
           className="flex flex-col gap-6"
         >
@@ -192,7 +215,18 @@ export function MemberProfileForm({
               idPrefix={ID_PREFIX}
               afterEmail={
                 holder && (
-                  <EmailHolder memberProfileId={holder.id} name={holder.name} />
+                  <EmailSharedConfirmation
+                    holder={holder}
+                    onConfirm={() =>
+                      form.handleSubmit((values) =>
+                        save(values, holder.userId)
+                      )()
+                    }
+                    onDecline={() => {
+                      setHolder(null)
+                      form.setFocus('email')
+                    }}
+                  />
                 )
               }
             />
@@ -249,25 +283,88 @@ function FormCard({title, children}: {title: string; children: ReactNode}) {
   )
 }
 
-/** L'email est deja celui d'une autre fiche : la nommer, et y mener (`2e`). */
-export function EmailHolder({
-  memberProfileId,
-  name,
+/**
+ * Referme l'encart de confirmation des qu'une saisie change (s53, etat 3a) :
+ * la confirmation ne vaut que pour la saisie qui l'a demandee.
+ */
+export function useCloseOnChange<Values extends FieldValues>(
+  form: UseFormReturn<Values>,
+  open: boolean,
+  close: (value: null) => void
+) {
+  const {watch} = form
+
+  useEffect(() => {
+    if (!open) return
+    const subscription = watch(() => close(null))
+    return () => subscription.unsubscribe()
+  }, [open, watch, close])
+}
+
+/**
+ * L'adresse saisie est deja celle d'un compte de l'association (s53, etat
+ * 3a) : nommer le compte et ses terrains, et demander s'il s'agit de la meme
+ * personne. Rien n'est enregistre tant que le bureau n'a pas confirme.
+ */
+export function EmailSharedConfirmation({
+  holder,
+  onConfirm,
+  onDecline,
 }: {
-  memberProfileId: string
-  name: string
+  holder: MemberAccountHolderDTO
+  onConfirm: () => void
+  onDecline: () => void
 }) {
-  const t = useTranslations('BureauMemberProfilesPage')
+  const t = useTranslations('BureauMemberProfilesPage.emailShared')
 
   return (
-    <p className="text-destructive-text text-base font-medium">
-      {t('emailTaken', {name})}{' '}
-      <Link
-        href={memberProfilePathOf(memberProfileId)}
-        className="underline underline-offset-4"
-      >
-        {t('openProfileOf', {name})}
-      </Link>
-    </p>
+    <Alert className="border-warning-border bg-warning text-warning-foreground border-2 [&>svg]:size-5">
+      <AlertTriangle aria-hidden="true" />
+      <AlertDescription className="text-warning-foreground flex flex-col gap-3 text-base">
+        <p>
+          <strong>{t('title', {name: holder.name})}</strong>
+        </p>
+        {holder.profiles.length > 0 && (
+          <div>
+            <p>{t('profiles')}</p>
+            <ul className="list-none">
+              {holder.profiles.map((profile) => (
+                <li key={profile.id}>
+                  <Link
+                    href={memberProfilePathOf(profile.id)}
+                    className="underline underline-offset-4"
+                  >
+                    {t('profile', {
+                      name: profile.name,
+                      count: profile.parcelNumbers.length,
+                      numbers: joinParcelNumbers(profile.parcelNumbers),
+                    })}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p>{t('question')}</p>
+        <p>{t('consequence')}</p>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            type="button"
+            className="h-14 w-full text-base sm:h-12 sm:w-auto"
+            onClick={onConfirm}
+          >
+            {t('confirm')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-14 w-full text-base sm:h-12 sm:w-auto"
+            onClick={onDecline}
+          >
+            {t('decline')}
+          </Button>
+        </div>
+      </AlertDescription>
+    </Alert>
   )
 }

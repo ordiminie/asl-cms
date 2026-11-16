@@ -26,6 +26,8 @@ import {
   ImportRejection,
   ImportRejectionConst,
   ImportRejectionDTO,
+  ImportRemarkConst,
+  ImportRemarkDTO,
   ImportReportDTO,
   MEMBER_IMPORT_MAX_LINES,
   OWNERSHIP_BEFORE_IMPORT_DATE,
@@ -37,7 +39,8 @@ import {importMembersServiceSchema} from './validation/member-import-validation'
  *
  * Une transaction de tenant **par membre** : sa fiche, son compte et ses
  * parcelles s'ecrivent en entier ou pas du tout, et un rejet n'arrete pas les
- * suivants. Tout passe par les services existants, jamais par un DAO direct
+ * suivants. Une adresse deja celle d'un compte de l'association relie la
+ * fiche a ce compte, et le regroupement est signale au rapport (s53). Tout passe par les services existants, jamais par un DAO direct
  * (ADR 029) ; chacun rappelle ses propres gardes. Le journal ne recoit que des
  * comptages : le rapport porte des donnees personnelles.
  */
@@ -57,6 +60,8 @@ type MemberOutcome =
   | {
       kind: 'created'
       accountOpened: boolean
+      /** La fiche a rejoint le compte qui portait deja son adresse (s53). */
+      accountJoined: boolean
       mailOnly: boolean
       parcels: number
     }
@@ -80,11 +85,23 @@ const rejectionOfValidation = (
   )
 }
 
+type CreatedProfile = {
+  id: string
+  accountOpened: boolean
+  accountJoined: boolean
+  mailOnly: boolean
+}
+
+/**
+ * Cree la fiche. Une adresse deja celle d'un compte de l'association n'est
+ * pas un rejet (s53, ADR 054 §4) : l'import confirme de lui-meme le compte
+ * detenteur, que le service revérifie.
+ */
 const createProfile = async (
   organizationId: string,
   member: ImportMemberCandidate
-): Promise<{id: string; accountOpened: boolean; mailOnly: boolean}> => {
-  const result = await createMemberProfileService({
+): Promise<CreatedProfile> => {
+  const input = {
     organizationId,
     name: member.name,
     email: member.email,
@@ -93,16 +110,22 @@ const createProfile = async (
     postalCode: member.postalCode,
     city: member.city,
     pennylaneCustomerId: member.pennylaneCustomerId,
-  })
-  if (result.status === 'email_taken') {
-    throw new MemberRejected(ImportRejectionConst.EMAIL_TAKEN)
   }
+  const first = await createMemberProfileService(input)
+  const result =
+    first.status === 'email_shared'
+      ? await createMemberProfileService({
+          ...input,
+          confirmedAccountUserId: first.holder.userId,
+        })
+      : first
   if (result.status !== 'saved') {
     throw new MemberRejected(ImportRejectionConst.INVALID_FIELD)
   }
   return {
     id: result.profile.id,
     accountOpened: result.accountChange === 'opened',
+    accountJoined: result.accountChange === 'linked',
     mailOnly: result.profile.mailOnly,
   }
 }
@@ -155,6 +178,7 @@ const writeMember = async (
   return {
     kind: 'created',
     accountOpened: profile.accountOpened,
+    accountJoined: profile.accountJoined,
     mailOnly: profile.mailOnly,
     parcels: await attachParcels(organizationId, profile.id, member),
   }
@@ -178,6 +202,31 @@ const importMember = async (
     }
     throw error
   }
+}
+
+const emailKeyOf = (member: ImportMemberCandidate): string | undefined =>
+  member.email?.trim().toLowerCase()
+
+/**
+ * Chaque fiche qui a rejoint un compte deja ouvert (s53, critere 5) : avec la
+ * premiere ligne importee du fichier a la meme adresse, sinon comme une
+ * adresse deja portee par une fiche existante.
+ */
+const sharedEmailRemarks = (
+  outcomes: {member: ImportMemberCandidate; outcome: MemberOutcome}[]
+): ImportRemarkDTO[] => {
+  const firstLineByEmail = new Map<string, number>()
+  return outcomes.flatMap(({member, outcome}): ImportRemarkDTO[] => {
+    const email = emailKeyOf(member)
+    if (!email || outcome.kind === 'rejected') return []
+    const relatedLine = firstLineByEmail.get(email)
+    if (relatedLine === undefined) firstLineByEmail.set(email, member.lines[0])
+    if (outcome.kind !== 'created' || !outcome.accountJoined) return []
+    const base = {line: member.lines[0], client: member.name}
+    return relatedLine === undefined
+      ? [{...base, remark: ImportRemarkConst.SHARED_EMAIL_EXISTING}]
+      : [{...base, remark: ImportRemarkConst.SHARED_EMAIL, relatedLine}]
+  })
 }
 
 const buildReport = (
@@ -214,7 +263,10 @@ const buildReport = (
     linesRejected: rejections.length,
     alreadyPresent: count((o) => o.kind === 'already_present'),
     rejections,
-    remarks: plan.remarks.filter(({line}) => !rejectedLines.has(line)),
+    remarks: [
+      ...plan.remarks.filter(({line}) => !rejectedLines.has(line)),
+      ...sharedEmailRemarks(outcomes),
+    ].sort((a, b) => a.line - b.line),
   }
 }
 

@@ -23,7 +23,7 @@ vi.mock('@/db/repositories/incident-report-repository', () => ({
   markIncidentReportNotificationFailedDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
-  getMemberProfileByUserIdDao: vi.fn(),
+  getMemberProfilesByUserIdDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/association-category-repository', () => ({
   listActiveCategoriesDao: vi.fn(),
@@ -54,7 +54,7 @@ import {
   listIncidentReportEventsDao,
   markIncidentReportNotificationFailedDao,
 } from '@/db/repositories/incident-report-repository'
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import * as organizationRepository from '@/db/repositories/organization-repository'
 import * as userRepository from '@/db/repositories/user-repository'
 import {EmailTransportError} from '@/lib/emails/transport/email-transport'
@@ -240,7 +240,7 @@ describe('[PUBLIC] createIncidentReportService — le visiteur anonyme signale (
 
     const [input] = vi.mocked(createIncidentReportTxnDao).mock.calls[0]
     expect(input).not.toHaveProperty('memberId')
-    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
+    expect(getMemberProfilesByUserIdDao).not.toHaveBeenCalled()
     for (const [name, dao] of Object.entries(userRepository)) {
       expect(dao, name).not.toHaveBeenCalled()
     }
@@ -830,7 +830,7 @@ describe('[PUBLIC] createMyIncidentReportService — le visiteur sans compte (s2
       AuthorizationError
     )
 
-    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
+    expect(getMemberProfilesByUserIdDao).not.toHaveBeenCalled()
     writeDaos().forEach((dao) => expect(dao).not.toHaveBeenCalled())
     expect(sendIncidentReportNotificationEmailService).not.toHaveBeenCalled()
   })
@@ -839,7 +839,7 @@ describe('[PUBLIC] createMyIncidentReportService — le visiteur sans compte (s2
 describe('[SUPER_ADMIN] createMyIncidentReportService — sans fiche dans l’association (s22)', () => {
   beforeEach(() => {
     setupAuthUserMocked(userTestSuperAdmin)
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
   })
 
   it('should say not found, without writing nor sending', async () => {
@@ -855,9 +855,9 @@ describe('[SUPER_ADMIN] createMyIncidentReportService — sans fiche dans l’as
 describe('[ORGANIZATION MEMBER] createMyIncidentReportService — le membre déclare depuis son espace (s22, critères 1 et 5)', () => {
   beforeEach(() => {
     setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(
-      profileRow() as never
-    )
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {...profileRow(), currentParcelNumbers: []},
+    ] as never)
     vi.mocked(createIncidentReportTxnDao).mockResolvedValue(
       reportRow({
         memberId: PROFILE_ID,
@@ -870,14 +870,14 @@ describe('[ORGANIZATION MEMBER] createMyIncidentReportService — le membre déc
 
   it('should resolve the profile from the session under the tenant scope', async () => {
     let readUnder: string | undefined
-    vi.mocked(getMemberProfileByUserIdDao).mockImplementation(async () => {
+    vi.mocked(getMemberProfilesByUserIdDao).mockImplementation(async () => {
       readUnder = scope.current
-      return profileRow() as never
+      return [{...profileRow(), currentParcelNumbers: []}] as never
     })
 
     await createMyIncidentReportService(submission())
 
-    expect(getMemberProfileByUserIdDao).toHaveBeenCalledWith(
+    expect(getMemberProfilesByUserIdDao).toHaveBeenCalledWith(
       ORG_ID,
       userTest.id
     )
@@ -885,7 +885,7 @@ describe('[ORGANIZATION MEMBER] createMyIncidentReportService — le membre déc
   })
 
   it('should not find a profile without writing (compte sans fiche)', async () => {
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
 
     await expect(createMyIncidentReportService(submission())).resolves.toEqual({
       status: 'not_found',
@@ -996,7 +996,7 @@ describe('[PUBLIC] getMyIncidentReportsService / getMyReportIdentityService (s22
     await expect(getMyReportIdentityService(ORG_ID)).rejects.toThrow(
       AuthorizationError
     )
-    expect(getMemberProfileByUserIdDao).not.toHaveBeenCalled()
+    expect(getMemberProfilesByUserIdDao).not.toHaveBeenCalled()
     expect(getMyIncidentReportsDao).not.toHaveBeenCalled()
   })
 })
@@ -1004,7 +1004,7 @@ describe('[PUBLIC] getMyIncidentReportsService / getMyReportIdentityService (s22
 describe('[SUPER_ADMIN] getMyIncidentReportsService — sans fiche (s22)', () => {
   beforeEach(() => {
     setupAuthUserMocked(userTestSuperAdmin)
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(undefined)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
   })
 
   it('should give nothing for an account without a profile in the association', async () => {
@@ -1017,9 +1017,9 @@ describe('[SUPER_ADMIN] getMyIncidentReportsService — sans fiche (s22)', () =>
 describe('[ORGANIZATION MEMBER] getMyIncidentReportsService — le membre suit ses signalements (s22, critères 2, 3, 4)', () => {
   beforeEach(() => {
     setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
-    vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue(
-      profileRow() as never
-    )
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {...profileRow(), currentParcelNumbers: []},
+    ] as never)
   })
 
   it('should read only the reports of the profile resolved from the session, under the tenant scope', async () => {
@@ -1031,11 +1031,11 @@ describe('[ORGANIZATION MEMBER] getMyIncidentReportsService — le membre suit s
 
     await expect(getMyIncidentReportsService(ORG_ID)).resolves.toEqual([])
 
-    expect(getMemberProfileByUserIdDao).toHaveBeenCalledWith(
+    expect(getMemberProfilesByUserIdDao).toHaveBeenCalledWith(
       ORG_ID,
       userTest.id
     )
-    expect(getMyIncidentReportsDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(getMyIncidentReportsDao).toHaveBeenCalledWith([PROFILE_ID])
     expect(readUnder).toBe(ORG_ID)
   })
 
@@ -1108,6 +1108,49 @@ describe('[ORGANIZATION OWNER] la file distingue un signalement de membre (s22)'
     expect(list.items.map((item) => item.reportedByMember)).toEqual([
       true,
       false,
+    ])
+  })
+})
+
+/**
+ * s53, arbitrage du 16/11 : un compte a plusieurs fiches declare sur la
+ * premiere (ordre ADR 054 §7), et « Mes signalements » liste ceux de toutes.
+ */
+describe('[ORGANIZATION MEMBER] signalements d’un compte à deux fiches (s53)', () => {
+  const SECOND_PROFILE_ID = '99999999-9999-4999-8999-999999999999'
+
+  beforeEach(() => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.MEMBER))
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {
+        ...profileRow(),
+        id: SECOND_PROFILE_ID,
+        name: 'SCI Les Pins',
+        currentParcelNumbers: ['31'],
+      },
+      {...profileRow(), currentParcelNumbers: ['12']},
+    ] as never)
+    vi.mocked(createIncidentReportTxnDao).mockResolvedValue(
+      reportRow({memberId: PROFILE_ID}) as never
+    )
+  })
+
+  it('rattache le signalement à la première fiche du compte', async () => {
+    await createMyIncidentReportService(submission())
+
+    expect(createIncidentReportTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({memberId: PROFILE_ID})
+    )
+  })
+
+  it('liste les signalements de toutes les fiches du compte', async () => {
+    vi.mocked(getMyIncidentReportsDao).mockResolvedValue([])
+
+    await getMyIncidentReportsService(ORG_ID)
+
+    expect(getMyIncidentReportsDao).toHaveBeenCalledWith([
+      PROFILE_ID,
+      SECOND_PROFILE_ID,
     ])
   })
 })

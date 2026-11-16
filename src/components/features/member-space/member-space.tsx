@@ -1,4 +1,10 @@
-import {ArrowRight, CircleCheck, Lock, Map as MapIcon} from 'lucide-react'
+import {
+  ArrowRight,
+  CircleCheck,
+  Droplet,
+  Lock,
+  Map as MapIcon,
+} from 'lucide-react'
 import Link from 'next/link'
 import {useFormatter, useTranslations} from 'next-intl'
 import {type ReactNode, Suspense, use, useId} from 'react'
@@ -21,7 +27,8 @@ import type {
   MyContactDTO,
   MyCurrentParcelDTO,
   MyFormerParcelDTO,
-  MyParcelsDTO,
+  MyLandDTO,
+  MyLandsDTO,
 } from '@/services/types/domain/member-space-types'
 
 import {MyContactCard} from './my-contact-card'
@@ -37,20 +44,20 @@ import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 const HEADING_CLASS = 'font-serif text-3xl font-semibold tracking-tight'
 
 /**
- * « Mes parcelles », « Mes coordonnees », « Mes signalements » (s22) et
+ * « Mes terrains » (s53), « Mes coordonnees », « Mes signalements » (s22) et
  * « Une question pour le bureau ? » (s23), ou la page de s46 pour un compte
- * sans fiche (C5). Une fiche sans parcelle garde
- * ses coordonnees (s16, C7) et ses signalements.
+ * sans fiche (C5). Un compte sans parcelle garde ses coordonnees (s16, C7)
+ * et ses signalements.
  */
 export function MemberSpace({
-  parcelsPromise,
+  landsPromise,
   contactPromise,
   contactAction,
   reportsPromise,
   reportSent,
   questionSent = false,
 }: {
-  parcelsPromise: Promise<MyParcelsDTO | undefined>
+  landsPromise: Promise<MyLandsDTO | undefined>
   contactPromise: Promise<MyContactDTO | undefined>
   contactAction: MyContactFormAction
   reportsPromise: Promise<MyIncidentReportDTO[] | undefined>
@@ -58,15 +65,17 @@ export function MemberSpace({
   /** Retour d'une question envoyee (s23, A2). */
   questionSent?: boolean
 }) {
-  const parcels = use(parcelsPromise)
+  const lands = use(landsPromise)
   const contact = use(contactPromise)
   const hasParcels =
-    parcels !== undefined &&
-    (parcels.current.length > 0 || parcels.former.length > 0)
+    lands !== undefined &&
+    lands.lands.some(
+      (land) => land.current.length > 0 || land.former.length > 0
+    )
 
   if (!contact) return <MemberSpaceWithoutProfile />
 
-  if (!parcels || !hasParcels) {
+  if (!lands || !hasParcels) {
     return (
       <MemberSpaceWithoutParcels>
         <MyContactCard contact={contact} action={contactAction} />
@@ -78,9 +87,11 @@ export function MemberSpace({
 
   return (
     <div className="space-y-6">
-      <PersonalMarker current={parcels.current} />
-      <Greeting name={parcels.name} />
-      <MyParcelsCard parcels={parcels} />
+      <PersonalMarker lands={lands.lands} />
+      <Greeting
+        name={lands.lands.length > 1 ? lands.accountName : lands.lands[0].name}
+      />
+      <MyLandsCard lands={lands.lands} />
       <MyContactCard contact={contact} action={contactAction} />
       <MyReports reportsPromise={reportsPromise} sent={reportSent} />
       <MyQuestionCard sent={questionSent} />
@@ -120,7 +131,9 @@ function MyReportsList({
   return <MyReportsCard reports={reports} sent={sent} />
 }
 
-/** Chargement : la salutation, et la carte en `skeleton`, sans marqueur. */
+const LOADING_LINES = [0, 1, 2]
+
+/** Chargement (1c) : la salutation, et les cartes en `skeleton`, sans marqueur. */
 export function MemberSpaceLoading({name}: {name: string}) {
   const t = useTranslations('MemberSpacePage')
   const titleId = useId()
@@ -134,8 +147,9 @@ export function MemberSpaceLoading({name}: {name: string}) {
           <h2 id={titleId} className="font-serif text-xl font-semibold">
             {t('parcels.title')}
           </h2>
-          <Skeleton className="bg-muted h-14 w-full" />
-          <Skeleton className="bg-muted h-14 w-full" />
+          {LOADING_LINES.map((line) => (
+            <Skeleton key={line} className="bg-muted h-14 w-full" />
+          ))}
         </Card>
       </section>
       <section aria-labelledby={contactTitleId} aria-busy="true">
@@ -182,21 +196,31 @@ function Greeting({name}: {name: string}) {
   return <h1 className={HEADING_CLASS}>{t('greeting', {name})}</h1>
 }
 
-/** Le marqueur unique de la donnee personnelle (design system §3.4). */
-function PersonalMarker({current}: {current: MyCurrentParcelDTO[]}) {
+const byNumber = (a: string, b: string): number =>
+  a.localeCompare(b, 'fr', {numeric: true})
+
+/**
+ * Le marqueur unique de la donnee personnelle (design system §3.4) : le
+ * nombre de terrains quand il y en a plusieurs, puis toutes les parcelles
+ * actuelles (s53).
+ */
+function PersonalMarker({lands}: {lands: MyLandDTO[]}) {
   const t = useTranslations('MemberSpacePage')
   const format = useFormatter()
-  const numbers = format.list(
-    current.map((parcel) => parcel.number),
-    {type: 'conjunction'}
-  )
+  const current = lands
+    .flatMap((land) => land.current.map((parcel) => parcel.number))
+    .sort(byNumber)
+  const numbers = format.list(current, {type: 'conjunction'})
+  const parcels = t('markerParcels', {count: current.length, numbers})
 
   return (
     <p className="flex flex-wrap items-center gap-2 text-[15px]">
       <Lock aria-hidden="true" className="text-primary size-4" />
       <strong>{t('marker')}</strong>
       <span className="text-muted-foreground">
-        · {t('markerParcels', {count: current.length, numbers})}
+        {lands.length > 1
+          ? `· ${t('markerLands', {count: lands.length})} · ${parcels}`
+          : `· ${parcels}`}
       </span>
     </p>
   )
@@ -213,9 +237,15 @@ const lastSaleOf = (former: MyFormerParcelDTO[]): string =>
     former[0].endsOn
   )
 
-function MyParcelsCard({parcels}: {parcels: MyParcelsDTO}) {
+/**
+ * « Mes terrains » (s53, ecran 1) : un seul terrain garde l'ecran de s12d,
+ * plus le compteur (1b) ; plusieurs se lisent en groupes, un par fiche, dans
+ * l'ordre recu (1a). Aucun identifiant de fiche, aucun selecteur.
+ */
+function MyLandsCard({lands}: {lands: MyLandDTO[]}) {
   const t = useTranslations('MemberSpacePage.parcels')
   const titleId = useId()
+  const several = lands.length > 1
 
   return (
     <section aria-labelledby={titleId}>
@@ -223,54 +253,22 @@ function MyParcelsCard({parcels}: {parcels: MyParcelsDTO}) {
         <h2 id={titleId} className="font-serif text-xl font-semibold">
           {t('title')}
         </h2>
-        {parcels.current.length === 0 && (
-          <p className="text-[17px]">
-            {t('noLongerOwner', {
-              date: formatContentDate(lastSaleOf(parcels.former)),
-            })}
-          </p>
-        )}
-        {parcels.current.length > 0 && (
-          <ParcelGroup title={t('current')}>
-            {parcels.current.map((parcel) => (
-              <ParcelLine
-                key={parcel.number}
-                number={parcel.number}
-                detail={
-                  isOwnershipBeforeImport(parcel.startsOn)
-                    ? t('sinceBeforeImport')
-                    : t('since', {date: formatContentDate(parcel.startsOn)})
-                }
-              />
-            ))}
-          </ParcelGroup>
-        )}
-        {parcels.former.length > 0 && (
-          <ParcelGroup title={t('former')}>
-            {parcels.former.map((parcel) => (
-              <ParcelLine
-                key={`${parcel.number}-${parcel.startsOn}`}
-                number={parcel.number}
-                detail={
-                  isOwnershipBeforeImport(parcel.startsOn)
-                    ? t('periodBeforeImport', {
-                        to: formatContentDate(
-                          lastOwnershipDayOf(parcel.endsOn)
-                        ),
-                      })
-                    : t('period', {
-                        from: formatContentDate(parcel.startsOn),
-                        to: formatContentDate(
-                          lastOwnershipDayOf(parcel.endsOn)
-                        ),
-                      })
-                }
-              />
-            ))}
-          </ParcelGroup>
+        {several ? (
+          <>
+            <p className="text-muted-foreground text-[15px]">
+              {t('together', {count: lands.length})}
+            </p>
+            <div className="flex flex-col divide-y">
+              {lands.map((land, index) => (
+                <LandGroup key={index} land={land} />
+              ))}
+            </div>
+          </>
+        ) : (
+          <LandParcels land={lands[0]} />
         )}
         <p className="border-t pt-4 text-[17px]">
-          {t('mistake')}{' '}
+          {several ? t('mistakeSeveral') : t('mistake')}{' '}
           <Link
             href="/contact"
             className="text-primary font-semibold underline underline-offset-4"
@@ -283,8 +281,133 @@ function MyParcelsCard({parcels}: {parcels: MyParcelsDTO}) {
   )
 }
 
-function ParcelGroup({title, children}: {title: string; children: ReactNode}) {
+/** Un terrain parmi plusieurs (1a) : titre par ses parcelles, « Au nom de ». */
+function LandGroup({land}: {land: MyLandDTO}) {
+  const t = useTranslations('MemberSpacePage.parcels')
+  const format = useFormatter()
+  const shown = land.current.length > 0 ? land.current : land.former
+  const numbers = format.list(
+    shown.map((parcel) => parcel.number),
+    {type: 'conjunction'}
+  )
+
+  return (
+    <div data-testid="my-land" className="flex flex-col gap-3 py-4">
+      <div className="flex flex-col gap-1">
+        <p className="text-[17px] font-semibold">
+          {t.rich(land.current.length > 0 ? 'landTitle' : 'landFormerTitle', {
+            count: shown.length,
+            numbers,
+            mono,
+          })}
+        </p>
+        <p className="text-muted-foreground text-[15px]">
+          {t('landName', {name: land.name})}
+        </p>
+      </div>
+      <LandParcels land={land} grouped />
+    </div>
+  )
+}
+
+/**
+ * Les parcelles d'un terrain : actuelles, chacune avec son compteur, puis
+ * anciennes ; « Vous n'etes plus proprietaire… » quand il n'en a plus
+ * d'actuelle (C3 de s12d, par groupe).
+ */
+function LandParcels({
+  land,
+  grouped = false,
+}: {
+  land: MyLandDTO
+  grouped?: boolean
+}) {
+  const t = useTranslations('MemberSpacePage.parcels')
+
+  return (
+    <>
+      {land.current.length === 0 && land.former.length > 0 && (
+        <p className="text-[17px]">
+          {t('noLongerOwner', {
+            date: formatContentDate(lastSaleOf(land.former)),
+          })}
+        </p>
+      )}
+      {land.current.length > 0 && (
+        <ParcelGroup title={grouped ? null : t('current')}>
+          {land.current.map((parcel) => (
+            <CurrentParcelLines key={parcel.number} parcel={parcel} />
+          ))}
+        </ParcelGroup>
+      )}
+      {land.former.length > 0 && (
+        <ParcelGroup title={t('former')}>
+          {land.former.map((parcel) => (
+            <ParcelLine
+              key={`${parcel.number}-${parcel.startsOn}`}
+              number={parcel.number}
+              detail={
+                isOwnershipBeforeImport(parcel.startsOn)
+                  ? t('periodBeforeImport', {
+                      to: formatContentDate(lastOwnershipDayOf(parcel.endsOn)),
+                    })
+                  : t('period', {
+                      from: formatContentDate(parcel.startsOn),
+                      to: formatContentDate(lastOwnershipDayOf(parcel.endsOn)),
+                    })
+              }
+            />
+          ))}
+        </ParcelGroup>
+      )}
+    </>
+  )
+}
+
+/** Une parcelle actuelle et son compteur (s53). */
+function CurrentParcelLines({parcel}: {parcel: MyCurrentParcelDTO}) {
+  const t = useTranslations('MemberSpacePage.parcels')
+
+  return (
+    <>
+      <ParcelLine
+        number={parcel.number}
+        detail={
+          isOwnershipBeforeImport(parcel.startsOn)
+            ? t('sinceBeforeImport')
+            : t('since', {date: formatContentDate(parcel.startsOn)})
+        }
+      />
+      <li className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-1 py-2">
+        <Droplet
+          aria-hidden="true"
+          className="text-primary size-5 shrink-0"
+          strokeWidth={1.75}
+        />
+        {parcel.meterNumber ? (
+          <span className="text-[17px]">
+            {t.rich('meter', {number: parcel.meterNumber, mono})}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-[17px]">
+            {t('meterMissing')}
+          </span>
+        )}
+      </li>
+    </>
+  )
+}
+
+function ParcelGroup({
+  title,
+  children,
+}: {
+  title: string | null
+  children: ReactNode
+}) {
   const titleId = useId()
+
+  if (title === null) return <ul className="divide-y">{children}</ul>
 
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-2">

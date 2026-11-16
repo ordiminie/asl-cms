@@ -21,13 +21,13 @@ vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
-  getMemberProfileByUserIdDao: vi.fn(),
+  getMemberProfilesByUserIdDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/user-repository', () => ({
   getUserByIdDao: vi.fn(),
 }))
 
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
   countCapableMembersDao,
@@ -81,9 +81,9 @@ beforeEach(() => {
     id: TARGET_ID,
     name: 'Paul Vidal',
   } as never)
-  vi.mocked(getMemberProfileByUserIdDao).mockResolvedValue({
-    id: 'profil-paul',
-  } as never)
+  vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+    {id: 'profil-paul', currentParcelNumbers: []},
+  ] as never)
 })
 
 describe('removeUserFromOrganizationService — retrait soumis au dernier compte (s14, D2)', () => {

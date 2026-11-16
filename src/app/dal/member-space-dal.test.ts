@@ -6,7 +6,7 @@ vi.mock('@/app/dal/tenant-dal', () => ({
 }))
 vi.mock('@/services/facades/member-space-service-facade', () => ({
   getMyContactService: vi.fn(),
-  getMyParcelsService: vi.fn(),
+  getMyLandsService: vi.fn(),
   isPlainMemberOfService: vi.fn(),
 }))
 vi.mock('@/services/facades/incident-report-service-facade', () => ({

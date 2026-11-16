@@ -34,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {joinParcelNumbers} from '@/services/rules/campaign-rules'
 import {sameEmail} from '@/services/rules/member-account-rules'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
 import type {MemberUnsubscribeDTO} from '@/services/types/domain/campaign-types'
@@ -41,6 +42,7 @@ import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-typ
 import type {MemberNotesPageDTO} from '@/services/types/domain/member-note-types'
 import type {
   MemberAccountChange,
+  MemberAccountHolderDTO,
   MemberProfileAccountDTO,
   MemberProfileDTO,
 } from '@/services/types/domain/member-profile-types'
@@ -62,9 +64,14 @@ import {
 import {type MemberNoteActions, MemberNotesCard} from './member-notes-card'
 import {IncompleteBadge, MailOnlyBadge} from './member-profile-badges'
 import {DetailCard} from './member-profile-detail-card'
-import {EmailHolder, type MemberProfileFormAction} from './member-profile-form'
+import {
+  EmailSharedConfirmation,
+  type MemberProfileFormAction,
+  useCloseOnChange,
+} from './member-profile-form'
 import {
   type ChangeMemberRoleFormAction,
+  CONFIRMED_ACCOUNT_FIELD,
   createMemberContactFormSchema,
   MEMBER_CONTACT_FORM_FIELDS,
   type MemberContactFormSchemaType,
@@ -105,6 +112,13 @@ type Notice =
       email: string
       /** L'adresse de connexion avant l'enregistrement. */
       previous: string | null
+      /**
+       * Le compte avant l'enregistrement, quand il portait d'autres fiches :
+       * son acces reste ouvert pour elles (s53, 3d).
+       */
+      sharedAccount: string | null
+      /** Le compte que la fiche vient de rejoindre (s53, 3b). */
+      accountName: string | null
     }
   | {kind: 'attached'; parcel: AttachedParcel}
   | {kind: 'sold'; parcel: FormerParcelDTO}
@@ -230,7 +244,7 @@ export function MemberProfileDetail({
             focus={editing.focus}
             action={updateContactAction}
             onCancel={() => setEditing(null)}
-            onSaved={({change, email}) => {
+            onSaved={({change, email, accountName}) => {
               setEditing(null)
               setPageNotice({
                 kind: 'contactSaved',
@@ -240,6 +254,8 @@ export function MemberProfileDetail({
                   profile.account.status === 'open'
                     ? profile.account.loginEmail
                     : null,
+                sharedAccount: sharedAccountOf(profile.account),
+                accountName,
               })
             }}
           />
@@ -373,14 +389,7 @@ function NoticeMessage({notice, name}: {notice: Notice; name: string}) {
     return (
       <TitledNotice
         title={t('detail.created')}
-        detail={
-          notice.account.status === 'open'
-            ? t('detail.accountOpenedOnCreate', {
-                name,
-                email: notice.account.loginEmail,
-              })
-            : null
-        }
+        detail={createdDetailOf(notice.account, name, t)}
       />
     )
   }
@@ -388,17 +397,60 @@ function NoticeMessage({notice, name}: {notice: Notice; name: string}) {
   return (
     <TitledNotice
       title={t('detail.contactSaved')}
-      detail={
-        notice.change
-          ? t(`detail.accountChange.${notice.change}`, {
-              name,
-              email: notice.email,
-              previous: notice.previous ?? '',
-            })
-          : null
-      }
+      detail={contactSavedDetailOf(notice, name, t)}
     />
   )
+}
+
+type Translate = ReturnType<typeof useTranslations<'BureauMemberProfilesPage'>>
+
+/** Le nom du compte de la fiche, s'il porte d'autres fiches (s53). */
+const sharedAccountOf = (account: MemberProfileAccountDTO): string | null =>
+  account.status === 'open' && account.otherProfiles.length > 0
+    ? account.accountName
+    : null
+
+/** Ce que dit l'arrivee d'une fiche creee : compte ouvert, ou rejoint (3b). */
+const createdDetailOf = (
+  account: MemberProfileAccountDTO,
+  name: string,
+  t: Translate
+): string | null => {
+  if (account.status !== 'open') return null
+  const shared = sharedAccountOf(account)
+  return shared
+    ? t('detail.linkedOnCreate', {account: shared})
+    : t('detail.accountOpenedOnCreate', {name, email: account.loginEmail})
+}
+
+/** Ce qui a change de l'acces, apres l'enregistrement des coordonnees. */
+const contactSavedDetailOf = (
+  notice: Extract<Notice, {kind: 'contactSaved'}>,
+  name: string,
+  t: Translate
+): string | null => {
+  if (!notice.change) return null
+  if (notice.change === 'linked') {
+    return t('detail.accountChange.linked', {
+      account: notice.accountName ?? '',
+    })
+  }
+  if (notice.sharedAccount && notice.change === 'closed') {
+    return t('detail.accountChange.closedShared', {
+      account: notice.sharedAccount,
+    })
+  }
+  if (notice.sharedAccount && notice.change === 'replaced') {
+    return t('detail.accountChange.replacedShared', {
+      email: notice.email,
+      previous: notice.previous ?? '',
+    })
+  }
+  return t(`detail.accountChange.${notice.change}`, {
+    name,
+    email: notice.email,
+    previous: notice.previous ?? '',
+  })
 }
 
 /** Le titre d'une confirmation, puis ce qui a change de l'acces (s12d). */
@@ -447,15 +499,50 @@ function AccessState({
             {t(account.boardRole)}
           </p>
         )}
+        {account.status === 'open' && account.otherProfiles.length > 0 && (
+          <p className="text-[17px]">
+            {t('sharedWith')}{' '}
+            {account.otherProfiles.map((other, index) => (
+              <span key={other.id}>
+                {index > 0 && ' · '}
+                <AccountProfileLink profile={other} />
+              </span>
+            ))}
+          </p>
+        )}
       </div>
     </div>
+  )
+}
+
+/** Une autre fiche du compte, designee par son nom et ses parcelles (s53). */
+function AccountProfileLink({
+  profile,
+}: {
+  profile: MemberAccountHolderDTO['profiles'][number]
+}) {
+  const t = useTranslations('BureauMemberProfilesPage.emailShared')
+
+  return (
+    <Link
+      href={memberProfilePathOf(profile.id)}
+      className="underline underline-offset-4"
+    >
+      {t('profile', {
+        name: profile.name,
+        count: profile.parcelNumbers.length,
+        numbers: joinParcelNumbers(profile.parcelNumbers),
+      })}
+    </Link>
   )
 }
 
 /**
  * Avertissement sous le champ email, avant l'enregistrement (s12d, A3, A6,
  * A10) : vider l'adresse ferme l'acces ; la remplacer le deplace. Rien pour
- * le bureau qui vide son adresse : le refus vient a l'enregistrement.
+ * le bureau qui vide l'adresse de sa derniere fiche : le refus vient a
+ * l'enregistrement. Sur un compte qui porte d'autres fiches, l'acces reste
+ * ouvert pour elles et le role ne suit pas (s53, 3d).
  */
 function EmailAccessWarning({
   name,
@@ -468,7 +555,8 @@ function EmailAccessWarning({
   const email = ((useWatch({name: 'email'}) as string | undefined) ?? '').trim()
 
   if (account.status !== 'open') return null
-  if (!email && account.boardRole) return null
+  const others = account.otherProfiles.length
+  if (!email && account.boardRole && others === 0) return null
   if (email && sameEmail(email, account.loginEmail)) return null
 
   return (
@@ -478,17 +566,31 @@ function EmailAccessWarning({
         {email ? (
           <>
             <p>
-              {t.rich('replaced', {
-                name,
-                previous: account.loginEmail,
-                email,
-                strong,
-              })}
+              {others > 0
+                ? t.rich('replacedShared', {
+                    previous: account.loginEmail,
+                    email,
+                    strong,
+                  })
+                : t.rich('replaced', {
+                    name,
+                    previous: account.loginEmail,
+                    email,
+                    strong,
+                  })}
             </p>
-            {account.boardRole && <p>{t('roleFollows')}</p>}
+            {account.boardRole && others === 0 && <p>{t('roleFollows')}</p>}
           </>
         ) : (
-          <p>{t.rich('removed', {name, strong})}</p>
+          <p>
+            {others > 0
+              ? t.rich('removedShared', {
+                  account: account.accountName,
+                  count: others,
+                  strong,
+                })
+              : t.rich('removed', {name, strong})}
+          </p>
         )}
       </AlertDescription>
     </Alert>
@@ -563,7 +665,11 @@ function ContactForm({
   focus?: MemberProfileFormField
   action: MemberProfileFormAction
   onCancel: () => void
-  onSaved: (saved: {change: MemberAccountChange; email: string}) => void
+  onSaved: (saved: {
+    change: MemberAccountChange
+    email: string
+    accountName: string | null
+  }) => void
 }) {
   const t = useTranslations('BureauMemberProfilesPage')
   const form = useForm<MemberContactFormSchemaType>({
@@ -582,16 +688,22 @@ function ContactForm({
   const {setFocus} = form
   const [submitted, setSubmitted] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
-  const [holder, setHolder] = useState<{id: string; name: string} | null>(null)
+  const [holder, setHolder] = useState<MemberAccountHolderDTO | null>(null)
   const [boardRefusal, setBoardRefusal] = useState(false)
   const emailRequired =
-    profile.account.status === 'open' && profile.account.boardRole !== null
+    profile.account.status === 'open' &&
+    profile.account.boardRole !== null &&
+    profile.account.otherProfiles.length === 0
+  useCloseOnChange(form, holder !== null, setHolder)
 
   useEffect(() => {
     if (focus && focus !== 'name') setFocus(focus)
   }, [focus, setFocus])
 
-  const onValid = async (values: MemberContactFormSchemaType) => {
+  const save = async (
+    values: MemberContactFormSchemaType,
+    confirmedAccountUserId?: string
+  ) => {
     setFailure(null)
     setHolder(null)
     setBoardRefusal(false)
@@ -599,6 +711,9 @@ function ContactForm({
     formData.set('memberProfileId', profile.id)
     for (const field of MEMBER_CONTACT_FORM_FIELDS) {
       formData.set(field, values[field])
+    }
+    if (confirmedAccountUserId) {
+      formData.set(CONFIRMED_ACCOUNT_FIELD, confirmedAccountUserId)
     }
 
     const result = await action(undefined, formData)
@@ -608,8 +723,8 @@ function ContactForm({
           form.setError(error.field, {message: error.message})
         }
       }
-    } else if (result.status === 'email_taken') {
-      setHolder({id: result.memberProfileId, name: result.name})
+    } else if (result.status === 'email_shared') {
+      setHolder(result.holder)
     } else if (result.status === 'board_email_required') {
       setBoardRefusal(true)
       form.setError('email', {
@@ -618,7 +733,11 @@ function ContactForm({
     } else if (result.status === 'error') {
       setFailure(result.message)
     } else {
-      onSaved({change: result.accountChange, email: values.email})
+      onSaved({
+        change: result.accountChange,
+        email: values.email,
+        accountName: result.accountName ?? null,
+      })
     }
   }
 
@@ -628,7 +747,7 @@ function ContactForm({
         noValidate
         onSubmit={(event) => {
           setSubmitted(true)
-          return form.handleSubmit(onValid)(event)
+          return form.handleSubmit((values) => save(values))(event)
         }}
         className="flex flex-col gap-6"
       >
@@ -664,7 +783,16 @@ function ContactForm({
           afterEmail={
             <>
               {holder && (
-                <EmailHolder memberProfileId={holder.id} name={holder.name} />
+                <EmailSharedConfirmation
+                  holder={holder}
+                  onConfirm={() =>
+                    form.handleSubmit((values) => save(values, holder.userId))()
+                  }
+                  onDecline={() => {
+                    setHolder(null)
+                    form.setFocus('email')
+                  }}
+                />
               )}
               <EmailAccessWarning
                 name={profile.name}

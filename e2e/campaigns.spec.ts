@@ -55,6 +55,9 @@ const RUN = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
 const MARKER = `s25-${RUN}`
 const subjectOf = (label: string) => `${label} ${MARKER}`
 
+/** Une adresse portée par deux fiches de l'essai (s53, critère 7). */
+const SHARED_EMAIL = `partagee-${RUN}@example.test`
+
 /** Les trois fiches de l'essai, chez TechCorp. */
 const FICHES = {
   first: {name: `Aubert ${MARKER}`, email: `aubert-${RUN}@example.test`},
@@ -148,7 +151,12 @@ const tenantIds = () =>
 
 type Counts = {recipients: number; withoutEmail: number; unsubscribed: number}
 
-/** Le décompte de TechCorp, lu en base sous son scope : la même partition. */
+/**
+ * Le décompte de TechCorp, lu en base sous son scope : la même partition. Une
+ * adresse portée par plusieurs fiches compte une fois, désinscrite dès qu'une
+ * de ses fiches l'est (s53, ADR 055) ; les fiches sans email se comptent en
+ * fiches.
+ */
 const countsInDatabase = async (): Promise<Counts> => {
   const {a} = await tenantIds()
   return inTenantScope(a, async (client) => {
@@ -157,13 +165,19 @@ const countsInDatabase = async (): Promise<Counts> => {
       without_email: number
       unsubscribed: number
     }>(
-      `select
-         count(*) filter (where p.email is not null and u.id is null)::int as recipients,
-         count(*) filter (where p.email is null)::int as without_email,
-         count(*) filter (where p.email is not null and u.id is not null)::int as unsubscribed
-       from member_profile p
-       left join member_unsubscribe u on u.member_profile_id = p.id
-       where p.organization_id = $1`,
+      `with addresses as (
+         select lower(trim(p.email)) as address,
+                bool_or(u.id is not null) as unsubscribed
+           from member_profile p
+           left join member_unsubscribe u on u.member_profile_id = p.id
+          where p.organization_id = $1 and p.email is not null
+          group by lower(trim(p.email))
+       )
+       select
+         (select count(*) from addresses where not unsubscribed)::int as recipients,
+         (select count(*) from member_profile
+           where organization_id = $1 and email is null)::int as without_email,
+         (select count(*) from addresses where unsubscribed)::int as unsubscribed`,
       [a]
     )
     const [row] = result.rows
@@ -526,6 +540,53 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
         })
         .toBe(1)
       expect(messagesTo(nextBefore, FICHES.first.email)).toHaveLength(0)
+    } finally {
+      await bureau.context().close()
+    }
+  })
+
+  test('s53, critère 7 — une adresse portée par deux fiches ne reçoit qu’un message', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const {a} = await tenantIds()
+    await inTenantScope(a, async (client) => {
+      for (const name of [`Lefort ${MARKER}`, `SCI Lefort ${MARKER}`]) {
+        await client.query(
+          `insert into member_profile (organization_id, name, email)
+           values ($1, $2, $3)`,
+          [a, name, SHARED_EMAIL]
+        )
+      }
+    })
+    const before = outboxFiles()
+
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      const expected = await countsInDatabase()
+      const campaignId = await composeAndSend(bureau, {
+        subject: subjectOf('Une adresse'),
+        body: 'Bonjour {nom}',
+        expectedRecipients: expected.recipients,
+      })
+      await expect
+        .poll(() => messagesTo(before, SHARED_EMAIL).length, {
+          timeout: 30_000,
+        })
+        .toBe(1)
+
+      const lines = await inTenantScope(a, async (client) => {
+        const result = await client.query(
+          `select r.id from campaign_recipient r
+             join member_profile p on p.id = r.member_profile_id
+            where r.campaign_id = $1 and lower(p.email) = lower($2)`,
+          [campaignId, SHARED_EMAIL]
+        )
+        return result.rowCount ?? 0
+      })
+      expect(lines, 'une seule ligne d’envoi pour l’adresse').toBe(1)
+      await bureau.waitForTimeout(3_000)
+      expect(messagesTo(before, SHARED_EMAIL)).toHaveLength(1)
     } finally {
       await bureau.context().close()
     }

@@ -59,6 +59,7 @@ const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 const PROFILE_ID = '33333333-3333-4333-8333-333333333333'
 const OTHER_PROFILE_ID = '44444444-4444-4444-8444-444444444444'
 const PARCEL_ID = '66666666-6666-4666-8666-666666666666'
+const HOLDER_ID = '77777777-7777-4777-8777-777777777777'
 const ROUTE = '/[locale]/(bureau)/bureau/proprietaires'
 
 const formOf = (values: Record<string, string>) => {
@@ -147,6 +148,7 @@ describe('createMemberProfileAction', () => {
       status: 'saved',
       memberProfileId: PROFILE_ID,
       accountChange: null,
+      accountName: null,
     })
     expect(createMemberProfileService).toHaveBeenCalledWith({
       organizationId: TENANT_ID,
@@ -188,27 +190,88 @@ describe('createMemberProfileAction', () => {
     expect(revalidatePath).not.toHaveBeenCalled()
   })
 
-  it('rend l’email déjà pris avec la fiche qui le porte, sans revalider (état 2e)', async () => {
+  it('rend le compte qui porte déjà l’adresse, sans rien revalider (état 3a, s53)', async () => {
+    const holder = {
+      userId: HOLDER_ID,
+      name: 'Bernard Lefèvre',
+      profiles: [
+        {id: OTHER_PROFILE_ID, name: 'Bernard Lefèvre', parcelNumbers: ['12']},
+      ],
+    }
     vi.mocked(createMemberProfileService).mockResolvedValue({
-      status: 'email_taken',
-      memberProfileId: OTHER_PROFILE_ID,
+      status: 'email_shared',
+      holder,
     })
 
     const result = await createMemberProfileAction(
       undefined,
-      formOf({...blankContact, name: 'Claire M.', email: 'claire@example.fr'})
+      formOf({
+        ...blankContact,
+        name: 'SCI Les Pins',
+        email: 'bernard.lefevre@exemple.fr',
+      })
     )
 
-    expect(result).toEqual({
-      status: 'email_taken',
-      memberProfileId: OTHER_PROFILE_ID,
-      name: 'Claire Meunier',
-    })
-    expect(getMemberProfileService).toHaveBeenCalledWith(
-      TENANT_ID,
-      OTHER_PROFILE_ID
+    expect(result).toEqual({status: 'email_shared', holder})
+    expect(createMemberProfileService).toHaveBeenCalledWith(
+      expect.objectContaining({confirmedAccountUserId: undefined})
     )
     expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('transmet au service le compte confirmé par le bureau, et rend son nom (3b, s53)', async () => {
+    vi.mocked(createMemberProfileService).mockResolvedValue({
+      status: 'saved',
+      profile: profile({
+        account: {
+          status: 'open',
+          loginEmail: 'bernard.lefevre@exemple.fr',
+          boardRole: null,
+          accountName: 'Bernard Lefèvre',
+          otherProfiles: [],
+        },
+      }),
+      accountChange: 'linked',
+    })
+
+    const result = await createMemberProfileAction(
+      undefined,
+      formOf({
+        ...blankContact,
+        name: 'SCI Les Pins',
+        email: 'bernard.lefevre@exemple.fr',
+        confirmedAccountUserId: HOLDER_ID,
+      })
+    )
+
+    expect(createMemberProfileService).toHaveBeenCalledWith(
+      expect.objectContaining({confirmedAccountUserId: HOLDER_ID})
+    )
+    expect(result).toEqual({
+      status: 'saved',
+      memberProfileId: PROFILE_ID,
+      accountChange: 'linked',
+      accountName: 'Bernard Lefèvre',
+    })
+  })
+
+  it('transmet aussi la confirmation à la modification des coordonnées (s53)', async () => {
+    await updateMemberProfileContactAction(
+      undefined,
+      formOf({
+        ...blankContact,
+        memberProfileId: PROFILE_ID,
+        email: 'bernard.lefevre@exemple.fr',
+        confirmedAccountUserId: HOLDER_ID,
+      })
+    )
+
+    expect(updateMemberProfileContactService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memberProfileId: PROFILE_ID,
+        confirmedAccountUserId: HOLDER_ID,
+      })
+    )
   })
 
   it('refuse sans session, sans appeler la façade', async () => {
@@ -275,6 +338,7 @@ describe('updateMemberProfileContactAction', () => {
       status: 'saved',
       memberProfileId: PROFILE_ID,
       accountChange: null,
+      accountName: null,
     })
     expect(updateMemberProfileContactService).toHaveBeenCalledWith({
       organizationId: TENANT_ID,
@@ -304,6 +368,7 @@ describe('updateMemberProfileContactAction', () => {
         status: 'saved',
         memberProfileId: PROFILE_ID,
         accountChange,
+        accountName: null,
       })
     }
   )
@@ -598,11 +663,13 @@ describe('searchBuyersAction', () => {
           ...profile({name: 'Paul Ferrand'}),
           currentParcelNumbers: [],
           boardRole: null,
+          accountProfileCount: 0,
         },
         {
           ...profile({id: OTHER_PROFILE_ID, name: 'Sophie Ferreira'}),
           currentParcelNumbers: ['8'],
           boardRole: null,
+          accountProfileCount: 0,
         },
       ],
       page: 1,

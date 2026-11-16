@@ -49,7 +49,13 @@ beforeEach(() => {
   )
   vi.mocked(updateMyContactService).mockResolvedValue({
     status: 'saved',
-    contact: {email: 'lucie.moreau@exemple.fr', ...CONTACT},
+    contact: {
+      email: 'lucie.moreau@exemple.fr',
+      ...CONTACT,
+      landCount: 1,
+      divergent: false,
+      groups: [],
+    },
   })
 })
 
@@ -101,7 +107,13 @@ describe('updateMyContactAction — « Mes coordonnées » (s16)', () => {
 
     expect(result).toEqual({
       status: 'saved',
-      contact: {email: 'lucie.moreau@exemple.fr', ...CONTACT},
+      contact: {
+        email: 'lucie.moreau@exemple.fr',
+        ...CONTACT,
+        landCount: 1,
+        divergent: false,
+        groups: [],
+      },
     })
     expect(revalidatePath).toHaveBeenCalledWith(
       '/[locale]/(app)/dashboard',

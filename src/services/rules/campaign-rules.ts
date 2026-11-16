@@ -15,6 +15,7 @@ import {
   CampaignVariable,
   CampaignVariableValues,
 } from '../types/domain/campaign-types'
+import {orderMyProfiles} from './my-profiles-order-rules'
 
 /**
  * Regles pures des campagnes (s25, ADR 051). Aucun acces a la base : le
@@ -80,33 +81,98 @@ export type CampaignTargetRow = {
   name: string
   email: string | null
   unsubscribed: boolean
+  /** Parcelles actuelles : l'ordre des fiches d'une adresse (ADR 054 §7). */
+  currentParcelNumbers: readonly string[]
+  /** Nom du compte relie a la fiche, `null` sans compte (s53). */
+  accountName: string | null
 }
 
 export type CampaignTarget<Row extends CampaignTargetRow> = {
+  /** Un destinataire par adresse (ADR 055). */
   recipients: Row[]
+  /** Des fiches. */
   withoutEmail: number
+  /** Des adresses. */
   unsubscribed: number
 }
 
+const emailKeyOf = (email: string): string => email.trim().toLowerCase()
+
+/** La fiche qui porte l'envoi d'une adresse : la premiere de l'ordre ADR 054. */
+const carrierOf = <Row extends CampaignTargetRow>(group: Row[]): Row =>
+  orderMyProfiles(
+    group.map((row) => ({
+      row,
+      id: row.memberProfileId,
+      currentParcelNumbers: [...row.currentParcelNumbers],
+    }))
+  )[0].row
+
 /**
  * La cible « tous les membres » (criteres 2 et 7) : partition sans reste en
- * membres sans email, membres avec email desinscrits, et destinataires. Un
- * membre sans email n'est jamais compte desinscrit. Point de passage unique
- * que s27 etend et que s27b reintegre.
+ * fiches sans email, adresses desinscrites et destinataires. Les fiches sont
+ * groupees par adresse (s53, ADR 055) : un groupe donne **un** destinataire,
+ * porte par sa premiere fiche ; une fiche desinscrite desinscrit le groupe.
+ * Une fiche sans email n'est jamais comptee desinscrite. Point de passage
+ * unique que s27 etend et que s27b reintegre.
  */
 export const computeCampaignTarget = <Row extends CampaignTargetRow>(
   rows: readonly Row[]
 ): CampaignTarget<Row> => {
-  const recipients: Row[] = []
+  const groups = new Map<string, Row[]>()
   let withoutEmail = 0
-  let unsubscribed = 0
   for (const row of rows) {
-    if (!row.email) withoutEmail += 1
-    else if (row.unsubscribed) unsubscribed += 1
-    else recipients.push(row)
+    if (!row.email) {
+      withoutEmail += 1
+      continue
+    }
+    const key = emailKeyOf(row.email)
+    groups.set(key, [...(groups.get(key) ?? []), row])
+  }
+
+  const recipients: Row[] = []
+  let unsubscribed = 0
+  for (const group of groups.values()) {
+    if (group.some((row) => row.unsubscribed)) unsubscribed += 1
+    else recipients.push(carrierOf(group))
   }
   return {recipients, withoutEmail, unsubscribed}
 }
+
+/**
+ * Les fiches de la cible qui portent l'adresse de ce destinataire, lui
+ * compris (s53, ADR 055) ; lui seul s'il n'a pas d'adresse.
+ */
+export const sameAddressRowsOf = <Row extends CampaignTargetRow>(
+  rows: readonly Row[],
+  recipient: Row
+): Row[] => {
+  const {email} = recipient
+  if (!email) return [recipient]
+  return rows.filter(
+    (row) => row.email !== null && emailKeyOf(row.email) === emailKeyOf(email)
+  )
+}
+
+/**
+ * `{nom}` et `{parcelle}` d'un envoi (s53, ADR 055) : pour une adresse a
+ * plusieurs fiches, le nom du compte relie et les parcelles actuelles de
+ * toutes ses fiches, en ordre numerique ; pour une seule, inchange.
+ */
+export const addressValuesOf = (recipient: {
+  name: string
+  accountName: string | null
+  addressProfileCount: number
+  parcelNumbers: readonly string[]
+}): {name: string; parcelNumbers: string[]} => ({
+  name:
+    recipient.addressProfileCount > 1 && recipient.accountName
+      ? recipient.accountName
+      : recipient.name,
+  parcelNumbers: [...recipient.parcelNumbers].sort((a, b) =>
+    a.localeCompare(b, 'fr', {numeric: true})
+  ),
+})
 
 const subjectPrefixOf = (associationName: string): string =>
   `${associationName}${CAMPAIGN_SUBJECT_SEPARATOR}`

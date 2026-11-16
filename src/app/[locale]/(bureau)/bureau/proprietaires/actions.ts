@@ -11,6 +11,7 @@ import {
   type AttachParcelActionResult,
   type AttachParcelFormField,
   type ChangeMemberRoleActionResult,
+  CONFIRMED_ACCOUNT_FIELD,
   createAttachParcelFormSchema,
   createMemberContactFormSchema,
   createMemberProfileFormSchema,
@@ -32,7 +33,6 @@ import {AuthorizationError} from '@/services/errors/authorization-error'
 import {
   createMemberProfileService,
   getMemberProfilePageService,
-  getMemberProfileService,
   updateMemberProfileContactService,
 } from '@/services/facades/member-profile-service-facade'
 import {changeMemberRoleService} from '@/services/facades/member-role-service-facade'
@@ -48,8 +48,8 @@ import type {MemberRoleChangeResult} from '@/services/types/domain/member-role-t
  *
  * Chacune rejoue le controle de session (`requireActionAuth`) avant d'appeler
  * la facade — le service reverifie `member.profile.manage` — puis revalide le
- * segment (liste et fiches) **apres** le succes seulement. Email deja pris et
- * chevauchement sont rendus comme des resultats, jamais leves.
+ * segment (liste et fiches) **apres** le succes seulement. Adresse deja celle
+ * d'un compte et chevauchement sont rendus comme des resultats, jamais leves.
  */
 
 type Translator = Awaited<ReturnType<typeof getTranslations>>
@@ -89,42 +89,39 @@ const toFieldErrors = <Field extends string>(
   }))
 
 /**
- * Traduit le resultat d'ecriture du service. Pour un email deja pris, lit le
- * nom de la fiche qui le porte : l'ecran y renvoie (etat `2e`). Le refus de
- * vider l'adresse d'un membre du bureau n'a rien ecrit : rien n'est revalide.
- * Un enregistrement porte le changement d'acces, pour le message (s12d).
+ * Traduit le resultat d'ecriture du service. Une adresse deja celle d'un
+ * compte de l'association n'a rien ecrit : le compte detenteur est rendu pour
+ * la confirmation (s53, etat 3a). Le refus de vider l'adresse d'un membre du
+ * bureau n'a rien ecrit non plus : rien n'est revalide. Un enregistrement
+ * porte le changement d'acces et le nom du compte, pour le message.
  */
-const toActionResult = async (
-  organizationId: string,
+const toActionResult = (
   result: MemberProfileWriteResult,
   t: Translator
-): Promise<MemberProfileActionResult> => {
+): MemberProfileActionResult => {
   if (result.status === 'not_found') {
     return {status: 'error', message: t('errors.notFound')}
   }
-  if (result.status === 'email_taken') {
-    const holder = await getMemberProfileService(
-      organizationId,
-      result.memberProfileId
-    )
-    return {
-      status: 'email_taken',
-      memberProfileId: result.memberProfileId,
-      name: holder?.name ?? '',
-    }
+  if (result.status === 'email_shared') {
+    return {status: 'email_shared', holder: result.holder}
   }
-
   if (result.status === 'board_email_required') {
     return {status: 'board_email_required'}
   }
 
   revalidateMemberProfileScreens()
+  const {account} = result.profile
   return {
     status: 'saved',
     memberProfileId: result.profile.id,
     accountChange: result.accountChange,
+    accountName: account.status === 'open' ? account.accountName : null,
   }
 }
+
+/** Le compte confirme par le bureau (s53), absent au premier envoi. */
+const readConfirmedAccount = (formData: FormData): string | undefined =>
+  readField(formData, CONFIRMED_ACCOUNT_FIELD) || undefined
 
 /** « Enregistrer le proprietaire » (ecran 2). Avec un email, un compte (s12d). */
 export async function createMemberProfileAction(
@@ -150,8 +147,9 @@ export async function createMemberProfileAction(
     const result = await createMemberProfileService({
       organizationId: tenant.id,
       ...validation.data,
+      confirmedAccountUserId: readConfirmedAccount(formData),
     })
-    return await toActionResult(tenant.id, result, t)
+    return toActionResult(result, t)
   } catch (error) {
     return toFailure(error, t)
   }
@@ -182,8 +180,9 @@ export async function updateMemberProfileContactAction(
       organizationId: tenant.id,
       memberProfileId: readField(formData, 'memberProfileId'),
       ...validation.data,
+      confirmedAccountUserId: readConfirmedAccount(formData),
     })
-    return await toActionResult(tenant.id, result, t)
+    return toActionResult(result, t)
   } catch (error) {
     return toFailure(error, t)
   }

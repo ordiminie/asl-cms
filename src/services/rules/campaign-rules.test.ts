@@ -2,6 +2,7 @@ import {describe, expect, it} from 'vitest'
 
 import * as rules from './campaign-rules'
 import {
+  addressValuesOf,
   computeCampaignTarget,
   deferredDayOf,
   escapeHtml,
@@ -75,12 +76,25 @@ describe('joinParcelNumbers', () => {
 })
 
 describe('computeCampaignTarget — point de passage unique (critères 2, 7)', () => {
+  const row = (
+    memberProfileId: string,
+    email: string | null,
+    unsubscribed = false,
+    currentParcelNumbers: string[] = []
+  ) => ({
+    memberProfileId,
+    name: memberProfileId.toUpperCase(),
+    email,
+    unsubscribed,
+    currentParcelNumbers,
+    accountName: null,
+  })
   const rows = [
-    {memberProfileId: 'a', name: 'A', email: 'a@x.fr', unsubscribed: false},
-    {memberProfileId: 'b', name: 'B', email: null, unsubscribed: false},
-    {memberProfileId: 'c', name: 'C', email: 'c@x.fr', unsubscribed: true},
-    {memberProfileId: 'd', name: 'D', email: null, unsubscribed: true},
-    {memberProfileId: 'e', name: 'E', email: 'e@x.fr', unsubscribed: false},
+    row('a', 'a@x.fr'),
+    row('b', null),
+    row('c', 'c@x.fr', true),
+    row('d', null, true),
+    row('e', 'e@x.fr'),
   ]
 
   it('partitionne : joignables, sans email, désinscrits ; la somme fait le total', () => {
@@ -100,6 +114,71 @@ describe('computeCampaignTarget — point de passage unique (critères 2, 7)', (
     expect(target.recipients).toEqual([])
     expect(target.unsubscribed).toBe(0)
     expect(target.withoutEmail).toBe(1)
+  })
+
+  it('une adresse portée par trois fiches donne un seul destinataire, la première de l’ordre ADR 054 (s53, ADR 055)', () => {
+    const target = computeCampaignTarget([
+      row('sci', 'Bernard@x.fr', false, ['31']),
+      row('p27', 'bernard@x.fr', false, ['27']),
+      row('p12', ' bernard@X.fr ', false, ['12']),
+      row('e', 'e@x.fr'),
+    ])
+
+    expect(target.recipients.map((r) => r.memberProfileId)).toEqual([
+      'p12',
+      'e',
+    ])
+    expect(target.unsubscribed).toBe(0)
+    expect(target.withoutEmail).toBe(0)
+  })
+
+  it('une adresse dont une fiche est désinscrite est désinscrite en entier, comptée une fois', () => {
+    const target = computeCampaignTarget([
+      row('p12', 'bernard@x.fr', false, ['12']),
+      row('p27', 'bernard@x.fr', true, ['27']),
+      row('sci', 'bernard@x.fr', false, ['31']),
+      row('b', null),
+      row('n', null),
+    ])
+
+    expect(target.recipients).toEqual([])
+    expect(target.unsubscribed).toBe(1)
+    expect(target.withoutEmail).toBe(2)
+  })
+})
+
+describe('addressValuesOf — {nom} et {parcelle} d’une adresse partagée (s53, ADR 055)', () => {
+  it('une adresse à plusieurs fiches : le nom du compte et toutes les parcelles, en ordre numérique', () => {
+    expect(
+      addressValuesOf({
+        name: 'Bernard Lefèvre',
+        accountName: 'Bernard L.',
+        addressProfileCount: 3,
+        parcelNumbers: ['31', '12', '27'],
+      })
+    ).toEqual({name: 'Bernard L.', parcelNumbers: ['12', '27', '31']})
+  })
+
+  it('une adresse à une fiche : inchangé, le nom de la fiche', () => {
+    expect(
+      addressValuesOf({
+        name: 'Lucie Moreau',
+        accountName: 'Lucie M.',
+        addressProfileCount: 1,
+        parcelNumbers: ['21'],
+      })
+    ).toEqual({name: 'Lucie Moreau', parcelNumbers: ['21']})
+  })
+
+  it('sans compte relié, garde le nom de la fiche', () => {
+    expect(
+      addressValuesOf({
+        name: 'SCI Les Pins',
+        accountName: null,
+        addressProfileCount: 2,
+        parcelNumbers: [],
+      }).name
+    ).toBe('SCI Les Pins')
   })
 })
 

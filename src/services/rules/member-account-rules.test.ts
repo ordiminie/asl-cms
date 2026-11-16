@@ -9,13 +9,21 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: null,
         nextEmail: 'odile@example.test',
         linkedRole: null,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'open'})
   })
 
   it('délie une fiche courrier qui le reste : aucun accès à fermer', () => {
     expect(
-      decideMemberAccount({savedEmail: null, nextEmail: null, linkedRole: null})
+      decideMemberAccount({
+        savedEmail: null,
+        nextEmail: null,
+        linkedRole: null,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
+      })
     ).toEqual({kind: 'unlink'})
   })
 
@@ -25,6 +33,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: null,
         linkedRole: 'member',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'close'})
   })
@@ -35,6 +45,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'odile.marchand@example.test',
         linkedRole: 'member',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'replace'})
   })
@@ -45,6 +57,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'helene@example.test',
         nextEmail: null,
         linkedRole: 'board',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'refuse_board_removal'})
   })
@@ -55,6 +69,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'presidence@example.test',
         nextEmail: null,
         linkedRole: 'owner',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'refuse_board_removal'})
   })
@@ -65,6 +81,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'helene@example.test',
         nextEmail: 'helene.roux@example.test',
         linkedRole: 'board',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'replace'})
   })
@@ -75,6 +93,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'presidence@example.test',
         nextEmail: 'nouvelle.presidence@example.test',
         linkedRole: 'owner',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'replace'})
   })
@@ -85,6 +105,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'Odile@Example.TEST',
         linkedRole: 'member',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'none'})
   })
@@ -95,6 +117,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'odile@example.test',
         linkedRole: 'board',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'none'})
   })
@@ -105,6 +129,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'odile@example.test',
         linkedRole: null,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'open'})
   })
@@ -115,6 +141,8 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'odile.marchand@example.test',
         linkedRole: null,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'open'})
   })
@@ -125,8 +153,74 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: null,
         linkedRole: null,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'unlink'})
+  })
+})
+
+const HOLDER_ID = '55555555-5555-4555-8555-555555555555'
+
+describe('decideMemberAccount — un compte, plusieurs fiches (s53, ADR 054)', () => {
+  it('refuse de vider l’adresse de la dernière fiche d’un membre du bureau', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: 'helene@example.test',
+        nextEmail: null,
+        linkedRole: 'board',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
+      })
+    ).toEqual({kind: 'refuse_board_removal'})
+  })
+
+  it('laisse vider l’adresse d’une fiche d’un membre du bureau qui en garde une autre', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: 'helene@example.test',
+        nextEmail: null,
+        linkedRole: 'board',
+        otherLinkedProfiles: 1,
+        nextEmailAccountUserId: null,
+      })
+    ).toEqual({kind: 'close'})
+  })
+
+  it('relie une fiche sans compte à l’adresse déjà celle d’un compte de l’association', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: null,
+        nextEmail: 'bernard@example.test',
+        linkedRole: null,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: HOLDER_ID,
+      })
+    ).toEqual({kind: 'link_shared', userId: HOLDER_ID})
+  })
+
+  it('relie au compte détenteur une fiche dont l’adresse est remplacée', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: 'ancienne@example.test',
+        nextEmail: 'bernard@example.test',
+        linkedRole: 'member',
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: HOLDER_ID,
+      })
+    ).toEqual({kind: 'link_shared', userId: HOLDER_ID})
+  })
+
+  it('ne fait rien quand l’adresse inchangée est partagée par le même compte', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: 'bernard@example.test',
+        nextEmail: 'Bernard@example.test',
+        linkedRole: 'member',
+        otherLinkedProfiles: 2,
+        nextEmailAccountUserId: HOLDER_ID,
+      })
+    ).toEqual({kind: 'none'})
   })
 })
 

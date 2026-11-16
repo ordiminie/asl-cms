@@ -29,13 +29,17 @@ vi.mock('@/db/repositories/member-role-event-repository', () => ({
   insertMemberRoleEventDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
-  setMemberProfileUserIdDao: vi.fn(),
+  linkMemberProfileAccountDao: vi.fn(),
+  unlinkMemberProfileAccountDao: vi.fn(),
+  countLinkedProfilesDao: vi.fn(),
   getUnlinkedMemberProfilesWithEmailDao: vi.fn(),
 }))
 
 import {
+  countLinkedProfilesDao,
   getUnlinkedMemberProfilesWithEmailDao,
-  setMemberProfileUserIdDao,
+  linkMemberProfileAccountDao,
+  unlinkMemberProfileAccountDao,
 } from '@/db/repositories/member-profile-repository'
 import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
@@ -107,6 +111,7 @@ beforeEach(() => {
   )
   vi.mocked(getUserOrganizationDao).mockResolvedValue(undefined)
   vi.mocked(deleteMemberWithRoleDao).mockResolvedValue(1)
+  vi.mocked(countLinkedProfilesDao).mockResolvedValue(0)
 })
 
 describe('openMemberAccount — trouver ou créer le compte d’une fiche', () => {
@@ -129,10 +134,11 @@ describe('openMemberAccount — trouver ou créer le compte d’une fiche', () =
         createdAt: expect.any(Date),
       })
     )
-    expect(setMemberProfileUserIdDao).toHaveBeenCalledWith(
-      PROFILE_ID,
-      KNOWN_USER_ID
-    )
+    expect(linkMemberProfileAccountDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: KNOWN_USER_ID,
+    })
     expect(result).toEqual({userId: KNOWN_USER_ID})
   })
 
@@ -151,10 +157,11 @@ describe('openMemberAccount — trouver ou créer le compte d’une fiche', () =
       email: 'odile.marchand@example.test',
       name: 'Odile Marchand',
     })
-    expect(setMemberProfileUserIdDao).toHaveBeenCalledWith(
-      PROFILE_ID,
-      NEW_USER_ID
-    )
+    expect(linkMemberProfileAccountDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: NEW_USER_ID,
+    })
   })
 
   it('laisse intact un rôle existant dans l’association', async () => {
@@ -176,7 +183,7 @@ describe('openMemberAccount — trouver ou créer le compte d’une fiche', () =
 
   it('écrit sous le scope du tenant', async () => {
     let linkedUnder: string | undefined
-    vi.mocked(setMemberProfileUserIdDao).mockImplementation(async () => {
+    vi.mocked(linkMemberProfileAccountDao).mockImplementation(async () => {
       linkedUnder = scope.current
     })
 
@@ -205,7 +212,7 @@ describe('closeMemberAccount — fermer sans rien supprimer d’autre', () => {
       'member'
     )
     expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
-    expect(setMemberProfileUserIdDao).toHaveBeenCalledWith(PROFILE_ID, null)
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
   })
 })
 
@@ -230,10 +237,11 @@ describe('replaceMemberAccount — l’adresse change', () => {
       ORG_ID,
       'member'
     )
-    expect(setMemberProfileUserIdDao).toHaveBeenLastCalledWith(
-      PROFILE_ID,
-      NEW_USER_ID
-    )
+    expect(linkMemberProfileAccountDao).toHaveBeenLastCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: NEW_USER_ID,
+    })
   })
 
   it('déplace le rôle du bureau vers le nouveau compte', async () => {
@@ -256,10 +264,11 @@ describe('replaceMemberAccount — l’adresse change', () => {
       ORG_ID,
       'board'
     )
-    expect(setMemberProfileUserIdDao).toHaveBeenLastCalledWith(
-      PROFILE_ID,
-      NEW_USER_ID
-    )
+    expect(linkMemberProfileAccountDao).toHaveBeenLastCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: NEW_USER_ID,
+    })
   })
 
   it('élève au rôle reporté un nouveau compte déjà simple membre', async () => {
@@ -347,14 +356,15 @@ describe('applyMemberAccountDecision — le changement d’accès', () => {
     expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
     expect(createMemberIfAbsentTxnDao).not.toHaveBeenCalled()
     expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
-    expect(setMemberProfileUserIdDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
+    expect(unlinkMemberProfileAccountDao).not.toHaveBeenCalled()
   })
 })
 
 describe('applyMemberAccountDecision — délier sans fermer', () => {
   it('vide le lien d’une fiche liée sans retirer aucune ligne member, sous le scope', async () => {
     let unlinkedUnder: string | undefined
-    vi.mocked(setMemberProfileUserIdDao).mockImplementation(async () => {
+    vi.mocked(unlinkMemberProfileAccountDao).mockImplementation(async () => {
       unlinkedUnder = scope.current
     })
 
@@ -370,7 +380,7 @@ describe('applyMemberAccountDecision — délier sans fermer', () => {
       decision: {kind: 'unlink'},
     })
 
-    expect(setMemberProfileUserIdDao).toHaveBeenCalledWith(PROFILE_ID, null)
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
     expect(unlinkedUnder).toBe(ORG_ID)
     expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
     expect(deleteUserOrganizationDao).not.toHaveBeenCalled()
@@ -391,7 +401,8 @@ describe('applyMemberAccountDecision — délier sans fermer', () => {
       })
     ).toEqual({change: null, userId: null})
 
-    expect(setMemberProfileUserIdDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
+    expect(unlinkMemberProfileAccountDao).not.toHaveBeenCalled()
   })
 })
 
@@ -405,7 +416,7 @@ describe('openMemberAccountsForOrganization — reprise en lot (critère 2)', ()
     const result = await openMemberAccountsForOrganization(ORG_ID)
 
     expect(getUnlinkedMemberProfilesWithEmailDao).toHaveBeenCalledWith(ORG_ID)
-    expect(setMemberProfileUserIdDao).toHaveBeenCalledTimes(2)
+    expect(linkMemberProfileAccountDao).toHaveBeenCalledTimes(2)
     expect(createUserIfAbsentTxnDao).toHaveBeenCalledWith({
       email: 'lucie@example.test',
       name: 'Lucie Moreau',
@@ -639,10 +650,192 @@ describe('replaceMemberAccount — rôle relu sous le verrou (s14, revue 2)', ()
     )
     expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
     expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
-    expect(setMemberProfileUserIdDao).toHaveBeenLastCalledWith(
-      PROFILE_ID,
-      NEW_USER_ID
-    )
+    expect(linkMemberProfileAccountDao).toHaveBeenLastCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: NEW_USER_ID,
+    })
     expect(result).toEqual({userId: NEW_USER_ID})
+  })
+})
+
+/**
+ * s53, ADR 054 §5-6 : un compte peut porter plusieurs fiches. Fermer, c'est
+ * retirer le lien d'une fiche ; la ligne `member` ne part qu'avec la derniere
+ * fiche. Le role du bureau ne suit une nouvelle adresse que si la fiche
+ * etait la derniere de l'ancien compte.
+ */
+describe('closeMemberAccount — un compte à plusieurs fiches (s53, critère 6)', () => {
+  it('garde la ligne member quand une autre fiche reste reliée au compte', async () => {
+    vi.mocked(countLinkedProfilesDao).mockResolvedValue(1)
+
+    await closeMemberAccount({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: KNOWN_USER_ID,
+    })
+
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(PROFILE_ID)
+    expect(countLinkedProfilesDao).toHaveBeenCalledWith(ORG_ID, KNOWN_USER_ID)
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+  })
+
+  it('retire la ligne member avec la dernière fiche, après le lien', async () => {
+    const calls: string[] = []
+    vi.mocked(unlinkMemberProfileAccountDao).mockImplementation(async () => {
+      calls.push('unlink')
+    })
+    vi.mocked(countLinkedProfilesDao).mockImplementation(async () => {
+      calls.push('count')
+      return 0
+    })
+    vi.mocked(deleteMemberWithRoleDao).mockImplementation(async () => {
+      calls.push('delete')
+      return 1
+    })
+
+    await closeMemberAccount({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: KNOWN_USER_ID,
+    })
+
+    expect(calls).toEqual(['unlink', 'count', 'delete'])
+    expect(deleteMemberWithRoleDao).toHaveBeenCalledWith(
+      KNOWN_USER_ID,
+      ORG_ID,
+      'member'
+    )
+  })
+})
+
+describe('replaceMemberAccount — l’ancien compte garde d’autres fiches (s53)', () => {
+  const replace = () =>
+    replaceMemberAccount({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      memberProfileId: PROFILE_ID,
+      previousUserId: OLD_USER_ID,
+      email: 'helene.roux@example.test',
+      name: 'Hélène Roux',
+    })
+
+  it('ne déplace pas le rôle du bureau : la nouvelle adresse ouvre un accès de simple membre', async () => {
+    givenRoles({[OLD_USER_ID]: 'board'})
+    vi.mocked(countLinkedProfilesDao).mockResolvedValue(1)
+
+    const result = await replace()
+
+    expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({userId: NEW_USER_ID, role: 'member'})
+    )
+    expect(updateMemberRoleFromDao).not.toHaveBeenCalled()
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+    expect(insertMemberRoleEventDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: NEW_USER_ID,
+    })
+    expect(result).toEqual({userId: NEW_USER_ID})
+  })
+
+  it('garde la ligne member d’un simple membre qui a encore une fiche', async () => {
+    givenRoles({[OLD_USER_ID]: 'member'})
+    vi.mocked(countLinkedProfilesDao).mockResolvedValue(2)
+
+    await replace()
+
+    expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+  })
+
+  it('déplace et trace le rôle quand la fiche était la dernière de l’ancien compte', async () => {
+    givenRoles({[OLD_USER_ID]: 'board'})
+    vi.mocked(countLinkedProfilesDao).mockResolvedValue(0)
+
+    await replace()
+
+    expect(countLinkedProfilesDao).toHaveBeenCalledWith(ORG_ID, OLD_USER_ID)
+    expect(deleteMemberWithRoleDao).toHaveBeenCalledWith(
+      OLD_USER_ID,
+      ORG_ID,
+      'board'
+    )
+    expect(insertMemberRoleEventDao).toHaveBeenCalledTimes(2)
+  })
+
+  it('relie la fiche au compte désigné, sans chercher ni créer de compte par l’adresse', async () => {
+    givenRoles({[OLD_USER_ID]: 'member', [KNOWN_USER_ID]: 'member'})
+
+    const result = await replaceMemberAccount({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      memberProfileId: PROFILE_ID,
+      previousUserId: OLD_USER_ID,
+      email: 'bernard@example.test',
+      name: 'Bernard Lefèvre',
+      targetUserId: KNOWN_USER_ID,
+    })
+
+    expect(getUserByEmailDao).not.toHaveBeenCalled()
+    expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: KNOWN_USER_ID,
+    })
+    expect(result).toEqual({userId: KNOWN_USER_ID})
+  })
+})
+
+describe('applyMemberAccountDecision — rejoindre le compte d’une adresse partagée (s53)', () => {
+  it('relie une fiche sans compte au compte détenteur, sans créer de compte', async () => {
+    const result = await applyMemberAccountDecision({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      profile: {
+        id: PROFILE_ID,
+        name: 'SCI Les Pins',
+        email: 'bernard@example.test',
+        userId: null,
+      },
+      decision: {kind: 'link_shared', userId: KNOWN_USER_ID},
+    })
+
+    expect(getUserByEmailDao).not.toHaveBeenCalled()
+    expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+    expect(createMemberIfAbsentTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({userId: KNOWN_USER_ID, role: 'member'})
+    )
+    expect(linkMemberProfileAccountDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: KNOWN_USER_ID,
+    })
+    expect(result).toEqual({change: 'linked', userId: KNOWN_USER_ID})
+  })
+
+  it('déplace vers le compte détenteur une fiche qui avait déjà un compte', async () => {
+    givenRoles({[OLD_USER_ID]: 'member', [KNOWN_USER_ID]: 'member'})
+
+    const result = await applyMemberAccountDecision({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      profile: {
+        id: PROFILE_ID,
+        name: 'SCI Les Pins',
+        email: 'bernard@example.test',
+        userId: OLD_USER_ID,
+      },
+      decision: {kind: 'link_shared', userId: KNOWN_USER_ID},
+    })
+
+    expect(lockOrganizationRolesDao).toHaveBeenCalledWith(ORG_ID)
+    expect(deleteMemberWithRoleDao).toHaveBeenCalledWith(
+      OLD_USER_ID,
+      ORG_ID,
+      'member'
+    )
+    expect(result).toEqual({change: 'linked', userId: KNOWN_USER_ID})
   })
 })

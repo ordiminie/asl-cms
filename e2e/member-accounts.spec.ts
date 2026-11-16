@@ -153,10 +153,14 @@ type StoredProfile = {
   user_id: string | null
 }
 
+/** La fiche et son compte, lu par la table de liaison (s53, ADR 054). */
 const storedProfileOf = (slug: string, name: string) =>
   inTenant(slug, async (client) => {
     const result = await client.query<StoredProfile>(
-      `select id, name, email, user_id from member_profile where name = $1`,
+      `select p.id, p.name, p.email, a.user_id
+         from member_profile p
+         left join member_profile_account a on a.member_profile_id = p.id
+        where p.name = $1`,
       [name]
     )
     return result.rows[0]
@@ -269,7 +273,7 @@ const linkOf = (message: OutboxMessage) => {
   return link as string
 }
 
-/** Se connecte par un vrai lien reçu et arrive sur « Mes parcelles ». */
+/** Se connecte par un vrai lien reçu et arrive sur « Mes terrains ». */
 const loginByLink = async (page: Page, origin: string, address: string) => {
   const before = await requestLink(page, origin, address)
   await expect
@@ -347,7 +351,7 @@ const accessCard = (page: Page) =>
   page.getByRole('region', {name: 'Accès à l’espace membre'})
 
 const myParcels = (page: Page) =>
-  page.getByRole('region', {name: 'Mes parcelles'})
+  page.getByRole('region', {name: 'Mes terrains'})
 
 test.describe('Comptes des membres — s12d', () => {
   test.beforeEach(async () => {
@@ -676,7 +680,7 @@ const editMyContact = async (
  * Coordonnées du membre — s16, critères 1 à 4 (ADR 040).
  *
  * Seuls une vraie base et deux domaines prouvent que l'écriture vise la fiche
- * du compte connecté (`WHERE user_id` sous RLS), que l'autre association de
+ * du compte connecté (par `member_profile_account` sous RLS, s53), que l'autre association de
  * la personne n'est pas touchée et que l'email ne change jamais. Les fiches
  * du seed modifiées ici sont remises à leurs valeurs à la fin.
  */
@@ -818,8 +822,339 @@ test.describe('Coordonnées du membre — s16', () => {
       await expect(myContact(member)).toContainText(email)
       await expect(myContact(member)).toContainText('3 rue du Lavoir')
       await expect(
-        member.getByRole('region', {name: 'Mes parcelles'})
+        member.getByRole('region', {name: 'Mes terrains'})
       ).toHaveCount(0)
+    } finally {
+      await member.context().close()
+      await bureau.context().close()
+    }
+  })
+})
+
+/**
+ * Un accès, plusieurs terrains — s53, critères 1 à 4 et 6 (ADR 054).
+ *
+ * Le seed porte Bernard Lefèvre : trois fiches chez TechCorp, une adresse, un
+ * compte. Les fiches créées ici portent le marqueur de l'essai et partent au
+ * nettoyage ; celles du seed ne sont jamais modifiées.
+ */
+const SEED_LEFEVRE_EMAIL = 'bernard.lefevre@example.test'
+/** SCI Les Pins, une fiche de Marketing Pro (seed). */
+const SEED_MARKETING_PROFILE = 'b1200000-0000-4000-8000-000000000001'
+
+/** Les liens fiche ↔ compte d'une adresse, sous le scope d'une association. */
+const linksOf = (slug: string, email: string) =>
+  inTenant(slug, async (client) => {
+    const result = await client.query<{
+      member_profile_id: string
+      user_id: string
+    }>(
+      `select a.member_profile_id, a.user_id
+         from member_profile_account a
+         join "user" u on u.id = a.user_id
+        where lower(u.email) = lower($1)
+        order by a.member_profile_id`,
+      [email]
+    )
+    return result.rows
+  })
+
+const sharedConfirmation = (page: Page) =>
+  page.getByText(/^Cette adresse est déjà celle du compte de /)
+
+/** Ouvre « Ajouter un propriétaire » et le remplit, sans enregistrer. */
+const fillNewProfile = async (
+  page: Page,
+  base: string,
+  input: {name: string; email: string}
+) => {
+  await page.goto(`${base}${NEW_ROUTE}`, {waitUntil: 'networkidle'})
+  await expect(
+    page.getByRole('heading', {level: 1, name: 'Ajouter un propriétaire'})
+  ).toBeVisible({timeout: 15_000})
+  await page.getByLabel('Nom', {exact: true}).fill(input.name)
+  await page.getByLabel(/^Adresse email/).fill(input.email)
+  await page.getByLabel('Adresse', {exact: true}).fill('2 chemin des Chênes')
+  await page.getByLabel('Code postal').fill('33680')
+  await page.getByLabel('Commune').fill('Lacanau')
+}
+
+/** Crée une fiche dont l'adresse est celle d'un compte : confirme, rend l'id. */
+const createLinkedProfile = async (
+  page: Page,
+  base: string,
+  input: {name: string; email: string; accountName: string}
+): Promise<string> => {
+  await fillNewProfile(page, base, input)
+  await page.getByRole('button', {name: 'Enregistrer le propriétaire'}).click()
+  await expect(sharedConfirmation(page)).toContainText(input.accountName, {
+    timeout: 15_000,
+  })
+  await page.getByRole('button', {name: 'Oui, relier à son compte'}).click()
+  await expect(
+    page.getByRole('heading', {level: 1, name: input.name})
+  ).toBeVisible({timeout: 15_000})
+  return new URL(page.url()).pathname.split('/').at(-1) as string
+}
+
+test.describe('Un accès, plusieurs terrains — s53', () => {
+  test.beforeEach(async () => {
+    await resetRateLimits()
+  })
+
+  test.afterAll(async () => {
+    await cleanUpRun()
+  })
+
+  test('critères 1 et 2 — une adresse sur trois fiches : un compte, une connexion, « Mes terrains » les montre toutes', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const account = await accountOf(SEED_LEFEVRE_EMAIL)
+    expect(account.users, 'une adresse, un seul compte').toHaveLength(1)
+    expect(account.members).toEqual([{slug: TENANT_A_SLUG, role: 'member'}])
+    const links = await linksOf(TENANT_A_SLUG, SEED_LEFEVRE_EMAIL)
+    expect(links).toHaveLength(3)
+    expect(new Set(links.map((link) => link.user_id))).toEqual(
+      new Set([account.users[0].id])
+    )
+
+    const member = await freshPage(browser)
+    try {
+      await loginByLink(member, TENANT_A, SEED_LEFEVRE_EMAIL)
+      await expect(
+        member.getByRole('heading', {level: 1, name: 'Bonjour Bernard Lefèvre'})
+      ).toBeVisible()
+      await expect(
+        member.getByText('· 3 terrains · Parcelles 61, 62 et 63')
+      ).toBeVisible()
+      await expect(myParcels(member)).toContainText(
+        'Vos 3 terrains sont réunis ici : vous vous connectez une seule fois.'
+      )
+      for (const number of ['61', '62', '63']) {
+        await expect(myParcels(member)).toContainText(`Parcelle ${number}`)
+      }
+      await expect(myParcels(member)).toContainText('Au nom de SCI Les Chênes')
+      await expect(myParcels(member)).toContainText('Compteur non renseigné')
+    } finally {
+      await member.context().close()
+    }
+  })
+
+  test('critère 3 — une adresse déjà celle d’un compte : refusée, rien d’écrit ; confirmée, la fiche rejoint le compte', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const name = nameOf('Rejoint')
+    const [before] = (await accountOf(SEED_LEFEVRE_EMAIL)).users
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    try {
+      await fillNewProfile(bureau, TENANT_A, {
+        name,
+        email: SEED_LEFEVRE_EMAIL,
+      })
+      await bureau
+        .getByRole('button', {name: 'Enregistrer le propriétaire'})
+        .click()
+      await expect(sharedConfirmation(bureau)).toContainText(
+        'Cette adresse est déjà celle du compte de Bernard Lefèvre.',
+        {timeout: 15_000}
+      )
+      await expect(
+        bureau.getByText(/Rien n’a encore été enregistré\./)
+      ).toBeVisible()
+      await bureau
+        .getByRole('button', {name: 'Non, corriger l’adresse'})
+        .click()
+      await expect(sharedConfirmation(bureau)).toHaveCount(0)
+      await expect(bureau.getByLabel(/^Adresse email/)).toBeFocused()
+      expect(
+        await storedProfileOf(TENANT_A_SLUG, name),
+        'refusé : aucune fiche écrite'
+      ).toBeUndefined()
+
+      const id = await createLinkedProfile(bureau, TENANT_A, {
+        name,
+        email: SEED_LEFEVRE_EMAIL,
+        accountName: 'Bernard Lefèvre',
+      })
+      await expect(bureau.getByRole('status')).toContainText(
+        'Fiche reliée au compte de Bernard Lefèvre : ce terrain apparaît dans son espace.'
+      )
+      expect(await storedProfileOf(TENANT_A_SLUG, name)).toMatchObject({
+        id,
+        user_id: before.id,
+      })
+      const after = await accountOf(SEED_LEFEVRE_EMAIL)
+      expect(after.users, 'aucun compte fusionné ni créé').toEqual([before])
+      await expect(accessCard(bureau)).toContainText('Ce compte réunit aussi :')
+    } finally {
+      await bureau.context().close()
+      await asMaintenance((client) =>
+        client.query(`delete from member_profile where name = $1`, [name])
+      )
+    }
+  })
+
+  test('critère 4 — un membre ne voit que ses fiches : celle d’un autre membre et celle d’une autre association sont refusées', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const member = await freshPage(browser)
+    try {
+      await loginByLink(member, TENANT_A, SEED_LEFEVRE_EMAIL)
+      for (const forged of [SEED_DUBOIS, SEED_MARKETING_PROFILE]) {
+        await member.goto(`${TENANT_A}${LIST_ROUTE}/${forged}`, {
+          waitUntil: 'networkidle',
+        })
+        await expect(
+          member.getByRole('heading', {
+            level: 1,
+            name: 'Cette page ne vous est pas accessible',
+          })
+        ).toBeVisible({timeout: 15_000})
+        await expect(member.getByText('Jean et Odile Dubois')).toHaveCount(0)
+        await expect(member.getByText('SCI Les Pins')).toHaveCount(0)
+      }
+      await member.goto(`${TENANT_A}/dashboard`, {waitUntil: 'networkidle'})
+      await expect(myParcels(member)).not.toContainText('Parcelle 47')
+      await expect(myParcels(member)).not.toContainText('Parcelle 21')
+    } finally {
+      await member.context().close()
+    }
+  })
+
+  test('critère 4 — RLS forcée : les liens d’une association sont invisibles depuis l’autre et sans scope', async () => {
+    expect(await linksOf(TENANT_A_SLUG, SEED_LEFEVRE_EMAIL)).toHaveLength(3)
+    expect(await linksOf(TENANT_B_SLUG, SEED_LEFEVRE_EMAIL)).toEqual([])
+    const withoutScope = await withClient(async (client) => {
+      const result = await client.query(`select id from member_profile_account`)
+      return result.rowCount
+    })
+    expect(withoutScope, 'sans tenant posé, rien ne sort').toBe(0)
+  })
+
+  test('critère 4 — « Mes coordonnées » n’écrit que les fiches du compte connecté', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const name = nameOf('Coordonnées')
+    const email = emailOf('coordonnees')
+    const phone = '06 53 00 00 01'
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    const member = await freshPage(browser)
+    try {
+      await createProfile(bureau, TENANT_A, {name, email})
+      await attachParcel(bureau, parcelOf('C1'), '01/03/2020')
+      await createLinkedProfile(bureau, TENANT_A, {
+        name: nameOf('Coordonnées SCI'),
+        email,
+        accountName: name,
+      })
+      await attachParcel(bureau, parcelOf('C2'), '01/03/2020')
+
+      await loginByLink(member, TENANT_A, email)
+      const contact = member.getByRole('region', {name: 'Mes coordonnées'})
+      await expect(contact).toContainText('Elles valent pour vos 2 terrains.')
+      await contact
+        .getByRole('button', {name: 'Modifier mes coordonnées'})
+        .click()
+      await contact.getByLabel(/^Téléphone/).fill(phone)
+      await contact
+        .getByRole('button', {name: 'Enregistrer mes coordonnées'})
+        .click()
+      await expect(contact.getByRole('status')).toContainText(
+        'Elles valent désormais pour vos 2 terrains.',
+        {timeout: 15_000}
+      )
+
+      const phones = await inTenant(TENANT_A_SLUG, async (client) => {
+        const result = await client.query<{name: string; phone: string | null}>(
+          `select name, phone from member_profile
+            where name like $1 or id = $2
+            order by name`,
+          [`% s12d-${RUN}`, SEED_DUBOIS]
+        )
+        return result.rows
+      })
+      expect(phones).toHaveLength(3)
+      expect(phones).toEqual(
+        expect.arrayContaining([
+          {name: nameOf('Coordonnées'), phone},
+          {name: nameOf('Coordonnées SCI'), phone},
+          {name: 'Jean et Odile Dubois', phone: null},
+        ])
+      )
+    } finally {
+      await member.context().close()
+      await bureau.context().close()
+    }
+  })
+
+  test('critère 6 — retirer l’adresse d’une fiche laisse l’accès aux autres ; la fiche quitte « Mes terrains »', async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000)
+    const name = nameOf('Deux terrains')
+    const secondName = nameOf('Deux terrains SCI')
+    const email = emailOf('deux-terrains')
+
+    const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
+    const member = await freshPage(browser)
+    try {
+      await createProfile(bureau, TENANT_A, {name, email})
+      await attachParcel(bureau, parcelOf('D1'), '01/03/2020')
+      await createLinkedProfile(bureau, TENANT_A, {
+        name: secondName,
+        email,
+        accountName: name,
+      })
+      await attachParcel(bureau, parcelOf('D2'), '01/03/2020')
+
+      await loginByLink(member, TENANT_A, email)
+      await expect(myParcels(member)).toContainText(
+        `Parcelle ${parcelOf('D1')}`
+      )
+      await expect(myParcels(member)).toContainText(
+        `Parcelle ${parcelOf('D2')}`
+      )
+
+      await bureau
+        .getByRole('button', {name: 'Modifier les coordonnées'})
+        .click()
+      await bureau.getByRole('textbox', {name: /^Adresse email/}).fill('')
+      await expect(
+        bureau.getByText(
+          /Sans adresse email, cette fiche quitte le compte de .* Son accès à l’espace reste ouvert pour son autre terrain\./
+        )
+      ).toBeVisible()
+      await bureau
+        .getByRole('button', {name: 'Enregistrer les coordonnées'})
+        .click()
+      await expect(bureau.getByRole('status')).toContainText(
+        'Son accès reste ouvert pour ses autres terrains.'
+      )
+      expect((await accountOf(email)).members).toEqual([
+        {slug: TENANT_A_SLUG, role: 'member'},
+      ])
+      expect(
+        (await storedProfileOf(TENANT_A_SLUG, secondName))?.user_id
+      ).toBeNull()
+
+      // Un rechargement réel : l'accès suit la ligne `member`, toujours là.
+      await member.reload()
+      await expect(member).toHaveURL(`${TENANT_A}/dashboard`, {timeout: 15_000})
+      await expect(
+        member.getByRole('heading', {level: 1, name: `Bonjour ${name}`})
+      ).toBeVisible()
+      await expect(myParcels(member)).toContainText(
+        `Parcelle ${parcelOf('D1')}`
+      )
+      await expect(myParcels(member)).not.toContainText(
+        `Parcelle ${parcelOf('D2')}`
+      )
     } finally {
       await member.context().close()
       await bureau.context().close()

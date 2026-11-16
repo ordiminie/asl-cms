@@ -115,12 +115,13 @@ beforeEach(() => {
 })
 
 describe('getCampaignTargetRowsDao', () => {
-  it('lit les fiches de l’association avec leur email et leur refus éventuel', async () => {
+  it('lit les fiches de l’association avec leur email, leur refus, le nom de leur compte et leurs parcelles (s53)', async () => {
     responses.current = [
       [
-        [PROFILE_A, 'Claire Aubert', 'claire@example.fr', false],
-        [PROFILE_B, 'Paul Renaud', null, true],
+        [PROFILE_A, 'Claire Aubert', 'claire@example.fr', false, 'Claire A.'],
+        [PROFILE_B, 'Paul Renaud', null, true, null],
       ],
+      [[PROFILE_A, '12']],
     ]
 
     const rows = await getCampaignTargetRowsDao(ORG_ID)
@@ -128,6 +129,8 @@ describe('getCampaignTargetRowsDao', () => {
     const [{sql, params}] = sent
     expect(sql).toContain('from "member_profile"')
     expect(sql).toContain('left join "member_unsubscribe"')
+    expect(sql).toContain('left join "member_profile_account"')
+    expect(sql).toContain('left join "user"')
     expect(sql).toContain('"member_profile"."organization_id" = $')
     expect(params).toContain(ORG_ID)
     expect(rows).toEqual([
@@ -136,12 +139,16 @@ describe('getCampaignTargetRowsDao', () => {
         name: 'Claire Aubert',
         email: 'claire@example.fr',
         unsubscribed: false,
+        accountName: 'Claire A.',
+        currentParcelNumbers: ['12'],
       },
       {
         memberProfileId: PROFILE_B,
         name: 'Paul Renaud',
         email: null,
         unsubscribed: true,
+        accountName: null,
+        currentParcelNumbers: [],
       },
     ])
   })
@@ -450,13 +457,16 @@ describe('getPendingPartRecipientsDao', () => {
       [
         [
           RECIPIENT_ID,
+          ORG_ID,
           PROFILE_A,
           'Claire Aubert',
           'claire@example.fr',
           'tok',
           false,
+          'Claire A.',
         ],
       ],
+      [[PROFILE_A, 'claire@example.fr', false]],
       [[PROFILE_A, '12']],
     ]
 
@@ -478,13 +488,58 @@ describe('getPendingPartRecipientsDao', () => {
         email: 'claire@example.fr',
         unsubscribeToken: 'tok',
         unsubscribed: false,
+        accountName: 'Claire A.',
         parcelNumbers: ['12'],
+        addressProfileCount: 1,
       },
     ])
   })
 
+  it('relit l’adresse entière : parcelles et refus de toutes ses fiches (s53, ADR 055)', async () => {
+    responses.current = [
+      [
+        [
+          RECIPIENT_ID,
+          ORG_ID,
+          PROFILE_A,
+          'Bernard Lefèvre',
+          'Bernard@example.fr',
+          'tok',
+          false,
+          'Bernard L.',
+        ],
+      ],
+      [
+        [PROFILE_A, 'bernard@example.fr', false],
+        [PROFILE_B, 'bernard@example.fr', true],
+      ],
+      [
+        [PROFILE_A, '12'],
+        [PROFILE_B, '31'],
+      ],
+    ]
+
+    const rows = await getPendingPartRecipientsDao(PART_1)
+
+    expect(sent[1].sql).toContain('lower(trim("member_profile"."email"))')
+    expect(sent[1].params).toEqual(
+      expect.arrayContaining([ORG_ID, 'bernard@example.fr'])
+    )
+    expect(rows).toEqual([
+      expect.objectContaining({
+        recipientId: RECIPIENT_ID,
+        accountName: 'Bernard L.',
+        unsubscribed: true,
+        parcelNumbers: ['12', '31'],
+        addressProfileCount: 2,
+      }),
+    ])
+  })
+
   it('garde une ligne dont la fiche a été supprimée, sans adresse', async () => {
-    responses.current = [[[RECIPIENT_ID, null, null, null, 'tok', false]]]
+    responses.current = [
+      [[RECIPIENT_ID, ORG_ID, null, null, null, 'tok', false, null]],
+    ]
 
     const rows = await getPendingPartRecipientsDao(PART_1)
 
@@ -494,6 +549,7 @@ describe('getPendingPartRecipientsDao', () => {
         memberProfileId: null,
         email: null,
         parcelNumbers: [],
+        addressProfileCount: 1,
       }),
     ])
   })

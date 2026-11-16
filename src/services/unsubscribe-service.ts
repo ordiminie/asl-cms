@@ -4,6 +4,7 @@ import {z} from 'zod'
 
 import {
   createUnsubscribeIfAbsentTxnDao,
+  getMemberProfileIdsSharingEmailDao,
   getRecipientByTokenDao,
   getUnsubscribeByMemberDao,
   type RecipientByTokenRowModel,
@@ -27,7 +28,8 @@ import {
 } from './validation/campaign-validation'
 
 /**
- * Desinscription des campagnes (s25, ADR 051).
+ * Desinscription des campagnes (s25, ADR 051 ; l'adresse entiere depuis s53,
+ * ADR 055).
  *
  * **Sans controle d'autorisation, et c'est delibere** : le jeton aleatoire
  * de 256 bits est le seul titre, comme le visiteur anonyme de
@@ -70,7 +72,11 @@ export const getUnsubscribePageStateService = async (
   })
 }
 
-/** Enregistre le refus de la fiche du jeton ; idempotent. */
+/**
+ * Enregistre le refus de la fiche du jeton **et de chaque fiche de
+ * l'association qui porte la meme adresse a cet instant** (s53, ADR 055) :
+ * une ligne par fiche, jamais par adresse. Idempotent.
+ */
 export const confirmUnsubscribeService = async (
   input: UnsubscribeRequestInput
 ): Promise<ConfirmUnsubscribeResult> => {
@@ -80,11 +86,19 @@ export const confirmUnsubscribeService = async (
     if (!recipient) return {status: 'invalid'}
     if (recipient.unsubscribedAt) return {status: 'already'}
 
-    const created = await createUnsubscribeIfAbsentTxnDao({
+    const profileIds = await getMemberProfileIdsSharingEmailDao(
       organizationId,
-      memberProfileId: recipient.memberProfileId,
-      campaignId: recipient.campaignId,
-    })
+      recipient.memberProfileId
+    )
+    let created = false
+    for (const memberProfileId of profileIds) {
+      const row = await createUnsubscribeIfAbsentTxnDao({
+        organizationId,
+        memberProfileId,
+        campaignId: recipient.campaignId,
+      })
+      created = created || row !== undefined
+    }
     return created ? {status: 'unsubscribed'} : {status: 'already'}
   })
 }

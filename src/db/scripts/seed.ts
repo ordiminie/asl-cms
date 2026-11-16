@@ -656,10 +656,11 @@ const seed = async () => {
   }
   await client.query(`SET app.bypass_rls = 'off';`)
 
-  // 16. Comptes des fiches a adresse (s12d, critere 2, ADR 037)
+  // 16. Comptes des fiches a adresse (s12d, critere 2 ; s53, ADR 054)
   //
   // Par le service de l'application, pas par du SQL : la reprise des fiches
-  // existantes est celle que s13 rejouera a l'import. Idempotente.
+  // existantes est celle que s13 rejouera a l'import. Idempotente. Les trois
+  // fiches de Bernard Lefevre, a la meme adresse, rejoignent un seul compte.
   await openSeedMemberAccounts(client)
 
   const end = Date.now()

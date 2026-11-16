@@ -43,6 +43,18 @@ const FIXTURE = path.resolve(
   process.cwd(),
   'e2e/fixtures/member-import-fictif.csv'
 )
+/**
+ * s53, critère 5 : 25 lignes, 25 clients Pennylane, 15 adresses dont 10
+ * partagées par deux clients. Construit à la main, anonymisé : rien n'y vient
+ * d'un fichier réel.
+ */
+const SHARED_FIXTURE = path.resolve(
+  process.cwd(),
+  'e2e/fixtures/member-import-adresses-partagees.csv'
+)
+const SHARED_CUSTOMER_ID_PREFIX = 's53-e2e-'
+const SHARED_PARCEL_PREFIX = 'S53E2E-'
+const SHARED_EMAIL_DOMAIN = '@s53-e2e.test'
 const CUSTOMER_ID_PREFIX = 's13-e2e-'
 const PARCEL_PREFIX = 'S13E2E-'
 const EMAIL_DOMAIN = '@s13-e2e.test'
@@ -137,26 +149,43 @@ const importedRowsOf = async (slug: string): Promise<ImportedRows> => {
 }
 
 /** Remise en état hors scope : le seul `bypass` de la spec. */
-const cleanUp = () =>
+const cleanUpPrefix = (input: {
+  parcelPrefix: string
+  customerIdPrefix: string
+  emailDomain: string
+}) =>
   inTransaction(['app.bypass_rls', 'on'], async (client) => {
     await client.query(
       `delete from parcel_ownership
         where parcel_id in (select id from parcel where number like $1)
            or member_profile_id in (
              select id from member_profile where pennylane_customer_id like $2)`,
-      [`${PARCEL_PREFIX}%`, `${CUSTOMER_ID_PREFIX}%`]
+      [`${input.parcelPrefix}%`, `${input.customerIdPrefix}%`]
     )
     await client.query(`delete from parcel where number like $1`, [
-      `${PARCEL_PREFIX}%`,
+      `${input.parcelPrefix}%`,
     ])
     await client.query(
       `delete from member_profile where pennylane_customer_id like $1`,
-      [`${CUSTOMER_ID_PREFIX}%`]
+      [`${input.customerIdPrefix}%`]
     )
     await client.query(`delete from "user" where email like $1`, [
-      `%${EMAIL_DOMAIN}`,
+      `%${input.emailDomain}`,
     ])
   })
+
+const cleanUp = async () => {
+  await cleanUpPrefix({
+    parcelPrefix: PARCEL_PREFIX,
+    customerIdPrefix: CUSTOMER_ID_PREFIX,
+    emailDomain: EMAIL_DOMAIN,
+  })
+  await cleanUpPrefix({
+    parcelPrefix: SHARED_PARCEL_PREFIX,
+    customerIdPrefix: SHARED_CUSTOMER_ID_PREFIX,
+    emailDomain: SHARED_EMAIL_DOMAIN,
+  })
+}
 
 /** Connexion par `/login/prestataire` (mot de passe). */
 const newSession = async (browser: Browser, base: string, email: string) => {
@@ -192,13 +221,13 @@ const openImportFromOrganization = async (page: Page, slug: string) => {
 }
 
 /** Dépose le fichier fictif, lance l'import et attend le rapport. */
-const importFixture = async (page: Page) => {
+const importFixture = async (page: Page, fixture = FIXTURE) => {
   const submit = page.getByRole('button', {name: 'Importer les membres'})
   await expect(submit).toBeDisabled()
   // Le fichier n'est pris qu'une fois le formulaire hydraté : le bouton qui
   // s'active prouve que l'état l'a reçu.
   await expect(async () => {
-    await page.setInputFiles('#member-import-file', FIXTURE)
+    await page.setInputFiles('#member-import-file', fixture)
     await expect(submit).toBeEnabled({timeout: 2000})
   }).toPass({timeout: 30_000})
   await submit.click()
@@ -378,5 +407,87 @@ test.describe('s13 — import initial des membres', () => {
     expect(inB.ownerships).toHaveLength(4)
     const idsOfA = new Set(inA.profiles.map((row) => row.id))
     expect(inB.profiles.some((row) => idsOfA.has(row.id))).toBe(false)
+  })
+})
+
+test.describe('s53 — l’import relie les adresses partagées', () => {
+  test('critère 5 — 25 lignes, 10 adresses partagées : 25 fiches, 15 comptes, chaque regroupement signalé', async ({
+    browser,
+  }) => {
+    test.setTimeout(180_000)
+    const page = await newSession(browser, TENANT_A, SUPER_ADMIN)
+    await openImportFromOrganization(page, TENANT_A_SLUG)
+    await importFixture(page, SHARED_FIXTURE)
+
+    await expectFigures(page, {
+      'Lignes lues': '25',
+      'Membres créés': '25',
+      'Comptes de connexion ouverts': '15',
+      'Lignes rejetées': '0',
+    })
+    await expect(
+      page.getByRole('table', {name: 'Lignes rejetées'})
+    ).toHaveCount(0)
+    const remarks = page.getByRole('table', {
+      name: 'Lignes importées avec une remarque',
+    })
+    await expect(
+      remarks
+        .getByRole('row')
+        .filter({hasText: 'les deux fiches sont reliées au même compte'})
+    ).toHaveCount(10)
+    await expect(remarks).toContainText(
+      'Même adresse email que la ligne 2 : les deux fiches sont reliées au même compte. Vérifiez qu’il s’agit de la même personne.'
+    )
+    await expect(remarks).not.toContainText(
+      'Cet email est déjà utilisé par un autre membre.'
+    )
+
+    const organizationId = await tenantIdOf(TENANT_A_SLUG)
+    const links = (await inTransaction(
+      ['app.organization_id', organizationId],
+      async (client) => {
+        const result = await client.query<{profiles: number; accounts: number}>(
+          `select count(*)::int as profiles,
+                  count(distinct a.user_id)::int as accounts
+             from member_profile p
+             join member_profile_account a on a.member_profile_id = p.id
+            where p.pennylane_customer_id like $1`,
+          [`${SHARED_CUSTOMER_ID_PREFIX}%`]
+        )
+        return result.rows[0]
+      }
+    )) as {profiles: number; accounts: number}
+    expect(links).toEqual({profiles: 25, accounts: 15})
+
+    const users = await withClient((client) =>
+      client.query(`select id from "user" where email like $1`, [
+        `%${SHARED_EMAIL_DOMAIN}`,
+      ])
+    )
+    expect(users.rowCount, 'une adresse, un seul compte').toBe(15)
+    await page.context().close()
+  })
+
+  test('relancer le fichier des adresses partagées ne crée ni fiche ni compte', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const page = await newSession(browser, TENANT_A, SUPER_ADMIN)
+    await openImportFromOrganization(page, TENANT_A_SLUG)
+    await importFixture(page, SHARED_FIXTURE)
+
+    await expectFigures(page, {
+      'Membres créés': '0',
+      'Comptes de connexion ouverts': '0',
+      'Lignes rejetées': '0',
+    })
+    const users = await withClient((client) =>
+      client.query(`select id from "user" where email like $1`, [
+        `%${SHARED_EMAIL_DOMAIN}`,
+      ])
+    )
+    expect(users.rowCount).toBe(15)
+    await page.context().close()
   })
 })

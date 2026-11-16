@@ -9,6 +9,7 @@ import {
   MEMBER_PROFILE_PHONE_PATTERN,
   MEMBER_PROFILE_POSTAL_CODE_PATTERN,
   type MemberAccountChange,
+  type MemberAccountHolderDTO,
 } from '@/services/types/domain/member-profile-types'
 import type {MemberRoleChangeKind} from '@/services/types/domain/member-role-types'
 import type {MyContactDTO} from '@/services/types/domain/member-space-types'
@@ -120,6 +121,12 @@ export const MEMBER_PROFILE_FORM_FIELDS = [
 
 export type MemberProfileFormField = (typeof MEMBER_PROFILE_FORM_FIELDS)[number]
 
+/**
+ * Champ cache du second envoi (s53, etat 3a) : le compte que le bureau a
+ * confirme rejoindre. Le service le revérifie, il ne le croit jamais.
+ */
+export const CONFIRMED_ACCOUNT_FIELD = 'confirmedAccountUserId'
+
 /** Resultat d'un enregistrement de fiche, rendu par les Server Actions. */
 export type MemberProfileActionResult =
   | {
@@ -127,6 +134,8 @@ export type MemberProfileActionResult =
       memberProfileId: string
       /** Ce que l'enregistrement a fait du compte (s12d). */
       accountChange: MemberAccountChange
+      /** Nom du compte desormais relie a la fiche, pour le message (s53). */
+      accountName?: string | null
     }
   /** Adresse d'un membre du bureau videe : refusee, rien n'est ecrit (s12d). */
   | {status: 'board_email_required'}
@@ -134,7 +143,11 @@ export type MemberProfileActionResult =
       status: 'invalid'
       errors: {field: MemberProfileFormField; message: string}[]
     }
-  | {status: 'email_taken'; memberProfileId: string; name: string}
+  /**
+   * L'adresse est deja celle d'un compte de l'association : rien n'est ecrit,
+   * le bureau confirme (s53, etat 3a).
+   */
+  | {status: 'email_shared'; holder: MemberAccountHolderDTO}
   | {status: 'error'; message: string}
 
 /** Le `dialog` de rattachement (ecran 4) : la date est saisie `jj/mm/aaaa`. */

@@ -152,6 +152,7 @@ function ProfilesTable({items}: {items: MemberProfileListItemDTO[]}) {
             </TableCell>
             <TableCell className="text-[17px] break-all">
               {item.email ?? <MailOnlyBadge />}
+              <AccountProfiles count={item.accountProfileCount} />
             </TableCell>
             <TableCell>{item.incomplete && <IncompleteBadge />}</TableCell>
             <TableCell>
@@ -190,10 +191,26 @@ function ProfileCard({item}: {item: MemberProfileListItemDTO}) {
           {item.email ?? postalAddressLineOf(item) ?? (
             <span className="text-muted-foreground">{t('noAddress')}</span>
           )}
+          <AccountProfiles count={item.accountProfileCount} />
         </dd>
       </dl>
       <OpenProfile id={item.id} className="h-14 w-full" />
     </Card>
+  )
+}
+
+/**
+ * « Compte de {n} terrains » sous l'adresse, seulement a partir de deux
+ * (s53, etat 4a) : un terrain = une fiche reliee au compte.
+ */
+function AccountProfiles({count}: {count: number}) {
+  const t = useTranslations('BureauMemberProfilesPage')
+
+  if (count < 2) return null
+  return (
+    <span className="text-muted-foreground block text-[15px] break-normal">
+      {t('accountProfiles', {count})}
+    </span>
   )
 }
 

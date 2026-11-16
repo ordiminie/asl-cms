@@ -150,6 +150,7 @@ const PROFILE_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const PROFILE_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 const PROFILE_C = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
 const PROFILE_D = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+const PROFILE_E = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
 const ADMIN_ID = '77777777-7777-4777-8777-777777777777'
 const ORIGIN = 'http://asl-les-pins.test:3000'
 
@@ -186,24 +187,32 @@ const targetRows = () => [
     name: 'Claire Aubert',
     email: 'claire@example.fr',
     unsubscribed: false,
+    currentParcelNumbers: [],
+    accountName: null,
   },
   {
     memberProfileId: PROFILE_B,
     name: 'Paul Renaud',
     email: 'paul@example.fr',
     unsubscribed: false,
+    currentParcelNumbers: [],
+    accountName: null,
   },
   {
     memberProfileId: PROFILE_C,
     name: 'Sans Email',
     email: null,
     unsubscribed: false,
+    currentParcelNumbers: [],
+    accountName: null,
   },
   {
     memberProfileId: PROFILE_D,
     name: 'Désinscrite',
     email: 'd@example.fr',
     unsubscribed: true,
+    currentParcelNumbers: [],
+    accountName: null,
   },
 ]
 
@@ -463,6 +472,34 @@ describe('previewCampaignService — aperçu avec un destinataire réel (critèr
     )
   })
 
+  it('une adresse partagée : {nom} = nom du compte, {parcelle} = parcelles de toutes ses fiches (s53, ADR 055)', async () => {
+    vi.mocked(getCampaignTargetRowsDao).mockResolvedValue([
+      {...targetRows()[0], accountName: 'Claire A.'},
+      {
+        memberProfileId: PROFILE_E,
+        name: 'SCI Aubert',
+        email: 'claire@example.fr',
+        unsubscribed: false,
+        currentParcelNumbers: [],
+        accountName: 'Claire A.',
+      },
+    ])
+    vi.mocked(getCurrentParcelNumbersForMembersDao).mockResolvedValue({
+      [PROFILE_A]: ['14'],
+      [PROFILE_E]: ['31', '12'],
+    })
+
+    const result = await previewCampaignService(content)
+
+    expect(getCurrentParcelNumbersForMembersDao).toHaveBeenCalledWith([
+      PROFILE_A,
+      PROFILE_E,
+    ])
+    expect(result.status === 'ok' && result.preview.text).toContain(
+      'Bonjour Claire A., parcelle 12, 14 et 31,'
+    )
+  })
+
   it('ne montre jamais un membre désinscrit ou d’une autre association : repli sur le premier joignable', async () => {
     const result = await previewCampaignService({
       ...content,
@@ -614,7 +651,14 @@ describe('sendCampaignService — envoi (critères 1, 7, 9)', () => {
 
   it('cible vide → refus, aucune écriture', async () => {
     vi.mocked(getCampaignTargetRowsDao).mockResolvedValue([
-      {memberProfileId: PROFILE_C, name: 'X', email: null, unsubscribed: false},
+      {
+        memberProfileId: PROFILE_C,
+        name: 'X',
+        email: null,
+        unsubscribed: false,
+        currentParcelNumbers: [],
+        accountName: null,
+      },
     ])
 
     await expect(sendCampaignService(sendInput)).resolves.toEqual({
@@ -663,6 +707,31 @@ describe('sendCampaignService — envoi (critères 1, 7, 9)', () => {
     expect(campaign).toMatchObject({recipientCount: 1, unsubscribedCount: 2})
   })
 
+  it('une adresse portée par deux fiches ne crée qu’un destinataire (s53, ADR 055, critère 7)', async () => {
+    vi.mocked(getCampaignTargetRowsDao).mockResolvedValue([
+      ...targetRows(),
+      {
+        memberProfileId: PROFILE_E,
+        name: 'SCI Aubert',
+        email: 'Claire@example.fr',
+        unsubscribed: false,
+        currentParcelNumbers: ['31'],
+        accountName: 'Claire Aubert',
+      },
+    ])
+
+    await sendCampaignService(sendInput)
+
+    const [campaign, , recipients] = vi.mocked(
+      createCampaignWithRecipientsTxnDao
+    ).mock.calls[0]
+    expect(recipients.map((r) => r.memberProfileId)).toEqual([
+      PROFILE_E,
+      PROFILE_B,
+    ])
+    expect(campaign).toMatchObject({recipientCount: 2})
+  })
+
   it('n’écrit aucun contenu ni adresse dans un journal', async () => {
     const result = await sendCampaignService(sendInput)
     if (result.status === 'created') await result.deliver?.()
@@ -684,6 +753,8 @@ const manyTargets = (count: number) =>
     name: `Membre ${String(index).padStart(4, '0')}`,
     email: `m${index}@example.fr`,
     unsubscribed: false,
+    currentParcelNumbers: [],
+    accountName: null,
   }))
 
 const settingsWith = (values: Record<string, unknown>) =>
@@ -895,6 +966,10 @@ type FakeRecipient = {
   unsubscribed: boolean
   status: string
   claimedAt?: number
+  /** L'adresse partagee par plusieurs fiches (s53, ADR 055). */
+  parcelNumbers?: string[]
+  accountName?: string | null
+  addressProfileCount?: number
 }
 
 type FakePart = {
@@ -940,7 +1015,9 @@ const fakeStore = () => {
         email: r.email,
         unsubscribeToken: `token-${r.id}`,
         unsubscribed: r.unsubscribed,
-        parcelNumbers: ['12'],
+        parcelNumbers: r.parcelNumbers ?? ['12'],
+        accountName: r.accountName ?? null,
+        addressProfileCount: r.addressProfileCount ?? 1,
       }))
   )
   vi.mocked(claimRecipientForSendTxnDao).mockImplementation(async (id) => {
@@ -1194,6 +1271,26 @@ describe('deliverCampaignPartService — livraison d’une part (s26, ADR 052)',
     for (const [organizationId] of vi.mocked(withTenant).mock.calls) {
       expect(organizationId).toBe(ORG_ID)
     }
+  })
+
+  it('une adresse partagée reçoit {nom} = nom du compte et {parcelle} = toutes ses parcelles (s53, ADR 055)', async () => {
+    store.recipients = [
+      {
+        ...recipientsOf(PART_1, 1)[0],
+        name: 'Bernard Lefèvre',
+        accountName: 'Bernard L.',
+        addressProfileCount: 3,
+        parcelNumbers: ['31', '12', '27'],
+      },
+    ]
+    vi.mocked(getCampaignByIdDao).mockResolvedValue(
+      campaignRow({bodyMarkdown: 'Bonjour {nom}, parcelle {parcelle}'}) as never
+    )
+
+    await deliver(PART_1)
+
+    const [payload] = vi.mocked(sendEmailService).mock.calls[0]
+    expect(payload.text).toContain('Bonjour Bernard L., parcelle 12, 27 et 31')
   })
 
   it('chaque envoi porte expéditeur, Reply-To, en-têtes List-Unsubscribe et URL du jeton', async () => {

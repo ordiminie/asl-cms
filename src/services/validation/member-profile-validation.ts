@@ -56,6 +56,8 @@ const postalContactShape = {
 const contactShape = {
   email: optionalContact(z.string().email()),
   ...postalContactShape,
+  /** Le compte confirme par le bureau (s53, ADR 054 §4), revérifie au serveur. */
+  confirmedAccountUserId: z.string().uuid().optional(),
 }
 
 export const createMemberProfileServiceSchema = z.object({

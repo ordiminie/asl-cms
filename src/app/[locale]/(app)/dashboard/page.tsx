@@ -3,7 +3,7 @@ import {Suspense} from 'react'
 import {
   getMyContactDal,
   getMyIncidentReportsDal,
-  getMyParcelsDal,
+  getMyLandsDal,
 } from '@/app/dal/member-space-dal'
 import withAuth, {
   type WithAuthProps,
@@ -34,8 +34,8 @@ type DashboardPageProps = WithAuthProps & {
 }
 
 /**
- * Espace membre (s46, s12d ecran C) : « Mes parcelles » du proprietaire
- * connecte, « Mes coordonnees » (s16), puis la securite du compte. La fiche se lit cote serveur, par la
+ * Espace membre (s46, s12d ecran C) : « Mes terrains » du proprietaire
+ * connecte (s53), « Mes coordonnees » (s16), puis la securite du compte. La fiche se lit cote serveur, par la
  * session et le domaine appele, derriere un `<Suspense>` ; un compte sans
  * fiche dans l'association retrouve la page de s46 (C5). Apres sa propre
  * retrogradation, `?role=retire` le dit en tete (s14, A12). « Mes
@@ -44,7 +44,7 @@ type DashboardPageProps = WithAuthProps & {
  * bureau (s23), `?question=envoyee` le dit dans sa carte (A2).
  */
 async function Page({user, searchParams}: DashboardPageProps) {
-  const parcelsPromise = getMyParcelsDal()
+  const landsPromise = getMyLandsDal()
   const contactPromise = getMyContactDal()
   const reportsPromise = getMyIncidentReportsDal()
   const {role, signalement, question} = await searchParams
@@ -54,7 +54,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
       {role === ROLE_WITHDRAWN && <RoleWithdrawnNotice />}
       <Suspense fallback={<MemberSpaceLoading name={user.name} />}>
         <MemberSpace
-          parcelsPromise={parcelsPromise}
+          landsPromise={landsPromise}
           contactPromise={contactPromise}
           contactAction={updateMyContactAction}
           reportsPromise={reportsPromise}

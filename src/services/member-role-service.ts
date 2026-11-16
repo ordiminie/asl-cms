@@ -1,7 +1,7 @@
 import 'server-only'
 
 import {getMemberProfileByIdDao} from '@/db/repositories/member-profile-repository'
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
   countCapableMembersDao,
@@ -22,6 +22,7 @@ import {canAssignMemberRole} from './authorization/member-role-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {decideRoleChange} from './rules/member-role-rules'
+import {orderMyProfiles} from './rules/my-profiles-order-rules'
 import {RoleConst} from './types/domain/auth-types'
 import {effectiveAuthor} from './types/domain/impersonation-types'
 import {
@@ -145,9 +146,8 @@ const transferPresidency = async (
 ): Promise<void> => {
   const writes: PresidencyWrite[] = successor ? [successor] : []
   for (const predecessor of predecessors) {
-    const profile = await getMemberProfileByUserIdDao(
-      organizationId,
-      predecessor.userId
+    const [profile] = orderMyProfiles(
+      await getMemberProfilesByUserIdDao(organizationId, predecessor.userId)
     )
     writes.push({
       organizationId,
@@ -392,7 +392,9 @@ export const transferPresidencyByOperatorService = async (
 
     const profile = alreadyOwner
       ? undefined
-      : await getMemberProfileByUserIdDao(organizationId, successor.id)
+      : orderMyProfiles(
+          await getMemberProfilesByUserIdDao(organizationId, successor.id)
+        )[0]
     await transferPresidency(
       alreadyOwner
         ? null

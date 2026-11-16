@@ -1,4 +1,4 @@
-import {getMemberProfileByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
   countCapableMembersDao,
@@ -46,6 +46,7 @@ import {
   ValidationParsedZodError,
 } from './errors/validation-error'
 import {decideMemberRemoval} from './rules/member-role-rules'
+import {orderMyProfiles} from './rules/my-profiles-order-rules'
 import {Pagination} from './types/common-type'
 import {RoleConst, UserOrganizationRoleConst} from './types/domain/auth-types'
 import {effectiveAuthor, TraceAuthor} from './types/domain/impersonation-types'
@@ -889,10 +890,11 @@ const traceMemberRemoval = async (
   membership: {userId: string; role: OrganizationRole},
   author: RemovalTraceAuthor
 ): Promise<void> => {
-  const [target, profile] = await Promise.all([
+  const [target, profiles] = await Promise.all([
     getUserByIdDao(membership.userId),
-    getMemberProfileByUserIdDao(organizationId, membership.userId),
+    getMemberProfilesByUserIdDao(organizationId, membership.userId),
   ])
+  const [profile] = orderMyProfiles(profiles)
   await insertMemberRoleEventDao({
     organizationId,
     memberProfileId: profile?.id ?? null,

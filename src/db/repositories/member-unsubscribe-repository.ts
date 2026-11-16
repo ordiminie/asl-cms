@@ -1,6 +1,8 @@
-import {eq} from 'drizzle-orm'
+import {and, eq, sql} from 'drizzle-orm'
+import {alias} from 'drizzle-orm/pg-core'
 
 import {campaignRecipient, memberUnsubscribe} from '@/db/models/campaign-model'
+import {memberProfile} from '@/db/models/member-profile-model'
 import {getDb} from '@/db/tenant-scope'
 
 /**
@@ -66,4 +68,31 @@ export const createUnsubscribeIfAbsentTxnDao = async (input: {
     })
     .returning({memberProfileId: memberUnsubscribe.memberProfileId})
   return row
+}
+
+/**
+ * Les fiches de l'association qui portent, sans casse, la meme adresse que
+ * cette fiche, elle comprise (s53, ADR 055) : la desinscription couvre
+ * l'adresse. Une fiche sans adresse ne rend qu'elle-meme.
+ */
+export const getMemberProfileIdsSharingEmailDao = async (
+  organizationId: string,
+  memberProfileId: string
+): Promise<string[]> => {
+  const source = alias(memberProfile, 'source_profile')
+  const rows = await getDb()
+    .select({id: memberProfile.id})
+    .from(memberProfile)
+    .innerJoin(
+      source,
+      sql`lower(trim(${source.email})) = lower(trim(${memberProfile.email}))`
+    )
+    .where(
+      and(
+        eq(source.id, memberProfileId),
+        eq(memberProfile.organizationId, organizationId)
+      )
+    )
+  const ids = rows.map((row) => row.id)
+  return ids.includes(memberProfileId) ? ids : [memberProfileId, ...ids]
 }

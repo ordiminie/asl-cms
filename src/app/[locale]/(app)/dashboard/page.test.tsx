@@ -4,7 +4,8 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 import {act, render, screen, within} from '@/__tests__/customRender'
 import type {
   MyContactDTO,
-  MyParcelsDTO,
+  MyLandDTO,
+  MyLandsDTO,
 } from '@/services/types/domain/member-space-types'
 
 vi.mock('server-only', () => ({}))
@@ -26,14 +27,14 @@ vi.mock('@/services/authentication/auth-service', () => ({
 vi.mock('@/app/dal/member-space-dal', () => ({
   getMyContactDal: vi.fn(),
   getMyIncidentReportsDal: vi.fn(),
-  getMyParcelsDal: vi.fn(),
+  getMyLandsDal: vi.fn(),
 }))
 vi.mock('./actions', () => ({updateMyContactAction: vi.fn()}))
 
 import {
   getMyContactDal,
   getMyIncidentReportsDal,
-  getMyParcelsDal,
+  getMyLandsDal,
 } from '@/app/dal/member-space-dal'
 
 import DashboardPage from './page'
@@ -57,14 +58,20 @@ const renderDashboard = async (
   })
 }
 
-const parcelsOf = (overrides: Partial<MyParcelsDTO> = {}): MyParcelsDTO => ({
-  name: 'Claire Meunier',
-  current: [
-    {number: '12', startsOn: '1998-02-03'},
-    {number: '13', startsOn: '2009-09-11'},
+/** Un seul terrain (s12d) ; s53 en reunit plusieurs sous le meme compte. */
+const parcelsOf = (overrides: Partial<MyLandDTO> = {}): MyLandsDTO => ({
+  accountName: 'Membre Test',
+  lands: [
+    {
+      name: 'Claire Meunier',
+      current: [
+        {number: '12', startsOn: '1998-02-03', meterNumber: null},
+        {number: '13', startsOn: '2009-09-11', meterNumber: null},
+      ],
+      former: [],
+      ...overrides,
+    },
   ],
-  former: [],
-  ...overrides,
 })
 
 const CONTACT: MyContactDTO = {
@@ -74,12 +81,15 @@ const CONTACT: MyContactDTO = {
   addressComplement: null,
   postalCode: '13100',
   city: 'Aix-en-Provence',
+  landCount: 1,
+  divergent: false,
+  groups: [],
 }
 
 const SECURITY_DESCRIPTION =
   'Votre mot de passe et les appareils connectés à votre compte.'
 
-const myParcels = () => screen.getByRole('region', {name: 'Mes parcelles'})
+const myParcels = () => screen.getByRole('region', {name: 'Mes terrains'})
 const myContact = () => screen.getByRole('region', {name: 'Mes coordonnées'})
 
 const isBefore = (first: Element, second: Element) =>
@@ -89,7 +99,7 @@ const isBefore = (first: Element, second: Element) =>
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(getMyParcelsDal).mockResolvedValue(undefined)
+  vi.mocked(getMyLandsDal).mockResolvedValue(undefined)
   vi.mocked(getMyContactDal).mockResolvedValue(undefined)
   vi.mocked(getMyIncidentReportsDal).mockResolvedValue(undefined)
 })
@@ -136,7 +146,7 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
   })
 
   it('C7 (s16) : une fiche sans parcelle voit « Mes coordonnées », sans salutation', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(
+    vi.mocked(getMyLandsDal).mockResolvedValue(
       parcelsOf({current: [], former: []})
     )
     vi.mocked(getMyContactDal).mockResolvedValue(CONTACT)
@@ -151,7 +161,7 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
     ).toBeInTheDocument()
     expect(screen.queryByText('Bonjour Claire Meunier')).toBeNull()
     expect(screen.queryByText('Espace personnel')).toBeNull()
-    expect(screen.queryByRole('region', {name: 'Mes parcelles'})).toBeNull()
+    expect(screen.queryByRole('region', {name: 'Mes terrains'})).toBeNull()
     expect(myContact()).toHaveTextContent('claire.meunier@exemple.fr')
     expect(
       isBefore(
@@ -162,13 +172,13 @@ describe('/dashboard — compte sans fiche (s46, s12d C5)', () => {
   })
 })
 
-describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
+describe('/dashboard — « Mes terrains » (s12d, écran C)', () => {
   beforeEach(() => {
     vi.mocked(getMyContactDal).mockResolvedValue(CONTACT)
   })
 
   it('C1 : marqueur personnel, salutation au nom de la fiche, parcelles actuelles en clair', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard()
 
@@ -191,7 +201,9 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
     const items = within(myParcels()).getAllByRole('listitem')
     expect(items.map((item) => item.textContent)).toEqual([
       'Parcelle 12Propriétaire depuis le 3 février 1998',
+      'Compteur non renseigné',
       'Parcelle 13Propriétaire depuis le 11 septembre 2009',
+      'Compteur non renseigné',
     ])
     expect(within(items[0]).getByText('12')).toHaveClass('font-mono')
     expect(within(myParcels()).queryByRole('table')).toBeNull()
@@ -199,19 +211,19 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
   })
 
   it('dit au pied de la carte à qui écrire en cas d’erreur', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard()
 
-    await screen.findByRole('region', {name: 'Mes parcelles'})
+    await screen.findByRole('region', {name: 'Mes terrains'})
     expect(myParcels()).toHaveTextContent('Une erreur ? Écrivez au bureau.')
     expect(
       within(myParcels()).getByRole('link', {name: 'Page Contact'})
     ).toHaveAttribute('href', '/contact')
   })
 
-  it('C1 (s16) : « Mes coordonnées » entre « Mes parcelles » et « Sécurité du compte »', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+  it('C1 (s16) : « Mes coordonnées » entre « Mes terrains » et « Sécurité du compte »', async () => {
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard()
 
@@ -228,8 +240,8 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
     expect(screen.getByText(SECURITY_DESCRIPTION)).toBeInTheDocument()
   })
 
-  it('garde la carte « Sécurité du compte » de s46 sous « Mes parcelles »', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+  it('garde la carte « Sécurité du compte » de s46 sous « Mes terrains »', async () => {
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard()
 
@@ -247,16 +259,16 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
   })
 
   it('C2 : liste les anciennes parcelles jusqu’à la veille de la vente, sans acquéreur', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(
+    vi.mocked(getMyLandsDal).mockResolvedValue(
       parcelsOf({
-        current: [{number: '21', startsOn: '2011-04-02'}],
+        current: [{number: '21', startsOn: '2011-04-02', meterNumber: null}],
         former: [{number: '9', startsOn: '2003-05-14', endsOn: '2019-10-01'}],
       })
     )
 
     await renderDashboard()
 
-    await screen.findByRole('region', {name: 'Mes parcelles'})
+    await screen.findByRole('region', {name: 'Mes terrains'})
     expect(
       screen.getByText('Espace personnel').parentElement
     ).toHaveTextContent(/^Espace personnel\s*· Parcelle 21$/)
@@ -272,7 +284,7 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
   })
 
   it('C3 : un ancien propriétaire lit depuis quand il ne l’est plus', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(
+    vi.mocked(getMyLandsDal).mockResolvedValue(
       parcelsOf({
         current: [],
         former: [{number: '47', startsOn: '1998-02-03', endsOn: '2026-06-15'}],
@@ -281,7 +293,7 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
 
     await renderDashboard()
 
-    await screen.findByRole('region', {name: 'Mes parcelles'})
+    await screen.findByRole('region', {name: 'Mes terrains'})
     expect(
       screen.getByText('Espace personnel').parentElement
     ).toHaveTextContent(/^Espace personnel\s*· Aucune parcelle actuelle$/)
@@ -292,7 +304,7 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
   })
 
   it('montre un squelette au nom du compte pendant le chargement, sans marqueur', async () => {
-    vi.mocked(getMyParcelsDal).mockReturnValue(new Promise(() => {}))
+    vi.mocked(getMyLandsDal).mockReturnValue(new Promise(() => {}))
 
     await renderDashboard()
 
@@ -300,12 +312,12 @@ describe('/dashboard — « Mes parcelles » (s12d, écran C)', () => {
       screen.getByRole('heading', {level: 1, name: 'Bonjour Membre Test'})
     ).toBeInTheDocument()
     expect(screen.queryByText('Espace personnel')).toBeNull()
-    const loading = screen.getByRole('region', {name: 'Mes parcelles'})
+    const loading = screen.getByRole('region', {name: 'Mes terrains'})
     expect(loading).toHaveAttribute('aria-busy', 'true')
   })
 
   it('C8 (s16) : « Mes coordonnées » aussi en squelette pendant le chargement', async () => {
-    vi.mocked(getMyParcelsDal).mockReturnValue(new Promise(() => {}))
+    vi.mocked(getMyLandsDal).mockReturnValue(new Promise(() => {}))
     vi.mocked(getMyContactDal).mockReturnValue(new Promise(() => {}))
 
     await renderDashboard()
@@ -325,7 +337,7 @@ describe('/dashboard?role=retire — rôle retiré (s14, A12)', () => {
   })
 
   it('dit « Vous ne faites plus partie du bureau. » en tête, role="status"', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
     await renderDashboard({role: 'retire'})
 
     const status = await screen.findByRole('status')
@@ -338,7 +350,7 @@ describe('/dashboard?role=retire — rôle retiré (s14, A12)', () => {
   })
 
   it('ne dit rien sans le paramètre', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
     await renderDashboard()
 
     await screen.findByRole('heading', {level: 1})
@@ -369,7 +381,7 @@ describe('/dashboard — « Mes signalements » (s22, écran A)', () => {
   })
 
   it('intercale la carte entre « Mes coordonnées » et « Sécurité du compte »', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard()
 
@@ -380,7 +392,7 @@ describe('/dashboard — « Mes signalements » (s22, écran A)', () => {
   })
 
   it('la garde pour une fiche sans parcelle (C7)', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(
+    vi.mocked(getMyLandsDal).mockResolvedValue(
       parcelsOf({current: [], former: []})
     )
 
@@ -401,7 +413,7 @@ describe('/dashboard — « Mes signalements » (s22, écran A)', () => {
   })
 
   it('A5 : au retour d’un envoi, l’alerte de succès dans la carte', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard({signalement: 'envoye'})
 
@@ -412,7 +424,7 @@ describe('/dashboard — « Mes signalements » (s22, écran A)', () => {
   })
 
   it('sans le paramètre, aucune alerte de succès', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard()
 
@@ -421,7 +433,7 @@ describe('/dashboard — « Mes signalements » (s22, écran A)', () => {
   })
 
   it('A3 : la carte en squelette pendant la lecture, le bouton visible', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
     vi.mocked(getMyIncidentReportsDal).mockReturnValue(new Promise(() => {}))
 
     await renderDashboard()
@@ -450,7 +462,7 @@ describe('/dashboard — « Une question pour le bureau ? » (s23, écran A)', (
   })
 
   it('A1 : place la carte sous « Mes signalements », avant la sécurité, avec un bouton outline', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard()
 
@@ -469,7 +481,7 @@ describe('/dashboard — « Une question pour le bureau ? » (s23, écran A)', (
   })
 
   it('la garde pour une fiche sans parcelle (C7)', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(
+    vi.mocked(getMyLandsDal).mockResolvedValue(
       parcelsOf({current: [], former: []})
     )
 
@@ -491,7 +503,7 @@ describe('/dashboard — « Une question pour le bureau ? » (s23, écran A)', (
   })
 
   it('A2 : au retour d’un envoi, l’alerte de succès dans la carte et « Poser une autre question »', async () => {
-    vi.mocked(getMyParcelsDal).mockResolvedValue(parcelsOf())
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
 
     await renderDashboard({question: 'envoyee'})
 

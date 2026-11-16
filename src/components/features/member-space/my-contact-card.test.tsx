@@ -13,6 +13,9 @@ const FULL: MyContactDTO = {
   addressComplement: 'Bâtiment B',
   postalCode: '13100',
   city: 'Aix-en-Provence',
+  landCount: 1,
+  divergent: false,
+  groups: [],
 }
 
 const EMPTY: MyContactDTO = {
@@ -22,6 +25,9 @@ const EMPTY: MyContactDTO = {
   addressComplement: null,
   postalCode: null,
   city: null,
+  landCount: 1,
+  divergent: false,
+  groups: [],
 }
 
 const action =
@@ -294,5 +300,87 @@ describe('MyContactCard — envoi', () => {
     expect(pending).toBeDisabled()
     finish({status: 'saved', contact: FULL})
     expect(await screen.findByRole('status')).toBeInTheDocument()
+  })
+})
+
+describe('MyContactCard — un compte à plusieurs terrains (s53, écran 2)', () => {
+  const SHARED: MyContactDTO = {...FULL, landCount: 3}
+
+  it('2a : dit que les coordonnées valent pour tous les terrains', () => {
+    render(<MyContactCard contact={SHARED} action={action} />)
+
+    expect(
+      screen.getByText('Elles valent pour vos 3 terrains.')
+    ).toBeInTheDocument()
+  })
+
+  it('un seul terrain : rien de plus que s16', () => {
+    render(<MyContactCard contact={FULL} action={action} />)
+
+    expect(screen.queryByText(/Elles valent pour vos/)).toBeNull()
+  })
+
+  it('2b : coordonnées divergentes, une information et un groupe par jeu', () => {
+    render(
+      <MyContactCard
+        contact={{
+          ...SHARED,
+          divergent: true,
+          groups: [
+            {
+              parcelNumbers: ['12', '27'],
+              names: [],
+              phone: FULL.phone,
+              addressLine: FULL.addressLine,
+              addressComplement: null,
+              postalCode: FULL.postalCode,
+              city: FULL.city,
+            },
+            {
+              parcelNumbers: ['31'],
+              names: ['SCI Les Pins'],
+              phone: null,
+              addressLine: '1 allée des Pins',
+              addressComplement: null,
+              postalCode: '13100',
+              city: 'Aix-en-Provence',
+            },
+          ],
+        }}
+        action={action}
+      />
+    )
+
+    expect(
+      screen.getByText('Vos terrains n’ont pas tous les mêmes coordonnées.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /En les modifiant, vous les mettez à jour pour vos 3 terrains\./
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {level: 3, name: 'Parcelles 12 et 27'})
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        level: 3,
+        name: 'Parcelle 31 · SCI Les Pins',
+      })
+    ).toBeInTheDocument()
+    expect(screen.getByText('1 allée des Pins')).toBeInTheDocument()
+  })
+
+  it('2c : le succès dit que les coordonnées valent désormais pour tous les terrains', async () => {
+    const user = userEvent.setup()
+    action.mockResolvedValue({status: 'saved', contact: SHARED})
+    render(<MyContactCard contact={SHARED} action={action} />)
+
+    await openEditing(user)
+    await save(user)
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Elles valent désormais pour vos 3 terrains. Le bureau les voit dès maintenant.'
+    )
   })
 })

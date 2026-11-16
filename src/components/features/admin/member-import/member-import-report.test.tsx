@@ -151,3 +151,33 @@ describe('MemberImportReport — écran 2', () => {
     expect(onImportAnother).toHaveBeenCalled()
   })
 })
+
+describe('MemberImportReport — adresses partagées (s53, critère 5)', () => {
+  it('écrit le regroupement avec la ligne de la même adresse, ou la fiche existante', () => {
+    renderReport(
+      report({
+        rejections: [],
+        linesRejected: 0,
+        remarks: [
+          {
+            line: 3,
+            client: 'SCI Fictive',
+            remark: 'shared_email',
+            relatedLine: 2,
+          },
+          {line: 6, client: 'Nora Doublon', remark: 'shared_email_existing'},
+        ],
+      })
+    )
+
+    const remarks = screen.getByRole('table', {
+      name: 'Lignes importées avec une remarque',
+    })
+    expect(remarks).toHaveTextContent(
+      'Même adresse email que la ligne 2 : les deux fiches sont reliées au même compte. Vérifiez qu’il s’agit de la même personne.'
+    )
+    expect(remarks).toHaveTextContent(
+      'Adresse email déjà portée par une fiche existante : cette fiche est reliée au même compte. Vérifiez qu’il s’agit de la même personne.'
+    )
+  })
+})
