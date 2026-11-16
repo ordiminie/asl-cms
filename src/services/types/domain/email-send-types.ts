@@ -98,7 +98,7 @@ export type PendingSendReference = {
  */
 export type PendingSendDTO = {
   key: string
-  nature: 'campaign' | 'board_notification'
+  nature: PendingSendNature
   reference: PendingSendReference | null
   campaignSubject: string | null
   partNumber: number | null
@@ -128,3 +128,10 @@ export type EmailSendingOverviewDTO = {
   /** Le premier jour ou des envois en attente partiront ; rien sans attente. */
   nextSendOn: string | null
 }
+
+/**
+ * La nature d'un envoi en attente : toute nature reportable, la connexion
+ * n'etant jamais reportee (revue s54, M2 : chaque email reporte garde la
+ * sienne).
+ */
+export type PendingSendNature = Exclude<TenantEmailNature, 'login'>

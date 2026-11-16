@@ -55,16 +55,22 @@ vi.mock('@/services/association-settings-service', async () => {
   }
 })
 
+import {createDeferredEmailTxnDao} from '@/db/repositories/deferred-email-repository'
+import {claimReportableSendTxnDao} from '@/db/repositories/email-send-budget-repository'
 import {getEmailTransport} from '@/lib/emails/transport'
 import {sendMemberEmailConfirmationEmailService} from '@/services/email-service'
 
 describe('sendMemberEmailConfirmationEmailService — le lien de confirmation (s54, écran 2)', () => {
-  const url = 'https://clos-fleuri.test/confirmer-adresse/Xk3abc'
+  const token = 'Xk3abc'.padEnd(43, 'Q')
+  const url = `https://clos-fleuri.test/confirmer-adresse/${token}`
+  const pendingEmailId = '33333333-3333-4333-8333-333333333333'
   const send = () =>
     sendMemberEmailConfirmationEmailService({
       organizationId: '11111111-1111-4111-8111-111111111111',
       email: 'marc@exemple.test',
       url,
+      token,
+      pendingEmailId,
       association: {name: 'Clos-Fleuri', hue: 195},
       authorName: 'Claire Dubois',
       profileName: 'Jean Dubois',
@@ -76,6 +82,8 @@ describe('sendMemberEmailConfirmationEmailService — le lien de confirmation (s
   beforeEach(() => {
     memoryTransport.messages.length = 0
     vi.mocked(getEmailTransport).mockReturnValue(memoryTransport)
+    vi.mocked(claimReportableSendTxnDao).mockResolvedValue(true)
+    vi.mocked(createDeferredEmailTxnDao).mockResolvedValue({id: 'deferred'})
   })
 
   it('envoie à l’adresse à confirmer, objet préfixé par l’association, texte brut complet avec l’URL', async () => {
@@ -89,5 +97,28 @@ describe('sendMemberEmailConfirmationEmailService — le lien de confirmation (s
     expect(sent.text).toContain(url)
     expect(sent.text).toContain('Claire Dubois a ajouté cette adresse')
     expect(sent.text).toContain('Ce lien vaut jusqu’au 23 novembre 2026.')
+  })
+
+  it('budget épuisé : l’email reporté ne garde ni le jeton ni l’échéance, seulement l’attente qu’il couvre (revue M1, ADR 056 §1)', async () => {
+    vi.mocked(claimReportableSendTxnDao).mockResolvedValue(false)
+
+    const result = await send()
+
+    expect(result.status).toBe('deferred')
+    expect(memoryTransport.messages).toHaveLength(0)
+    expect(createDeferredEmailTxnDao).toHaveBeenCalledTimes(1)
+    const [stored] = vi.mocked(createDeferredEmailTxnDao).mock.calls[0]
+    const kept = JSON.stringify(stored)
+    expect(kept).not.toContain(token)
+    expect(kept).not.toContain('23 novembre 2026')
+    expect(stored.textBody).toContain(
+      'https://clos-fleuri.test/confirmer-adresse/'
+    )
+    expect(stored).toMatchObject({
+      nature: 'member_email_confirmation',
+      recipient: 'marc@exemple.test',
+      referenceType: 'member_profile_email',
+      referenceId: pendingEmailId,
+    })
   })
 })

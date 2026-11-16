@@ -10,6 +10,7 @@ import {
   importedEmailsPlan,
   isPendingExpired,
   ownEmailOf,
+  pendingRowsStillAuthored,
   planEmailRemoval,
   planHolderDesignation,
   planReplacementConfirmation,
@@ -360,5 +361,50 @@ describe('expiration et confirmation (critère 5)', () => {
     expect(
       decideConfirmation({record: marcPending, takenElsewhere: false, now: NOW})
     ).toBe('ok')
+  })
+})
+
+describe('l’auteur d’une attente n’est plus relié à la fiche (revue C1)', () => {
+  const row = (memberProfileId: string, addedByUserId: string | null) => ({
+    id: `pending-${memberProfileId}`,
+    memberProfileId,
+    addedByUserId,
+  })
+
+  it('garde les attentes des fiches encore reliées à l’auteur, et celles sans auteur', () => {
+    expect(
+      pendingRowsStillAuthored(
+        [row('p1', 'user-claire'), row('p2', 'user-claire'), row('p3', null)],
+        new Set(['p2'])
+      ).map((kept) => kept.memberProfileId)
+    ).toEqual(['p2', 'p3'])
+  })
+
+  it('aucune fiche encore reliée : rien ne reste', () => {
+    expect(
+      pendingRowsStillAuthored([row('p1', 'user-claire')], new Set())
+    ).toEqual([])
+  })
+
+  it('attente valide mais plus rien d’autorisé : « revoked », avant « taken »', () => {
+    expect(
+      decideConfirmation({
+        record: marcPending,
+        takenElsewhere: true,
+        revoked: true,
+        now: NOW,
+      })
+    ).toBe('revoked')
+  })
+
+  it('un lien inutilisable reste « invalid », même révoqué', () => {
+    expect(
+      decideConfirmation({
+        record: undefined,
+        takenElsewhere: false,
+        revoked: true,
+        now: NOW,
+      })
+    ).toBe('invalid')
   })
 })

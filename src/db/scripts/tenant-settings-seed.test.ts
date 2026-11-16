@@ -7,6 +7,8 @@ import {
   CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   getAccentHue,
   getContactMessagesPerHourLimit,
+  getMemberEmailConfirmationDays,
+  MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
   resolveSettings,
   validateSettingsChanges,
 } from '@/services/types/domain/association-settings-types'
@@ -69,5 +71,17 @@ describe('TEST_TENANT_SETTINGS — jeu de parametres des tenants de test', () =>
       })
       expect(getContactMessagesPerHourLimit(settings), slug).toBe(3)
     }
+  })
+})
+
+describe('TEST_TENANT_SETTINGS — délai de confirmation d’une adresse (s54, ADR 056 §5, revue m1)', () => {
+  it('le premier tenant porte 7 jours en valeur de seed, pas seulement par le défaut du registre', () => {
+    const settings = settingsOf('techcorp-solutions')
+
+    expect(settings[MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY]).toMatchObject({
+      value: 7,
+      storedValue: '7',
+    })
+    expect(getMemberEmailConfirmationDays(settings)).toBe(7)
   })
 })

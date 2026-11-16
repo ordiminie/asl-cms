@@ -163,3 +163,22 @@ attente côté membre, une seule action « Gérer » (pas deux liens par ligne) 
 - Aucune valeur en dur (délai d'expiration en paramètre, textes dans `messages/fr.json`).
 - `/ks-review` passée sans critique ; e2e verts en CI.
 - Rappel au déploiement : les migrations retirent `member_profile.email` — sauvegarde s12c avant `db:migrate`.
+
+## Fix round 1 (review of 16/11 — docs/reviews/s54-adresses-email-multiples.md)
+
+- [x] **C1** — at confirmation, skip (and refuse when nothing remains) the pending rows of profiles their author
+  (`added_by_user_id`, when not null) is no longer linked to; when an account is unlinked from a profile (address
+  removed, replaced, account closed), delete the pending rows that account authored on that profile. Service
+  tests for both paths.
+- [x] **M1** — the clear token is never written to the database, deferred emails included: a deferred
+  confirmation email does not store a usable link; at replay, a fresh token is generated, its hash replaces the
+  pending rows' hash and the expiry counts from the actual send. Tests: deferred body carries no token; replay
+  rotates the hash.
+- [x] **M2** — `groupPendingSends` uses each deferred email's stored nature; label for
+  `member_email_confirmation` in `messages/fr.json`. Test.
+- [x] **m3** — changing an active address's value clears `unsubscribed_at` (ADR 057: a new address does not
+  inherit a refusal). Test.
+- [x] **m4** — `correctMyPendingEmailService` purges expired pending rows before writing. Test.
+- [x] **m1** — seed `member.email_confirmation_days = 7` for the first tenant (ADR 056 §5).
+- Left as is, recorded in the review: m2 (pre-s53 duplicates only, nothing sent), m5 (throttle — budget reserve
+  protects login), m6 (idempotent).

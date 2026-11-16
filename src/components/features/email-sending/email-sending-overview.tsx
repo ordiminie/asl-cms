@@ -245,6 +245,13 @@ function usePendingTexts() {
         },
       }
     }
+    if (send.nature === 'member_email_confirmation') {
+      return {
+        title: t('titles.member_email_confirmation'),
+        detail: null,
+        action: null,
+      }
+    }
     return {title: t('titles.other'), detail: null, action: null}
   }
 }

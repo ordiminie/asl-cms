@@ -13,6 +13,7 @@ vi.mock('@/db/tenant-scope', () => ({
   }),
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
+  deletePendingEmailsAddedByDao: vi.fn(),
   getMemberProfileEmailsDao: vi.fn(),
   insertMemberProfileEmailDao: vi.fn(),
 }))

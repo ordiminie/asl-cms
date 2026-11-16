@@ -288,13 +288,15 @@ const sendLink = async ({
   authUser: User
   profiles: MyMemberProfileRow[]
   email: string
-  link: PendingLink
+  link: PendingLink & {pendingEmailId: string}
   locale?: string
 }): Promise<MyEmailWriteResult> => {
   const result = await sendMemberEmailConfirmationEmailService({
     organizationId,
     email,
     url: `${context.origin}${CONFIRMATION_PATH}/${link.token}`,
+    token: link.token,
+    pendingEmailId: link.pendingEmailId,
     association: context.association,
     authorName: authUser.name,
     profileName: profiles[0]?.name ?? '',
@@ -340,8 +342,9 @@ export const addMyEmailService = async (
     )
     if (refusal) return {status: refusal} as const
 
+    const inserted: string[] = []
     for (const profile of mine.profiles) {
-      await insertMemberProfileEmailDao({
+      const row = await insertMemberProfileEmailDao({
         organizationId,
         memberProfileId: profile.id,
         email,
@@ -352,8 +355,13 @@ export const addMyEmailService = async (
         confirmationTokenHash: link.tokenHash,
         expiresAt: link.expiresAt,
       })
+      inserted.push(row.id)
     }
-    return {status: 'written', profiles: mine.profiles} as const
+    return {
+      status: 'written',
+      profiles: mine.profiles,
+      pendingEmailId: inserted[0],
+    } as const
   })
   if (written.status !== 'written') return written
 
@@ -363,7 +371,7 @@ export const addMyEmailService = async (
     authUser,
     profiles: written.profiles,
     email,
-    link,
+    link: {...link, pendingEmailId: written.pendingEmailId},
     locale,
   })
 }
@@ -426,8 +434,9 @@ export const updateMyEmailService = async (
     const own = mine.emails.filter((row) =>
       canMemberReplaceEmail(row, authUser.email)
     )
+    const inserted: string[] = []
     for (const replaced of own) {
-      await insertMemberProfileEmailDao({
+      const row = await insertMemberProfileEmailDao({
         organizationId,
         memberProfileId: replaced.memberProfileId,
         email,
@@ -439,8 +448,13 @@ export const updateMyEmailService = async (
         confirmationTokenHash: link.tokenHash,
         expiresAt: link.expiresAt,
       })
+      inserted.push(row.id)
     }
-    return {status: 'written', profiles: mine.profiles} as const
+    return {
+      status: 'written',
+      profiles: mine.profiles,
+      pendingEmailId: inserted[0],
+    } as const
   })
   if (written.status !== 'written') return written
 
@@ -450,7 +464,7 @@ export const updateMyEmailService = async (
     authUser,
     profiles: written.profiles,
     email,
-    link,
+    link: {...link, pendingEmailId: written.pendingEmailId},
     locale,
   })
 }
@@ -470,7 +484,9 @@ const sameLinkRows = async (
 
 /**
  * Corrige une attente dont la personne connectee est l'autrice : nouvelle
- * adresse, nouveau jeton (l'ancien lien ne sert plus), nouveau lien.
+ * adresse, nouveau jeton (l'ancien lien ne sert plus), nouveau lien. Les
+ * attentes echues sont purgees d'abord : une adresse echue sur la fiche ne
+ * bute plus sur l'index unique (revue m4).
  */
 export const correctMyPendingEmailService = async (
   input: CorrectMyPendingEmailInput
@@ -485,6 +501,7 @@ export const correctMyPendingEmailService = async (
   const link = newPendingLink(now, context.confirmationDays)
 
   const written = await withTenant(organizationId, async () => {
+    await purgeExpiredPendingEmailsDao(organizationId, now)
     const mine = await loadMine(organizationId, authUser.id, now)
     const target = await requireMine(emailId, mine, (row) =>
       canMemberManagePending(row, authUser.id, now)
@@ -506,7 +523,11 @@ export const correctMyPendingEmailService = async (
         expiresAt: link.expiresAt,
       })
     }
-    return {status: 'written', profiles: mine.profiles} as const
+    return {
+      status: 'written',
+      profiles: mine.profiles,
+      pendingEmailId: target.id,
+    } as const
   })
   if (written.status !== 'written') return written
 
@@ -516,7 +537,7 @@ export const correctMyPendingEmailService = async (
     authUser,
     profiles: written.profiles,
     email,
-    link,
+    link: {...link, pendingEmailId: written.pendingEmailId},
     locale,
   })
 }

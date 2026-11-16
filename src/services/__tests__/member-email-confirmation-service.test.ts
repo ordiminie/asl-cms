@@ -8,6 +8,7 @@ vi.mock('@/db/tenant-scope', () => ({
   ),
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
+  deletePendingEmailsAddedByDao: vi.fn(),
   deleteMemberProfileEmailDao: vi.fn(),
   getActiveEmailCarriersDao: vi.fn(),
   getMemberProfileEmailsByTokenHashDao: vi.fn(),
@@ -270,5 +271,93 @@ describe('[PUBLIC] confirmMemberEmailService — le bouton (3b, 3c, 3d)', () => 
       PROFILE_ID,
       OLD_USER_ID
     )
+  })
+})
+
+describe('[PUBLIC] l’auteur n’est plus relié à la fiche (revue C1, ADR 056 §5)', () => {
+  it('scénario de la revue : un proche ajoute X, le bureau retire son adresse, il clique → X n’est pas activée, aucun compte relié', async () => {
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
+
+    await expect(confirmMemberEmailService(input)).resolves.toEqual({
+      status: 'revoked',
+    })
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
+    expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('la page le dit avant le bouton, sans rien écrire', async () => {
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
+
+    await expect(
+      getMemberEmailConfirmationStateService(input)
+    ).resolves.toEqual({status: 'revoked'})
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+  })
+
+  it('un lien sur deux fiches : seule celle encore reliée à l’auteur est activée', async () => {
+    const OTHER_PENDING_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
+      pendingRow(),
+      pendingRow({id: OTHER_PENDING_ID, memberProfileId: OTHER_PROFILE_ID}),
+    ] as never)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {id: OTHER_PROFILE_ID} as never,
+    ])
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue({
+      id: OTHER_PROFILE_ID,
+      name: 'Jean Dubois',
+    } as never)
+    vi.mocked(getMemberProfileEmailsDao).mockResolvedValue([
+      pendingRow({id: OTHER_PENDING_ID, memberProfileId: OTHER_PROFILE_ID}),
+    ] as never)
+
+    await expect(confirmMemberEmailService(input)).resolves.toEqual({
+      status: 'confirmed',
+      replaced: false,
+    })
+    expect(getMemberProfileByIdDao).toHaveBeenCalledTimes(1)
+    expect(getMemberProfileByIdDao).toHaveBeenCalledWith(OTHER_PROFILE_ID)
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalledWith(
+      PENDING_ID,
+      expect.anything()
+    )
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(
+      OTHER_PENDING_ID,
+      expect.objectContaining({status: 'active'})
+    )
+  })
+
+  it('la page ne montre que les parcelles des fiches encore reliées à l’auteur', async () => {
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
+      pendingRow(),
+      pendingRow({id: 'autre', memberProfileId: OTHER_PROFILE_ID}),
+    ] as never)
+    vi.mocked(getCurrentParcelNumbersByProfileDao).mockResolvedValue({
+      [PROFILE_ID]: ['21'],
+    })
+
+    await expect(
+      getMemberEmailConfirmationStateService(input)
+    ).resolves.toEqual({
+      status: 'confirm',
+      email: 'marc@exemple.fr',
+      parcelNumbers: ['21'],
+    })
+    expect(getCurrentParcelNumbersByProfileDao).toHaveBeenCalledWith([
+      PROFILE_ID,
+    ])
+  })
+
+  it('une attente sans auteur n’est pas soumise à ce contrôle', async () => {
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
+      pendingRow({addedByUserId: null}),
+    ] as never)
+
+    await expect(confirmMemberEmailService(input)).resolves.toEqual({
+      status: 'confirmed',
+      replaced: false,
+    })
+    expect(getMemberProfilesByUserIdDao).not.toHaveBeenCalled()
   })
 })

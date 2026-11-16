@@ -37,6 +37,7 @@ export type MemberProfileEmailPatch = Partial<
     | 'confirmationTokenHash'
     | 'expiresAt'
     | 'replacesEmailId'
+    | 'unsubscribedAt'
   >
 >
 
@@ -215,3 +216,23 @@ export const getMemberProfileEmailsByTokenHashDao = async (
     .from(memberProfileEmail)
     .where(eq(memberProfileEmail.confirmationTokenHash, tokenHash))
     .orderBy(asc(memberProfileEmail.id))
+
+/**
+ * Supprime les adresses en attente qu'un compte a ajoutees sur une fiche :
+ * appelee quand ce compte en est delie (revue s54, C1). Un auteur qui n'a
+ * plus acces a la fiche ne peut plus y faire activer d'adresse.
+ */
+export const deletePendingEmailsAddedByDao = async (
+  memberProfileId: string,
+  userId: string
+): Promise<void> => {
+  await getDb()
+    .delete(memberProfileEmail)
+    .where(
+      and(
+        eq(memberProfileEmail.memberProfileId, memberProfileId),
+        eq(memberProfileEmail.addedByUserId, userId),
+        eq(memberProfileEmail.status, 'pending')
+      )
+    )
+}

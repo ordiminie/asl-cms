@@ -260,10 +260,13 @@ export const decideMemberEmailAddition = ({
 export const decideConfirmation = ({
   record,
   takenElsewhere,
+  revoked = false,
   now,
 }: {
   record: MemberEmailRecord | undefined
   takenElsewhere: boolean
+  /** Aucune attente du lien n'est plus sur une fiche reliee a son auteur. */
+  revoked?: boolean
   now: Date
 }): MemberEmailConfirmationDecision => {
   if (
@@ -273,5 +276,23 @@ export const decideConfirmation = ({
   ) {
     return 'invalid'
   }
+  if (revoked) return 'revoked'
   return takenElsewhere ? 'taken' : 'ok'
 }
+
+/**
+ * Les attentes d'un lien encore activables (revue s54, C1 ; ADR 056 §5) :
+ * celles sans auteur, et celles dont l'auteur est encore relie a la fiche.
+ * Un auteur delie d'une fiche (adresse retiree, remplacee, compte ferme) ne
+ * peut plus y faire activer d'adresse.
+ */
+export const pendingRowsStillAuthored = <
+  Row extends {memberProfileId: string; addedByUserId: string | null},
+>(
+  rows: readonly Row[],
+  authorProfileIds: ReadonlySet<string>
+): Row[] =>
+  rows.filter(
+    (row) =>
+      row.addedByUserId === null || authorProfileIds.has(row.memberProfileId)
+  )

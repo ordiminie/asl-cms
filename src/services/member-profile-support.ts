@@ -312,6 +312,9 @@ export const readProfileView = async (
  * du bureau selon l'ADR 054 §6) ; un ajout suit la regle d'une nouvelle
  * adresse active. Sous le `withTenant` de l'appelant, apres ses gardes.
  *
+ * Une valeur changee a l'activation n'herite pas d'un refus des envois
+ * (ADR 057).
+ *
  * Le lien de l'adresse remplacee est **d'abord** retire de l'attente : sa FK
  * `replaces_email_id` est en `CASCADE`, supprimer l'adresse remplacee
  * emporterait l'attente avec elle.
@@ -334,6 +337,7 @@ export const activatePendingEmail = async ({
   now: Date
 }): Promise<void> => {
   const emails = await readProfileEmails(profile.id, now)
+  const pending = emails.find((row) => row.id === pendingId)
   const plan = planReplacementConfirmation(emails, pendingId)
   const replaced = emails.find((row) => row.id === plan.removeEmailId)
   const accounts = await getLinkedAccountsDao(profile.id)
@@ -349,6 +353,9 @@ export const activatePendingEmail = async ({
     status: MemberEmailStatusConst.ACTIVE,
     confirmationTokenHash: null,
     expiresAt: null,
+    ...(pending && !sameEmail(pending.email, email)
+      ? {unsubscribedAt: null}
+      : {}),
   })
 
   const base = {organizationId, memberProfileId: profile.id, name: profile.name}

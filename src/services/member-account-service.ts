@@ -1,5 +1,6 @@
 import 'server-only'
 
+import {deletePendingEmailsAddedByDao} from '@/db/repositories/member-profile-email-repository'
 import {
   countLinkedProfilesDao,
   getMemberProfilesByUserIdDao,
@@ -186,7 +187,7 @@ export const closeMemberAccount = async ({
   userId: string
 }): Promise<void> =>
   withTenant(organizationId, async () => {
-    await unlinkMemberProfileAccountDao(memberProfileId, userId)
+    await unlinkProfileAccount(memberProfileId, userId)
     if ((await countLinkedProfilesDao(organizationId, userId)) > 0) return
     await deleteMemberWithRoleDao(
       userId,
@@ -233,7 +234,7 @@ export const replaceMemberAccount = async ({
       targetUserId ?? (await findOrCreateUserId(normalizedEmail(email), name))
     await linkMemberProfileAccountDao({organizationId, memberProfileId, userId})
     if (userId !== previousUserId) {
-      await unlinkMemberProfileAccountDao(memberProfileId, previousUserId)
+      await unlinkProfileAccount(memberProfileId, previousUserId)
     }
     const lastProfile =
       userId === previousUserId ||
@@ -373,7 +374,7 @@ export const unlinkMemberAccount = async ({
   userId: string
 }): Promise<void> =>
   withTenant(organizationId, async () => {
-    await unlinkMemberProfileAccountDao(memberProfileId, userId)
+    await unlinkProfileAccount(memberProfileId, userId)
   })
 
 /**
@@ -423,3 +424,16 @@ export const getFirstMemberProfile = async (
   userId: string
 ): Promise<MyMemberProfileRow | undefined> =>
   (await getMyMemberProfiles(organizationId, userId))[0]
+
+/**
+ * Delie un compte d'une fiche. Les adresses en attente que ce compte y avait
+ * ajoutees partent avec le lien : un auteur qui n'a plus acces a la fiche ne
+ * peut plus y faire activer d'adresse (revue s54, C1 ; ADR 056 §5).
+ */
+const unlinkProfileAccount = async (
+  memberProfileId: string,
+  userId: string
+): Promise<void> => {
+  await unlinkMemberProfileAccountDao(memberProfileId, userId)
+  await deletePendingEmailsAddedByDao(memberProfileId, userId)
+}

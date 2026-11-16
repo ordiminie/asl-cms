@@ -5,6 +5,8 @@
  * client : une vraie association recoit son adresse de contact au
  * provisioning. Marketing Pro ne declare volontairement aucune teinte : elle
  * sert la teinte par defaut (critere 10), TechCorp une autre (critere 9).
+ * Le delai de confirmation d'une adresse (s54, ADR 056 §5) est une valeur de
+ * seed du premier tenant, pas une constante.
  */
 export type TestTenantSetting = {
   organizationSlug: string
@@ -22,6 +24,11 @@ export const TEST_TENANT_SETTINGS: readonly TestTenantSetting[] = [
     organizationSlug: 'techcorp-solutions',
     key: 'identity.accent_hue',
     value: '150',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'member.email_confirmation_days',
+    value: '7',
   },
   {
     organizationSlug: 'marketing-pro',

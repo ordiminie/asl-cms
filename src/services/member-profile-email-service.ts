@@ -214,8 +214,9 @@ export const addMemberProfileEmailService = async (
 
 /**
  * Modifie une adresse : son role est garde (la titulaire modifiee reste
- * titulaire, critere 9) et son compte suit la nouvelle adresse. Une adresse
- * en attente modifiee par le bureau est activee d'office (design 4).
+ * titulaire, critere 9) et son compte suit la nouvelle adresse. Une nouvelle
+ * valeur n'herite pas du refus des envois de l'ancienne (ADR 057). Une
+ * adresse en attente modifiee par le bureau est activee d'office (design 4).
  */
 export const updateMemberProfileEmailService = async (
   input: UpdateMemberProfileEmailInput
@@ -281,7 +282,10 @@ export const updateMemberProfileEmailService = async (
       ),
       nextEmailAccountUserId: confirmedUserId,
     })
-    await updateMemberProfileEmailDao(target.id, {email})
+    await updateMemberProfileEmailDao(target.id, {
+      email,
+      ...(sameEmail(target.email, email) ? {} : {unsubscribedAt: null}),
+    })
     await applyMemberAccountDecision({
       organizationId,
       author: context.author,

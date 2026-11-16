@@ -34,7 +34,11 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
   countLinkedProfilesDao: vi.fn(),
   getUnlinkedMemberProfilesWithEmailDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-profile-email-repository', () => ({
+  deletePendingEmailsAddedByDao: vi.fn(),
+}))
 
+import {deletePendingEmailsAddedByDao} from '@/db/repositories/member-profile-email-repository'
 import {
   countLinkedProfilesDao,
   getUnlinkedMemberProfilesWithEmailDao,
@@ -927,5 +931,80 @@ describe('un compte par adresse (s54, critères 1 et 10)', () => {
       CLAIRE_ID
     )
     expect(deleteMemberWithRoleDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('un compte délié d’une fiche perd ses ajouts en attente sur elle (s54, revue C1)', () => {
+  it('fermeture : les attentes ajoutées par ce compte sur cette fiche sont supprimées, sous le scope', async () => {
+    let deletedUnder: string | undefined
+    vi.mocked(deletePendingEmailsAddedByDao).mockImplementation(async () => {
+      deletedUnder = scope.current
+    })
+
+    await closeMemberAccount({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      userId: KNOWN_USER_ID,
+    })
+
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      KNOWN_USER_ID
+    )
+    expect(deletedUnder).toBe(ORG_ID)
+  })
+
+  it('remplacement : celles de l’ancien compte sur cette fiche sont supprimées', async () => {
+    givenRoles({[OLD_USER_ID]: 'member'})
+
+    await replaceMemberAccount({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      memberProfileId: PROFILE_ID,
+      previousUserId: OLD_USER_ID,
+      email: 'nouvelle@example.test',
+      name: 'Odile Marchand',
+    })
+
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledTimes(1)
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      OLD_USER_ID
+    )
+  })
+
+  it('lien seul retiré : celles de ce compte sur cette fiche sont supprimées', async () => {
+    await applyMemberAccountDecision({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      profile: {
+        id: PROFILE_ID,
+        name: 'Odile Marchand',
+        email: null,
+        userId: OLD_USER_ID,
+      },
+      decision: {kind: 'unlink'},
+    })
+
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      OLD_USER_ID
+    )
+  })
+
+  it('l’adresse retombe sur le même compte : rien n’est supprimé', async () => {
+    vi.mocked(getUserByEmailDao).mockResolvedValue({id: OLD_USER_ID} as never)
+    givenRoles({[OLD_USER_ID]: 'member'})
+
+    await replaceMemberAccount({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      memberProfileId: PROFILE_ID,
+      previousUserId: OLD_USER_ID,
+      email: 'meme@example.test',
+      name: 'Odile Marchand',
+    })
+
+    expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalled()
   })
 })

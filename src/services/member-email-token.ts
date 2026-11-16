@@ -19,3 +19,12 @@ export const hashConfirmationToken = (token: string): string =>
 /** Une chaine qui a la forme d'un jeton ; rien n'est lu en base sinon. */
 export const isConfirmationTokenShaped = (token: string): boolean =>
   CONFIRMATION_TOKEN_PATTERN.test(token)
+
+/**
+ * Ce qu'un email de confirmation **reporte** garde a la place du jeton et de
+ * l'echeance (revue s54, M1) : le jeton en clair n'est jamais ecrit en base.
+ * Au rejeu, un jeton neuf et son echeance, comptee de l'envoi reel, les
+ * remplacent.
+ */
+export const CONFIRMATION_TOKEN_PLACEHOLDER = '__CONFIRMATION_TOKEN__'
+export const CONFIRMATION_EXPIRY_PLACEHOLDER = '__CONFIRMATION_EXPIRY__'

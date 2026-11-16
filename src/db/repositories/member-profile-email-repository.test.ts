@@ -21,6 +21,7 @@ vi.mock('@/db/tenant-scope', () => ({
 
 import {
   deleteMemberProfileEmailDao,
+  deletePendingEmailsAddedByDao,
   getActiveEmailCarriersDao,
   getMemberProfileEmailsByTokenHashDao,
   getMemberProfileEmailsDao,
@@ -137,5 +138,19 @@ describe('getMemberProfileEmailsByTokenHashDao', () => {
       '"member_profile_email"."confirmation_token_hash" = $1'
     )
     expect(params).toEqual(['hash-sha256'])
+  })
+})
+
+describe('deletePendingEmailsAddedByDao (revue s54, C1)', () => {
+  it('supprime les seules attentes ajoutées par ce compte sur cette fiche', async () => {
+    const USER_ID = '55555555-5555-4555-8555-555555555555'
+    await deletePendingEmailsAddedByDao(PROFILE_ID, USER_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('delete from "member_profile_email"')
+    expect(sql).toContain('"member_profile_email"."member_profile_id" = $1')
+    expect(sql).toContain('"member_profile_email"."added_by_user_id" = $2')
+    expect(sql).toContain('"member_profile_email"."status" = $3')
+    expect(params).toEqual([PROFILE_ID, USER_ID, 'pending'])
   })
 })

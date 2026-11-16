@@ -11,6 +11,7 @@ const renderPanel = (
   initialState:
     | {status: 'confirm'; email: string; parcelNumbers: string[]}
     | {status: 'invalid'}
+    | {status: 'revoked'}
 ) =>
   render(
     <MemberEmailConfirmationPanel
@@ -112,6 +113,40 @@ describe('/confirmer-adresse/[jeton] — écran 3 du design s54', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText('Écrivez au bureau, qui fera le lien.')
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', {name: 'Se connecter'})).toBeNull()
+  })
+
+  it('revue C1 · la personne qui a ajouté l’adresse n’a plus accès : rien n’est proposé, écrire au bureau', () => {
+    renderPanel({status: 'revoked'})
+
+    expect(
+      screen.getByText('Cette adresse ne peut plus être ajoutée par ce lien.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'La personne qui l’a ajoutée n’a plus accès à ces terrains. Écrivez au bureau, qui fera le lien.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', {name: 'Page Contact'})).toHaveAttribute(
+      'href',
+      '/contact'
+    )
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('revue C1 · refusée au clic quand l’accès de l’auteur est retiré entre-temps', async () => {
+    confirmAction.mockResolvedValue({status: 'revoked'})
+    renderPanel(CONFIRM)
+
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Confirmer cette adresse'})
+    )
+
+    expect(
+      await screen.findByText(
+        'Cette adresse ne peut plus être ajoutée par ce lien.'
+      )
     ).toBeInTheDocument()
     expect(screen.queryByRole('link', {name: 'Se connecter'})).toBeNull()
   })

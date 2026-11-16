@@ -6,6 +6,7 @@ vi.mock('@/db/tenant-scope', () => ({
   ),
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
+  deletePendingEmailsAddedByDao: vi.fn(),
   deleteMemberProfileEmailDao: vi.fn(),
   getActiveEmailCarriersDao: vi.fn(),
   getMemberProfileEmailByIdDao: vi.fn(),
@@ -41,6 +42,7 @@ import {
   getMemberProfileEmailsByTokenHashDao,
   getMemberProfileEmailsDao,
   insertMemberProfileEmailDao,
+  purgeExpiredPendingEmailsDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
 import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
@@ -431,5 +433,61 @@ describe('[MEMBRE] corriger ou annuler une attente (critère 4)', () => {
       })
     ).rejects.toThrow(AuthorizationError)
     expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('[MEMBRE] le lien transmis à l’envoi (revue M1) : son jeton et l’attente qu’il couvre', () => {
+  const sentLink = () => {
+    const [sent] = vi.mocked(sendMemberEmailConfirmationEmailService).mock
+      .calls[0]
+    return sent
+  }
+
+  it('ajout : le jeton de l’URL et une attente du lien, pour qu’un report ne garde ni l’un ni l’autre', async () => {
+    let next = 0
+    vi.mocked(insertMemberProfileEmailDao).mockImplementation(
+      async (input) => row({id: `inserted-${(next += 1)}`, ...input}) as never
+    )
+
+    await addMyEmailService({
+      organizationId: ORG_ID,
+      email: 'sophie@exemple.fr',
+    })
+
+    const sent = sentLink()
+    expect(sent.url.endsWith(`/${sent.token}`)).toBe(true)
+    expect(sent.pendingEmailId).toBe('inserted-1')
+  })
+
+  it('correction : l’attente corrigée', async () => {
+    await correctMyPendingEmailService({
+      organizationId: ORG_ID,
+      emailId: MARC_PENDING_ID,
+      email: 'marc.dubois@exemple.fr',
+    })
+
+    const sent = sentLink()
+    expect(sent.url.endsWith(`/${sent.token}`)).toBe(true)
+    expect(sent.pendingEmailId).toBe(MARC_PENDING_ID)
+  })
+})
+
+describe('[MEMBRE] correctMyPendingEmailService — attentes échues purgées d’abord (revue m4)', () => {
+  it('purge les attentes échues de l’association avant d’écrire : une adresse échue ne bloque plus la correction', async () => {
+    await correctMyPendingEmailService({
+      organizationId: ORG_ID,
+      emailId: MARC_PENDING_ID,
+      email: 'marc.dubois@exemple.fr',
+    })
+
+    expect(purgeExpiredPendingEmailsDao).toHaveBeenCalledWith(
+      ORG_ID,
+      expect.any(Date)
+    )
+    const [purged] = vi.mocked(purgeExpiredPendingEmailsDao).mock
+      .invocationCallOrder
+    const [written] = vi.mocked(updateMemberProfileEmailDao).mock
+      .invocationCallOrder
+    expect(purged).toBeLessThan(written)
   })
 })

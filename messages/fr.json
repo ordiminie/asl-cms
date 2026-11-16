@@ -4195,6 +4195,8 @@
     "invalid": "Vous n’avez rien fait de mal. Demandez à la personne qui a ajouté l’adresse de la renvoyer depuis son espace, ou écrivez au bureau.",
     "takenTitle": "Cette adresse ne peut pas être ajoutée ici.",
     "taken": "Écrivez au bureau, qui fera le lien.",
+    "revokedTitle": "Cette adresse ne peut plus être ajoutée par ce lien.",
+    "revoked": "La personne qui l’a ajoutée n’a plus accès à ces terrains. Écrivez au bureau, qui fera le lien.",
     "contactLink": "Page Contact",
     "failedTitle": "La confirmation n’a pas pu être enregistrée.",
     "failedDescription": "Rien n’a changé. Réessayez dans un instant."
@@ -4240,13 +4242,15 @@
       },
       "natures": {
         "campaign": "Campagne",
-        "board_notification": "Notification au bureau"
+        "board_notification": "Notification au bureau",
+        "member_email_confirmation": "Confirmation d’adresse"
       },
       "titles": {
         "campaign": "« {subject} »",
         "contact_message": "Message reçu depuis le formulaire de contact",
         "incident_report": "Signalement reçu depuis le site",
         "member_question": "Question d’un membre",
+        "member_email_confirmation": "Lien de confirmation d’une adresse",
         "other": "Notification au bureau"
       },
       "details": {

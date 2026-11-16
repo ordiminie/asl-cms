@@ -14,6 +14,7 @@ vi.mock('@/db/tenant-scope', () => ({
   }),
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
+  deletePendingEmailsAddedByDao: vi.fn(),
   deleteMemberProfileEmailDao: vi.fn(),
   getMemberProfileEmailsDao: vi.fn(),
   insertMemberProfileEmailDao: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock('@/db/repositories/organization-repository', () => ({
 
 import {
   deleteMemberProfileEmailDao,
+  deletePendingEmailsAddedByDao,
   getMemberProfileEmailsDao,
   insertMemberProfileEmailDao,
   purgeExpiredPendingEmailsDao,
@@ -355,6 +357,7 @@ describe('[BUREAU] modifier une adresse (critère 9 : titre transmis)', () => {
     expect(result.status).toBe('saved')
     expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(HOLDER_EMAIL_ID, {
       email: 'jean.nouveau@exemple.fr',
+      unsubscribedAt: null,
     })
     expect(setMemberProfileEmailRoleDao).not.toHaveBeenCalled()
     expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
@@ -686,4 +689,102 @@ describe('[MEMBRE] et [INVITÉ] : aucune écriture d’adresse depuis le bureau'
       expect(setMemberProfileEmailRoleDao).not.toHaveBeenCalled()
     })
   }
+})
+
+describe('[BUREAU] retirer l’adresse d’un proche qui a ajouté une adresse en attente (revue C1)', () => {
+  it('ses ajouts en attente sur cette fiche partent avec son lien : son lien ne pourra plus rien activer', async () => {
+    await removeMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: CLAIRE_EMAIL_ID,
+    })
+
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      CLAIRE_ID
+    )
+    expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalledWith(
+      PROFILE_ID,
+      JEAN_ID
+    )
+  })
+})
+
+describe('[BUREAU] une adresse modifiée n’hérite pas du refus de l’ancienne (revue m3, ADR 057)', () => {
+  it('nouvelle valeur : le refus des envois de l’ancienne adresse est effacé', async () => {
+    givenEmails(
+      emailRow({
+        ...jeanEmail,
+        unsubscribedAt: new Date('2026-10-01T08:00:00Z'),
+      }),
+      claireEmail
+    )
+
+    await updateMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: HOLDER_EMAIL_ID,
+      email: 'jean.nouveau@exemple.fr',
+    })
+
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(HOLDER_EMAIL_ID, {
+      email: 'jean.nouveau@exemple.fr',
+      unsubscribedAt: null,
+    })
+  })
+
+  it('même adresse, casse corrigée : le refus reste', async () => {
+    givenEmails(
+      emailRow({
+        ...jeanEmail,
+        unsubscribedAt: new Date('2026-10-01T08:00:00Z'),
+      }),
+      claireEmail
+    )
+
+    await updateMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: HOLDER_EMAIL_ID,
+      email: 'Jean@Exemple.fr',
+    })
+
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(HOLDER_EMAIL_ID, {
+      email: 'Jean@Exemple.fr',
+    })
+  })
+})
+
+describe('[BUREAU] une attente modifiée et activée par le bureau n’hérite pas d’un refus (revue m3)', () => {
+  it('nouvelle valeur : le refus porté par l’ancienne valeur est effacé', async () => {
+    const PENDING_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+    givenEmails(
+      jeanEmail,
+      emailRow({
+        id: PENDING_ID,
+        email: 'marc@exemple.fr',
+        status: 'pending',
+        addedByUserId: JEAN_ID,
+        confirmationTokenHash: 'hash',
+        expiresAt: new Date('2999-01-01T00:00:00Z'),
+        unsubscribedAt: new Date('2026-10-01T08:00:00Z'),
+      })
+    )
+
+    await updateMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: PENDING_ID,
+      email: 'marc.dubois@exemple.fr',
+    })
+
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(
+      PENDING_ID,
+      expect.objectContaining({
+        email: 'marc.dubois@exemple.fr',
+        status: 'active',
+        unsubscribedAt: null,
+      })
+    )
+  })
 })

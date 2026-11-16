@@ -21,7 +21,10 @@ import {
   isConfirmationTokenShaped,
 } from './member-email-token'
 import {activatePendingEmail} from './member-profile-support'
-import {decideConfirmation} from './rules/member-email-rules'
+import {
+  decideConfirmation,
+  pendingRowsStillAuthored,
+} from './rules/member-email-rules'
 import {MemberAccountAuthor} from './types/domain/member-account-types'
 import {
   ConfirmMemberEmailResult,
@@ -60,26 +63,65 @@ const pendingRowsOf = async (token: string) =>
     : []
 
 /**
+ * Les fiches auxquelles l'auteur d'un lien est encore relie ; aucune pour une
+ * attente sans auteur. Les attentes d'un meme lien ont un seul auteur : elles
+ * sont ecrites par une seule ecriture du membre.
+ */
+const authorProfileIdsOf = async (
+  organizationId: string,
+  authorUserId: string | null
+): Promise<Set<string>> =>
+  authorUserId
+    ? new Set(
+        (await getMemberProfilesByUserIdDao(organizationId, authorUserId)).map(
+          (profile) => profile.id
+        )
+      )
+    : new Set()
+
+/**
  * L'adresse est-elle active sur une fiche de l'association que ni l'auteur ni
  * le lien ne concernent ? Revérifie a la confirmation (critere 7, course).
  */
 const isTakenElsewhere = async (
   organizationId: string,
   email: string,
-  authorUserId: string | null,
+  authorProfileIds: ReadonlySet<string>,
   pendingProfileIds: string[]
 ): Promise<boolean> => {
-  const own = new Set(pendingProfileIds)
-  if (authorUserId) {
-    for (const profile of await getMemberProfilesByUserIdDao(
-      organizationId,
-      authorUserId
-    )) {
-      own.add(profile.id)
-    }
-  }
+  const own = new Set([...authorProfileIds, ...pendingProfileIds])
   const carriers = await getActiveEmailCarriersDao(organizationId, email)
   return carriers.some((carrier) => !own.has(carrier.memberProfileId))
+}
+
+type PendingRows = Awaited<ReturnType<typeof pendingRowsOf>>
+
+type ActivablePending = {
+  /** La premiere attente du jeton, absente pour un jeton inconnu. */
+  first: PendingRows[number]
+  rows: PendingRows
+  authorProfileIds: Set<string>
+}
+
+/**
+ * Les attentes du jeton, reduites a celles encore activables : l'auteur
+ * doit etre encore relie a leur fiche (revue C1, ADR 056 §5).
+ */
+const activablePendingOf = async (
+  organizationId: string,
+  token: string
+): Promise<ActivablePending> => {
+  const all = await pendingRowsOf(token)
+  const [first] = all
+  const authorProfileIds = await authorProfileIdsOf(
+    organizationId,
+    first?.addedByUserId ?? null
+  )
+  return {
+    first,
+    rows: pendingRowsStillAuthored(all, authorProfileIds),
+    authorProfileIds,
+  }
 }
 
 /** L'etat de la page publique ; **lecture seule**. */
@@ -90,13 +132,15 @@ export const getMemberEmailConfirmationStateService = async (
   const now = new Date()
 
   return withTenant(organizationId, async () => {
-    const rows = await pendingRowsOf(token)
-    const [first] = rows
-    if (
-      decideConfirmation({record: first, takenElsewhere: false, now}) !== 'ok'
-    ) {
-      return {status: 'invalid'}
-    }
+    const {first, rows} = await activablePendingOf(organizationId, token)
+    const decision = decideConfirmation({
+      record: first,
+      takenElsewhere: false,
+      revoked: rows.length === 0,
+      now,
+    })
+    if (decision === 'revoked') return {status: 'revoked'}
+    if (decision !== 'ok') return {status: 'invalid'}
     const numbers = await getCurrentParcelNumbersByProfileDao(
       rows.map((row) => row.memberProfileId)
     )
@@ -122,7 +166,8 @@ const authorOfPending = async (
 /**
  * « Confirmer cette adresse » : un jeton inconnu, echu, annule ou deja
  * utilise rend le meme etat (3c) ; une adresse prise entre-temps n'est pas
- * activee (3d). Sinon chaque attente du lien s'active (ajout, ou
+ * activee (3d) ; une attente dont l'auteur n'est plus relie a la fiche est
+ * ignoree, et le lien est refuse s'il n'en reste aucune (revue C1). Sinon chaque attente du lien s'active (ajout, ou
  * modification qui remplace l'ancienne adresse), son compte s'ouvre, et le
  * jeton est efface : usage unique. Les attentes echues sont purgees.
  */
@@ -133,19 +178,23 @@ export const confirmMemberEmailService = async (
   const now = new Date()
 
   return withTenant(organizationId, async () => {
-    const rows = await pendingRowsOf(token)
-    const [first] = rows
+    const {first, rows, authorProfileIds} = await activablePendingOf(
+      organizationId,
+      token
+    )
     const taken =
       first !== undefined &&
+      rows.length > 0 &&
       (await isTakenElsewhere(
         organizationId,
         first.email,
-        first.addedByUserId,
+        authorProfileIds,
         rows.map((row) => row.memberProfileId)
       ))
     const decision = decideConfirmation({
       record: first,
       takenElsewhere: taken,
+      revoked: rows.length === 0,
       now,
     })
     await purgeExpiredPendingEmailsDao(organizationId, now)
