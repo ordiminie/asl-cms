@@ -1,4 +1,4 @@
-# Review — s54-adresses-email-multiples (round 5)
+# Review — s54-adresses-email-multiples (round 6)
 
 Diff reviewed: `git diff main...feature/s54-adresses-email-multiples`, committed HEAD 7ec199b5 — 43242a0b
 (story), 3e647ceb, cf14e6f3, f2bc58e2, 7ec199b5 (fix round 4, read as new code). Uncommitted working-tree changes
@@ -94,6 +94,39 @@ None.
 - Left by decision in earlier rounds: m2 (pre-s53 duplicates: "already unsubscribed" message, nothing sent), m5 (no
   per-member throttle on confirmation emails), m6 (no row lock on confirmation, idempotent), mi2 (two deferred
   links on the same row), mi5 (database error during replay loses the email).
+
+## Round 6 — CI e2e fix (6c4417aa)
+
+GitHub CI on PR 71 (HEAD e9d16c0c): e2e 1 failed / 11 did not run (serial file) / 273 passed. Failure, identical on
+3 attempts: `e2e/member-accounts.spec.ts:711` (s16 criteria 1 and 4) expected the member's email inside the
+« Mes coordonnées » region; received "Mes coordonnéesTéléphoneNon renseignéAdresse postale5 impasse des Bruyères
+33680 LacanauModifier mes coordonnées". 6c4417aa (e2e only, +9/−5) updates that test and s16 C7 (same stale
+expectation, hidden by the serial mode) and hoists the `myEmails` locator. Reviewed by the `reviewer` subagent,
+fresh context, read-only.
+
+- **Diagnosis confirmed: the test was stale, the app is right.** Design screen 1 (l.51-53): « Mes coordonnées »
+  loses its read-only Email pair (ADR 040 replaced by ADR 056). On main `my-contact-card.tsx` rendered the email
+  pair; on HEAD `ContactReading` renders phone and address only — exactly the CI text. In scope of plan task 11.
+- **Assertions not weakened.** Locator names match the real accessible names (« Mes coordonnées »,
+  « Mes adresses email »), no colliding region (the loading skeleton is replaced by Suspense). Each
+  `not.toContainText(email)` runs after a positive check on rendered-only content ('Adresse postale',
+  '3 rue du Lavoir'); the email is asserted in `myEmails` first. Screen 1 is now pinned in both directions.
+- **The 11 tests that never ran**, read one by one (s16 crit. 2/3/C7, six s53, s54 crit. 1/2/4/5/10 and 8): every
+  asserted string exists in `messages/fr.json`, `NoticeAlert` is `role="status"`, `markerLands` unchanged,
+  `storedContactOf` reads the active holder from `member_profile_email`. Remaining risk is only what CI can show
+  (timing, outbox delivery).
+- Ran: `pnpm lint` 0 errors; `tsc --noEmit` exit 0 on a `git archive HEAD` copy. Unit suite not rerun
+  (e2e-only commit). e2e: CI only — **merge only after CI's e2e passes on this commit**.
+
+New minor findings:
+
+- `messages/fr.json`: dead keys `MemberSpacePage.contact.email`, `emailNote`, `contact`; `emailNote` ("…Pour la
+  changer, écrivez au bureau.") contradicts s54 but never renders.
+- `e2e/member-accounts.spec.ts:691` and s16-era JSDoc comments (`dashboard/actions.ts:17`,
+  `member-profile-form-validation.ts:229`, `member-profile-repository.ts:501`, `member-space-service.ts:201`,
+  `member-space-types.ts:69`) still cite ADR 040 without mentioning ADR 056.
+
+Round 5's open minors carry over unchanged.
 
 Max severity: minor
 Ship allowed: yes
