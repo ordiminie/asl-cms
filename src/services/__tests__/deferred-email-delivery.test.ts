@@ -51,6 +51,7 @@ vi.mock('@/db/repositories/deferred-email-repository', () => ({
   markDeferredEmailFailedTxnDao: vi.fn(),
   markDeferredEmailToVerifyTxnDao: vi.fn(),
   releaseDeferredEmailTxnDao: vi.fn(),
+  updateDeferredEmailConfirmationTokenHashTxnDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/contact-message-repository', () => ({
   markContactMessageNotificationFailedDao: vi.fn(),
@@ -82,6 +83,7 @@ import {
   markDeferredEmailFailedTxnDao,
   markDeferredEmailToVerifyTxnDao,
   releaseDeferredEmailTxnDao,
+  updateDeferredEmailConfirmationTokenHashTxnDao,
 } from '@/db/repositories/deferred-email-repository'
 import {
   claimReportableSendTxnDao,
@@ -620,4 +622,107 @@ describe('deliverDeferredEmailService — lien de confirmation reporté (s54, re
       expect(store.rows.has(DEFERRED_ID)).toBe(false)
     }
   )
+})
+
+describe('deliverDeferredEmailService — lien reporté refusé puis renvoyé (s54, revue MA2)', () => {
+  const PENDING_ID = '44444444-4444-4444-8444-444444444444'
+  const OLD_HASH = 'b'.repeat(64)
+  const LINK = 'https://clos-fleuri.test/confirmer-adresse/'
+  const sha256 = (value: string) =>
+    createHash('sha256').update(value).digest('hex')
+  const pendingRows = {
+    rows: [] as {
+      id: string
+      memberProfileId: string
+      email: string
+      status: string
+      addedByUserId: string | null
+      confirmationTokenHash: string | null
+      expiresAt: Date | null
+    }[],
+  }
+
+  beforeEach(() => {
+    store.rows = new Map([
+      [
+        DEFERRED_ID,
+        {
+          ...storedRow(),
+          nature: 'member_email_confirmation',
+          recipient: 'marc@exemple.test',
+          subject: 'Clos-Fleuri — Confirmez votre adresse email',
+          textBody: `Ouvrez ce lien :\n${LINK}${CONFIRMATION_TOKEN_PLACEHOLDER}\n\nCe lien vaut jusqu’au ${CONFIRMATION_EXPIRY_PLACEHOLDER}.`,
+          htmlBody: null,
+          replyTo: null,
+          referenceType: null,
+          referenceId: null,
+          confirmationTokenHash: OLD_HASH,
+        },
+      ],
+    ])
+    pendingRows.rows = [
+      {
+        id: PENDING_ID,
+        memberProfileId: 'profile-1',
+        email: 'marc@exemple.test',
+        status: 'pending',
+        addedByUserId: 'claire',
+        confirmationTokenHash: OLD_HASH,
+        expiresAt: new Date('2026-11-21T09:00:00.000Z'),
+      },
+    ]
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockImplementation(
+      async (tokenHash) =>
+        pendingRows.rows
+          .filter((row) => row.confirmationTokenHash === tokenHash)
+          .map((row) => ({...row})) as never
+    )
+    vi.mocked(updateMemberProfileEmailDao).mockImplementation(
+      async (id, patch) => {
+        const row = pendingRows.rows.find((candidate) => candidate.id === id)
+        if (row) Object.assign(row, patch)
+        return undefined as never
+      }
+    )
+    vi.mocked(
+      updateDeferredEmailConfirmationTokenHashTxnDao
+    ).mockImplementation(async (id, tokenHash) => {
+      expect(scope.current).toBe(ORG_ID)
+      const row = store.rows.get(id)
+      if (row?.status === 'sending') row.confirmationTokenHash = tokenHash
+    })
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {id: 'profile-1'},
+    ] as never)
+  })
+
+  it('refus puis nouvelle tentative : le lien est retrouvé par son hash courant et le lien envoyé fonctionne', async () => {
+    let calls = 0
+    vi.mocked(getEmailTransport).mockReturnValue({
+      send: vi.fn((message) => {
+        calls += 1
+        if (calls === 1) {
+          return Promise.reject(
+            new EmailTransportError('brevo', 'refus', {refused: true})
+          )
+        }
+        return memoryTransport.send(message)
+      }),
+    })
+
+    const first = await deliverDeferredEmailService(jobOf(), NOW)
+    expect(first.status).toBe('retry')
+    expect(store.rows.get(DEFERRED_ID)).toMatchObject({status: 'pending'})
+
+    const second = await deliverDeferredEmailService(jobOf({attempts: 2}), NOW)
+
+    expect(second).toEqual({status: 'completed'})
+    expect(memoryTransport.messages).toHaveLength(1)
+    const token = memoryTransport.messages[0].text.match(
+      /confirmer-adresse\/([A-Za-z0-9_-]{43})/
+    )?.[1]
+    expect(token).toBeDefined()
+    expect(pendingRows.rows[0].confirmationTokenHash).toBe(sha256(token ?? ''))
+    expect(store.rows.has(DEFERRED_ID)).toBe(false)
+  })
 })

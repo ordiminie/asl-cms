@@ -1,9 +1,6 @@
 import 'server-only'
 
-import {
-  deletePendingEmailsAddedByDao,
-  reassignPendingEmailsAddedByDao,
-} from '@/db/repositories/member-profile-email-repository'
+import {deletePendingEmailsAddedByDao} from '@/db/repositories/member-profile-email-repository'
 import {
   countLinkedProfilesDao,
   getMemberProfilesByUserIdDao,
@@ -213,7 +210,9 @@ export const closeMemberAccount = async ({
  * retrogradation concurrente. Un ancien compte sans ligne ici ne deplace
  * rien. Le depart de l'ancien compte n'est trace que si sa ligne a bien ete
  * retiree. Les adresses en attente que l'ancien compte avait ajoutees sur la
- * fiche passent au nouveau (revue s54, mi3).
+ * fiche sont supprimees, quel que soit l'auteur du remplacement : le bureau
+ * qui modifie une adresse coupe aussi les ajouts de l'ancienne (revue s54,
+ * C1-bis).
  */
 export const replaceMemberAccount = async ({
   organizationId,
@@ -238,7 +237,7 @@ export const replaceMemberAccount = async ({
       targetUserId ?? (await findOrCreateUserId(normalizedEmail(email), name))
     await linkMemberProfileAccountDao({organizationId, memberProfileId, userId})
     if (userId !== previousUserId) {
-      await moveProfileAccount(memberProfileId, previousUserId, userId)
+      await unlinkProfileAccount(memberProfileId, previousUserId)
     }
     const lastProfile =
       userId === previousUserId ||
@@ -440,19 +439,4 @@ const unlinkProfileAccount = async (
 ): Promise<void> => {
   await unlinkMemberProfileAccountDao(memberProfileId, userId)
   await deletePendingEmailsAddedByDao(memberProfileId, userId)
-}
-
-/**
- * Remplace le compte d'une fiche : l'ancien lien part, et les adresses en
- * attente que l'ancien compte y avait ajoutees passent au nouveau, meme
- * personne sous une autre adresse (revue s54, mi3). Le retrait et la
- * fermeture, eux, les suppriment (`unlinkProfileAccount`).
- */
-const moveProfileAccount = async (
-  memberProfileId: string,
-  previousUserId: string,
-  userId: string
-): Promise<void> => {
-  await unlinkMemberProfileAccountDao(memberProfileId, previousUserId)
-  await reassignPendingEmailsAddedByDao(memberProfileId, previousUserId, userId)
 }

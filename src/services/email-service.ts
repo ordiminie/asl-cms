@@ -11,6 +11,7 @@ import {
   markDeferredEmailFailedTxnDao,
   markDeferredEmailToVerifyTxnDao,
   releaseDeferredEmailTxnDao,
+  updateDeferredEmailConfirmationTokenHashTxnDao,
 } from '@/db/repositories/deferred-email-repository'
 import {
   claimReportableSendTxnDao,
@@ -1564,11 +1565,13 @@ const withoutConfirmationLink = (
  * Emet un jeton neuf pour les attentes encore a confirmer du lien d'un email
  * reporte, designe par le hash de son jeton (revue mi1) : en attente, non
  * echues, a l'adresse du destinataire, d'un auteur encore relie a leur
- * fiche. Son hash remplace l'ancien, l'echeance part de maintenant. Rien s'il
- * n'en reste aucune.
+ * fiche. Son hash remplace l'ancien, sur ces attentes comme sur la ligne
+ * reportee (revue MA2 : une nouvelle tentative apres un refus retrouve le
+ * lien), l'echeance part de maintenant. Rien s'il n'en reste aucune.
  */
 const rotatePendingLink = async (
   organizationId: string,
+  deferredEmailId: string,
   tokenHash: string,
   recipient: string,
   now: Date
@@ -1587,12 +1590,17 @@ const rotatePendingLink = async (
     )
     const {rows} = await stillAuthoredPendingRows(organizationId, live)
     if (rows.length === 0) return undefined
+    const confirmationTokenHash = hashConfirmationToken(token)
     for (const row of rows) {
       await updateMemberProfileEmailDao(row.id, {
-        confirmationTokenHash: hashConfirmationToken(token),
+        confirmationTokenHash,
         expiresAt,
       })
     }
+    await updateDeferredEmailConfirmationTokenHashTxnDao(
+      deferredEmailId,
+      confirmationTokenHash
+    )
     return {token, expiresAt}
   })
 }
@@ -1611,6 +1619,7 @@ const deferredEmailToSend = async (
   if (!row.confirmationTokenHash) return email
   const link = await rotatePendingLink(
     organizationId,
+    row.id,
     row.confirmationTokenHash,
     row.recipient,
     now

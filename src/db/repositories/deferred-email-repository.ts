@@ -55,13 +55,20 @@ export const deleteDeferredEmailTxnDao = async (id: string): Promise<void> => {
   await getDb().delete(deferredEmail).where(eq(deferredEmail.id, id))
 }
 
-/** Issue inconnue ou arret apres la prise : a verifier, jamais renvoye. */
+/**
+ * Issue inconnue ou arret apres la prise : a verifier, jamais renvoye. Le
+ * hash d'un lien de confirmation n'y sert plus et part (revue s54, mi-b).
+ */
 export const markDeferredEmailToVerifyTxnDao = async (
   id: string
 ): Promise<void> => {
   await getDb()
     .update(deferredEmail)
-    .set({status: 'to_verify', updatedAt: sql`now()`})
+    .set({
+      status: 'to_verify',
+      confirmationTokenHash: null,
+      updatedAt: sql`now()`,
+    })
     .where(and(eq(deferredEmail.id, id), eq(deferredEmail.status, 'sending')))
 }
 
@@ -147,5 +154,20 @@ export const markDeferredEmailFailedTxnDao = async (
       confirmationTokenHash: null,
       updatedAt: sql`now()`,
     })
+    .where(and(eq(deferredEmail.id, id), eq(deferredEmail.status, 'sending')))
+}
+
+/**
+ * Le lien de confirmation d'un email pris a recu un jeton neuf (s54, revue
+ * MA2) : la ligne garde le hash courant, pour qu'une nouvelle tentative apres
+ * un refus retrouve les attentes du lien.
+ */
+export const updateDeferredEmailConfirmationTokenHashTxnDao = async (
+  id: string,
+  confirmationTokenHash: string
+): Promise<void> => {
+  await getDb()
+    .update(deferredEmail)
+    .set({confirmationTokenHash, updatedAt: sql`now()`})
     .where(and(eq(deferredEmail.id, id), eq(deferredEmail.status, 'sending')))
 }

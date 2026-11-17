@@ -36,13 +36,9 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
   deletePendingEmailsAddedByDao: vi.fn(),
-  reassignPendingEmailsAddedByDao: vi.fn(),
 }))
 
-import {
-  deletePendingEmailsAddedByDao,
-  reassignPendingEmailsAddedByDao,
-} from '@/db/repositories/member-profile-email-repository'
+import {deletePendingEmailsAddedByDao} from '@/db/repositories/member-profile-email-repository'
 import {
   countLinkedProfilesDao,
   getUnlinkedMemberProfilesWithEmailDao,
@@ -958,11 +954,11 @@ describe('un compte délié d’une fiche perd ses ajouts en attente sur elle (s
     expect(deletedUnder).toBe(ORG_ID)
   })
 
-  it('remplacement : celles de l’ancien compte sur cette fiche passent au nouveau compte, rien n’est supprimé (revue mi3)', async () => {
+  it('remplacement : celles de l’ancien compte sur cette fiche sont supprimées, jamais réattribuées (revue C1-bis)', async () => {
     givenRoles({[OLD_USER_ID]: 'member'})
-    let reassignedUnder: string | undefined
-    vi.mocked(reassignPendingEmailsAddedByDao).mockImplementation(async () => {
-      reassignedUnder = scope.current
+    let deletedUnder: string | undefined
+    vi.mocked(deletePendingEmailsAddedByDao).mockImplementation(async () => {
+      deletedUnder = scope.current
     })
 
     await replaceMemberAccount({
@@ -974,15 +970,55 @@ describe('un compte délié d’une fiche perd ses ajouts en attente sur elle (s
       name: 'Odile Marchand',
     })
 
-    expect(reassignPendingEmailsAddedByDao).toHaveBeenCalledTimes(1)
-    expect(reassignPendingEmailsAddedByDao).toHaveBeenCalledWith(
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledTimes(1)
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
       PROFILE_ID,
-      OLD_USER_ID,
-      NEW_USER_ID
+      OLD_USER_ID
     )
-    expect(reassignedUnder).toBe(ORG_ID)
-    expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalled()
+    expect(deletedUnder).toBe(ORG_ID)
     expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      OLD_USER_ID
+    )
+  })
+
+  it('le bureau modifie l’adresse (décision replace) : celles de l’ancien compte sont supprimées (revue C1-bis)', async () => {
+    givenRoles({[OLD_USER_ID]: 'member'})
+
+    await applyMemberAccountDecision({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      profile: {
+        id: PROFILE_ID,
+        name: 'Odile Marchand',
+        email: 'nouvelle@example.test',
+        userId: OLD_USER_ID,
+      },
+      decision: {kind: 'replace'},
+    })
+
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      OLD_USER_ID
+    )
+  })
+
+  it('link_shared : la fiche rejoint un compte déjà ouvert, celles de l’ancien compte sont supprimées, pas données à ce compte (revue C1-bis)', async () => {
+    givenRoles({[OLD_USER_ID]: 'member'})
+
+    await applyMemberAccountDecision({
+      organizationId: ORG_ID,
+      author: AUTHOR,
+      profile: {
+        id: PROFILE_ID,
+        name: 'Odile Marchand',
+        email: 'partagee@example.test',
+        userId: OLD_USER_ID,
+      },
+      decision: {kind: 'link_shared', userId: NEW_USER_ID},
+    })
+
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
       PROFILE_ID,
       OLD_USER_ID
     )
@@ -1021,6 +1057,5 @@ describe('un compte délié d’une fiche perd ses ajouts en attente sur elle (s
     })
 
     expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalled()
-    expect(reassignPendingEmailsAddedByDao).not.toHaveBeenCalled()
   })
 })

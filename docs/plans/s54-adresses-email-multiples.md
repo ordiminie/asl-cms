@@ -195,3 +195,17 @@ attente côté membre, une seule action « Gérer » (pas deux liens par ligne) 
 - [x] **mi4** — an author-less pending row is not activable (fail-closed). Update the test that pinned the
   fail-open.
 - Left as is: mi2 (rare, second email works), mi5 (low probability), m2, m5, m6.
+
+## Fix round 3 (review round 3 — arbitration of 17/11: revert mi3)
+
+- [x] **C1-bis** — revert mi3: on every replacement (bureau edit, `link_shared`, member's own confirmation), the
+  pending rows the old account authored on that profile are **deleted**, as before cf14e6f3; remove
+  `reassignPendingEmailsAddedByDao` if unused. A member who replaces their own address re-adds their pending
+  additions (accepted by the arbitration). Tests: bureau edits the author's address → the link returns 3c and
+  nothing activates; replacement deletes, never reassigns.
+- [x] **MA2** — when a deferred link is rotated, `deferred_email.confirmation_token_hash` follows the new hash
+  (same `withTenant`), so a provider refusal followed by a retry still finds the link's rows. Test "refusal then
+  retry" with a mock filtering by hash.
+- [x] **mi-a** — document `deferred_email.confirmation_token_hash` in `docs/architecture.md` (the
+  `deferred_email` row).
+- [x] **mi-b** — `markDeferredEmailToVerifyTxnDao` clears `confirmation_token_hash` (consistency).

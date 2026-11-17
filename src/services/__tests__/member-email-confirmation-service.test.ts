@@ -9,7 +9,6 @@ vi.mock('@/db/tenant-scope', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
   deletePendingEmailsAddedByDao: vi.fn(),
-  reassignPendingEmailsAddedByDao: vi.fn(),
   deleteMemberProfileEmailDao: vi.fn(),
   getActiveEmailCarriersDao: vi.fn(),
   getMemberProfileEmailsByTokenHashDao: vi.fn(),
@@ -49,7 +48,6 @@ import {
   getActiveEmailCarriersDao,
   getMemberProfileEmailsByTokenHashDao,
   getMemberProfileEmailsDao,
-  reassignPendingEmailsAddedByDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
 import {
@@ -274,12 +272,10 @@ describe('[PUBLIC] confirmMemberEmailService — le bouton (3b, 3c, 3d)', () => 
       PROFILE_ID,
       OLD_USER_ID
     )
-    expect(reassignPendingEmailsAddedByDao).toHaveBeenCalledWith(
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
       PROFILE_ID,
-      OLD_USER_ID,
-      MARC_USER_ID
+      OLD_USER_ID
     )
-    expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalled()
   })
 })
 
@@ -374,7 +370,7 @@ describe('[PUBLIC] l’auteur n’est plus relié à la fiche (revue C1, ADR 056
     expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
   })
 
-  it('un lien dont une attente a changé d’auteur (adresse de l’auteur remplacée sur une fiche, revue mi3) : chaque attente est jugée sur son propre auteur', async () => {
+  it('un lien dont les attentes ont des auteurs différents : chaque attente est jugée sur son propre auteur', async () => {
     const OTHER_PENDING_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
     const CLAIRE_NEW_ID = '88888888-8888-4888-8888-888888888888'
     vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([

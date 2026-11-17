@@ -236,26 +236,3 @@ export const deletePendingEmailsAddedByDao = async (
       )
     )
 }
-
-/**
- * Passe au nouveau compte les adresses en attente que l'ancien avait ajoutees
- * sur une fiche : appelee quand une adresse est remplacee (revue s54, mi3).
- * C'est la meme personne sous une autre adresse : ses ajouts restent
- * activables par le lien deja envoye.
- */
-export const reassignPendingEmailsAddedByDao = async (
-  memberProfileId: string,
-  fromUserId: string,
-  toUserId: string
-): Promise<void> => {
-  await getDb()
-    .update(memberProfileEmail)
-    .set({addedByUserId: toUserId})
-    .where(
-      and(
-        eq(memberProfileEmail.memberProfileId, memberProfileId),
-        eq(memberProfileEmail.addedByUserId, fromUserId),
-        eq(memberProfileEmail.status, 'pending')
-      )
-    )
-}

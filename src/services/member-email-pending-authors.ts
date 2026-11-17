@@ -10,7 +10,7 @@ type PendingRowOfAuthor = {
 }
 
 /**
- * Les attentes d'un lien encore activables (revues s54 C1, mi1, mi3, mi4 ;
+ * Les attentes d'un lien encore activables (revues s54 C1, mi1, mi4 ;
  * ADR 056 §5) : l'auteur de chacune, lu attente par attente, doit etre encore
  * relie a sa fiche ; une attente sans auteur ne l'est jamais. Rend aussi les
  * fiches reliees a l'un des auteurs, pour la revérification du critere 7.

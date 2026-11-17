@@ -284,11 +284,10 @@ export const decideConfirmation = ({
 
 /**
  * Les attentes d'un lien encore activables (revue s54, C1 ; ADR 056 §5) :
- * celles dont l'auteur, lu attente par attente (revue mi3), est encore
- * relie a la fiche. Un auteur delie d'une
- * fiche (adresse retiree, compte ferme) ne peut plus y faire activer
- * d'adresse ; une attente sans auteur (compte supprime) n'est jamais
- * activable (revue mi4, fail-closed).
+ * celles dont l'auteur, lu attente par attente, est encore relie a la
+ * fiche. Un auteur delie d'une fiche (adresse retiree, remplacee, compte
+ * ferme) ne peut plus y faire activer d'adresse ; une attente sans auteur
+ * (compte supprime) n'est jamais activable (revue mi4, fail-closed).
  */
 export const pendingRowsStillAuthored = <
   Row extends {memberProfileId: string; addedByUserId: string | null},

@@ -389,7 +389,7 @@ describe('l’auteur d’une attente n’est plus relié à la fiche (revue C1)'
     ).toEqual([])
   })
 
-  it('chaque attente est jugée sur son propre auteur (revue mi3)', () => {
+  it('chaque attente est jugée sur son propre auteur', () => {
     expect(
       pendingRowsStillAuthored(
         [row('p1', 'user-claire-b'), row('p2', 'user-claire')],

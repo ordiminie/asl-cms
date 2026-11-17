@@ -15,7 +15,6 @@ vi.mock('@/db/tenant-scope', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
   deletePendingEmailsAddedByDao: vi.fn(),
-  reassignPendingEmailsAddedByDao: vi.fn(),
   deleteMemberProfileEmailDao: vi.fn(),
   getMemberProfileEmailsDao: vi.fn(),
   insertMemberProfileEmailDao: vi.fn(),
@@ -707,6 +706,22 @@ describe('[BUREAU] retirer l’adresse d’un proche qui a ajouté une adresse e
     expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalledWith(
       PROFILE_ID,
       JEAN_ID
+    )
+  })
+})
+
+describe('[BUREAU] modifier l’adresse d’un proche qui a ajouté une adresse en attente (revue C1-bis)', () => {
+  it('ses ajouts en attente sur cette fiche sont supprimés : le remplacement ne les transmet pas', async () => {
+    await updateMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: CLAIRE_EMAIL_ID,
+      email: 'claire.nouvelle@exemple.fr',
+    })
+
+    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      CLAIRE_ID
     )
   })
 })
