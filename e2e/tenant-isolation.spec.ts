@@ -361,6 +361,10 @@ test.describe('s19 — member_invoice et invoice_status_alert isolées entre ass
   const INVOICE_A = 'a1900000-0000-4000-8000-0000000000c1'
   /** Une facture de Marketing Pro (seed). */
   const INVOICE_B = 'b1900000-0000-4000-8000-0000000000d1'
+  /** Un statut déjà signalé chez TechCorp (seed). */
+  const ALERT_A = 'a1900000-0000-4000-8000-0000000000e1'
+  /** Un statut déjà signalé chez Marketing Pro (seed). */
+  const ALERT_B = 'b1900000-0000-4000-8000-0000000000f1'
 
   const inScope = async <T>(
     client: Client,
@@ -430,6 +434,55 @@ test.describe('s19 — member_invoice et invoice_status_alert isolées entre ass
              (organization_id, member_profile_id, parcel_id, source, year, issued_on, due_on, amount_cents, status)
            values ($1, $2, $3, 'site', 2026, '2026-01-01', '2026-02-01', 100, 'Forgé')`,
           [b, invoice.member_profile_id, invoice.parcel_id]
+        )
+      ).rejects.toThrow(/row-level security/i)
+
+      await client.query('rollback')
+    })
+  })
+
+  test('chaque association ne lit que ses alertes ; celle de B est invisible depuis A', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      const fromA = await inScope(client, a, () =>
+        client.query<{id: string; organization_id: string}>(
+          'select id, organization_id from invoice_status_alert'
+        )
+      )
+      const fromB = await inScope(client, b, () =>
+        client.query<{id: string; organization_id: string}>(
+          'select id, organization_id from invoice_status_alert'
+        )
+      )
+      const forgedFromA = await inScope(client, a, () =>
+        client.query('select id from invoice_status_alert where id = $1', [
+          ALERT_B,
+        ])
+      )
+
+      expect(fromA.rows.map((row) => row.id)).toContain(ALERT_A)
+      expect(fromA.rows.map((row) => row.id)).not.toContain(ALERT_B)
+      for (const row of fromA.rows) expect(row.organization_id).toBe(a)
+      expect(fromB.rows.map((row) => row.id)).toContain(ALERT_B)
+      expect(forgedFromA.rowCount).toBe(0)
+    })
+  })
+
+  test('écrire une alerte pour une autre association est refusé', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      await client.query('begin')
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        a,
+      ])
+
+      await expect(
+        client.query(
+          `insert into invoice_status_alert (organization_id, status)
+           values ($1, 'Forgé')`,
+          [b]
         )
       ).rejects.toThrow(/row-level security/i)
 

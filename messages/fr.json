@@ -4370,6 +4370,7 @@
         "incident_report": "Signalement reçu depuis le site",
         "member_question": "Question d’un membre",
         "member_email_confirmation": "Lien de confirmation d’une adresse",
+        "invoice_status": "Statut de facture à classer",
         "other": "Notification au bureau"
       },
       "details": {
@@ -4382,7 +4383,8 @@
         "campaign": "Voir la campagne",
         "contact_message": "Voir le message",
         "incident_report": "Voir le signalement",
-        "member_question": "Voir la question"
+        "member_question": "Voir la question",
+        "invoice_status": "Voir les réglages"
       }
     },
     "pagination": {

@@ -9,6 +9,7 @@ import initDotEnv, {maskDbUrl} from './env'
 import {TEST_TENANT_CATEGORIES} from './tenant-categories-seed'
 import {
   TEST_INVOICE_DEMO_SETTINGS,
+  TEST_INVOICE_STATUS_ALERTS,
   TEST_MEMBER_INVOICES,
 } from './tenant-member-invoices-seed'
 import {
@@ -720,6 +721,18 @@ const seed = async () => {
         invoice.amountCents,
         invoice.status,
       ]
+    )
+  }
+  for (const alert of TEST_INVOICE_STATUS_ALERTS) {
+    await client.query(
+      `
+      INSERT INTO "invoice_status_alert" (id, organization_id, status)
+      SELECT $2, o.id, $3
+      FROM "organization" o
+      WHERE o.slug = $1
+      ON CONFLICT DO NOTHING;
+    `,
+      [alert.organizationSlug, alert.id, alert.status]
     )
   }
   await client.query(`SET app.bypass_rls = 'off';`)

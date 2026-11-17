@@ -52,6 +52,7 @@ const REFERENCE_TYPES = new Set<string>([
   'contact_message',
   'incident_report',
   'member_question',
+  'invoice_status',
 ] satisfies EmailSendReferenceType[])
 
 const referenceOf = (row: PendingDeferredEmail): PendingSendDTO['reference'] =>

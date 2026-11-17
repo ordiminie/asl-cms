@@ -15,6 +15,7 @@ import {
 
 import {
   TEST_INVOICE_DEMO_SETTINGS,
+  TEST_INVOICE_STATUS_ALERTS,
   TEST_MEMBER_INVOICES,
 } from './tenant-member-invoices-seed'
 import {
@@ -161,5 +162,32 @@ describe('TEST_INVOICE_DEMO_SETTINGS — classement de démonstration (seed seul
     expect(TEST_TENANT_SETTINGS.filter((row) => demoKeys.has(row.key))).toEqual(
       []
     )
+  })
+})
+
+describe('TEST_INVOICE_STATUS_ALERTS — statuts déjà signalés (preuve RLS de invoice_status_alert)', () => {
+  it('une alerte à identifiant fixe par association, pour l’accès croisé', () => {
+    for (const alert of TEST_INVOICE_STATUS_ALERTS) {
+      expect(alert.id, alert.id).toMatch(UUID)
+    }
+    expect(
+      TEST_INVOICE_STATUS_ALERTS.map((row) => row.organizationSlug).toSorted()
+    ).toEqual([MARKETING, TECHCORP])
+  })
+
+  it('un statut à classer pour son association, qu’aucune facture du seed ne porte', () => {
+    const invoiceStatuses = new Set(
+      TEST_MEMBER_INVOICES.map((row) => row.status)
+    )
+    for (const alert of TEST_INVOICE_STATUS_ALERTS) {
+      expect(
+        classifyInvoiceStatus(
+          alert.status,
+          classificationOf(alert.organizationSlug)
+        ),
+        alert.id
+      ).toBe('unclassified')
+      expect(invoiceStatuses.has(alert.status), alert.id).toBe(false)
+    }
   })
 })

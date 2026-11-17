@@ -153,3 +153,31 @@ export const TEST_INVOICE_DEMO_SETTINGS: readonly TestTenantSetting[] = [
     value: PAID,
   },
 ]
+
+export type TestInvoiceStatusAlert = {
+  id: string
+  organizationSlug: string
+  status: string
+}
+
+/** Un statut fictif que la configuration de demonstration ne classe pas. */
+const ALREADY_SIGNALED = 'Litige'
+
+/**
+ * Statuts **deja signales** au bureau, un par association : sans eux, la table
+ * `invoice_status_alert` serait vide au moment des preuves RLS, qui
+ * passeraient alors sans policy (revue s19, M1). Aucune facture du seed ne
+ * porte ce statut : le signalement des autres reste demontrable.
+ */
+export const TEST_INVOICE_STATUS_ALERTS: readonly TestInvoiceStatusAlert[] = [
+  {
+    id: 'a1900000-0000-4000-8000-0000000000e1',
+    organizationSlug: TECHCORP,
+    status: ALREADY_SIGNALED,
+  },
+  {
+    id: 'b1900000-0000-4000-8000-0000000000f1',
+    organizationSlug: MARKETING,
+    status: ALREADY_SIGNALED,
+  },
+]

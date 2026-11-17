@@ -3,6 +3,7 @@ import 'server-only'
 import {cache} from 'react'
 
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {ValidationParsedZodError} from '@/services/errors/validation-error'
 import {
   canManageMemberInvoicesService,
   getMemberInvoiceService,
@@ -44,12 +45,21 @@ export const getMemberInvoicesForBureauDal = cache(
   }
 )
 
-/** Une facture de la fiche, ou rien (identifiant forge, autre fiche). */
+/**
+ * Une facture de la fiche, ou rien (identifiant forge, autre fiche). Un
+ * identifiant malforme, qui ne peut designer aucune facture, devient aussi
+ * `undefined`, que la page traduit en 404 : un refus ou une panne remonte.
+ */
 export const getMemberInvoiceForBureauDal = cache(
   async (
     organizationId: string,
     memberProfileId: string,
     invoiceId: string
   ): Promise<BoardInvoiceDTO | undefined> =>
-    getMemberInvoiceService(organizationId, memberProfileId, invoiceId)
+    getMemberInvoiceService(organizationId, memberProfileId, invoiceId).catch(
+      (error: unknown) => {
+        if (error instanceof ValidationParsedZodError) return undefined
+        throw error
+      }
+    )
 )

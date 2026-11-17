@@ -245,6 +245,16 @@ function usePendingTexts() {
         },
       }
     }
+    if (reference?.type === 'invoice_status') {
+      return {
+        title: t('titles.invoice_status'),
+        detail: null,
+        action: {
+          href: '/bureau/reglages',
+          label: t('actions.invoice_status'),
+        },
+      }
+    }
     if (send.nature === 'member_email_confirmation') {
       return {
         title: t('titles.member_email_confirmation'),

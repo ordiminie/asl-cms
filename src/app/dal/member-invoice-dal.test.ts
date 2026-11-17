@@ -11,6 +11,8 @@ vi.mock('@/services/facades/member-invoice-service-facade', () => ({
 }))
 
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {AuthorizationError} from '@/services/errors/authorization-error'
+import {ValidationParsedZodError} from '@/services/errors/validation-error'
 import {
   canManageMemberInvoicesService,
   getMemberInvoiceService,
@@ -69,5 +71,25 @@ describe('member-invoice-dal — factures d’une fiche, pour le bureau (s19)', 
       PROFILE_ID,
       INVOICE_ID
     )
+  })
+
+  it('traduit un identifiant de facture malformé en undefined, que la page rend en 404', async () => {
+    vi.mocked(getMemberInvoiceService).mockRejectedValue(
+      new ValidationParsedZodError()
+    )
+
+    await expect(
+      getMemberInvoiceForBureauDal(ORG_A, PROFILE_ID, 'abc')
+    ).resolves.toBeUndefined()
+  })
+
+  it('laisse remonter un refus', async () => {
+    vi.mocked(getMemberInvoiceService).mockRejectedValue(
+      new AuthorizationError()
+    )
+
+    await expect(
+      getMemberInvoiceForBureauDal(ORG_A, PROFILE_ID, INVOICE_ID)
+    ).rejects.toBeInstanceOf(AuthorizationError)
   })
 })

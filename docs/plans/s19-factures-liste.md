@@ -158,3 +158,15 @@ montant en centimes ; statuts de saisie = union des deux listes ; nature d'email
 - Aucune valeur de statut dans le code ni dans la configuration livrée ; aucun champ de paiement ; rien de
   nominatif dans les journaux.
 - Revue `/ks-review` passée (`Ship allowed: yes`).
+
+## Correctifs de revue (tour 1, arbitrés le 17/11 : corriger avant la PR)
+
+- [x] **M1** — Poser une ligne `invoice_status_alert` par tenant (seed ou insertion `asMaintenance` dans la
+  spec), puis trois tests e2e d'accès croisé comme pour `member_invoice` : hors scope → 0 ; scope A ne voit
+  pas l'alerte de B ; insertion `organization_id = B` sous le scope A → refus `row-level security`.
+- [x] **m1** — `member-invoice-dal.ts` : identifiant de facture malformé → `undefined` → 404, comme
+  `getMemberProfileForBureauDal` ; test de page.
+- [x] **m2** — `'invoice_status'` dans `REFERENCE_TYPES` (`email-budget-rules.ts`) + branche `pendingTexts`
+  (« Statut de facture à classer », lien `/bureau/reglages`) + libellés `fr.json` ; test.
+- [x] **m4** — Aligner le commentaire et `cleanUpRun` de `e2e/member-invoices.spec.ts` sur ce qui est
+  réellement nettoyé (alertes comprises si M1 en crée).

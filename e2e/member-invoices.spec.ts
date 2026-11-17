@@ -144,7 +144,11 @@ const asMaintenance = <T>(callback: (client: Client) => Promise<T>) =>
     }
   })
 
-/** Chaque essai retire ce qu'il a écrit, et ce qu'il a signalé. */
+/**
+ * Chaque essai retire les factures qu'il a écrites. Il ne signale rien : la
+ * saisie porte un statut classé (« En attente »), et les statuts déjà signalés
+ * viennent du seed (`TEST_INVOICE_STATUS_ALERTS`), qui n'est pas à défaire.
+ */
 const cleanUpRun = () =>
   asMaintenance(async (client) => {
     await client.query(
