@@ -170,3 +170,12 @@ montant en centimes ; statuts de saisie = union des deux listes ; nature d'email
   (« Statut de facture à classer », lien `/bureau/reglages`) + libellés `fr.json` ; test.
 - [x] **m4** — Aligner le commentaire et `cleanUpRun` de `e2e/member-invoices.spec.ts` sur ce qui est
   réellement nettoyé (alertes comprises si M1 en crée).
+
+## Correctif CI (PR 73, 17/11)
+
+- [x] **CI-1** — `e2e/association-settings.spec.ts:249` (s02, critère 6) attend que le tenant B ne stocke que
+  `contact.email` ; le seed de démonstration de s19 (`TEST_INVOICE_DEMO_SETTINGS`) lui ajoute
+  `billing.unpaid_statuses` et `billing.settled_statuses`. Garder le seed (utilisé par `member-invoices.spec.ts`)
+  et faire dériver l'attente exacte du jeu seedé (contact + lignes de démonstration de B importées du module de
+  seed), sans recopier de valeur de statut en dur. Vérifier aucune autre spec n'affirme le jeu exact des
+  réglages d'un tenant.
