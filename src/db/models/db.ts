@@ -14,6 +14,7 @@ import * as deferredEmail from './deferred-email-model'
 import * as emailSendBudget from './email-send-budget-model'
 import * as impersonationEvent from './impersonation-event-model'
 import * as incidentReport from './incident-report-model'
+import * as memberInvoice from './member-invoice-model'
 import * as memberNote from './member-note-model'
 import * as memberProfileAccount from './member-profile-account-model'
 import * as memberProfileEmail from './member-profile-email-model'
@@ -72,6 +73,7 @@ const db = drizzle(pool, {
     ...memberRoleEvent,
     ...memberNote,
     ...memberQuestion,
+    ...memberInvoice,
     ...campaign,
     ...scheduledJob,
     ...emailSendBudget,

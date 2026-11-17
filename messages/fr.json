@@ -976,6 +976,19 @@
           "body": "**[Texte provisoire — à remplacer avant l’envoi]**\n\nBonjour {nom},\n\nLe procès-verbal et les documents de la dernière assemblée générale sont publiés. Vous pouvez les consulter depuis votre espace membre.\n\nPour toute question, répondez simplement à cet email.\n\nMessage envoyé le {date}.\n\nLe bureau de l’association"
         }
       }
+    },
+    "invoice": {
+      "statusAlert": {
+        "subject": "ASL {name} — un statut de facture est à classer",
+        "preview": "Le statut « {status} » n’est rangé dans aucune liste des réglages",
+        "title": "Un statut de facture est à classer",
+        "intro": "Une facture porte le statut « {status} », qui n’est rangé ni parmi les statuts « impayé », ni parmi les statuts « réglé » des réglages de l’association.",
+        "consequence": "Tant qu’il n’est pas classé, les factures qui le portent ne sont comptées ni comme réglées, ni comme impayées : elles restent hors des relances.",
+        "count": "{count, plural, one {# facture porte ce statut aujourd’hui.} other {# factures portent ce statut aujourd’hui.}}",
+        "howTo": "Pour le classer, recopiez-le tel quel dans l’une des deux listes de la carte « Factures » des réglages. Vous ne recevrez pas d’autre email pour ce statut.",
+        "urlIntro": "Ouvrir les réglages de l’association :",
+        "footer": "Cet email vous est envoyé parce qu’une facture du site de {name} porte un statut inconnu, et que cette adresse est celle que l’association a choisie pour ces signalements."
+      }
     }
   },
   "Tasks": {
@@ -2061,7 +2074,8 @@
       "unknownKey": "Ce réglage n'existe pas ou n'est plus proposé.",
       "tooLong": "{excess, plural, one {# caractère de trop.} other {# caractères de trop.}}",
       "invalidCode": "Ce code ne ressemble pas à celui de Google : il ne contient que des lettres, des chiffres, des tirets et des soulignés.",
-      "notBelow": "Saisissez un nombre inférieur à {max}."
+      "notBelow": "Saisissez un nombre inférieur à {max}.",
+      "statusInBothLists": "Un statut ne peut pas valoir à la fois « impayé » et « réglé » : retirez-le de l’une des deux listes."
     },
     "fields": {
       "contactEmail": {
@@ -2157,6 +2171,28 @@
         "label": "Commune du terrain par défaut",
         "help": "La commune des terrains de l’association. L’import des membres l’écrit dans l’adresse du terrain d’une fiche créée sans adresse de terrain.",
         "whenEmpty": "Vide : une fiche importée sans adresse de terrain garde un terrain vide."
+      },
+      "billingProvider": {
+        "label": "Source des factures",
+        "help": "D’où viennent les factures que les membres voient dans leur espace. Réglé par l’équipe technique de la plateforme."
+      },
+      "invoiceSubject": {
+        "label": "Objet des factures",
+        "help": "Le texte affiché aux membres comme objet de chaque facture. '{année}' y est remplacé par l’année de la facture, par exemple « Cotisation et eau '{année}' »."
+      },
+      "unpaidStatuses": {
+        "label": "Statuts qui valent « impayé »",
+        "help": "Un statut par ligne, écrit exactement comme la source l’écrit, majuscules comprises. Une facture qui porte l’un de ces statuts est comptée comme impayée.",
+        "whenEmpty": "Vide : aucune facture n’est comptée comme impayée."
+      },
+      "settledStatuses": {
+        "label": "Statuts qui valent « réglé »",
+        "help": "Un statut par ligne, écrit exactement comme la source l’écrit. Un statut absent des deux listes est « à classer » : il n’est compté ni comme réglé, ni comme impayé.",
+        "whenEmpty": "Vide : aucune facture n’est comptée comme réglée."
+      },
+      "billingAlertEmail": {
+        "label": "Adresse des signalements de facture",
+        "help": "Reçoit un email quand une facture porte un statut qui n’est dans aucune des deux listes, une seule fois par statut."
       }
     },
     "hues": {
@@ -2175,7 +2211,10 @@
       "attempts": "tentatives",
       "days": "jours"
     },
-    "counter": "{count} / {max}"
+    "counter": "{count} / {max}",
+    "billingProviders": {
+      "manual": "Saisie par le bureau"
+    }
   },
   "BureauSettingsPage": {
     "metadata": {
@@ -2202,6 +2241,10 @@
       "sending": {
         "title": "Envois",
         "description": "Le rythme d’envoi des campagnes. Un changement s’applique aux prochains envois ; une campagne déjà lancée garde son plan."
+      },
+      "billing": {
+        "title": "Factures",
+        "description": "Comment les factures des membres s’affichent dans leur espace, et quels statuts comptent comme impayés."
       }
     },
     "submit": "Enregistrer les réglages",
@@ -3851,6 +3894,31 @@
       "errors": {
         "failed": "L’enregistrement a échoué. Rien n’a été enregistré : réessayez dans un instant."
       }
+    },
+    "invoices": {
+      "title": "Mes factures",
+      "intro": "{count, plural, one {Vos factures, les plus récentes en premier.} other {Les factures de vos # terrains, les plus récentes en premier.}}",
+      "caption": "Mes factures, les plus récentes en premier",
+      "columns": {
+        "issuedOn": "Émise le",
+        "subject": "Objet",
+        "land": "Terrain",
+        "amount": "Montant",
+        "dueOn": "Échéance",
+        "status": "Statut"
+      },
+      "parcel": "Parcelle <mono>{number}</mono>",
+      "meter": "Compteur <mono>{number}</mono>",
+      "meterMissing": "Compteur non renseigné",
+      "holder": "Au nom de {name}",
+      "amount": "{amount} €",
+      "empty": "Aucune facture pour l’instant. Elles apparaîtront ici dès que le bureau les aura enregistrées.",
+      "mistake": "Une facture vous semble fausse ?",
+      "contact": "Écrivez au bureau depuis la page Contact.",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "range": "{from} à {to} sur {total}",
+      "page": "Page {page} sur {total}"
     }
   },
   "MemberReportPage": {
@@ -4322,6 +4390,99 @@
       "previous": "Précédent",
       "next": "Suivant",
       "position": "Page {page} sur {total} · {count, plural, one {# envoi en attente} other {# envois en attente}}"
+    }
+  },
+  "BureauMemberInvoices": {
+    "metadata": {
+      "newTitle": "Ajouter une facture",
+      "editTitle": "Facture d’un propriétaire"
+    },
+    "card": {
+      "title": "Factures",
+      "caption": "Factures de {name}",
+      "columns": {
+        "issuedOn": "Émise le",
+        "subject": "Objet",
+        "amount": "Montant",
+        "dueOn": "Échéance",
+        "status": "Statut",
+        "source": "Source",
+        "action": "Action"
+      },
+      "parcel": "Parcelle <mono>{number}</mono>",
+      "amount": "{amount} €",
+      "sources": {
+        "site": "Saisie sur le site",
+        "pennylane": "Pennylane"
+      },
+      "readOnly": "Lecture seule",
+      "edit": "Modifier",
+      "editLabel": "Modifier la facture du {date}",
+      "add": "Ajouter une facture",
+      "empty": "Aucune facture pour ce propriétaire.",
+      "saved": "Facture enregistrée. {name} la voit dès maintenant dans son espace, carte « Mes factures »."
+    },
+    "form": {
+      "newTitle": "Ajouter une facture",
+      "editTitle": "Modifier la facture du {date}",
+      "readTitle": "Facture du {date}",
+      "breadcrumbNew": "Ajouter une facture",
+      "breadcrumbEdit": "Facture du {date}",
+      "parcel": {
+        "label": "Terrain facturé",
+        "help": "Les parcelles dont {name} est propriétaire à la date d’émission.",
+        "placeholder": "Choisir une parcelle",
+        "option": "Parcelle {number}",
+        "none": "Aucune parcelle de {name} à cette date d’émission."
+      },
+      "year": {
+        "label": "Année"
+      },
+      "amount": {
+        "label": "Montant",
+        "unit": "€"
+      },
+      "subjectPreview": "Objet affiché au membre : <strong>{subject}</strong>",
+      "issuedOn": {
+        "label": "Émise le"
+      },
+      "dueOn": {
+        "label": "Échéance"
+      },
+      "dateFormat": "jj/mm/aaaa",
+      "status": {
+        "label": "Statut",
+        "help": "Les statuts déclarés dans les réglages de l’association.",
+        "placeholder": "Choisir un statut",
+        "none": "Aucun statut n’est déclaré : ajoutez-en dans la carte « Factures » des réglages avant de saisir une facture."
+      },
+      "source": "Source",
+      "submit": "Enregistrer la facture",
+      "submitting": "Enregistrement…",
+      "cancel": "Annuler",
+      "back": "Revenir à la fiche",
+      "summary": "{count, plural, one {Un champ est à corriger :} other {# champs sont à corriger :}}"
+    },
+    "readOnly": {
+      "notice": "Cette facture vient de Pennylane. Elle se lit ici mais se corrige dans Pennylane.",
+      "refused": "La facture n’a pas été modifiée. Elle vient de Pennylane et ne se corrige que là-bas. Rien n’est perdu."
+    },
+    "validation": {
+      "parcelRequired": "Choisissez le terrain facturé.",
+      "year": "Saisissez une année à quatre chiffres, par exemple 2026.",
+      "amount": "Saisissez un montant positif, par exemple 412,50.",
+      "date": "Saisissez une date au format jj/mm/aaaa, par exemple 15/03/2026.",
+      "dueBeforeIssue": "L’échéance ne peut pas précéder la date d’émission ({date}).",
+      "statusRequired": "Choisissez un statut."
+    },
+    "refusals": {
+      "parcelNotOwned": "Ce propriétaire ne possède pas cette parcelle à la date d’émission. Choisissez une autre parcelle ou corrigez la date.",
+      "unknownStatus": "Ce statut n’est plus déclaré dans les réglages de l’association. Choisissez-en un autre."
+    },
+    "errors": {
+      "forbidden": "Vous n’avez pas accès aux factures de cette association.",
+      "notFound": "Cette facture n’existe plus.",
+      "failed": "La facture n’a pas été enregistrée. Rien n’est perdu : vos saisies sont conservées."
     }
   }
 }

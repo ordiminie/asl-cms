@@ -137,6 +137,13 @@ export const ActionIdConst = {
    * precedent de `REPORT_MANAGE`. Un membre simple n'y a aucun acces.
    */
   QUESTION_MANAGE: 'question.manage',
+  /**
+   * Saisir et corriger les factures des membres (s19, ADR 059), et lire celles
+   * d'une fiche dans le back-office. Une entree a part de
+   * `MEMBER_PROFILE_MANAGE` : s37 pourra la regler seule. Un membre simple n'y
+   * a aucun acces ; il lit les siennes dans son espace.
+   */
+  INVOICE_MANAGE: 'member.invoice.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -202,6 +209,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.QUESTION_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.INVOICE_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

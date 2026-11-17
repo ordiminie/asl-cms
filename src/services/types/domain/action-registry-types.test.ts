@@ -168,3 +168,26 @@ describe("ACTION_REGISTRY — analyses d'eau (s09)", () => {
     ).toBe(false)
   })
 })
+
+describe('ACTION_REGISTRY — factures des membres (s19, ADR 059)', () => {
+  it('member.invoice.manage autorise la Presidente et le bureau, refuse un membre simple', () => {
+    expect(ActionIdConst.INVOICE_MANAGE).toBe('member.invoice.manage')
+    for (const role of ['owner', 'board'] as const) {
+      expect(
+        isActionAllowedForRole(
+          ACTION_REGISTRY,
+          ActionIdConst.INVOICE_MANAGE,
+          role
+        ),
+        role
+      ).toBe(true)
+    }
+    expect(
+      isActionAllowedForRole(
+        ACTION_REGISTRY,
+        ActionIdConst.INVOICE_MANAGE,
+        'member'
+      )
+    ).toBe(false)
+  })
+})

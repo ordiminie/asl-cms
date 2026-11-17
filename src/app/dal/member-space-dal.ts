@@ -9,6 +9,7 @@ import {
 } from '@/services/facades/incident-report-service-facade'
 import {
   getMyContactService,
+  getMyInvoicesService,
   getMyLandsService,
   isPlainMemberOfService,
 } from '@/services/facades/member-space-service-facade'
@@ -20,6 +21,7 @@ import {
 import type {MyEmailsDTO} from '@/services/types/domain/member-email-types'
 import {
   MyContactDTO,
+  MyInvoicesDTO,
   MyLandsDTO,
 } from '@/services/types/domain/member-space-types'
 
@@ -81,5 +83,16 @@ export const getMyEmailsDal = cache(
   async (): Promise<MyEmailsDTO | undefined> => {
     const tenant = await requireCurrentTenantDal()
     return getMyEmailsService(tenant.id)
+  }
+)
+
+/**
+ * « Mes factures » du compte connecte, sur l'association du domaine (s19).
+ * Sans cache : une facture saisie par le bureau se voit a la lecture suivante.
+ */
+export const getMyInvoicesDal = cache(
+  async (): Promise<MyInvoicesDTO | undefined> => {
+    const tenant = await requireCurrentTenantDal()
+    return getMyInvoicesService(tenant.id)
   }
 )

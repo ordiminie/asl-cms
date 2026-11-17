@@ -32,6 +32,8 @@ import {getActingContext} from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {
   ACCENT_HUE_SETTING_KEY,
+  BILLING_SETTLED_STATUSES_SETTING_KEY,
+  BILLING_UNPAID_STATUSES_SETTING_KEY,
   CONTACT_EMAIL_SETTING_KEY,
   EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
   EMAIL_LOGIN_RESERVE_SETTING_KEY,
@@ -326,5 +328,52 @@ describe('canEditSuperAdminOnlySettingsService — qui modifie la limite et la r
       impersonator: {id: 'superadmin', name: 'Zoé Support'},
     })
     await expect(canEditSuperAdminOnlySettingsService()).resolves.toBe(true)
+  })
+})
+
+describe('updateAssociationSettingsService — classement des statuts de facture (s19, ADR 059 §4)', () => {
+  it('refuse un statut présent dans les deux listes, rien n’est écrit', async () => {
+    const result = await updateAssociationSettingsService(ORG_ID, {
+      [BILLING_UNPAID_STATUSES_SETTING_KEY]: 'En attente\nRelance 1',
+      [BILLING_SETTLED_STATUSES_SETTING_KEY]: 'Payée\n Relance 1 ',
+    })
+
+    expect(result).toEqual({
+      status: 'rejected',
+      errors: {
+        [BILLING_UNPAID_STATUSES_SETTING_KEY]: {code: 'statusInBothLists'},
+        [BILLING_SETTLED_STATUSES_SETTING_KEY]: {code: 'statusInBothLists'},
+      },
+    })
+    expect(saveOrganizationSettingsTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('juge la liste modifiée contre l’autre liste déjà enregistrée', async () => {
+    vi.mocked(getOrganizationSettingsDao).mockResolvedValue([
+      row(CONTACT_EMAIL_SETTING_KEY, 'contact@asl.test'),
+      row(BILLING_SETTLED_STATUSES_SETTING_KEY, 'Payée'),
+    ])
+
+    const result = await updateAssociationSettingsService(ORG_ID, {
+      [BILLING_UNPAID_STATUSES_SETTING_KEY]: 'Payée',
+    })
+
+    expect(result).toEqual({
+      status: 'rejected',
+      errors: {
+        [BILLING_UNPAID_STATUSES_SETTING_KEY]: {code: 'statusInBothLists'},
+      },
+    })
+    expect(saveOrganizationSettingsTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('deux listes disjointes s’enregistrent', async () => {
+    const result = await updateAssociationSettingsService(ORG_ID, {
+      [BILLING_UNPAID_STATUSES_SETTING_KEY]: 'En attente',
+      [BILLING_SETTLED_STATUSES_SETTING_KEY]: 'Payée',
+    })
+
+    expect(result).toEqual({status: 'saved'})
+    expect(saveOrganizationSettingsTxnDao).toHaveBeenCalledTimes(1)
   })
 })

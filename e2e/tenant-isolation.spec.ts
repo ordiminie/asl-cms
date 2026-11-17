@@ -355,3 +355,85 @@ test.describe('s54 — member_profile_email isolée entre associations', () => {
     })
   })
 })
+
+test.describe('s19 — member_invoice et invoice_status_alert isolées entre associations', () => {
+  /** Une facture de TechCorp (seed). */
+  const INVOICE_A = 'a1900000-0000-4000-8000-0000000000c1'
+  /** Une facture de Marketing Pro (seed). */
+  const INVOICE_B = 'b1900000-0000-4000-8000-0000000000d1'
+
+  const inScope = async <T>(
+    client: Client,
+    organizationId: string,
+    read: () => Promise<T>
+  ): Promise<T> => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        organizationId,
+      ])
+      return await read()
+    } finally {
+      await client.query('rollback')
+    }
+  }
+
+  test('hors scope de tenant, aucune facture ni alerte ne sort', async () => {
+    await withAppRoleClient(async (client) => {
+      expect(
+        (await client.query('select id from member_invoice')).rowCount
+      ).toBe(0)
+      expect(
+        (await client.query('select id from invoice_status_alert')).rowCount
+      ).toBe(0)
+    })
+  })
+
+  test('chaque association ne lit que ses factures ; un identifiant forgé de l’autre ne rend rien', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      const fromA = await inScope(client, a, () =>
+        client.query<{id: string; organization_id: string}>(
+          'select id, organization_id from member_invoice'
+        )
+      )
+      const forgedFromB = await inScope(client, b, () =>
+        client.query('select id from member_invoice where id = $1', [INVOICE_A])
+      )
+
+      expect(fromA.rows.map((row) => row.id)).toContain(INVOICE_A)
+      expect(fromA.rows.map((row) => row.id)).not.toContain(INVOICE_B)
+      for (const row of fromA.rows) expect(row.organization_id).toBe(a)
+      expect(forgedFromB.rowCount).toBe(0)
+    })
+  })
+
+  test('écrire une facture pour une autre association est refusé', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      await client.query('begin')
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        a,
+      ])
+      const [invoice] = (
+        await client.query<{member_profile_id: string; parcel_id: string}>(
+          'select member_profile_id, parcel_id from member_invoice where id = $1',
+          [INVOICE_A]
+        )
+      ).rows
+
+      await expect(
+        client.query(
+          `insert into member_invoice
+             (organization_id, member_profile_id, parcel_id, source, year, issued_on, due_on, amount_cents, status)
+           values ($1, $2, $3, 'site', 2026, '2026-01-01', '2026-02-01', 100, 'Forgé')`,
+          [b, invoice.member_profile_id, invoice.parcel_id]
+        )
+      ).rejects.toThrow(/row-level security/i)
+
+      await client.query('rollback')
+    })
+  })
+})

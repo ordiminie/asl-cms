@@ -19,6 +19,7 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
+import {releaseStatusAlertByIdDao} from '@/db/repositories/member-invoice-repository'
 import {
   getMemberProfileEmailsByTokenHashDao,
   updateMemberProfileEmailDao,
@@ -45,6 +46,10 @@ import IncidentReportMail, {
 } from '@/lib/emails/incident-report-email'
 import InternalEmail from '@/lib/emails/internal-email'
 import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization-link-email'
+import InvoiceStatusAlertMail, {
+  INVOICE_STATUS_ALERT_SUBJECT_MAX_LENGTH,
+  InvoiceStatusAlertEmailAssociation,
+} from '@/lib/emails/invoice-status-alert-email'
 import MagicLinkMail, {
   type MagicLinkEmailAssociation,
 } from '@/lib/emails/magic-link-email'
@@ -1386,6 +1391,7 @@ const MARK_SOURCE_NOTIFICATION_FAILED = new Map<
     contact_message: markContactMessageNotificationFailedDao,
     incident_report: markIncidentReportNotificationFailedDao,
     member_question: markMemberQuestionNotificationFailedDao,
+    invoice_status: releaseStatusAlertByIdDao,
   } satisfies Record<EmailSendReferenceType, (id: string) => Promise<void>>)
 )
 
@@ -1660,4 +1666,72 @@ const deferredEmailToSend = async (
         .replaceAll(CONFIRMATION_EXPIRY_PLACEHOLDER, expiresOn)
     ),
   }
+}
+
+/**
+ * Signale au bureau un statut de facture a classer (s19, ADR 059 §5, ecran 4) :
+ * le statut, le nombre de factures qui le portent et le lien vers les
+ * reglages. **Aucun nom ni montant.** Notification au bureau
+ * (`board_notification`, `recipientType: 'system'`) : decompte le budget du
+ * tenant et peut etre reportee (s52). Un echec du transport remonte a
+ * l'appelant, qui libere le signalement.
+ */
+export const sendInvoiceStatusAlertEmailService = async ({
+  organizationId,
+  alertId,
+  to,
+  locale,
+  association,
+  status,
+  invoiceCount,
+  settingsUrl,
+}: {
+  organizationId: string
+  /** Le signalement, designe au bureau si l'envoi est reporte. */
+  alertId: string
+  to: string
+  locale: SupportedLocale
+  association: InvoiceStatusAlertEmailAssociation
+  status: string
+  invoiceCount: number
+  settingsUrl: string
+}): Promise<EmailSendResult> => {
+  const t = await getTranslations({
+    locale,
+    namespace: 'email.invoice.statusAlert',
+  })
+  const text = [
+    t('title'),
+    t('intro', {status}),
+    t('consequence'),
+    t('count', {count: invoiceCount}),
+    t('howTo'),
+    `${t('urlIntro')}\n${settingsUrl}`,
+    t('footer', {name: association.name}),
+  ].join('\n\n')
+
+  return sendEmailService(
+    {
+      to,
+      subject: fitToLength(
+        t('subject', {name: association.name}),
+        INVOICE_STATUS_ALERT_SUBJECT_MAX_LENGTH
+      ),
+      text,
+      react: InvoiceStatusAlertMail({
+        association,
+        status,
+        invoiceCount,
+        settingsUrl,
+        locale,
+      }),
+    },
+    {
+      scope: 'tenant',
+      organizationId,
+      nature: 'board_notification',
+      reference: {type: 'invoice_status', id: alertId},
+    },
+    {recipientType: 'system'}
+  )
 }

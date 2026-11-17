@@ -10,10 +10,17 @@ import {getActingContext, getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
+import {
+  findStatusesInBothLists,
+  getInvoiceStatusClassification,
+} from './rules/member-invoice-rules'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingError,
+  AssociationSettingRow,
+  BILLING_SETTLED_STATUSES_SETTING_KEY,
+  BILLING_UNPAID_STATUSES_SETTING_KEY,
   isSuperAdminOnlySetting,
   ResolvedAssociationSettings,
   resolveSettings,
@@ -104,6 +111,14 @@ export const updateAssociationSettingsService = async (
     if (!validation.valid) {
       return {status: 'rejected', errors: validation.errors}
     }
+    const statusErrors = invoiceStatusListsErrors(
+      parsed.data.changes,
+      validation.upserts,
+      stored
+    )
+    if (Object.keys(statusErrors).length > 0) {
+      return {status: 'rejected', errors: statusErrors}
+    }
 
     await saveOrganizationSettingsTxnDao({
       organizationId: tenantId,
@@ -138,3 +153,32 @@ export const canEditSuperAdminOnlySettingsService =
       acting.impersonator !== undefined
     )
   }
+
+const INVOICE_STATUS_LIST_KEYS = [
+  BILLING_UNPAID_STATUSES_SETTING_KEY,
+  BILLING_SETTLED_STATUSES_SETTING_KEY,
+] as const
+
+/**
+ * Controle croise des deux listes de statuts de facture (s19, ADR 059 §4) :
+ * apres le lot, un statut ne peut pas etre a la fois « impaye » et « regle ».
+ * Le refus porte sur la ou les listes modifiees par le lot.
+ */
+const invoiceStatusListsErrors = (
+  changes: Record<string, string>,
+  upserts: readonly AssociationSettingRow[],
+  stored: readonly AssociationSettingRow[]
+): Record<string, AssociationSettingError> => {
+  const touched = INVOICE_STATUS_LIST_KEYS.filter((key) => key in changes)
+  if (touched.length === 0) return {}
+  const after = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+    ...stored.filter(({key}) => !(key in changes)),
+    ...upserts,
+  ])
+  if (findStatusesInBothLists(getInvoiceStatusClassification(after)).length) {
+    return Object.fromEntries(
+      touched.map((key) => [key, {code: 'statusInBothLists'} as const])
+    )
+  }
+  return {}
+}

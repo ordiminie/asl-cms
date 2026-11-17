@@ -21,7 +21,7 @@ export type AssociationSettingPage = 'settings' | 'identity'
  * Carte de la page « Reglages » qui regroupe le parametre. Absente : la carte
  * d'origine, celle des adresses de notification.
  */
-export type AssociationSettingSection = 'seo' | 'legal' | 'sending'
+export type AssociationSettingSection = 'seo' | 'legal' | 'sending' | 'billing'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -119,6 +119,7 @@ export const ASSOCIATION_SETTING_ERROR_CODES = [
   'invalidCode',
   'unknownKey',
   'notBelow',
+  'statusInBothLists',
 ] as const
 
 export type AssociationSettingErrorCode =
@@ -234,6 +235,38 @@ export const MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY =
 export const MEMBER_DEFAULT_LAND_CITY_SETTING_KEY = 'member.default_land_city'
 /** Plafond de la commune du terrain par defaut : celui d'une fiche. */
 export const MEMBER_DEFAULT_LAND_CITY_MAX_LENGTH = 100
+/**
+ * Fournisseur des factures des membres (s19, ADR 059 §7) : l'implementation de
+ * `MemberBillingProvider` en vigueur. `manual` en s19 ; s20 ajoute
+ * `pennylane`. Reserve au SuperAdmin.
+ */
+export const BILLING_PROVIDER_SETTING_KEY = 'billing.provider'
+export const BILLING_PROVIDER_MANUAL = 'manual'
+/**
+ * Modele de l'objet d'une facture (s19, ADR 059 §6) : `{année}` y est
+ * remplace par l'annee de la facture. Le libelle de la source n'est jamais
+ * affiche.
+ */
+export const BILLING_INVOICE_SUBJECT_SETTING_KEY = 'billing.invoice_subject'
+/** Balise du modele d'objet remplacee par l'annee de la facture. */
+export const INVOICE_SUBJECT_YEAR_TOKEN = '{année}'
+/**
+ * Statuts de facture qui valent « impayé » et « réglé » (s19, ADR 059 §4) :
+ * un par ligne, vides par defaut. Un statut absent des deux est « à classer ».
+ * Aucune valeur n'est livree : le bureau les recopie de sa source.
+ */
+export const BILLING_UNPAID_STATUSES_SETTING_KEY = 'billing.unpaid_statuses'
+export const BILLING_SETTLED_STATUSES_SETTING_KEY = 'billing.settled_statuses'
+/**
+ * Destinataire du signalement d'un statut de facture a classer (s19, ADR 059
+ * §5) ; repli sur l'adresse de contact.
+ */
+export const BILLING_ALERT_EMAIL_SETTING_KEY = 'billing.alert_email'
+/** Plafond du modele d'objet d'une facture. */
+export const BILLING_INVOICE_SUBJECT_MAX_LENGTH = 120
+/** Plafond d'une liste de statuts de facture. */
+export const BILLING_STATUS_LIST_MAX_LENGTH = 1000
+
 /** Plafond de la raison sociale. */
 export const ASSOCIATION_LEGAL_NAME_MAX_LENGTH = 120
 /** Plafond des mentions du pied de page. */
@@ -492,6 +525,66 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     helpKey: 'fields.defaultLandCity.help',
     whenEmptyKey: 'fields.defaultLandCity.whenEmpty',
     page: 'settings',
+  },
+  {
+    key: BILLING_PROVIDER_SETTING_KEY,
+    type: 'choice',
+    required: false,
+    default: {value: BILLING_PROVIDER_MANUAL},
+    options: [
+      {value: BILLING_PROVIDER_MANUAL, labelKey: 'billingProviders.manual'},
+    ],
+    labelKey: 'fields.billingProvider.label',
+    helpKey: 'fields.billingProvider.help',
+    page: 'settings',
+    section: 'billing',
+    editableBy: 'super_admin',
+  },
+  {
+    key: BILLING_INVOICE_SUBJECT_SETTING_KEY,
+    type: 'text',
+    required: true,
+    default: {value: `Facture ${INVOICE_SUBJECT_YEAR_TOKEN}`},
+    maxLength: BILLING_INVOICE_SUBJECT_MAX_LENGTH,
+    multiline: false,
+    labelKey: 'fields.invoiceSubject.label',
+    helpKey: 'fields.invoiceSubject.help',
+    page: 'settings',
+    section: 'billing',
+  },
+  {
+    key: BILLING_UNPAID_STATUSES_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: BILLING_STATUS_LIST_MAX_LENGTH,
+    multiline: true,
+    labelKey: 'fields.unpaidStatuses.label',
+    helpKey: 'fields.unpaidStatuses.help',
+    whenEmptyKey: 'fields.unpaidStatuses.whenEmpty',
+    page: 'settings',
+    section: 'billing',
+  },
+  {
+    key: BILLING_SETTLED_STATUSES_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: BILLING_STATUS_LIST_MAX_LENGTH,
+    multiline: true,
+    labelKey: 'fields.settledStatuses.label',
+    helpKey: 'fields.settledStatuses.help',
+    whenEmptyKey: 'fields.settledStatuses.whenEmpty',
+    page: 'settings',
+    section: 'billing',
+  },
+  {
+    key: BILLING_ALERT_EMAIL_SETTING_KEY,
+    type: 'email',
+    required: false,
+    default: {fromKey: CONTACT_EMAIL_SETTING_KEY},
+    labelKey: 'fields.billingAlertEmail.label',
+    helpKey: 'fields.billingAlertEmail.help',
+    page: 'settings',
+    section: 'billing',
   },
 ]
 

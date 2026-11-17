@@ -10,14 +10,25 @@ import {
 } from '@/db/repositories/parcel-ownership-repository'
 import {withTenant} from '@/db/tenant-scope'
 
+import {getAssociationSettingsService} from './association-settings-service'
 import {getAuthUser} from './authentication/auth-service'
+import {resolveMemberBillingProvider} from './billing/resolve-member-billing-provider'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {getMyMemberProfiles} from './member-account-service'
+import {
+  classifyInvoiceStatus,
+  composeInvoiceSubject,
+  getInvoiceStatusClassification,
+  getInvoiceSubjectTemplate,
+} from './rules/member-invoice-rules'
 import {UserOrganizationRoleConst} from './types/domain/auth-types'
+import type {MemberInvoice} from './types/domain/member-invoice-types'
 import {
   MyContactDTO,
   MyContactGroupDTO,
+  MyInvoiceDTO,
+  MyInvoicesDTO,
   MyLandDTO,
   MyLandsDTO,
   MyPostalContactDTO,
@@ -231,5 +242,76 @@ export const updateMyContactService = async (
     // groupe a calculer.
     const written = rows.map((row) => ({...row, currentParcelNumbers: []}))
     return {status: 'saved', contact: toMyContact(written, authUser.name)}
+  })
+}
+
+/**
+ * Une facture vue par le membre (s19) : objet compose, terrain facture, nom
+ * de la fiche s'il n'est pas celui du compte, statut brut et sa classe.
+ */
+const toMyInvoice = (
+  invoice: MemberInvoice,
+  context: {
+    subjectTemplate: string
+    classification: ReturnType<typeof getInvoiceStatusClassification>
+    profileNames: ReadonlyMap<string, string>
+    accountName: string
+  }
+): MyInvoiceDTO => {
+  const name = context.profileNames.get(invoice.memberProfileId)
+  return {
+    issuedOn: invoice.issuedOn,
+    subject: composeInvoiceSubject(context.subjectTemplate, invoice.year),
+    parcelNumber: invoice.parcelNumber,
+    meterNumber: invoice.meterNumber,
+    holderName: name && name !== context.accountName ? name : null,
+    amountCents: invoice.amountCents,
+    dueOn: invoice.dueOn,
+    status: invoice.status,
+    statusClass: classifyInvoiceStatus(invoice.status, context.classification),
+  }
+}
+
+/**
+ * « Mes factures » du proprietaire connecte (s19, criteres 1 a 7 et 10) :
+ * les factures de **toutes** les fiches reliees a son compte, lues par le
+ * fournisseur de l'association, quel qu'il soit, emission decroissante.
+ * Aucun identifiant en entree ; rien pour un compte sans fiche.
+ */
+export const getMyInvoicesService = async (
+  organizationId: string
+): Promise<MyInvoicesDTO | undefined> => {
+  const parsed = memberProfileOrganizationIdSchema.safeParse(organizationId)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const authUser = await getAuthUser()
+  if (!authUser) {
+    throw new AuthorizationError('Connectez-vous pour voir vos factures')
+  }
+
+  return withTenant(parsed.data, async () => {
+    const profiles = await getMyMemberProfiles(parsed.data, authUser.id)
+    if (profiles.length === 0) return undefined
+
+    const settings = await getAssociationSettingsService(parsed.data)
+    const provider = resolveMemberBillingProvider(settings)
+    const invoices = await provider.listInvoicesOf(
+      parsed.data,
+      profiles.map((profile) => profile.id)
+    )
+    const context = {
+      subjectTemplate: getInvoiceSubjectTemplate(settings),
+      classification: getInvoiceStatusClassification(settings),
+      profileNames: new Map(profiles.map(({id, name}) => [id, name])),
+      accountName: authUser.name,
+    }
+    return {
+      landCount: profiles.length,
+      invoices: invoices
+        .toSorted((a, b) => b.issuedOn.localeCompare(a.issuedOn))
+        .map((invoice) => toMyInvoice(invoice, context)),
+    }
   })
 }

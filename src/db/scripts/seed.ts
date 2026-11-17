@@ -8,6 +8,10 @@ import {resolveMigrationUrl} from './db-url'
 import initDotEnv, {maskDbUrl} from './env'
 import {TEST_TENANT_CATEGORIES} from './tenant-categories-seed'
 import {
+  TEST_INVOICE_DEMO_SETTINGS,
+  TEST_MEMBER_INVOICES,
+} from './tenant-member-invoices-seed'
+import {
   TEST_MEMBER_PROFILES,
   TEST_PARCEL_OWNERSHIPS,
 } from './tenant-member-profiles-seed'
@@ -660,6 +664,61 @@ const seed = async () => {
         ownership.memberProfileId,
         ownership.startsOn,
         ownership.endsOn,
+      ]
+    )
+  }
+
+  // 15b. Factures des membres (s19, ADR 059) et classement de demonstration
+  //
+  // Sous RLS forcee : meme porte que ci-dessus. Le classement des statuts est
+  // une configuration de **demonstration**, jamais livree (amendement du
+  // 15/11). Chaque facture est remise a ses valeurs declarees.
+  for (const setting of TEST_INVOICE_DEMO_SETTINGS) {
+    await client.query(
+      `
+      INSERT INTO "organization_setting" (organization_id, key, value, updated_at)
+      SELECT o.id, $2, $3, NOW()
+      FROM "organization" o
+      WHERE o.slug = $1
+      ON CONFLICT (organization_id, key)
+      DO UPDATE SET value = EXCLUDED.value, updated_at = NOW(), updated_by = NULL;
+    `,
+      [setting.organizationSlug, setting.key, setting.value]
+    )
+  }
+  for (const invoice of TEST_MEMBER_INVOICES) {
+    await client.query(
+      `
+      INSERT INTO "member_invoice" (id, organization_id, member_profile_id, parcel_id, source, external_id, year, issued_on, due_on, amount_cents, status)
+      SELECT $2, o.id, $3, p.id, $5::member_invoice_source, $6, $7, $8, $9, $10, $11
+      FROM "organization" o
+      JOIN "parcel" p ON p.organization_id = o.id AND p.number = $4
+      WHERE o.slug = $1
+      ON CONFLICT (id)
+      DO UPDATE SET
+        member_profile_id = EXCLUDED.member_profile_id,
+        parcel_id = EXCLUDED.parcel_id,
+        source = EXCLUDED.source,
+        external_id = EXCLUDED.external_id,
+        year = EXCLUDED.year,
+        issued_on = EXCLUDED.issued_on,
+        due_on = EXCLUDED.due_on,
+        amount_cents = EXCLUDED.amount_cents,
+        status = EXCLUDED.status,
+        updated_at = NOW();
+    `,
+      [
+        invoice.organizationSlug,
+        invoice.id,
+        invoice.memberProfileId,
+        invoice.parcelNumber,
+        invoice.source,
+        invoice.externalId,
+        invoice.year,
+        invoice.issuedOn,
+        invoice.dueOn,
+        invoice.amountCents,
+        invoice.status,
       ]
     )
   }

@@ -62,6 +62,9 @@ vi.mock('@/db/repositories/incident-report-repository', () => ({
 vi.mock('@/db/repositories/member-question-repository', () => ({
   markMemberQuestionNotificationFailedDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/member-invoice-repository', () => ({
+  releaseStatusAlertByIdDao: vi.fn(),
+}))
 vi.mock('@/db/repositories/scheduled-job-repository', () => ({
   enqueueScheduledJobTxnDao: vi.fn(),
 }))
@@ -93,6 +96,7 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
+import {releaseStatusAlertByIdDao} from '@/db/repositories/member-invoice-repository'
 import {
   getMemberProfileEmailsByTokenHashDao,
   updateMemberProfileEmailDao,
@@ -479,6 +483,21 @@ describe('deliverDeferredEmailService — rejeu d’un email reporté (s52)', ()
     )
     expect(markContactMessageNotificationFailedDao).not.toHaveBeenCalled()
     expect(markIncidentReportNotificationFailedDao).not.toHaveBeenCalled()
+  })
+  it('signalement d’un statut de facture en échec définitif : il est libéré, pour être retenté (s19, ADR 059 §5)', async () => {
+    store.rows.set(DEFERRED_ID, {
+      ...storedRow(),
+      referenceType: 'invoice_status',
+    })
+    refusingTransport()
+    vi.mocked(releaseStatusAlertByIdDao).mockImplementation(async () => {
+      expect(scope.current).toBe(ORG_ID)
+    })
+
+    await deliverDeferredEmailService(jobOf({attempts: 3}), NOW)
+
+    expect(releaseStatusAlertByIdDao).toHaveBeenCalledWith(REFERENCE_ID)
+    expect(markMemberQuestionNotificationFailedDao).not.toHaveBeenCalled()
   })
 })
 

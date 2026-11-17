@@ -14,6 +14,7 @@ import {
 } from 'react'
 import {FormProvider, useForm} from 'react-hook-form'
 
+import {MemberInvoicesSection} from '@/components/features/member-invoice/member-invoices-card'
 import {Alert, AlertDescription} from '@/components/ui/alert'
 import {
   Breadcrumb,
@@ -37,6 +38,7 @@ import {
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
 import type {MemberUnsubscribeDTO} from '@/services/types/domain/campaign-types'
 import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
+import type {BoardMemberInvoicesDTO} from '@/services/types/domain/member-invoice-types'
 import type {MemberNotesPageDTO} from '@/services/types/domain/member-note-types'
 import type {
   MemberProfileAccountDTO,
@@ -95,6 +97,13 @@ type MemberProfileDetailProps = MemberNoteActions &
     notesPromise: Promise<MemberNotesPageDTO | undefined>
     /** Le refus des campagnes (s25), lu a part de la fiche, sans etre attendu. */
     unsubscribePromise: Promise<MemberUnsubscribeDTO | null>
+    /**
+     * Les factures de la fiche (s19), lues sans etre attendues ; rien pour un
+     * compte qui ne gere pas les factures.
+     */
+    invoicesPromise: Promise<BoardMemberInvoicesDTO | undefined>
+    /** Une facture vient d'etre enregistree : le dire une fois (3c). */
+    invoiceSaved: boolean
   }
 
 type Notice =
@@ -128,8 +137,8 @@ const DATA_CLASS = 'font-mono font-medium tabular-nums'
 /**
  * Fiche d'un proprietaire (ecran 3 du design s12, ecran A de s12d et s14) :
  * ses coordonnees, modifiables en place, ses adresses email (s54, ecran 4),
- * l'acces a l'espace membre, son role dans l'association, et ses parcelles,
- * presentes et passees.
+ * l'acces a l'espace membre, son role dans l'association, ses parcelles,
+ * presentes et passees, et ses factures (s19).
  */
 export function MemberProfileDetail({
   profile,
@@ -142,6 +151,8 @@ export function MemberProfileDetail({
   changeRoleAction,
   notesPromise,
   unsubscribePromise,
+  invoicesPromise,
+  invoiceSaved,
   addEmailAction,
   updateEmailAction,
   removeEmailAction,
@@ -278,6 +289,13 @@ export function MemberProfileDetail({
           <FormerParcels parcels={parcels.former} />
         )}
       </DetailCard>
+
+      <MemberInvoicesSection
+        memberProfileId={profile.id}
+        memberName={profile.name}
+        invoicesPromise={invoicesPromise}
+        saved={invoiceSaved}
+      />
 
       <MemberNotesCard
         memberProfileId={profile.id}

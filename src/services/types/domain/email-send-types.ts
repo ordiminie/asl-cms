@@ -38,7 +38,11 @@ export type PlatformEmailNature = (typeof PLATFORM_EMAIL_NATURES)[number]
  * rien lire de son contenu (envois en attente).
  */
 export type EmailSendReferenceType =
-  'contact_message' | 'incident_report' | 'member_question'
+  | 'contact_message'
+  | 'incident_report'
+  | 'member_question'
+  /** Un statut de facture a classer, signale une fois (s19, ADR 059 §5). */
+  | 'invoice_status'
 
 export type EmailSendReference = {type: EmailSendReferenceType; id: string}
 

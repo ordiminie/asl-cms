@@ -3,12 +3,16 @@ import {beforeEach, describe, expect, it, vi} from 'vitest'
 vi.mock('server-only', () => ({}))
 vi.mock('next/cache', () => ({revalidatePath: vi.fn()}))
 vi.mock('next-intl/server', () => ({
-  getTranslations: vi.fn(() =>
-    Promise.resolve((key: string) => `BureauMemberProfilesPage.${key}`)
+  getTranslations: vi.fn((namespace = 'BureauMemberProfilesPage') =>
+    Promise.resolve((key: string) => `${namespace}.${key}`)
   ),
 }))
 vi.mock('@/app/dal/tenant-dal', () => ({requireCurrentTenantDal: vi.fn()}))
 vi.mock('@/app/dal/user-dal', () => ({requireActionAuth: vi.fn()}))
+vi.mock('@/services/facades/member-invoice-service-facade', () => ({
+  createMemberInvoiceService: vi.fn(),
+  updateMemberInvoiceService: vi.fn(),
+}))
 vi.mock('@/services/facades/member-profile-email-service-facade', () => ({
   addMemberProfileEmailService: vi.fn(),
   designateMemberProfileHolderService: vi.fn(),
@@ -21,6 +25,11 @@ import {revalidatePath} from 'next/cache'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
+import {ReadOnlyInvoiceError} from '@/services/errors/member-invoice-errors'
+import {
+  createMemberInvoiceService,
+  updateMemberInvoiceService,
+} from '@/services/facades/member-invoice-service-facade'
 import {
   addMemberProfileEmailService,
   designateMemberProfileHolderService,
@@ -31,8 +40,10 @@ import type {MemberProfileDTO} from '@/services/types/domain/member-profile-type
 
 import {
   addMemberProfileEmailAction,
+  createMemberInvoiceAction,
   designateMemberProfileHolderAction,
   removeMemberProfileEmailAction,
+  updateMemberInvoiceAction,
   updateMemberProfileEmailAction,
 } from './actions'
 
@@ -273,6 +284,171 @@ describe('designateMemberProfileHolderAction (4d)', () => {
     ).toEqual({
       status: 'error',
       message: 'BureauMemberProfilesPage.errors.notFound',
+    })
+  })
+})
+
+describe('createMemberInvoiceAction — saisir une facture (s19, écran 3)', () => {
+  const PARCEL_ID = '88888888-8888-4888-8888-888888888888'
+  const invoiceForm = (overrides: Record<string, string> = {}) =>
+    formOf({
+      memberProfileId: PROFILE_ID,
+      parcelId: PARCEL_ID,
+      year: '2026',
+      amount: '412,50',
+      issuedOn: '15/03/2026',
+      dueOn: '15/04/2026',
+      status: 'En attente',
+      organizationId: 'autre-association',
+      source: 'pennylane',
+      ...overrides,
+    })
+
+  it('enregistre au tenant du domaine appelé, montant en centimes, dates ISO, puis revalide', async () => {
+    vi.mocked(createMemberInvoiceService).mockResolvedValue({
+      status: 'saved',
+      invoiceId: 'inv-1',
+    })
+
+    expect(await createMemberInvoiceAction(undefined, invoiceForm())).toEqual({
+      status: 'saved',
+    })
+    expect(requireActionAuth).toHaveBeenCalled()
+    expect(createMemberInvoiceService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      memberProfileId: PROFILE_ID,
+      parcelId: PARCEL_ID,
+      year: 2026,
+      amountCents: 41250,
+      issuedOn: '2026-03-15',
+      dueOn: '2026-04-15',
+      status: 'En attente',
+    })
+    expect(revalidatePath).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['amount', {amount: '0'}, 'validation.amount'],
+    ['amount', {amount: '12,345'}, 'validation.amount'],
+    ['dueOn', {dueOn: '14/03/2026'}, 'validation.dueBeforeIssue'],
+    ['issuedOn', {issuedOn: '31/02/2026'}, 'validation.date'],
+    ['year', {year: '26'}, 'validation.year'],
+    ['parcelId', {parcelId: ''}, 'validation.parcelRequired'],
+    ['status', {status: ''}, 'validation.statusRequired'],
+  ])(
+    'refuse un champ %s invalide, message traduit, sans appel au service',
+    async (field, overrides, message) => {
+      const result = await createMemberInvoiceAction(
+        undefined,
+        invoiceForm(overrides)
+      )
+
+      expect(result).toMatchObject({
+        status: 'invalid',
+        errors: expect.arrayContaining([
+          {field, message: expect.stringContaining(message)},
+        ]),
+      })
+      expect(createMemberInvoiceService).not.toHaveBeenCalled()
+    }
+  )
+
+  it('une parcelle d’autrui à la date d’émission : refus sous le champ, rien n’est revalidé', async () => {
+    vi.mocked(createMemberInvoiceService).mockResolvedValue({
+      status: 'parcel_not_owned',
+    })
+
+    expect(await createMemberInvoiceAction(undefined, invoiceForm())).toEqual({
+      status: 'invalid',
+      errors: [
+        {
+          field: 'parcelId',
+          message: 'BureauMemberInvoices.refusals.parcelNotOwned',
+        },
+      ],
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('un statut hors configuration : refus sous le champ', async () => {
+    vi.mocked(createMemberInvoiceService).mockResolvedValue({
+      status: 'unknown_status',
+    })
+
+    expect(await createMemberInvoiceAction(undefined, invoiceForm())).toEqual({
+      status: 'invalid',
+      errors: [
+        {
+          field: 'status',
+          message: 'BureauMemberInvoices.refusals.unknownStatus',
+        },
+      ],
+    })
+  })
+
+  it('un refus d’accès est rendu, jamais levé', async () => {
+    vi.mocked(createMemberInvoiceService).mockRejectedValue(
+      new AuthorizationError()
+    )
+
+    expect(await createMemberInvoiceAction(undefined, invoiceForm())).toEqual({
+      status: 'error',
+      message: 'BureauMemberInvoices.errors.forbidden',
+    })
+  })
+})
+
+describe('updateMemberInvoiceAction — corriger une facture (s19, écran 3)', () => {
+  const INVOICE_ID = '99999999-9999-4999-8999-999999999999'
+  const PARCEL_ID = '88888888-8888-4888-8888-888888888888'
+  const updateForm = () =>
+    formOf({
+      invoiceId: INVOICE_ID,
+      parcelId: PARCEL_ID,
+      year: '2026',
+      amount: '390',
+      issuedOn: '15/03/2026',
+      dueOn: '15/04/2026',
+      status: 'Payée',
+    })
+
+  it('corrige la facture désignée, au tenant du domaine appelé', async () => {
+    vi.mocked(updateMemberInvoiceService).mockResolvedValue({status: 'saved'})
+
+    expect(await updateMemberInvoiceAction(undefined, updateForm())).toEqual({
+      status: 'saved',
+    })
+    expect(updateMemberInvoiceService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      invoiceId: INVOICE_ID,
+      parcelId: PARCEL_ID,
+      year: 2026,
+      amountCents: 39000,
+      issuedOn: '2026-03-15',
+      dueOn: '2026-04-15',
+      status: 'Payée',
+    })
+  })
+
+  it('critère 9 : une facture Pennylane envoyée en direct est refusée côté serveur, rien n’est revalidé', async () => {
+    vi.mocked(updateMemberInvoiceService).mockRejectedValue(
+      new ReadOnlyInvoiceError()
+    )
+
+    expect(await updateMemberInvoiceAction(undefined, updateForm())).toEqual({
+      status: 'read_only',
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('une facture introuvable', async () => {
+    vi.mocked(updateMemberInvoiceService).mockResolvedValue({
+      status: 'not_found',
+    })
+
+    expect(await updateMemberInvoiceAction(undefined, updateForm())).toEqual({
+      status: 'error',
+      message: 'BureauMemberInvoices.errors.notFound',
     })
   })
 })

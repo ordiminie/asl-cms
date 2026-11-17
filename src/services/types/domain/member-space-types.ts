@@ -1,3 +1,5 @@
+import type {InvoiceStatusClass} from './member-invoice-types'
+
 /**
  * Types de domaine de l'espace membre (s12d, ecran C). Ecrits sans importer
  * le modele Drizzle (`rule-architecture`).
@@ -92,3 +94,31 @@ export type UpdateMyContactInput = {
 
 export type UpdateMyContactResult =
   {status: 'saved'; contact: MyContactDTO} | {status: 'not_found'}
+
+/** Classe d'un statut de facture (s19, ADR 059 §4). */
+export type MyInvoiceStatusClass = InvoiceStatusClass
+
+/**
+ * Une facture telle que le membre la voit (s19) : aucun identifiant de fiche
+ * ni de facture. `status` est le statut **tel que fourni** par la source ;
+ * `statusClass` ne sert qu'a la variante du badge.
+ */
+export type MyInvoiceDTO = {
+  issuedOn: string
+  /** Objet compose par le site (modele du tenant, annee de la facture). */
+  subject: string
+  parcelNumber: string
+  meterNumber: string | null
+  /** Le nom de la fiche facturee quand il n'est pas celui du compte. */
+  holderName: string | null
+  amountCents: number
+  dueOn: string
+  status: string
+  statusClass: MyInvoiceStatusClass
+}
+
+/** « Mes factures » (s19) : une seule liste pour tous les terrains du compte. */
+export type MyInvoicesDTO = {
+  landCount: number
+  invoices: MyInvoiceDTO[]
+}
