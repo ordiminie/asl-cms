@@ -2392,6 +2392,11 @@ c'est assumé.
 Génération PDF : brique tierce assumée. Vérifier en `/ks-research` que la solution retenue tourne
 sur le VPS LWS (2 vCore, 4 Go) — un moteur à navigateur headless y est un risque de mémoire réel.
 
+Depuis s55 ([ADR 058](decisions/058-adresses-domicile-et-terrain-colonnes-typees.md)) : l'adresse du
+courrier est le **domicile** (`member_profile.home_*`), jamais le terrain (`land_*`) ; le libellé
+d'entreprise est `company_name`. La comparaison « même nom et même adresse de domicile » est celle que
+l'import fait déjà pour sa remarque `same_name_and_address`.
+
 ---
 
 ## Story s29-relances-impayes — Relancer automatiquement les impayés
@@ -4161,6 +4166,13 @@ après le dernier import, et le rapport la signale.
 
 À évaluer en `/ks-research` de s20 : l'API Pennylane expose les clients. Si elle fournit les mêmes champs, cette
 story devient une synchronisation sans fichier, ce qui n'est pas son périmètre mais peut le simplifier.
+
+Depuis s55 ([ADR 058](decisions/058-adresses-domicile-et-terrain-colonnes-typees.md)) : la règle d'import
+des deux adresses vit dans le mappage de s13 — l'`Adresse` est le domicile, sauf quand l'`Adresse de
+Livraison` est renseignée (la livraison est alors le domicile, l'`Adresse` le terrain) ; `Type de Client =
+Entreprise` donne le nom de l'entreprise. Le code postal et la commune du terrain par défaut sont des
+**paramètres d'association** (`member.default_land_postal_code`, `member.default_land_city`), appliqués
+aux fiches **créées** sans terrain : à décider ici s'ils s'appliquent aussi à une mise à jour.
 
 ---
 

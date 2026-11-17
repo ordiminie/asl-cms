@@ -20,6 +20,8 @@ export const MEMBER_PROFILES_PAGE_SIZE = 25
 export const MEMBER_PROFILE_NAME_MAX_LENGTH = 200
 export const MEMBER_PROFILE_ADDRESS_MAX_LENGTH = 200
 export const MEMBER_PROFILE_CITY_MAX_LENGTH = 100
+/** Libelle « nom de l'entreprise » (s55, ADR 058). */
+export const MEMBER_PROFILE_COMPANY_NAME_MAX_LENGTH = 200
 export const MEMBER_PROFILE_SEARCH_MAX_LENGTH = 100
 /** Identifiant client Pennylane, cle d'import (s13, ADR 048). */
 export const MEMBER_PROFILE_PENNYLANE_ID_MAX_LENGTH = 100
@@ -34,15 +36,23 @@ export const MEMBER_PROFILE_POSTAL_CODE_PATTERN = /^\d{5}$/
 /**
  * Les coordonnees d'une fiche. `null` = absente, jamais une chaine vide.
  * `email` est l'adresse **titulaire active** (s54, ADR 056), lue dans
- * `member_profile_email`.
+ * `member_profile_email`. Deux adresses postales typees (s55, ADR 058) : le
+ * domicile (`home…`), adresse postale de la fiche, celle du courrier ; le
+ * terrain (`land…`), propre a chaque fiche. `companyName` : libelle « nom de
+ * l'entreprise », qui ne change rien d'autre.
  */
 export type MemberProfileContact = {
   email: string | null
   phone: string | null
-  addressLine: string | null
-  addressComplement: string | null
-  postalCode: string | null
-  city: string | null
+  homeAddressLine: string | null
+  homeAddressComplement: string | null
+  homePostalCode: string | null
+  homeCity: string | null
+  landAddressLine: string | null
+  landAddressComplement: string | null
+  landPostalCode: string | null
+  landCity: string | null
+  companyName: string | null
 }
 
 /** Les champs d'une fiche, sans l'etat de son compte. */
@@ -53,7 +63,7 @@ export type MemberProfileFieldsDTO = MemberProfileContact & {
   name: string
   /** Courrier uniquement : aucune adresse active (ADR 056 §2). */
   mailOnly: boolean
-  /** Courrier uniquement et aucune adresse postale (decision G). */
+  /** Courrier uniquement et aucune adresse de domicile (decision G, s55). */
   incomplete: boolean
 }
 
@@ -160,10 +170,15 @@ export type MemberProfilePageDTO = {
  */
 export type MemberProfileContactInput = {
   phone?: string
-  addressLine?: string
-  addressComplement?: string
-  postalCode?: string
-  city?: string
+  homeAddressLine?: string
+  homeAddressComplement?: string
+  homePostalCode?: string
+  homeCity?: string
+  landAddressLine?: string
+  landAddressComplement?: string
+  landPostalCode?: string
+  landCity?: string
+  companyName?: string
 }
 
 export type CreateMemberProfileInput = MemberProfileContactInput & {

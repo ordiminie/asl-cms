@@ -35,6 +35,14 @@ const renderForm = () => render(<MemberProfileForm saveAction={saveAction} />)
 
 const field = (name: RegExp | string) => screen.getByLabelText(name)
 
+/** Un champ du domicile ou du terrain : les deux groupes ont les memes libelles (s55). */
+const groupField = (group: 'domicile' | 'terrain', name: string) =>
+  within(
+    screen.getByRole('group', {
+      name: group === 'domicile' ? /Adresse de domicile/ : /Adresse du terrain/,
+    })
+  ).getByLabelText(name)
+
 const submit = async () =>
   userEvent.click(
     screen.getByRole('button', {name: 'Enregistrer le propriétaire'})
@@ -77,6 +85,37 @@ describe('MemberProfileForm — écran 2 du design s12', () => {
     )
   })
 
+  it('reprend les champs de la fiche : domicile et terrain en deux groupes, puis le nom de l’entreprise (s55)', async () => {
+    renderForm()
+
+    const home = screen.getByRole('group', {name: /Adresse de domicile/})
+    const land = screen.getByRole('group', {name: /Adresse du terrain/})
+    expect(home).toHaveTextContent(
+      'L’adresse postale de la fiche : là où le propriétaire reçoit le courrier le reste de l’année.'
+    )
+    expect(land).toHaveTextContent(
+      'L’adresse du terrain de vacances dans l’association.'
+    )
+    for (const group of [home, land]) {
+      for (const label of ['Adresse', /Complément/, 'Code postal', 'Commune']) {
+        expect(within(group).getByLabelText(label)).toBeInTheDocument()
+      }
+    }
+    expect(field(/Nom de l’entreprise/)).toHaveAccessibleDescription(
+      'Pour une entreprise établie sur le terrain (restaurant, supérette). Imprimé dans le bloc adresse du courrier ; ne change rien d’autre.'
+    )
+
+    await userEvent.type(field('Nom'), 'Épicerie du Clos')
+    await userEvent.type(groupField('terrain', 'Adresse'), '3 rue du Lavoir')
+    await userEvent.type(field(/Nom de l’entreprise/), 'Épicerie du Clos')
+    await submit()
+
+    expect(sentFields()).toMatchObject({
+      landAddressLine: '3 rue du Lavoir',
+      companyName: 'Épicerie du Clos',
+    })
+  })
+
   it('montre l’encart « courrier uniquement » tant que l’email est vide, et le masque dès qu’il est saisi', async () => {
     renderForm()
 
@@ -100,10 +139,15 @@ describe('MemberProfileForm — écran 2 du design s12', () => {
       name: 'Marcel Laurent',
       email: '',
       phone: '',
-      addressLine: '',
-      addressComplement: '',
-      postalCode: '',
-      city: '',
+      homeAddressLine: '',
+      homeAddressComplement: '',
+      homePostalCode: '',
+      homeCity: '',
+      landAddressLine: '',
+      landAddressComplement: '',
+      landPostalCode: '',
+      landCity: '',
+      companyName: '',
     })
     expect(router.push).toHaveBeenCalledWith(
       `/bureau/proprietaires/${PROFILE_ID}?cree=1`
@@ -114,7 +158,7 @@ describe('MemberProfileForm — écran 2 du design s12', () => {
     renderForm()
 
     await userEvent.type(field(/Adresse email/), 'marcel.laurent@example')
-    await userEvent.type(field('Code postal'), '3368')
+    await userEvent.type(groupField('domicile', 'Code postal'), '3368')
     await submit()
 
     const summary = screen.getByRole('alert')
@@ -133,7 +177,7 @@ describe('MemberProfileForm — écran 2 du design s12', () => {
     ).toBeInTheDocument()
     expect(
       within(summary).getByRole('link', {
-        name: 'Un code postal compte 5 chiffres.',
+        name: 'Domicile : le code postal compte cinq chiffres.',
       })
     ).toBeInTheDocument()
     expect(field('Nom')).toHaveAttribute('aria-invalid', 'true')
@@ -302,18 +346,20 @@ describe('MemberProfileForm — ouvert depuis une vente (écran 5)', () => {
  * `router.push`, puis reaffichee au retour sur l'ecran.
  */
 describe('MemberProfileForm — l’écran conservé revient vierge après une création', () => {
-  const FILLED: [RegExp | string, string][] = [
-    ['Nom', 'Marcel Laurent'],
-    [/Adresse email/, 'marcel.laurent@example.fr'],
-    [/Téléphone/, '06 12 34 56 78'],
-    ['Adresse', '14 allée des Aulnes'],
-    ['Code postal', '33680'],
-    ['Commune', 'Lacanau'],
+  const FILLED: [() => HTMLElement, string][] = [
+    [() => field('Nom'), 'Marcel Laurent'],
+    [() => field(/Adresse email/), 'marcel.laurent@example.fr'],
+    [() => field(/Téléphone/), '06 12 34 56 78'],
+    [() => groupField('domicile', 'Adresse'), '14 allée des Aulnes'],
+    [() => groupField('domicile', 'Code postal'), '33680'],
+    [() => groupField('domicile', 'Commune'), 'Lacanau'],
+    [() => groupField('terrain', 'Commune'), 'Lacanau'],
+    [() => field(/Nom de l’entreprise/), 'Épicerie des Aulnes'],
   ]
 
   const fill = async () => {
-    for (const [label, value] of FILLED) {
-      await userEvent.type(field(label), value)
+    for (const [fieldOf, value] of FILLED) {
+      await userEvent.type(fieldOf(), value)
     }
   }
 
@@ -333,8 +379,8 @@ describe('MemberProfileForm — l’écran conservé revient vierge après une c
     rerender(shown(false))
     rerender(shown(true))
 
-    for (const [label] of FILLED) {
-      expect(field(label)).toHaveValue('')
+    for (const [fieldOf] of FILLED) {
+      expect(fieldOf()).toHaveValue('')
     }
     expect(screen.getByText(MAIL_ONLY_NOTICE)).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -374,8 +420,8 @@ describe('MemberProfileForm — l’écran conservé revient vierge après une c
     rerender(shown(false))
     rerender(shown(true))
 
-    for (const [label, value] of FILLED) {
-      expect(field(label)).toHaveValue(value)
+    for (const [fieldOf, value] of FILLED) {
+      expect(fieldOf()).toHaveValue(value)
     }
     expect(router.push).not.toHaveBeenCalled()
   })

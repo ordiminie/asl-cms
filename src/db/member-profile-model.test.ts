@@ -33,6 +33,42 @@ describe('member_profile — ni compte, ni adresse : elles vivent ailleurs (ADR 
   })
 })
 
+describe('member_profile — domicile, terrain et nom de l’entreprise (s55, ADR 058)', () => {
+  const config = getTableConfig(memberProfile)
+
+  it('porte les neuf colonnes typées, toutes facultatives', () => {
+    for (const name of [
+      'home_address_line',
+      'home_address_complement',
+      'home_postal_code',
+      'home_city',
+      'land_address_line',
+      'land_address_complement',
+      'land_postal_code',
+      'land_city',
+      'company_name',
+    ]) {
+      const column = config.columns.find((c) => c.name === name)
+      expect(column, name).toBeDefined()
+      expect(column?.notNull, name).toBe(false)
+    }
+  })
+
+  it('ne porte plus l’adresse postale non typée de s12 (renommée en domicile)', () => {
+    for (const name of [
+      'address_line',
+      'address_complement',
+      'postal_code',
+      'city',
+    ]) {
+      expect(
+        config.columns.find((c) => c.name === name),
+        name
+      ).toBeUndefined()
+    }
+  })
+})
+
 describe('member_profile_account (ADR 054)', () => {
   const config = getTableConfig(memberProfileAccount)
 

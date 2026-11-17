@@ -44,13 +44,17 @@ export type MyLandsDTO = {
   lands: MyLandDTO[]
 }
 
-/** Telephone et adresse postale, tels que le membre les corrige (s16). */
+/**
+ * Telephone et domicile, tels que le membre les corrige (s16). Ni terrain ni
+ * nom d'entreprise (s55) : propres a chaque fiche, le membre ne les corrige
+ * pas.
+ */
 export type MyPostalContactDTO = {
   phone: string | null
-  addressLine: string | null
-  addressComplement: string | null
-  postalCode: string | null
-  city: string | null
+  homeAddressLine: string | null
+  homeAddressComplement: string | null
+  homePostalCode: string | null
+  homeCity: string | null
 }
 
 /**
@@ -80,10 +84,10 @@ export type MyContactDTO = MyPostalContactDTO & {
 export type UpdateMyContactInput = {
   organizationId: string
   phone?: string | null
-  addressLine?: string | null
-  addressComplement?: string | null
-  postalCode?: string | null
-  city?: string | null
+  homeAddressLine?: string | null
+  homeAddressComplement?: string | null
+  homePostalCode?: string | null
+  homeCity?: string | null
 }
 
 export type UpdateMyContactResult =

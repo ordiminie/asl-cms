@@ -84,10 +84,10 @@ const parcelsOf = (overrides: Partial<MyLandDTO> = {}): MyLandsDTO => ({
 
 const CONTACT: MyContactDTO = {
   phone: '06 12 34 56 78',
-  addressLine: '4 chemin des Oliviers',
-  addressComplement: null,
-  postalCode: '13100',
-  city: 'Aix-en-Provence',
+  homeAddressLine: '4 chemin des Oliviers',
+  homeAddressComplement: null,
+  homePostalCode: '13100',
+  homeCity: 'Aix-en-Provence',
   landCount: 1,
   divergent: false,
   groups: [],

@@ -48,7 +48,7 @@ vi.mock('./actions', () => ({
   updateMemberProfileEmailAction: vi.fn(),
 }))
 
-import {render, screen} from '@/__tests__/customRender'
+import {render, screen, userEvent, within} from '@/__tests__/customRender'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
   canManageCurrentMemberProfilesDal,
@@ -69,10 +69,15 @@ const profile = {
   name: 'Hélène Roy',
   email: null,
   phone: null,
-  addressLine: '8 chemin des Pins',
-  addressComplement: null,
-  postalCode: '33680',
-  city: 'Lacanau',
+  homeAddressLine: '8 chemin des Pins',
+  homeAddressComplement: null,
+  homePostalCode: '33680',
+  homeCity: 'Lacanau',
+  landAddressLine: null,
+  landAddressComplement: null,
+  landPostalCode: null,
+  landCity: null,
+  companyName: 'Épicerie du Clos' as string | null,
   mailOnly: true,
   incomplete: false,
   emails: [],
@@ -132,6 +137,41 @@ describe('/bureau/proprietaires/[id] — accès par rôle', () => {
       PROFILE_ID
     )
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('montre le domicile, le nom de l’entreprise, et un terrain absent « Non renseignée » (s55)', async () => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+
+    await renderPage()
+
+    const contact = screen.getByRole('region', {name: 'Coordonnées'})
+    const valueOf = (label: string) =>
+      within(contact).getByText(label).nextElementSibling
+    expect(valueOf('Adresse de domicile')).toHaveTextContent(
+      '8 chemin des Pins33680 Lacanau'
+    )
+    expect(valueOf('Adresse du terrain')).toHaveTextContent(/^Non renseignée$/)
+    expect(valueOf('Nom de l’entreprise')).toHaveTextContent(
+      /^Épicerie du Clos/
+    )
+  })
+
+  it('nomme le groupe dans le message d’un code postal du terrain refusé (s55, état 1e)', async () => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+
+    await renderPage()
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Modifier les coordonnées'})
+    )
+    const land = screen.getByRole('group', {name: /Adresse du terrain/})
+    await userEvent.type(within(land).getByLabelText('Code postal'), '123')
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer les coordonnées'})
+    )
+
+    expect(
+      within(land).getByText('Terrain : le code postal compte cinq chiffres.')
+    ).toBeInTheDocument()
   })
 
   it('dit « Propriétaire enregistré. » à l’arrivée depuis la création', async () => {

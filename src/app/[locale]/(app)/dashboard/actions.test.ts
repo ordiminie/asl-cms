@@ -27,10 +27,10 @@ const OTHER_PROFILE_ID = '44444444-4444-4444-8444-444444444444'
 
 const CONTACT = {
   phone: '06 12 34 56 78',
-  addressLine: '4 chemin des Oliviers',
-  addressComplement: 'Bâtiment B',
-  postalCode: '13100',
-  city: 'Aix-en-Provence',
+  homeAddressLine: '4 chemin des Oliviers',
+  homeAddressComplement: 'Bâtiment B',
+  homePostalCode: '13100',
+  homeCity: 'Aix-en-Provence',
 }
 
 const formOf = (values: Record<string, string>) => {
@@ -62,7 +62,7 @@ describe('updateMyContactAction — « Mes coordonnées » (s16)', () => {
   it('rend les erreurs par champ pour une saisie invalide, sans appeler le service', async () => {
     const result = await updateMyContactAction(
       undefined,
-      formOf({...CONTACT, phone: '06 12 AB 56 78', postalCode: '1310'})
+      formOf({...CONTACT, phone: '06 12 AB 56 78', homePostalCode: '1310'})
     )
 
     expect(result).toEqual({
@@ -73,8 +73,8 @@ describe('updateMyContactAction — « Mes coordonnées » (s16)', () => {
           message: 'BureauMemberProfilesPage.validation.phoneInvalid',
         },
         {
-          field: 'postalCode',
-          message: 'BureauMemberProfilesPage.validation.postalCodeInvalid',
+          field: 'homePostalCode',
+          message: 'BureauMemberProfilesPage.validation.home.postalCodeInvalid',
         },
       ],
     })
@@ -89,6 +89,8 @@ describe('updateMyContactAction — « Mes coordonnées » (s16)', () => {
         ...CONTACT,
         memberProfileId: OTHER_PROFILE_ID,
         email: 'autre.membre@exemple.fr',
+        landAddressLine: '3 rue du Lavoir',
+        companyName: 'Épicerie du Clos',
       })
     )
 
@@ -98,6 +100,8 @@ describe('updateMyContactAction — « Mes coordonnées » (s16)', () => {
     })
     const input = vi.mocked(updateMyContactService).mock.calls[0][0]
     expect(input).not.toHaveProperty('memberProfileId')
+    expect(input).not.toHaveProperty('landAddressLine')
+    expect(input).not.toHaveProperty('companyName')
     expect(input).not.toHaveProperty('email')
   })
 

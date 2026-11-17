@@ -152,18 +152,28 @@ describe('seed des propriétaires et des parcelles (s12, ADR 029)', () => {
       for (const value of [
         profile.email,
         profile.phone,
-        profile.addressLine,
-        profile.addressComplement,
-        profile.postalCode,
-        profile.city,
+        profile.homeAddressLine,
+        profile.homeAddressComplement,
+        profile.homePostalCode,
+        profile.homeCity,
+        profile.landAddressLine,
+        profile.landAddressComplement,
+        profile.landPostalCode,
+        profile.landCity,
+        profile.companyName,
       ]) {
         expect(value).not.toBe('')
       }
       if (profile.email !== null) {
         expect(profile.email).toMatch(/@[a-z0-9-]+\.test$/)
       }
-      if (profile.postalCode !== null) {
-        expect(profile.postalCode).toMatch(MEMBER_PROFILE_POSTAL_CODE_PATTERN)
+      for (const postalCode of [
+        profile.homePostalCode,
+        profile.landPostalCode,
+      ]) {
+        if (postalCode !== null) {
+          expect(postalCode).toMatch(MEMBER_PROFILE_POSTAL_CODE_PATTERN)
+        }
       }
     }
 
@@ -227,6 +237,29 @@ describe('seed des propriétaires et des parcelles (s12, ADR 029)', () => {
  * s54 (ADR 056) : une fiche a plusieurs adresses actives, chacune avec un
  * role propre a la fiche.
  */
+describe('seed du domicile, du terrain et du nom de l’entreprise (s55, ADR 058)', () => {
+  it('donne à TechCorp une fiche incomplète qui ne porte que son terrain : le terrain seul ne suffit pas', () => {
+    const roy = profileNamed(TECHCORP, 'Hélène Roy')
+
+    expect(roy.homeAddressLine).toBeNull()
+    expect(roy.landAddressLine).not.toBeNull()
+    expect(roy.landCity).not.toBeNull()
+    expect(isIncomplete({...roy, mailOnly: true})).toBe(true)
+  })
+
+  it('donne à TechCorp une fiche à domicile et terrain distincts, et une fiche d’entreprise', () => {
+    const dubois = profileNamed(TECHCORP, 'Jean et Odile Dubois')
+    expect(dubois.homeAddressLine).not.toBeNull()
+    expect(dubois.landAddressLine).not.toBeNull()
+    expect(dubois.landAddressLine).not.toBe(dubois.homeAddressLine)
+
+    const companies = profilesOf(TECHCORP).filter(
+      (row) => row.companyName !== null
+    )
+    expect(companies.map((row) => row.name)).toEqual(['SCI Les Chênes'])
+  })
+})
+
 describe('seed des adresses multiples (s54)', () => {
   const FERRAND_EMAIL = 'p.ferrand@techcorp-solutions.test'
 

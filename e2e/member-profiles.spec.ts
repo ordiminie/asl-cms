@@ -145,9 +145,13 @@ type StoredProfile = {
   name: string
   email: string | null
   phone: string | null
-  address_line: string | null
-  postal_code: string | null
-  city: string | null
+  home_address_line: string | null
+  home_postal_code: string | null
+  home_city: string | null
+  land_address_line: string | null
+  land_postal_code: string | null
+  land_city: string | null
+  company_name: string | null
   mail_only: boolean
 }
 
@@ -162,7 +166,9 @@ const storedProfileOfTenantA = async (
               (select e.email from member_profile_email e
                 where e.member_profile_id = p.id
                   and e.role = 'holder' and e.status = 'active') as email,
-              p.phone, p.address_line, p.postal_code, p.city,
+              p.phone, p.home_address_line, p.home_postal_code, p.home_city,
+              p.land_address_line, p.land_postal_code, p.land_city,
+              p.company_name,
               not exists (
                 select 1 from member_profile_email e
                  where e.member_profile_id = p.id and e.status = 'active'
@@ -308,7 +314,16 @@ type ProfileInput = {
   city?: string
 }
 
-/** Remplit « Ajouter un propriétaire », déjà à l'écran, et attend la fiche créée ; rend son identifiant. */
+/** Le groupe « Adresse de domicile » ou « Adresse du terrain » d'un formulaire (s55). */
+const addressGroup = (page: Page, group: 'domicile' | 'terrain') =>
+  page.getByRole('group', {
+    name: group === 'domicile' ? /Adresse de domicile/ : /Adresse du terrain/,
+  })
+
+/**
+ * Remplit « Ajouter un propriétaire », déjà à l'écran, et attend la fiche
+ * créée ; rend son identifiant. L'adresse saisie est le domicile (s55).
+ */
 const fillAndSaveProfile = async (
   page: Page,
   input: ProfileInput
@@ -320,13 +335,14 @@ const fillAndSaveProfile = async (
   await page.getByLabel('Nom', {exact: true}).fill(input.name)
   if (input.email) await page.getByLabel(/^Adresse email/).fill(input.email)
   if (input.phone) await page.getByLabel(/^Téléphone/).fill(input.phone)
+  const home = addressGroup(page, 'domicile')
   if (input.addressLine) {
-    await page.getByLabel('Adresse', {exact: true}).fill(input.addressLine)
+    await home.getByLabel('Adresse', {exact: true}).fill(input.addressLine)
   }
   if (input.postalCode) {
-    await page.getByLabel('Code postal').fill(input.postalCode)
+    await home.getByLabel('Code postal').fill(input.postalCode)
   }
-  if (input.city) await page.getByLabel('Commune').fill(input.city)
+  if (input.city) await home.getByLabel('Commune').fill(input.city)
 
   await page.getByRole('button', {name: 'Enregistrer le propriétaire'}).click()
 
@@ -694,7 +710,7 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
       ).toBeVisible()
       await expect(
         bureau.getByText(
-          'Cette fiche n’a ni adresse email ni adresse postale : aucun envoi ne peut atteindre ce propriétaire.'
+          'Cette fiche n’a ni adresse email ni adresse de domicile : aucun envoi ne peut atteindre ce propriétaire.'
         )
       ).toBeVisible()
 
@@ -703,9 +719,9 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
         id,
         email: null,
         phone: null,
-        address_line: null,
-        postal_code: null,
-        city: null,
+        home_address_line: null,
+        home_postal_code: null,
+        home_city: null,
         mail_only: true,
       })
       expect(
@@ -718,14 +734,15 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
       await expect(row).toContainText('Courrier uniquement')
       await expect(row).toContainText('Fiche incomplète')
 
-      // Ajouter une adresse postale depuis la fiche : le signalement tombe.
+      // Ajouter le domicile depuis la fiche : le signalement tombe (s55).
       await openProfile(bureau, TENANT_A, id)
       await bureau
-        .getByRole('button', {name: 'Ajouter une adresse postale'})
+        .getByRole('button', {name: 'Ajouter l’adresse de domicile'})
         .click()
-      await bureau.getByLabel('Adresse', {exact: true}).fill('3 rue du Lavoir')
-      await bureau.getByLabel('Code postal').fill('33680')
-      await bureau.getByLabel('Commune').fill('Lacanau')
+      const home = addressGroup(bureau, 'domicile')
+      await home.getByLabel('Adresse', {exact: true}).fill('3 rue du Lavoir')
+      await home.getByLabel('Code postal').fill('33680')
+      await home.getByLabel('Commune').fill('Lacanau')
       await bureau
         .getByRole('button', {name: 'Enregistrer les coordonnées'})
         .click()
@@ -780,15 +797,79 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
         id,
         email,
         phone: '06 12 34 56 78',
-        address_line: '3 rue du Lavoir',
-        postal_code: '33680',
-        city: 'Lacanau',
+        home_address_line: '3 rue du Lavoir',
+        home_postal_code: '33680',
+        home_city: 'Lacanau',
         mail_only: false,
       })
       expect(
         await accountsBornFrom({name, email}),
         'renseigner un email ouvre un compte et une seule appartenance (s12d)'
       ).toEqual({users: 1, members: 1})
+    } finally {
+      await bureau.context().close()
+    }
+  })
+
+  test('s55 — le bureau saisit le domicile, le terrain et le nom de l’entreprise, et les relit à l’écran et en base', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const name = nameOf('Domicile et terrain')
+
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      const id = await createProfile(bureau, {
+        name,
+        addressLine: '14 rue des Tanneurs',
+        postalCode: '31000',
+        city: 'Toulouse',
+      })
+
+      await bureau
+        .getByRole('button', {name: 'Modifier les coordonnées'})
+        .click()
+      const land = addressGroup(bureau, 'terrain')
+      await land.getByLabel('Adresse', {exact: true}).fill('8 chemin des Pins')
+      await land.getByLabel('Code postal').fill('3368')
+      await bureau.getByLabel(/^Nom de l’entreprise/).fill('Épicerie du Clos')
+      await bureau
+        .getByRole('button', {name: 'Enregistrer les coordonnées'})
+        .click()
+      await expect(
+        land.getByText('Terrain : le code postal compte cinq chiffres.')
+      ).toBeVisible()
+
+      await land.getByLabel('Code postal').fill('33680')
+      await land.getByLabel('Commune').fill('Lacanau')
+      await bureau
+        .getByRole('button', {name: 'Enregistrer les coordonnées'})
+        .click()
+      await expect(bureau.getByRole('status')).toContainText(
+        'Coordonnées enregistrées.'
+      )
+
+      await openProfile(bureau, TENANT_A, id)
+      const contact = bureau.getByRole('region', {name: 'Coordonnées'})
+      await expect(contact).toContainText('Adresse de domicile')
+      await expect(contact).toContainText('14 rue des Tanneurs')
+      await expect(contact).toContainText(
+        'Adresse postale : le courrier de l’association part ici.'
+      )
+      await expect(contact).toContainText('Adresse du terrain')
+      await expect(contact).toContainText('8 chemin des Pins')
+      await expect(contact).toContainText('Épicerie du Clos')
+
+      expect(await storedProfileOfTenantA(name)).toMatchObject({
+        id,
+        home_address_line: '14 rue des Tanneurs',
+        home_postal_code: '31000',
+        home_city: 'Toulouse',
+        land_address_line: '8 chemin des Pins',
+        land_postal_code: '33680',
+        land_city: 'Lacanau',
+        company_name: 'Épicerie du Clos',
+      })
     } finally {
       await bureau.context().close()
     }
@@ -833,16 +914,17 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
         bureau.getByRole('heading', {level: 1, name: 'Ajouter un propriétaire'})
       ).toBeVisible({timeout: 15_000})
 
-      for (const fieldName of [
-        'Nom',
-        /^Adresse email/,
-        /^Téléphone/,
-        'Adresse',
-        'Code postal',
-        'Commune',
-      ]) {
+      for (const fieldName of ['Nom', /^Adresse email/, /^Téléphone/]) {
         await expect(
           bureau.getByRole('textbox', {name: fieldName, exact: true})
+        ).toHaveValue('')
+      }
+      for (const fieldName of ['Adresse', 'Code postal', 'Commune']) {
+        await expect(
+          addressGroup(bureau, 'domicile').getByRole('textbox', {
+            name: fieldName,
+            exact: true,
+          })
         ).toHaveValue('')
       }
     } finally {

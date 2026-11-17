@@ -2144,6 +2144,19 @@
           "invalidNumber": "Saisissez un nombre entier de jours supérieur à 0.",
           "belowMin": "Saisissez un nombre entier de jours supérieur à 0."
         }
+      },
+      "defaultLandPostalCode": {
+        "label": "Code postal du terrain par défaut",
+        "help": "Le code postal des terrains de l’association. L’import des membres l’écrit dans l’adresse du terrain d’une fiche créée sans adresse de terrain.",
+        "whenEmpty": "Vide : une fiche importée sans adresse de terrain garde un terrain vide.",
+        "errors": {
+          "invalidCode": "Le code postal compte cinq chiffres."
+        }
+      },
+      "defaultLandCity": {
+        "label": "Commune du terrain par défaut",
+        "help": "La commune des terrains de l’association. L’import des membres l’écrit dans l’adresse du terrain d’une fiche créée sans adresse de terrain.",
+        "whenEmpty": "Vide : une fiche importée sans adresse de terrain garde un terrain vide."
       }
     },
     "hues": {
@@ -3229,17 +3242,43 @@
       "phone": {
         "label": "Téléphone"
       },
-      "addressLine": {
+      "homeAddressLine": {
         "label": "Adresse"
       },
-      "addressComplement": {
+      "homeAddressComplement": {
         "label": "Complément"
       },
-      "postalCode": {
+      "homePostalCode": {
         "label": "Code postal"
       },
-      "city": {
+      "homeCity": {
         "label": "Commune"
+      },
+      "landAddressLine": {
+        "label": "Adresse"
+      },
+      "landAddressComplement": {
+        "label": "Complément"
+      },
+      "landPostalCode": {
+        "label": "Code postal"
+      },
+      "landCity": {
+        "label": "Commune"
+      },
+      "companyName": {
+        "label": "Nom de l’entreprise",
+        "help": "Pour une entreprise établie sur le terrain (restaurant, supérette). Imprimé dans le bloc adresse du courrier ; ne change rien d’autre."
+      }
+    },
+    "groups": {
+      "home": {
+        "legend": "Adresse de domicile",
+        "help": "L’adresse postale de la fiche : là où le propriétaire reçoit le courrier le reste de l’année."
+      },
+      "land": {
+        "legend": "Adresse du terrain",
+        "help": "L’adresse du terrain de vacances dans l’association."
       }
     },
     "mailOnlyNotice": "Sans adresse email, ce propriétaire sera joignable par courrier uniquement. Son adresse postale est alors indispensable.",
@@ -3270,9 +3309,17 @@
       "nameMax": "Ce nom est trop long : 200 caractères au plus.",
       "emailInvalid": "Cette adresse email n’est pas valide.",
       "phoneInvalid": "Ce numéro de téléphone n’est pas valide : 30 caractères au plus, des chiffres, des espaces et + . - ( ).",
-      "addressMax": "Cette ligne d’adresse est trop longue : 200 caractères au plus.",
-      "postalCodeInvalid": "Un code postal compte 5 chiffres.",
-      "cityMax": "Ce nom de commune est trop long : 100 caractères au plus.",
+      "home": {
+        "addressMax": "Domicile : cette ligne d’adresse est trop longue, 200 caractères au plus.",
+        "postalCodeInvalid": "Domicile : le code postal compte cinq chiffres.",
+        "cityMax": "Domicile : ce nom de commune est trop long, 100 caractères au plus."
+      },
+      "land": {
+        "addressMax": "Terrain : cette ligne d’adresse est trop longue, 200 caractères au plus.",
+        "postalCodeInvalid": "Terrain : le code postal compte cinq chiffres.",
+        "cityMax": "Terrain : ce nom de commune est trop long, 100 caractères au plus."
+      },
+      "companyNameMax": "Ce nom d’entreprise est trop long : 200 caractères au plus.",
       "parcelNumberRequired": "Indiquez le numéro de la parcelle.",
       "parcelNumberMax": "Ce numéro de parcelle est trop long : 30 caractères au plus.",
       "dateInvalid": "Cette date n’existe pas. Écrivez-la sous la forme jj/mm/aaaa.",
@@ -3456,15 +3503,20 @@
         "field": "Saisissez une adresse email : celle d’un membre du bureau ne peut pas être supprimée."
       },
       "attention": "Attention.",
-      "incomplete": "Cette fiche n’a ni adresse email ni adresse postale : aucun envoi ne peut atteindre ce propriétaire.",
-      "addPostalAddress": "Ajouter une adresse postale",
+      "incomplete": "Cette fiche n’a ni adresse email ni adresse de domicile : aucun envoi ne peut atteindre ce propriétaire.",
+      "addHomeAddress": "Ajouter l’adresse de domicile",
       "contact": {
         "title": "Coordonnées",
         "email": "Adresse email",
         "phone": "Téléphone",
-        "postalAddress": "Adresse postale",
+        "homeAddress": "Adresse de domicile",
+        "homeAddressNote": "Adresse postale : le courrier de l’association part ici.",
+        "landAddress": "Adresse du terrain",
+        "companyName": "Nom de l’entreprise",
+        "companyNameNote": "Imprimé dans le bloc adresse du courrier. Ne change ni le rôle, ni les factures, ni le droit de vote.",
         "missingFeminine": "Non renseignée",
         "missingMasculine": "Non renseigné",
+        "missingCompany": "Aucun",
         "edit": "Modifier les coordonnées",
         "save": "Enregistrer les coordonnées",
         "saving": "Enregistrement…",
@@ -3696,11 +3748,12 @@
     },
     "contact": {
       "title": "Mes coordonnées",
+      "description": "L’association vous écrit par courrier à votre adresse de domicile.",
       "email": "Adresse email",
       "emailNote": "C’est aussi l’adresse avec laquelle vous vous connectez. Pour la changer, écrivez au bureau.",
       "contact": "Page Contact",
       "phone": "Téléphone",
-      "address": "Adresse postale",
+      "address": "Adresse de domicile",
       "phoneMissing": "Non renseigné",
       "addressMissing": "Non renseignée",
       "edit": "Modifier mes coordonnées",

@@ -199,9 +199,9 @@ export function MemberProfileDetail({
               type="button"
               variant="outline"
               className="h-14 w-full text-base sm:h-11 sm:w-auto"
-              onClick={() => setEditing({focus: 'addressLine'})}
+              onClick={() => setEditing({focus: 'homeAddressLine'})}
             >
-              {t('detail.addPostalAddress')}
+              {t('detail.addHomeAddress')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -446,7 +446,32 @@ function AccessState({
   )
 }
 
-/** Paires libelle / valeur ; absente = « Non renseignee » / « Non renseigne ». */
+/** Les lignes d'une adresse postale : adresse, complement, code postal et commune. */
+const addressLinesOf = (
+  line: string | null,
+  complement: string | null,
+  postalCode: string | null,
+  city: string | null
+): string[] =>
+  [
+    line,
+    complement,
+    [postalCode, city]
+      .filter((part): part is string => Boolean(part))
+      .join(' '),
+  ].filter((part): part is string => Boolean(part))
+
+function Note({children}: {children: ReactNode}) {
+  return (
+    <span className="text-muted-foreground block text-base">{children}</span>
+  )
+}
+
+/**
+ * Paires libelle / valeur, dans l'ordre du design s55 : telephone, domicile
+ * (l'adresse postale), terrain, nom de l'entreprise. Absente = « Non
+ * renseignee » / « Non renseigne » / « Aucun ».
+ */
 function ContactView({
   profile,
   onEdit,
@@ -455,26 +480,54 @@ function ContactView({
   onEdit: () => void
 }) {
   const t = useTranslations('BureauMemberProfilesPage.detail.contact')
-  const locality = [profile.postalCode, profile.city]
-    .filter((part): part is string => Boolean(part))
-    .join(' ')
-  const addressLines = [
-    profile.addressLine,
-    profile.addressComplement,
-    locality,
-  ].filter((line): line is string => Boolean(line))
+  const homeLines = addressLinesOf(
+    profile.homeAddressLine,
+    profile.homeAddressComplement,
+    profile.homePostalCode,
+    profile.homeCity
+  )
+  const landLines = addressLinesOf(
+    profile.landAddressLine,
+    profile.landAddressComplement,
+    profile.landPostalCode,
+    profile.landCity
+  )
 
   return (
     <>
       <dl className="grid gap-x-6 gap-y-3 text-[17px] sm:grid-cols-[12rem_1fr]">
         <dt className="text-muted-foreground">{t('phone')}</dt>
         <dd>{profile.phone ?? <Missing>{t('missingMasculine')}</Missing>}</dd>
-        <dt className="text-muted-foreground">{t('postalAddress')}</dt>
+        <dt className="text-muted-foreground">{t('homeAddress')}</dt>
         <dd>
-          {addressLines.length === 0 ? (
+          {homeLines.length === 0 ? (
             <Missing>{t('missingFeminine')}</Missing>
           ) : (
-            addressLines.map((line) => <div key={line}>{line}</div>)
+            <>
+              {homeLines.map((line) => (
+                <div key={line}>{line}</div>
+              ))}
+              <Note>{t('homeAddressNote')}</Note>
+            </>
+          )}
+        </dd>
+        <dt className="text-muted-foreground">{t('landAddress')}</dt>
+        <dd>
+          {landLines.length === 0 ? (
+            <Missing>{t('missingFeminine')}</Missing>
+          ) : (
+            landLines.map((line) => <div key={line}>{line}</div>)
+          )}
+        </dd>
+        <dt className="text-muted-foreground">{t('companyName')}</dt>
+        <dd>
+          {profile.companyName ? (
+            <>
+              <div>{profile.companyName}</div>
+              <Note>{t('companyNameNote')}</Note>
+            </>
+          ) : (
+            <Missing>{t('missingCompany')}</Missing>
           )}
         </dd>
       </dl>
@@ -499,8 +552,9 @@ function Missing({children}: {children: ReactNode}) {
 const CONTACT_ID_PREFIX = 'member-contact'
 
 /**
- * Les coordonnees, modifiees en place (etat `3e`, critere 6) : telephone et
- * adresse postale. Les adresses email ont leur carte (s54).
+ * Les coordonnees, modifiees en place (etat `3e`, critere 6) : telephone,
+ * domicile, terrain et nom de l'entreprise (s55). Les adresses email ont leur
+ * carte (s54).
  */
 function ContactForm({
   profile,
@@ -520,10 +574,15 @@ function ContactForm({
     resolver: zodResolver(createMemberContactFormSchema(t)),
     defaultValues: {
       phone: profile.phone ?? '',
-      addressLine: profile.addressLine ?? '',
-      addressComplement: profile.addressComplement ?? '',
-      postalCode: profile.postalCode ?? '',
-      city: profile.city ?? '',
+      homeAddressLine: profile.homeAddressLine ?? '',
+      homeAddressComplement: profile.homeAddressComplement ?? '',
+      homePostalCode: profile.homePostalCode ?? '',
+      homeCity: profile.homeCity ?? '',
+      landAddressLine: profile.landAddressLine ?? '',
+      landAddressComplement: profile.landAddressComplement ?? '',
+      landPostalCode: profile.landPostalCode ?? '',
+      landCity: profile.landCity ?? '',
+      companyName: profile.companyName ?? '',
     },
     mode: 'onBlur',
     reValidateMode: 'onChange',

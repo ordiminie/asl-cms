@@ -13,9 +13,15 @@ import {organization} from './auth-model'
  *   a la vente).
  * - `name` est un seul champ, tel qu'il s'ecrit sur un courrier : « Jean et
  *   Odile Dubois », « SCI Les Pins ».
- * - Aucune colonne d'adresse : les adresses d'une fiche vivent dans
- *   `member_profile_email` (s54, ADR 056, remplace l'ADR 040). « Courrier
- *   uniquement » = aucune adresse **active**, calcule a la lecture.
+ * - Aucune colonne d'adresse **email** : les adresses email d'une fiche vivent
+ *   dans `member_profile_email` (s54, ADR 056, remplace l'ADR 040). « Courrier
+ *   uniquement » = aucune adresse email **active**, calcule a la lecture.
+ * - Deux adresses **postales** typees, facultatives (s55, ADR 058) : le
+ *   domicile (`home_*`, l'adresse postale de la fiche, celle du courrier) et le
+ *   terrain (`land_*`, le terrain de vacances dans l'association). Le domicile
+ *   est l'adresse postale de s12, renommee sans perte. `company_name` est le
+ *   libelle « nom de l'entreprise » : il ne change ni le role, ni les
+ *   factures, ni le droit de vote.
  * - Aucune colonne de parcelle : le lien fiche ↔ parcelle est date, dans
  *   `parcel_ownership`.
  * - Aucune colonne de compte : le lien fiche ↔ compte vit dans
@@ -35,10 +41,15 @@ export const memberProfile = pgTable(
       .references(() => organization.id, {onDelete: 'cascade'}),
     name: text('name').notNull(),
     phone: text('phone'),
-    addressLine: text('address_line'),
-    addressComplement: text('address_complement'),
-    postalCode: text('postal_code'),
-    city: text('city'),
+    homeAddressLine: text('home_address_line'),
+    homeAddressComplement: text('home_address_complement'),
+    homePostalCode: text('home_postal_code'),
+    homeCity: text('home_city'),
+    landAddressLine: text('land_address_line'),
+    landAddressComplement: text('land_address_complement'),
+    landPostalCode: text('land_postal_code'),
+    landCity: text('land_city'),
+    companyName: text('company_name'),
     pennylaneCustomerId: text('pennylane_customer_id'),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()

@@ -17,6 +17,17 @@ const HEADERS = [
   'Prélèvement : IBAN',
 ]
 
+/** Les colonnes facultatives lues depuis s55 : livraison et type de client. */
+const S55_HEADERS = [
+  ...HEADERS,
+  'Adresse de Livraison',
+  'Code Postal de Livraison',
+  'Ville de Livraison',
+  'Pays de Livraison',
+  'Type de Client',
+  'Siren',
+]
+
 type Row = {
   id?: string
   name?: string
@@ -27,6 +38,30 @@ type Row = {
   emails?: string
   phone?: string
   reference?: string
+  deliveryAddress?: string
+  deliveryPostalCode?: string
+  deliveryCity?: string
+  deliveryCountry?: string
+  clientType?: string
+  siren?: string
+}
+
+const FIELD_OF_HEADER: Record<string, keyof Row | undefined> = {
+  'Identifiant Client': 'id',
+  Dénomination: 'name',
+  Adresse: 'address',
+  'Code Postal': 'postalCode',
+  Ville: 'city',
+  Pays: 'country',
+  'Liste d’e-mails': 'emails',
+  Téléphone: 'phone',
+  'Référence Client': 'reference',
+  'Adresse de Livraison': 'deliveryAddress',
+  'Code Postal de Livraison': 'deliveryPostalCode',
+  'Ville de Livraison': 'deliveryCity',
+  'Pays de Livraison': 'deliveryCountry',
+  'Type de Client': 'clientType',
+  Siren: 'siren',
 }
 
 const LUCIE: Row = {
@@ -41,31 +76,24 @@ const LUCIE: Row = {
   reference: 'ZZ 101 - 00XX000001',
 }
 
-const toValues = (row: Row): string[] => [
-  row.id ?? '',
-  row.name ?? '',
-  row.address ?? '',
-  row.postalCode ?? '',
-  row.city ?? '',
-  row.country ?? '',
-  row.emails ?? '',
-  row.phone ?? '',
-  row.reference ?? '',
-  '',
-]
+const toValues = (row: Row, headers: string[]): string[] =>
+  headers.map((header) => {
+    const field = FIELD_OF_HEADER[header]
+    return field ? (row[field] ?? '') : ''
+  })
 
 const table = (rows: Row[], headers = HEADERS): CsvTable => ({
   encoding: 'utf-8',
   headers: headers.map(normalizeHeader),
   records: rows.map((row, index) => ({
     line: index + 2,
-    values: toValues(row),
+    values: toValues(row, headers),
     wellFormed: true,
   })),
 })
 
-const plan = (rows: Row[]) => {
-  const result = mapPennylaneClients(table(rows))
+const plan = (rows: Row[], headers = HEADERS) => {
+  const result = mapPennylaneClients(table(rows, headers))
   if (!result.ok) throw new Error('fichier refuse')
   return result.plan
 }
@@ -112,9 +140,9 @@ describe('mapPennylaneClients — une ligne valide', () => {
           name: 'Lucie Fictive',
           email: 'lucie@exemple.test',
           phone: '06 00 00 00 01',
-          addressLine: '1 allée des Essais',
-          postalCode: '99100',
-          city: 'Fictiville',
+          homeAddressLine: '1 allée des Essais',
+          homePostalCode: '99100',
+          homeCity: 'Fictiville',
           parcels: [
             {line: 2, parcelNumber: 'ZZ 101', meterNumber: '00XX000001'},
           ],
@@ -174,7 +202,7 @@ describe('mapPennylaneClients — une ligne valide', () => {
   it('remet le zéro initial d’un code postal français à 4 chiffres, avec une remarque', () => {
     const result = plan([{...LUCIE, postalCode: '1100', country: 'FR'}])
 
-    expect(result.members[0].postalCode).toBe('01100')
+    expect(result.members[0].homePostalCode).toBe('01100')
     expect(result.remarks).toEqual([
       {line: 2, client: 'Lucie Fictive', remark: 'postal_code_padded'},
     ])
@@ -183,7 +211,7 @@ describe('mapPennylaneClients — une ligne valide', () => {
   it('laisse tel quel un code postal à 4 chiffres hors de France', () => {
     const result = plan([{...LUCIE, postalCode: '1100', country: 'DE'}])
 
-    expect(result.members[0].postalCode).toBe('1100')
+    expect(result.members[0].homePostalCode).toBe('1100')
     expect(result.remarks).toEqual([])
   })
 
@@ -191,7 +219,7 @@ describe('mapPennylaneClients — une ligne valide', () => {
     const [member] = plan([{...LUCIE, emails: ''}]).members
 
     expect(member).not.toHaveProperty('email')
-    expect(member.addressLine).toBe('1 allée des Essais')
+    expect(member.homeAddressLine).toBe('1 allée des Essais')
   })
 
   it('garde une ligne avec un email et sans adresse postale', () => {
@@ -200,7 +228,7 @@ describe('mapPennylaneClients — une ligne valide', () => {
     ]).members
 
     expect(member.email).toBe('lucie@exemple.test')
-    expect(member).not.toHaveProperty('addressLine')
+    expect(member).not.toHaveProperty('homeAddressLine')
   })
 })
 
@@ -276,5 +304,157 @@ describe('mapPennylaneClients — regroupement (critère 4 amendé)', () => {
     ])
 
     expect(result.remarks).toEqual([])
+  })
+})
+
+describe('mapPennylaneClients — domicile, terrain et entreprise (s55, arbitrage du 17/11)', () => {
+  const s55Plan = (rows: Row[]) => plan(rows, S55_HEADERS)
+
+  it('sans adresse de livraison : l’adresse est le domicile, aucun terrain', () => {
+    const [member] = s55Plan([{...LUCIE, clientType: 'Particulier'}]).members
+
+    expect(member).toMatchObject({
+      homeAddressLine: '1 allée des Essais',
+      homePostalCode: '99100',
+      homeCity: 'Fictiville',
+    })
+    expect(member).not.toHaveProperty('landAddressLine')
+    expect(member).not.toHaveProperty('landPostalCode')
+    expect(member).not.toHaveProperty('landCity')
+    expect(member).not.toHaveProperty('companyName')
+  })
+
+  it('avec une adresse de livraison : la livraison est le domicile, l’adresse le terrain', () => {
+    const [member] = s55Plan([
+      {
+        ...LUCIE,
+        deliveryAddress: '8 rue du Domicile',
+        deliveryPostalCode: '99200',
+        deliveryCity: 'Domicileville',
+        deliveryCountry: 'FR',
+      },
+    ]).members
+
+    expect(member).toMatchObject({
+      homeAddressLine: '8 rue du Domicile',
+      homePostalCode: '99200',
+      homeCity: 'Domicileville',
+      landAddressLine: '1 allée des Essais',
+      landPostalCode: '99100',
+      landCity: 'Fictiville',
+    })
+  })
+
+  it('avec une livraison identique à l’adresse : même règle, domicile et terrain identiques', () => {
+    const [member] = s55Plan([
+      {
+        ...LUCIE,
+        deliveryAddress: LUCIE.address,
+        deliveryPostalCode: LUCIE.postalCode,
+        deliveryCity: LUCIE.city,
+        deliveryCountry: 'FR',
+      },
+    ]).members
+
+    expect(member).toMatchObject({
+      homeAddressLine: '1 allée des Essais',
+      homePostalCode: '99100',
+      homeCity: 'Fictiville',
+      landAddressLine: '1 allée des Essais',
+      landPostalCode: '99100',
+      landCity: 'Fictiville',
+    })
+  })
+
+  it('complète les codes postaux à quatre chiffres du domicile et du terrain', () => {
+    const result = s55Plan([
+      {
+        ...LUCIE,
+        postalCode: '1100',
+        deliveryAddress: '8 rue du Domicile',
+        deliveryPostalCode: '6200',
+        deliveryCity: 'Domicileville',
+        deliveryCountry: 'FR',
+      },
+    ])
+
+    expect(result.members[0]).toMatchObject({
+      homePostalCode: '06200',
+      landPostalCode: '01100',
+    })
+    expect(result.remarks).toEqual([
+      {line: 2, client: 'Lucie Fictive', remark: 'postal_code_padded'},
+    ])
+  })
+
+  it('une entreprise : le nom de l’entreprise reçoit la dénomination, comme le nom de la fiche', () => {
+    const [member] = s55Plan([
+      {...LUCIE, name: 'Épicerie Fictive', clientType: 'Entreprise'},
+    ]).members
+
+    expect(member.name).toBe('Épicerie Fictive')
+    expect(member.companyName).toBe('Épicerie Fictive')
+  })
+
+  it('un particulier n’a pas de nom d’entreprise, même avec un SIREN', () => {
+    const [member] = s55Plan([
+      {...LUCIE, clientType: 'Particulier', siren: '000000000'},
+    ]).members
+
+    expect(member).not.toHaveProperty('companyName')
+  })
+
+  it('accepte toujours un export sans les colonnes facultatives', () => {
+    const result = mapPennylaneClients(table([LUCIE], HEADERS))
+
+    expect(result.ok).toBe(true)
+    expect(result.ok && result.plan.members[0]).not.toHaveProperty(
+      'landAddressLine'
+    )
+  })
+
+  it('une ligne sans adresse ni email mais avec une livraison n’est pas rejetée : le domicile existe', () => {
+    const result = s55Plan([
+      {
+        ...LUCIE,
+        address: '',
+        postalCode: '',
+        city: '',
+        emails: '',
+        deliveryAddress: '8 rue du Domicile',
+        deliveryPostalCode: '99200',
+        deliveryCity: 'Domicileville',
+      },
+    ])
+
+    expect(result.rejections).toEqual([])
+    expect(result.members[0].homeAddressLine).toBe('8 rue du Domicile')
+  })
+
+  it('compare nom et domicile pour la remarque « même nom et même adresse »', () => {
+    const delivery = {
+      deliveryAddress: '8 rue du Domicile',
+      deliveryPostalCode: '99200',
+      deliveryCity: 'Domicileville',
+    }
+    const result = s55Plan([
+      {...LUCIE, ...delivery},
+      {
+        ...LUCIE,
+        ...delivery,
+        id: 'client-fictif-002',
+        address: '9 impasse du Test',
+        reference: 'ZZ 102 - 00XX000003',
+      },
+    ])
+
+    expect(result.remarks).toEqual([
+      {
+        line: 3,
+        client: 'Lucie Fictive',
+        remark: 'same_name_and_address',
+        relatedLine: 2,
+      },
+    ])
   })
 })

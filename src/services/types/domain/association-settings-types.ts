@@ -80,9 +80,10 @@ export type ChoiceSettingDefinition = AssociationSettingDefinitionBase & {
 /**
  * Jeu de caracteres restreint d'un texte : `verification-code` n'accepte que
  * lettres, chiffres, tirets et soulignes, et reduit une balise `<meta>` collee
- * entiere a la valeur de son attribut `content`.
+ * entiere a la valeur de son attribut `content` ; `postal-code` n'accepte que
+ * cinq chiffres (s55), refus `invalidCode`.
  */
-export type TextSettingFormat = 'verification-code'
+export type TextSettingFormat = 'verification-code' | 'postal-code'
 
 export type TextSettingDefinition = AssociationSettingDefinitionBase & {
   type: 'text'
@@ -222,6 +223,17 @@ export const EMAIL_LOGIN_RESERVE_SETTING_KEY = 'email.login_reserve'
  */
 export const MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY =
   'member.email_confirmation_days'
+/**
+ * Code postal et commune du terrain par defaut (s55, ADR 058) : l'import les
+ * ecrit au terrain d'une fiche **creee** sans adresse de terrain. **Sans
+ * defaut** : vides, le terrain reste vide. La valeur d'une association se
+ * saisit dans « Reglages », jamais dans le code (ADR 010).
+ */
+export const MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY =
+  'member.default_land_postal_code'
+export const MEMBER_DEFAULT_LAND_CITY_SETTING_KEY = 'member.default_land_city'
+/** Plafond de la commune du terrain par defaut : celui d'une fiche. */
+export const MEMBER_DEFAULT_LAND_CITY_MAX_LENGTH = 100
 /** Plafond de la raison sociale. */
 export const ASSOCIATION_LEGAL_NAME_MAX_LENGTH = 120
 /** Plafond des mentions du pied de page. */
@@ -455,6 +467,32 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     page: 'settings',
     section: 'sending',
   },
+  {
+    key: MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: 5,
+    multiline: false,
+    format: 'postal-code',
+    labelKey: 'fields.defaultLandPostalCode.label',
+    helpKey: 'fields.defaultLandPostalCode.help',
+    whenEmptyKey: 'fields.defaultLandPostalCode.whenEmpty',
+    errorMessageKeys: {
+      invalidCode: 'fields.defaultLandPostalCode.errors.invalidCode',
+    },
+    page: 'settings',
+  },
+  {
+    key: MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: MEMBER_DEFAULT_LAND_CITY_MAX_LENGTH,
+    multiline: false,
+    labelKey: 'fields.defaultLandCity.label',
+    helpKey: 'fields.defaultLandCity.help',
+    whenEmptyKey: 'fields.defaultLandCity.whenEmpty',
+    page: 'settings',
+  },
 ]
 
 const emailSchema = z.email()
@@ -504,6 +542,7 @@ const parseChoice = (
     : refused({code: 'invalidChoice'})
 
 const VERIFICATION_CODE_PATTERN = /^[A-Za-z0-9_-]+$/
+const POSTAL_CODE_PATTERN = /^\d{5}$/
 const META_CONTENT_PATTERN = /\bcontent\s*=\s*(["'])(.*?)\1/i
 
 /**
@@ -533,6 +572,9 @@ const parseText = (
     definition.format === 'verification-code' &&
     !VERIFICATION_CODE_PATTERN.test(text)
   ) {
+    return refused({code: 'invalidCode'})
+  }
+  if (definition.format === 'postal-code' && !POSTAL_CODE_PATTERN.test(text)) {
     return refused({code: 'invalidCode'})
   }
   if (text.length > definition.maxLength) {
@@ -854,3 +896,16 @@ export const getMemberEmailConfirmationDays = (
   settings: ResolvedAssociationSettings
 ): number =>
   numberSettingOf(settings, MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY)
+
+/**
+ * Code postal et commune du terrain par defaut (s55, ADR 058) : `null` quand
+ * le bureau ne les a pas renseignes, jamais une valeur du code.
+ */
+export const getDefaultLandAddress = (
+  settings: ResolvedAssociationSettings
+): {postalCode: string | null; city: string | null} => ({
+  postalCode:
+    textSettingOf(settings, MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY) ??
+    null,
+  city: textSettingOf(settings, MEMBER_DEFAULT_LAND_CITY_SETTING_KEY) ?? null,
+})

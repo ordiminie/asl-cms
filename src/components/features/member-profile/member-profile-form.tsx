@@ -74,10 +74,15 @@ const EMPTY_VALUES: MemberProfileFormSchemaType = {
   name: '',
   email: '',
   phone: '',
-  addressLine: '',
-  addressComplement: '',
-  postalCode: '',
-  city: '',
+  homeAddressLine: '',
+  homeAddressComplement: '',
+  homePostalCode: '',
+  homeCity: '',
+  landAddressLine: '',
+  landAddressComplement: '',
+  landPostalCode: '',
+  landCity: '',
+  companyName: '',
 }
 
 /** La fiche creee, avec le temoin qui lui fait dire « Proprietaire enregistre. ». */

@@ -106,9 +106,19 @@ export type ImportMemberCandidate = {
   /** Les adresses suivantes de la cellule, supplementaires (s54). */
   additionalEmails?: string[]
   phone?: string
-  addressLine?: string
-  postalCode?: string
-  city?: string
+  /**
+   * Le domicile (s55, ADR 058) : l'`Adresse` du fichier, sauf quand une
+   * `Adresse de Livraison` est renseignee — la livraison est alors le
+   * domicile, et l'`Adresse` le terrain.
+   */
+  homeAddressLine?: string
+  homePostalCode?: string
+  homeCity?: string
+  landAddressLine?: string
+  landPostalCode?: string
+  landCity?: string
+  /** La denomination d'un client `Type de Client = Entreprise` (s55). */
+  companyName?: string
   parcels: ImportParcelCandidate[]
 }
 

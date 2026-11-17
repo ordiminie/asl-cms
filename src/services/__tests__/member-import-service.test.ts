@@ -44,11 +44,15 @@ vi.mock('../parcel-ownership-service', () => ({
 vi.mock('../organization-service', () => ({
   getOrganizationByIdService: vi.fn(),
 }))
+vi.mock('../association-settings-service', () => ({
+  getAssociationSettingsService: vi.fn(),
+}))
 
 import {z} from 'zod'
 
 import {logger} from '@/lib/logger'
 
+import {getAssociationSettingsService} from '../association-settings-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {ValidationParsedZodError} from '../errors/validation-error'
 import {importMembersService} from '../member-import-service'
@@ -59,6 +63,13 @@ import {
 } from '../member-profile-service'
 import {getOrganizationByIdService} from '../organization-service'
 import {attachParcelService} from '../parcel-ownership-service'
+import {
+  ASSOCIATION_SETTINGS_REGISTRY,
+  AssociationSettingRow,
+  MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
+  MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
+  resolveSettings,
+} from '../types/domain/association-settings-types'
 import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {
   ImportReportDTO,
@@ -162,7 +173,16 @@ const run = async (content = FILE): Promise<ImportReportDTO> => {
   return result.report
 }
 
+/** Les reglages de l'association visee, lus par l'import (s55). */
+const settingRows = vi.hoisted(() => ({current: [] as unknown[]}))
+
 const installFakeServices = () => {
+  vi.mocked(getAssociationSettingsService).mockImplementation(async () =>
+    resolveSettings(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      settingRows.current as AssociationSettingRow[]
+    )
+  )
   vi.mocked(getOrganizationByIdService).mockResolvedValue({
     id: ORG_ID,
   } as Awaited<ReturnType<typeof getOrganizationByIdService>>)
@@ -180,11 +200,14 @@ const installFakeServices = () => {
         holder: {userId: holder, name: 'Compte existant', profiles: []},
       }
     }
-    if (input.postalCode && !/^\d{5}$/.test(input.postalCode)) {
-      const parsed = z
-        .object({postalCode: z.string().regex(/^\d{5}$/)})
-        .safeParse({postalCode: input.postalCode})
-      throw new ValidationParsedZodError(parsed.error)
+    for (const field of ['homePostalCode', 'landPostalCode'] as const) {
+      const value = input[field]
+      if (value && !/^\d{5}$/.test(value)) {
+        const parsed = z
+          .object({[field]: z.string().regex(/^\d{5}$/)})
+          .safeParse({[field]: value})
+        throw new ValidationParsedZodError(parsed.error)
+      }
     }
     const id = `fiche-${input.pennylaneCustomerId}`
     db.pending.push(`profile:${id}`)
@@ -248,6 +271,7 @@ beforeEach(() => {
   db.profiles = new Map()
   db.owners = new Map()
   db.accounts = new Map([['pris@exemple.test', 'compte-existant']])
+  settingRows.current = []
   installFakeServices()
 })
 
@@ -288,9 +312,9 @@ describe('[SUPER_ADMIN] importMembersService', () => {
       organizationId: ORG_ID,
       name: 'Lucie Fictive',
       email: 'lucie@exemple.test',
-      addressLine: '1 allée des Essais',
-      postalCode: '99100',
-      city: 'Fictiville',
+      homeAddressLine: '1 allée des Essais',
+      homePostalCode: '99100',
+      homeCity: 'Fictiville',
       pennylaneCustomerId: 'c-001',
     })
     expect(attachParcelService).toHaveBeenCalledWith({
@@ -639,5 +663,189 @@ describe('[SUPER_ADMIN] importMembersService — plusieurs adresses par cellule 
 
     expect(createMemberProfileService).not.toHaveBeenCalled()
     expect(addMemberProfileEmailService).not.toHaveBeenCalled()
+  })
+})
+
+/** Un export avec les colonnes de livraison et le type de client (s55). */
+const S55_HEADER = `${HEADER};Adresse de Livraison;Code Postal de Livraison;Ville de Livraison;Pays de Livraison;Type de Client`
+
+const s55Line = (fields: {
+  id: string
+  name: string
+  address?: string
+  postalCode?: string
+  delivery?: string
+  deliveryPostalCode?: string
+  clientType?: string
+  reference: string
+}) =>
+  [
+    fields.id,
+    fields.name,
+    fields.address ?? '',
+    fields.postalCode ?? (fields.address ? '99100' : ''),
+    fields.address ? 'Fictiville' : '',
+    'FR',
+    '',
+    '',
+    fields.reference,
+    fields.delivery ?? '',
+    fields.deliveryPostalCode ?? (fields.delivery ? '99200' : ''),
+    fields.delivery ? 'Domicileville' : '',
+    fields.delivery ? 'FR' : '',
+    fields.clientType ?? 'Particulier',
+  ].join(';')
+
+const s55Csv = (...lines: string[]) =>
+  new TextEncoder().encode([S55_HEADER, ...lines].join('\n'))
+
+describe('[SUPER_ADMIN] importMembersService — domicile, terrain et entreprise (s55, ADR 058)', () => {
+  const DEFAULT_LAND = [
+    {key: MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY, value: '33680'},
+    {key: MEMBER_DEFAULT_LAND_CITY_SETTING_KEY, value: 'Lacanau'},
+  ]
+
+  beforeEach(() => {
+    setupAuthUserMocked(userTestSuperAdmin)
+  })
+
+  it('une fiche créée sans terrain reçoit le code postal et la commune du terrain par défaut, sans rue', async () => {
+    settingRows.current = DEFAULT_LAND
+
+    await run(
+      s55Csv(
+        s55Line({
+          id: 'c-020',
+          name: 'Lucie Fictive',
+          address: '1 allée des Essais',
+          reference: 'ZZ 120 - 00XX000020',
+        })
+      )
+    )
+
+    const [input] = vi.mocked(createMemberProfileService).mock.calls[0]
+    expect(input).toMatchObject({
+      homeAddressLine: '1 allée des Essais',
+      landPostalCode: '33680',
+      landCity: 'Lacanau',
+    })
+    expect(input.landAddressLine).toBeUndefined()
+    expect(getAssociationSettingsService).toHaveBeenCalledTimes(1)
+    expect(getAssociationSettingsService).toHaveBeenCalledWith(ORG_ID)
+  })
+
+  it('lit les réglages une seule fois par import', async () => {
+    settingRows.current = DEFAULT_LAND
+
+    await run()
+
+    expect(getAssociationSettingsService).toHaveBeenCalledTimes(1)
+    expect(createMemberProfileService).toHaveBeenCalledWith(
+      expect.objectContaining({landPostalCode: '33680', landCity: 'Lacanau'})
+    )
+  })
+
+  it('sans réglage, le terrain d’une fiche créée reste vide', async () => {
+    await run(
+      s55Csv(
+        s55Line({
+          id: 'c-021',
+          name: 'Lucie Fictive',
+          address: '1 allée des Essais',
+          reference: 'ZZ 121 - 00XX000021',
+        })
+      )
+    )
+
+    const [input] = vi.mocked(createMemberProfileService).mock.calls[0]
+    expect(input.landAddressLine).toBeUndefined()
+    expect(input.landPostalCode).toBeUndefined()
+    expect(input.landCity).toBeUndefined()
+  })
+
+  it('le terrain du fichier l’emporte sur le terrain par défaut', async () => {
+    settingRows.current = DEFAULT_LAND
+
+    await run(
+      s55Csv(
+        s55Line({
+          id: 'c-022',
+          name: 'Lucie Fictive',
+          address: '1 allée des Essais',
+          delivery: '8 rue du Domicile',
+          reference: 'ZZ 122 - 00XX000022',
+        })
+      )
+    )
+
+    expect(createMemberProfileService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        homeAddressLine: '8 rue du Domicile',
+        homePostalCode: '99200',
+        homeCity: 'Domicileville',
+        landAddressLine: '1 allée des Essais',
+        landPostalCode: '99100',
+        landCity: 'Fictiville',
+      })
+    )
+  })
+
+  it('passe le nom de l’entreprise d’un client entreprise', async () => {
+    await run(
+      s55Csv(
+        s55Line({
+          id: 'c-023',
+          name: 'Épicerie Fictive',
+          address: '1 allée des Essais',
+          clientType: 'Entreprise',
+          reference: 'ZZ 123 - 00XX000023',
+        })
+      )
+    )
+
+    expect(createMemberProfileService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Épicerie Fictive',
+        companyName: 'Épicerie Fictive',
+      })
+    )
+  })
+
+  it('une fiche déjà présente n’est pas touchée : ni création ni terrain par défaut', async () => {
+    settingRows.current = DEFAULT_LAND
+    db.profiles.set('c-024', 'fiche-existante')
+
+    const report = await run(
+      s55Csv(
+        s55Line({
+          id: 'c-024',
+          name: 'Lucie Fictive',
+          address: '1 allée des Essais',
+          reference: 'ZZ 124 - 00XX000024',
+        })
+      )
+    )
+
+    expect(report.alreadyPresent).toBe(1)
+    expect(createMemberProfileService).not.toHaveBeenCalled()
+  })
+
+  it('traduit un code postal du terrain non valide en motif', async () => {
+    const report = await run(
+      s55Csv(
+        s55Line({
+          id: 'c-025',
+          name: 'Terrain Faux',
+          address: '1 rue Fictive',
+          postalCode: 'A9999',
+          delivery: '8 rue du Domicile',
+          reference: 'ZZ 125 - 00XX000025',
+        })
+      )
+    )
+
+    expect(report.rejections).toEqual([
+      {line: 2, client: 'Terrain Faux', reason: 'invalid_postal_code'},
+    ])
   })
 })

@@ -596,18 +596,23 @@ const seed = async () => {
   for (const profile of TEST_MEMBER_PROFILES) {
     await client.query(
       `
-      INSERT INTO "member_profile" (id, organization_id, name, phone, address_line, address_complement, postal_code, city)
-      SELECT $2, o.id, $3, $4, $5, $6, $7, $8
+      INSERT INTO "member_profile" (id, organization_id, name, phone, home_address_line, home_address_complement, home_postal_code, home_city, land_address_line, land_address_complement, land_postal_code, land_city, company_name)
+      SELECT $2, o.id, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
       FROM "organization" o
       WHERE o.slug = $1
       ON CONFLICT (id)
       DO UPDATE SET
         name = EXCLUDED.name,
         phone = EXCLUDED.phone,
-        address_line = EXCLUDED.address_line,
-        address_complement = EXCLUDED.address_complement,
-        postal_code = EXCLUDED.postal_code,
-        city = EXCLUDED.city,
+        home_address_line = EXCLUDED.home_address_line,
+        home_address_complement = EXCLUDED.home_address_complement,
+        home_postal_code = EXCLUDED.home_postal_code,
+        home_city = EXCLUDED.home_city,
+        land_address_line = EXCLUDED.land_address_line,
+        land_address_complement = EXCLUDED.land_address_complement,
+        land_postal_code = EXCLUDED.land_postal_code,
+        land_city = EXCLUDED.land_city,
+        company_name = EXCLUDED.company_name,
         updated_at = NOW();
     `,
       [
@@ -615,10 +620,15 @@ const seed = async () => {
         profile.id,
         profile.name,
         profile.phone,
-        profile.addressLine,
-        profile.addressComplement,
-        profile.postalCode,
-        profile.city,
+        profile.homeAddressLine,
+        profile.homeAddressComplement,
+        profile.homePostalCode,
+        profile.homeCity,
+        profile.landAddressLine,
+        profile.landAddressComplement,
+        profile.landPostalCode,
+        profile.landCity,
+        profile.companyName,
       ]
     )
     await seedMemberProfileEmails(client, profile)

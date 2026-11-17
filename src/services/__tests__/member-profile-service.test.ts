@@ -130,10 +130,15 @@ const profileRow = (overrides: Record<string, unknown> = {}) => ({
   name: 'Jean et Odile Dubois',
   email: null as string | null,
   phone: null as string | null,
-  addressLine: null as string | null,
-  addressComplement: null as string | null,
-  postalCode: null as string | null,
-  city: null as string | null,
+  homeAddressLine: null as string | null,
+  homeAddressComplement: null as string | null,
+  homePostalCode: null as string | null,
+  homeCity: null as string | null,
+  landAddressLine: null as string | null,
+  landAddressComplement: null as string | null,
+  landPostalCode: null as string | null,
+  landCity: null as string | null,
+  companyName: null as string | null,
   pennylaneCustomerId: null as string | null,
   mailOnly: true,
   createdAt: new Date('2026-09-01T08:00:00Z'),
@@ -275,20 +280,25 @@ describe.each([
       name: '  Claire Meunier ',
       email: ' claire@example.org ',
       phone: '0262 12 34 56',
-      addressLine: '12 chemin des Pins',
-      addressComplement: '',
-      postalCode: '97400',
-      city: 'Saint-Denis',
+      homeAddressLine: '12 chemin des Pins',
+      homeAddressComplement: '',
+      homePostalCode: '97400',
+      homeCity: 'Saint-Denis',
     })
 
     expect(createMemberProfileTxnDao).toHaveBeenCalledWith({
       organizationId: ORG_ID,
       name: 'Claire Meunier',
       phone: '0262 12 34 56',
-      addressLine: '12 chemin des Pins',
-      addressComplement: null,
-      postalCode: '97400',
-      city: 'Saint-Denis',
+      homeAddressLine: '12 chemin des Pins',
+      homeAddressComplement: null,
+      homePostalCode: '97400',
+      homeCity: 'Saint-Denis',
+      landAddressLine: null,
+      landAddressComplement: null,
+      landPostalCode: null,
+      landCity: null,
+      companyName: null,
       pennylaneCustomerId: null,
     })
     expect(insertMemberProfileEmailDao).toHaveBeenCalledWith({
@@ -348,9 +358,9 @@ describe.each([
     const result = await createMemberProfileService({
       organizationId: ORG_ID,
       name: 'Paul Ferrand',
-      addressLine: '3 rue des Lilas',
-      postalCode: '97400',
-      city: 'Saint-Denis',
+      homeAddressLine: '3 rue des Lilas',
+      homePostalCode: '97400',
+      homeCity: 'Saint-Denis',
     })
 
     expect(createMemberProfileTxnDao).toHaveBeenCalledWith(
@@ -376,9 +386,9 @@ describe.each([
         name: 'Paul Ferrand',
         email,
         phone: '',
-        addressLine: ' ',
-        postalCode: '',
-        city: '',
+        homeAddressLine: ' ',
+        homePostalCode: '',
+        homeCity: '',
       })
 
       expect(insertMemberProfileEmailDao).not.toHaveBeenCalled()
@@ -386,10 +396,15 @@ describe.each([
         organizationId: ORG_ID,
         name: 'Paul Ferrand',
         phone: null,
-        addressLine: null,
-        addressComplement: null,
-        postalCode: null,
-        city: null,
+        homeAddressLine: null,
+        homeAddressComplement: null,
+        homePostalCode: null,
+        homeCity: null,
+        landAddressLine: null,
+        landAddressComplement: null,
+        landPostalCode: null,
+        landCity: null,
+        companyName: null,
         pennylaneCustomerId: null,
       })
     }
@@ -408,7 +423,7 @@ describe.each([
   })
 
   it.each([
-    ['an address line', {addressLine: '3 rue des Lilas'}],
+    ['an address line', {homeAddressLine: '3 rue des Lilas'}],
     ['an email', {email: 'paul@example.org', mailOnly: false}],
   ])(
     'should not flag a profile incomplete when it has %s',
@@ -425,9 +440,9 @@ describe.each([
     ['a name left blank', {name: '   '}],
     ['a name over 200 characters', {name: 'a'.repeat(201)}],
     ['an invalid email', {email: 'pas-une-adresse'}],
-    ['a postal code that is not five digits', {postalCode: '9740'}],
+    ['a postal code that is not five digits', {homePostalCode: '9740'}],
     ['a phone with letters', {phone: 'appelez-moi'}],
-    ['a city over 100 characters', {city: 'a'.repeat(101)}],
+    ['a city over 100 characters', {homeCity: 'a'.repeat(101)}],
   ])('should refuse %s and write nothing', async (_label, part) => {
     await expect(
       createMemberProfileService({
@@ -446,28 +461,33 @@ describe.each([
       writtenUnder = scope.current
       return {
         status: 'updated',
-        row: profileRow({phone: '0692 00 00 00', city: 'Saint-Paul'}),
+        row: profileRow({phone: '0692 00 00 00', homeCity: 'Saint-Paul'}),
       }
     })
     vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
-      profileRow({phone: '0692 00 00 00', city: 'Saint-Paul'})
+      profileRow({phone: '0692 00 00 00', homeCity: 'Saint-Paul'})
     )
 
     const result = await updateMemberProfileContactService({
       organizationId: ORG_ID,
       memberProfileId: PROFILE_ID,
       phone: '0692 00 00 00',
-      addressLine: '3 rue des Lilas',
-      postalCode: '97460',
-      city: 'Saint-Paul',
+      homeAddressLine: '3 rue des Lilas',
+      homePostalCode: '97460',
+      homeCity: 'Saint-Paul',
     })
 
     expect(updateMemberProfileContactTxnDao).toHaveBeenCalledWith(PROFILE_ID, {
       phone: '0692 00 00 00',
-      addressLine: '3 rue des Lilas',
-      addressComplement: null,
-      postalCode: '97460',
-      city: 'Saint-Paul',
+      homeAddressLine: '3 rue des Lilas',
+      homeAddressComplement: null,
+      homePostalCode: '97460',
+      homeCity: 'Saint-Paul',
+      landAddressLine: null,
+      landAddressComplement: null,
+      landPostalCode: null,
+      landCity: null,
+      companyName: null,
     })
     expect(writtenUnder).toBe(ORG_ID)
     expect(result).toMatchObject({
@@ -477,6 +497,60 @@ describe.each([
     for (const dao of accountDaos()) {
       expect(dao).not.toHaveBeenCalled()
     }
+  })
+
+  it('should write the land address and the company name entered by the board (s55, critère 5)', async () => {
+    vi.mocked(updateMemberProfileContactTxnDao).mockResolvedValue({
+      status: 'updated',
+      row: profileRow({
+        landCity: 'Biscarrosse',
+        companyName: 'Épicerie fictive',
+      }),
+    })
+    vi.mocked(getMemberProfileByIdDao).mockResolvedValue(
+      profileRow({landCity: 'Biscarrosse', companyName: 'Épicerie fictive'})
+    )
+
+    const result = await updateMemberProfileContactService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      homeAddressLine: '3 rue des Lilas',
+      homePostalCode: '97460',
+      homeCity: 'Saint-Paul',
+      landAddressLine: '3 allée des Mimosas',
+      landAddressComplement: ' ',
+      landPostalCode: '40600',
+      landCity: 'Biscarrosse',
+      companyName: ' Épicerie fictive ',
+    })
+
+    expect(updateMemberProfileContactTxnDao).toHaveBeenCalledWith(PROFILE_ID, {
+      phone: null,
+      homeAddressLine: '3 rue des Lilas',
+      homeAddressComplement: null,
+      homePostalCode: '97460',
+      homeCity: 'Saint-Paul',
+      landAddressLine: '3 allée des Mimosas',
+      landAddressComplement: null,
+      landPostalCode: '40600',
+      landCity: 'Biscarrosse',
+      companyName: 'Épicerie fictive',
+    })
+    expect(result).toMatchObject({
+      status: 'saved',
+      profile: {landCity: 'Biscarrosse', companyName: 'Épicerie fictive'},
+    })
+  })
+
+  it('should refuse a land postal code that is not five digits, writing nothing (s55)', async () => {
+    await expect(
+      updateMemberProfileContactService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        landPostalCode: '4060',
+      })
+    ).rejects.toThrow()
+    expect(updateMemberProfileContactTxnDao).not.toHaveBeenCalled()
   })
 
   it('should answer not_found when the profile to update does not exist', async () => {
@@ -517,7 +591,7 @@ describe.each([
           ...profileRow({
             id: OTHER_PROFILE_ID,
             name: 'SCI Les Pins',
-            addressLine: '1 allée des Pins',
+            homeAddressLine: '1 allée des Pins',
           }),
           currentParcelNumbers: [],
           accountProfileCount: 0,
@@ -580,7 +654,7 @@ const calls = {
     updateMemberProfileContactService({
       organizationId: ORG_ID,
       memberProfileId: PROFILE_ID,
-      city: 'Saint-Paul',
+      homeCity: 'Saint-Paul',
     }),
   get: () => getMemberProfileService(ORG_ID, PROFILE_ID),
   getPage: () => getMemberProfilePageService({organizationId: ORG_ID, page: 1}),
