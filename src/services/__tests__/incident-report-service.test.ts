@@ -922,9 +922,22 @@ describe('[ORGANIZATION MEMBER] createMyIncidentReportService — le membre déc
       description: 'L’eau sort de la chaussée.\nÇa coule fort.',
       memberId: PROFILE_ID,
       reporterName: 'Lucie Moreau',
-      reporterEmail: 'lucie.moreau@example.test',
+      reporterEmail: userTest.email,
       reporterPhone: '06 12 34 56 78',
     })
+  })
+
+  it('copies the address of the person signed in, not the holder of the fiche (s54)', async () => {
+    setupAuthUserMocked({
+      ...withRole(UserOrganizationRoleConst.MEMBER),
+      email: 'claire.moreau@example.test',
+    })
+
+    await createMyIncidentReportService(submission())
+
+    expect(createIncidentReportTxnDao).toHaveBeenCalledWith(
+      expect.objectContaining({reporterEmail: 'claire.moreau@example.test'})
+    )
   })
 
   it('should refuse a category of another association, without writing', async () => {
@@ -1083,10 +1096,15 @@ describe('[ORGANIZATION MEMBER] getMyIncidentReportsService — le membre suit s
     ])
   })
 
-  it('should give the identity the board receives, from the profile', async () => {
+  it('should give the identity the board receives: the fiche, and the address of the person signed in (s54)', async () => {
+    setupAuthUserMocked({
+      ...withRole(UserOrganizationRoleConst.MEMBER),
+      email: 'claire.moreau@example.test',
+    })
+
     await expect(getMyReportIdentityService(ORG_ID)).resolves.toEqual({
       name: 'Lucie Moreau',
-      email: 'lucie.moreau@example.test',
+      email: 'claire.moreau@example.test',
       phone: '06 12 34 56 78',
     })
   })

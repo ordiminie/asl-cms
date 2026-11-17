@@ -12,10 +12,12 @@ import {
   getMyLandsService,
   isPlainMemberOfService,
 } from '@/services/facades/member-space-service-facade'
+import {getMyEmailsService} from '@/services/facades/my-email-service-facade'
 import {
   MyIncidentReportDTO,
   MyReportIdentityDTO,
 } from '@/services/types/domain/incident-report-types'
+import type {MyEmailsDTO} from '@/services/types/domain/member-email-types'
 import {
   MyContactDTO,
   MyLandsDTO,
@@ -68,5 +70,16 @@ export const getMyReportIdentityDal = cache(
   async (): Promise<MyReportIdentityDTO | undefined> => {
     const tenant = await requireCurrentTenantDal()
     return getMyReportIdentityService(tenant.id)
+  }
+)
+
+/**
+ * « Mes adresses email » du compte connecte, sur l'association du domaine
+ * (s54). Sans cache : une adresse confirmee se voit a la lecture suivante.
+ */
+export const getMyEmailsDal = cache(
+  async (): Promise<MyEmailsDTO | undefined> => {
+    const tenant = await requireCurrentTenantDal()
+    return getMyEmailsService(tenant.id)
   }
 )

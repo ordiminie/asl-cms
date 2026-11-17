@@ -8,6 +8,8 @@ import {
 } from '@/db/models/member-question-model'
 import {getDb} from '@/db/tenant-scope'
 
+import {activeHolderEmailSql} from './member-profile-email-repository'
+
 /**
  * Questions posees par un membre au bureau (s23). Sous RLS forcee : hors
  * `withTenant(organizationId, ...)`, rien ne sort et rien ne s'ecrit.
@@ -15,7 +17,8 @@ import {getDb} from '@/db/tenant-scope'
 
 /**
  * Une question lue avec son sujet, **supprime compris** (critere 5), et
- * l'identite du membre lue sur sa fiche (une seule source, critere 4).
+ * l'identite du membre lue sur sa fiche (une seule source, critere 4) :
+ * l'adresse est la titulaire active (s54, ADR 056).
  */
 export type MemberQuestionRow = MemberQuestionModel & {
   categoryName: string
@@ -42,7 +45,7 @@ const selectQuestionWithCategoryAndMember = () =>
       categoryName: associationCategory.name,
       categoryDeletedAt: associationCategory.deletedAt,
       memberName: memberProfile.name,
-      memberEmail: memberProfile.email,
+      memberEmail: activeHolderEmailSql(),
     })
     .from(memberQuestion)
     .innerJoin(

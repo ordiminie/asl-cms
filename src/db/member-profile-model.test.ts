@@ -10,7 +10,7 @@ import {memberProfile} from './models/member-profile-model'
  * `src/db/models/` : un fichier de test dans ce dossier casse drizzle-kit
  * (voir `rls-inventory.test.ts`).
  */
-describe('member_profile — plus de colonne de compte, adresse non unique (ADR 054)', () => {
+describe('member_profile — ni compte, ni adresse : elles vivent ailleurs (ADR 054, ADR 056)', () => {
   const config = getTableConfig(memberProfile)
 
   it('ne porte plus de colonne user_id', () => {
@@ -22,14 +22,14 @@ describe('member_profile — plus de colonne de compte, adresse non unique (ADR 
     ).toBeUndefined()
   })
 
-  it('indexe l’adresse par association sans la rendre unique', () => {
-    const index = config.indexes.find(
-      (i) => i.config.name === 'member_profile_organization_email_idx'
-    )
-
-    expect(index).toBeDefined()
-    expect(index?.config.unique).toBe(false)
-    expect(index?.config.where).toBeDefined()
+  it('ne porte plus ni email, ni mail_only, ni leur index (ADR 056 §2)', () => {
+    expect(config.columns.find((c) => c.name === 'email')).toBeUndefined()
+    expect(config.columns.find((c) => c.name === 'mail_only')).toBeUndefined()
+    expect(
+      config.indexes.find(
+        (i) => i.config.name === 'member_profile_organization_email_idx'
+      )
+    ).toBeUndefined()
   })
 })
 
@@ -49,15 +49,20 @@ describe('member_profile_account (ADR 054)', () => {
     }
   })
 
-  it('relie une fiche à au plus un compte : unique sur member_profile_id', () => {
+  it('relie une fiche à un compte par adresse : unique sur (member_profile_id, user_id) (ADR 056 §3)', () => {
     const index = config.indexes.find(
-      (i) => i.config.name === 'member_profile_account_profile_idx'
+      (i) => i.config.name === 'member_profile_account_profile_user_idx'
     )
 
     expect(index?.config.unique).toBe(true)
     expect(
       index?.config.columns.map((c) => ('name' in c ? c.name : null))
-    ).toEqual(['member_profile_id'])
+    ).toEqual(['member_profile_id', 'user_id'])
+    expect(
+      config.indexes.find(
+        (i) => i.config.name === 'member_profile_account_profile_idx'
+      )
+    ).toBeUndefined()
   })
 
   it('laisse un compte porter plusieurs fiches : index non unique (organization_id, user_id)', () => {

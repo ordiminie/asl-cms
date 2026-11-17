@@ -23,12 +23,21 @@
  * adresse : un seul compte, relie a chacune au seed, et « Mes terrains »
  * en montre trois (parcelles 61, 62 et 63). C'est la seule adresse partagee
  * du seed.
+ *
+ * s54 (ADR 056) : `email` est l'adresse **titulaire** de la fiche,
+ * `additionalEmails` ses adresses supplementaires, toutes actives. Paul
+ * Ferrand porte deux adresses (la sienne et celle de sa fille) ; son adresse
+ * est aussi supplementaire sur la fiche de Claire Meunier, titulaire d'une
+ * fiche et supplementaire d'une autre (critere 8).
  */
 export type TestMemberProfile = {
   id: string
   organizationSlug: string
   name: string
+  /** L'adresse titulaire ; `null` pour une fiche courrier uniquement. */
   email: string | null
+  /** Les adresses supplementaires actives (s54). */
+  additionalEmails?: readonly string[]
   phone: string | null
   addressLine: string | null
   addressComplement: string | null
@@ -65,6 +74,7 @@ const LEFEVRE_FIRST_ID = 'a1200000-0000-4000-8000-000000000008'
 const LEFEVRE_SECOND_ID = 'a1200000-0000-4000-8000-000000000009'
 const LEFEVRE_SCI_ID = 'a1200000-0000-4000-8000-00000000000a'
 const LEFEVRE_EMAIL = 'bernard.lefevre@example.test'
+const FERRAND_EMAIL = 'p.ferrand@techcorp-solutions.test'
 
 const NO_CONTACT = {
   email: null,
@@ -82,6 +92,7 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     organizationSlug: TECHCORP,
     name: 'Claire Meunier',
     email: 'claire.meunier@techcorp-solutions.test',
+    additionalEmails: [FERRAND_EMAIL],
     addressLine: '14 allée des Aulnes',
     postalCode: '33680',
     city: 'Lacanau',
@@ -116,7 +127,8 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     id: FERRAND_ID,
     organizationSlug: TECHCORP,
     name: 'Paul Ferrand',
-    email: 'p.ferrand@techcorp-solutions.test',
+    email: FERRAND_EMAIL,
+    additionalEmails: ['julie.ferrand@example.test'],
   },
   {
     ...NO_CONTACT,

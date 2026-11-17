@@ -271,3 +271,87 @@ test.describe('critère 7 — la policy refuse, couche applicative court-circuit
     })
   })
 })
+
+/**
+ * s54 (ADR 056) : les adresses d'une fiche sont sous RLS forcée, sur leur
+ * propre colonne de tenant. Le seed en porte dans les deux associations.
+ */
+test.describe('s54 — member_profile_email isolée entre associations', () => {
+  /** Une adresse de TechCorp (seed), titulaire et supplémentaire. */
+  const ADDRESS_A = 'p.ferrand@techcorp-solutions.test'
+
+  const inScope = async <T>(
+    client: Client,
+    organizationId: string,
+    read: () => Promise<T>
+  ): Promise<T> => {
+    await client.query('begin')
+    try {
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        organizationId,
+      ])
+      return await read()
+    } finally {
+      await client.query('rollback')
+    }
+  }
+
+  test('hors scope de tenant, aucune adresse ne sort', async () => {
+    await withAppRoleClient(async (client) => {
+      const result = await client.query('select id from member_profile_email')
+
+      expect(result.rowCount).toBe(0)
+    })
+  })
+
+  test('chaque association ne lit que ses adresses ; celle de A est invisible depuis B', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      const fromA = await inScope(client, a, () =>
+        client.query<{organization_id: string; email: string}>(
+          'select organization_id, email from member_profile_email'
+        )
+      )
+      const fromB = await inScope(client, b, () =>
+        client.query<{organization_id: string; email: string}>(
+          'select organization_id, email from member_profile_email'
+        )
+      )
+
+      expect(fromA.rowCount).toBeGreaterThan(0)
+      expect(fromB.rowCount).toBeGreaterThan(0)
+      for (const row of fromA.rows) expect(row.organization_id).toBe(a)
+      for (const row of fromB.rows) expect(row.organization_id).toBe(b)
+      expect(fromA.rows.map((row) => row.email)).toContain(ADDRESS_A)
+      expect(fromB.rows.map((row) => row.email)).not.toContain(ADDRESS_A)
+    })
+  })
+
+  test('écrire une adresse pour une autre association est refusé', async () => {
+    await withAppRoleClient(async (client) => {
+      const {a, b} = await tenantIds(client)
+
+      await client.query('begin')
+      await client.query(`select set_config('app.organization_id', $1, true)`, [
+        a,
+      ])
+      const [fiche] = (
+        await client.query<{id: string}>(
+          'select id from member_profile limit 1'
+        )
+      ).rows
+
+      await expect(
+        client.query(
+          `insert into member_profile_email
+             (organization_id, member_profile_id, email, role, status, origin)
+           values ($1, $2, 'forge@example.test', 'additional', 'active', 'site')`,
+          [b, fiche.id]
+        )
+      ).rejects.toThrow(/row-level security/i)
+
+      await client.query('rollback')
+    })
+  })
+})

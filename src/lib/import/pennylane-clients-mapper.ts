@@ -103,9 +103,22 @@ const splitReference = (
   }
 }
 
-const firstEmail = (emails: string): {email: string; several: boolean} => {
-  const all = emails.split(EMAIL_SEPARATOR).filter(Boolean)
-  return {email: all[0] ?? '', several: all.length > 1}
+/**
+ * Toutes les adresses de la cellule (s54, critere 11), dans leur ordre,
+ * dedoublonnees sans casse : la premiere sera la titulaire d'une fiche
+ * creee, les suivantes ses supplementaires.
+ */
+const cellEmails = (emails: string): {email: string; others: string[]} => {
+  const all = emails
+    .split(EMAIL_SEPARATOR)
+    .map((email) => email.trim())
+    .filter(Boolean)
+  const unique = all.filter(
+    (email, index) =>
+      all.findIndex((other) => other.toLowerCase() === email.toLowerCase()) ===
+      index
+  )
+  return {email: unique[0] ?? '', others: unique.slice(1)}
 }
 
 const padPostalCode = (
@@ -138,7 +151,7 @@ const parseLine = (record: CsvRecord, indexes: ColumnIndexes): LineOutcome => {
     return {ok: false, rejection: {line: record.line, client, reason}}
   }
 
-  const {email, several} = firstEmail(cell('emails'))
+  const {email, others} = cellEmails(cell('emails'))
   const {postalCode, padded} = padPostalCode(
     cell('postalCode'),
     cell('country')
@@ -158,6 +171,7 @@ const parseLine = (record: CsvRecord, indexes: ColumnIndexes): LineOutcome => {
       member: {
         name: client,
         ...present('email', email),
+        ...(others.length > 0 ? {additionalEmails: others} : {}),
         ...present('phone', cell('phone')),
         ...present('addressLine', cell('addressLine')),
         ...present('postalCode', postalCode),
@@ -165,7 +179,6 @@ const parseLine = (record: CsvRecord, indexes: ColumnIndexes): LineOutcome => {
       },
       parcel,
       remarks: [
-        ...(several ? [remark(ImportRemarkConst.SEVERAL_EMAILS)] : []),
         ...(padded ? [remark(ImportRemarkConst.POSTAL_CODE_PADDED)] : []),
         ...(parcel.meterNumber ? [] : [remark(ImportRemarkConst.NO_METER)]),
       ],

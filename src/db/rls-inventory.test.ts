@@ -61,6 +61,26 @@ export const forcedTablesIn = (sql: string): string[] =>
     ].map((match) => match[1])
   )
 
+/** Les tables retirees par une migration (`DROP TABLE`). */
+export const droppedTablesIn = (sql: string): string[] =>
+  sorted(
+    [...sql.matchAll(/DROP TABLE "([A-Za-z0-9_]+)"/g)].map((match) => match[1])
+  )
+
+/**
+ * Les tables forcees que les migrations n'ont pas retirees depuis : une
+ * table supprimee (`member_unsubscribe`, s54) quitte le classement, sa
+ * policy avec elle.
+ */
+export const stillForcedTablesIn = (sqls: string[]): string[] => {
+  const dropped = new Set(sqls.flatMap((sql) => droppedTablesIn(sql)))
+  return sorted(
+    sqls
+      .flatMap((sql) => forcedTablesIn(sql))
+      .filter((table) => !dropped.has(table))
+  )
+}
+
 /** Les tables nommees en premiere colonne d'un tableau du classement. */
 export const listedTablesIn = (block: string): string[] =>
   sorted(
@@ -111,10 +131,8 @@ const modelTableNames = (): string[] =>
   )
 
 const forcedRlsTableNames = (): string[] =>
-  sorted(
-    readSources(MIGRATIONS_DIR, (name) => name.endsWith('.sql')).flatMap(
-      (source) => forcedTablesIn(source)
-    )
+  stillForcedTablesIn(
+    readSources(MIGRATIONS_DIR, (name) => name.endsWith('.sql'))
   )
 
 const architecture = (): string => fs.readFileSync(ARCHITECTURE, 'utf8')
@@ -167,6 +185,16 @@ describe('extraction — les angles morts de la garde elle-même', () => {
     `
 
     expect(forcedTablesIn(sql)).toEqual(['analyse_eau_2024', 'news'])
+  })
+
+  it('oublie une table forcée qu’une migration a retirée ensuite (s54)', () => {
+    const sqls = [
+      'ALTER TABLE "member_unsubscribe" FORCE ROW LEVEL SECURITY;',
+      'ALTER TABLE "news" FORCE ROW LEVEL SECURITY;',
+      'DROP TABLE "member_unsubscribe" CASCADE;',
+    ]
+
+    expect(stillForcedTablesIn(sqls)).toEqual(['news'])
   })
 
   it('lit les tables de la première colonne du classement, elles seules', () => {

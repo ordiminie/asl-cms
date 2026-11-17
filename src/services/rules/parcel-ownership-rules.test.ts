@@ -209,7 +209,7 @@ describe('planSale — une vente (critères 2 et 4)', () => {
 
 describe('isIncomplete — fiche incomplète (critère 8)', () => {
   const noContact = {
-    email: null,
+    mailOnly: true,
     addressLine: null,
     postalCode: null,
     city: null,
@@ -219,10 +219,8 @@ describe('isIncomplete — fiche incomplète (critère 8)', () => {
     expect(isIncomplete(noContact)).toBe(true)
   })
 
-  it('ne signale pas une fiche qui porte un email, même sans adresse', () => {
-    expect(isIncomplete({...noContact, email: 'claire@example.org'})).toBe(
-      false
-    )
+  it('ne signale pas une fiche qui porte une adresse email active, même sans adresse postale (ADR 056)', () => {
+    expect(isIncomplete({...noContact, mailOnly: false})).toBe(false)
   })
 
   it.each([

@@ -7,6 +7,13 @@ import {Browser, expect, Locator, Page, test} from '@playwright/test'
 import dotenv from 'dotenv'
 import {Client} from 'pg'
 
+import {
+  ADDED,
+  addProfileEmail,
+  emailsCard,
+  emailsNotice,
+} from './support/member-email-card'
+
 /**
  * Propriétaires et parcelles — s12, critères 1 à 8 et isolation entre
  * associations (ADR 029).
@@ -151,8 +158,16 @@ const storedProfileOfTenantA = async (
   const {a} = await tenantIds()
   return inTenantScope(a, async (client) => {
     const result = await client.query<StoredProfile>(
-      `select id, name, email, phone, address_line, postal_code, city, mail_only
-         from member_profile where name = $1`,
+      `select p.id, p.name,
+              (select e.email from member_profile_email e
+                where e.member_profile_id = p.id
+                  and e.role = 'holder' and e.status = 'active') as email,
+              p.phone, p.address_line, p.postal_code, p.city,
+              not exists (
+                select 1 from member_profile_email e
+                 where e.member_profile_id = p.id and e.status = 'active'
+              ) as mail_only
+         from member_profile p where p.name = $1`,
       [name]
     )
     return result.rows[0]
@@ -733,22 +748,29 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
         'Fiche incomplète'
       )
 
-      // Modifier téléphone et email : relus à l'écran et en base.
+      // Modifier le téléphone, puis ajouter une adresse depuis sa carte
+      // (s54) : relus à l'écran et en base.
       await openProfile(bureau, TENANT_A, id)
       await bureau
         .getByRole('button', {name: 'Modifier les coordonnées'})
         .click()
       await bureau.getByLabel(/^Téléphone/).fill('06 12 34 56 78')
-      await bureau.getByLabel(/^Adresse email/).fill(email)
       await bureau
         .getByRole('button', {name: 'Enregistrer les coordonnées'})
         .click()
       await expect(bureau.getByRole('status')).toContainText(
         'Coordonnées enregistrées.'
       )
+      await addProfileEmail(bureau, email)
+      await expect(emailsNotice(bureau)).toContainText(ADDED)
 
       await bureau.reload({waitUntil: 'networkidle'})
-      await expect(bureau.getByText(email, {exact: true})).toBeVisible()
+      await expect(
+        emailsCard(bureau).getByRole('table').getByText(email, {exact: true})
+      ).toBeVisible()
+      await expect(emailsCard(bureau).getByRole('table')).toContainText(
+        'Titulaire'
+      )
       await expect(bureau.getByText('06 12 34 56 78')).toBeVisible()
       await expect(
         bureau.getByText('Courrier uniquement', {exact: true})

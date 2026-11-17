@@ -351,7 +351,6 @@ describe('[ORGANIZATION MEMBER] updateMyContactService — « Mes coordonnées �
     expect(result).toEqual({
       status: 'saved',
       contact: {
-        email: 'lucie.moreau@example.test',
         ...NEW_CONTACT,
         landCount: 1,
         divergent: false,
@@ -427,13 +426,13 @@ describe('getMyContactService — lecture de « Mes coordonnées » (s16)', () =
     )
     expect(readUnder).toBe(ORG_ID)
     expect(contact).toEqual({
-      email: 'lucie.moreau@example.test',
       ...NEW_CONTACT,
       landCount: 1,
       divergent: false,
       groups: [],
     })
     expect(contact).not.toHaveProperty('id')
+    expect(contact).not.toHaveProperty('email')
     expect(contact).not.toHaveProperty('userId')
   })
 

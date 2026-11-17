@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 
@@ -152,6 +153,10 @@ export const campaignPart = pgTable(
  * `pending -> sending` **avant** l'envoi, puis `sent` ; un arret ou un echec
  * incertain la laisse `to_verify`, jamais renvoyee. Une fiche desinscrite
  * entre deux parts passe `unsubscribed`.
+ *
+ * s54 (ADR 057) : une ligne par **adresse** (`email`, unique sans casse par
+ * campagne) ; le refus est porte par l'adresse de fiche
+ * (`member_profile_email.unsubscribed_at`), `member_unsubscribe` est retiree.
  */
 export const campaignRecipient = pgTable(
   'campaign_recipient',
@@ -169,6 +174,11 @@ export const campaignRecipient = pgTable(
       () => memberProfile.id,
       {onDelete: 'set null'}
     ),
+    /**
+     * L'adresse visee (s54, ADR 057), ecrite a la creation de la cible : une
+     * fiche porte plusieurs adresses, la ligne dit a laquelle elle s'adresse.
+     */
+    email: text('email').notNull(),
     partId: uuid('part_id')
       .notNull()
       .references(() => campaignPart.id, {onDelete: 'cascade'}),
@@ -179,9 +189,9 @@ export const campaignRecipient = pgTable(
     claimedAt: timestamp('claimed_at', {withTimezone: true}),
   },
   (table) => [
-    unique('campaign_recipient_campaign_member_unique').on(
+    uniqueIndex('campaign_recipient_campaign_email_idx').on(
       table.campaignId,
-      table.memberProfileId
+      sql`lower(${table.email})`
     ),
     unique('campaign_recipient_organization_token_unique').on(
       table.organizationId,
@@ -195,37 +205,6 @@ export const campaignRecipient = pgTable(
   ]
 )
 
-/**
- * Le refus d'une fiche de recevoir les campagnes (ADR 051). Porte par la
- * fiche, jamais par l'adresse. Aucune levee en V1.
- */
-export const memberUnsubscribe = pgTable(
-  'member_unsubscribe',
-  {
-    id: uuid('id')
-      .default(sql`uuid_generate_v4()`)
-      .primaryKey(),
-    organizationId: uuid('organization_id')
-      .notNull()
-      .references(() => organization.id, {onDelete: 'cascade'}),
-    memberProfileId: uuid('member_profile_id')
-      .notNull()
-      .references(() => memberProfile.id, {onDelete: 'cascade'}),
-    campaignId: uuid('campaign_id').references(() => campaign.id, {
-      onDelete: 'set null',
-    }),
-    createdAt: timestamp('created_at', {withTimezone: true})
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    unique('member_unsubscribe_organization_member_unique').on(
-      table.organizationId,
-      table.memberProfileId
-    ),
-  ]
-)
-
 export type CampaignModel = typeof campaign.$inferSelect
 export type AddCampaignModel = typeof campaign.$inferInsert
 export type CampaignRecipientModel = typeof campaignRecipient.$inferSelect
@@ -234,7 +213,6 @@ export type CampaignPartModel = typeof campaignPart.$inferSelect
 export type AddCampaignPartModel = typeof campaignPart.$inferInsert
 export type CampaignPartStatusModel =
   (typeof campaignPartStatusEnum.enumValues)[number]
-export type MemberUnsubscribeModel = typeof memberUnsubscribe.$inferSelect
 export type CampaignStatusModel = (typeof campaignStatusEnum.enumValues)[number]
 export type CampaignRecipientStatusModel =
   (typeof campaignRecipientStatusEnum.enumValues)[number]

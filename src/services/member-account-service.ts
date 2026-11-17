@@ -1,5 +1,6 @@
 import 'server-only'
 
+import {deletePendingEmailsAddedByDao} from '@/db/repositories/member-profile-email-repository'
 import {
   countLinkedProfilesDao,
   getMemberProfilesByUserIdDao,
@@ -171,9 +172,10 @@ const linkToAccount = async (
 }
 
 /**
- * Ferme l'acces d'une fiche : retire son lien, puis la ligne `member` de
- * cette association **seulement si** plus aucune fiche n'est reliee au
- * compte et que son role est `member` (s53, critere 6).
+ * Ferme l'acces d'une adresse a une fiche : retire le lien de **ce** compte a
+ * **cette** fiche (s54, critere 10), puis la ligne `member` de cette
+ * association **seulement si** plus aucune fiche n'est reliee au compte et
+ * que son role est `member` (s53, critere 6).
  */
 export const closeMemberAccount = async ({
   organizationId,
@@ -185,7 +187,7 @@ export const closeMemberAccount = async ({
   userId: string
 }): Promise<void> =>
   withTenant(organizationId, async () => {
-    await unlinkMemberProfileAccountDao(memberProfileId)
+    await unlinkProfileAccount(memberProfileId, userId)
     if ((await countLinkedProfilesDao(organizationId, userId)) > 0) return
     await deleteMemberWithRoleDao(
       userId,
@@ -195,7 +197,8 @@ export const closeMemberAccount = async ({
   })
 
 /**
- * L'adresse d'une fiche change : la fiche quitte l'ancien compte et rejoint
+ * Une adresse d'une fiche change (s54 : par adresse, les autres comptes de la
+ * fiche ne bougent pas) : la fiche quitte l'ancien compte et rejoint
  * celui de la nouvelle adresse (`targetUserId` quand le bureau a confirme un
  * compte deja ouvert, s53). Si la fiche etait la **derniere** de l'ancien
  * compte, son acces se ferme et, pour le bureau et la presidence, le role
@@ -206,7 +209,10 @@ export const closeMemberAccount = async ({
  * relu sous ce verrou : un role lu avant par l'appelant pourrait annuler une
  * retrogradation concurrente. Un ancien compte sans ligne ici ne deplace
  * rien. Le depart de l'ancien compte n'est trace que si sa ligne a bien ete
- * retiree.
+ * retiree. Les adresses en attente que l'ancien compte avait ajoutees sur la
+ * fiche sont supprimees, quel que soit l'auteur du remplacement : le bureau
+ * qui modifie une adresse coupe aussi les ajouts de l'ancienne (revue s54,
+ * C1-bis).
  */
 export const replaceMemberAccount = async ({
   organizationId,
@@ -230,6 +236,9 @@ export const replaceMemberAccount = async ({
     const userId =
       targetUserId ?? (await findOrCreateUserId(normalizedEmail(email), name))
     await linkMemberProfileAccountDao({organizationId, memberProfileId, userId})
+    if (userId !== previousUserId) {
+      await unlinkProfileAccount(memberProfileId, previousUserId)
+    }
     const lastProfile =
       userId === previousUserId ||
       (await countLinkedProfilesDao(organizationId, previousUserId)) === 0
@@ -309,7 +318,11 @@ export const applyMemberAccountDecision = async ({
     return {change: 'closed', userId: null}
   }
   if (decision.kind === 'unlink' && profile.userId !== null) {
-    await unlinkMemberAccount({organizationId, memberProfileId: profile.id})
+    await unlinkMemberAccount({
+      organizationId,
+      memberProfileId: profile.id,
+      userId: profile.userId,
+    })
     return {change: null, userId: null}
   }
   if (
@@ -329,9 +342,10 @@ export const applyMemberAccountDecision = async ({
 }
 
 /**
- * Reprise en lot (critere 2) : ouvre le compte de chaque fiche a adresse qui
- * n'en a pas encore. Idempotente : une fiche liee n'est plus relue, relancer
- * ne cree rien de plus. Pour le seed et l'import de s13.
+ * Reprise en lot (critere 2) : ouvre le compte de chaque adresse active dont
+ * le compte n'est pas encore relie a sa fiche (s54, ADR 056 §3).
+ * Idempotente : une adresse liee n'est plus relue, relancer ne cree rien de
+ * plus. Pour le seed et l'import de s13.
  */
 export const openMemberAccountsForOrganization = async (
   organizationId: string
@@ -350,18 +364,20 @@ export const openMemberAccountsForOrganization = async (
   })
 
 /**
- * Delie une fiche dont le compte n'a plus de ligne `member` ici : vide le
+ * Delie d'une fiche un compte qui n'a plus de ligne `member` ici : retire ce
  * lien seulement, aucune ligne `member` n'est retiree.
  */
 export const unlinkMemberAccount = async ({
   organizationId,
   memberProfileId,
+  userId,
 }: {
   organizationId: string
   memberProfileId: string
+  userId: string
 }): Promise<void> =>
   withTenant(organizationId, async () => {
-    await unlinkMemberProfileAccountDao(memberProfileId)
+    await unlinkProfileAccount(memberProfileId, userId)
   })
 
 /**
@@ -411,3 +427,16 @@ export const getFirstMemberProfile = async (
   userId: string
 ): Promise<MyMemberProfileRow | undefined> =>
   (await getMyMemberProfiles(organizationId, userId))[0]
+
+/**
+ * Delie un compte d'une fiche. Les adresses en attente que ce compte y avait
+ * ajoutees partent avec le lien : un auteur qui n'a plus acces a la fiche ne
+ * peut plus y faire activer d'adresse (revue s54, C1 ; ADR 056 §5).
+ */
+const unlinkProfileAccount = async (
+  memberProfileId: string,
+  userId: string
+): Promise<void> => {
+  await unlinkMemberProfileAccountDao(memberProfileId, userId)
+  await deletePendingEmailsAddedByDao(memberProfileId, userId)
+}

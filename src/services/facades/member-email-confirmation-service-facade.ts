@@ -1,0 +1,6 @@
+import memberEmailConfirmationServiceInterceptor from './interceptors/member-email-confirmation-service-logger-interceptor'
+
+export const getMemberEmailConfirmationStateService =
+  memberEmailConfirmationServiceInterceptor.getMemberEmailConfirmationStateService
+export const confirmMemberEmailService =
+  memberEmailConfirmationServiceInterceptor.confirmMemberEmailService

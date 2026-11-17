@@ -380,3 +380,15 @@ describe('MemberProfileForm — l’écran conservé revient vierge après une c
     expect(router.push).not.toHaveBeenCalled()
   })
 })
+
+describe('MemberProfileForm — l’adresse saisie est la titulaire (s54)', () => {
+  it('nomme le champ « Adresse email titulaire » et dit que d’autres s’ajoutent depuis la fiche', () => {
+    renderForm()
+
+    const email = screen.getByLabelText(/Adresse email titulaire/)
+    expect(email).toHaveAttribute('type', 'email')
+    expect(
+      screen.getByText(/D’autres adresses s’ajoutent ensuite depuis sa fiche\./)
+    ).toBeInTheDocument()
+  })
+})

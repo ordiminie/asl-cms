@@ -153,9 +153,9 @@ type Counts = {recipients: number; withoutEmail: number; unsubscribed: number}
 
 /**
  * Le décompte de TechCorp, lu en base sous son scope : la même partition. Une
- * adresse portée par plusieurs fiches compte une fois, désinscrite dès qu'une
- * de ses fiches l'est (s53, ADR 055) ; les fiches sans email se comptent en
- * fiches.
+ * adresse active portée par plusieurs fiches compte une fois, désinscrite dès
+ * qu'une de ses lignes l'est (s53, ADR 055 ; refus porté par l'adresse depuis
+ * s54, ADR 057) ; les fiches sans adresse active se comptent en fiches.
  */
 const countsInDatabase = async (): Promise<Counts> => {
   const {a} = await tenantIds()
@@ -166,17 +166,20 @@ const countsInDatabase = async (): Promise<Counts> => {
       unsubscribed: number
     }>(
       `with addresses as (
-         select lower(trim(p.email)) as address,
-                bool_or(u.id is not null) as unsubscribed
-           from member_profile p
-           left join member_unsubscribe u on u.member_profile_id = p.id
-          where p.organization_id = $1 and p.email is not null
-          group by lower(trim(p.email))
+         select lower(trim(e.email)) as address,
+                bool_or(e.unsubscribed_at is not null) as unsubscribed
+           from member_profile_email e
+          where e.organization_id = $1 and e.status = 'active'
+          group by lower(trim(e.email))
        )
        select
          (select count(*) from addresses where not unsubscribed)::int as recipients,
-         (select count(*) from member_profile
-           where organization_id = $1 and email is null)::int as without_email,
+         (select count(*) from member_profile p
+           where p.organization_id = $1
+             and not exists (
+               select 1 from member_profile_email e
+                where e.member_profile_id = p.id and e.status = 'active'
+             ))::int as without_email,
          (select count(*) from addresses where unsubscribed)::int as unsubscribed`,
       [a]
     )
@@ -187,6 +190,34 @@ const countsInDatabase = async (): Promise<Counts> => {
       unsubscribed: row.unsubscribed,
     }
   })
+}
+
+/**
+ * Une fiche d'essai et son adresse titulaire active (s54, ADR 056) : depuis
+ * s54, l'adresse ne vit plus sur `member_profile`. Sans adresse : la fiche
+ * seule, courrier uniquement.
+ */
+const insertFiche = async (
+  client: Client,
+  organizationId: string,
+  name: string,
+  email: string | null
+): Promise<string> => {
+  const result = await client.query<{id: string}>(
+    `insert into member_profile (organization_id, name)
+     values ($1, $2) returning id`,
+    [organizationId, name]
+  )
+  const id = result.rows[0].id
+  if (email) {
+    await client.query(
+      `insert into member_profile_email
+         (organization_id, member_profile_id, email, role, status, origin)
+       values ($1, $2, $3, 'holder', 'active', 'site')`,
+      [organizationId, id, email]
+    )
+  }
+  return id
 }
 
 const ficheIds: Record<keyof typeof FICHES, string> = {
@@ -200,12 +231,7 @@ const createFiches = async () => {
   await inTenantScope(a, async (client) => {
     for (const key of Object.keys(FICHES) as (keyof typeof FICHES)[]) {
       const fiche = FICHES[key]
-      const result = await client.query<{id: string}>(
-        `insert into member_profile (organization_id, name, email)
-         values ($1, $2, $3) returning id`,
-        [a, fiche.name, fiche.email]
-      )
-      ficheIds[key] = result.rows[0].id
+      ficheIds[key] = await insertFiche(client, a, fiche.name, fiche.email)
     }
   })
 }
@@ -235,11 +261,13 @@ const campaignsOfRun = async (): Promise<
   })
 }
 
+/** Les adresses de la fiche qui refusent les campagnes (s54, ADR 057). */
 const unsubscribeOf = async (memberProfileId: string) => {
   const {a} = await tenantIds()
   return inTenantScope(a, async (client) => {
     const result = await client.query(
-      `select id from member_unsubscribe where member_profile_id = $1`,
+      `select id from member_profile_email
+        where member_profile_id = $1 and unsubscribed_at is not null`,
       [memberProfileId]
     )
     return result.rowCount ?? 0
@@ -513,7 +541,7 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
         await page.getByRole('button', {name: 'Me désinscrire'}).click()
         await expect(
           page.getByText(
-            /^C’est enregistré\. Vous ne recevrez plus les campagnes/
+            /^C’est enregistré\. Cette adresse ne recevra plus les campagnes/
           )
         ).toBeVisible({timeout: 15_000})
         expect(await unsubscribeOf(ficheIds.first)).toBe(1)
@@ -552,11 +580,7 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
     const {a} = await tenantIds()
     await inTenantScope(a, async (client) => {
       for (const name of [`Lefort ${MARKER}`, `SCI Lefort ${MARKER}`]) {
-        await client.query(
-          `insert into member_profile (organization_id, name, email)
-           values ($1, $2, $3)`,
-          [a, name, SHARED_EMAIL]
-        )
+        await insertFiche(client, a, name, SHARED_EMAIL)
       }
     })
     const before = outboxFiles()
@@ -578,8 +602,7 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
       const lines = await inTenantScope(a, async (client) => {
         const result = await client.query(
           `select r.id from campaign_recipient r
-             join member_profile p on p.id = r.member_profile_id
-            where r.campaign_id = $1 and lower(p.email) = lower($2)`,
+            where r.campaign_id = $1 and lower(r.email) = lower($2)`,
           [campaignId, SHARED_EMAIL]
         )
         return result.rowCount ?? 0
@@ -655,7 +678,7 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
         [campaign.id]
       ),
       unsubscribes: await client.query(
-        `select id from member_unsubscribe where organization_id = $1`,
+        `select id from member_profile_email where organization_id = $1`,
         [ids.a]
       ),
     }))
@@ -668,7 +691,7 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
     const withoutScope = await withAppRoleClient(async (client) => ({
       campaign: await client.query(`select id from campaign`),
       recipients: await client.query(`select id from campaign_recipient`),
-      unsubscribes: await client.query(`select id from member_unsubscribe`),
+      unsubscribes: await client.query(`select id from member_profile_email`),
     }))
     expect(withoutScope.campaign.rowCount).toBe(0)
     expect(withoutScope.recipients.rowCount).toBe(0)
@@ -688,8 +711,9 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
     await expect(
       inTenantScope(ids.b, (client) =>
         client.query(
-          `insert into member_unsubscribe (organization_id, member_profile_id)
-           values ($1, $2)`,
+          `insert into member_profile_email
+             (organization_id, member_profile_id, email, role, status, origin)
+           values ($1, $2, 'intrus@example.test', 'holder', 'active', 'site')`,
           [ids.a, ficheIds.withoutEmail]
         )
       )
@@ -832,9 +856,8 @@ const spreadStateOf = async (campaignId: string) => {
       [campaignId]
     )
     const recipients = await client.query<SpreadRecipient>(
-      `select r.id, p.email, r.status, cp.number as part_number
+      `select r.id, r.email, r.status, cp.number as part_number
          from campaign_recipient r
-         left join member_profile p on p.id = r.member_profile_id
          join campaign_part cp on cp.id = r.part_id
         where r.campaign_id = $1
         order by cp.number, r.id`,
@@ -913,11 +936,7 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
     })
     await inTenantScope(a, async (client) => {
       for (const fiche of SPREAD_FICHES) {
-        await client.query(
-          `insert into member_profile (organization_id, name, email)
-           values ($1, $2, $3)`,
-          [a, fiche.name, fiche.email]
-        )
+        await insertFiche(client, a, fiche.name, fiche.email)
       }
       await client.query(
         `insert into organization_setting (organization_id, key, value)

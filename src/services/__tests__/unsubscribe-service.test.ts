@@ -8,15 +8,13 @@ vi.mock('@/db/tenant-scope', () => ({
 vi.mock('@/db/repositories/member-unsubscribe-repository', () => ({
   getRecipientByTokenDao: vi.fn(),
   getUnsubscribeByMemberDao: vi.fn(),
-  createUnsubscribeIfAbsentTxnDao: vi.fn(),
-  getMemberProfileIdsSharingEmailDao: vi.fn(),
+  unsubscribeEmailIfAbsentTxnDao: vi.fn(),
 }))
 
 import {
-  createUnsubscribeIfAbsentTxnDao,
-  getMemberProfileIdsSharingEmailDao,
   getRecipientByTokenDao,
   getUnsubscribeByMemberDao,
+  unsubscribeEmailIfAbsentTxnDao,
 } from '@/db/repositories/member-unsubscribe-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {logger} from '@/lib/logger'
@@ -46,6 +44,7 @@ const recipient = (overrides: Record<string, unknown> = {}) => ({
   organizationId: ORG_ID,
   campaignId: CAMPAIGN_ID,
   memberProfileId: PROFILE_ID as string | null,
+  email: 'claire@example.fr',
   unsubscribedAt: null as Date | null,
   ...overrides,
 })
@@ -55,10 +54,7 @@ const input = {organizationId: ORG_ID, token: TOKEN}
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getRecipientByTokenDao).mockResolvedValue(recipient())
-  vi.mocked(createUnsubscribeIfAbsentTxnDao).mockResolvedValue({
-    memberProfileId: PROFILE_ID,
-  })
-  vi.mocked(getMemberProfileIdsSharingEmailDao).mockResolvedValue([PROFILE_ID])
+  vi.mocked(unsubscribeEmailIfAbsentTxnDao).mockResolvedValue(1)
 })
 
 describe('[PUBLIC] getUnsubscribePageStateService — lecture seule (GET)', () => {
@@ -66,7 +62,7 @@ describe('[PUBLIC] getUnsubscribePageStateService — lecture seule (GET)', () =
     await expect(getUnsubscribePageStateService(input)).resolves.toEqual({
       status: 'confirm',
     })
-    expect(createUnsubscribeIfAbsentTxnDao).not.toHaveBeenCalled()
+    expect(unsubscribeEmailIfAbsentTxnDao).not.toHaveBeenCalled()
     expect(withTenant).toHaveBeenCalledWith(ORG_ID, expect.any(Function))
   })
 
@@ -123,15 +119,14 @@ describe('[PUBLIC] getUnsubscribePageStateService — lecture seule (GET)', () =
 })
 
 describe('[PUBLIC] confirmUnsubscribeService — l’écriture (POST)', () => {
-  it('enregistre le refus de la fiche, porté par la fiche, sans session', async () => {
+  it('enregistre le refus de l’adresse de la ligne, porté par l’adresse, sans session (s54, ADR 057)', async () => {
     await expect(confirmUnsubscribeService(input)).resolves.toEqual({
       status: 'unsubscribed',
     })
-    expect(createUnsubscribeIfAbsentTxnDao).toHaveBeenCalledWith({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      campaignId: CAMPAIGN_ID,
-    })
+    expect(unsubscribeEmailIfAbsentTxnDao).toHaveBeenCalledWith(
+      ORG_ID,
+      'claire@example.fr'
+    )
     expect(getAuthUser).not.toHaveBeenCalled()
   })
 
@@ -143,11 +138,11 @@ describe('[PUBLIC] confirmUnsubscribeService — l’écriture (POST)', () => {
     await expect(confirmUnsubscribeService(input)).resolves.toEqual({
       status: 'already',
     })
-    expect(createUnsubscribeIfAbsentTxnDao).not.toHaveBeenCalled()
+    expect(unsubscribeEmailIfAbsentTxnDao).not.toHaveBeenCalled()
   })
 
-  it('course entre deux confirmations : l’insertion ne rend rien → already', async () => {
-    vi.mocked(createUnsubscribeIfAbsentTxnDao).mockResolvedValue(undefined)
+  it('course entre deux confirmations : aucune adresse datée → already', async () => {
+    vi.mocked(unsubscribeEmailIfAbsentTxnDao).mockResolvedValue(0)
 
     await expect(confirmUnsubscribeService(input)).resolves.toEqual({
       status: 'already',
@@ -160,7 +155,7 @@ describe('[PUBLIC] confirmUnsubscribeService — l’écriture (POST)', () => {
     await expect(confirmUnsubscribeService(input)).resolves.toEqual({
       status: 'invalid',
     })
-    expect(createUnsubscribeIfAbsentTxnDao).not.toHaveBeenCalled()
+    expect(unsubscribeEmailIfAbsentTxnDao).not.toHaveBeenCalled()
   })
 
   it('n’écrit ni jeton ni identifiant de fiche dans un journal', async () => {
@@ -229,47 +224,18 @@ describe('getMemberUnsubscribeService — mention sur la fiche (écran 5)', () =
   })
 })
 
-describe('[PUBLIC] confirmUnsubscribeService — la désinscription couvre l’adresse (s53, ADR 055)', () => {
-  const SCI_ID = '55555555-5555-4555-8555-555555555555'
-  const LAND_27_ID = '66666666-6666-4666-8666-666666666666'
-
-  it('pose un refus sur chaque fiche de l’association qui porte la même adresse', async () => {
-    vi.mocked(getMemberProfileIdsSharingEmailDao).mockResolvedValue([
-      PROFILE_ID,
-      SCI_ID,
-      LAND_27_ID,
-    ])
+describe('[PUBLIC] confirmUnsubscribeService — le refus suit l’adresse (s54, ADR 057)', () => {
+  it('date toutes les adresses égales de l’association en une écriture, jamais une autre adresse de la fiche', async () => {
+    vi.mocked(unsubscribeEmailIfAbsentTxnDao).mockResolvedValue(3)
 
     await expect(confirmUnsubscribeService(input)).resolves.toEqual({
       status: 'unsubscribed',
     })
 
-    expect(getMemberProfileIdsSharingEmailDao).toHaveBeenCalledWith(
+    expect(unsubscribeEmailIfAbsentTxnDao).toHaveBeenCalledTimes(1)
+    expect(unsubscribeEmailIfAbsentTxnDao).toHaveBeenCalledWith(
       ORG_ID,
-      PROFILE_ID
+      'claire@example.fr'
     )
-    expect(createUnsubscribeIfAbsentTxnDao).toHaveBeenCalledTimes(3)
-    for (const memberProfileId of [PROFILE_ID, SCI_ID, LAND_27_ID]) {
-      expect(createUnsubscribeIfAbsentTxnDao).toHaveBeenCalledWith({
-        organizationId: ORG_ID,
-        memberProfileId,
-        campaignId: CAMPAIGN_ID,
-      })
-    }
-  })
-
-  it('désinscrit même si une autre fiche de l’adresse l’était déjà', async () => {
-    vi.mocked(getMemberProfileIdsSharingEmailDao).mockResolvedValue([
-      PROFILE_ID,
-      SCI_ID,
-    ])
-    vi.mocked(createUnsubscribeIfAbsentTxnDao).mockImplementation(
-      async ({memberProfileId}) =>
-        memberProfileId === SCI_ID ? undefined : {memberProfileId}
-    )
-
-    await expect(confirmUnsubscribeService(input)).resolves.toEqual({
-      status: 'unsubscribed',
-    })
   })
 })

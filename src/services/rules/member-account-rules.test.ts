@@ -9,6 +9,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: null,
         nextEmail: 'odile@example.test',
         linkedRole: null,
+        previousAccountLinked: false,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -21,6 +22,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: null,
         nextEmail: null,
         linkedRole: null,
+        previousAccountLinked: false,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -33,6 +35,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: null,
         linkedRole: 'member',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -45,10 +48,63 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'odile.marchand@example.test',
         linkedRole: 'member',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
     ).toEqual({kind: 'replace'})
+  })
+
+  it('remplace le compte quand l’adresse change et que le compte encore relié n’a plus de ligne member (revue s54 round 4, MA-r4)', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: 'odile@example.test',
+        nextEmail: 'odile.marchand@example.test',
+        linkedRole: null,
+        previousAccountLinked: true,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
+      })
+    ).toEqual({kind: 'replace'})
+  })
+
+  it('ouvre un compte quand l’adresse change sans aucun compte relié (revue s54 round 4, MA-r4)', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: 'odile@example.test',
+        nextEmail: 'odile.marchand@example.test',
+        linkedRole: null,
+        previousAccountLinked: false,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
+      })
+    ).toEqual({kind: 'open'})
+  })
+
+  it('relie au compte qui porte la nouvelle adresse, même quand l’ancien compte relié n’a plus de ligne member (revue s54 round 4, MA-r4)', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: 'odile@example.test',
+        nextEmail: 'odile.marchand@example.test',
+        linkedRole: null,
+        previousAccountLinked: true,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: 'shared',
+      })
+    ).toEqual({kind: 'link_shared', userId: 'shared'})
+  })
+
+  it('délie, sans rien fermer, un compte relié sans ligne member quand l’adresse est vidée (revue s54 round 4, MA-r4)', () => {
+    expect(
+      decideMemberAccount({
+        savedEmail: 'odile@example.test',
+        nextEmail: null,
+        linkedRole: null,
+        previousAccountLinked: true,
+        otherLinkedProfiles: 0,
+        nextEmailAccountUserId: null,
+      })
+    ).toEqual({kind: 'unlink'})
   })
 
   it('refuse de vider l’adresse d’un membre du bureau', () => {
@@ -57,6 +113,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'helene@example.test',
         nextEmail: null,
         linkedRole: 'board',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -69,6 +126,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'presidence@example.test',
         nextEmail: null,
         linkedRole: 'owner',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -81,6 +139,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'helene@example.test',
         nextEmail: 'helene.roux@example.test',
         linkedRole: 'board',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -93,6 +152,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'presidence@example.test',
         nextEmail: 'nouvelle.presidence@example.test',
         linkedRole: 'owner',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -105,6 +165,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'Odile@Example.TEST',
         linkedRole: 'member',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -117,6 +178,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'odile@example.test',
         linkedRole: 'board',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -129,6 +191,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'odile@example.test',
         linkedRole: null,
+        previousAccountLinked: false,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -141,6 +204,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: 'odile.marchand@example.test',
         linkedRole: null,
+        previousAccountLinked: false,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -153,6 +217,7 @@ describe('decideMemberAccount — le compte suit l’adresse de la fiche', () =>
         savedEmail: 'odile@example.test',
         nextEmail: null,
         linkedRole: null,
+        previousAccountLinked: false,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -169,6 +234,7 @@ describe('decideMemberAccount — un compte, plusieurs fiches (s53, ADR 054)', (
         savedEmail: 'helene@example.test',
         nextEmail: null,
         linkedRole: 'board',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: null,
       })
@@ -181,6 +247,7 @@ describe('decideMemberAccount — un compte, plusieurs fiches (s53, ADR 054)', (
         savedEmail: 'helene@example.test',
         nextEmail: null,
         linkedRole: 'board',
+        previousAccountLinked: true,
         otherLinkedProfiles: 1,
         nextEmailAccountUserId: null,
       })
@@ -193,6 +260,7 @@ describe('decideMemberAccount — un compte, plusieurs fiches (s53, ADR 054)', (
         savedEmail: null,
         nextEmail: 'bernard@example.test',
         linkedRole: null,
+        previousAccountLinked: false,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: HOLDER_ID,
       })
@@ -205,6 +273,7 @@ describe('decideMemberAccount — un compte, plusieurs fiches (s53, ADR 054)', (
         savedEmail: 'ancienne@example.test',
         nextEmail: 'bernard@example.test',
         linkedRole: 'member',
+        previousAccountLinked: true,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId: HOLDER_ID,
       })
@@ -217,6 +286,7 @@ describe('decideMemberAccount — un compte, plusieurs fiches (s53, ADR 054)', (
         savedEmail: 'bernard@example.test',
         nextEmail: 'Bernard@example.test',
         linkedRole: 'member',
+        previousAccountLinked: true,
         otherLinkedProfiles: 2,
         nextEmailAccountUserId: HOLDER_ID,
       })

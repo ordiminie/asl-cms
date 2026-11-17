@@ -312,3 +312,29 @@ describe('EmailSendingOverview — question d’un membre (s23)', () => {
     ).toHaveAttribute('href', `/bureau/questions/${QUESTION_ID}`)
   })
 })
+
+describe('EmailSendingOverview — lien de confirmation d’une adresse reporté (revue s54, M2)', () => {
+  it('nommé comme tel, jamais « Notification au bureau », sans lien ni adresse', () => {
+    const confirmationLink: PendingSendDTO = {
+      ...contactNotification,
+      key: 'd-confirmation',
+      nature: 'member_email_confirmation',
+      reference: null,
+    }
+    render(
+      <EmailSendingOverview
+        overview={overviewOf({pending: [confirmationLink]})}
+        page={1}
+      />
+    )
+
+    const [row] = within(within(card('En attente')).getByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+    expect(row).toHaveTextContent('Confirmation d’adresse')
+    expect(row).toHaveTextContent('Lien de confirmation d’une adresse')
+    expect(row).not.toHaveTextContent('Notification au bureau')
+    expect(within(row).queryByRole('link')).toBeNull()
+    expect(row).not.toHaveTextContent('@')
+  })
+})

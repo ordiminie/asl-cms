@@ -27,6 +27,12 @@ import {
   deleteMemberNoteAction,
   updateMemberNoteAction,
 } from '../notes-actions'
+import {
+  addMemberProfileEmailAction,
+  designateMemberProfileHolderAction,
+  removeMemberProfileEmailAction,
+  updateMemberProfileEmailAction,
+} from './actions'
 
 type MemberProfilePageProps = {
   params: Promise<{locale: string; id: string}>
@@ -136,6 +142,10 @@ async function MemberProfileSection({
       addExchangeAction={addMemberExchangeAction}
       updateNoteAction={updateMemberNoteAction}
       deleteNoteAction={deleteMemberNoteAction}
+      addEmailAction={addMemberProfileEmailAction}
+      updateEmailAction={updateMemberProfileEmailAction}
+      removeEmailAction={removeMemberProfileEmailAction}
+      designateHolderAction={designateMemberProfileHolderAction}
     />
   )
 }

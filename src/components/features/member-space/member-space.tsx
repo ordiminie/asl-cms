@@ -22,6 +22,7 @@ import {Skeleton} from '@/components/ui/skeleton'
 import {formatContentDate} from '@/lib/cms/format-content-date'
 import {lastOwnershipDayOf} from '@/services/rules/parcel-ownership-rules'
 import type {MyIncidentReportDTO} from '@/services/types/domain/incident-report-types'
+import type {MyEmailsDTO} from '@/services/types/domain/member-email-types'
 import {isOwnershipBeforeImport} from '@/services/types/domain/member-import-types'
 import type {
   MyContactDTO,
@@ -32,6 +33,8 @@ import type {
 } from '@/services/types/domain/member-space-types'
 
 import {MyContactCard} from './my-contact-card'
+import {MyEmailsCard, MyEmailsCardLoading} from './my-emails-card'
+import type {MyEmailActions} from './my-emails-validation'
 import {MyQuestionCard} from './my-question-card'
 import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 
@@ -44,15 +47,17 @@ import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 const HEADING_CLASS = 'font-serif text-3xl font-semibold tracking-tight'
 
 /**
- * « Mes terrains » (s53), « Mes coordonnees », « Mes signalements » (s22) et
- * « Une question pour le bureau ? » (s23), ou la page de s46 pour un compte
- * sans fiche (C5). Un compte sans parcelle garde ses coordonnees (s16, C7)
- * et ses signalements.
+ * « Mes terrains » (s53), « Mes coordonnees », « Mes adresses email » (s54),
+ * « Mes signalements » (s22) et « Une question pour le bureau ? » (s23), ou
+ * la page de s46 pour un compte sans fiche (C5). Un compte sans parcelle
+ * garde ses coordonnees (s16, C7), ses adresses et ses signalements.
  */
 export function MemberSpace({
   landsPromise,
   contactPromise,
   contactAction,
+  emailsPromise,
+  emailActions,
   reportsPromise,
   reportSent,
   questionSent = false,
@@ -60,6 +65,9 @@ export function MemberSpace({
   landsPromise: Promise<MyLandsDTO | undefined>
   contactPromise: Promise<MyContactDTO | undefined>
   contactAction: MyContactFormAction
+  /** « Mes adresses email » (s54), lue a part, sans etre attendue. */
+  emailsPromise: Promise<MyEmailsDTO | undefined>
+  emailActions: MyEmailActions
   reportsPromise: Promise<MyIncidentReportDTO[] | undefined>
   reportSent: boolean
   /** Retour d'une question envoyee (s23, A2). */
@@ -79,6 +87,7 @@ export function MemberSpace({
     return (
       <MemberSpaceWithoutParcels>
         <MyContactCard contact={contact} action={contactAction} />
+        <MyEmails emailsPromise={emailsPromise} actions={emailActions} />
         <MyReports reportsPromise={reportsPromise} sent={reportSent} />
         <MyQuestionCard sent={questionSent} />
       </MemberSpaceWithoutParcels>
@@ -93,11 +102,43 @@ export function MemberSpace({
       />
       <MyLandsCard lands={lands.lands} />
       <MyContactCard contact={contact} action={contactAction} />
+      <MyEmails emailsPromise={emailsPromise} actions={emailActions} />
       <MyReports reportsPromise={reportsPromise} sent={reportSent} />
       <MyQuestionCard sent={questionSent} />
       <SecurityCard />
     </div>
   )
+}
+
+/**
+ * « Mes adresses email » (s54) : lue a part, derriere son propre
+ * `<Suspense>` ; le reste de l'espace n'attend pas la liste.
+ */
+function MyEmails({
+  emailsPromise,
+  actions,
+}: {
+  emailsPromise: Promise<MyEmailsDTO | undefined>
+  actions: MyEmailActions
+}) {
+  return (
+    <Suspense fallback={<MyEmailsCardLoading />}>
+      <MyEmailsList emailsPromise={emailsPromise} actions={actions} />
+    </Suspense>
+  )
+}
+
+function MyEmailsList({
+  emailsPromise,
+  actions,
+}: {
+  emailsPromise: Promise<MyEmailsDTO | undefined>
+  actions: MyEmailActions
+}) {
+  const emails = use(emailsPromise)
+  if (!emails) return null
+
+  return <MyEmailsCard emails={emails} {...actions} />
 }
 
 /**

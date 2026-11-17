@@ -11,7 +11,6 @@ import type {
 import {MemberSpace, MemberSpaceLoading} from './member-space'
 
 const CONTACT: MyContactDTO = {
-  email: 'lucie@exemple.test',
   phone: null,
   addressLine: null,
   addressComplement: null,
@@ -42,6 +41,13 @@ const renderSpace = async (lands: MyLandsDTO) => {
           landsPromise={parcelsPromise}
           contactPromise={contactPromise}
           contactAction={vi.fn()}
+          emailsPromise={Promise.resolve(undefined)}
+          emailActions={{
+            addEmailAction: vi.fn(),
+            updateEmailAction: vi.fn(),
+            correctEmailAction: vi.fn(),
+            cancelEmailAction: vi.fn(),
+          }}
           reportsPromise={Promise.resolve([])}
           reportSent={false}
         />

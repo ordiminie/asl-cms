@@ -695,6 +695,17 @@
         "ignore": "Vous n'avez pas demandé ce lien ? Ignorez cet email : personne ne peut se connecter sans lui.",
         "footer": "Cet email vous est envoyé parce qu'une connexion a été demandée avec votre adresse sur le site de {name}."
       },
+      "memberEmailConfirmation": {
+        "subject": "{name} — Confirmez votre adresse email",
+        "preview": "{author} a ajouté cette adresse à l’espace {count, plural, =0 {de {profile}} one {de la parcelle {numbers}} other {des parcelles {numbers}}}.",
+        "title": "Confirmez votre adresse email",
+        "greeting": "Bonjour,",
+        "intro": "<strong>{author}</strong> a ajouté cette adresse pour qu’elle puisse se connecter à l’espace membre de {profile}{count, plural, =0 {} one { (parcelle {numbers})} other { (parcelles {numbers})}} et recevoir les envois de l’association.",
+        "action": "Confirmer cette adresse",
+        "urlIntro": "Ouvrez ce lien pour confirmer cette adresse :",
+        "expiry": "Ce lien vaut jusqu’au {date}. Vous ne connaissez pas cette personne ? Ne cliquez pas : sans confirmation, l’adresse ne reçoit rien et ne donne accès à rien.",
+        "footer": "{name} · message envoyé à la demande d’un membre."
+      },
       "resetPassword": {
         "subject": "Réinitialisation de votre mot de passe",
         "preview": "Vous avez demandé la réinitialisation de votre mot de passe.",
@@ -1680,7 +1691,6 @@
         "invalid_field": "Une valeur de la ligne n’est pas valide."
       },
       "remarks": {
-        "several_emails": "Plusieurs adresses email : seule la première a été gardée.",
         "postal_code_padded": "Code postal complété d’un zéro au début.",
         "no_meter": "Référence sans numéro de compteur : la parcelle est enregistrée sans compteur.",
         "same_name_and_address": "Même nom et même adresse que la ligne {line} : deux membres distincts ont été créés.",
@@ -2126,6 +2136,14 @@
       "campaignSendMaxAttempts": {
         "label": "Nombre de tentatives d’envoi d’une part",
         "help": "Nombre d’essais d’envoi d’une part de campagne qui n’a pas pu partir, à quelques dizaines de minutes d’intervalle. Après le dernier essai, la campagne est indiquée en échec ; rien n’est renvoyé à ceux qui l’ont déjà reçue. Par défaut : 3."
+      },
+      "memberEmailConfirmationDays": {
+        "label": "Délai de confirmation d’une adresse",
+        "help": "Nombre de jours pendant lesquels le lien envoyé à une adresse ajoutée par un membre reste valable. Par défaut : 7.",
+        "errors": {
+          "invalidNumber": "Saisissez un nombre entier de jours supérieur à 0.",
+          "belowMin": "Saisissez un nombre entier de jours supérieur à 0."
+        }
       }
     },
     "hues": {
@@ -2141,7 +2159,8 @@
       "members": "membres",
       "messagesPerHour": "messages par heure",
       "sendsPerDay": "envois par jour",
-      "attempts": "tentatives"
+      "attempts": "tentatives",
+      "days": "jours"
     },
     "counter": "{count} / {max}"
   },
@@ -3204,8 +3223,8 @@
         "help": "Tel qu’il doit apparaître sur les courriers : « Jean et Odile Dubois », « SCI Les Pins »."
       },
       "email": {
-        "label": "Adresse email",
-        "help": "Avec une adresse, ce propriétaire peut se connecter à son espace. Sans adresse, il reçoit tout par courrier."
+        "label": "Adresse email titulaire",
+        "help": "Avec une adresse, ce propriétaire peut se connecter à son espace. D’autres adresses s’ajoutent ensuite depuis sa fiche. Sans adresse, il reçoit tout par courrier."
       },
       "phone": {
         "label": "Téléphone"
@@ -3277,6 +3296,87 @@
         "linked": "Fiche reliée au compte de {account} : ce terrain apparaît dans son espace.",
         "closedShared": "Fiche retirée du compte de {account}. Son accès reste ouvert pour ses autres terrains.",
         "replacedShared": "Ce terrain s’ouvre désormais avec {email}. {previous} garde l’accès aux autres terrains de son compte."
+      },
+      "emails": {
+        "title": "Adresses email",
+        "columns": {
+          "address": "Adresse",
+          "role": "Rôle",
+          "origin": "Origine",
+          "status": "Statut",
+          "action": "Action"
+        },
+        "roles": {
+          "holder": "Titulaire",
+          "additional": "Supplémentaire"
+        },
+        "origins": {
+          "file": "Fichier Pennylane",
+          "site": "Saisie sur le site"
+        },
+        "statuses": {
+          "active": "Active",
+          "pending": "En attente de confirmation"
+        },
+        "pendingBy": "ajoutée par {name} · jusqu’au {date}",
+        "pendingUntil": "jusqu’au {date}",
+        "alsoConnects": "Se connecte aussi à :",
+        "manage": "Gérer",
+        "manageLabel": "Gérer {email}",
+        "add": "Ajouter une adresse",
+        "empty": "Aucune adresse email : cette fiche reçoit tout par courrier.",
+        "saved": {
+          "added": "Adresse ajoutée : elle peut se connecter dès maintenant.",
+          "updated": "{email} peut se connecter dès maintenant.",
+          "designated": "{email} est désormais l’adresse titulaire.",
+          "removed": "Adresse retirée : elle ne se connecte plus à cette fiche."
+        },
+        "addDialog": {
+          "title": "Ajouter une adresse",
+          "label": "Adresse email",
+          "help": "Active tout de suite : elle peut se connecter et reçoit les envois. Aucun email ne part.",
+          "helpFirst": "Ce sera l’adresse titulaire de la fiche.",
+          "submit": "Ajouter l’adresse",
+          "submitting": "Ajout…",
+          "cancel": "Annuler",
+          "alreadyListed": "Cette adresse figure déjà dans la liste.",
+          "sharedTitle": "Cette adresse est déjà celle du compte de {name}.",
+          "sharedProfiles": "Ce compte sert à se connecter à l’espace de :",
+          "sharedQuestion": "S’agit-il de la même personne ?",
+          "roleLegend": "Rôle sur cette fiche",
+          "roleAdditional": "Supplémentaire",
+          "roleHolder": "Titulaire de cette fiche",
+          "roleHolderHelp": "{email} devient supplémentaire",
+          "confirm": "Oui, ajouter à cette fiche",
+          "decline": "Non, corriger l’adresse"
+        },
+        "manageDialog": {
+          "title": "Gérer {email}",
+          "label": "Modifier l’adresse",
+          "pendingHelp": "Enregistrée par le bureau, elle devient active tout de suite.",
+          "save": "Enregistrer l’adresse",
+          "saving": "Enregistrement…",
+          "designate": "Désigner titulaire",
+          "designateConfirm": "{next} devient l’adresse titulaire. {previous} reste sur la fiche, comme supplémentaire.",
+          "remove": "Retirer cette adresse",
+          "close": "Fermer",
+          "invalidDesignation": "Seule une adresse active peut devenir titulaire."
+        },
+        "removeDialog": {
+          "title": "Retirer {email}",
+          "chooseReplacement": "Choisissez l’adresse qui la remplace.",
+          "newAddress": "Une nouvelle adresse",
+          "newAddressLabel": "Nouvelle adresse titulaire",
+          "consequence": "<strong>{email} ne pourra plus se connecter à cette fiche</strong>, dès sa prochaine page.",
+          "othersStay": "Ses autres fiches restent accessibles.",
+          "orMailOnly": "Ou retirez-la sans remplaçante : la fiche passera en <strong>courrier uniquement</strong>.",
+          "replace": "Retirer et remplacer",
+          "removeToMailOnly": "Retirer, passer en courrier",
+          "remove": "Retirer l’adresse",
+          "cancel": "Annuler",
+          "boardEmailRequired": "L’adresse d’un membre du bureau ne se retire pas : modifiez-la.",
+          "sharedReplacement": "Cette adresse est déjà celle d’un autre compte : ajoutez-la d’abord, puis désignez-la titulaire."
+        }
       },
       "access": {
         "title": "Accès à l’espace membre",
@@ -3559,7 +3659,8 @@
         "overlapUnknown": "La vente n’a pas été enregistrée. La parcelle {number} a déjà un propriétaire enregistré après cette date."
       }
     },
-    "accountProfiles": "Compte de {count} terrains"
+    "accountProfiles": "Compte de {count} terrains",
+    "otherEmails": "{count, plural, one {+ # autre adresse} other {+ # autres adresses}}"
   },
   "MemberSpaceLayout": {
     "skipToContent": "Aller au contenu"
@@ -3649,7 +3750,55 @@
       "askAnother": "Poser une autre question",
       "sent": "Question envoyée. Le bureau vous répondra à votre adresse email."
     },
-    "markerLands": "{count} terrains"
+    "markerLands": "{count} terrains",
+    "emails": {
+      "title": "Mes adresses email",
+      "intro": "Chacune permet de se connecter à cet espace et reçoit les envois de l’association.",
+      "forLands": "Elles valent pour vos {count} terrains.",
+      "own": "Votre adresse",
+      "ownHolder": "Votre adresse · adresse titulaire",
+      "holder": "Adresse titulaire du terrain",
+      "modify": "Modifier",
+      "modifyLabel": "Modifier {email}",
+      "manage": "Gérer",
+      "manageLabel": "Gérer {email}",
+      "pendingBadge": "En attente de confirmation",
+      "pendingMeta": "Lien envoyé le {sent} · valable jusqu’au {until}",
+      "pendingReplaces": "Remplacera votre adresse actuelle · jusqu’au {until}",
+      "onlyParcels": "{count, plural, one {Pour la parcelle {numbers} seulement} other {Pour les parcelles {numbers} seulement}}",
+      "add": "Ajouter une adresse",
+      "removeNote": "Pour retirer une adresse, écrivez au bureau.",
+      "contactLink": "Page Contact",
+      "addForm": {
+        "label": "Nouvelle adresse email",
+        "help": "Un lien de confirmation lui sera envoyé : elle ne servira qu’une fois confirmée.",
+        "send": "Envoyer le lien de confirmation",
+        "sending": "Envoi…",
+        "cancel": "Annuler"
+      },
+      "modifyForm": {
+        "label": "Votre nouvelle adresse",
+        "help": "Votre adresse actuelle reste valable jusqu’à la confirmation de la nouvelle. Ensuite, vous vous connecterez avec la nouvelle."
+      },
+      "manageForm": {
+        "label": "Corriger l’adresse",
+        "resend": "Corriger et renvoyer le lien",
+        "cancelPending": "Annuler cette adresse",
+        "close": "Fermer"
+      },
+      "sent": "<strong>Lien envoyé à {email}.</strong> L’adresse s’activera dès que le lien reçu sera cliqué ; il vaut {days, plural, one {# jour} other {# jours}}. Rien n’arrive ? Vérifiez les indésirables, ou corrigez l’adresse.",
+      "deferred": "Le lien partira demain matin : l’association a atteint sa limite d’envois du jour.",
+      "cancelled": "Adresse annulée : le lien envoyé ne sert plus.",
+      "taken": "Cette adresse est déjà enregistrée dans l’association. Pour l’ajouter ici, écrivez au bureau.",
+      "alreadyListed": "Cette adresse figure déjà dans la liste.",
+      "loading": "Chargement de vos adresses",
+      "validation": {
+        "emailInvalid": "Cette adresse email n’est pas valide."
+      },
+      "errors": {
+        "failed": "L’enregistrement a échoué. Rien n’a été enregistré : réessayez dans un instant."
+      }
+    }
   },
   "MemberReportPage": {
     "back": "Revenir à mon espace",
@@ -4018,17 +4167,37 @@
     },
     "title": "Ne plus recevoir les campagnes de {name}",
     "invalidTitle": "Ce lien ne fonctionne pas",
-    "ask": "Vous êtes sur le point de ne plus recevoir les campagnes que le bureau envoie par email aux membres.",
+    "ask": "Cette adresse ne recevra plus les campagnes que le bureau envoie par email aux membres. Les autres adresses de votre espace les recevront encore.",
     "confirm": "Me désinscrire",
     "keep": "Je garde les campagnes",
-    "done": "C’est enregistré. Vous ne recevrez plus les campagnes de {name}.",
-    "already": "Vous êtes déjà désinscrit. Rien d’autre à faire.",
+    "done": "C’est enregistré. Cette adresse ne recevra plus les campagnes de {name}.",
+    "already": "Cette adresse est déjà désinscrite. Rien d’autre à faire.",
     "invalid": "Ce lien de désinscription n’est pas valide.",
     "invalidContact": "Rien n’a été modifié. Vous pouvez écrire au bureau de l’association : {email}.",
     "invalidNoContact": "Rien n’a été modifié.",
     "failedTitle": "Votre demande n’a pas pu être enregistrée.",
     "failedDescription": "Rien n’a changé. Réessayez dans un instant.",
     "siteLink": "Aller sur le site de l’association"
+  },
+  "MemberEmailConfirmationPage": {
+    "metadata": {
+      "title": "Confirmer votre adresse"
+    },
+    "title": "Confirmer votre adresse",
+    "ask": "Elle pourra se connecter à l’espace membre{count, plural, =0 {} one { de la parcelle {numbers}} other { des parcelles {numbers}}} et recevra les envois de {name}.",
+    "confirm": "Confirmer cette adresse",
+    "confirming": "Confirmation…",
+    "doneTitle": "Adresse confirmée.",
+    "done": "Vous pouvez vous connecter avec elle.",
+    "doneReplaced": "Vous pouvez vous connecter avec elle. Votre ancienne adresse ne sert plus à vous connecter.",
+    "login": "Se connecter",
+    "invalidTitle": "Ce lien ne sert plus.",
+    "invalid": "Vous n’avez rien fait de mal. Demandez à la personne qui a ajouté l’adresse de la renvoyer depuis son espace, ou écrivez au bureau.",
+    "takenTitle": "Cette adresse ne peut pas être ajoutée ici.",
+    "taken": "Écrivez au bureau, qui fera le lien.",
+    "contactLink": "Page Contact",
+    "failedTitle": "La confirmation n’a pas pu être enregistrée.",
+    "failedDescription": "Rien n’a changé. Réessayez dans un instant."
   },
   "EmailSendingBureau": {
     "metadata": {
@@ -4071,13 +4240,15 @@
       },
       "natures": {
         "campaign": "Campagne",
-        "board_notification": "Notification au bureau"
+        "board_notification": "Notification au bureau",
+        "member_email_confirmation": "Confirmation d’adresse"
       },
       "titles": {
         "campaign": "« {subject} »",
         "contact_message": "Message reçu depuis le formulaire de contact",
         "incident_report": "Signalement reçu depuis le site",
         "member_question": "Question d’un membre",
+        "member_email_confirmation": "Lien de confirmation d’une adresse",
         "other": "Notification au bureau"
       },
       "details": {

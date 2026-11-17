@@ -1,9 +1,11 @@
-import type {
-  DeferredCampaignPart,
-  EmailSendReferenceType,
-  PendingDeferredEmail,
-  PendingSendDTO,
-  TenantEmailNature,
+import {
+  type DeferredCampaignPart,
+  type EmailSendReferenceType,
+  type PendingDeferredEmail,
+  type PendingSendDTO,
+  type PendingSendNature,
+  TENANT_EMAIL_NATURES,
+  type TenantEmailNature,
 } from '../types/domain/email-send-types'
 import {calendarDayOf} from '../types/domain/water-analysis-types'
 import {addDays, parisTwoAm} from './campaign-schedule-rules'
@@ -98,7 +100,7 @@ export const groupPendingSends = (
     }
     groups.set(key, {
       key,
-      nature: 'board_notification',
+      nature: pendingNatureOf(row.nature),
       reference,
       campaignSubject: null,
       partNumber: null,
@@ -110,3 +112,13 @@ export const groupPendingSends = (
   }
   return [...groups.values()]
 }
+
+/**
+ * La nature enregistree d'un email reporte (revue s54, M2). La colonne n'est
+ * ecrite que par une nature d'association reportable ; une valeur inconnue
+ * se montre comme une notification au bureau.
+ */
+const pendingNatureOf = (nature: string): PendingSendNature =>
+  TENANT_EMAIL_NATURES.some((known) => known === nature) && nature !== 'login'
+    ? (nature as PendingSendNature)
+    : 'board_notification'

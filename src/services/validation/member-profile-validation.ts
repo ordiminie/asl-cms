@@ -70,10 +70,11 @@ export const createMemberProfileServiceSchema = z.object({
   ),
 })
 
+/** Coordonnees de la fiche, sans email : les adresses ont leur carte (s54). */
 export const updateMemberProfileContactServiceSchema = z.object({
   organizationId: memberProfileOrganizationIdSchema,
   memberProfileId: memberProfileIdSchema,
-  ...contactShape,
+  ...postalContactShape,
 })
 
 export const memberProfileServiceSchema = z.object({
@@ -111,4 +112,58 @@ export const findByPennylaneIdServiceSchema = z.object({
     .trim()
     .min(1)
     .max(MEMBER_PROFILE_PENNYLANE_ID_MAX_LENGTH),
+})
+
+/** Une adresse saisie : obligatoire, sans espaces autour (s54). */
+const requiredEmailSchema = z.string().trim().min(1).email()
+
+const memberEmailRoleSchema = z.enum(['holder', 'additional'])
+
+/** Le bureau ajoute une adresse a une fiche (s54, ADR 056 §4). */
+export const addMemberProfileEmailServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  memberProfileId: memberProfileIdSchema,
+  email: requiredEmailSchema,
+  role: memberEmailRoleSchema.optional(),
+  confirmedAccountUserId: z.string().uuid().optional(),
+  origin: z.enum(['file', 'site']).optional(),
+})
+
+export const updateMemberProfileEmailServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  memberProfileId: memberProfileIdSchema,
+  emailId: z.string().uuid(),
+  email: requiredEmailSchema,
+  confirmedAccountUserId: z.string().uuid().optional(),
+})
+
+export const removeMemberProfileEmailServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  memberProfileId: memberProfileIdSchema,
+  emailId: z.string().uuid(),
+  replacementEmailId: z.string().uuid().optional(),
+  replacementEmail: optionalContact(z.string().email()),
+})
+
+export const designateMemberProfileHolderServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  memberProfileId: memberProfileIdSchema,
+  emailId: z.string().uuid(),
+})
+
+/** Le membre ajoute une adresse depuis son espace (s54, 1b). */
+export const addMyEmailServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  email: requiredEmailSchema,
+  locale: z.string().optional(),
+})
+
+/** Le membre designe une de ses adresses : sa propre adresse, ou son attente. */
+export const myEmailTargetServiceSchema = addMyEmailServiceSchema.extend({
+  emailId: z.string().uuid(),
+})
+
+export const cancelMyPendingEmailServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  emailId: z.string().uuid(),
 })

@@ -53,7 +53,6 @@ export type ImportRejection =
 
 /** Ce qu'une ligne importee merite qu'on relise. */
 export const ImportRemarkConst = {
-  SEVERAL_EMAILS: 'several_emails',
   POSTAL_CODE_PADDED: 'postal_code_padded',
   NO_METER: 'no_meter',
   SAME_NAME_AND_ADDRESS: 'same_name_and_address',
@@ -102,7 +101,10 @@ export type ImportMemberCandidate = {
   pennylaneCustomerId: string
   lines: number[]
   name: string
+  /** La premiere adresse de la cellule : la titulaire d'une fiche creee. */
   email?: string
+  /** Les adresses suivantes de la cellule, supplementaires (s54). */
+  additionalEmails?: string[]
   phone?: string
   addressLine?: string
   postalCode?: string

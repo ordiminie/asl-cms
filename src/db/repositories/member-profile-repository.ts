@@ -4,21 +4,30 @@ import {
   count,
   eq,
   exists,
+  getTableColumns,
   ilike,
   inArray,
-  isNotNull,
   isNull,
   or,
   sql,
 } from 'drizzle-orm'
 
+import {user} from '@/db/models/auth-model'
 import {memberProfileAccount} from '@/db/models/member-profile-account-model'
+import {memberProfileEmail} from '@/db/models/member-profile-email-model'
 import {
   memberProfile,
   MemberProfileModel,
 } from '@/db/models/member-profile-model'
 import {parcel, parcelOwnership} from '@/db/models/parcel-model'
 import {getDb} from '@/db/tenant-scope'
+
+import {
+  activeHolderEmailSql,
+  holderUserIdSql,
+  mailOnlySql,
+  otherActiveEmailCountSql,
+} from './member-profile-email-repository'
 
 /**
  * Fiches des proprietaires d'une association (s12, ADR 029). Sous RLS forcee :
@@ -28,11 +37,16 @@ import {getDb} from '@/db/tenant-scope'
  * et la fermeture du compte d'une fiche vivent dans `member-account-service`
  * (s12d) ; il n'ecrit ici que le lien fiche ↔ compte, dans
  * `member_profile_account` (s53, ADR 054).
+ *
+ * Les adresses vivent dans `member_profile_email` (s54, ADR 056) : les
+ * lectures exposent la **titulaire active** comme email de la fiche, et
+ * « courrier uniquement » par `NOT EXISTS` d'une adresse active. Aucune
+ * lecture ne joint `member_profile_account` a la fiche : une fiche a
+ * plusieurs comptes, elle resterait une ligne par compte.
  */
 
 /** `null` quand la coordonnee est absente : jamais une chaine vide. */
 export type MemberProfileContactWrite = {
-  email: string | null
   phone: string | null
   addressLine: string | null
   addressComplement: string | null
@@ -48,21 +62,39 @@ export type CreateMemberProfileResult = {
 export type UpdateMemberProfileContactResult =
   {status: 'updated'; row: MemberProfileModel} | {status: 'not_found'}
 
-/** Une fiche et le compte qui lui est relie, `null` sans compte (ADR 054). */
-export type MemberProfileWithAccountRow = MemberProfileModel & {
-  userId: string | null
+/**
+ * Une fiche lue : ses colonnes, l'adresse titulaire active (`null` sans
+ * adresse active) et « courrier uniquement », calcule (ADR 056 §2).
+ */
+export type MemberProfileReadRow = MemberProfileModel & {
+  email: string | null
+  mailOnly: boolean
 }
 
-export type MemberProfileListRow = MemberProfileWithAccountRow & {
+/** Un compte relie a une fiche : un par adresse active (ADR 056 §3). */
+export type LinkedAccountRow = {userId: string; email: string; name: string}
+
+export type MemberProfileListRow = MemberProfileReadRow & {
   currentParcelNumbers: string[]
-  /** Nombre de fiches reliees au compte de la fiche ; 0 sans compte. */
+  /** Adresses actives de la fiche autres que la titulaire (design 5a). */
+  otherEmailCount: number
+  /** Le compte de l'adresse titulaire, relie a la fiche ; `null` sinon. */
+  holderUserId: string | null
+  /** Nombre de fiches reliees au compte titulaire ; 0 sans compte. */
   accountProfileCount: number
 }
 
 /** Une fiche d'un compte, avec les numeros de ses parcelles actuelles. */
-export type MyMemberProfileRow = MemberProfileModel & {
+export type MyMemberProfileRow = MemberProfileReadRow & {
   currentParcelNumbers: string[]
 }
+
+/** Les colonnes d'une fiche lue, adresse titulaire et courrier compris. */
+const profileReadColumns = () => ({
+  ...getTableColumns(memberProfile),
+  email: activeHolderEmailSql(),
+  mailOnly: mailOnlySql(),
+})
 
 export type MemberProfilePageRows = {
   rows: MemberProfileListRow[]
@@ -74,9 +106,8 @@ const escapeLike = (value: string): string =>
   value.replace(/[\\%_]/g, (char) => `\\${char}`)
 
 /**
- * Cree une fiche. L'identifiant est genere par la base. L'adresse n'est plus
- * unique (ADR 054) : une adresse deja portee est detectee par le service,
- * avant l'ecriture.
+ * Cree une fiche. L'identifiant est genere par la base. Ses adresses
+ * s'ecrivent ensuite dans `member_profile_email` (ADR 056), par le service.
  */
 export const createMemberProfileTxnDao = async (
   input: MemberProfileContactWrite & {
@@ -106,43 +137,85 @@ export const updateMemberProfileContactTxnDao = async (
       : ({status: 'not_found'} as const)
   })
 
-/** Une fiche et le compte qui lui est relie (ADR 054). */
+/** Une fiche lue, avec sa titulaire active (ADR 056), ou rien. */
 export const getMemberProfileByIdDao = async (
   memberProfileId: string
-): Promise<MemberProfileWithAccountRow | undefined> => {
+): Promise<MemberProfileReadRow | undefined> => {
   const [row] = await getDb()
-    .select({profile: memberProfile, userId: memberProfileAccount.userId})
+    .select(profileReadColumns())
     .from(memberProfile)
-    .leftJoin(
-      memberProfileAccount,
-      eq(memberProfileAccount.memberProfileId, memberProfile.id)
-    )
     .where(eq(memberProfile.id, memberProfileId))
-  return row ? {...row.profile, userId: row.userId} : undefined
+  return row
 }
 
 /**
- * **Toutes** les fiches de l'association qui portent cet email, sans tenir
- * compte de la casse, chacune avec son compte et ses parcelles actuelles
- * (s53, ADR 054 §4) : le service y lit le detenteur d'une adresse partagee.
+ * Le compte de l'adresse titulaire active d'une fiche, s'il lui est relie
+ * (s54) : celui que la carte « Role dans l'association » designe.
+ */
+export const getHolderAccountUserIdDao = async (
+  memberProfileId: string
+): Promise<string | null> => {
+  const [row] = await getDb()
+    .select({userId: holderUserIdSql()})
+    .from(memberProfile)
+    .where(eq(memberProfile.id, memberProfileId))
+  return row?.userId ?? null
+}
+
+/**
+ * Les comptes relies a une fiche, un par adresse active (ADR 056 §3), avec
+ * leur adresse de connexion et leur nom.
+ */
+export const getLinkedAccountsDao = async (
+  memberProfileId: string
+): Promise<LinkedAccountRow[]> =>
+  getDb()
+    .select({
+      userId: memberProfileAccount.userId,
+      email: user.email,
+      name: user.name,
+    })
+    .from(memberProfileAccount)
+    .innerJoin(user, eq(user.id, memberProfileAccount.userId))
+    .where(eq(memberProfileAccount.memberProfileId, memberProfileId))
+    .orderBy(asc(user.email))
+
+/** Une fiche qui porte une adresse, avec le role de l'adresse sur elle. */
+export type MemberProfileByEmailRow = MemberProfileReadRow & {
+  /** Le compte de cette adresse relie a cette fiche ; `null` sinon. */
+  userId: string | null
+  role: 'holder' | 'additional'
+  currentParcelNumbers: string[]
+}
+
+/**
+ * **Toutes** les fiches de l'association qui portent cette adresse
+ * **active**, sans tenir compte de la casse, chacune avec le compte de
+ * l'adresse s'il lui est relie et ses parcelles actuelles (s53, ADR 054 §4 ;
+ * s54, ADR 056) : le service y lit le detenteur d'une adresse partagee.
  */
 export const getMemberProfilesByEmailDao = async (
   organizationId: string,
   email: string
-): Promise<
-  (MemberProfileWithAccountRow & {currentParcelNumbers: string[]})[]
-> => {
+): Promise<MemberProfileByEmailRow[]> => {
   const rows = await getDb()
-    .select({profile: memberProfile, userId: memberProfileAccount.userId})
-    .from(memberProfile)
-    .leftJoin(
-      memberProfileAccount,
-      eq(memberProfileAccount.memberProfileId, memberProfile.id)
+    .select({
+      profile: profileReadColumns(),
+      role: memberProfileEmail.role,
+      userId: sql<
+        string | null
+      >`(select mpa_email."user_id" from "member_profile_account" mpa_email inner join "user" u_email on u_email."id" = mpa_email."user_id" where mpa_email."member_profile_id" = "member_profile_email"."member_profile_id" and lower(u_email."email") = lower("member_profile_email"."email") limit 1)`,
+    })
+    .from(memberProfileEmail)
+    .innerJoin(
+      memberProfile,
+      eq(memberProfile.id, memberProfileEmail.memberProfileId)
     )
     .where(
       and(
-        eq(memberProfile.organizationId, organizationId),
-        sql`lower(${memberProfile.email}) = lower(${email})`
+        eq(memberProfileEmail.organizationId, organizationId),
+        sql`lower(${memberProfileEmail.email}) = lower(${email})`,
+        eq(memberProfileEmail.status, 'active')
       )
     )
     .orderBy(asc(memberProfile.id))
@@ -152,6 +225,7 @@ export const getMemberProfilesByEmailDao = async (
   return rows.map((row) => ({
     ...row.profile,
     userId: row.userId,
+    role: row.role,
     currentParcelNumbers: numbers[row.profile.id] ?? [],
   }))
 }
@@ -226,12 +300,12 @@ export const getMemberProfilePageDao = async (input: {
   )
 
   const profiles = await getDb()
-    .select({profile: memberProfile, userId: memberProfileAccount.userId})
+    .select({
+      ...profileReadColumns(),
+      otherEmailCount: otherActiveEmailCountSql(),
+      holderUserId: holderUserIdSql(),
+    })
     .from(memberProfile)
-    .leftJoin(
-      memberProfileAccount,
-      eq(memberProfileAccount.memberProfileId, memberProfile.id)
-    )
     .where(where)
     .orderBy(asc(memberProfile.name), asc(memberProfile.id))
     .limit(input.limit)
@@ -241,20 +315,21 @@ export const getMemberProfilePageDao = async (input: {
     .from(memberProfile)
     .where(where)
   const numbers = await getCurrentParcelNumbersByProfile(
-    profiles.map((row) => row.profile.id)
+    profiles.map((row) => row.id)
   )
   const profileCounts = await countProfilesByAccount(
     input.organizationId,
-    profiles.flatMap((row) => (row.userId === null ? [] : [row.userId]))
+    profiles.flatMap((row) =>
+      row.holderUserId === null ? [] : [row.holderUserId]
+    )
   )
 
   return {
     rows: profiles.map((row) => ({
-      ...row.profile,
-      userId: row.userId,
-      currentParcelNumbers: numbers[row.profile.id] ?? [],
+      ...row,
+      currentParcelNumbers: numbers[row.id] ?? [],
       accountProfileCount:
-        row.userId === null ? 0 : (profileCounts[row.userId] ?? 0),
+        row.holderUserId === null ? 0 : (profileCounts[row.holderUserId] ?? 0),
     })),
     total,
   }
@@ -283,7 +358,8 @@ const countProfilesByAccount = async (
 
 /**
  * Combien de fiches, et combien d'incompletes (decision G) : courrier
- * uniquement, sans adresse, sans code postal et sans commune.
+ * uniquement (aucune adresse active, ADR 056), sans adresse, sans code postal
+ * et sans commune.
  */
 export const countMemberProfilesDao = async (
   organizationId: string
@@ -291,7 +367,7 @@ export const countMemberProfilesDao = async (
   const [row] = await getDb()
     .select({
       total: count(),
-      incomplete: sql<number>`count(*) filter (where ${memberProfile.mailOnly} and ${memberProfile.addressLine} is null and ${memberProfile.postalCode} is null and ${memberProfile.city} is null)::int`,
+      incomplete: sql<number>`count(*) filter (where ${mailOnlySql()} and ${memberProfile.addressLine} is null and ${memberProfile.postalCode} is null and ${memberProfile.city} is null)::int`,
     })
     .from(memberProfile)
     .where(eq(memberProfile.organizationId, organizationId))
@@ -299,8 +375,9 @@ export const countMemberProfilesDao = async (
 }
 
 /**
- * Relie une fiche a un compte (s53, ADR 054) : une fiche a au plus un compte,
- * un nouveau lien remplace l'ancien.
+ * Relie une fiche a un compte (s53, ADR 054). Depuis s54 (ADR 056 §3), une
+ * fiche a un compte par adresse active : le lien s'ajoute, il ne remplace
+ * jamais celui d'une autre adresse ; un lien deja pose ne change rien.
  */
 export const linkMemberProfileAccountDao = async (input: {
   organizationId: string
@@ -310,19 +387,30 @@ export const linkMemberProfileAccountDao = async (input: {
   await getDb()
     .insert(memberProfileAccount)
     .values(input)
-    .onConflictDoUpdate({
-      target: memberProfileAccount.memberProfileId,
-      set: {userId: input.userId},
+    .onConflictDoNothing({
+      target: [
+        memberProfileAccount.memberProfileId,
+        memberProfileAccount.userId,
+      ],
     })
 }
 
-/** Retire le lien d'une fiche a son compte ; le compte n'est pas touche. */
+/**
+ * Retire le lien de **ce** compte a **cette** fiche (s54, critere 10) : les
+ * autres comptes de la fiche gardent le leur ; le compte n'est pas touche.
+ */
 export const unlinkMemberProfileAccountDao = async (
-  memberProfileId: string
+  memberProfileId: string,
+  userId: string
 ): Promise<void> => {
   await getDb()
     .delete(memberProfileAccount)
-    .where(eq(memberProfileAccount.memberProfileId, memberProfileId))
+    .where(
+      and(
+        eq(memberProfileAccount.memberProfileId, memberProfileId),
+        eq(memberProfileAccount.userId, userId)
+      )
+    )
 }
 
 /** Le nombre de fiches de l'association reliees a ce compte. */
@@ -342,33 +430,32 @@ export const countLinkedProfilesDao = async (
   return total
 }
 
-/** Les fiches a adresse de l'association qui n'ont pas encore de compte. */
+/**
+ * Les adresses actives de l'association dont le compte n'est pas encore
+ * relie a leur fiche (ADR 056 §3) : une ligne par (fiche, adresse).
+ */
 export const getUnlinkedMemberProfilesWithEmailDao = async (
   organizationId: string
-): Promise<{id: string; name: string; email: string}[]> => {
-  const rows = await getDb()
+): Promise<{id: string; name: string; email: string}[]> =>
+  getDb()
     .select({
       id: memberProfile.id,
       name: memberProfile.name,
-      email: memberProfile.email,
+      email: memberProfileEmail.email,
     })
-    .from(memberProfile)
-    .leftJoin(
-      memberProfileAccount,
-      eq(memberProfileAccount.memberProfileId, memberProfile.id)
+    .from(memberProfileEmail)
+    .innerJoin(
+      memberProfile,
+      eq(memberProfile.id, memberProfileEmail.memberProfileId)
     )
     .where(
       and(
-        eq(memberProfile.organizationId, organizationId),
-        isNotNull(memberProfile.email),
-        isNull(memberProfileAccount.id)
+        eq(memberProfileEmail.organizationId, organizationId),
+        eq(memberProfileEmail.status, 'active'),
+        sql`not exists (select 1 from "member_profile_account" mpa_unlinked inner join "user" u_unlinked on u_unlinked."id" = mpa_unlinked."user_id" where mpa_unlinked."member_profile_id" = "member_profile_email"."member_profile_id" and lower(u_unlinked."email") = lower("member_profile_email"."email"))`
       )
     )
-    .orderBy(asc(memberProfile.id))
-  return rows.flatMap((row) =>
-    row.email === null ? [] : [{id: row.id, name: row.name, email: row.email}]
-  )
-}
+    .orderBy(asc(memberProfile.id), asc(memberProfileEmail.id))
 
 /** Les identifiants des fiches de l'association reliees a ce compte. */
 const linkedProfileIds = (organizationId: string, userId: string) =>
@@ -393,7 +480,7 @@ export const getMemberProfilesByUserIdDao = async (
   userId: string
 ): Promise<MyMemberProfileRow[]> => {
   const profiles = await getDb()
-    .select()
+    .select(profileReadColumns())
     .from(memberProfile)
     .where(
       and(
@@ -472,3 +559,9 @@ export const getMemberProfileByPennylaneIdDao = async (
     )
   return row
 }
+
+/** Les numeros des parcelles actuelles de chaque fiche (s54, page publique). */
+export const getCurrentParcelNumbersByProfileDao = async (
+  memberProfileIds: string[]
+): Promise<Record<string, string[]>> =>
+  getCurrentParcelNumbersByProfile(memberProfileIds)

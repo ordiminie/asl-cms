@@ -105,8 +105,16 @@ const CAMPAIGN_INPUT = {
 }
 
 const RECIPIENTS = [
-  {memberProfileId: PROFILE_A, unsubscribeToken: 'token-a'},
-  {memberProfileId: PROFILE_B, unsubscribeToken: 'token-b'},
+  {
+    memberProfileId: PROFILE_A,
+    email: 'claire@example.fr',
+    unsubscribeToken: 'token-a',
+  },
+  {
+    memberProfileId: PROFILE_B,
+    email: 'paul@example.fr',
+    unsubscribeToken: 'token-b',
+  },
 ]
 
 beforeEach(() => {
@@ -115,11 +123,12 @@ beforeEach(() => {
 })
 
 describe('getCampaignTargetRowsDao', () => {
-  it('lit les fiches de l’association avec leur email, leur refus, le nom de leur compte et leurs parcelles (s53)', async () => {
+  it('lit une ligne par fiche et par adresse active, avec le refus de l’adresse, le nom de son compte et les parcelles (s54, ADR 057)', async () => {
     responses.current = [
       [
-        [PROFILE_A, 'Claire Aubert', 'claire@example.fr', false, 'Claire A.'],
-        [PROFILE_B, 'Paul Renaud', null, true, null],
+        [PROFILE_A, 'Jean Dubois', 'jean@example.fr', false, 'Jean D.'],
+        [PROFILE_A, 'Jean Dubois', 'claire@example.fr', true, 'Claire D.'],
+        [PROFILE_B, 'Paul Renaud', null, null, null],
       ],
       [[PROFILE_A, '12']],
     ]
@@ -128,25 +137,37 @@ describe('getCampaignTargetRowsDao', () => {
 
     const [{sql, params}] = sent
     expect(sql).toContain('from "member_profile"')
-    expect(sql).toContain('left join "member_unsubscribe"')
-    expect(sql).toContain('left join "member_profile_account"')
-    expect(sql).toContain('left join "user"')
+    expect(sql).toContain('left join "member_profile_email"')
+    expect(sql).toContain('"member_profile_email"."status" = $')
+    expect(sql).toContain(
+      '"member_profile_email"."unsubscribed_at" is not null'
+    )
+    expect(sql).not.toContain('member_unsubscribe')
+    expect(sql).not.toContain('left join "member_profile_account"')
     expect(sql).toContain('"member_profile"."organization_id" = $')
-    expect(params).toContain(ORG_ID)
+    expect(params).toEqual(expect.arrayContaining([ORG_ID, 'active']))
     expect(rows).toEqual([
       {
         memberProfileId: PROFILE_A,
-        name: 'Claire Aubert',
-        email: 'claire@example.fr',
+        name: 'Jean Dubois',
+        email: 'jean@example.fr',
         unsubscribed: false,
-        accountName: 'Claire A.',
+        accountName: 'Jean D.',
+        currentParcelNumbers: ['12'],
+      },
+      {
+        memberProfileId: PROFILE_A,
+        name: 'Jean Dubois',
+        email: 'claire@example.fr',
+        unsubscribed: true,
+        accountName: 'Claire D.',
         currentParcelNumbers: ['12'],
       },
       {
         memberProfileId: PROFILE_B,
         name: 'Paul Renaud',
         email: null,
-        unsubscribed: true,
+        unsubscribed: false,
         accountName: null,
         currentParcelNumbers: [],
       },
@@ -221,10 +242,18 @@ describe('createCampaignWithRecipientsTxnDao', () => {
       ])
     )
     expect(sent[2].sql).toMatch(/^insert into "campaign_recipient"/)
+    expect(sent[2].sql).toContain('"email"')
     const params = sent[2].params
-    const partOf = (profile: string) => params[params.indexOf(profile) + 1]
+    const partOf = (profile: string) => params[params.indexOf(profile) + 2]
     expect(params).toEqual(
-      expect.arrayContaining([ORG_ID, CAMPAIGN_ID, 'token-a', 'token-b'])
+      expect.arrayContaining([
+        ORG_ID,
+        CAMPAIGN_ID,
+        'claire@example.fr',
+        'paul@example.fr',
+        'token-a',
+        'token-b',
+      ])
     )
     expect(partOf(PROFILE_A)).toBe(PART_1)
     expect(partOf(PROFILE_B)).toBe(PART_2)
@@ -452,7 +481,7 @@ describe('getCampaignsPageDao', () => {
 })
 
 describe('getPendingPartRecipientsDao', () => {
-  it('lit les destinataires en attente de la part, fiche et refus éventuel compris', async () => {
+  it('lit l’adresse de la ligne, puis la relit active dans l’association, avec son refus et son compte (s54, ADR 057)', async () => {
     responses.current = [
       [
         [
@@ -462,11 +491,9 @@ describe('getPendingPartRecipientsDao', () => {
           'Claire Aubert',
           'claire@example.fr',
           'tok',
-          false,
-          'Claire A.',
         ],
       ],
-      [[PROFILE_A, 'claire@example.fr', false]],
+      [[PROFILE_A, 'claire@example.fr', false, 'Claire A.']],
       [[PROFILE_A, '12']],
     ]
 
@@ -475,11 +502,17 @@ describe('getPendingPartRecipientsDao', () => {
     const [{sql, params}] = sent
     expect(sql).toContain('from "campaign_recipient"')
     expect(sql).toContain('left join "member_profile"')
-    expect(sql).toContain('left join "member_unsubscribe"')
+    expect(sql).toContain('"campaign_recipient"."email"')
+    expect(sql).not.toContain('member_unsubscribe')
     expect(sql).toContain('"campaign_recipient"."part_id" = $')
     expect(sql).toContain('"campaign_recipient"."status" = $')
     expect(sql).toContain('order by "campaign_recipient"."id"')
     expect(params).toEqual(expect.arrayContaining([PART_1, 'pending']))
+    expect(sent[1].sql).toContain('from "member_profile_email"')
+    expect(sent[1].sql).toContain('lower(trim("member_profile_email"."email"))')
+    expect(sent[1].params).toEqual(
+      expect.arrayContaining([ORG_ID, 'active', 'claire@example.fr'])
+    )
     expect(rows).toEqual([
       {
         recipientId: RECIPIENT_ID,
@@ -505,13 +538,11 @@ describe('getPendingPartRecipientsDao', () => {
           'Bernard Lefèvre',
           'Bernard@example.fr',
           'tok',
-          false,
-          'Bernard L.',
         ],
       ],
       [
-        [PROFILE_A, 'bernard@example.fr', false],
-        [PROFILE_B, 'bernard@example.fr', true],
+        [PROFILE_A, 'bernard@example.fr', false, 'Bernard L.'],
+        [PROFILE_B, 'bernard@example.fr', true, 'Bernard L.'],
       ],
       [
         [PROFILE_A, '12'],
@@ -521,13 +552,10 @@ describe('getPendingPartRecipientsDao', () => {
 
     const rows = await getPendingPartRecipientsDao(PART_1)
 
-    expect(sent[1].sql).toContain('lower(trim("member_profile"."email"))')
-    expect(sent[1].params).toEqual(
-      expect.arrayContaining([ORG_ID, 'bernard@example.fr'])
-    )
     expect(rows).toEqual([
       expect.objectContaining({
         recipientId: RECIPIENT_ID,
+        email: 'Bernard@example.fr',
         accountName: 'Bernard L.',
         unsubscribed: true,
         parcelNumbers: ['12', '31'],
@@ -536,9 +564,37 @@ describe('getPendingPartRecipientsDao', () => {
     ])
   })
 
-  it('garde une ligne dont la fiche a été supprimée, sans adresse', async () => {
+  it('adresse retirée depuis la création : la ligne reste, sans adresse, rien ne lui sera envoyé', async () => {
     responses.current = [
-      [[RECIPIENT_ID, ORG_ID, null, null, null, 'tok', false, null]],
+      [
+        [
+          RECIPIENT_ID,
+          ORG_ID,
+          PROFILE_A,
+          'Jean Dubois',
+          'retiree@example.fr',
+          'tok',
+        ],
+      ],
+      [],
+      [[PROFILE_A, '12']],
+    ]
+
+    const rows = await getPendingPartRecipientsDao(PART_1)
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        recipientId: RECIPIENT_ID,
+        memberProfileId: PROFILE_A,
+        email: null,
+      }),
+    ])
+  })
+
+  it('garde une ligne dont la fiche a été supprimée, sans nom', async () => {
+    responses.current = [
+      [[RECIPIENT_ID, ORG_ID, null, null, 'claire@example.fr', 'tok']],
+      [],
     ]
 
     const rows = await getPendingPartRecipientsDao(PART_1)
@@ -547,6 +603,7 @@ describe('getPendingPartRecipientsDao', () => {
       expect.objectContaining({
         recipientId: RECIPIENT_ID,
         memberProfileId: null,
+        name: null,
         email: null,
         parcelNumbers: [],
         addressProfileCount: 1,

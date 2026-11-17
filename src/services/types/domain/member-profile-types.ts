@@ -7,6 +7,11 @@
  * adresse a un compte (s12d, ADR 037).
  */
 
+import {
+  MemberEmailOrigin,
+  MemberEmailRole,
+  MemberEmailStatus,
+} from './member-email-types'
 import {MemberRoleCardDTO} from './member-role-types'
 
 /** Taille de page de la liste du bureau, tableau comme cartes (decision I). */
@@ -26,7 +31,11 @@ export const MEMBER_PROFILE_PHONE_PATTERN = /^[0-9 +.\-()]+$/
 /** Code postal : cinq chiffres (decision H). */
 export const MEMBER_PROFILE_POSTAL_CODE_PATTERN = /^\d{5}$/
 
-/** Les coordonnees d'une fiche. `null` = absente, jamais une chaine vide. */
+/**
+ * Les coordonnees d'une fiche. `null` = absente, jamais une chaine vide.
+ * `email` est l'adresse **titulaire active** (s54, ADR 056), lue dans
+ * `member_profile_email`.
+ */
 export type MemberProfileContact = {
   email: string | null
   phone: string | null
@@ -42,16 +51,18 @@ export type MemberProfileFieldsDTO = MemberProfileContact & {
   id: string
   organizationId: string
   name: string
-  /** Joignable par courrier uniquement : colonne generee, `email IS NULL`. */
+  /** Courrier uniquement : aucune adresse active (ADR 056 §2). */
   mailOnly: boolean
   /** Courrier uniquement et aucune adresse postale (decision G). */
   incomplete: boolean
 }
 
 /**
- * L'etat du compte d'une fiche, tel que le bureau le lit (s12d, carte
- * « Acces a l'espace membre ») : ouvert, avec l'adresse de connexion et le
- * role au bureau eventuel, ou courrier uniquement.
+ * L'etat du compte de l'adresse **titulaire** d'une fiche, tel que le bureau
+ * le lit (s12d, carte « Acces a l'espace membre », reduite en s54) : ouvert,
+ * avec l'adresse de connexion et le role au bureau eventuel, ou courrier
+ * uniquement. Chaque adresse active porte en plus son propre compte
+ * (`MemberProfileEmailDTO`).
  */
 export type MemberProfileAccountDTO =
   | {
@@ -84,7 +95,31 @@ export type MemberAccountHolderDTO = {
   profiles: MemberAccountProfileDTO[]
 }
 
+/**
+ * Une adresse d'une fiche, telle que le bureau la lit (s54, design 4a) : role,
+ * statut, origine, auteur et echeance d'une attente ; pour une adresse
+ * active, le role au bureau et les autres fiches de son compte.
+ */
+export type MemberProfileEmailDTO = {
+  id: string
+  email: string
+  role: MemberEmailRole
+  status: MemberEmailStatus
+  origin: MemberEmailOrigin
+  /** Nom de la personne qui l'a ajoutee depuis son espace ; nul sinon. */
+  addedByName: string | null
+  /** Echeance d'une adresse en attente (ISO) ; nulle pour une active. */
+  expiresAt: string | null
+  /** Une modification en attente remplacera cette adresse ; nul sinon. */
+  replacesEmailId: string | null
+  boardRole: 'board' | 'owner' | null
+  /** Les autres fiches reliees au compte de l'adresse (s53, 3c). */
+  otherProfiles: MemberAccountProfileDTO[]
+}
+
 export type MemberProfileDTO = MemberProfileFieldsDTO & {
+  /** Les adresses de la fiche, titulaire d'abord (s54). */
+  emails: MemberProfileEmailDTO[]
   account: MemberProfileAccountDTO
   /**
    * Carte « Role dans l'association » (s14), calculee pour la personne
@@ -100,8 +135,10 @@ export type MemberProfileDTO = MemberProfileFieldsDTO & {
 export type MemberProfileListItemDTO = MemberProfileFieldsDTO & {
   currentParcelNumbers: string[]
   boardRole: 'board' | 'owner' | null
-  /** Nombre de fiches que porte le compte de la fiche ; 0 sans compte (s53). */
+  /** Nombre de fiches que porte le compte titulaire ; 0 sans compte (s53). */
   accountProfileCount: number
+  /** Adresses actives de la fiche autres que la titulaire (s54, 5a). */
+  otherEmailCount: number
 }
 
 export type MemberProfilePageDTO = {
@@ -117,14 +154,11 @@ export type MemberProfilePageDTO = {
   incompleteCount: number
 }
 
-/** Ce que le bureau saisit. Une chaine vide vaut une coordonnee absente. */
+/**
+ * Ce que le bureau saisit dans « Coordonnees ». Une chaine vide vaut une
+ * coordonnee absente. Sans email depuis s54 : les adresses ont leur carte.
+ */
 export type MemberProfileContactInput = {
-  /**
-   * Le compte que le bureau a confirme rejoindre quand l'adresse est deja la
-   * sienne (s53, ADR 054 §4) : revérifie au serveur, jamais cru tel quel.
-   */
-  confirmedAccountUserId?: string
-  email?: string
   phone?: string
   addressLine?: string
   addressComplement?: string
@@ -135,6 +169,13 @@ export type MemberProfileContactInput = {
 export type CreateMemberProfileInput = MemberProfileContactInput & {
   organizationId: string
   name: string
+  /** L'adresse saisie a la creation : la titulaire de la fiche (s54). */
+  email?: string
+  /**
+   * Le compte que le bureau a confirme rejoindre quand l'adresse est deja la
+   * sienne (s53, ADR 054 §4) : revérifie au serveur, jamais cru tel quel.
+   */
+  confirmedAccountUserId?: string
   /** Cle d'import Pennylane (s13, ADR 048) : ecrite par l'import seul. */
   pennylaneCustomerId?: string
 }
@@ -177,3 +218,65 @@ export type MemberAccountChange =
   /** La fiche a rejoint le compte qui portait deja son adresse (s53). */
   | 'linked'
   | null
+
+/** Le bureau ajoute une adresse a une fiche (s54, 4b-4c). */
+export type AddMemberProfileEmailInput = {
+  organizationId: string
+  memberProfileId: string
+  email: string
+  /** Le role choisi quand l'adresse est deja portee ailleurs (critere 8). */
+  role?: MemberEmailRole
+  /** Le compte confirme (s53, ADR 054 §4), revérifie au serveur. */
+  confirmedAccountUserId?: string
+  /** `file` pour l'import (s13) ; `site` par defaut. */
+  origin?: MemberEmailOrigin
+}
+
+/** Le bureau modifie une adresse d'une fiche (s54, 4 « Gerer »). */
+export type UpdateMemberProfileEmailInput = {
+  organizationId: string
+  memberProfileId: string
+  emailId: string
+  email: string
+  confirmedAccountUserId?: string
+}
+
+/** Le bureau retire une adresse, avec la remplacante de la titulaire (4e). */
+export type RemoveMemberProfileEmailInput = {
+  organizationId: string
+  memberProfileId: string
+  emailId: string
+  /** Adresse active existante qui prend le titre. */
+  replacementEmailId?: string
+  /** Nouvelle adresse saisie qui devient titulaire. */
+  replacementEmail?: string
+}
+
+/** Le bureau designe une adresse active comme titulaire (4d). */
+export type DesignateMemberProfileHolderInput = {
+  organizationId: string
+  memberProfileId: string
+  emailId: string
+}
+
+/** Ce qu'une ecriture d'adresse par le bureau a fait (4g). */
+export type MemberProfileEmailChange =
+  'added' | 'updated' | 'removed' | 'designated'
+
+export type MemberProfileEmailWriteResult =
+  | {
+      status: 'saved'
+      profile: MemberProfileDTO
+      change: MemberProfileEmailChange
+      /** L'adresse ecrite, pour les messages de confirmation (4g). */
+      email: string
+    }
+  | {status: 'email_shared'; holder: MemberAccountHolderDTO}
+  | {status: 'not_found'}
+  /** L'adresse figure deja sur la fiche. */
+  | {status: 'already_listed'}
+  /** Retirer la titulaire exige une remplacante (critere 9). */
+  | {status: 'replacement_required'}
+  | {status: 'invalid_replacement'}
+  /** L'adresse d'un membre du bureau sur sa derniere fiche (s12d). */
+  | {status: 'board_email_required'}

@@ -5,11 +5,16 @@
  * decompte aucun (critere 8).
  */
 
-/** Natures d'un envoi d'association. s29 et s42 y ajoutent la leur. */
+/**
+ * Natures d'un envoi d'association. s29 et s42 y ajoutent la leur. s54 : le
+ * lien de confirmation d'une adresse ajoutee ou modifiee par un membre
+ * (ADR 056 §6), decompte et reporte au lendemain si le budget est epuise.
+ */
 export const TENANT_EMAIL_NATURES = [
   'login',
   'campaign',
   'board_notification',
+  'member_email_confirmation',
 ] as const
 
 export type TenantEmailNature = (typeof TENANT_EMAIL_NATURES)[number]
@@ -93,7 +98,7 @@ export type PendingSendReference = {
  */
 export type PendingSendDTO = {
   key: string
-  nature: 'campaign' | 'board_notification'
+  nature: PendingSendNature
   reference: PendingSendReference | null
   campaignSubject: string | null
   partNumber: number | null
@@ -123,3 +128,10 @@ export type EmailSendingOverviewDTO = {
   /** Le premier jour ou des envois en attente partiront ; rien sans attente. */
   nextSendOn: string | null
 }
+
+/**
+ * La nature d'un envoi en attente : toute nature reportable, la connexion
+ * n'etant jamais reportee (revue s54, M2 : chaque email reporte garde la
+ * sienne).
+ */
+export type PendingSendNature = Exclude<TenantEmailNature, 'login'>

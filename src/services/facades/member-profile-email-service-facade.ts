@@ -1,0 +1,10 @@
+import memberProfileEmailServiceInterceptor from './interceptors/member-profile-email-service-logger-interceptor'
+
+export const addMemberProfileEmailService =
+  memberProfileEmailServiceInterceptor.addMemberProfileEmailService
+export const updateMemberProfileEmailService =
+  memberProfileEmailServiceInterceptor.updateMemberProfileEmailService
+export const removeMemberProfileEmailService =
+  memberProfileEmailServiceInterceptor.removeMemberProfileEmailService
+export const designateMemberProfileHolderService =
+  memberProfileEmailServiceInterceptor.designateMemberProfileHolderService

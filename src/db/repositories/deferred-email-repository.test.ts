@@ -27,6 +27,7 @@ import {
   markDeferredEmailFailedTxnDao,
   markDeferredEmailToVerifyTxnDao,
   releaseDeferredEmailTxnDao,
+  updateDeferredEmailConfirmationTokenHashTxnDao,
 } from './deferred-email-repository'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
@@ -42,6 +43,7 @@ const CONTENT_COLUMNS = [
   'headers',
   'reply_to',
   'sender_name',
+  'confirmation_token_hash',
 ]
 
 /** Une ligne `deferred_email` dans l'ordre des colonnes du modele. */
@@ -61,6 +63,7 @@ const deferredRow = (status = 'sending') => [
   0,
   'contact_message',
   REFERENCE_ID,
+  null,
   NOW.toISOString(),
   NOW.toISOString(),
 ]
@@ -145,6 +148,14 @@ describe('après la prise — purge, à vérifier, rendue', () => {
     )
   })
 
+  it('markDeferredEmailToVerifyTxnDao efface aussi le hash du lien de confirmation (revue s54, mi-b)', async () => {
+    await markDeferredEmailToVerifyTxnDao(EMAIL_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toMatch(/"confirmation_token_hash" = \$\d+/)
+    expect(params).toContain(null)
+  })
+
   it('releaseDeferredEmailTxnDao : rendue en attente pour un autre jour, sans tentative comptée', async () => {
     await releaseDeferredEmailTxnDao({
       id: EMAIL_ID,
@@ -226,5 +237,34 @@ describe('markDeferredEmailFailedTxnDao — tentatives épuisées (revue s52, n�
       expect.arrayContaining(['failed', EMAIL_ID, 'sending'])
     )
     expect(params).not.toContain('bureau@asl.test')
+  })
+})
+
+describe('updateDeferredEmailConfirmationTokenHashTxnDao — le lien reporté suit son jeton neuf (revue s54, MA2)', () => {
+  it('écrit le hash neuf sur la ligne prise, sending seulement', async () => {
+    const NEW_HASH = 'c'.repeat(64)
+    await updateDeferredEmailConfirmationTokenHashTxnDao(EMAIL_ID, NEW_HASH)
+
+    const [{sql, params}] = sent
+    expect(sql).toMatch(
+      /^update "deferred_email" set "confirmation_token_hash" = \$1/
+    )
+    expect(sql).toMatch(/"deferred_email"\."status" = \$\d+\)/)
+    expect(params).toEqual(
+      expect.arrayContaining([NEW_HASH, EMAIL_ID, 'sending'])
+    )
+  })
+
+  it('dit si la ligne a été écrite : prise, oui ; plus en cours d’envoi ou absente, non (revue s54 round 4, mi-r4)', async () => {
+    const NEW_HASH = 'c'.repeat(64)
+    responses.current = [[[EMAIL_ID]], []]
+
+    await expect(
+      updateDeferredEmailConfirmationTokenHashTxnDao(EMAIL_ID, NEW_HASH)
+    ).resolves.toBe(true)
+    await expect(
+      updateDeferredEmailConfirmationTokenHashTxnDao(EMAIL_ID, NEW_HASH)
+    ).resolves.toBe(false)
+    expect(sent[0].sql).toMatch(/returning "id"$/)
   })
 })

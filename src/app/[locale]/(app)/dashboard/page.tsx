@@ -2,6 +2,7 @@ import {Suspense} from 'react'
 
 import {
   getMyContactDal,
+  getMyEmailsDal,
   getMyIncidentReportsDal,
   getMyLandsDal,
 } from '@/app/dal/member-space-dal'
@@ -15,6 +16,20 @@ import {
 } from '@/components/features/member-space/member-space'
 
 import {updateMyContactAction} from './actions'
+import {
+  addMyEmailAction,
+  cancelMyPendingEmailAction,
+  correctMyPendingEmailAction,
+  updateMyEmailAction,
+} from './email-actions'
+
+/** Les actions de « Mes adresses email » (s54). */
+const EMAIL_ACTIONS = {
+  addEmailAction: addMyEmailAction,
+  updateEmailAction: updateMyEmailAction,
+  correctEmailAction: correctMyPendingEmailAction,
+  cancelEmailAction: cancelMyPendingEmailAction,
+}
 
 /** Retour d'une propre retrogradation depuis la fiche (s14, A12). */
 const ROLE_WITHDRAWN = 'retire'
@@ -46,6 +61,7 @@ type DashboardPageProps = WithAuthProps & {
 async function Page({user, searchParams}: DashboardPageProps) {
   const landsPromise = getMyLandsDal()
   const contactPromise = getMyContactDal()
+  const emailsPromise = getMyEmailsDal()
   const reportsPromise = getMyIncidentReportsDal()
   const {role, signalement, question} = await searchParams
 
@@ -57,6 +73,8 @@ async function Page({user, searchParams}: DashboardPageProps) {
           landsPromise={landsPromise}
           contactPromise={contactPromise}
           contactAction={updateMyContactAction}
+          emailsPromise={emailsPromise}
+          emailActions={EMAIL_ACTIONS}
           reportsPromise={reportsPromise}
           reportSent={signalement === REPORT_SENT}
           questionSent={question === QUESTION_SENT}

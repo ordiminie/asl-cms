@@ -596,14 +596,13 @@ const seed = async () => {
   for (const profile of TEST_MEMBER_PROFILES) {
     await client.query(
       `
-      INSERT INTO "member_profile" (id, organization_id, name, email, phone, address_line, address_complement, postal_code, city)
-      SELECT $2, o.id, $3, $4, $5, $6, $7, $8, $9
+      INSERT INTO "member_profile" (id, organization_id, name, phone, address_line, address_complement, postal_code, city)
+      SELECT $2, o.id, $3, $4, $5, $6, $7, $8
       FROM "organization" o
       WHERE o.slug = $1
       ON CONFLICT (id)
       DO UPDATE SET
         name = EXCLUDED.name,
-        email = EXCLUDED.email,
         phone = EXCLUDED.phone,
         address_line = EXCLUDED.address_line,
         address_complement = EXCLUDED.address_complement,
@@ -615,7 +614,6 @@ const seed = async () => {
         profile.organizationSlug,
         profile.id,
         profile.name,
-        profile.email,
         profile.phone,
         profile.addressLine,
         profile.addressComplement,
@@ -623,6 +621,7 @@ const seed = async () => {
         profile.city,
       ]
     )
+    await seedMemberProfileEmails(client, profile)
   }
   for (const ownership of TEST_PARCEL_OWNERSHIPS) {
     await client.query(
@@ -730,8 +729,59 @@ const seed = async () => {
 }
 
 /**
- * Ouvre le compte de chaque fiche a adresse des associations de test, par
- * `openMemberAccountsForOrganization`, sous le role applicatif et le scope du
+ * Les adresses d'une fiche de test (s54, ADR 056) : la titulaire, puis les
+ * supplementaires, toutes actives, saisies sur le site. Rejouable : une
+ * adresse deja la est remise a son role declare ; une autre titulaire active
+ * (designee depuis l'ecran) est d'abord retrogradee, l'index unique partiel
+ * refusant deux titulaires.
+ */
+const seedMemberProfileEmails = async (
+  client: pg.Client,
+  profile: (typeof TEST_MEMBER_PROFILES)[number]
+) => {
+  const emails = [
+    ...(profile.email ? [{email: profile.email, role: 'holder'}] : []),
+    ...(profile.additionalEmails ?? []).map((email) => ({
+      email,
+      role: 'additional',
+    })),
+  ]
+  if (profile.email) {
+    await client.query(
+      `
+      UPDATE "member_profile_email"
+      SET role = 'additional', updated_at = NOW()
+      WHERE member_profile_id = $1
+        AND role = 'holder'
+        AND status = 'active'
+        AND lower(email) <> lower($2);
+    `,
+      [profile.id, profile.email]
+    )
+  }
+  for (const {email, role} of emails) {
+    await client.query(
+      `
+      INSERT INTO "member_profile_email" (organization_id, member_profile_id, email, role, status, origin)
+      SELECT p.organization_id, p.id, $2, $3::member_profile_email_role, 'active', 'site'
+      FROM "member_profile" p
+      WHERE p.id = $1
+      ON CONFLICT (member_profile_id, lower(email))
+      DO UPDATE SET
+        role = EXCLUDED.role,
+        status = 'active',
+        confirmation_token_hash = NULL,
+        expires_at = NULL,
+        updated_at = NOW();
+    `,
+      [profile.id, email, role]
+    )
+  }
+}
+
+/**
+ * Ouvre le compte de chaque adresse active des associations de test (s54 :
+ * un compte par adresse), par `openMemberAccountsForOrganization`, sous le role applicatif et le scope du
  * tenant. Les services sont gardes par `server-only` : le seed le neutralise
  * par `allowServerOnly()`, comme `ops:bootstrap` (ADR 044).
  */

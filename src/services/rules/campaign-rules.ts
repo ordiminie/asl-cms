@@ -75,7 +75,10 @@ const PARCEL_LIST_FORMAT = new Intl.ListFormat('fr', {
 export const joinParcelNumbers = (numbers: readonly string[]): string =>
   PARCEL_LIST_FORMAT.format(numbers)
 
-/** Une fiche de l'association, telle que le calcul de cible la lit. */
+/**
+ * Une ligne de la cible : une par (fiche, adresse active), une par fiche sans
+ * adresse active, `email` nul (s54, ADR 057).
+ */
 export type CampaignTargetRow = {
   memberProfileId: string
   name: string
@@ -83,13 +86,13 @@ export type CampaignTargetRow = {
   unsubscribed: boolean
   /** Parcelles actuelles : l'ordre des fiches d'une adresse (ADR 054 §7). */
   currentParcelNumbers: readonly string[]
-  /** Nom du compte relie a la fiche, `null` sans compte (s53). */
+  /** Nom du compte de l'adresse relie a la fiche, `null` sans compte. */
   accountName: string | null
 }
 
 export type CampaignTarget<Row extends CampaignTargetRow> = {
-  /** Un destinataire par adresse (ADR 055). */
-  recipients: Row[]
+  /** Un destinataire par adresse (ADR 055, ADR 057), qui la porte. */
+  recipients: (Row & {email: string})[]
   /** Des fiches. */
   withoutEmail: number
   /** Des adresses. */
@@ -110,16 +113,17 @@ const carrierOf = <Row extends CampaignTargetRow>(group: Row[]): Row =>
 
 /**
  * La cible « tous les membres » (criteres 2 et 7) : partition sans reste en
- * fiches sans email, adresses desinscrites et destinataires. Les fiches sont
- * groupees par adresse (s53, ADR 055) : un groupe donne **un** destinataire,
- * porte par sa premiere fiche ; une fiche desinscrite desinscrit le groupe.
- * Une fiche sans email n'est jamais comptee desinscrite. Point de passage
- * unique que s27 etend et que s27b reintegre.
+ * fiches sans adresse active, adresses desinscrites et destinataires. Les
+ * lignes (une par fiche et par adresse active, s54, ADR 057) sont groupees
+ * par adresse (s53, ADR 055) : un groupe donne **un** destinataire, porte par
+ * sa premiere fiche ; une adresse desinscrite desinscrit le groupe. Une fiche
+ * sans adresse n'est jamais comptee desinscrite. Point de passage unique que
+ * s27 etend et que s27b reintegre.
  */
 export const computeCampaignTarget = <Row extends CampaignTargetRow>(
   rows: readonly Row[]
 ): CampaignTarget<Row> => {
-  const groups = new Map<string, Row[]>()
+  const groups = new Map<string, (Row & {email: string})[]>()
   let withoutEmail = 0
   for (const row of rows) {
     if (!row.email) {
@@ -127,10 +131,10 @@ export const computeCampaignTarget = <Row extends CampaignTargetRow>(
       continue
     }
     const key = emailKeyOf(row.email)
-    groups.set(key, [...(groups.get(key) ?? []), row])
+    groups.set(key, [...(groups.get(key) ?? []), {...row, email: row.email}])
   }
 
-  const recipients: Row[] = []
+  const recipients: (Row & {email: string})[] = []
   let unsubscribed = 0
   for (const group of groups.values()) {
     if (group.some((row) => row.unsubscribed)) unsubscribed += 1

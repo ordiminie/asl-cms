@@ -82,6 +82,7 @@ const profile = (
   city: null,
   mailOnly: true,
   incomplete: true,
+  emails: [],
   account: {status: 'mail_only'},
   roleCard: {
     reading: 'no_account',
@@ -255,7 +256,7 @@ describe('createMemberProfileAction', () => {
     })
   })
 
-  it('transmet aussi la confirmation à la modification des coordonnées (s53)', async () => {
+  it('ne transmet ni email ni confirmation à la modification des coordonnées (s54)', async () => {
     await updateMemberProfileContactAction(
       undefined,
       formOf({
@@ -266,12 +267,9 @@ describe('createMemberProfileAction', () => {
       })
     )
 
-    expect(updateMemberProfileContactService).toHaveBeenCalledWith(
-      expect.objectContaining({
-        memberProfileId: PROFILE_ID,
-        confirmedAccountUserId: HOLDER_ID,
-      })
-    )
+    const [input] = vi.mocked(updateMemberProfileContactService).mock.calls[0]
+    expect(input).not.toHaveProperty('email')
+    expect(input).not.toHaveProperty('confirmedAccountUserId')
   })
 
   it('refuse sans session, sans appeler la façade', async () => {
@@ -343,8 +341,10 @@ describe('updateMemberProfileContactAction', () => {
     expect(updateMemberProfileContactService).toHaveBeenCalledWith({
       organizationId: TENANT_ID,
       memberProfileId: PROFILE_ID,
-      ...blankContact,
       phone: '06 12 34 56 78',
+      addressLine: '',
+      addressComplement: '',
+      postalCode: '',
       city: 'Lacanau',
     })
     expect(revalidatePath).toHaveBeenCalledWith(ROUTE, 'layout')
@@ -664,12 +664,14 @@ describe('searchBuyersAction', () => {
           currentParcelNumbers: [],
           boardRole: null,
           accountProfileCount: 0,
+          otherEmailCount: 0,
         },
         {
           ...profile({id: OTHER_PROFILE_ID, name: 'Sophie Ferreira'}),
           currentParcelNumbers: ['8'],
           boardRole: null,
           accountProfileCount: 0,
+          otherEmailCount: 0,
         },
       ],
       page: 1,

@@ -100,6 +100,11 @@ type MemberContactFieldsProps = {
    * « Facultatif ».
    */
   emailRequired?: boolean
+  /**
+   * La creation saisit l'adresse titulaire ; la fiche, elle, gere ses
+   * adresses dans leur propre carte (s54) : pas de champ email.
+   */
+  withEmail?: boolean
 }
 
 /**
@@ -111,24 +116,27 @@ export function MemberContactFields({
   idPrefix,
   afterEmail,
   emailRequired = false,
+  withEmail = true,
 }: MemberContactFieldsProps) {
   const t = useTranslations('BureauMemberProfilesPage')
   const email = useWatch({name: 'email'}) as string | undefined
 
   return (
     <div className="flex flex-col gap-6">
-      <MemberTextField
-        idPrefix={idPrefix}
-        name="email"
-        type="email"
-        inputMode="email"
-        autoComplete="off"
-        autoCapitalize="none"
-        spellCheck={false}
-        optional={!emailRequired}
-        help
-        after={afterEmail}
-      />
+      {withEmail && (
+        <MemberTextField
+          idPrefix={idPrefix}
+          name="email"
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          optional={!emailRequired}
+          help
+          after={afterEmail}
+        />
+      )}
       <MemberTextField
         idPrefix={idPrefix}
         name="phone"
@@ -159,7 +167,7 @@ export function MemberContactFields({
         />
         <MemberTextField idPrefix={idPrefix} name="city" autoComplete="off" />
       </div>
-      {!email?.trim() && (
+      {withEmail && !email?.trim() && (
         <p className="bg-muted rounded-md px-4 py-3 text-base">
           {t('mailOnlyNotice')}
         </p>

@@ -26,6 +26,7 @@ vi.mock('@/db/repositories/organization-repository', () => ({
   updateMemberRoleFromDao: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-repository', () => ({
+  getHolderAccountUserIdDao: vi.fn(),
   getMemberProfileByIdDao: vi.fn(),
   getMemberProfilesByUserIdDao: vi.fn(),
 }))
@@ -37,7 +38,10 @@ vi.mock('@/db/repositories/user-repository', () => ({
   getUserByIdDao: vi.fn(),
 }))
 
-import {getMemberProfileByIdDao} from '@/db/repositories/member-profile-repository'
+import {
+  getHolderAccountUserIdDao,
+  getMemberProfileByIdDao,
+} from '@/db/repositories/member-profile-repository'
 import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {insertMemberRoleEventDao} from '@/db/repositories/member-role-event-repository'
 import {
@@ -124,6 +128,12 @@ beforeEach(() => {
   vi.mocked(getMemberProfileByIdDao).mockImplementation(async () => {
     calls.push('profile')
     return profileRow() as never
+  })
+  // s54 : le role vise le compte de l'adresse titulaire de la fiche lue.
+  vi.mocked(getHolderAccountUserIdDao).mockImplementation(async () => {
+    const read = await vi.mocked(getMemberProfileByIdDao).mock.results.at(-1)
+      ?.value
+    return (read as {userId?: string | null} | undefined)?.userId ?? null
   })
   vi.mocked(lockOrganizationRolesDao).mockImplementation(async () => {
     calls.push(`lock:${scope.current}`)

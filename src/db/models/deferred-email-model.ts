@@ -55,6 +55,12 @@ export const deferredEmail = pgTable(
     /** Reference d'affichage : type et id de l'objet, jamais son contenu. */
     referenceType: text('reference_type'),
     referenceId: uuid('reference_id'),
+    /**
+     * Lien de confirmation d'adresse reporte (s54, revue mi1) : le hash de son
+     * jeton, qui designe toutes ses attentes ; jamais le jeton en clair (revue
+     * M1). Le rejeu en emet un neuf pour les attentes encore a confirmer.
+     */
+    confirmationTokenHash: text('confirmation_token_hash'),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
       .notNull(),

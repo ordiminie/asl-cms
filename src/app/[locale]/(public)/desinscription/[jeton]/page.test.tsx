@@ -75,6 +75,11 @@ describe('/desinscription/[jeton] — écran 6 du design s25', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('button', {name: 'Me désinscrire'})).toBeEnabled()
     expect(
+      screen.getByText(
+        'Cette adresse ne recevra plus les campagnes que le bureau envoie par email aux membres. Les autres adresses de votre espace les recevront encore.'
+      )
+    ).toBeInTheDocument()
+    expect(
       screen.getByRole('link', {name: 'Je garde les campagnes'})
     ).toHaveAttribute('href', '/')
     expect(confirmUnsubscribeAction).not.toHaveBeenCalled()
@@ -88,7 +93,7 @@ describe('/desinscription/[jeton] — écran 6 du design s25', () => {
 
     expect(
       await screen.findByText(
-        'C’est enregistré. Vous ne recevrez plus les campagnes de ASL Les Pins.'
+        'C’est enregistré. Cette adresse ne recevra plus les campagnes de ASL Les Pins.'
       )
     ).toBeInTheDocument()
     expect(confirmUnsubscribeAction).toHaveBeenCalledTimes(1)
@@ -106,7 +111,9 @@ describe('/desinscription/[jeton] — écran 6 du design s25', () => {
     await renderPage()
 
     expect(
-      screen.getByText('Vous êtes déjà désinscrit. Rien d’autre à faire.')
+      screen.getByText(
+        'Cette adresse est déjà désinscrite. Rien d’autre à faire.'
+      )
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', {name: 'Me désinscrire'})).toBeNull()
   })

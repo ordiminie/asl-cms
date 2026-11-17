@@ -90,6 +90,7 @@ beforeEach(() => {
     city: null,
     mailOnly: true,
     incomplete: true,
+    emails: [],
     account: {status: 'mail_only'},
     roleCard: {
       reading: 'no_account',

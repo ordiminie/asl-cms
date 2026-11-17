@@ -11,6 +11,7 @@ import {
   markDeferredEmailFailedTxnDao,
   markDeferredEmailToVerifyTxnDao,
   releaseDeferredEmailTxnDao,
+  updateDeferredEmailConfirmationTokenHashTxnDao,
 } from '@/db/repositories/deferred-email-repository'
 import {
   claimReportableSendTxnDao,
@@ -18,6 +19,10 @@ import {
   refundReportableSendTxnDao,
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
+import {
+  getMemberProfileEmailsByTokenHashDao,
+  updateMemberProfileEmailDao,
+} from '@/db/repositories/member-profile-email-repository'
 import {markMemberQuestionNotificationFailedDao} from '@/db/repositories/member-question-repository'
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {getUserByStripeCustomerIdDao} from '@/db/repositories/user-repository'
@@ -43,6 +48,9 @@ import InvitationOrganizationLinkMail from '@/lib/emails/invitation-organization
 import MagicLinkMail, {
   type MagicLinkEmailAssociation,
 } from '@/lib/emails/magic-link-email'
+import MemberEmailConfirmationMail, {
+  memberEmailConfirmationValuesOf,
+} from '@/lib/emails/member-email-confirmation-email'
 import MemberQuestionMail, {
   MEMBER_QUESTION_SUBJECT_MAX_LENGTH,
   type MemberQuestionEmailAssociation,
@@ -74,6 +82,13 @@ import {
   getStringSettingService,
 } from './app-settings-service'
 import {getAssociationSettingsService} from './association-settings-service'
+import {stillAuthoredPendingRows} from './member-email-pending-authors'
+import {
+  CONFIRMATION_EXPIRY_PLACEHOLDER,
+  CONFIRMATION_TOKEN_PLACEHOLDER,
+  hashConfirmationToken,
+  newConfirmationToken,
+} from './member-email-token'
 import {retryDelayMs} from './rules/campaign-schedule-rules'
 import {
   budgetDayOf,
@@ -83,12 +98,18 @@ import {
   isNeverDeferred,
   reportableAllowance,
 } from './rules/email-budget-rules'
+import {sameEmail} from './rules/member-account-rules'
+import {
+  confirmationExpiryOf,
+  isPendingExpired,
+} from './rules/member-email-rules'
 import {getPlanByPriceIdService} from './subscription-service'
 import {AppSettingKeys} from './types/domain/app-settings-types'
 import {
   getCampaignSendMaxAttempts,
   getEmailDailySendLimit,
   getEmailLoginReserve,
+  getMemberEmailConfirmationDays,
 } from './types/domain/association-settings-types'
 import {receivedAtPartsOf} from './types/domain/contact-message-types'
 import type {
@@ -191,8 +212,22 @@ export type SendEmailPayload = {
   senderName?: string
 }
 
+/**
+ * Le lien de confirmation d'une adresse (s54) que porte l'email : son jeton
+ * et son echeance affichee ne sont **jamais** conserves si l'email est
+ * reporte (revue M1, ADR 056 §1) ; le hash du jeton, qui n'est pas secret,
+ * designe toutes les attentes du lien et permet au rejeu d'en emettre un
+ * neuf (revue mi1).
+ */
+export type ConfirmationLinkOfEmail = {
+  token: string
+  expiresOn: string
+  tokenHash: string
+}
+
 export interface SendEmailOptions {
   recipientType?: EmailRecipientType
+  confirmationLink?: ConfirmationLinkOfEmail
 }
 
 /** Un email pret a partir : objet prefixe, gabarit deja rendu en HTML. */
@@ -284,11 +319,16 @@ const reportableAllowanceOf = async (
  * transaction** (ADR 053 §4) : jamais l'un sans l'autre.
  */
 const keepDeferredEmail = async (
-  email: ComposedEmail,
+  composed: ComposedEmail,
   context: TenantEmailSendContext,
-  day: string
+  day: string,
+  confirmationLink?: ConfirmationLinkOfEmail
 ): Promise<void> => {
   const {organizationId} = context
+  const email = confirmationLink
+    ? withoutConfirmationLink(composed, confirmationLink)
+    : composed
+  const reference = confirmationLink ? undefined : context.reference
   await withTenant(organizationId, async () => {
     const {id} = await createDeferredEmailTxnDao({
       organizationId,
@@ -301,8 +341,9 @@ const keepDeferredEmail = async (
       replyTo: email.replyTo ?? null,
       senderName: email.senderName ?? null,
       sendOn: deferredSendOn(day),
-      referenceType: context.reference?.type ?? null,
-      referenceId: context.reference?.id ?? null,
+      referenceType: reference?.type ?? null,
+      referenceId: reference?.id ?? null,
+      confirmationTokenHash: confirmationLink?.tokenHash ?? null,
     })
     await enqueueScheduledJobTxnDao({
       organizationId,
@@ -323,7 +364,8 @@ const keepDeferredEmail = async (
 const sendTenantEmail = async (
   email: ComposedEmail,
   context: TenantEmailSendContext,
-  now: Date
+  now: Date,
+  confirmationLink?: ConfirmationLinkOfEmail
 ): Promise<EmailSendResult> => {
   const {organizationId} = context
   const day = budgetDayOf(now)
@@ -342,7 +384,7 @@ const sendTenantEmail = async (
   )
   if (!granted) {
     if (!isDeferredByCaller(context.nature)) {
-      await keepDeferredEmail(email, context, day)
+      await keepDeferredEmail(email, context, day, confirmationLink)
     }
     return {status: 'deferred', until: deferredSendOn(day)}
   }
@@ -378,7 +420,7 @@ export const sendEmailService = async (
     await transmitComposedEmail(email)
     return {status: 'sent'}
   }
-  return sendTenantEmail(email, context, new Date())
+  return sendTenantEmail(email, context, new Date(), options?.confirmationLink)
 }
 
 const senderOf = (fromEmail: string, senderName?: string): string => {
@@ -478,6 +520,85 @@ export const sendMagicLinkEmailService = async ({
     },
     {scope: 'tenant', organizationId, nature: 'login'},
     {recipientType: 'system'}
+  )
+}
+
+const CONFIRMATION_DAY_FORMAT = new Intl.DateTimeFormat('fr', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'Europe/Paris',
+})
+
+/**
+ * Email « Confirmez votre adresse email » (s54, ecran 2) : gabarit du lien
+ * magique, version texte complete (URL en clair). Envoi d'association de
+ * nature `member_email_confirmation` (ADR 056 §6) : decompte du budget,
+ * reporte au lendemain s'il est epuise — l'issue est rendue a l'appelant
+ * (« le lien partira demain matin »). Ni l'URL ni le jeton ne sont
+ * journalises, ni conserves dans l'email reporte : le rejeu emet un jeton
+ * neuf (revue M1).
+ */
+export const sendMemberEmailConfirmationEmailService = async ({
+  organizationId,
+  email,
+  url,
+  token,
+  tokenHash,
+  association,
+  authorName,
+  profileName,
+  parcelNumbers,
+  expiresAt,
+  locale,
+}: {
+  organizationId: string
+  email: string
+  url: string
+  /** Le jeton de `url`, retire d'un email reporte (revue M1). */
+  token: string
+  /** Le hash de `token`, qui designe les attentes du lien (revue mi1). */
+  tokenHash: string
+  association: MagicLinkEmailAssociation
+  authorName: string
+  profileName: string
+  parcelNumbers: string[]
+  expiresAt: Date
+  locale: SupportedLocale
+}): Promise<EmailSendResult> => {
+  const t = await getTranslations({
+    locale,
+    namespace: 'email.user.memberEmailConfirmation',
+  })
+  const props = {
+    association,
+    authorName,
+    profileName,
+    parcelNumbers,
+    expiresOn: CONFIRMATION_DAY_FORMAT.format(expiresAt),
+  }
+  const values = memberEmailConfirmationValuesOf(props)
+  const text = [
+    t('title'),
+    t('greeting'),
+    t.markup('intro', {...values, strong: (chunks) => chunks}),
+    `${t('urlIntro')}\n${url}`,
+    t('expiry', values),
+    t('footer', values),
+  ].join('\n\n')
+
+  return sendEmailService(
+    {
+      to: email,
+      subject: t('subject', values),
+      text,
+      react: MemberEmailConfirmationMail({...props, url, locale}),
+    },
+    {scope: 'tenant', organizationId, nature: 'member_email_confirmation'},
+    {
+      recipientType: 'client',
+      confirmationLink: {token, expiresOn: props.expiresOn, tokenHash},
+    }
   )
 }
 
@@ -1394,8 +1515,26 @@ export const deliverDeferredEmailService = async (
     return {status: 'deferred', runAfter: deferredRunAfter(day)}
   }
 
+  const toSend = await deferredEmailToSend(row, organizationId, now)
+  if (toSend.kind === 'gone') {
+    await withTenant(organizationId, async () => {
+      await refundReportableSendTxnDao({organizationId, day})
+      await deleteDeferredEmailTxnDao(deferredEmailId)
+    })
+    return {status: 'completed'}
+  }
+  if (toSend.kind === 'not_sending') {
+    await withTenant(organizationId, () =>
+      refundReportableSendTxnDao({organizationId, day})
+    )
+    logger.error("[EMAIL] Lien d'un email reporte non renouvele", {
+      jobId: job.id,
+    })
+    return {status: 'failed'}
+  }
+
   try {
-    await transmitWithinBudget(composedOfDeferred(row), organizationId, day)
+    await transmitWithinBudget(toSend.email, organizationId, day)
   } catch (error) {
     return deferredSendFailureOutcome(job, row, day, now, error)
   }
@@ -1408,4 +1547,117 @@ export const deliverDeferredEmailService = async (
 /** Les gestionnaires du planificateur que porte l'envoi d'emails (s52). */
 export const emailScheduledJobHandlers: ScheduledJobHandlers = {
   [EMAIL_DELIVER_DEFERRED_JOB_KIND]: deliverDeferredEmailService,
+}
+
+const replaceInEmail = (
+  email: ComposedEmail,
+  replace: (value: string) => string
+): ComposedEmail => ({
+  ...email,
+  subject: replace(email.subject),
+  text: replace(email.text),
+  ...(email.html ? {html: replace(email.html)} : {}),
+})
+
+/** L'email a conserver : jeton et echeance remplaces par des marques. */
+const withoutConfirmationLink = (
+  email: ComposedEmail,
+  link: ConfirmationLinkOfEmail
+): ComposedEmail =>
+  replaceInEmail(email, (value) =>
+    value
+      .replaceAll(link.token, CONFIRMATION_TOKEN_PLACEHOLDER)
+      .replaceAll(link.expiresOn, CONFIRMATION_EXPIRY_PLACEHOLDER)
+  )
+
+/** Le lien d'un email reporte apres rotation (s54, revues M1, mi1, mi-r4). */
+type RotatedPendingLink =
+  | {kind: 'rotated'; token: string; expiresAt: Date}
+  /** Plus aucune attente du lien a confirmer. */
+  | {kind: 'gone'}
+  /** La ligne reportee n'est plus en cours d'envoi : rien n'est ecrit. */
+  | {kind: 'not_sending'}
+
+/**
+ * Emet un jeton neuf pour les attentes encore a confirmer du lien d'un email
+ * reporte, designe par le hash de son jeton (revue mi1) : en attente, non
+ * echues, a l'adresse du destinataire, d'un auteur encore membre et relie a
+ * leur fiche (revue MA-r4). Son hash remplace l'ancien, sur la ligne reportee
+ * d'abord (revue MA2 : une nouvelle tentative apres un refus retrouve le
+ * lien ; revue mi-r4 : une ligne qui n'est plus en cours d'envoi arrete tout,
+ * aucune attente touchee), puis sur ces attentes ; l'echeance part de
+ * maintenant.
+ */
+const rotatePendingLink = async (
+  organizationId: string,
+  deferredEmailId: string,
+  tokenHash: string,
+  recipient: string,
+  now: Date
+): Promise<RotatedPendingLink> => {
+  const days = getMemberEmailConfirmationDays(
+    await getAssociationSettingsService(organizationId)
+  )
+  const token = newConfirmationToken()
+  const expiresAt = confirmationExpiryOf(now, days)
+  return withTenant(organizationId, async () => {
+    const live = (await getMemberProfileEmailsByTokenHashDao(tokenHash)).filter(
+      (row) =>
+        row.status === 'pending' &&
+        !isPendingExpired(row, now) &&
+        sameEmail(row.email, recipient)
+    )
+    const {rows} = await stillAuthoredPendingRows(organizationId, live)
+    if (rows.length === 0) return {kind: 'gone'}
+    const confirmationTokenHash = hashConfirmationToken(token)
+    const followed = await updateDeferredEmailConfirmationTokenHashTxnDao(
+      deferredEmailId,
+      confirmationTokenHash
+    )
+    if (!followed) return {kind: 'not_sending'}
+    for (const row of rows) {
+      await updateMemberProfileEmailDao(row.id, {
+        confirmationTokenHash,
+        expiresAt,
+      })
+    }
+    return {kind: 'rotated', token, expiresAt}
+  })
+}
+
+/** L'email reporte a envoyer, ou pourquoi il ne part pas. */
+type DeferredEmailToSend =
+  | {kind: 'send'; email: ComposedEmail}
+  | Exclude<RotatedPendingLink, {kind: 'rotated'}>
+
+/**
+ * L'email reporte tel qu'il part : tel qu'il a ete rendu, sauf un lien de
+ * confirmation (s54, revue M1), qui recoit un jeton neuf et son echeance ;
+ * rien si son attente n'est plus a confirmer, ou si la ligne n'est plus en
+ * cours d'envoi (revue mi-r4).
+ */
+const deferredEmailToSend = async (
+  row: ClaimedDeferredEmail,
+  organizationId: string,
+  now: Date
+): Promise<DeferredEmailToSend> => {
+  const email = composedOfDeferred(row)
+  if (!row.confirmationTokenHash) return {kind: 'send', email}
+  const link = await rotatePendingLink(
+    organizationId,
+    row.id,
+    row.confirmationTokenHash,
+    row.recipient,
+    now
+  )
+  if (link.kind !== 'rotated') return link
+  const expiresOn = CONFIRMATION_DAY_FORMAT.format(link.expiresAt)
+  return {
+    kind: 'send',
+    email: replaceInEmail(email, (value) =>
+      value
+        .replaceAll(CONFIRMATION_TOKEN_PLACEHOLDER, link.token)
+        .replaceAll(CONFIRMATION_EXPIRY_PLACEHOLDER, expiresOn)
+    ),
+  }
 }

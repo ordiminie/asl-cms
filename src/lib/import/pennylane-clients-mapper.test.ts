@@ -146,15 +146,29 @@ describe('mapPennylaneClients — une ligne valide', () => {
     ])
   })
 
-  it('garde la première adresse email seule, avec une remarque', () => {
+  it('reprend toutes les adresses de la cellule, la première d’abord, sans remarque (s54, critère 11)', () => {
     const result = plan([
-      {...LUCIE, emails: 'lucie@exemple.test, autre@exemple.test'},
+      {
+        ...LUCIE,
+        emails: 'lucie@exemple.test, fille@exemple.test,Fils@Exemple.test',
+      },
     ])
 
     expect(result.members[0].email).toBe('lucie@exemple.test')
-    expect(result.remarks).toEqual([
-      {line: 2, client: 'Lucie Fictive', remark: 'several_emails'},
+    expect(result.members[0].additionalEmails).toEqual([
+      'fille@exemple.test',
+      'Fils@Exemple.test',
     ])
+    expect(result.remarks).toEqual([])
+  })
+
+  it('dédoublonne sans casse les adresses de la cellule', () => {
+    const [member] = plan([
+      {...LUCIE, emails: 'lucie@exemple.test, LUCIE@exemple.test, ,'},
+    ]).members
+
+    expect(member.email).toBe('lucie@exemple.test')
+    expect(member).not.toHaveProperty('additionalEmails')
   })
 
   it('remet le zéro initial d’un code postal français à 4 chiffres, avec une remarque', () => {

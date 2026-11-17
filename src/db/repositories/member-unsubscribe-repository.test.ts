@@ -2,8 +2,9 @@ import {drizzle} from 'drizzle-orm/pg-proxy'
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 /**
- * DAO de la desinscription (s25, ADR 051), sur le patron de
- * `member-note-repository.test.ts`. La RLS se prouve en e2e.
+ * DAO de la desinscription (s25, ADR 051 ; portee par l'adresse de fiche
+ * depuis s54, ADR 057), sur le patron de `member-note-repository.test.ts`.
+ * La RLS se prouve en e2e.
  */
 const {sent, responses} = vi.hoisted(() => ({
   sent: [] as {sql: string; params: unknown[]}[],
@@ -19,10 +20,9 @@ vi.mock('@/db/tenant-scope', () => ({
 }))
 
 import {
-  createUnsubscribeIfAbsentTxnDao,
-  getMemberProfileIdsSharingEmailDao,
   getRecipientByTokenDao,
   getUnsubscribeByMemberDao,
+  unsubscribeEmailIfAbsentTxnDao,
 } from './member-unsubscribe-repository'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
@@ -38,102 +38,96 @@ beforeEach(() => {
 })
 
 describe('getRecipientByTokenDao', () => {
-  it('résout un jeton en sa ligne de destinataire, avec le refus éventuel', async () => {
+  it('résout un jeton en sa ligne de destinataire et son adresse, avec le refus de cette adresse dans l’association', async () => {
     responses.current = [
-      [[RECIPIENT_ID, ORG_ID, CAMPAIGN_ID, PROFILE_ID, null]],
+      [
+        [
+          RECIPIENT_ID,
+          ORG_ID,
+          CAMPAIGN_ID,
+          PROFILE_ID,
+          'claire@example.fr',
+          NOW.toISOString(),
+        ],
+      ],
     ]
 
     const row = await getRecipientByTokenDao(TOKEN)
 
     const [{sql, params}] = sent
     expect(sql).toContain('from "campaign_recipient"')
-    expect(sql).toContain('"campaign_recipient"."unsubscribe_token" = $1')
-    expect(params).toEqual([TOKEN, 1])
+    expect(sql).toContain('"campaign_recipient"."unsubscribe_token" = $')
+    expect(sql).toContain('"member_profile_email"')
+    expect(sql).toContain('lower(trim(mpe_refusal."email"))')
+    expect(sql).not.toContain('member_unsubscribe')
+    expect(params).toContain(TOKEN)
     expect(row).toEqual({
       recipientId: RECIPIENT_ID,
       organizationId: ORG_ID,
       campaignId: CAMPAIGN_ID,
       memberProfileId: PROFILE_ID,
-      unsubscribedAt: null,
+      email: 'claire@example.fr',
+      unsubscribedAt: NOW,
     })
   })
 
   it('jeton inconnu → undefined', async () => {
-    await expect(getRecipientByTokenDao(TOKEN)).resolves.toBeUndefined()
+    expect(await getRecipientByTokenDao(TOKEN)).toBeUndefined()
+  })
+})
+
+describe('unsubscribeEmailIfAbsentTxnDao', () => {
+  it('date toutes les adresses de l’association égales sans casse, sans réécrire un refus existant', async () => {
+    responses.current = [[['e1'], ['e2']]]
+
+    const dated = await unsubscribeEmailIfAbsentTxnDao(
+      ORG_ID,
+      'Claire@Example.fr'
+    )
+
+    const [{sql, params}] = sent
+    expect(sql).toMatch(
+      /^update "member_profile_email" set "unsubscribed_at" = now\(\)/
+    )
+    expect(sql).toContain('"member_profile_email"."organization_id" = $')
+    expect(sql).toContain(
+      'lower(trim("member_profile_email"."email")) = lower(trim($'
+    )
+    expect(sql).toContain('"member_profile_email"."unsubscribed_at" is null')
+    expect(params).toEqual(
+      expect.arrayContaining([ORG_ID, 'Claire@Example.fr'])
+    )
+    expect(dated).toBe(2)
+  })
+
+  it('aucune adresse à dater → 0', async () => {
+    expect(await unsubscribeEmailIfAbsentTxnDao(ORG_ID, 'x@example.fr')).toBe(0)
   })
 })
 
 describe('getUnsubscribeByMemberDao', () => {
-  it('lit le refus de la seule fiche', async () => {
-    responses.current = [[[NOW.toISOString()]]]
+  it('lit le refus d’une fiche dont toutes les adresses actives ont refusé, au plus récent', async () => {
+    responses.current = [[[2, 2, NOW.toISOString()]]]
 
-    const row = await getUnsubscribeByMemberDao(PROFILE_ID)
-
-    expect(sent[0].sql).toContain('from "member_unsubscribe"')
-    expect(sent[0].sql).toContain(
-      '"member_unsubscribe"."member_profile_id" = $1'
-    )
-    expect(row?.createdAt).toEqual(NOW)
-  })
-
-  it('aucun refus → undefined', async () => {
-    await expect(getUnsubscribeByMemberDao(PROFILE_ID)).resolves.toBeUndefined()
-  })
-})
-
-describe('createUnsubscribeIfAbsentTxnDao', () => {
-  it('insère le refus sans écraser un refus existant', async () => {
-    responses.current = [[[PROFILE_ID]]]
-
-    const row = await createUnsubscribeIfAbsentTxnDao({
-      organizationId: ORG_ID,
-      memberProfileId: PROFILE_ID,
-      campaignId: CAMPAIGN_ID,
+    expect(await getUnsubscribeByMemberDao(PROFILE_ID)).toEqual({
+      createdAt: NOW,
     })
-
     const [{sql, params}] = sent
-    expect(sql).toMatch(/^insert into "member_unsubscribe"/)
-    expect(sql).toContain(
-      'on conflict ("organization_id","member_profile_id") do nothing'
-    )
-    expect(params).toEqual(
-      expect.arrayContaining([ORG_ID, PROFILE_ID, CAMPAIGN_ID])
-    )
-    expect(row).toEqual({memberProfileId: PROFILE_ID})
+    expect(sql).toContain('from "member_profile_email"')
+    expect(sql).toContain('"member_profile_email"."member_profile_id" = $')
+    expect(sql).toContain('"member_profile_email"."status" = $')
+    expect(params).toEqual(expect.arrayContaining([PROFILE_ID, 'active']))
   })
 
-  it('refus déjà présent → undefined', async () => {
-    await expect(
-      createUnsubscribeIfAbsentTxnDao({
-        organizationId: ORG_ID,
-        memberProfileId: PROFILE_ID,
-        campaignId: null,
-      })
-    ).resolves.toBeUndefined()
-  })
-})
+  it('une adresse active sans refus : pas de refus de la fiche', async () => {
+    responses.current = [[[2, 1, NOW.toISOString()]]]
 
-describe('getMemberProfileIdsSharingEmailDao (s53, ADR 055)', () => {
-  const SCI_ID = '55555555-5555-4555-8555-555555555555'
-
-  it('rend les fiches de l’association à la même adresse, sans casse, elle comprise', async () => {
-    responses.current = [[[PROFILE_ID], [SCI_ID]]]
-
-    const ids = await getMemberProfileIdsSharingEmailDao(ORG_ID, PROFILE_ID)
-
-    const [{sql, params}] = sent
-    expect(sql).toContain('lower(trim("source_profile"."email"))')
-    expect(sql).toContain('lower(trim("member_profile"."email"))')
-    expect(sql).toContain('"member_profile"."organization_id" = $')
-    expect(params).toEqual(expect.arrayContaining([ORG_ID, PROFILE_ID]))
-    expect(ids).toEqual([PROFILE_ID, SCI_ID])
+    expect(await getUnsubscribeByMemberDao(PROFILE_ID)).toBeUndefined()
   })
 
-  it('une fiche sans adresse ne rend qu’elle-même', async () => {
-    responses.current = [[]]
+  it('aucune adresse active : pas de refus de la fiche', async () => {
+    responses.current = [[[0, 0, null]]]
 
-    expect(
-      await getMemberProfileIdsSharingEmailDao(ORG_ID, PROFILE_ID)
-    ).toEqual([PROFILE_ID])
+    expect(await getUnsubscribeByMemberDao(PROFILE_ID)).toBeUndefined()
   })
 })
