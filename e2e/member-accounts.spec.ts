@@ -664,6 +664,10 @@ const storedContactOf = (slug: string, name: string) =>
 const myContact = (page: Page) =>
   page.getByRole('region', {name: 'Mes coordonnées'})
 
+/** Depuis s54, l'adresse se lit ici, plus dans « Mes coordonnées ». */
+const myEmails = (page: Page) =>
+  page.getByRole('region', {name: 'Mes adresses email'})
+
 const editMyContact = async (
   page: Page,
   values: {phone?: string; addressComplement?: string; postalCode?: string}
@@ -716,7 +720,9 @@ test.describe('Coordonnées du membre — s16', () => {
     const bureau = await bureauSession(browser, TENANT_A, OWNER_A)
     try {
       await loginByLink(member, TENANT_A, SEED_MOREAU_EMAIL)
-      await expect(myContact(member)).toContainText(SEED_MOREAU_EMAIL)
+      await expect(myEmails(member)).toContainText(SEED_MOREAU_EMAIL)
+      await expect(myContact(member)).toContainText('Adresse postale')
+      await expect(myContact(member)).not.toContainText(SEED_MOREAU_EMAIL)
       await expect(
         myContact(member).getByRole('textbox', {name: /Adresse email/})
       ).toHaveCount(0)
@@ -826,8 +832,9 @@ test.describe('Coordonnées du membre — s16', () => {
       await expect(
         member.getByRole('heading', {level: 1, name: 'Votre espace membre'})
       ).toBeVisible()
-      await expect(myContact(member)).toContainText(email)
+      await expect(myEmails(member)).toContainText(email)
       await expect(myContact(member)).toContainText('3 rue du Lavoir')
+      await expect(myContact(member)).not.toContainText(email)
       await expect(
         member.getByRole('region', {name: 'Mes terrains'})
       ).toHaveCount(0)
@@ -1161,9 +1168,6 @@ test.describe('Un accès, plusieurs terrains — s53', () => {
 const SEED_FERRAND_EMAIL = 'p.ferrand@techcorp-solutions.test'
 const SEED_MEUNIER_ID = 'a1200000-0000-4000-8000-000000000001'
 const SEED_FERRAND_ID = 'a1200000-0000-4000-8000-000000000005'
-
-const myEmails = (page: Page) =>
-  page.getByRole('region', {name: 'Mes adresses email'})
 
 /** Le lien de confirmation reçu par l'adresse (s54, écran 2). */
 const confirmationLinkOf = (message: OutboxMessage) => {
