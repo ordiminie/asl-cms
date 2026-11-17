@@ -15,7 +15,6 @@ export type ConfirmMemberEmailActionResult =
   | {status: 'confirmed'; replaced: boolean}
   | {status: 'invalid'}
   | {status: 'taken'}
-  | {status: 'revoked'}
   | {status: 'error'}
 
 type MemberEmailConfirmationPanelProps = {
@@ -114,9 +113,6 @@ export function MemberEmailConfirmationPanel({
       )}
       {state === 'taken' && (
         <ContactAlert title={t('takenTitle')} detail={t('taken')} />
-      )}
-      {state === 'revoked' && (
-        <ContactAlert title={t('revokedTitle')} detail={t('revoked')} />
       )}
     </div>
   )

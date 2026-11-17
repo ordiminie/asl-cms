@@ -87,11 +87,10 @@ export type MemberEmailConfirmationPlan = {
 export type MemberEmailAdditionDecision = 'ok' | 'already_listed' | 'taken'
 
 /**
- * Confirmation par lien : valide, inutilisable (3c), prise (3d), ou
- * retiree a son auteur, qui n'est plus relie aux fiches (revue C1).
+ * Confirmation par lien : valide, inutilisable (3c, quelle qu'en soit la
+ * cause), ou prise (3d).
  */
-export type MemberEmailConfirmationDecision =
-  'ok' | 'invalid' | 'taken' | 'revoked'
+export type MemberEmailConfirmationDecision = 'ok' | 'invalid' | 'taken'
 
 /** Une demande de la page publique : l'association du domaine et le jeton. */
 export type MemberEmailConfirmationRequest = {
@@ -103,14 +102,12 @@ export type MemberEmailConfirmationRequest = {
 export type MemberEmailConfirmationStateDTO =
   | {status: 'confirm'; email: string; parcelNumbers: string[]}
   | {status: 'invalid'}
-  | {status: 'revoked'}
 
 /** L'issue du bouton « Confirmer cette adresse » (3b, 3c, 3d). */
 export type ConfirmMemberEmailResult =
   | {status: 'confirmed'; replaced: boolean}
   | {status: 'invalid'}
   | {status: 'taken'}
-  | {status: 'revoked'}
 
 /**
  * Une adresse de « Mes adresses email » (s54, ecran 1), resolue par la

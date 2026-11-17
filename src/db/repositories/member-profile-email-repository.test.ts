@@ -27,6 +27,7 @@ import {
   getMemberProfileEmailsDao,
   insertMemberProfileEmailDao,
   purgeExpiredPendingEmailsDao,
+  reassignPendingEmailsAddedByDao,
   setMemberProfileEmailRoleDao,
   updateMemberProfileEmailDao,
 } from './member-profile-email-repository'
@@ -152,5 +153,24 @@ describe('deletePendingEmailsAddedByDao (revue s54, C1)', () => {
     expect(sql).toContain('"member_profile_email"."added_by_user_id" = $2')
     expect(sql).toContain('"member_profile_email"."status" = $3')
     expect(params).toEqual([PROFILE_ID, USER_ID, 'pending'])
+  })
+})
+
+describe('reassignPendingEmailsAddedByDao (revue s54, mi3)', () => {
+  it('passe au nouveau compte les seules attentes de l’ancien sur cette fiche', async () => {
+    const FROM_ID = '55555555-5555-4555-8555-555555555555'
+    const TO_ID = '66666666-6666-4666-8666-666666666666'
+    await reassignPendingEmailsAddedByDao(PROFILE_ID, FROM_ID, TO_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('update "member_profile_email"')
+    expect(sql).toContain('"added_by_user_id" = $1')
+    expect(sql).toContain('"member_profile_email"."member_profile_id" = $')
+    expect(sql).toContain('"member_profile_email"."added_by_user_id" = $')
+    expect(sql).toContain('"member_profile_email"."status" = $')
+    expect(params).toEqual(
+      expect.arrayContaining([TO_ID, PROFILE_ID, FROM_ID, 'pending'])
+    )
+    expect(params[0]).toBe(TO_ID)
   })
 })

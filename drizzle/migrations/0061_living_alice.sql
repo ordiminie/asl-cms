@@ -1,0 +1,1 @@
+ALTER TABLE "deferred_email" ADD COLUMN "confirmation_token_hash" text;

@@ -19,7 +19,6 @@ import {
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
 import {
-  getMemberProfileEmailByIdDao,
   getMemberProfileEmailsByTokenHashDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
@@ -82,6 +81,7 @@ import {
   getStringSettingService,
 } from './app-settings-service'
 import {getAssociationSettingsService} from './association-settings-service'
+import {stillAuthoredPendingRows} from './member-email-pending-authors'
 import {
   CONFIRMATION_EXPIRY_PLACEHOLDER,
   CONFIRMATION_TOKEN_PLACEHOLDER,
@@ -214,13 +214,14 @@ export type SendEmailPayload = {
 /**
  * Le lien de confirmation d'une adresse (s54) que porte l'email : son jeton
  * et son echeance affichee ne sont **jamais** conserves si l'email est
- * reporte (revue M1, ADR 056 §1) ; l'attente designee permet au rejeu d'en
- * emettre un neuf.
+ * reporte (revue M1, ADR 056 §1) ; le hash du jeton, qui n'est pas secret,
+ * designe toutes les attentes du lien et permet au rejeu d'en emettre un
+ * neuf (revue mi1).
  */
 export type ConfirmationLinkOfEmail = {
   token: string
   expiresOn: string
-  pendingEmailId: string
+  tokenHash: string
 }
 
 export interface SendEmailOptions {
@@ -326,12 +327,7 @@ const keepDeferredEmail = async (
   const email = confirmationLink
     ? withoutConfirmationLink(composed, confirmationLink)
     : composed
-  const reference = confirmationLink
-    ? {
-        type: CONFIRMATION_LINK_REFERENCE_TYPE,
-        id: confirmationLink.pendingEmailId,
-      }
-    : context.reference
+  const reference = confirmationLink ? undefined : context.reference
   await withTenant(organizationId, async () => {
     const {id} = await createDeferredEmailTxnDao({
       organizationId,
@@ -346,6 +342,7 @@ const keepDeferredEmail = async (
       sendOn: deferredSendOn(day),
       referenceType: reference?.type ?? null,
       referenceId: reference?.id ?? null,
+      confirmationTokenHash: confirmationLink?.tokenHash ?? null,
     })
     await enqueueScheduledJobTxnDao({
       organizationId,
@@ -546,7 +543,7 @@ export const sendMemberEmailConfirmationEmailService = async ({
   email,
   url,
   token,
-  pendingEmailId,
+  tokenHash,
   association,
   authorName,
   profileName,
@@ -559,8 +556,8 @@ export const sendMemberEmailConfirmationEmailService = async ({
   url: string
   /** Le jeton de `url`, retire d'un email reporte (revue M1). */
   token: string
-  /** Une attente du lien, pour que le rejeu en emette un neuf. */
-  pendingEmailId: string
+  /** Le hash de `token`, qui designe les attentes du lien (revue mi1). */
+  tokenHash: string
   association: MagicLinkEmailAssociation
   authorName: string
   profileName: string
@@ -599,7 +596,7 @@ export const sendMemberEmailConfirmationEmailService = async ({
     {scope: 'tenant', organizationId, nature: 'member_email_confirmation'},
     {
       recipientType: 'client',
-      confirmationLink: {token, expiresOn: props.expiresOn, pendingEmailId},
+      confirmationLink: {token, expiresOn: props.expiresOn, tokenHash},
     }
   )
 }
@@ -1542,9 +1539,6 @@ export const emailScheduledJobHandlers: ScheduledJobHandlers = {
   [EMAIL_DELIVER_DEFERRED_JOB_KIND]: deliverDeferredEmailService,
 }
 
-/** La reference d'un lien de confirmation reporte : l'attente qu'il couvre. */
-const CONFIRMATION_LINK_REFERENCE_TYPE = 'member_profile_email'
-
 const replaceInEmail = (
   email: ComposedEmail,
   replace: (value: string) => string
@@ -1567,14 +1561,15 @@ const withoutConfirmationLink = (
   )
 
 /**
- * Emet un jeton neuf pour les attentes du lien d'un email reporte : son hash
- * remplace l'ancien, l'echeance part de maintenant. Rien si l'attente
- * designee n'est plus a confirmer a cette adresse (annulee, confirmee,
- * corrigee, echue).
+ * Emet un jeton neuf pour les attentes encore a confirmer du lien d'un email
+ * reporte, designe par le hash de son jeton (revue mi1) : en attente, non
+ * echues, a l'adresse du destinataire, d'un auteur encore relie a leur
+ * fiche. Son hash remplace l'ancien, l'echeance part de maintenant. Rien s'il
+ * n'en reste aucune.
  */
 const rotatePendingLink = async (
   organizationId: string,
-  pendingEmailId: string,
+  tokenHash: string,
   recipient: string,
   now: Date
 ): Promise<{token: string; expiresAt: Date} | undefined> => {
@@ -1584,19 +1579,15 @@ const rotatePendingLink = async (
   const token = newConfirmationToken()
   const expiresAt = confirmationExpiryOf(now, days)
   return withTenant(organizationId, async () => {
-    const target = await getMemberProfileEmailByIdDao(pendingEmailId)
-    if (
-      !target?.confirmationTokenHash ||
-      target.status !== 'pending' ||
-      isPendingExpired(target, now) ||
-      !sameEmail(target.email, recipient)
-    ) {
-      return undefined
-    }
-    const rows = await getMemberProfileEmailsByTokenHashDao(
-      target.confirmationTokenHash
+    const live = (await getMemberProfileEmailsByTokenHashDao(tokenHash)).filter(
+      (row) =>
+        row.status === 'pending' &&
+        !isPendingExpired(row, now) &&
+        sameEmail(row.email, recipient)
     )
-    for (const row of rows.filter((pending) => pending.status === 'pending')) {
+    const {rows} = await stillAuthoredPendingRows(organizationId, live)
+    if (rows.length === 0) return undefined
+    for (const row of rows) {
       await updateMemberProfileEmailDao(row.id, {
         confirmationTokenHash: hashConfirmationToken(token),
         expiresAt,
@@ -1617,11 +1608,10 @@ const deferredEmailToSend = async (
   now: Date
 ): Promise<ComposedEmail | undefined> => {
   const email = composedOfDeferred(row)
-  if (row.referenceType !== CONFIRMATION_LINK_REFERENCE_TYPE) return email
-  if (!row.referenceId) return undefined
+  if (!row.confirmationTokenHash) return email
   const link = await rotatePendingLink(
     organizationId,
-    row.referenceId,
+    row.confirmationTokenHash,
     row.recipient,
     now
   )

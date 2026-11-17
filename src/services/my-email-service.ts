@@ -288,7 +288,7 @@ const sendLink = async ({
   authUser: User
   profiles: MyMemberProfileRow[]
   email: string
-  link: PendingLink & {pendingEmailId: string}
+  link: PendingLink
   locale?: string
 }): Promise<MyEmailWriteResult> => {
   const result = await sendMemberEmailConfirmationEmailService({
@@ -296,7 +296,7 @@ const sendLink = async ({
     email,
     url: `${context.origin}${CONFIRMATION_PATH}/${link.token}`,
     token: link.token,
-    pendingEmailId: link.pendingEmailId,
+    tokenHash: link.tokenHash,
     association: context.association,
     authorName: authUser.name,
     profileName: profiles[0]?.name ?? '',
@@ -342,9 +342,8 @@ export const addMyEmailService = async (
     )
     if (refusal) return {status: refusal} as const
 
-    const inserted: string[] = []
     for (const profile of mine.profiles) {
-      const row = await insertMemberProfileEmailDao({
+      await insertMemberProfileEmailDao({
         organizationId,
         memberProfileId: profile.id,
         email,
@@ -355,13 +354,8 @@ export const addMyEmailService = async (
         confirmationTokenHash: link.tokenHash,
         expiresAt: link.expiresAt,
       })
-      inserted.push(row.id)
     }
-    return {
-      status: 'written',
-      profiles: mine.profiles,
-      pendingEmailId: inserted[0],
-    } as const
+    return {status: 'written', profiles: mine.profiles} as const
   })
   if (written.status !== 'written') return written
 
@@ -371,7 +365,7 @@ export const addMyEmailService = async (
     authUser,
     profiles: written.profiles,
     email,
-    link: {...link, pendingEmailId: written.pendingEmailId},
+    link,
     locale,
   })
 }
@@ -434,9 +428,8 @@ export const updateMyEmailService = async (
     const own = mine.emails.filter((row) =>
       canMemberReplaceEmail(row, authUser.email)
     )
-    const inserted: string[] = []
     for (const replaced of own) {
-      const row = await insertMemberProfileEmailDao({
+      await insertMemberProfileEmailDao({
         organizationId,
         memberProfileId: replaced.memberProfileId,
         email,
@@ -448,13 +441,8 @@ export const updateMyEmailService = async (
         confirmationTokenHash: link.tokenHash,
         expiresAt: link.expiresAt,
       })
-      inserted.push(row.id)
     }
-    return {
-      status: 'written',
-      profiles: mine.profiles,
-      pendingEmailId: inserted[0],
-    } as const
+    return {status: 'written', profiles: mine.profiles} as const
   })
   if (written.status !== 'written') return written
 
@@ -464,7 +452,7 @@ export const updateMyEmailService = async (
     authUser,
     profiles: written.profiles,
     email,
-    link: {...link, pendingEmailId: written.pendingEmailId},
+    link,
     locale,
   })
 }
@@ -523,11 +511,7 @@ export const correctMyPendingEmailService = async (
         expiresAt: link.expiresAt,
       })
     }
-    return {
-      status: 'written',
-      profiles: mine.profiles,
-      pendingEmailId: target.id,
-    } as const
+    return {status: 'written', profiles: mine.profiles} as const
   })
   if (written.status !== 'written') return written
 
@@ -537,7 +521,7 @@ export const correctMyPendingEmailService = async (
     authUser,
     profiles: written.profiles,
     email,
-    link: {...link, pendingEmailId: written.pendingEmailId},
+    link,
     locale,
   })
 }

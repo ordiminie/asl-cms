@@ -68,9 +68,11 @@ vi.mock('@/services/association-settings-service', () => ({
   getAssociationSettingsService: vi.fn(),
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
-  getMemberProfileEmailByIdDao: vi.fn(),
   getMemberProfileEmailsByTokenHashDao: vi.fn(),
   updateMemberProfileEmailDao: vi.fn(),
+}))
+vi.mock('@/db/repositories/member-profile-repository', () => ({
+  getMemberProfilesByUserIdDao: vi.fn(),
 }))
 
 import {markContactMessageNotificationFailedDao} from '@/db/repositories/contact-message-repository'
@@ -87,10 +89,10 @@ import {
 } from '@/db/repositories/email-send-budget-repository'
 import {markIncidentReportNotificationFailedDao} from '@/db/repositories/incident-report-repository'
 import {
-  getMemberProfileEmailByIdDao,
   getMemberProfileEmailsByTokenHashDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
+import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {markMemberQuestionNotificationFailedDao} from '@/db/repositories/member-question-repository'
 import {EmailTransportError, getEmailTransport} from '@/lib/emails/transport'
 import {logger} from '@/lib/logger'
@@ -135,6 +137,7 @@ type StoredDeferred = {
   attempts: number
   referenceType: string | null
   referenceId: string | null
+  confirmationTokenHash: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -159,6 +162,7 @@ const storedRow = (
   attempts: 0,
   referenceType: 'contact_message',
   referenceId: REFERENCE_ID,
+  confirmationTokenHash: null,
   createdAt: NOW,
   updatedAt: NOW,
 })
@@ -497,17 +501,19 @@ describe('deliverDeferredEmailService — lien de confirmation reporté (s54, re
           textBody: `Ouvrez ce lien :\n${LINK}${CONFIRMATION_TOKEN_PLACEHOLDER}\n\nCe lien vaut jusqu’au ${CONFIRMATION_EXPIRY_PLACEHOLDER}.`,
           htmlBody: `<a href="${LINK}${CONFIRMATION_TOKEN_PLACEHOLDER}">Confirmer</a><p>${CONFIRMATION_EXPIRY_PLACEHOLDER}</p>`,
           replyTo: null,
-          referenceType: 'member_profile_email',
-          referenceId: PENDING_ID,
+          referenceType: null,
+          referenceId: null,
+          confirmationTokenHash: OLD_HASH,
         },
       ],
     ])
-    vi.mocked(getMemberProfileEmailByIdDao).mockResolvedValue(
-      pending() as never
-    )
     vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
       pending(),
       pending({id: OTHER_PENDING_ID, memberProfileId: 'profile-2'}),
+    ] as never)
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {id: 'profile-1'},
+      {id: 'profile-2'},
     ] as never)
   })
 
@@ -537,15 +543,70 @@ describe('deliverDeferredEmailService — lien de confirmation reporté (s54, re
     expect(store.rows.has(DEFERRED_ID)).toBe(false)
   })
 
+  it('une attente du lien retirée sur deux : l’email part quand même, pour l’autre seulement (revue mi1)', async () => {
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
+      pending({id: OTHER_PENDING_ID, memberProfileId: 'profile-2'}),
+    ] as never)
+
+    const outcome = await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(outcome).toEqual({status: 'completed'})
+    expect(memoryTransport.messages).toHaveLength(1)
+    const token = memoryTransport.messages[0].text.match(
+      /confirmer-adresse\/([A-Za-z0-9_-]{43})/
+    )?.[1]
+    expect(getMemberProfileEmailsByTokenHashDao).toHaveBeenCalledWith(OLD_HASH)
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledTimes(1)
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(OTHER_PENDING_ID, {
+      confirmationTokenHash: sha256(token ?? ''),
+      expiresAt: new Date('2026-11-22T09:00:00.000Z'),
+    })
+    expect(refundReportableSendTxnDao).not.toHaveBeenCalled()
+    expect(store.rows.has(DEFERRED_ID)).toBe(false)
+  })
+
+  it('seules les attentes encore à confirmer reçoivent le jeton neuf : celles dont l’auteur n’est plus relié à la fiche, déjà actives, échues ou d’une autre adresse restent hors du lien (revue mi1)', async () => {
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
+      pending(),
+      pending({id: 'unlinked', memberProfileId: 'profile-3'}),
+      pending({id: 'no-author', addedByUserId: null}),
+      pending({id: 'active', status: 'active'}),
+      pending({id: 'expired', expiresAt: new Date('2026-11-01T00:00:00Z')}),
+      pending({id: 'other', email: 'autre@exemple.test'}),
+    ] as never)
+
+    await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(memoryTransport.messages).toHaveLength(1)
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledTimes(1)
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(
+      PENDING_ID,
+      expect.anything()
+    )
+  })
+
   it.each([
-    ['annulée', undefined],
-    ['déjà active', pending({status: 'active', confirmationTokenHash: null})],
-    ['corrigée vers une autre adresse', pending({email: 'autre@exemple.test'})],
-    ['échue', pending({expiresAt: new Date('2026-11-01T00:00:00.000Z')})],
+    ['annulées, confirmées ou retirées', []],
+    [
+      'déjà actives',
+      [pending({status: 'active', confirmationTokenHash: null})],
+    ],
+    [
+      'corrigées vers une autre adresse',
+      [pending({email: 'autre@exemple.test'})],
+    ],
+    ['échues', [pending({expiresAt: new Date('2026-11-01T00:00:00.000Z')})]],
+    [
+      'dont l’auteur n’est plus relié à la fiche',
+      [pending({memberProfileId: 'profile-3'})],
+    ],
+    ['sans auteur', [pending({addedByUserId: null})]],
   ])(
-    'attente %s : rien ne part, l’unité est rendue, la ligne est purgée',
-    async (_label, row) => {
-      vi.mocked(getMemberProfileEmailByIdDao).mockResolvedValue(row as never)
+    'plus aucune attente du lien à confirmer (%s) : rien ne part, l’unité est rendue, la ligne est purgée',
+    async (_label, rows) => {
+      vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue(
+        rows as never
+      )
 
       const outcome = await deliverDeferredEmailService(jobOf(), NOW)
 

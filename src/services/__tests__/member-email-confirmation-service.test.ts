@@ -9,6 +9,7 @@ vi.mock('@/db/tenant-scope', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
   deletePendingEmailsAddedByDao: vi.fn(),
+  reassignPendingEmailsAddedByDao: vi.fn(),
   deleteMemberProfileEmailDao: vi.fn(),
   getActiveEmailCarriersDao: vi.fn(),
   getMemberProfileEmailsByTokenHashDao: vi.fn(),
@@ -44,9 +45,11 @@ vi.mock('@/db/repositories/organization-repository', () => ({
 }))
 
 import {
+  deletePendingEmailsAddedByDao,
   getActiveEmailCarriersDao,
   getMemberProfileEmailsByTokenHashDao,
   getMemberProfileEmailsDao,
+  reassignPendingEmailsAddedByDao,
   updateMemberProfileEmailDao,
 } from '@/db/repositories/member-profile-email-repository'
 import {
@@ -271,27 +274,33 @@ describe('[PUBLIC] confirmMemberEmailService — le bouton (3b, 3c, 3d)', () => 
       PROFILE_ID,
       OLD_USER_ID
     )
+    expect(reassignPendingEmailsAddedByDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      OLD_USER_ID,
+      MARC_USER_ID
+    )
+    expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalled()
   })
 })
 
 describe('[PUBLIC] l’auteur n’est plus relié à la fiche (revue C1, ADR 056 §5)', () => {
-  it('scénario de la revue : un proche ajoute X, le bureau retire son adresse, il clique → X n’est pas activée, aucun compte relié', async () => {
+  it('scénario de la revue : un proche ajoute X, le bureau retire son adresse, il clique → le même « lien inutilisable » (3c), X n’est pas activée, aucun compte relié', async () => {
     vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
 
     await expect(confirmMemberEmailService(input)).resolves.toEqual({
-      status: 'revoked',
+      status: 'invalid',
     })
     expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
     expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
     expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
   })
 
-  it('la page le dit avant le bouton, sans rien écrire', async () => {
+  it('la page montre le même « lien inutilisable » (3c) que tout autre cas, sans en dire la cause ni rien écrire (revue MA1)', async () => {
     vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([])
 
     await expect(
       getMemberEmailConfirmationStateService(input)
-    ).resolves.toEqual({status: 'revoked'})
+    ).resolves.toEqual({status: 'invalid'})
     expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
   })
 
@@ -349,15 +358,61 @@ describe('[PUBLIC] l’auteur n’est plus relié à la fiche (revue C1, ADR 056
     ])
   })
 
-  it('une attente sans auteur n’est pas soumise à ce contrôle', async () => {
+  it('une attente sans auteur (compte de l’auteur supprimé) n’est pas activable : 3c, rien n’est activé (revue mi4)', async () => {
     vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
       pendingRow({addedByUserId: null}),
     ] as never)
 
     await expect(confirmMemberEmailService(input)).resolves.toEqual({
+      status: 'invalid',
+    })
+    await expect(
+      getMemberEmailConfirmationStateService(input)
+    ).resolves.toEqual({status: 'invalid'})
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
+    expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('un lien dont une attente a changé d’auteur (adresse de l’auteur remplacée sur une fiche, revue mi3) : chaque attente est jugée sur son propre auteur', async () => {
+    const OTHER_PENDING_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+    const CLAIRE_NEW_ID = '88888888-8888-4888-8888-888888888888'
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
+      pendingRow({addedByUserId: CLAIRE_NEW_ID}),
+      pendingRow({id: OTHER_PENDING_ID, memberProfileId: OTHER_PROFILE_ID}),
+    ] as never)
+    vi.mocked(getMemberProfilesByUserIdDao).mockImplementation(
+      async (_org, userId) =>
+        (userId === CLAIRE_NEW_ID
+          ? [{id: PROFILE_ID}]
+          : [{id: OTHER_PROFILE_ID}]) as never
+    )
+    vi.mocked(getMemberProfileByIdDao).mockImplementation(
+      async (id) => ({id, name: 'Jean Dubois'}) as never
+    )
+    vi.mocked(getMemberProfileEmailsDao).mockImplementation(
+      async ([profileId]) =>
+        [
+          profileId === PROFILE_ID
+            ? pendingRow({addedByUserId: CLAIRE_NEW_ID})
+            : pendingRow({
+                id: OTHER_PENDING_ID,
+                memberProfileId: OTHER_PROFILE_ID,
+              }),
+        ] as never
+    )
+
+    await expect(confirmMemberEmailService(input)).resolves.toEqual({
       status: 'confirmed',
       replaced: false,
     })
-    expect(getMemberProfilesByUserIdDao).not.toHaveBeenCalled()
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(
+      PENDING_ID,
+      expect.objectContaining({status: 'active'})
+    )
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(
+      OTHER_PENDING_ID,
+      expect.objectContaining({status: 'active'})
+    )
   })
 })

@@ -371,22 +371,37 @@ describe('l’auteur d’une attente n’est plus relié à la fiche (revue C1)'
     addedByUserId,
   })
 
-  it('garde les attentes des fiches encore reliées à l’auteur, et celles sans auteur', () => {
+  it('garde les attentes des fiches encore reliées à l’auteur, jamais celles sans auteur (revue mi4)', () => {
     expect(
       pendingRowsStillAuthored(
         [row('p1', 'user-claire'), row('p2', 'user-claire'), row('p3', null)],
-        new Set(['p2'])
+        new Map([['user-claire', new Set(['p2', 'p3'])]])
       ).map((kept) => kept.memberProfileId)
-    ).toEqual(['p2', 'p3'])
+    ).toEqual(['p2'])
   })
 
   it('aucune fiche encore reliée : rien ne reste', () => {
     expect(
-      pendingRowsStillAuthored([row('p1', 'user-claire')], new Set())
+      pendingRowsStillAuthored(
+        [row('p1', 'user-claire')],
+        new Map([['user-claire', new Set<string>()]])
+      )
     ).toEqual([])
   })
 
-  it('attente valide mais plus rien d’autorisé : « revoked », avant « taken »', () => {
+  it('chaque attente est jugée sur son propre auteur (revue mi3)', () => {
+    expect(
+      pendingRowsStillAuthored(
+        [row('p1', 'user-claire-b'), row('p2', 'user-claire')],
+        new Map([
+          ['user-claire-b', new Set(['p1'])],
+          ['user-claire', new Set(['p2'])],
+        ])
+      ).map((kept) => kept.memberProfileId)
+    ).toEqual(['p1', 'p2'])
+  })
+
+  it('attente valide mais plus rien d’autorisé : le même « invalid » (3c), avant « taken » (revue MA1)', () => {
     expect(
       decideConfirmation({
         record: marcPending,
@@ -394,7 +409,7 @@ describe('l’auteur d’une attente n’est plus relié à la fiche (revue C1)'
         revoked: true,
         now: NOW,
       })
-    ).toBe('revoked')
+    ).toBe('invalid')
   })
 
   it('un lien inutilisable reste « invalid », même révoqué', () => {

@@ -63,14 +63,14 @@ import {sendMemberEmailConfirmationEmailService} from '@/services/email-service'
 describe('sendMemberEmailConfirmationEmailService — le lien de confirmation (s54, écran 2)', () => {
   const token = 'Xk3abc'.padEnd(43, 'Q')
   const url = `https://clos-fleuri.test/confirmer-adresse/${token}`
-  const pendingEmailId = '33333333-3333-4333-8333-333333333333'
+  const tokenHash = 'b'.repeat(64)
   const send = () =>
     sendMemberEmailConfirmationEmailService({
       organizationId: '11111111-1111-4111-8111-111111111111',
       email: 'marc@exemple.test',
       url,
       token,
-      pendingEmailId,
+      tokenHash,
       association: {name: 'Clos-Fleuri', hue: 195},
       authorName: 'Claire Dubois',
       profileName: 'Jean Dubois',
@@ -99,7 +99,7 @@ describe('sendMemberEmailConfirmationEmailService — le lien de confirmation (s
     expect(sent.text).toContain('Ce lien vaut jusqu’au 23 novembre 2026.')
   })
 
-  it('budget épuisé : l’email reporté ne garde ni le jeton ni l’échéance, seulement l’attente qu’il couvre (revue M1, ADR 056 §1)', async () => {
+  it('budget épuisé : l’email reporté ne garde ni le jeton ni l’échéance, seulement le hash du lien qu’il couvre (revues M1, mi1 ; ADR 056 §1)', async () => {
     vi.mocked(claimReportableSendTxnDao).mockResolvedValue(false)
 
     const result = await send()
@@ -117,8 +117,9 @@ describe('sendMemberEmailConfirmationEmailService — le lien de confirmation (s
     expect(stored).toMatchObject({
       nature: 'member_email_confirmation',
       recipient: 'marc@exemple.test',
-      referenceType: 'member_profile_email',
-      referenceId: pendingEmailId,
+      referenceType: null,
+      referenceId: null,
+      confirmationTokenHash: tokenHash,
     })
   })
 })

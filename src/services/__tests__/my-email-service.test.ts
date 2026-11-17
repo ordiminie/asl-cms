@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto'
+
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('@/db/tenant-scope', () => ({
@@ -7,6 +9,7 @@ vi.mock('@/db/tenant-scope', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
   deletePendingEmailsAddedByDao: vi.fn(),
+  reassignPendingEmailsAddedByDao: vi.fn(),
   deleteMemberProfileEmailDao: vi.fn(),
   getActiveEmailCarriersDao: vi.fn(),
   getMemberProfileEmailByIdDao: vi.fn(),
@@ -436,14 +439,17 @@ describe('[MEMBRE] corriger ou annuler une attente (critère 4)', () => {
   })
 })
 
-describe('[MEMBRE] le lien transmis à l’envoi (revue M1) : son jeton et l’attente qu’il couvre', () => {
+const sha256 = (value: string) =>
+  createHash('sha256').update(value).digest('hex')
+
+describe('[MEMBRE] le lien transmis à l’envoi (revues M1, mi1) : son jeton et son hash, celui de toutes ses attentes', () => {
   const sentLink = () => {
     const [sent] = vi.mocked(sendMemberEmailConfirmationEmailService).mock
       .calls[0]
     return sent
   }
 
-  it('ajout : le jeton de l’URL et une attente du lien, pour qu’un report ne garde ni l’un ni l’autre', async () => {
+  it('ajout : le jeton de l’URL et le hash écrit sur les attentes du lien, pour qu’un report ne garde pas le jeton', async () => {
     let next = 0
     vi.mocked(insertMemberProfileEmailDao).mockImplementation(
       async (input) => row({id: `inserted-${(next += 1)}`, ...input}) as never
@@ -456,10 +462,13 @@ describe('[MEMBRE] le lien transmis à l’envoi (revue M1) : son jeton et l’a
 
     const sent = sentLink()
     expect(sent.url.endsWith(`/${sent.token}`)).toBe(true)
-    expect(sent.pendingEmailId).toBe('inserted-1')
+    expect(sent.tokenHash).toBe(sha256(sent.token))
+    expect(insertMemberProfileEmailDao).toHaveBeenCalledWith(
+      expect.objectContaining({confirmationTokenHash: sent.tokenHash})
+    )
   })
 
-  it('correction : l’attente corrigée', async () => {
+  it('correction : le hash neuf de l’attente corrigée', async () => {
     await correctMyPendingEmailService({
       organizationId: ORG_ID,
       emailId: MARC_PENDING_ID,
@@ -468,7 +477,11 @@ describe('[MEMBRE] le lien transmis à l’envoi (revue M1) : son jeton et l’a
 
     const sent = sentLink()
     expect(sent.url.endsWith(`/${sent.token}`)).toBe(true)
-    expect(sent.pendingEmailId).toBe(MARC_PENDING_ID)
+    expect(sent.tokenHash).toBe(sha256(sent.token))
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(
+      MARC_PENDING_ID,
+      expect.objectContaining({confirmationTokenHash: sent.tokenHash})
+    )
   })
 })
 

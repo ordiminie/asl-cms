@@ -182,3 +182,16 @@ attente côté membre, une seule action « Gérer » (pas deux liens par ligne) 
 - [x] **m1** — seed `member.email_confirmation_days = 7` for the first tenant (ADR 056 §5).
 - Left as is, recorded in the review: m2 (pre-s53 duplicates only, nothing sent), m5 (throttle — budget reserve
   protects login), m6 (idempotent).
+
+## Fix round 2 (review of 16/11, round 2 — arbitration of 17/11: fix before shipping)
+
+- [x] **MA1** — remove the public `revoked` state: a link whose author is no longer linked shows the single
+  neutral message of screen 3c (`invalid`, « Ce lien ne sert plus »), on load and on confirm; drop the
+  `revokedTitle` / `revoked` keys. Tests updated.
+- [x] **mi1** — a deferred link is identified by its token hash (not secret), not by one pending row: at replay,
+  rotate over the link's remaining pending rows; drop the email only when none remains. Tests.
+- [x] **mi3** — when a member replaces their own address, the pending rows they authored are re-attributed to
+  the new account instead of being deleted (deletion stays for unlink and close). Tests.
+- [x] **mi4** — an author-less pending row is not activable (fail-closed). Update the test that pinned the
+  fail-open.
+- Left as is: mi2 (rare, second email works), mi5 (low probability), m2, m5, m6.

@@ -42,6 +42,7 @@ const CONTENT_COLUMNS = [
   'headers',
   'reply_to',
   'sender_name',
+  'confirmation_token_hash',
 ]
 
 /** Une ligne `deferred_email` dans l'ordre des colonnes du modele. */
@@ -61,6 +62,7 @@ const deferredRow = (status = 'sending') => [
   0,
   'contact_message',
   REFERENCE_ID,
+  null,
   NOW.toISOString(),
   NOW.toISOString(),
 ]

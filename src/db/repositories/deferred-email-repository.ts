@@ -144,6 +144,7 @@ export const markDeferredEmailFailedTxnDao = async (
       headers: null,
       replyTo: null,
       senderName: null,
+      confirmationTokenHash: null,
       updatedAt: sql`now()`,
     })
     .where(and(eq(deferredEmail.id, id), eq(deferredEmail.status, 'sending')))

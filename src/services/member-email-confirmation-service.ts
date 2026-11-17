@@ -10,21 +10,18 @@ import {
 import {
   getCurrentParcelNumbersByProfileDao,
   getMemberProfileByIdDao,
-  getMemberProfilesByUserIdDao,
 } from '@/db/repositories/member-profile-repository'
 import {getUserByIdDao} from '@/db/repositories/user-repository'
 import {withTenant} from '@/db/tenant-scope'
 
 import {ValidationParsedZodError} from './errors/validation-error'
+import {stillAuthoredPendingRows} from './member-email-pending-authors'
 import {
   hashConfirmationToken,
   isConfirmationTokenShaped,
 } from './member-email-token'
 import {activatePendingEmail} from './member-profile-support'
-import {
-  decideConfirmation,
-  pendingRowsStillAuthored,
-} from './rules/member-email-rules'
+import {decideConfirmation} from './rules/member-email-rules'
 import {MemberAccountAuthor} from './types/domain/member-account-types'
 import {
   ConfirmMemberEmailResult,
@@ -63,23 +60,6 @@ const pendingRowsOf = async (token: string) =>
     : []
 
 /**
- * Les fiches auxquelles l'auteur d'un lien est encore relie ; aucune pour une
- * attente sans auteur. Les attentes d'un meme lien ont un seul auteur : elles
- * sont ecrites par une seule ecriture du membre.
- */
-const authorProfileIdsOf = async (
-  organizationId: string,
-  authorUserId: string | null
-): Promise<Set<string>> =>
-  authorUserId
-    ? new Set(
-        (await getMemberProfilesByUserIdDao(organizationId, authorUserId)).map(
-          (profile) => profile.id
-        )
-      )
-    : new Set()
-
-/**
  * L'adresse est-elle active sur une fiche de l'association que ni l'auteur ni
  * le lien ne concernent ? Revérifie a la confirmation (critere 7, course).
  */
@@ -100,12 +80,13 @@ type ActivablePending = {
   /** La premiere attente du jeton, absente pour un jeton inconnu. */
   first: PendingRows[number]
   rows: PendingRows
+  /** Les fiches encore reliees a l'un des auteurs du lien. */
   authorProfileIds: Set<string>
 }
 
 /**
- * Les attentes du jeton, reduites a celles encore activables : l'auteur
- * doit etre encore relie a leur fiche (revue C1, ADR 056 §5).
+ * Les attentes du jeton, reduites a celles encore activables : l'auteur de
+ * chacune doit etre encore relie a sa fiche (revue C1, ADR 056 §5).
  */
 const activablePendingOf = async (
   organizationId: string,
@@ -113,15 +94,7 @@ const activablePendingOf = async (
 ): Promise<ActivablePending> => {
   const all = await pendingRowsOf(token)
   const [first] = all
-  const authorProfileIds = await authorProfileIdsOf(
-    organizationId,
-    first?.addedByUserId ?? null
-  )
-  return {
-    first,
-    rows: pendingRowsStillAuthored(all, authorProfileIds),
-    authorProfileIds,
-  }
+  return {first, ...(await stillAuthoredPendingRows(organizationId, all))}
 }
 
 /** L'etat de la page publique ; **lecture seule**. */
@@ -139,7 +112,6 @@ export const getMemberEmailConfirmationStateService = async (
       revoked: rows.length === 0,
       now,
     })
-    if (decision === 'revoked') return {status: 'revoked'}
     if (decision !== 'ok') return {status: 'invalid'}
     const numbers = await getCurrentParcelNumbersByProfileDao(
       rows.map((row) => row.memberProfileId)
@@ -167,7 +139,8 @@ const authorOfPending = async (
  * « Confirmer cette adresse » : un jeton inconnu, echu, annule ou deja
  * utilise rend le meme etat (3c) ; une adresse prise entre-temps n'est pas
  * activee (3d) ; une attente dont l'auteur n'est plus relie a la fiche est
- * ignoree, et le lien est refuse s'il n'en reste aucune (revue C1). Sinon chaque attente du lien s'active (ajout, ou
+ * ignoree, et le lien rend 3c s'il n'en reste aucune (revues C1, MA1).
+ * Sinon chaque attente du lien s'active (ajout, ou
  * modification qui remplace l'ancienne adresse), son compte s'ouvre, et le
  * jeton est efface : usage unique. Les attentes echues sont purgees.
  */
@@ -200,7 +173,6 @@ export const confirmMemberEmailService = async (
     await purgeExpiredPendingEmailsDao(organizationId, now)
     if (decision !== 'ok') return {status: decision}
 
-    const author = await authorOfPending(first.addedByUserId)
     for (const row of rows) {
       const profile = await getMemberProfileByIdDao(row.memberProfileId)
       if (!profile) continue
@@ -209,7 +181,7 @@ export const confirmMemberEmailService = async (
         profile,
         pendingId: row.id,
         email: row.email,
-        author,
+        author: await authorOfPending(row.addedByUserId),
         now,
       })
     }

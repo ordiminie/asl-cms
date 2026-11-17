@@ -254,8 +254,10 @@ export const decideMemberEmailAddition = ({
 }
 
 /**
- * Confirmation par lien : un jeton inconnu, echu ou deja utilise donne le
- * meme etat (3c) ; une adresse prise entre-temps n'est pas activee (3d).
+ * Confirmation par lien : un jeton inconnu, echu, deja utilise, ou dont plus
+ * aucune attente n'est autorisee (revue C1) donne le meme etat (3c), sans
+ * que la cause se devine (revue MA1) ; une adresse prise entre-temps n'est
+ * pas activee (3d).
  */
 export const decideConfirmation = ({
   record,
@@ -272,27 +274,32 @@ export const decideConfirmation = ({
   if (
     !record ||
     record.status !== MemberEmailStatusConst.PENDING ||
-    isPendingExpired(record, now)
+    isPendingExpired(record, now) ||
+    revoked
   ) {
     return 'invalid'
   }
-  if (revoked) return 'revoked'
   return takenElsewhere ? 'taken' : 'ok'
 }
 
 /**
  * Les attentes d'un lien encore activables (revue s54, C1 ; ADR 056 §5) :
- * celles sans auteur, et celles dont l'auteur est encore relie a la fiche.
- * Un auteur delie d'une fiche (adresse retiree, remplacee, compte ferme) ne
- * peut plus y faire activer d'adresse.
+ * celles dont l'auteur, lu attente par attente (revue mi3), est encore
+ * relie a la fiche. Un auteur delie d'une
+ * fiche (adresse retiree, compte ferme) ne peut plus y faire activer
+ * d'adresse ; une attente sans auteur (compte supprime) n'est jamais
+ * activable (revue mi4, fail-closed).
  */
 export const pendingRowsStillAuthored = <
   Row extends {memberProfileId: string; addedByUserId: string | null},
 >(
   rows: readonly Row[],
-  authorProfileIds: ReadonlySet<string>
+  /** Par auteur, les fiches auxquelles il est encore relie. */
+  profileIdsByAuthor: ReadonlyMap<string, ReadonlySet<string>>
 ): Row[] =>
   rows.filter(
     (row) =>
-      row.addedByUserId === null || authorProfileIds.has(row.memberProfileId)
+      row.addedByUserId !== null &&
+      (profileIdsByAuthor.get(row.addedByUserId)?.has(row.memberProfileId) ??
+        false)
   )

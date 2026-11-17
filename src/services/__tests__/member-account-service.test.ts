@@ -36,9 +36,13 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
 }))
 vi.mock('@/db/repositories/member-profile-email-repository', () => ({
   deletePendingEmailsAddedByDao: vi.fn(),
+  reassignPendingEmailsAddedByDao: vi.fn(),
 }))
 
-import {deletePendingEmailsAddedByDao} from '@/db/repositories/member-profile-email-repository'
+import {
+  deletePendingEmailsAddedByDao,
+  reassignPendingEmailsAddedByDao,
+} from '@/db/repositories/member-profile-email-repository'
 import {
   countLinkedProfilesDao,
   getUnlinkedMemberProfilesWithEmailDao,
@@ -954,8 +958,12 @@ describe('un compte délié d’une fiche perd ses ajouts en attente sur elle (s
     expect(deletedUnder).toBe(ORG_ID)
   })
 
-  it('remplacement : celles de l’ancien compte sur cette fiche sont supprimées', async () => {
+  it('remplacement : celles de l’ancien compte sur cette fiche passent au nouveau compte, rien n’est supprimé (revue mi3)', async () => {
     givenRoles({[OLD_USER_ID]: 'member'})
+    let reassignedUnder: string | undefined
+    vi.mocked(reassignPendingEmailsAddedByDao).mockImplementation(async () => {
+      reassignedUnder = scope.current
+    })
 
     await replaceMemberAccount({
       organizationId: ORG_ID,
@@ -966,8 +974,15 @@ describe('un compte délié d’une fiche perd ses ajouts en attente sur elle (s
       name: 'Odile Marchand',
     })
 
-    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledTimes(1)
-    expect(deletePendingEmailsAddedByDao).toHaveBeenCalledWith(
+    expect(reassignPendingEmailsAddedByDao).toHaveBeenCalledTimes(1)
+    expect(reassignPendingEmailsAddedByDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      OLD_USER_ID,
+      NEW_USER_ID
+    )
+    expect(reassignedUnder).toBe(ORG_ID)
+    expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalled()
+    expect(unlinkMemberProfileAccountDao).toHaveBeenCalledWith(
       PROFILE_ID,
       OLD_USER_ID
     )
@@ -1006,5 +1021,6 @@ describe('un compte délié d’une fiche perd ses ajouts en attente sur elle (s
     })
 
     expect(deletePendingEmailsAddedByDao).not.toHaveBeenCalled()
+    expect(reassignPendingEmailsAddedByDao).not.toHaveBeenCalled()
   })
 })
