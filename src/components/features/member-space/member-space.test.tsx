@@ -12,10 +12,10 @@ import {MemberSpace, MemberSpaceLoading} from './member-space'
 
 const CONTACT: MyContactDTO = {
   phone: null,
-  addressLine: null,
-  addressComplement: null,
-  postalCode: null,
-  city: null,
+  homeAddressLine: null,
+  homeAddressComplement: null,
+  homePostalCode: null,
+  homeCity: null,
   landCount: 1,
   divergent: false,
   groups: [],
@@ -210,5 +210,25 @@ describe('MemberSpace — « Mes terrains » (s53, écran 1)', () => {
     expect(region).toHaveAttribute('aria-busy', 'true')
     expect(region.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(3)
     expect(screen.queryByText('Espace personnel')).toBeNull()
+  })
+})
+
+describe('MemberSpace — « Mes coordonnées » (s55)', () => {
+  it('nomme l’adresse du membre « Adresse de domicile », sans terrain', async () => {
+    await renderSpace(
+      oneLand({
+        name: 'Lucie Moreau',
+        current: [{number: '21', startsOn: '2011-04-02', meterNumber: null}],
+        former: [],
+      })
+    )
+
+    const card = await screen.findByRole('region', {name: 'Mes coordonnées'})
+    expect(card).toHaveTextContent('Adresse de domicile')
+    expect(card).toHaveTextContent(
+      'L’association vous écrit par courrier à votre adresse de domicile.'
+    )
+    expect(card).not.toHaveTextContent('Adresse postale')
+    expect(card).not.toHaveTextContent('Adresse du terrain')
   })
 })

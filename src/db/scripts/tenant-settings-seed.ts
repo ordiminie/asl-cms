@@ -6,7 +6,9 @@
  * provisioning. Marketing Pro ne declare volontairement aucune teinte : elle
  * sert la teinte par defaut (critere 10), TechCorp une autre (critere 9).
  * Le delai de confirmation d'une adresse (s54, ADR 056 §5) est une valeur de
- * seed du premier tenant, pas une constante.
+ * seed du premier tenant, pas une constante. Le terrain par defaut (s55,
+ * ADR 058) aussi : code postal et commune fictifs chez TechCorp, rien chez
+ * Marketing Pro (l'import y laisse le terrain vide).
  */
 export type TestTenantSetting = {
   organizationSlug: string
@@ -29,6 +31,16 @@ export const TEST_TENANT_SETTINGS: readonly TestTenantSetting[] = [
     organizationSlug: 'techcorp-solutions',
     key: 'member.email_confirmation_days',
     value: '7',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'member.default_land_postal_code',
+    value: '33680',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'member.default_land_city',
+    value: 'Lacanau',
   },
   {
     organizationSlug: 'marketing-pro',

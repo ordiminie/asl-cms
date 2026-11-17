@@ -64,6 +64,10 @@ const emailOf = (label: string) => `${label}-${RUN}@example.test`
 const PARCEL_PREFIX = `M${RUN.toUpperCase()}-`
 const parcelOf = (suffix: string) => `${PARCEL_PREFIX}${suffix}`
 
+/** Le groupe « Adresse de domicile » du formulaire d'une fiche (s55). */
+const homeGroup = (page: Page) =>
+  page.getByRole('group', {name: /Adresse de domicile/})
+
 test.use({locale: 'fr-FR'})
 test.describe.configure({mode: 'serial'})
 
@@ -342,9 +346,10 @@ const createProfile = async (
   ).toBeVisible({timeout: 15_000})
   await page.getByLabel('Nom', {exact: true}).fill(input.name)
   if (input.email) await page.getByLabel(/^Adresse email/).fill(input.email)
-  await page.getByLabel('Adresse', {exact: true}).fill('3 rue du Lavoir')
-  await page.getByLabel('Code postal').fill('33680')
-  await page.getByLabel('Commune').fill('Lacanau')
+  const home = homeGroup(page)
+  await home.getByLabel('Adresse', {exact: true}).fill('3 rue du Lavoir')
+  await home.getByLabel('Code postal').fill('33680')
+  await home.getByLabel('Commune').fill('Lacanau')
   await page.getByRole('button', {name: 'Enregistrer le propriétaire'}).click()
   await expect(
     page.getByRole('heading', {level: 1, name: input.name})
@@ -644,8 +649,8 @@ test.describe('Comptes des membres — s12d', () => {
 type StoredContact = {
   email: string | null
   phone: string | null
-  address_complement: string | null
-  postal_code: string | null
+  home_address_complement: string | null
+  home_postal_code: string | null
 }
 
 const storedContactOf = (slug: string, name: string) =>
@@ -654,7 +659,7 @@ const storedContactOf = (slug: string, name: string) =>
       `select (select e.email from member_profile_email e
                 where e.member_profile_id = p.id
                   and e.role = 'holder' and e.status = 'active') as email,
-              p.phone, p.address_complement, p.postal_code
+              p.phone, p.home_address_complement, p.home_postal_code
          from member_profile p where p.name = $1`,
       [name]
     )
@@ -704,7 +709,7 @@ test.describe('Coordonnées du membre — s16', () => {
     await inTenant(TENANT_A_SLUG, (client) =>
       client.query(
         `update member_profile
-            set phone = null, address_complement = null
+            set phone = null, home_address_complement = null
           where name = any($1)`,
         [['Lucie Moreau', 'Gérard Pommier']]
       )
@@ -721,7 +726,7 @@ test.describe('Coordonnées du membre — s16', () => {
     try {
       await loginByLink(member, TENANT_A, SEED_MOREAU_EMAIL)
       await expect(myEmails(member)).toContainText(SEED_MOREAU_EMAIL)
-      await expect(myContact(member)).toContainText('Adresse postale')
+      await expect(myContact(member)).toContainText('Adresse de domicile')
       await expect(myContact(member)).not.toContainText(SEED_MOREAU_EMAIL)
       await expect(
         myContact(member).getByRole('textbox', {name: /Adresse email/})
@@ -743,7 +748,7 @@ test.describe('Coordonnées du membre — s16', () => {
       ).toMatchObject({
         email: SEED_MOREAU_EMAIL,
         phone: '07 45 12 89 30',
-        address_complement: 'Bâtiment C',
+        home_address_complement: 'Bâtiment C',
       })
 
       const {id} = await storedProfileOf(TENANT_A_SLUG, 'Lucie Moreau')
@@ -775,12 +780,12 @@ test.describe('Coordonnées du membre — s16', () => {
         'Vos coordonnées n’ont pas été enregistrées. Corrigez les champs signalés.'
       )
       await expect(myContact(member)).toContainText(
-        'Un code postal compte 5 chiffres.'
+        'Domicile : le code postal compte cinq chiffres.'
       )
 
       await member.reload({waitUntil: 'networkidle'})
       await expect(myContact(member)).toContainText(
-        `${before.postal_code} Lacanau`
+        `${before.home_postal_code} Lacanau`
       )
       expect(await storedContactOf(TENANT_A_SLUG, 'Lucie Moreau')).toEqual(
         before
@@ -888,9 +893,10 @@ const fillNewProfile = async (
   ).toBeVisible({timeout: 15_000})
   await page.getByLabel('Nom', {exact: true}).fill(input.name)
   await page.getByLabel(/^Adresse email/).fill(input.email)
-  await page.getByLabel('Adresse', {exact: true}).fill('2 chemin des Chênes')
-  await page.getByLabel('Code postal').fill('33680')
-  await page.getByLabel('Commune').fill('Lacanau')
+  const home = homeGroup(page)
+  await home.getByLabel('Adresse', {exact: true}).fill('2 chemin des Chênes')
+  await home.getByLabel('Code postal').fill('33680')
+  await home.getByLabel('Commune').fill('Lacanau')
 }
 
 /** Crée une fiche dont l'adresse est celle d'un compte : confirme, rend l'id. */

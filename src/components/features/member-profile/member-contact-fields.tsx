@@ -8,6 +8,7 @@ import {useFormContext, useWatch} from 'react-hook-form'
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert'
 import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
+import {Separator} from '@/components/ui/separator'
 import {cn} from '@/lib/utils'
 
 import type {MemberProfileFormField} from './member-profile-form-validation'
@@ -108,8 +109,88 @@ type MemberContactFieldsProps = {
 }
 
 /**
+ * Un groupe d'adresse postale (s55, ADR 058) : `fieldset` et `legend`
+ * « Adresse de domicile » ou « Adresse du terrain », « Facultatif » ecrit,
+ * l'aide du groupe sous la legende, puis ses champs.
+ */
+export function MemberAddressFieldset({
+  idPrefix,
+  group,
+  help = false,
+  children,
+}: {
+  idPrefix: string
+  group: 'home' | 'land'
+  help?: boolean
+  children: ReactNode
+}) {
+  const t = useTranslations('BureauMemberProfilesPage')
+  const helpId = `${idPrefix}-${group}-help`
+
+  return (
+    <fieldset
+      className="flex flex-col gap-6"
+      aria-describedby={help ? helpId : undefined}
+    >
+      <legend className="mb-2 text-[17px] font-semibold">
+        {t(`groups.${group}.legend`)}{' '}
+        <span className="text-muted-foreground font-normal">
+          {t('optional')}
+        </span>
+      </legend>
+      {help && (
+        <p id={helpId} className="text-muted-foreground -mt-4 text-base">
+          {t(`groups.${group}.help`)}
+        </p>
+      )}
+      {children}
+    </fieldset>
+  )
+}
+
+/** Les quatre champs d'une adresse du bureau : adresse, complement, code postal, commune. */
+function MemberAddressFields({
+  idPrefix,
+  group,
+}: {
+  idPrefix: string
+  group: 'home' | 'land'
+}) {
+  return (
+    <MemberAddressFieldset idPrefix={idPrefix} group={group} help>
+      <MemberTextField
+        idPrefix={idPrefix}
+        name={`${group}AddressLine`}
+        autoComplete="off"
+      />
+      <MemberTextField
+        idPrefix={idPrefix}
+        name={`${group}AddressComplement`}
+        autoComplete="off"
+        optional
+      />
+      <div className="grid gap-6 sm:grid-cols-[10rem_1fr]">
+        <MemberTextField
+          idPrefix={idPrefix}
+          name={`${group}PostalCode`}
+          inputMode="numeric"
+          autoComplete="off"
+          className="font-mono font-medium tabular-nums"
+        />
+        <MemberTextField
+          idPrefix={idPrefix}
+          name={`${group}City`}
+          autoComplete="off"
+        />
+      </div>
+    </MemberAddressFieldset>
+  )
+}
+
+/**
  * Les coordonnees d'une fiche (ecrans 2 et 3) : email et telephone
- * facultatifs, adresse structuree pour le publipostage. L'encart « courrier
+ * facultatifs, puis le domicile et le terrain, chacun dans son groupe, et le
+ * nom de l'entreprise (s55), separes par un filet. L'encart « courrier
  * uniquement » suit la saisie : visible tant que l'email est vide.
  */
 export function MemberContactFields({
@@ -146,27 +227,18 @@ export function MemberContactFields({
         optional
         className="sm:max-w-xs"
       />
+      <Separator />
+      <MemberAddressFields idPrefix={idPrefix} group="home" />
+      <Separator />
+      <MemberAddressFields idPrefix={idPrefix} group="land" />
+      <Separator />
       <MemberTextField
         idPrefix={idPrefix}
-        name="addressLine"
-        autoComplete="off"
-      />
-      <MemberTextField
-        idPrefix={idPrefix}
-        name="addressComplement"
+        name="companyName"
         autoComplete="off"
         optional
+        help
       />
-      <div className="grid gap-6 sm:grid-cols-[10rem_1fr]">
-        <MemberTextField
-          idPrefix={idPrefix}
-          name="postalCode"
-          inputMode="numeric"
-          autoComplete="off"
-          className="font-mono font-medium tabular-nums"
-        />
-        <MemberTextField idPrefix={idPrefix} name="city" autoComplete="off" />
-      </div>
       {withEmail && !email?.trim() && (
         <p className="bg-muted rounded-md px-4 py-3 text-base">
           {t('mailOnlyNotice')}

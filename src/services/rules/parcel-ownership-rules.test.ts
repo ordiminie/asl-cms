@@ -207,28 +207,42 @@ describe('planSale — une vente (critères 2 et 4)', () => {
   })
 })
 
-describe('isIncomplete — fiche incomplète (critère 8)', () => {
+describe('isIncomplete — fiche incomplète (critère 8, sur le domicile depuis s55)', () => {
   const noContact = {
     mailOnly: true,
-    addressLine: null,
-    postalCode: null,
-    city: null,
+    homeAddressLine: null,
+    homePostalCode: null,
+    homeCity: null,
   }
 
-  it('signale une fiche sans email ni adresse postale', () => {
+  it('signale une fiche sans email ni adresse de domicile', () => {
     expect(isIncomplete(noContact)).toBe(true)
   })
 
-  it('ne signale pas une fiche qui porte une adresse email active, même sans adresse postale (ADR 056)', () => {
+  it('ne signale pas une fiche qui porte une adresse email active, même sans domicile (ADR 056)', () => {
     expect(isIncomplete({...noContact, mailOnly: false})).toBe(false)
   })
 
   it.each([
-    ['une adresse', {addressLine: '12 chemin des Pins'}],
-    ['un code postal', {postalCode: '97400'}],
-    ['une commune', {city: 'Saint-Denis'}],
-  ])('ne signale pas une fiche courrier qui porte %s', (_label, part) => {
-    expect(isIncomplete({...noContact, ...part})).toBe(false)
+    ['une adresse', {homeAddressLine: '12 chemin des Pins'}],
+    ['un code postal', {homePostalCode: '97400'}],
+    ['une commune', {homeCity: 'Saint-Denis'}],
+  ])(
+    'ne signale pas une fiche courrier dont le domicile porte %s',
+    (_label, part) => {
+      expect(isIncomplete({...noContact, ...part})).toBe(false)
+    }
+  )
+
+  it('signale toujours une fiche courrier qui ne porte que son terrain (s55, critère 3)', () => {
+    const landOnly = {
+      ...noContact,
+      landAddressLine: '3 allée des Mimosas',
+      landPostalCode: '40600',
+      landCity: 'Biscarrosse',
+    }
+
+    expect(isIncomplete(landOnly)).toBe(true)
   })
 })
 

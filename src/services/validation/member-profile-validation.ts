@@ -3,6 +3,7 @@ import {z} from 'zod'
 import {
   MEMBER_PROFILE_ADDRESS_MAX_LENGTH,
   MEMBER_PROFILE_CITY_MAX_LENGTH,
+  MEMBER_PROFILE_COMPANY_NAME_MAX_LENGTH,
   MEMBER_PROFILE_NAME_MAX_LENGTH,
   MEMBER_PROFILE_PENNYLANE_ID_MAX_LENGTH,
   MEMBER_PROFILE_PHONE_MAX_LENGTH,
@@ -34,23 +35,51 @@ const optionalContact = (schema: z.ZodString) =>
     .pipe(schema.optional())
     .transform((value) => value ?? null)
 
-const postalContactShape = {
+const phoneShape = {
   phone: optionalContact(
     z
       .string()
       .max(MEMBER_PROFILE_PHONE_MAX_LENGTH)
       .regex(MEMBER_PROFILE_PHONE_PATTERN)
   ),
-  addressLine: optionalContact(
-    z.string().max(MEMBER_PROFILE_ADDRESS_MAX_LENGTH)
+}
+
+/**
+ * Une adresse postale typee (s55, ADR 058) : `home` pour le domicile, `land`
+ * pour le terrain. Meme regle dans les deux : code postal a cinq chiffres.
+ */
+const postalAddressShape = <Prefix extends 'home' | 'land'>(prefix: Prefix) =>
+  ({
+    [`${prefix}AddressLine`]: optionalContact(
+      z.string().max(MEMBER_PROFILE_ADDRESS_MAX_LENGTH)
+    ),
+    [`${prefix}AddressComplement`]: optionalContact(
+      z.string().max(MEMBER_PROFILE_ADDRESS_MAX_LENGTH)
+    ),
+    [`${prefix}PostalCode`]: optionalContact(
+      z.string().regex(MEMBER_PROFILE_POSTAL_CODE_PATTERN)
+    ),
+    [`${prefix}City`]: optionalContact(
+      z.string().max(MEMBER_PROFILE_CITY_MAX_LENGTH)
+    ),
+  }) as Record<
+    `${Prefix}${'AddressLine' | 'AddressComplement' | 'PostalCode' | 'City'}`,
+    ReturnType<typeof optionalContact>
+  >
+
+/** Ce que le membre corrige lui-meme (s16) : telephone et domicile. */
+const memberPostalContactShape = {
+  ...phoneShape,
+  ...postalAddressShape('home'),
+}
+
+/** Ce que le bureau saisit : en plus, le terrain et le nom de l'entreprise. */
+const postalContactShape = {
+  ...memberPostalContactShape,
+  ...postalAddressShape('land'),
+  companyName: optionalContact(
+    z.string().max(MEMBER_PROFILE_COMPANY_NAME_MAX_LENGTH)
   ),
-  addressComplement: optionalContact(
-    z.string().max(MEMBER_PROFILE_ADDRESS_MAX_LENGTH)
-  ),
-  postalCode: optionalContact(
-    z.string().regex(MEMBER_PROFILE_POSTAL_CODE_PATTERN)
-  ),
-  city: optionalContact(z.string().max(MEMBER_PROFILE_CITY_MAX_LENGTH)),
 }
 
 const contactShape = {
@@ -96,12 +125,13 @@ export const memberProfilePageServiceSchema = z.object({
 })
 
 /**
- * Coordonnees qu'un membre corrige lui-meme (s16, ADR 040) : sans email. Les
- * cles inconnues (`email`, `memberProfileId`) sont retirees par Zod.
+ * Coordonnees qu'un membre corrige lui-meme (s16, ADR 040) : sans email, ni
+ * terrain, ni nom d'entreprise (s55). Les cles inconnues (`email`,
+ * `memberProfileId`, `land…`, `companyName`) sont retirees par Zod.
  */
 export const updateMyContactServiceSchema = z.object({
   organizationId: memberProfileOrganizationIdSchema,
-  ...postalContactShape,
+  ...memberPostalContactShape,
 })
 
 /** Recherche d'une fiche par sa cle d'import Pennylane (s13, ADR 048). */

@@ -7,6 +7,7 @@ import {type ReactNode, useEffect, useId, useRef, useState} from 'react'
 import {FormProvider, useForm} from 'react-hook-form'
 
 import {
+  MemberAddressFieldset,
   memberFieldIdOf,
   MemberTextField,
 } from '@/components/features/member-profile/member-contact-fields'
@@ -32,7 +33,9 @@ import type {
  * plusieurs terrains, elles valent pour tous, et l'enregistrement les ecrit
  * toutes. Les adresses email ont leur propre carte, « Mes adresses email »
  * (s54, ADR 056). Aucun identifiant de fiche n'est rendu ni envoye : l'action
- * resout les fiches par la session.
+ * resout les fiches par la session. L'adresse est le domicile (s55, ADR 058) :
+ * ni le terrain ni le nom de l'entreprise, propres a chaque fiche, ne s'y
+ * corrigent.
  */
 
 const ID_PREFIX = 'my-contact'
@@ -69,6 +72,9 @@ export function MyContactCard({
           <h2 id={titleId} className="font-serif text-xl font-semibold">
             {t('title')}
           </h2>
+          <p className="text-muted-foreground text-[15px]">
+            {t('description')}
+          </p>
           {contact.landCount > 1 && (
             <p className="text-muted-foreground text-[15px]">
               {t('forLands', {count: contact.landCount})}
@@ -144,9 +150,9 @@ function Missing({children}: {children: ReactNode}) {
 
 const postalLinesOf = (contact: MyPostalContactDTO): string[] =>
   [
-    contact.addressLine,
-    contact.addressComplement,
-    [contact.postalCode, contact.city].filter(Boolean).join(' '),
+    contact.homeAddressLine,
+    contact.homeAddressComplement,
+    [contact.homePostalCode, contact.homeCity].filter(Boolean).join(' '),
   ].filter((line): line is string => Boolean(line))
 
 function ContactReading({contact}: {contact: MyPostalContactDTO}) {
@@ -221,10 +227,10 @@ const formValuesOf = (
   contact: MyContactDTO
 ): MemberPostalContactFormSchemaType => ({
   phone: contact.phone ?? '',
-  addressLine: contact.addressLine ?? '',
-  addressComplement: contact.addressComplement ?? '',
-  postalCode: contact.postalCode ?? '',
-  city: contact.city ?? '',
+  homeAddressLine: contact.homeAddressLine ?? '',
+  homeAddressComplement: contact.homeAddressComplement ?? '',
+  homePostalCode: contact.homePostalCode ?? '',
+  homeCity: contact.homeCity ?? '',
 })
 
 function ContactEditor({
@@ -348,34 +354,36 @@ function ContactEditor({
           optional
           className="sm:max-w-xs"
         />
-        <MemberTextField
-          idPrefix={ID_PREFIX}
-          name="addressLine"
-          autoComplete="address-line1"
-          optional
-        />
-        <MemberTextField
-          idPrefix={ID_PREFIX}
-          name="addressComplement"
-          autoComplete="address-line2"
-          optional
-        />
-        <div className="grid gap-6 sm:grid-cols-[10rem_1fr]">
+        <MemberAddressFieldset idPrefix={ID_PREFIX} group="home">
           <MemberTextField
             idPrefix={ID_PREFIX}
-            name="postalCode"
-            inputMode="numeric"
-            autoComplete="postal-code"
+            name="homeAddressLine"
+            autoComplete="address-line1"
             optional
-            className="font-mono font-medium tabular-nums"
           />
           <MemberTextField
             idPrefix={ID_PREFIX}
-            name="city"
-            autoComplete="address-level2"
+            name="homeAddressComplement"
+            autoComplete="address-line2"
             optional
           />
-        </div>
+          <div className="grid gap-6 sm:grid-cols-[10rem_1fr]">
+            <MemberTextField
+              idPrefix={ID_PREFIX}
+              name="homePostalCode"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              optional
+              className="font-mono font-medium tabular-nums"
+            />
+            <MemberTextField
+              idPrefix={ID_PREFIX}
+              name="homeCity"
+              autoComplete="address-level2"
+              optional
+            />
+          </div>
+        </MemberAddressFieldset>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button type="submit" disabled={saving} className={BUTTON_CLASS}>
             <span className="grid">

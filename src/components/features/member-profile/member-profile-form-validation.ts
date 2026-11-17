@@ -4,6 +4,7 @@ import {frenchDateToIso} from '@/components/ui/date-field-format'
 import {
   MEMBER_PROFILE_ADDRESS_MAX_LENGTH,
   MEMBER_PROFILE_CITY_MAX_LENGTH,
+  MEMBER_PROFILE_COMPANY_NAME_MAX_LENGTH,
   MEMBER_PROFILE_NAME_MAX_LENGTH,
   MEMBER_PROFILE_PHONE_MAX_LENGTH,
   MEMBER_PROFILE_PHONE_PATTERN,
@@ -40,7 +41,7 @@ const emailShape = (t: Translate) => ({
     ),
 })
 
-const contactShape = (t: Translate) => ({
+const phoneShape = (t: Translate) => ({
   phone: z
     .string()
     .refine(
@@ -50,34 +51,90 @@ const contactShape = (t: Translate) => ({
           MEMBER_PROFILE_PHONE_PATTERN.test(value.trim())),
       {message: t('validation.phoneInvalid')}
     ),
-  addressLine: optionalText(
+})
+
+type PostalAddressPrefix = 'home' | 'land'
+
+/**
+ * Les champs d'une adresse postale typee (s55, ADR 058) : domicile ou terrain.
+ * Les deux groupes portent les memes champs : chaque message nomme son groupe
+ * (« Terrain : le code postal compte cinq chiffres. »).
+ */
+const postalAddressSchemas = (t: Translate, prefix: PostalAddressPrefix) => ({
+  line: optionalText(
     MEMBER_PROFILE_ADDRESS_MAX_LENGTH,
-    t('validation.addressMax')
+    t(`validation.${prefix}.addressMax`)
   ),
-  addressComplement: optionalText(
+  complement: optionalText(
     MEMBER_PROFILE_ADDRESS_MAX_LENGTH,
-    t('validation.addressMax')
+    t(`validation.${prefix}.addressMax`)
   ),
   postalCode: z
     .string()
     .refine(
       (value) =>
         isBlank(value) || MEMBER_PROFILE_POSTAL_CODE_PATTERN.test(value.trim()),
-      {message: t('validation.postalCodeInvalid')}
+      {message: t(`validation.${prefix}.postalCodeInvalid`)}
     ),
-  city: optionalText(MEMBER_PROFILE_CITY_MAX_LENGTH, t('validation.cityMax')),
+  city: optionalText(
+    MEMBER_PROFILE_CITY_MAX_LENGTH,
+    t(`validation.${prefix}.cityMax`)
+  ),
+})
+
+const homeAddressShape = (t: Translate) => {
+  const fields = postalAddressSchemas(t, 'home')
+  return {
+    homeAddressLine: fields.line,
+    homeAddressComplement: fields.complement,
+    homePostalCode: fields.postalCode,
+    homeCity: fields.city,
+  }
+}
+
+const landAddressShape = (t: Translate) => {
+  const fields = postalAddressSchemas(t, 'land')
+  return {
+    landAddressLine: fields.line,
+    landAddressComplement: fields.complement,
+    landPostalCode: fields.postalCode,
+    landCity: fields.city,
+  }
+}
+
+/** Ce que le bureau saisit : telephone, domicile, terrain, entreprise (s55). */
+const contactShape = (t: Translate) => ({
+  ...phoneShape(t),
+  ...homeAddressShape(t),
+  ...landAddressShape(t),
+  companyName: optionalText(
+    MEMBER_PROFILE_COMPANY_NAME_MAX_LENGTH,
+    t('validation.companyNameMax')
+  ),
+})
+
+/**
+ * Ce que le membre corrige lui-meme (s16) : telephone et domicile, jamais le
+ * terrain ni le nom de l'entreprise (s55, critere 5).
+ */
+export const memberPostalContactFormSchema = z.object({
+  phone: z.string(),
+  homeAddressLine: z.string(),
+  homeAddressComplement: z.string(),
+  homePostalCode: z.string(),
+  homeCity: z.string(),
 })
 
 /**
  * Coordonnees modifiees depuis la fiche : sans email depuis s54, les adresses
- * ont leur carte (ADR 056).
+ * ont leur carte (ADR 056). Domicile, terrain et nom de l'entreprise (s55).
  */
-export const memberContactFormSchema = z.object({
-  phone: z.string(),
-  addressLine: z.string(),
-  addressComplement: z.string(),
-  postalCode: z.string(),
-  city: z.string(),
+export const memberContactFormSchema = memberPostalContactFormSchema.extend({
+  landAddressLine: z.string(),
+  landAddressComplement: z.string(),
+  landPostalCode: z.string(),
+  landCity: z.string(),
+  companyName: z.string(),
 })
 
 /** La creation d'une fiche : l'email saisi devient sa titulaire (s54). */
@@ -116,10 +173,15 @@ export type MemberProfileFormSchemaType = z.infer<
 
 export const MEMBER_CONTACT_FORM_FIELDS = [
   'phone',
-  'addressLine',
-  'addressComplement',
-  'postalCode',
-  'city',
+  'homeAddressLine',
+  'homeAddressComplement',
+  'homePostalCode',
+  'homeCity',
+  'landAddressLine',
+  'landAddressComplement',
+  'landPostalCode',
+  'landCity',
+  'companyName',
 ] as const satisfies readonly (keyof MemberContactFormSchemaType)[]
 
 export const MEMBER_PROFILE_FORM_FIELDS = [
@@ -227,20 +289,26 @@ export type ChangeMemberRoleFormAction = (
 
 /**
  * « Mes coordonnees » (s16, ADR 040) : les coordonnees que le membre corrige
- * lui-meme, sans email. Memes regles et memes messages que la fiche du bureau.
+ * lui-meme, sans email, ni terrain, ni nom d'entreprise (s55). Memes regles
+ * et memes messages que la fiche du bureau.
  */
 export function createMemberPostalContactFormSchema(t: Translate) {
-  return createMemberContactFormSchema(t)
+  return memberPostalContactFormSchema.extend({
+    ...phoneShape(t),
+    ...homeAddressShape(t),
+  })
 }
 
-export type MemberPostalContactFormSchemaType = MemberContactFormSchemaType
+export type MemberPostalContactFormSchemaType = z.infer<
+  typeof memberPostalContactFormSchema
+>
 
 export const MEMBER_POSTAL_CONTACT_FORM_FIELDS = [
   'phone',
-  'addressLine',
-  'addressComplement',
-  'postalCode',
-  'city',
+  'homeAddressLine',
+  'homeAddressComplement',
+  'homePostalCode',
+  'homeCity',
 ] as const satisfies readonly (keyof MemberPostalContactFormSchemaType)[]
 
 export type MemberPostalContactFormField =

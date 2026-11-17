@@ -5,6 +5,7 @@ import {readCsv} from '@/lib/import/csv-reader'
 import {mapPennylaneClients} from '@/lib/import/pennylane-clients-mapper'
 import {logger} from '@/lib/logger'
 
+import {getAssociationSettingsService} from './association-settings-service'
 import {canImportMembers} from './authorization/member-import-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {
@@ -19,6 +20,7 @@ import {
 import {getOrganizationByIdService} from './organization-service'
 import {attachParcelService} from './parcel-ownership-service'
 import {importedEmailsPlan} from './rules/member-email-rules'
+import {getDefaultLandAddress} from './types/domain/association-settings-types'
 import {MemberEmailOriginConst} from './types/domain/member-email-types'
 import {
   ImportFileRefusalConst,
@@ -45,7 +47,8 @@ import {importMembersServiceSchema} from './validation/member-import-validation'
  * suivants. Une adresse deja celle d'un compte de l'association relie la
  * fiche a ce compte, et le regroupement est signale au rapport (s53). Toutes
  * les adresses d'une cellule sont reprises (s54) : la premiere titulaire, les
- * suivantes supplementaires. Tout passe par les services existants, jamais par un DAO direct
+ * suivantes supplementaires. Une fiche creee sans terrain recoit le terrain
+ * par defaut de l'association (s55, ADR 058). Tout passe par les services existants, jamais par un DAO direct
  * (ADR 029) ; chacun rappelle ses propres gardes. Le journal ne recoit que des
  * comptages : le rapport porte des donnees personnelles.
  */
@@ -75,8 +78,37 @@ type MemberOutcome =
 
 const FIELD_REJECTIONS: Record<string, ImportRejection> = {
   email: ImportRejectionConst.INVALID_EMAIL,
-  postalCode: ImportRejectionConst.INVALID_POSTAL_CODE,
+  homePostalCode: ImportRejectionConst.INVALID_POSTAL_CODE,
+  landPostalCode: ImportRejectionConst.INVALID_POSTAL_CODE,
   phone: ImportRejectionConst.INVALID_PHONE,
+}
+
+/**
+ * Code postal et commune du terrain par defaut de l'association (s55, ADR
+ * 058), lus une fois par import ; `null` quand le bureau ne les a pas
+ * renseignes.
+ */
+type DefaultLandAddress = {postalCode: string | null; city: string | null}
+
+/**
+ * Le terrain d'une fiche creee : celui du fichier, sinon — aucune de ses
+ * parties renseignee — le code postal et la commune par defaut, sans rue.
+ */
+const landOf = (
+  member: ImportMemberCandidate,
+  defaultLand: DefaultLandAddress
+) => {
+  if (member.landAddressLine || member.landPostalCode || member.landCity) {
+    return {
+      landAddressLine: member.landAddressLine,
+      landPostalCode: member.landPostalCode,
+      landCity: member.landCity,
+    }
+  }
+  return {
+    landPostalCode: defaultLand.postalCode ?? undefined,
+    landCity: defaultLand.city ?? undefined,
+  }
 }
 
 /** Le premier champ refuse par la validation des services, en motif. */
@@ -104,16 +136,19 @@ type CreatedProfile = {
  */
 const createProfile = async (
   organizationId: string,
-  member: ImportMemberCandidate
+  member: ImportMemberCandidate,
+  defaultLand: DefaultLandAddress
 ): Promise<CreatedProfile> => {
   const input = {
     organizationId,
     name: member.name,
     email: member.email,
     phone: member.phone,
-    addressLine: member.addressLine,
-    postalCode: member.postalCode,
-    city: member.city,
+    homeAddressLine: member.homeAddressLine,
+    homePostalCode: member.homePostalCode,
+    homeCity: member.homeCity,
+    ...landOf(member, defaultLand),
+    companyName: member.companyName,
     pennylaneCustomerId: member.pennylaneCustomerId,
   }
   const first = await createMemberProfileService(input)
@@ -204,7 +239,8 @@ const attachParcels = async (
 
 const writeMember = async (
   organizationId: string,
-  member: ImportMemberCandidate
+  member: ImportMemberCandidate,
+  defaultLand: DefaultLandAddress
 ): Promise<MemberOutcome> => {
   const existingId = await findMemberProfileIdByPennylaneIdService(
     organizationId,
@@ -216,7 +252,7 @@ const writeMember = async (
       parcels: await attachParcels(organizationId, existingId, member),
     }
   }
-  const profile = await createProfile(organizationId, member)
+  const profile = await createProfile(organizationId, member, defaultLand)
   await addCellEmails(organizationId, profile.id, member)
   return {
     kind: 'created',
@@ -230,11 +266,12 @@ const writeMember = async (
 /** Un membre, dans sa propre transaction ; un rejet n'y laisse rien. */
 const importMember = async (
   organizationId: string,
-  member: ImportMemberCandidate
+  member: ImportMemberCandidate,
+  defaultLand: DefaultLandAddress
 ): Promise<MemberOutcome> => {
   try {
     return await withTenant(organizationId, () =>
-      writeMember(organizationId, member)
+      writeMember(organizationId, member, defaultLand)
     )
   } catch (error) {
     if (error instanceof MemberRejected) {
@@ -370,9 +407,15 @@ export const importMembersService = async (
   const planned = planImport(content)
   if (!planned.ok) return planned.result
 
+  const defaultLand = getDefaultLandAddress(
+    await getAssociationSettingsService(organizationId)
+  )
   const outcomes: {member: ImportMemberCandidate; outcome: MemberOutcome}[] = []
   for (const member of planned.plan.members) {
-    outcomes.push({member, outcome: await importMember(organizationId, member)})
+    outcomes.push({
+      member,
+      outcome: await importMember(organizationId, member, defaultLand),
+    })
   }
 
   const report = buildReport(planned.plan, outcomes)

@@ -29,6 +29,10 @@
  * Ferrand porte deux adresses (la sienne et celle de sa fille) ; son adresse
  * est aussi supplementaire sur la fiche de Claire Meunier, titulaire d'une
  * fiche et supplementaire d'une autre (critere 8).
+ *
+ * s55 (ADR 058) : le domicile (`home…`) est l'adresse postale ; les Dubois
+ * ont en plus un terrain distinct, Helene Roy un terrain **seul** (sa fiche
+ * reste incomplete), et « SCI Les Chenes » porte un nom d'entreprise.
  */
 export type TestMemberProfile = {
   id: string
@@ -39,10 +43,17 @@ export type TestMemberProfile = {
   /** Les adresses supplementaires actives (s54). */
   additionalEmails?: readonly string[]
   phone: string | null
-  addressLine: string | null
-  addressComplement: string | null
-  postalCode: string | null
-  city: string | null
+  /** Le domicile, adresse postale de la fiche (s55, ADR 058). */
+  homeAddressLine: string | null
+  homeAddressComplement: string | null
+  homePostalCode: string | null
+  homeCity: string | null
+  /** Le terrain, propre a chaque fiche (s55). */
+  landAddressLine: string | null
+  landAddressComplement: string | null
+  landPostalCode: string | null
+  landCity: string | null
+  companyName: string | null
 }
 
 export type TestParcelOwnership = {
@@ -79,10 +90,15 @@ const FERRAND_EMAIL = 'p.ferrand@techcorp-solutions.test'
 const NO_CONTACT = {
   email: null,
   phone: null,
-  addressLine: null,
-  addressComplement: null,
-  postalCode: null,
-  city: null,
+  homeAddressLine: null,
+  homeAddressComplement: null,
+  homePostalCode: null,
+  homeCity: null,
+  landAddressLine: null,
+  landAddressComplement: null,
+  landPostalCode: null,
+  landCity: null,
+  companyName: null,
 } as const
 
 export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
@@ -93,24 +109,30 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     name: 'Claire Meunier',
     email: 'claire.meunier@techcorp-solutions.test',
     additionalEmails: [FERRAND_EMAIL],
-    addressLine: '14 allée des Aulnes',
-    postalCode: '33680',
-    city: 'Lacanau',
+    homeAddressLine: '14 allée des Aulnes',
+    homePostalCode: '33680',
+    homeCity: 'Lacanau',
   },
   {
     ...NO_CONTACT,
     id: DUBOIS_ID,
     organizationSlug: TECHCORP,
     name: 'Jean et Odile Dubois',
-    addressLine: '8 chemin des Pins',
-    postalCode: '33680',
-    city: 'Lacanau',
+    homeAddressLine: '8 chemin des Pins',
+    homePostalCode: '33680',
+    homeCity: 'Lacanau',
+    landAddressLine: '11 allée des Arbousiers',
+    landPostalCode: '33680',
+    landCity: 'Lacanau',
   },
   {
     ...NO_CONTACT,
     id: ROY_ID,
     organizationSlug: TECHCORP,
     name: 'Hélène Roy',
+    landAddressLine: '6 allée des Genêts',
+    landPostalCode: '33680',
+    landCity: 'Lacanau',
   },
   {
     ...NO_CONTACT,
@@ -118,9 +140,9 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     organizationSlug: TECHCORP,
     name: 'Marcel Laurent',
     phone: '06 12 34 56 78',
-    addressLine: '3 rue du Lavoir',
-    postalCode: '33680',
-    city: 'Lacanau',
+    homeAddressLine: '3 rue du Lavoir',
+    homePostalCode: '33680',
+    homeCity: 'Lacanau',
   },
   {
     ...NO_CONTACT,
@@ -136,9 +158,9 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     organizationSlug: TECHCORP,
     name: 'Lucie Moreau',
     email: 'lucie.moreau@example.test',
-    addressLine: '5 impasse des Bruyères',
-    postalCode: '33680',
-    city: 'Lacanau',
+    homeAddressLine: '5 impasse des Bruyères',
+    homePostalCode: '33680',
+    homeCity: 'Lacanau',
   },
   {
     ...NO_CONTACT,
@@ -153,9 +175,9 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     organizationSlug: TECHCORP,
     name: 'Bernard Lefèvre',
     email: LEFEVRE_EMAIL,
-    addressLine: '2 chemin des Chênes',
-    postalCode: '33680',
-    city: 'Lacanau',
+    homeAddressLine: '2 chemin des Chênes',
+    homePostalCode: '33680',
+    homeCity: 'Lacanau',
   },
   {
     ...NO_CONTACT,
@@ -163,19 +185,20 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     organizationSlug: TECHCORP,
     name: 'Bernard Lefèvre',
     email: LEFEVRE_EMAIL,
-    addressLine: '2 chemin des Chênes',
-    postalCode: '33680',
-    city: 'Lacanau',
+    homeAddressLine: '2 chemin des Chênes',
+    homePostalCode: '33680',
+    homeCity: 'Lacanau',
   },
   {
     ...NO_CONTACT,
     id: LEFEVRE_SCI_ID,
     organizationSlug: TECHCORP,
     name: 'SCI Les Chênes',
+    companyName: 'SCI Les Chênes',
     email: LEFEVRE_EMAIL,
-    addressLine: '2 chemin des Chênes',
-    postalCode: '33680',
-    city: 'Lacanau',
+    homeAddressLine: '2 chemin des Chênes',
+    homePostalCode: '33680',
+    homeCity: 'Lacanau',
   },
   {
     ...NO_CONTACT,
@@ -183,18 +206,18 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     organizationSlug: MARKETING,
     name: 'SCI Les Pins',
     email: 'contact@sci-les-pins.test',
-    addressLine: '1 place du Marché',
-    postalCode: '40600',
-    city: 'Biscarrosse',
+    homeAddressLine: '1 place du Marché',
+    homePostalCode: '40600',
+    homeCity: 'Biscarrosse',
   },
   {
     ...NO_CONTACT,
     id: FERREIRA_ID,
     organizationSlug: MARKETING,
     name: 'Sophie Ferreira',
-    addressLine: '27 avenue des Dunes',
-    postalCode: '40600',
-    city: 'Biscarrosse',
+    homeAddressLine: '27 avenue des Dunes',
+    homePostalCode: '40600',
+    homeCity: 'Biscarrosse',
   },
   {
     ...NO_CONTACT,

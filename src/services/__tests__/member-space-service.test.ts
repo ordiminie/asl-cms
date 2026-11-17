@@ -72,10 +72,15 @@ const profileRow = {
   name: 'Lucie Moreau',
   email: 'lucie.moreau@example.test',
   phone: null,
-  addressLine: null,
-  addressComplement: null,
-  postalCode: null,
-  city: null,
+  homeAddressLine: null,
+  homeAddressComplement: null,
+  homePostalCode: null,
+  homeCity: null,
+  landAddressLine: null,
+  landAddressComplement: null,
+  landPostalCode: null,
+  landCity: null,
+  companyName: null,
   pennylaneCustomerId: null,
   mailOnly: false,
   createdAt: new Date(),
@@ -277,10 +282,10 @@ describe('isPlainMemberOfService — qui voit l’écran C4', () => {
 
 const NEW_CONTACT = {
   phone: '06 12 34 56 78',
-  addressLine: '4 chemin des Oliviers',
-  addressComplement: 'Bâtiment B',
-  postalCode: '13100',
-  city: 'Aix-en-Provence',
+  homeAddressLine: '4 chemin des Oliviers',
+  homeAddressComplement: 'Bâtiment B',
+  homePostalCode: '13100',
+  homeCity: 'Aix-en-Provence',
 }
 
 describe('[PUBLIC] updateMyContactService — autorisation d’abord (s16, critère 3)', () => {
@@ -388,12 +393,28 @@ describe('[ORGANIZATION MEMBER] updateMyContactService — « Mes coordonnées �
     })
   })
 
+  it('n’écrit ni le terrain ni le nom de l’entreprise : retirés par Zod (s55, critère 5)', async () => {
+    await updateMyContactService({
+      organizationId: ORG_ID,
+      ...NEW_CONTACT,
+      landAddressLine: '3 allée des Mimosas',
+      landPostalCode: '40600',
+      landCity: 'Biscarrosse',
+      companyName: 'Épicerie fictive',
+    } as Parameters<typeof updateMyContactService>[0])
+
+    const written = vi.mocked(updateMyMemberProfilesContactDao).mock.calls[0][2]
+    expect(written).toEqual(NEW_CONTACT)
+    expect(written).not.toHaveProperty('landAddressLine')
+    expect(written).not.toHaveProperty('companyName')
+  })
+
   it('refuse une saisie invalide, sans rien écrire', async () => {
     await expect(
       updateMyContactService({
         organizationId: ORG_ID,
         ...NEW_CONTACT,
-        postalCode: '1310',
+        homePostalCode: '1310',
       })
     ).rejects.toThrow()
     expect(updateMyMemberProfilesContactDao).not.toHaveBeenCalled()
@@ -479,13 +500,47 @@ describe('getMyContactService — lecture de « Mes coordonnées » (s16)', () =
         parcelNumbers: ['31'],
         names: ['SCI Les Pins'],
         phone: '05 00 00 00 00',
-        addressLine: null,
-        addressComplement: null,
-        postalCode: null,
-        city: null,
+        homeAddressLine: null,
+        homeAddressComplement: null,
+        homePostalCode: null,
+        homeCity: null,
       },
     ])
     expect(JSON.stringify(contact)).not.toContain(SCI_ID)
+  })
+
+  it('[ORGANIZATION MEMBER] un terrain différent ne crée pas de groupe divergent : seul le domicile compte (s55)', async () => {
+    setupAuthUserMocked(withRole('member'))
+    vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
+      {
+        ...profileRow,
+        ...NEW_CONTACT,
+        landAddressLine: '3 allée des Mimosas',
+        landCity: 'Biscarrosse',
+        currentParcelNumbers: ['12'],
+      },
+      {
+        ...profileRow,
+        ...NEW_CONTACT,
+        id: SCI_ID,
+        name: 'SCI Les Pins',
+        landAddressLine: '8 allée des Arbousiers',
+        landCity: 'Lacanau',
+        companyName: 'SCI Les Pins',
+        currentParcelNumbers: ['31'],
+      },
+    ])
+
+    const contact = await getMyContactService(ORG_ID)
+
+    expect(contact).toEqual({
+      ...NEW_CONTACT,
+      landCount: 2,
+      divergent: false,
+      groups: [],
+    })
+    expect(contact).not.toHaveProperty('landAddressLine')
+    expect(contact).not.toHaveProperty('companyName')
   })
 
   it('[ORGANIZATION MEMBER] un groupe ne nomme pas les fiches qui portent le nom du compte (2b)', async () => {

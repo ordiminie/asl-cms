@@ -7,6 +7,7 @@ import {
   CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   getAccentHue,
   getContactMessagesPerHourLimit,
+  getDefaultLandAddress,
   getMemberEmailConfirmationDays,
   MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
   resolveSettings,
@@ -83,5 +84,18 @@ describe('TEST_TENANT_SETTINGS — délai de confirmation d’une adresse (s54, 
       storedValue: '7',
     })
     expect(getMemberEmailConfirmationDays(settings)).toBe(7)
+  })
+})
+
+describe('TEST_TENANT_SETTINGS — terrain par défaut (s55, ADR 058)', () => {
+  it('le premier tenant porte un code postal et une commune fictifs, l’autre aucun', () => {
+    expect(getDefaultLandAddress(settingsOf('techcorp-solutions'))).toEqual({
+      postalCode: expect.stringMatching(/^\d{5}$/),
+      city: expect.any(String),
+    })
+    expect(getDefaultLandAddress(settingsOf('marketing-pro'))).toEqual({
+      postalCode: null,
+      city: null,
+    })
   })
 })

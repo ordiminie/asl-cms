@@ -108,10 +108,10 @@ describe('updateMyMemberProfilesContactDao', () => {
   it('écrit téléphone et adresse de toutes les fiches du compte, jamais l’email', async () => {
     await updateMyMemberProfilesContactDao(ORG_ID, USER_ID, {
       phone: '06 12 34 56 78',
-      addressLine: null,
-      addressComplement: null,
-      postalCode: null,
-      city: null,
+      homeAddressLine: null,
+      homeAddressComplement: null,
+      homePostalCode: null,
+      homeCity: null,
     })
 
     const [{sql, params}] = sent
@@ -121,6 +121,44 @@ describe('updateMyMemberProfilesContactDao', () => {
       '"member_profile"."id" in (select "member_profile_id" from "member_profile_account"'
     )
     expect(params).toEqual(expect.arrayContaining([ORG_ID, USER_ID]))
+  })
+
+  it('n’écrit que le domicile : jamais le terrain ni le nom de l’entreprise, propres à chaque fiche (s55)', async () => {
+    await updateMyMemberProfilesContactDao(ORG_ID, USER_ID, {
+      phone: null,
+      homeAddressLine: '4 chemin des Oliviers',
+      homeAddressComplement: null,
+      homePostalCode: '13100',
+      homeCity: 'Aix-en-Provence',
+      ...({
+        landAddressLine: '3 allée des Mimosas',
+        companyName: 'Épicerie fictive',
+      } as object),
+    })
+
+    const [{sql, params}] = sent
+    const setClause = sql.split(' where ')[0]
+    expect(setClause).toContain('"home_address_line"')
+    expect(setClause).toContain('"home_postal_code"')
+    expect(setClause).toContain('"home_city"')
+    expect(setClause).not.toMatch(/"land_/)
+    expect(setClause).not.toContain('"company_name"')
+    expect(params).not.toContain('3 allée des Mimosas')
+    expect(params).not.toContain('Épicerie fictive')
+  })
+})
+
+describe('countMemberProfilesDao — fiches incomplètes (s55, sur le domicile)', () => {
+  it('compte les fiches courrier sans domicile, terrain ignoré', async () => {
+    responses.current = [[[3, 1]]]
+
+    await countMemberProfilesDao(ORG_ID)
+
+    const [{sql}] = sent
+    expect(sql).toContain('"home_address_line" is null')
+    expect(sql).toContain('"home_postal_code" is null')
+    expect(sql).toContain('"home_city" is null')
+    expect(sql).not.toMatch(/"land_/)
   })
 })
 

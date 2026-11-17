@@ -26,6 +26,7 @@ import {
   getCampaignDailySendCap,
   getCampaignSendMaxAttempts,
   getContactMessagesPerHourLimit,
+  getDefaultLandAddress,
   getEmailDailySendLimit,
   getEmailLoginReserve,
   getGoogleVerificationCode,
@@ -36,6 +37,8 @@ import {
   hasSettingReferenceCycle,
   isSuperAdminOnlySetting,
   MAGIC_LINK_REQUESTS_PER_DAY_SETTING_KEY,
+  MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
+  MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
   MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
   parseSettingValue,
   resolveSettings,
@@ -155,7 +158,113 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      {
+        key: MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  describe('terrain par défaut d’une fiche importée (s55, ADR 058)', () => {
+    const postalCode = () =>
+      definitionOf(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY
+      )
+    const city = () =>
+      definitionOf(
+        ASSOCIATION_SETTINGS_REGISTRY,
+        MEMBER_DEFAULT_LAND_CITY_SETTING_KEY
+      )
+
+    it('porte deux clés facultatives, sans défaut, modifiables par le bureau', () => {
+      expect(MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY).toBe(
+        'member.default_land_postal_code'
+      )
+      expect(MEMBER_DEFAULT_LAND_CITY_SETTING_KEY).toBe(
+        'member.default_land_city'
+      )
+      for (const definition of [postalCode(), city()]) {
+        expect(definition.required).toBe(false)
+        expect(definition.default).toBeUndefined()
+        expect(isSuperAdminOnlySetting(definition)).toBe(false)
+      }
+      const resolved = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+      expect(getDefaultLandAddress(resolved)).toEqual({
+        postalCode: null,
+        city: null,
+      })
+    })
+
+    it('accepte une valeur vide : le réglage revient à « non renseigné »', () => {
+      expect(
+        validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, {
+          [MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY]: '',
+          [MEMBER_DEFAULT_LAND_CITY_SETTING_KEY]: '  ',
+        })
+      ).toEqual({
+        valid: true,
+        upserts: [],
+        deletions: [
+          MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
+          MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
+        ],
+      })
+    })
+
+    it('refuse un code postal qui ne compte pas cinq chiffres, avec un message propre', () => {
+      expect(parseSettingValue(postalCode(), '4060')).toEqual({
+        valid: false,
+        error: {code: 'invalidCode'},
+      })
+      expect(parseSettingValue(postalCode(), '40 600')).toMatchObject({
+        valid: false,
+      })
+      expect(parseSettingValue(postalCode(), ' 40600 ')).toEqual({
+        valid: true,
+        value: '40600',
+        normalized: '40600',
+      })
+      const key = postalCode().errorMessageKeys?.invalidCode
+      expect(key).toEqual(expect.any(String))
+      const [, field, , code] = (key ?? '').split('.')
+      const fields = fr.AssociationSettings.fields as Record<
+        string,
+        {errors?: Record<string, string>}
+      >
+      expect(fields[field]?.errors?.[code]).toMatch(/cinq chiffres/)
+    })
+
+    it('lit les valeurs du bureau', () => {
+      const resolved = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+        {key: MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY, value: '40600'},
+        {key: MEMBER_DEFAULT_LAND_CITY_SETTING_KEY, value: 'Biscarrosse'},
+      ])
+      expect(getDefaultLandAddress(resolved)).toEqual({
+        postalCode: '40600',
+        city: 'Biscarrosse',
+      })
+    })
+
+    it('ont leurs libellés et leurs aides en français', () => {
+      const fields = fr.AssociationSettings.fields as Record<
+        string,
+        {label: string; help: string}
+      >
+      for (const definition of [postalCode(), city()]) {
+        const [, field] = definition.labelKey.split('.')
+        expect(fields[field]?.label, definition.key).toEqual(expect.any(String))
+        expect(fields[field]?.help.length, definition.key).toBeGreaterThan(20)
+      }
+    })
   })
 
   it('le délai de confirmation d’une adresse ajoutée par le membre est un entier de jours, 7 par défaut, carte « Envois » (s54)', () => {
@@ -474,6 +583,8 @@ describe('registre de production', () => {
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
       MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
+      MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
+      MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(

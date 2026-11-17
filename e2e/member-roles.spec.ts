@@ -376,9 +376,11 @@ const createProfile = async (
   ).toBeVisible({timeout: 15_000})
   await page.getByLabel('Nom', {exact: true}).fill(input.name)
   if (input.email) await page.getByLabel(/^Adresse email/).fill(input.email)
-  await page.getByLabel('Adresse', {exact: true}).fill('3 rue du Lavoir')
-  await page.getByLabel('Code postal').fill('33680')
-  await page.getByLabel('Commune').fill('Lacanau')
+  // Le domicile, dans son groupe : le terrain porte les memes libelles (s55).
+  const home = page.getByRole('group', {name: /Adresse de domicile/})
+  await home.getByLabel('Adresse', {exact: true}).fill('3 rue du Lavoir')
+  await home.getByLabel('Code postal').fill('33680')
+  await home.getByLabel('Commune').fill('Lacanau')
   await page.getByRole('button', {name: 'Enregistrer le propriétaire'}).click()
   await expect(
     page.getByRole('heading', {level: 1, name: input.name})

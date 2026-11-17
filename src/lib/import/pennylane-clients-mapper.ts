@@ -18,6 +18,12 @@ import {CsvRecord, CsvTable, normalizeHeader} from './csv-reader'
  * La table de correspondance des colonnes vit ici, pas dans le service : s17
  * reutilisera le lecteur avec son propre mappage. Les colonnes bancaires ne
  * sont jamais lues.
+ *
+ * Domicile et terrain (s55, ADR 058, arbitrage du 17/11/2026) : l'`Adresse`
+ * est le domicile, sauf quand l'`Adresse de Livraison` est renseignee — la
+ * livraison devient le domicile et l'`Adresse` le terrain. Le terrain par
+ * defaut d'une fiche sans terrain est un parametre, applique par le service :
+ * aucun parametre n'est lu ici.
  */
 
 /** Titres des colonnes de l'export, tels que Pennylane les ecrit. */
@@ -31,6 +37,11 @@ const PENNYLANE_COLUMNS = {
   city: {title: 'Ville', required: true},
   country: {title: 'Pays', required: false},
   phone: {title: 'Téléphone', required: false},
+  deliveryAddressLine: {title: 'Adresse de Livraison', required: false},
+  deliveryPostalCode: {title: 'Code Postal de Livraison', required: false},
+  deliveryCity: {title: 'Ville de Livraison', required: false},
+  deliveryCountry: {title: 'Pays de Livraison', required: false},
+  clientType: {title: 'Type de Client', required: false},
 } as const
 
 type ColumnKey = keyof typeof PENNYLANE_COLUMNS
@@ -41,6 +52,8 @@ const REFERENCE_SEPARATOR = ' - '
 const EMAIL_SEPARATOR = /[,;\s]+/
 const FRANCE = 'FR'
 const FOUR_DIGITS = /^\d{4}$/
+/** Valeur de `Type de Client` qui designe une entreprise (recherche s55). */
+const COMPANY_CLIENT_TYPE = 'entreprise'
 
 export type PennylaneMappingResult =
   | {ok: true; plan: ImportPlan}
@@ -129,6 +142,65 @@ const padPostalCode = (
     ? {postalCode: `0${postalCode}`, padded: true}
     : {postalCode, padded: false}
 
+/** Une adresse postale lue dans le fichier, code postal complete. */
+type FileAddress = {
+  addressLine: string
+  postalCode: string
+  city: string
+  padded: boolean
+}
+
+const fileAddressOf = (
+  cell: (key: ColumnKey) => string,
+  columns: {
+    addressLine: ColumnKey
+    postalCode: ColumnKey
+    city: ColumnKey
+    country: ColumnKey
+  }
+): FileAddress => {
+  const {postalCode, padded} = padPostalCode(
+    cell(columns.postalCode),
+    cell(columns.country)
+  )
+  return {
+    addressLine: cell(columns.addressLine),
+    postalCode,
+    city: cell(columns.city),
+    padded,
+  }
+}
+
+const MAIN_ADDRESS_COLUMNS = {
+  addressLine: 'addressLine',
+  postalCode: 'postalCode',
+  city: 'city',
+  country: 'country',
+} as const
+
+const DELIVERY_ADDRESS_COLUMNS = {
+  addressLine: 'deliveryAddressLine',
+  postalCode: 'deliveryPostalCode',
+  city: 'deliveryCity',
+  country: 'deliveryCountry',
+} as const
+
+/**
+ * Domicile et terrain d'une ligne (arbitrage du 17/11/2026) : une livraison
+ * renseignee est le domicile, l'adresse principale le terrain ; sinon
+ * l'adresse principale est le domicile, sans terrain.
+ */
+const homeAndLandOf = (
+  cell: (key: ColumnKey) => string
+): {home: FileAddress; land: FileAddress | undefined} => {
+  const main = fileAddressOf(cell, MAIN_ADDRESS_COLUMNS)
+  if (!cell('deliveryAddressLine')) return {home: main, land: undefined}
+  return {home: fileAddressOf(cell, DELIVERY_ADDRESS_COLUMNS), land: main}
+}
+
+const isCompany = (cell: (key: ColumnKey) => string): boolean =>
+  cell('clientType').toLowerCase() === COMPANY_CLIENT_TYPE
+
 const rejectionOf = (
   cell: (key: ColumnKey) => string,
   record: CsvRecord
@@ -136,7 +208,7 @@ const rejectionOf = (
   if (!record.wellFormed) return ImportRejectionConst.MALFORMED_LINE
   if (!cell('customerId')) return ImportRejectionConst.MISSING_CUSTOMER_ID
   if (!cell('name')) return ImportRejectionConst.MISSING_NAME
-  if (!cell('addressLine') && !cell('emails')) {
+  if (!homeAndLandOf(cell).home.addressLine && !cell('emails')) {
     return ImportRejectionConst.NO_CONTACT
   }
   if (!cell('reference')) return ImportRejectionConst.MISSING_REFERENCE
@@ -152,10 +224,8 @@ const parseLine = (record: CsvRecord, indexes: ColumnIndexes): LineOutcome => {
   }
 
   const {email, others} = cellEmails(cell('emails'))
-  const {postalCode, padded} = padPostalCode(
-    cell('postalCode'),
-    cell('country')
-  )
+  const {home, land} = homeAndLandOf(cell)
+  const padded = home.padded || (land?.padded ?? false)
   const parcel = splitReference(record.line, cell('reference'))
   const remark = (code: ImportRemarkDTO['remark']): ImportRemarkDTO => ({
     line: record.line,
@@ -173,9 +243,13 @@ const parseLine = (record: CsvRecord, indexes: ColumnIndexes): LineOutcome => {
         ...present('email', email),
         ...(others.length > 0 ? {additionalEmails: others} : {}),
         ...present('phone', cell('phone')),
-        ...present('addressLine', cell('addressLine')),
-        ...present('postalCode', postalCode),
-        ...present('city', cell('city')),
+        ...present('homeAddressLine', home.addressLine),
+        ...present('homePostalCode', home.postalCode),
+        ...present('homeCity', home.city),
+        ...present('landAddressLine', land?.addressLine ?? ''),
+        ...present('landPostalCode', land?.postalCode ?? ''),
+        ...present('landCity', land?.city ?? ''),
+        ...present('companyName', isCompany(cell) ? client : ''),
       },
       parcel,
       remarks: [
@@ -213,20 +287,21 @@ const groupByCustomer = (lines: ParsedLine[]): ImportMemberCandidate[] => {
 const nameAndAddressKey = (line: ParsedLine): string =>
   [
     line.member.name,
-    line.member.addressLine ?? '',
-    line.member.postalCode ?? '',
+    line.member.homeAddressLine ?? '',
+    line.member.homePostalCode ?? '',
   ]
     .map((part) => part.toLowerCase().replace(/\s+/g, ' ').trim())
     .join('|')
 
 /**
- * Deux identifiants differents, meme nom et meme adresse : deux membres, et une
- * remarque. Jamais de fusion d'office (story, ADR 048).
+ * Deux identifiants differents, meme nom et meme domicile : deux membres, et
+ * une remarque. Jamais de fusion d'office (story, ADR 048). Le domicile, pas
+ * le terrain (s55) : s28 s'appuie sur la meme comparaison.
  */
 const sameNameAndAddressRemarks = (lines: ParsedLine[]): ImportRemarkDTO[] => {
   const firstSeen = new Map<string, ParsedLine>()
   return lines.flatMap((line) => {
-    if (!line.member.addressLine) return []
+    if (!line.member.homeAddressLine) return []
     const key = nameAndAddressKey(line)
     const earlier = firstSeen.get(key)
     if (!earlier) {

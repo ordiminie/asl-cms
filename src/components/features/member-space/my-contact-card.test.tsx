@@ -8,10 +8,10 @@ import {MyContactCard} from './my-contact-card'
 
 const FULL: MyContactDTO = {
   phone: '06 12 34 56 78',
-  addressLine: '4 chemin des Oliviers',
-  addressComplement: 'Bâtiment B',
-  postalCode: '13100',
-  city: 'Aix-en-Provence',
+  homeAddressLine: '4 chemin des Oliviers',
+  homeAddressComplement: 'Bâtiment B',
+  homePostalCode: '13100',
+  homeCity: 'Aix-en-Provence',
   landCount: 1,
   divergent: false,
   groups: [],
@@ -19,10 +19,10 @@ const FULL: MyContactDTO = {
 
 const EMPTY: MyContactDTO = {
   phone: null,
-  addressLine: null,
-  addressComplement: null,
-  postalCode: null,
-  city: null,
+  homeAddressLine: null,
+  homeAddressComplement: null,
+  homePostalCode: null,
+  homeCity: null,
   landCount: 1,
   divergent: false,
   groups: [],
@@ -72,6 +72,21 @@ describe('MyContactCard — lecture (C1, C2)', () => {
     expect(screen.getByText('13100 Aix-en-Provence')).toBeInTheDocument()
   })
 
+  it('nomme l’adresse « Adresse de domicile » et dit que le courrier y part (s55)', () => {
+    render(<MyContactCard contact={FULL} action={action} />)
+
+    expect(
+      screen.getByText(
+        'L’association vous écrit par courrier à votre adresse de domicile.'
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Adresse de domicile').nextElementSibling
+    ).toHaveTextContent('4 chemin des Oliviers')
+    expect(screen.queryByText('Adresse postale')).not.toBeInTheDocument()
+    expect(screen.queryByText('Adresse du terrain')).not.toBeInTheDocument()
+  })
+
   it('C2 : « Non renseigné » / « Non renseignée » quand rien n’est saisi', () => {
     render(<MyContactCard contact={EMPTY} action={action} />)
 
@@ -99,6 +114,23 @@ describe('MyContactCard — modification (C3)', () => {
 
     expect(screen.getByLabelText(/Téléphone/)).toHaveValue('06 12 34 56 78')
     expect(screen.queryByLabelText(/Adresse email/)).not.toBeInTheDocument()
+  })
+
+  it('groupe le domicile sous « Adresse de domicile » ; ni terrain ni nom d’entreprise (s55, critère 5)', async () => {
+    const user = userEvent.setup()
+    render(<MyContactCard contact={FULL} action={action} />)
+
+    await openEditing(user)
+
+    expect(
+      screen.getByRole('group', {name: /Adresse de domicile/})
+    ).toContainElement(screen.getByLabelText(/Code postal/))
+    expect(
+      screen.queryByRole('group', {name: /Adresse du terrain/})
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText(/Nom de l’entreprise/)
+    ).not.toBeInTheDocument()
   })
 
   it('pose l’autocomplete sur les cinq champs', async () => {
@@ -167,7 +199,7 @@ describe('MyContactCard — erreurs de saisie (C4)', () => {
     )
     expect(screen.getByRole('link', {name: 'Code postal'})).toBeInTheDocument()
     expect(
-      screen.getByText('Un code postal compte 5 chiffres.')
+      screen.getByText('Domicile : le code postal compte cinq chiffres.')
     ).toBeInTheDocument()
     expect(screen.getByLabelText(/Code postal/)).toHaveAttribute(
       'aria-invalid',
@@ -181,7 +213,9 @@ describe('MyContactCard — erreurs de saisie (C4)', () => {
     const user = userEvent.setup()
     action.mockResolvedValue({
       status: 'invalid',
-      errors: [{field: 'city', message: 'Ce nom de commune est trop long.'}],
+      errors: [
+        {field: 'homeCity', message: 'Ce nom de commune est trop long.'},
+      ],
     })
     render(<MyContactCard contact={FULL} action={action} />)
 
@@ -211,11 +245,11 @@ describe('MyContactCard — envoi', () => {
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
     const formData = action.mock.calls[0][1]
     expect([...formData.keys()].sort()).toEqual([
-      'addressComplement',
-      'addressLine',
-      'city',
+      'homeAddressComplement',
+      'homeAddressLine',
+      'homeCity',
+      'homePostalCode',
       'phone',
-      'postalCode',
     ])
     expect(formData.get('phone')).toBe('06 12 34 56 78')
   })
@@ -227,7 +261,7 @@ describe('MyContactCard — envoi', () => {
       contact: {
         ...FULL,
         phone: '07 45 12 89 30',
-        addressComplement: 'Bâtiment C',
+        homeAddressComplement: 'Bâtiment C',
       },
     })
     render(<MyContactCard contact={FULL} action={action} />)
@@ -321,19 +355,19 @@ describe('MyContactCard — un compte à plusieurs terrains (s53, écran 2)', ()
               parcelNumbers: ['12', '27'],
               names: [],
               phone: FULL.phone,
-              addressLine: FULL.addressLine,
-              addressComplement: null,
-              postalCode: FULL.postalCode,
-              city: FULL.city,
+              homeAddressLine: FULL.homeAddressLine,
+              homeAddressComplement: null,
+              homePostalCode: FULL.homePostalCode,
+              homeCity: FULL.homeCity,
             },
             {
               parcelNumbers: ['31'],
               names: ['SCI Les Pins'],
               phone: null,
-              addressLine: '1 allée des Pins',
-              addressComplement: null,
-              postalCode: '13100',
-              city: 'Aix-en-Provence',
+              homeAddressLine: '1 allée des Pins',
+              homeAddressComplement: null,
+              homePostalCode: '13100',
+              homeCity: 'Aix-en-Provence',
             },
           ],
         }}

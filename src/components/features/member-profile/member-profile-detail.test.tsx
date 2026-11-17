@@ -19,10 +19,15 @@ const profile = (
   name: 'Hélène Roy',
   email: null,
   phone: null,
-  addressLine: '8 chemin des Pins',
-  addressComplement: null,
-  postalCode: '33680',
-  city: 'Lacanau',
+  homeAddressLine: '8 chemin des Pins',
+  homeAddressComplement: null,
+  homePostalCode: '33680',
+  homeCity: 'Lacanau',
+  landAddressLine: null,
+  landAddressComplement: null,
+  landPostalCode: null,
+  landCity: null,
+  companyName: null,
   mailOnly: true,
   incomplete: false,
   emails: [],
@@ -229,12 +234,12 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
     )
   })
 
-  it('accorde « Non renseignée » et « Non renseigné » aux libellés', () => {
+  it('accorde « Non renseignée », « Non renseigné » et « Aucun » aux libellés', () => {
     renderDetail({
       profile: profile({
-        addressLine: null,
-        postalCode: null,
-        city: null,
+        homeAddressLine: null,
+        homePostalCode: null,
+        homeCity: null,
         incomplete: true,
       }),
     })
@@ -245,15 +250,54 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
 
     expect(within(contact).queryByText('Adresse email')).toBeNull()
     expect(valueOf('Téléphone')).toHaveTextContent(/^Non renseigné$/)
-    expect(valueOf('Adresse postale')).toHaveTextContent(/^Non renseignée$/)
+    expect(valueOf('Adresse de domicile')).toHaveTextContent(/^Non renseignée$/)
+    expect(valueOf('Adresse du terrain')).toHaveTextContent(/^Non renseignée$/)
+    expect(valueOf('Nom de l’entreprise')).toHaveTextContent(/^Aucun$/)
   })
 
-  it('signale la fiche incomplète en tête, et mène à la saisie de l’adresse (état 3d)', async () => {
+  it('montre domicile, terrain et nom de l’entreprise dans l’ordre du design, avec leurs mentions (s55)', () => {
     renderDetail({
       profile: profile({
-        addressLine: null,
-        postalCode: null,
-        city: null,
+        homeAddressComplement: 'Bâtiment B',
+        landAddressLine: '3 rue du Lavoir',
+        landPostalCode: '40600',
+        landCity: 'Biscarrosse',
+        companyName: 'Épicerie du Clos',
+      }),
+    })
+
+    const contact = screen.getByRole('region', {name: 'Coordonnées'})
+    const terms = within(contact)
+      .getAllByRole('term')
+      .map((term) => term.textContent)
+    expect(terms).toEqual([
+      'Téléphone',
+      'Adresse de domicile',
+      'Adresse du terrain',
+      'Nom de l’entreprise',
+    ])
+    const valueOf = (label: string) =>
+      within(contact).getByText(label).nextElementSibling
+
+    expect(valueOf('Adresse de domicile')).toHaveTextContent(
+      '8 chemin des PinsBâtiment B33680 LacanauAdresse postale : le courrier de l’association part ici.'
+    )
+    expect(valueOf('Adresse du terrain')).toHaveTextContent(
+      /^3 rue du Lavoir40600 Biscarrosse$/
+    )
+    expect(valueOf('Nom de l’entreprise')).toHaveTextContent(
+      'Épicerie du ClosImprimé dans le bloc adresse du courrier. Ne change ni le rôle, ni les factures, ni le droit de vote.'
+    )
+  })
+
+  it('signale la fiche incomplète en tête, et mène à la saisie du domicile (état 3d, s55)', async () => {
+    renderDetail({
+      profile: profile({
+        homeAddressLine: null,
+        homePostalCode: null,
+        homeCity: null,
+        landAddressLine: '3 rue du Lavoir',
+        landCity: 'Biscarrosse',
         incomplete: true,
       }),
     })
@@ -261,22 +305,23 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
     expect(screen.getByText('Fiche incomplète')).toBeInTheDocument()
     expect(
       screen.getByText(
-        /Cette fiche n’a ni adresse email ni adresse postale : aucun envoi ne peut atteindre ce propriétaire\./
+        /Cette fiche n’a ni adresse email ni adresse de domicile : aucun envoi ne peut atteindre ce propriétaire\./
       )
     ).toBeInTheDocument()
 
     await userEvent.click(
-      screen.getByRole('button', {name: 'Ajouter une adresse postale'})
+      screen.getByRole('button', {name: 'Ajouter l’adresse de domicile'})
     )
 
-    expect(screen.getByLabelText('Adresse')).toHaveFocus()
+    const home = screen.getByRole('group', {name: /Adresse de domicile/})
+    expect(within(home).getByLabelText('Adresse')).toHaveFocus()
   })
 
   it('n’affiche pas l’alerte d’une fiche complète', () => {
     renderDetail()
 
     expect(
-      screen.queryByRole('button', {name: 'Ajouter une adresse postale'})
+      screen.queryByRole('button', {name: 'Ajouter l’adresse de domicile'})
     ).not.toBeInTheDocument()
   })
 
@@ -286,9 +331,23 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
     await userEvent.click(
       screen.getByRole('button', {name: 'Modifier les coordonnées'})
     )
-    expect(screen.getByLabelText('Adresse')).toHaveValue('8 chemin des Pins')
+    const home = screen.getByRole('group', {name: /Adresse de domicile/})
+    const land = screen.getByRole('group', {name: /Adresse du terrain/})
+    expect(within(home).getByLabelText('Adresse')).toHaveValue(
+      '8 chemin des Pins'
+    )
 
     await userEvent.type(screen.getByLabelText(/Téléphone/), '06 12 34 56 78')
+    await userEvent.type(
+      within(land).getByLabelText('Adresse'),
+      '3 rue du Lavoir'
+    )
+    await userEvent.type(within(land).getByLabelText('Code postal'), '40600')
+    await userEvent.type(within(land).getByLabelText('Commune'), 'Biscarrosse')
+    await userEvent.type(
+      screen.getByLabelText(/Nom de l’entreprise/),
+      'Épicerie du Clos'
+    )
     await userEvent.click(
       screen.getByRole('button', {name: 'Enregistrer les coordonnées'})
     )
@@ -296,16 +355,44 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
     expect(sentFields(actions.updateContactAction)).toEqual({
       memberProfileId: PROFILE_ID,
       phone: '06 12 34 56 78',
-      addressLine: '8 chemin des Pins',
-      addressComplement: '',
-      postalCode: '33680',
-      city: 'Lacanau',
+      homeAddressLine: '8 chemin des Pins',
+      homeAddressComplement: '',
+      homePostalCode: '33680',
+      homeCity: 'Lacanau',
+      landAddressLine: '3 rue du Lavoir',
+      landAddressComplement: '',
+      landPostalCode: '40600',
+      landCity: 'Biscarrosse',
+      companyName: 'Épicerie du Clos',
     })
     expect(
       await screen.findByText('Coordonnées enregistrées.')
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {name: 'Modifier les coordonnées'})
+    ).toBeInTheDocument()
+  })
+
+  it('refuse un code postal du terrain invalide, et le message nomme le groupe (état 1e, s55)', async () => {
+    renderDetail()
+
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Modifier les coordonnées'})
+    )
+    const land = screen.getByRole('group', {name: /Adresse du terrain/})
+    await userEvent.type(within(land).getByLabelText('Code postal'), '4060')
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Enregistrer les coordonnées'})
+    )
+
+    expect(actions.updateContactAction).not.toHaveBeenCalled()
+    expect(
+      within(land).getByText('Terrain : le code postal compte cinq chiffres.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', {
+        name: 'Terrain : le code postal compte cinq chiffres.',
+      })
     ).toBeInTheDocument()
   })
 
@@ -318,7 +405,7 @@ describe('MemberProfileDetail — écran 3 du design s12', () => {
     await userEvent.click(screen.getByRole('button', {name: 'Annuler'}))
 
     expect(actions.updateContactAction).not.toHaveBeenCalled()
-    expect(screen.queryByLabelText('Adresse')).not.toBeInTheDocument()
+    expect(screen.queryAllByLabelText('Adresse')).toHaveLength(0)
   })
 
   it('dit « Propriétaire enregistré. » à l’arrivée depuis la création', () => {

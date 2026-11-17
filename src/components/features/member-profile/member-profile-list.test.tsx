@@ -16,10 +16,15 @@ const item = (
   name: 'Claire Meunier',
   email: 'claire.meunier@example.fr',
   phone: null,
-  addressLine: '14 allée des Aulnes',
-  addressComplement: null,
-  postalCode: '33680',
-  city: 'Lacanau',
+  homeAddressLine: '14 allée des Aulnes',
+  homeAddressComplement: null,
+  homePostalCode: '33680',
+  homeCity: 'Lacanau',
+  landAddressLine: null,
+  landAddressComplement: null,
+  landPostalCode: null,
+  landCity: null,
+  companyName: null,
   mailOnly: false,
   incomplete: false,
   currentParcelNumbers: ['12', '13'],
@@ -37,9 +42,9 @@ const incomplete = (
   overrides: Partial<MemberProfileListItemDTO> = {}
 ): MemberProfileListItemDTO =>
   mailOnly({
-    addressLine: null,
-    postalCode: null,
-    city: null,
+    homeAddressLine: null,
+    homePostalCode: null,
+    homeCity: null,
     incomplete: true,
     ...overrides,
   })
@@ -158,9 +163,9 @@ describe('MemberProfileList — écran 1 du design s12', () => {
           item(),
           mailOnly({
             id: 'b',
-            addressLine: '8 chemin des Pins',
-            postalCode: '33680',
-            city: 'Lacanau',
+            homeAddressLine: '8 chemin des Pins',
+            homePostalCode: '33680',
+            homeCity: 'Lacanau',
           }),
           incomplete({id: 'c'}),
         ])}

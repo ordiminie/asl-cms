@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s55 — Adresses typées et nom d'entreprise (maquette de référence)</title>
+<style>
+  /* Tokens copiés de docs/design-system.md §1.1 — clair seul (ADR 033). Rien d'autre. */
+  :root {
+    --radius: 0.5rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.22 0.015 250);
+    --card: oklch(1 0 0);
+    --muted: oklch(0.972 0.005 240);
+    --muted-foreground: oklch(0.45 0.02 245);
+    --border: oklch(0.9 0.008 245);
+    --input: oklch(0.66 0.014 245);
+    --ring: oklch(0.55 0.11 235);
+    --primary: oklch(0.35 0.06 240);
+    --primary-foreground: oklch(0.985 0.003 240);
+    --secondary: oklch(0.965 0.006 240);
+    --secondary-foreground: oklch(0.3 0.02 245);
+    --destructive: oklch(0.48 0.17 27);
+    --link: oklch(0.45 0.13 250);
+    --warning: oklch(0.94 0.06 75);
+    --warning-border: oklch(0.72 0.12 70);
+    --warning-foreground: oklch(0.3 0.08 60);
+    --accent-hue: 195;
+    --accent-solid: oklch(0.55 0.1 var(--accent-hue));
+    --sidebar: oklch(0.985 0.004 250);
+    --sidebar-accent: oklch(0.93 0.012 245);
+    --sidebar-border: oklch(0.91 0.008 245);
+    --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--muted); color: var(--foreground); font-family: var(--font-sans); font-size: 17px; line-height: 1.6; }
+  a { color: var(--link); text-decoration: underline; text-underline-offset: 4px; }
+  .doc { max-width: 1232px; margin: 0 auto; padding: 32px 16px 64px; }
+  .doc > header h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0 0 8px; }
+  .doc > header p { margin: 0 0 8px; max-width: 68ch; }
+  .state { margin-top: 48px; }
+  .state-label { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 4px; }
+  .state h2.state-title { font-family: var(--font-serif); font-size: 26px; line-height: 1.2; font-weight: 600; margin: 0 0 8px; }
+  .state .note { font-size: 15px; color: var(--muted-foreground); max-width: 68ch; margin: 0 0 16px; }
+  .frames { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .frame { container-type: inline-size; background: var(--background); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .frame.desktop { flex: 1 1 760px; max-width: 1000px; min-width: 0; }
+  .frame.mobile { flex: 0 1 390px; width: 390px; max-width: 100%; }
+  .frame-cap { font-size: 15px; color: var(--muted-foreground); padding: 4px 16px; border-bottom: 1px solid var(--border); background: var(--muted); }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 8px; font-size: 16px; font-weight: 600; font-family: var(--font-sans); border: 1px solid transparent; white-space: nowrap; }
+  .btn-default { background: var(--primary); color: var(--primary-foreground); }
+  .btn-outline { background: var(--background); color: var(--foreground); border-color: var(--input); }
+  .btn-ghost { background: transparent; color: var(--foreground); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* Back-office — sidebar 248 px → barre haute sous lg */
+  .bo { display: flex; min-height: 100%; }
+  .bo-side { width: 248px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); padding: 16px; font-size: 16px; }
+  .bo-side .item { padding: 8px 12px; border-radius: 8px; }
+  .bo-side .item.active { background: var(--sidebar-accent); font-weight: 600; }
+  .bo-top { display: none; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .bo-main { flex: 1 1 auto; min-width: 0; padding: 32px; }
+  .bo-col { max-width: 800px; display: flex; flex-direction: column; gap: 24px; }
+  .crumb { font-size: 15px; color: var(--muted-foreground); }
+  .h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0; }
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 24px; background: var(--card); display: flex; flex-direction: column; gap: 24px; }
+  .card-title { font-family: var(--font-serif); font-size: 20px; font-weight: 600; margin: 0; }
+  .meta { font-size: 15px; color: var(--muted-foreground); }
+  .missing { color: var(--muted-foreground); }
+  .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 15px; }
+  .badge-muted { background: var(--secondary); color: var(--secondary-foreground); }
+  .badge-warning { background: var(--warning); border-color: var(--warning-border); color: var(--warning-foreground); }
+
+  dl.pairs { display: grid; grid-template-columns: 12rem 1fr; gap: 12px 24px; margin: 0; }
+  dl.pairs dt { color: var(--muted-foreground); }
+  dl.pairs dd { margin: 0; }
+  dl.pairs dd .meta { display: block; }
+  .data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  .alert { display: flex; flex-direction: column; gap: 12px; border-radius: 8px; padding: 16px; border: 2px solid var(--border); }
+  .alert p { margin: 0; }
+  .alert-warning { background: var(--warning); border-color: var(--warning-border); color: var(--warning-foreground); }
+  .alert-status { border-width: 1px; }
+  .alert-destructive { border-color: var(--destructive); color: var(--destructive); border-width: 1px; }
+
+  fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px; }
+  legend { font-size: 17px; font-weight: 600; padding: 0; margin-bottom: 4px; }
+  .legend-help { font-size: 15px; color: var(--muted-foreground); margin: -12px 0 0; }
+  .field label { display: block; font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+  .field .opt { color: var(--muted-foreground); font-weight: 400; font-size: 15px; }
+  .field .help { font-size: 15px; color: var(--muted-foreground); margin: 4px 0 0; }
+  .input { height: 44px; border: 1px solid var(--input); border-radius: 8px; padding: 0 12px; display: flex; align-items: center; font-size: 17px; width: 100%; background: var(--background); }
+  .input.empty { color: var(--muted-foreground); }
+  .input.err { border: 2px solid var(--destructive); }
+  .input.focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .field-error { color: var(--destructive); font-size: 16px; font-weight: 500; margin: 4px 0 0; }
+  .row-cp { display: grid; grid-template-columns: 10rem 1fr; gap: 16px; }
+  .sep { border: 0; border-top: 1px solid var(--border); margin: 0; }
+
+  /* Espace membre */
+  .ms-head { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+  .mono-square { width: 44px; height: 44px; border-radius: 8px; background: var(--accent-solid); color: var(--primary-foreground); font-family: var(--font-serif); font-weight: 600; display: grid; place-items: center; flex-shrink: 0; }
+  .ms-body { max-width: 1000px; margin: 0 auto; padding: 32px 24px; display: flex; flex-direction: column; gap: 24px; }
+
+  @container (max-width: 1023px) {
+    .bo-side { display: none; }
+    .bo-top { display: flex; }
+  }
+  @container (max-width: 640px) {
+    .bo-main { padding: 24px 16px; }
+    .card { padding: 24px 16px; }
+    dl.pairs { grid-template-columns: 1fr; gap: 4px; }
+    dl.pairs dd { margin-bottom: 12px; }
+    .row-cp { grid-template-columns: 1fr; }
+    .input { height: 56px; }
+    .btn { height: 56px; width: 100%; }
+    .actions { flex-direction: column; }
+    .ms-body { padding: 24px 16px; }
+    .ms-head { padding: 12px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+  <header>
+    <p class="state-label">Maquette de référence — ne pas copier en production</p>
+    <h1>s55 — Adresse de domicile, adresse du terrain, nom de l'entreprise</h1>
+    <p>Données fictives : association « Clos-Fleuri » (CF). Fiche « Jean Dubois » (parcelle 21) ; fiche
+      « Épicerie du Clos » (parcelle 4), une entreprise. Chaque planche est rendue en version ordinateur et en
+      version mobile (390 px).</p>
+  </header>
+  <main id="states"></main>
+</div>
+
+<!-- Coquilles -->
+<template id="shell-bo">
+  <div class="bo">
+    <nav class="bo-side" aria-label="Back-office">
+      <div class="item">Tableau de bord</div>
+      <div class="item active">Propriétaires</div>
+      <div class="item">Campagnes</div>
+    </nav>
+    <div style="flex:1;min-width:0">
+      <div class="bo-top"><strong>Clos-Fleuri</strong><span class="btn btn-ghost">Menu</span></div>
+      <div class="bo-main"><div class="bo-col slot"></div></div>
+    </div>
+  </div>
+</template>
+<template id="shell-ms">
+  <div class="ms-head"><span class="mono-square">CF</span><strong>Clos-Fleuri</strong></div>
+  <div class="ms-body slot"></div>
+</template>
+
+<!-- Fragments -->
+<template id="view-jean">
+  <p class="crumb">Propriétaires › Jean Dubois</p>
+  <h1 class="h1">Jean Dubois</h1>
+  <section class="card" aria-labelledby="c1">
+    <h2 class="card-title" id="c1">Coordonnées</h2>
+    <dl class="pairs">
+      <dt>Téléphone</dt><dd>06 12 34 56 78</dd>
+      <dt>Adresse de domicile</dt>
+      <dd>14 rue des Tanneurs<br>Bâtiment B<br><span class="data">31000</span> Toulouse
+        <span class="meta">Adresse postale : le courrier de l'association part ici.</span></dd>
+      <dt>Adresse du terrain</dt>
+      <dd>8 chemin des Pins<br><span class="data">33680</span> Lacanau</dd>
+      <dt>Nom de l'entreprise</dt><dd><span class="missing">Aucun</span></dd>
+    </dl>
+    <div><span class="btn btn-outline">Modifier les coordonnées</span></div>
+  </section>
+</template>
+
+<template id="view-company">
+  <p class="crumb">Propriétaires › Épicerie du Clos</p>
+  <h1 class="h1">Épicerie du Clos</h1>
+  <section class="card" aria-labelledby="c2">
+    <h2 class="card-title" id="c2">Coordonnées</h2>
+    <dl class="pairs">
+      <dt>Téléphone</dt><dd><span class="missing">Non renseigné</span></dd>
+      <dt>Adresse de domicile</dt>
+      <dd>2 place du Marché<br><span class="data">33680</span> Lacanau
+        <span class="meta">Adresse postale : le courrier de l'association part ici.</span></dd>
+      <dt>Adresse du terrain</dt><dd><span class="missing">Non renseignée</span></dd>
+      <dt>Nom de l'entreprise</dt>
+      <dd>Épicerie du Clos SARL
+        <span class="meta">Imprimé dans le bloc adresse du courrier. Ne change ni le rôle, ni les factures, ni le droit de vote.</span></dd>
+    </dl>
+    <div><span class="btn btn-outline">Modifier les coordonnées</span></div>
+  </section>
+</template>
+
+<template id="view-incomplete">
+  <div class="alert alert-warning" role="status">
+    <p><strong>Attention :</strong> cette fiche n'a ni adresse email ni adresse de domicile : aucun envoi ne peut atteindre ce propriétaire.</p>
+    <div><span class="btn btn-outline">Ajouter l'adresse de domicile</span></div>
+  </div>
+  <p class="crumb">Propriétaires › Lucie Martin</p>
+  <h1 class="h1">Lucie Martin</h1>
+  <div class="actions"><span class="badge badge-muted">Courrier uniquement</span><span class="badge badge-warning">Fiche incomplète</span></div>
+  <section class="card" aria-labelledby="c3">
+    <h2 class="card-title" id="c3">Coordonnées</h2>
+    <dl class="pairs">
+      <dt>Téléphone</dt><dd><span class="missing">Non renseigné</span></dd>
+      <dt>Adresse de domicile</dt><dd><span class="missing">Non renseignée</span></dd>
+      <dt>Adresse du terrain</dt>
+      <dd>3 rue du Lavoir<br><span class="data">33680</span> Lacanau
+        <span class="meta">Le terrain seul ne suffit pas : le courrier part au domicile.</span></dd>
+      <dt>Nom de l'entreprise</dt><dd><span class="missing">Aucun</span></dd>
+    </dl>
+    <div><span class="btn btn-outline">Modifier les coordonnées</span></div>
+  </section>
+</template>
+
+<template id="edit-form">
+  <p class="crumb">Propriétaires › Jean Dubois</p>
+  <h1 class="h1">Jean Dubois</h1>
+  <section class="card" aria-labelledby="c4">
+    <h2 class="card-title" id="c4">Coordonnées</h2>
+    <div class="slot-error"></div>
+    <div class="field"><label>Téléphone <span class="opt">(facultatif)</span></label><div class="input" style="max-width:20rem">06 12 34 56 78</div></div>
+    <hr class="sep">
+    <fieldset>
+      <legend>Adresse de domicile <span class="opt meta">(facultatif)</span></legend>
+      <p class="legend-help">L'adresse postale de la fiche : là où le propriétaire reçoit le courrier le reste de l'année.</p>
+      <div class="field"><label>Adresse</label><div class="input">14 rue des Tanneurs</div></div>
+      <div class="field"><label>Complément d'adresse <span class="opt">(facultatif)</span></label><div class="input">Bâtiment B</div></div>
+      <div class="row-cp">
+        <div class="field cp"><label>Code postal</label><div class="input data">31000</div></div>
+        <div class="field"><label>Commune</label><div class="input">Toulouse</div></div>
+      </div>
+    </fieldset>
+    <hr class="sep">
+    <fieldset>
+      <legend>Adresse du terrain <span class="opt meta">(facultatif)</span></legend>
+      <p class="legend-help">L'adresse du terrain de vacances dans l'association.</p>
+      <div class="field"><label>Adresse</label><div class="input">8 chemin des Pins</div></div>
+      <div class="field"><label>Complément d'adresse <span class="opt">(facultatif)</span></label><div class="input empty">&nbsp;</div></div>
+      <div class="row-cp">
+        <div class="field cp-land"><label>Code postal</label><div class="input data">33680</div></div>
+        <div class="field"><label>Commune</label><div class="input">Lacanau</div></div>
+      </div>
+    </fieldset>
+    <hr class="sep">
+    <div class="field"><label>Nom de l'entreprise <span class="opt">(facultatif)</span></label><div class="input empty">&nbsp;</div>
+      <p class="help">Pour une entreprise établie sur le terrain (restaurant, supérette). Imprimé dans le bloc adresse du courrier ; ne change rien d'autre.</p></div>
+    <div class="actions"><span class="btn btn-default">Enregistrer</span><span class="btn btn-ghost">Annuler</span></div>
+  </section>
+</template>
+
+<template id="ms-view">
+  <h1 class="h1">Bonjour Jean</h1>
+  <section class="card" aria-labelledby="m1">
+    <div>
+      <h2 class="card-title" id="m1">Mes coordonnées</h2>
+      <p class="meta" style="margin:0">L'association vous écrit par courrier à votre adresse de domicile.</p>
+    </div>
+    <div class="slot-notice"></div>
+    <dl class="pairs">
+      <dt>Téléphone</dt><dd>06 12 34 56 78</dd>
+      <dt>Adresse de domicile</dt><dd>14 rue des Tanneurs<br>Bâtiment B<br><span class="data">31000</span> Toulouse</dd>
+    </dl>
+    <div><span class="btn btn-outline">Corriger mes coordonnées</span></div>
+  </section>
+</template>
+
+<template id="ms-empty">
+  <h1 class="h1">Bonjour Jean</h1>
+  <section class="card" aria-labelledby="m2">
+    <div>
+      <h2 class="card-title" id="m2">Mes coordonnées</h2>
+      <p class="meta" style="margin:0">L'association vous écrit par courrier à votre adresse de domicile.</p>
+    </div>
+    <dl class="pairs">
+      <dt>Téléphone</dt><dd><span class="missing">Non renseigné</span></dd>
+      <dt>Adresse de domicile</dt><dd><span class="missing">Non renseignée</span></dd>
+    </dl>
+    <div><span class="btn btn-outline">Corriger mes coordonnées</span></div>
+  </section>
+</template>
+
+<script>
+  const states = [
+    {id: '1a', title: 'Fiche du bureau — lecture, particulier', shell: 'shell-bo', frag: 'view-jean',
+     note: 'Carte « Coordonnées » de /bureau/proprietaires/{id}. Le domicile précède le terrain et porte la mention « adresse postale ». Le nom d’entreprise vide se lit « Aucun ».'},
+    {id: '1b', title: 'Fiche du bureau — lecture, entreprise', shell: 'shell-bo', frag: 'view-company',
+     note: 'Libellé d’entreprise renseigné : affiché dans la fiche avec sa portée. Aucun badge, aucun autre écran ne change.'},
+    {id: '1c', title: 'Fiche du bureau — vide / incomplète', shell: 'shell-bo', frag: 'view-incomplete',
+     note: 'Ni email ni domicile : bannière et badge existants, texte déplacé sur le domicile. Un terrain seul ne retire pas l’avertissement. Le bouton ouvre le formulaire, focus sur « Adresse » du domicile.'},
+    {id: '1d', title: 'Fiche du bureau — édition', shell: 'shell-bo', frag: 'edit-form',
+     note: 'Deux groupes (fieldset + legend), même composition que le formulaire actuel ; le formulaire de création (/nouveau) reprend les mêmes champs. Pas de chargement distinct : bouton « Enregistrement… » désactivé, comme aujourd’hui.'},
+    {id: '1e', title: 'Fiche du bureau — erreur', shell: 'shell-bo', frag: 'edit-form', error: true,
+     note: 'Code postal du terrain invalide : message sous le champ, récapitulatif en tête, rien n’est écrit. Chaque groupe a son propre code postal : le message nomme le groupe.'},
+    {id: '1f', title: 'Fiche du bureau — succès', shell: 'shell-bo', frag: 'view-jean', success: true,
+     note: 'Retour en lecture, message de statut existant « Coordonnées enregistrées ».'},
+    {id: '2a', title: 'Espace membre — « Mes coordonnées », lecture', shell: 'shell-ms', frag: 'ms-view',
+     note: 'Carte s16 : « Adresse postale » devient « Adresse de domicile ». Le terrain et le nom d’entreprise n’y figurent pas (le membre ne les modifie pas). Le formulaire de correction ne change que de libellés.'},
+    {id: '2b', title: 'Espace membre — vide', shell: 'shell-ms', frag: 'ms-empty', note: 'Aucune coordonnée : états « Non renseigné(e) » existants.'},
+    {id: '2c', title: 'Espace membre — succès', shell: 'shell-ms', frag: 'ms-view', msSuccess: true,
+     note: 'Message existant après correction ; plusieurs terrains : « valent pour vos {n} terrains » inchangé.'},
+  ]
+  const root = document.getElementById('states')
+  const build = (s) => {
+    const shell = document.getElementById(s.shell).content.cloneNode(true)
+    const slot = shell.querySelector('.slot')
+    slot.appendChild(document.getElementById(s.frag).content.cloneNode(true))
+    if (s.error) {
+      slot.querySelector('.slot-error').outerHTML = '<div class="alert alert-destructive" role="alert"><p><strong>Les coordonnées n’ont pas été enregistrées.</strong> Corrigez le champ signalé.</p></div>'
+      const f = slot.querySelector('.cp-land')
+      f.querySelector('.input').className = 'input data err focus'
+      f.querySelector('.input').textContent = '3368'
+      f.insertAdjacentHTML('beforeend', '<p class="field-error">Terrain : le code postal compte cinq chiffres.</p>')
+    } else if (slot.querySelector('.slot-error')) slot.querySelector('.slot-error').remove()
+    if (s.success) slot.insertAdjacentHTML('afterbegin', '<div class="alert alert-status" role="status"><p><strong>Coordonnées enregistrées.</strong></p></div>')
+    const n = slot.querySelector('.slot-notice')
+    if (n) n.outerHTML = s.msSuccess ? '<div class="alert alert-status" role="status"><p><strong>Vos coordonnées sont à jour.</strong></p></div>' : ''
+    return shell
+  }
+  for (const s of states) {
+    const sec = document.createElement('section')
+    sec.className = 'state'
+    sec.innerHTML = `<p class="state-label">État ${s.id}</p><h2 class="state-title">${s.title}</h2><p class="note">${s.note}</p><div class="frames"><div class="frame desktop"><div class="frame-cap">Ordinateur</div></div><div class="frame mobile"><div class="frame-cap">Mobile — 390 px</div></div></div>`
+    sec.querySelector('.desktop').appendChild(build(s))
+    sec.querySelector('.mobile').appendChild(build(s))
+    root.appendChild(sec)
+  }
+</script>
+</body>
+</html>

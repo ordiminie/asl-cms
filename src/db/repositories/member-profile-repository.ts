@@ -45,13 +45,16 @@ import {
  * plusieurs comptes, elle resterait une ligne par compte.
  */
 
-/** `null` quand la coordonnee est absente : jamais une chaine vide. */
-export type MemberProfileContactWrite = {
-  phone: string | null
-  addressLine: string | null
-  addressComplement: string | null
-  postalCode: string | null
-  city: string | null
+/**
+ * `null` quand la coordonnee est absente : jamais une chaine vide. Le bureau
+ * ecrit le domicile, le terrain et le nom de l'entreprise (s55, ADR 058).
+ */
+export type MemberProfileContactWrite = MemberPostalContactWrite & {
+  landAddressLine: string | null
+  landAddressComplement: string | null
+  landPostalCode: string | null
+  landCity: string | null
+  companyName: string | null
 }
 
 export type CreateMemberProfileResult = {
@@ -358,8 +361,9 @@ const countProfilesByAccount = async (
 
 /**
  * Combien de fiches, et combien d'incompletes (decision G) : courrier
- * uniquement (aucune adresse active, ADR 056), sans adresse, sans code postal
- * et sans commune.
+ * uniquement (aucune adresse active, ADR 056), et un domicile sans adresse,
+ * sans code postal et sans commune (s55, ADR 058 : le terrain ne compte pas).
+ * Meme regle que `isIncomplete`, a garder alignee.
  */
 export const countMemberProfilesDao = async (
   organizationId: string
@@ -367,7 +371,7 @@ export const countMemberProfilesDao = async (
   const [row] = await getDb()
     .select({
       total: count(),
-      incomplete: sql<number>`count(*) filter (where ${mailOnlySql()} and ${memberProfile.addressLine} is null and ${memberProfile.postalCode} is null and ${memberProfile.city} is null)::int`,
+      incomplete: sql<number>`count(*) filter (where ${mailOnlySql()} and ${memberProfile.homeAddressLine} is null and ${memberProfile.homePostalCode} is null and ${memberProfile.homeCity} is null)::int`,
     })
     .from(memberProfile)
     .where(eq(memberProfile.organizationId, organizationId))
@@ -499,18 +503,19 @@ export const getMemberProfilesByUserIdDao = async (
 
 /**
  * Coordonnees qu'un membre corrige lui-meme (s16, ADR 040) : pas d'email, par
- * construction. `null` quand la coordonnee est absente.
+ * construction, ni terrain ni nom d'entreprise (s55). `null` quand la
+ * coordonnee est absente.
  */
 export type MemberPostalContactWrite = {
   phone: string | null
-  addressLine: string | null
-  addressComplement: string | null
-  postalCode: string | null
-  city: string | null
+  homeAddressLine: string | null
+  homeAddressComplement: string | null
+  homePostalCode: string | null
+  homeCity: string | null
 }
 
 /**
- * Met a jour le telephone et l'adresse postale de **toutes** les fiches
+ * Met a jour le telephone et le domicile de **toutes** les fiches
  * reliees au compte (s53, arbitrage du 16/11), designees par
  * `(organization_id, user_id)`, jamais par un identifiant venu du navigateur.
  * Rend les fiches ecrites.
@@ -520,15 +525,21 @@ export const updateMyMemberProfilesContactDao = async (
   userId: string,
   contact: MemberPostalContactWrite
 ): Promise<MemberProfileModel[]> => {
-  const {phone, addressLine, addressComplement, postalCode, city} = contact
+  const {
+    phone,
+    homeAddressLine,
+    homeAddressComplement,
+    homePostalCode,
+    homeCity,
+  } = contact
   return getDb()
     .update(memberProfile)
     .set({
       phone,
-      addressLine,
-      addressComplement,
-      postalCode,
-      city,
+      homeAddressLine,
+      homeAddressComplement,
+      homePostalCode,
+      homeCity,
       updatedAt: sql`now()`,
     })
     .where(

@@ -76,10 +76,15 @@ const profile = (
   name: 'Marcel Laurent',
   email: null,
   phone: null,
-  addressLine: null,
-  addressComplement: null,
-  postalCode: null,
-  city: null,
+  homeAddressLine: null,
+  homeAddressComplement: null,
+  homePostalCode: null,
+  homeCity: null,
+  landAddressLine: null,
+  landAddressComplement: null,
+  landPostalCode: null,
+  landCity: null,
+  companyName: null,
   mailOnly: true,
   incomplete: true,
   emails: [],
@@ -97,10 +102,15 @@ const profile = (
 const blankContact = {
   email: '',
   phone: '',
-  addressLine: '',
-  addressComplement: '',
-  postalCode: '',
-  city: '',
+  homeAddressLine: '',
+  homeAddressComplement: '',
+  homePostalCode: '',
+  homeCity: '',
+  landAddressLine: '',
+  landAddressComplement: '',
+  landPostalCode: '',
+  landCity: '',
+  companyName: '',
 }
 
 beforeEach(() => {
@@ -166,7 +176,8 @@ describe('createMemberProfileAction', () => {
         ...blankContact,
         name: '  ',
         email: 'marcel.laurent@example',
-        postalCode: '3368',
+        homePostalCode: '3368',
+        landPostalCode: '4060',
       })
     )
 
@@ -182,8 +193,12 @@ describe('createMemberProfileAction', () => {
           message: 'BureauMemberProfilesPage.validation.emailInvalid',
         },
         {
-          field: 'postalCode',
-          message: 'BureauMemberProfilesPage.validation.postalCodeInvalid',
+          field: 'homePostalCode',
+          message: 'BureauMemberProfilesPage.validation.home.postalCodeInvalid',
+        },
+        {
+          field: 'landPostalCode',
+          message: 'BureauMemberProfilesPage.validation.land.postalCodeInvalid',
         },
       ],
     })
@@ -329,7 +344,14 @@ describe('updateMemberProfileContactAction', () => {
   it('met à jour les coordonnées de la fiche, puis revalide le segment (critère 6)', async () => {
     const result = await updateMemberProfileContactAction(
       undefined,
-      contactForm({phone: '06 12 34 56 78', city: 'Lacanau'})
+      contactForm({
+        phone: '06 12 34 56 78',
+        homeCity: 'Lacanau',
+        landAddressLine: '3 rue du Lavoir',
+        landPostalCode: '40600',
+        landCity: 'Biscarrosse',
+        companyName: 'Épicerie du Clos',
+      })
     )
 
     expect(result).toEqual({
@@ -342,10 +364,15 @@ describe('updateMemberProfileContactAction', () => {
       organizationId: TENANT_ID,
       memberProfileId: PROFILE_ID,
       phone: '06 12 34 56 78',
-      addressLine: '',
-      addressComplement: '',
-      postalCode: '',
-      city: 'Lacanau',
+      homeAddressLine: '',
+      homeAddressComplement: '',
+      homePostalCode: '',
+      homeCity: 'Lacanau',
+      landAddressLine: '3 rue du Lavoir',
+      landAddressComplement: '',
+      landPostalCode: '40600',
+      landCity: 'Biscarrosse',
+      companyName: 'Épicerie du Clos',
     })
     expect(revalidatePath).toHaveBeenCalledWith(ROUTE, 'layout')
   })

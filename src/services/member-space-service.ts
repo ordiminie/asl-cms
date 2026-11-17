@@ -103,12 +103,16 @@ export const isPlainMemberOfService = async (
   )
 }
 
+/**
+ * Telephone et domicile d'une fiche, rien d'autre : le terrain n'entre ni dans
+ * « Mes coordonnees » ni dans la cle des groupes divergents (s55).
+ */
 const postalContactOf = (profile: MyPostalContactDTO): MyPostalContactDTO => ({
   phone: profile.phone,
-  addressLine: profile.addressLine,
-  addressComplement: profile.addressComplement,
-  postalCode: profile.postalCode,
-  city: profile.city,
+  homeAddressLine: profile.homeAddressLine,
+  homeAddressComplement: profile.homeAddressComplement,
+  homePostalCode: profile.homePostalCode,
+  homeCity: profile.homeCity,
 })
 
 /** Une fiche telle que « Mes coordonnees » la lit : sans email (s54). */
@@ -197,8 +201,8 @@ export const getMyContactService = async (
 }
 
 /**
- * Le proprietaire connecte corrige son telephone et son adresse postale
- * (s16, ADR 040), pour **toutes** ses fiches d'un coup (s53, arbitrage du
+ * Le proprietaire connecte corrige son telephone et son domicile
+ * (s16, ADR 040, s55), pour **toutes** ses fiches d'un coup (s53, arbitrage du
  * 16/11). Les fiches se resolvent par la session et le domaine appele : un
  * identifiant ou un email glisse dans l'entree est retire par Zod.
  */
