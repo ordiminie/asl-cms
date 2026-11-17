@@ -58,7 +58,10 @@ import {
   linkMemberProfileAccountDao,
   unlinkMemberProfileAccountDao,
 } from '@/db/repositories/member-profile-repository'
-import {createMemberIfAbsentTxnDao} from '@/db/repositories/organization-repository'
+import {
+  createMemberIfAbsentTxnDao,
+  getUserOrganizationDao,
+} from '@/db/repositories/organization-repository'
 import {
   createUserIfAbsentTxnDao,
   getUserByEmailDao,
@@ -122,6 +125,16 @@ beforeEach(() => {
     pendingRow(),
   ] as never)
   vi.mocked(getActiveEmailCarriersDao).mockResolvedValue([])
+  vi.mocked(getUserOrganizationDao).mockImplementation(
+    async (userId, organizationId) =>
+      ({
+        id: `membership-${userId}`,
+        organizationId,
+        userId,
+        role: 'member',
+        createdAt: new Date(),
+      }) as never
+  )
   vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
     {id: PROFILE_ID} as never,
   ])

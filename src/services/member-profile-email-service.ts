@@ -276,6 +276,7 @@ export const updateMemberProfileEmailService = async (
         organizationId,
         previous?.userId ?? null
       ),
+      previousAccountLinked: previous !== undefined,
       otherLinkedProfiles: await otherLinkedProfilesOf(
         organizationId,
         previous?.userId ?? null
@@ -355,6 +356,7 @@ export const removeMemberProfileEmailService = async (
         organizationId,
         account?.userId ?? null
       ),
+      previousAccountLinked: account !== undefined,
       otherLinkedProfiles: await otherLinkedProfilesOf(
         organizationId,
         account?.userId ?? null

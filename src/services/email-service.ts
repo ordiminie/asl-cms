@@ -1515,17 +1515,26 @@ export const deliverDeferredEmailService = async (
     return {status: 'deferred', runAfter: deferredRunAfter(day)}
   }
 
-  const email = await deferredEmailToSend(row, organizationId, now)
-  if (!email) {
+  const toSend = await deferredEmailToSend(row, organizationId, now)
+  if (toSend.kind === 'gone') {
     await withTenant(organizationId, async () => {
       await refundReportableSendTxnDao({organizationId, day})
       await deleteDeferredEmailTxnDao(deferredEmailId)
     })
     return {status: 'completed'}
   }
+  if (toSend.kind === 'not_sending') {
+    await withTenant(organizationId, () =>
+      refundReportableSendTxnDao({organizationId, day})
+    )
+    logger.error("[EMAIL] Lien d'un email reporte non renouvele", {
+      jobId: job.id,
+    })
+    return {status: 'failed'}
+  }
 
   try {
-    await transmitWithinBudget(email, organizationId, day)
+    await transmitWithinBudget(toSend.email, organizationId, day)
   } catch (error) {
     return deferredSendFailureOutcome(job, row, day, now, error)
   }
@@ -1561,13 +1570,23 @@ const withoutConfirmationLink = (
       .replaceAll(link.expiresOn, CONFIRMATION_EXPIRY_PLACEHOLDER)
   )
 
+/** Le lien d'un email reporte apres rotation (s54, revues M1, mi1, mi-r4). */
+type RotatedPendingLink =
+  | {kind: 'rotated'; token: string; expiresAt: Date}
+  /** Plus aucune attente du lien a confirmer. */
+  | {kind: 'gone'}
+  /** La ligne reportee n'est plus en cours d'envoi : rien n'est ecrit. */
+  | {kind: 'not_sending'}
+
 /**
  * Emet un jeton neuf pour les attentes encore a confirmer du lien d'un email
  * reporte, designe par le hash de son jeton (revue mi1) : en attente, non
- * echues, a l'adresse du destinataire, d'un auteur encore relie a leur
- * fiche. Son hash remplace l'ancien, sur ces attentes comme sur la ligne
- * reportee (revue MA2 : une nouvelle tentative apres un refus retrouve le
- * lien), l'echeance part de maintenant. Rien s'il n'en reste aucune.
+ * echues, a l'adresse du destinataire, d'un auteur encore membre et relie a
+ * leur fiche (revue MA-r4). Son hash remplace l'ancien, sur la ligne reportee
+ * d'abord (revue MA2 : une nouvelle tentative apres un refus retrouve le
+ * lien ; revue mi-r4 : une ligne qui n'est plus en cours d'envoi arrete tout,
+ * aucune attente touchee), puis sur ces attentes ; l'echeance part de
+ * maintenant.
  */
 const rotatePendingLink = async (
   organizationId: string,
@@ -1575,7 +1594,7 @@ const rotatePendingLink = async (
   tokenHash: string,
   recipient: string,
   now: Date
-): Promise<{token: string; expiresAt: Date} | undefined> => {
+): Promise<RotatedPendingLink> => {
   const days = getMemberEmailConfirmationDays(
     await getAssociationSettingsService(organizationId)
   )
@@ -1589,34 +1608,41 @@ const rotatePendingLink = async (
         sameEmail(row.email, recipient)
     )
     const {rows} = await stillAuthoredPendingRows(organizationId, live)
-    if (rows.length === 0) return undefined
+    if (rows.length === 0) return {kind: 'gone'}
     const confirmationTokenHash = hashConfirmationToken(token)
+    const followed = await updateDeferredEmailConfirmationTokenHashTxnDao(
+      deferredEmailId,
+      confirmationTokenHash
+    )
+    if (!followed) return {kind: 'not_sending'}
     for (const row of rows) {
       await updateMemberProfileEmailDao(row.id, {
         confirmationTokenHash,
         expiresAt,
       })
     }
-    await updateDeferredEmailConfirmationTokenHashTxnDao(
-      deferredEmailId,
-      confirmationTokenHash
-    )
-    return {token, expiresAt}
+    return {kind: 'rotated', token, expiresAt}
   })
 }
+
+/** L'email reporte a envoyer, ou pourquoi il ne part pas. */
+type DeferredEmailToSend =
+  | {kind: 'send'; email: ComposedEmail}
+  | Exclude<RotatedPendingLink, {kind: 'rotated'}>
 
 /**
  * L'email reporte tel qu'il part : tel qu'il a ete rendu, sauf un lien de
  * confirmation (s54, revue M1), qui recoit un jeton neuf et son echeance ;
- * rien si son attente n'est plus a confirmer.
+ * rien si son attente n'est plus a confirmer, ou si la ligne n'est plus en
+ * cours d'envoi (revue mi-r4).
  */
 const deferredEmailToSend = async (
   row: ClaimedDeferredEmail,
   organizationId: string,
   now: Date
-): Promise<ComposedEmail | undefined> => {
+): Promise<DeferredEmailToSend> => {
   const email = composedOfDeferred(row)
-  if (!row.confirmationTokenHash) return email
+  if (!row.confirmationTokenHash) return {kind: 'send', email}
   const link = await rotatePendingLink(
     organizationId,
     row.id,
@@ -1624,11 +1650,14 @@ const deferredEmailToSend = async (
     row.recipient,
     now
   )
-  if (!link) return undefined
+  if (link.kind !== 'rotated') return link
   const expiresOn = CONFIRMATION_DAY_FORMAT.format(link.expiresAt)
-  return replaceInEmail(email, (value) =>
-    value
-      .replaceAll(CONFIRMATION_TOKEN_PLACEHOLDER, link.token)
-      .replaceAll(CONFIRMATION_EXPIRY_PLACEHOLDER, expiresOn)
-  )
+  return {
+    kind: 'send',
+    email: replaceInEmail(email, (value) =>
+      value
+        .replaceAll(CONFIRMATION_TOKEN_PLACEHOLDER, link.token)
+        .replaceAll(CONFIRMATION_EXPIRY_PLACEHOLDER, expiresOn)
+    ),
+  }
 }

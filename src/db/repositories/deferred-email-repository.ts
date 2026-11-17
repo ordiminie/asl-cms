@@ -160,14 +160,17 @@ export const markDeferredEmailFailedTxnDao = async (
 /**
  * Le lien de confirmation d'un email pris a recu un jeton neuf (s54, revue
  * MA2) : la ligne garde le hash courant, pour qu'une nouvelle tentative apres
- * un refus retrouve les attentes du lien.
+ * un refus retrouve les attentes du lien. Rend `false` si la ligne n'etait
+ * plus en cours d'envoi, ou absente : rien n'est ecrit (revue round 4, mi-r4).
  */
 export const updateDeferredEmailConfirmationTokenHashTxnDao = async (
   id: string,
   confirmationTokenHash: string
-): Promise<void> => {
-  await getDb()
+): Promise<boolean> => {
+  const [row] = await getDb()
     .update(deferredEmail)
     .set({confirmationTokenHash, updatedAt: sql`now()`})
     .where(and(eq(deferredEmail.id, id), eq(deferredEmail.status, 'sending')))
+    .returning({id: deferredEmail.id})
+  return row !== undefined
 }

@@ -23,6 +23,11 @@ export type MemberAccountDecisionInput = {
    */
   linkedRole: MemberAccountRole | null
   /**
+   * Un compte est-il encore relie a la fiche par l'adresse enregistree, avec
+   * ou sans ligne `member` (revue s54 round 4, MA-r4) ?
+   */
+  previousAccountLinked: boolean
+  /**
    * Nombre d'**autres** fiches de l'association reliees au compte de la
    * fiche (s53, ADR 054) : 0 quand la fiche est la derniere, ou sans compte.
    */

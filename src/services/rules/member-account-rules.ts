@@ -23,12 +23,15 @@ export const sameEmail = (a: string | null, b: string | null): boolean =>
  * (modifiable, jamais supprimable). Une adresse deja celle d'un compte de
  * l'association relie la fiche a ce compte. Une adresse videe sans ligne
  * `member` lue ici delie la fiche sans rien fermer : une fiche courrier ne
- * garde jamais de compte lie.
+ * garde jamais de compte lie. Une adresse modifiee remplace tout compte encore
+ * relie, meme sans ligne `member` (revue s54 round 4, MA-r4) : l'ancien compte
+ * est delie et ses ajouts en attente sur la fiche supprimes.
  */
 export const decideMemberAccount = ({
   savedEmail,
   nextEmail,
   linkedRole,
+  previousAccountLinked,
   otherLinkedProfiles,
   nextEmailAccountUserId,
 }: MemberAccountDecisionInput): MemberAccountDecision => {
@@ -49,6 +52,6 @@ export const decideMemberAccount = ({
   if (nextEmailAccountUserId !== null) {
     return {kind: 'link_shared', userId: nextEmailAccountUserId}
   }
-  if (linkedRole === null) return {kind: 'open'}
+  if (linkedRole === null && !previousAccountLinked) return {kind: 'open'}
   return {kind: 'replace'}
 }

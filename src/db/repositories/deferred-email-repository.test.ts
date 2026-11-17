@@ -249,9 +249,22 @@ describe('updateDeferredEmailConfirmationTokenHashTxnDao — le lien reporté su
     expect(sql).toMatch(
       /^update "deferred_email" set "confirmation_token_hash" = \$1/
     )
-    expect(sql).toMatch(/"deferred_email"\."status" = \$\d+\)$/)
+    expect(sql).toMatch(/"deferred_email"\."status" = \$\d+\)/)
     expect(params).toEqual(
       expect.arrayContaining([NEW_HASH, EMAIL_ID, 'sending'])
     )
+  })
+
+  it('dit si la ligne a été écrite : prise, oui ; plus en cours d’envoi ou absente, non (revue s54 round 4, mi-r4)', async () => {
+    const NEW_HASH = 'c'.repeat(64)
+    responses.current = [[[EMAIL_ID]], []]
+
+    await expect(
+      updateDeferredEmailConfirmationTokenHashTxnDao(EMAIL_ID, NEW_HASH)
+    ).resolves.toBe(true)
+    await expect(
+      updateDeferredEmailConfirmationTokenHashTxnDao(EMAIL_ID, NEW_HASH)
+    ).resolves.toBe(false)
+    expect(sent[0].sql).toMatch(/returning "id"$/)
   })
 })

@@ -209,3 +209,14 @@ attente côté membre, une seule action « Gérer » (pas deux liens par ligne) 
 - [x] **mi-a** — document `deferred_email.confirmation_token_hash` in `docs/architecture.md` (the
   `deferred_email` row).
 - [x] **mi-b** — `markDeferredEmailToVerifyTxnDao` clears `confirmation_token_hash` (consistency).
+
+## Fix round 4 (review round 4 — arbitration of 17/11: fix before shipping)
+
+- [x] **MA-r4 (a)** — a pending address is activable (confirmation and deferred-link rotation) only if its author
+  is still a `member` of the organization **and** linked to that row's profile; otherwise 3c `invalid`, nothing
+  activated. Test: linked account with no `member` row → `invalid`.
+- [x] **MA-r4 (b)** — when the bureau edits an address, any account still linked to the profile through the old
+  address is unlinked (and its pending rows deleted) whatever its role, including no `member` row (`open`
+  decision with a previous linked account). Test.
+- [x] **mi-r4** — `updateDeferredEmailConfirmationTokenHashTxnDao` reports whether it updated the row; rotation
+  fails explicitly (no send) if it did not. Test.

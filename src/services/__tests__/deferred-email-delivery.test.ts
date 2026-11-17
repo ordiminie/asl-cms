@@ -75,6 +75,9 @@ vi.mock('@/db/repositories/member-profile-email-repository', () => ({
 vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfilesByUserIdDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/organization-repository', () => ({
+  getUserOrganizationDao: vi.fn(),
+}))
 
 import {markContactMessageNotificationFailedDao} from '@/db/repositories/contact-message-repository'
 import {
@@ -96,6 +99,7 @@ import {
 } from '@/db/repositories/member-profile-email-repository'
 import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
 import {markMemberQuestionNotificationFailedDao} from '@/db/repositories/member-question-repository'
+import {getUserOrganizationDao} from '@/db/repositories/organization-repository'
 import {EmailTransportError, getEmailTransport} from '@/lib/emails/transport'
 import {logger} from '@/lib/logger'
 import {getAssociationSettingsService} from '@/services/association-settings-service'
@@ -189,6 +193,19 @@ beforeEach(() => {
     resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
   )
   vi.mocked(claimReportableSendTxnDao).mockResolvedValue(true)
+  vi.mocked(updateDeferredEmailConfirmationTokenHashTxnDao).mockResolvedValue(
+    true
+  )
+  vi.mocked(getUserOrganizationDao).mockImplementation(
+    async (userId, organizationId) =>
+      ({
+        id: `membership-${userId}`,
+        organizationId,
+        userId,
+        role: 'member',
+        createdAt: NOW,
+      }) as never
+  )
   store.rows = new Map([[DEFERRED_ID, storedRow()]])
 
   vi.mocked(claimDeferredEmailForSendTxnDao).mockImplementation(async (id) => {
@@ -622,6 +639,72 @@ describe('deliverDeferredEmailService — lien de confirmation reporté (s54, re
       expect(store.rows.has(DEFERRED_ID)).toBe(false)
     }
   )
+
+  it('auteur encore relié à la fiche mais sans ligne member dans l’association : rien ne part, l’unité est rendue, la ligne est purgée (revue s54 round 4, MA-r4)', async () => {
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
+      pending(),
+    ] as never)
+    vi.mocked(getUserOrganizationDao).mockResolvedValue(undefined)
+
+    const outcome = await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(outcome).toEqual({status: 'completed'})
+    expect(memoryTransport.messages).toHaveLength(0)
+    expect(getUserOrganizationDao).toHaveBeenCalledWith('claire', ORG_ID)
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(
+      updateDeferredEmailConfirmationTokenHashTxnDao
+    ).not.toHaveBeenCalled()
+    expect(refundReportableSendTxnDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      day: '2026-11-15',
+    })
+    expect(store.rows.has(DEFERRED_ID)).toBe(false)
+  })
+
+  it('deux auteurs, l’un sans ligne member : seule l’attente de l’autre reçoit le jeton neuf (revue s54 round 4, MA-r4)', async () => {
+    vi.mocked(getMemberProfileEmailsByTokenHashDao).mockResolvedValue([
+      pending(),
+      pending({
+        id: OTHER_PENDING_ID,
+        memberProfileId: 'profile-2',
+        addedByUserId: 'odile',
+      }),
+    ] as never)
+    vi.mocked(getUserOrganizationDao).mockImplementation(
+      async (userId, organizationId) =>
+        userId === 'odile'
+          ? undefined
+          : ({id: 'm', organizationId, userId, role: 'member'} as never)
+    )
+
+    await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(memoryTransport.messages).toHaveLength(1)
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledTimes(1)
+    expect(updateMemberProfileEmailDao).toHaveBeenCalledWith(
+      PENDING_ID,
+      expect.anything()
+    )
+  })
+
+  it('la ligne reportée n’a pas reçu le hash neuf (plus en cours d’envoi) : rien ne part, l’unité est rendue, la ligne n’est pas touchée, la tâche échoue (revue s54 round 4, mi-r4)', async () => {
+    vi.mocked(updateDeferredEmailConfirmationTokenHashTxnDao).mockResolvedValue(
+      false
+    )
+
+    const outcome = await deliverDeferredEmailService(jobOf(), NOW)
+
+    expect(outcome).toEqual({status: 'failed'})
+    expect(memoryTransport.messages).toHaveLength(0)
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(refundReportableSendTxnDao).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      day: '2026-11-15',
+    })
+    expect(deleteDeferredEmailTxnDao).not.toHaveBeenCalled()
+    expect(store.rows.has(DEFERRED_ID)).toBe(true)
+  })
 })
 
 describe('deliverDeferredEmailService — lien reporté refusé puis renvoyé (s54, revue MA2)', () => {
@@ -689,7 +772,9 @@ describe('deliverDeferredEmailService — lien reporté refusé puis renvoyé (s
     ).mockImplementation(async (id, tokenHash) => {
       expect(scope.current).toBe(ORG_ID)
       const row = store.rows.get(id)
-      if (row?.status === 'sending') row.confirmationTokenHash = tokenHash
+      if (row?.status !== 'sending') return false
+      row.confirmationTokenHash = tokenHash
+      return true
     })
     vi.mocked(getMemberProfilesByUserIdDao).mockResolvedValue([
       {id: 'profile-1'},

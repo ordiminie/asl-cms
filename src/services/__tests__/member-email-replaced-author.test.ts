@@ -108,7 +108,10 @@ import {
 } from '@/db/repositories/user-repository'
 
 import {getActingContext} from '../authentication/auth-service'
-import {confirmMemberEmailService} from '../member-email-confirmation-service'
+import {
+  confirmMemberEmailService,
+  getMemberEmailConfirmationStateService,
+} from '../member-email-confirmation-service'
 import {updateMemberProfileEmailService} from '../member-profile-email-service'
 import {User} from '../types/domain/user-types'
 import {setupAuthUserMocked} from './helper-service-test'
@@ -219,6 +222,62 @@ describe('[BUREAU puis PUBLIC] le bureau modifie l’adresse de l’auteur d’u
     expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
     expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
     expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+    expect(store.pending).toEqual([])
+  })
+})
+
+describe('[SUPERADMIN puis PUBLIC] l’auteur d’une attente reste relié à la fiche sans ligne member (revue s54 round 4, MA-r4)', () => {
+  beforeEach(() => {
+    vi.mocked(getUserOrganizationDao).mockResolvedValue(undefined)
+  })
+
+  it('sonde de la revue : le bureau change l’adresse de O en N ; O clique le lien de X → 3c, rien n’est activé, aucun compte relié', async () => {
+    const edited = await updateMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: O_EMAIL_ID,
+      email: 'n@exemple.fr',
+    })
+    expect(edited.status).toBe('saved')
+    vi.mocked(updateMemberProfileEmailDao).mockClear()
+    vi.mocked(linkMemberProfileAccountDao).mockClear()
+    vi.mocked(createUserIfAbsentTxnDao).mockClear()
+
+    await expect(
+      confirmMemberEmailService({organizationId: ORG_ID, token: TOKEN})
+    ).resolves.toEqual({status: 'invalid'})
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
+    expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('sans modification par le bureau : O, toujours relié à la fiche mais plus membre, clique le lien de X → 3c, à la lecture comme à la confirmation', async () => {
+    await expect(
+      getMemberEmailConfirmationStateService({
+        organizationId: ORG_ID,
+        token: TOKEN,
+      })
+    ).resolves.toEqual({status: 'invalid'})
+    await expect(
+      confirmMemberEmailService({organizationId: ORG_ID, token: TOKEN})
+    ).resolves.toEqual({status: 'invalid'})
+    expect(getUserOrganizationDao).toHaveBeenCalledWith(O_USER_ID, ORG_ID)
+    expect(updateMemberProfileEmailDao).not.toHaveBeenCalled()
+    expect(linkMemberProfileAccountDao).not.toHaveBeenCalled()
+    expect(createUserIfAbsentTxnDao).not.toHaveBeenCalled()
+  })
+
+  it('le bureau change l’adresse de O en N : O est délié de la fiche et ses attentes sur la fiche sont supprimées', async () => {
+    const edited = await updateMemberProfileEmailService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      emailId: O_EMAIL_ID,
+      email: 'n@exemple.fr',
+    })
+
+    expect(edited.status).toBe('saved')
+    expect(store.links.get(O_USER_ID)?.has(PROFILE_ID)).toBe(false)
+    expect(store.links.get(N_USER_ID)?.has(PROFILE_ID)).toBe(true)
     expect(store.pending).toEqual([])
   })
 })

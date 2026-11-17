@@ -140,6 +140,7 @@ export const createMemberProfileService = async (
         savedEmail: null,
         nextEmail: email,
         linkedRole: null,
+        previousAccountLinked: false,
         otherLinkedProfiles: 0,
         nextEmailAccountUserId:
           shared.kind === 'confirmed' ? shared.userId : null,

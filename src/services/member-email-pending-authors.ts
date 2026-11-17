@@ -1,6 +1,7 @@
 import 'server-only'
 
 import {getMemberProfilesByUserIdDao} from '@/db/repositories/member-profile-repository'
+import {getUserOrganizationDao} from '@/db/repositories/organization-repository'
 
 import {pendingRowsStillAuthored} from './rules/member-email-rules'
 
@@ -10,11 +11,30 @@ type PendingRowOfAuthor = {
 }
 
 /**
- * Les attentes d'un lien encore activables (revues s54 C1, mi1, mi4 ;
+ * Les fiches auxquelles un auteur est encore relie, aucune s'il n'a plus de
+ * ligne `member` dans l'association (revue s54 round 4, MA-r4) : un lien
+ * fiche ↔ compte survit au retrait de la ligne par le SuperAdmin.
+ */
+const profileIdsOfMemberAuthor = async (
+  organizationId: string,
+  authorUserId: string
+): Promise<Set<string>> => {
+  if (!(await getUserOrganizationDao(authorUserId, organizationId))) {
+    return new Set()
+  }
+  const profiles = await getMemberProfilesByUserIdDao(
+    organizationId,
+    authorUserId
+  )
+  return new Set(profiles.map((profile) => profile.id))
+}
+
+/**
+ * Les attentes d'un lien encore activables (revues s54 C1, mi1, mi4, MA-r4 ;
  * ADR 056 §5) : l'auteur de chacune, lu attente par attente, doit etre encore
- * relie a sa fiche ; une attente sans auteur ne l'est jamais. Rend aussi les
- * fiches reliees a l'un des auteurs, pour la revérification du critere 7.
- * Sous le scope du tenant de l'appelant.
+ * membre de l'association et relie a sa fiche ; une attente sans auteur ne
+ * l'est jamais. Rend aussi les fiches reliees a l'un des auteurs membres, pour
+ * la revérification du critere 7. Sous le scope du tenant de l'appelant.
  */
 export const stillAuthoredPendingRows = async <Row extends PendingRowOfAuthor>(
   organizationId: string,
@@ -27,11 +47,10 @@ export const stillAuthoredPendingRows = async <Row extends PendingRowOfAuthor>(
   ]
   const byAuthor = new Map<string, Set<string>>()
   for (const authorUserId of authors) {
-    const profiles = await getMemberProfilesByUserIdDao(
-      organizationId,
-      authorUserId
+    byAuthor.set(
+      authorUserId,
+      await profileIdsOfMemberAuthor(organizationId, authorUserId)
     )
-    byAuthor.set(authorUserId, new Set(profiles.map((profile) => profile.id)))
   }
   return {
     rows: pendingRowsStillAuthored(rows, byAuthor),
