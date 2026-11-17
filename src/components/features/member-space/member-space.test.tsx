@@ -4,6 +4,7 @@ import {describe, expect, it, vi} from 'vitest'
 import {act, render, screen, within} from '@/__tests__/customRender'
 import type {
   MyContactDTO,
+  MyInvoicesDTO,
   MyLandDTO,
   MyLandsDTO,
 } from '@/services/types/domain/member-space-types'
@@ -28,7 +29,11 @@ const oneLand = (land: MyLandDTO): MyLandsDTO => ({
 })
 
 /** `use()` deroule les promesses : le rendu se termine dans un `act` async. */
-const renderSpace = async (lands: MyLandsDTO) => {
+const renderSpace = async (
+  lands: MyLandsDTO,
+  /** `null` : un compte sans fiche, la lecture ne rend rien. */
+  invoices: MyInvoicesDTO | null = {landCount: 1, invoices: []}
+) => {
   const parcelsPromise = Promise.resolve(lands)
   const contactPromise = Promise.resolve({
     ...CONTACT,
@@ -50,6 +55,7 @@ const renderSpace = async (lands: MyLandsDTO) => {
           }}
           reportsPromise={Promise.resolve([])}
           reportSent={false}
+          invoicesPromise={Promise.resolve(invoices ?? undefined)}
         />
       </Suspense>
     )
@@ -230,5 +236,42 @@ describe('MemberSpace — « Mes coordonnées » (s55)', () => {
     )
     expect(card).not.toHaveTextContent('Adresse postale')
     expect(card).not.toHaveTextContent('Adresse du terrain')
+  })
+})
+
+describe('MemberSpace — « Mes factures » (s19, écran 1)', () => {
+  const INVOICES: MyInvoicesDTO = {
+    landCount: 3,
+    invoices: [
+      {
+        issuedOn: '2026-03-15',
+        subject: 'Cotisation et eau 2026',
+        parcelNumber: '31',
+        meterNumber: null,
+        holderName: 'SCI Les Pins',
+        amountCents: 41250,
+        dueOn: '2026-04-15',
+        status: 'Relance 1',
+        statusClass: 'unpaid',
+      },
+    ],
+  }
+
+  it('critère 10 : rend les factures reçues, quel que soit le fournisseur, juste après « Mes terrains »', async () => {
+    await renderSpace(THREE_LANDS, INVOICES)
+
+    const invoices = await screen.findByRole('region', {name: 'Mes factures'})
+    expect(within(invoices).getAllByText('Relance 1').length).toBeGreaterThan(0)
+    const contact = screen.getByRole('region', {name: 'Mes coordonnées'})
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(myLands(), invoices)).toBe(true)
+    expect(follows(invoices, contact)).toBe(true)
+  })
+
+  it('un compte sans fiche : la carte n’est pas rendue', async () => {
+    await renderSpace(THREE_LANDS, null)
+
+    expect(screen.queryByRole('region', {name: 'Mes factures'})).toBeNull()
   })
 })

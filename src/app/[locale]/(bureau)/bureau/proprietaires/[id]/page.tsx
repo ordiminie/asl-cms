@@ -3,6 +3,7 @@ import {notFound} from 'next/navigation'
 import {getTranslations, setRequestLocale} from 'next-intl/server'
 import {Suspense} from 'react'
 
+import {getMemberInvoicesForBureauDal} from '@/app/dal/member-invoice-dal'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
   canManageCurrentMemberProfilesDal,
@@ -12,6 +13,7 @@ import {
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {getMemberUnsubscribeForBureauDal} from '@/app/dal/unsubscribe-dal'
 import {BureauAccessDenied} from '@/components/features/association/bureau-access-denied'
+import {INVOICE_SAVED} from '@/components/features/member-invoice/member-invoice-paths'
 import {MemberProfileDetail} from '@/components/features/member-profile/member-profile-detail'
 import {Skeleton} from '@/components/ui/skeleton'
 import {calendarDayOf} from '@/services/types/domain/water-analysis-types'
@@ -36,7 +38,12 @@ import {
 
 type MemberProfilePageProps = {
   params: Promise<{locale: string; id: string}>
-  searchParams: Promise<{cree?: string; vente?: string; notes?: string}>
+  searchParams: Promise<{
+    cree?: string
+    vente?: string
+    notes?: string
+    facture?: string
+  }>
 }
 
 /** La page du fil des notes lue dans `?notes=` : un entier, au moins 1. */
@@ -69,7 +76,7 @@ export default async function BureauMemberProfilePage({
 }: MemberProfilePageProps) {
   const {locale, id} = await params
   setRequestLocale(locale)
-  const {cree, vente, notes} = await searchParams
+  const {cree, vente, notes, facture} = await searchParams
 
   return (
     <Suspense fallback={<ProfileSkeleton />}>
@@ -78,6 +85,7 @@ export default async function BureauMemberProfilePage({
         created={cree === '1'}
         soldParcelId={vente}
         notesPage={notesPageOf(notes)}
+        invoiceSaved={facture === INVOICE_SAVED}
       />
     </Suspense>
   )
@@ -88,11 +96,13 @@ async function MemberProfileSection({
   created,
   soldParcelId,
   notesPage,
+  invoiceSaved,
 }: {
   memberProfileId: string
   created: boolean
   soldParcelId?: string
   notesPage: number
+  invoiceSaved: boolean
 }) {
   const [tenant, allowed] = await Promise.all([
     requireCurrentTenantDal(),
@@ -120,6 +130,12 @@ async function MemberProfileSection({
     tenant.id,
     memberProfileId
   )
+  // Les factures (s19), lues a part et sans les attendre ; rien pour un
+  // compte qui ne gere pas les factures.
+  const invoicesPromise = getMemberInvoicesForBureauDal(
+    tenant.id,
+    memberProfileId
+  )
   const parcels = await getMemberParcelsForBureauDal(tenant.id, memberProfileId)
 
   // Lue apres la session, donc au rendu de la requete : la date proposee au
@@ -138,6 +154,8 @@ async function MemberProfileSection({
       changeRoleAction={changeMemberRoleAction}
       notesPromise={notesPromise}
       unsubscribePromise={unsubscribePromise}
+      invoicesPromise={invoicesPromise}
+      invoiceSaved={invoiceSaved}
       addNoteAction={addMemberNoteAction}
       addExchangeAction={addMemberExchangeAction}
       updateNoteAction={updateMemberNoteAction}

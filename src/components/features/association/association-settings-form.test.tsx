@@ -681,3 +681,89 @@ describe('AssociationSettingsForm — limite et réserve réservées au SuperAdm
     expect(formData.get(EMAIL_LOGIN_RESERVE_SETTING_KEY)).toBe('80')
   })
 })
+
+describe('AssociationSettingsForm — carte « Factures » (s19, ADR 059)', () => {
+  const billingCard = () =>
+    screen
+      .getByRole('heading', {level: 3, name: 'Factures'})
+      .closest('[data-slot="card"]') as HTMLElement
+
+  const billingForm = (canEditSuperAdminOnly: boolean) =>
+    render(
+      <AssociationSettingsForm
+        definitions={getSettingsForPage(
+          ASSOCIATION_SETTINGS_REGISTRY,
+          'settings'
+        )}
+        settings={resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT},
+        ])}
+        saveAction={saved()}
+        canEditSuperAdminOnly={canEditSuperAdminOnly}
+      />
+    )
+
+  it('rend l’objet, les deux listes de statuts en zones multilignes et le destinataire', () => {
+    billingForm(false)
+
+    const card = billingCard()
+    expect(within(card).getByLabelText(/Objet des factures/).tagName).toBe(
+      'INPUT'
+    )
+    expect(
+      within(card).getByLabelText(/Statuts qui valent « impayé »/).tagName
+    ).toBe('TEXTAREA')
+    expect(
+      within(card).getByLabelText(/Statuts qui valent « réglé »/).tagName
+    ).toBe('TEXTAREA')
+    expect(
+      within(card).getByLabelText(/Adresse des signalements de facture/)
+    ).toHaveAttribute('type', 'email')
+  })
+
+  it('l’objet obligatoire montre son défaut, et n’est envoyé que s’il change', async () => {
+    const saveAction = saved()
+    render(
+      <AssociationSettingsForm
+        definitions={getSettingsForPage(
+          ASSOCIATION_SETTINGS_REGISTRY,
+          'settings'
+        )}
+        settings={resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT},
+        ])}
+        saveAction={saveAction}
+      />
+    )
+
+    const subject = within(billingCard()).getByLabelText(/Objet des factures/)
+    expect(subject).toHaveValue('Facture {année}')
+    await submit()
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    expect(
+      vi.mocked(saveAction).mock.calls[0][1].has('billing.invoice_subject')
+    ).toBe(false)
+  })
+
+  it('le bureau lit le fournisseur des factures sans pouvoir le changer', () => {
+    billingForm(false)
+
+    const provider = within(billingCard()).getByRole('radiogroup', {
+      name: /Source des factures/,
+    })
+    expect(
+      within(provider).getByRole('radio', {name: 'Saisie par le bureau'})
+    ).toBeChecked()
+    expect(
+      within(provider).getByRole('radio', {name: 'Saisie par le bureau'})
+    ).toBeDisabled()
+  })
+
+  it('le SuperAdmin peut choisir le fournisseur', () => {
+    billingForm(true)
+
+    expect(
+      within(billingCard()).getByRole('radio', {name: 'Saisie par le bureau'})
+    ).toBeEnabled()
+  })
+})

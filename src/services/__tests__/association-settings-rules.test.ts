@@ -12,6 +12,11 @@ import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingDefinition,
   AssociationSettingsRegistry,
+  BILLING_ALERT_EMAIL_SETTING_KEY,
+  BILLING_INVOICE_SUBJECT_SETTING_KEY,
+  BILLING_PROVIDER_SETTING_KEY,
+  BILLING_SETTLED_STATUSES_SETTING_KEY,
+  BILLING_UNPAID_STATUSES_SETTING_KEY,
   CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
   CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
   CONTACT_EMAIL_SETTING_KEY,
@@ -59,7 +64,7 @@ const testDefinition = (key: string) =>
   definitionOf(TEST_SETTINGS_REGISTRY, key)
 
 describe('registre de production', () => {
-  it('declare les cles de s02, s03, s06, s08b, s11, s25, s26 et s54, avec leurs types et leur page', () => {
+  it('declare les cles de s02, s03, s06, s08b, s11, s19, s25, s26 et s54, avec leurs types et leur page', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.map(({key, type, required, page}) => ({
         key,
@@ -170,7 +175,132 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      {
+        key: BILLING_PROVIDER_SETTING_KEY,
+        type: 'choice',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: BILLING_INVOICE_SUBJECT_SETTING_KEY,
+        type: 'text',
+        required: true,
+        page: 'settings',
+      },
+      {
+        key: BILLING_UNPAID_STATUSES_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: BILLING_SETTLED_STATUSES_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
+        key: BILLING_ALERT_EMAIL_SETTING_KEY,
+        type: 'email',
+        required: false,
+        page: 'settings',
+      },
     ])
+  })
+
+  describe('factures des membres (s19, ADR 059)', () => {
+    const definition = (key: string) =>
+      definitionOf(ASSOCIATION_SETTINGS_REGISTRY, key)
+
+    it('porte les cinq clés dans la carte « Factures »', () => {
+      expect([
+        BILLING_PROVIDER_SETTING_KEY,
+        BILLING_INVOICE_SUBJECT_SETTING_KEY,
+        BILLING_UNPAID_STATUSES_SETTING_KEY,
+        BILLING_SETTLED_STATUSES_SETTING_KEY,
+        BILLING_ALERT_EMAIL_SETTING_KEY,
+      ]).toEqual([
+        'billing.provider',
+        'billing.invoice_subject',
+        'billing.unpaid_statuses',
+        'billing.settled_statuses',
+        'billing.alert_email',
+      ])
+      for (const key of [
+        BILLING_PROVIDER_SETTING_KEY,
+        BILLING_INVOICE_SUBJECT_SETTING_KEY,
+        BILLING_UNPAID_STATUSES_SETTING_KEY,
+        BILLING_SETTLED_STATUSES_SETTING_KEY,
+        BILLING_ALERT_EMAIL_SETTING_KEY,
+      ]) {
+        expect(definition(key).section, key).toBe('billing')
+      }
+    })
+
+    it('le fournisseur est « manuel » par défaut, option unique, réservé au SuperAdmin', () => {
+      const provider = definition(BILLING_PROVIDER_SETTING_KEY)
+      expect(provider).toMatchObject({
+        type: 'choice',
+        default: {value: 'manual'},
+      })
+      expect(
+        provider.type === 'choice' && provider.options.map((o) => o.value)
+      ).toEqual(['manual'])
+      expect(isSuperAdminOnlySetting(provider)).toBe(true)
+      expect(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])[
+          BILLING_PROVIDER_SETTING_KEY
+        ].value
+      ).toBe('manual')
+    })
+
+    it('les deux listes de statuts sont des textes multilignes, vides, modifiables par le bureau', () => {
+      for (const key of [
+        BILLING_UNPAID_STATUSES_SETTING_KEY,
+        BILLING_SETTLED_STATUSES_SETTING_KEY,
+      ]) {
+        expect(definition(key), key).toMatchObject({
+          type: 'text',
+          multiline: true,
+          required: false,
+        })
+        expect(definition(key).default, key).toBeUndefined()
+        expect(isSuperAdminOnlySetting(definition(key)), key).toBe(false)
+      }
+    })
+
+    it('l’objet a un défaut neutre ; le destinataire se replie sur l’adresse de contact', () => {
+      expect(definition(BILLING_INVOICE_SUBJECT_SETTING_KEY).default).toEqual({
+        value: 'Facture {année}',
+      })
+      expect(definition(BILLING_ALERT_EMAIL_SETTING_KEY).default).toEqual({
+        fromKey: CONTACT_EMAIL_SETTING_KEY,
+      })
+      const resolved = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+        {key: CONTACT_EMAIL_SETTING_KEY, value: 'contact@asl.test'},
+      ])
+      expect(resolved[BILLING_ALERT_EMAIL_SETTING_KEY].value).toBe(
+        'contact@asl.test'
+      )
+    })
+
+    it('ont leurs libellés et leurs aides en français', () => {
+      const fields = fr.AssociationSettings.fields as Record<
+        string,
+        {label: string; help: string}
+      >
+      for (const key of [
+        BILLING_PROVIDER_SETTING_KEY,
+        BILLING_INVOICE_SUBJECT_SETTING_KEY,
+        BILLING_UNPAID_STATUSES_SETTING_KEY,
+        BILLING_SETTLED_STATUSES_SETTING_KEY,
+        BILLING_ALERT_EMAIL_SETTING_KEY,
+      ]) {
+        const [, field] = definition(key).labelKey.split('.')
+        expect(fields[field]?.label, key).toEqual(expect.any(String))
+        expect(fields[field]?.help.length, key).toBeGreaterThan(20)
+      }
+    })
   })
 
   describe('terrain par défaut d’une fiche importée (s55, ADR 058)', () => {
@@ -585,6 +715,11 @@ describe('registre de production', () => {
       MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
       MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
       MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
+      BILLING_PROVIDER_SETTING_KEY,
+      BILLING_INVOICE_SUBJECT_SETTING_KEY,
+      BILLING_UNPAID_STATUSES_SETTING_KEY,
+      BILLING_SETTLED_STATUSES_SETTING_KEY,
+      BILLING_ALERT_EMAIL_SETTING_KEY,
     ])
     expect(
       getSettingsForPage(ASSOCIATION_SETTINGS_REGISTRY, 'identity').map(
@@ -960,6 +1095,11 @@ describe('registre — carte « Referencement » (s11)', () => {
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
       MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
+      BILLING_PROVIDER_SETTING_KEY,
+      BILLING_INVOICE_SUBJECT_SETTING_KEY,
+      BILLING_UNPAID_STATUSES_SETTING_KEY,
+      BILLING_SETTLED_STATUSES_SETTING_KEY,
+      BILLING_ALERT_EMAIL_SETTING_KEY,
     ])
   })
 
@@ -1136,7 +1276,7 @@ describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
     expect(parseSettingValue(reserve(), '0')).toMatchObject({valid: true})
   })
 
-  it('seules la limite et la réserve sont réservées au SuperAdmin', () => {
+  it('seules la limite, la réserve et la source des factures (s19) sont réservées au SuperAdmin', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.filter(isSuperAdminOnlySetting).map(
         ({key}) => key
@@ -1144,6 +1284,7 @@ describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
     ).toEqual([
       EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
       EMAIL_LOGIN_RESERVE_SETTING_KEY,
+      BILLING_PROVIDER_SETTING_KEY,
     ])
   })
 

@@ -313,6 +313,31 @@ describe('EmailSendingOverview — question d’un membre (s23)', () => {
   })
 })
 
+describe('EmailSendingOverview — statut de facture à classer (revue s19, m2)', () => {
+  it('« Statut de facture à classer », action « Voir les réglages » vers le bureau', () => {
+    const ALERT_ID = '77777777-7777-4777-8777-777777777777'
+    const statusAlert: PendingSendDTO = {
+      ...contactNotification,
+      key: `invoice_status:${ALERT_ID}:2026-11-15`,
+      reference: {type: 'invoice_status', id: ALERT_ID},
+    }
+    render(
+      <EmailSendingOverview
+        overview={overviewOf({pending: [statusAlert]})}
+        page={1}
+      />
+    )
+
+    const [row] = within(within(card('En attente')).getByRole('table'))
+      .getAllByRole('row')
+      .slice(1)
+    expect(row).toHaveTextContent('Statut de facture à classer')
+    expect(
+      within(row).getByRole('link', {name: /Voir les réglages/})
+    ).toHaveAttribute('href', '/bureau/reglages')
+  })
+})
+
 describe('EmailSendingOverview — lien de confirmation d’une adresse reporté (revue s54, M2)', () => {
   it('nommé comme tel, jamais « Notification au bureau », sans lien ni adresse', () => {
     const confirmationLink: PendingSendDTO = {

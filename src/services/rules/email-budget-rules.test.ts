@@ -286,6 +286,29 @@ describe('groupPendingSends — question d’un membre (s23)', () => {
   })
 })
 
+describe('groupPendingSends — statut de facture à classer (revue s19, m2)', () => {
+  const ALERT = '77777777-7777-4777-8777-777777777777'
+
+  it('désigne le signalement reporté, pour mener le bureau vers les réglages', () => {
+    const [group] = groupPendingSends(
+      [
+        {
+          id: 'd1',
+          nature: 'board_notification',
+          referenceType: 'invoice_status',
+          referenceId: ALERT,
+          sendOn: '2026-11-15',
+          status: 'pending',
+        },
+      ],
+      []
+    )
+
+    expect(group.key).toBe(`invoice_status:${ALERT}:2026-11-15`)
+    expect(group.reference).toEqual({type: 'invoice_status', id: ALERT})
+  })
+})
+
 describe('nature du lien de confirmation d’une adresse (s54, ADR 056 §6)', () => {
   it('est un envoi d’association, décompté et copié pour le lendemain si le budget est épuisé', () => {
     expect(TENANT_EMAIL_NATURES).toContain('member_email_confirmation')

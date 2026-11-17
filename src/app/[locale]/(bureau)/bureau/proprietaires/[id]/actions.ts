@@ -6,6 +6,13 @@ import {getTranslations} from 'next-intl/server'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {
+  createMemberInvoiceFormSchema,
+  MEMBER_INVOICE_FORM_FIELDS,
+  type MemberInvoiceActionResult,
+  type MemberInvoiceFormField,
+  toMemberInvoiceFields,
+} from '@/components/features/member-invoice/member-invoice-form-validation'
+import {
   createMemberEmailFormSchema,
   MEMBER_EMAIL_FORM_FIELDS,
   type MemberProfileEmailActionResult,
@@ -13,6 +20,11 @@ import {
 import {CONFIRMED_ACCOUNT_FIELD} from '@/components/features/member-profile/member-profile-form-validation'
 import {MEMBER_PROFILES_ROUTE_PATTERN} from '@/components/features/member-profile/member-profile-paths'
 import {AuthorizationError} from '@/services/errors/authorization-error'
+import {ReadOnlyInvoiceError} from '@/services/errors/member-invoice-errors'
+import {
+  createMemberInvoiceService,
+  updateMemberInvoiceService,
+} from '@/services/facades/member-invoice-service-facade'
 import {
   addMemberProfileEmailService,
   designateMemberProfileHolderService,
@@ -20,6 +32,10 @@ import {
   updateMemberProfileEmailService,
 } from '@/services/facades/member-profile-email-service-facade'
 import type {MemberEmailRole} from '@/services/types/domain/member-email-types'
+import type {
+  CreateMemberInvoiceResult,
+  UpdateMemberInvoiceResult,
+} from '@/services/types/domain/member-invoice-types'
 import type {MemberProfileEmailWriteResult} from '@/services/types/domain/member-profile-types'
 
 /**
@@ -201,4 +217,131 @@ export async function designateMemberProfileHolderAction(
       emailId: readField(formData, MEMBER_EMAIL_FORM_FIELDS.emailId),
     })
   )
+}
+
+type InvoiceFormRead =
+  | {valid: true; fields: ReturnType<typeof toMemberInvoiceFields>}
+  | {valid: false; result: MemberInvoiceActionResult}
+
+/** Les champs de la facture, valides par le schema partage avec l'ecran. */
+const readInvoiceForm = (
+  formData: FormData,
+  t: Translator
+): InvoiceFormRead => {
+  const validation = createMemberInvoiceFormSchema(t).safeParse(
+    Object.fromEntries(
+      MEMBER_INVOICE_FORM_FIELDS.map((field) => [
+        field,
+        readField(formData, field),
+      ])
+    )
+  )
+  if (validation.success) {
+    return {valid: true, fields: toMemberInvoiceFields(validation.data)}
+  }
+  return {
+    valid: false,
+    result: {
+      status: 'invalid',
+      errors: validation.error.issues.map((issue) => ({
+        field: issue.path[0] as MemberInvoiceFormField,
+        message: issue.message,
+      })),
+    },
+  }
+}
+
+/** Traduit le resultat du service ; seul un enregistrement revalide. */
+const toInvoiceActionResult = (
+  result: CreateMemberInvoiceResult | UpdateMemberInvoiceResult,
+  t: Translator
+): MemberInvoiceActionResult => {
+  switch (result.status) {
+    case 'saved':
+      revalidateMemberProfileScreens()
+      return {status: 'saved'}
+    case 'parcel_not_owned':
+      return {
+        status: 'invalid',
+        errors: [{field: 'parcelId', message: t('refusals.parcelNotOwned')}],
+      }
+    case 'unknown_status':
+      return {
+        status: 'invalid',
+        errors: [{field: 'status', message: t('refusals.unknownStatus')}],
+      }
+    case 'not_found':
+      return {status: 'error', message: t('errors.notFound')}
+  }
+}
+
+const toInvoiceFailure = (
+  error: unknown,
+  t: Translator
+): MemberInvoiceActionResult => {
+  if (error instanceof ReadOnlyInvoiceError) return {status: 'read_only'}
+  return {
+    status: 'error',
+    message:
+      error instanceof AuthorizationError
+        ? t('errors.forbidden')
+        : t('errors.failed'),
+  }
+}
+
+/**
+ * « Enregistrer la facture » (s19, ecran 3) : une facture saisie sur le site,
+ * pour la fiche designee, au tenant du domaine appele. La source n'est jamais
+ * lue du formulaire.
+ */
+export async function createMemberInvoiceAction(
+  _prevState: MemberInvoiceActionResult | undefined,
+  formData: FormData
+): Promise<MemberInvoiceActionResult> {
+  const tenant = await requireCurrentTenantDal()
+  const t = await getTranslations('BureauMemberInvoices')
+
+  try {
+    await requireActionAuth()
+
+    const read = readInvoiceForm(formData, t)
+    if (!read.valid) return read.result
+
+    const result = await createMemberInvoiceService({
+      organizationId: tenant.id,
+      memberProfileId: readField(formData, 'memberProfileId'),
+      ...read.fields,
+    })
+    return toInvoiceActionResult(result, t)
+  } catch (error) {
+    return toInvoiceFailure(error, t)
+  }
+}
+
+/**
+ * Corriger une facture saisie sur le site (s19, ecran 3). Une facture
+ * Pennylane est refusee par le service, meme sur un envoi direct (critere 9).
+ */
+export async function updateMemberInvoiceAction(
+  _prevState: MemberInvoiceActionResult | undefined,
+  formData: FormData
+): Promise<MemberInvoiceActionResult> {
+  const tenant = await requireCurrentTenantDal()
+  const t = await getTranslations('BureauMemberInvoices')
+
+  try {
+    await requireActionAuth()
+
+    const read = readInvoiceForm(formData, t)
+    if (!read.valid) return read.result
+
+    const result = await updateMemberInvoiceService({
+      organizationId: tenant.id,
+      invoiceId: readField(formData, 'invoiceId'),
+      ...read.fields,
+    })
+    return toInvoiceActionResult(result, t)
+  } catch (error) {
+    return toInvoiceFailure(error, t)
+  }
 }

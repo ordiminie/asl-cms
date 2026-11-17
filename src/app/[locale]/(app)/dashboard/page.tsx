@@ -4,6 +4,7 @@ import {
   getMyContactDal,
   getMyEmailsDal,
   getMyIncidentReportsDal,
+  getMyInvoicesDal,
   getMyLandsDal,
 } from '@/app/dal/member-space-dal'
 import withAuth, {
@@ -50,7 +51,7 @@ type DashboardPageProps = WithAuthProps & {
 
 /**
  * Espace membre (s46, s12d ecran C) : « Mes terrains » du proprietaire
- * connecte (s53), « Mes coordonnees » (s16), puis la securite du compte. La fiche se lit cote serveur, par la
+ * connecte (s53), « Mes factures » (s19), « Mes coordonnees » (s16), puis la securite du compte. La fiche se lit cote serveur, par la
  * session et le domaine appele, derriere un `<Suspense>` ; un compte sans
  * fiche dans l'association retrouve la page de s46 (C5). Apres sa propre
  * retrogradation, `?role=retire` le dit en tete (s14, A12). « Mes
@@ -63,6 +64,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
   const contactPromise = getMyContactDal()
   const emailsPromise = getMyEmailsDal()
   const reportsPromise = getMyIncidentReportsDal()
+  const invoicesPromise = getMyInvoicesDal()
   const {role, signalement, question} = await searchParams
 
   return (
@@ -78,6 +80,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
           reportsPromise={reportsPromise}
           reportSent={signalement === REPORT_SENT}
           questionSent={question === QUESTION_SENT}
+          invoicesPromise={invoicesPromise}
         />
       </Suspense>
     </div>

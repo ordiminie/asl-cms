@@ -6,6 +6,7 @@ vi.mock('@/app/dal/tenant-dal', () => ({
 }))
 vi.mock('@/services/facades/member-space-service-facade', () => ({
   getMyContactService: vi.fn(),
+  getMyInvoicesService: vi.fn(),
   getMyLandsService: vi.fn(),
   isPlainMemberOfService: vi.fn(),
 }))
@@ -19,9 +20,11 @@ import {
   getMyIncidentReportsService,
   getMyReportIdentityService,
 } from '@/services/facades/incident-report-service-facade'
+import {getMyInvoicesService} from '@/services/facades/member-space-service-facade'
 
 import {
   getMyIncidentReportsDal,
+  getMyInvoicesDal,
   getMyReportIdentityDal,
 } from './member-space-dal'
 
@@ -56,5 +59,15 @@ describe('member-space-dal — signalements du membre (s22)', () => {
 
     await expect(getMyReportIdentityDal()).resolves.toBe(identity)
     expect(getMyReportIdentityService).toHaveBeenCalledWith(ORG_A)
+  })
+})
+
+describe('member-space-dal — factures du membre (s19)', () => {
+  it('lit « Mes factures » sur l’association du domaine, avec son seul identifiant', async () => {
+    const invoices = {landCount: 1, invoices: []}
+    vi.mocked(getMyInvoicesService).mockResolvedValue(invoices)
+
+    await expect(getMyInvoicesDal()).resolves.toBe(invoices)
+    expect(getMyInvoicesService).toHaveBeenCalledWith(ORG_A)
   })
 })

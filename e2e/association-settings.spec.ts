@@ -7,6 +7,8 @@ import {Browser, expect, Page, test} from '@playwright/test'
 import dotenv from 'dotenv'
 import {Client} from 'pg'
 
+import {TEST_INVOICE_DEMO_SETTINGS} from '../src/db/scripts/tenant-member-invoices-seed'
+
 /**
  * Paramètres de l'association — s02, critères 2 à 10.
  *
@@ -39,10 +41,24 @@ const CONTACT_KEY = 'contact.email'
 const FORAGE_KEY = 'forage.responsable.email'
 const HUE_KEY = 'identity.accent_hue'
 
+/**
+ * Le classement de démonstration des statuts (s19) que le seed pose aussi
+ * chez Marketing Pro, repris du module de seed pour ne recopier aucun statut.
+ */
+const invoiceDemoSettingsOf = (organizationSlug: string) =>
+  Object.fromEntries(
+    TEST_INVOICE_DEMO_SETTINGS.filter(
+      (row) => row.organizationSlug === organizationSlug
+    ).map((row) => [row.key, row.value])
+  )
+
 /** Le jeu de paramètres de test, tel que le seed le déclare. */
 const SEED = {
   a: {contact: 'contact@techcorp-solutions.test', hue: '150', hueName: 'Pins'},
-  b: {contact: 'contact@marketing-pro.test'},
+  b: {
+    contact: 'contact@marketing-pro.test',
+    invoiceDemo: invoiceDemoSettingsOf('marketing-pro'),
+  },
 }
 
 const NEW_CONTACT_A = 'bureau@techcorp-solutions.test'
@@ -246,7 +262,10 @@ test.describe.serial('s02 — paramètres de l’association', () => {
       [CONTACT_KEY]: SEED.a.contact,
       [HUE_KEY]: SEED.a.hue,
     })
-    expect(await storedSettings('b')).toEqual({[CONTACT_KEY]: SEED.b.contact})
+    expect(await storedSettings('b')).toEqual({
+      [CONTACT_KEY]: SEED.b.contact,
+      ...SEED.b.invoiceDemo,
+    })
   })
 
   test('critère 4 — le forage jamais renseigné reste vide, sans promettre d’envoi (s10, ADR 028)', async ({

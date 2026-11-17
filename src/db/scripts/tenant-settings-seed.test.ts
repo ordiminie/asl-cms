@@ -1,8 +1,11 @@
 import {describe, expect, it} from 'vitest'
 
+import {getInvoiceSubjectTemplate} from '@/services/rules/member-invoice-rules'
 import {
   ACCENT_HUE_SETTING_KEY,
   ASSOCIATION_SETTINGS_REGISTRY,
+  BILLING_SETTLED_STATUSES_SETTING_KEY,
+  BILLING_UNPAID_STATUSES_SETTING_KEY,
   CONTACT_EMAIL_SETTING_KEY,
   CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   getAccentHue,
@@ -97,5 +100,27 @@ describe('TEST_TENANT_SETTINGS — terrain par défaut (s55, ADR 058)', () => {
       postalCode: null,
       city: null,
     })
+  })
+})
+
+describe('TEST_TENANT_SETTINGS — factures des membres (s19, ADR 059)', () => {
+  it('le premier tenant porte l’objet « Cotisation et eau {année} » en valeur de seed', () => {
+    expect(getInvoiceSubjectTemplate(settingsOf('techcorp-solutions'))).toBe(
+      'Cotisation et eau {année}'
+    )
+    expect(getInvoiceSubjectTemplate(settingsOf('marketing-pro'))).toBe(
+      'Facture {année}'
+    )
+  })
+
+  it('aucun statut de facture n’est livré dans la configuration des tenants', () => {
+    expect(
+      TEST_TENANT_SETTINGS.filter((row) =>
+        [
+          BILLING_UNPAID_STATUSES_SETTING_KEY,
+          BILLING_SETTLED_STATUSES_SETTING_KEY,
+        ].includes(row.key)
+      )
+    ).toEqual([])
   })
 })

@@ -125,6 +125,12 @@ const NOT_UNSUBSCRIBED = Object.assign(Promise.resolve(null), {
   value: null,
 })
 
+/** Un compte qui ne gere pas les factures (s19) : la carte n'est pas rendue. */
+const NO_INVOICES = Object.assign(Promise.resolve(undefined), {
+  status: 'fulfilled',
+  value: undefined,
+})
+
 type DetailInput = {
   profile?: MemberProfileDTO
   parcels?: MemberParcelsDTO
@@ -142,6 +148,8 @@ const detailOf = (input: DetailInput = {}) => (
     soldParcelId={input.soldParcelId}
     notesPromise={RESOLVED_NOTES}
     unsubscribePromise={input.unsubscribePromise ?? NOT_UNSUBSCRIBED}
+    invoicesPromise={NO_INVOICES}
+    invoiceSaved={false}
     {...actions}
   />
 )

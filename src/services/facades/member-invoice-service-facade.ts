@@ -1,0 +1,12 @@
+import memberInvoiceServiceInterceptor from './interceptors/member-invoice-service-logger-interceptor'
+
+export const createMemberInvoiceService =
+  memberInvoiceServiceInterceptor.createMemberInvoiceService
+export const updateMemberInvoiceService =
+  memberInvoiceServiceInterceptor.updateMemberInvoiceService
+export const listMemberInvoicesService =
+  memberInvoiceServiceInterceptor.listMemberInvoicesService
+export const getMemberInvoiceService =
+  memberInvoiceServiceInterceptor.getMemberInvoiceService
+export const canManageMemberInvoicesService =
+  memberInvoiceServiceInterceptor.canManageMemberInvoicesService

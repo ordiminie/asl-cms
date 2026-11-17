@@ -28,6 +28,7 @@ import type {
   MyContactDTO,
   MyCurrentParcelDTO,
   MyFormerParcelDTO,
+  MyInvoicesDTO,
   MyLandDTO,
   MyLandsDTO,
 } from '@/services/types/domain/member-space-types'
@@ -35,6 +36,7 @@ import type {
 import {MyContactCard} from './my-contact-card'
 import {MyEmailsCard, MyEmailsCardLoading} from './my-emails-card'
 import type {MyEmailActions} from './my-emails-validation'
+import {MyInvoicesCard, MyInvoicesCardLoading} from './my-invoices-card'
 import {MyQuestionCard} from './my-question-card'
 import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 
@@ -47,7 +49,8 @@ import {MyReportsCard, MyReportsCardLoading} from './my-reports-card'
 const HEADING_CLASS = 'font-serif text-3xl font-semibold tracking-tight'
 
 /**
- * « Mes terrains » (s53), « Mes coordonnees », « Mes adresses email » (s54),
+ * « Mes terrains » (s53), « Mes factures » (s19), « Mes coordonnees »,
+ * « Mes adresses email » (s54),
  * « Mes signalements » (s22) et « Une question pour le bureau ? » (s23), ou
  * la page de s46 pour un compte sans fiche (C5). Un compte sans parcelle
  * garde ses coordonnees (s16, C7), ses adresses et ses signalements.
@@ -61,6 +64,7 @@ export function MemberSpace({
   reportsPromise,
   reportSent,
   questionSent = false,
+  invoicesPromise,
 }: {
   landsPromise: Promise<MyLandsDTO | undefined>
   contactPromise: Promise<MyContactDTO | undefined>
@@ -72,6 +76,8 @@ export function MemberSpace({
   reportSent: boolean
   /** Retour d'une question envoyee (s23, A2). */
   questionSent?: boolean
+  /** « Mes factures » (s19), lue a part, sans etre attendue. */
+  invoicesPromise: Promise<MyInvoicesDTO | undefined>
 }) {
   const lands = use(landsPromise)
   const contact = use(contactPromise)
@@ -101,6 +107,7 @@ export function MemberSpace({
         name={lands.lands.length > 1 ? lands.accountName : lands.lands[0].name}
       />
       <MyLandsCard lands={lands.lands} />
+      <MyInvoices invoicesPromise={invoicesPromise} />
       <MyContactCard contact={contact} action={contactAction} />
       <MyEmails emailsPromise={emailsPromise} actions={emailActions} />
       <MyReports reportsPromise={reportsPromise} sent={reportSent} />
@@ -139,6 +146,33 @@ function MyEmailsList({
   if (!emails) return null
 
   return <MyEmailsCard emails={emails} {...actions} />
+}
+
+/**
+ * « Mes factures » (s19) : lue a part, derriere son propre `<Suspense>` ;
+ * rien pour un compte sans fiche.
+ */
+function MyInvoices({
+  invoicesPromise,
+}: {
+  invoicesPromise: Promise<MyInvoicesDTO | undefined>
+}) {
+  return (
+    <Suspense fallback={<MyInvoicesCardLoading />}>
+      <MyInvoicesList invoicesPromise={invoicesPromise} />
+    </Suspense>
+  )
+}
+
+function MyInvoicesList({
+  invoicesPromise,
+}: {
+  invoicesPromise: Promise<MyInvoicesDTO | undefined>
+}) {
+  const invoices = use(invoicesPromise)
+  if (!invoices) return null
+
+  return <MyInvoicesCard invoices={invoices} />
 }
 
 /**

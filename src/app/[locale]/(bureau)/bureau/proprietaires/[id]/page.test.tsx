@@ -27,6 +27,9 @@ vi.mock('@/app/dal/member-profile-dal', () => ({
 vi.mock('@/app/dal/member-note-dal', () => ({
   getMemberNotesForBureauDal: vi.fn(),
 }))
+vi.mock('@/app/dal/member-invoice-dal', () => ({
+  getMemberInvoicesForBureauDal: vi.fn(),
+}))
 vi.mock('@/app/dal/unsubscribe-dal', () => ({
   getMemberUnsubscribeForBureauDal: vi.fn(),
 }))
@@ -49,6 +52,7 @@ vi.mock('./actions', () => ({
 }))
 
 import {render, screen, userEvent, within} from '@/__tests__/customRender'
+import {getMemberInvoicesForBureauDal} from '@/app/dal/member-invoice-dal'
 import {getMemberNotesForBureauDal} from '@/app/dal/member-note-dal'
 import {
   canManageCurrentMemberProfilesDal,
@@ -93,7 +97,12 @@ const profile = {
 
 /** Le composant de page est asynchrone : on resout son arbre avant de rendre. */
 const renderPage = async (
-  searchParams: {cree?: string; vente?: string; notes?: string} = {}
+  searchParams: {
+    cree?: string
+    vente?: string
+    notes?: string
+    facture?: string
+  } = {}
 ) => {
   const element = (await BureauMemberProfilePage({
     params: Promise.resolve({locale: 'fr', id: PROFILE_ID}),
@@ -115,6 +124,9 @@ beforeEach(() => {
   })
   vi.mocked(getMemberNotesForBureauDal).mockReturnValue(new Promise(() => {}))
   vi.mocked(getMemberUnsubscribeForBureauDal).mockReturnValue(
+    new Promise(() => {})
+  )
+  vi.mocked(getMemberInvoicesForBureauDal).mockReturnValue(
     new Promise(() => {})
   )
 })
@@ -310,5 +322,96 @@ describe('/bureau/proprietaires/[id] — désinscription des campagnes (s25)', (
     await renderPage()
 
     expect(getMemberUnsubscribeForBureauDal).not.toHaveBeenCalled()
+  })
+})
+
+describe('/bureau/proprietaires/[id] — carte « Factures » (s19, écran 2)', () => {
+  const INVOICE_ID = '66666666-6666-4666-8666-666666666666'
+  const invoices = (canWrite: boolean) => ({
+    canWrite,
+    invoices: [
+      {
+        id: INVOICE_ID,
+        memberProfileId: PROFILE_ID,
+        parcelId: 'p12',
+        parcelNumber: '12',
+        meterNumber: null,
+        source: 'pennylane' as const,
+        year: 2026,
+        issuedOn: '2026-03-15',
+        dueOn: '2026-04-15',
+        amountCents: 41250,
+        status: 'En attente',
+        subject: 'Cotisation et eau 2026',
+        statusClass: 'unpaid' as const,
+      },
+    ],
+  })
+
+  beforeEach(() => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(true)
+  })
+
+  it('lit les factures de la fiche pour le tenant courant, sans les attendre', async () => {
+    await renderPage()
+
+    expect(getMemberInvoicesForBureauDal).toHaveBeenCalledWith(
+      TENANT_ID,
+      PROFILE_ID
+    )
+    expect(
+      screen.getByRole('heading', {level: 1, name: 'Hélène Roy'})
+    ).toBeInTheDocument()
+  })
+
+  it('une facture Pennylane : aucune action « Modifier » ; l’ajout existe si le fournisseur permet la saisie', async () => {
+    vi.mocked(getMemberInvoicesForBureauDal).mockResolvedValue(invoices(true))
+
+    await renderPage()
+
+    const card = await screen.findByRole('region', {name: 'Factures'})
+    expect(within(card).queryByRole('link', {name: /Modifier/})).toBeNull()
+    expect(
+      within(card).getByRole('link', {name: 'Ajouter une facture'})
+    ).toBeInTheDocument()
+  })
+
+  it('fournisseur en lecture seule : pas de bouton « Ajouter une facture »', async () => {
+    vi.mocked(getMemberInvoicesForBureauDal).mockResolvedValue(invoices(false))
+
+    await renderPage()
+
+    const card = await screen.findByRole('region', {name: 'Factures'})
+    expect(
+      within(card).queryByRole('link', {name: 'Ajouter une facture'})
+    ).toBeNull()
+  })
+
+  it('un compte qui ne gère pas les factures : la carte n’est pas rendue', async () => {
+    vi.mocked(getMemberInvoicesForBureauDal).mockResolvedValue(undefined)
+
+    await renderPage()
+
+    await screen.findByRole('region', {name: 'Parcelles'})
+    expect(screen.queryByRole('region', {name: 'Factures'})).toBeNull()
+  })
+
+  it('3c : ?facture=enregistree dit l’enregistrement dans la carte', async () => {
+    vi.mocked(getMemberInvoicesForBureauDal).mockResolvedValue(invoices(true))
+
+    await renderPage({facture: 'enregistree'})
+
+    const card = await screen.findByRole('region', {name: 'Factures'})
+    expect(within(card).getByRole('status')).toHaveTextContent(
+      'Facture enregistrée. Hélène Roy la voit dès maintenant'
+    )
+  })
+
+  it('ne lit aucune facture pour un membre simple', async () => {
+    vi.mocked(canManageCurrentMemberProfilesDal).mockResolvedValue(false)
+
+    await renderPage()
+
+    expect(getMemberInvoicesForBureauDal).not.toHaveBeenCalled()
   })
 })

@@ -106,8 +106,18 @@ const settingsCardsOf = (
 }
 
 /**
- * Valeur affichee dans le champ : la valeur renseignee ; pour un booleen ou un
- * choix, la valeur en vigueur (defaut compris), sinon rien.
+ * Un reglage obligatoire a defaut constant (s19, objet des factures) ne peut
+ * pas rester vide : son champ montre le defaut en vigueur.
+ */
+const showsConstantDefault = (definition: AssociationSettingDefinition) =>
+  definition.required &&
+  definition.default !== undefined &&
+  'value' in definition.default
+
+/**
+ * Valeur affichee dans le champ : la valeur renseignee ; pour un booleen, un
+ * choix ou un reglage obligatoire a defaut constant, la valeur en vigueur
+ * (defaut compris), sinon rien.
  */
 const initialValue = (
   definition: AssociationSettingDefinition,
@@ -118,6 +128,7 @@ const initialValue = (
   if (
     definition.type === 'boolean' ||
     definition.type === 'choice' ||
+    showsConstantDefault(definition) ||
     readOnlyKeys.has(definition.key)
   ) {
     return resolved?.value === null || resolved?.value === undefined
@@ -780,6 +791,7 @@ function RadioControl({
   value,
   error,
   disabled,
+  readOnly,
   onChange,
   definition,
 }: ControlProps & {definition: ChoiceSettingDefinition}) {
@@ -788,7 +800,7 @@ function RadioControl({
     <RadioGroup
       id={id}
       value={value}
-      disabled={disabled}
+      disabled={disabled || readOnly}
       aria-labelledby={`${id}-label`}
       aria-describedby={describedBy}
       aria-invalid={error ? true : undefined}

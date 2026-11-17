@@ -28,6 +28,24 @@ vi.mock('@/app/dal/member-space-dal', () => ({
   getMyContactDal: vi.fn(),
   getMyEmailsDal: vi.fn(() => Promise.resolve(undefined)),
   getMyIncidentReportsDal: vi.fn(),
+  getMyInvoicesDal: vi.fn(() =>
+    Promise.resolve({
+      landCount: 1,
+      invoices: [
+        {
+          issuedOn: '2026-03-15',
+          subject: 'Cotisation et eau 2026',
+          parcelNumber: '12',
+          meterNumber: null,
+          holderName: null,
+          amountCents: 41250,
+          dueOn: '2026-04-15',
+          status: 'En attente',
+          statusClass: 'unpaid',
+        },
+      ],
+    })
+  ),
   getMyLandsDal: vi.fn(),
 }))
 vi.mock('./actions', () => ({updateMyContactAction: vi.fn()}))
@@ -42,6 +60,7 @@ import {
   getMyContactDal,
   getMyEmailsDal,
   getMyIncidentReportsDal,
+  getMyInvoicesDal,
   getMyLandsDal,
 } from '@/app/dal/member-space-dal'
 
@@ -244,6 +263,20 @@ describe('/dashboard — « Mes terrains » (s12d, écran C)', () => {
       )
     ).toBe(true)
     expect(screen.getByText(SECURITY_DESCRIPTION)).toBeInTheDocument()
+  })
+
+  it('s19 : « Mes factures » entre « Mes terrains » et « Mes coordonnées », lue sur l’association du domaine', async () => {
+    vi.mocked(getMyLandsDal).mockResolvedValue(parcelsOf())
+
+    await renderDashboard()
+
+    const invoices = await screen.findByRole('region', {name: 'Mes factures'})
+    expect(getMyInvoicesDal).toHaveBeenCalledWith()
+    expect(within(invoices).getAllByText('Cotisation et eau 2026').length).toBe(
+      2
+    )
+    expect(isBefore(myParcels(), invoices)).toBe(true)
+    expect(isBefore(invoices, myContact())).toBe(true)
   })
 
   it('s54 : « Mes adresses email » juste après « Mes coordonnées »', async () => {
