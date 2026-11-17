@@ -832,7 +832,9 @@ test.describe('Propriétaires — fiches, parcelles et ventes', () => {
       const land = addressGroup(bureau, 'terrain')
       await land.getByLabel('Adresse', {exact: true}).fill('8 chemin des Pins')
       await land.getByLabel('Code postal').fill('3368')
-      await bureau.getByLabel(/^Nom de l’entreprise/).fill('Épicerie du Clos')
+      await bureau
+        .getByRole('textbox', {name: /^Nom de l’entreprise/})
+        .fill('Épicerie du Clos')
       await bureau
         .getByRole('button', {name: 'Enregistrer les coordonnées'})
         .click()
