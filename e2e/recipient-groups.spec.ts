@@ -367,14 +367,72 @@ const composeAndSend = async (
   return new URL(page.url()).pathname.split('/').pop() as string
 }
 
+const CAP_KEY = 'campaign.daily_send_cap'
+const RAISED_CAP = '100000'
+
+/**
+ * Le plafond quotidien de TechCorp lu avant l'essai : `null` si la clé
+ * n'existait pas, `undefined` tant qu'il n'a pas été relevé.
+ */
+let previousCap: string | null | undefined
+
+/**
+ * Les specs précédentes du même run consomment le plafond quotidien de
+ * campagnes de TechCorp : sans le relever, la campagne de l'essai serait
+ * planifiée au lendemain et l'outbox resterait vide le jour même.
+ */
+const raiseDailyCap = async () => {
+  const {a} = await tenantIds()
+  await inTenantScope(a, async (client) => {
+    const current = await client.query<{value: string}>(
+      `select value from organization_setting
+        where organization_id = $1 and key = $2`,
+      [a, CAP_KEY]
+    )
+    previousCap = current.rows[0]?.value ?? null
+    await client.query(
+      `insert into organization_setting (organization_id, key, value)
+       values ($1, $2, $3)
+       on conflict (organization_id, key) do update set value = $3`,
+      [a, CAP_KEY, RAISED_CAP]
+    )
+  })
+}
+
+/** Rend le plafond d'avant l'essai, ou retire la clé si elle n'existait pas. */
+const restoreDailyCap = async () => {
+  if (previousCap === undefined) return
+  const {a} = await tenantIds()
+  const value = previousCap
+  await inTenantScope(a, (client) =>
+    value === null
+      ? client.query(
+          `delete from organization_setting
+            where organization_id = $1 and key = $2`,
+          [a, CAP_KEY]
+        )
+      : client.query(
+          `update organization_setting set value = $3
+            where organization_id = $1 and key = $2`,
+          [a, CAP_KEY, value]
+        )
+  )
+  previousCap = undefined
+}
+
 test.describe('Cible d’une campagne — groupes et impayés (s27)', () => {
   test.beforeAll(async () => {
     await cleanUpRun()
     await createFixtures()
+    await raiseDailyCap()
   })
 
   test.afterAll(async () => {
-    await cleanUpRun()
+    try {
+      await cleanUpRun()
+    } finally {
+      await restoreDailyCap()
+    }
   })
 
   test('critères 3 à 7 — créer un groupe, le composer depuis la liste, lui envoyer, le supprimer', async ({

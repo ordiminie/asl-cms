@@ -121,6 +121,17 @@ NOTHING`, retrait, ids des fiches d'un groupe) ; `recipient-group-service.ts` (v
 13. [x] **m3 — e2e : ajout d'une fiche étrangère refusé** par l'action (id de fiche de l'autre association
         forgé) dans `e2e/recipient-groups.spec.ts`, rien d'ajouté.
 
+### Correctif CI — e2e (18/11/2026, run 44371415954)
+
+14. [x] **e2e dépendant du budget du jour** : `recipient-groups.spec.ts:514` (« critères 1 et 2 —
+        impayés ») attend la livraison le jour même, mais les specs précédentes du même run ont consommé le
+        plafond quotidien de campagnes de TechCorp (`campaign.daily_send_cap`, 100 par défaut) : la capture
+        CI montre « 2 membres la reçoivent le 19/11 », 0 reçu. Le produit est correct (s26, ADR 052). Dans
+        le `beforeAll` de la spec, relever le plafond de TechCorp pour l'essai (upsert de
+        `organization_setting`, patron de `campaigns.spec.ts` s26), et dans l'`afterAll` rendre la valeur
+        d'avant (la ligne précédente si elle existait, sinon supprimer la clé). Aucun code applicatif
+        touché. **Vérif** : typecheck (`tsc` couvre `e2e/`), lint ; la suite e2e verte **en CI**.
+
 Non traités ici (mineurs consignés en revue) : m1 (FK composites → ADR transverse à part), m4, m5, m6 (à
 reprendre en s20).
 
