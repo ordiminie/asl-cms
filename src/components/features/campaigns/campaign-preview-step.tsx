@@ -309,7 +309,7 @@ function PlanSection({
         {t.rich('recall', {
           strong,
           recipients: counts.recipients,
-          withoutEmail: counts.withoutEmail,
+          withoutEmail: counts.profilesWithoutEmail,
           unsubscribed: counts.unsubscribed,
         })}
       </p>

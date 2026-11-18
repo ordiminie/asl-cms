@@ -38,6 +38,11 @@ import {
   startCampaignPartTxnDao,
 } from '@/db/repositories/campaign-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
+import {
+  getRecipientGroupByIdDao,
+  getRecipientGroupMemberIdsDao,
+  listRecipientGroupsDao,
+} from '@/db/repositories/recipient-group-repository'
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {associationOriginOf} from '@/lib/better-auth/association-origin'
@@ -55,17 +60,23 @@ import {logger} from '@/lib/logger'
 import {getAssociationSettingsService} from './association-settings-service'
 import {getActingContext, getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
+import {resolveMemberBillingProvider} from './billing/resolve-member-billing-provider'
 import {
   isClientEmailEnabledService,
   type SendEmailPayload,
   sendEmailService,
 } from './email-service'
 import {AuthorizationError} from './errors/authorization-error'
+import {CampaignTargetUnavailableError} from './errors/campaign-errors'
 import {NotFoundError} from './errors/not-found-error'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {
   addressValuesOf,
+  campaignTargetCountsOf,
+  type CampaignTargetPredicate,
+  type CampaignTargetRow,
   computeCampaignTarget,
+  type ComputedCampaignTarget,
   finalSubject,
   findUnknownVariables,
   formatCampaignDate,
@@ -86,6 +97,10 @@ import {
   deferredRunAfter,
   deferredSendOn,
 } from './rules/email-budget-rules'
+import {
+  getInvoiceStatusClassification,
+  unpaidProfileIdsOf,
+} from './rules/member-invoice-rules'
 import {runDueScheduledJobsService} from './scheduled-job-service'
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
@@ -112,6 +127,7 @@ import {
   CampaignRecipientStatus,
   CAMPAIGNS_PAGE_SIZE,
   CampaignsPageInput,
+  CampaignTarget,
   CampaignTargetCountsDTO,
   CampaignVariableValues,
   PreviewCampaignInput,
@@ -133,6 +149,7 @@ import {
   campaignByIdServiceSchema,
   campaignRecipientsServiceSchema,
   campaignsPageServiceSchema,
+  campaignTargetSchema,
   createPreviewCampaignServiceSchema,
   createSendCampaignServiceSchema,
 } from './validation/campaign-validation'
@@ -197,9 +214,13 @@ const textSettingOf = (
   return typeof value === 'string' && value.trim() !== '' ? value : null
 }
 
-const readAssociation = async (
+/** L'association d'un envoi et ses reglages, lus ensemble. */
+const readAssociationWithSettings = async (
   organizationId: string
-): Promise<CampaignAssociation> => {
+): Promise<{
+  association: CampaignAssociation
+  settings: ResolvedAssociationSettings
+}> => {
   const [settings, organization] = await Promise.all([
     getAssociationSettingsService(organizationId),
     getOrganizationByIdDao(organizationId),
@@ -208,7 +229,7 @@ const readAssociation = async (
   if (!organization || !origin) throw new NotFoundError(ASSOCIATION_NOT_FOUND)
 
   const logoUrl = pngLogoUrlOf(organization.identityLogoKey, origin)
-  return {
+  const association = {
     name: organization.name,
     hue: getAccentHue(settings),
     ...(logoUrl ? {logoUrl} : {}),
@@ -222,7 +243,13 @@ const readAssociation = async (
     dailySendCap: getCampaignDailySendCap(settings),
     sendMaxAttempts: getCampaignSendMaxAttempts(settings),
   }
+  return {association, settings}
 }
+
+const readAssociation = async (
+  organizationId: string
+): Promise<CampaignAssociation> =>
+  (await readAssociationWithSettings(organizationId)).association
 
 const unknownVariablesOf = (content: {
   subject: string
@@ -234,16 +261,76 @@ const unknownVariablesOf = (content: {
   )
 
 const countsOf = (
-  target: ReturnType<typeof computeCampaignTarget>
-): CampaignTargetCountsDTO => ({
-  recipients: target.recipients.length,
-  withoutEmail: target.withoutEmail,
-  unsubscribed: target.unsubscribed,
-  total: target.recipients.length + target.withoutEmail + target.unsubscribed,
-})
+  target: ComputedCampaignTarget<CampaignTargetRow>
+): CampaignTargetCountsDTO => campaignTargetCountsOf(target)
 
-const readTarget = async (organizationId: string) =>
-  computeCampaignTarget(await getCampaignTargetRowsDao(organizationId))
+const GROUP_NOT_FOUND = 'Groupe introuvable'
+
+/**
+ * Les fiches en impaye (ADR 060 §3), lues par le fournisseur actif. Une
+ * erreur de lecture remonte, typee : jamais de repli sur « tous » ni « vide ».
+ */
+const unpaidPredicateOf = async (
+  organizationId: string,
+  rows: readonly CampaignTargetRow[],
+  settings: ResolvedAssociationSettings
+): Promise<CampaignTargetPredicate> => {
+  try {
+    const provider = resolveMemberBillingProvider(settings)
+    const invoices = await provider.listInvoicesOf(organizationId, [
+      ...new Set(rows.map((row) => row.memberProfileId)),
+    ])
+    const unpaid = unpaidProfileIdsOf(
+      invoices,
+      getInvoiceStatusClassification(settings)
+    )
+    return (row) => unpaid.has(row.memberProfileId)
+  } catch (error) {
+    throw new CampaignTargetUnavailableError({cause: error})
+  }
+}
+
+type TargetGroup = {id: string; name: string}
+
+type TargetRow = Awaited<ReturnType<typeof getCampaignTargetRowsDao>>[number]
+
+type ReadTargetResult = {
+  rows: TargetRow[]
+  target: ComputedCampaignTarget<TargetRow>
+  isTargeted: CampaignTargetPredicate
+  group: TargetGroup | null
+}
+
+/**
+ * La cible choisie, point de passage unique des quatre lecteurs (ADR 060
+ * §1-§2) : les lignes de **toutes** les fiches, puis le predicat du type de
+ * cible. Un groupe introuvable sous le tenant est refuse, jamais « tous ».
+ * A appeler sous `withTenant`.
+ */
+const readTarget = async (
+  organizationId: string,
+  choice: CampaignTarget,
+  settings: ResolvedAssociationSettings
+): Promise<ReadTargetResult> => {
+  const rows = await getCampaignTargetRowsDao(organizationId)
+  let isTargeted: CampaignTargetPredicate = () => true
+  let group: TargetGroup | null = null
+  if (choice.kind === 'unpaid_members') {
+    isTargeted = await unpaidPredicateOf(organizationId, rows, settings)
+  } else if (choice.kind === 'group') {
+    const found = await getRecipientGroupByIdDao(choice.groupId)
+    if (!found) throw new NotFoundError(GROUP_NOT_FOUND)
+    const members = new Set(await getRecipientGroupMemberIdsDao(found.id))
+    isTargeted = (row) => members.has(row.memberProfileId)
+    group = {id: found.id, name: found.name}
+  }
+  return {
+    rows,
+    target: computeCampaignTarget(rows, isTargeted),
+    isTargeted,
+    group,
+  }
+}
 
 const unsubscribeUrlOf = (origin: string, token: string): string =>
   `${origin}${UNSUBSCRIBE_PAGE_PATH}/${encodeURIComponent(token)}`
@@ -302,13 +389,18 @@ const valuesOf = (
 
 /** Le composeur : decompte de la cible, adresse de reponse, plafond d'objet. */
 export const getCampaignComposerContextService = async (
-  organizationId: string
+  organizationId: string,
+  choice: CampaignTarget
 ): Promise<CampaignComposerContextDTO> => {
   const orgId = parseOrThrow(z.string().uuid(), organizationId)
+  const targetChoice = parseOrThrow(campaignTargetSchema, choice)
   await requireCampaignManager(orgId)
-  const association = await readAssociation(orgId)
+  const {association, settings} = await readAssociationWithSettings(orgId)
 
-  const target = await withTenant(orgId, () => readTarget(orgId))
+  const [{target}, groups] = await withTenant(orgId, async () => [
+    await readTarget(orgId, targetChoice, settings),
+    await listRecipientGroupsDao(orgId),
+  ])
   return {
     associationName: association.name,
     replyTo: association.replyTo,
@@ -318,6 +410,7 @@ export const getCampaignComposerContextService = async (
       id: row.memberProfileId,
       name: row.name,
     })),
+    groups,
   }
 }
 
@@ -334,7 +427,9 @@ export const previewCampaignService = async (
     input
   )
   await requireCampaignManager(input.organizationId)
-  const association = await readAssociation(input.organizationId)
+  const {association, settings} = await readAssociationWithSettings(
+    input.organizationId
+  )
   const data = parseOrThrow(
     createPreviewCampaignServiceSchema(subjectMaxLength(association.name)),
     input
@@ -345,15 +440,18 @@ export const previewCampaignService = async (
     return {status: 'unknown_variables', variables: unknown}
 
   return withTenant(data.organizationId, async () => {
-    const rows = await getCampaignTargetRowsDao(data.organizationId)
-    const target = computeCampaignTarget(rows)
+    const {rows, target, isTargeted} = await readTarget(
+      data.organizationId,
+      data.target,
+      settings
+    )
     const member =
       target.recipients.find(
         (row) => row.memberProfileId === data.memberProfileId
       ) ?? target.recipients[0]
     if (!member) return {status: 'no_recipient'}
 
-    const sameAddress = sameAddressRowsOf(rows, member)
+    const sameAddress = sameAddressRowsOf(rows, member, isTargeted)
     const parcels = await getCurrentParcelNumbersForMembersDao(
       sameAddress.map((row) => row.memberProfileId)
     )
@@ -418,7 +516,9 @@ export const sendCampaignService = async (
     return {status: 'delivery_disabled'}
   }
 
-  const association = await readAssociation(input.organizationId)
+  const {association, settings} = await readAssociationWithSettings(
+    input.organizationId
+  )
   const data = parseOrThrow(
     createSendCampaignServiceSchema(subjectMaxLength(association.name)),
     input
@@ -430,7 +530,11 @@ export const sendCampaignService = async (
   const now = new Date()
   const today = calendarDayOf(now)
   return withTenant(data.organizationId, async () => {
-    const target = await readTarget(data.organizationId)
+    const {target, group} = await readTarget(
+      data.organizationId,
+      data.target,
+      settings
+    )
     if (target.recipients.length === 0) return {status: 'no_recipient'}
 
     await lockCampaignScheduleTxnDao(data.organizationId)
@@ -449,7 +553,9 @@ export const sendCampaignService = async (
         preheader: data.preheader || null,
         bodyMarkdown: data.bodyMarkdown,
         templateId: data.templateId,
-        targetKind: 'all_members',
+        targetKind: data.target.kind,
+        targetGroupId: group?.id ?? null,
+        targetGroupName: group?.name ?? null,
         recipientCount: target.recipients.length,
         withoutEmailCount: target.withoutEmail,
         unsubscribedCount: target.unsubscribed,
@@ -495,15 +601,17 @@ export const sendCampaignService = async (
  * verrou. Le plan reel est recalcule sous verrou a la creation.
  */
 export const previewCampaignPlanService = async (
-  organizationId: string
+  organizationId: string,
+  choice: CampaignTarget
 ): Promise<CampaignPlanDTO> => {
   const orgId = parseOrThrow(z.string().uuid(), organizationId)
+  const targetChoice = parseOrThrow(campaignTargetSchema, choice)
   await requireCampaignManager(orgId)
-  const association = await readAssociation(orgId)
+  const {association, settings} = await readAssociationWithSettings(orgId)
 
   const today = calendarDayOf(new Date())
   return withTenant(orgId, async () => {
-    const target = await readTarget(orgId)
+    const {target} = await readTarget(orgId, targetChoice, settings)
     const allotted = await getAllottedRecipientsByDayDao(orgId, today)
     return {
       today,

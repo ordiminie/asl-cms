@@ -14,6 +14,7 @@ import {
 
 import {organization, user} from './auth-model'
 import {memberProfile} from './member-profile-model'
+import {recipientGroup} from './recipient-group-model'
 
 export const campaignStatusEnum = pgEnum('campaign_status', [
   'sending',
@@ -62,6 +63,14 @@ export const campaign = pgTable(
     bodyMarkdown: text('body_markdown').notNull(),
     templateId: text('template_id'),
     targetKind: text('target_kind').notNull(),
+    /**
+     * Groupe vise (s27, ADR 060 §5), `SET NULL` : supprimer le groupe ne
+     * touche pas l'archive, qui garde son nom copie a l'envoi.
+     */
+    targetGroupId: uuid('target_group_id').references(() => recipientGroup.id, {
+      onDelete: 'set null',
+    }),
+    targetGroupName: text('target_group_name'),
     recipientCount: integer('recipient_count').notNull(),
     withoutEmailCount: integer('without_email_count').notNull(),
     unsubscribedCount: integer('unsubscribed_count').notNull(),

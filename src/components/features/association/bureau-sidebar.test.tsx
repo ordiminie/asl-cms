@@ -180,6 +180,7 @@ describe('BureauSidebar — « Propriétaires » (s12)', () => {
     expect(labels).toEqual([
       'Propriétaires',
       'Questions des membres',
+      'Groupes',
       'Campagnes',
       'Envois',
       'Identité',
@@ -290,4 +291,31 @@ describe('BureauSidebar — « Questions des membres » (s23)', () => {
       ).toHaveAttribute('aria-current', 'page')
     }
   )
+})
+
+describe('BureauSidebar — « Groupes » (s27, gap 3)', () => {
+  it('ajoute l’entrée au groupe « L’association », juste avant « Campagnes », sans icône', () => {
+    renderSidebarAt('/bureau/groupes')
+
+    const entry = screen.getByRole('link', {name: 'Groupes'})
+    expect(entry).toHaveAttribute('href', '/bureau/groupes')
+    expect(entry).toHaveAttribute('aria-current', 'page')
+    expect(entry.querySelector('svg')).toBeNull()
+
+    const links = screen
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'))
+    expect(links.indexOf('/bureau/campagnes')).toBe(
+      links.indexOf('/bureau/groupes') + 1
+    )
+  })
+
+  it('reste actif sur un groupe ouvert', () => {
+    renderSidebarAt('/bureau/groupes/3c1e')
+
+    expect(screen.getByRole('link', {name: 'Groupes'})).toHaveAttribute(
+      'aria-current',
+      'page'
+    )
+  })
 })

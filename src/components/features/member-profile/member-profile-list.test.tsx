@@ -1,10 +1,20 @@
-import {describe, expect, it} from 'vitest'
+import {beforeEach, describe, expect, it, vi} from 'vitest'
 
-import {render, screen, within} from '@/__tests__/customRender'
+const router = vi.hoisted(() => ({push: vi.fn(), refresh: vi.fn()}))
+vi.mock('next/navigation', () => ({useRouter: () => router}))
+
+import {
+  render,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from '@/__tests__/customRender'
 import type {
   MemberProfileListItemDTO,
   MemberProfilePageDTO,
 } from '@/services/types/domain/member-profile-types'
+import type {RecipientGroupSelectionActionResult} from '@/services/types/domain/recipient-group-types'
 
 import {MemberProfileList} from './member-profile-list'
 
@@ -378,5 +388,217 @@ describe('MemberProfileList — autres adresses de la fiche (s54, état 5a)', ()
     render(<MemberProfileList list={page([item({otherEmailCount: 0})])} />)
 
     expect(screen.queryByText(/autres? adresses?/)).toBeNull()
+  })
+})
+
+// Radix Select s'appuie sur des API de pointeur absentes de jsdom.
+Element.prototype.hasPointerCapture = vi.fn(() => false)
+Element.prototype.releasePointerCapture = vi.fn()
+Element.prototype.scrollIntoView = vi.fn()
+
+describe('MemberProfileList — groupes de destinataires (s27, écran 2)', () => {
+  const GROUP_A = '99999999-9999-4999-8999-999999999999'
+  const GROUP_B = '88888888-8888-4888-8888-888888888888'
+  const CLAIRE = '33333333-3333-4333-8333-333333333333'
+  const PAUL = '44444444-4444-4444-8444-444444444444'
+  const groups = [
+    {id: GROUP_A, name: 'Riverains', profileCount: 36},
+    {id: GROUP_B, name: 'Bord de mer', profileCount: 4},
+  ]
+  const items = [item(), item({id: PAUL, name: 'Paul Renaud'})]
+
+  type Action = (
+    state: RecipientGroupSelectionActionResult | undefined,
+    formData: FormData
+  ) => Promise<RecipientGroupSelectionActionResult>
+  let addAction: ReturnType<typeof vi.fn<Action>>
+  let removeAction: ReturnType<typeof vi.fn<Action>>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    addAction = vi.fn(async () => ({
+      status: 'saved' as const,
+      groupId: GROUP_A,
+      groupName: 'Riverains',
+      changed: 2,
+      profileCount: 38,
+    }))
+    removeAction = vi.fn(async () => ({
+      status: 'saved' as const,
+      groupId: GROUP_A,
+      groupName: 'Riverains',
+      changed: 1,
+      profileCount: 35,
+    }))
+  })
+
+  const renderList = (
+    overrides: {groupId?: string; groups?: typeof groups; list?: never} = {}
+  ) =>
+    render(
+      <MemberProfileList
+        list={page(items)}
+        groupSelection={{
+          groups: overrides.groups ?? groups,
+          groupId: overrides.groupId,
+          addAction,
+          removeAction,
+        }}
+      />
+    )
+
+  const table = () => screen.getByRole('table')
+  const sentFields = (action: {mock: {calls: unknown[][]}}) =>
+    action.mock.calls[0][1] as FormData
+
+  it('sans groupes de destinataires à gérer, ni cases ni filtre', () => {
+    render(<MemberProfileList list={page(items)} />)
+
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.queryByRole('combobox', {name: 'Groupe'})).toBeNull()
+  })
+
+  it('propose le filtre « Groupe », « Tous les propriétaires » par défaut, qui pose ?groupe=', async () => {
+    renderList()
+
+    const filter = screen.getByRole('combobox', {name: 'Groupe'})
+    expect(filter).toHaveTextContent('Tous les propriétaires')
+    await userEvent.click(filter)
+    await userEvent.click(screen.getByRole('option', {name: 'Riverains'}))
+
+    expect(router.push).toHaveBeenCalledWith(
+      `/bureau/proprietaires?groupe=${GROUP_A}`
+    )
+  })
+
+  it('cocher une fiche fait paraître la barre de sélection, annoncée', async () => {
+    renderList()
+    expect(screen.queryByText(/sélectionnée/)).toBeNull()
+
+    await userEvent.click(
+      within(table()).getByRole('checkbox', {name: 'Sélectionner Paul Renaud'})
+    )
+
+    const status = screen.getByText('1 fiche sélectionnée')
+    expect(status).toHaveAttribute('aria-live', 'polite')
+    expect(
+      screen.getByRole('button', {name: 'Ajouter au groupe'})
+    ).toBeInTheDocument()
+  })
+
+  it('la case de l’en-tête sélectionne toute la page, puis l’ajout part au groupe choisi', async () => {
+    renderList()
+
+    await userEvent.click(
+      within(table()).getByRole('checkbox', {
+        name: 'Tout sélectionner sur cette page',
+      })
+    )
+    expect(screen.getByText('2 fiches sélectionnées')).toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Ajouter au groupe'})
+    )
+
+    await waitFor(() => expect(addAction).toHaveBeenCalledTimes(1))
+    const sent = sentFields(addAction)
+    expect(sent.get('groupId')).toBe(GROUP_A)
+    expect(sent.getAll('memberProfileIds')).toEqual([CLAIRE, PAUL])
+    expect(
+      await screen.findByText(
+        '2 fiches ajoutées au groupe « Riverains ». Le groupe compte 38 fiches.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', {name: 'Voir le groupe'})).toHaveAttribute(
+      'href',
+      `/bureau/groupes/${GROUP_A}`
+    )
+    expect(screen.queryByText(/sélectionnée/)).toBeNull()
+  })
+
+  it('un échec dit que rien n’a changé, la sélection reste', async () => {
+    addAction.mockResolvedValue({
+      status: 'error',
+      message:
+        'Les fiches n’ont pas été ajoutées au groupe. Rien n’a changé. Réessayez.',
+    })
+    renderList()
+
+    await userEvent.click(
+      within(table()).getByRole('checkbox', {name: 'Sélectionner Paul Renaud'})
+    )
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Ajouter au groupe'})
+    )
+
+    expect(
+      await screen.findByText(
+        'Les fiches n’ont pas été ajoutées au groupe. Rien n’a changé. Réessayez.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.getByText('1 fiche sélectionnée')).toBeInTheDocument()
+  })
+
+  it('filtrée sur un groupe, la barre propose « Retirer du groupe »', async () => {
+    renderList({groupId: GROUP_A})
+
+    expect(screen.getByRole('combobox', {name: 'Groupe'})).toHaveTextContent(
+      'Riverains'
+    )
+    await userEvent.click(
+      within(table()).getByRole('checkbox', {name: 'Sélectionner Paul Renaud'})
+    )
+    expect(screen.queryByRole('button', {name: 'Ajouter au groupe'})).toBeNull()
+    await userEvent.click(
+      screen.getByRole('button', {name: 'Retirer du groupe'})
+    )
+
+    await waitFor(() => expect(removeAction).toHaveBeenCalledTimes(1))
+    expect(sentFields(removeAction).get('groupId')).toBe(GROUP_A)
+    expect(sentFields(removeAction).getAll('memberProfileIds')).toEqual([PAUL])
+    expect(
+      await screen.findByText(
+        '1 fiche retirée du groupe « Riverains ». Le groupe compte 35 fiches.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('un groupe vide dit comment le composer', () => {
+    render(
+      <MemberProfileList
+        list={page([], {profileCount: 12})}
+        groupSelection={{groups, groupId: GROUP_B, addAction, removeAction}}
+      />
+    )
+
+    expect(
+      screen.getByText(
+        'Ce groupe n’a encore aucune fiche. Choisissez « Tous les propriétaires », cochez des fiches, puis « Ajouter au groupe ».'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('aucun groupe : la barre le dit, avec un lien pour en créer un', async () => {
+    renderList({groups: []})
+
+    await userEvent.click(
+      within(table()).getByRole('checkbox', {name: 'Sélectionner Paul Renaud'})
+    )
+
+    expect(screen.getByText(/Aucun groupe pour l’instant/)).toBeInTheDocument()
+    expect(screen.getByRole('link', {name: 'Créer un groupe'})).toHaveAttribute(
+      'href',
+      '/bureau/groupes'
+    )
+    expect(screen.queryByRole('button', {name: 'Ajouter au groupe'})).toBeNull()
+  })
+
+  it('en carte mobile, la case est dans le titre de la carte', () => {
+    renderList()
+
+    expect(
+      within(cards()[1]).getByRole('checkbox', {
+        name: 'Sélectionner Paul Renaud',
+      })
+    ).toBeInTheDocument()
   })
 })

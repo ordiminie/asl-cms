@@ -21,9 +21,22 @@ export const CAMPAIGN_VARIABLES = ['nom', 'parcelle', 'date'] as const
 export type CampaignVariable = (typeof CAMPAIGN_VARIABLES)[number]
 export type CampaignVariableValues = Record<CampaignVariable, string>
 
-/** Les cibles possibles. s25 : tous les membres ; s27 etend. */
-export const CAMPAIGN_TARGET_KINDS = ['all_members'] as const
+/**
+ * Les cibles possibles (s25, s27, ADR 060 §1) : tous les membres, les membres
+ * en impaye (calcules a l'envoi), un groupe compose par le bureau.
+ */
+export const CAMPAIGN_TARGET_KINDS = [
+  'all_members',
+  'unpaid_members',
+  'group',
+] as const
 export type CampaignTargetKind = (typeof CAMPAIGN_TARGET_KINDS)[number]
+
+/** La cible choisie, recue par les quatre lecteurs de la cible (ADR 060 §1). */
+export type CampaignTarget =
+  | {kind: 'all_members'}
+  | {kind: 'unpaid_members'}
+  | {kind: 'group'; groupId: string}
 
 export const CAMPAIGN_STATUSES = ['sending', 'sent', 'interrupted'] as const
 export type CampaignStatus = (typeof CAMPAIGN_STATUSES)[number]
@@ -138,6 +151,10 @@ export type CampaignDTO = {
   bodyMarkdown: string
   templateId: CampaignTemplateId | null
   targetKind: CampaignTargetKind
+  /** Nom du groupe vise, copie a l'envoi (s27, ADR 060 §5), ou rien. */
+  targetGroupName: string | null
+  /** Le groupe vise a ete supprime depuis l'envoi. */
+  targetGroupDeleted: boolean
   recipientCount: number
   withoutEmailCount: number
   unsubscribedCount: number
@@ -163,12 +180,18 @@ export type CampaignListPageDTO = {
   totalPages: number
 }
 
-/** Le decompte de la cible, avant l'envoi (critere 2). */
+/**
+ * Le decompte de la cible, avant l'envoi (s25 critere 2 ; s27 critere 5) : en
+ * fiches d'abord, avec et sans adresse active, puis en adresses.
+ */
 export type CampaignTargetCountsDTO = {
+  profilesWithEmail: number
+  profilesWithoutEmail: number
+  profiles: number
+  /** Adresses qui recevront la campagne. */
   recipients: number
-  withoutEmail: number
+  /** Adresses desinscrites. */
   unsubscribed: number
-  total: number
 }
 
 /** Un membre joignable, pour choisir l'apercu (« Voir avec un autre membre »). */
@@ -184,6 +207,15 @@ export type CampaignComposerContextDTO = {
   subjectMaxLength: number
   counts: CampaignTargetCountsDTO
   reachableMembers: CampaignPreviewMemberDTO[]
+  /** Les groupes de l'association, choix possibles de la cible (s27). */
+  groups: CampaignTargetGroupDTO[]
+}
+
+/** Un groupe propose comme cible : son nom et son nombre de fiches. */
+export type CampaignTargetGroupDTO = {
+  id: string
+  name: string
+  profileCount: number
 }
 
 /** Le rendu final d'un envoi pour un destinataire reel (critere 5). */
@@ -218,11 +250,15 @@ export type CampaignContentInput = {
 }
 
 export type PreviewCampaignInput = CampaignContentInput & {
+  /** La cible choisie (s27, ADR 060 §1). */
+  target: CampaignTarget
   /** La fiche de l'apercu ; absente, le premier membre joignable. */
   memberProfileId?: string
 }
 
 export type SendCampaignInput = CampaignContentInput & {
+  /** La cible choisie, recalculee a la creation (s27, ADR 060 §1). */
+  target: CampaignTarget
   submissionId: string
 }
 
@@ -337,6 +373,15 @@ export type SendCampaignActionResult =
   | {status: 'unknown_variables'; variables: string[]}
   | {status: 'no_recipient'}
   | {status: 'delivery_disabled'}
+  | {status: 'error'; message: string}
+
+/** Le decompte relu quand le bureau change de cible (s27, critere 5). */
+export type CampaignTargetActionResult =
+  | {
+      status: 'ok'
+      counts: CampaignTargetCountsDTO
+      reachableMembers: CampaignPreviewMemberDTO[]
+    }
   | {status: 'error'; message: string}
 
 /** Ce que la page publique recoit apres « Me desinscrire » : aucun detail. */

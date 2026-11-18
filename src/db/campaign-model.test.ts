@@ -132,6 +132,8 @@ describe('campaign (ADR 051)', () => {
         'body_markdown',
         'template_id',
         'target_kind',
+        'target_group_id',
+        'target_group_name',
         'recipient_count',
         'without_email_count',
         'unsubscribed_count',

@@ -227,7 +227,7 @@ export const getMemberProfilePageService = async (
     throw new ValidationParsedZodError(parsed.error)
   }
 
-  const {organizationId, page, search} = parsed.data
+  const {organizationId, page, search, groupId} = parsed.data
   const authUser = await requireMemberProfileManager(organizationId)
 
   const [{rows, total}, counts, boardRoles] = await withTenant(
@@ -237,6 +237,7 @@ export const getMemberProfilePageService = async (
         await getMemberProfilePageDao({
           organizationId,
           search,
+          groupId,
           limit: MEMBER_PROFILES_PAGE_SIZE,
           offset: (page - 1) * MEMBER_PROFILES_PAGE_SIZE,
         }),

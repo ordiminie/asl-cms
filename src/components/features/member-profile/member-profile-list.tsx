@@ -32,10 +32,23 @@ import {
   memberProfilesListPathOf,
   NEW_MEMBER_PROFILE_PATH,
 } from './member-profile-paths'
+import {
+  GroupFilter,
+  type MemberProfileGroupSelection,
+  MemberProfileSelectionProvider,
+  PageSelectCheckbox,
+  RowSelectCheckbox,
+  SelectionBar,
+} from './member-profile-selection'
 
 type MemberProfileListProps = {
   list: MemberProfilePageDTO
   search?: string
+  /**
+   * Filtre « Groupe » et selection des fiches (s27), pour qui compose les
+   * groupes de destinataires ; absent, la liste reste celle de s12.
+   */
+  groupSelection?: MemberProfileGroupSelection
 }
 
 /**
@@ -43,8 +56,37 @@ type MemberProfileListProps = {
  * service, 25 fiches par page. Un tableau en desktop, des cartes empilees sous
  * 640 px (§3.5), la meme pagination serveur. La recherche voyage dans l'URL.
  */
-export function MemberProfileList({list, search}: MemberProfileListProps) {
+export function MemberProfileList({
+  list,
+  search,
+  groupSelection,
+}: MemberProfileListProps) {
+  const content = (
+    <MemberProfileListContent
+      list={list}
+      search={search}
+      groupSelection={groupSelection}
+    />
+  )
+  if (!groupSelection) return content
+  return (
+    <MemberProfileSelectionProvider
+      key={list.items.map((item) => item.id).join(',')}
+      pageIds={list.items.map((item) => item.id)}
+    >
+      {content}
+    </MemberProfileSelectionProvider>
+  )
+}
+
+function MemberProfileListContent({
+  list,
+  search,
+  groupSelection,
+}: MemberProfileListProps) {
   const t = useTranslations('BureauMemberProfilesPage')
+  const groupId = groupSelection?.groupId
+  const selectable = groupSelection !== undefined
 
   return (
     <div className="flex w-full flex-col gap-6 px-4 pt-6 pb-12 sm:px-8 sm:pt-8">
@@ -69,26 +111,38 @@ export function MemberProfileList({list, search}: MemberProfileListProps) {
         <EmptyState />
       ) : (
         <>
-          <SearchForm search={search} />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
+            <SearchForm search={search} groupId={groupId} />
+            {groupSelection && (
+              <GroupFilter
+                groups={groupSelection.groups}
+                groupId={groupId}
+                search={search}
+              />
+            )}
+          </div>
+          {groupSelection && <SelectionBar {...groupSelection} />}
           {list.items.length === 0 ? (
             <p className="text-muted-foreground text-[17px]">
-              {t('noResult', {search: search ?? ''})}
+              {groupId && !search
+                ? t('recipientGroups.emptyGroup')
+                : t('noResult', {search: search ?? ''})}
             </p>
           ) : (
             <>
               <Card className="hidden py-0 shadow-none sm:block">
                 <CardContent className="px-0">
-                  <ProfilesTable items={list.items} />
+                  <ProfilesTable items={list.items} selectable={selectable} />
                 </CardContent>
               </Card>
               <ul className="flex flex-col gap-4 sm:hidden">
                 {list.items.map((item) => (
                   <li key={item.id}>
-                    <ProfileCard item={item} />
+                    <ProfileCard item={item} selectable={selectable} />
                   </li>
                 ))}
               </ul>
-              <Pagination list={list} search={search} />
+              <Pagination list={list} search={search} groupId={groupId} />
             </>
           )}
         </>
@@ -101,7 +155,7 @@ export function MemberProfileList({list, search}: MemberProfileListProps) {
  * Recherche ecrite, sans loupe (gap 5) : un formulaire `GET` qui pose `q` dans
  * l'URL et revient a la premiere page.
  */
-function SearchForm({search}: {search?: string}) {
+function SearchForm({search, groupId}: {search?: string; groupId?: string}) {
   const t = useTranslations('BureauMemberProfilesPage.search')
 
   return (
@@ -114,6 +168,7 @@ function SearchForm({search}: {search?: string}) {
       <Label htmlFor="member-profile-search" className="text-[17px]">
         {t('label')}
       </Label>
+      {groupId && <input type="hidden" name="groupe" value={groupId} />}
       <div className="flex flex-col gap-3 sm:flex-row">
         <Input
           id="member-profile-search"
@@ -134,13 +189,24 @@ function SearchForm({search}: {search?: string}) {
   )
 }
 
-function ProfilesTable({items}: {items: MemberProfileListItemDTO[]}) {
+function ProfilesTable({
+  items,
+  selectable,
+}: {
+  items: MemberProfileListItemDTO[]
+  selectable: boolean
+}) {
   return (
     <Table>
-      <ProfilesTableHeader />
+      <ProfilesTableHeader selectable={selectable} />
       <TableBody>
         {items.map((item) => (
           <TableRow key={item.id} className="h-14">
+            {selectable && (
+              <TableCell className="w-12 pl-4">
+                <RowSelectCheckbox id={item.id} name={item.name} />
+              </TableCell>
+            )}
             <TableCell className="px-4 text-[17px] font-semibold">
               <span className="flex flex-wrap items-center gap-2">
                 {item.name}
@@ -168,7 +234,13 @@ function ProfilesTable({items}: {items: MemberProfileListItemDTO[]}) {
   )
 }
 
-function ProfileCard({item}: {item: MemberProfileListItemDTO}) {
+function ProfileCard({
+  item,
+  selectable,
+}: {
+  item: MemberProfileListItemDTO
+  selectable: boolean
+}) {
   const t = useTranslations('BureauMemberProfilesPage')
 
   return (
@@ -176,7 +248,10 @@ function ProfileCard({item}: {item: MemberProfileListItemDTO}) {
       data-testid="member-profile-card"
       className="gap-3 px-4 py-4 shadow-none"
     >
-      <h2 className="text-lg leading-snug font-semibold">{item.name}</h2>
+      <h2 className="flex items-center gap-3 text-lg leading-snug font-semibold">
+        {selectable && <RowSelectCheckbox id={item.id} name={item.name} />}
+        {item.name}
+      </h2>
       {(item.boardRole || item.mailOnly) && (
         <div className="flex flex-wrap items-center gap-2">
           {item.boardRole && <BoardRoleBadge role={item.boardRole} />}
@@ -285,9 +360,11 @@ function EmptyState() {
 function Pagination({
   list,
   search,
+  groupId,
 }: {
   list: MemberProfilePageDTO
   search?: string
+  groupId?: string
 }) {
   const t = useTranslations('BureauMemberProfilesPage')
   const from = (list.page - 1) * list.pageSize + 1
@@ -298,7 +375,7 @@ function Pagination({
       aria-label={t('title')}
     >
       <PageLink
-        href={memberProfilesListPathOf({page: list.page - 1, search})}
+        href={memberProfilesListPathOf({page: list.page - 1, search, groupId})}
         disabled={list.page <= 1}
         label={t('pagination.previous')}
       />
@@ -311,7 +388,7 @@ function Pagination({
         })}
       </span>
       <PageLink
-        href={memberProfilesListPathOf({page: list.page + 1, search})}
+        href={memberProfilesListPathOf({page: list.page + 1, search, groupId})}
         disabled={list.page >= list.totalPages}
         label={t('pagination.next')}
       />
@@ -359,12 +436,17 @@ const PROFILE_COLUMNS = [
 
 const SKELETON_ROWS = 4
 
-function ProfilesTableHeader() {
+function ProfilesTableHeader({selectable = false}: {selectable?: boolean}) {
   const t = useTranslations('BureauMemberProfilesPage')
 
   return (
     <TableHeader>
       <TableRow>
+        {selectable && (
+          <TableHead className="w-12 pl-4">
+            <PageSelectCheckbox />
+          </TableHead>
+        )}
         {PROFILE_COLUMNS.map((column, index) => (
           <TableHead key={column} className={cn(index === 0 && 'px-4')}>
             {t(`columns.${column}`)}

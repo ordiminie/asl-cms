@@ -17,6 +17,8 @@ import type {
   CampaignComposerContextDTO,
   CampaignPlanDTO,
   CampaignPreviewDTO,
+  CampaignTarget,
+  CampaignTargetActionResult,
   PreviewCampaignActionResult,
   SendCampaignActionResult,
 } from '@/services/types/domain/campaign-types'
@@ -42,6 +44,7 @@ Element.prototype.scrollIntoView = vi.fn()
 const CAMPAIGN_ID = '33333333-3333-4333-8333-333333333333'
 const PROFILE_A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const PROFILE_B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+const GROUP_ID = '99999999-9999-4999-8999-999999999999'
 
 const TEMPLATES: CampaignTemplates = messages.email.campaign.templates
 
@@ -51,10 +54,19 @@ const contextOf = (
   associationName: 'ASL Les Pins',
   replyTo: 'contact@lespins.example',
   subjectMaxLength: 45,
-  counts: {recipients: 296, withoutEmail: 71, unsubscribed: 15, total: 382},
+  counts: {
+    profilesWithEmail: 311,
+    profilesWithoutEmail: 71,
+    profiles: 382,
+    recipients: 296,
+    unsubscribed: 15,
+  },
   reachableMembers: [
     {id: PROFILE_A, name: 'Claire Aubert'},
     {id: PROFILE_B, name: 'Paul Renaud'},
+  ],
+  groups: [
+    {id: GROUP_ID, name: 'Riverains du chemin des Crêtes', profileCount: 38},
   ],
   ...overrides,
 })
@@ -67,7 +79,13 @@ const previewOf = (
   preheader: 'Merci de laisser le passage libre.',
   html: '<html><body>Bonjour Claire Aubert</body></html>',
   text: 'Bonjour Claire Aubert',
-  counts: {recipients: 296, withoutEmail: 71, unsubscribed: 15, total: 382},
+  counts: {
+    profilesWithEmail: 311,
+    profilesWithoutEmail: 71,
+    profiles: 382,
+    recipients: 296,
+    unsubscribed: 15,
+  },
   ...overrides,
 })
 
@@ -102,6 +120,10 @@ let sendAction: ReturnType<
   >
 >
 
+let targetAction: ReturnType<
+  typeof vi.fn<(target: CampaignTarget) => Promise<CampaignTargetActionResult>>
+>
+
 const sentFields = (action: {mock: {calls: unknown[][]}}, call = 0) =>
   Object.fromEntries(
     [...(action.mock.calls[call][1] as FormData).entries()].map(
@@ -116,8 +138,14 @@ const renderComposer = (context = contextOf()) =>
       templates={TEMPLATES}
       previewAction={previewAction}
       sendAction={sendAction}
+      targetAction={targetAction}
     />
   )
+
+const recipientsCard = () =>
+  screen
+    .getByRole('heading', {name: '3 · Destinataires'})
+    .closest('[data-slot="card"]') as HTMLElement
 
 const subjectField = () => screen.getByRole('textbox', {name: /^Objet/})
 const bodyField = () => screen.getByRole('textbox', {name: 'Message'})
@@ -147,6 +175,17 @@ beforeEach(() => {
     status: 'created' as const,
     campaignId: CAMPAIGN_ID,
   }))
+  targetAction = vi.fn(async () => ({
+    status: 'ok' as const,
+    counts: {
+      profilesWithEmail: 31,
+      profilesWithoutEmail: 7,
+      profiles: 38,
+      recipients: 33,
+      unsubscribed: 2,
+    },
+    reachableMembers: [{id: PROFILE_B, name: 'Paul Renaud'}],
+  }))
 })
 
 describe('CampaignComposer — écran 2 (composer)', () => {
@@ -157,7 +196,13 @@ describe('CampaignComposer — écran 2 (composer)', () => {
       screen.getByRole('heading', {level: 1, name: 'Écrire une campagne'})
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', {name: /Message libre/})).toBeChecked()
-    expect(screen.getAllByRole('radio')).toHaveLength(5)
+    expect(
+      within(
+        screen.getByRole('radiogroup', {
+          name: messages.CampaignsBureau.composer.template.legend,
+        })
+      ).getAllByRole('radio')
+    ).toHaveLength(5)
     expect(subjectField()).toHaveValue('')
     expect(bodyField()).toHaveValue('')
     expect(screen.queryByText('Texte provisoire.')).toBeNull()
@@ -295,31 +340,40 @@ describe('CampaignComposer — écran 2 (composer)', () => {
     ).toBeInTheDocument()
   })
 
-  it('le décompte distingue les trois groupes, et leur somme fait le total', () => {
+  it('le décompte compte en fiches, puis en adresses (s27, critère 5)', () => {
     renderComposer()
 
-    const card = screen
-      .getByRole('heading', {name: '3 · Destinataires'})
-      .closest('[data-slot="card"]') as HTMLElement
-    expect(within(card).getByText('Tous les membres')).toBeInTheDocument()
-    const figures = ['296', '71', '15'].map((figure) =>
-      Number(within(card).getByText(figure).textContent)
-    )
-    expect(figures.reduce((sum, n) => sum + n, 0)).toBe(382)
-    expect(within(card).getByText('382')).toBeInTheDocument()
+    const card = recipientsCard()
+    const fiches = within(card).getByRole('group', {name: 'Fiches'})
+    expect(
+      within(fiches).getByText('Avec au moins une adresse email active')
+    ).toBeInTheDocument()
+    expect(within(fiches).getByText('311')).toBeInTheDocument()
+    expect(within(fiches).getByText('71')).toBeInTheDocument()
+    expect(within(fiches).getByText('Fiches de la cible')).toBeInTheDocument()
+    expect(within(fiches).getByText('382')).toBeInTheDocument()
+    const adresses = within(card).getByRole('group', {name: 'Adresses'})
+    expect(within(adresses).getByText('296')).toBeInTheDocument()
+    expect(within(adresses).getByText('15')).toBeInTheDocument()
   })
 
   it('g · aucun destinataire : dit pourquoi, « Voir l’aperçu » reste actif', () => {
     renderComposer(
       contextOf({
-        counts: {recipients: 0, withoutEmail: 3, unsubscribed: 1, total: 4},
+        counts: {
+          profilesWithEmail: 1,
+          profilesWithoutEmail: 3,
+          profiles: 4,
+          recipients: 0,
+          unsubscribed: 1,
+        },
         reachableMembers: [],
       })
     )
 
     expect(
       screen.getByText(
-        'Aucun membre ne peut recevoir cette campagne : aucun n’a d’adresse email, ou tous sont désinscrits.'
+        'Aucun membre de cette cible n’a d’adresse email active. Rien ne peut être envoyé.'
       )
     ).toBeInTheDocument()
     expect(screen.getByRole('button', {name: 'Voir l’aperçu'})).toBeEnabled()
@@ -746,5 +800,140 @@ describe('CampaignComposer — écran 1 de s26 (plan d’envoi)', () => {
     const send = screen.getByRole('button', {name: 'Envoyer à 296 membres'})
     expect(send).toHaveClass('h-14', 'w-full', 'sm:w-auto')
     expect(send.parentElement).toHaveClass('flex-col', 'sm:flex-row')
+  })
+})
+
+describe('CampaignComposer — choix de la cible (s27, écran 1)', () => {
+  const targetGroup = () =>
+    screen.getByRole('radiogroup', {name: 'Qui reçoit cette campagne ?'})
+
+  it('propose trois cibles, « Tous les membres » d’abord, sans relire le décompte', () => {
+    renderComposer()
+
+    const radios = within(targetGroup()).getAllByRole('radio')
+    expect(radios).toHaveLength(3)
+    expect(
+      within(targetGroup()).getByRole('radio', {name: /Tous les membres/})
+    ).toBeChecked()
+    expect(
+      within(targetGroup()).getByRole('radio', {
+        name: /Les membres en impayé/,
+      })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Calculé au moment de l’envoi, d’après les factures. Une facture « à classer » ne compte pas.'
+      )
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('combobox', {name: 'Groupe'})).toBeNull()
+    expect(targetAction).not.toHaveBeenCalled()
+  })
+
+  it('« Un groupe » révèle le select des groupes et le lien « Gérer les groupes », puis relit le décompte', async () => {
+    renderComposer()
+
+    await userEvent.click(
+      within(targetGroup()).getByRole('radio', {name: /Un groupe/})
+    )
+
+    expect(screen.getByRole('combobox', {name: 'Groupe'})).toHaveTextContent(
+      'Riverains du chemin des Crêtes (38 fiches)'
+    )
+    expect(
+      screen.getByRole('link', {name: 'Gérer les groupes'})
+    ).toHaveAttribute('href', '/bureau/groupes')
+    await waitFor(() =>
+      expect(targetAction).toHaveBeenCalledWith({
+        kind: 'group',
+        groupId: GROUP_ID,
+      })
+    )
+    const fiches = within(recipientsCard()).getByRole('group', {
+      name: 'Fiches',
+    })
+    expect(await within(fiches).findByText('38')).toBeInTheDocument()
+  })
+
+  it('aucun groupe : le dit, avec un lien pour en créer un, sans relecture', async () => {
+    renderComposer(contextOf({groups: []}))
+
+    await userEvent.click(
+      within(targetGroup()).getByRole('radio', {name: /Un groupe/})
+    )
+
+    expect(screen.getByText(/Aucun groupe pour l’instant/)).toBeInTheDocument()
+    expect(screen.getByRole('link', {name: 'Créer un groupe'})).toHaveAttribute(
+      'href',
+      '/bureau/groupes'
+    )
+    expect(targetAction).not.toHaveBeenCalled()
+  })
+
+  it('« impayés » sans personne : le dit, « Voir l’aperçu » reste actif', async () => {
+    targetAction.mockResolvedValue({
+      status: 'ok',
+      counts: {
+        profilesWithEmail: 0,
+        profilesWithoutEmail: 0,
+        profiles: 0,
+        recipients: 0,
+        unsubscribed: 0,
+      },
+      reachableMembers: [],
+    })
+    renderComposer()
+
+    await userEvent.click(
+      within(targetGroup()).getByRole('radio', {name: /impayé/})
+    )
+
+    expect(
+      await screen.findByText(
+        'Aucun membre n’est en impayé aujourd’hui. Rien ne peut être envoyé.'
+      )
+    ).toBeInTheDocument()
+    expect(targetAction).toHaveBeenCalledWith({kind: 'unpaid_members'})
+    expect(screen.getByRole('button', {name: 'Voir l’aperçu'})).toBeEnabled()
+  })
+
+  it('factures illisibles : alerte ancrée, jamais de repli sur « tous »', async () => {
+    targetAction.mockResolvedValue({
+      status: 'error',
+      message: messages.CampaignsBureau.errors.unpaidUnavailable,
+    })
+    renderComposer()
+
+    await userEvent.click(
+      within(targetGroup()).getByRole('radio', {name: /impayé/})
+    )
+
+    expect(
+      await screen.findByText(messages.CampaignsBureau.errors.unpaidUnavailable)
+    ).toBeInTheDocument()
+    expect(
+      within(recipientsCard()).queryByRole('group', {name: 'Fiches'})
+    ).toBeNull()
+  })
+
+  it('la cible choisie part avec l’aperçu et avec l’envoi', async () => {
+    renderComposer()
+    await userEvent.click(
+      within(targetGroup()).getByRole('radio', {name: /Un groupe/})
+    )
+    await waitFor(() => expect(targetAction).toHaveBeenCalled())
+
+    await openPreview()
+    expect(sentFields(previewAction)).toMatchObject({
+      targetKind: 'group',
+      targetGroupId: GROUP_ID,
+    })
+  })
+
+  it('« tous » part avec l’aperçu, sans groupe', async () => {
+    renderComposer()
+    await openPreview()
+
+    expect(sentFields(previewAction).targetKind).toBe('all_members')
+    expect(sentFields(previewAction)).not.toHaveProperty('targetGroupId')
   })
 })

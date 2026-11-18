@@ -573,6 +573,25 @@ function RecipientsList({
   )
 }
 
+/**
+ * La cible de l'archive (s27, ecran 4) : son type, et pour un groupe le nom
+ * copie a l'envoi, suivi de « (supprime) » quand le groupe n'existe plus.
+ */
+const targetLabelOf = (
+  campaign: CampaignDTO,
+  t: ReturnType<typeof useTranslations<'CampaignsBureau'>>
+): string => {
+  if (campaign.targetKind !== 'group') {
+    return t(`detail.targetKinds.${campaign.targetKind}`)
+  }
+  const label = t('detail.targetKinds.group', {
+    name: campaign.targetGroupName ?? '',
+  })
+  return campaign.targetGroupDeleted
+    ? t('detail.deletedGroup', {target: label})
+    : label
+}
+
 function Summary({
   campaign,
   dailySendCap,
@@ -588,7 +607,7 @@ function Summary({
       t('detail.fields.template'),
       t(`templateNames.${campaign.templateId ?? 'free'}`),
     ],
-    [t('detail.fields.target'), t(`detail.targetKinds.${campaign.targetKind}`)],
+    [t('detail.fields.target'), targetLabelOf(campaign, t)],
     [t('detail.fields.recipients'), campaign.recipientCount],
     [t('detail.fields.withoutEmail'), campaign.withoutEmailCount],
     [t('detail.fields.unsubscribed'), campaign.unsubscribedCount],

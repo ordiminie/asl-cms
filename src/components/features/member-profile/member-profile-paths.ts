@@ -20,9 +20,12 @@ export const salePathOf = (memberProfileId: string, parcelId: string) =>
 export const memberProfilesListPathOf = (input: {
   page?: number
   search?: string
+  /** Le filtre « Groupe » (s27), en `?groupe=`. */
+  groupId?: string
 }): string => {
   const params = new URLSearchParams()
   if (input.search) params.set('q', input.search)
+  if (input.groupId) params.set('groupe', input.groupId)
   if (input.page) params.set('page', String(input.page))
 
   const query = params.toString()
@@ -76,6 +79,10 @@ export const soldParcelPathOf = (sellerId: string, parcelId: string): string =>
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Le groupe d'un `?groupe=` ; malforme, il est ignore (s27). */
+export const groupIdOfParam = (value?: string): string | undefined =>
+  value && UUID_PATTERN.test(value) ? value : undefined
 
 /** Une date ISO `YYYY-MM-DD` d'un jour qui existe, lue dans une URL. */
 export const validIsoDateOf = (value?: string): string | undefined =>

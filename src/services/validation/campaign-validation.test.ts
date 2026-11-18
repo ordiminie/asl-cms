@@ -22,6 +22,7 @@ const content = {
   subject: 'Assemblée générale',
   preheader: '',
   bodyMarkdown: 'Bonjour {nom}',
+  target: {kind: 'all_members'},
 }
 
 describe('createSendCampaignServiceSchema', () => {
@@ -31,6 +32,22 @@ describe('createSendCampaignServiceSchema', () => {
 
   it('accepte une campagne complète', () => {
     expect(parse({}).success).toBe(true)
+  })
+
+  it('exige une cible connue ; un groupe désigné par un uuid (s27)', () => {
+    expect(parse({target: {kind: 'unpaid_members'}}).success).toBe(true)
+    expect(
+      parse({
+        target: {
+          kind: 'group',
+          groupId: '33333333-3333-4333-8333-333333333333',
+        },
+      }).success
+    ).toBe(true)
+    expect(parse({target: {kind: 'group', groupId: 'x'}}).success).toBe(false)
+    expect(parse({target: {kind: 'group'}}).success).toBe(false)
+    expect(parse({target: {kind: 'tous'}}).success).toBe(false)
+    expect(parse({target: undefined}).success).toBe(false)
   })
 
   it('refuse un objet vide ou blanc', () => {

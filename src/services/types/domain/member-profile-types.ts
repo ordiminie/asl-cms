@@ -204,6 +204,8 @@ export type MemberProfilePageInput = {
   organizationId: string
   page: number
   search?: string
+  /** Le filtre « Groupe » de la liste (s27). */
+  groupId?: string
 }
 
 /**

@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest'
 
 import {canPerformAction} from '../authorization/action-registry-authorization'
+import {canManageRecipientGroups} from '../authorization/recipient-group-authorization'
 import {
   ACTION_REGISTRY,
   ActionIdConst,
@@ -572,5 +573,64 @@ describe('QUESTION_MANAGE — questions des membres (s23)', () => {
       UserOrganizationRoleConst.OWNER
     )
     expect(canPerformAction(user, ORG_ID, MANAGE)).toBe(false)
+  })
+})
+
+/**
+ * Composer les groupes de destinataires (s27, ADR 060 §6) : une entree a part
+ * de `campaign.manage`, que s37 pourra regler seule.
+ */
+describe('CAMPAIGN_GROUP_MANAGE — groupes de destinataires (s27)', () => {
+  const GROUPS = ActionIdConst.CAMPAIGN_GROUP_MANAGE
+
+  it('porte l identifiant campaign.group.manage, reserve a la presidence et au bureau', () => {
+    expect(GROUPS).toBe('campaign.group.manage')
+    expect(ACTION_REGISTRY.filter((action) => action.id === GROUPS)).toEqual([
+      {id: GROUPS, defaultRoles: ['owner', 'board']},
+    ])
+  })
+
+  it('[SUPER_ADMIN] autorise le SuperAdmin', () => {
+    expect(canManageRecipientGroups(userTestSuperAdmin, ORG_ID)).toBe(true)
+  })
+
+  it('[ORGANIZATION OWNER] autorise la presidente', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canManageRecipientGroups(user, ORG_ID)).toBe(true)
+  })
+
+  it('[ORGANIZATION BOARD] autorise le bureau', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.ADMIN
+    )
+    expect(canManageRecipientGroups(user, ORG_ID)).toBe(true)
+  })
+
+  it('[ORGANIZATION MEMBER] refuse un membre simple', () => {
+    const user = withMembership(
+      userTest,
+      ORG_ID,
+      UserOrganizationRoleConst.MEMBER
+    )
+    expect(canManageRecipientGroups(user, ORG_ID)).toBe(false)
+  })
+
+  it('[USER NOT IN ORGANIZATION] refuse le bureau d une autre association', () => {
+    const user = withMembership(
+      userTest,
+      OTHER_ORG_ID,
+      UserOrganizationRoleConst.OWNER
+    )
+    expect(canManageRecipientGroups(user, ORG_ID)).toBe(false)
+  })
+
+  it('[GUEST] refuse un visiteur sans session', () => {
+    expect(canManageRecipientGroups(undefined, ORG_ID)).toBe(false)
   })
 })

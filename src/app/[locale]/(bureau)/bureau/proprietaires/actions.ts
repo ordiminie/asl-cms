@@ -40,8 +40,17 @@ import {
   attachParcelService,
   recordSaleService,
 } from '@/services/facades/parcel-ownership-service-facade'
+import {
+  addMembersToRecipientGroupService,
+  removeMembersFromRecipientGroupService,
+} from '@/services/facades/recipient-group-service-facade'
 import type {MemberProfileWriteResult} from '@/services/types/domain/member-profile-types'
 import type {MemberRoleChangeResult} from '@/services/types/domain/member-role-types'
+import type {
+  RecipientGroupMembersInput,
+  RecipientGroupMembersResult,
+  RecipientGroupSelectionActionResult,
+} from '@/services/types/domain/recipient-group-types'
 
 /**
  * Server Actions des proprietaires et de leurs parcelles (s12, ecrans 2 a 5).
@@ -392,4 +401,71 @@ export async function changeMemberRoleAction(
     }
   }
   return toRoleActionResult(result, t)
+}
+
+/**
+ * Ajoute ou retire les fiches cochees d'un groupe de destinataires (s27,
+ * critere 3), depuis la liste des proprietaires. Le service reverifie
+ * `campaign.group.manage` et refuse une fiche ou un groupe illisible sous le
+ * tenant : rien n'a change, le message le dit.
+ */
+const changeRecipientGroupSelection = async (
+  formData: FormData,
+  change: (
+    input: RecipientGroupMembersInput
+  ) => Promise<RecipientGroupMembersResult>,
+  failureKey: string
+): Promise<RecipientGroupSelectionActionResult> => {
+  const tenant = await requireCurrentTenantDal()
+  const t = await getTranslations('BureauMemberProfilesPage')
+
+  try {
+    await requireActionAuth()
+
+    const result = await change({
+      organizationId: tenant.id,
+      groupId: readField(formData, 'groupId'),
+      memberProfileIds: formData
+        .getAll('memberProfileIds')
+        .map((value) => value.toString()),
+    })
+    revalidateMemberProfileScreens()
+    return {
+      status: 'saved',
+      groupId: result.group.id,
+      groupName: result.group.name,
+      changed: result.changed,
+      profileCount: result.group.profileCount,
+    }
+  } catch (error) {
+    return {
+      status: 'error',
+      message:
+        error instanceof AuthorizationError
+          ? t('errors.forbidden')
+          : t(failureKey),
+    }
+  }
+}
+
+export async function addToRecipientGroupAction(
+  _prevState: RecipientGroupSelectionActionResult | undefined,
+  formData: FormData
+): Promise<RecipientGroupSelectionActionResult> {
+  return changeRecipientGroupSelection(
+    formData,
+    addMembersToRecipientGroupService,
+    'recipientGroups.errors.addFailed'
+  )
+}
+
+export async function removeFromRecipientGroupAction(
+  _prevState: RecipientGroupSelectionActionResult | undefined,
+  formData: FormData
+): Promise<RecipientGroupSelectionActionResult> {
+  return changeRecipientGroupSelection(
+    formData,
+    removeMembersFromRecipientGroupService,
+    'recipientGroups.errors.removeFailed'
+  )
 }

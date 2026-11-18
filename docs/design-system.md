@@ -869,6 +869,29 @@ s26. Aucun ne crée de token ni de composant : ils composent l'existant.
   « Campagne », « Notification au bureau » ; s29 ajoutera « Relance », s42 « Invitation ». Libellé en
   texte simple dans sa colonne, jamais un badge (le badge est réservé à l'état).
 
+### 3.14 Formes retenues par s27 — la cible d'une campagne et les groupes
+
+Écarts de la maquette `docs/designs/s27-groupes-destinataires.md` (gaps 1 à 3), arbitrés le 18/11/2026
+et versés ici par le plan de s27. Aucun ne crée de token ni de composant : ils composent l'existant.
+
+- **Sélection de lignes d'un tableau + barre d'action groupée** (gap 1) — une `checkbox` en première
+  colonne, la case de l'en-tête vaut pour **la page affichée** (pas de sélection entre pages) ; dès
+  qu'une ligne est cochée, une barre bordée 2 px `primary` paraît au-dessus du tableau, le décompte
+  annoncé `aria-live="polite"` (« 2 fiches sélectionnées »), actions `outline`. En mobile, la case
+  est dans le titre de la carte (§3.5), la barre empilée pleine largeur. La case n'est pas une
+  action de ligne : « une seule action par ligne » (§2.1) reste tenue. s28 et s29 peuvent la
+  reprendre.
+- **Option de `radio-group` à contenu révélé** (gap 2) — le champ révélé (le `select` « Groupe » sous
+  « Un groupe ») suit son option, en retrait de 48 px en bureau, pleine largeur sans retrait sous
+  640 px ; il suit l'option dans l'ordre de tabulation, le focus ne saute pas.
+- **« Groupes » dans la barre latérale** (gap 3) — item propre du groupe « L'association », juste
+  avant « Campagnes », route `/bureau/groupes`, actif sur un groupe ouvert. Pas un sous-niveau de
+  « Campagnes » : les groupes se composent depuis « Propriétaires » et serviront au courrier (s28).
+- **Décompte d'une cible** — deux `dl` de la forme du compteur (§3.13), en lignes : **Fiches** (avec
+  au moins une adresse email active, sans adresse email active, filet, total), puis **Adresses**
+  (qui recevront la campagne, désinscrites). Le même décompte vaut pour les trois cibles et pour la
+  composition d'un groupe.
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs

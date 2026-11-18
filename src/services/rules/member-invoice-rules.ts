@@ -124,3 +124,18 @@ export const parseAmountToCents = (raw: string): number | undefined => {
     Number(match[1]) * CENTS_PER_EURO + Number((match[2] ?? '0').padEnd(2, '0'))
   return cents > 0 && cents <= MAX_AMOUNT_CENTS ? cents : undefined
 }
+
+/**
+ * Les fiches en impaye (s27, ADR 060 §3) : celles dont **au moins une**
+ * facture rendue par le fournisseur actif est impayee. Seul le predicat
+ * `isUnpaidInvoice` lit un statut.
+ */
+export const unpaidProfileIdsOf = (
+  invoices: readonly {memberProfileId: string; status: string}[],
+  classification: InvoiceStatusClassification
+): Set<string> =>
+  new Set(
+    invoices
+      .filter((invoice) => isUnpaidInvoice(invoice.status, classification))
+      .map((invoice) => invoice.memberProfileId)
+  )

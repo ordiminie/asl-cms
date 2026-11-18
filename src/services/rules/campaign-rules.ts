@@ -10,6 +10,7 @@ import {
   CampaignRecipientCountsDTO,
   CampaignRecipientStatus,
   CampaignStatus,
+  CampaignTargetCountsDTO,
   CampaignTargetKind,
   CampaignTemplateId,
   CampaignVariable,
@@ -90,14 +91,26 @@ export type CampaignTargetRow = {
   accountName: string | null
 }
 
-export type CampaignTarget<Row extends CampaignTargetRow> = {
+export type ComputedCampaignTarget<Row extends CampaignTargetRow> = {
   /** Un destinataire par adresse (ADR 055, ADR 057), qui la porte. */
   recipients: (Row & {email: string})[]
-  /** Des fiches. */
+  /** Des fiches ciblees sans adresse active. */
   withoutEmail: number
   /** Des adresses. */
   unsubscribed: number
+  /**
+   * Des fiches ciblees avec au moins une adresse active (critere 5 de s27),
+   * desinscrites comprises.
+   */
+  profilesWithEmail: number
 }
+
+/** Le predicat d'une cible (ADR 060 §2) : la fiche de la ligne est-elle visee ? */
+export type CampaignTargetPredicate = (row: {
+  memberProfileId: string
+}) => boolean
+
+const everyProfile: CampaignTargetPredicate = () => true
 
 const emailKeyOf = (email: string): string => email.trim().toLowerCase()
 
@@ -112,24 +125,27 @@ const carrierOf = <Row extends CampaignTargetRow>(group: Row[]): Row =>
   )[0].row
 
 /**
- * La cible « tous les membres » (criteres 2 et 7) : partition sans reste en
- * fiches sans adresse active, adresses desinscrites et destinataires. Les
- * lignes (une par fiche et par adresse active, s54, ADR 057) sont groupees
- * par adresse (s53, ADR 055) : un groupe donne **un** destinataire, porte par
- * sa premiere fiche ; une adresse desinscrite desinscrit le groupe. Une fiche
- * sans adresse n'est jamais comptee desinscrite. Point de passage unique que
- * s27 etend et que s27b reintegre.
+ * Le calcul de la cible, point de passage unique des trois types (s25, s27,
+ * ADR 060 §2) : les lignes de **toutes** les fiches (une par fiche et par
+ * adresse active, s54, ADR 057) sont groupees par adresse (s53, ADR 055),
+ * **puis** filtrees par `isTargeted`. Une adresse est retenue si une de ses
+ * fiches est ciblee ; une adresse desinscrite l'est quelle que soit la fiche
+ * qui la porte ; la porteuse vient des seules fiches ciblees. Une fiche sans
+ * adresse n'est jamais comptee desinscrite. s27b y reintegre les statutaires.
  */
 export const computeCampaignTarget = <Row extends CampaignTargetRow>(
-  rows: readonly Row[]
-): CampaignTarget<Row> => {
+  rows: readonly Row[],
+  isTargeted: CampaignTargetPredicate = everyProfile
+): ComputedCampaignTarget<Row> => {
   const groups = new Map<string, (Row & {email: string})[]>()
-  let withoutEmail = 0
+  const withoutEmailIds = new Set<string>()
+  const withEmailIds = new Set<string>()
   for (const row of rows) {
     if (!row.email) {
-      withoutEmail += 1
+      if (isTargeted(row)) withoutEmailIds.add(row.memberProfileId)
       continue
     }
+    if (isTargeted(row)) withEmailIds.add(row.memberProfileId)
     const key = emailKeyOf(row.email)
     groups.set(key, [...(groups.get(key) ?? []), {...row, email: row.email}])
   }
@@ -137,24 +153,49 @@ export const computeCampaignTarget = <Row extends CampaignTargetRow>(
   const recipients: (Row & {email: string})[] = []
   let unsubscribed = 0
   for (const group of groups.values()) {
+    const targeted = group.filter((row) => isTargeted(row))
+    if (targeted.length === 0) continue
     if (group.some((row) => row.unsubscribed)) unsubscribed += 1
-    else recipients.push(carrierOf(group))
+    else recipients.push(carrierOf(targeted))
   }
-  return {recipients, withoutEmail, unsubscribed}
+  return {
+    recipients,
+    withoutEmail: withoutEmailIds.size,
+    unsubscribed,
+    profilesWithEmail: withEmailIds.size,
+  }
 }
 
 /**
- * Les fiches de la cible qui portent l'adresse de ce destinataire, lui
- * compris (s53, ADR 055) ; lui seul s'il n'a pas d'adresse.
+ * Le decompte affiche avant l'envoi (critere 5 de s27) : en fiches d'abord,
+ * avec et sans adresse active, puis en adresses destinataires et desinscrites.
+ */
+export const campaignTargetCountsOf = (
+  target: ComputedCampaignTarget<CampaignTargetRow>
+): CampaignTargetCountsDTO => ({
+  profilesWithEmail: target.profilesWithEmail,
+  profilesWithoutEmail: target.withoutEmail,
+  profiles: target.profilesWithEmail + target.withoutEmail,
+  recipients: target.recipients.length,
+  unsubscribed: target.unsubscribed,
+})
+
+/**
+ * Les fiches **ciblees** qui portent l'adresse de ce destinataire, lui
+ * compris (s53, ADR 055 ; s27, ADR 060 §2) ; lui seul s'il n'a pas d'adresse.
  */
 export const sameAddressRowsOf = <Row extends CampaignTargetRow>(
   rows: readonly Row[],
-  recipient: Row
+  recipient: Row,
+  isTargeted: CampaignTargetPredicate = everyProfile
 ): Row[] => {
   const {email} = recipient
   if (!email) return [recipient]
   return rows.filter(
-    (row) => row.email !== null && emailKeyOf(row.email) === emailKeyOf(email)
+    (row) =>
+      row.email !== null &&
+      emailKeyOf(row.email) === emailKeyOf(email) &&
+      isTargeted(row)
   )
 }
 
@@ -204,6 +245,8 @@ export type CampaignRow = {
   bodyMarkdown: string
   templateId: string | null
   targetKind: string
+  targetGroupId: string | null
+  targetGroupName: string | null
   recipientCount: number
   withoutEmailCount: number
   unsubscribedCount: number
@@ -342,6 +385,9 @@ export const toCampaignDto = (
     bodyMarkdown: row.bodyMarkdown,
     templateId: row.templateId as CampaignTemplateId | null,
     targetKind: row.targetKind as CampaignTargetKind,
+    targetGroupName: row.targetGroupName,
+    targetGroupDeleted:
+      row.targetKind === 'group' && row.targetGroupId === null,
     recipientCount: row.recipientCount,
     withoutEmailCount: row.withoutEmailCount,
     unsubscribedCount: row.unsubscribedCount,

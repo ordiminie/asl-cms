@@ -8,7 +8,10 @@ import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {CAMPAIGNS_ROUTE_PATTERN} from '@/components/features/campaigns/campaign-paths'
 import {AuthorizationError} from '@/services/errors/authorization-error'
+import {CampaignTargetUnavailableError} from '@/services/errors/campaign-errors'
+import {NotFoundError} from '@/services/errors/not-found-error'
 import {
+  getCampaignComposerContextService,
   previewCampaignPlanService,
   previewCampaignService,
   sendCampaignService,
@@ -16,6 +19,8 @@ import {
 import {subjectMaxLength} from '@/services/rules/campaign-rules'
 import {
   type CampaignFormField,
+  type CampaignTarget,
+  type CampaignTargetActionResult,
   type CampaignTemplateId,
   type PreviewCampaignActionResult,
   type SendCampaignActionResult,
@@ -77,13 +82,31 @@ const validateContent = (
   }
 }
 
+const messageKeyOf = (error: unknown): string => {
+  if (error instanceof AuthorizationError) return 'errors.forbidden'
+  if (error instanceof CampaignTargetUnavailableError) {
+    return 'errors.unpaidUnavailable'
+  }
+  if (error instanceof NotFoundError) return 'errors.groupNotFound'
+  return 'errors.failed'
+}
+
 const failureOf = (error: unknown, t: Translator) => ({
   status: 'error' as const,
-  message:
-    error instanceof AuthorizationError
-      ? t('errors.forbidden')
-      : t('errors.failed'),
+  message: t(messageKeyOf(error)),
 })
+
+/**
+ * La cible choisie, lue du formulaire (s27, ADR 060 §1). Rien n'est suppose :
+ * un type absent ou inconnu part tel quel, et le service le refuse.
+ */
+const targetOf = (formData: FormData): CampaignTarget => {
+  const kind = readField(formData, 'targetKind')
+  if (kind === 'group') {
+    return {kind, groupId: readField(formData, 'targetGroupId')}
+  }
+  return {kind} as CampaignTarget
+}
 
 const contentOf = (values: CampaignFormValues) => ({
   templateId: values.templateId as CampaignTemplateId,
@@ -110,14 +133,16 @@ export async function previewCampaignAction(
     if (!validation.valid) return validation.result
 
     const memberProfileId = readField(formData, 'memberProfileId')
+    const target = targetOf(formData)
     const result = await previewCampaignService({
       organizationId: tenant.id,
       ...contentOf(validation.values),
+      target,
       ...(memberProfileId ? {memberProfileId} : {}),
     })
     if (result.status !== 'ok') return result
 
-    const plan = await previewCampaignPlanService(tenant.id)
+    const plan = await previewCampaignPlanService(tenant.id, target)
     return {status: 'ok', preview: result.preview, plan}
   } catch (error) {
     return failureOf(error, t)
@@ -142,12 +167,38 @@ export async function sendCampaignAction(
       organizationId: tenant.id,
       submissionId: readField(formData, 'submissionId'),
       ...contentOf(validation.values),
+      target: targetOf(formData),
     })
     if (result.status !== 'created') return result
 
     if (result.deliver) after(result.deliver)
     revalidatePath(CAMPAIGNS_ROUTE_PATTERN, 'layout')
     return {status: 'created', campaignId: result.campaignId}
+  } catch (error) {
+    return failureOf(error, t)
+  }
+}
+
+/**
+ * Le decompte de la cible choisie, relu a chaque changement de cible dans le
+ * composeur (s27, critere 5). N'ecrit rien ; le service reverifie le droit et
+ * refuse un groupe introuvable.
+ */
+export async function readCampaignTargetAction(
+  target: CampaignTarget
+): Promise<CampaignTargetActionResult> {
+  const tenant = await requireCurrentTenantDal()
+  const t = await getTranslations('CampaignsBureau')
+
+  try {
+    await requireActionAuth()
+
+    const context = await getCampaignComposerContextService(tenant.id, target)
+    return {
+      status: 'ok',
+      counts: context.counts,
+      reachableMembers: context.reachableMembers,
+    }
   } catch (error) {
     return failureOf(error, t)
   }

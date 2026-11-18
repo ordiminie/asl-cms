@@ -24,10 +24,13 @@ import {requireCurrentTenantDal} from './tenant-dal'
  * persistant** : contenu et destinataires sont des donnees personnelles
  * (ADR 038), streames derriere un `<Suspense>`. `cache()` deduplique dans la
  * requete. Le service ouvre le scope du tenant passe, celui du domaine appele.
+ *
+ * Le composeur s'ouvre sur la cible « tous les membres » (s27) ; un autre
+ * choix relit le decompte par une action.
  */
 export const getCampaignComposerContextDal = cache(
   async (organizationId: string): Promise<CampaignComposerContextDTO> =>
-    getCampaignComposerContextService(organizationId)
+    getCampaignComposerContextService(organizationId, {kind: 'all_members'})
 )
 
 export const getCampaignsPageDal = cache(

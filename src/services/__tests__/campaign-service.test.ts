@@ -43,6 +43,14 @@ vi.mock('@/db/repositories/campaign-repository', () => ({
   getSlidableCampaignPartsDao: vi.fn(),
   moveCampaignPartTxnDao: vi.fn(),
 }))
+vi.mock('@/db/repositories/recipient-group-repository', () => ({
+  getRecipientGroupByIdDao: vi.fn(),
+  getRecipientGroupMemberIdsDao: vi.fn(),
+  listRecipientGroupsDao: vi.fn(),
+}))
+vi.mock('../billing/resolve-member-billing-provider', () => ({
+  resolveMemberBillingProvider: vi.fn(),
+}))
 vi.mock('@/db/repositories/scheduled-job-repository', () => ({
   enqueueScheduledJobTxnDao: vi.fn(),
 }))
@@ -106,6 +114,11 @@ import {
   startCampaignPartTxnDao,
 } from '@/db/repositories/campaign-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
+import {
+  getRecipientGroupByIdDao,
+  getRecipientGroupMemberIdsDao,
+  listRecipientGroupsDao,
+} from '@/db/repositories/recipient-group-repository'
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {withTenant} from '@/db/tenant-scope'
 import CampaignMail, {getCampaignFooterTexts} from '@/lib/emails/campaign-email'
@@ -114,6 +127,8 @@ import {logger} from '@/lib/logger'
 
 import {getAssociationSettingsService} from '../association-settings-service'
 import {getActingContext} from '../authentication/auth-service'
+import type {MemberBillingProvider} from '../billing/member-billing-provider'
+import {resolveMemberBillingProvider} from '../billing/resolve-member-billing-provider'
 import {
   campaignScheduledJobHandlers,
   canManageCampaignsService,
@@ -128,6 +143,8 @@ import {
 } from '../campaign-service'
 import {isClientEmailEnabledService, sendEmailService} from '../email-service'
 import {AuthorizationError} from '../errors/authorization-error'
+import {CampaignTargetUnavailableError} from '../errors/campaign-errors'
+import {NotFoundError} from '../errors/not-found-error'
 import {ValidationParsedZodError} from '../errors/validation-error'
 import {runDueScheduledJobsService} from '../scheduled-job-service'
 import {UserOrganizationRoleConst} from '../types/domain/auth-types'
@@ -177,7 +194,10 @@ const content = {
   subject: 'Peinture du portail',
   preheader: 'Merci de laisser le passage libre.',
   bodyMarkdown: 'Bonjour {nom}, parcelle {parcelle}, le {date}.',
+  target: {kind: 'all_members' as const},
 }
+
+const ALL = {kind: 'all_members'} as const
 
 const sendInput = {...content, submissionId: SUBMISSION_ID}
 
@@ -225,6 +245,8 @@ const campaignRow = (overrides: Record<string, unknown> = {}) => ({
   bodyMarkdown: 'Bonjour {nom}',
   templateId: 'free',
   targetKind: 'all_members',
+  targetGroupId: null,
+  targetGroupName: null,
   recipientCount: 2,
   withoutEmailCount: 1,
   unsubscribedCount: 1,
@@ -329,6 +351,9 @@ beforeEach(() => {
     rows: [],
     total: 0,
   })
+  vi.mocked(listRecipientGroupsDao).mockResolvedValue([])
+  vi.mocked(getRecipientGroupByIdDao).mockResolvedValue(undefined)
+  vi.mocked(getRecipientGroupMemberIdsDao).mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -338,7 +363,7 @@ afterEach(() => {
 const calls: [string, () => Promise<unknown>][] = [
   [
     'lire le contexte du composeur',
-    () => getCampaignComposerContextService(ORG_ID),
+    () => getCampaignComposerContextService(ORG_ID, ALL),
   ],
   ['voir l’aperçu', () => previewCampaignService(content)],
   ['envoyer', () => sendCampaignService(sendInput)],
@@ -403,7 +428,7 @@ describe('autorisation — seul le bureau de l’association', () => {
     await setupAuthUserMocked(userTestSuperAdmin)
 
     await expect(
-      getCampaignComposerContextService(ORG_ID)
+      getCampaignComposerContextService(ORG_ID, ALL)
     ).resolves.toMatchObject({associationName: 'ASL Les Pins'})
   })
 })
@@ -414,13 +439,14 @@ describe('getCampaignComposerContextService — décompte avant l’envoi (crit�
   })
 
   it('distingue destinataires, sans email et désinscrits, et la somme fait le total', async () => {
-    const context = await getCampaignComposerContextService(ORG_ID)
+    const context = await getCampaignComposerContextService(ORG_ID, ALL)
 
     expect(context.counts).toEqual({
+      profilesWithEmail: 3,
+      profilesWithoutEmail: 1,
+      profiles: 4,
       recipients: 2,
-      withoutEmail: 1,
       unsubscribed: 1,
-      total: 4,
     })
     expect(context.reachableMembers).toEqual([
       {id: PROFILE_A, name: 'Claire Aubert'},
@@ -959,7 +985,7 @@ describe('previewCampaignPlanService — le plan annoncé avant l’envoi (s26)'
       '2026-11-12': 40,
     })
 
-    const plan = await previewCampaignPlanService(ORG_ID)
+    const plan = await previewCampaignPlanService(ORG_ID, ALL)
 
     expect(plan).toEqual({
       today: '2026-11-12',
@@ -980,9 +1006,9 @@ describe('previewCampaignPlanService — le plan annoncé avant l’envoi (s26)'
   it('refuse un membre simple, sans lecture', async () => {
     await setupAuthUserMocked(plainMember)
 
-    await expect(previewCampaignPlanService(ORG_ID)).rejects.toBeInstanceOf(
-      AuthorizationError
-    )
+    await expect(
+      previewCampaignPlanService(ORG_ID, ALL)
+    ).rejects.toBeInstanceOf(AuthorizationError)
     expectNoDaoCall()
   })
 })
@@ -2009,5 +2035,277 @@ describe('canManageCampaignsService — pour les écrans', () => {
 
     await setupAuthUserMocked(undefined)
     await expect(canManageCampaignsService(ORG_ID)).resolves.toBe(false)
+  })
+})
+
+/**
+ * s27 (ADR 060) : la cible choisie — tous, impayés, un groupe — passe par un
+ * seul calcul, reçu par les quatre lecteurs de la cible.
+ */
+describe('cible choisie — impayés et groupes (s27, ADR 060)', () => {
+  const GROUP_ID = '99999999-9999-4999-8999-999999999999'
+  const UNPAID = {kind: 'unpaid_members'} as const
+  const GROUP = {kind: 'group', groupId: GROUP_ID} as const
+  const settings = {
+    'contact.email': {value: 'bureau@asl-les-pins.test', isDefault: false},
+    'identity.accent_hue': {value: '195', isDefault: true},
+    'billing.provider': {value: 'simule', isDefault: false},
+    'billing.unpaid_statuses': {value: 'En retard', isDefault: false},
+    'billing.settled_statuses': {value: 'Payée', isDefault: false},
+  }
+  const invoice = (memberProfileId: string, status: string) => ({
+    id: `inv-${memberProfileId}-${status}`,
+    memberProfileId,
+    parcelId: 'p',
+    parcelNumber: '12',
+    meterNumber: null,
+    source: 'pennylane' as const,
+    year: 2026,
+    issuedOn: '2026-03-15',
+    dueOn: '2026-04-15',
+    amountCents: 100,
+    status,
+  })
+  const providerOf = (
+    listInvoicesOf: MemberBillingProvider['listInvoicesOf']
+  ): MemberBillingProvider => ({id: 'simule', canWrite: false, listInvoicesOf})
+
+  beforeEach(async () => {
+    await setupAuthUserMocked(board)
+    vi.mocked(getAssociationSettingsService).mockResolvedValue(
+      settings as never
+    )
+    vi.mocked(resolveMemberBillingProvider).mockReturnValue(
+      providerOf(async () => [
+        invoice(PROFILE_A, 'En retard'),
+        invoice(PROFILE_B, 'Payée'),
+        invoice(PROFILE_C, 'En retard'),
+        invoice(PROFILE_D, 'En retard'),
+      ])
+    )
+    vi.mocked(getRecipientGroupByIdDao).mockResolvedValue({
+      id: GROUP_ID,
+      name: 'Riverains',
+      profileCount: 2,
+    })
+    vi.mocked(getRecipientGroupMemberIdsDao).mockResolvedValue([
+      PROFILE_B,
+      PROFILE_C,
+    ])
+  })
+
+  it('« impayés » : seules les fiches dont une facture est impayée, lues par le fournisseur actif (critères 1, 2)', async () => {
+    const context = await getCampaignComposerContextService(ORG_ID, UNPAID)
+
+    expect(context.reachableMembers).toEqual([
+      {id: PROFILE_A, name: 'Claire Aubert'},
+    ])
+    expect(context.counts).toEqual({
+      profilesWithEmail: 2,
+      profilesWithoutEmail: 1,
+      profiles: 3,
+      recipients: 1,
+      unsubscribed: 1,
+    })
+    expect(resolveMemberBillingProvider).toHaveBeenCalledWith(settings)
+    const provider = vi.mocked(resolveMemberBillingProvider).mock.results[0]
+      .value as MemberBillingProvider
+    expect(provider.id).toBe('simule')
+  })
+
+  it('changer d’implémentation de facturation ne change pas la cible (critère 2)', async () => {
+    const invoices = [invoice(PROFILE_A, 'En retard')]
+    vi.mocked(resolveMemberBillingProvider).mockReturnValueOnce(
+      providerOf(async () => invoices)
+    )
+    const first = await getCampaignComposerContextService(ORG_ID, UNPAID)
+    vi.mocked(resolveMemberBillingProvider).mockReturnValueOnce({
+      id: 'manual',
+      canWrite: true,
+      listInvoicesOf: async () => invoices,
+    })
+    const second = await getCampaignComposerContextService(ORG_ID, UNPAID)
+
+    expect(second.counts).toEqual(first.counts)
+    expect(second.reachableMembers).toEqual(first.reachableMembers)
+  })
+
+  it('une facture « à classer » ne met pas la fiche en impayé', async () => {
+    vi.mocked(resolveMemberBillingProvider).mockReturnValue(
+      providerOf(async () => [invoice(PROFILE_A, 'Statut inconnu')])
+    )
+
+    const context = await getCampaignComposerContextService(ORG_ID, UNPAID)
+
+    expect(context.counts.profiles).toBe(0)
+  })
+
+  it('une erreur du fournisseur remonte, typée, et rien n’est créé — jamais « tous »', async () => {
+    vi.mocked(resolveMemberBillingProvider).mockReturnValue(
+      providerOf(async () => {
+        throw new Error('Pennylane indisponible')
+      })
+    )
+
+    await expect(
+      sendCampaignService({...sendInput, target: UNPAID})
+    ).rejects.toBeInstanceOf(CampaignTargetUnavailableError)
+    expectNoWrite()
+  })
+
+  it('un fournisseur sans implémentation remonte, typé, sans rien créer', async () => {
+    vi.mocked(resolveMemberBillingProvider).mockImplementation(() => {
+      throw new Error('Fournisseur de factures sans implementation : x')
+    })
+
+    await expect(
+      getCampaignComposerContextService(ORG_ID, UNPAID)
+    ).rejects.toBeInstanceOf(CampaignTargetUnavailableError)
+  })
+
+  it('« groupe » : seules ses fiches, lues sous le tenant (critère 4)', async () => {
+    const context = await getCampaignComposerContextService(ORG_ID, GROUP)
+
+    expect(context.reachableMembers).toEqual([
+      {id: PROFILE_B, name: 'Paul Renaud'},
+    ])
+    expect(context.counts).toMatchObject({
+      profilesWithEmail: 1,
+      profilesWithoutEmail: 1,
+      recipients: 1,
+    })
+    expect(getRecipientGroupMemberIdsDao).toHaveBeenCalledWith(GROUP_ID)
+    expect(resolveMemberBillingProvider).not.toHaveBeenCalled()
+  })
+
+  it('un groupe d’une autre association (introuvable sous le tenant) est refusé, jamais « tous » (critère 8)', async () => {
+    vi.mocked(getRecipientGroupByIdDao).mockResolvedValue(undefined)
+
+    await expect(
+      sendCampaignService({...sendInput, target: GROUP})
+    ).rejects.toBeInstanceOf(NotFoundError)
+    await expect(
+      previewCampaignService({...content, target: GROUP})
+    ).rejects.toBeInstanceOf(NotFoundError)
+    await expect(
+      previewCampaignPlanService(ORG_ID, GROUP)
+    ).rejects.toBeInstanceOf(NotFoundError)
+    expectNoWrite()
+  })
+
+  it('l’envoi à un groupe fige ses destinataires et copie son nom (ADR 060 §5)', async () => {
+    await sendCampaignService({...sendInput, target: GROUP})
+
+    const [campaign, , recipients] = vi.mocked(
+      createCampaignWithRecipientsTxnDao
+    ).mock.calls[0]
+    expect(campaign).toMatchObject({
+      targetKind: 'group',
+      targetGroupId: GROUP_ID,
+      targetGroupName: 'Riverains',
+      recipientCount: 1,
+      withoutEmailCount: 1,
+      unsubscribedCount: 0,
+    })
+    expect(recipients.map((r) => r.memberProfileId)).toEqual([PROFILE_B])
+  })
+
+  it('l’envoi aux impayés écrit son type, sans groupe', async () => {
+    await sendCampaignService({...sendInput, target: UNPAID})
+
+    const [campaign, , recipients] = vi.mocked(
+      createCampaignWithRecipientsTxnDao
+    ).mock.calls[0]
+    expect(campaign).toMatchObject({
+      targetKind: 'unpaid_members',
+      targetGroupId: null,
+      targetGroupName: null,
+    })
+    expect(recipients.map((r) => r.memberProfileId)).toEqual([PROFILE_A])
+  })
+
+  it('un désinscrit est exclu des trois types de cible (critère 7)', async () => {
+    vi.mocked(getRecipientGroupMemberIdsDao).mockResolvedValue([PROFILE_D])
+
+    for (const target of [ALL, UNPAID, GROUP]) {
+      const context = await getCampaignComposerContextService(ORG_ID, target)
+      expect(
+        context.reachableMembers.map((member) => member.id),
+        target.kind
+      ).not.toContain(PROFILE_D)
+      expect(context.counts.unsubscribed, target.kind).toBe(1)
+    }
+  })
+
+  it('cible vide → no_recipient, rien n’est créé', async () => {
+    vi.mocked(getRecipientGroupMemberIdsDao).mockResolvedValue([PROFILE_C])
+
+    await expect(
+      sendCampaignService({...sendInput, target: GROUP})
+    ).resolves.toEqual({status: 'no_recipient'})
+    await expect(
+      previewCampaignService({...content, target: GROUP})
+    ).resolves.toEqual({status: 'no_recipient'})
+    expectNoWrite()
+  })
+
+  it('l’aperçu choisit le membre dans la cible et ne cite que les parcelles de ses fiches ciblées', async () => {
+    vi.mocked(getCampaignTargetRowsDao).mockResolvedValue([
+      {...targetRows()[0], accountName: 'Claire A.'},
+      {
+        memberProfileId: PROFILE_E,
+        name: 'SCI Aubert',
+        email: 'claire@example.fr',
+        unsubscribed: false,
+        currentParcelNumbers: [],
+        accountName: 'Claire A.',
+      },
+    ])
+    vi.mocked(getRecipientGroupMemberIdsDao).mockResolvedValue([PROFILE_E])
+    vi.mocked(getCurrentParcelNumbersForMembersDao).mockResolvedValue({
+      [PROFILE_E]: ['31'],
+    })
+
+    const result = await previewCampaignService({...content, target: GROUP})
+
+    expect(result.status === 'ok' && result.preview.member.id).toBe(PROFILE_E)
+    expect(getCurrentParcelNumbersForMembersDao).toHaveBeenCalledWith([
+      PROFILE_E,
+    ])
+    expect(result.status === 'ok' && result.preview.text).toContain(
+      'Bonjour SCI Aubert, parcelle 31,'
+    )
+  })
+
+  it('le plan d’envoi compte les adresses de la cible choisie', async () => {
+    const plan = await previewCampaignPlanService(ORG_ID, GROUP)
+
+    expect(plan.parts).toEqual([{day: '2026-11-12', count: 1}])
+  })
+
+  it('le composeur propose les groupes de l’association', async () => {
+    vi.mocked(listRecipientGroupsDao).mockResolvedValue([
+      {id: GROUP_ID, name: 'Riverains', profileCount: 2},
+    ])
+
+    const context = await getCampaignComposerContextService(ORG_ID, ALL)
+
+    expect(context.groups).toEqual([
+      {id: GROUP_ID, name: 'Riverains', profileCount: 2},
+    ])
+    expect(listRecipientGroupsDao).toHaveBeenCalledWith(ORG_ID)
+  })
+
+  it('refuse une cible malformée, sans lecture', async () => {
+    await expect(
+      sendCampaignService({
+        ...sendInput,
+        target: {kind: 'group', groupId: 'pas-un-uuid'},
+      })
+    ).rejects.toBeInstanceOf(ValidationParsedZodError)
+    await expect(
+      sendCampaignService({...sendInput, target: {kind: 'tous'} as never})
+    ).rejects.toBeInstanceOf(ValidationParsedZodError)
+    expect(getCampaignTargetRowsDao).not.toHaveBeenCalled()
   })
 })
