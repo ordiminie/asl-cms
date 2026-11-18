@@ -20,6 +20,10 @@ vi.mock('@/services/facades/member-profile-service-facade', () => ({
   getMemberProfileService: vi.fn(),
   updateMemberProfileContactService: vi.fn(),
 }))
+vi.mock('@/services/facades/recipient-group-service-facade', () => ({
+  addMembersToRecipientGroupService: vi.fn(),
+  removeMembersFromRecipientGroupService: vi.fn(),
+}))
 vi.mock('@/services/facades/member-role-service-facade', () => ({
   changeMemberRoleService: vi.fn(),
 }))
@@ -33,6 +37,7 @@ import {revalidatePath} from 'next/cache'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
+import {NotFoundError} from '@/services/errors/not-found-error'
 import {
   createMemberProfileService,
   getMemberProfilePageService,
@@ -44,13 +49,19 @@ import {
   attachParcelService,
   recordSaleService,
 } from '@/services/facades/parcel-ownership-service-facade'
+import {
+  addMembersToRecipientGroupService,
+  removeMembersFromRecipientGroupService,
+} from '@/services/facades/recipient-group-service-facade'
 import type {MemberProfileDTO} from '@/services/types/domain/member-profile-types'
 
 import {
+  addToRecipientGroupAction,
   attachParcelAction,
   changeMemberRoleAction,
   createMemberProfileAction,
   recordSaleAction,
+  removeFromRecipientGroupAction,
   searchBuyersAction,
   updateMemberProfileContactAction,
 } from './actions'
@@ -914,5 +925,100 @@ describe('changeMemberRoleAction', () => {
       status: 'error',
       message: 'BureauMemberProfilesPage.errors.forbidden',
     })
+  })
+})
+
+describe('groupes de destinataires depuis la liste (s27, critère 3)', () => {
+  const GROUP_ID = '99999999-9999-4999-8999-999999999999'
+  const selectionOf = (ids: string[]) => {
+    const formData = formOf({groupId: GROUP_ID})
+    for (const id of ids) formData.append('memberProfileIds', id)
+    return formData
+  }
+  const group = {id: GROUP_ID, name: 'Riverains', profileCount: 38}
+
+  beforeEach(() => {
+    vi.mocked(addMembersToRecipientGroupService).mockResolvedValue({
+      group,
+      changed: 2,
+    })
+    vi.mocked(removeMembersFromRecipientGroupService).mockResolvedValue({
+      group: {...group, profileCount: 36},
+      changed: 2,
+    })
+  })
+
+  it('ajoute les fiches cochées au groupe choisi, puis revalide', async () => {
+    const result = await addToRecipientGroupAction(
+      undefined,
+      selectionOf([PROFILE_ID, OTHER_PROFILE_ID])
+    )
+
+    expect(addMembersToRecipientGroupService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      groupId: GROUP_ID,
+      memberProfileIds: [PROFILE_ID, OTHER_PROFILE_ID],
+    })
+    expect(result).toEqual({
+      status: 'saved',
+      groupId: GROUP_ID,
+      groupName: 'Riverains',
+      changed: 2,
+      profileCount: 38,
+    })
+    expect(revalidatePath).toHaveBeenCalledWith(ROUTE, 'layout')
+  })
+
+  it('retire les fiches cochées du groupe filtré', async () => {
+    const result = await removeFromRecipientGroupAction(
+      undefined,
+      selectionOf([PROFILE_ID])
+    )
+
+    expect(removeMembersFromRecipientGroupService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      groupId: GROUP_ID,
+      memberProfileIds: [PROFILE_ID],
+    })
+    expect(result).toMatchObject({status: 'saved', profileCount: 36})
+  })
+
+  it('un refus (fiche étrangère, groupe introuvable) : rien n’a changé, aucune revalidation', async () => {
+    vi.mocked(addMembersToRecipientGroupService).mockRejectedValue(
+      new NotFoundError()
+    )
+
+    await expect(
+      addToRecipientGroupAction(undefined, selectionOf([PROFILE_ID]))
+    ).resolves.toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.recipientGroups.errors.addFailed',
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('le retrait refusé a son propre message', async () => {
+    vi.mocked(removeMembersFromRecipientGroupService).mockRejectedValue(
+      new Error('panne')
+    )
+
+    await expect(
+      removeFromRecipientGroupAction(undefined, selectionOf([PROFILE_ID]))
+    ).resolves.toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.recipientGroups.errors.removeFailed',
+    })
+  })
+
+  it('sans droit : refus nommé, sans service', async () => {
+    vi.mocked(requireActionAuth).mockRejectedValue(new AuthorizationError())
+
+    await expect(
+      addToRecipientGroupAction(undefined, selectionOf([PROFILE_ID]))
+    ).resolves.toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.forbidden',
+    })
+    expect(addMembersToRecipientGroupService).not.toHaveBeenCalled()
   })
 })

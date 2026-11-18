@@ -89,6 +89,7 @@ import {
 
 import {getActingContext} from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
+import {ValidationParsedZodError} from '../errors/validation-error'
 import {
   canManageMemberProfilesService,
   createMemberProfileService,
@@ -644,6 +645,31 @@ describe.each([
     expect(getMemberProfilePageDao).toHaveBeenCalledWith(
       expect.objectContaining({search: undefined, offset: 0})
     )
+  })
+
+  it('filtre sur un groupe de destinataires (s27)', async () => {
+    const groupId = '99999999-9999-4999-8999-999999999999'
+
+    await getMemberProfilePageService({
+      organizationId: ORG_ID,
+      page: 1,
+      groupId,
+    })
+
+    expect(getMemberProfilePageDao).toHaveBeenCalledWith(
+      expect.objectContaining({groupId})
+    )
+  })
+
+  it('refuse un groupe malformé, sans lecture', async () => {
+    await expect(
+      getMemberProfilePageService({
+        organizationId: ORG_ID,
+        page: 1,
+        groupId: 'pas-un-uuid',
+      })
+    ).rejects.toBeInstanceOf(ValidationParsedZodError)
+    expect(getMemberProfilePageDao).not.toHaveBeenCalled()
   })
 })
 

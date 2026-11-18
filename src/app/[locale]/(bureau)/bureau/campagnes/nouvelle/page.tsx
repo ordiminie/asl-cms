@@ -15,7 +15,11 @@ import {
 } from '@/components/features/campaigns/campaign-composer'
 import {CAMPAIGN_TEMPLATE_IDS} from '@/services/types/domain/campaign-types'
 
-import {previewCampaignAction, sendCampaignAction} from '../actions'
+import {
+  previewCampaignAction,
+  readCampaignTargetAction,
+  sendCampaignAction,
+} from '../actions'
 
 type NewCampaignPageProps = {params: Promise<{locale: string}>}
 
@@ -83,6 +87,7 @@ async function ComposerSection() {
       templates={templates}
       previewAction={previewCampaignAction}
       sendAction={sendCampaignAction}
+      targetAction={readCampaignTargetAction}
     />
   )
 }

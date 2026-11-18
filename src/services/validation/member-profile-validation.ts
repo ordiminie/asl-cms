@@ -122,6 +122,8 @@ export const memberProfilePageServiceSchema = z.object({
       const trimmed = value?.trim()
       return trimmed ? trimmed : undefined
     }),
+  /** Le filtre « Groupe » de la liste (s27). */
+  groupId: z.string().uuid().optional(),
 })
 
 /**

@@ -32,17 +32,29 @@ import {Card} from '@/components/ui/card'
 import {Input} from '@/components/ui/input'
 import {Label} from '@/components/ui/label'
 import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {Skeleton} from '@/components/ui/skeleton'
 import {cn} from '@/lib/utils'
 import {finalSubject} from '@/services/rules/campaign-rules'
 import {
   CAMPAIGN_PREHEADER_MAX,
+  CAMPAIGN_TARGET_KINDS,
   CAMPAIGN_TEMPLATE_IDS,
   CAMPAIGN_VARIABLES,
   type CampaignComposerContextDTO,
   type CampaignFormField,
   type CampaignPlanDTO,
   type CampaignPreviewDTO,
+  type CampaignTarget,
+  type CampaignTargetActionResult,
+  type CampaignTargetCountsDTO,
+  type CampaignTargetKind,
   type CampaignTemplateId,
   type PreviewCampaignActionResult,
   type SendCampaignActionResult,
@@ -52,6 +64,7 @@ import {
   createCampaignFormSchema,
 } from '@/services/validation/campaign-validation'
 
+import {RECIPIENT_GROUPS_PATH} from '../recipient-groups/recipient-group-paths'
 import {CAMPAIGNS_PATH} from './campaign-paths'
 import {CampaignPreviewStep} from './campaign-preview-step'
 
@@ -74,7 +87,22 @@ type CampaignComposerProps = {
     state: SendCampaignActionResult | undefined,
     formData: FormData
   ) => Promise<SendCampaignActionResult>
+  /** Relit le decompte d'une autre cible (s27). */
+  targetAction: (target: CampaignTarget) => Promise<CampaignTargetActionResult>
 }
+
+/** Le decompte de la cible choisie, tel que la carte « Destinataires » le lit. */
+type TargetReading =
+  | {status: 'loading'}
+  | Exclude<CampaignTargetActionResult, {status: 'error'}>
+  | {status: 'error'; message: string}
+  | {status: 'no_group'}
+
+/** Les champs de la cible, tels que les actions les lisent (s27). */
+const targetFieldsOf = (target: CampaignTarget): Record<string, string> =>
+  target.kind === 'group'
+    ? {targetKind: target.kind, targetGroupId: target.groupId}
+    : {targetKind: target.kind}
 
 const FIELD_ORDER: CampaignFormField[] = [
   'templateId',
@@ -124,6 +152,7 @@ export function CampaignComposer({
   templates,
   previewAction,
   sendAction,
+  targetAction,
 }: CampaignComposerProps) {
   const t = useTranslations('CampaignsBureau')
   const form = useForm<CampaignFormValues>({
@@ -142,6 +171,56 @@ export function CampaignComposer({
   const [applied, setApplied] = useState(false)
   const [pendingModel, setPendingModel] = useState<ModelId | null>(null)
   const noticeRef = useRef<HTMLDivElement>(null)
+  const [targetKind, setTargetKind] =
+    useState<CampaignTargetKind>('all_members')
+  const [groupId, setGroupId] = useState(context.groups[0]?.id ?? '')
+  const [reading, setReading] = useState<TargetReading>({
+    status: 'ok',
+    counts: context.counts,
+    reachableMembers: context.reachableMembers,
+  })
+  const readingRequest = useRef(0)
+
+  const target: CampaignTarget =
+    targetKind === 'group' ? {kind: 'group', groupId} : {kind: targetKind}
+
+  const readTarget = async (next: CampaignTarget) => {
+    const request = ++readingRequest.current
+    if (next.kind === 'all_members') {
+      setReading({
+        status: 'ok',
+        counts: context.counts,
+        reachableMembers: context.reachableMembers,
+      })
+      return
+    }
+    if (next.kind === 'group' && !next.groupId) {
+      setReading({status: 'no_group'})
+      return
+    }
+    setReading({status: 'loading'})
+    const result = await targetAction(next)
+    if (request === readingRequest.current) setReading(result)
+  }
+
+  const chooseTargetKind = (next: CampaignTargetKind) => {
+    setTargetKind(next)
+    void readTarget(next === 'group' ? {kind: next, groupId} : {kind: next})
+  }
+
+  const chooseGroup = (next: string) => {
+    setGroupId(next)
+    void readTarget({kind: 'group', groupId: next})
+  }
+
+  const targetContext: CampaignComposerContextDTO =
+    reading.status === 'ok'
+      ? {
+          ...context,
+          counts: reading.counts,
+          reachableMembers: reading.reachableMembers,
+        }
+      : context
 
   const values = useWatch({control: form.control}) as CampaignFormValues
   const templateId = values.templateId as CampaignTemplateId
@@ -168,7 +247,10 @@ export function CampaignComposer({
     setPreview(null)
     const result = await previewAction(
       undefined,
-      formDataOf(form.getValues(), memberProfileId ? {memberProfileId} : {})
+      formDataOf(form.getValues(), {
+        ...targetFieldsOf(target),
+        ...(memberProfileId ? {memberProfileId} : {}),
+      })
     )
     if (result.status === 'ok') {
       setNotice(null)
@@ -220,7 +302,7 @@ export function CampaignComposer({
   if (step === 'preview') {
     return (
       <CampaignPreviewStep
-        context={context}
+        context={targetContext}
         preview={preview}
         plan={plan}
         values={values}
@@ -232,7 +314,10 @@ export function CampaignComposer({
         onSend={async () => {
           const result = await sendAction(
             undefined,
-            formDataOf(form.getValues(), {submissionId})
+            formDataOf(form.getValues(), {
+              ...targetFieldsOf(target),
+              submissionId,
+            })
           )
           if (result.status === 'invalid') applyServerErrors(result.errors)
           if (result.status === 'unknown_variables') {
@@ -293,7 +378,14 @@ export function CampaignComposer({
           }}
         />
 
-        <RecipientsCard context={context} />
+        <RecipientsCard
+          targetKind={targetKind}
+          groupId={groupId}
+          groups={context.groups}
+          reading={reading}
+          onChangeKind={chooseTargetKind}
+          onChangeGroup={chooseGroup}
+        />
 
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button type="submit" className="h-14 w-full sm:h-11 sm:w-auto">
@@ -658,59 +750,220 @@ function MessageCard({
   )
 }
 
-function RecipientsCard({context}: {context: CampaignComposerContextDTO}) {
+type RecipientsCardProps = {
+  targetKind: CampaignTargetKind
+  groupId: string
+  groups: CampaignComposerContextDTO['groups']
+  reading: TargetReading
+  onChangeKind: (kind: CampaignTargetKind) => void
+  onChangeGroup: (groupId: string) => void
+}
+
+/**
+ * « Destinataires » (ecran 1 de s27) : le choix de la cible, puis son
+ * decompte en fiches, puis en adresses. « Un groupe » revele le choix du
+ * groupe sous l'option (gap 2 du design, retenu au plan).
+ */
+function RecipientsCard({
+  targetKind,
+  groupId,
+  groups,
+  reading,
+  onChangeKind,
+  onChangeGroup,
+}: RecipientsCardProps) {
   const t = useTranslations('CampaignsBureau.composer.recipients')
-  const {counts} = context
+  const fieldId = useId()
 
   return (
     <SectionCard title={t('title')}>
-      <p className="text-[17px] font-semibold">{t('target')}</p>
-      <RecipientCounts
-        rows={[
-          [t('reachable'), counts.recipients],
-          [t('withoutEmail'), counts.withoutEmail, t('withoutEmailNote')],
-          [t('unsubscribed'), counts.unsubscribed],
-        ]}
-        totalLabel={t('total')}
-        total={counts.total}
-      />
-      {counts.recipients === 0 && (
-        <p className="text-destructive-text text-[15px] font-medium">
-          {t('none')}
-        </p>
+      <p id={`${fieldId}-legend`} className="text-[17px] font-semibold">
+        {t('legend')}
+      </p>
+      <RadioGroup
+        value={targetKind}
+        onValueChange={(value) => onChangeKind(value as CampaignTargetKind)}
+        aria-labelledby={`${fieldId}-legend`}
+        className="gap-3"
+      >
+        {CAMPAIGN_TARGET_KINDS.map((kind) => (
+          <div key={kind} className="flex items-start gap-3">
+            <RadioGroupItem
+              value={kind}
+              id={`${fieldId}-${kind}`}
+              aria-describedby={`${fieldId}-${kind}-help`}
+              className="mt-1 size-5"
+            />
+            <div className="flex flex-col">
+              <Label htmlFor={`${fieldId}-${kind}`} className="text-[17px]">
+                {t(`targets.${kind}.label`)}
+              </Label>
+              <p
+                id={`${fieldId}-${kind}-help`}
+                className="text-muted-foreground text-[15px]"
+              >
+                {t(`targets.${kind}.help`)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </RadioGroup>
+      {targetKind === 'group' && (
+        <GroupChoice
+          groupId={groupId}
+          groups={groups}
+          onChange={onChangeGroup}
+        />
       )}
+      <TargetReadingView reading={reading} targetKind={targetKind} />
     </SectionCard>
   )
 }
 
+function GroupChoice({
+  groupId,
+  groups,
+  onChange,
+}: {
+  groupId: string
+  groups: CampaignComposerContextDTO['groups']
+  onChange: (groupId: string) => void
+}) {
+  const t = useTranslations('CampaignsBureau.composer.recipients')
+  const fieldId = useId()
+
+  if (groups.length === 0) {
+    return (
+      <p className="text-[17px] sm:pl-12">
+        {t('noGroup')}{' '}
+        <Link href={RECIPIENT_GROUPS_PATH} className="text-primary underline">
+          {t('createGroup')}
+        </Link>
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-col gap-2 sm:pl-12">
+      <Label htmlFor={fieldId} className="text-[17px]">
+        {t('group')}
+      </Label>
+      <Select value={groupId} onValueChange={onChange}>
+        <SelectTrigger id={fieldId} className="h-14 w-full sm:h-11">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {groups.map((group) => (
+            <SelectItem key={group.id} value={group.id}>
+              {t('groupOption', {name: group.name, count: group.profileCount})}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Link
+        href={RECIPIENT_GROUPS_PATH}
+        className="text-primary text-[15px] underline"
+      >
+        {t('manageGroups')}
+      </Link>
+    </div>
+  )
+}
+
+function TargetReadingView({
+  reading,
+  targetKind,
+}: {
+  reading: TargetReading
+  targetKind: CampaignTargetKind
+}) {
+  const t = useTranslations('CampaignsBureau.composer.recipients')
+
+  if (reading.status === 'no_group') return null
+  if (reading.status === 'error') {
+    return (
+      <Alert variant="destructive" role="alert">
+        <AlertTriangle aria-hidden="true" />
+        <AlertTitle className="text-[15px] whitespace-normal">
+          {reading.message}
+        </AlertTitle>
+      </Alert>
+    )
+  }
+  const counts = reading.status === 'ok' ? reading.counts : null
+  const figure = (key: keyof CampaignTargetCountsDTO): ReactNode =>
+    counts ? counts[key] : <Skeleton className="ml-auto h-6 w-10" />
+
+  return (
+    <>
+      <RecipientCounts
+        label={t('profiles')}
+        rows={[
+          [t('profilesWithEmail'), figure('profilesWithEmail')],
+          [
+            t('profilesWithoutEmail'),
+            figure('profilesWithoutEmail'),
+            t('profilesWithoutEmailNote'),
+          ],
+        ]}
+        total={[t('profilesTotal'), figure('profiles')]}
+      />
+      <RecipientCounts
+        label={t('addresses')}
+        rows={[
+          [t('recipients'), figure('recipients'), t('recipientsNote')],
+          [t('unsubscribed'), figure('unsubscribed'), t('unsubscribedNote')],
+        ]}
+      />
+      {counts && counts.recipients === 0 && (
+        <p className="text-destructive-text text-[15px] font-medium">
+          {targetKind === 'unpaid_members' && counts.profiles === 0
+            ? t('noneUnpaid')
+            : t('none')}
+        </p>
+      )}
+    </>
+  )
+}
+
 function RecipientCounts({
+  label,
   rows,
-  totalLabel,
   total,
 }: {
-  rows: [string, number | ReactNode, string?][]
-  totalLabel: string
-  total: number | ReactNode
+  label: string
+  rows: [string, ReactNode, string?][]
+  total?: [string, ReactNode]
 }) {
   return (
-    <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-[17px]">
-      {rows.map(([label, value, note]) => (
-        <div key={label} className="contents">
-          <dt>
-            {label}
-            {note && (
-              <span className="text-muted-foreground block text-[15px]">
-                {note}
-              </span>
-            )}
-          </dt>
-          <dd className="text-right font-semibold tabular-nums">{value}</dd>
-        </div>
-      ))}
-      <div className="border-border col-span-2 border-t" />
-      <dt>{totalLabel}</dt>
-      <dd className="text-right font-semibold tabular-nums">{total}</dd>
-    </dl>
+    <div role="group" aria-label={label} className="flex flex-col gap-2">
+      <p className="text-muted-foreground text-[13px] font-semibold tracking-wide uppercase">
+        {label}
+      </p>
+      <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-[17px]">
+        {rows.map(([rowLabel, value, note]) => (
+          <div key={rowLabel} className="contents">
+            <dt>
+              {rowLabel}
+              {note && (
+                <span className="text-muted-foreground block text-[15px]">
+                  {note}
+                </span>
+              )}
+            </dt>
+            <dd className="text-right font-semibold tabular-nums">{value}</dd>
+          </div>
+        ))}
+        {total && (
+          <>
+            <div className="border-border col-span-2 border-t" />
+            <dt>{total[0]}</dt>
+            <dd className="text-right font-semibold tabular-nums">
+              {total[1]}
+            </dd>
+          </>
+        )}
+      </dl>
+    </div>
   )
 }
 

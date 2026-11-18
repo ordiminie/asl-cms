@@ -8,6 +8,7 @@ import {
   campaignPart,
   campaignPartStatusEnum,
   campaignRecipient,
+  campaignRecipientProfile,
   campaignRecipientStatusEnum,
   campaignStatusEnum,
 } from './models/campaign-model'
@@ -132,6 +133,8 @@ describe('campaign (ADR 051)', () => {
         'body_markdown',
         'template_id',
         'target_kind',
+        'target_group_id',
+        'target_group_name',
         'recipient_count',
         'without_email_count',
         'unsubscribed_count',
@@ -264,5 +267,44 @@ describe('campaign_recipient (ADR 051)', () => {
 describe('member_unsubscribe (ADR 057)', () => {
   it('a disparu : le refus est porté par l’adresse de fiche', () => {
     expect('memberUnsubscribe' in campaignModels).toBe(false)
+  })
+})
+
+describe('campaign_recipient_profile (s27, ADR 061)', () => {
+  const t = describeTable(campaignRecipientProfile)
+
+  it('porte les colonnes de l’ADR, et elles seules', () => {
+    expect(t.config.name).toBe('campaign_recipient_profile')
+    expect(t.config.columns.map((c) => c.name).sort()).toEqual(
+      ['organization_id', 'campaign_recipient_id', 'member_profile_id'].sort()
+    )
+    for (const name of [
+      'organization_id',
+      'campaign_recipient_id',
+      'member_profile_id',
+    ]) {
+      expect(t.column(name)?.notNull, name).toBe(true)
+    }
+  })
+
+  it('disparaît avec son destinataire comme avec sa fiche (cascade)', () => {
+    expect(t.referencedTableOf('organization_id')).toBe(
+      getTableConfig(organization).name
+    )
+    expect(t.foreignKeyOn('organization_id')?.onDelete).toBe('cascade')
+    expect(t.referencedTableOf('campaign_recipient_id')).toBe(
+      'campaign_recipient'
+    )
+    expect(t.foreignKeyOn('campaign_recipient_id')?.onDelete).toBe('cascade')
+    expect(t.referencedTableOf('member_profile_id')).toBe(
+      getTableConfig(memberProfile).name
+    )
+    expect(t.foreignKeyOn('member_profile_id')?.onDelete).toBe('cascade')
+  })
+
+  it('une fiche n’est figée qu’une fois par destinataire (clé primaire composée)', () => {
+    expect(
+      t.config.primaryKeys.map((pk) => pk.columns.map((c) => c.name))
+    ).toEqual([['campaign_recipient_id', 'member_profile_id']])
   })
 })

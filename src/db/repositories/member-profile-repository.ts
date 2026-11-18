@@ -20,6 +20,7 @@ import {
   MemberProfileModel,
 } from '@/db/models/member-profile-model'
 import {parcel, parcelOwnership} from '@/db/models/parcel-model'
+import {recipientGroupMember} from '@/db/models/recipient-group-model'
 import {getDb} from '@/db/tenant-scope'
 
 import {
@@ -286,6 +287,16 @@ const getCurrentParcelNumbersByProfile = async (
   )
 }
 
+/** La fiche appartient au groupe (s27, ADR 060 §4). */
+const inRecipientGroup = (groupId: string) =>
+  inArray(
+    memberProfile.id,
+    getDb()
+      .select({id: recipientGroupMember.memberProfileId})
+      .from(recipientGroupMember)
+      .where(eq(recipientGroupMember.groupId, groupId))
+  )
+
 /**
  * Une page de la liste du bureau, triee par nom tel que saisi puis par
  * identifiant — un departage stable, pour que la pagination ne saute ni ne
@@ -294,12 +305,15 @@ const getCurrentParcelNumbersByProfile = async (
 export const getMemberProfilePageDao = async (input: {
   organizationId: string
   search?: string
+  /** Le filtre « Groupe » de la liste (s27) : les seules fiches du groupe. */
+  groupId?: string
   limit: number
   offset: number
 }): Promise<MemberProfilePageRows> => {
   const where = and(
     eq(memberProfile.organizationId, input.organizationId),
-    input.search ? matchesSearch(input.search) : undefined
+    input.search ? matchesSearch(input.search) : undefined,
+    input.groupId ? inRecipientGroup(input.groupId) : undefined
   )
 
   const profiles = await getDb()

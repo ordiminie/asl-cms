@@ -23,6 +23,7 @@ vi.mock('@/lib/logger', () => ({
 vi.mock('@/app/dal/tenant-dal', () => ({requireCurrentTenantDal: vi.fn()}))
 vi.mock('@/app/dal/user-dal', () => ({requireActionAuth: vi.fn()}))
 vi.mock('@/services/facades/campaign-service-facade', () => ({
+  getCampaignComposerContextService: vi.fn(),
   previewCampaignService: vi.fn(),
   previewCampaignPlanService: vi.fn(),
   sendCampaignService: vi.fn(),
@@ -35,18 +36,27 @@ import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
 import {logger} from '@/lib/logger'
 import {AuthorizationError} from '@/services/errors/authorization-error'
+import {CampaignTargetUnavailableError} from '@/services/errors/campaign-errors'
+import {NotFoundError} from '@/services/errors/not-found-error'
 import {
+  getCampaignComposerContextService,
   previewCampaignPlanService,
   previewCampaignService,
   sendCampaignService,
 } from '@/services/facades/campaign-service-facade'
 
-import {previewCampaignAction, sendCampaignAction} from './actions'
+import {
+  previewCampaignAction,
+  readCampaignTargetAction,
+  sendCampaignAction,
+} from './actions'
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 const CAMPAIGN_ID = '33333333-3333-4333-8333-333333333333'
 const SUBMISSION_ID = '44444444-4444-4444-8444-444444444444'
 const PROFILE_ID = '55555555-5555-4555-8555-555555555555'
+const GROUP_ID = '66666666-6666-4666-8666-666666666666'
+const ALL = {kind: 'all_members'}
 const SECRET = 'Le portail sera repeint du 18 au 20 novembre.'
 
 const formOf = (values: Record<string, string>) => {
@@ -61,6 +71,8 @@ const content = {
   preheader: '',
   bodyMarkdown: SECRET,
 }
+
+const allMembers = {targetKind: 'all_members'}
 
 const allLoggerCalls = () =>
   Object.values(vi.mocked(logger)).flatMap(
@@ -88,7 +100,7 @@ describe('sendCampaignAction', () => {
   it('envoie par la façade dans le tenant du domaine, pose la livraison dans after() une fois, revalide', async () => {
     const result = await sendCampaignAction(
       undefined,
-      formOf({...content, submissionId: SUBMISSION_ID})
+      formOf({...content, ...allMembers, submissionId: SUBMISSION_ID})
     )
 
     expect(result).toEqual({status: 'created', campaignId: CAMPAIGN_ID})
@@ -96,6 +108,7 @@ describe('sendCampaignAction', () => {
       organizationId: TENANT_ID,
       submissionId: SUBMISSION_ID,
       ...content,
+      target: ALL,
     })
     expect(after).toHaveBeenCalledTimes(1)
     expect(after).toHaveBeenCalledWith(deliver)
@@ -114,7 +127,7 @@ describe('sendCampaignAction', () => {
 
     const result = await sendCampaignAction(
       undefined,
-      formOf({...content, submissionId: SUBMISSION_ID})
+      formOf({...content, ...allMembers, submissionId: SUBMISSION_ID})
     )
 
     expect(result).toEqual({status: 'created', campaignId: CAMPAIGN_ID})
@@ -126,7 +139,7 @@ describe('sendCampaignAction', () => {
 
     const result = await sendCampaignAction(
       undefined,
-      formOf({...content, submissionId: SUBMISSION_ID})
+      formOf({...content, ...allMembers, submissionId: SUBMISSION_ID})
     )
 
     expect(result).toEqual({
@@ -181,7 +194,7 @@ describe('sendCampaignAction', () => {
 
       const result = await sendCampaignAction(
         undefined,
-        formOf({...content, submissionId: SUBMISSION_ID})
+        formOf({...content, ...allMembers, submissionId: SUBMISSION_ID})
       )
 
       expect(result).toEqual(refusal)
@@ -195,7 +208,7 @@ describe('sendCampaignAction', () => {
 
     const result = await sendCampaignAction(
       undefined,
-      formOf({...content, submissionId: SUBMISSION_ID})
+      formOf({...content, ...allMembers, submissionId: SUBMISSION_ID})
     )
 
     expect(result).toEqual({
@@ -215,7 +228,13 @@ describe('previewCampaignAction', () => {
       preheader: null,
       html: '<html></html>',
       text: 'texte',
-      counts: {recipients: 2, withoutEmail: 1, unsubscribed: 0, total: 3},
+      counts: {
+        profilesWithEmail: 2,
+        profilesWithoutEmail: 1,
+        profiles: 3,
+        recipients: 2,
+        unsubscribed: 0,
+      },
     }
     const plan = {
       today: '2026-11-12',
@@ -231,14 +250,15 @@ describe('previewCampaignAction', () => {
 
     const result = await previewCampaignAction(
       undefined,
-      formOf({...content, memberProfileId: PROFILE_ID})
+      formOf({...content, ...allMembers, memberProfileId: PROFILE_ID})
     )
 
     expect(result).toEqual({status: 'ok', preview, plan})
-    expect(previewCampaignPlanService).toHaveBeenCalledWith(TENANT_ID)
+    expect(previewCampaignPlanService).toHaveBeenCalledWith(TENANT_ID, ALL)
     expect(previewCampaignService).toHaveBeenCalledWith({
       organizationId: TENANT_ID,
       ...content,
+      target: ALL,
       memberProfileId: PROFILE_ID,
     })
     expect(sendCampaignService).not.toHaveBeenCalled()
@@ -247,7 +267,7 @@ describe('previewCampaignAction', () => {
   })
 
   it('sans membre choisi, la façade choisit le premier joignable', async () => {
-    await previewCampaignAction(undefined, formOf(content))
+    await previewCampaignAction(undefined, formOf({...content, ...allMembers}))
 
     expect(
       vi.mocked(previewCampaignService).mock.calls[0][0]
@@ -261,7 +281,7 @@ describe('previewCampaignAction', () => {
     })
 
     await expect(
-      previewCampaignAction(undefined, formOf(content))
+      previewCampaignAction(undefined, formOf({...content, ...allMembers}))
     ).resolves.toEqual({status: 'unknown_variables', variables: ['parcele']})
     expect(previewCampaignPlanService).not.toHaveBeenCalled()
   })
@@ -270,11 +290,137 @@ describe('previewCampaignAction', () => {
     vi.mocked(requireActionAuth).mockRejectedValue(new AuthorizationError())
 
     await expect(
-      previewCampaignAction(undefined, formOf(content))
+      previewCampaignAction(undefined, formOf({...content, ...allMembers}))
     ).resolves.toEqual({
       status: 'error',
       message: 'CampaignsBureau.errors.forbidden',
     })
     expect(previewCampaignService).not.toHaveBeenCalled()
+  })
+})
+
+describe('cible choisie (s27, ADR 060)', () => {
+  it('transmet la cible « groupe » à l’envoi comme à l’aperçu et au plan', async () => {
+    const target = {targetKind: 'group', targetGroupId: GROUP_ID}
+    vi.mocked(previewCampaignService).mockResolvedValue({
+      status: 'ok',
+      preview: {} as never,
+    })
+
+    await sendCampaignAction(
+      undefined,
+      formOf({...content, ...target, submissionId: SUBMISSION_ID})
+    )
+    await previewCampaignAction(undefined, formOf({...content, ...target}))
+
+    const group = {kind: 'group', groupId: GROUP_ID}
+    expect(vi.mocked(sendCampaignService).mock.calls[0][0].target).toEqual(
+      group
+    )
+    expect(vi.mocked(previewCampaignService).mock.calls[0][0].target).toEqual(
+      group
+    )
+    expect(previewCampaignPlanService).toHaveBeenCalledWith(TENANT_ID, group)
+  })
+
+  it('transmet la cible « impayés » sans groupe', async () => {
+    await sendCampaignAction(
+      undefined,
+      formOf({
+        ...content,
+        targetKind: 'unpaid_members',
+        targetGroupId: GROUP_ID,
+        submissionId: SUBMISSION_ID,
+      })
+    )
+
+    expect(vi.mocked(sendCampaignService).mock.calls[0][0].target).toEqual({
+      kind: 'unpaid_members',
+    })
+  })
+
+  it('factures illisibles → message ancré, aucune campagne partie', async () => {
+    vi.mocked(sendCampaignService).mockRejectedValue(
+      new CampaignTargetUnavailableError()
+    )
+
+    const result = await sendCampaignAction(
+      undefined,
+      formOf({
+        ...content,
+        targetKind: 'unpaid_members',
+        submissionId: SUBMISSION_ID,
+      })
+    )
+
+    expect(result).toEqual({
+      status: 'error',
+      message: 'CampaignsBureau.errors.unpaidUnavailable',
+    })
+    expect(after).not.toHaveBeenCalled()
+  })
+
+  it('groupe introuvable → refus mappé, jamais « tous »', async () => {
+    vi.mocked(previewCampaignService).mockRejectedValue(new NotFoundError())
+
+    await expect(
+      previewCampaignAction(
+        undefined,
+        formOf({...content, targetKind: 'group', targetGroupId: GROUP_ID})
+      )
+    ).resolves.toEqual({
+      status: 'error',
+      message: 'CampaignsBureau.errors.groupNotFound',
+    })
+    expect(previewCampaignPlanService).not.toHaveBeenCalled()
+  })
+
+  it('relit le décompte de la cible choisie', async () => {
+    const counts = {
+      profilesWithEmail: 1,
+      profilesWithoutEmail: 0,
+      profiles: 1,
+      recipients: 1,
+      unsubscribed: 0,
+    }
+    vi.mocked(getCampaignComposerContextService).mockResolvedValue({
+      counts,
+      reachableMembers: [{id: PROFILE_ID, name: 'Claire'}],
+    } as never)
+
+    const result = await readCampaignTargetAction({
+      kind: 'group',
+      groupId: GROUP_ID,
+    })
+
+    expect(result).toEqual({
+      status: 'ok',
+      counts,
+      reachableMembers: [{id: PROFILE_ID, name: 'Claire'}],
+    })
+    expect(getCampaignComposerContextService).toHaveBeenCalledWith(TENANT_ID, {
+      kind: 'group',
+      groupId: GROUP_ID,
+    })
+  })
+
+  it('décompte : factures illisibles → erreur ancrée, sans session → refus', async () => {
+    vi.mocked(getCampaignComposerContextService).mockRejectedValue(
+      new CampaignTargetUnavailableError()
+    )
+    await expect(
+      readCampaignTargetAction({kind: 'unpaid_members'})
+    ).resolves.toEqual({
+      status: 'error',
+      message: 'CampaignsBureau.errors.unpaidUnavailable',
+    })
+
+    vi.mocked(requireActionAuth).mockRejectedValue(new AuthorizationError())
+    await expect(
+      readCampaignTargetAction({kind: 'all_members'})
+    ).resolves.toEqual({
+      status: 'error',
+      message: 'CampaignsBureau.errors.forbidden',
+    })
   })
 })

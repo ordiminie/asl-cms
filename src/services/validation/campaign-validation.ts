@@ -20,6 +20,13 @@ const isNotBlank = (value: string) => value.trim().length > 0
 
 const isSingleLine = (value: string) => !/[\r\n]/.test(value)
 
+/** La cible choisie (s27, ADR 060 §1) : un groupe est designe par son id. */
+export const campaignTargetSchema = z.discriminatedUnion('kind', [
+  z.object({kind: z.literal('all_members')}),
+  z.object({kind: z.literal('unpaid_members')}),
+  z.object({kind: z.literal('group'), groupId: uuid}),
+])
+
 const campaignContentServiceSchema = (subjectMax: number) =>
   z.object({
     organizationId: uuid,
@@ -27,6 +34,7 @@ const campaignContentServiceSchema = (subjectMax: number) =>
     subject: z.string().max(subjectMax).refine(isNotBlank).refine(isSingleLine),
     preheader: z.string().max(CAMPAIGN_PREHEADER_MAX).refine(isSingleLine),
     bodyMarkdown: z.string().max(CAMPAIGN_BODY_MAX).refine(isNotBlank),
+    target: campaignTargetSchema,
   })
 
 export const createPreviewCampaignServiceSchema = (subjectMax: number) =>

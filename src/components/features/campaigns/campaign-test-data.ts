@@ -88,6 +88,8 @@ export const campaignOf = (
   bodyMarkdown: 'Bonjour {nom},\n\nVotre parcelle **{parcelle}**.',
   templateId: 'free',
   targetKind: 'all_members',
+  targetGroupName: null,
+  targetGroupDeleted: false,
   recipientCount: 296,
   withoutEmailCount: 71,
   unsubscribedCount: 15,

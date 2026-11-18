@@ -3,6 +3,7 @@ import {describe, expect, it} from 'vitest'
 import * as rules from './campaign-rules'
 import {
   addressValuesOf,
+  campaignTargetCountsOf,
   computeCampaignTarget,
   deferredDayOf,
   escapeHtml,
@@ -10,6 +11,7 @@ import {
   findUnknownVariables,
   formatCampaignDate,
   joinParcelNumbers,
+  sameAddressRowsOf,
   subjectMaxLength,
   substituteVariables,
   toCampaignDto,
@@ -212,6 +214,8 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   bodyMarkdown: 'Bonjour {nom}',
   templateId: 'free',
   targetKind: 'all_members',
+  targetGroupId: null,
+  targetGroupName: null,
   recipientCount: 296,
   withoutEmailCount: 1,
   unsubscribedCount: 0,
@@ -276,6 +280,8 @@ describe('toCampaignDto — liste blanche', () => {
         'bodyMarkdown',
         'templateId',
         'targetKind',
+        'targetGroupName',
+        'targetGroupDeleted',
         'recipientCount',
         'withoutEmailCount',
         'unsubscribedCount',
@@ -293,6 +299,25 @@ describe('toCampaignDto — liste blanche', () => {
     )
     expect(JSON.stringify(dto)).not.toMatch(/unsubscribeToken|token/i)
     expect(dto.bodyMarkdown).toBe('Bonjour {nom}')
+  })
+
+  it('rend le nom copié du groupe visé, et dit s’il a été supprimé depuis (s27, ADR 060 §5)', () => {
+    const sent = row({
+      targetKind: 'group',
+      targetGroupId: '33333333-3333-4333-8333-333333333333',
+      targetGroupName: 'Riverains',
+    })
+
+    expect(toCampaignDto(sent, [], [])).toMatchObject({
+      targetGroupName: 'Riverains',
+      targetGroupDeleted: false,
+    })
+    expect(toCampaignDto({...sent, targetGroupId: null}, [], [])).toMatchObject(
+      {targetGroupName: 'Riverains', targetGroupDeleted: true}
+    )
+    expect(toCampaignDto(row(), [], [])).toMatchObject({
+      targetGroupDeleted: false,
+    })
   })
 
   it('les décomptes par statut sont ceux de la campagne, et leur somme fait les destinataires', () => {
@@ -529,6 +554,153 @@ describe('computeCampaignTarget — plusieurs adresses par fiche (s54, ADR 057)'
     expect(target).toMatchObject({
       recipients: [],
       withoutEmail: 1,
+      unsubscribed: 1,
+    })
+  })
+})
+
+/**
+ * s27 (ADR 060 §2) : la cible se calcule sur les lignes de **toutes** les
+ * fiches, groupees par adresse, puis filtree. Une adresse est retenue si une
+ * de ses fiches est ciblee ; la desinscription vaut par adresse quelle que
+ * soit la fiche ; la porteuse et les valeurs ne viennent que des fiches
+ * ciblees.
+ */
+describe('computeCampaignTarget — filtre après regroupement (s27, ADR 060 §2)', () => {
+  const row = (
+    memberProfileId: string,
+    email: string | null,
+    unsubscribed = false,
+    currentParcelNumbers: string[] = []
+  ) => ({
+    memberProfileId,
+    name: `Fiche ${memberProfileId}`,
+    email,
+    unsubscribed,
+    currentParcelNumbers,
+    accountName: null,
+  })
+  const only =
+    (...ids: string[]) =>
+    (candidate: {memberProfileId: string}) =>
+      ids.includes(candidate.memberProfileId)
+
+  it('une adresse partagée dont une seule fiche est ciblée est portée par la fiche ciblée', () => {
+    const target = computeCampaignTarget(
+      [
+        row('p12', 'bernard@x.fr', false, ['12']),
+        row('p27', 'Bernard@x.fr', false, ['27']),
+      ],
+      only('p27')
+    )
+
+    expect(target.recipients.map((r) => r.memberProfileId)).toEqual(['p27'])
+    expect(target.unsubscribed).toBe(0)
+  })
+
+  it('une adresse dont aucune fiche n’est ciblée n’est ni destinataire ni comptée', () => {
+    const target = computeCampaignTarget(
+      [row('a', 'a@x.fr'), row('b', 'b@x.fr', true), row('c', null)],
+      only('z')
+    )
+
+    expect(target).toMatchObject({
+      recipients: [],
+      withoutEmail: 0,
+      unsubscribed: 0,
+      profilesWithEmail: 0,
+    })
+  })
+
+  it('la désinscription portée par la fiche hors cible exclut l’adresse (critère 7, ADR 057)', () => {
+    const target = computeCampaignTarget(
+      [row('cible', 'bernard@x.fr'), row('hors-cible', 'bernard@x.fr', true)],
+      only('cible')
+    )
+
+    expect(target.recipients).toEqual([])
+    expect(target.unsubscribed).toBe(1)
+  })
+
+  it('compte en fiches ciblées celles avec et sans adresse active', () => {
+    const target = computeCampaignTarget(
+      [
+        row('a', 'a1@x.fr'),
+        row('a', 'a2@x.fr'),
+        row('b', null),
+        row('c', null),
+        row('d', 'd@x.fr'),
+      ],
+      only('a', 'b')
+    )
+
+    expect(target.profilesWithEmail).toBe(1)
+    expect(target.withoutEmail).toBe(1)
+    expect(target.recipients.map((r) => r.email)).toEqual([
+      'a1@x.fr',
+      'a2@x.fr',
+    ])
+  })
+
+  it('une fiche dont toutes les adresses sont désinscrites compte « avec adresse », ses adresses désinscrites', () => {
+    const target = computeCampaignTarget([
+      row('a', 'a1@x.fr', true),
+      row('a', 'a2@x.fr', true),
+    ])
+
+    expect(target.profilesWithEmail).toBe(1)
+    expect(target.withoutEmail).toBe(0)
+    expect(target.unsubscribed).toBe(2)
+    expect(target.recipients).toEqual([])
+  })
+
+  it('sans prédicat, la cible reste « tous les membres »', () => {
+    const rows = [row('a', 'a@x.fr'), row('b', null), row('c', 'a@x.fr')]
+
+    expect(computeCampaignTarget(rows)).toEqual(
+      computeCampaignTarget(rows, () => true)
+    )
+  })
+})
+
+describe('sameAddressRowsOf — restreint aux fiches ciblées (s27, ADR 060 §2)', () => {
+  const row = (memberProfileId: string, currentParcelNumbers: string[]) => ({
+    memberProfileId,
+    name: memberProfileId,
+    email: 'bernard@x.fr',
+    unsubscribed: false,
+    currentParcelNumbers,
+    accountName: 'Bernard',
+  })
+  const rows = [row('p12', ['12']), row('p27', ['27']), row('sci', ['31'])]
+
+  it('{parcelle} ne cite que les fiches ciblées de l’adresse', () => {
+    const sameAddress = sameAddressRowsOf(rows, rows[1], (candidate) =>
+      ['p27', 'sci'].includes(candidate.memberProfileId)
+    )
+
+    expect(sameAddress.map((r) => r.memberProfileId)).toEqual(['p27', 'sci'])
+  })
+
+  it('sans prédicat, toutes les fiches de l’adresse', () => {
+    expect(sameAddressRowsOf(rows, rows[0])).toHaveLength(3)
+  })
+})
+
+describe('campaignTargetCountsOf — décompte en fiches puis en adresses (critère 5)', () => {
+  it('rend fiches avec / sans adresse active, leur total, puis les adresses', () => {
+    expect(
+      campaignTargetCountsOf({
+        recipients: [{}, {}, {}] as never,
+        withoutEmail: 2,
+        unsubscribed: 1,
+        profilesWithEmail: 4,
+      })
+    ).toEqual({
+      profilesWithEmail: 4,
+      profilesWithoutEmail: 2,
+      profiles: 6,
+      recipients: 3,
       unsubscribed: 1,
     })
   })

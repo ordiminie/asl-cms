@@ -29,6 +29,7 @@ import * as organizationSetting from './organization-setting-model'
 import * as page from './page-model'
 import * as parcel from './parcel-model'
 import * as post from './post-model'
+import * as recipientGroup from './recipient-group-model'
 import * as scheduledJob from './scheduled-job-model'
 import * as subscription from './subscription-model'
 import * as user from './user-model'
@@ -74,6 +75,7 @@ const db = drizzle(pool, {
     ...memberNote,
     ...memberQuestion,
     ...memberInvoice,
+    ...recipientGroup,
     ...campaign,
     ...scheduledJob,
     ...emailSendBudget,

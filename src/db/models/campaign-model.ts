@@ -5,6 +5,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -14,6 +15,7 @@ import {
 
 import {organization, user} from './auth-model'
 import {memberProfile} from './member-profile-model'
+import {recipientGroup} from './recipient-group-model'
 
 export const campaignStatusEnum = pgEnum('campaign_status', [
   'sending',
@@ -62,6 +64,14 @@ export const campaign = pgTable(
     bodyMarkdown: text('body_markdown').notNull(),
     templateId: text('template_id'),
     targetKind: text('target_kind').notNull(),
+    /**
+     * Groupe vise (s27, ADR 060 §5), `SET NULL` : supprimer le groupe ne
+     * touche pas l'archive, qui garde son nom copie a l'envoi.
+     */
+    targetGroupId: uuid('target_group_id').references(() => recipientGroup.id, {
+      onDelete: 'set null',
+    }),
+    targetGroupName: text('target_group_name'),
     recipientCount: integer('recipient_count').notNull(),
     withoutEmailCount: integer('without_email_count').notNull(),
     unsubscribedCount: integer('unsubscribed_count').notNull(),
@@ -202,6 +212,32 @@ export const campaignRecipient = pgTable(
       table.status
     ),
     index('campaign_recipient_part_status_idx').on(table.partId, table.status),
+  ]
+)
+
+/**
+ * Les fiches **ciblees** que represente l'adresse d'un destinataire, figees a
+ * la creation de la campagne (s27, ADR 061) : la livraison ne cite qu'elles
+ * dans `{nom}` et `{parcelle}`. Porte son propre `organization_id` (RLS
+ * forcee, sans jointure). Disparait avec la ligne d'envoi comme avec la fiche.
+ */
+export const campaignRecipientProfile = pgTable(
+  'campaign_recipient_profile',
+  {
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organization.id, {onDelete: 'cascade'}),
+    campaignRecipientId: uuid('campaign_recipient_id')
+      .notNull()
+      .references(() => campaignRecipient.id, {onDelete: 'cascade'}),
+    memberProfileId: uuid('member_profile_id')
+      .notNull()
+      .references(() => memberProfile.id, {onDelete: 'cascade'}),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.campaignRecipientId, table.memberProfileId],
+    }),
   ]
 )
 

@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s27 — Cible d'une campagne et groupes</title>
+<!-- Maquette de reference (chemin agent). NE PAS copier en production. Tokens : docs/design-system.md §1 uniquement. -->
+<style>
+:root{
+  --radius:.5rem;
+  --background:oklch(1 0 0);--foreground:oklch(.22 .015 250);
+  --card:oklch(1 0 0);--muted:oklch(.972 .005 240);--muted-foreground:oklch(.45 .02 245);
+  --border:oklch(.9 .008 245);--input:oklch(.66 .014 245);--ring:oklch(.55 .11 235);
+  --primary:oklch(.35 .06 240);--primary-foreground:oklch(.985 .003 240);
+  --secondary:oklch(.965 .006 240);--secondary-foreground:oklch(.3 .02 245);
+  --destructive:oklch(.48 .17 27);--destructive-foreground:oklch(.99 .01 27);
+  --link:oklch(.45 .13 250);
+  --warning:oklch(.94 .06 75);--warning-border:oklch(.72 .12 70);--warning-foreground:oklch(.3 .08 60);
+  --sidebar:oklch(.985 .004 250);--sidebar-accent:oklch(.93 .012 245);--sidebar-border:oklch(.91 .008 245);
+  --zebra:oklch(.99 .002 250);
+  --sans:'Public Sans',ui-sans-serif,system-ui,sans-serif;
+  --serif:'Source Serif 4',Georgia,'Times New Roman',serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--muted);color:var(--foreground);font-family:var(--sans);font-size:17px;line-height:1.6}
+.legend{max-width:1200px;margin:0 auto;padding:32px 16px 0}
+.legend h1{font-family:var(--serif);font-size:34px;font-weight:600;line-height:1.15;margin:0 0 8px}
+.legend p{margin:0;color:var(--muted-foreground);font-size:15px}
+.screen{max-width:1200px;margin:48px auto 0;padding:0 16px}
+.screen>h2.cap{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground);margin:0 0 12px}
+.frame{display:grid;grid-template-columns:248px 1fr;background:var(--background);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.side{background:var(--sidebar);border-right:1px solid var(--sidebar-border);padding:24px 16px;font-size:16px}
+.side .grp{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.1em;color:var(--muted-foreground);margin:16px 8px 8px}
+.side a{display:block;padding:8px;border-radius:var(--radius);color:var(--foreground);text-decoration:none}
+.side a.on{background:var(--sidebar-accent);font-weight:600}
+.mobilebar{display:none}
+main{padding:32px;min-width:0}
+.crumb{font-size:15px;color:var(--muted-foreground);margin-bottom:8px}
+.crumb a{color:var(--link)}
+h1.t{font-family:var(--serif);font-size:34px;font-weight:600;line-height:1.15;margin:0 0 24px;text-wrap:pretty}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.card{border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:32px;background:var(--card)}
+.card h3{font-size:20px;font-weight:600;line-height:1.3;margin:0 0 16px}
+.label{font-size:16px;font-weight:500;line-height:1.4;display:block;margin-bottom:8px}
+.help{font-size:15px;color:var(--muted-foreground);margin:8px 0 0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 24px;border-radius:var(--radius);font:600 16px/1 var(--sans);border:1px solid transparent;cursor:pointer;white-space:nowrap}
+.btn.default{background:var(--primary);color:var(--primary-foreground)}
+.btn.outline{background:var(--background);border-color:var(--input);color:var(--foreground)}
+.btn.destructive{background:var(--destructive);color:var(--destructive-foreground)}
+.btn[aria-disabled=true]{opacity:.5}
+.lnk{color:var(--link);text-decoration:underline}
+.radio{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border:1px solid var(--input);border-radius:var(--radius);margin-bottom:12px}
+.radio.sel{border:2px solid var(--primary)}
+.dot{flex:none;width:20px;height:20px;border-radius:50%;border:1px solid var(--input);margin-top:4px;position:relative}
+.sel .dot{border:2px solid var(--primary)}
+.sel .dot::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--primary)}
+.radio .sub{display:block;font-size:15px;color:var(--muted-foreground)}
+.select{height:48px;border:1px solid var(--input);border-radius:var(--radius);padding:0 16px;display:flex;align-items:center;justify-content:space-between;font-size:17px;background:var(--background);min-width:280px}
+.select::after{content:'▾';color:var(--muted-foreground)}
+.input{height:48px;border:1px solid var(--input);border-radius:var(--radius);padding:0 16px;display:flex;align-items:center;font-size:17px;background:var(--background)}
+.nested{margin:0 0 12px 48px}
+dl.counts{display:grid;grid-template-columns:1fr auto;gap:8px 24px;margin:0;font-size:17px}
+dl.counts dt span{display:block;font-size:15px;color:var(--muted-foreground)}
+dl.counts dd{margin:0;text-align:right;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums}
+dl.counts .rule{grid-column:1/-1;border-top:1px solid var(--border)}
+.overline{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground);margin:16px 0 8px}
+.alert{display:flex;gap:12px;border:1px solid var(--border);border-radius:var(--radius);padding:16px;font-size:17px;margin-bottom:16px}
+.alert.err{border:2px solid var(--destructive);color:var(--destructive)}
+.alert.err p{color:var(--foreground)}
+.alert.ok .ic{color:var(--primary)}
+.alert.muted{background:var(--muted)}
+.alert p{margin:0}
+.ic{flex:none;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:17px}
+th{background:var(--muted);font-size:15px;font-weight:600;text-align:left;padding:0 16px;height:48px}
+td{padding:0 16px;height:56px;border-top:1px solid var(--border)}
+tbody tr:nth-child(even){background:var(--zebra)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cb{width:20px;height:20px;border:1px solid var(--input);border-radius:4px;display:inline-block;vertical-align:middle;position:relative}
+.cb.on{background:var(--primary);border-color:var(--primary)}
+.cb.on::after{content:'✓';color:var(--primary-foreground);font-size:14px;position:absolute;left:3px;top:-3px}
+.selbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;border:2px solid var(--primary);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+.selbar .count{font-weight:600;margin-right:auto;align-self:center}
+.toolbar{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px}
+.toolbar .f{flex:1;min-width:240px}
+.cards{display:none}
+.mcard{border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.mcard .ttl{display:flex;gap:12px;align-items:center;font-weight:600}
+.mcard dl{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;margin:8px 0;font-size:15px}
+.mcard dt{color:var(--muted-foreground)}
+.mcard dd{margin:0}
+.badge{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:9999px;font-size:15px;border:1px solid var(--border);color:var(--muted-foreground)}
+.pager{display:flex;justify-content:space-between;margin-top:16px}
+.states{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.states .card{margin:0}
+.sk{height:24px;border-radius:var(--radius);background:var(--muted);margin-bottom:12px}
+.dialog{max-width:520px;border:1px solid var(--border);border-radius:12px;padding:24px;box-shadow:0 10px 15px -3px oklch(0 0 0 / .1);background:var(--background)}
+.dialog h3{font-size:20px;font-weight:600;margin:0 0 8px}
+.dialog .acts{display:flex;gap:12px;justify-content:flex-end;margin-top:24px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:32px}
+@media (max-width:1023px){
+  .frame{grid-template-columns:1fr}
+  .side{display:none}
+  .mobilebar{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600}
+  main{padding:24px 16px}
+}
+@media (max-width:639px){
+  .screen{padding:0 16px}
+  h1.t{font-size:34px}
+  .btn{height:56px;width:100%;font-size:17px}
+  .select,.input{height:56px;min-width:0;width:100%}
+  .card{padding:16px}
+  .nested{margin-left:0}
+  table.resp{display:none}
+  .cards{display:block}
+  .toolbar .f{min-width:0;flex-basis:100%}
+  .selbar{flex-direction:column;align-items:stretch}
+  .selbar .count{margin:0}
+  .states{grid-template-columns:1fr}
+  .row2{grid-template-columns:1fr;gap:0}
+  .pager{flex-direction:column;gap:12px}
+  .dialog{border-radius:12px 12px 0 0}
+  .dialog .acts{flex-direction:column}
+  .head .btn{width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="legend">
+  <h1>s27 — Choisir la cible d'une campagne</h1>
+  <p>Maquette de référence, chemin agent, 18/11/2026. Données fictives : « ASL Les Pins », 412 fiches. Bureau ≥ 1 024 px, mobile 390 px (même fichier, mêmes contenus, rendu sous 640 px en cartes empilées §3.5). Mode clair seul (ADR 033).</p>
+</div>
+
+<!-- ======================= ECRAN 1 : COMPOSEUR ======================= -->
+<section class="screen" id="ecran-1">
+  <h2 class="cap">Écran 1 — Nouvelle campagne › carte « Destinataires »</h2>
+  <div class="frame">
+    <nav class="side" aria-label="Back-office">
+      <div class="grp">L'ASSOCIATION</div>
+      <a href="#">Propriétaires</a>
+      <a href="#" class="on">Campagnes</a>
+      <a href="#">Groupes</a>
+      <a href="#">Envois</a>
+      <a href="#">Réglages</a>
+    </nav>
+    <div>
+      <div class="mobilebar"><span>☰ Menu</span><span>ASL Les Pins</span></div>
+      <main>
+        <div class="crumb"><a href="#">Campagnes</a> › Nouvelle campagne</div>
+        <h1 class="t">Nouvelle campagne</h1>
+        <p class="help" style="margin:-16px 0 24px">Cartes « Modèle » et « Contenu » inchangées (s25), au-dessus.</p>
+
+        <div class="card">
+          <h3>Destinataires</h3>
+          <fieldset style="border:0;margin:0;padding:0">
+            <legend class="label">Qui reçoit cette campagne ?</legend>
+            <div class="radio"><span class="dot"></span><span>Tous les membres<span class="sub">Toutes les fiches de l'association.</span></span></div>
+            <div class="radio"><span class="dot"></span><span>Les membres en impayé<span class="sub">Calculé au moment de l'envoi, d'après les factures. Une facture « à classer » ne compte pas.</span></span></div>
+            <div class="radio sel"><span class="dot"></span><span>Un groupe<span class="sub">Un groupe que le bureau a composé.</span></span></div>
+          </fieldset>
+          <div class="nested">
+            <span class="label">Groupe</span>
+            <div class="select">Riverains du chemin des Crêtes (38 membres)</div>
+            <p class="help"><a class="lnk" href="#">Gérer les groupes</a></p>
+          </div>
+
+          <div class="overline">Fiches</div>
+          <dl class="counts">
+            <dt>Avec au moins une adresse email active</dt><dd>31</dd>
+            <dt>Sans adresse email active<span>Elles ne reçoivent rien par email. Le courrier papier viendra avec s28.</span></dt><dd>7</dd>
+            <div class="rule"></div>
+            <dt>Fiches du groupe</dt><dd>38</dd>
+          </dl>
+          <div class="overline">Adresses</div>
+          <dl class="counts">
+            <dt>Adresses qui recevront la campagne<span>Une adresse partagée par plusieurs fiches ne reçoit qu'un message.</span></dt><dd>33</dd>
+            <dt>Adresses désinscrites<span>Elles ne reçoivent pas les campagnes.</span></dt><dd>2</dd>
+          </dl>
+        </div>
+        <div class="head"><span></span><span class="btn default">Voir l'aperçu</span></div>
+      </main>
+    </div>
+  </div>
+
+  <h2 class="cap" style="margin-top:24px">Écran 1 — états de la carte « Destinataires »</h2>
+  <div class="states">
+    <div class="card"><strong>Vide — aucun groupe</strong>
+      <p>Choix « Un groupe » :</p>
+      <p style="margin:0">Aucun groupe pour l'instant. <a class="lnk" href="#">Créer un groupe</a></p>
+    </div>
+    <div class="card"><strong>Vide — personne à joindre</strong>
+      <p style="color:var(--destructive);font-weight:500;font-size:15px">Aucun membre de cette cible n'a d'adresse email active. Rien ne peut être envoyé.</p>
+      <p class="help">Même phrase pour « impayés » : « Aucun membre n'est en impayé aujourd'hui. Rien ne peut être envoyé. »</p>
+    </div>
+    <div class="card"><strong>Chargement</strong>
+      <p class="help">Changement de cible : les nombres sont remplacés par des <code>skeleton</code>, les options restent lisibles.</p>
+      <div class="sk" style="width:80%"></div><div class="sk" style="width:60%"></div>
+    </div>
+    <div class="card"><strong>Erreur — factures illisibles</strong>
+      <div class="alert err"><span class="ic">!</span><p>La liste des membres en impayé n'a pas pu être lue. Aucune campagne n'est partie. Réessayez dans un moment, ou choisissez une autre cible.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ECRAN 2 : LISTE DES PROPRIETAIRES ======================= -->
+<section class="screen" id="ecran-2">
+  <h2 class="cap">Écran 2 — Propriétaires : ajouter au groupe, retirer du groupe</h2>
+  <div class="frame">
+    <nav class="side" aria-label="Back-office">
+      <div class="grp">L'ASSOCIATION</div>
+      <a href="#" class="on">Propriétaires</a>
+      <a href="#">Campagnes</a>
+      <a href="#">Groupes</a>
+      <a href="#">Envois</a>
+      <a href="#">Réglages</a>
+    </nav>
+    <div>
+      <div class="mobilebar"><span>☰ Menu</span><span>ASL Les Pins</span></div>
+      <main>
+        <div class="head"><h1 class="t">Propriétaires</h1><span class="btn outline">Ajouter un propriétaire</span></div>
+        <div class="toolbar">
+          <div class="f"><span class="label">Rechercher</span><div class="input">Nom, email ou parcelle</div></div>
+          <div class="f"><span class="label">Groupe</span><div class="select">Tous les propriétaires</div></div>
+        </div>
+
+        <div class="selbar" role="region" aria-label="Sélection">
+          <span class="count" aria-live="polite">2 fiches sélectionnées</span>
+          <div><span class="label">Ajouter au groupe</span><div class="select">Riverains du chemin des Crêtes</div></div>
+          <span class="btn outline">Ajouter au groupe</span>
+        </div>
+
+        <table class="resp">
+          <thead><tr><th style="width:56px"><span class="cb" aria-label="Tout sélectionner sur cette page"></span></th><th>Nom</th><th>Parcelles</th><th>Email</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><span class="cb on"></span></td><td><strong>Arnaud Bellec</strong></td><td class="mono">A-012</td><td>a.bellec@exemple.fr</td><td><a class="lnk" href="#">Ouvrir</a></td></tr>
+            <tr><td><span class="cb"></span></td><td><strong>Claire Daumas</strong></td><td class="mono">B-104, B-105</td><td>—</td><td><a class="lnk" href="#">Ouvrir</a></td></tr>
+            <tr><td><span class="cb on"></span></td><td><strong>Joël Ferrand</strong></td><td class="mono">C-031</td><td>joel.f@exemple.fr</td><td><a class="lnk" href="#">Ouvrir</a></td></tr>
+          </tbody>
+        </table>
+        <div class="cards">
+          <div class="mcard"><div class="ttl"><span class="cb on"></span>Arnaud Bellec</div><dl><dt>Parcelles</dt><dd class="mono">A-012</dd><dt>Email</dt><dd>a.bellec@exemple.fr</dd></dl><span class="btn outline">Ouvrir la fiche</span></div>
+          <div class="mcard"><div class="ttl"><span class="cb"></span>Claire Daumas</div><dl><dt>Parcelles</dt><dd class="mono">B-104, B-105</dd><dt>Email</dt><dd>—</dd></dl><span class="btn outline">Ouvrir la fiche</span></div>
+        </div>
+        <div class="pager"><span class="btn outline" aria-disabled="true">Précédent</span><span class="btn outline">Suivant</span></div>
+
+        <div class="overline" style="margin-top:32px">Filtre « Groupe » = Riverains du chemin des Crêtes</div>
+        <p class="help" style="margin:0 0 12px">La liste ne montre que les 38 fiches du groupe ; la barre de sélection propose alors le retrait.</p>
+        <div class="selbar">
+          <span class="count">1 fiche sélectionnée</span>
+          <span class="btn outline">Retirer du groupe</span>
+        </div>
+        <div class="alert ok"><span class="ic">✓</span><p>2 fiches ajoutées au groupe « Riverains du chemin des Crêtes ». Le groupe compte 38 fiches. <a class="lnk" href="#">Voir le groupe</a></p></div>
+      </main>
+    </div>
+  </div>
+
+  <h2 class="cap" style="margin-top:24px">Écran 2 — états</h2>
+  <div class="states">
+    <div class="card"><strong>Vide — groupe sans fiche</strong><p style="margin:8px 0 0">Ce groupe n'a encore aucune fiche. Choisissez « Tous les propriétaires », cochez des fiches, puis « Ajouter au groupe ».</p></div>
+    <div class="card"><strong>Chargement</strong><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+    <div class="card"><strong>Erreur</strong><div class="alert err"><span class="ic">!</span><p>Les fiches n'ont pas été ajoutées au groupe. Rien n'a changé. Réessayez.</p></div></div>
+    <div class="card"><strong>Aucun groupe</strong><p style="margin:8px 0 0">Sans groupe, la barre de sélection dit : « Aucun groupe pour l'instant. <a class="lnk" href="#">Créer un groupe</a> »</p></div>
+  </div>
+</section>
+
+<!-- ======================= ECRAN 3 : GROUPES ======================= -->
+<section class="screen" id="ecran-3">
+  <h2 class="cap">Écran 3 — Groupes</h2>
+  <div class="frame">
+    <nav class="side" aria-label="Back-office">
+      <div class="grp">L'ASSOCIATION</div>
+      <a href="#">Propriétaires</a>
+      <a href="#">Campagnes</a>
+      <a href="#" class="on">Groupes</a>
+      <a href="#">Envois</a>
+      <a href="#">Réglages</a>
+    </nav>
+    <div>
+      <div class="mobilebar"><span>☰ Menu</span><span>ASL Les Pins</span></div>
+      <main>
+        <div class="head"><h1 class="t">Groupes de destinataires</h1><span class="btn default">Créer un groupe</span></div>
+        <p class="help" style="margin:-8px 0 24px">Un groupe sert de cible à une campagne. On y ajoute des fiches depuis la liste des propriétaires.</p>
+        <table class="resp">
+          <thead><tr><th>Nom</th><th>Fiches</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><strong>Riverains du chemin des Crêtes</strong></td><td class="mono">38</td><td><a class="lnk" href="#">Ouvrir</a></td></tr>
+            <tr><td><strong>Commission voirie</strong></td><td class="mono">6</td><td><a class="lnk" href="#">Ouvrir</a></td></tr>
+          </tbody>
+        </table>
+        <div class="cards">
+          <div class="mcard"><div class="ttl">Riverains du chemin des Crêtes</div><dl><dt>Fiches</dt><dd class="mono">38</dd></dl><span class="btn outline">Ouvrir</span></div>
+          <div class="mcard"><div class="ttl">Commission voirie</div><dl><dt>Fiches</dt><dd class="mono">6</dd></dl><span class="btn outline">Ouvrir</span></div>
+        </div>
+
+        <div class="overline" style="margin-top:32px">Un groupe ouvert</div>
+        <div class="crumb"><a href="#">Groupes</a> › Riverains du chemin des Crêtes</div>
+        <h1 class="t">Riverains du chemin des Crêtes</h1>
+        <div class="card">
+          <h3>Composition</h3>
+          <dl class="counts">
+            <dt>Fiches avec au moins une adresse email active</dt><dd>31</dd>
+            <dt>Fiches sans adresse email active</dt><dd>7</dd>
+            <div class="rule"></div>
+            <dt>Fiches du groupe</dt><dd>38</dd>
+          </dl>
+          <p class="help">33 adresses recevraient une campagne envoyée aujourd'hui.</p>
+          <p style="margin:16px 0 0"><a class="lnk" href="#">Voir et modifier les fiches du groupe</a> (liste des propriétaires filtrée)</p>
+        </div>
+        <div class="card">
+          <h3>Le groupe</h3>
+          <div class="row2">
+            <div><span class="btn outline">Renommer le groupe</span></div>
+            <div><span class="btn outline">Supprimer le groupe</span><p class="help">Les fiches et les campagnes déjà envoyées ne sont pas touchées.</p></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <h2 class="cap" style="margin-top:24px">Écran 3 — dialogues et états</h2>
+  <div class="states">
+    <div class="dialog" role="dialog" aria-label="Créer un groupe"><h3>Créer un groupe</h3>
+      <span class="label">Nom du groupe</span><div class="input">Riverains du chemin des Crêtes</div>
+      <p class="help">Le nom est visible du bureau seul. Deux groupes ne peuvent pas porter le même nom.</p>
+      <div class="acts"><span class="btn default">Créer le groupe</span><span class="btn outline">Annuler</span></div></div>
+    <div class="dialog" role="alertdialog" aria-label="Supprimer le groupe"><h3>Supprimer « Commission voirie » ?</h3>
+      <p style="margin:0">Le groupe disparaît. Ses 6 fiches restent dans la liste des propriétaires, et les campagnes déjà envoyées à ce groupe gardent leurs destinataires et son nom.</p>
+      <div class="acts"><span class="btn destructive">Supprimer le groupe</span><span class="btn outline">Annuler</span></div></div>
+    <div class="card"><strong>Vide</strong><p style="margin:8px 0 0">Aucun groupe pour l'instant. <a class="lnk" href="#">Créer le premier</a></p></div>
+    <div class="card"><strong>Chargement</strong><div class="sk"></div><div class="sk"></div></div>
+    <div class="card"><strong>Erreur — nom déjà pris</strong><p style="margin:8px 0 0;color:var(--destructive);font-size:15px">Un groupe porte déjà ce nom. Choisissez-en un autre.</p><p class="help">Champ en bordure <code>destructive</code> 2 px.</p></div>
+    <div class="card"><strong>Succès</strong><div class="alert ok"><span class="ic">✓</span><p>Groupe supprimé. Ses fiches n'ont pas changé.</p></div></div>
+  </div>
+</section>
+
+<!-- ======================= ECRAN 4 : DETAIL D'UNE CAMPAGNE ======================= -->
+<section class="screen" id="ecran-4" style="margin-bottom:64px">
+  <h2 class="cap">Écran 4 — Détail d'une campagne › carte « Résumé » (s25, une valeur change)</h2>
+  <div class="frame">
+    <nav class="side" aria-label="Back-office">
+      <div class="grp">L'ASSOCIATION</div>
+      <a href="#">Propriétaires</a>
+      <a href="#" class="on">Campagnes</a>
+      <a href="#">Groupes</a>
+      <a href="#">Envois</a>
+      <a href="#">Réglages</a>
+    </nav>
+    <div>
+      <div class="mobilebar"><span>☰ Menu</span><span>ASL Les Pins</span></div>
+      <main>
+        <div class="card"><h3>Résumé</h3>
+          <dl class="counts" style="grid-template-columns:auto 1fr">
+            <dt style="color:var(--muted-foreground);font-size:15px">Cible</dt><dd style="text-align:left;font-family:var(--sans);font-weight:400">Groupe « Riverains du chemin des Crêtes »</dd>
+            <dt style="color:var(--muted-foreground);font-size:15px">Destinataires</dt><dd style="text-align:left">33</dd>
+          </dl>
+          <p class="help">Les autres valeurs : « Tous les membres », « Membres en impayé ». Un groupe supprimé depuis garde son nom ici, suivi de « (supprimé) ».</p>
+        </div>
+      </main>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

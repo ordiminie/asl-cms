@@ -20,6 +20,7 @@ import {
   parseAmountToCents,
   parseStatusList,
   selectableInvoiceStatuses,
+  unpaidProfileIdsOf,
 } from './member-invoice-rules'
 
 const classification = {
@@ -185,5 +186,31 @@ describe('montant en centimes', () => {
     for (const cents of [1, 99, 41250, 123450]) {
       expect(parseAmountToCents(formatAmountCents(cents))).toBe(cents)
     }
+  })
+})
+
+describe('unpaidProfileIdsOf — fiches en impayé (s27, ADR 060 §3)', () => {
+  const classification = {unpaid: ['En retard'], settled: ['Payée']}
+  const invoice = (memberProfileId: string, status: string) => ({
+    memberProfileId,
+    status,
+  })
+
+  it('une fiche est en impayé dès qu’une de ses factures l’est', () => {
+    const ids = unpaidProfileIdsOf(
+      [invoice('a', 'Payée'), invoice('a', 'En retard'), invoice('b', 'Payée')],
+      classification
+    )
+
+    expect([...ids]).toEqual(['a'])
+  })
+
+  it('une facture « à classer » ne met pas la fiche en impayé', () => {
+    const ids = unpaidProfileIdsOf(
+      [invoice('c', 'Statut inconnu'), invoice('d', ' En retard ')],
+      classification
+    )
+
+    expect([...ids]).toEqual(['d'])
   })
 })

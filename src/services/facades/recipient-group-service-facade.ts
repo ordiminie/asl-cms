@@ -1,0 +1,18 @@
+import recipientGroupServiceInterceptor from './interceptors/recipient-group-service-logger-interceptor'
+
+export const canManageRecipientGroupsService =
+  recipientGroupServiceInterceptor.canManageRecipientGroupsService
+export const listRecipientGroupsService =
+  recipientGroupServiceInterceptor.listRecipientGroupsService
+export const getRecipientGroupService =
+  recipientGroupServiceInterceptor.getRecipientGroupService
+export const createRecipientGroupService =
+  recipientGroupServiceInterceptor.createRecipientGroupService
+export const renameRecipientGroupService =
+  recipientGroupServiceInterceptor.renameRecipientGroupService
+export const deleteRecipientGroupService =
+  recipientGroupServiceInterceptor.deleteRecipientGroupService
+export const addMembersToRecipientGroupService =
+  recipientGroupServiceInterceptor.addMembersToRecipientGroupService
+export const removeMembersFromRecipientGroupService =
+  recipientGroupServiceInterceptor.removeMembersFromRecipientGroupService

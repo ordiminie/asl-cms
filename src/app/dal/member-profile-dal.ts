@@ -33,9 +33,10 @@ export const getMemberProfilesPageForBureauDal = cache(
   async (
     organizationId: string,
     page: number,
-    search?: string
+    search?: string,
+    groupId?: string
   ): Promise<MemberProfilePageDTO> =>
-    getMemberProfilePageService({organizationId, page, search})
+    getMemberProfilePageService({organizationId, page, search, groupId})
 )
 
 /**

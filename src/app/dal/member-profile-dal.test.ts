@@ -66,6 +66,20 @@ describe('member-profile-dal — liste', () => {
     })
   })
 
+  it('transmet le filtre « Groupe » (s27)', async () => {
+    const groupId = '99999999-9999-4999-8999-999999999999'
+    vi.mocked(getMemberProfilePageService).mockResolvedValue({} as never)
+
+    await getMemberProfilesPageForBureauDal(ORG_A, 1, undefined, groupId)
+
+    expect(getMemberProfilePageService).toHaveBeenCalledWith({
+      organizationId: ORG_A,
+      page: 1,
+      search: undefined,
+      groupId,
+    })
+  })
+
   it('demande au service si l’utilisateur gère les fiches du domaine appelé', async () => {
     vi.mocked(canManageMemberProfilesService).mockResolvedValue(true)
 

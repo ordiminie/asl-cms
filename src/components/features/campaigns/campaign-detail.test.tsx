@@ -289,6 +289,37 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
     expect(summary).toHaveTextContent('Convocation à l’AG')
   })
 
+  it.each([
+    [{targetKind: 'all_members' as const}, 'CibleTous les membres'],
+    [{targetKind: 'unpaid_members' as const}, 'CibleMembres en impayé'],
+    [
+      {targetKind: 'group' as const, targetGroupName: 'Riverains'},
+      'CibleGroupe « Riverains »',
+    ],
+  ])(
+    'Résumé : la cible nomme son type, et le groupe visé (s27)',
+    (target, text) => {
+      renderDetail(campaignOf('a', target))
+
+      expect(card('Résumé')).toHaveTextContent(text)
+      expect(card('Résumé')).not.toHaveTextContent('(supprimé)')
+    }
+  )
+
+  it('Résumé : un groupe supprimé depuis garde son nom, suivi de « (supprimé) » (critère 6)', () => {
+    renderDetail(
+      campaignOf('a', {
+        targetKind: 'group',
+        targetGroupName: 'Commission voirie',
+        targetGroupDeleted: true,
+      })
+    )
+
+    expect(card('Résumé')).toHaveTextContent(
+      'CibleGroupe « Commission voirie » (supprimé)'
+    )
+  })
+
   it('montre le contenu envoyé avec les variables non remplacées', () => {
     renderDetail()
 

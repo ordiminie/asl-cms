@@ -395,13 +395,17 @@ test.describe('Campagnes — composer, envoyer, archiver, désinscrire', () => {
       const recipients = bureau
         .getByRole('heading', {name: '3 · Destinataires'})
         .locator('xpath=..')
-      await expect(recipients).toContainText(
-        `Recevront cette campagne${expected.recipients}`
+      await expect(
+        recipients.getByRole('group', {name: 'Adresses'})
+      ).toContainText(`ne reçoit qu’un message.${expected.recipients}`)
+      await expect(
+        recipients.getByRole('group', {name: 'Fiches'})
+      ).toContainText(
+        `Elles ne reçoivent rien par email.${expected.withoutEmail}`
       )
-      await expect(recipients).toContainText(`${expected.withoutEmail}`)
-      await expect(recipients).toContainText(
-        `Membres au total${expected.recipients + expected.withoutEmail + expected.unsubscribed}`
-      )
+      await expect(
+        recipients.getByRole('group', {name: 'Adresses'})
+      ).toContainText(`ne reçoivent pas les campagnes.${expected.unsubscribed}`)
 
       const before = outboxFiles()
       const campaignId = await composeAndSend(bureau, {

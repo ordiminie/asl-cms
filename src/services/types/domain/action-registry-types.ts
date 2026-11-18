@@ -144,6 +144,14 @@ export const ActionIdConst = {
    * a aucun acces ; il lit les siennes dans son espace.
    */
   INVOICE_MANAGE: 'member.invoice.manage',
+  /**
+   * Composer les groupes de destinataires des campagnes (s27, ADR 060 §6) :
+   * creer, renommer, supprimer un groupe, y ajouter ou en retirer des fiches.
+   * Une entree a part de `CAMPAIGN_MANAGE`, sur le precedent de
+   * `INVOICE_MANAGE` : s37 pourra la regler seule. Choisir un groupe comme
+   * cible reste sous `CAMPAIGN_MANAGE`. Un membre simple n'y a aucun acces.
+   */
+  CAMPAIGN_GROUP_MANAGE: 'campaign.group.manage',
 } as const
 
 export const ACTION_REGISTRY: ActionRegistry = [
@@ -213,6 +221,10 @@ export const ACTION_REGISTRY: ActionRegistry = [
   },
   {
     id: ActionIdConst.INVOICE_MANAGE,
+    defaultRoles: ['owner', 'board'],
+  },
+  {
+    id: ActionIdConst.CAMPAIGN_GROUP_MANAGE,
     defaultRoles: ['owner', 'board'],
   },
 ]

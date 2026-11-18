@@ -58,7 +58,9 @@ describe('campaign-dal (s25)', () => {
     )
 
     await expect(getCampaignComposerContextDal(ORG_A)).resolves.toBe(context)
-    expect(getCampaignComposerContextService).toHaveBeenCalledWith(ORG_A)
+    expect(getCampaignComposerContextService).toHaveBeenCalledWith(ORG_A, {
+      kind: 'all_members',
+    })
   })
 
   it('lit une page de l’archive', async () => {

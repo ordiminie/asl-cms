@@ -2004,6 +2004,7 @@
       "reports": "Signalements",
       "memberProfiles": "Propriétaires",
       "memberQuestions": "Questions des membres",
+      "recipientGroups": "Groupes",
       "campaigns": "Campagnes",
       "sends": "Envois"
     },
@@ -3755,7 +3756,27 @@
       }
     },
     "accountProfiles": "Compte de {count} terrains",
-    "otherEmails": "{count, plural, one {+ # autre adresse} other {+ # autres adresses}}"
+    "otherEmails": "{count, plural, one {+ # autre adresse} other {+ # autres adresses}}",
+    "recipientGroups": {
+      "filterLabel": "Groupe",
+      "filterAll": "Tous les propriétaires",
+      "selectPage": "Tout sélectionner sur cette page",
+      "selectRow": "Sélectionner {name}",
+      "selected": "{count, plural, one {# fiche sélectionnée} other {# fiches sélectionnées}}",
+      "addTarget": "Ajouter au groupe",
+      "add": "Ajouter au groupe",
+      "remove": "Retirer du groupe",
+      "noGroup": "Aucun groupe pour l’instant.",
+      "createGroup": "Créer un groupe",
+      "added": "{count, plural, one {# fiche ajoutée} other {# fiches ajoutées}} au groupe « {name} ». Le groupe compte {total, plural, one {# fiche} other {# fiches}}.",
+      "removed": "{count, plural, one {# fiche retirée} other {# fiches retirées}} du groupe « {name} ». Le groupe compte {total, plural, one {# fiche} other {# fiches}}.",
+      "openGroup": "Voir le groupe",
+      "emptyGroup": "Ce groupe n’a encore aucune fiche. Choisissez « Tous les propriétaires », cochez des fiches, puis « Ajouter au groupe ».",
+      "errors": {
+        "addFailed": "Les fiches n’ont pas été ajoutées au groupe. Rien n’a changé. Réessayez.",
+        "removeFailed": "Les fiches n’ont pas été retirées du groupe. Rien n’a changé. Réessayez."
+      }
+    }
   },
   "MemberSpaceLayout": {
     "skipToContent": "Aller au contenu"
@@ -4072,20 +4093,47 @@
       },
       "recipients": {
         "title": "3 · Destinataires",
-        "target": "Tous les membres",
-        "reachable": "Recevront cette campagne",
-        "withoutEmail": "Sans adresse email",
-        "withoutEmailNote": "Cette campagne ne les joint pas.",
-        "unsubscribed": "Désinscrits (exclus)",
-        "total": "Membres au total",
-        "none": "Aucun membre ne peut recevoir cette campagne : aucun n’a d’adresse email, ou tous sont désinscrits."
+        "legend": "Qui reçoit cette campagne ?",
+        "targets": {
+          "all_members": {
+            "label": "Tous les membres",
+            "help": "Toutes les fiches de l’association."
+          },
+          "unpaid_members": {
+            "label": "Les membres en impayé",
+            "help": "Calculé au moment de l’envoi, d’après les factures. Une facture « à classer » ne compte pas."
+          },
+          "group": {
+            "label": "Un groupe",
+            "help": "Un groupe que le bureau a composé."
+          }
+        },
+        "group": "Groupe",
+        "groupOption": "{name} ({count, plural, one {# fiche} other {# fiches}})",
+        "manageGroups": "Gérer les groupes",
+        "noGroup": "Aucun groupe pour l’instant.",
+        "createGroup": "Créer un groupe",
+        "profiles": "Fiches",
+        "profilesWithEmail": "Avec au moins une adresse email active",
+        "profilesWithoutEmail": "Sans adresse email active",
+        "profilesWithoutEmailNote": "Elles ne reçoivent rien par email.",
+        "profilesTotal": "Fiches de la cible",
+        "addresses": "Adresses",
+        "recipients": "Adresses qui recevront la campagne",
+        "recipientsNote": "Une adresse partagée par plusieurs fiches ne reçoit qu’un message.",
+        "unsubscribed": "Adresses désinscrites",
+        "unsubscribedNote": "Elles ne reçoivent pas les campagnes.",
+        "none": "Aucun membre de cette cible n’a d’adresse email active. Rien ne peut être envoyé.",
+        "noneUnpaid": "Aucun membre n’est en impayé aujourd’hui. Rien ne peut être envoyé."
       },
       "preview": "Voir l’aperçu",
       "cancel": "Annuler"
     },
     "errors": {
       "forbidden": "Seul le bureau de l’association peut envoyer une campagne.",
-      "failed": "Une erreur technique a empêché l’opération. Votre message est conservé : réessayez dans un instant."
+      "failed": "Une erreur technique a empêché l’opération. Votre message est conservé : réessayez dans un instant.",
+      "unpaidUnavailable": "La liste des membres en impayé n’a pas pu être lue. Aucune campagne n’est partie. Réessayez dans un moment, ou choisissez une autre cible.",
+      "groupNotFound": "Ce groupe n’existe plus. Aucune campagne n’est partie : choisissez une autre cible."
     },
     "metadata": {
       "title": "Campagnes",
@@ -4144,8 +4192,11 @@
         "dailySendCapValue": "<data>{cap}</data> envois par jour"
       },
       "targetKinds": {
-        "all_members": "Tous les membres"
+        "all_members": "Tous les membres",
+        "unpaid_members": "Membres en impayé",
+        "group": "Groupe « {name} »"
       },
+      "deletedGroup": "{target} (supprimé)",
       "subjectLine": "Objet : {subject}",
       "preheaderLine": "Texte d’aperçu : {preheader}",
       "contentNote": "Chaque membre a reçu ce message avec ses propres valeurs.",
@@ -4281,6 +4332,63 @@
       "loadFailed": "La liste des destinataires n’a pas pu être chargée. Rechargez la page."
     },
     "receivedOutOf": "{received} sur {total}"
+  },
+  "RecipientGroupsBureau": {
+    "metadata": {
+      "title": "Groupes de destinataires"
+    },
+    "title": "Groupes de destinataires",
+    "intro": "Un groupe sert de cible à une campagne. On y ajoute des fiches depuis la liste des propriétaires.",
+    "create": "Créer un groupe",
+    "columns": {
+      "name": "Nom",
+      "profiles": "Fiches",
+      "action": "Action"
+    },
+    "open": "Ouvrir",
+    "empty": "Aucun groupe pour l’instant.",
+    "createFirst": "Créer le premier",
+    "deleted": "Groupe supprimé. Ses fiches n’ont pas changé.",
+    "breadcrumb": "Groupes",
+    "composition": {
+      "title": "Composition",
+      "profilesWithEmail": "Fiches avec au moins une adresse email active",
+      "profilesWithoutEmail": "Fiches sans adresse email active",
+      "profiles": "Fiches du groupe",
+      "recipients": "{count, plural, =0 {Aucune adresse ne recevrait} one {# adresse recevrait} other {# adresses recevraient}} une campagne envoyée aujourd’hui.",
+      "editProfiles": "Voir et modifier les fiches du groupe"
+    },
+    "manage": {
+      "title": "Le groupe",
+      "rename": "Renommer le groupe",
+      "delete": "Supprimer le groupe",
+      "deleteHelp": "Les fiches et les campagnes déjà envoyées ne sont pas touchées."
+    },
+    "nameDialog": {
+      "createTitle": "Créer un groupe",
+      "renameTitle": "Renommer le groupe",
+      "label": "Nom du groupe",
+      "help": "Le nom est visible du bureau seul. Deux groupes ne peuvent pas porter le même nom.",
+      "createSubmit": "Créer le groupe",
+      "renameSubmit": "Renommer le groupe",
+      "cancel": "Annuler"
+    },
+    "deleteDialog": {
+      "title": "Supprimer « {name} » ?",
+      "description": "Le groupe disparaît. {count, plural, =0 {Il n’a aucune fiche.} one {Sa fiche reste dans la liste des propriétaires.} other {Ses # fiches restent dans la liste des propriétaires.}} Les campagnes déjà envoyées à ce groupe gardent leurs destinataires et son nom.",
+      "confirm": "Supprimer le groupe",
+      "cancel": "Annuler"
+    },
+    "validation": {
+      "nameRequired": "Donnez un nom au groupe.",
+      "nameTooLong": "Le nom ne doit pas dépasser {max} caractères."
+    },
+    "errors": {
+      "duplicateName": "Un groupe porte déjà ce nom. Choisissez-en un autre.",
+      "forbidden": "Seul le bureau de l’association peut composer les groupes.",
+      "notFound": "Ce groupe n’existe plus.",
+      "failed": "Une erreur technique a empêché l’opération. Réessayez dans un instant."
+    }
   },
   "UnsubscribePage": {
     "metadata": {

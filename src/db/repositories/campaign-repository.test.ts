@@ -58,6 +58,8 @@ const SUBMISSION_ID = '33333333-3333-4333-8333-333333333333'
 const PROFILE_A = '44444444-4444-4444-8444-444444444444'
 const PROFILE_B = '55555555-5555-4555-8555-555555555555'
 const RECIPIENT_ID = '66666666-6666-4666-8666-666666666666'
+const RECIPIENT_B = '77777777-7777-4777-8777-777777777777'
+const PROFILE_C = '88888888-8888-4888-8888-888888888888'
 const NOW = new Date('2026-11-12T13:32:00Z')
 
 /** Une ligne `campaign` dans l'ordre des colonnes du modele. */
@@ -109,11 +111,13 @@ const RECIPIENTS = [
     memberProfileId: PROFILE_A,
     email: 'claire@example.fr',
     unsubscribeToken: 'token-a',
+    memberProfileIds: [PROFILE_A],
   },
   {
     memberProfileId: PROFILE_B,
     email: 'paul@example.fr',
     unsubscribeToken: 'token-b',
+    memberProfileIds: [PROFILE_B, PROFILE_C],
   },
 ]
 
@@ -216,7 +220,10 @@ describe('createCampaignWithRecipientsTxnDao', () => {
         [PART_1, 1, '2026-11-12'],
         [PART_2, 2, '2026-11-13'],
       ],
-      [],
+      [
+        [RECIPIENT_ID, 'claire@example.fr'],
+        [RECIPIENT_B, 'paul@example.fr'],
+      ],
     ]
 
     const result = await createCampaignWithRecipientsTxnDao(
@@ -225,7 +232,7 @@ describe('createCampaignWithRecipientsTxnDao', () => {
       RECIPIENTS
     )
 
-    expect(sent).toHaveLength(3)
+    expect(sent).toHaveLength(4)
     expect(sent[0].sql).toMatch(/^insert into "campaign"/)
     expect(sent[0].sql).toContain(
       'on conflict ("organization_id","submission_id") do nothing'
@@ -257,6 +264,18 @@ describe('createCampaignWithRecipientsTxnDao', () => {
     )
     expect(partOf(PROFILE_A)).toBe(PART_1)
     expect(partOf(PROFILE_B)).toBe(PART_2)
+    expect(sent[3].sql).toMatch(/^insert into "campaign_recipient_profile"/)
+    expect(sent[3].params).toEqual([
+      ORG_ID,
+      RECIPIENT_ID,
+      PROFILE_A,
+      ORG_ID,
+      RECIPIENT_B,
+      PROFILE_B,
+      ORG_ID,
+      RECIPIENT_B,
+      PROFILE_C,
+    ])
     expect(result).toMatchObject({
       created: true,
       campaign: {id: CAMPAIGN_ID},
@@ -560,6 +579,81 @@ describe('getPendingPartRecipientsDao', () => {
         unsubscribed: true,
         parcelNumbers: ['12', '31'],
         addressProfileCount: 2,
+      }),
+    ])
+  })
+
+  it('adresse partagée, une seule fiche ciblée figée : seule sa parcelle, à son nom (ADR 061)', async () => {
+    responses.current = [
+      [
+        [
+          RECIPIENT_ID,
+          ORG_ID,
+          PROFILE_B,
+          'Bernard Lefèvre (27)',
+          'bernard@example.fr',
+          'tok',
+        ],
+      ],
+      [
+        [PROFILE_A, 'bernard@example.fr', false, 'Bernard L.'],
+        [PROFILE_B, 'bernard@example.fr', false, 'Bernard L.'],
+      ],
+      [
+        [PROFILE_A, '12'],
+        [PROFILE_B, '27'],
+      ],
+      [[RECIPIENT_ID, PROFILE_B]],
+    ]
+
+    const rows = await getPendingPartRecipientsDao(PART_1)
+
+    const frozen = sent.find(({sql}) =>
+      sql.includes('from "campaign_recipient_profile"')
+    )
+    expect(frozen?.params).toEqual(expect.arrayContaining([RECIPIENT_ID]))
+    expect(rows).toEqual([
+      expect.objectContaining({
+        recipientId: RECIPIENT_ID,
+        name: 'Bernard Lefèvre (27)',
+        email: 'bernard@example.fr',
+        unsubscribed: false,
+        parcelNumbers: ['27'],
+        addressProfileCount: 1,
+      }),
+    ])
+  })
+
+  it('le refus porté par une fiche non ciblée de l’adresse exclut toujours l’envoi (ADR 061 §2)', async () => {
+    responses.current = [
+      [
+        [
+          RECIPIENT_ID,
+          ORG_ID,
+          PROFILE_B,
+          'Bernard Lefèvre (27)',
+          'bernard@example.fr',
+          'tok',
+        ],
+      ],
+      [
+        [PROFILE_A, 'bernard@example.fr', true, 'Bernard L.'],
+        [PROFILE_B, 'bernard@example.fr', false, 'Bernard L.'],
+      ],
+      [
+        [PROFILE_A, '12'],
+        [PROFILE_B, '27'],
+      ],
+      [[RECIPIENT_ID, PROFILE_B]],
+    ]
+
+    const rows = await getPendingPartRecipientsDao(PART_1)
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        unsubscribed: true,
+        parcelNumbers: ['27'],
+        addressProfileCount: 1,
       }),
     ])
   })

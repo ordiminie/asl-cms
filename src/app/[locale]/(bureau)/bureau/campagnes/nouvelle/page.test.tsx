@@ -33,6 +33,7 @@ vi.mock('@/app/dal/campaign-dal', () => ({
 }))
 vi.mock('../actions', () => ({
   previewCampaignAction: vi.fn(),
+  readCampaignTargetAction: vi.fn(),
   sendCampaignAction: vi.fn(),
 }))
 
@@ -71,8 +72,15 @@ beforeEach(() => {
     associationName: 'ASL Les Pins',
     replyTo: null,
     subjectMaxLength: 45,
-    counts: {recipients: 2, withoutEmail: 1, unsubscribed: 0, total: 3},
+    counts: {
+      profilesWithEmail: 2,
+      profilesWithoutEmail: 1,
+      profiles: 3,
+      recipients: 2,
+      unsubscribed: 0,
+    },
     reachableMembers: [],
+    groups: [],
   })
 })
 

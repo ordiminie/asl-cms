@@ -254,3 +254,37 @@ describe('getCurrentParcelNumbersByProfileDao', () => {
     expect(sql).toContain('"parcel_ownership"."ends_on" is null')
   })
 })
+
+describe('getMemberProfilePageDao — filtre « Groupe » (s27)', () => {
+  const GROUP_ID = '99999999-9999-4999-8999-999999999999'
+
+  it('ne garde que les fiches du groupe, pour la page comme pour le total', async () => {
+    responses.current = [[], [[0]]]
+
+    await getMemberProfilePageDao({
+      organizationId: ORG_ID,
+      groupId: GROUP_ID,
+      limit: 25,
+      offset: 0,
+    })
+
+    const [page, total] = sent
+    for (const {sql, params} of [page, total]) {
+      expect(sql).toContain('from "recipient_group_member"')
+      expect(sql).toContain('"recipient_group_member"."group_id" = $')
+      expect(params).toContain(GROUP_ID)
+    }
+  })
+
+  it('sans groupe, ne lit pas les appartenances', async () => {
+    responses.current = [[], [[0]]]
+
+    await getMemberProfilePageDao({
+      organizationId: ORG_ID,
+      limit: 25,
+      offset: 0,
+    })
+
+    expect(sent[0].sql).not.toContain('recipient_group_member')
+  })
+})

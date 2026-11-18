@@ -20,6 +20,7 @@ import {
   campaignPart,
   CampaignPartStatusModel,
   campaignRecipient,
+  campaignRecipientProfile,
   CampaignRecipientStatusModel,
   CampaignStatusModel,
 } from '@/db/models/campaign-model'
@@ -71,11 +72,17 @@ export type PendingRecipientRowModel = {
    * entiere depuis s53, ADR 055 ; portee par l'adresse depuis s54, ADR 057).
    */
   unsubscribed: boolean
-  /** Parcelles actuelles de toutes les fiches de l'adresse (s53, ADR 055). */
+  /**
+   * Parcelles actuelles des fiches de l'adresse (s53, ADR 055) que la
+   * campagne visait (s27, ADR 061).
+   */
   parcelNumbers: string[]
   /** Nom du compte relie a la fiche (s53), `null` sans compte. */
   accountName: string | null
-  /** Nombre de fiches de l'association qui portent cette adresse (s53). */
+  /**
+   * Nombre de fiches de l'association qui portent cette adresse (s53), parmi
+   * celles que la campagne visait (s27, ADR 061).
+   */
   addressProfileCount: number
 }
 
@@ -102,6 +109,11 @@ export type CampaignRecipientInput = {
   /** L'adresse visee, ecrite a la creation (s54, ADR 057). */
   email: string
   unsubscribeToken: string
+  /**
+   * Les fiches **ciblees** que represente l'adresse, figees a la creation
+   * (s27, ADR 061) : la livraison ne cite qu'elles.
+   */
+  memberProfileIds: string[]
 }
 
 /** Une part du plan, telle que la creation l'ecrit. */
@@ -293,7 +305,7 @@ export const createCampaignWithRecipientsTxnDao = async (
     })),
     recipients
   )
-  await getDb()
+  const inserted = await getDb()
     .insert(campaignRecipient)
     .values(
       assigned.map((recipient) => ({
@@ -305,7 +317,39 @@ export const createCampaignWithRecipientsTxnDao = async (
         unsubscribeToken: recipient.unsubscribeToken,
       }))
     )
+    .returning({id: campaignRecipient.id, email: campaignRecipient.email})
+  await insertRecipientProfilesTxnDao(
+    input.organizationId,
+    inserted,
+    recipients
+  )
   return {campaign: created, created: true, parts}
+}
+
+/**
+ * Fige, pour chaque ligne d'envoi creee, les fiches ciblees de son adresse
+ * (s27, ADR 061). L'adresse est unique sans casse par campagne : elle relie
+ * la ligne creee a sa source.
+ */
+const insertRecipientProfilesTxnDao = async (
+  organizationId: string,
+  inserted: readonly {id: string; email: string}[],
+  recipients: readonly CampaignRecipientInput[]
+): Promise<void> => {
+  const idByEmail = new Map(
+    inserted.map((row) => [emailKeyOf(row.email), row.id])
+  )
+  const values = recipients.flatMap((recipient) => {
+    const campaignRecipientId = idByEmail.get(emailKeyOf(recipient.email))
+    if (!campaignRecipientId) return []
+    return [...new Set(recipient.memberProfileIds)].map((memberProfileId) => ({
+      organizationId,
+      campaignRecipientId,
+      memberProfileId,
+    }))
+  })
+  if (values.length === 0) return
+  await getDb().insert(campaignRecipientProfile).values(values)
 }
 
 /**
@@ -455,20 +499,25 @@ export const getPendingPartRecipientsDao = async (
       ...[...addresses.values()].flat().map((profile) => profile.id),
     ]),
   ])
+  const frozen = await getFrozenRecipientProfilesDao(
+    rows.map((row) => row.recipientId)
+  )
 
   return rows.map((row) => {
     const sameAddress = addressOf(row.email)
-    const profileIds = [...new Set(sameAddress.map((profile) => profile.id))]
-    const own = sameAddress.find(
-      (profile) => profile.id === row.memberProfileId
+    const targeted = targetedProfilesOf(
+      sameAddress,
+      frozen.get(row.recipientId)
     )
+    const profileIds = [...new Set(targeted.map((profile) => profile.id))]
+    const own = targeted.find((profile) => profile.id === row.memberProfileId)
     return {
       recipientId: row.recipientId,
       memberProfileId: row.memberProfileId,
       name: row.name,
       email: sameAddress.length > 0 && row.name !== null ? row.email : null,
       unsubscribeToken: row.unsubscribeToken,
-      accountName: (own ?? sameAddress[0])?.accountName ?? null,
+      accountName: (own ?? targeted[0])?.accountName ?? null,
       unsubscribed: sameAddress.some((profile) => profile.unsubscribed),
       parcelNumbers: (profileIds.length > 0
         ? profileIds
@@ -482,6 +531,44 @@ export const getPendingPartRecipientsDao = async (
 }
 
 const emailKeyOf = (email: string): string => email.trim().toLowerCase()
+
+/**
+ * Les fiches actives de l'adresse que la campagne visait (ADR 061 §2) :
+ * figees ∩ actives. Sans ligne figee (campagne anterieure, toujours « tous
+ * les membres »), toutes les fiches actives de l'adresse.
+ */
+const targetedProfilesOf = <Profile extends {id: string}>(
+  sameAddress: readonly Profile[],
+  frozen: ReadonlySet<string> | undefined
+): Profile[] =>
+  frozen
+    ? sameAddress.filter((profile) => frozen.has(profile.id))
+    : [...sameAddress]
+
+/** Les fiches ciblees figees de chaque ligne d'envoi (s27, ADR 061). */
+const getFrozenRecipientProfilesDao = async (
+  recipientIds: string[]
+): Promise<Map<string, Set<string>>> => {
+  const rows = await getDb()
+    .select({
+      recipientId: campaignRecipientProfile.campaignRecipientId,
+      memberProfileId: campaignRecipientProfile.memberProfileId,
+    })
+    .from(campaignRecipientProfile)
+    .where(inArray(campaignRecipientProfile.campaignRecipientId, recipientIds))
+
+  const byRecipient = new Map<string, Set<string>>()
+  for (const row of rows) {
+    byRecipient.set(
+      row.recipientId,
+      new Set([
+        ...(byRecipient.get(row.recipientId) ?? []),
+        row.memberProfileId,
+      ])
+    )
+  }
+  return byRecipient
+}
 
 type ActiveAddressProfile = {
   id: string
