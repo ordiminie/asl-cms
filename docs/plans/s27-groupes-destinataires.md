@@ -102,6 +102,28 @@ NOTHING`, retrait, ids des fiches d'un groupe) ; `recipient-group-service.ts` (v
         refusé (critère 8) ; seed mis à jour si nécessaire. **Vérif** : suite e2e verte **en CI** (pas en
         local, machine trop juste).
 
+### Correctifs de revue — round 1 (18/11/2026, `docs/reviews/s27-groupes-destinataires.md`)
+
+11. [x] **C1 — fiches ciblées figées par destinataire** ([ADR 061](../decisions/061-fiches-ciblees-figees-par-destinataire.md)).
+        Modèle `campaign_recipient_profile` (dans `campaign-model.ts` ou modèle dédié), migration générée
+        (`pnpm db:generate`) + migration RLS `--custom` (ENABLE + FORCE + `tenant_isolation`, patron 0066),
+        `docs/architecture.md` (33 tables RLS), test de modèle / inventaire RLS. La création de campagne
+        écrit, dans la même transaction, l'ensemble des fiches ciblées de chaque adresse (celui que
+        `computeCampaignTarget(rows, isTargeted)` a déjà calculé). `getPendingPartRecipientsDao` restreint
+        `profileIds`, `parcelNumbers`, `addressProfileCount` à l'intersection figées ∩ actives ; la
+        désinscription reste évaluée sur toutes les fiches de l'adresse ; sans ligne figée → comportement
+        d'avant. **Vérif** : test unitaire DAO/service (adresse partagée, une fiche ciblée → seule sa
+        parcelle et son nom, pas le nom du compte ; désinscription portée par la fiche non ciblée →
+        exclue) ; cas e2e outbox (envoi « impayés » à une adresse partagée avec une fiche réglée).
+12. [x] **m2 — pas de nom de groupe dans l'URL** : après suppression, `?supprime=1` (ou équivalent sans
+        nom) et message générique « Groupe supprimé. Ses fiches n'ont pas changé. » dans `messages/fr.json`.
+        **Vérif** : tests du chemin, du dialogue et de la page.
+13. [x] **m3 — e2e : ajout d'une fiche étrangère refusé** par l'action (id de fiche de l'autre association
+        forgé) dans `e2e/recipient-groups.spec.ts`, rien d'ajouté.
+
+Non traités ici (mineurs consignés en revue) : m1 (FK composites → ADR transverse à part), m4, m5, m6 (à
+reprendre en s20).
+
 ## Files touched
 
 - `src/db/models/recipient-group-model.ts` (nouveau), `campaign-model.ts`, `db.ts`, `drizzle/migrations/0065_*`,

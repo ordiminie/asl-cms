@@ -16,7 +16,9 @@ import {Client} from 'pg'
  * cible ; seules ses adresses non désinscrites reçoivent la campagne (outbox
  * `file`) ; la cible « impayés » ne retient que les fiches dont une facture
  * est impayée, jamais une facture « à classer » ; supprimer le groupe laisse
- * l'archive intacte ; la RLS forcée isole les deux nouvelles tables.
+ * l'archive intacte ; la RLS forcée isole les nouvelles tables. Une adresse
+ * partagée avec une fiche réglée ne cite, à l'envoi « impayés », que la
+ * parcelle de la fiche ciblée (ADR 061).
  *
  * `localhost` sert TechCorp Solutions, `127.0.0.1` Marketing Pro (seed). La
  * spec crée ses fiches, sa parcelle et ses factures chez TechCorp et les
@@ -39,11 +41,14 @@ const NOT_FOUND_TITLE = 'Page non trouvée'
 /** Le classement de démonstration du seed (TechCorp). */
 const UNPAID_STATUS = 'En attente'
 const UNCLASSIFIED_STATUS = 'Partiellement payée'
+const SETTLED_STATUS = 'Payée'
 
 const RUN = `${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`
 const MARKER = `s27-${RUN}`
 const subjectOf = (label: string) => `${label} ${MARKER}`
 const GROUP_NAME = `Riverains ${MARKER}`
+const UNPAID_PARCEL = `P-${RUN}`
+const SETTLED_PARCEL = `R-${RUN}`
 
 const FICHES = {
   first: {name: `Fiche groupe un ${MARKER}`, email: `g1-${RUN}@example.test`},
@@ -63,6 +68,11 @@ const FICHES = {
   unclassified: {
     name: `Fiche à classer ${MARKER}`,
     email: `acl-${RUN}@example.test`,
+  },
+  /** Même adresse que la fiche impayée, facture réglée (ADR 061). */
+  settledSameAddress: {
+    name: `Fiche réglée même adresse ${MARKER}`,
+    email: `imp-${RUN}@example.test`,
   },
 } as const
 
@@ -147,10 +157,14 @@ const tenantIds = () =>
 
 const ficheIds = {} as Record<FicheKey, string>
 
+/** La campagne « impayés » de l'essai, relue par l'accès croisé. */
+let unpaidCampaignId: string | undefined
+
 /**
  * Les fiches de l'essai, chacune avec son adresse titulaire active ; une
  * parcelle de l'essai et deux factures saisies : l'une impayée, l'autre à un
- * statut que le classement ne range nulle part.
+ * statut que le classement ne range nulle part. La fiche impayée possède la
+ * parcelle ; une fiche réglée qui partage son adresse en possède une autre.
  */
 const createFixtures = async () => {
   const {a} = await tenantIds()
@@ -170,19 +184,34 @@ const createFixtures = async () => {
         [a, rows[0].id, fiche.email, key === 'unsubscribed' ? new Date() : null]
       )
     }
-    const {rows: parcels} = await client.query<{id: string}>(
-      `insert into parcel (organization_id, number) values ($1, $2) returning id`,
-      [a, `P-${RUN}`]
-    )
-    for (const [key, status] of [
-      ['unpaid', UNPAID_STATUS],
-      ['unclassified', UNCLASSIFIED_STATUS],
+    const parcelIdOf = {} as Record<string, string>
+    for (const number of [UNPAID_PARCEL, SETTLED_PARCEL]) {
+      const {rows: parcels} = await client.query<{id: string}>(
+        `insert into parcel (organization_id, number) values ($1, $2) returning id`,
+        [a, number]
+      )
+      parcelIdOf[number] = parcels[0].id
+    }
+    for (const [key, number] of [
+      ['unpaid', UNPAID_PARCEL],
+      ['settledSameAddress', SETTLED_PARCEL],
+    ] as const) {
+      await client.query(
+        `insert into parcel_ownership (organization_id, parcel_id, member_profile_id, starts_on)
+         values ($1, $2, $3, '2020-01-01')`,
+        [a, parcelIdOf[number], ficheIds[key]]
+      )
+    }
+    for (const [key, status, number] of [
+      ['unpaid', UNPAID_STATUS, UNPAID_PARCEL],
+      ['unclassified', UNCLASSIFIED_STATUS, UNPAID_PARCEL],
+      ['settledSameAddress', SETTLED_STATUS, SETTLED_PARCEL],
     ] as const) {
       await client.query(
         `insert into member_invoice
            (organization_id, member_profile_id, parcel_id, source, year, issued_on, due_on, amount_cents, status)
          values ($1, $2, $3, 'site', 2026, '2026-03-15', '2026-04-15', 4200, $4)`,
-        [a, ficheIds[key], parcels[0].id, status]
+        [a, ficheIds[key], parcelIdOf[number], status]
       )
     }
   })
@@ -202,7 +231,14 @@ const cleanUpRun = () =>
          (select id from member_profile where name like $1)`,
       [`%${MARKER}%`]
     )
-    await client.query(`delete from parcel where number = $1`, [`P-${RUN}`])
+    await client.query(
+      `delete from parcel_ownership where parcel_id in
+         (select id from parcel where number = any($1))`,
+      [[UNPAID_PARCEL, SETTLED_PARCEL]]
+    )
+    await client.query(`delete from parcel where number = any($1)`, [
+      [UNPAID_PARCEL, SETTLED_PARCEL],
+    ])
     await client.query(`delete from member_profile where name like $1`, [
       `%${MARKER}%`,
     ])
@@ -301,6 +337,7 @@ const composeAndSend = async (
     target: RegExp
     group?: RegExp
     expectedRecipients: number
+    body?: string
   }
 ): Promise<string> => {
   await page.goto(`${TENANT_A}${NEW_CAMPAIGN_ROUTE}`, {
@@ -311,7 +348,7 @@ const composeAndSend = async (
   await page.getByRole('textbox', {name: /^Objet/}).fill(input.subject)
   await page
     .getByRole('textbox', {name: 'Message', exact: true})
-    .fill('Bonjour {nom},\n\nUn message pour vous.')
+    .fill(input.body ?? 'Bonjour {nom},\n\nUn message pour vous.')
   await page.getByRole('button', {name: 'Voir l’aperçu'}).click()
   await expect(
     page.getByRole('heading', {level: 1, name: 'Aperçu avant l’envoi'})
@@ -431,10 +468,9 @@ test.describe('Cible d’une campagne — groupes et impayés (s27)', () => {
         .getByRole('button', {name: 'Supprimer le groupe'})
         .click()
       await expect(
-        bureau.getByText(
-          `Groupe « ${GROUP_NAME} » supprimé. Ses fiches n’ont pas changé.`
-        )
+        bureau.getByText('Groupe supprimé. Ses fiches n’ont pas changé.')
       ).toBeVisible({timeout: 15_000})
+      expect(bureau.url()).not.toContain(encodeURIComponent(GROUP_NAME))
       expect(await groupIdOfRun()).toBeUndefined()
 
       const {a} = await tenantIds()
@@ -500,10 +536,11 @@ test.describe('Cible d’une campagne — groupes et impayés (s27)', () => {
         return rows[0].addresses
       })
 
-      await composeAndSend(bureau, {
+      unpaidCampaignId = await composeAndSend(bureau, {
         subject: subjectOf('Rappel de facture'),
         target: /Les membres en impayé/,
         expectedRecipients: expected,
+        body: 'Bonjour {nom}, parcelle {parcelle}.',
       })
       await expect
         .poll(() => messagesTo(before, FICHES.unpaid.email).length, {
@@ -512,15 +549,24 @@ test.describe('Cible d’une campagne — groupes et impayés (s27)', () => {
         .toBe(1)
       expect(messagesTo(before, FICHES.unclassified.email)).toHaveLength(0)
       expect(messagesTo(before, FICHES.outside.email)).toHaveLength(0)
+
+      // ADR 061 : l'adresse est partagée avec une fiche réglée ; l'envoi ne
+      // cite que la parcelle et le nom de la fiche ciblée.
+      const [reminder] = messagesTo(before, FICHES.unpaid.email)
+      expect(reminder.text).toContain(
+        `Bonjour ${FICHES.unpaid.name}, parcelle ${UNPAID_PARCEL}.`
+      )
+      expect(reminder.text).not.toContain(SETTLED_PARCEL)
+      expect(reminder.text).not.toContain(FICHES.settledSameAddress.name)
     } finally {
       await bureau.context().close()
     }
   })
 
-  test('critère 8 — accès croisé : les deux tables invisibles depuis B, un id forgé introuvable, une fiche étrangère illisible', async ({
+  test('critère 8 — accès croisé : les tables de s27 invisibles depuis B, un id forgé introuvable, une fiche étrangère refusée par l’action', async ({
     browser,
   }) => {
-    test.setTimeout(120_000)
+    test.setTimeout(180_000)
     const ids = await tenantIds()
     const groupId = await inTenantScope(ids.a, async (client) => {
       const {rows} = await client.query<{id: string}>(
@@ -567,6 +613,38 @@ test.describe('Cible d’une campagne — groupes et impayés (s27)', () => {
       )
     ).rejects.toThrow(/row-level security/)
 
+    // ADR 061 : les fiches figées de la campagne « impayés » de A.
+    expect(
+      unpaidCampaignId,
+      'la campagne « impayés » a été envoyée'
+    ).toBeTruthy()
+    const frozenOfRun = `select crp.member_profile_id from campaign_recipient_profile crp
+       join campaign_recipient cr on cr.id = crp.campaign_recipient_id
+      where cr.campaign_id = $1`
+    const frozenFromA = await inTenantScope(ids.a, (client) =>
+      client.query<{member_profile_id: string}>(frozenOfRun, [unpaidCampaignId])
+    )
+    expect(frozenFromA.rows.map((row) => row.member_profile_id)).toContain(
+      ficheIds.unpaid
+    )
+    expect(frozenFromA.rows.map((row) => row.member_profile_id)).not.toContain(
+      ficheIds.settledSameAddress
+    )
+    const frozenFromB = await inTenantScope(ids.b, (client) =>
+      client.query(`select member_profile_id from campaign_recipient_profile`)
+    )
+    expect(
+      frozenFromB.rows.filter((row) =>
+        [ficheIds.unpaid, ficheIds.settledSameAddress].includes(
+          row.member_profile_id
+        )
+      )
+    ).toHaveLength(0)
+    const frozenWithoutScope = await withAppRoleClient((client) =>
+      client.query(`select member_profile_id from campaign_recipient_profile`)
+    )
+    expect(frozenWithoutScope.rowCount).toBe(0)
+
     // Le service refuse une fiche illisible sous le tenant : une fiche de B
     // n'existe pas sous le scope de A.
     const profileOfB = await inTenantScope(ids.b, async (client) => {
@@ -580,6 +658,55 @@ test.describe('Cible d’une campagne — groupes et impayés (s27)', () => {
       client.query(`select id from member_profile where id = $1`, [profileOfB])
     )
     expect(readFromA.rowCount).toBe(0)
+
+    // Revue m3 : par l'action elle-même, un id de fiche de B forgé dans la
+    // requête est refusé, et rien n'est ajouté au groupe.
+    const bureauA = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      await bureauA.goto(
+        `${TENANT_A}/bureau/proprietaires?q=${encodeURIComponent(MARKER)}`,
+        {waitUntil: 'networkidle'}
+      )
+      await bureauA
+        .getByRole('table')
+        .getByRole('checkbox', {name: `Sélectionner ${FICHES.outside.name}`})
+        .click()
+      await choose(bureauA, 'Ajouter au groupe', `Isolation ${MARKER}`)
+      let forged = false
+      await bureauA.route(/\/bureau\/proprietaires/, async (route) => {
+        const request = route.request()
+        const body = request.postDataBuffer()?.toString('utf8') ?? ''
+        if (
+          request.method() !== 'POST' ||
+          !request.headers()['next-action'] ||
+          !body.includes(ficheIds.outside)
+        ) {
+          return route.continue()
+        }
+        forged = true
+        return route.continue({
+          postData: body.replaceAll(ficheIds.outside, profileOfB as string),
+        })
+      })
+      await bureauA.getByRole('button', {name: 'Ajouter au groupe'}).click()
+      await expect(
+        bureauA.getByText(
+          'Les fiches n’ont pas été ajoutées au groupe. Rien n’a changé. Réessayez.'
+        )
+      ).toBeVisible({timeout: 15_000})
+      expect(forged, 'la requête de l’action a bien été forgée').toBe(true)
+    } finally {
+      await bureauA.context().close()
+    }
+    const membersAfter = await asMaintenance((client) =>
+      client.query<{member_profile_id: string}>(
+        `select member_profile_id from recipient_group_member where group_id = $1`,
+        [groupId]
+      )
+    )
+    expect(membersAfter.rows.map((row) => row.member_profile_id)).toEqual([
+      ficheIds.first,
+    ])
 
     const boardB = await newSession(browser, TENANT_B, BOARD_B)
     try {

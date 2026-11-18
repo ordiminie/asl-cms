@@ -60,16 +60,23 @@ describe('/bureau/groupes (s27)', () => {
     expect(screen.getAllByText('Riverains').length).toBeGreaterThan(0)
   })
 
-  it('dit la suppression qui vient d’avoir lieu', async () => {
+  it('dit la suppression qui vient d’avoir lieu, sans nom venu de l’URL (revue m2)', async () => {
     vi.mocked(canManageCurrentRecipientGroupsDal).mockResolvedValue(true)
 
-    await renderPage({supprime: 'Commission voirie'})
+    await renderPage({supprime: '1'})
 
-    expect(
-      screen.getByText(
-        'Groupe « Commission voirie » supprimé. Ses fiches n’ont pas changé.'
-      )
-    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Groupe supprimé. Ses fiches n’ont pas changé.'
+    )
+  })
+
+  it('n’affiche aucun texte arbitraire glissé dans l’URL', async () => {
+    vi.mocked(canManageCurrentRecipientGroupsDal).mockResolvedValue(true)
+
+    await renderPage({supprime: 'Texte arbitraire'})
+
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByText(/Texte arbitraire/)).toBeNull()
   })
 
   it('refuse un membre simple, sans lire les groupes (contrôle répété dans la page)', async () => {

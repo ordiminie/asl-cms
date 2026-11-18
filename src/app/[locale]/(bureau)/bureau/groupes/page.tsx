@@ -12,6 +12,7 @@ import {
   RecipientGroupList,
   RecipientGroupListSkeleton,
 } from '@/components/features/recipient-groups/recipient-group-list'
+import {RECIPIENT_GROUP_DELETED_FLAG} from '@/components/features/recipient-groups/recipient-group-paths'
 
 import {createRecipientGroupAction} from './actions'
 
@@ -45,12 +46,14 @@ export default async function RecipientGroupsPage({
 
   return (
     <Suspense fallback={<RecipientGroupListSkeleton />}>
-      <RecipientGroupsSection deletedName={supprime?.trim() || undefined} />
+      <RecipientGroupsSection
+        deleted={supprime === RECIPIENT_GROUP_DELETED_FLAG}
+      />
     </Suspense>
   )
 }
 
-async function RecipientGroupsSection({deletedName}: {deletedName?: string}) {
+async function RecipientGroupsSection({deleted}: {deleted: boolean}) {
   const [tenant, allowed] = await Promise.all([
     requireCurrentTenantDal(),
     canManageCurrentRecipientGroupsDal(),
@@ -65,7 +68,7 @@ async function RecipientGroupsSection({deletedName}: {deletedName?: string}) {
   return (
     <RecipientGroupList
       groups={groups}
-      deletedName={deletedName}
+      deleted={deleted}
       createAction={createRecipientGroupAction}
     />
   )

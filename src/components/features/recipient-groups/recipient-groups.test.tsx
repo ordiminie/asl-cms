@@ -96,20 +96,12 @@ describe('RecipientGroupList — écran 3, liste', () => {
     expect(screen.queryByRole('table')).toBeNull()
   })
 
-  it('après une suppression : le dit, sans toucher aux fiches', () => {
-    render(
-      <RecipientGroupList
-        groups={[]}
-        deletedName="Commission voirie"
-        createAction={nameAction}
-      />
-    )
+  it('après une suppression : le dit, sans nommer le groupe ni toucher aux fiches (revue m2)', () => {
+    render(<RecipientGroupList groups={[]} deleted createAction={nameAction} />)
 
-    expect(
-      screen.getByText(
-        'Groupe « Commission voirie » supprimé. Ses fiches n’ont pas changé.'
-      )
-    ).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Groupe supprimé. Ses fiches n’ont pas changé.'
+    )
   })
 
   it('« Créer un groupe » ouvre un dialogue à un champ, puis ouvre le groupe créé', async () => {
@@ -267,9 +259,10 @@ describe('RecipientGroupDetail — écran 3, un groupe', () => {
       GROUP_ID
     )
     await waitFor(() =>
-      expect(router.push).toHaveBeenCalledWith(
-        `/bureau/groupes?supprime=${encodeURIComponent('Riverains du chemin des Crêtes')}`
-      )
+      expect(router.push).toHaveBeenCalledWith('/bureau/groupes?supprime=1')
+    )
+    expect(String(vi.mocked(router.push).mock.calls[0][0])).not.toContain(
+      'Riverains'
     )
   })
 

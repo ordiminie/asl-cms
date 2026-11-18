@@ -2277,6 +2277,41 @@ describe('cible choisie — impayés et groupes (s27, ADR 060)', () => {
     )
   })
 
+  it('l’envoi fige, par adresse, les seules fiches ciblées qu’elle représente (ADR 061)', async () => {
+    vi.mocked(getCampaignTargetRowsDao).mockResolvedValue([
+      {...targetRows()[0], accountName: 'Claire A.'},
+      {
+        memberProfileId: PROFILE_E,
+        name: 'SCI Aubert',
+        email: 'claire@example.fr',
+        unsubscribed: false,
+        currentParcelNumbers: [],
+        accountName: 'Claire A.',
+      },
+    ])
+
+    await sendCampaignService({...sendInput, target: UNPAID})
+    await sendCampaignService({
+      ...sendInput,
+      submissionId: OTHER_ORG_ID,
+      target: ALL,
+    })
+
+    const frozenOf = (call: number) =>
+      vi
+        .mocked(createCampaignWithRecipientsTxnDao)
+        .mock.calls[call][2].map(({email, memberProfileIds}) => ({
+          email,
+          memberProfileIds,
+        }))
+    expect(frozenOf(0)).toEqual([
+      {email: 'claire@example.fr', memberProfileIds: [PROFILE_A]},
+    ])
+    expect(frozenOf(1)).toEqual([
+      {email: 'claire@example.fr', memberProfileIds: [PROFILE_A, PROFILE_E]},
+    ])
+  })
+
   it('le plan d’envoi compte les adresses de la cible choisie', async () => {
     const plan = await previewCampaignPlanService(ORG_ID, GROUP)
 

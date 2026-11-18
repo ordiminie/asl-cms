@@ -8,6 +8,11 @@ export const recipientGroupPathOf = (id: string) =>
 export const RECIPIENT_GROUPS_ROUTE_PATTERN =
   '/[locale]/(bureau)/bureau/groupes'
 
-/** La liste, apres la suppression d'un groupe : l'alerte de succes le nomme. */
-export const deletedRecipientGroupPathOf = (name: string) =>
-  `${RECIPIENT_GROUPS_PATH}?supprime=${encodeURIComponent(name)}`
+/** Le drapeau de la liste apres la suppression d'un groupe. */
+export const RECIPIENT_GROUP_DELETED_FLAG = '1'
+
+/**
+ * La liste, apres la suppression d'un groupe (revue m2) : un drapeau, jamais
+ * le nom, qui finirait dans l'historique et les journaux du proxy.
+ */
+export const DELETED_RECIPIENT_GROUP_PATH = `${RECIPIENT_GROUPS_PATH}?supprime=${RECIPIENT_GROUP_DELETED_FLAG}`

@@ -4348,7 +4348,7 @@
     "open": "Ouvrir",
     "empty": "Aucun groupe pour l’instant.",
     "createFirst": "Créer le premier",
-    "deleted": "Groupe « {name} » supprimé. Ses fiches n’ont pas changé.",
+    "deleted": "Groupe supprimé. Ses fiches n’ont pas changé.",
     "breadcrumb": "Groupes",
     "composition": {
       "title": "Composition",

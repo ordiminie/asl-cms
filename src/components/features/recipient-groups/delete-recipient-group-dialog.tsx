@@ -17,7 +17,7 @@ import {
 import {Button} from '@/components/ui/button'
 import type {DeleteRecipientGroupActionResult} from '@/services/types/domain/recipient-group-types'
 
-import {deletedRecipientGroupPathOf} from './recipient-group-paths'
+import {DELETED_RECIPIENT_GROUP_PATH} from './recipient-group-paths'
 
 export type DeleteRecipientGroupAction = (
   state: DeleteRecipientGroupActionResult | undefined,
@@ -54,7 +54,7 @@ export function DeleteRecipientGroupDialog({
         setFailure(result.message)
         return
       }
-      router.push(deletedRecipientGroupPathOf(name))
+      router.push(DELETED_RECIPIENT_GROUP_PATH)
     })
 
   return (

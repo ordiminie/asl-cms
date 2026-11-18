@@ -530,7 +530,7 @@ export const sendCampaignService = async (
   const now = new Date()
   const today = calendarDayOf(now)
   return withTenant(data.organizationId, async () => {
-    const {target, group} = await readTarget(
+    const {rows, target, isTargeted, group} = await readTarget(
       data.organizationId,
       data.target,
       settings
@@ -572,6 +572,13 @@ export const sendCampaignService = async (
         memberProfileId: row.memberProfileId,
         email: row.email,
         unsubscribeToken: newUnsubscribeToken(),
+        memberProfileIds: [
+          ...new Set(
+            sameAddressRowsOf(rows, row, isTargeted).map(
+              (sibling) => sibling.memberProfileId
+            )
+          ),
+        ],
       }))
     )
     if (!result) throw new NotFoundError(ASSOCIATION_NOT_FOUND)

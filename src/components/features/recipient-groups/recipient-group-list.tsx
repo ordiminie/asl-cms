@@ -24,8 +24,8 @@ import {recipientGroupPathOf} from './recipient-group-paths'
 
 type RecipientGroupListProps = {
   groups: RecipientGroupDTO[]
-  /** Le groupe qui vient d'etre supprime, pour l'alerte de succes. */
-  deletedName?: string
+  /** Un groupe vient d'etre supprime : l'alerte de succes, sans son nom. */
+  deleted?: boolean
   createAction: RecipientGroupNameAction
 }
 
@@ -36,7 +36,7 @@ type RecipientGroupListProps = {
  */
 export function RecipientGroupList({
   groups,
-  deletedName,
+  deleted = false,
   createAction,
 }: RecipientGroupListProps) {
   const t = useTranslations('RecipientGroupsBureau')
@@ -57,11 +57,11 @@ export function RecipientGroupList({
         />
       </div>
 
-      {deletedName && (
+      {deleted && (
         <Alert role="status">
           <CircleCheck aria-hidden="true" className="text-primary" />
           <AlertTitle className="text-[15px] whitespace-normal">
-            {t('deleted', {name: deletedName})}
+            {t('deleted')}
           </AlertTitle>
         </Alert>
       )}
