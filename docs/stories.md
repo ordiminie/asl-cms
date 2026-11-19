@@ -89,12 +89,12 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
 
 Six points en attente d'un retour extérieur conditionnent des stories précises (`PRD` Constraints,
 `V5` Annexe A). **Ne pas démarrer la story tant que le point n'est pas levé** ; les stories qui les
-contournent sont ordonnées avant. La dernière colonne donne l'état au **16 novembre 2026**, après les
+contournent sont ordonnées avant. La dernière colonne donne l'état au **16 novembre 2026** (ligne Pennylane : **19 novembre 2026**), après les
 réponses de La Fourche (`docs/Admin-MEL/questions-*.md` et `demande-fichier-releves-eau-la-fourche.md`).
 
 | Réserve                                                          | Bloque                                                                                        | Contournement prévu                                                                                | État au 16 novembre 2026                                                                                                                                                                                                                                                            |
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accès API Pennylane + clé de rapprochement                       | s20 seule                                                                                     | s19 livre l'interface et la saisie manuelle ; s27 et s29 s'appuient dessus et ne sont pas bloquées | **Levée.** Clé d'API remise par le cabinet comptable ; clé de rapprochement = identifiant client Pennylane (ADR 048). À confirmer avec le cabinet avant la production : type de clé, droits, autorisation d'usage. La liste réelle des statuts se relève sur l'API (`/ks-research` de s20). |
+| Accès API Pennylane + clé de rapprochement                       | s20 seule                                                                                     | s19 livre l'interface et la saisie manuelle ; s27 et s29 s'appuient dessus et ne sont pas bloquées | **Levée.** Clé de rapprochement = identifiant client Pennylane (ADR 048). **Jeton valide depuis le 18/11** (`GET /me`, `/customers`, `/customer_invoices` → 200 ; statuts relevés, voir s20). **Reste avant la production** : obtenir du cabinet une clé **en lecture seule** limitée à `customers:readonly` et `customer_invoices:readonly` (le jeton actuel a 30 droits, presque tous en écriture : ne jamais le déployer), et son autorisation d'usage en production. |
 | Contenu détaillé des 4 modèles d'email et de leurs variables     | la rédaction des modèles de s25, pas son code                                                 | livrer les modèles câblés avec un contenu provisoire marqué comme tel                              | Inchangé : non abordé dans les réponses.                                                                                                                                                                                                                                            |
 | Fichier exemple des relevés d'eau (format imposé par Pennylane)  | le parseur de s17, et par ricochet s18 (historique de consommation) — donc l'angle n°1 du PRD | aucun — s17 attend le fichier réel                                                                 | **Toujours en attente** : La Fourche refait le fichier, puis le transmettra. Relevé en janvier, remise au bureau entre janvier et mars : s17 doit être prête avant.                                                                                                                  |
 | Accès ASL Community + validation statutaire du vote électronique | s33 en entier, et s58 qui en dépend                                                           | aucun, mais le module n'est pas en doute : seul son fournisseur l'est (voir s33)                   | Inchangé, et deux points s'ajoutent : faire valider l'**adresse votante** désignée par terrain (s58), qui peut être celle d'un proche, et **vérifier avec ASL Community comment ils gèrent le multi-vote** (une cotisation = un droit de vote, plusieurs terrains = plusieurs droits).                                                                                                       |
@@ -360,7 +360,7 @@ cadrage définit déjà — les deux adresses de `CDCT §4.6`, qui sont la raiso
 s08 et s10 lisent — et la teinte ; les clés propres à une story arrivent avec elle (plafond quotidien des campagnes en s26, budget d'envoi en s52,
 activation des relances en s29…). Aucune clé n'est déclarée pour démontrer un type : nombre et booléen
 se prouvent sur le registre et sa clé de test, pas par des réglages sans usage affichés en back-office.
-Les types viendront aussi avec leurs stories : texte libre (s42), URL (s21, s33), liste de statuts (s19).
+Les types viendront aussi avec leurs stories : texte libre (s42), URL (s33 ; plus s21 depuis son amendement du 19/11/2026), liste de statuts (s19).
 
 **Accès** : la page de réglages et son contrôle d'accès sont posés par s01b — le bureau (Bureau et
 Président(e)) de l'association du domaine appelé, et le SuperAdmin, conformément au PRD. s02 applique la
@@ -1907,6 +1907,27 @@ ancien comportement retiré depuis le 1er juillet 2026), puis relever sur l'API,
 « impayé » et celui de l'échéance (s19, s29). La liste des factures clients renvoie aussi les brouillons et
 les avoirs.
 
+**Relevé sur l'API v2 les 18 et 19 novembre 2026** (lecture seule, jeton du cabinet, aucune donnée
+personnelle consignée) :
+
+- **858 factures**, pagination par `next_cursor`. **7 statuts** : `paid` 733, `archived` 27,
+  `partially_paid` 28, `late` 26, `incomplete` 22, `cancelled` 21, `credit_note` 1. Aucun n'est écrit dans
+  le code : le bureau les classe dans les réglages de s19.
+- **Le booléen `paid` ne suit pas `status`** : 34 factures `paid` ont `paid=false`, 19 `cancelled` ont
+  `paid=true`. On transporte `status` tel quel et on ne déduit jamais rien de `paid` (ADR 011).
+  `remaining_amount_with_tax` est positif sur 75 factures `paid` : il ne fait pas foi non plus.
+- **Échéance** : `deadline` (absente sur 2 factures, comme `date`). Autres champs utiles : `date`,
+  `invoice_number`, `draft` (vrai sur 3 factures, dont l'unique `credit_note`), `customer` (absent sur 16),
+  `credited_invoice` (12), `remaining_amount_with_tax`.
+- **PDF** : `public_file_url` est renseigné sur les 858, de forme `app.pennylane.com/public/invoice/pdf`. Il
+  **expire au bout de 30 minutes** : il se relit au moment du clic, il ne se stocke jamais.
+- **Aucun lien de paiement**, ni dans les champs de l'API, ni dans les PDF (6 relus : `late`,
+  `partially_paid`, `paid`, aucun lien à l'intérieur). Voir s21.
+- **Droits du jeton** : 30, presque tous en écriture. L'application n'a besoin que de `customers:readonly` et
+  `customer_invoices:readonly`. Une clé limitée à ces droits est à obtenir du cabinet avant la production
+  (dépendances externes, ligne Pennylane).
+- La clé vit dans `PENNYLANE_API_KEY` (`.env.local`, hors git) ; s20 la déclare dans `@/env`.
+
 Implémentation d'une interface existante (s19), pas une refonte : si cette story touche à la
 présentation, le découpage a échoué.
 
@@ -1917,28 +1938,47 @@ intégration), secrets par `@/env`, jamais `process.env` en direct.
 
 ## Story s21-redirection-paiement — Payer sa facture
 
-**En tant que** membre propriétaire **je veux** être redirigé vers l'espace de paiement de l'association
-**afin de** régler ma facture sans quitter mon parcours.
+**En tant que** membre propriétaire **je veux** être redirigé vers la page de paiement de ma facture
+**afin de** la régler sans quitter mon parcours.
+
+> **Amendée le 19 novembre 2026** (lancement de s21) : le lien de paiement n'est pas une URL de
+> l'association. Pennylane le porte **sur chaque facture**, quand l'association a activé le paiement en
+> ligne de son côté ; sinon le règlement reste un **virement**, comme aujourd'hui. Les critères d'origine
+> (« URL de redirection = paramètre de tenant ») sont remplacés, et la story passe après s20.
 
 ### Complexity
 
-1
+2
 
 ### Acceptance criteria
 
-- [ ] Une facture impayée affiche un bouton de paiement qui ouvre l'espace de paiement externe configuré pour le tenant.
-- [ ] L'URL de redirection est un paramètre de tenant, pas une constante du code.
+- [ ] Une facture impayée dont le fournisseur de factures donne un lien de paiement affiche un bouton de paiement qui ouvre ce lien.
+- [ ] Le lien vient du fournisseur, facture par facture (contrat `MemberBillingProvider`), jamais d'une constante du code ni d'un réglage saisi à la main ; le fournisseur manuel (s19) n'en donne aucun.
+- [ ] Une facture impayée sans lien de paiement n'affiche aucun bouton : une phrase dit que le règlement se fait par virement, et renvoie au bureau pour toute question.
 - [ ] Le parcours de paiement se réduit à un lien sortant : aucun formulaire de paiement n'est rendu par le site et aucun champ de moyen de paiement n'existe dans son schéma de données (test sur le formulaire et sur le schéma).
-- [ ] Une facture qui n'est pas « impayée » au sens du prédicat de s19 n'affiche pas de bouton de paiement.
+- [ ] Une facture qui n'est pas « impayée » au sens du prédicat de s19 n'affiche ni bouton de paiement ni phrase de virement.
+- [ ] Un lien qui n'est pas une adresse `https` n'est jamais rendu : la facture se comporte comme sans lien.
 
 ### Dependencies
 
-s02, s19
+s02, s19, s20
 
 ### Agentic notes
 
-Réf. `V5 §5.3`, `CDCT §5.3`. Simple lien sortant, d'où la complexité 1. C'est la story la plus courte
-du projet et c'est volontaire : tout le reste est chez Pennylane.
+Réf. `V5 §5.3`, `CDCT §5.3`. Toujours un simple lien sortant : tout le paiement est chez Pennylane.
+
+**À vérifier d'abord par `/ks-research`** : comment Pennylane expose ce lien. Au 19 novembre 2026, la
+référence de l'API v2 (`GET customer_invoices/{id}`) ne décrit **aucun champ** de lien de paiement ;
+seul `public_file_url` existe (le PDF, qui expire au bout de 30 minutes et peut être nul). D'après une
+réponse du forum Pennylane, ce PDF porte un bouton « Payer » vers `/public/view_invoice?encrypted_id=…`.
+À confirmer avec la clé de La Fourche (lecture seule) ou le cabinet. Si l'API ne livre aucun lien
+exploitable, la story se réduit à la phrase de virement, et le bouton « Télécharger le PDF » de s20
+reste le seul chemin vers le « Payer » de Pennylane.
+**Relevé le 19 novembre 2026** sur le jeton de La Fourche : aucun champ de lien de paiement sur les 858
+factures, et aucun lien dans les PDF relus (6, dont 2 `late`). Chez La Fourche aujourd'hui, la story se
+réduit donc à la phrase de virement, tant que l'association n'active pas le paiement en ligne chez
+Pennylane **et** que l'API ne l'expose pas. Ne jamais construire soi-même une URL
+Pennylane à partir d'un identifiant.
 
 Enjeu réglementaire, pas technique : cette frontière est ce qui maintient le projet hors DSP2/PCI
 (angle n°4 du PRD). Toute tentative d'« améliorer » en capturant un moyen de paiement sort du
@@ -4296,7 +4336,7 @@ Déclarer la nouvelle donnée à l'inventaire de s12c et à l'export de s38 ; si
 | s18  | historique-consommation          | 2   | s17, s53                                                                                                                                      | B    |
 | s19  | factures-liste                   | 3   | s02, s12, s12d, s53                                                                                                                           | B    |
 | s20  | factures-pennylane               | 3   | s02, s19                                                                                                                                      | B    |
-| s21  | redirection-paiement             | 1   | s02, s19                                                                                                                                      | B    |
+| s21  | redirection-paiement             | 2   | s02, s19, s20                                                                                                                                 | B    |
 | s22  | signalement-membre               | 2   | s10, s12, s12d                                                                                                                                | B    |
 | s23  | questions-bureau                 | 2   | s02, s10, s12, s12d                                                                                                                           | B    |
 | s24  | notes-internes-membre            | 2   | s12                                                                                                                                           | B    |
