@@ -89,12 +89,12 @@ Ces contraintes valent pour chaque story et ne sont pas répétées à chaque fo
 
 Six points en attente d'un retour extérieur conditionnent des stories précises (`PRD` Constraints,
 `V5` Annexe A). **Ne pas démarrer la story tant que le point n'est pas levé** ; les stories qui les
-contournent sont ordonnées avant. La dernière colonne donne l'état au **16 novembre 2026**, après les
+contournent sont ordonnées avant. La dernière colonne donne l'état au **16 novembre 2026** (ligne Pennylane : **19 novembre 2026**), après les
 réponses de La Fourche (`docs/Admin-MEL/questions-*.md` et `demande-fichier-releves-eau-la-fourche.md`).
 
 | Réserve                                                          | Bloque                                                                                        | Contournement prévu                                                                                | État au 16 novembre 2026                                                                                                                                                                                                                                                            |
 | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accès API Pennylane + clé de rapprochement                       | s20 seule                                                                                     | s19 livre l'interface et la saisie manuelle ; s27 et s29 s'appuient dessus et ne sont pas bloquées | **Levée.** Clé d'API remise par le cabinet comptable ; clé de rapprochement = identifiant client Pennylane (ADR 048). À confirmer avec le cabinet avant la production : type de clé, droits, autorisation d'usage. La liste réelle des statuts se relève sur l'API (`/ks-research` de s20). |
+| Accès API Pennylane + clé de rapprochement                       | s20 seule                                                                                     | s19 livre l'interface et la saisie manuelle ; s27 et s29 s'appuient dessus et ne sont pas bloquées | **Levée.** Clé de rapprochement = identifiant client Pennylane (ADR 048). **Jeton valide depuis le 18/11** (`GET /me`, `/customers`, `/customer_invoices` → 200 ; statuts relevés, voir s20). **Reste avant la production** : obtenir du cabinet une clé **en lecture seule** limitée à `customers:readonly` et `customer_invoices:readonly` (le jeton actuel a 30 droits, presque tous en écriture : ne jamais le déployer), et son autorisation d'usage en production. |
 | Contenu détaillé des 4 modèles d'email et de leurs variables     | la rédaction des modèles de s25, pas son code                                                 | livrer les modèles câblés avec un contenu provisoire marqué comme tel                              | Inchangé : non abordé dans les réponses.                                                                                                                                                                                                                                            |
 | Fichier exemple des relevés d'eau (format imposé par Pennylane)  | le parseur de s17, et par ricochet s18 (historique de consommation) — donc l'angle n°1 du PRD | aucun — s17 attend le fichier réel                                                                 | **Toujours en attente** : La Fourche refait le fichier, puis le transmettra. Relevé en janvier, remise au bureau entre janvier et mars : s17 doit être prête avant.                                                                                                                  |
 | Accès ASL Community + validation statutaire du vote électronique | s33 en entier, et s58 qui en dépend                                                           | aucun, mais le module n'est pas en doute : seul son fournisseur l'est (voir s33)                   | Inchangé, et deux points s'ajoutent : faire valider l'**adresse votante** désignée par terrain (s58), qui peut être celle d'un proche, et **vérifier avec ASL Community comment ils gèrent le multi-vote** (une cotisation = un droit de vote, plusieurs terrains = plusieurs droits).                                                                                                       |
@@ -1907,6 +1907,27 @@ ancien comportement retiré depuis le 1er juillet 2026), puis relever sur l'API,
 « impayé » et celui de l'échéance (s19, s29). La liste des factures clients renvoie aussi les brouillons et
 les avoirs.
 
+**Relevé sur l'API v2 les 18 et 19 novembre 2026** (lecture seule, jeton du cabinet, aucune donnée
+personnelle consignée) :
+
+- **858 factures**, pagination par `next_cursor`. **7 statuts** : `paid` 733, `archived` 27,
+  `partially_paid` 28, `late` 26, `incomplete` 22, `cancelled` 21, `credit_note` 1. Aucun n'est écrit dans
+  le code : le bureau les classe dans les réglages de s19.
+- **Le booléen `paid` ne suit pas `status`** : 34 factures `paid` ont `paid=false`, 19 `cancelled` ont
+  `paid=true`. On transporte `status` tel quel et on ne déduit jamais rien de `paid` (ADR 011).
+  `remaining_amount_with_tax` est positif sur 75 factures `paid` : il ne fait pas foi non plus.
+- **Échéance** : `deadline` (absente sur 2 factures, comme `date`). Autres champs utiles : `date`,
+  `invoice_number`, `draft` (vrai sur 3 factures, dont l'unique `credit_note`), `customer` (absent sur 16),
+  `credited_invoice` (12), `remaining_amount_with_tax`.
+- **PDF** : `public_file_url` est renseigné sur les 858, de forme `app.pennylane.com/public/invoice/pdf`. Il
+  **expire au bout de 30 minutes** : il se relit au moment du clic, il ne se stocke jamais.
+- **Aucun lien de paiement**, ni dans les champs de l'API, ni dans les PDF (6 relus : `late`,
+  `partially_paid`, `paid`, aucun lien à l'intérieur). Voir s21.
+- **Droits du jeton** : 30, presque tous en écriture. L'application n'a besoin que de `customers:readonly` et
+  `customer_invoices:readonly`. Une clé limitée à ces droits est à obtenir du cabinet avant la production
+  (dépendances externes, ligne Pennylane).
+- La clé vit dans `PENNYLANE_API_KEY` (`.env.local`, hors git) ; s20 la déclare dans `@/env`.
+
 Implémentation d'une interface existante (s19), pas une refonte : si cette story touche à la
 présentation, le découpage a échoué.
 
@@ -1952,7 +1973,11 @@ seul `public_file_url` existe (le PDF, qui expire au bout de 30 minutes et peut 
 réponse du forum Pennylane, ce PDF porte un bouton « Payer » vers `/public/view_invoice?encrypted_id=…`.
 À confirmer avec la clé de La Fourche (lecture seule) ou le cabinet. Si l'API ne livre aucun lien
 exploitable, la story se réduit à la phrase de virement, et le bouton « Télécharger le PDF » de s20
-reste le seul chemin vers le « Payer » de Pennylane. Ne jamais construire soi-même une URL
+reste le seul chemin vers le « Payer » de Pennylane.
+**Relevé le 19 novembre 2026** sur le jeton de La Fourche : aucun champ de lien de paiement sur les 858
+factures, et aucun lien dans les PDF relus (6, dont 2 `late`). Chez La Fourche aujourd'hui, la story se
+réduit donc à la phrase de virement, tant que l'association n'active pas le paiement en ligne chez
+Pennylane **et** que l'API ne l'expose pas. Ne jamais construire soi-même une URL
 Pennylane à partir d'un identifiant.
 
 Enjeu réglementaire, pas technique : cette frontière est ce qui maintient le projet hors DSP2/PCI
