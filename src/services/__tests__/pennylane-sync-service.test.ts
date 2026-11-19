@@ -399,6 +399,71 @@ describe('syncPennylaneInvoicesService — échec sans écriture (ADR 062 §3, c
     )
     expect(upsertPennylaneInvoicesDao).not.toHaveBeenCalled()
   })
+
+  it('une autre erreur note l’échec (`unavailable`) avant de remonter', async () => {
+    const client = clientReturning([], [])
+    vi.mocked(client.listCustomers).mockRejectedValue(new Error('bug'))
+    vi.mocked(getPennylaneClient).mockReturnValue(client)
+
+    await expect(syncPennylaneInvoicesService(ORG_ID, NOW)).rejects.toThrow(
+      'bug'
+    )
+    expect(recordBillingSyncFailureDao).toHaveBeenCalledWith(
+      ORG_ID,
+      NOW,
+      'unavailable'
+    )
+  })
+
+  it('une erreur de base à l’écriture : l’échec est noté, puis l’erreur remonte', async () => {
+    const failure = new Error(
+      'ON CONFLICT DO UPDATE command cannot affect row a second time'
+    )
+    vi.mocked(upsertPennylaneInvoicesDao).mockRejectedValueOnce(failure)
+
+    await expect(syncPennylaneInvoicesService(ORG_ID, NOW)).rejects.toBe(
+      failure
+    )
+    expect(recordBillingSyncSuccessDao).not.toHaveBeenCalled()
+    expect(recordBillingSyncFailureDao).toHaveBeenCalledWith(
+      ORG_ID,
+      NOW,
+      'unavailable'
+    )
+  })
+
+  it('l’échec impossible à noter ne masque pas l’erreur d’origine', async () => {
+    const failure = new Error('base indisponible')
+    vi.mocked(upsertPennylaneInvoicesDao).mockRejectedValueOnce(failure)
+    vi.mocked(recordBillingSyncFailureDao).mockRejectedValueOnce(
+      new Error('toujours indisponible')
+    )
+
+    await expect(syncPennylaneInvoicesService(ORG_ID, NOW)).rejects.toBe(
+      failure
+    )
+  })
+})
+
+describe('syncPennylaneInvoicesService — une facture relue deux fois', () => {
+  it('un identifiant rendu deux fois par la pagination : une seule écriture, la dernière lue', async () => {
+    vi.mocked(getPennylaneClient).mockReturnValue(
+      clientReturning(
+        [customer],
+        [invoice({status: 'upcoming'}), invoice({status: 'late'})]
+      )
+    )
+
+    const result = await syncPennylaneInvoicesService(ORG_ID, NOW)
+
+    expect(upsertPennylaneInvoicesDao).toHaveBeenCalledWith(ORG_ID, [
+      expect.objectContaining({externalId: '9001', status: 'late'}),
+    ])
+    expect(deletePennylaneInvoicesNotInDao).toHaveBeenCalledWith(ORG_ID, [
+      '9001',
+    ])
+    expect(result).toMatchObject({status: 'synced', counts: {written: 1}})
+  })
 })
 
 describe('syncPennylaneInvoicesService — fournisseur et entrée', () => {

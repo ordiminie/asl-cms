@@ -19,6 +19,20 @@ const optionalTextSchema = z
     return trimmed ? trimmed : null
   })
 
+/**
+ * Vrai pour une adresse absolue en `https` seulement (revue m4) : l'adresse
+ * du PDF est ouverte telle quelle dans le navigateur du membre.
+ */
+export const isHttpsUrl = (value: string): boolean => {
+  if (!URL.canParse(value)) return false
+  return new URL(value).protocol === 'https:'
+}
+
+/** L'adresse du PDF : hors `https`, elle vaut « pas de PDF », jamais une erreur. */
+const fileUrlSchema = optionalTextSchema.transform((value) =>
+  value !== null && isHttpsUrl(value) ? value : null
+)
+
 export const pennylaneCustomerSchema = z.object({
   id: identifierSchema,
   name: z.string().nullish(),
@@ -36,7 +50,7 @@ export const pennylaneInvoiceSchema = z.object({
   amount: z.string(),
   currency: z.string(),
   customer: z.object({id: identifierSchema}).nullish(),
-  public_file_url: optionalTextSchema,
+  public_file_url: fileUrlSchema,
   pdf_invoice_free_text: optionalTextSchema,
 })
 

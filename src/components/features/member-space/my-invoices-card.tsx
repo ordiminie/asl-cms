@@ -44,6 +44,8 @@ const openInSameTab = (url: string) => {
 type PdfColumn = {
   openPdfAction: MyInvoicePdfAction
   navigate: (url: string) => void
+  /** Au clic : l'alerte d'un echec precedent s'efface. */
+  onOpen: () => void
   onFailure: () => void
 }
 
@@ -68,7 +70,12 @@ export function MyInvoicesCard({
   const t = useTranslations('MemberSpacePage.invoices')
   const [pdfFailed, setPdfFailed] = useState(false)
   const pdfColumn: PdfColumn | undefined = invoices.syncedFromPennylane
-    ? {openPdfAction, navigate, onFailure: () => setPdfFailed(true)}
+    ? {
+        openPdfAction,
+        navigate,
+        onOpen: () => setPdfFailed(false),
+        onFailure: () => setPdfFailed(true),
+      }
     : undefined
   const empty = invoices.invoices.length === 0
 
@@ -344,7 +351,8 @@ function InvoicePdf({
     )
   }
 
-  const open = () =>
+  const open = () => {
+    column.onOpen()
     startTransition(async () => {
       const result = await column.openPdfAction(pdfRef)
       if (result.status === 'ready') {
@@ -353,6 +361,7 @@ function InvoicePdf({
         column.onFailure()
       }
     })
+  }
 
   return (
     <Button

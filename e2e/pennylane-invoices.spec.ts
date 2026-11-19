@@ -63,6 +63,13 @@ const FAKE_API_PATH = API_BASE ? new URL(API_BASE).pathname : ''
 /** L'« Identifiant Client » que porte la fiche : l'`external_reference`. */
 const EXTERNAL_REF = '3f2a9c1e-e2e0-4000-8000-00000000f061'
 const FAKE_PDF_PATH = '/public/invoice/pdf'
+/**
+ * L'origine des PDF : `https`, comme l'exige le schema (revue m4 ; une adresse
+ * `http` vaudrait « PDF non disponible »). Aucun serveur ne l'ecoute : la
+ * navigation y est interceptee par `page.route`, jamais envoyee au reseau.
+ */
+const FAKE_PDF_ORIGIN = 'https://fichiers.pennylane.test'
+const FAKE_PDF_URL = `${FAKE_PDF_ORIGIN}${FAKE_PDF_PATH}`
 const STATUS_LABELS = 'late = En retard'
 
 /** Les clients et factures du faux Pennylane, formes de l'API v2. */
@@ -100,22 +107,28 @@ const INVOICES = [
     id: 880001,
     invoice_number: 'F-E2E-0001',
     status: 'late',
-    public_file_url: `${FAKE_ORIGIN}${FAKE_PDF_PATH}?e2e=1`,
+    public_file_url: `${FAKE_PDF_URL}?e2e=1`,
     pdf_invoice_free_text: 'Numero parcelle : 61 - Compteur : 0061 - Index : 1',
   }),
-  invoice({id: 880002, date: '2025-03-15', deadline: '2025-04-15'}),
+  /**
+   * Datee hors du seed : aucune facture de `tenant-member-invoices-seed.ts`
+   * n'est emise le 30/09/2025 (la facture `site` du 15/03/2025 de la
+   * deuxieme fiche de Bernard Lefevre est elle aussi « PDF non disponible »).
+   */
+  invoice({id: 880002, date: '2025-09-30', deadline: '2025-10-31'}),
   invoice({id: 880003, draft: true}),
   invoice({id: 880004, customer: {id: 990099}}),
 ]
 const PENNYLANE_STATUSES = ['late', 'paid']
+/**
+ * Le montant des factures du faux Pennylane, tel que l'ecran l'ecrit : aucune
+ * facture du seed ne vaut 250,00 € (412,50, 398,00, 1 280,00 chez Bernard
+ * Lefevre ; 777,77 pour celles que `member-invoices.spec.ts` ajoute en 2099).
+ */
+const PENNYLANE_AMOUNT = /250,00\s€/
 
 const fakePennylane = http.createServer((request, response) => {
   const url = new URL(request.url ?? '/', FAKE_ORIGIN)
-  if (url.pathname === FAKE_PDF_PATH) {
-    response.writeHead(200, {'content-type': 'application/pdf'})
-    response.end('%PDF-1.4\n%e2e\n')
-    return
-  }
   if (
     request.method !== 'GET' ||
     request.headers.authorization !== `Bearer ${API_KEY}`
@@ -558,14 +571,16 @@ test.describe('Factures Pennylane (s20)', () => {
     const page = await newMemberSession(browser, TENANT_A, LEFEVRE.email)
     try {
       await expect(myInvoices(page)).toBeVisible({timeout: 20_000})
-      const late = invoiceRows(page).filter({hasText: '15/03/2026'}).filter({
-        hasText: 'En retard',
-      })
+      const late = invoiceRows(page)
+        .filter({hasText: '15/03/2026'})
+        .filter({hasText: PENNYLANE_AMOUNT})
+        .filter({hasText: 'En retard'})
       await expect(late).toHaveCount(1)
       await expect(late).toContainText('Parcelle 61')
-      const paid = invoiceRows(page).filter({hasText: '15/03/2025'}).filter({
-        hasText: 'PDF non disponible',
-      })
+      const paid = invoiceRows(page)
+        .filter({hasText: '30/09/2025'})
+        .filter({hasText: PENNYLANE_AMOUNT})
+        .filter({hasText: 'PDF non disponible'})
       await expect(paid).toHaveCount(1)
       await expect(paid.getByRole('button')).toHaveCount(0)
       await expect(
@@ -578,8 +593,15 @@ test.describe('Factures Pennylane (s20)', () => {
           request.method() === 'POST' &&
           Boolean(request.headers()['next-action'])
       )
+      await page.route(`${FAKE_PDF_URL}**`, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/pdf',
+          body: '%PDF-1.4\n%e2e\n',
+        })
+      )
       const pdfRequest = page.waitForRequest((request: Request) =>
-        request.url().startsWith(`${FAKE_ORIGIN}${FAKE_PDF_PATH}`)
+        request.url().startsWith(FAKE_PDF_URL)
       )
       await late.getByRole('button', {name: /PDF de la facture 2026/}).click()
       const sent = await actionRequest

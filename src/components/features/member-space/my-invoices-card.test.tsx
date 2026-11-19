@@ -285,6 +285,31 @@ describe('MyInvoicesCard — factures Pennylane (s20, écran 1)', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
+  it('1f : l’alerte s’efface au clic suivant, et l’ouverture réussie ne la ravive pas', async () => {
+    openPdf.mockResolvedValueOnce({status: 'unavailable'})
+    await renderCard({...PENNYLANE, invoices: [withPdf]})
+    const button = () =>
+      within(bodyRows()[0]).getByRole('button', {name: /PDF de la facture/})
+
+    await userEvent.click(button())
+    expect(await within(card()).findByRole('alert')).toBeInTheDocument()
+
+    let finish: (value: {status: 'ready'; url: string}) => void = () => {}
+    openPdf.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      })
+    )
+    await userEvent.click(button())
+    expect(within(card()).queryByRole('alert')).toBeNull()
+
+    await act(async () => {
+      finish({status: 'ready', url: 'https://pdf.test/x'})
+    })
+    expect(navigate).toHaveBeenCalledWith('https://pdf.test/x')
+    expect(within(card()).queryByRole('alert')).toBeNull()
+  })
+
   it('terrain à plusieurs parcelles et libellé du statut', async () => {
     await renderCard({...PENNYLANE, invoices: [withPdf]})
 

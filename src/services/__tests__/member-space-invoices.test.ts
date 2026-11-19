@@ -537,6 +537,21 @@ describe('getMyInvoicePdfUrlService — le PDF relu au clic (s20, ADR 062 §6)',
     })
   })
 
+  it.each([
+    ['http', 'http://pennylane.test/public/invoice/pdf?token=expire'],
+    ['javascript', 'javascript:alert(1)'],
+    ['illisible', 'pas une adresse'],
+  ])(
+    'une adresse %s rendue par la source : « indisponible », jamais ouverte',
+    async (_label, url) => {
+      getFile.mockResolvedValueOnce(url)
+
+      expect(await getMyInvoicePdfUrlService(ORG_ID, INVOICE_ID)).toEqual({
+        status: 'unavailable',
+      })
+    }
+  )
+
   it('[PUBLIC] sans session : refus', async () => {
     setupAuthUserMocked(undefined)
 

@@ -654,3 +654,22 @@ export const listProfilesWithoutPennylaneIdDao = async (
       )
     )
     .orderBy(asc(memberProfile.name))
+
+/**
+ * Les fiches de l'association qui portent cet identifiant client Pennylane,
+ * **sans tenir compte de la casse** (s20, revue m2) : le rapprochement compare
+ * sans casse, deux fiches « ABC » et « abc » se disputeraient le meme client.
+ */
+export const listMemberProfilesByPennylaneIdIgnoringCaseDao = async (
+  organizationId: string,
+  pennylaneCustomerId: string
+): Promise<{id: string; name: string}[]> =>
+  getDb()
+    .select({id: memberProfile.id, name: memberProfile.name})
+    .from(memberProfile)
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        sql`lower(${memberProfile.pennylaneCustomerId}) = lower(${pennylaneCustomerId})`
+      )
+    )

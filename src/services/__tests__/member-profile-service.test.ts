@@ -25,6 +25,7 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfilesByUserIdDao: vi.fn(),
   getMemberProfileByIdDao: vi.fn(),
   getMemberProfileByPennylaneIdDao: vi.fn(),
+  listMemberProfilesByPennylaneIdIgnoringCaseDao: vi.fn(),
   getMemberProfilePageDao: vi.fn(),
   updateMemberProfileContactTxnDao: vi.fn(),
   updateMemberProfilePennylaneIdDao: vi.fn(),
@@ -69,6 +70,7 @@ import {
   getMemberProfilesByEmailDao,
   getMemberProfilesByUserIdDao,
   linkMemberProfileAccountDao,
+  listMemberProfilesByPennylaneIdIgnoringCaseDao,
   unlinkMemberProfileAccountDao,
   updateMemberProfileContactTxnDao,
   updateMemberProfilePennylaneIdDao,
@@ -1324,7 +1326,9 @@ describe('updateMemberProfilePennylaneIdService — le bureau relie une fiche à
 
   beforeEach(() => {
     writtenUnder = undefined
-    vi.mocked(getMemberProfileByPennylaneIdDao).mockResolvedValue(undefined)
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      []
+    )
     vi.mocked(updateMemberProfilePennylaneIdDao).mockImplementation(
       async () => {
         writtenUnder = scope.current
@@ -1369,13 +1373,15 @@ describe('updateMemberProfilePennylaneIdService — le bureau relie une fiche à
       PROFILE_ID,
       null
     )
-    expect(getMemberProfileByPennylaneIdDao).not.toHaveBeenCalled()
+    expect(
+      listMemberProfilesByPennylaneIdIgnoringCaseDao
+    ).not.toHaveBeenCalled()
   })
 
   it('identifiant déjà porté par une autre fiche : rien n’est écrit, la fiche est nommée', async () => {
     setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
-    vi.mocked(getMemberProfileByPennylaneIdDao).mockResolvedValue(
-      profileRow({id: OTHER_PROFILE_ID, name: 'Martin Paul'}) as never
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      [{id: OTHER_PROFILE_ID, name: 'Martin Paul'}]
     )
 
     expect(
@@ -1385,17 +1391,51 @@ describe('updateMemberProfilePennylaneIdService — le bureau relie une fiche à
         pennylaneCustomerId: EXTERNAL_REF,
       })
     ).toEqual({status: 'pennylane_id_taken', holderName: 'Martin Paul'})
-    expect(getMemberProfileByPennylaneIdDao).toHaveBeenCalledWith(
+    expect(listMemberProfilesByPennylaneIdIgnoringCaseDao).toHaveBeenCalledWith(
       ORG_ID,
       EXTERNAL_REF
     )
     expect(updateMemberProfilePennylaneIdDao).not.toHaveBeenCalled()
   })
 
+  it('le même identifiant à la casse près, porté par une autre fiche : refusé, la fiche est nommée', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      [{id: OTHER_PROFILE_ID, name: 'Martin Paul'}]
+    )
+
+    expect(
+      await updateMemberProfilePennylaneIdService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: 'ABC-0061',
+      })
+    ).toEqual({status: 'pennylane_id_taken', holderName: 'Martin Paul'})
+    expect(updateMemberProfilePennylaneIdDao).not.toHaveBeenCalled()
+  })
+
+  it('porté par cette fiche et, à la casse près, par une autre : refusé, l’autre est nommée', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      [
+        {id: PROFILE_ID, name: 'Bernard Lefèvre'},
+        {id: OTHER_PROFILE_ID, name: 'Martin Paul'},
+      ]
+    )
+
+    expect(
+      await updateMemberProfilePennylaneIdService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: 'abc-0061',
+      })
+    ).toEqual({status: 'pennylane_id_taken', holderName: 'Martin Paul'})
+  })
+
   it('l’identifiant déjà porté par cette fiche : enregistré tel quel', async () => {
     setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
-    vi.mocked(getMemberProfileByPennylaneIdDao).mockResolvedValue(
-      profileRow({id: PROFILE_ID}) as never
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      [{id: PROFILE_ID, name: 'Bernard Lefèvre'}]
     )
 
     expect(

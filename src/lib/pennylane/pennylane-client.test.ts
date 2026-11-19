@@ -213,6 +213,55 @@ describe('createPennylaneClient — client HTTP en lecture seule (s20, ADR 062 �
     expect(await client().getCustomerInvoiceFileUrl('9002')).toBeNull()
   })
 
+  describe('adresse du PDF : https seulement (revue m4)', () => {
+    const NOT_HTTPS = [
+      ['http', 'http://pennylane.test/public/invoice/pdf?token=secret'],
+      ['javascript', 'javascript:alert(1)'],
+      ['data', 'data:application/pdf;base64,JVBERi0='],
+      ['relative', '/public/invoice/pdf'],
+      ['illisible', 'pas une adresse'],
+    ]
+
+    it.each(NOT_HTTPS)(
+      'le schéma réduit une adresse %s à « aucun PDF »',
+      (_label, url) => {
+        const parsed = pennylaneInvoiceSchema.parse(
+          rawInvoice({public_file_url: url})
+        )
+        expect(parsed.public_file_url).toBeNull()
+      }
+    )
+
+    it('le schéma garde une adresse https', () => {
+      const parsed = pennylaneInvoiceSchema.parse(rawInvoice())
+      expect(parsed.public_file_url).toBe(
+        'https://pennylane.test/public/invoice/pdf?token=secret'
+      )
+    })
+
+    it.each(NOT_HTTPS)(
+      'une facture listée avec une adresse %s : sans PDF, la relecture n’échoue pas',
+      async (_label, url) => {
+        fetchMock.mockResolvedValue(
+          page([rawInvoice({public_file_url: url}), rawInvoice({id: 9002})])
+        )
+
+        const invoices = await client().listCustomerInvoices()
+
+        expect(invoices.map((invoice) => invoice.hasPdf)).toEqual([false, true])
+      }
+    )
+
+    it.each(NOT_HTTPS)(
+      'relue au clic, une adresse %s : rien, jamais levée ni ouverte',
+      async (_label, url) => {
+        fetchMock.mockResolvedValue(json(rawInvoice({public_file_url: url})))
+
+        expect(await client().getCustomerInvoiceFileUrl('9001')).toBeNull()
+      }
+    )
+  })
+
   it('encode l’identifiant d’une facture dans le chemin', async () => {
     fetchMock.mockResolvedValue(json(rawInvoice()))
 

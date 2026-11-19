@@ -14,6 +14,7 @@ import {
 import {withTenant} from '@/db/tenant-scope'
 import {PennylaneError} from '@/lib/pennylane/pennylane-client'
 import {getPennylaneClient} from '@/lib/pennylane/pennylane-client.server'
+import {isHttpsUrl} from '@/lib/pennylane/pennylane-schemas'
 
 import {getAssociationSettingsService} from './association-settings-service'
 import {getAuthUser} from './authentication/auth-service'
@@ -447,7 +448,9 @@ export const getMyInvoicePdfUrlService = async (
 
   try {
     const url = await getPennylaneClient().getCustomerInvoiceFileUrl(externalId)
-    return url ? {status: 'ready', url} : {status: 'unavailable'}
+    return url && isHttpsUrl(url)
+      ? {status: 'ready', url}
+      : {status: 'unavailable'}
   } catch (error) {
     if (error instanceof PennylaneError) return {status: 'unavailable'}
     throw error

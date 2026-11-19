@@ -88,6 +88,22 @@ la facture ; domaine : fiche = terrain = compteur.
         sur `billing_sync_state` et sur l'action PDF (facture d'une autre association introuvable). **Vérif** :
         suite e2e verte **en CI**.
 
+## Correctifs de revue (round 1, arbitrage du 19/11 : « corriger avant »)
+
+Source : `docs/reviews/s20-factures-pennylane.md`. À corriger : M1, m1, m2, m4, m5. **m3 laissé tel quel**
+(clé d'instance unique décidée par l'ADR 062 §10 jusqu'au deuxième client).
+
+12. [x] **M1** — e2e `pennylane-invoices.spec.ts` : la ligne Pennylane ne se distingue pas de la facture
+        `site` du seed au 15/03/2025 ; la rendre non ambiguë (montant ou date hors seed) et revoir tous les
+        filtres par date contre `tenant-member-invoices-seed.ts`.
+13. [x] **m1** — synchronisation : dédoublonner les écritures par `externalId` ; toute erreur non Pennylane
+        (base comprise) note l'échec (`unavailable`) dans `billing_sync_state` avant d'être relevée.
+14. [x] **m2** — identifiant client : doublon contrôlé sans casse à l'enregistrement de la fiche (cohérent
+        avec le rapprochement sans casse).
+15. [x] **m4** — `public_file_url` validé comme URL https (http refusé, critère « https seulement » de s21) ;
+        une URL invalide = PDF indisponible.
+16. [x] **m5** — l'alerte d'échec du PDF se remet à zéro au clic suivant.
+
 ## Files touched
 
 - `src/db/models/member-invoice-model.ts`, `billing-sync-state-model.ts` (nouveau), `db.ts`,

@@ -7,6 +7,7 @@ import {
   getMemberProfileByIdDao,
   getMemberProfileByPennylaneIdDao,
   getMemberProfilePageDao,
+  listMemberProfilesByPennylaneIdIgnoringCaseDao,
   updateMemberProfileContactTxnDao,
   updateMemberProfilePennylaneIdDao,
 } from '@/db/repositories/member-profile-repository'
@@ -317,7 +318,8 @@ export const findMemberProfileIdByPennylaneIdService = async (
 /**
  * Le bureau relie une fiche a son client Pennylane (s20, critere 4, ADR 048) :
  * l'« Identifiant Client » de l'export. Un identifiant deja porte par une
- * autre fiche est refuse, cette fiche nommee ; vide, il est retire.
+ * autre fiche, a la casse pres (le rapprochement l'ignore), est refuse, cette
+ * fiche nommee ; vide, il est retire.
  */
 export const updateMemberProfilePennylaneIdService = async (
   input: UpdateMemberProfilePennylaneIdInput
@@ -332,11 +334,12 @@ export const updateMemberProfilePennylaneIdService = async (
 
   return withTenant(organizationId, async () => {
     if (pennylaneCustomerId) {
-      const holder = await getMemberProfileByPennylaneIdDao(
+      const holders = await listMemberProfilesByPennylaneIdIgnoringCaseDao(
         organizationId,
         pennylaneCustomerId
       )
-      if (holder && holder.id !== memberProfileId) {
+      const holder = holders.find((row) => row.id !== memberProfileId)
+      if (holder) {
         return {status: 'pennylane_id_taken', holderName: holder.name}
       }
     }

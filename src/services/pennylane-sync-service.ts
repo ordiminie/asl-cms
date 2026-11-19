@@ -18,6 +18,7 @@ import {
 import {listOwnershipPeriodsByProfilesDao} from '@/db/repositories/parcel-ownership-repository'
 import {enqueueScheduledJobTxnDao} from '@/db/repositories/scheduled-job-repository'
 import {withTenant} from '@/db/tenant-scope'
+import {logger} from '@/lib/logger'
 import {PennylaneError} from '@/lib/pennylane/pennylane-client'
 import {getPennylaneClient} from '@/lib/pennylane/pennylane-client.server'
 import type {
@@ -156,27 +157,54 @@ const toUpsert = (write: PennylaneInvoiceWrite) => ({
   hasPdf: write.hasPdf,
 })
 
-export const syncPennylaneInvoicesService = async (
+/**
+ * Une facture par identifiant, la derniere lue : une pagination instable peut
+ * rendre deux fois la meme, et Postgres refuse d'ecrire deux fois une ligne
+ * dans un meme `ON CONFLICT DO UPDATE`.
+ */
+const uniqueInvoicesOf = (
+  invoices: readonly PennylaneInvoice[]
+): PennylaneInvoice[] => [
+  ...new Map(invoices.map((invoice) => [invoice.id, invoice])).values(),
+]
+
+/**
+ * Note l'echec d'une synchronisation hors erreur de Pennylane (base comprise),
+ * pour que le bureau ne lise pas une ancienne date sans alerte. Ne leve
+ * jamais : l'erreur d'origine reste celle qui remonte.
+ */
+const recordUnexpectedFailure = async (
   organizationId: string,
   now: Date
-): Promise<PennylaneSyncResult> => {
-  const parsed = organizationIdSchema.safeParse(organizationId)
-  if (!parsed.success) throw new ValidationParsedZodError(parsed.error)
-  const orgId = parsed.data
+): Promise<void> => {
+  try {
+    await withTenant(organizationId, () =>
+      recordBillingSyncFailureDao(organizationId, now, 'unavailable')
+    )
+  } catch {
+    logger.error('[PENNYLANE-SYNC] Echec de synchronisation non note', {
+      organizationId,
+    })
+  }
+}
 
-  if (!(await isPennylaneProvider(orgId))) return {status: 'skipped'}
-
+/** Relit Pennylane puis ecrit, dans une transaction du tenant. */
+const readAndWrite = async (
+  orgId: string,
+  now: Date
+): Promise<{result: PennylaneSyncResult; statuses: string[]}> => {
   const reading = await readPennylane()
   if ('error' in reading) {
     await withTenant(orgId, () =>
       recordBillingSyncFailureDao(orgId, now, reading.error.code)
     )
-    return {status: 'failed', error: reading.error.code}
+    return {result: {status: 'failed', error: reading.error.code}, statuses: []}
   }
 
   const profiles = await profilesByExternalRefOf(orgId)
   const mapping = mapPennylaneInvoices({
-    ...reading,
+    customers: reading.customers,
+    invoices: uniqueInvoicesOf(reading.invoices),
     profilesByExternalRef: profiles,
   })
   const terrainMismatches = await terrainMismatchesOf(
@@ -199,10 +227,32 @@ export const syncPennylaneInvoicesService = async (
       terrainMismatches,
     })
   })
-  await signalUnknownInvoiceStatuses(orgId, [
-    ...new Set(mapping.writes.map((write) => write.status)),
-  ])
-  return {status: 'synced', counts}
+  return {
+    result: {status: 'synced', counts},
+    statuses: [...new Set(mapping.writes.map((write) => write.status))],
+  }
+}
+
+export const syncPennylaneInvoicesService = async (
+  organizationId: string,
+  now: Date
+): Promise<PennylaneSyncResult> => {
+  const parsed = organizationIdSchema.safeParse(organizationId)
+  if (!parsed.success) throw new ValidationParsedZodError(parsed.error)
+  const orgId = parsed.data
+
+  if (!(await isPennylaneProvider(orgId))) return {status: 'skipped'}
+
+  const synced = await readAndWrite(orgId, now).catch(
+    async (error: unknown) => {
+      await recordUnexpectedFailure(orgId, now)
+      throw error
+    }
+  )
+  if (synced.result.status === 'synced') {
+    await signalUnknownInvoiceStatuses(orgId, synced.statuses)
+  }
+  return synced.result
 }
 
 const HOUR_MS = 60 * 60 * 1000
