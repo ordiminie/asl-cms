@@ -172,3 +172,54 @@ describe('Durée d’une session à la place d’un compte (s48, ADR 042)', () =
     expect(duration().parse('3600')).toBe(3600)
   })
 })
+
+describe('PENNYLANE_API_KEY — clé d’accès à Pennylane (s20, ADR 062 §10)', () => {
+  const schema = z.object({PENNYLANE_API_KEY: serverSchema.PENNYLANE_API_KEY})
+
+  it('est facultative : absente, la synchronisation échoue avec « clé absente »', () => {
+    expect(schema.parse({}).PENNYLANE_API_KEY).toBeUndefined()
+  })
+
+  it('accepte un jeton, et refuse une chaîne vide', () => {
+    expect(schema.parse({PENNYLANE_API_KEY: 'jeton'}).PENNYLANE_API_KEY).toBe(
+      'jeton'
+    )
+    expect(schema.safeParse({PENNYLANE_API_KEY: ''}).success).toBe(false)
+  })
+
+  it('reste côté serveur : aucune variable client ne la porte', () => {
+    expect(Object.keys(clientSchema).some((key) => /PENNYLANE/.test(key))).toBe(
+      false
+    )
+  })
+})
+
+describe('PENNYLANE_API_BASE_URL — faux Pennylane des tests seulement (s20)', () => {
+  const schema = z.object({
+    PENNYLANE_API_BASE_URL: serverSchema.PENNYLANE_API_BASE_URL,
+  })
+
+  it('est facultative : absente, le client vise la vraie API', () => {
+    expect(schema.parse({}).PENNYLANE_API_BASE_URL).toBeUndefined()
+  })
+
+  it('n’accepte qu’un serveur local : la clé ne part jamais vers un tiers', () => {
+    for (const url of [
+      'http://127.0.0.1:4010/api/external/v2',
+      'http://localhost:4010/api/external/v2',
+    ]) {
+      expect(schema.safeParse({PENNYLANE_API_BASE_URL: url}).success, url).toBe(
+        true
+      )
+    }
+    for (const url of [
+      'https://app.pennylane.com/api/external/v2',
+      'https://pirate.example/api',
+      'http://127.0.0.1.pirate.example/api',
+    ]) {
+      expect(schema.safeParse({PENNYLANE_API_BASE_URL: url}).success, url).toBe(
+        false
+      )
+    }
+  })
+})

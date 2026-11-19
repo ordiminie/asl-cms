@@ -16,7 +16,7 @@ import {
   RoleWithdrawnNotice,
 } from '@/components/features/member-space/member-space'
 
-import {updateMyContactAction} from './actions'
+import {openMyInvoicePdfAction, updateMyContactAction} from './actions'
 import {
   addMyEmailAction,
   cancelMyPendingEmailAction,
@@ -81,6 +81,7 @@ async function Page({user, searchParams}: DashboardPageProps) {
           reportSent={signalement === REPORT_SENT}
           questionSent={question === QUESTION_SENT}
           invoicesPromise={invoicesPromise}
+          openInvoicePdfAction={openMyInvoicePdfAction}
         />
       </Suspense>
     </div>

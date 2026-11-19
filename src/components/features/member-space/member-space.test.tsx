@@ -32,7 +32,14 @@ const oneLand = (land: MyLandDTO): MyLandsDTO => ({
 const renderSpace = async (
   lands: MyLandsDTO,
   /** `null` : un compte sans fiche, la lecture ne rend rien. */
-  invoices: MyInvoicesDTO | null = {landCount: 1, invoices: []}
+  invoices: MyInvoicesDTO | null = {
+    landCount: 1,
+    invoices: [],
+    syncedFromPennylane: false,
+    syncedAt: null,
+    lastSyncFailed: false,
+    unlinked: false,
+  }
 ) => {
   const parcelsPromise = Promise.resolve(lands)
   const contactPromise = Promise.resolve({
@@ -56,6 +63,7 @@ const renderSpace = async (
           reportsPromise={Promise.resolve([])}
           reportSent={false}
           invoicesPromise={Promise.resolve(invoices ?? undefined)}
+          openInvoicePdfAction={vi.fn()}
         />
       </Suspense>
     )
@@ -242,17 +250,24 @@ describe('MemberSpace — « Mes coordonnées » (s55)', () => {
 describe('MemberSpace — « Mes factures » (s19, écran 1)', () => {
   const INVOICES: MyInvoicesDTO = {
     landCount: 3,
+    syncedFromPennylane: false,
+    syncedAt: null,
+    lastSyncFailed: false,
+    unlinked: false,
     invoices: [
       {
         issuedOn: '2026-03-15',
         subject: 'Cotisation et eau 2026',
-        parcelNumber: '31',
+        parcelNumbers: ['31'],
         meterNumber: null,
         holderName: 'SCI Les Pins',
         amountCents: 41250,
         dueOn: '2026-04-15',
         status: 'Relance 1',
+        statusLabel: 'Relance 1',
         statusClass: 'unpaid',
+        hasPdf: false,
+        pdfRef: null,
       },
     ],
   }

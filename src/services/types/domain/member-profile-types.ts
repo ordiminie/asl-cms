@@ -128,6 +128,11 @@ export type MemberProfileEmailDTO = {
 }
 
 export type MemberProfileDTO = MemberProfileFieldsDTO & {
+  /**
+   * L'identifiant client Pennylane de la fiche (s20, critere 4) : la cle de
+   * rapprochement de ses factures (ADR 062 §2) ; nul sans lui.
+   */
+  pennylaneCustomerId: string | null
   /** Les adresses de la fiche, titulaire d'abord (s54). */
   emails: MemberProfileEmailDTO[]
   account: MemberProfileAccountDTO
@@ -297,3 +302,17 @@ export type MemberProfileEmailWriteResult =
   | {status: 'invalid_replacement'}
   /** L'adresse d'un membre du bureau sur sa derniere fiche (s12d). */
   | {status: 'board_email_required'}
+
+/** Ce que le bureau saisit dans la carte « Facturation » (s20, critere 4). */
+export type UpdateMemberProfilePennylaneIdInput = {
+  organizationId: string
+  memberProfileId: string
+  /** Vide : l'identifiant est retire. */
+  pennylaneCustomerId: string
+}
+
+export type UpdateMemberProfilePennylaneIdResult =
+  | {status: 'saved'}
+  | {status: 'not_found'}
+  /** Deja porte par une autre fiche de l'association : rien n'est ecrit. */
+  | {status: 'pennylane_id_taken'; holderName: string}

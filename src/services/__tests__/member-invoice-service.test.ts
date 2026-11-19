@@ -32,10 +32,14 @@ vi.mock('../parcel-ownership-service', () => ({
 vi.mock('../billing/resolve-member-billing-provider', () => ({
   resolveMemberBillingProvider: vi.fn(),
 }))
+vi.mock('@/db/repositories/billing-sync-state-repository', () => ({
+  getBillingSyncStateDao: vi.fn(),
+}))
 vi.mock('../email-service', () => ({
   sendInvoiceStatusAlertEmailService: vi.fn(),
 }))
 
+import {getBillingSyncStateDao} from '@/db/repositories/billing-sync-state-repository'
 import {
   claimStatusAlertDao,
   createInvoiceDao,
@@ -120,6 +124,7 @@ const invoiceRow = (overrides: Partial<MemberInvoiceRow> = {}) =>
     dueOn: '2026-04-15',
     amountCents: 41250,
     status: 'En attente',
+    hasPdf: false,
     createdAt: new Date('2026-03-15T10:00:00Z'),
     updatedAt: new Date('2026-03-15T10:00:00Z'),
     ...overrides,
@@ -404,6 +409,35 @@ describe('listMemberInvoicesService — la carte « Factures » du bureau', () =
         statusClass: 'unclassified',
       }),
     ])
+  })
+
+  it('saisie sur le site : ni Pennylane, ni date de mise à jour', async () => {
+    const result = await listMemberInvoicesService(ORG_ID, PROFILE_ID)
+
+    expect(result).toMatchObject({syncedFromPennylane: false, syncedAt: null})
+    expect(getBillingSyncStateDao).not.toHaveBeenCalled()
+  })
+
+  it('sous Pennylane : lecture seule et date de la dernière mise à jour (s20, écran 2)', async () => {
+    vi.mocked(resolveMemberBillingProvider).mockReturnValue({
+      id: 'pennylane',
+      canWrite: false,
+      listInvoicesOf: vi.fn(async () => []),
+    })
+    vi.mocked(getBillingSyncStateDao).mockImplementation(async () => {
+      expect(scope.current).toBe(ORG_ID)
+      return {
+        lastSuccessAt: new Date('2026-11-19T13:05:00.000Z'),
+      } as never
+    })
+
+    expect(await listMemberInvoicesService(ORG_ID, PROFILE_ID)).toEqual({
+      canWrite: false,
+      syncedFromPennylane: true,
+      syncedAt: '2026-11-19T13:05:00.000Z',
+      invoices: [],
+    })
+    expect(getBillingSyncStateDao).toHaveBeenCalledWith(ORG_ID)
   })
 
   it('[ORGANIZATION MEMBER] refusé', async () => {

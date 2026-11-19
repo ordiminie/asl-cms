@@ -1,6 +1,6 @@
 'use server'
 
-import {updateTag} from 'next/cache'
+import {revalidatePath, updateTag} from 'next/cache'
 import {getTranslations} from 'next-intl/server'
 
 import {
@@ -9,15 +9,23 @@ import {
 } from '@/app/dal/association-settings-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {requireActionAuth} from '@/app/dal/user-dal'
+import {logger} from '@/lib/logger'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {updateAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
 import {
+  requestPennylaneSyncService,
+  schedulePennylaneSyncService,
+} from '@/services/facades/pennylane-sync-service-facade'
+import {
   ASSOCIATION_SETTINGS_REGISTRY,
   AssociationSettingError,
+  BILLING_PROVIDER_PENNYLANE,
+  BILLING_PROVIDER_SETTING_KEY,
   getSettingsForPage,
   parseSettingValue,
   ResolvedAssociationSettings,
 } from '@/services/types/domain/association-settings-types'
+import type {PennylaneSyncActionState} from '@/services/types/domain/billing-sync-types'
 
 export type AssociationSettingsFormState = {
   success: boolean
@@ -64,6 +72,25 @@ const settingsPageChanges = (formData: FormData): Record<string, string> =>
       ])
   )
 
+const SETTINGS_PATH = '/bureau/reglages'
+
+/**
+ * Programme la synchronisation horaire apres le passage a Pennylane (s20,
+ * ADR 062 §8). L'enregistrement a deja eu lieu : un echec ici ne le defait
+ * pas, il est journalise ; « Mettre a jour maintenant » garantit aussi la
+ * tache.
+ */
+const schedulePennylaneSync = async (organizationId: string): Promise<void> => {
+  try {
+    await schedulePennylaneSyncService(organizationId, new Date())
+  } catch (error) {
+    logger.error('[SETTINGS] Synchronisation Pennylane non programmee', {
+      organizationId,
+      error: error instanceof Error ? error.name : 'unknown',
+    })
+  }
+}
+
 /**
  * Modifie les reglages de l'association du domaine appele (s02).
  *
@@ -102,6 +129,9 @@ export async function updateAssociationSettingsAction(
     }
 
     updateTag(associationSettingsTag(tenant.id))
+    if (changes[BILLING_PROVIDER_SETTING_KEY] === BILLING_PROVIDER_PENNYLANE) {
+      await schedulePennylaneSync(tenant.id)
+    }
     return {
       success: true,
       message: changesSeoSetting(changes, before)
@@ -113,5 +143,36 @@ export async function updateAssociationSettingsAction(
       return {success: false, message: t('errors.forbidden')}
     }
     return {success: false, message: t('errors.failed'), kept: t('errors.kept')}
+  }
+}
+
+/**
+ * « Mettre a jour maintenant » (s20, ADR 062 §8) : synchronise les factures
+ * de l'association du domaine appele et garantit la tache horaire. Le
+ * service exige `member.invoice.manage` ; toute erreur est rendue, jamais
+ * levee. La page est rafraichie apres une tentative, reussie ou non.
+ */
+export async function requestPennylaneSyncAction(): Promise<PennylaneSyncActionState> {
+  const t = await getTranslations('BureauSettingsPage')
+  const tenant = await requireCurrentTenantDal()
+
+  try {
+    await requireActionAuth()
+    const result = await requestPennylaneSyncService(tenant.id, new Date())
+    if (result.status === 'skipped') {
+      return {status: 'error', message: t('pennylaneSync.notPennylane')}
+    }
+    revalidatePath(SETTINGS_PATH)
+    return result.status === 'synced'
+      ? {status: 'synced', message: t('pennylaneSync.synced')}
+      : {
+          status: 'failed',
+          message: t(`pennylaneSync.errors.${result.error}`),
+        }
+  } catch (error) {
+    if (error instanceof AuthorizationError) {
+      return {status: 'error', message: t('errors.forbidden')}
+    }
+    return {status: 'error', message: t('pennylaneSync.errors.unavailable')}
   }
 }

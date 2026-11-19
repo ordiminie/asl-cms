@@ -199,6 +199,7 @@ describe('MemberInvoiceForm — corriger une facture du site', () => {
     dueOn: '2026-04-15',
     amountCents: 41250,
     status: 'En attente',
+    hasPdf: false,
     subject: 'Cotisation et eau 2026',
     statusClass: 'unpaid',
   }

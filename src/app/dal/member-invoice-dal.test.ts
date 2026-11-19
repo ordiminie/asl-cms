@@ -4,6 +4,9 @@ vi.mock('server-only', () => ({}))
 vi.mock('@/app/dal/tenant-dal', () => ({
   requireCurrentTenantDal: vi.fn(),
 }))
+vi.mock('@/services/facades/pennylane-sync-service-facade', () => ({
+  getBillingSyncOverviewService: vi.fn(),
+}))
 vi.mock('@/services/facades/member-invoice-service-facade', () => ({
   canManageMemberInvoicesService: vi.fn(),
   listMemberInvoicesService: vi.fn(),
@@ -18,9 +21,11 @@ import {
   getMemberInvoiceService,
   listMemberInvoicesService,
 } from '@/services/facades/member-invoice-service-facade'
+import {getBillingSyncOverviewService} from '@/services/facades/pennylane-sync-service-facade'
 
 import {
   canManageCurrentMemberInvoicesDal,
+  getBillingSyncOverviewForBureauDal,
   getMemberInvoiceForBureauDal,
   getMemberInvoicesForBureauDal,
 } from './member-invoice-dal'
@@ -42,7 +47,12 @@ describe('member-invoice-dal — factures d’une fiche, pour le bureau (s19)', 
   })
 
   it('lit les factures d’une fiche quand le compte les gère', async () => {
-    const invoices = {canWrite: true, invoices: []}
+    const invoices = {
+      canWrite: true,
+      syncedFromPennylane: false,
+      syncedAt: null,
+      invoices: [],
+    }
     vi.mocked(listMemberInvoicesService).mockResolvedValue(invoices)
 
     await expect(
@@ -91,5 +101,26 @@ describe('member-invoice-dal — factures d’une fiche, pour le bureau (s19)', 
     await expect(
       getMemberInvoiceForBureauDal(ORG_A, PROFILE_ID, INVOICE_ID)
     ).rejects.toBeInstanceOf(AuthorizationError)
+  })
+})
+
+describe('member-invoice-dal — synchronisation Pennylane, pour le bureau (s20)', () => {
+  it('lit l’état de l’association quand le compte gère les factures', async () => {
+    const overview = {lastAttemptAt: null} as never
+    vi.mocked(getBillingSyncOverviewService).mockResolvedValue(overview)
+
+    await expect(getBillingSyncOverviewForBureauDal(ORG_A)).resolves.toBe(
+      overview
+    )
+    expect(getBillingSyncOverviewService).toHaveBeenCalledWith(ORG_A)
+  })
+
+  it('rien pour un compte qui ne gère pas les factures : la carte n’est pas rendue', async () => {
+    vi.mocked(canManageMemberInvoicesService).mockResolvedValue(false)
+
+    await expect(
+      getBillingSyncOverviewForBureauDal(ORG_A)
+    ).resolves.toBeUndefined()
+    expect(getBillingSyncOverviewService).not.toHaveBeenCalled()
   })
 })

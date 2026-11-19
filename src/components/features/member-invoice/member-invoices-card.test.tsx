@@ -26,6 +26,7 @@ const invoice = (
   dueOn: '2026-04-15',
   amountCents: 41250,
   status: 'En attente',
+  hasPdf: false,
   subject: 'Cotisation et eau 2026',
   statusClass: 'unpaid',
   ...overrides,
@@ -33,6 +34,8 @@ const invoice = (
 
 const MIXED: BoardMemberInvoicesDTO = {
   canWrite: true,
+  syncedFromPennylane: false,
+  syncedAt: null,
   invoices: [
     invoice(),
     invoice({
@@ -66,6 +69,61 @@ const rows = () =>
     .slice(1) as HTMLTableRowElement[]
 
 describe('MemberInvoicesCard — carte « Factures » de la fiche (s19, écran 2)', () => {
+  it('sous Pennylane : la phrase de lecture seule et la date de mise à jour, sans « Ajouter » ni « Modifier » (s20)', async () => {
+    await renderCard({
+      canWrite: false,
+      syncedFromPennylane: true,
+      syncedAt: '2026-11-19T13:05:00.000Z',
+      invoices: [invoice()],
+    })
+
+    expect(
+      within(card()).getByText(
+        'Les factures viennent de Pennylane et se lisent ici en lecture seule. Mises à jour le 19/11/2026 à 14 h 05.'
+      )
+    ).toBeInTheDocument()
+    expect(within(card()).queryByRole('link', {name: /Ajouter/})).toBeNull()
+    expect(within(card()).queryByRole('link', {name: /Modifier/})).toBeNull()
+    const [site] = rows()
+    expect(site).toHaveTextContent('Saisie sur le site')
+    expect(site).toHaveTextContent('Lecture seule')
+  })
+
+  it('sous Pennylane, jamais synchronisé : la phrase sans date', async () => {
+    await renderCard({
+      canWrite: false,
+      syncedFromPennylane: true,
+      syncedAt: null,
+      invoices: [],
+    })
+
+    expect(
+      within(card()).getByText(
+        'Les factures viennent de Pennylane et se lisent ici en lecture seule. Pas encore de mise à jour.'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('une facture Pennylane sans parcelle : aucune ligne de parcelle vide (s20, ADR 062 §4)', async () => {
+    await renderCard({
+      canWrite: false,
+      syncedFromPennylane: false,
+      syncedAt: null,
+      invoices: [
+        invoice({
+          id: PENNYLANE_ID,
+          source: 'pennylane',
+          parcelId: null,
+          parcelNumber: null,
+        }),
+      ],
+    })
+
+    const [pennylane] = rows()
+    expect(pennylane).not.toHaveTextContent('Parcelle')
+    expect(pennylane).toHaveTextContent('Cotisation et eau 2026')
+  })
+
   it('liste mixte : source écrite, statut brut, objet et parcelle', async () => {
     await renderCard(MIXED)
 
@@ -113,7 +171,12 @@ describe('MemberInvoicesCard — carte « Factures » de la fiche (s19, écran 2
   })
 
   it('vide : la phrase, et l’ajout', async () => {
-    await renderCard({canWrite: true, invoices: []})
+    await renderCard({
+      canWrite: true,
+      syncedFromPennylane: false,
+      syncedAt: null,
+      invoices: [],
+    })
 
     expect(
       within(card()).getByText('Aucune facture pour ce propriétaire.')

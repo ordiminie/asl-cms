@@ -3,7 +3,7 @@
 import {zodResolver} from '@hookform/resolvers/zod'
 import {CircleAlert, CircleCheck} from 'lucide-react'
 import {useTranslations} from 'next-intl'
-import {MouseEvent, ReactNode, useState} from 'react'
+import {Fragment, MouseEvent, ReactNode, useState} from 'react'
 import {Controller, FieldErrors, useForm, useWatch} from 'react-hook-form'
 
 import type {AssociationSettingsFormState} from '@/app/[locale]/(bureau)/bureau/reglages/actions'
@@ -58,6 +58,11 @@ type AssociationSettingsFormProps = {
    * jamais envoyes.
    */
   canEditSuperAdminOnly?: boolean
+  /**
+   * Carte d'etat placee apres la carte de sa section (s20, design system
+   * gap 1) : rendue seulement quand le reglage qui la justifie est actif.
+   */
+  afterSection?: Partial<Record<AssociationSettingSection, ReactNode>>
 }
 
 /** Valeurs indexees par cle du registre. */
@@ -270,6 +275,7 @@ export function AssociationSettingsForm({
   settings,
   saveAction,
   canEditSuperAdminOnly = false,
+  afterSection = {},
 }: AssociationSettingsFormProps) {
   const t = useTranslations('BureauSettingsPage')
   const [readOnlyKeys] = useState(() =>
@@ -378,54 +384,54 @@ export function AssociationSettingsForm({
       )}
 
       {settingsCardsOf(definitions).map((card) => (
-        <Card
-          key={card.section ?? 'notifications'}
-          className="gap-4 px-4 py-4 shadow-none sm:px-6 sm:py-6"
-        >
-          <CardHeader className="px-0">
-            <CardTitle>
-              <h3 className="text-xl leading-snug font-semibold">
-                {t(`cards.${card.section ?? 'notifications'}.title`)}
-              </h3>
-            </CardTitle>
-            {card.section && (
-              <p className="text-muted-foreground text-base">
-                {t(`cards.${card.section}.description`)}
-              </p>
-            )}
-          </CardHeader>
-          <CardContent className="flex flex-col gap-6 px-0">
-            {card.definitions.map((definition) => (
-              <Controller
-                key={definition.key}
-                control={form.control}
-                name={toSettingFieldName(definition.key)}
-                render={({field}) => (
-                  <SettingField
-                    definition={definition}
-                    value={field.value ?? ''}
-                    error={settingErrorOf(
-                      definition,
-                      errors,
-                      watchedValues,
-                      settings
-                    )}
-                    readOnly={readOnlyKeys.has(definition.key)}
-                    currentValue={savedValues[definition.key] ?? ''}
-                    defaultValue={effectiveDefault(
-                      definition,
-                      watchedValues,
-                      settings
-                    )}
-                    disabled={isSubmitting}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
-                )}
-              />
-            ))}
-          </CardContent>
-        </Card>
+        <Fragment key={card.section ?? 'notifications'}>
+          <Card className="gap-4 px-4 py-4 shadow-none sm:px-6 sm:py-6">
+            <CardHeader className="px-0">
+              <CardTitle>
+                <h3 className="text-xl leading-snug font-semibold">
+                  {t(`cards.${card.section ?? 'notifications'}.title`)}
+                </h3>
+              </CardTitle>
+              {card.section && (
+                <p className="text-muted-foreground text-base">
+                  {t(`cards.${card.section}.description`)}
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="flex flex-col gap-6 px-0">
+              {card.definitions.map((definition) => (
+                <Controller
+                  key={definition.key}
+                  control={form.control}
+                  name={toSettingFieldName(definition.key)}
+                  render={({field}) => (
+                    <SettingField
+                      definition={definition}
+                      value={field.value ?? ''}
+                      error={settingErrorOf(
+                        definition,
+                        errors,
+                        watchedValues,
+                        settings
+                      )}
+                      readOnly={readOnlyKeys.has(definition.key)}
+                      currentValue={savedValues[definition.key] ?? ''}
+                      defaultValue={effectiveDefault(
+                        definition,
+                        watchedValues,
+                        settings
+                      )}
+                      disabled={isSubmitting}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
+                  )}
+                />
+              ))}
+            </CardContent>
+          </Card>
+          {card.section && afterSection[card.section]}
+        </Fragment>
       ))}
 
       <Button

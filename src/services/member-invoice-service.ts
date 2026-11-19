@@ -1,5 +1,6 @@
 import 'server-only'
 
+import {getBillingSyncStateDao} from '@/db/repositories/billing-sync-state-repository'
 import {
   claimStatusAlertDao,
   countInvoicesByStatusDao,
@@ -36,6 +37,7 @@ import {
 import {ActionIdConst} from './types/domain/action-registry-types'
 import {
   BILLING_ALERT_EMAIL_SETTING_KEY,
+  BILLING_PROVIDER_PENNYLANE,
   getAccentHue,
   ResolvedAssociationSettings,
 } from './types/domain/association-settings-types'
@@ -275,8 +277,16 @@ export const listMemberInvoicesService = async (
     parsed.data.organizationId,
     [parsed.data.memberProfileId]
   )
+  const syncedFromPennylane = context.provider.id === BILLING_PROVIDER_PENNYLANE
+  const syncState = syncedFromPennylane
+    ? await withTenant(parsed.data.organizationId, () =>
+        getBillingSyncStateDao(parsed.data.organizationId)
+      )
+    : undefined
   return {
     canWrite: context.provider.canWrite,
+    syncedFromPennylane,
+    syncedAt: syncState?.lastSuccessAt?.toISOString() ?? null,
     invoices: invoices
       .toSorted((a, b) => b.issuedOn.localeCompare(a.issuedOn))
       .map((invoice) => toBoardInvoice(invoice, context.settings)),

@@ -2191,6 +2191,11 @@
         "help": "Un statut par ligne, écrit exactement comme la source l’écrit. Un statut absent des deux listes est « à classer » : il n’est compté ni comme réglé, ni comme impayé.",
         "whenEmpty": "Vide : aucune facture n’est comptée comme réglée."
       },
+      "statusLabels": {
+        "label": "Libellés des statuts",
+        "help": "Un statut par ligne : le statut tel que Pennylane l’écrit, « = », puis le mot que lisent les membres. Un statut sans libellé s’affiche tel quel.",
+        "whenEmpty": "Vide : chaque statut s’affiche tel que la source l’écrit."
+      },
       "billingAlertEmail": {
         "label": "Adresse des signalements de facture",
         "help": "Reçoit un email quand une facture porte un statut qui n’est dans aucune des deux listes, une seule fois par statut."
@@ -2214,7 +2219,8 @@
     },
     "counter": "{count} / {max}",
     "billingProviders": {
-      "manual": "Saisie par le bureau"
+      "manual": "Saisie par le bureau",
+      "pennylane": "Pennylane"
     }
   },
   "BureauSettingsPage": {
@@ -2262,7 +2268,45 @@
       "forbidden": "Cette action est réservée au bureau de l'association.",
       "invalidData": "Aucun réglage n'a été reçu. Rechargez la page et réessayez."
     },
-    "successSeo": "Réglages enregistrés. Google en tiendra compte à son prochain passage sur le site."
+    "successSeo": "Réglages enregistrés. Google en tiendra compte à son prochain passage sur le site.",
+    "pennylaneSync": {
+      "card": {
+        "title": "Synchronisation Pennylane",
+        "description": "Les factures des membres sont relues chez Pennylane toutes les heures. Rien ne s’écrit chez Pennylane.",
+        "syncedAt": "Factures mises à jour le {date} à {hour} h {minute}.",
+        "never": "Pas encore de mise à jour. La première a lieu dans l’heure.",
+        "failed": "La dernière mise à jour n’a pas abouti.",
+        "retry": "Nouvel essai dans l’heure.",
+        "counts": "Comptes",
+        "countLabels": {
+          "written": "Factures remontées",
+          "draft": "Brouillons écartés",
+          "creditNote": "Avoirs écartés",
+          "noCustomer": "Sans client",
+          "noDate": "Sans date ou sans échéance",
+          "notEur": "Dans une autre devise que l’euro",
+          "nonPositive": "Montant nul ou négatif",
+          "unmatched": "Clients Pennylane sans fiche"
+        },
+        "profilesWithoutId": "{count, plural, one {# fiche sans identifiant client Pennylane} other {# fiches sans identifiant client Pennylane}}",
+        "allLinked": "Toutes les fiches sont reliées à un client Pennylane.",
+        "unmatchedCustomers": "Clients Pennylane sans fiche",
+        "unnamedCustomer": "Client sans nom chez Pennylane",
+        "terrainMismatches": "Écarts de terrain",
+        "terrainMismatch": "La facture n° {invoice} indique la parcelle {parcels} · compteur {meter}.",
+        "noMeter": "non écrit",
+        "syncNow": "Mettre à jour maintenant",
+        "syncing": "Mise à jour…"
+      },
+      "synced": "Factures mises à jour.",
+      "notPennylane": "Les factures de l’association ne viennent pas de Pennylane.",
+      "errors": {
+        "missing_key": "La clé d’accès à Pennylane n’est pas configurée sur le serveur.",
+        "unauthorized": "Pennylane a refusé la clé d’accès.",
+        "unavailable": "Pennylane n’a pas répondu. Les factures déjà connues restent affichées.",
+        "rate_limited": "Pennylane demande de patienter. Nouvel essai dans l’heure."
+      }
+    }
   },
   "PublicCmsPage": {
     "previewDraft": "Aperçu du bureau : cette page est en brouillon, elle n'est pas visible par les visiteurs.",
@@ -3549,6 +3593,22 @@
       "attention": "Attention.",
       "incomplete": "Cette fiche n’a ni adresse email ni adresse de domicile : aucun envoi ne peut atteindre ce propriétaire.",
       "addHomeAddress": "Ajouter l’adresse de domicile",
+      "billing": {
+        "title": "Facturation",
+        "label": "Identifiant client Pennylane",
+        "help": "L’« Identifiant Client » de ce terrain dans l’export des clients Pennylane, de la forme 3f2a…-…-….",
+        "missing": "Non renseigné",
+        "edit": "Modifier l’identifiant",
+        "save": "Enregistrer",
+        "saving": "Enregistrement…",
+        "cancel": "Annuler",
+        "saved": "Identifiant client enregistré.",
+        "unlinked": "Cette fiche n’est reliée à aucun client Pennylane. Ses factures ne remontent pas.",
+        "errors": {
+          "taken": "Cet identifiant est déjà porté par la fiche « {name} ».",
+          "tooLong": "L’identifiant est trop long : copiez-le tel qu’il figure dans l’export."
+        }
+      },
       "contact": {
         "title": "Coordonnées",
         "email": "Adresse email",
@@ -3926,9 +3986,12 @@
         "land": "Terrain",
         "amount": "Montant",
         "dueOn": "Échéance",
-        "status": "Statut"
+        "status": "Statut",
+        "invoice": "Facture"
       },
       "parcel": "Parcelle <mono>{number}</mono>",
+      "parcels": "Parcelles <mono>{numbers}</mono>",
+      "landMissing": "Terrain non renseigné",
       "meter": "Compteur <mono>{number}</mono>",
       "meterMissing": "Compteur non renseigné",
       "holder": "Au nom de {name}",
@@ -3939,7 +4002,19 @@
       "previous": "Précédent",
       "next": "Suivant",
       "range": "{from} à {to} sur {total}",
-      "page": "Page {page} sur {total}"
+      "page": "Page {page} sur {total}",
+      "pdf": {
+        "button": "PDF",
+        "buttonMobile": "Télécharger le PDF",
+        "label": "PDF de la facture {year}, {land}",
+        "land": "{count, plural, one {parcelle {numbers}} other {parcelles {numbers}}}",
+        "unavailable": "PDF non disponible",
+        "failed": "Le PDF n’a pas pu être ouvert. Réessayez dans un moment."
+      },
+      "syncedAt": "Factures mises à jour le {date} à {hour} h {minute}.",
+      "syncFailed": "Les factures n’ont pas pu être mises à jour. Voici vos factures telles qu’elles étaient le {date} à {hour} h {minute}.",
+      "syncFailedNever": "Les factures n’ont pas pu être mises à jour.",
+      "unlinked": "Vos factures ne sont pas encore reliées à votre espace. Le bureau en est informé et s’en occupe."
     }
   },
   "MemberReportPage": {
@@ -4530,7 +4605,11 @@
       "editLabel": "Modifier la facture du {date}",
       "add": "Ajouter une facture",
       "empty": "Aucune facture pour ce propriétaire.",
-      "saved": "Facture enregistrée. {name} la voit dès maintenant dans son espace, carte « Mes factures »."
+      "saved": "Facture enregistrée. {name} la voit dès maintenant dans son espace, carte « Mes factures ».",
+      "pennylane": {
+        "readOnlySince": "Les factures viennent de Pennylane et se lisent ici en lecture seule. Mises à jour le {date} à {hour} h {minute}.",
+        "readOnlyNever": "Les factures viennent de Pennylane et se lisent ici en lecture seule. Pas encore de mise à jour."
+      }
     },
     "form": {
       "newTitle": "Ajouter une facture",

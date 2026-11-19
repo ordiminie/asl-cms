@@ -76,6 +76,7 @@ const invoice = (
   dueOn: '2026-04-15',
   amountCents: 41250,
   status: 'En attente',
+  hasPdf: false,
   subject: 'Cotisation et eau 2026',
   statusClass: 'unpaid',
   ...overrides,
@@ -112,6 +113,8 @@ beforeEach(() => {
   vi.mocked(getMemberInvoiceForBureauDal).mockResolvedValue(invoice())
   vi.mocked(getMemberInvoicesForBureauDal).mockResolvedValue({
     canWrite: true,
+    syncedFromPennylane: false,
+    syncedAt: null,
     invoices: [],
   })
   vi.mocked(getMemberParcelsForBureauDal).mockResolvedValue({
@@ -166,9 +169,22 @@ describe('/bureau/proprietaires/[id]/factures/[invoiceId] (s19, écran 3)', () =
     ).toHaveAttribute('href', `/bureau/proprietaires/${PROFILE_ID}`)
   })
 
+  it('une facture Pennylane sans parcelle : la ligne « Parcelle » est omise (s20, ADR 062 §4)', async () => {
+    vi.mocked(getMemberInvoiceForBureauDal).mockResolvedValue(
+      invoice({source: 'pennylane', parcelId: null, parcelNumber: null})
+    )
+
+    await renderPage()
+
+    expect(screen.queryByText('Terrain facturé')).toBeNull()
+    expect(screen.getByText('412,50 €')).toBeInTheDocument()
+  })
+
   it('fournisseur en lecture seule : la facture du site se lit, sans formulaire', async () => {
     vi.mocked(getMemberInvoicesForBureauDal).mockResolvedValue({
       canWrite: false,
+      syncedFromPennylane: false,
+      syncedAt: null,
       invoices: [],
     })
 

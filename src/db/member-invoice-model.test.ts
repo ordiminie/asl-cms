@@ -42,18 +42,19 @@ describe('member_invoice (s19, ADR 059 §1)', () => {
         'due_on',
         'amount_cents',
         'status',
+        'has_pdf',
         'created_at',
         'updated_at',
       ].sort()
     )
   })
 
-  it('exige tout sauf l’identifiant chez la source', () => {
+  it('exige tout sauf l’identifiant chez la source et la parcelle (s20, ADR 062 §4)', () => {
     for (const name of [
       'organization_id',
       'member_profile_id',
-      'parcel_id',
       'source',
+      'has_pdf',
       'year',
       'issued_on',
       'due_on',
@@ -65,6 +66,13 @@ describe('member_invoice (s19, ADR 059 §1)', () => {
       expect(column(name)?.notNull, name).toBe(true)
     }
     expect(column('external_id')?.notNull).toBe(false)
+    expect(column('parcel_id')?.notNull).toBe(false)
+  })
+
+  it('note seulement la présence d’un PDF, jamais son adresse (s20, ADR 062 §6)', () => {
+    expect(column('has_pdf')?.columnType).toBe('PgBoolean')
+    expect(column('has_pdf')?.default).toBe(false)
+    expect(config.columns.some((c) => /url/i.test(c.name))).toBe(false)
   })
 
   it('le statut est un texte opaque, la source un ensemble fermé du produit', () => {
@@ -91,8 +99,27 @@ describe('member_invoice (s19, ADR 059 §1)', () => {
       [
         'member_invoice_amount_positive_check',
         'member_invoice_due_on_check',
+        'member_invoice_parcel_required_for_site_check',
       ].sort()
     )
+  })
+
+  it('exige la parcelle pour une facture saisie sur le site, pas pour Pennylane (ADR 062 §4)', () => {
+    const parcelCheck = config.checks.find(
+      (c) => c.name === 'member_invoice_parcel_required_for_site_check'
+    )
+    const sqlText = parcelCheck?.value.queryChunks
+      .map((chunk) =>
+        typeof chunk === 'object' && chunk && 'value' in chunk
+          ? String((chunk as {value: unknown}).value)
+          : typeof chunk === 'object' && chunk && 'name' in chunk
+            ? String((chunk as {name: unknown}).name)
+            : ''
+      )
+      .join('')
+    expect(sqlText).toContain("'pennylane'")
+    expect(sqlText).toContain('parcel_id')
+    expect(sqlText).toContain('is not null')
   })
 
   it('l’identifiant chez la source est unique par association quand il est renseigné', () => {

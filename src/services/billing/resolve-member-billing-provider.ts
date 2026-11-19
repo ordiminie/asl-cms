@@ -6,9 +6,11 @@ import {
 } from '../types/domain/association-settings-types'
 import {manualMemberBillingProvider} from './manual-member-billing-provider'
 import type {MemberBillingProvider} from './member-billing-provider'
+import {pennylaneMemberBillingProvider} from './pennylane-member-billing-provider'
 
 const PROVIDERS: readonly MemberBillingProvider[] = [
   manualMemberBillingProvider,
+  pennylaneMemberBillingProvider,
 ]
 
 /**

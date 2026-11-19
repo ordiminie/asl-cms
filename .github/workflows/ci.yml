@@ -49,6 +49,11 @@ env:
   NEXT_PUBLIC_ALLOWED_MIME_TYPES: image/jpeg,image/png,image/gif,application/pdf
   NEXT_PUBLIC_NODE_ENV: production
   LOG_LEVEL: warn
+  # Factures Pennylane (s20) : aucun appel à la vraie API. Un faux serveur
+  # local, servi par e2e/pennylane-invoices.spec.ts, répond à cette base ; la
+  # clé est factice et l'application refuse toute base qui n'est pas locale.
+  PENNYLANE_API_KEY: pennylane_factice_ci
+  PENNYLANE_API_BASE_URL: http://127.0.0.1:4010/api/external/v2
 
 jobs:
   qualite:

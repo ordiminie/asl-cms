@@ -6,9 +6,11 @@ import {
   canEditSuperAdminOnlySettingsDal,
   getAssociationSettingsDal,
 } from '@/app/dal/association-settings-dal'
+import {getBillingSyncOverviewForBureauDal} from '@/app/dal/member-invoice-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
 import {AssociationSettingsForm} from '@/components/features/association/association-settings-form'
 import {BureauAccessDenied} from '@/components/features/association/bureau-access-denied'
+import {PennylaneSyncCard} from '@/components/features/association/pennylane-sync-card'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,7 +23,10 @@ import {
   getSettingsForPage,
 } from '@/services/types/domain/association-settings-types'
 
-import {updateAssociationSettingsAction} from './actions'
+import {
+  requestPennylaneSyncAction,
+  updateAssociationSettingsAction,
+} from './actions'
 
 export async function generateMetadata({
   params,
@@ -39,6 +44,8 @@ export async function generateMetadata({
  * Page « Reglages de l'association » (s02, ecran B), generee par le registre
  * des parametres. Le controle d'acces est repete ici : une navigation cliente
  * ne rejoue pas le layout. Les adresses ne sont lues qu'apres ce controle.
+ * Sous Pennylane, la carte « Synchronisation Pennylane » suit « Factures »
+ * (s20, ecran 3).
  */
 export default async function BureauSettingsPage({
   params,
@@ -58,9 +65,10 @@ export default async function BureauSettingsPage({
     return <BureauAccessDenied />
   }
 
-  const [settings, canEditSuperAdminOnly] = await Promise.all([
+  const [settings, canEditSuperAdminOnly, syncOverview] = await Promise.all([
     getAssociationSettingsDal(tenant.id),
     canEditSuperAdminOnlySettingsDal(),
+    getBillingSyncOverviewForBureauDal(tenant.id),
   ])
 
   return (
@@ -91,6 +99,16 @@ export default async function BureauSettingsPage({
         settings={settings}
         saveAction={updateAssociationSettingsAction}
         canEditSuperAdminOnly={canEditSuperAdminOnly}
+        afterSection={
+          syncOverview && {
+            billing: (
+              <PennylaneSyncCard
+                overview={syncOverview}
+                syncAction={requestPennylaneSyncAction}
+              />
+            ),
+          }
+        }
       />
     </div>
   )

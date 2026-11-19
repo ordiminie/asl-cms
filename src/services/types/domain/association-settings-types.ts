@@ -242,6 +242,8 @@ export const MEMBER_DEFAULT_LAND_CITY_MAX_LENGTH = 100
  */
 export const BILLING_PROVIDER_SETTING_KEY = 'billing.provider'
 export const BILLING_PROVIDER_MANUAL = 'manual'
+/** Factures synchronisees depuis Pennylane, en lecture seule (s20, ADR 062). */
+export const BILLING_PROVIDER_PENNYLANE = 'pennylane'
 /**
  * Modele de l'objet d'une facture (s19, ADR 059 §6) : `{année}` y est
  * remplace par l'annee de la facture. Le libelle de la source n'est jamais
@@ -257,6 +259,12 @@ export const INVOICE_SUBJECT_YEAR_TOKEN = '{année}'
  */
 export const BILLING_UNPAID_STATUSES_SETTING_KEY = 'billing.unpaid_statuses'
 export const BILLING_SETTLED_STATUSES_SETTING_KEY = 'billing.settled_statuses'
+/**
+ * Libelles des statuts lus par les membres (s20, ADR 062 §5) : « statut =
+ * libelle », un par ligne, vide par defaut. Un statut sans libelle s'affiche
+ * tel quel ; le libelle ne sert jamais au classement.
+ */
+export const BILLING_STATUS_LABELS_SETTING_KEY = 'billing.status_labels'
 /**
  * Destinataire du signalement d'un statut de facture a classer (s19, ADR 059
  * §5) ; repli sur l'adresse de contact.
@@ -533,6 +541,10 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     default: {value: BILLING_PROVIDER_MANUAL},
     options: [
       {value: BILLING_PROVIDER_MANUAL, labelKey: 'billingProviders.manual'},
+      {
+        value: BILLING_PROVIDER_PENNYLANE,
+        labelKey: 'billingProviders.pennylane',
+      },
     ],
     labelKey: 'fields.billingProvider.label',
     helpKey: 'fields.billingProvider.help',
@@ -573,6 +585,18 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     labelKey: 'fields.settledStatuses.label',
     helpKey: 'fields.settledStatuses.help',
     whenEmptyKey: 'fields.settledStatuses.whenEmpty',
+    page: 'settings',
+    section: 'billing',
+  },
+  {
+    key: BILLING_STATUS_LABELS_SETTING_KEY,
+    type: 'text',
+    required: false,
+    maxLength: BILLING_STATUS_LIST_MAX_LENGTH,
+    multiline: true,
+    labelKey: 'fields.statusLabels.label',
+    helpKey: 'fields.statusLabels.help',
+    whenEmptyKey: 'fields.statusLabels.whenEmpty',
     page: 'settings',
     section: 'billing',
   },

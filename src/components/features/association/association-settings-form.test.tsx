@@ -759,11 +759,45 @@ describe('AssociationSettingsForm — carte « Factures » (s19, ADR 059)', () =
     ).toBeDisabled()
   })
 
+  it('propose « Pennylane » au SuperAdmin et rend les libellés des statuts en zone multiligne (s20)', () => {
+    billingForm(true)
+
+    const card = billingCard()
+    expect(within(card).getByRole('radio', {name: 'Pennylane'})).toBeEnabled()
+    expect(within(card).getByLabelText(/Libellés des statuts/).tagName).toBe(
+      'TEXTAREA'
+    )
+  })
+
   it('le SuperAdmin peut choisir le fournisseur', () => {
     billingForm(true)
 
     expect(
       within(billingCard()).getByRole('radio', {name: 'Saisie par le bureau'})
     ).toBeEnabled()
+  })
+})
+
+describe('AssociationSettingsForm — carte d’état après sa section (s20, gap 1)', () => {
+  it('rend la carte donnée juste après la carte « Factures », hors du flux des réglages', () => {
+    render(
+      <AssociationSettingsForm
+        definitions={getSettingsForPage(
+          ASSOCIATION_SETTINGS_REGISTRY,
+          'settings'
+        )}
+        settings={resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT},
+        ])}
+        saveAction={saved()}
+        afterSection={{billing: <section aria-label="Carte d’état" />}}
+      />
+    )
+
+    const billing = screen
+      .getByRole('heading', {level: 3, name: 'Factures'})
+      .closest('[data-slot="card"]') as HTMLElement
+    const status = screen.getByRole('region', {name: 'Carte d’état'})
+    expect(billing.nextElementSibling).toBe(status)
   })
 })

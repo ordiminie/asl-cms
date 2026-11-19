@@ -4,7 +4,10 @@ vi.mock('server-only', () => ({}))
 vi.mock('next/cache', () => ({revalidatePath: vi.fn()}))
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn((namespace = 'BureauMemberProfilesPage') =>
-    Promise.resolve((key: string) => `${namespace}.${key}`)
+    Promise.resolve(
+      (key: string, values?: Record<string, unknown>) =>
+        `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ''}`
+    )
   ),
 }))
 vi.mock('@/app/dal/tenant-dal', () => ({requireCurrentTenantDal: vi.fn()}))
@@ -12,6 +15,9 @@ vi.mock('@/app/dal/user-dal', () => ({requireActionAuth: vi.fn()}))
 vi.mock('@/services/facades/member-invoice-service-facade', () => ({
   createMemberInvoiceService: vi.fn(),
   updateMemberInvoiceService: vi.fn(),
+}))
+vi.mock('@/services/facades/member-profile-service-facade', () => ({
+  updateMemberProfilePennylaneIdService: vi.fn(),
 }))
 vi.mock('@/services/facades/member-profile-email-service-facade', () => ({
   addMemberProfileEmailService: vi.fn(),
@@ -36,6 +42,7 @@ import {
   removeMemberProfileEmailService,
   updateMemberProfileEmailService,
 } from '@/services/facades/member-profile-email-service-facade'
+import {updateMemberProfilePennylaneIdService} from '@/services/facades/member-profile-service-facade'
 import type {MemberProfileDTO} from '@/services/types/domain/member-profile-types'
 
 import {
@@ -45,6 +52,7 @@ import {
   removeMemberProfileEmailAction,
   updateMemberInvoiceAction,
   updateMemberProfileEmailAction,
+  updateMemberProfilePennylaneIdAction,
 } from './actions'
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'
@@ -449,6 +457,100 @@ describe('updateMemberInvoiceAction — corriger une facture (s19, écran 3)', (
     expect(await updateMemberInvoiceAction(undefined, updateForm())).toEqual({
       status: 'error',
       message: 'BureauMemberInvoices.errors.notFound',
+    })
+  })
+})
+
+describe('updateMemberProfilePennylaneIdAction — carte « Facturation » (s20, critère 4)', () => {
+  const EXTERNAL_REF = '3f2a9c1e-1111-4111-8111-111111111111'
+
+  it('enregistre l’identifiant de la fiche, pour le tenant du domaine, puis revalide', async () => {
+    vi.mocked(updateMemberProfilePennylaneIdService).mockResolvedValue({
+      status: 'saved',
+    })
+
+    const result = await updateMemberProfilePennylaneIdAction(
+      undefined,
+      formOf({memberProfileId: PROFILE_ID, pennylaneCustomerId: EXTERNAL_REF})
+    )
+
+    expect(result).toEqual({status: 'saved'})
+    expect(requireActionAuth).toHaveBeenCalled()
+    expect(updateMemberProfilePennylaneIdService).toHaveBeenCalledWith({
+      organizationId: TENANT_ID,
+      memberProfileId: PROFILE_ID,
+      pennylaneCustomerId: EXTERNAL_REF,
+    })
+    expect(revalidatePath).toHaveBeenCalled()
+  })
+
+  it('doublon : le champ porte le nom de la fiche qui a déjà l’identifiant, rien n’est revalidé', async () => {
+    vi.mocked(updateMemberProfilePennylaneIdService).mockResolvedValue({
+      status: 'pennylane_id_taken',
+      holderName: 'Martin Paul',
+    })
+
+    const result = await updateMemberProfilePennylaneIdAction(
+      undefined,
+      formOf({memberProfileId: PROFILE_ID, pennylaneCustomerId: EXTERNAL_REF})
+    )
+
+    expect(result).toEqual({
+      status: 'invalid',
+      errors: [
+        {
+          field: 'pennylaneCustomerId',
+          message:
+            'BureauMemberProfilesPage.detail.billing.errors.taken {"name":"Martin Paul"}',
+        },
+      ],
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('trop long : refusé avant le service', async () => {
+    const result = await updateMemberProfilePennylaneIdAction(
+      undefined,
+      formOf({
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: 'x'.repeat(500),
+      })
+    )
+
+    expect(result.status).toBe('invalid')
+    expect(updateMemberProfilePennylaneIdService).not.toHaveBeenCalled()
+  })
+
+  it('fiche introuvable, refus ou panne : un message rendu, jamais levé', async () => {
+    vi.mocked(updateMemberProfilePennylaneIdService).mockResolvedValueOnce({
+      status: 'not_found',
+    })
+    vi.mocked(updateMemberProfilePennylaneIdService).mockRejectedValueOnce(
+      new AuthorizationError('x')
+    )
+    vi.mocked(updateMemberProfilePennylaneIdService).mockRejectedValueOnce(
+      new Error('base')
+    )
+    const form = () =>
+      formOf({memberProfileId: PROFILE_ID, pennylaneCustomerId: EXTERNAL_REF})
+
+    expect(
+      await updateMemberProfilePennylaneIdAction(undefined, form())
+    ).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.notFound',
+    })
+    expect(
+      await updateMemberProfilePennylaneIdAction(undefined, form())
+    ).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.forbidden',
+    })
+    expect(
+      await updateMemberProfilePennylaneIdAction(undefined, form())
+    ).toEqual({
+      status: 'error',
+      message: 'BureauMemberProfilesPage.errors.failed',
     })
   })
 })

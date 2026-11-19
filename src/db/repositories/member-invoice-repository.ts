@@ -1,4 +1,13 @@
-import {and, count, desc, eq, getTableColumns, inArray, sql} from 'drizzle-orm'
+import {
+  and,
+  count,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  notInArray,
+  sql,
+} from 'drizzle-orm'
 
 import {
   AddMemberInvoiceModel,
@@ -14,9 +23,12 @@ import {getDb} from '@/db/tenant-scope'
  * hors `withTenant(organizationId, ...)`, rien ne sort et rien ne s'ecrit.
  */
 
-/** Une facture lue avec son terrain facture : numero de parcelle et compteur. */
+/**
+ * Une facture lue avec son terrain facture : numero de parcelle et compteur.
+ * Nuls pour une facture Pennylane, qui ne nomme pas de parcelle (ADR 062 §4).
+ */
 export type MemberInvoiceRow = MemberInvoiceModel & {
-  parcelNumber: string
+  parcelNumber: string | null
   meterNumber: string | null
 }
 
@@ -40,7 +52,7 @@ const selectInvoiceWithParcel = () =>
       meterNumber: parcel.meterNumber,
     })
     .from(memberInvoice)
-    .innerJoin(parcel, eq(memberInvoice.parcelId, parcel.id))
+    .leftJoin(parcel, eq(memberInvoice.parcelId, parcel.id))
 
 /** Les factures des fiches donnees ; seule la fiche facturee est lue. */
 export const listInvoicesByProfileIdsDao = async (
@@ -149,4 +161,78 @@ export const releaseStatusAlertByIdDao = async (
   await getDb()
     .delete(invoiceStatusAlert)
     .where(eq(invoiceStatusAlert.id, alertId))
+}
+
+/** Une facture ecrite par la synchronisation Pennylane (s20, ADR 062 §1). */
+export type PennylaneInvoiceUpsert = Pick<
+  MemberInvoiceModel,
+  | 'memberProfileId'
+  | 'year'
+  | 'issuedOn'
+  | 'dueOn'
+  | 'amountCents'
+  | 'status'
+  | 'hasPdf'
+> & {externalId: string}
+
+const PENNYLANE_SOURCE = 'pennylane' as const
+
+const excludedColumn = (column: string) => sql.raw(`excluded."${column}"`)
+
+/**
+ * Ecrit les factures relues chez Pennylane, par `(organization_id,
+ * external_id)` : `source = pennylane`, sans parcelle (ADR 062 §4). Une ligne
+ * existante n'est reecrite que si elle vient elle-meme de Pennylane.
+ */
+export const upsertPennylaneInvoicesDao = async (
+  organizationId: string,
+  invoices: readonly PennylaneInvoiceUpsert[]
+): Promise<void> => {
+  if (invoices.length === 0) return
+  await getDb()
+    .insert(memberInvoice)
+    .values(
+      invoices.map((invoice) => ({
+        ...invoice,
+        organizationId,
+        source: PENNYLANE_SOURCE,
+        parcelId: null,
+      }))
+    )
+    .onConflictDoUpdate({
+      target: [memberInvoice.organizationId, memberInvoice.externalId],
+      targetWhere: sql`${memberInvoice.externalId} is not null`,
+      set: {
+        memberProfileId: excludedColumn('member_profile_id'),
+        year: excludedColumn('year'),
+        issuedOn: excludedColumn('issued_on'),
+        dueOn: excludedColumn('due_on'),
+        amountCents: excludedColumn('amount_cents'),
+        status: excludedColumn('status'),
+        hasPdf: excludedColumn('has_pdf'),
+        updatedAt: sql`now()`,
+      },
+      setWhere: sql`${memberInvoice.source} = 'pennylane'`,
+    })
+}
+
+/**
+ * Supprime les factures Pennylane de l'association absentes d'une relecture
+ * complete (ADR 062 §3) ; une facture saisie sur le site n'est jamais touchee.
+ */
+export const deletePennylaneInvoicesNotInDao = async (
+  organizationId: string,
+  keptExternalIds: readonly string[]
+): Promise<void> => {
+  await getDb()
+    .delete(memberInvoice)
+    .where(
+      and(
+        eq(memberInvoice.organizationId, organizationId),
+        eq(memberInvoice.source, PENNYLANE_SOURCE),
+        ...(keptExternalIds.length > 0
+          ? [notInArray(memberInvoice.externalId, [...keptExternalIds])]
+          : [])
+      )
+    )
 }

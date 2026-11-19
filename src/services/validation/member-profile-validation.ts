@@ -199,3 +199,22 @@ export const cancelMyPendingEmailServiceSchema = z.object({
   organizationId: memberProfileOrganizationIdSchema,
   emailId: z.string().uuid(),
 })
+
+/** Le PDF d'une de ses factures, demande par le membre (s20, ADR 062 §6). */
+export const myInvoicePdfServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  invoiceId: z.string().uuid(),
+})
+
+/**
+ * L'identifiant client Pennylane saisi par le bureau sur une fiche (s20,
+ * critere 4) : bords retires ; vide, il est retire.
+ */
+export const updateMemberProfilePennylaneIdServiceSchema = z.object({
+  organizationId: memberProfileOrganizationIdSchema,
+  memberProfileId: memberProfileIdSchema,
+  pennylaneCustomerId: z
+    .string()
+    .max(MEMBER_PROFILE_PENNYLANE_ID_MAX_LENGTH)
+    .transform((value) => value.trim() || null),
+})

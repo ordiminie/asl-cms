@@ -112,6 +112,24 @@ export const serverSchema = {
   BACKUP_DATABASE_URL: z.string().url().optional(),
   BACKUP_HEALTHCHECK_URL: z.string().url().optional(),
 
+  // Factures Pennylane (s20, ADR 062 §10) : jeton d'API, lu par le client
+  // HTTP `src/lib/pennylane/` seul. Facultatif : absent, la synchronisation
+  // echoue avec `missing_key`, visible au bureau. Une cle pour l'instance tant
+  // qu'un seul client ; en lecture seule avant la production.
+  PENNYLANE_API_KEY: z.string().min(1).optional(),
+  // Base de l'API Pennylane, pour les tests de bout en bout seulement : un
+  // faux serveur local (e2e/pennylane-invoices.spec.ts). Seul un hote local
+  // est accepte : la cle ne peut jamais partir vers un tiers. Absente, le
+  // client vise la vraie API.
+  PENNYLANE_API_BASE_URL: z
+    .string()
+    .url()
+    .refine(
+      (value) => ['127.0.0.1', 'localhost'].includes(new URL(value).hostname),
+      {message: 'Seul un faux serveur Pennylane local est accepte'}
+    )
+    .optional(),
+
   // Stripe (serveur)
   STRIPE_SECRET_KEY: z.string().min(1),
   STRIPE_WEBHOOK_SECRET: z.string().min(1),
