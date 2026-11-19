@@ -31,24 +31,34 @@ vi.mock('@/app/dal/member-space-dal', () => ({
   getMyInvoicesDal: vi.fn(() =>
     Promise.resolve({
       landCount: 1,
+      syncedFromPennylane: false,
+      syncedAt: null,
+      lastSyncFailed: false,
+      unlinked: false,
       invoices: [
         {
           issuedOn: '2026-03-15',
           subject: 'Cotisation et eau 2026',
-          parcelNumber: '12',
+          parcelNumbers: ['12'],
           meterNumber: null,
           holderName: null,
           amountCents: 41250,
           dueOn: '2026-04-15',
           status: 'En attente',
+          statusLabel: 'En attente',
           statusClass: 'unpaid',
+          hasPdf: false,
+          pdfRef: null,
         },
       ],
     })
   ),
   getMyLandsDal: vi.fn(),
 }))
-vi.mock('./actions', () => ({updateMyContactAction: vi.fn()}))
+vi.mock('./actions', () => ({
+  updateMyContactAction: vi.fn(),
+  openMyInvoicePdfAction: vi.fn(),
+}))
 vi.mock('./email-actions', () => ({
   addMyEmailAction: vi.fn(),
   cancelMyPendingEmailAction: vi.fn(),

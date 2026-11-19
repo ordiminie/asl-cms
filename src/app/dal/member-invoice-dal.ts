@@ -9,6 +9,8 @@ import {
   getMemberInvoiceService,
   listMemberInvoicesService,
 } from '@/services/facades/member-invoice-service-facade'
+import {getBillingSyncOverviewService} from '@/services/facades/pennylane-sync-service-facade'
+import type {BillingSyncOverviewDTO} from '@/services/types/domain/billing-sync-types'
 import type {
   BoardInvoiceDTO,
   BoardMemberInvoicesDTO,
@@ -62,4 +64,20 @@ export const getMemberInvoiceForBureauDal = cache(
         throw error
       }
     )
+)
+
+/**
+ * L'etat de la synchronisation Pennylane (s20, ecran 3) ; rien pour un compte
+ * qui ne gere pas les factures, ni hors Pennylane : la carte n'est pas rendue.
+ * Jamais cache : il change a chaque heure.
+ */
+export const getBillingSyncOverviewForBureauDal = cache(
+  async (
+    organizationId: string
+  ): Promise<BillingSyncOverviewDTO | undefined> => {
+    if (!(await canManageMemberInvoicesService(organizationId))) {
+      return undefined
+    }
+    return getBillingSyncOverviewService(organizationId)
+  }
 )

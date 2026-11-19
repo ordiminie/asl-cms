@@ -286,6 +286,7 @@ export const readProfileView = async (
   const holderView = holder ? views.get(holder.id) : undefined
   return {
     ...toMemberProfileDto(row),
+    pennylaneCustomerId: row.pennylaneCustomerId,
     emails: emails.map((email) => toEmailDto(email, views.get(email.id))),
     account: toAccountDto(holderView),
     roleCard: roleCardFor(

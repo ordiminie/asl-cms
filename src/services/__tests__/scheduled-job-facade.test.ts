@@ -12,6 +12,11 @@ vi.mock('../email-service', () => ({
     'email.deliver_deferred': vi.fn(),
   },
 }))
+vi.mock('../pennylane-sync-service', () => ({
+  pennylaneSyncScheduledJobHandlers: {
+    'billing.sync_pennylane': vi.fn(),
+  },
+}))
 vi.mock('../campaign-service', () => ({
   deliverCampaignPartService: vi.fn(),
   campaignScheduledJobHandlers: {
@@ -22,6 +27,7 @@ vi.mock('../campaign-service', () => ({
 import {campaignScheduledJobHandlers} from '../campaign-service'
 import {emailScheduledJobHandlers} from '../email-service'
 import * as scheduledJobFacade from '../facades/scheduled-job-service-facade'
+import {pennylaneSyncScheduledJobHandlers} from '../pennylane-sync-service'
 import {runDueScheduledJobsService} from '../scheduled-job-service'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
@@ -58,6 +64,19 @@ describe('façade du planificateur (s26, ADR 052)', () => {
         handlers: expect.objectContaining({
           'email.deliver_deferred':
             emailScheduledJobHandlers['email.deliver_deferred'],
+        }),
+      })
+    )
+  })
+
+  it('enregistre la synchronisation Pennylane : sans elle, la tâche horaire ne serait jamais prise (s20)', async () => {
+    await scheduledJobFacade.runDueScheduledJobsService(NOW)
+
+    expect(runDueScheduledJobsService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        handlers: expect.objectContaining({
+          'billing.sync_pennylane':
+            pennylaneSyncScheduledJobHandlers['billing.sync_pennylane'],
         }),
       })
     )

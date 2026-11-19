@@ -75,3 +75,10 @@ export const CAMPAIGN_DELIVER_PART_JOB_KIND = 'campaign.deliver_part'
  * `payload` : l'identifiant de la ligne `deferred_email`, jamais son contenu.
  */
 export const EMAIL_DELIVER_DEFERRED_JOB_KIND = 'email.deliver_deferred'
+
+/**
+ * La synchronisation horaire des factures Pennylane (s20, ADR 062 §8). Cle
+ * d'idempotence et `payload.hour` : l'heure visee (ISO), jamais deux taches
+ * pour la meme heure. Chaque passage programme l'heure suivante.
+ */
+export const BILLING_SYNC_PENNYLANE_JOB_KIND = 'billing.sync_pennylane'

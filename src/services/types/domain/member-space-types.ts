@@ -99,26 +99,61 @@ export type UpdateMyContactResult =
 export type MyInvoiceStatusClass = InvoiceStatusClass
 
 /**
- * Une facture telle que le membre la voit (s19) : aucun identifiant de fiche
- * ni de facture. `status` est le statut **tel que fourni** par la source ;
- * `statusClass` ne sert qu'a la variante du badge.
+ * Une facture telle que le membre la voit (s19, s20) : aucun identifiant de
+ * fiche. `status` est le statut **tel que fourni** par la source ;
+ * `statusLabel` le mot que lit le membre (reglage du tenant, repli sur le
+ * statut) ; `statusClass` ne sert qu'a la variante du badge.
  */
 export type MyInvoiceDTO = {
   issuedOn: string
   /** Objet compose par le site (modele du tenant, annee de la facture). */
   subject: string
-  parcelNumber: string
+  /**
+   * Le terrain facture : la parcelle saisie (`site`), ou les parcelles de la
+   * fiche a la date d'emission (`pennylane`, ADR 062 §4).
+   */
+  parcelNumbers: string[]
   meterNumber: string | null
   /** Le nom de la fiche facturee quand il n'est pas celui du compte. */
   holderName: string | null
   amountCents: number
   dueOn: string
   status: string
+  statusLabel: string
   statusClass: MyInvoiceStatusClass
+  /** La source fournit un PDF (critere 7) ; sinon « PDF non disponible ». */
+  hasPdf: boolean
+  /**
+   * Reference opaque passee a l'action qui relit le PDF au clic ; nulle sans
+   * PDF. Jamais une adresse : celle de Pennylane expire (ADR 062 §6).
+   */
+  pdfRef: string | null
 }
 
 /** « Mes factures » (s19) : une seule liste pour tous les terrains du compte. */
 export type MyInvoicesDTO = {
   landCount: number
   invoices: MyInvoiceDTO[]
+  /** Les factures viennent de Pennylane (s20) : colonne PDF et mise a jour. */
+  syncedFromPennylane: boolean
+  /** Derniere synchronisation reussie (ISO) ; nulle sans elle. */
+  syncedAt: string | null
+  /** La derniere tentative a echoue : les donnees sont celles de `syncedAt`. */
+  lastSyncFailed: boolean
+  /** Sous Pennylane, aucune fiche du compte ne porte d'identifiant client (1e). */
+  unlinked: boolean
 }
+
+/** Ce que rend la relecture du PDF d'une facture au clic (s20, ADR 062 §6). */
+export type MyInvoicePdfResult =
+  | {status: 'ready'; url: string}
+  | {status: 'not_found'}
+  | {status: 'unavailable'}
+
+/** Ce que rend l'action « PDF » a l'ecran : l'adresse, ou un echec (1f). */
+export type MyInvoicePdfActionResult =
+  {status: 'ready'; url: string} | {status: 'unavailable'}
+
+export type MyInvoicePdfAction = (
+  pdfRef: string
+) => Promise<MyInvoicePdfActionResult>

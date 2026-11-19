@@ -6,6 +6,7 @@ import {env} from '@/env'
 import * as appSettings from './app-settings-model'
 import * as associationCategory from './association-category-model'
 import * as auth from './auth-model'
+import * as billingSyncState from './billing-sync-state-model'
 import * as boardMember from './board-member-model'
 import * as campaign from './campaign-model'
 import * as contactMessage from './contact-message-model'
@@ -75,6 +76,7 @@ const db = drizzle(pool, {
     ...memberNote,
     ...memberQuestion,
     ...memberInvoice,
+    ...billingSyncState,
     ...recipientGroup,
     ...campaign,
     ...scheduledJob,

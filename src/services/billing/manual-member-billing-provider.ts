@@ -23,6 +23,7 @@ export const toMemberInvoice = (row: MemberInvoiceRow): MemberInvoice => ({
   dueOn: row.dueOn,
   amountCents: row.amountCents,
   status: row.status,
+  hasPdf: row.hasPdf,
 })
 
 /**

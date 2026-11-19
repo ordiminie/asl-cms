@@ -1,10 +1,13 @@
 'use client'
 
+import {Download, Info} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
-import {type ReactNode, useId, useState} from 'react'
+import {type ReactNode, useId, useState, useTransition} from 'react'
 
+import {syncTimePartsOf} from '@/components/features/member-invoice/billing-sync-format'
 import {InvoiceStatusBadge} from '@/components/features/member-invoice/invoice-status-badge'
+import {Alert, AlertDescription} from '@/components/ui/alert'
 import {Button} from '@/components/ui/button'
 import {Card} from '@/components/ui/card'
 import {isoToFrenchDate} from '@/components/ui/date-field-format'
@@ -20,6 +23,7 @@ import {
 import {formatAmountCents} from '@/services/rules/member-invoice-rules'
 import type {
   MyInvoiceDTO,
+  MyInvoicePdfAction,
   MyInvoicesDTO,
 } from '@/services/types/domain/member-space-types'
 
@@ -32,28 +36,97 @@ const mono = (chunks: ReactNode) => (
   <span className="font-mono font-medium tabular-nums">{chunks}</span>
 )
 
+const openInSameTab = (url: string) => {
+  window.location.assign(url)
+}
+
+/** Ce que les lignes partagent pour la colonne « Facture » (s20). */
+type PdfColumn = {
+  openPdfAction: MyInvoicePdfAction
+  navigate: (url: string) => void
+  /** Au clic : l'alerte d'un echec precedent s'efface. */
+  onOpen: () => void
+  onFailure: () => void
+}
+
 /**
- * « Mes factures » (s19, ecran 1) : une seule liste pour tous les terrains du
- * compte, emission decroissante. Le statut s'ecrit tel que fourni ; aucune
- * action par ligne, aucun identifiant dans l'ecran. Composant client pour la
- * seule pagination, au-dela de 25 lignes (10 cartes sous 640 px).
+ * « Mes factures » (s19, ecran 1 ; s20) : une seule liste pour tous les
+ * terrains du compte, emission decroissante. Le statut s'ecrit par son
+ * libelle, sinon tel que fourni ; aucun identifiant de fiche dans l'ecran.
+ * Sous Pennylane : colonne « Facture » (le PDF est demande **au clic**,
+ * jamais rendu dans la page), date de mise a jour, etats 1d, 1e et 1f.
+ * Composant client pour la pagination et le bouton PDF.
  */
-export function MyInvoicesCard({invoices}: {invoices: MyInvoicesDTO}) {
+export function MyInvoicesCard({
+  invoices,
+  openPdfAction,
+  navigate = openInSameTab,
+}: {
+  invoices: MyInvoicesDTO
+  openPdfAction: MyInvoicePdfAction
+  /** Ouverture de l'adresse du PDF ; injectable pour les tests. */
+  navigate?: (url: string) => void
+}) {
   const t = useTranslations('MemberSpacePage.invoices')
+  const [pdfFailed, setPdfFailed] = useState(false)
+  const pdfColumn: PdfColumn | undefined = invoices.syncedFromPennylane
+    ? {
+        openPdfAction,
+        navigate,
+        onOpen: () => setPdfFailed(false),
+        onFailure: () => setPdfFailed(true),
+      }
+    : undefined
+  const empty = invoices.invoices.length === 0
 
   return (
     <MyInvoicesSection>
-      {invoices.invoices.length === 0 ? (
-        <p className="text-[17px]">{t('empty')}</p>
+      {invoices.lastSyncFailed && (
+        <SyncFailedNotice syncedAt={invoices.syncedAt} />
+      )}
+      {invoices.unlinked && <p className="text-[17px]">{t('unlinked')}</p>}
+      {pdfFailed && (
+        <Alert role="alert" className="[&>svg]:size-5">
+          <Info aria-hidden="true" />
+          <AlertDescription className="text-foreground text-base">
+            {t('pdf.failed')}
+          </AlertDescription>
+        </Alert>
+      )}
+      {empty ? (
+        !invoices.unlinked && <p className="text-[17px]">{t('empty')}</p>
       ) : (
         <>
           <p className="text-muted-foreground text-[15px]">
             {t('intro', {count: invoices.landCount})}
           </p>
-          <PagedInvoices invoices={invoices.invoices} />
+          <PagedInvoices invoices={invoices.invoices} pdfColumn={pdfColumn} />
         </>
       )}
+      {invoices.syncedFromPennylane &&
+        invoices.syncedAt &&
+        !invoices.lastSyncFailed && (
+          <p className="text-muted-foreground text-[14px]">
+            {t('syncedAt', syncTimePartsOf(invoices.syncedAt))}
+          </p>
+        )}
     </MyInvoicesSection>
+  )
+}
+
+/** 1d : la derniere mise a jour a echoue ; les factures sont celles d'avant. */
+function SyncFailedNotice({syncedAt}: {syncedAt: string | null}) {
+  const t = useTranslations('MemberSpacePage.invoices')
+
+  return (
+    <Alert role="status" className="bg-muted [&>svg]:size-5">
+      <Info aria-hidden="true" />
+      <AlertDescription className="text-foreground text-base">
+        {syncedAt
+          ? t('syncFailed', syncTimePartsOf(syncedAt))
+          : t('syncFailedNever')}
+      </AlertDescription>
+    </Alert>
   )
 }
 
@@ -104,7 +177,13 @@ function MyInvoicesSection({
 const pageOf = <T,>(rows: readonly T[], page: number, size: number): T[] =>
   rows.slice((page - 1) * size, page * size)
 
-function PagedInvoices({invoices}: {invoices: MyInvoiceDTO[]}) {
+function PagedInvoices({
+  invoices,
+  pdfColumn,
+}: {
+  invoices: MyInvoiceDTO[]
+  pdfColumn?: PdfColumn
+}) {
   const t = useTranslations('MemberSpacePage.invoices')
   const [tablePage, setTablePage] = useState(1)
   const [cardPage, setCardPage] = useState(1)
@@ -123,6 +202,7 @@ function PagedInvoices({invoices}: {invoices: MyInvoiceDTO[]}) {
               </TableHead>
               <TableHead>{t('columns.dueOn')}</TableHead>
               <TableHead>{t('columns.status')}</TableHead>
+              {pdfColumn && <TableHead>{t('columns.invoice')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -148,10 +228,19 @@ function PagedInvoices({invoices}: {invoices: MyInvoiceDTO[]}) {
                   </TableCell>
                   <TableCell>
                     <InvoiceStatusBadge
-                      status={invoice.status}
+                      status={invoice.statusLabel}
                       statusClass={invoice.statusClass}
                     />
                   </TableCell>
+                  {pdfColumn && (
+                    <TableCell>
+                      <InvoicePdf
+                        invoice={invoice}
+                        column={pdfColumn}
+                        className="h-11"
+                      />
+                    </TableCell>
+                  )}
                 </TableRow>
               )
             )}
@@ -168,7 +257,7 @@ function PagedInvoices({invoices}: {invoices: MyInvoiceDTO[]}) {
         <ul className="flex flex-col gap-3">
           {pageOf(invoices, cardPage, CARD_PAGE_SIZE).map((invoice, index) => (
             <li key={index}>
-              <InvoiceCard invoice={invoice} />
+              <InvoiceCard invoice={invoice} pdfColumn={pdfColumn} />
             </li>
           ))}
         </ul>
@@ -183,13 +272,31 @@ function PagedInvoices({invoices}: {invoices: MyInvoiceDTO[]}) {
   )
 }
 
-/** Le terrain facture : parcelle, compteur, et le nom de la fiche s'il differe. */
+const PARCEL_LIST = new Intl.ListFormat('fr', {
+  style: 'long',
+  type: 'conjunction',
+})
+
+/**
+ * Le terrain facture : « Parcelle 27 », « Parcelles 12 et 13 » (s20), le
+ * compteur, et le nom de la fiche s'il differe du compte.
+ */
 function InvoiceLand({invoice}: {invoice: MyInvoiceDTO}) {
   const t = useTranslations('MemberSpacePage.invoices')
+  const [single] = invoice.parcelNumbers
 
   return (
     <span className="flex flex-col">
-      <span>{t.rich('parcel', {number: invoice.parcelNumber, mono})}</span>
+      <span>
+        {invoice.parcelNumbers.length === 0
+          ? t('landMissing')
+          : invoice.parcelNumbers.length === 1
+            ? t.rich('parcel', {number: single, mono})
+            : t.rich('parcels', {
+                numbers: PARCEL_LIST.format(invoice.parcelNumbers),
+                mono,
+              })}
+      </span>
       <span className="text-muted-foreground text-[15px]">
         {invoice.meterNumber
           ? t.rich('meter', {number: invoice.meterNumber, mono})
@@ -204,8 +311,84 @@ function InvoiceLand({invoice}: {invoice: MyInvoiceDTO}) {
   )
 }
 
+/** Le terrain en mots, pour le nom accessible du bouton PDF. */
+const landLabelOf = (
+  invoice: MyInvoiceDTO,
+  t: ReturnType<typeof useTranslations>
+): string =>
+  invoice.parcelNumbers.length === 0
+    ? t('landMissing')
+    : t('pdf.land', {
+        count: invoice.parcelNumbers.length,
+        numbers: PARCEL_LIST.format(invoice.parcelNumbers),
+      })
+
+/**
+ * La colonne « Facture » (s20, criteres 7 et 8) : un bouton quand la source
+ * fournit un PDF, sinon la mention ecrite, sans bouton. L'adresse est
+ * demandee a l'action au clic, puis ouverte dans le meme onglet.
+ */
+function InvoicePdf({
+  invoice,
+  column,
+  className,
+  mobile = false,
+}: {
+  invoice: MyInvoiceDTO
+  column: PdfColumn
+  className: string
+  mobile?: boolean
+}) {
+  const t = useTranslations('MemberSpacePage.invoices')
+  const [pending, startTransition] = useTransition()
+  const {pdfRef} = invoice
+
+  if (!invoice.hasPdf || !pdfRef) {
+    return (
+      <span className="text-muted-foreground text-[15px]">
+        {t('pdf.unavailable')}
+      </span>
+    )
+  }
+
+  const open = () => {
+    column.onOpen()
+    startTransition(async () => {
+      const result = await column.openPdfAction(pdfRef)
+      if (result.status === 'ready') {
+        column.navigate(result.url)
+      } else {
+        column.onFailure()
+      }
+    })
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className={className}
+      disabled={pending}
+      aria-label={t('pdf.label', {
+        year: invoice.issuedOn.slice(0, 4),
+        land: landLabelOf(invoice, t),
+      })}
+      onClick={open}
+    >
+      <Download aria-hidden="true" />
+      {mobile ? t('pdf.buttonMobile') : t('pdf.button')}
+    </Button>
+  )
+}
+
 /** Une facture sous 640 px (§3.5) : l'objet, le badge, puis les paires. */
-function InvoiceCard({invoice}: {invoice: MyInvoiceDTO}) {
+function InvoiceCard({
+  invoice,
+  pdfColumn,
+}: {
+  invoice: MyInvoiceDTO
+  pdfColumn?: PdfColumn
+}) {
   const t = useTranslations('MemberSpacePage.invoices')
 
   return (
@@ -215,7 +398,7 @@ function InvoiceCard({invoice}: {invoice: MyInvoiceDTO}) {
     >
       <p className="text-[17px] font-semibold">{invoice.subject}</p>
       <InvoiceStatusBadge
-        status={invoice.status}
+        status={invoice.statusLabel}
         statusClass={invoice.statusClass}
       />
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[17px]">
@@ -236,6 +419,14 @@ function InvoiceCard({invoice}: {invoice: MyInvoiceDTO}) {
           {isoToFrenchDate(invoice.dueOn)}
         </dd>
       </dl>
+      {pdfColumn && (
+        <InvoicePdf
+          invoice={invoice}
+          column={pdfColumn}
+          className="h-14 w-full text-base"
+          mobile
+        />
+      )}
     </div>
   )
 }

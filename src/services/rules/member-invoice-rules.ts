@@ -1,6 +1,7 @@
 import {
   BILLING_INVOICE_SUBJECT_SETTING_KEY,
   BILLING_SETTLED_STATUSES_SETTING_KEY,
+  BILLING_STATUS_LABELS_SETTING_KEY,
   BILLING_UNPAID_STATUSES_SETTING_KEY,
   INVOICE_SUBJECT_YEAR_TOKEN,
   ResolvedAssociationSettings,
@@ -139,3 +140,42 @@ export const unpaidProfileIdsOf = (
       .filter((invoice) => isUnpaidInvoice(invoice.status, classification))
       .map((invoice) => invoice.memberProfileId)
   )
+
+const LABEL_SEPARATOR = '='
+
+/**
+ * Les libelles des statuts (s20, ADR 062 §5) : « statut = libelle » par
+ * ligne, coupe au premier « = », bords retires. Une ligne sans « = », au
+ * statut ou au libelle vide, est ignoree ; la premiere occurrence d'un statut
+ * l'emporte.
+ */
+export const parseStatusLabels = (
+  text: string | null | undefined
+): Map<string, string> => {
+  const labels = new Map<string, string>()
+  for (const line of (text ?? '').split(/\r?\n/)) {
+    const at = line.indexOf(LABEL_SEPARATOR)
+    if (at === -1) continue
+    const status = line.slice(0, at).trim()
+    const label = line.slice(at + 1).trim()
+    if (status === '' || label === '' || labels.has(status)) continue
+    labels.set(status, label)
+  }
+  return labels
+}
+
+/**
+ * Le mot que lisent les membres pour un statut : son libelle, sinon le statut
+ * brut. Comparaison exacte apres les bords, casse respectee. Jamais un
+ * classement : seul `classifyInvoiceStatus` lit un statut pour classer.
+ */
+export const statusLabelOf = (
+  status: string,
+  labels: ReadonlyMap<string, string>
+): string => labels.get(status.trim()) ?? status
+
+/** Les libelles en vigueur, lus du reglage du tenant. */
+export const getInvoiceStatusLabels = (
+  settings: ResolvedAssociationSettings
+): Map<string, string> =>
+  parseStatusLabels(textOf(settings, BILLING_STATUS_LABELS_SETTING_KEY))

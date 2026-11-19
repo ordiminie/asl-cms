@@ -7,6 +7,7 @@ import {
   getTableColumns,
   ilike,
   inArray,
+  isNotNull,
   isNull,
   or,
   sql,
@@ -590,3 +591,85 @@ export const getCurrentParcelNumbersByProfileDao = async (
   memberProfileIds: string[]
 ): Promise<Record<string, string[]>> =>
   getCurrentParcelNumbersByProfile(memberProfileIds)
+
+/** Une fiche reliee a un client Pennylane (s20, ADR 062 §2). */
+export type PennylaneLinkedProfileRow = {
+  id: string
+  name: string
+  pennylaneCustomerId: string
+}
+
+/** Les fiches de l'association qui portent un identifiant client Pennylane. */
+export const listPennylaneLinkedProfilesDao = async (
+  organizationId: string
+): Promise<PennylaneLinkedProfileRow[]> => {
+  const rows = await getDb()
+    .select({
+      id: memberProfile.id,
+      name: memberProfile.name,
+      pennylaneCustomerId: memberProfile.pennylaneCustomerId,
+    })
+    .from(memberProfile)
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        isNotNull(memberProfile.pennylaneCustomerId)
+      )
+    )
+  return rows.flatMap((row) =>
+    row.pennylaneCustomerId === null
+      ? []
+      : [{...row, pennylaneCustomerId: row.pennylaneCustomerId}]
+  )
+}
+
+/**
+ * Ecrit l'identifiant client Pennylane d'une fiche (s20, critere 4), ou le
+ * retire. Rend le nombre de lignes modifiees : 0 pour une fiche invisible
+ * sous le tenant.
+ */
+export const updateMemberProfilePennylaneIdDao = async (
+  memberProfileId: string,
+  pennylaneCustomerId: string | null
+): Promise<number> => {
+  const rows = await getDb()
+    .update(memberProfile)
+    .set({pennylaneCustomerId, updatedAt: sql`now()`})
+    .where(eq(memberProfile.id, memberProfileId))
+    .returning({id: memberProfile.id})
+  return rows.length
+}
+
+/** Les fiches de l'association sans identifiant client Pennylane (s20). */
+export const listProfilesWithoutPennylaneIdDao = async (
+  organizationId: string
+): Promise<{id: string; name: string}[]> =>
+  getDb()
+    .select({id: memberProfile.id, name: memberProfile.name})
+    .from(memberProfile)
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        isNull(memberProfile.pennylaneCustomerId)
+      )
+    )
+    .orderBy(asc(memberProfile.name))
+
+/**
+ * Les fiches de l'association qui portent cet identifiant client Pennylane,
+ * **sans tenir compte de la casse** (s20, revue m2) : le rapprochement compare
+ * sans casse, deux fiches « ABC » et « abc » se disputeraient le meme client.
+ */
+export const listMemberProfilesByPennylaneIdIgnoringCaseDao = async (
+  organizationId: string,
+  pennylaneCustomerId: string
+): Promise<{id: string; name: string}[]> =>
+  getDb()
+    .select({id: memberProfile.id, name: memberProfile.name})
+    .from(memberProfile)
+    .where(
+      and(
+        eq(memberProfile.organizationId, organizationId),
+        sql`lower(${memberProfile.pennylaneCustomerId}) = lower(${pennylaneCustomerId})`
+      )
+    )

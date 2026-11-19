@@ -55,6 +55,8 @@ import {
   AttachParcelDialog,
   type AttachParcelFormAction,
 } from './attach-parcel-dialog'
+import {MemberBillingCard} from './member-billing-card'
+import type {MemberBillingFormAction} from './member-billing-validation'
 import {
   MemberContactFields,
   MemberFormErrorSummary,
@@ -104,6 +106,8 @@ type MemberProfileDetailProps = MemberNoteActions &
     invoicesPromise: Promise<BoardMemberInvoicesDTO | undefined>
     /** Une facture vient d'etre enregistree : le dire une fois (3c). */
     invoiceSaved: boolean
+    /** « Facturation » : l'identifiant client Pennylane de la fiche (s20). */
+    updatePennylaneIdAction: MemberBillingFormAction
   }
 
 type Notice =
@@ -153,6 +157,7 @@ export function MemberProfileDetail({
   unsubscribePromise,
   invoicesPromise,
   invoiceSaved,
+  updatePennylaneIdAction,
   addEmailAction,
   updateEmailAction,
   removeEmailAction,
@@ -289,6 +294,12 @@ export function MemberProfileDetail({
           <FormerParcels parcels={parcels.former} />
         )}
       </DetailCard>
+
+      <MemberBillingCard
+        profile={profile}
+        action={updatePennylaneIdAction}
+        invoicesPromise={invoicesPromise}
+      />
 
       <MemberInvoicesSection
         memberProfileId={profile.id}

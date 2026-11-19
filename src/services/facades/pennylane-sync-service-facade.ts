@@ -1,0 +1,12 @@
+import pennylaneSyncServiceInterceptor from './interceptors/pennylane-sync-service-logger-interceptor'
+
+export const syncPennylaneInvoicesService =
+  pennylaneSyncServiceInterceptor.syncPennylaneInvoicesService
+export const runPennylaneSyncJobService =
+  pennylaneSyncServiceInterceptor.runPennylaneSyncJobService
+export const schedulePennylaneSyncService =
+  pennylaneSyncServiceInterceptor.schedulePennylaneSyncService
+export const requestPennylaneSyncService =
+  pennylaneSyncServiceInterceptor.requestPennylaneSyncService
+export const getBillingSyncOverviewService =
+  pennylaneSyncServiceInterceptor.getBillingSyncOverviewService

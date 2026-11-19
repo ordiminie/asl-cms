@@ -47,9 +47,11 @@ export function MemberInvoiceReadOnly({
       )}
       <Card className="px-4 py-6 shadow-none sm:px-8">
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-[17px] sm:grid-cols-[auto_1fr]">
-          <Pair label={t('form.parcel.label')}>
-            {t('form.parcel.option', {number: invoice.parcelNumber})}
-          </Pair>
+          {invoice.parcelNumber && (
+            <Pair label={t('form.parcel.label')}>
+              {t('form.parcel.option', {number: invoice.parcelNumber})}
+            </Pair>
+          )}
           <Pair label={t('card.columns.subject')}>{invoice.subject}</Pair>
           <Pair label={t('form.amount.label')}>
             <span className={DATA_CLASS}>

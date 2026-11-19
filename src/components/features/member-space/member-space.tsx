@@ -28,6 +28,7 @@ import type {
   MyContactDTO,
   MyCurrentParcelDTO,
   MyFormerParcelDTO,
+  MyInvoicePdfAction,
   MyInvoicesDTO,
   MyLandDTO,
   MyLandsDTO,
@@ -65,6 +66,7 @@ export function MemberSpace({
   reportSent,
   questionSent = false,
   invoicesPromise,
+  openInvoicePdfAction,
 }: {
   landsPromise: Promise<MyLandsDTO | undefined>
   contactPromise: Promise<MyContactDTO | undefined>
@@ -78,6 +80,8 @@ export function MemberSpace({
   questionSent?: boolean
   /** « Mes factures » (s19), lue a part, sans etre attendue. */
   invoicesPromise: Promise<MyInvoicesDTO | undefined>
+  /** Le PDF d'une facture, relu au clic (s20). */
+  openInvoicePdfAction: MyInvoicePdfAction
 }) {
   const lands = use(landsPromise)
   const contact = use(contactPromise)
@@ -107,7 +111,10 @@ export function MemberSpace({
         name={lands.lands.length > 1 ? lands.accountName : lands.lands[0].name}
       />
       <MyLandsCard lands={lands.lands} />
-      <MyInvoices invoicesPromise={invoicesPromise} />
+      <MyInvoices
+        invoicesPromise={invoicesPromise}
+        openPdfAction={openInvoicePdfAction}
+      />
       <MyContactCard contact={contact} action={contactAction} />
       <MyEmails emailsPromise={emailsPromise} actions={emailActions} />
       <MyReports reportsPromise={reportsPromise} sent={reportSent} />
@@ -154,25 +161,32 @@ function MyEmailsList({
  */
 function MyInvoices({
   invoicesPromise,
+  openPdfAction,
 }: {
   invoicesPromise: Promise<MyInvoicesDTO | undefined>
+  openPdfAction: MyInvoicePdfAction
 }) {
   return (
     <Suspense fallback={<MyInvoicesCardLoading />}>
-      <MyInvoicesList invoicesPromise={invoicesPromise} />
+      <MyInvoicesList
+        invoicesPromise={invoicesPromise}
+        openPdfAction={openPdfAction}
+      />
     </Suspense>
   )
 }
 
 function MyInvoicesList({
   invoicesPromise,
+  openPdfAction,
 }: {
   invoicesPromise: Promise<MyInvoicesDTO | undefined>
+  openPdfAction: MyInvoicePdfAction
 }) {
   const invoices = use(invoicesPromise)
   if (!invoices) return null
 
-  return <MyInvoicesCard invoices={invoices} />
+  return <MyInvoicesCard invoices={invoices} openPdfAction={openPdfAction} />
 }
 
 /**

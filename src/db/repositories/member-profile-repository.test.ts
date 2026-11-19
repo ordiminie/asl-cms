@@ -30,7 +30,10 @@ import {
   getMemberProfilesByUserIdDao,
   getUnlinkedMemberProfilesWithEmailDao,
   linkMemberProfileAccountDao,
+  listPennylaneLinkedProfilesDao,
+  listProfilesWithoutPennylaneIdDao,
   unlinkMemberProfileAccountDao,
+  updateMemberProfilePennylaneIdDao,
   updateMyMemberProfilesContactDao,
 } from './member-profile-repository'
 
@@ -286,5 +289,56 @@ describe('getMemberProfilePageDao — filtre « Groupe » (s27)', () => {
     })
 
     expect(sent[0].sql).not.toContain('recipient_group_member')
+  })
+})
+
+describe('listPennylaneLinkedProfilesDao (s20, ADR 062 §2)', () => {
+  it('lit les fiches de l’association qui portent un identifiant client Pennylane', async () => {
+    await listPennylaneLinkedProfilesDao(ORG_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain(
+      'select "id", "name", "pennylane_customer_id" from "member_profile"'
+    )
+    expect(sql).toContain('"member_profile"."organization_id" = $1')
+    expect(sql).toContain(
+      '"member_profile"."pennylane_customer_id" is not null'
+    )
+    expect(params).toEqual([ORG_ID])
+  })
+})
+
+describe('updateMemberProfilePennylaneIdDao (s20, critère 4)', () => {
+  it('écrit l’identifiant client de la fiche, lui seul, et compte les lignes', async () => {
+    responses.current = [[[PROFILE_ID]]]
+
+    expect(await updateMemberProfilePennylaneIdDao(PROFILE_ID, 'ref')).toBe(1)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain(
+      'update "member_profile" set "pennylane_customer_id" = $1'
+    )
+    expect(sql).toContain('"updated_at" = now()')
+    expect(sql).toContain('where "member_profile"."id" = $2')
+    expect(params).toEqual(['ref', PROFILE_ID])
+  })
+
+  it('retire l’identifiant quand il est nul', async () => {
+    await updateMemberProfilePennylaneIdDao(PROFILE_ID, null)
+
+    expect(sent[0].params).toEqual([null, PROFILE_ID])
+  })
+})
+
+describe('listProfilesWithoutPennylaneIdDao (s20, critère 3)', () => {
+  it('lit les fiches de l’association sans identifiant client, par nom', async () => {
+    await listProfilesWithoutPennylaneIdDao(ORG_ID)
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('select "id", "name" from "member_profile"')
+    expect(sql).toContain('"member_profile"."organization_id" = $1')
+    expect(sql).toContain('"member_profile"."pennylane_customer_id" is null')
+    expect(sql).toContain('order by "member_profile"."name" asc')
+    expect(params).toEqual([ORG_ID])
   })
 })

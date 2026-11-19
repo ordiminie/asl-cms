@@ -1,7 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('server-only', () => ({}))
-vi.mock('next/cache', () => ({updateTag: vi.fn()}))
+vi.mock('next/cache', () => ({updateTag: vi.fn(), revalidatePath: vi.fn()}))
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(() =>
     Promise.resolve((key: string, values?: Record<string, unknown>) =>
@@ -18,8 +18,12 @@ vi.mock('@/app/dal/user-dal', () => ({requireActionAuth: vi.fn()}))
 vi.mock('@/services/facades/association-settings-service-facade', () => ({
   updateAssociationSettingsService: vi.fn(),
 }))
+vi.mock('@/services/facades/pennylane-sync-service-facade', () => ({
+  requestPennylaneSyncService: vi.fn(),
+  schedulePennylaneSyncService: vi.fn(),
+}))
 
-import {updateTag} from 'next/cache'
+import {revalidatePath, updateTag} from 'next/cache'
 
 import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
@@ -27,15 +31,23 @@ import {requireActionAuth} from '@/app/dal/user-dal'
 import {AuthorizationError} from '@/services/errors/authorization-error'
 import {updateAssociationSettingsService} from '@/services/facades/association-settings-service-facade'
 import {
+  requestPennylaneSyncService,
+  schedulePennylaneSyncService,
+} from '@/services/facades/pennylane-sync-service-facade'
+import {
   ACCENT_HUE_SETTING_KEY,
   ASSOCIATION_SETTINGS_REGISTRY,
+  BILLING_PROVIDER_SETTING_KEY,
   CONTACT_EMAIL_SETTING_KEY,
   FORAGE_EMAIL_SETTING_KEY,
   GOOGLE_VERIFICATION_SETTING_KEY,
   resolveSettings,
 } from '@/services/types/domain/association-settings-types'
 
-import {updateAssociationSettingsAction} from './actions'
+import {
+  requestPennylaneSyncAction,
+  updateAssociationSettingsAction,
+} from './actions'
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 
@@ -212,5 +224,142 @@ describe('updateAssociationSettingsAction — refus', () => {
 
     expect(state).toEqual({success: false, message: 'errors.invalidData'})
     expect(updateAssociationSettingsService).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateAssociationSettingsAction — passage à Pennylane (s20, ADR 062 §8)', () => {
+  it('programme la synchronisation horaire quand le fournisseur passe à Pennylane', async () => {
+    const state = await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({[BILLING_PROVIDER_SETTING_KEY]: 'pennylane'})
+    )
+
+    expect(state.success).toBe(true)
+    expect(schedulePennylaneSyncService).toHaveBeenCalledWith(
+      TENANT_ID,
+      expect.any(Date)
+    )
+  })
+
+  it('aucune tâche pour un autre réglage, ni pour « Saisie par le bureau »', async () => {
+    await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({[BILLING_PROVIDER_SETTING_KEY]: 'manual'})
+    )
+    await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({[CONTACT_EMAIL_SETTING_KEY]: 'contact@asl.test'})
+    )
+
+    expect(schedulePennylaneSyncService).not.toHaveBeenCalled()
+  })
+
+  it('un refus d’enregistrement ne programme rien', async () => {
+    vi.mocked(updateAssociationSettingsService).mockResolvedValue({
+      status: 'rejected',
+      errors: {[BILLING_PROVIDER_SETTING_KEY]: {code: 'invalidChoice'}},
+    })
+
+    await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({[BILLING_PROVIDER_SETTING_KEY]: 'pennylane'})
+    )
+
+    expect(schedulePennylaneSyncService).not.toHaveBeenCalled()
+  })
+
+  it('une programmation impossible ne défait pas l’enregistrement', async () => {
+    vi.mocked(schedulePennylaneSyncService).mockRejectedValue(new Error('base'))
+
+    const state = await updateAssociationSettingsAction(
+      undefined,
+      settingsForm({[BILLING_PROVIDER_SETTING_KEY]: 'pennylane'})
+    )
+
+    expect(state).toEqual({success: true, message: 'success'})
+  })
+})
+
+describe('requestPennylaneSyncAction — « Mettre à jour maintenant » (s20)', () => {
+  const counts = {
+    written: 3,
+    draft: 0,
+    creditNote: 0,
+    noCustomer: 0,
+    noDate: 0,
+    notEur: 0,
+    nonPositive: 0,
+    unmatched: 0,
+  }
+
+  it('synchronise l’association du domaine appelé, puis rafraîchit la page', async () => {
+    vi.mocked(requestPennylaneSyncService).mockResolvedValue({
+      status: 'synced',
+      counts,
+    })
+
+    const state = await requestPennylaneSyncAction()
+
+    expect(requireActionAuth).toHaveBeenCalled()
+    expect(requestPennylaneSyncService).toHaveBeenCalledWith(
+      TENANT_ID,
+      expect.any(Date)
+    )
+    expect(revalidatePath).toHaveBeenCalledWith('/bureau/reglages')
+    expect(state).toEqual({status: 'synced', message: 'pennylaneSync.synced'})
+  })
+
+  it.each([
+    'missing_key',
+    'unauthorized',
+    'unavailable',
+    'rate_limited',
+  ] as const)(
+    'échec %s : rendu avec son motif, page rafraîchie',
+    async (error) => {
+      vi.mocked(requestPennylaneSyncService).mockResolvedValue({
+        status: 'failed',
+        error,
+      })
+
+      const state = await requestPennylaneSyncAction()
+
+      expect(state).toEqual({
+        status: 'failed',
+        message: `pennylaneSync.errors.${error}`,
+      })
+      expect(revalidatePath).toHaveBeenCalled()
+    }
+  )
+
+  it('le bureau d’une autre association est refusé par le service : rendu, jamais levé', async () => {
+    vi.mocked(requestPennylaneSyncService).mockRejectedValue(
+      new AuthorizationError('refus')
+    )
+
+    expect(await requestPennylaneSyncAction()).toEqual({
+      status: 'error',
+      message: 'errors.forbidden',
+    })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('sans session : refusé, sans appeler le service', async () => {
+    vi.mocked(requireActionAuth).mockRejectedValue(new AuthorizationError('x'))
+
+    expect(await requestPennylaneSyncAction()).toEqual({
+      status: 'error',
+      message: 'errors.forbidden',
+    })
+    expect(requestPennylaneSyncService).not.toHaveBeenCalled()
+  })
+
+  it('une panne est rendue comme un résultat', async () => {
+    vi.mocked(requestPennylaneSyncService).mockRejectedValue(new Error('base'))
+
+    expect(await requestPennylaneSyncAction()).toEqual({
+      status: 'error',
+      message: 'pennylaneSync.errors.unavailable',
+    })
   })
 })

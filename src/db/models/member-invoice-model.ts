@@ -1,5 +1,6 @@
 import {sql} from 'drizzle-orm'
 import {
+  boolean,
   check,
   date,
   index,
@@ -35,6 +36,10 @@ export const memberInvoiceSourceEnum = pgEnum('member_invoice_source', [
  *   facturee voit la facture ; une vente ne la deplace pas. `RESTRICT`.
  * - `parcel_id` est **descriptif** (le terrain facture), verifie a l'ecriture
  *   par la lecture datee de la propriete ; jamais une cle de visibilite.
+ *   Nul pour `source = pennylane` (s20, ADR 062 §4) : le terrain affiche est
+ *   celui de la fiche a la date d'emission ; obligatoire pour `site`.
+ * - `has_pdf` (s20, ADR 062 §6) : la source fournit-elle un PDF ? Jamais son
+ *   adresse, qui expire et se relit au clic.
  * - `status` est un texte **opaque**, sans contrainte de valeurs (ADR 011).
  * - `amount_cents` : centimes entiers, euro implicite (ADR 059 §2).
  * - Aucun champ de paiement.
@@ -51,9 +56,9 @@ export const memberInvoice = pgTable(
     memberProfileId: uuid('member_profile_id')
       .notNull()
       .references(() => memberProfile.id, {onDelete: 'restrict'}),
-    parcelId: uuid('parcel_id')
-      .notNull()
-      .references(() => parcel.id, {onDelete: 'restrict'}),
+    parcelId: uuid('parcel_id').references(() => parcel.id, {
+      onDelete: 'restrict',
+    }),
     source: memberInvoiceSourceEnum('source').notNull(),
     externalId: text('external_id'),
     year: integer('year').notNull(),
@@ -61,6 +66,7 @@ export const memberInvoice = pgTable(
     dueOn: date('due_on', {mode: 'string'}).notNull(),
     amountCents: integer('amount_cents').notNull(),
     status: text('status').notNull(),
+    hasPdf: boolean('has_pdf').default(false).notNull(),
     createdAt: timestamp('created_at', {withTimezone: true})
       .defaultNow()
       .notNull(),
@@ -83,6 +89,10 @@ export const memberInvoice = pgTable(
     check(
       'member_invoice_due_on_check',
       sql`${table.dueOn} >= ${table.issuedOn}`
+    ),
+    check(
+      'member_invoice_parcel_required_for_site_check',
+      sql`${table.source} = 'pennylane' or ${table.parcelId} is not null`
     ),
   ]
 )

@@ -16,6 +16,8 @@ import {
   BILLING_INVOICE_SUBJECT_SETTING_KEY,
   BILLING_PROVIDER_SETTING_KEY,
   BILLING_SETTLED_STATUSES_SETTING_KEY,
+  BILLING_STATUS_LABELS_SETTING_KEY,
+  BILLING_STATUS_LIST_MAX_LENGTH,
   BILLING_UNPAID_STATUSES_SETTING_KEY,
   CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
   CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
@@ -200,6 +202,12 @@ describe('registre de production', () => {
         page: 'settings',
       },
       {
+        key: BILLING_STATUS_LABELS_SETTING_KEY,
+        type: 'text',
+        required: false,
+        page: 'settings',
+      },
+      {
         key: BILLING_ALERT_EMAIL_SETTING_KEY,
         type: 'email',
         required: false,
@@ -237,7 +245,7 @@ describe('registre de production', () => {
       }
     })
 
-    it('le fournisseur est « manuel » par défaut, option unique, réservé au SuperAdmin', () => {
+    it('le fournisseur est « manuel » par défaut, « pennylane » en option (s20), réservé au SuperAdmin', () => {
       const provider = definition(BILLING_PROVIDER_SETTING_KEY)
       expect(provider).toMatchObject({
         type: 'choice',
@@ -245,7 +253,14 @@ describe('registre de production', () => {
       })
       expect(
         provider.type === 'choice' && provider.options.map((o) => o.value)
-      ).toEqual(['manual'])
+      ).toEqual(['manual', 'pennylane'])
+      expect(
+        provider.type === 'choice' &&
+          provider.options.find((o) => o.value === 'pennylane')?.labelKey
+      ).toBe('billingProviders.pennylane')
+      expect(fr.AssociationSettings.billingProviders.pennylane).toBe(
+        'Pennylane'
+      )
       expect(isSuperAdminOnlySetting(provider)).toBe(true)
       expect(
         resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])[
@@ -267,6 +282,31 @@ describe('registre de production', () => {
         expect(definition(key).default, key).toBeUndefined()
         expect(isSuperAdminOnlySetting(definition(key)), key).toBe(false)
       }
+    })
+
+    it('les libellés des statuts : texte multiligne, vide par défaut, modifiable par le bureau (s20, ADR 062 §5)', () => {
+      expect(BILLING_STATUS_LABELS_SETTING_KEY).toBe('billing.status_labels')
+      const labels = definition(BILLING_STATUS_LABELS_SETTING_KEY)
+      expect(labels).toMatchObject({
+        type: 'text',
+        multiline: true,
+        required: false,
+        maxLength: BILLING_STATUS_LIST_MAX_LENGTH,
+        section: 'billing',
+        labelKey: 'fields.statusLabels.label',
+        helpKey: 'fields.statusLabels.help',
+      })
+      expect(labels.default).toBeUndefined()
+      expect(isSuperAdminOnlySetting(labels)).toBe(false)
+      const field = (
+        fr.AssociationSettings.fields as Record<
+          string,
+          {label: string; help: string; whenEmpty?: string}
+        >
+      ).statusLabels
+      expect(field.label).toBe('Libellés des statuts')
+      expect(field.help).toEqual(expect.any(String))
+      expect(field.whenEmpty).toEqual(expect.any(String))
     })
 
     it('l’objet a un défaut neutre ; le destinataire se replie sur l’adresse de contact', () => {
@@ -719,6 +759,7 @@ describe('registre de production', () => {
       BILLING_INVOICE_SUBJECT_SETTING_KEY,
       BILLING_UNPAID_STATUSES_SETTING_KEY,
       BILLING_SETTLED_STATUSES_SETTING_KEY,
+      BILLING_STATUS_LABELS_SETTING_KEY,
       BILLING_ALERT_EMAIL_SETTING_KEY,
     ])
     expect(
@@ -1099,6 +1140,7 @@ describe('registre — carte « Referencement » (s11)', () => {
       BILLING_INVOICE_SUBJECT_SETTING_KEY,
       BILLING_UNPAID_STATUSES_SETTING_KEY,
       BILLING_SETTLED_STATUSES_SETTING_KEY,
+      BILLING_STATUS_LABELS_SETTING_KEY,
       BILLING_ALERT_EMAIL_SETTING_KEY,
     ])
   })

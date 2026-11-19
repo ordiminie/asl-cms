@@ -1,5 +1,7 @@
 import 'server-only'
 
+import {getBillingSyncStateDao} from '@/db/repositories/billing-sync-state-repository'
+import {getInvoiceByIdDao} from '@/db/repositories/member-invoice-repository'
 import {
   MyMemberProfileRow,
   updateMyMemberProfilesContactDao,
@@ -7,8 +9,12 @@ import {
 import {
   getCurrentParcelsByMemberDao,
   getMemberFormerParcelsDao,
+  listOwnershipPeriodsByProfilesDao,
 } from '@/db/repositories/parcel-ownership-repository'
 import {withTenant} from '@/db/tenant-scope'
+import {PennylaneError} from '@/lib/pennylane/pennylane-client'
+import {getPennylaneClient} from '@/lib/pennylane/pennylane-client.server'
+import {isHttpsUrl} from '@/lib/pennylane/pennylane-schemas'
 
 import {getAssociationSettingsService} from './association-settings-service'
 import {getAuthUser} from './authentication/auth-service'
@@ -20,14 +26,25 @@ import {
   classifyInvoiceStatus,
   composeInvoiceSubject,
   getInvoiceStatusClassification,
+  getInvoiceStatusLabels,
   getInvoiceSubjectTemplate,
+  statusLabelOf,
 } from './rules/member-invoice-rules'
+import {
+  type OwnershipPeriod,
+  parcelsOwnedOn,
+} from './rules/pennylane-invoice-mapping'
+import {BILLING_PROVIDER_PENNYLANE} from './types/domain/association-settings-types'
 import {UserOrganizationRoleConst} from './types/domain/auth-types'
-import type {MemberInvoice} from './types/domain/member-invoice-types'
+import {
+  type MemberInvoice,
+  MemberInvoiceSourceConst,
+} from './types/domain/member-invoice-types'
 import {
   MyContactDTO,
   MyContactGroupDTO,
   MyInvoiceDTO,
+  MyInvoicePdfResult,
   MyInvoicesDTO,
   MyLandDTO,
   MyLandsDTO,
@@ -37,6 +54,7 @@ import {
 } from './types/domain/member-space-types'
 import {
   memberProfileOrganizationIdSchema,
+  myInvoicePdfServiceSchema,
   updateMyContactServiceSchema,
 } from './validation/member-profile-validation'
 
@@ -245,30 +263,92 @@ export const updateMyContactService = async (
   })
 }
 
+type MyInvoiceContext = {
+  subjectTemplate: string
+  classification: ReturnType<typeof getInvoiceStatusClassification>
+  statusLabels: ReadonlyMap<string, string>
+  profileNames: ReadonlyMap<string, string>
+  accountName: string
+  /** Periodes de propriete des fiches, pour le terrain des factures Pennylane. */
+  periods: readonly OwnershipPeriod[]
+}
+
 /**
- * Une facture vue par le membre (s19) : objet compose, terrain facture, nom
- * de la fiche s'il n'est pas celui du compte, statut brut et sa classe.
+ * Le terrain d'une facture : la parcelle saisie (`site`), ou les parcelles
+ * de la fiche a la date d'emission et leur compteur (`pennylane`, ADR 062 §4).
+ */
+const terrainOf = (
+  invoice: MemberInvoice,
+  periods: readonly OwnershipPeriod[]
+): {parcelNumbers: string[]; meterNumber: string | null} => {
+  if (invoice.source !== MemberInvoiceSourceConst.PENNYLANE) {
+    return {
+      parcelNumbers: invoice.parcelNumber ? [invoice.parcelNumber] : [],
+      meterNumber: invoice.meterNumber,
+    }
+  }
+  const parcels = parcelsOwnedOn(
+    periods,
+    invoice.memberProfileId,
+    invoice.issuedOn
+  )
+  return {
+    parcelNumbers: parcels.map(({number}) => number),
+    meterNumber:
+      parcels.find(({meterNumber}) => meterNumber)?.meterNumber ?? null,
+  }
+}
+
+/**
+ * Une facture vue par le membre (s19, s20) : objet compose, terrain facture,
+ * nom de la fiche s'il n'est pas celui du compte, statut brut, son libelle et
+ * sa classe, et la reference du PDF quand la source en fournit un.
  */
 const toMyInvoice = (
   invoice: MemberInvoice,
-  context: {
-    subjectTemplate: string
-    classification: ReturnType<typeof getInvoiceStatusClassification>
-    profileNames: ReadonlyMap<string, string>
-    accountName: string
-  }
+  context: MyInvoiceContext
 ): MyInvoiceDTO => {
   const name = context.profileNames.get(invoice.memberProfileId)
+  const withPdf =
+    invoice.hasPdf && invoice.source === MemberInvoiceSourceConst.PENNYLANE
   return {
     issuedOn: invoice.issuedOn,
     subject: composeInvoiceSubject(context.subjectTemplate, invoice.year),
-    parcelNumber: invoice.parcelNumber,
-    meterNumber: invoice.meterNumber,
+    ...terrainOf(invoice, context.periods),
     holderName: name && name !== context.accountName ? name : null,
     amountCents: invoice.amountCents,
     dueOn: invoice.dueOn,
     status: invoice.status,
+    statusLabel: statusLabelOf(invoice.status, context.statusLabels),
     statusClass: classifyInvoiceStatus(invoice.status, context.classification),
+    hasPdf: withPdf,
+    pdfRef: withPdf ? invoice.id : null,
+  }
+}
+
+type MyInvoicesSyncState = Pick<
+  MyInvoicesDTO,
+  'syncedFromPennylane' | 'syncedAt' | 'lastSyncFailed' | 'unlinked'
+>
+
+const NOT_SYNCED: MyInvoicesSyncState = {
+  syncedFromPennylane: false,
+  syncedAt: null,
+  lastSyncFailed: false,
+  unlinked: false,
+}
+
+/** L'etat de la synchronisation, lu en base : jamais Pennylane (critere 9). */
+const readSyncState = async (
+  organizationId: string,
+  profiles: readonly MyMemberProfileRow[]
+): Promise<MyInvoicesSyncState> => {
+  const state = await getBillingSyncStateDao(organizationId)
+  return {
+    syncedFromPennylane: true,
+    syncedAt: state?.lastSuccessAt?.toISOString() ?? null,
+    lastSyncFailed: Boolean(state?.lastError),
+    unlinked: profiles.every((profile) => !profile.pennylaneCustomerId),
   }
 }
 
@@ -297,21 +377,82 @@ export const getMyInvoicesService = async (
 
     const settings = await getAssociationSettingsService(parsed.data)
     const provider = resolveMemberBillingProvider(settings)
-    const invoices = await provider.listInvoicesOf(
-      parsed.data,
-      profiles.map((profile) => profile.id)
+    const profileIds = profiles.map((profile) => profile.id)
+    const invoices = await provider.listInvoicesOf(parsed.data, profileIds)
+    const fromPennylane = provider.id === BILLING_PROVIDER_PENNYLANE
+    const periods = invoices.some(
+      (invoice) => invoice.source === MemberInvoiceSourceConst.PENNYLANE
     )
-    const context = {
+      ? await listOwnershipPeriodsByProfilesDao(profileIds)
+      : []
+    const context: MyInvoiceContext = {
       subjectTemplate: getInvoiceSubjectTemplate(settings),
       classification: getInvoiceStatusClassification(settings),
+      statusLabels: getInvoiceStatusLabels(settings),
       profileNames: new Map(profiles.map(({id, name}) => [id, name])),
       accountName: authUser.name,
+      periods,
     }
     return {
       landCount: profiles.length,
       invoices: invoices
         .toSorted((a, b) => b.issuedOn.localeCompare(a.issuedOn))
         .map((invoice) => toMyInvoice(invoice, context)),
+      ...(fromPennylane
+        ? await readSyncState(parsed.data, profiles)
+        : NOT_SYNCED),
     }
   })
+}
+
+/**
+ * Le PDF d'une facture du membre connecte (s20, ADR 062 §6), relu chez
+ * Pennylane **au clic** : la facture doit appartenir a l'une des fiches du
+ * compte et venir de Pennylane. L'adresse rendue expire ; elle n'est ni
+ * stockee, ni mise en cache, ni journalisee (l'intercepteur ne journalise
+ * aucun resultat).
+ */
+export const getMyInvoicePdfUrlService = async (
+  organizationId: string,
+  invoiceId: string
+): Promise<MyInvoicePdfResult> => {
+  const parsed = myInvoicePdfServiceSchema.safeParse({
+    organizationId,
+    invoiceId,
+  })
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const authUser = await getAuthUser()
+  if (!authUser) {
+    throw new AuthorizationError('Connectez-vous pour ouvrir vos factures')
+  }
+
+  const externalId = await withTenant(parsed.data.organizationId, async () => {
+    const profiles = await getMyMemberProfiles(
+      parsed.data.organizationId,
+      authUser.id
+    )
+    const invoice = await getInvoiceByIdDao(parsed.data.invoiceId)
+    const owned =
+      invoice !== undefined &&
+      profiles.some((profile) => profile.id === invoice.memberProfileId)
+    return owned &&
+      invoice.source === MemberInvoiceSourceConst.PENNYLANE &&
+      invoice.externalId
+      ? invoice.externalId
+      : undefined
+  })
+  if (!externalId) return {status: 'not_found'}
+
+  try {
+    const url = await getPennylaneClient().getCustomerInvoiceFileUrl(externalId)
+    return url && isHttpsUrl(url)
+      ? {status: 'ready', url}
+      : {status: 'unavailable'}
+  } catch (error) {
+    if (error instanceof PennylaneError) return {status: 'unavailable'}
+    throw error
+  }
 }

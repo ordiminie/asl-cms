@@ -18,8 +18,10 @@ import {
   getInvoiceSubjectTemplate,
   isUnpaidInvoice,
   parseAmountToCents,
+  parseStatusLabels,
   parseStatusList,
   selectableInvoiceStatuses,
+  statusLabelOf,
   unpaidProfileIdsOf,
 } from './member-invoice-rules'
 
@@ -212,5 +214,54 @@ describe('unpaidProfileIdsOf — fiches en impayé (s27, ADR 060 §3)', () => {
     )
 
     expect([...ids]).toEqual(['d'])
+  })
+})
+
+describe('parseStatusLabels — « statut = libellé » par ligne (s20, ADR 062 §5)', () => {
+  it('lit chaque ligne, bords retirés des deux côtés', () => {
+    const labels = parseStatusLabels(
+      '  late =  En retard \npartially_paid=Partiellement payée\r\n'
+    )
+    expect([...labels]).toEqual([
+      ['late', 'En retard'],
+      ['partially_paid', 'Partiellement payée'],
+    ])
+  })
+
+  it('ignore une ligne sans « = », au statut ou au libellé vide', () => {
+    const labels = parseStatusLabels(
+      'paid\n= Payée\ncancelled =\n\narchived = Archivée'
+    )
+    expect([...labels]).toEqual([['archived', 'Archivée']])
+  })
+
+  it('coupe au premier « = » : un libellé peut en contenir', () => {
+    expect(parseStatusLabels('late = Échéance = dépassée').get('late')).toBe(
+      'Échéance = dépassée'
+    )
+  })
+
+  it('une valeur absente ou vide ne donne aucun libellé', () => {
+    expect(parseStatusLabels(null).size).toBe(0)
+    expect(parseStatusLabels('').size).toBe(0)
+  })
+})
+
+describe('statusLabelOf — le mot lu par les membres, jamais un classement', () => {
+  const labels = parseStatusLabels('late = En retard')
+
+  it('rend le libellé du statut, comparé exactement après les bords', () => {
+    expect(statusLabelOf(' late ', labels)).toBe('En retard')
+  })
+
+  it('se replie sur le statut brut sans libellé, casse respectée', () => {
+    expect(statusLabelOf('Late', labels)).toBe('Late')
+    expect(statusLabelOf('paid', labels)).toBe('paid')
+  })
+
+  it('le libellé ne change pas la classe : seul le statut est classé', () => {
+    expect(
+      classifyInvoiceStatus('late', {unpaid: ['En retard'], settled: []})
+    ).toBe('unclassified')
   })
 })

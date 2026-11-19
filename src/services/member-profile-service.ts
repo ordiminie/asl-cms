@@ -7,7 +7,9 @@ import {
   getMemberProfileByIdDao,
   getMemberProfileByPennylaneIdDao,
   getMemberProfilePageDao,
+  listMemberProfilesByPennylaneIdIgnoringCaseDao,
   updateMemberProfileContactTxnDao,
+  updateMemberProfilePennylaneIdDao,
 } from '@/db/repositories/member-profile-repository'
 import {getOrganizationMembersDao} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
@@ -43,6 +45,8 @@ import {
   MemberProfilePageInput,
   MemberProfileWriteResult,
   UpdateMemberProfileContactInput,
+  UpdateMemberProfilePennylaneIdInput,
+  UpdateMemberProfilePennylaneIdResult,
 } from './types/domain/member-profile-types'
 import {User} from './types/domain/user-types'
 import {
@@ -52,6 +56,7 @@ import {
   memberProfilePageServiceSchema,
   memberProfileServiceSchema,
   updateMemberProfileContactServiceSchema,
+  updateMemberProfilePennylaneIdServiceSchema,
 } from './validation/member-profile-validation'
 
 /**
@@ -307,5 +312,41 @@ export const findMemberProfileIdByPennylaneIdService = async (
       parsed.data.pennylaneCustomerId
     )
     return row?.id
+  })
+}
+
+/**
+ * Le bureau relie une fiche a son client Pennylane (s20, critere 4, ADR 048) :
+ * l'« Identifiant Client » de l'export. Un identifiant deja porte par une
+ * autre fiche, a la casse pres (le rapprochement l'ignore), est refuse, cette
+ * fiche nommee ; vide, il est retire.
+ */
+export const updateMemberProfilePennylaneIdService = async (
+  input: UpdateMemberProfilePennylaneIdInput
+): Promise<UpdateMemberProfilePennylaneIdResult> => {
+  const parsed = updateMemberProfilePennylaneIdServiceSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new ValidationParsedZodError(parsed.error)
+  }
+
+  const {organizationId, memberProfileId, pennylaneCustomerId} = parsed.data
+  await requireMemberProfileManager(organizationId)
+
+  return withTenant(organizationId, async () => {
+    if (pennylaneCustomerId) {
+      const holders = await listMemberProfilesByPennylaneIdIgnoringCaseDao(
+        organizationId,
+        pennylaneCustomerId
+      )
+      const holder = holders.find((row) => row.id !== memberProfileId)
+      if (holder) {
+        return {status: 'pennylane_id_taken', holderName: holder.name}
+      }
+    }
+    const updated = await updateMemberProfilePennylaneIdDao(
+      memberProfileId,
+      pennylaneCustomerId
+    )
+    return updated === 0 ? {status: 'not_found'} : {status: 'saved'}
   })
 }

@@ -25,6 +25,7 @@ import type {
   BoardMemberInvoicesDTO,
 } from '@/services/types/domain/member-invoice-types'
 
+import {syncTimePartsOf} from './billing-sync-format'
 import {InvoiceStatusBadge} from './invoice-status-badge'
 import {
   memberInvoicePathOf,
@@ -99,6 +100,13 @@ export function MemberInvoicesCard({
           </AlertDescription>
         </Alert>
       )}
+      {invoices.syncedFromPennylane && (
+        <p className="text-muted-foreground text-[15px]">
+          {invoices.syncedAt
+            ? t('pennylane.readOnlySince', syncTimePartsOf(invoices.syncedAt))
+            : t('pennylane.readOnlyNever')}
+        </p>
+      )}
       {invoices.invoices.length === 0 ? (
         <p className="text-muted-foreground text-[17px]">{t('empty')}</p>
       ) : (
@@ -127,12 +135,14 @@ export function MemberInvoicesCard({
                     <TableCell className="whitespace-normal">
                       <span className="flex flex-col">
                         <span>{invoice.subject}</span>
-                        <span className="text-muted-foreground text-[15px]">
-                          {t.rich('parcel', {
-                            number: invoice.parcelNumber,
-                            mono,
-                          })}
-                        </span>
+                        {invoice.parcelNumber && (
+                          <span className="text-muted-foreground text-[15px]">
+                            {t.rich('parcel', {
+                              number: invoice.parcelNumber,
+                              mono,
+                            })}
+                          </span>
+                        )}
                       </span>
                     </TableCell>
                     <TableCell className={`${DATA_CLASS} text-right`}>
@@ -150,7 +160,10 @@ export function MemberInvoicesCard({
                       />
                     </TableCell>
                     <TableCell className="whitespace-normal">
-                      <InvoiceSource invoice={invoice} />
+                      <InvoiceSource
+                        invoice={invoice}
+                        readOnly={!editable(invoice)}
+                      />
                     </TableCell>
                     <TableCell>
                       {editable(invoice) && (
@@ -200,7 +213,10 @@ export function MemberInvoicesCard({
                       {t('columns.source')}
                     </dt>
                     <dd>
-                      <InvoiceSource invoice={invoice} />
+                      <InvoiceSource
+                        invoice={invoice}
+                        readOnly={!editable(invoice)}
+                      />
                     </dd>
                   </dl>
                   {editable(invoice) && (
@@ -228,14 +244,24 @@ export function MemberInvoicesCard({
   )
 }
 
-/** La source, en mots : « Pennylane » se lit avec « Lecture seule ». */
-function InvoiceSource({invoice}: {invoice: BoardInvoiceDTO}) {
+/**
+ * La source, en mots, avec « Lecture seule » quand la facture ne se corrige
+ * pas ici : Pennylane, ou une facture du site sous un fournisseur en lecture
+ * seule (s20).
+ */
+function InvoiceSource({
+  invoice,
+  readOnly,
+}: {
+  invoice: BoardInvoiceDTO
+  readOnly: boolean
+}) {
   const t = useTranslations('BureauMemberInvoices.card')
 
   return (
     <span className="flex flex-col">
       <span>{t(`sources.${invoice.source}`)}</span>
-      {invoice.source === 'pennylane' && (
+      {readOnly && (
         <span className="text-muted-foreground text-[15px]">
           {t('readOnly')}
         </span>

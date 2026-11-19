@@ -64,7 +64,14 @@ describe('member-space-dal — signalements du membre (s22)', () => {
 
 describe('member-space-dal — factures du membre (s19)', () => {
   it('lit « Mes factures » sur l’association du domaine, avec son seul identifiant', async () => {
-    const invoices = {landCount: 1, invoices: []}
+    const invoices = {
+      landCount: 1,
+      invoices: [],
+      syncedFromPennylane: false,
+      syncedAt: null,
+      lastSyncFailed: false,
+      unlinked: false,
+    }
     vi.mocked(getMyInvoicesService).mockResolvedValue(invoices)
 
     await expect(getMyInvoicesDal()).resolves.toBe(invoices)

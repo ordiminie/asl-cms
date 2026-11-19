@@ -1,5 +1,6 @@
 import {campaignScheduledJobHandlers} from '../campaign-service'
 import {emailScheduledJobHandlers} from '../email-service'
+import {pennylaneSyncScheduledJobHandlers} from '../pennylane-sync-service'
 import {
   RunDueScheduledJobsResult,
   ScheduledJobHandlers,
@@ -14,6 +15,7 @@ import scheduledJobServiceInterceptor from './interceptors/scheduled-job-service
 const scheduledJobHandlers: ScheduledJobHandlers = {
   ...campaignScheduledJobHandlers,
   ...emailScheduledJobHandlers,
+  ...pennylaneSyncScheduledJobHandlers,
 }
 
 /** Un passage : toutes les associations, ou une seule. */

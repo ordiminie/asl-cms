@@ -2065,6 +2065,7 @@ describe('cible choisie — impayés et groupes (s27, ADR 060)', () => {
     dueOn: '2026-04-15',
     amountCents: 100,
     status,
+    hasPdf: false,
   })
   const providerOf = (
     listInvoicesOf: MemberBillingProvider['listInvoicesOf']

@@ -19,6 +19,7 @@ vi.mock('@/db/repositories/member-invoice-repository', () => ({
 import {listInvoicesByProfileIdsDao} from '@/db/repositories/member-invoice-repository'
 
 import {manualMemberBillingProvider} from '../billing/manual-member-billing-provider'
+import {pennylaneMemberBillingProvider} from '../billing/pennylane-member-billing-provider'
 import {resolveMemberBillingProvider} from '../billing/resolve-member-billing-provider'
 import {
   ASSOCIATION_SETTINGS_REGISTRY,
@@ -44,6 +45,7 @@ const row = {
   dueOn: '2026-04-15',
   amountCents: 41250,
   status: 'En attente',
+  hasPdf: false,
   createdAt: new Date('2026-03-15T10:00:00Z'),
   updatedAt: new Date('2026-03-15T10:00:00Z'),
 }
@@ -80,6 +82,7 @@ describe('manualMemberBillingProvider — saisie par le bureau (ADR 059 §7)', (
         dueOn: '2026-04-15',
         amountCents: 41250,
         status: 'En attente',
+        hasPdf: false,
       },
     ])
   })
@@ -94,17 +97,71 @@ describe('resolveMemberBillingProvider — choisi par le réglage du tenant', ()
     ).toBe(manualMemberBillingProvider)
   })
 
+  it('« pennylane » quand le réglage le désigne (s20, critère 1)', () => {
+    expect(
+      resolveMemberBillingProvider(
+        resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: BILLING_PROVIDER_SETTING_KEY, value: 'pennylane'},
+        ])
+      )
+    ).toBe(pennylaneMemberBillingProvider)
+  })
+
   it('défaut fermé : une valeur inconnue est une erreur explicite, jamais un repli', () => {
     const settings = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
     expect(() =>
       resolveMemberBillingProvider({
         ...settings,
         [BILLING_PROVIDER_SETTING_KEY]: {
-          value: 'pennylane',
-          storedValue: 'pennylane',
+          value: 'sage',
+          storedValue: 'sage',
           defaultFromKey: null,
         },
       })
-    ).toThrow(/pennylane/)
+    ).toThrow(/sage/)
+  })
+})
+
+describe('pennylaneMemberBillingProvider — factures synchronisées (s20, ADR 062 §1)', () => {
+  it('ne permet pas la saisie : le bureau ne crée ni ne corrige (critère 6)', () => {
+    expect(pennylaneMemberBillingProvider.id).toBe('pennylane')
+    expect(pennylaneMemberBillingProvider.canWrite).toBe(false)
+  })
+
+  it('lit la base sous le scope du tenant, sans aucun appel réseau (critère 9)', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    vi.mocked(listInvoicesByProfileIdsDao).mockImplementation(async () => {
+      expect(scope.current).toBe(ORG_ID)
+      return [
+        {
+          ...row,
+          source: 'pennylane' as const,
+          externalId: '9001',
+          parcelId: null,
+          parcelNumber: null,
+          meterNumber: null,
+          hasPdf: true,
+        },
+      ]
+    })
+
+    const invoices = await pennylaneMemberBillingProvider.listInvoicesOf(
+      ORG_ID,
+      [PROFILE_ID]
+    )
+
+    expect(fetchSpy).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+    expect(listInvoicesByProfileIdsDao).toHaveBeenCalledWith([PROFILE_ID])
+    expect(invoices).toEqual([
+      expect.objectContaining({
+        source: 'pennylane',
+        parcelId: null,
+        hasPdf: true,
+        status: 'En attente',
+      }),
+    ])
+    expect(invoices[0]).not.toHaveProperty('externalId')
   })
 })

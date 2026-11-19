@@ -25,8 +25,10 @@ vi.mock('@/db/repositories/member-profile-repository', () => ({
   getMemberProfilesByUserIdDao: vi.fn(),
   getMemberProfileByIdDao: vi.fn(),
   getMemberProfileByPennylaneIdDao: vi.fn(),
+  listMemberProfilesByPennylaneIdIgnoringCaseDao: vi.fn(),
   getMemberProfilePageDao: vi.fn(),
   updateMemberProfileContactTxnDao: vi.fn(),
+  updateMemberProfilePennylaneIdDao: vi.fn(),
   linkMemberProfileAccountDao: vi.fn(),
   unlinkMemberProfileAccountDao: vi.fn(),
   countLinkedProfilesDao: vi.fn(),
@@ -68,8 +70,10 @@ import {
   getMemberProfilesByEmailDao,
   getMemberProfilesByUserIdDao,
   linkMemberProfileAccountDao,
+  listMemberProfilesByPennylaneIdIgnoringCaseDao,
   unlinkMemberProfileAccountDao,
   updateMemberProfileContactTxnDao,
+  updateMemberProfilePennylaneIdDao,
 } from '@/db/repositories/member-profile-repository'
 import {
   createMemberIfAbsentTxnDao,
@@ -97,6 +101,7 @@ import {
   getMemberProfilePageService,
   getMemberProfileService,
   updateMemberProfileContactService,
+  updateMemberProfilePennylaneIdService,
 } from '../member-profile-service'
 import {UserOrganizationRoleConst} from '../types/domain/auth-types'
 import {MEMBER_PROFILES_PAGE_SIZE} from '../types/domain/member-profile-types'
@@ -1312,5 +1317,180 @@ describe('[s53] adresse déjà celle d’un compte de l’association', () => {
     })
 
     expect(result).toMatchObject({status: 'saved', accountChange: 'linked'})
+  })
+})
+
+describe('updateMemberProfilePennylaneIdService — le bureau relie une fiche à Pennylane (s20, critère 4)', () => {
+  const EXTERNAL_REF = '3f2a9c1e-1111-4111-8111-111111111111'
+  let writtenUnder: string | undefined
+
+  beforeEach(() => {
+    writtenUnder = undefined
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      []
+    )
+    vi.mocked(updateMemberProfilePennylaneIdDao).mockImplementation(
+      async () => {
+        writtenUnder = scope.current
+        return 1
+      }
+    )
+  })
+
+  it.each([
+    ['[SUPER_ADMIN]', userTestSuperAdmin],
+    ['[ORGANIZATION OWNER]', withRole(UserOrganizationRoleConst.OWNER)],
+  ])(
+    '%s enregistre l’identifiant, sans espaces de bord, sous le tenant',
+    async (_label, user) => {
+      setupAuthUserMocked(user)
+
+      expect(
+        await updateMemberProfilePennylaneIdService({
+          organizationId: ORG_ID,
+          memberProfileId: PROFILE_ID,
+          pennylaneCustomerId: `  ${EXTERNAL_REF} `,
+        })
+      ).toEqual({status: 'saved'})
+      expect(updateMemberProfilePennylaneIdDao).toHaveBeenCalledWith(
+        PROFILE_ID,
+        EXTERNAL_REF
+      )
+      expect(writtenUnder).toBe(ORG_ID)
+    }
+  )
+
+  it('un champ vide retire l’identifiant', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+
+    await updateMemberProfilePennylaneIdService({
+      organizationId: ORG_ID,
+      memberProfileId: PROFILE_ID,
+      pennylaneCustomerId: '   ',
+    })
+
+    expect(updateMemberProfilePennylaneIdDao).toHaveBeenCalledWith(
+      PROFILE_ID,
+      null
+    )
+    expect(
+      listMemberProfilesByPennylaneIdIgnoringCaseDao
+    ).not.toHaveBeenCalled()
+  })
+
+  it('identifiant déjà porté par une autre fiche : rien n’est écrit, la fiche est nommée', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      [{id: OTHER_PROFILE_ID, name: 'Martin Paul'}]
+    )
+
+    expect(
+      await updateMemberProfilePennylaneIdService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: EXTERNAL_REF,
+      })
+    ).toEqual({status: 'pennylane_id_taken', holderName: 'Martin Paul'})
+    expect(listMemberProfilesByPennylaneIdIgnoringCaseDao).toHaveBeenCalledWith(
+      ORG_ID,
+      EXTERNAL_REF
+    )
+    expect(updateMemberProfilePennylaneIdDao).not.toHaveBeenCalled()
+  })
+
+  it('le même identifiant à la casse près, porté par une autre fiche : refusé, la fiche est nommée', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      [{id: OTHER_PROFILE_ID, name: 'Martin Paul'}]
+    )
+
+    expect(
+      await updateMemberProfilePennylaneIdService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: 'ABC-0061',
+      })
+    ).toEqual({status: 'pennylane_id_taken', holderName: 'Martin Paul'})
+    expect(updateMemberProfilePennylaneIdDao).not.toHaveBeenCalled()
+  })
+
+  it('porté par cette fiche et, à la casse près, par une autre : refusé, l’autre est nommée', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      [
+        {id: PROFILE_ID, name: 'Bernard Lefèvre'},
+        {id: OTHER_PROFILE_ID, name: 'Martin Paul'},
+      ]
+    )
+
+    expect(
+      await updateMemberProfilePennylaneIdService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: 'abc-0061',
+      })
+    ).toEqual({status: 'pennylane_id_taken', holderName: 'Martin Paul'})
+  })
+
+  it('l’identifiant déjà porté par cette fiche : enregistré tel quel', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(listMemberProfilesByPennylaneIdIgnoringCaseDao).mockResolvedValue(
+      [{id: PROFILE_ID, name: 'Bernard Lefèvre'}]
+    )
+
+    expect(
+      (
+        await updateMemberProfilePennylaneIdService({
+          organizationId: ORG_ID,
+          memberProfileId: PROFILE_ID,
+          pennylaneCustomerId: EXTERNAL_REF,
+        })
+      ).status
+    ).toBe('saved')
+  })
+
+  it('une fiche introuvable sous le tenant : `not_found`', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+    vi.mocked(updateMemberProfilePennylaneIdDao).mockResolvedValue(0)
+
+    expect(
+      await updateMemberProfilePennylaneIdService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: EXTERNAL_REF,
+      })
+    ).toEqual({status: 'not_found'})
+  })
+
+  it.each([
+    ['[ORGANIZATION MEMBER]', withRole(UserOrganizationRoleConst.MEMBER)],
+    [
+      '[USER NOT IN ORGANIZATION]',
+      withRole(UserOrganizationRoleConst.OWNER, OTHER_ORG_ID),
+    ],
+    ['[PUBLIC]', undefined],
+  ])('%s refusé, rien n’est lu ni écrit', async (_label, user) => {
+    setupAuthUserMocked(user)
+
+    await expect(
+      updateMemberProfilePennylaneIdService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: EXTERNAL_REF,
+      })
+    ).rejects.toThrow(AuthorizationError)
+    expect(updateMemberProfilePennylaneIdDao).not.toHaveBeenCalled()
+  })
+
+  it('refuse un identifiant trop long', async () => {
+    setupAuthUserMocked(withRole(UserOrganizationRoleConst.OWNER))
+
+    await expect(
+      updateMemberProfilePennylaneIdService({
+        organizationId: ORG_ID,
+        memberProfileId: PROFILE_ID,
+        pennylaneCustomerId: 'x'.repeat(500),
+      })
+    ).rejects.toThrow(ValidationParsedZodError)
   })
 })

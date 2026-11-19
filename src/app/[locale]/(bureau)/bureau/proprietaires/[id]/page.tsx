@@ -34,6 +34,7 @@ import {
   designateMemberProfileHolderAction,
   removeMemberProfileEmailAction,
   updateMemberProfileEmailAction,
+  updateMemberProfilePennylaneIdAction,
 } from './actions'
 
 type MemberProfilePageProps = {
@@ -156,6 +157,7 @@ async function MemberProfileSection({
       unsubscribePromise={unsubscribePromise}
       invoicesPromise={invoicesPromise}
       invoiceSaved={invoiceSaved}
+      updatePennylaneIdAction={updateMemberProfilePennylaneIdAction}
       addNoteAction={addMemberNoteAction}
       addExchangeAction={addMemberExchangeAction}
       updateNoteAction={updateMemberNoteAction}

@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest'
+import {beforeEach, describe, expect, it, vi} from 'vitest'
 
 import {act, render, screen, userEvent, within} from '@/__tests__/customRender'
 import type {
@@ -11,47 +11,70 @@ import {MyInvoicesCard, MyInvoicesCardLoading} from './my-invoices-card'
 const invoice = (overrides: Partial<MyInvoiceDTO> = {}): MyInvoiceDTO => ({
   issuedOn: '2026-03-15',
   subject: 'Cotisation et eau 2026',
-  parcelNumber: '12',
+  parcelNumbers: ['12'],
   meterNumber: '0045821',
   holderName: null,
   amountCents: 41250,
   dueOn: '2026-04-15',
   status: 'En attente',
+  statusLabel: 'En attente',
   statusClass: 'unpaid',
+  hasPdf: false,
+  pdfRef: null,
   ...overrides,
 })
 
+const SITE = {
+  syncedFromPennylane: false,
+  syncedAt: null,
+  lastSyncFailed: false,
+  unlinked: false,
+} as const
+
 const THREE: MyInvoicesDTO = {
+  ...SITE,
   landCount: 3,
   invoices: [
     invoice({
       issuedOn: '2026-03-20',
-      parcelNumber: '27',
+      parcelNumbers: ['27'],
       meterNumber: '0051207',
       dueOn: '2026-04-30',
       amountCents: 128000,
       status: 'Partiellement payée',
+      statusLabel: 'Partiellement payée',
       statusClass: 'unclassified',
     }),
     invoice({
-      parcelNumber: '31',
+      parcelNumbers: ['31'],
       meterNumber: null,
       holderName: 'SCI Les Pins',
       status: 'Relance 1',
+      statusLabel: 'Relance 1',
     }),
     invoice({
       issuedOn: '2025-03-15',
       subject: 'Cotisation et eau 2025',
       dueOn: '2025-04-15',
       status: 'Payée',
+      statusLabel: 'Payée',
       statusClass: 'settled',
     }),
   ],
 }
 
+const openPdf = vi.fn()
+const navigate = vi.fn()
+
 const renderCard = async (invoices: MyInvoicesDTO) => {
   await act(async () => {
-    render(<MyInvoicesCard invoices={invoices} />)
+    render(
+      <MyInvoicesCard
+        invoices={invoices}
+        openPdfAction={openPdf}
+        navigate={navigate}
+      />
+    )
   })
 }
 
@@ -122,7 +145,7 @@ describe('MyInvoicesCard — « Mes factures » (s19, écran 1)', () => {
   })
 
   it('un seul terrain : la phrase d’introduction au singulier', async () => {
-    await renderCard({landCount: 1, invoices: [invoice()]})
+    await renderCard({...SITE, landCount: 1, invoices: [invoice()]})
 
     expect(
       within(card()).getByText('Vos factures, les plus récentes en premier.')
@@ -130,7 +153,7 @@ describe('MyInvoicesCard — « Mes factures » (s19, écran 1)', () => {
   })
 
   it('vide : la phrase, et le renvoi vers le bureau', async () => {
-    await renderCard({landCount: 2, invoices: []})
+    await renderCard({...SITE, landCount: 2, invoices: []})
 
     expect(within(card()).queryByRole('table')).toBeNull()
     expect(
@@ -143,6 +166,7 @@ describe('MyInvoicesCard — « Mes factures » (s19, écran 1)', () => {
 
   it('au-delà de 25 factures : « Précédent / Suivant » écrits', async () => {
     await renderCard({
+      ...SITE,
       landCount: 1,
       invoices: Array.from({length: 27}, (_, index) =>
         invoice({subject: `Facture ${index + 1}`})
@@ -178,5 +202,183 @@ describe('MyInvoicesCardLoading — chargement (1c)', () => {
 
     expect(card()).toHaveAttribute('aria-busy', 'true')
     expect(card().querySelectorAll('[data-slot="skeleton"]')).toHaveLength(3)
+  })
+})
+
+describe('MyInvoicesCard — factures Pennylane (s20, écran 1)', () => {
+  const PENNYLANE = {
+    landCount: 1,
+    syncedFromPennylane: true,
+    syncedAt: '2026-11-19T13:05:00.000Z',
+    lastSyncFailed: false,
+    unlinked: false,
+  } as const
+  const withPdf = invoice({
+    parcelNumbers: ['12', '13'],
+    status: 'late',
+    statusLabel: 'En retard',
+    hasPdf: true,
+    pdfRef: 'ref-pdf',
+  })
+  const withoutPdf = invoice({
+    issuedOn: '2025-03-15',
+    status: 'paid',
+    statusLabel: 'paid',
+    statusClass: 'settled',
+  })
+
+  beforeEach(() => {
+    openPdf.mockReset()
+    navigate.mockReset()
+  })
+
+  it('1a : colonne « Facture », bouton PDF seulement si la source en fournit un (critères 7 et 8)', async () => {
+    await renderCard({...PENNYLANE, invoices: [withPdf, withoutPdf]})
+
+    expect(
+      within(table())
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent)
+    ).toEqual([
+      'Émise le',
+      'Objet',
+      'Terrain',
+      'Montant',
+      'Échéance',
+      'Statut',
+      'Facture',
+    ])
+    const [first, second] = bodyRows()
+    expect(
+      within(first).getByRole('button', {
+        name: 'PDF de la facture 2026, parcelles 12 et 13',
+      })
+    ).toBeInTheDocument()
+    expect(within(second).queryByRole('button')).toBeNull()
+    expect(second.cells[6]).toHaveTextContent('PDF non disponible')
+  })
+
+  it('aucun lien vers Pennylane dans la page : l’adresse est demandée au clic, puis ouverte', async () => {
+    openPdf.mockResolvedValue({status: 'ready', url: 'https://pdf.test/x'})
+    await renderCard({...PENNYLANE, invoices: [withPdf]})
+
+    expect(card().innerHTML).not.toContain('pdf.test')
+    await userEvent.click(
+      within(bodyRows()[0]).getByRole('button', {name: /PDF de la facture/})
+    )
+
+    expect(openPdf).toHaveBeenCalledWith('ref-pdf')
+    expect(navigate).toHaveBeenCalledWith('https://pdf.test/x')
+  })
+
+  it('1f : PDF impossible à ouvrir — une alerte, jamais un lien mort', async () => {
+    openPdf.mockResolvedValue({status: 'unavailable'})
+    await renderCard({...PENNYLANE, invoices: [withPdf]})
+
+    await userEvent.click(
+      within(bodyRows()[0]).getByRole('button', {name: /PDF de la facture/})
+    )
+
+    expect(await within(card()).findByRole('alert')).toHaveTextContent(
+      'Le PDF n’a pas pu être ouvert. Réessayez dans un moment.'
+    )
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('1f : l’alerte s’efface au clic suivant, et l’ouverture réussie ne la ravive pas', async () => {
+    openPdf.mockResolvedValueOnce({status: 'unavailable'})
+    await renderCard({...PENNYLANE, invoices: [withPdf]})
+    const button = () =>
+      within(bodyRows()[0]).getByRole('button', {name: /PDF de la facture/})
+
+    await userEvent.click(button())
+    expect(await within(card()).findByRole('alert')).toBeInTheDocument()
+
+    let finish: (value: {status: 'ready'; url: string}) => void = () => {}
+    openPdf.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      })
+    )
+    await userEvent.click(button())
+    expect(within(card()).queryByRole('alert')).toBeNull()
+
+    await act(async () => {
+      finish({status: 'ready', url: 'https://pdf.test/x'})
+    })
+    expect(navigate).toHaveBeenCalledWith('https://pdf.test/x')
+    expect(within(card()).queryByRole('alert')).toBeNull()
+  })
+
+  it('terrain à plusieurs parcelles et libellé du statut', async () => {
+    await renderCard({...PENNYLANE, invoices: [withPdf]})
+
+    const [row] = bodyRows()
+    expect(row.cells[2]).toHaveTextContent('Parcelles 12 et 13')
+    expect(row.cells[5]).toHaveTextContent('En retard')
+    expect(row.cells[5]).not.toHaveTextContent('late')
+  })
+
+  it('sous 640 px : « Télécharger le PDF » sur la carte, ou la mention sans bouton', async () => {
+    await renderCard({...PENNYLANE, invoices: [withPdf, withoutPdf]})
+
+    const [first, second] = within(card()).getAllByTestId('my-invoice-card')
+    expect(
+      within(first).getByRole('button', {name: /PDF de la facture/})
+    ).toHaveTextContent('Télécharger le PDF')
+    expect(within(second).queryByRole('button')).toBeNull()
+    expect(second).toHaveTextContent('PDF non disponible')
+  })
+
+  it('la date de la dernière mise à jour, heure de Paris', async () => {
+    await renderCard({...PENNYLANE, invoices: [withPdf]})
+
+    expect(
+      within(card()).getByText('Factures mises à jour le 19/11/2026 à 14 h 05.')
+    ).toBeInTheDocument()
+  })
+
+  it('1d : dernière mise à jour échouée — les factures telles qu’elles étaient, sans page en erreur (critère 9)', async () => {
+    await renderCard({...PENNYLANE, lastSyncFailed: true, invoices: [withPdf]})
+
+    expect(
+      within(card()).getByText(
+        'Les factures n’ont pas pu être mises à jour. Voici vos factures telles qu’elles étaient le 19/11/2026 à 14 h 05.'
+      )
+    ).toBeInTheDocument()
+    expect(bodyRows()).toHaveLength(1)
+  })
+
+  it('1e : compte non relié — la phrase dit que le bureau s’en occupe, à la place du vide', async () => {
+    await renderCard({
+      ...PENNYLANE,
+      unlinked: true,
+      syncedAt: null,
+      invoices: [],
+    })
+
+    expect(
+      within(card()).getByText(
+        'Vos factures ne sont pas encore reliées à votre espace. Le bureau en est informé et s’en occupe.'
+      )
+    ).toBeInTheDocument()
+    expect(within(card()).queryByText(/Aucune facture/)).toBeNull()
+  })
+
+  it('aucun formulaire ni champ de paiement', async () => {
+    await renderCard({...PENNYLANE, invoices: [withPdf, withoutPdf]})
+
+    expect(card().querySelector('form')).toBeNull()
+    expect(card().querySelector('input')).toBeNull()
+    expect(card().innerHTML).not.toMatch(/iban|mandat|carte bancaire/i)
+  })
+
+  it('saisie sur le site : ni colonne « Facture », ni date de mise à jour', async () => {
+    await renderCard(THREE)
+
+    expect(
+      within(table()).queryByRole('columnheader', {name: 'Facture'})
+    ).toBeNull()
+    expect(within(card()).queryByText(/mises à jour le/)).toBeNull()
   })
 })

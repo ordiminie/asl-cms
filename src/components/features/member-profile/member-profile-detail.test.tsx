@@ -1,7 +1,7 @@
 import {Activity} from 'react'
 import {beforeEach, describe, expect, it, vi} from 'vitest'
 
-import {render, screen, userEvent, within} from '@/__tests__/customRender'
+import {act, render, screen, userEvent, within} from '@/__tests__/customRender'
 import type {MemberProfileDTO} from '@/services/types/domain/member-profile-types'
 import type {MemberParcelsDTO} from '@/services/types/domain/parcel-ownership-types'
 
@@ -32,6 +32,7 @@ const profile = (
   incomplete: false,
   emails: [],
   account: {status: 'mail_only'},
+  pennylaneCustomerId: null,
   roleCard: {
     reading: 'no_account',
     canEdit: false,
@@ -107,6 +108,7 @@ const actions = {
   updateEmailAction: vi.fn(),
   removeEmailAction: vi.fn(),
   designateHolderAction: vi.fn(),
+  updatePennylaneIdAction: vi.fn(),
 }
 
 /**
@@ -908,6 +910,7 @@ describe('MemberProfileDetail — carte « Rôle dans l’association » (s14)',
       accountName: 'Lucie Moreau',
       otherProfiles: [],
     },
+    pennylaneCustomerId: null,
     roleCard: {
       reading: 'member',
       canEdit: true,
@@ -929,6 +932,7 @@ describe('MemberProfileDetail — carte « Rôle dans l’association » (s14)',
       'Accès à l’espace membre',
       'Rôle dans l’association',
       'Parcelles',
+      'Facturation',
       'Notes et échanges',
     ])
   })
@@ -996,14 +1000,15 @@ describe('MemberProfileDetail — parcelle importée (s13, date sentinelle)', ()
 })
 
 describe('MemberProfileDetail — carte « Notes et échanges » (s24)', () => {
-  it('monte la carte des notes internes après « Parcelles »', () => {
+  it('monte la carte des notes internes après « Parcelles » et « Facturation » (s20)', () => {
     renderDetail()
 
     const titles = screen
       .getAllByRole('heading', {level: 2})
       .map((heading) => heading.textContent)
     expect(titles.at(-1)).toBe('Notes et échanges')
-    expect(titles.indexOf('Parcelles')).toBe(titles.length - 2)
+    expect(titles.indexOf('Facturation')).toBe(titles.length - 2)
+    expect(titles.indexOf('Parcelles')).toBe(titles.length - 3)
   })
 })
 
@@ -1055,5 +1060,23 @@ describe('MemberProfileDetail — un compte, plusieurs terrains (s53)', () => {
     expect(status).toHaveTextContent(
       'Fiche reliée au compte de Bernard Lefèvre : ce terrain apparaît dans son espace.'
     )
+  })
+})
+
+describe('MemberProfileDetail — carte « Facturation » (s20, critère 4)', () => {
+  it('lit l’identifiant client Pennylane de la fiche, entre « Parcelles » et les notes', async () => {
+    await act(async () => {
+      renderDetail({
+        profile: {...profile(), pennylaneCustomerId: 'ref-pennylane-1'},
+      })
+    })
+
+    const billing = screen.getByRole('region', {name: 'Facturation'})
+    expect(billing).toHaveTextContent('ref-pennylane-1')
+    const parcels = screen.getByRole('region', {name: 'Parcelles'})
+    expect(
+      parcels.compareDocumentPosition(billing) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
   })
 })

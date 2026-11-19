@@ -24,12 +24,14 @@ import {
   claimStatusAlertDao,
   countInvoicesByStatusDao,
   createInvoiceDao,
+  deletePennylaneInvoicesNotInDao,
   getInvoiceByIdDao,
   listInvoicesByMemberDao,
   listInvoicesByProfileIdsDao,
   releaseStatusAlertByIdDao,
   releaseStatusAlertDao,
   updateSiteInvoiceDao,
+  upsertPennylaneInvoicesDao,
 } from './member-invoice-repository'
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111'
@@ -60,6 +62,14 @@ describe('listInvoicesByProfileIdsDao', () => {
       'order by "member_invoice"."issued_on" desc, "member_invoice"."created_at" desc'
     )
     expect(params).toEqual([PROFILE_A, PROFILE_B])
+  })
+
+  it('garde une facture Pennylane sans parcelle : jointure externe (s20, ADR 062 §4)', async () => {
+    await listInvoicesByProfileIdsDao([PROFILE_A])
+
+    expect(sent[0].sql).toContain(
+      'left join "parcel" on "member_invoice"."parcel_id" = "parcel"."id"'
+    )
   })
 
   it('aucune fiche : aucune requête, aucune facture', async () => {
@@ -215,5 +225,78 @@ describe('releaseStatusAlertByIdDao', () => {
     expect(sql).toContain('delete from "invoice_status_alert"')
     expect(sql).toContain('"invoice_status_alert"."id" = $1')
     expect(params).toEqual([ALERT_ID])
+  })
+})
+
+describe('upsertPennylaneInvoicesDao (s20, ADR 062 §1)', () => {
+  const write = {
+    externalId: '9001',
+    memberProfileId: PROFILE_A,
+    year: 2026,
+    issuedOn: '2026-03-15',
+    dueOn: '2026-04-15',
+    amountCents: 41250,
+    status: 'late',
+    hasPdf: true,
+  }
+
+  it('écrit par `(organization_id, external_id)`, source Pennylane, sans parcelle', async () => {
+    await upsertPennylaneInvoicesDao(ORG_ID, [write])
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('insert into "member_invoice"')
+    expect(sql).toContain(
+      'on conflict ("organization_id","external_id") where "member_invoice"."external_id" is not null do update set'
+    )
+    for (const column of [
+      'member_profile_id',
+      'year',
+      'issued_on',
+      'due_on',
+      'amount_cents',
+      'status',
+      'has_pdf',
+    ]) {
+      expect(sql, column).toContain(`"${column}" = excluded."${column}"`)
+    }
+    expect(sql).toContain('"updated_at" = now()')
+    expect(sql).not.toContain('"parcel_id" = excluded')
+    expect(params).toEqual(
+      expect.arrayContaining([ORG_ID, PROFILE_A, 'pennylane', '9001', 'late'])
+    )
+  })
+
+  it('ne réécrit jamais une facture saisie sur le site', async () => {
+    await upsertPennylaneInvoicesDao(ORG_ID, [write])
+
+    expect(sent[0].sql).toContain(
+      `where "member_invoice"."source" = 'pennylane'`
+    )
+  })
+
+  it('rien à écrire : aucune requête', async () => {
+    await upsertPennylaneInvoicesDao(ORG_ID, [])
+    expect(sent).toEqual([])
+  })
+})
+
+describe('deletePennylaneInvoicesNotInDao (s20, ADR 062 §3)', () => {
+  it('supprime les factures Pennylane absentes de la relecture, elles seules', async () => {
+    await deletePennylaneInvoicesNotInDao(ORG_ID, ['9001', '9002'])
+
+    const [{sql, params}] = sent
+    expect(sql).toContain('delete from "member_invoice"')
+    expect(sql).toContain('"member_invoice"."organization_id" = $1')
+    expect(sql).toContain('"member_invoice"."source" = $2')
+    expect(sql).toContain('not in ($3, $4)')
+    expect(params).toEqual([ORG_ID, 'pennylane', '9001', '9002'])
+  })
+
+  it('relecture vide : supprime toutes les factures Pennylane de l’association', async () => {
+    await deletePennylaneInvoicesNotInDao(ORG_ID, [])
+
+    const [{sql, params}] = sent
+    expect(sql).not.toContain('not in')
+    expect(params).toEqual([ORG_ID, 'pennylane'])
   })
 })

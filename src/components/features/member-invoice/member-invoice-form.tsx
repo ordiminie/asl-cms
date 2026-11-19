@@ -93,7 +93,7 @@ const initialValues = (
 ): MemberInvoiceFormSchemaType =>
   invoice
     ? {
-        parcelId: invoice.parcelId,
+        parcelId: invoice.parcelId ?? '',
         year: String(invoice.year),
         amount: formatAmountCents(invoice.amountCents),
         issuedOn: isoToFrenchDate(invoice.issuedOn),

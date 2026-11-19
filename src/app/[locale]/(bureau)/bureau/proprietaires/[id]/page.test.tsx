@@ -49,6 +49,7 @@ vi.mock('./actions', () => ({
   designateMemberProfileHolderAction: vi.fn(),
   removeMemberProfileEmailAction: vi.fn(),
   updateMemberProfileEmailAction: vi.fn(),
+  updateMemberProfilePennylaneIdAction: vi.fn(),
 }))
 
 import {render, screen, userEvent, within} from '@/__tests__/customRender'
@@ -86,6 +87,7 @@ const profile = {
   incomplete: false,
   emails: [],
   account: {status: 'mail_only' as const},
+  pennylaneCustomerId: null,
   roleCard: {
     reading: 'no_account' as const,
     canEdit: false,
@@ -329,6 +331,8 @@ describe('/bureau/proprietaires/[id] — carte « Factures » (s19, écran 2)', 
   const INVOICE_ID = '66666666-6666-4666-8666-666666666666'
   const invoices = (canWrite: boolean) => ({
     canWrite,
+    syncedFromPennylane: false,
+    syncedAt: null,
     invoices: [
       {
         id: INVOICE_ID,
@@ -342,6 +346,7 @@ describe('/bureau/proprietaires/[id] — carte « Factures » (s19, écran 2)', 
         dueOn: '2026-04-15',
         amountCents: 41250,
         status: 'En attente',
+        hasPdf: false,
         subject: 'Cotisation et eau 2026',
         statusClass: 'unpaid' as const,
       },

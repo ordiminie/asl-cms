@@ -28,9 +28,12 @@ export type MemberInvoice = {
   id: string
   /** La fiche facturee : la seule cle de rattachement. */
   memberProfileId: string
-  /** Le terrain facture, descriptif. */
-  parcelId: string
-  parcelNumber: string
+  /**
+   * Le terrain facture, descriptif. Nul pour une facture Pennylane : son
+   * terrain est celui de la fiche a la date d'emission (ADR 062 §4).
+   */
+  parcelId: string | null
+  parcelNumber: string | null
   meterNumber: string | null
   source: MemberInvoiceSource
   year: number
@@ -38,6 +41,8 @@ export type MemberInvoice = {
   dueOn: string
   amountCents: number
   status: string
+  /** La source fournit un PDF (s20, ADR 062 §6) ; jamais son adresse. */
+  hasPdf: boolean
 }
 
 /** Bornes de l'annee d'une facture : un garde-fou de saisie, pas un parametre. */
@@ -88,5 +93,9 @@ export type BoardInvoiceDTO = MemberInvoice & {
 /** La carte « Factures » d'une fiche : ses factures, et si le site saisit. */
 export type BoardMemberInvoicesDTO = {
   canWrite: boolean
+  /** Les factures viennent de Pennylane (s20) : lecture seule, mise a jour. */
+  syncedFromPennylane: boolean
+  /** Derniere synchronisation reussie (ISO) ; nulle sans elle. */
+  syncedAt: string | null
   invoices: BoardInvoiceDTO[]
 }

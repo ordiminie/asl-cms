@@ -86,6 +86,8 @@ beforeEach(() => {
   } as MemberProfileDTO)
   vi.mocked(getMemberInvoicesForBureauDal).mockResolvedValue({
     canWrite: true,
+    syncedFromPennylane: false,
+    syncedAt: null,
     invoices: [],
   })
   vi.mocked(getMemberParcelsForBureauDal).mockResolvedValue({
@@ -145,6 +147,8 @@ describe('/bureau/proprietaires/[id]/factures/nouvelle (s19, écran 3)', () => {
   it('introuvable quand le fournisseur de l’association ne permet pas la saisie', async () => {
     vi.mocked(getMemberInvoicesForBureauDal).mockResolvedValue({
       canWrite: false,
+      syncedFromPennylane: false,
+      syncedAt: null,
       invoices: [],
     })
 

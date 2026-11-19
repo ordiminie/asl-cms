@@ -4,6 +4,7 @@ import {
   eq,
   getTableColumns,
   gt,
+  inArray,
   isNotNull,
   isNull,
   lte,
@@ -294,4 +295,35 @@ export const getMemberFormerParcelsDao = async (
   return rows.flatMap((row) =>
     row.endsOn === null ? [] : [{...row, endsOn: row.endsOn}]
   )
+}
+
+/** Une periode de propriete, avec le numero et le compteur de la parcelle. */
+export type OwnershipPeriodRow = {
+  memberProfileId: string
+  number: string
+  meterNumber: string | null
+  startsOn: string
+  endsOn: string | null
+}
+
+/**
+ * Toutes les periodes des fiches donnees (s20, ADR 062 §4) : le terrain d'une
+ * facture Pennylane est celui de sa fiche a la date d'emission, filtre par
+ * la regle pure de l'appelant.
+ */
+export const listOwnershipPeriodsByProfilesDao = async (
+  memberProfileIds: readonly string[]
+): Promise<OwnershipPeriodRow[]> => {
+  if (memberProfileIds.length === 0) return []
+  return getDb()
+    .select({
+      memberProfileId: parcelOwnership.memberProfileId,
+      number: parcel.number,
+      meterNumber: parcel.meterNumber,
+      startsOn: parcelOwnership.startsOn,
+      endsOn: parcelOwnership.endsOn,
+    })
+    .from(parcelOwnership)
+    .innerJoin(parcel, eq(parcel.id, parcelOwnership.parcelId))
+    .where(inArray(parcelOwnership.memberProfileId, [...memberProfileIds]))
 }

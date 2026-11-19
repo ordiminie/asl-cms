@@ -13,6 +13,10 @@ import {
   toMemberInvoiceFields,
 } from '@/components/features/member-invoice/member-invoice-form-validation'
 import {
+  createMemberBillingFormSchema,
+  type MemberBillingActionResult,
+} from '@/components/features/member-profile/member-billing-validation'
+import {
   createMemberEmailFormSchema,
   MEMBER_EMAIL_FORM_FIELDS,
   type MemberProfileEmailActionResult,
@@ -31,6 +35,7 @@ import {
   removeMemberProfileEmailService,
   updateMemberProfileEmailService,
 } from '@/services/facades/member-profile-email-service-facade'
+import {updateMemberProfilePennylaneIdService} from '@/services/facades/member-profile-service-facade'
 import type {MemberEmailRole} from '@/services/types/domain/member-email-types'
 import type {
   CreateMemberInvoiceResult,
@@ -343,5 +348,68 @@ export async function updateMemberInvoiceAction(
     return toInvoiceActionResult(result, t)
   } catch (error) {
     return toInvoiceFailure(error, t)
+  }
+}
+
+/**
+ * « Enregistrer » de la carte « Facturation » (s20, critere 4) : l'identifiant
+ * client Pennylane de la fiche, pour le tenant du domaine appele. Un
+ * identifiant deja porte par une autre fiche est rendu sur le champ, cette
+ * fiche nommee ; rien n'est alors revalide.
+ */
+export async function updateMemberProfilePennylaneIdAction(
+  _prevState: MemberBillingActionResult | undefined,
+  formData: FormData
+): Promise<MemberBillingActionResult> {
+  const tenant = await requireCurrentTenantDal()
+  const t = await getTranslations('BureauMemberProfilesPage')
+
+  try {
+    await requireActionAuth()
+
+    const validation = createMemberBillingFormSchema(t).safeParse({
+      pennylaneCustomerId: readField(formData, 'pennylaneCustomerId'),
+    })
+    if (!validation.success) {
+      return {
+        status: 'invalid',
+        errors: validation.error.issues.map((issue) => ({
+          field: 'pennylaneCustomerId',
+          message: issue.message,
+        })),
+      }
+    }
+
+    const result = await updateMemberProfilePennylaneIdService({
+      organizationId: tenant.id,
+      memberProfileId: readField(formData, 'memberProfileId'),
+      pennylaneCustomerId: validation.data.pennylaneCustomerId,
+    })
+    if (result.status === 'not_found') {
+      return {status: 'error', message: t('errors.notFound')}
+    }
+    if (result.status === 'pennylane_id_taken') {
+      return {
+        status: 'invalid',
+        errors: [
+          {
+            field: 'pennylaneCustomerId',
+            message: t('detail.billing.errors.taken', {
+              name: result.holderName,
+            }),
+          },
+        ],
+      }
+    }
+    revalidateMemberProfileScreens()
+    return {status: 'saved'}
+  } catch (error) {
+    return {
+      status: 'error',
+      message:
+        error instanceof AuthorizationError
+          ? t('errors.forbidden')
+          : t('errors.failed'),
+    }
   }
 }

@@ -9,3 +9,5 @@ export const updateMyContactService =
   memberSpaceServiceInterceptor.updateMyContactService
 export const getMyInvoicesService =
   memberSpaceServiceInterceptor.getMyInvoicesService
+export const getMyInvoicePdfUrlService =
+  memberSpaceServiceInterceptor.getMyInvoicePdfUrlService

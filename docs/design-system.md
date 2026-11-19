@@ -650,6 +650,9 @@ coupée à deux lignes, puis « Google peut raccourcir ces textes ou en choisir 
 **toujours la valeur de repli**, jamais un champ vide ; sans description du tout : « Extrait choisi
 par Google dans la page. »
 
+Une **carte d'état** peut suivre la carte de sa section, et un texte long peut porter des lignes
+« clé = valeur » (s20 : « Synchronisation Pennylane », « Libellés des statuts ») : voir §3.15.
+
 ### 3.2 États — vide, chargement, erreur, succès
 
 | État           | Forme imposée                                                                                                                                                                                                                   |
@@ -891,6 +894,30 @@ et versés ici par le plan de s27. Aucun ne crée de token ni de composant : ils
   au moins une adresse email active, sans adresse email active, filet, total), puis **Adresses**
   (qui recevront la campagne, désinscrites). Le même décompte vaut pour les trois cibles et pour la
   composition d'un groupe.
+
+### 3.15 Formes retenues par s20 — les factures Pennylane
+
+Écarts de la maquette `docs/designs/s20-factures-pennylane.md` (gaps 1 à 3), versés ici par le plan de
+s20. Aucun ne crée de token ni de composant : ils composent l'existant.
+
+- **Carte d'état après la carte de sa section** (gap 1) — une carte qui n'est pas un réglage du
+  registre (« Synchronisation Pennylane ») se place **juste après** la carte de la section qu'elle
+  éclaire (« Factures »), et n'est rendue que lorsque le réglage qui la justifie est actif
+  (`billing.provider` = Pennylane). Même gabarit que les cartes générées (§3.1). Son bouton
+  (« Mettre à jour maintenant », `outline`, icône `RefreshCw`) n'envoie jamais le formulaire des
+  réglages : il appelle sa propre action. Pendant l'action, les nombres passent en `skeleton`.
+  Précédent : l'aperçu « Dans Google » de s11.
+- **Réglage « clé = valeur » par ligne** (gap 2) — rendu comme le texte long existant (§3.1 :
+  `textarea` en `data`, compteur), l'aide donne la syntaxe (« le statut tel que Pennylane l'écrit,
+  « = », puis le mot que lisent les membres »). Une ligne sans « = » est ignorée ; une valeur sans
+  libellé s'affiche telle quelle.
+- **Bouton de téléchargement par ligne** (gap 3) — dans « Mes factures », la colonne « Facture » porte
+  un bouton `outline` « PDF » (icône `Download`, nom accessible complet : « PDF de la facture 2026,
+  parcelle 12 ») ; sous 640 px, « Télécharger le PDF » pleine largeur, 56 px. C'est l'**unique**
+  action de la ligne : « une seule action par ligne » (§2.1) reste tenue. Sans PDF, la cellule dit
+  « PDF non disponible » en `muted`, **sans bouton** : jamais un lien mort. L'adresse du PDF est
+  demandée au clic, jamais écrite dans la page ; un échec se dit par une alerte ancrée
+  `role="alert"`.
 
 ---
 
