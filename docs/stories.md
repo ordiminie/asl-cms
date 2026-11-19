@@ -360,7 +360,7 @@ cadrage définit déjà — les deux adresses de `CDCT §4.6`, qui sont la raiso
 s08 et s10 lisent — et la teinte ; les clés propres à une story arrivent avec elle (plafond quotidien des campagnes en s26, budget d'envoi en s52,
 activation des relances en s29…). Aucune clé n'est déclarée pour démontrer un type : nombre et booléen
 se prouvent sur le registre et sa clé de test, pas par des réglages sans usage affichés en back-office.
-Les types viendront aussi avec leurs stories : texte libre (s42), URL (s21, s33), liste de statuts (s19).
+Les types viendront aussi avec leurs stories : texte libre (s42), URL (s33 ; plus s21 depuis son amendement du 19/11/2026), liste de statuts (s19).
 
 **Accès** : la page de réglages et son contrôle d'accès sont posés par s01b — le bureau (Bureau et
 Président(e)) de l'association du domaine appelé, et le SuperAdmin, conformément au PRD. s02 applique la
@@ -1917,28 +1917,43 @@ intégration), secrets par `@/env`, jamais `process.env` en direct.
 
 ## Story s21-redirection-paiement — Payer sa facture
 
-**En tant que** membre propriétaire **je veux** être redirigé vers l'espace de paiement de l'association
-**afin de** régler ma facture sans quitter mon parcours.
+**En tant que** membre propriétaire **je veux** être redirigé vers la page de paiement de ma facture
+**afin de** la régler sans quitter mon parcours.
+
+> **Amendée le 19 novembre 2026** (lancement de s21) : le lien de paiement n'est pas une URL de
+> l'association. Pennylane le porte **sur chaque facture**, quand l'association a activé le paiement en
+> ligne de son côté ; sinon le règlement reste un **virement**, comme aujourd'hui. Les critères d'origine
+> (« URL de redirection = paramètre de tenant ») sont remplacés, et la story passe après s20.
 
 ### Complexity
 
-1
+2
 
 ### Acceptance criteria
 
-- [ ] Une facture impayée affiche un bouton de paiement qui ouvre l'espace de paiement externe configuré pour le tenant.
-- [ ] L'URL de redirection est un paramètre de tenant, pas une constante du code.
+- [ ] Une facture impayée dont le fournisseur de factures donne un lien de paiement affiche un bouton de paiement qui ouvre ce lien.
+- [ ] Le lien vient du fournisseur, facture par facture (contrat `MemberBillingProvider`), jamais d'une constante du code ni d'un réglage saisi à la main ; le fournisseur manuel (s19) n'en donne aucun.
+- [ ] Une facture impayée sans lien de paiement n'affiche aucun bouton : une phrase dit que le règlement se fait par virement, et renvoie au bureau pour toute question.
 - [ ] Le parcours de paiement se réduit à un lien sortant : aucun formulaire de paiement n'est rendu par le site et aucun champ de moyen de paiement n'existe dans son schéma de données (test sur le formulaire et sur le schéma).
-- [ ] Une facture qui n'est pas « impayée » au sens du prédicat de s19 n'affiche pas de bouton de paiement.
+- [ ] Une facture qui n'est pas « impayée » au sens du prédicat de s19 n'affiche ni bouton de paiement ni phrase de virement.
+- [ ] Un lien qui n'est pas une adresse `https` n'est jamais rendu : la facture se comporte comme sans lien.
 
 ### Dependencies
 
-s02, s19
+s02, s19, s20
 
 ### Agentic notes
 
-Réf. `V5 §5.3`, `CDCT §5.3`. Simple lien sortant, d'où la complexité 1. C'est la story la plus courte
-du projet et c'est volontaire : tout le reste est chez Pennylane.
+Réf. `V5 §5.3`, `CDCT §5.3`. Toujours un simple lien sortant : tout le paiement est chez Pennylane.
+
+**À vérifier d'abord par `/ks-research`** : comment Pennylane expose ce lien. Au 19 novembre 2026, la
+référence de l'API v2 (`GET customer_invoices/{id}`) ne décrit **aucun champ** de lien de paiement ;
+seul `public_file_url` existe (le PDF, qui expire au bout de 30 minutes et peut être nul). D'après une
+réponse du forum Pennylane, ce PDF porte un bouton « Payer » vers `/public/view_invoice?encrypted_id=…`.
+À confirmer avec la clé de La Fourche (lecture seule) ou le cabinet. Si l'API ne livre aucun lien
+exploitable, la story se réduit à la phrase de virement, et le bouton « Télécharger le PDF » de s20
+reste le seul chemin vers le « Payer » de Pennylane. Ne jamais construire soi-même une URL
+Pennylane à partir d'un identifiant.
 
 Enjeu réglementaire, pas technique : cette frontière est ce qui maintient le projet hors DSP2/PCI
 (angle n°4 du PRD). Toute tentative d'« améliorer » en capturant un moyen de paiement sort du
@@ -4296,7 +4311,7 @@ Déclarer la nouvelle donnée à l'inventaire de s12c et à l'export de s38 ; si
 | s18  | historique-consommation          | 2   | s17, s53                                                                                                                                      | B    |
 | s19  | factures-liste                   | 3   | s02, s12, s12d, s53                                                                                                                           | B    |
 | s20  | factures-pennylane               | 3   | s02, s19                                                                                                                                      | B    |
-| s21  | redirection-paiement             | 1   | s02, s19                                                                                                                                      | B    |
+| s21  | redirection-paiement             | 2   | s02, s19, s20                                                                                                                                 | B    |
 | s22  | signalement-membre               | 2   | s10, s12, s12d                                                                                                                                | B    |
 | s23  | questions-bureau                 | 2   | s02, s10, s12, s12d                                                                                                                           | B    |
 | s24  | notes-internes-membre            | 2   | s12                                                                                                                                           | B    |
