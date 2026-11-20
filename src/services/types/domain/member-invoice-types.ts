@@ -2,8 +2,9 @@
  * Types de domaine des factures des membres (s19, ADR 059). Ecrits sans
  * importer le modele Drizzle (`rule-architecture`).
  *
- * **Aucun champ de paiement** : le produit ne fait transiter aucune donnee
- * bancaire ; le paiement (s21) sera une redirection.
+ * **Aucun moyen de paiement** : le produit ne fait transiter aucune donnee
+ * bancaire. Le paiement (s21, ADR 063) est un lien sortant, donne par le
+ * fournisseur facture par facture : un lien, jamais un moyen de paiement.
  */
 
 /**
@@ -43,6 +44,11 @@ export type MemberInvoice = {
   status: string
   /** La source fournit un PDF (s20, ADR 062 §6) ; jamais son adresse. */
   hasPdf: boolean
+  /**
+   * Le lien de paiement de la facture, tel que le fournisseur le donne
+   * (s21, ADR 063) ; nul sans lien. Non garde : le service le filtre.
+   */
+  paymentUrl: string | null
 }
 
 /** Bornes de l'annee d'une facture : un garde-fou de saisie, pas un parametre. */
@@ -84,8 +90,11 @@ export type CreateMemberInvoiceResult =
 export type UpdateMemberInvoiceResult =
   {status: 'saved'} | {status: 'not_found'} | MemberInvoiceWriteRefusal
 
-/** Une facture dans le back-office : sa source et son objet compose. */
-export type BoardInvoiceDTO = MemberInvoice & {
+/**
+ * Une facture dans le back-office : sa source et son objet compose. Sans le
+ * lien de paiement, qui ne sert qu'au membre (ADR 063 §4).
+ */
+export type BoardInvoiceDTO = Omit<MemberInvoice, 'paymentUrl'> & {
   subject: string
   statusClass: InvoiceStatusClass
 }

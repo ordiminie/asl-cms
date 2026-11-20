@@ -10,7 +10,7 @@ import {Client} from 'pg'
 
 /**
  * Factures des membres — s19, critères 1, 7, 8 et 9, et isolation entre
- * associations.
+ * associations ; s21, le règlement d'une facture (critères 3 et 5).
  *
  * Ce que seuls un navigateur, deux domaines et une vraie base prouvent : le
  * membre lit les factures de **tous** ses terrains, triées, chacune avec sa
@@ -470,6 +470,56 @@ test.describe('Factures des membres (s19)', () => {
       expect(stored.rows[0].amount_cents).toBe(RUN_AMOUNT_CENTS)
     } finally {
       await owner.context().close()
+    }
+  })
+})
+
+/**
+ * s21 — payer sa facture. Aucun fournisseur ne donne de lien aujourd'hui
+ * (ADR 063) : le bouton « Payer » n'est prouvé qu'en unitaire ; ici, la
+ * mention de virement sur une impayée du seed, et rien sur une réglée.
+ */
+test.describe('Payer sa facture (s21)', () => {
+  test.beforeEach(async () => {
+    await resetRateLimits()
+  })
+
+  test('critères 3 et 5 — l’impayée se règle par virement et renvoie au bureau ; la réglée n’a rien', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000)
+    const lefevre = await newMemberSession(browser, TENANT_A, LEFEVRE.email)
+    try {
+      await expect(myInvoices(lefevre)).toBeVisible({timeout: 20_000})
+      await expect(
+        myInvoices(lefevre).getByRole('columnheader', {name: 'Règlement'})
+      ).toBeVisible()
+
+      const unpaid = invoiceRows(lefevre).filter({hasText: '412,50 €'})
+      await expect(unpaid).toHaveCount(1)
+      await expect(unpaid).toContainText('En attente')
+      await expect(unpaid).toContainText('Par virement')
+      await expect(unpaid.getByRole('link')).toHaveCount(0)
+
+      const settled = invoiceRows(lefevre).filter({hasText: '398,00 €'})
+      await expect(settled).toHaveCount(1)
+      await expect(settled).toContainText('Payée')
+      await expect(settled).not.toContainText('virement')
+      await expect(settled.getByRole('link')).toHaveCount(0)
+
+      const notice = myInvoices(lefevre).getByRole('note')
+      await expect(notice).toHaveCount(1)
+      await expect(notice).toContainText(
+        'Les factures à régler se paient par virement.'
+      )
+      await expect(
+        notice.getByRole('link', {name: 'page Contact'})
+      ).toHaveAttribute('href', '/contact')
+      await expect(
+        myInvoices(lefevre).getByRole('link', {name: /^Payer/})
+      ).toHaveCount(0)
+    } finally {
+      await lefevre.context().close()
     }
   })
 })
