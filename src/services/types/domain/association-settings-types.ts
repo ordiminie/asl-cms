@@ -1,5 +1,12 @@
 import {z} from 'zod'
 
+import {
+  CAMPAIGN_NATURES,
+  CAMPAIGN_TEMPLATE_IDS,
+  CampaignNature,
+  CampaignTemplateId,
+  DEFAULT_CAMPAIGN_NATURE,
+} from './campaign-types'
 import {SEO_DESCRIPTION_MAX} from './seo-types'
 
 /**
@@ -21,7 +28,8 @@ export type AssociationSettingPage = 'settings' | 'identity'
  * Carte de la page « Reglages » qui regroupe le parametre. Absente : la carte
  * d'origine, celle des adresses de notification.
  */
-export type AssociationSettingSection = 'seo' | 'legal' | 'sending' | 'billing'
+export type AssociationSettingSection =
+  'seo' | 'legal' | 'sending' | 'campaign_nature' | 'billing'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -45,6 +53,11 @@ type AssociationSettingDefinitionBase = {
    * modifier ; le bureau le lit. Absent : le bureau le modifie.
    */
   editableBy?: AssociationSettingEditor
+  /**
+   * Phrase affichee sous un reglage lu en lecture seule par le bureau, a la
+   * place de la phrase commune (s27b). Absente : la phrase commune.
+   */
+  readOnlyHelpKey?: string
 }
 
 export type AssociationSettingEditor = 'super_admin'
@@ -309,6 +322,38 @@ export const isAccentHue = (value: unknown): value is AccentHue =>
 export const getAccentHueName = (hue: AccentHue): AccentHueName =>
   ACCENT_HUES.find((candidate) => candidate.hue === hue)?.name ?? 'water'
 
+/**
+ * Cle de la nature d'un type d'envoi (s27b, ADR 064) : une par valeur de
+ * `CAMPAIGN_TEMPLATE_IDS`. s29 et s42 ajouteront les leurs.
+ */
+export const campaignNatureSettingKeyOf = (
+  templateId: CampaignTemplateId
+): string => `campaign.nature.${templateId}`
+
+/**
+ * Les cinq reglages de nature, `facultative` par defaut, reserves au
+ * SuperAdmin (arbitrage du 20/11/2026). La classification d'une association
+ * est une valeur de reglage, jamais une constante (ADR 010).
+ */
+const CAMPAIGN_NATURE_SETTINGS: AssociationSettingDefinition[] =
+  CAMPAIGN_TEMPLATE_IDS.map((templateId) => ({
+    key: campaignNatureSettingKeyOf(templateId),
+    type: 'choice',
+    required: false,
+    default: {value: DEFAULT_CAMPAIGN_NATURE},
+    options: CAMPAIGN_NATURES.map((nature) => ({
+      value: nature,
+      labelKey: `campaignNature.options.${nature}`,
+    })),
+    labelKey: `campaignNature.templates.${templateId}`,
+    helpKey: 'campaignNature.help',
+    whenEmptyKey: 'campaignNature.whenEmpty',
+    readOnlyHelpKey: 'campaignNature.superAdminOnly',
+    page: 'settings',
+    section: 'campaign_nature',
+    editableBy: 'super_admin',
+  }))
+
 /** Le registre de production. */
 export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
   {
@@ -508,6 +553,7 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     page: 'settings',
     section: 'sending',
   },
+  ...CAMPAIGN_NATURE_SETTINGS,
   {
     key: MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
     type: 'text',
@@ -1026,3 +1072,24 @@ export const getDefaultLandAddress = (
     null,
   city: textSettingOf(settings, MEMBER_DEFAULT_LAND_CITY_SETTING_KEY) ?? null,
 })
+
+/**
+ * La nature d'un type d'envoi (s27b, ADR 064) : `statutaire` seulement si le
+ * reglage le dit ; toute valeur absente, vide ou inconnue se lit
+ * `facultative` — sur-exclure est le sens sur.
+ */
+export const getCampaignNature = (
+  settings: ResolvedAssociationSettings,
+  templateId: CampaignTemplateId
+): CampaignNature =>
+  settings[campaignNatureSettingKeyOf(templateId)]?.value === 'statutaire'
+    ? 'statutaire'
+    : DEFAULT_CAMPAIGN_NATURE
+
+/** Les types d'envoi statutaires de l'association, dans l'ordre des modeles. */
+export const getStatutoryTemplateIds = (
+  settings: ResolvedAssociationSettings
+): CampaignTemplateId[] =>
+  CAMPAIGN_TEMPLATE_IDS.filter(
+    (templateId) => getCampaignNature(settings, templateId) === 'statutaire'
+  )

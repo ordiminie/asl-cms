@@ -56,7 +56,10 @@ beforeEach(() => {
   vi.mocked(getAssociationSettingsDal).mockResolvedValue({
     'contact.email': {value: 'contact@lespins.example', isDefault: false},
   } as never)
-  vi.mocked(getUnsubscribePageStateDal).mockResolvedValue({status: 'confirm'})
+  vi.mocked(getUnsubscribePageStateDal).mockResolvedValue({
+    status: 'confirm',
+    statutoryTemplateIds: ['general_assembly'],
+  })
   vi.mocked(confirmUnsubscribeAction).mockResolvedValue({
     status: 'unsubscribed',
   })
@@ -106,7 +109,10 @@ describe('/desinscription/[jeton] — écran 6 du design s25', () => {
   })
 
   it('c · déjà désinscrit', async () => {
-    vi.mocked(getUnsubscribePageStateDal).mockResolvedValue({status: 'already'})
+    vi.mocked(getUnsubscribePageStateDal).mockResolvedValue({
+      status: 'already',
+      statutoryTemplateIds: [],
+    })
 
     await renderPage()
 
@@ -156,10 +162,22 @@ describe('/desinscription/[jeton] — écran 6 du design s25', () => {
     expect(screen.getByRole('button', {name: 'Me désinscrire'})).toBeEnabled()
   })
 
-  it('ne dit jamais ce que le membre continuera de recevoir', async () => {
+  it('dit ce que le membre continuera de recevoir, d’après la classification lue (s27b, critère 5)', async () => {
+    await renderPage()
+
+    expect(
+      screen.getByRole('list', {
+        name: 'Vous continuerez de recevoir, parce que votre appartenance à l’association vous y engage :',
+      })
+    ).toHaveTextContent('Convocation à l’AG')
+  })
+
+  it('lecture en échec : aucune promesse sur ce qui continue', async () => {
+    vi.mocked(getUnsubscribePageStateDal).mockRejectedValue(new Error('panne'))
+
     const {container} = await renderPage()
 
-    expect(container.textContent).not.toMatch(/continuer|obligatoire/i)
+    expect(container.textContent).not.toMatch(/continuerez|plus aucune/i)
   })
 
   it('noindex et aucun référent : le jeton est dans l’URL', () => {

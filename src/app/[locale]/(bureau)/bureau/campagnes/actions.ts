@@ -142,7 +142,11 @@ export async function previewCampaignAction(
     })
     if (result.status !== 'ok') return result
 
-    const plan = await previewCampaignPlanService(tenant.id, target)
+    const plan = await previewCampaignPlanService(
+      tenant.id,
+      target,
+      validation.values.templateId as CampaignTemplateId
+    )
     return {status: 'ok', preview: result.preview, plan}
   } catch (error) {
     return failureOf(error, t)
@@ -180,12 +184,14 @@ export async function sendCampaignAction(
 }
 
 /**
- * Le decompte de la cible choisie, relu a chaque changement de cible dans le
- * composeur (s27, critere 5). N'ecrit rien ; le service reverifie le droit et
- * refuse un groupe introuvable.
+ * Le decompte de la cible choisie, relu a chaque changement de cible ou de
+ * modele dans le composeur (s27, critere 5 ; s27b : le modele porte la
+ * nature). N'ecrit rien ; le service reverifie le droit, refuse un groupe
+ * introuvable et un modele inconnu.
  */
 export async function readCampaignTargetAction(
-  target: CampaignTarget
+  target: CampaignTarget,
+  templateId: CampaignTemplateId
 ): Promise<CampaignTargetActionResult> {
   const tenant = await requireCurrentTenantDal()
   const t = await getTranslations('CampaignsBureau')
@@ -193,7 +199,11 @@ export async function readCampaignTargetAction(
   try {
     await requireActionAuth()
 
-    const context = await getCampaignComposerContextService(tenant.id, target)
+    const context = await getCampaignComposerContextService(
+      tenant.id,
+      target,
+      templateId
+    )
     return {
       status: 'ok',
       counts: context.counts,

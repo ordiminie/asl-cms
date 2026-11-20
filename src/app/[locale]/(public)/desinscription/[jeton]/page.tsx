@@ -13,6 +13,10 @@ import {
 import {Skeleton} from '@/components/ui/skeleton'
 import {getIdentityVersionFromKey} from '@/services/types/domain/association-identity-types'
 import {CONTACT_EMAIL_SETTING_KEY} from '@/services/types/domain/association-settings-types'
+import type {
+  CampaignTemplateId,
+  UnsubscribePageState,
+} from '@/services/types/domain/campaign-types'
 
 import {confirmUnsubscribeAction} from './actions'
 
@@ -50,12 +54,26 @@ export default async function UnsubscribePage({params}: UnsubscribePageProps) {
 const contactEmailOf = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() !== '' ? value : null
 
+/** Les types statutaires lus avec l'etat (s27b) ; aucun pour un lien invalide. */
+const statutoryTemplateIdsOf = (
+  read: UnsubscribePageState
+): CampaignTemplateId[] | null =>
+  read.status === 'invalid' ? null : read.statutoryTemplateIds
+
+type ReadState = {
+  state: UnsubscribeScreenState
+  statutoryTemplateIds: CampaignTemplateId[] | null
+}
+
 async function UnsubscribeSection({token}: {token: string}) {
   const tenant = await requireCurrentTenantDal()
-  const [state, settings] = await Promise.all([
+  const [{state, statutoryTemplateIds}, settings] = await Promise.all([
     getUnsubscribePageStateDal(tenant.id, token)
-      .then((read): UnsubscribeScreenState => read.status)
-      .catch((): UnsubscribeScreenState => 'error'),
+      .then((read): ReadState => ({
+        state: read.status,
+        statutoryTemplateIds: statutoryTemplateIdsOf(read),
+      }))
+      .catch((): ReadState => ({state: 'error', statutoryTemplateIds: null})),
     getAssociationSettingsDal(tenant.id).catch(() => undefined),
   ])
 
@@ -73,6 +91,7 @@ async function UnsubscribeSection({token}: {token: string}) {
           settings?.[CONTACT_EMAIL_SETTING_KEY]?.value
         )}
         initialState={state}
+        statutoryTemplateIds={statutoryTemplateIds}
         confirmAction={confirmUnsubscribeAction}
       />
     </div>

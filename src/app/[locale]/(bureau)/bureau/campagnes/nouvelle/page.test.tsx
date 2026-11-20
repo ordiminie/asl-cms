@@ -78,9 +78,18 @@ beforeEach(() => {
       profiles: 3,
       recipients: 2,
       unsubscribed: 0,
+      reinstated: 0,
+      nature: 'facultative' as const,
     },
     reachableMembers: [],
     groups: [],
+    templateNatures: {
+      free: 'facultative',
+      reminder: 'facultative',
+      invoice: 'facultative',
+      general_assembly: 'facultative',
+      post_assembly_documents: 'facultative',
+    },
   })
 })
 

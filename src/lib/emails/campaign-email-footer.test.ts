@@ -27,6 +27,7 @@ describe('getCampaignFooterTexts — hors d’une requête Next (s26)', () => {
       legalMentions: 'Siège : 1 allée des Pins',
       reason:
         'Vous recevez cet email parce que vous êtes membre de ASL Les Pins.',
+      statutoryNotice: null,
       unsubscribeLabel: 'Ne plus recevoir ces campagnes',
       notice: 'Se désinscrire ne vous prive d’aucune information obligatoire.',
     })

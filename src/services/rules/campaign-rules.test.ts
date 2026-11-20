@@ -213,6 +213,7 @@ const row = (overrides: Record<string, unknown> = {}) => ({
   preheader: null,
   bodyMarkdown: 'Bonjour {nom}',
   templateId: 'free',
+  nature: 'facultative' as const,
   targetKind: 'all_members',
   targetGroupId: null,
   targetGroupName: null,
@@ -279,6 +280,7 @@ describe('toCampaignDto — liste blanche', () => {
         'preheader',
         'bodyMarkdown',
         'templateId',
+        'nature',
         'targetKind',
         'targetGroupName',
         'targetGroupDeleted',
@@ -299,6 +301,13 @@ describe('toCampaignDto — liste blanche', () => {
     )
     expect(JSON.stringify(dto)).not.toMatch(/unsubscribeToken|token/i)
     expect(dto.bodyMarkdown).toBe('Bonjour {nom}')
+  })
+
+  it('rend la nature figée à l’envoi (s27b, ADR 064)', () => {
+    expect(toCampaignDto(row(), [], []).nature).toBe('facultative')
+    expect(
+      toCampaignDto(row({nature: 'statutaire' as const}), [], []).nature
+    ).toBe('statutaire')
   })
 
   it('rend le nom copié du groupe visé, et dit s’il a été supprimé depuis (s27, ADR 060 §5)', () => {
@@ -694,6 +703,7 @@ describe('campaignTargetCountsOf — décompte en fiches puis en adresses (crit�
         recipients: [{}, {}, {}] as never,
         withoutEmail: 2,
         unsubscribed: 1,
+        reinstated: 0,
         profilesWithEmail: 4,
       })
     ).toEqual({
@@ -702,6 +712,139 @@ describe('campaignTargetCountsOf — décompte en fiches puis en adresses (crit�
       profiles: 6,
       recipients: 3,
       unsubscribed: 1,
+      reinstated: 0,
+      nature: 'facultative',
     })
+  })
+
+  it('rend les adresses désinscrites réintégrées d’un envoi statutaire (s27b)', () => {
+    expect(
+      campaignTargetCountsOf(
+        {
+          recipients: [{}, {}] as never,
+          withoutEmail: 0,
+          unsubscribed: 0,
+          reinstated: 1,
+          profilesWithEmail: 2,
+        },
+        'statutaire'
+      )
+    ).toMatchObject({
+      recipients: 2,
+      unsubscribed: 0,
+      reinstated: 1,
+      nature: 'statutaire',
+    })
+  })
+})
+
+/**
+ * s27b (ADR 064) : en `statutaire`, une adresse desinscrite reste
+ * destinataire, comptee `reinstated` ; en `facultative`, elle est exclue,
+ * comptee `unsubscribed`. Verifie sur les trois predicats.
+ */
+describe('computeCampaignTarget — nature de l’envoi (s27b, critère 3)', () => {
+  const row = (
+    memberProfileId: string,
+    email: string | null,
+    unsubscribed = false
+  ) => ({
+    memberProfileId,
+    name: `Fiche ${memberProfileId}`,
+    email,
+    unsubscribed,
+    currentParcelNumbers: [],
+    accountName: null,
+  })
+  const rows = [
+    row('a', 'a@x.fr'),
+    row('b', 'b@x.fr', true),
+    row('c', 'c@x.fr', true),
+    row('d', null),
+  ]
+  const only =
+    (...ids: string[]) =>
+    (candidate: {memberProfileId: string}) =>
+      ids.includes(candidate.memberProfileId)
+  const predicates = {
+    tous: () => true,
+    impayés: only('a', 'b', 'd'),
+    groupe: only('b', 'd'),
+  }
+
+  it.each(Object.entries(predicates))(
+    'cible « %s » : un désinscrit est exclu d’un envoi facultatif',
+    (_, isTargeted) => {
+      const target = computeCampaignTarget(rows, isTargeted, 'facultative')
+
+      expect(target.recipients.map((r) => r.memberProfileId)).not.toContain('b')
+      expect(target.reinstated).toBe(0)
+      expect(target.unsubscribed).toBeGreaterThan(0)
+    }
+  )
+
+  it.each(Object.entries(predicates))(
+    'cible « %s » : un désinscrit est réintégré dans un envoi statutaire',
+    (_, isTargeted) => {
+      const target = computeCampaignTarget(rows, isTargeted, 'statutaire')
+
+      expect(target.recipients.map((r) => r.memberProfileId)).toContain('b')
+      expect(target.unsubscribed).toBe(0)
+      expect(target.reinstated).toBeGreaterThan(0)
+    }
+  )
+
+  it('les deux natures comptent les mêmes adresses, rangées différemment', () => {
+    const optional = computeCampaignTarget(rows, predicates.impayés)
+    const statutory = computeCampaignTarget(
+      rows,
+      predicates.impayés,
+      'statutaire'
+    )
+
+    expect(optional).toMatchObject({unsubscribed: 1, reinstated: 0})
+    expect(optional.recipients.map((r) => r.memberProfileId)).toEqual(['a'])
+    expect(statutory).toMatchObject({unsubscribed: 0, reinstated: 1})
+    expect(statutory.recipients.map((r) => r.memberProfileId)).toEqual([
+      'a',
+      'b',
+    ])
+    expect(statutory.withoutEmail).toBe(optional.withoutEmail)
+    expect(statutory.profilesWithEmail).toBe(optional.profilesWithEmail)
+  })
+
+  it('une adresse partagée dont une fiche est désinscrite : une fois, réintégrée et portée par la fiche ciblée', () => {
+    const shared = [
+      row('cible', 'bernard@x.fr'),
+      row('hors-cible', 'Bernard@x.fr', true),
+    ]
+
+    const statutory = computeCampaignTarget(shared, only('cible'), 'statutaire')
+    expect(statutory.recipients.map((r) => r.memberProfileId)).toEqual([
+      'cible',
+    ])
+    expect(statutory).toMatchObject({unsubscribed: 0, reinstated: 1})
+
+    const optional = computeCampaignTarget(shared, only('cible'))
+    expect(optional.recipients).toEqual([])
+    expect(optional).toMatchObject({unsubscribed: 1, reinstated: 0})
+  })
+
+  it('une fiche sans adresse n’est jamais comptée désinscrite ni réintégrée', () => {
+    for (const nature of ['facultative', 'statutaire'] as const) {
+      const target = computeCampaignTarget([row('d', null)], undefined, nature)
+      expect(target).toMatchObject({
+        recipients: [],
+        withoutEmail: 1,
+        unsubscribed: 0,
+        reinstated: 0,
+      })
+    }
+  })
+
+  it('sans nature, l’envoi est facultatif', () => {
+    expect(computeCampaignTarget(rows)).toEqual(
+      computeCampaignTarget(rows, undefined, 'facultative')
+    )
   })
 })

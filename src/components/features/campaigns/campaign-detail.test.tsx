@@ -306,6 +306,24 @@ describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
     }
   )
 
+  it('Résumé : une campagne facultative dit sa nature et ses désinscrits exclus (s27b)', () => {
+    renderDetail(
+      campaignOf('a', {nature: 'facultative', unsubscribedCount: 15})
+    )
+
+    expect(card('Résumé')).toHaveTextContent('NatureFacultative')
+    expect(card('Résumé')).toHaveTextContent('Désinscrits exclus15')
+    expect(card('Résumé')).not.toHaveTextContent('Désinscrits qui l’ont reçue')
+  })
+
+  it('Résumé : une campagne statutaire dit sa nature figée et ses désinscrits qui l’ont reçue (s27b)', () => {
+    renderDetail(campaignOf('a', {nature: 'statutaire', unsubscribedCount: 15}))
+
+    expect(card('Résumé')).toHaveTextContent('NatureStatutaire')
+    expect(card('Résumé')).toHaveTextContent('Désinscrits qui l’ont reçue15')
+    expect(card('Résumé')).not.toHaveTextContent('Désinscrits exclus')
+  })
+
   it('Résumé : un groupe supprimé depuis garde son nom, suivi de « (supprimé) » (critère 6)', () => {
     renderDetail(
       campaignOf('a', {

@@ -952,7 +952,9 @@
       "footer": {
         "reason": "Vous recevez cet email parce que vous êtes membre de {name}.",
         "unsubscribe": "Ne plus recevoir ces campagnes",
-        "notice": "Se désinscrire ne vous prive d’aucune information obligatoire."
+        "notice": "Se désinscrire ne vous prive d’aucune information obligatoire.",
+        "statutoryNotice": "Ce message vous parvient même si vous vous êtes désinscrit des campagnes : votre appartenance à {name} vous engage à en être informé.",
+        "statutoryUnsubscribe": "Ne plus recevoir les campagnes facultatives"
       },
       "templates": {
         "reminder": {
@@ -2221,6 +2223,22 @@
     "billingProviders": {
       "manual": "Saisie par le bureau",
       "pennylane": "Pennylane"
+    },
+    "campaignNature": {
+      "templates": {
+        "free": "Message libre",
+        "reminder": "Relance manuelle",
+        "invoice": "Facture disponible",
+        "general_assembly": "Convocation à l’AG",
+        "post_assembly_documents": "Documents après l’AG"
+      },
+      "help": "Dit si les membres désinscrits des campagnes reçoivent ce type d’envoi.",
+      "options": {
+        "facultative": "Facultatif — les désinscrits ne le reçoivent pas",
+        "statutaire": "Statutaire — les désinscrits le reçoivent aussi"
+      },
+      "whenEmpty": "Sans choix enregistré : facultatif.",
+      "superAdminOnly": "Réglé par l’équipe technique de la plateforme, après avis du conseil RGPD : vous ne pouvez pas le modifier."
     }
   },
   "BureauSettingsPage": {
@@ -2248,6 +2266,10 @@
       "sending": {
         "title": "Envois",
         "description": "Le rythme d’envoi des campagnes. Un changement s’applique aux prochains envois ; une campagne déjà lancée garde son plan."
+      },
+      "campaign_nature": {
+        "title": "Nature des envois",
+        "description": "Un envoi statutaire atteint aussi les membres désinscrits : leur appartenance à l’association les engage à le recevoir. Un envoi facultatif ne les atteint pas."
       },
       "billing": {
         "title": "Factures",
@@ -4207,6 +4229,7 @@
         "recipientsNote": "Une adresse partagée par plusieurs fiches ne reçoit qu’un message.",
         "unsubscribed": "Adresses désinscrites",
         "unsubscribedNote": "Elles ne reçoivent pas les campagnes.",
+        "reinstatedNote": "Elles reçoivent celle-ci : c’est un envoi statutaire.",
         "none": "Aucun membre de cette cible n’a d’adresse email active. Rien ne peut être envoyé.",
         "noneUnpaid": "Aucun membre n’est en impayé aujourd’hui. Rien ne peut être envoyé."
       },
@@ -4261,6 +4284,10 @@
       "general_assembly": "Convoquer à l’assemblée générale.",
       "post_assembly_documents": "Annoncer la publication des documents de l’assemblée."
     },
+    "templateNatures": {
+      "facultative": "Envoi facultatif : les membres désinscrits ne le reçoivent pas.",
+      "statutaire": "Envoi statutaire : les membres désinscrits le reçoivent aussi."
+    },
     "detail": {
       "summary": "Résumé",
       "content": "Contenu envoyé",
@@ -4272,8 +4299,14 @@
         "recipients": "Destinataires",
         "withoutEmail": "Sans adresse email",
         "unsubscribed": "Désinscrits exclus",
+        "reinstated": "Désinscrits qui l’ont reçue",
+        "nature": "Nature",
         "dailySendCap": "Plafond",
         "dailySendCapValue": "<data>{cap}</data> envois par jour"
+      },
+      "natures": {
+        "facultative": "Facultative",
+        "statutaire": "Statutaire"
       },
       "targetKinds": {
         "all_members": "Tous les membres",
@@ -4346,6 +4379,7 @@
       "plan": {
         "label": "Destinataires et plan d’envoi",
         "recall": "<strong>{recipients, plural, one {# membre} other {# membres}}</strong> recevront cette campagne · {withoutEmail} sans email et {unsubscribed} désinscrits n’en recevront pas.",
+        "recallStatutory": "<strong>{recipients, plural, one {# membre} other {# membres}}</strong> recevront cette campagne, dont {reinstated} désinscrits (envoi statutaire) · {withoutEmail} sans email n’en recevront pas.",
         "alreadySent": "<data>{allotted}</data> envois de campagne sont déjà partis aujourd’hui : celle-ci commence avec les <data>{left}</data> qui restent.",
         "single": "Elle part <strong>en une seule fois, aujourd’hui</strong>. Vous n’avez rien à faire.",
         "title": "<strong>Elle part {days, plural, one {en une seule fois} other {en # jours}}{start, select, today {} tomorrow {, à partir de demain} other {, à partir du {date}}}</strong> :",
@@ -4475,6 +4509,8 @@
     }
   },
   "UnsubscribePage": {
+    "continues": "Vous continuerez de recevoir, parce que votre appartenance à l’association vous y engage :",
+    "nothingMore": "Vous ne recevrez plus aucune campagne de {name} à cette adresse.",
     "metadata": {
       "title": "Désinscription des campagnes"
     },

@@ -109,6 +109,7 @@ import {
   CONTACT_EMAIL_SETTING_KEY,
   getAccentHue,
   getCampaignDailySendCap,
+  getCampaignNature,
   getCampaignSendMaxAttempts,
   type ResolvedAssociationSettings,
 } from './types/domain/association-settings-types'
@@ -116,9 +117,11 @@ import {
   CAMPAIGN_RECIPIENT_SENDING_STALE_MS,
   CAMPAIGN_RECIPIENTS_PAGE_SIZE,
   CAMPAIGN_SUBJECT_MAX_TOTAL,
+  CAMPAIGN_TEMPLATE_IDS,
   CampaignByIdInput,
   CampaignComposerContextDTO,
   CampaignListPageDTO,
+  CampaignNature,
   CampaignPlanDTO,
   CampaignReadResult,
   CampaignRecipientFilter,
@@ -129,6 +132,7 @@ import {
   CampaignsPageInput,
   CampaignTarget,
   CampaignTargetCountsDTO,
+  CampaignTemplateId,
   CampaignVariableValues,
   PreviewCampaignInput,
   PreviewCampaignResult,
@@ -150,6 +154,7 @@ import {
   campaignRecipientsServiceSchema,
   campaignsPageServiceSchema,
   campaignTargetSchema,
+  campaignTemplateIdSchema,
   createPreviewCampaignServiceSchema,
   createSendCampaignServiceSchema,
 } from './validation/campaign-validation'
@@ -261,8 +266,20 @@ const unknownVariablesOf = (content: {
   )
 
 const countsOf = (
-  target: ComputedCampaignTarget<CampaignTargetRow>
-): CampaignTargetCountsDTO => campaignTargetCountsOf(target)
+  target: ComputedCampaignTarget<CampaignTargetRow>,
+  nature: CampaignNature
+): CampaignTargetCountsDTO => campaignTargetCountsOf(target, nature)
+
+/** La nature de chaque modele, telle que les reglages la donnent (s27b). */
+const templateNaturesOf = (
+  settings: ResolvedAssociationSettings
+): Record<CampaignTemplateId, CampaignNature> =>
+  Object.fromEntries(
+    CAMPAIGN_TEMPLATE_IDS.map((templateId) => [
+      templateId,
+      getCampaignNature(settings, templateId),
+    ])
+  ) as Record<CampaignTemplateId, CampaignNature>
 
 const GROUP_NOT_FOUND = 'Groupe introuvable'
 
@@ -299,19 +316,24 @@ type ReadTargetResult = {
   target: ComputedCampaignTarget<TargetRow>
   isTargeted: CampaignTargetPredicate
   group: TargetGroup | null
+  nature: CampaignNature
 }
 
 /**
  * La cible choisie, point de passage unique des quatre lecteurs (ADR 060
  * §1-§2) : les lignes de **toutes** les fiches, puis le predicat du type de
  * cible. Un groupe introuvable sous le tenant est refuse, jamais « tous ».
+ * La nature de l'envoi vient du modele, lue dans les reglages (s27b, ADR
+ * 064) : en `statutaire`, les adresses desinscrites sont reintegrees.
  * A appeler sous `withTenant`.
  */
 const readTarget = async (
   organizationId: string,
   choice: CampaignTarget,
-  settings: ResolvedAssociationSettings
+  settings: ResolvedAssociationSettings,
+  templateId: CampaignTemplateId
 ): Promise<ReadTargetResult> => {
+  const nature = getCampaignNature(settings, templateId)
   const rows = await getCampaignTargetRowsDao(organizationId)
   let isTargeted: CampaignTargetPredicate = () => true
   let group: TargetGroup | null = null
@@ -326,9 +348,10 @@ const readTarget = async (
   }
   return {
     rows,
-    target: computeCampaignTarget(rows, isTargeted),
+    target: computeCampaignTarget(rows, isTargeted, nature),
     isTargeted,
     group,
+    nature,
   }
 }
 
@@ -343,10 +366,19 @@ type CampaignEmail = {
   text: string
 }
 
-/** Un envoi pour un destinataire : objet final, gabarit, version texte. */
+/**
+ * Un envoi pour un destinataire : objet final, gabarit, version texte. Le pied
+ * suit la nature recue (s27b) : celle du modele pour l'apercu, celle figee
+ * sur la campagne pour la livraison.
+ */
 const buildCampaignEmail = async (
   association: CampaignAssociation,
-  content: {subject: string; preheader: string | null; bodyMarkdown: string},
+  content: {
+    subject: string
+    preheader: string | null
+    bodyMarkdown: string
+    nature: CampaignNature
+  },
   values: CampaignVariableValues,
   unsubscribeUrl: string
 ): Promise<CampaignEmail> => {
@@ -355,7 +387,11 @@ const buildCampaignEmail = async (
   const preheader = content.preheader
     ? substituteVariables(content.preheader, values, plain)
     : null
-  const footer = await getCampaignFooterTexts(PRODUCT_LOCALE, association)
+  const footer = await getCampaignFooterTexts(
+    PRODUCT_LOCALE,
+    association,
+    content.nature
+  )
   return {
     subject: finalSubject(association.name, heading),
     preheader,
@@ -366,6 +402,7 @@ const buildCampaignEmail = async (
       preheader,
       bodyHtml: renderCampaignBodyHtml(content.bodyMarkdown, values),
       unsubscribeUrl,
+      nature: content.nature,
     }),
     text: renderCampaignText({
       heading,
@@ -387,30 +424,36 @@ const valuesOf = (
   date: formatCampaignDate(sendDate),
 })
 
-/** Le composeur : decompte de la cible, adresse de reponse, plafond d'objet. */
+/**
+ * Le composeur : decompte de la cible pour le modele choisi (s27b), adresse
+ * de reponse, plafond d'objet, nature de chaque modele.
+ */
 export const getCampaignComposerContextService = async (
   organizationId: string,
-  choice: CampaignTarget
+  choice: CampaignTarget,
+  templateId: CampaignTemplateId
 ): Promise<CampaignComposerContextDTO> => {
   const orgId = parseOrThrow(z.string().uuid(), organizationId)
   const targetChoice = parseOrThrow(campaignTargetSchema, choice)
+  const template = parseOrThrow(campaignTemplateIdSchema, templateId)
   await requireCampaignManager(orgId)
   const {association, settings} = await readAssociationWithSettings(orgId)
 
-  const [{target}, groups] = await withTenant(orgId, async () => [
-    await readTarget(orgId, targetChoice, settings),
+  const [{target, nature}, groups] = await withTenant(orgId, async () => [
+    await readTarget(orgId, targetChoice, settings, template),
     await listRecipientGroupsDao(orgId),
   ])
   return {
     associationName: association.name,
     replyTo: association.replyTo,
     subjectMaxLength: subjectMaxLength(association.name),
-    counts: countsOf(target),
+    counts: countsOf(target, nature),
     reachableMembers: target.recipients.map((row) => ({
       id: row.memberProfileId,
       name: row.name,
     })),
     groups,
+    templateNatures: templateNaturesOf(settings),
   }
 }
 
@@ -440,10 +483,11 @@ export const previewCampaignService = async (
     return {status: 'unknown_variables', variables: unknown}
 
   return withTenant(data.organizationId, async () => {
-    const {rows, target, isTargeted} = await readTarget(
+    const {rows, target, isTargeted, nature} = await readTarget(
       data.organizationId,
       data.target,
-      settings
+      settings,
+      data.templateId
     )
     const member =
       target.recipients.find(
@@ -470,7 +514,7 @@ export const previewCampaignService = async (
     )
     const email = await buildCampaignEmail(
       association,
-      {...data, preheader: data.preheader || null},
+      {...data, preheader: data.preheader || null, nature},
       values,
       unsubscribeUrlOf(association.origin, PREVIEW_UNSUBSCRIBE_SEGMENT)
     )
@@ -482,7 +526,7 @@ export const previewCampaignService = async (
         preheader: email.preheader,
         html: await render(await email.template),
         text: email.text,
-        counts: countsOf(target),
+        counts: countsOf(target, nature),
       },
     }
   })
@@ -496,7 +540,9 @@ const newUnsubscribeToken = (): string =>
  * validation -> autorisation -> auteur lu **avant** `withTenant` -> envoi
  * permis par les reglages (sinon refus sans ecriture) -> sous le scope :
  * cible recalculee, refus d'une variable inconnue ou d'une cible vide,
- * creation. N'envoie rien : la livraison est rendue a l'appelant, qui la pose
+ * creation. La nature du modele, lue dans les reglages, est figee sur la
+ * campagne (s27b, ADR 064) ; `unsubscribedCount` y compte les adresses
+ * exclues (`facultative`) ou reintegrees (`statutaire`). N'envoie rien : la livraison est rendue a l'appelant, qui la pose
  * dans `after()` ; une soumission deja connue n'en rend aucune.
  */
 export const sendCampaignService = async (
@@ -530,10 +576,11 @@ export const sendCampaignService = async (
   const now = new Date()
   const today = calendarDayOf(now)
   return withTenant(data.organizationId, async () => {
-    const {rows, target, isTargeted, group} = await readTarget(
+    const {rows, target, isTargeted, group, nature} = await readTarget(
       data.organizationId,
       data.target,
-      settings
+      settings,
+      data.templateId
     )
     if (target.recipients.length === 0) return {status: 'no_recipient'}
 
@@ -553,12 +600,14 @@ export const sendCampaignService = async (
         preheader: data.preheader || null,
         bodyMarkdown: data.bodyMarkdown,
         templateId: data.templateId,
+        nature,
         targetKind: data.target.kind,
         targetGroupId: group?.id ?? null,
         targetGroupName: group?.name ?? null,
         recipientCount: target.recipients.length,
         withoutEmailCount: target.withoutEmail,
-        unsubscribedCount: target.unsubscribed,
+        unsubscribedCount:
+          nature === 'statutaire' ? target.reinstated : target.unsubscribed,
         status: 'sending',
         sendDate: today,
         ...author,
@@ -605,20 +654,23 @@ export const sendCampaignService = async (
 
 /**
  * Le plan d'envoi que l'apercu annonce (ecran 1 de s26) : lecture seule, sans
- * verrou. Le plan reel est recalcule sous verrou a la creation.
+ * verrou. Le plan reel est recalcule sous verrou a la creation. Le modele
+ * choisi porte la nature, donc la cible (s27b).
  */
 export const previewCampaignPlanService = async (
   organizationId: string,
-  choice: CampaignTarget
+  choice: CampaignTarget,
+  templateId: CampaignTemplateId
 ): Promise<CampaignPlanDTO> => {
   const orgId = parseOrThrow(z.string().uuid(), organizationId)
   const targetChoice = parseOrThrow(campaignTargetSchema, choice)
+  const template = parseOrThrow(campaignTemplateIdSchema, templateId)
   await requireCampaignManager(orgId)
   const {association, settings} = await readAssociationWithSettings(orgId)
 
   const today = calendarDayOf(new Date())
   return withTenant(orgId, async () => {
-    const {target} = await readTarget(orgId, targetChoice, settings)
+    const {target} = await readTarget(orgId, targetChoice, settings, template)
     const allotted = await getAllottedRecipientsByDayDao(orgId, today)
     return {
       today,
@@ -756,7 +808,12 @@ const listUnsubscribeHeaders = (
 /** L'email d'un destinataire, compose sans rien envoyer. */
 const composeRecipientEmail = async (
   association: CampaignAssociation,
-  campaign: {subject: string; preheader: string | null; bodyMarkdown: string},
+  campaign: {
+    subject: string
+    preheader: string | null
+    bodyMarkdown: string
+    nature: CampaignNature
+  },
   sendDate: string,
   recipient: PendingRecipientRowModel & {email: string; name: string}
 ): Promise<SendEmailPayload> => {
@@ -812,6 +869,8 @@ type CampaignContent = {
   subject: string
   preheader: string | null
   bodyMarkdown: string
+  /** Nature figee a la creation (s27b, ADR 064), jamais relue des reglages. */
+  nature: CampaignNature
 }
 
 type PartToDeliver = {
@@ -839,7 +898,9 @@ type RecipientDelivery = 'done' | 'failed' | 'deferred' | 'skipped'
  * laissee. Sur un echec, la ligne est laissee ou rendue en attente
  * (composition, refus certain) ou mise a verifier (issue inconnue). Un report
  * faute de budget ou un envoi ignore rend la ligne en attente : elle est sa
- * propre file de report (ADR 053 §5), jamais comptee comme recue.
+ * propre file de report (ADR 053 §5), jamais comptee comme recue. Une adresse
+ * desinscrite depuis la creation est ecartee d'une campagne `facultative` ;
+ * une campagne `statutaire` lui est envoyee (s27b, ADR 064).
  */
 const deliverToRecipient = async (
   organizationId: string,
@@ -851,7 +912,7 @@ const deliverToRecipient = async (
   const inTenant = <T>(callback: () => Promise<T>) =>
     withTenant(organizationId, callback)
 
-  if (recipient.unsubscribed) {
+  if (recipient.unsubscribed && campaign.nature !== 'statutaire') {
     await inTenant(() => markRecipientUnsubscribedTxnDao(recipient.recipientId))
     return 'done'
   }

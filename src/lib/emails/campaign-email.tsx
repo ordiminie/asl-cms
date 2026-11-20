@@ -15,6 +15,10 @@ import {
 
 import type {SupportedLocale} from '@/lib/helper/locale-helper'
 import type {AccentHue} from '@/services/types/domain/association-settings-types'
+import {
+  type CampaignNature,
+  DEFAULT_CAMPAIGN_NATURE,
+} from '@/services/types/domain/campaign-types'
 
 import fr from '../../../messages/fr.json'
 import type {CampaignFooterTexts} from './campaign-text'
@@ -47,6 +51,11 @@ export type CampaignMailProps = {
   bodyHtml: string
   /** Adresse absolue de la page publique de desinscription. */
   unsubscribeUrl: string
+  /**
+   * La nature de l'envoi (s27b) : celle du modele pour l'apercu, celle figee
+   * sur la campagne pour la livraison.
+   */
+  nature: CampaignNature
   locale: SupportedLocale
 }
 
@@ -60,8 +69,10 @@ const blankToNull = (value: string | null): string | null =>
 const MESSAGES: Record<SupportedLocale, typeof fr> = {fr}
 
 /**
- * Les phrases du pied « facultatif » (ecran E du design s25), partagees par le
- * gabarit et la version texte : un seul endroit les compose. Traduites par
+ * Les phrases du pied (ecran E du design s25), partagees par le gabarit et la
+ * version texte : un seul endroit les compose. Un envoi `statutaire` (s27b,
+ * ecran 4) dit pourquoi un desinscrit le recoit, et son bouton desinscrit des
+ * seuls envois facultatifs ; le lien reste sur les deux natures. Traduites par
  * `createTranslator`, sans requete : le planificateur (script de la minuterie,
  * ADR 052) compose les campagnes hors de Next, ou `next-intl/server` leve.
  */
@@ -70,7 +81,8 @@ export const getCampaignFooterTexts = async (
   association: Pick<
     CampaignEmailAssociation,
     'name' | 'legalName' | 'legalMentions'
-  >
+  >,
+  nature: CampaignNature = DEFAULT_CAMPAIGN_NATURE
 ): Promise<CampaignFooterTexts> => {
   const t = createTranslator({
     locale,
@@ -82,7 +94,12 @@ export const getCampaignFooterTexts = async (
     legalName: blankToNull(association.legalName),
     legalMentions: blankToNull(association.legalMentions),
     reason: t('reason', {name: association.name}),
-    unsubscribeLabel: t('unsubscribe'),
+    statutoryNotice:
+      nature === 'statutaire'
+        ? t('statutoryNotice', {name: association.name})
+        : null,
+    unsubscribeLabel:
+      nature === 'statutaire' ? t('statutoryUnsubscribe') : t('unsubscribe'),
     notice: t('notice'),
   }
 }
@@ -116,9 +133,10 @@ export default async function CampaignMail({
   preheader,
   bodyHtml,
   unsubscribeUrl,
+  nature,
   locale,
 }: CampaignMailProps) {
-  const footer = await getCampaignFooterTexts(locale, association)
+  const footer = await getCampaignFooterTexts(locale, association, nature)
   const accent = getEmailAccent(association.hue)
   const c = EMAIL_DARK_CLASSES
 
@@ -228,6 +246,11 @@ function CampaignFooter({
       <Text className={c.textMuted} style={footerTextStyle}>
         {footer.reason}
       </Text>
+      {footer.statutoryNotice && (
+        <Text className={c.textMuted} style={footerTextStyle}>
+          {footer.statutoryNotice}
+        </Text>
+      )}
       <UnsubscribeButton url={unsubscribeUrl} label={footer.unsubscribeLabel} />
       <Text
         style={{

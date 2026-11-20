@@ -87,6 +87,7 @@ export const campaignOf = (
   preheader: 'Merci de laisser le passage libre.',
   bodyMarkdown: 'Bonjour {nom},\n\nVotre parcelle **{parcelle}**.',
   templateId: 'free',
+  nature: 'facultative',
   targetKind: 'all_members',
   targetGroupName: null,
   targetGroupDeleted: false,

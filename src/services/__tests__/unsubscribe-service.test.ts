@@ -5,6 +5,9 @@ vi.mock('@/db/tenant-scope', () => ({
     callback()
   ),
 }))
+vi.mock('../association-settings-service', () => ({
+  getAssociationSettingsService: vi.fn(),
+}))
 vi.mock('@/db/repositories/member-unsubscribe-repository', () => ({
   getRecipientByTokenDao: vi.fn(),
   getUnsubscribeByMemberDao: vi.fn(),
@@ -19,6 +22,7 @@ import {
 import {withTenant} from '@/db/tenant-scope'
 import {logger} from '@/lib/logger'
 
+import {getAssociationSettingsService} from '../association-settings-service'
 import {getAuthUser} from '../authentication/auth-service'
 import {AuthorizationError} from '../errors/authorization-error'
 import {ValidationParsedZodError} from '../errors/validation-error'
@@ -55,12 +59,14 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getRecipientByTokenDao).mockResolvedValue(recipient())
   vi.mocked(unsubscribeEmailIfAbsentTxnDao).mockResolvedValue(1)
+  vi.mocked(getAssociationSettingsService).mockResolvedValue({})
 })
 
 describe('[PUBLIC] getUnsubscribePageStateService — lecture seule (GET)', () => {
   it('jeton valide, pas encore désinscrit → confirm, sans rien écrire', async () => {
     await expect(getUnsubscribePageStateService(input)).resolves.toEqual({
       status: 'confirm',
+      statutoryTemplateIds: [],
     })
     expect(unsubscribeEmailIfAbsentTxnDao).not.toHaveBeenCalled()
     expect(withTenant).toHaveBeenCalledWith(ORG_ID, expect.any(Function))
@@ -73,6 +79,7 @@ describe('[PUBLIC] getUnsubscribePageStateService — lecture seule (GET)', () =
 
     await expect(getUnsubscribePageStateService(input)).resolves.toEqual({
       status: 'already',
+      statutoryTemplateIds: [],
     })
   })
 
@@ -115,6 +122,51 @@ describe('[PUBLIC] getUnsubscribePageStateService — lecture seule (GET)', () =
     await expect(
       getUnsubscribePageStateService({...input, organizationId: 'x'})
     ).rejects.toBeInstanceOf(ValidationParsedZodError)
+  })
+})
+
+describe('[PUBLIC] getUnsubscribePageStateService — ce que le membre continuera de recevoir (s27b, critère 5)', () => {
+  it('rend les types statutaires de l’association du domaine, d’après sa classification', async () => {
+    vi.mocked(getAssociationSettingsService).mockResolvedValue({
+      'campaign.nature.general_assembly': {
+        value: 'statutaire',
+        storedValue: 'statutaire',
+        defaultFromKey: null,
+      },
+      'campaign.nature.invoice': {
+        value: 'statutaire',
+        storedValue: 'statutaire',
+        defaultFromKey: null,
+      },
+      'campaign.nature.free': {
+        value: 'facultative',
+        storedValue: 'facultative',
+        defaultFromKey: null,
+      },
+    })
+
+    await expect(getUnsubscribePageStateService(input)).resolves.toEqual({
+      status: 'confirm',
+      statutoryTemplateIds: ['invoice', 'general_assembly'],
+    })
+    expect(getAssociationSettingsService).toHaveBeenCalledWith(ORG_ID)
+  })
+
+  it('ne rend aucune donnée du membre ni de la campagne', async () => {
+    const state = await getUnsubscribePageStateService(input)
+
+    expect(JSON.stringify(state)).not.toMatch(
+      /claire|example|r1|33333333|44444444/
+    )
+  })
+
+  it('un jeton invalide ne lit pas la classification', async () => {
+    vi.mocked(getRecipientByTokenDao).mockResolvedValue(undefined)
+
+    await expect(getUnsubscribePageStateService(input)).resolves.toEqual({
+      status: 'invalid',
+    })
+    expect(getAssociationSettingsService).not.toHaveBeenCalled()
   })
 })
 

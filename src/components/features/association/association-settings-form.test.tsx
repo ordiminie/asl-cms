@@ -801,3 +801,111 @@ describe('AssociationSettingsForm — carte d’état après sa section (s20, ga
     expect(billing.nextElementSibling).toBe(status)
   })
 })
+
+describe('AssociationSettingsForm — carte « Nature des envois » (s27b, ADR 064)', () => {
+  const natureCard = () =>
+    screen
+      .getByRole('heading', {level: 3, name: 'Nature des envois'})
+      .closest('[data-slot="card"]') as HTMLElement
+  const natureForm = (
+    canEditSuperAdminOnly: boolean,
+    saveAction: AssociationSettingsSaveAction = saved()
+  ) =>
+    render(
+      <AssociationSettingsForm
+        definitions={getSettingsForPage(
+          ASSOCIATION_SETTINGS_REGISTRY,
+          'settings'
+        )}
+        settings={resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+          {key: CONTACT_EMAIL_SETTING_KEY, value: CONTACT},
+          {key: 'campaign.nature.general_assembly', value: 'statutaire'},
+        ])}
+        saveAction={saveAction}
+        canEditSuperAdminOnly={canEditSuperAdminOnly}
+      />
+    )
+  const natureOf = (name: string) =>
+    within(natureCard()).getByRole('radiogroup', {name: new RegExp(name)})
+
+  it('rend un choix par type d’envoi, après la carte « Envois »', () => {
+    natureForm(false)
+
+    const headings = screen
+      .getAllByRole('heading', {level: 3})
+      .map((heading) => heading.textContent)
+    expect(headings.indexOf('Nature des envois')).toBe(
+      headings.indexOf('Envois') + 1
+    )
+    for (const name of [
+      'Message libre',
+      'Relance manuelle',
+      'Facture disponible',
+      'Convocation à l’AG',
+      'Documents après l’AG',
+    ]) {
+      expect(natureOf(name)).toBeInTheDocument()
+    }
+  })
+
+  it('le bureau lit la nature en vigueur sans pouvoir la changer, et ne l’envoie jamais', async () => {
+    const saveAction = saved()
+    natureForm(false, saveAction)
+
+    const assembly = natureOf('Convocation à l’AG')
+    const statutory = within(assembly).getByRole('radio', {
+      name: 'Statutaire — les désinscrits le reçoivent aussi',
+    })
+    expect(statutory).toBeChecked()
+    expect(statutory).toBeDisabled()
+    expect(assembly.closest('[data-setting]')).toHaveTextContent(
+      'Réglé par l’équipe technique de la plateforme, après avis du conseil RGPD : vous ne pouvez pas le modifier.'
+    )
+
+    await submit()
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    const formData = vi.mocked(saveAction).mock.calls[0][1]
+    expect(
+      [...formData.keys()].filter((key) => key.startsWith('campaign.nature.'))
+    ).toEqual([])
+  })
+
+  it('un type jamais classé se lit facultatif et le dit', () => {
+    natureForm(false)
+
+    const free = natureOf('Message libre')
+    expect(
+      within(free).getByRole('radio', {
+        name: 'Facultatif — les désinscrits ne le reçoivent pas',
+      })
+    ).toBeChecked()
+    expect(free.closest('[data-setting]')).toHaveTextContent(
+      'Sans choix enregistré : facultatif.'
+    )
+    expect(
+      natureOf('Convocation à l’AG').closest('[data-setting]')
+    ).not.toHaveTextContent('Sans choix enregistré')
+  })
+
+  it('le SuperAdmin reclasse un type d’envoi ; seule la nature changée part', async () => {
+    const saveAction = saved()
+    natureForm(true, saveAction)
+
+    const free = natureOf('Message libre')
+    expect(free.closest('[data-setting]')).not.toHaveTextContent(
+      'après avis du conseil RGPD'
+    )
+    await userEvent.click(
+      within(natureOf('Relance manuelle')).getByRole('radio', {
+        name: 'Statutaire — les désinscrits le reçoivent aussi',
+      })
+    )
+    await submit()
+
+    await waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+    const formData = vi.mocked(saveAction).mock.calls[0][1]
+    expect(formData.get('campaign.nature.reminder')).toBe('statutaire')
+    expect(formData.get('campaign.nature.general_assembly')).toBe('statutaire')
+    expect(formData.has('campaign.nature.free')).toBe(false)
+  })
+})

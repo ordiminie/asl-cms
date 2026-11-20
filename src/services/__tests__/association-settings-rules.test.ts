@@ -21,6 +21,7 @@ import {
   BILLING_UNPAID_STATUSES_SETTING_KEY,
   CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
   CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
+  campaignNatureSettingKeyOf,
   CONTACT_EMAIL_SETTING_KEY,
   CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   DEFAULT_ACCENT_HUE,
@@ -31,6 +32,7 @@ import {
   getAccentHue,
   getAssociationDescription,
   getCampaignDailySendCap,
+  getCampaignNature,
   getCampaignSendMaxAttempts,
   getContactMessagesPerHourLimit,
   getDefaultLandAddress,
@@ -40,6 +42,7 @@ import {
   getMagicLinkDailyRequestLimit,
   getMemberEmailConfirmationDays,
   getSettingsForPage,
+  getStatutoryTemplateIds,
   GOOGLE_VERIFICATION_SETTING_KEY,
   hasSettingReferenceCycle,
   isSuperAdminOnlySetting,
@@ -51,6 +54,7 @@ import {
   resolveSettings,
   validateSettingsChanges,
 } from '../types/domain/association-settings-types'
+import {CAMPAIGN_TEMPLATE_IDS} from '../types/domain/campaign-types'
 import {TEST_SETTINGS_REGISTRY} from './association-settings-test-registry'
 
 const definitionOf = (
@@ -165,6 +169,12 @@ describe('registre de production', () => {
         required: false,
         page: 'settings',
       },
+      ...CAMPAIGN_TEMPLATE_IDS.map((templateId) => ({
+        key: `campaign.nature.${templateId}`,
+        type: 'choice',
+        required: false,
+        page: 'settings',
+      })),
       {
         key: MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
         type: 'text',
@@ -753,6 +763,11 @@ describe('registre de production', () => {
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
       MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
+      'campaign.nature.free',
+      'campaign.nature.reminder',
+      'campaign.nature.invoice',
+      'campaign.nature.general_assembly',
+      'campaign.nature.post_assembly_documents',
       MEMBER_DEFAULT_LAND_POSTAL_CODE_SETTING_KEY,
       MEMBER_DEFAULT_LAND_CITY_SETTING_KEY,
       BILLING_PROVIDER_SETTING_KEY,
@@ -1136,6 +1151,7 @@ describe('registre — carte « Referencement » (s11)', () => {
       CAMPAIGN_DAILY_SEND_CAP_SETTING_KEY,
       CAMPAIGN_SEND_MAX_ATTEMPTS_SETTING_KEY,
       MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
+      ...CAMPAIGN_TEMPLATE_IDS.map(campaignNatureSettingKeyOf),
       BILLING_PROVIDER_SETTING_KEY,
       BILLING_INVOICE_SUBJECT_SETTING_KEY,
       BILLING_UNPAID_STATUSES_SETTING_KEY,
@@ -1318,7 +1334,7 @@ describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
     expect(parseSettingValue(reserve(), '0')).toMatchObject({valid: true})
   })
 
-  it('seules la limite, la réserve et la source des factures (s19) sont réservées au SuperAdmin', () => {
+  it('seules la limite, la réserve, la nature des envois (s27b) et la source des factures (s19) sont réservées au SuperAdmin', () => {
     expect(
       ASSOCIATION_SETTINGS_REGISTRY.filter(isSuperAdminOnlySetting).map(
         ({key}) => key
@@ -1326,6 +1342,7 @@ describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
     ).toEqual([
       EMAIL_DAILY_SEND_LIMIT_SETTING_KEY,
       EMAIL_LOGIN_RESERVE_SETTING_KEY,
+      ...CAMPAIGN_TEMPLATE_IDS.map(campaignNatureSettingKeyOf),
       BILLING_PROVIDER_SETTING_KEY,
     ])
   })
@@ -1420,5 +1437,153 @@ describe('limite d’envoi et réserve de connexion (s52, ADR 053)', () => {
       'Nombre maximum d’emails de campagne envoyés par jour, toutes campagnes confondues. Par défaut : 100.'
     )
     expect(fr.AssociationSettings.superAdminOnly).toEqual(expect.any(String))
+  })
+})
+
+describe('nature des envois (s27b, ADR 064)', () => {
+  const natureDefinition = (
+    templateId: (typeof CAMPAIGN_TEMPLATE_IDS)[number]
+  ) =>
+    definitionOf(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      campaignNatureSettingKeyOf(templateId)
+    )
+  const lookup = (dotted: string) =>
+    dotted
+      .split('.')
+      .reduce<unknown>(
+        (node, part) =>
+          typeof node === 'object' && node !== null
+            ? (node as Record<string, unknown>)[part]
+            : undefined,
+        fr.AssociationSettings
+      )
+
+  it('chaque type d’envoi porte une clé « choix » facultative / statutaire, facultative par défaut, réservée au SuperAdmin (critère 1)', () => {
+    for (const templateId of CAMPAIGN_TEMPLATE_IDS) {
+      const definition = natureDefinition(templateId)
+      expect(definition.key).toBe(`campaign.nature.${templateId}`)
+      expect(definition).toMatchObject({
+        type: 'choice',
+        required: false,
+        default: {value: 'facultative'},
+        page: 'settings',
+        section: 'campaign_nature',
+      })
+      expect(
+        definition.type === 'choice' &&
+          definition.options.map((option) => option.value)
+      ).toEqual(['facultative', 'statutaire'])
+      expect(isSuperAdminOnlySetting(definition)).toBe(true)
+    }
+  })
+
+  it('sans nature configurée, chaque type d’envoi est facultatif (critère 2)', () => {
+    const settings = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [])
+    for (const templateId of CAMPAIGN_TEMPLATE_IDS) {
+      expect(getCampaignNature(settings, templateId), templateId).toBe(
+        'facultative'
+      )
+    }
+    expect(getStatutoryTemplateIds(settings)).toEqual([])
+  })
+
+  it('une valeur vide, inconnue ou absente des réglages se lit facultative, jamais statutaire (critère 2)', () => {
+    const stored = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {key: campaignNatureSettingKeyOf('reminder'), value: 'obligatoire'},
+      {key: campaignNatureSettingKeyOf('invoice'), value: ''},
+    ])
+    expect(getCampaignNature(stored, 'reminder')).toBe('facultative')
+    expect(getCampaignNature(stored, 'invoice')).toBe('facultative')
+    expect(getCampaignNature({}, 'general_assembly')).toBe('facultative')
+    expect(
+      getCampaignNature(
+        {
+          [campaignNatureSettingKeyOf('general_assembly')]: {
+            value: 'Statutaire',
+            storedValue: 'Statutaire',
+            defaultFromKey: null,
+          },
+        },
+        'general_assembly'
+      )
+    ).toBe('facultative')
+  })
+
+  it('lit la nature enregistrée et liste les types statutaires dans l’ordre des modèles', () => {
+    const settings = resolveSettings(ASSOCIATION_SETTINGS_REGISTRY, [
+      {
+        key: campaignNatureSettingKeyOf('general_assembly'),
+        value: 'statutaire',
+      },
+      {key: campaignNatureSettingKeyOf('reminder'), value: 'statutaire'},
+      {key: campaignNatureSettingKeyOf('free'), value: 'facultative'},
+    ])
+    expect(getCampaignNature(settings, 'general_assembly')).toBe('statutaire')
+    expect(getCampaignNature(settings, 'free')).toBe('facultative')
+    expect(getStatutoryTemplateIds(settings)).toEqual([
+      'reminder',
+      'general_assembly',
+    ])
+  })
+
+  it('refuse une nature hors des deux options', () => {
+    expect(
+      validateSettingsChanges(ASSOCIATION_SETTINGS_REGISTRY, {
+        [campaignNatureSettingKeyOf('free')]: 'obligatoire',
+      })
+    ).toEqual({
+      valid: false,
+      errors: {[campaignNatureSettingKeyOf('free')]: {code: 'invalidChoice'}},
+    })
+  })
+
+  it('la carte « Nature des envois » suit la carte « Envois », avec ses libellés en français', () => {
+    const sections = getSettingsForPage(
+      ASSOCIATION_SETTINGS_REGISTRY,
+      'settings'
+    ).map((definition) => definition.section)
+    expect(sections.indexOf('campaign_nature')).toBe(
+      sections.lastIndexOf('sending') + 1
+    )
+    expect(
+      (
+        fr.BureauSettingsPage.cards as Record<
+          string,
+          {title: string; description?: string}
+        >
+      ).campaign_nature
+    ).toEqual({
+      title: 'Nature des envois',
+      description: expect.stringContaining('statutaire'),
+    })
+    expect(
+      CAMPAIGN_TEMPLATE_IDS.map((templateId) =>
+        lookup(natureDefinition(templateId).labelKey)
+      )
+    ).toEqual([
+      'Message libre',
+      'Relance manuelle',
+      'Facture disponible',
+      'Convocation à l’AG',
+      'Documents après l’AG',
+    ])
+    const definition = natureDefinition('free')
+    expect(lookup(definition.helpKey)).toEqual(expect.any(String))
+    expect(definition.whenEmptyKey && lookup(definition.whenEmptyKey)).toBe(
+      'Sans choix enregistré : facultatif.'
+    )
+    expect(
+      definition.readOnlyHelpKey && lookup(definition.readOnlyHelpKey)
+    ).toBe(
+      'Réglé par l’équipe technique de la plateforme, après avis du conseil RGPD : vous ne pouvez pas le modifier.'
+    )
+    expect(
+      definition.type === 'choice' &&
+        definition.options.map((option) => lookup(option.labelKey))
+    ).toEqual([
+      'Facultatif — les désinscrits ne le reçoivent pas',
+      'Statutaire — les désinscrits le reçoivent aussi',
+    ])
   })
 })

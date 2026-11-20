@@ -607,10 +607,18 @@ function Summary({
       t('detail.fields.template'),
       t(`templateNames.${campaign.templateId ?? 'free'}`),
     ],
+    [t('detail.fields.nature'), t(`detail.natures.${campaign.nature}`)],
     [t('detail.fields.target'), targetLabelOf(campaign, t)],
     [t('detail.fields.recipients'), campaign.recipientCount],
     [t('detail.fields.withoutEmail'), campaign.withoutEmailCount],
-    [t('detail.fields.unsubscribed'), campaign.unsubscribedCount],
+    [
+      t(
+        campaign.nature === 'statutaire'
+          ? 'detail.fields.reinstated'
+          : 'detail.fields.unsubscribed'
+      ),
+      campaign.unsubscribedCount,
+    ],
     [
       t('detail.fields.dailySendCap'),
       t.rich('detail.fields.dailySendCapValue', {data, cap: dailySendCap}),

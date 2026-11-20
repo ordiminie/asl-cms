@@ -48,6 +48,8 @@ const detail = (
     profiles: 38,
     recipients: 33,
     unsubscribed: 2,
+    reinstated: 0,
+    nature: 'facultative' as const,
   },
   ...overrides,
 })

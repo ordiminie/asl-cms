@@ -20,6 +20,7 @@ const render = (bodyMarkdown: string) =>
       legalMentions: '4 allée des Pins\nSIRET 000',
       reason:
         'Vous recevez cet email parce que vous êtes membre de ASL Les Pins.',
+      statutoryNotice: null,
       unsubscribeLabel: 'Ne plus recevoir ces campagnes',
       notice: 'Se désinscrire ne vous prive d’aucune information obligatoire.',
     },
@@ -77,6 +78,7 @@ describe('renderCampaignText', () => {
         legalName: null,
         legalMentions: null,
         reason: 'Motif.',
+        statutoryNotice: null,
         unsubscribeLabel: 'Ne plus recevoir',
         notice: 'Phrase.',
       },
@@ -85,5 +87,35 @@ describe('renderCampaignText', () => {
 
     expect(text).not.toMatch(/\n{3,}/)
     expect(text).not.toContain('null')
+  })
+})
+
+describe('renderCampaignText — envoi statutaire (s27b, critère 4)', () => {
+  it('écrit la phrase statutaire avant le lien de désinscription des envois facultatifs', () => {
+    const text = renderCampaignText({
+      heading: 'Convocation',
+      bodyMarkdown: 'Bonjour',
+      values: {nom: '', parcelle: '', date: ''},
+      footer: {
+        associationName: 'ASL Les Pins',
+        legalName: null,
+        legalMentions: null,
+        reason: 'Motif.',
+        statutoryNotice: 'Phrase statutaire.',
+        unsubscribeLabel: 'Ne plus recevoir les campagnes facultatives',
+        notice: 'Phrase finale.',
+      },
+      unsubscribeUrl: UNSUBSCRIBE_URL,
+    })
+
+    expect(text).toContain(
+      `Phrase statutaire.\n\nNe plus recevoir les campagnes facultatives : ${UNSUBSCRIBE_URL}`
+    )
+    expect(text.endsWith('Phrase finale.')).toBe(true)
+  })
+
+  it('un envoi facultatif n’écrit aucune phrase statutaire', () => {
+    expect(render('Bonjour')).not.toContain('Phrase statutaire')
+    expect(render('Bonjour')).not.toMatch(/\n\n\n/)
   })
 })
