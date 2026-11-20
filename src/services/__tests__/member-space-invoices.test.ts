@@ -87,6 +87,7 @@ const invoice = (overrides: Partial<MemberInvoice>): MemberInvoice => ({
   amountCents: 41250,
   status: 'En attente',
   hasPdf: false,
+  paymentUrl: null,
   ...overrides,
 })
 
@@ -171,6 +172,7 @@ describe('getMyInvoicesService — « Mes factures » du propriétaire connecté
       statusClass: 'unclassified',
       hasPdf: false,
       pdfRef: null,
+      payment: null,
     })
     expect(result).toMatchObject({
       syncedFromPennylane: false,
@@ -566,5 +568,54 @@ describe('getMyInvoicePdfUrlService — le PDF relu au clic (s20, ADR 062 §6)',
       getMyInvoicePdfUrlService(ORG_ID, 'pas-un-uuid')
     ).rejects.toThrow()
     expect(getInvoiceByIdDao).not.toHaveBeenCalled()
+  })
+})
+
+describe('getMyInvoicesService — le règlement d’une facture (s21, ADR 063)', () => {
+  const HTTPS_LINK = 'https://paiement.example.org/facture/i-a-2026'
+
+  const paymentOf = async (overrides: Partial<MemberInvoice>) => {
+    vi.mocked(resolveMemberBillingProvider).mockReturnValue(
+      doubleProvider([invoice({id: 'i-a-2026', ...overrides})])
+    )
+    const result = await getMyInvoicesService(ORG_ID)
+    return result?.invoices[0].payment
+  }
+
+  it('critère 1 : impayée avec un lien https du fournisseur : le lien, tel quel', async () => {
+    expect(
+      await paymentOf({status: 'En attente', paymentUrl: HTTPS_LINK})
+    ).toEqual({kind: 'link', url: HTTPS_LINK})
+  })
+
+  it('critère 3 : impayée sans lien : par virement', async () => {
+    expect(await paymentOf({status: 'Relance 1', paymentUrl: null})).toEqual({
+      kind: 'transfer',
+    })
+  })
+
+  it.each([
+    ['http:', 'http://paiement.example.org/facture/1'],
+    ['javascript:', 'javascript:alert(1)'],
+    ['chaîne vide', ''],
+  ])(
+    'critère 6 : impayée avec un lien %s : jamais rendu, par virement',
+    async (_label, paymentUrl) => {
+      expect(await paymentOf({status: 'En attente', paymentUrl})).toEqual({
+        kind: 'transfer',
+      })
+    }
+  )
+
+  it('critère 5 : réglée, même avec un lien : ni bouton ni virement', async () => {
+    expect(
+      await paymentOf({status: 'Payée', paymentUrl: HTTPS_LINK})
+    ).toBeNull()
+  })
+
+  it('critère 5 : « à classer », même avec un lien : ni bouton ni virement', async () => {
+    expect(
+      await paymentOf({status: 'Statut jamais vu', paymentUrl: HTTPS_LINK})
+    ).toBeNull()
   })
 })

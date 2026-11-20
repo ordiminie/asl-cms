@@ -21,6 +21,7 @@ const invoice = (overrides: Partial<MyInvoiceDTO> = {}): MyInvoiceDTO => ({
   statusClass: 'unpaid',
   hasPdf: false,
   pdfRef: null,
+  payment: null,
   ...overrides,
 })
 
@@ -380,5 +381,133 @@ describe('MyInvoicesCard — factures Pennylane (s20, écran 1)', () => {
       within(table()).queryByRole('columnheader', {name: 'Facture'})
     ).toBeNull()
     expect(within(card()).queryByText(/mises à jour le/)).toBeNull()
+  })
+})
+
+describe('MyInvoicesCard — payer sa facture (s21, écran 1)', () => {
+  const PAYMENT_URL = 'https://paiement.example.org/facture/2026-12'
+  const PAYMENT_LABEL =
+    'Payer la facture 2026, parcelles 12 et 13 (s’ouvre dans un nouvel onglet)'
+  const NOTICE =
+    'Les factures à régler se paient par virement. Pour toute question, écrivez au bureau depuis la page Contact.'
+  const withLink = invoice({
+    parcelNumbers: ['12', '13'],
+    statusLabel: 'En retard',
+    hasPdf: true,
+    pdfRef: 'ref-pdf',
+    payment: {kind: 'link', url: PAYMENT_URL},
+  })
+  const byTransfer = invoice({
+    parcelNumbers: ['27'],
+    status: 'Partiellement payée',
+    statusLabel: 'Partiellement payée',
+    payment: {kind: 'transfer'},
+  })
+  const settled = invoice({
+    issuedOn: '2025-03-15',
+    status: 'Payée',
+    statusLabel: 'Payée',
+    statusClass: 'settled',
+  })
+  const PENNYLANE = {
+    landCount: 2,
+    syncedFromPennylane: true,
+    syncedAt: '2026-11-19T13:05:00.000Z',
+    lastSyncFailed: false,
+    unlinked: false,
+  } as const
+
+  it('critère 1 : un lien sortant vers l’adresse exacte du fournisseur, nouvel onglet annoncé', async () => {
+    await renderCard({...PENNYLANE, invoices: [withLink, settled]})
+
+    expect(
+      within(table())
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent)
+    ).toEqual([
+      'Émise le',
+      'Objet',
+      'Terrain',
+      'Montant',
+      'Échéance',
+      'Statut',
+      'Règlement',
+      'Facture',
+    ])
+    const pay = within(table()).getByRole('link', {name: PAYMENT_LABEL})
+    expect(pay.tagName).toBe('A')
+    expect(pay).toHaveAttribute('href', PAYMENT_URL)
+    expect(pay).toHaveAttribute('target', '_blank')
+    expect(pay).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(pay).toHaveTextContent('Payer')
+    expect(bodyRows()[0].cells[6]).toContainElement(pay)
+  })
+
+  it('critère 5 : une facture réglée n’a ni bouton ni mention de virement', async () => {
+    await renderCard({...PENNYLANE, invoices: [withLink, settled]})
+
+    const settledRow = bodyRows()[1]
+    expect(settledRow.cells[6].textContent).toBe('')
+    expect(within(settledRow).queryByRole('link')).toBeNull()
+    expect(within(card()).queryByText(NOTICE)).toBeNull()
+  })
+
+  it('critère 3 : sans lien, « Par virement » sans bouton, et une seule phrase qui renvoie au bureau', async () => {
+    await renderCard({...SITE, landCount: 2, invoices: [byTransfer, settled]})
+
+    const transferRow = bodyRows()[0]
+    expect(transferRow.cells[6]).toHaveTextContent('Par virement')
+    expect(within(transferRow).queryByRole('link')).toBeNull()
+    expect(within(card()).queryByRole('link', {name: /Payer/})).toBeNull()
+    const notices = within(card()).getAllByRole('note')
+    expect(notices).toHaveLength(1)
+    expect(notices[0].textContent).toBe(NOTICE)
+    expect(
+      within(notices[0]).getByRole('link', {name: 'page Contact'})
+    ).toHaveAttribute('href', '/contact')
+  })
+
+  it('la phrase de virement est absente quand toute impayée a son lien', async () => {
+    await renderCard({...PENNYLANE, invoices: [withLink]})
+
+    expect(within(card()).queryByText(/se paient par virement/)).toBeNull()
+  })
+
+  it('aucune facture impayée : ni colonne « Règlement » ni phrase', async () => {
+    await renderCard({...SITE, landCount: 1, invoices: [settled]})
+
+    expect(
+      within(table()).queryByRole('columnheader', {name: 'Règlement'})
+    ).toBeNull()
+    expect(within(card()).queryByText(/se paient par virement/)).toBeNull()
+  })
+
+  it('sous 640 px : « Payer cette facture » avant le PDF, ou « À régler par virement. »', async () => {
+    await renderCard({...PENNYLANE, invoices: [withLink, byTransfer, settled]})
+
+    const [first, second, third] =
+      within(card()).getAllByTestId('my-invoice-card')
+    const pay = within(first).getByRole('link', {name: PAYMENT_LABEL})
+    expect(pay).toHaveTextContent('Payer cette facture')
+    expect(pay).toHaveAttribute('href', PAYMENT_URL)
+    expect(pay).toHaveAttribute('target', '_blank')
+    expect(pay).toHaveAttribute('rel', 'noopener noreferrer')
+    const pdf = within(first).getByRole('button', {name: /PDF de la facture/})
+    expect(
+      pay.compareDocumentPosition(pdf) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    expect(second).toHaveTextContent('À régler par virement.')
+    expect(within(second).queryByRole('link')).toBeNull()
+    expect(third).not.toHaveTextContent(/virement|Payer/)
+  })
+
+  it('critère 4 : aucun formulaire ni champ de moyen de paiement', async () => {
+    await renderCard({...PENNYLANE, invoices: [withLink, byTransfer, settled]})
+
+    expect(card().querySelector('form')).toBeNull()
+    expect(card().querySelector('input, select, textarea')).toBeNull()
+    expect(card().innerHTML).not.toMatch(
+      /iban|bic|mandat|carte bancaire|cryptogramme|cvv/i
+    )
   })
 })

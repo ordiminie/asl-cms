@@ -312,9 +312,9 @@ barre latérale repliée, avec `tooltip` **et** `aria-label`.
 
 **Vocabulaire figé** : `Droplet` eau · `FileText` document · `Receipt` facture · `Map` parcelle ·
 `Megaphone` actualité · `AlertTriangle` alerte · `Lock` personnel · `GripVertical` poignée de bloc ·
-`UsersRound` membres du bureau · `Inbox` messages reçus.
+`UsersRound` membres du bureau · `Inbox` messages reçus · `ExternalLink` lien qui quitte le site.
 
-Les deux dernières ont été arrêtées le 23/09/2026 (planche P11, §1.9). `UsersRound` plutôt que
+`UsersRound` et `Inbox` ont été arrêtées le 23/09/2026 (planche P11, §1.9). `UsersRound` plutôt que
 `UserRound`, parce que l'entrée liste plusieurs personnes, et plutôt que `Contact`, trop dense à
 20 px. `Inbox` plutôt que `Mail`, qui se confondrait avec les emails envoyés, et plutôt que
 `MessageSquare`, qui évoque une messagerie instantanée.
@@ -918,6 +918,26 @@ s20. Aucun ne crée de token ni de composant : ils composent l'existant.
   « PDF non disponible » en `muted`, **sans bouton** : jamais un lien mort. L'adresse du PDF est
   demandée au clic, jamais écrite dans la page ; un échec se dit par une alerte ancrée
   `role="alert"`.
+
+### 3.16 Formes retenues par s21 — payer sa facture
+
+Écarts de la maquette `docs/designs/s21-redirection-paiement.md` (gaps 1 à 3), versés ici par le plan
+de s21. Aucun ne crée de token ni de composant : ils composent l'existant.
+
+- **Une action par colonne** (gap 1) — quand une ligne porte deux actions (« Payer » et « PDF »),
+  chacune vit dans **sa** colonne (« Règlement », puis « Facture ») : une seule action par cellule, et
+  « une seule action par ligne » (§2.1) se lit « une seule par colonne » pour ce cas. La colonne
+  « Règlement » n'est rendue que si une facture de la liste est impayée. Sous 640 px, l'action
+  principale d'abord (« Payer cette facture », `default`, pleine largeur, 56 px), puis le PDF
+  (`outline`, 56 px).
+- **Lien qui quitte le site** (gap 2) — il s'ouvre dans un **nouvel onglet**, annoncé dans le nom
+  accessible (« … (s'ouvre dans un nouvel onglet) ») et par l'icône `ExternalLink` (16 px, §1.7) ;
+  `rel="noopener noreferrer"`, aucun paramètre ajouté à l'adresse. Bouton `default` en `asChild` sur
+  un `<a>` : c'est un lien, pas un formulaire.
+- **Mention à la place d'une action** (gap 3) — sans lien valable, la cellule dit « Par virement » en
+  `muted`, **sans bouton** (forme de « PDF non disponible », §3.15) ; sous 640 px, « À régler par
+  virement. ». Une seule phrase pour la carte, sous l'introduction : `alert` neutre (`Info`, fond
+  `muted`), qui renvoie au bureau par la page Contact. Aucune coordonnée bancaire écrite par le site.
 
 ---
 

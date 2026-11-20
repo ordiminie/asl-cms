@@ -268,6 +268,7 @@ describe('MemberSpace — « Mes factures » (s19, écran 1)', () => {
         statusClass: 'unpaid',
         hasPdf: false,
         pdfRef: null,
+        payment: null,
       },
     ],
   }

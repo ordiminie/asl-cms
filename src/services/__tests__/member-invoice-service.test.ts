@@ -411,6 +411,35 @@ describe('listMemberInvoicesService — la carte « Factures » du bureau', () =
     ])
   })
 
+  it('le bureau ne reçoit jamais le lien de paiement d’une facture (s21, ADR 063 §4)', async () => {
+    vi.mocked(resolveMemberBillingProvider).mockReturnValue({
+      id: 'simule',
+      canWrite: false,
+      listInvoicesOf: vi.fn(async () => [
+        {
+          id: INVOICE_ID,
+          memberProfileId: PROFILE_ID,
+          parcelId: PARCEL_ID,
+          parcelNumber: '12',
+          meterNumber: '0045821',
+          source: 'site' as const,
+          year: 2026,
+          issuedOn: '2026-03-15',
+          dueOn: '2026-04-15',
+          amountCents: 41250,
+          status: 'En attente',
+          hasPdf: false,
+          paymentUrl: 'https://paiement.example.org/facture/1',
+        },
+      ]),
+    })
+
+    const result = await listMemberInvoicesService(ORG_ID, PROFILE_ID)
+
+    expect(result.invoices).toHaveLength(1)
+    expect(result.invoices[0]).not.toHaveProperty('paymentUrl')
+  })
+
   it('saisie sur le site : ni Pennylane, ni date de mise à jour', async () => {
     const result = await listMemberInvoicesService(ORG_ID, PROFILE_ID)
 

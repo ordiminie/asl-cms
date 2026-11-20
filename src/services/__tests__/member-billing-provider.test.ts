@@ -83,8 +83,22 @@ describe('manualMemberBillingProvider — saisie par le bureau (ADR 059 §7)', (
         amountCents: 41250,
         status: 'En attente',
         hasPdf: false,
+        paymentUrl: null,
       },
     ])
+  })
+
+  it('s21, critère 2 : ne donne aucun lien de paiement, pour aucune facture', async () => {
+    vi.mocked(listInvoicesByProfileIdsDao).mockResolvedValue([
+      row,
+      {...row, id: 'autre', status: 'Payée'},
+    ])
+
+    const invoices = await manualMemberBillingProvider.listInvoicesOf(ORG_ID, [
+      PROFILE_ID,
+    ])
+
+    expect(invoices.map(({paymentUrl}) => paymentUrl)).toEqual([null, null])
   })
 })
 
@@ -163,5 +177,19 @@ describe('pennylaneMemberBillingProvider — factures synchronisées (s20, ADR 0
       }),
     ])
     expect(invoices[0]).not.toHaveProperty('externalId')
+  })
+
+  it('s21 : aucun lien de paiement tant que l’API ne l’expose pas, jamais construit (ADR 063)', async () => {
+    vi.mocked(listInvoicesByProfileIdsDao).mockResolvedValue([
+      {...row, source: 'pennylane' as const, externalId: '9001', hasPdf: true},
+    ])
+
+    const invoices = await pennylaneMemberBillingProvider.listInvoicesOf(
+      ORG_ID,
+      [PROFILE_ID]
+    )
+
+    expect(invoices).toHaveLength(1)
+    expect(invoices[0].paymentUrl).toBeNull()
   })
 })

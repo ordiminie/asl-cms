@@ -44,6 +44,7 @@ import {
   MyContactDTO,
   MyContactGroupDTO,
   MyInvoiceDTO,
+  MyInvoicePayment,
   MyInvoicePdfResult,
   MyInvoicesDTO,
   MyLandDTO,
@@ -300,9 +301,25 @@ const terrainOf = (
 }
 
 /**
- * Une facture vue par le membre (s19, s20) : objet compose, terrain facture,
- * nom de la fiche s'il n'est pas celui du compte, statut brut, son libelle et
- * sa classe, et la reference du PDF quand la source en fournit un.
+ * Le reglement d'une facture (s21, ADR 063 §3) : le lien du fournisseur si la
+ * facture est impayee et que le lien est une adresse `https` ; le virement si
+ * elle est impayee sans lien valable ; rien sinon (reglee ou « a classer »).
+ */
+const paymentOf = (
+  statusClass: MyInvoiceDTO['statusClass'],
+  paymentUrl: string | null
+): MyInvoicePayment | null => {
+  if (statusClass !== 'unpaid') return null
+  return paymentUrl !== null && isHttpsUrl(paymentUrl)
+    ? {kind: 'link', url: paymentUrl}
+    : {kind: 'transfer'}
+}
+
+/**
+ * Une facture vue par le membre (s19, s20, s21) : objet compose, terrain
+ * facture, nom de la fiche s'il n'est pas celui du compte, statut brut, son
+ * libelle et sa classe, la reference du PDF quand la source en fournit un, et
+ * son reglement.
  */
 const toMyInvoice = (
   invoice: MemberInvoice,
@@ -311,6 +328,10 @@ const toMyInvoice = (
   const name = context.profileNames.get(invoice.memberProfileId)
   const withPdf =
     invoice.hasPdf && invoice.source === MemberInvoiceSourceConst.PENNYLANE
+  const statusClass = classifyInvoiceStatus(
+    invoice.status,
+    context.classification
+  )
   return {
     issuedOn: invoice.issuedOn,
     subject: composeInvoiceSubject(context.subjectTemplate, invoice.year),
@@ -320,9 +341,10 @@ const toMyInvoice = (
     dueOn: invoice.dueOn,
     status: invoice.status,
     statusLabel: statusLabelOf(invoice.status, context.statusLabels),
-    statusClass: classifyInvoiceStatus(invoice.status, context.classification),
+    statusClass,
     hasPdf: withPdf,
     pdfRef: withPdf ? invoice.id : null,
+    payment: paymentOf(statusClass, invoice.paymentUrl),
   }
 }
 

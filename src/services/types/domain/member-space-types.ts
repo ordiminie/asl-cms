@@ -99,6 +99,12 @@ export type UpdateMyContactResult =
 export type MyInvoiceStatusClass = InvoiceStatusClass
 
 /**
+ * Le reglement d'une facture impayee (s21, ADR 063 §3) : un lien sortant
+ * `https` du fournisseur, ou le virement. Jamais un moyen de paiement.
+ */
+export type MyInvoicePayment = {kind: 'link'; url: string} | {kind: 'transfer'}
+
+/**
  * Une facture telle que le membre la voit (s19, s20) : aucun identifiant de
  * fiche. `status` est le statut **tel que fourni** par la source ;
  * `statusLabel` le mot que lit le membre (reglage du tenant, repli sur le
@@ -128,6 +134,11 @@ export type MyInvoiceDTO = {
    * PDF. Jamais une adresse : celle de Pennylane expire (ADR 062 §6).
    */
   pdfRef: string | null
+  /**
+   * Le reglement (s21) : nul pour une facture qui n'est pas impayee. Le lien
+   * est deja garde (`https`) : la presentation ne relit rien d'autre.
+   */
+  payment: MyInvoicePayment | null
 }
 
 /** « Mes factures » (s19) : une seule liste pour tous les terrains du compte. */

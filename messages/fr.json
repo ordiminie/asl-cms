@@ -3987,6 +3987,7 @@
         "amount": "Montant",
         "dueOn": "Échéance",
         "status": "Statut",
+        "payment": "Règlement",
         "invoice": "Facture"
       },
       "parcel": "Parcelle <mono>{number}</mono>",
@@ -4010,6 +4011,14 @@
         "land": "{count, plural, one {parcelle {numbers}} other {parcelles {numbers}}}",
         "unavailable": "PDF non disponible",
         "failed": "Le PDF n’a pas pu être ouvert. Réessayez dans un moment."
+      },
+      "payment": {
+        "button": "Payer",
+        "buttonMobile": "Payer cette facture",
+        "label": "Payer la facture {year}, {land} (s’ouvre dans un nouvel onglet)",
+        "transfer": "Par virement",
+        "transferMobile": "À régler par virement.",
+        "notice": "Les factures à régler se paient par virement. Pour toute question, écrivez au bureau depuis la <contact>page Contact</contact>."
       },
       "syncedAt": "Factures mises à jour le {date} à {hour} h {minute}.",
       "syncFailed": "Les factures n’ont pas pu être mises à jour. Voici vos factures telles qu’elles étaient le {date} à {hour} h {minute}.",

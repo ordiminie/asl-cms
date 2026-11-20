@@ -1,6 +1,6 @@
 'use client'
 
-import {Download, Info} from 'lucide-react'
+import {Download, ExternalLink, Info} from 'lucide-react'
 import Link from 'next/link'
 import {useTranslations} from 'next-intl'
 import {type ReactNode, useId, useState, useTransition} from 'react'
@@ -55,6 +55,10 @@ type PdfColumn = {
  * libelle, sinon tel que fourni ; aucun identifiant de fiche dans l'ecran.
  * Sous Pennylane : colonne « Facture » (le PDF est demande **au clic**,
  * jamais rendu dans la page), date de mise a jour, etats 1d, 1e et 1f.
+ * Le reglement (s21) : colonne « Reglement » des qu'une facture est impayee,
+ * un lien sortant « Payer » (nouvel onglet) ou « Par virement », et une
+ * phrase unique qui renvoie au bureau. Aucun formulaire de paiement : le
+ * lien est deja garde par le service, la carte ne relit rien d'autre.
  * Composant client pour la pagination et le bouton PDF.
  */
 export function MyInvoicesCard({
@@ -78,6 +82,9 @@ export function MyInvoicesCard({
       }
     : undefined
   const empty = invoices.invoices.length === 0
+  const byTransfer = invoices.invoices.some(
+    ({payment}) => payment?.kind === 'transfer'
+  )
 
   return (
     <MyInvoicesSection>
@@ -100,6 +107,7 @@ export function MyInvoicesCard({
           <p className="text-muted-foreground text-[15px]">
             {t('intro', {count: invoices.landCount})}
           </p>
+          {byTransfer && <TransferNotice />}
           <PagedInvoices invoices={invoices.invoices} pdfColumn={pdfColumn} />
         </>
       )}
@@ -125,6 +133,31 @@ function SyncFailedNotice({syncedAt}: {syncedAt: string | null}) {
         {syncedAt
           ? t('syncFailed', syncTimePartsOf(syncedAt))
           : t('syncFailedNever')}
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+/** 1b (s21) : une facture impayee se regle par virement ; renvoi au bureau. */
+function TransferNotice() {
+  const t = useTranslations('MemberSpacePage.invoices')
+
+  return (
+    <Alert role="note" className="bg-muted [&>svg]:size-5">
+      <Info aria-hidden="true" />
+      <AlertDescription className="text-foreground text-base">
+        <p>
+          {t.rich('payment.notice', {
+            contact: (chunks) => (
+              <Link
+                href="/contact"
+                className="text-primary font-semibold underline underline-offset-4"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
+        </p>
       </AlertDescription>
     </Alert>
   )
@@ -187,6 +220,7 @@ function PagedInvoices({
   const t = useTranslations('MemberSpacePage.invoices')
   const [tablePage, setTablePage] = useState(1)
   const [cardPage, setCardPage] = useState(1)
+  const paymentColumn = invoices.some(({payment}) => payment !== null)
 
   return (
     <>
@@ -202,6 +236,7 @@ function PagedInvoices({
               </TableHead>
               <TableHead>{t('columns.dueOn')}</TableHead>
               <TableHead>{t('columns.status')}</TableHead>
+              {paymentColumn && <TableHead>{t('columns.payment')}</TableHead>}
               {pdfColumn && <TableHead>{t('columns.invoice')}</TableHead>}
             </TableRow>
           </TableHeader>
@@ -232,6 +267,11 @@ function PagedInvoices({
                       statusClass={invoice.statusClass}
                     />
                   </TableCell>
+                  {paymentColumn && (
+                    <TableCell>
+                      <InvoicePayment invoice={invoice} className="h-11" />
+                    </TableCell>
+                  )}
                   {pdfColumn && (
                     <TableCell>
                       <InvoicePdf
@@ -381,6 +421,50 @@ function InvoicePdf({
   )
 }
 
+/**
+ * Le reglement d'une facture (s21, criteres 1, 3 et 5) : un lien sortant vers
+ * la page de paiement du fournisseur, dans un nouvel onglet annonce ; la
+ * mention du virement, sans bouton ; rien pour une facture qui n'est pas
+ * impayee.
+ */
+function InvoicePayment({
+  invoice,
+  className,
+  mobile = false,
+}: {
+  invoice: MyInvoiceDTO
+  className: string
+  mobile?: boolean
+}) {
+  const t = useTranslations('MemberSpacePage.invoices')
+  const {payment} = invoice
+
+  if (!payment) return null
+  if (payment.kind === 'transfer') {
+    return (
+      <span className="text-muted-foreground text-[15px]">
+        {mobile ? t('payment.transferMobile') : t('payment.transfer')}
+      </span>
+    )
+  }
+  return (
+    <Button asChild className={className}>
+      <a
+        href={payment.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={t('payment.label', {
+          year: invoice.issuedOn.slice(0, 4),
+          land: landLabelOf(invoice, t),
+        })}
+      >
+        <ExternalLink aria-hidden="true" />
+        {mobile ? t('payment.buttonMobile') : t('payment.button')}
+      </a>
+    </Button>
+  )
+}
+
 /** Une facture sous 640 px (§3.5) : l'objet, le badge, puis les paires. */
 function InvoiceCard({
   invoice,
@@ -419,6 +503,11 @@ function InvoiceCard({
           {isoToFrenchDate(invoice.dueOn)}
         </dd>
       </dl>
+      <InvoicePayment
+        invoice={invoice}
+        className="h-14 w-full text-base"
+        mobile
+      />
       {pdfColumn && (
         <InvoicePdf
           invoice={invoice}

@@ -6,7 +6,9 @@ import type {MemberInvoice} from '../types/domain/member-invoice-types'
  * `member-invoice-service`, gardee par `canWrite`. Fonctionnel, sans classe :
  * s20 livre une seconde implementation sans toucher la presentation.
  *
- * Aucun moyen de paiement dans le contrat.
+ * Aucun moyen de paiement dans le contrat : `paymentUrl` (s21, ADR 063) est
+ * un lien sortant, renseigne explicitement par chaque implementation,
+ * facture par facture — jamais une constante ni un reglage.
  */
 export type MemberBillingProvider = {
   /** Valeur du reglage `billing.provider` qui designe cette implementation. */

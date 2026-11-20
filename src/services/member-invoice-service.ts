@@ -240,11 +240,26 @@ export const updateMemberInvoiceService = async (
   return {status: 'saved'}
 }
 
+/**
+ * Une facture pour le bureau, champ par champ : le lien de paiement n'est
+ * jamais recopie, il ne sert qu'au membre (s21, ADR 063 §4).
+ */
 const toBoardInvoice = (
-  invoice: MemberInvoice,
+  invoice: Omit<MemberInvoice, 'paymentUrl'>,
   settings: ResolvedAssociationSettings
 ): BoardInvoiceDTO => ({
-  ...invoice,
+  id: invoice.id,
+  memberProfileId: invoice.memberProfileId,
+  parcelId: invoice.parcelId,
+  parcelNumber: invoice.parcelNumber,
+  meterNumber: invoice.meterNumber,
+  source: invoice.source,
+  year: invoice.year,
+  issuedOn: invoice.issuedOn,
+  dueOn: invoice.dueOn,
+  amountCents: invoice.amountCents,
+  status: invoice.status,
+  hasPdf: invoice.hasPdf,
   subject: composeInvoiceSubject(
     getInvoiceSubjectTemplate(settings),
     invoice.year

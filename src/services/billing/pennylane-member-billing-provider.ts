@@ -13,12 +13,20 @@ import type {MemberBillingProvider} from './member-billing-provider'
  * scope du tenant. **Aucun appel reseau a l'affichage** (critere 9) : une API
  * indisponible laisse les dernieres donnees connues. Le bureau ne saisit plus
  * (`canWrite: false`) ; les factures `site` deja saisies restent lues.
+ *
+ * `paymentUrl` est nul : l'API v2 n'expose aucun champ de lien de paiement
+ * (releve du 19/11/2026 sur 858 factures, ADR 063). Aucune URL n'est
+ * construite a partir d'un identifiant ; le jour ou le champ existe, il entre
+ * par la liste blanche du schema, une colonne et la synchronisation.
  */
 export const pennylaneMemberBillingProvider: MemberBillingProvider = {
   id: BILLING_PROVIDER_PENNYLANE,
   canWrite: false,
   listInvoicesOf: async (organizationId, memberProfileIds) =>
     withTenant(organizationId, async () =>
-      (await listInvoicesByProfileIdsDao(memberProfileIds)).map(toMemberInvoice)
+      (await listInvoicesByProfileIdsDao(memberProfileIds)).map((row) => ({
+        ...toMemberInvoice(row),
+        paymentUrl: null,
+      }))
     ),
 }

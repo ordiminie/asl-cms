@@ -2066,6 +2066,7 @@ describe('cible choisie — impayés et groupes (s27, ADR 060)', () => {
     amountCents: 100,
     status,
     hasPdf: false,
+    paymentUrl: null,
   })
   const providerOf = (
     listInvoicesOf: MemberBillingProvider['listInvoicesOf']
