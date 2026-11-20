@@ -40,8 +40,13 @@ export const STRONG_STROKE_PT = 0.25
 
 export type LetterDocument = InstanceType<typeof PDFDocument>
 
+/**
+ * `layoutCache: false` pour un document de mesure qui vit autant que le
+ * processus : pdfkit garderait sinon chaque mot mesure, sans limite.
+ */
 export const createLetterDocument = (
-  fonts: LetterFontFiles
+  fonts: LetterFontFiles,
+  options: {layoutCache?: boolean} = {}
 ): LetterDocument => {
   const doc = new PDFDocument({
     size: 'A4',
@@ -49,6 +54,7 @@ export const createLetterDocument = (
     autoFirstPage: false,
     bufferPages: true,
     compress: true,
+    fontLayoutCache: options.layoutCache ?? true,
   })
   doc.registerFont(LETTER_FONTS.regular, fonts.sans, SANS_REGULAR_INSTANCE)
   doc.registerFont(LETTER_FONTS.serif, fonts.serifSemiBold)

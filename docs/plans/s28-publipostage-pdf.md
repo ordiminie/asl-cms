@@ -130,6 +130,19 @@ terrain, sinon au nom seul, signalée ; page de calage téléchargeable à part 
     m1, m3, m4 faits ; m2 non traité : il ne reste pas local (aucun chemin du produit ne supprime
     une fiche, et distinguer les deux cas demande un signal en base).
 
+### Correctifs de la revue (tour 2) — arbitrage du 20/11/2026 : corriger avant la PR
+
+13. [x] **M2 — textes du pied, de l'en-tête et du repère bornés à la largeur utile.** Les mentions
+    légales (`association.legal_mentions`, jusqu'à 500 caractères) passent à la ligne sur la largeur
+    utile (170 mm, marges 20/20) et restent dans la hauteur du pied ; si elles ne tiennent toujours
+    pas, réduction jusqu'à un plancher. Le nom de l'association dans l'en-tête et le repère « <nom> —
+    suite, page n/N » sont bornés à la largeur utile (mesure, réduction ou coupure contrôlée, sans
+    perdre le « page n/N »). Tests `pdfjs-dist` : mentions de 500 caractères et nom de destinataire
+    de 70 caractères ; aucun texte hors de x 20-190 mm, pied jamais sous la marge basse ni sur le
+    corps. Règle consignée au §6.1 du design system.
+14. [x] **m5** — document de mesure des adresses créé avec `fontLayoutCache: false` (ou un document
+    par appel), pour ne pas accumuler les mots des adresses dans un cache sans limite.
+
 ## Files touched
 
 - `src/services/rules/campaign-letter-rules.ts` (+ test), `src/services/rules/campaign-rules.ts`

@@ -425,6 +425,136 @@ describe('renderLettersPdf — une lettre plus longue qu’une page (C1, §6.1)'
   })
 })
 
+describe('renderLettersPdf — pied, en-tête et repère bornés à la largeur utile (M2, §6.1)', () => {
+  const MENTION_LINE =
+    'Association syndicale libre La Fourche, siège : 12 chemin de la Fourche, 07140 Les Vans, SIRET 123 456 789 00012'
+  const longMentions = () => {
+    const lines = [MENTION_LINE]
+    while (lines.join('\n').length < 500) lines.push(MENTION_LINE)
+    return `${lines.join('\n').slice(0, 499)}.`
+  }
+  const LONG_NAME =
+    'SOCIÉTÉ CIVILE IMMOBILIÈRE DES COPROPRIÉTAIRES DU DOMAINE DE LAFOURCHE'
+  const LONG_ASSOCIATION =
+    'Association syndicale libre des propriétaires du lotissement Les Hauts de la Fourche et du hameau du Grand Chêne réunis'
+  const bodyOverOnePage = () =>
+    [
+      'Bonjour {nom},',
+      ...Array.from(
+        {length: 30},
+        () =>
+          'Les travaux de voirie de la parcelle {parcelle} commencent lundi. Merci de laisser le passage libre aux engins.'
+      ),
+    ].join('\n\n')
+  const boundedInput = () =>
+    input({
+      association: {name: LONG_ASSOCIATION, legalMentions: longMentions()},
+      bodyMarkdown: bodyOverOnePage(),
+      letters: [
+        letter({
+          name: LONG_NAME,
+          address: {source: 'home', lines: [LONG_NAME, '07140 Les Vans']},
+        }),
+      ],
+    })
+  const footerTexts = (page: PdfPage) =>
+    page.texts.filter((text) => text.yMm > FOOTER_TOP_MM)
+
+  it('les cas d’entrée sont aux bornes : mentions de 500 caractères, nom de 70', () => {
+    expect(longMentions()).toHaveLength(500)
+    expect(LONG_NAME).toHaveLength(70)
+    expect(LONG_ASSOCIATION.length).toBeLessThanOrEqual(120)
+  })
+
+  it('aucun texte hors de x 20-190 mm, sur chaque page', async () => {
+    const pages = await readPdf(await renderLettersPdf(boundedInput()))
+
+    expect(pages.length).toBeGreaterThan(1)
+    for (const page of pages) {
+      for (const text of page.texts) {
+        expect(text.xMm).toBeGreaterThanOrEqual(LETTER_MARGINS_MM.left - 0.01)
+        expect(text.xMm + text.widthMm).toBeLessThanOrEqual(
+          A4_MM.width - LETTER_MARGINS_MM.right + 0.01
+        )
+      }
+    }
+  })
+
+  it('les mentions, entières, restent dans le pied : sous le filet, au-dessus de la marge basse', async () => {
+    const pages = await readPdf(await renderLettersPdf(boundedInput()))
+    const expected = longMentions().replace(/\s*\n\s*/g, ' · ')
+
+    for (const page of pages) {
+      const footer = footerTexts(page)
+      expect(footer.map((text) => text.str).join(' ')).toBe(
+        `${input().texts.footer} ${expected}`
+      )
+      for (const text of footer) {
+        expect(text.yMm - ptToMm(text.sizePt)).toBeGreaterThanOrEqual(
+          FOOTER_TOP_MM
+        )
+        expect(text.yMm).toBeLessThanOrEqual(
+          A4_MM.height - LETTER_MARGINS_MM.bottom
+        )
+      }
+      const body = page.texts.filter(
+        (text) => text.yMm <= FOOTER_TOP_MM && text.yMm > FOOTER_TOP_MM - 30
+      )
+      for (const text of body) expect(text.yMm).toBeLessThan(FOOTER_TOP_MM - 4)
+    }
+  })
+
+  it('des mentions qui ne tiennent pas au plancher sont coupées en « … », jamais sous la marge basse', async () => {
+    const legalMentions = Array.from({length: 125}, () => 'SIRET').join('\n')
+    const [page] = await readPdf(
+      await renderLettersPdf(
+        input({association: {name: 'ASL Les Pins', legalMentions}})
+      )
+    )
+
+    const footer = footerTexts(page)
+    expect(footer.at(-1)?.str).toMatch(/…$/)
+    for (const text of footer) {
+      expect(text.yMm).toBeLessThanOrEqual(
+        A4_MM.height - LETTER_MARGINS_MM.bottom
+      )
+      expect(text.xMm + text.widthMm).toBeLessThanOrEqual(
+        A4_MM.width - LETTER_MARGINS_MM.right + 0.01
+      )
+    }
+  })
+
+  it('le repère d’une page de suite garde « page n/N » malgré un nom long', async () => {
+    const pages = await readPdf(await renderLettersPdf(boundedInput()))
+
+    pages.slice(1).forEach((page, index) => {
+      const marker = page.texts.find((text) =>
+        text.str.endsWith(`— suite, page ${index + 2}/${pages.length}`)
+      )
+      expect(marker).toBeDefined()
+      expect(marker?.yMm).toBeGreaterThan(LETTER_MARGINS_MM.top)
+    })
+  })
+
+  it('un nom trop long même au plancher : le nom se coupe en « … », le repère garde « page n/N » dans la largeur', async () => {
+    const name = `${LONG_NAME} ${LONG_NAME}`
+    const pages = await readPdf(
+      await renderLettersPdf({
+        ...boundedInput(),
+        letters: [letter({name, address: {source: 'home', lines: ['X']}})],
+      })
+    )
+
+    expect(pages.length).toBeGreaterThan(1)
+    const marker = find(pages[1], `— suite, page 2/${pages.length}`)
+    expect(marker.str.startsWith('SOCIÉTÉ CIVILE')).toBe(true)
+    expect(marker.str).toContain('…')
+    expect(marker.xMm + marker.widthMm).toBeLessThanOrEqual(
+      A4_MM.width - LETTER_MARGINS_MM.right + 0.01
+    )
+  })
+})
+
 describe('renderCalibrationPdf — la page de calage (ADR 067 §4)', () => {
   const texts = {
     sampleLines: ['Nom du destinataire', 'Adresse', 'Code postal Ville'],

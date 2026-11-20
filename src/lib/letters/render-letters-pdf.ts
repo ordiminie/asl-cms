@@ -68,14 +68,23 @@ const CONTENT_X_MM = LETTER_MARGINS_MM.left
 const CONTENT_WIDTH_MM =
   A4_MM.width - LETTER_MARGINS_MM.left - LETTER_MARGINS_MM.right
 const HEADER_NAME_SIZE_PT = 14
+/** Plancher du nom de l'en-tete, ramene a la largeur utile (§6.1). */
+const HEADER_NAME_MIN_SIZE_PT = 11
+const HEADER_NAME_GAP_MM = 4
 const CONTINUATION_SIZE_PT = 10
+/** Plancher du repere de suite ; en dessous, le nom se coupe en « … ». */
+const CONTINUATION_MIN_SIZE_PT = 8
 const FOOTER_SIZE_PT = 9
 const MENTIONS_SIZE_PT = 8
+/** Plancher des mentions : 500 caracteres tiennent en 4 lignes dans le pied. */
+const MENTIONS_MIN_SIZE_PT = 6
+/** De la phrase postale au filet du pied. */
+const FOOTER_TEXT_GAP_MM = 2
+const TEXT_SIZE_STEP_PT = 0.5
 const RULE_WIDTH_PT = 0.5
 const FRAME_WIDTH_PT = 1
 const LIST_INDENT_MM = 6
 const QUOTE_PADDING_MM = 3
-const BODY_SIZE_STEP_PT = 0.5
 /** Oblique de l'italique, en degres : la police du site n'a pas d'italique. */
 const ITALIC_SKEW_DEG = 10
 
@@ -93,12 +102,19 @@ const drawHeader = (doc: LetterDocument, name: string): void => {
     align: 'center',
     lineBreak: false,
   })
-  doc.text(
-    name,
-    left + size + x(4),
-    top + (size - doc.currentLineHeight()) / 2,
-    {lineBreak: false}
+  const nameLeft = left + size + x(HEADER_NAME_GAP_MM)
+  const nameWidth = x(CONTENT_X_MM + CONTENT_WIDTH_MM) - nameLeft
+  doc.fontSize(
+    lineSizeOf(doc, name, nameWidth, {
+      size: HEADER_NAME_SIZE_PT,
+      floor: HEADER_NAME_MIN_SIZE_PT,
+    })
   )
+  drawBoundedLine(doc, name, {
+    left: nameLeft,
+    top: top + (size - doc.currentLineHeight()) / 2,
+    width: nameWidth,
+  })
 }
 
 const drawDateLine = (doc: LetterDocument, dateLine: string): void => {
@@ -117,24 +133,85 @@ const drawSubject = (doc: LetterDocument, subject: string): number => {
   return doc.y
 }
 
+/**
+ * La plus grande taille, du corps demande jusqu'au plancher, ou le texte tient
+ * sur une ligne de la largeur donnee ; la police doit etre choisie.
+ */
+const lineSizeOf = (
+  doc: LetterDocument,
+  text: string,
+  width: number,
+  sizes: {size: number; floor: number}
+): number =>
+  largestFittingSizeOf(sizes, (candidate) => {
+    doc.fontSize(candidate)
+    return doc.widthOfString(text) <= width
+  })
+
+/**
+ * Une ligne bornee a la largeur donnee (§6.1), a la taille courante : ce qui
+ * deborde encore est coupe, termine par « … ».
+ */
+const drawBoundedLine = (
+  doc: LetterDocument,
+  text: string,
+  at: {left: number; top: number; width: number}
+): void => {
+  doc.text(text, at.left, at.top, {
+    width: at.width,
+    height: doc.currentLineHeight(true),
+    ellipsis: true,
+  })
+}
+
+const largestFittingSizeOf = (
+  sizes: {size: number; floor: number},
+  fits: (size: number) => boolean
+): number => {
+  for (let size = sizes.size; size > sizes.floor; size -= TEXT_SIZE_STEP_PT) {
+    if (fits(size)) return size
+  }
+  return sizes.floor
+}
+
+/**
+ * Le pied (§6.1), dans ses 16 mm au-dessus de la marge basse : la phrase
+ * postale sur une ligne, puis les mentions legales a la ligne sur la largeur
+ * utile, reduites jusqu'au plancher si elles ne tiennent pas dans la hauteur
+ * restante, coupees en « … » au plancher.
+ */
 const drawFooter = (
   doc: LetterDocument,
   footer: string,
   legalMentions: string | null
 ): void => {
   const top = x(FOOTER_TOP_MM)
+  const left = x(CONTENT_X_MM)
+  const width = x(CONTENT_WIDTH_MM)
   doc
     .lineWidth(RULE_WIDTH_PT)
-    .moveTo(x(CONTENT_X_MM), top)
-    .lineTo(x(CONTENT_X_MM + CONTENT_WIDTH_MM), top)
+    .moveTo(left, top)
+    .lineTo(left + width, top)
     .stroke('black')
   doc.font(LETTER_FONTS.regular).fontSize(FOOTER_SIZE_PT)
-  doc.text(footer, x(CONTENT_X_MM), top + x(3), {lineBreak: false})
+  drawBoundedLine(doc, footer, {
+    left,
+    top: top + x(FOOTER_TEXT_GAP_MM),
+    width,
+  })
   const mentions = legalMentions?.replace(/\s*\n\s*/g, ' · ').trim()
-  if (mentions) {
-    doc.fontSize(MENTIONS_SIZE_PT)
-    doc.text(mentions, x(CONTENT_X_MM), top + x(8), {lineBreak: false})
-  }
+  if (!mentions) return
+  const mentionsTop = doc.y
+  const height = x(A4_MM.height - LETTER_MARGINS_MM.bottom) - mentionsTop
+  const size = largestFittingSizeOf(
+    {size: MENTIONS_SIZE_PT, floor: MENTIONS_MIN_SIZE_PT},
+    (candidate) => {
+      doc.fontSize(candidate)
+      return doc.heightOfString(mentions, {width}) <= height
+    }
+  )
+  doc.fontSize(size)
+  doc.text(mentions, left, mentionsTop, {width, height, ellipsis: true})
 }
 
 type BodyLayout = {size: number; lineGap: number}
@@ -204,7 +281,7 @@ const chooseLayout = (
   for (
     let size = BODY_FONT_SIZE_PT;
     size > BODY_MIN_FONT_SIZE_PT;
-    size -= BODY_SIZE_STEP_PT
+    size -= TEXT_SIZE_STEP_PT
   ) {
     const layout = {size, lineGap: lineGapOf(doc, size)}
     if (measureBody(doc, blocks, layout) <= available) return layout
@@ -376,11 +453,44 @@ const drawBody = (
   for (const block of blocks) drawBlock(doc, block, layout)
 }
 
-const drawContinuationMarker = (doc: LetterDocument, marker: string): void => {
-  doc.font(LETTER_FONTS.regular).fontSize(CONTINUATION_SIZE_PT)
-  doc.fillColor('black')
-  doc.text(marker, x(CONTENT_X_MM), x(LETTER_MARGINS_MM.top), {
-    lineBreak: false,
+/**
+ * Le repere d'une page de suite, borne a la largeur utile (§6.1) : reduit
+ * jusqu'au plancher, puis le nom seul se coupe en « … » : « page n/N » reste.
+ */
+const continuationMarkerOf = (
+  doc: LetterDocument,
+  continuation: RenderLettersInput['texts']['continuation'],
+  values: ContinuationValues
+): string => {
+  const width = x(CONTENT_WIDTH_MM)
+  const marker = continuation(values)
+  doc.fontSize(
+    lineSizeOf(doc, marker, width, {
+      size: CONTINUATION_SIZE_PT,
+      floor: CONTINUATION_MIN_SIZE_PT,
+    })
+  )
+  const fits = (text: string) => doc.widthOfString(text) <= width
+  let name = values.name
+  let shortened = marker
+  while (!fits(shortened) && name.length > 0) {
+    name = name.slice(0, -1).trimEnd()
+    shortened = continuation({...values, name: `${name}…`})
+  }
+  return shortened
+}
+
+const drawContinuationMarker = (
+  doc: LetterDocument,
+  continuation: RenderLettersInput['texts']['continuation'],
+  values: ContinuationValues
+): void => {
+  doc.font(LETTER_FONTS.regular).fillColor('black')
+  const marker = continuationMarkerOf(doc, continuation, values)
+  drawBoundedLine(doc, marker, {
+    left: x(CONTENT_X_MM),
+    top: x(LETTER_MARGINS_MM.top),
+    width: x(CONTENT_WIDTH_MM),
   })
 }
 
@@ -396,10 +506,11 @@ const drawContinuationPages = (
   for (let page = firstPage + 1; page <= lastPage; page++) {
     doc.switchToPage(page)
     drawFooter(doc, input.texts.footer, input.association.legalMentions)
-    drawContinuationMarker(
-      doc,
-      input.texts.continuation({name, page: page - firstPage + 1, pageCount})
-    )
+    drawContinuationMarker(doc, input.texts.continuation, {
+      name,
+      page: page - firstPage + 1,
+      pageCount,
+    })
   }
   doc.switchToPage(lastPage)
 }

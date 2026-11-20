@@ -1213,6 +1213,16 @@ sous le repère. Aucun texte du corps sous le haut du pied, aucun texte hors des
 citation coupée garde ses bords sur chaque page. Le nombre de pages est connu à la génération : la
 carte annonce « N lettres, M pages » quand le lot compte plus de pages que de lettres.
 
+**Textes du pied, de l'en-tête et du repère (s28, revue du 20/11/2026)** — aucun texte ne dépasse
+la largeur utile, 170 mm entre les marges de 20 mm. Le pied tient dans ses 16 mm, au-dessus de la
+marge basse : la phrase postale (9 pt) sur une ligne, 2 mm sous le filet, puis les **mentions
+légales passées à la ligne** sur la largeur utile, à 8 pt, réduites par demi-point jusqu'à **6 pt
+au plus petit** si elles ne tiennent pas dans la hauteur restante (500 caractères y tiennent) ; au
+plancher, ce qui déborde encore est coupé en « … ». Le nom de l'association dans l'en-tête (14 pt)
+se réduit jusqu'à **11 pt**, puis se coupe en « … ». Le repère de suite (10 pt) se réduit jusqu'à
+**8 pt**, puis **seul le nom du destinataire** se coupe en « … » : « suite, page n/N » reste
+toujours lisible.
+
 **Noir et blanc — l'information ne passe jamais par la couleur.** Aucun aplat, aucune trame grise
 sous du texte : filets noirs 0,5 pt, cadres 1 pt. Logo en version **monochrome**, testé à 300 dpi.
 Les niveaux de relance se distinguent par l'**objet écrit** (« Deuxième rappel »), pas par un
