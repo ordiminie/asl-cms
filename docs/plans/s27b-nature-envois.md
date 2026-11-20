@@ -68,6 +68,41 @@ dans la recherche.
         désinscription liste les envois statutaires ; le SuperAdmin reclasse un modèle et l'envoi suivant
         change (critère 6) ; le bureau voit la carte en lecture seule. **Vérif** : en CI.
 
+## Correctifs CI (round 1, PR 78, run 44729232108, 20/11)
+
+Job « Tests e2e (build de production) » : 2 échecs, 1 instable, 2 non lancés, 304 passés. Logs :
+`docs/logs/logs_121069844559.zip` (texte du job `0_Tests e2e (build de production).txt`).
+
+11. [x] **C1** — `e2e/campaigns.spec.ts:1524` (s27b, critère 6) : `composeTemplateAndSend` ne voit jamais le
+        titre « Aperçu avant l'envoi » (l. 1393-1395, échec + retry). Trouver la cause réelle : spec, ou
+        défaut de l'application introduit par s27b (décompte relu au changement de modèle, bouton « Voir
+        l'aperçu », refus du service). Si c'est l'application, la corriger avec un test unitaire qui
+        échoue d'abord. Ne pas affaiblir l'assertion.
+        **Cause** : la spec, pas l'application. L'objet « Documents avant reclassement s27b-<RUN> » fait
+        43 à 45 caractères pour 39 permis (60 − « TechCorp Solutions — ») ; le composeur le refuse à bon
+        droit (capture CI : « Objet : 6 caractères de trop », « 45 / 39 »). Libellés raccourcis (« Avant /
+        Après reclassement », 35 au plus) et garde dans `natureSubjectOf` qui nomme l'objet trop long.
+12. [x] **C2** — `e2e/recipient-groups.spec.ts:438` (s27, existant) : l'envoi au groupe attend 2 messages
+        et en reçoit 0 (l. 505-513, 3 essais). Hypothèse à vérifier, pas à présumer : les nouveaux envois
+        e2e de s27b sur TechCorp, en parallèle, épuisent le plafond quotidien de campagnes (s26, défaut
+        100) et reportent la part au lendemain ; ou le seed s27b (modèles statutaires TechCorp) change ce
+        que ce test suppose. Corriger la cause : isolation des données ou du budget des specs s27b, jamais
+        en retirant une assertion de s27.
+        **Cause** : le budget d'envoi quotidien (s52, ADR 053 : 300 − 100 = 200 reportables), pas le plafond
+        de campagnes ; un seul worker en CI, rien en parallèle. C1 échouant sur le dernier test d'un fichier
+        `serial`, tout `campaigns.spec.ts` a tourné trois fois (reporter : `×` en 73ᵉ position, 13 `·` puis
+        `×`, 4 `·`, `±`, 9 `°`), chaque passe écrivant à « tous ». La part du groupe, planifiée aujourd'hui,
+        reste « Reçue 0 / Programmée 2 / En échec 0 » aux trois essais : reportée, pas en panne. Corrigé par
+        C1 et par l'isolation du budget : le bloc s27b relève le compteur du jour de TechCorp et le remet en
+        `afterAll`.
+13. [x] **C3** — `e2e/campaigns.spec.ts:622` (instable : « SyntaxError: Unexpected end of JSON input »,
+        réussi au nouvel essai) : vérifier si s27b en est la cause (même piste de concurrence). Si oui,
+        corriger ; sinon, le noter sans y toucher.
+        **Constat** : course préexistante, pas s27b. `file-transport.ts` (s03) écrit par `fs.writeFile`, non
+        atomique ; `messagesSince` lit tout `.json` nouveau, parfois vide en cours d'écriture. Survenue au
+        3ᵉ passage de la spec, que seul C1 provoquait. Non touchée (écrire dans un fichier temporaire puis
+        `rename`, hors de cette story).
+
 ## Files touched
 
 - `src/services/types/domain/association-settings-types.ts`, `campaign-types.ts`

@@ -1222,10 +1222,23 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
  * La spec crée deux fiches (l'une désinscrite), chacune en impayé, réunies
  * dans un groupe, et les efface à la fin avec ses campagnes. Le plafond
  * quotidien est relevé le temps de l'essai, et la nature reclassée revient à
- * sa valeur de seed.
+ * sa valeur de seed. Le compteur du jour du budget d'envoi de TechCorp (s52,
+ * ADR 053) revient aussi à sa valeur d'avant l'essai : ses envois à « tous »
+ * ne doivent pas épuiser le budget des specs qui suivent.
+ *
+ * L'objet saisi tient dans 39 caractères (60 moins « TechCorp Solutions — ») ;
+ * le marqueur en prend jusqu'à 16 : un libellé fait au plus 22 caractères.
  */
 const NATURE_MARKER = `s27b-${RUN}`
-const natureSubjectOf = (label: string) => `${label} ${NATURE_MARKER}`
+const NATURE_SUBJECT_MAX_LENGTH = 39
+const natureSubjectOf = (label: string) => {
+  const subject = `${label} ${NATURE_MARKER}`
+  expect(
+    subject.length,
+    `objet trop long pour le composeur : « ${subject} »`
+  ).toBeLessThanOrEqual(NATURE_SUBJECT_MAX_LENGTH)
+  return subject
+}
 const NATURE_GROUP = `Groupe nature ${NATURE_MARKER}`
 const NATURE_PARCEL = `N-${RUN}`
 /** Un statut que le seed de TechCorp classe « impayé ». */
@@ -1353,6 +1366,53 @@ const restoreNatureSettings = async () => {
   previousNatureSettings.clear()
 }
 
+type DayBudget = {day: string; reportable: number; login: number}
+
+/** Le compteur du budget d'envoi de TechCorp au début de l'essai. */
+let natureBudgetBefore: DayBudget | null = null
+
+/** Relève le compteur du jour (Paris) de TechCorp, sous son scope. */
+const snapshotNatureBudget = async () => {
+  const {a} = await tenantIds()
+  natureBudgetBefore = await inTenantScope(a, async (client) => {
+    const {rows} = await client.query<{
+      day: string
+      reportable_count: number | null
+      login_count: number | null
+    }>(
+      `select d.day::text as day, b.reportable_count, b.login_count
+         from (select (now() at time zone 'Europe/Paris')::date as day) d
+         left join email_send_budget b
+           on b.organization_id = $1 and b.day = d.day`,
+      [a]
+    )
+    return {
+      day: rows[0].day,
+      reportable: rows[0].reportable_count ?? 0,
+      login: rows[0].login_count ?? 0,
+    }
+  })
+}
+
+/** Remet le compteur du jour relevé : les envois de l'essai n'y comptent plus. */
+const restoreNatureBudget = async () => {
+  const before = natureBudgetBefore
+  if (!before) return
+  const {a} = await tenantIds()
+  await inTenantScope(a, (client) =>
+    client.query(
+      `insert into email_send_budget
+         (organization_id, day, reportable_count, login_count)
+       values ($1, $2, $3, $4)
+       on conflict (organization_id, day)
+       do update set reportable_count = excluded.reportable_count,
+                     login_count = excluded.login_count`,
+      [a, before.day, before.reportable, before.login]
+    )
+  )
+  natureBudgetBefore = null
+}
+
 const natureOfCampaign = async (campaignId: string) => {
   const {a} = await tenantIds()
   return inTenantScope(a, async (client) => {
@@ -1414,13 +1474,18 @@ test.describe('Campagnes — nature des envois (s27b)', () => {
   test.beforeAll(async () => {
     await cleanUpNatureRun()
     await createNatureFixtures()
+    await snapshotNatureBudget()
   })
 
   test.afterAll(async () => {
     try {
       await cleanUpNatureRun()
     } finally {
-      await restoreNatureSettings()
+      try {
+        await restoreNatureSettings()
+      } finally {
+        await restoreNatureBudget()
+      }
     }
   })
 
@@ -1531,7 +1596,7 @@ test.describe('Campagnes — nature des envois (s27b)', () => {
       await composeTemplateAndSend(bureau, {
         template: 'Documents après l’AG',
         target: /Un groupe/,
-        subject: natureSubjectOf('Documents avant reclassement'),
+        subject: natureSubjectOf('Avant reclassement'),
       })
       await expect
         .poll(() => messagesTo(before, NATURE_FICHES.subscribed.email).length, {
@@ -1599,7 +1664,7 @@ test.describe('Campagnes — nature des envois (s27b)', () => {
       const campaignId = await composeTemplateAndSend(next, {
         template: 'Documents après l’AG',
         target: /Un groupe/,
-        subject: natureSubjectOf('Documents après reclassement'),
+        subject: natureSubjectOf('Après reclassement'),
       })
       await expect
         .poll(
