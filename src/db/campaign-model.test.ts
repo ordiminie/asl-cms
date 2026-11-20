@@ -5,6 +5,7 @@ import {organization, user} from './models/auth-model'
 import * as campaignModels from './models/campaign-model'
 import {
   campaign,
+  campaignLetterProfile,
   campaignNatureEnum,
   campaignPart,
   campaignPartStatusEnum,
@@ -319,5 +320,42 @@ describe('campaign_recipient_profile (s27, ADR 061)', () => {
     expect(
       t.config.primaryKeys.map((pk) => pk.columns.map((c) => c.name))
     ).toEqual([['campaign_recipient_id', 'member_profile_id']])
+  })
+})
+
+describe('campaign_letter_profile (s28, ADR 065)', () => {
+  const t = describeTable(campaignLetterProfile)
+
+  it('porte les colonnes de l’ADR, et elles seules', () => {
+    expect(t.config.name).toBe('campaign_letter_profile')
+    expect(t.config.columns.map((c) => c.name).sort()).toEqual(
+      ['organization_id', 'campaign_id', 'member_profile_id'].sort()
+    )
+    for (const name of [
+      'organization_id',
+      'campaign_id',
+      'member_profile_id',
+    ]) {
+      expect(t.column(name)?.notNull, name).toBe(true)
+    }
+  })
+
+  it('disparaît avec sa campagne, son association comme avec sa fiche (cascade)', () => {
+    expect(t.referencedTableOf('organization_id')).toBe(
+      getTableConfig(organization).name
+    )
+    expect(t.foreignKeyOn('organization_id')?.onDelete).toBe('cascade')
+    expect(t.referencedTableOf('campaign_id')).toBe('campaign')
+    expect(t.foreignKeyOn('campaign_id')?.onDelete).toBe('cascade')
+    expect(t.referencedTableOf('member_profile_id')).toBe(
+      getTableConfig(memberProfile).name
+    )
+    expect(t.foreignKeyOn('member_profile_id')?.onDelete).toBe('cascade')
+  })
+
+  it('une fiche n’est figée qu’une fois par campagne (clé primaire composée)', () => {
+    expect(
+      t.config.primaryKeys.map((pk) => pk.columns.map((c) => c.name))
+    ).toEqual([['campaign_id', 'member_profile_id']])
   })
 })

@@ -29,7 +29,7 @@ export type AssociationSettingPage = 'settings' | 'identity'
  * d'origine, celle des adresses de notification.
  */
 export type AssociationSettingSection =
-  'seo' | 'legal' | 'sending' | 'campaign_nature' | 'billing'
+  'seo' | 'legal' | 'sending' | 'campaign_nature' | 'billing' | 'letter'
 
 /** Defaut constant (valeur brute, comme en base) ou reference a une autre cle. */
 export type AssociationSettingDefault = {value: string} | {fromKey: string}
@@ -209,6 +209,16 @@ export const ASSOCIATION_LEGAL_NAME_SETTING_KEY = 'association.legal_name'
  */
 export const ASSOCIATION_LEGAL_MENTIONS_SETTING_KEY =
   'association.legal_mentions'
+/**
+ * Decalage horizontal du cadre de l'adresse du courrier, en mm, vers la
+ * droite (s28, ADR 067 §4) : corrige une imprimante sans sortir l'adresse de
+ * la fenetre. Ne deplace que le cadre de l'adresse.
+ */
+export const LETTER_ADDRESS_OFFSET_X_SETTING_KEY = 'letter.address_offset_x_mm'
+/** Decalage vertical du cadre de l'adresse, en mm, vers le bas (ADR 067 §4). */
+export const LETTER_ADDRESS_OFFSET_Y_SETTING_KEY = 'letter.address_offset_y_mm'
+/** Borne des deux decalages, en mm de part et d'autre de la norme. */
+const LETTER_ADDRESS_OFFSET_BOUND_MM = 10
 /**
  * Emails de campagne envoyes au plus par jour (Paris) et par association,
  * toutes campagnes confondues (s26, ADR 052). Au-dela, la campagne s'etale
@@ -656,6 +666,30 @@ export const ASSOCIATION_SETTINGS_REGISTRY: AssociationSettingsRegistry = [
     page: 'settings',
     section: 'billing',
   },
+  ...(
+    [
+      [LETTER_ADDRESS_OFFSET_X_SETTING_KEY, 'letterAddressOffsetX'],
+      [LETTER_ADDRESS_OFFSET_Y_SETTING_KEY, 'letterAddressOffsetY'],
+    ] as const
+  ).map(([key, field]): NumberSettingDefinition => ({
+    key,
+    type: 'number',
+    required: false,
+    default: {value: '0'},
+    min: -LETTER_ADDRESS_OFFSET_BOUND_MM,
+    max: LETTER_ADDRESS_OFFSET_BOUND_MM,
+    integer: true,
+    unitKey: 'units.millimeters',
+    labelKey: `fields.${field}.label`,
+    helpKey: `fields.${field}.help`,
+    errorMessageKeys: {
+      invalidNumber: `fields.${field}.errors.invalidNumber`,
+      belowMin: `fields.${field}.errors.outOfRange`,
+      aboveMax: `fields.${field}.errors.outOfRange`,
+    },
+    page: 'settings',
+    section: 'letter',
+  })),
 ]
 
 const emailSchema = z.email()
@@ -1093,3 +1127,14 @@ export const getStatutoryTemplateIds = (
   CAMPAIGN_TEMPLATE_IDS.filter(
     (templateId) => getCampaignNature(settings, templateId) === 'statutaire'
   )
+
+/**
+ * Le decalage du cadre de l'adresse du courrier (s28, ADR 067 §4), en mm :
+ * valeurs de l'association, sinon 0.
+ */
+export const getLetterAddressOffset = (
+  settings: ResolvedAssociationSettings
+): {xMm: number; yMm: number} => ({
+  xMm: numberSettingOf(settings, LETTER_ADDRESS_OFFSET_X_SETTING_KEY),
+  yMm: numberSettingOf(settings, LETTER_ADDRESS_OFFSET_Y_SETTING_KEY),
+})

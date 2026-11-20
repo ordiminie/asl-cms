@@ -1,3 +1,4 @@
+import {sameNameAndHomeKeyOf} from '@/services/rules/campaign-letter-rules'
 import {
   ImportMemberCandidate,
   ImportParcelCandidate,
@@ -285,13 +286,11 @@ const groupByCustomer = (lines: ParsedLine[]): ImportMemberCandidate[] => {
 }
 
 const nameAndAddressKey = (line: ParsedLine): string =>
-  [
+  sameNameAndHomeKeyOf(
     line.member.name,
-    line.member.homeAddressLine ?? '',
-    line.member.homePostalCode ?? '',
-  ]
-    .map((part) => part.toLowerCase().replace(/\s+/g, ' ').trim())
-    .join('|')
+    line.member.homeAddressLine,
+    line.member.homePostalCode
+  )
 
 /**
  * Deux identifiants differents, meme nom et meme domicile : deux membres, et

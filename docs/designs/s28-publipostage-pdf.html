@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s28 — Courrier postal d'une campagne (maquette de référence)</title>
+<style>
+  /* Maquette de reference, pas du code de production (docs/designs/s28-publipostage-pdf.md).
+     Tokens copies de docs/design-system.md §1.1, §1.3, §1.4, §1.9 — jeu clair seul (ADR 033). */
+  @font-face { font-family: 'Public Sans'; src: url('../../src/app/%5Blocale%5D/fonts/public-sans-latin.woff2') format('woff2'); font-weight: 400 700; }
+  @font-face { font-family: 'Source Serif 4'; src: url('../../src/app/%5Blocale%5D/fonts/source-serif-4-latin.woff2') format('woff2'); font-weight: 400 700; }
+  @font-face { font-family: 'JetBrains Mono'; src: url('../../src/app/%5Blocale%5D/fonts/jetbrains-mono-latin.woff2') format('woff2'); font-weight: 400 500; }
+
+  :root {
+    --radius: 0.5rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.22 0.015 250);
+    --card: oklch(1 0 0);
+    --muted: oklch(0.972 0.005 240);
+    --muted-foreground: oklch(0.45 0.02 245);
+    --border: oklch(0.9 0.008 245);
+    --input: oklch(0.66 0.014 245);
+    --ring: oklch(0.55 0.11 235);
+    --primary: oklch(0.35 0.06 240);
+    --primary-foreground: oklch(0.985 0.003 240);
+    --secondary: oklch(0.965 0.006 240);
+    --secondary-foreground: oklch(0.3 0.02 245);
+    --destructive: oklch(0.48 0.17 27);
+    --destructive-text: oklch(0.48 0.17 27);
+    --link: oklch(0.45 0.13 250);
+    --warning: oklch(0.94 0.06 75);
+    --warning-border: oklch(0.6 0.13 65);
+    --warning-foreground: oklch(0.3 0.08 60);
+    --sidebar: oklch(0.985 0.004 250);
+    --sidebar-border: oklch(0.91 0.008 245);
+    --sidebar-accent: oklch(0.93 0.012 245);
+    --font-sans: 'Public Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 17px; line-height: 1.6; }
+  .doc-note { background: var(--muted); border-bottom: 1px solid var(--border); padding: 16px 32px; font-size: 15px; color: var(--muted-foreground); }
+  .doc-note strong { color: var(--foreground); }
+  .section-label { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 0 0 12px; }
+
+  /* gabarit back-office : barre laterale 248 px, tiroir sous lg */
+  .shell { display: flex; min-height: 100vh; }
+  .sidebar { width: 248px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--sidebar-border); padding: 24px 16px; font-size: 16px; }
+  .sidebar .group { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); margin: 24px 8px 8px; }
+  .sidebar a { display: block; padding: 8px 12px; border-radius: var(--radius); color: var(--foreground); text-decoration: none; }
+  .sidebar a.active { background: var(--sidebar-accent); font-weight: 600; }
+  .topbar { display: none; }
+  main { flex: 1; min-width: 0; }
+  .frame { max-width: 960px; margin: 0 auto; padding: 32px 32px 48px; display: flex; flex-direction: column; gap: 24px; }
+
+  .crumb { font-size: 15px; color: var(--muted-foreground); }
+  .crumb a { color: var(--link); text-decoration: underline; }
+  h1 { font-family: var(--font-serif); font-size: 34px; line-height: 1.15; font-weight: 600; margin: 0; text-wrap: pretty; }
+  .title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+  .badge { display: inline-flex; align-items: center; border-radius: 9999px; padding: 2px 12px; font-size: 15px; font-weight: 600; border: 1px solid var(--border); color: var(--muted-foreground); }
+
+  .card { border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .card.collapsed { color: var(--muted-foreground); padding: 16px 24px; }
+  h2 { font-family: var(--font-serif); font-size: 24px; line-height: 1.3; font-weight: 600; margin: 0; }
+  h3 { font-size: 20px; font-weight: 600; line-height: 1.3; margin: 0; }
+  p { margin: 0; }
+  .meta { font-size: 15px; color: var(--muted-foreground); line-height: 1.5; }
+  .data { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  dl.counter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; }
+  dl.counter div { display: flex; flex-direction: column; gap: 4px; }
+  dl.counter dt { font-size: 15px; color: var(--muted-foreground); }
+  dl.counter dd { margin: 0; font-family: var(--font-mono); font-size: 17px; font-variant-numeric: tabular-nums; }
+
+  .alert { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .alert svg { flex-shrink: 0; width: 20px; height: 20px; margin-top: 4px; }
+  .alert .body { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .alert .title { font-weight: 700; }
+  .alert.muted { background: var(--muted); }
+  .alert.warning { background: var(--warning); border-color: var(--warning-border); color: var(--warning-foreground); }
+  .alert.destructive { border: 2px solid var(--destructive); }
+  .alert.destructive .title { color: var(--destructive-text); }
+  .alert.success svg { color: var(--primary); }
+
+  ul.plain { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  ul.plain li { border-left: 2px solid var(--warning-border); padding-left: 12px; }
+  .alert.muted ul.plain li { border-left-color: var(--border); }
+  .alert a, .card a { color: var(--link); text-decoration: underline; }
+
+  fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  legend { font-size: 16px; font-weight: 500; margin-bottom: 12px; padding: 0; }
+  .radio { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--input); border-radius: var(--radius); padding: 12px 16px; min-height: 48px; }
+  .radio .dot { width: 20px; height: 20px; border-radius: 9999px; border: 1px solid var(--input); flex-shrink: 0; margin-top: 4px; }
+  .radio.error { border: 2px solid var(--destructive); }
+  .radio strong { font-weight: 600; }
+  .field-error { font-size: 16px; font-weight: 500; color: var(--destructive-text); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 24px; border-radius: var(--radius); font: 600 16px/1 var(--font-sans); border: 1px solid transparent; cursor: pointer; }
+  .btn svg { width: 20px; height: 20px; }
+  .btn.default { background: var(--primary); color: var(--primary-foreground); }
+  .btn.default[disabled] { opacity: 0.6; cursor: default; }
+  .btn.outline { background: var(--background); color: var(--foreground); border-color: var(--input); }
+  .btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  .state-tag { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-foreground); border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px; }
+
+  /* ---- la lettre : A4 a l'echelle 1/2 (1 mm = 1.889 px a 96 dpi ; ici 1 mm = 2 px) ---- */
+  .paper-wrap { display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+  .paper { --mm: 2px; width: calc(210 * var(--mm)); height: calc(297 * var(--mm)); background: #fff; color: #000; border: 1px solid var(--border); position: relative; font-family: var(--font-sans); flex-shrink: 0; }
+  .paper .zone { position: absolute; }
+  .paper .head { left: calc(20 * var(--mm)); top: calc(15 * var(--mm)); right: calc(20 * var(--mm)); display: flex; gap: calc(3 * var(--mm)); align-items: center; }
+  .paper .mono { width: calc(9 * var(--mm)); height: calc(9 * var(--mm)); border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-weight: 600; font-size: calc(4 * var(--mm)); }
+  .paper .org { font-family: var(--font-serif); font-weight: 600; font-size: calc(4.2 * var(--mm)); line-height: 1.2; }
+  .paper .org small { display: block; font-family: var(--font-sans); font-weight: 400; font-size: calc(3.2 * var(--mm)); }
+  .paper .window { left: calc(20 * var(--mm)); top: calc(45 * var(--mm)); width: calc(100 * var(--mm)); height: calc(35 * var(--mm)); outline: 1px dashed var(--muted-foreground); }
+  .paper .address { left: calc(25 * var(--mm)); top: calc(50 * var(--mm)); width: calc(90 * var(--mm)); height: calc(25 * var(--mm)); font-size: calc(4.23 * var(--mm)); line-height: 1.4; overflow: hidden; }
+  .paper .date { right: calc(20 * var(--mm)); top: calc(90 * var(--mm)); font-size: calc(4.23 * var(--mm)); }
+  .paper .content { left: calc(20 * var(--mm)); right: calc(20 * var(--mm)); top: calc(102 * var(--mm)); font-size: calc(4.4 * var(--mm)); line-height: 1.7; display: flex; flex-direction: column; gap: calc(3 * var(--mm)); }
+  .paper .subject { font-size: calc(4.6 * var(--mm)); font-weight: 600; }
+  .paper .foot { left: calc(20 * var(--mm)); right: calc(20 * var(--mm)); bottom: calc(20 * var(--mm)); border-top: 0.5pt solid #000; padding-top: calc(2 * var(--mm)); font-size: calc(3.5 * var(--mm)); line-height: 1.5; }
+  .paper .fold { left: 0; right: 0; height: 0; border-top: 1px dotted var(--input); }
+  .legend-list { font-size: 15px; color: var(--muted-foreground); max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
+  .legend-list .data { color: var(--foreground); }
+
+  /* ---- sous lg : barre laterale en tiroir ; sous 640 px : une colonne, actions 56 px ---- */
+  @media (max-width: 1023px) {
+    .sidebar { display: none; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .frame { padding: 24px 16px 48px; }
+  }
+  @media (max-width: 639px) {
+    .doc-note { padding: 12px 16px; }
+    dl.counter { grid-template-columns: 1fr; gap: 12px; }
+    .card { padding: 16px; }
+    .btn { width: 100%; height: 56px; font-size: 17px; }
+    .radio { min-height: 56px; }
+    .paper { --mm: 1.6px; }
+  }
+</style>
+</head>
+<body>
+
+<p class="doc-note"><strong>Maquette de référence, s28 — pas du code.</strong> Écran : détail d'une campagne (<span class="data">/bureau/campagnes/[id]</span>), nouvelle carte « Courrier postal ». Puis : une page du PDF (§6.1 du design system). Chaque état de la carte est montré l'un sous l'autre ; à l'écran, un seul est visible à la fois.</p>
+
+<div class="shell">
+  <nav class="sidebar" aria-label="Back-office">
+    <div class="group">Le site</div>
+    <a href="#">Pages</a>
+    <a href="#">Actualités</a>
+    <div class="group">L'association</div>
+    <a href="#">Propriétaires</a>
+    <a href="#">Groupes</a>
+    <a href="#" class="active">Campagnes</a>
+    <a href="#">Envois</a>
+  </nav>
+
+  <main id="contenu">
+    <div class="topbar">
+      <button class="btn outline" type="button" aria-label="Ouvrir le menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Menu
+      </button>
+      <span class="meta">ASL La Fourche</span>
+    </div>
+
+    <div class="frame">
+      <p class="crumb"><a href="#">Campagnes</a> › Assemblée générale du 14 mars</p>
+
+      <div class="title-row">
+        <h1>Assemblée générale du 14 mars</h1>
+        <span class="badge">Envoyée</span>
+      </div>
+
+      <div class="card collapsed">Cartes existantes inchangées : bandeau d'état, « Avancement », « Parts », « Destinataires »…</div>
+
+      <!-- ================= LA CARTE « COURRIER POSTAL » ================= -->
+      <section class="card" aria-labelledby="courrier-title">
+        <h2 id="courrier-title">Courrier postal</h2>
+        <p>Les membres sans adresse email reçoivent cette campagne par la poste. Le PDF contient une lettre par page, au même contenu que l'email, prête à glisser dans une enveloppe à fenêtre.</p>
+
+        <dl class="counter">
+          <div><dt>Fiches sans adresse email</dt><dd>5</dd></div>
+          <div><dt>Dont sans domicile</dt><dd>1</dd></div>
+          <div><dt>Date portée sur les lettres</dt><dd>12/11/2026</dd></div>
+        </dl>
+
+        <!-- Signalement des homonymes, AVANT la generation (critere 2) -->
+        <div class="alert warning" role="note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+          <div class="body">
+            <p class="title">Une même personne semble posséder plusieurs terrains.</p>
+            <p>Ces fiches portent le même nom et la même adresse de domicile. Choisissez ci-dessous si elles reçoivent une seule lettre ou une lettre par terrain.</p>
+            <ul class="plain">
+              <li><strong>Marcel Laurent</strong> — 3 rue du Lavoir, 33680 Lacanau<br><span class="meta">2 fiches · parcelles <span class="data">14</span> et <span class="data">27</span></span></li>
+            </ul>
+          </div>
+        </div>
+
+        <fieldset>
+          <legend>Lettres des propriétaires de plusieurs terrains</legend>
+          <label class="radio"><span class="dot" aria-hidden="true"></span><span><strong>Une seule lettre par personne</strong><br><span class="meta">Elle cite toutes ses parcelles : « 14, 27 ».</span></span></label>
+          <label class="radio"><span class="dot" aria-hidden="true"></span><span><strong>Une lettre par terrain</strong><br><span class="meta">Une lettre par fiche, chacune avec sa parcelle.</span></span></label>
+        </fieldset>
+
+        <!-- Fiche sans domicile : lettre au terrain, sinon nom seul (ADR 067, arbitrage du 20/11/2026) -->
+        <div class="alert muted" role="note">
+          <div class="body">
+            <p class="title">1 fiche n'a pas d'adresse de domicile.</p>
+            <p>Adressée au terrain, faute de domicile :</p>
+            <ul class="plain">
+              <li><a href="#">Hélène Roy</a> <span class="meta">— parcelle <span class="data">8</span> · 6 allée des Genêts, 33680 Lacanau</span></li>
+            </ul>
+            <p>Complétez le domicile sur la fiche pour que la lettre parte à la bonne adresse.</p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn default" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Télécharger le PDF du courrier
+          </button>
+          <button class="btn outline" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Télécharger la page de calage
+          </button>
+        </div>
+        <p class="meta">La page de calage porte les repères de la fenêtre : glissez-la dans une enveloppe avant d'imprimer le lot. Si l'adresse tombe à côté, corrigez le décalage dans <a href="#">Réglages › Courrier</a>.</p>
+        <p class="meta">Les lettres sont triées par nom, dans l'ordre de mise sous pli. Le PDF n'est pas conservé : vous pouvez le télécharger à nouveau à tout moment.</p>
+
+        <!-- ---------- ETATS ---------- -->
+        <p class="state-tag">État — chargement</p>
+        <div class="actions">
+          <button class="btn default" type="button" disabled aria-disabled="true">Préparation du PDF…</button>
+        </div>
+
+        <p class="state-tag">État — choix manquant (au clic, sans choix)</p>
+        <div class="alert destructive" role="alert">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" style="color: var(--destructive)"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          <div class="body">
+            <p class="title">Le PDF n'a pas été préparé.</p>
+            <p><a href="#">Choisissez une lettre par personne ou une lettre par terrain.</a> Rien n'a été regroupé.</p>
+          </div>
+        </div>
+        <label class="radio error"><span class="dot" aria-hidden="true"></span><span><strong>Une seule lettre par personne</strong></span></label>
+        <p class="field-error">Choisissez une des deux options.</p>
+
+        <p class="state-tag">État — erreur</p>
+        <div class="alert destructive" role="alert">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true" style="color: var(--destructive)"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          <div class="body">
+            <p class="title">Le PDF n'a pas pu être préparé.</p>
+            <p>Rien n'a été envoyé ni modifié. Réessayez dans un instant ; si cela recommence, écrivez à l'équipe technique.</p>
+          </div>
+        </div>
+
+        <p class="state-tag">État — succès</p>
+        <div class="alert success" role="status">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>
+          <div class="body">
+            <p>PDF prêt : <span class="data">3</span> lettres, une par page (une seule pour Marcel Laurent). Le téléchargement a commencé dans votre navigateur.</p>
+          </div>
+        </div>
+
+        <p class="state-tag">État — vide (aucune fiche sans email dans la cible, critère 5)</p>
+        <div class="alert muted" role="note">
+          <div class="body">
+            <p>Aucun courrier à produire : tous les membres visés par cette campagne ont une adresse email.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= LA LETTRE (PDF) ================= -->
+      <section aria-labelledby="lettre-title" style="display:flex; flex-direction:column; gap:16px;">
+        <p class="section-label">Une page du PDF — A4, noir et blanc (§6.1)</p>
+        <h2 id="lettre-title">La lettre</h2>
+        <div class="paper-wrap">
+          <div class="paper" role="img" aria-label="Lettre A4 : en-tête, bloc adresse dans la fenêtre, date, objet, corps, pied">
+            <div class="zone head">
+              <div class="mono">LF</div>
+              <div class="org">ASL La Fourche<small>Association syndicale libre</small></div>
+            </div>
+            <div class="zone window" aria-hidden="true"></div>
+            <div class="zone address">
+              Jean et Odile Dubois<br>
+              8 chemin des Pins<br>
+              33680 Lacanau
+            </div>
+            <div class="zone date">Le 12 novembre 2026</div>
+            <div class="zone content">
+              <p class="subject">Objet : Assemblée générale du 14 mars</p>
+              <p>Bonjour Jean et Odile Dubois,</p>
+              <p>L'assemblée générale se tiendra le 14 mars à la salle des fêtes. Elle concerne votre parcelle 21.</p>
+              <p>Le texte reprend l'email mot pour mot ; une adresse web s'écrit en clair : lafourche.fr/ag</p>
+            </div>
+            <div class="zone foot">
+              Courrier envoyé par voie postale, faute d'adresse email connue.<br>
+              ASL La Fourche — mentions légales de l'association.
+            </div>
+            <div class="zone fold" style="top: calc(99 * var(--mm))" aria-hidden="true"></div>
+            <div class="zone fold" style="top: calc(198 * var(--mm))" aria-hidden="true"></div>
+          </div>
+
+          <div class="legend-list">
+            <p><strong style="color:var(--foreground)">Repères (mm, depuis le coin haut gauche)</strong></p>
+            <p>Fenêtre DL gauche : <span class="data">x 20 · y 45 · 100 × 35</span> (NF Z 11-011) — tirets, <em>non imprimés</em>.</p>
+            <p>Bloc adresse : <span class="data">x 25 · y 50 · 90 × 25</span>, garde de 5 mm, 4 lignes max, 12 pt sans gras.</p>
+            <p>Marges : <span class="data">20</span> gauche/droite · <span class="data">15</span> haut · <span class="data">20</span> bas.</p>
+            <p>Objet 13 pt / 600 · corps 12,5 pt / 1,7 · pied filet 0,5 pt.</p>
+            <p>Pointillés : plis en trois (<span class="data">99</span> et <span class="data">198</span> mm), non imprimés.</p>
+            <p>Lettre regroupée (une par personne) : même gabarit, « parcelles 14, 27 ».</p>
+            <p>Avec un libellé d'entreprise : ligne 2 du bloc (« SCI Les Chênes »), voir gap 4.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

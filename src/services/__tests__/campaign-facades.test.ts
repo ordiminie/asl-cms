@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest'
 
+import * as campaignLetterFacade from '../facades/campaign-letter-service-facade'
 import * as campaignFacade from '../facades/campaign-service-facade'
 import * as unsubscribeFacade from '../facades/unsubscribe-service-facade'
 
@@ -27,6 +28,16 @@ describe('façades des campagnes (s25, ADR 051)', () => {
         'confirmUnsubscribeService',
         'getMemberUnsubscribeService',
         'getUnsubscribePageStateService',
+      ].sort()
+    )
+  })
+
+  it('expose le contexte du courrier, son PDF et la page de calage (s28)', () => {
+    expect(Object.keys(campaignLetterFacade).sort()).toEqual(
+      [
+        'generateCampaignLettersService',
+        'getCampaignLetterContextService',
+        'getLetterCalibrationPdfService',
       ].sort()
     )
   })

@@ -98,6 +98,11 @@ export type ComputedCampaignTarget<Row extends CampaignTargetRow> = {
   recipients: (Row & {email: string})[]
   /** Des fiches ciblees sans adresse active. */
   withoutEmail: number
+  /**
+   * Les fiches ciblees sans adresse active (s28, ADR 065), dans l'ordre des
+   * lignes : `withoutEmail` en est le nombre.
+   */
+  withoutEmailProfileIds: string[]
   /** Des adresses desinscrites, exclues d'un envoi facultatif. */
   unsubscribed: number
   /**
@@ -179,6 +184,7 @@ export const computeCampaignTarget = <Row extends CampaignTargetRow>(
   return {
     recipients,
     withoutEmail: withoutEmailIds.size,
+    withoutEmailProfileIds: [...withoutEmailIds],
     unsubscribed,
     reinstated,
     profilesWithEmail: withEmailIds.size,
@@ -191,7 +197,10 @@ export const computeCampaignTarget = <Row extends CampaignTargetRow>(
  * exclues et desinscrites reintegrees, avec la nature de l'envoi (s27b).
  */
 export const campaignTargetCountsOf = (
-  target: ComputedCampaignTarget<CampaignTargetRow>,
+  target: Omit<
+    ComputedCampaignTarget<CampaignTargetRow>,
+    'withoutEmailProfileIds'
+  >,
   nature: CampaignNature = DEFAULT_CAMPAIGN_NATURE
 ): CampaignTargetCountsDTO => ({
   profilesWithEmail: target.profilesWithEmail,

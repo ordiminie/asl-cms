@@ -62,6 +62,36 @@ const card = (title: string) =>
 const badge = (text: string) =>
   screen.getAllByText(text, {selector: '[data-slot="badge"]'})[0]
 
+describe('CampaignDetail — carte « Courrier postal » (s28)', () => {
+  it('après « Destinataires », avant le « Résumé »', () => {
+    render(
+      <CampaignDetail
+        campaign={campaignOf('a')}
+        recipients={recipientsPageOf([recipientOf('r1')])}
+        letters={{status: 'none'}}
+        associationName="ASL Les Pins"
+        dailySendCap={100}
+        justSent={false}
+      />
+    )
+
+    const titles = screen
+      .getAllByRole('heading', {level: 2})
+      .map((heading) => heading.textContent)
+    const letters = titles.indexOf('Courrier postal')
+    expect(letters).toBeGreaterThan(titles.indexOf('Destinataires'))
+    expect(letters).toBeLessThan(titles.indexOf('Résumé'))
+  })
+
+  it('sans lecture du courrier, aucune carte', () => {
+    renderDetail()
+
+    expect(
+      screen.queryByRole('heading', {level: 2, name: 'Courrier postal'})
+    ).toBeNull()
+  })
+})
+
 describe('CampaignDetail — écran 2 de s26, campagne étalée', () => {
   it('a · en cours, part 3 programmée : bandeau neutre sans icône, badge « En cours d’envoi »', () => {
     renderDetail(spreadCampaignOf('a'))

@@ -2,6 +2,7 @@ import {z} from 'zod'
 
 import {
   CAMPAIGN_BODY_MAX,
+  CAMPAIGN_LETTER_GROUPINGS,
   CAMPAIGN_PREHEADER_MAX,
   CAMPAIGN_RECIPIENT_FILTERS,
   CAMPAIGN_TEMPLATE_IDS,
@@ -117,3 +118,8 @@ export const unsubscribeRequestServiceSchema = z.object({
   organizationId: uuid,
   token: z.string(),
 })
+
+/** Le regroupement des homonymes, absent tant que le bureau n'a pas choisi. */
+export const campaignLetterGroupingSchema = z
+  .enum(CAMPAIGN_LETTER_GROUPINGS)
+  .nullable()

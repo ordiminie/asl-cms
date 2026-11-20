@@ -1,4 +1,7 @@
-import type {CampaignRecipientFilter} from '@/services/types/domain/campaign-types'
+import type {
+  CampaignLetterGrouping,
+  CampaignRecipientFilter,
+} from '@/services/types/domain/campaign-types'
 
 /** Chemins du back-office des campagnes (s25). */
 export const CAMPAIGNS_PATH = '/bureau/campagnes'
@@ -54,4 +57,22 @@ export const campaignRecipientsPathOf = (
   if (page > 1) params.set('page', String(page))
   const query = params.toString()
   return query ? `${campaignPathOf(id)}?${query}` : campaignPathOf(id)
+}
+
+/** La page de calage du courrier postal (s28, ADR 067 §4). */
+export const CAMPAIGN_LETTER_CALIBRATION_PATH = '/api/campaigns/calage'
+
+/** Le parametre `lettres` de la route du courrier, en francais. */
+const LETTER_GROUPING_SLUGS: Record<CampaignLetterGrouping, string> = {
+  per_person: 'par-personne',
+  per_land: 'par-terrain',
+}
+
+/** Le PDF du courrier d'une campagne, avec le choix du bureau s'il y en a un. */
+export const campaignLettersPathOf = (
+  id: string,
+  grouping: CampaignLetterGrouping | null
+): string => {
+  const path = `/api/campaigns/${encodeURIComponent(id)}/courrier`
+  return grouping ? `${path}?lettres=${LETTER_GROUPING_SLUGS[grouping]}` : path
 }

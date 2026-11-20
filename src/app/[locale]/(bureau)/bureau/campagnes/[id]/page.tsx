@@ -6,6 +6,7 @@ import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {
   canManageCurrentCampaignsDal,
   getCampaignDal,
+  getCampaignLetterContextDal,
   getCampaignRecipientsDal,
 } from '@/app/dal/campaign-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
@@ -38,8 +39,8 @@ export async function generateMetadata({
 }
 
 /**
- * Une campagne (ecran 2 du design s26), en lecture seule : avancement, parts
- * et destinataires. `?statut=` filtre la liste des destinataires, `?page=` la
+ * Une campagne (ecran 2 du design s26), en lecture seule : avancement, parts,
+ * destinataires et courrier postal (s28). `?statut=` filtre la liste des destinataires, `?page=` la
  * pagine. L'etat affiche se lit des statuts (ADR 052), sans horloge.
  */
 export default async function BureauCampaignPage({
@@ -84,11 +85,12 @@ async function CampaignSection({
     return <BureauAccessDenied />
   }
 
-  const [result, recipients, settings] = await Promise.all([
+  const [result, recipients, letters, settings] = await Promise.all([
     getCampaignDal(tenant.id, id).catch(() => undefined),
     getCampaignRecipientsDal(tenant.id, id, filter, page).catch(
       () => undefined
     ),
+    getCampaignLetterContextDal(tenant.id, id).catch(() => null),
     getAssociationSettingsDal(tenant.id),
   ])
   if (result?.status !== 'found') {
@@ -99,6 +101,7 @@ async function CampaignSection({
     <CampaignDetail
       campaign={result.campaign}
       recipients={recipients?.status === 'found' ? recipients.recipients : null}
+      letters={letters}
       dailySendCap={getCampaignDailySendCap(settings)}
       associationName={tenant.name}
       justSent={justSent}

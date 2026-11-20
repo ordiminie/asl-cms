@@ -201,6 +201,19 @@ const ALL = {kind: 'all_members'} as const
 
 const sendInput = {...content, submissionId: SUBMISSION_ID}
 
+/** Ni domicile, ni terrain, ni libelle : ce que le courrier lit (s28). */
+const NO_LETTER_ADDRESS = {
+  homeAddressLine: null,
+  homeAddressComplement: null,
+  homePostalCode: null,
+  homeCity: null,
+  landAddressLine: null,
+  landAddressComplement: null,
+  landPostalCode: null,
+  landCity: null,
+  companyName: null,
+}
+
 const targetRows = () => [
   {
     memberProfileId: PROFILE_A,
@@ -209,6 +222,7 @@ const targetRows = () => [
     unsubscribed: false,
     currentParcelNumbers: [],
     accountName: null,
+    ...NO_LETTER_ADDRESS,
   },
   {
     memberProfileId: PROFILE_B,
@@ -217,6 +231,7 @@ const targetRows = () => [
     unsubscribed: false,
     currentParcelNumbers: [],
     accountName: null,
+    ...NO_LETTER_ADDRESS,
   },
   {
     memberProfileId: PROFILE_C,
@@ -225,6 +240,7 @@ const targetRows = () => [
     unsubscribed: false,
     currentParcelNumbers: [],
     accountName: null,
+    ...NO_LETTER_ADDRESS,
   },
   {
     memberProfileId: PROFILE_D,
@@ -233,6 +249,7 @@ const targetRows = () => [
     unsubscribed: true,
     currentParcelNumbers: [],
     accountName: null,
+    ...NO_LETTER_ADDRESS,
   },
 ]
 
@@ -511,6 +528,7 @@ describe('previewCampaignService — aperçu avec un destinataire réel (critèr
         unsubscribed: false,
         currentParcelNumbers: [],
         accountName: 'Claire A.',
+        ...NO_LETTER_ADDRESS,
       },
     ])
     vi.mocked(getCurrentParcelNumbersForMembersDao).mockResolvedValue({
@@ -613,6 +631,7 @@ describe('sendCampaignService — envoi (critères 1, 7, 9)', () => {
         unsubscribed: false,
         currentParcelNumbers: ['21'],
         accountName: 'Jean Dubois',
+        ...NO_LETTER_ADDRESS,
       },
       {
         memberProfileId: PROFILE_A,
@@ -621,6 +640,7 @@ describe('sendCampaignService — envoi (critères 1, 7, 9)', () => {
         unsubscribed: false,
         currentParcelNumbers: ['21'],
         accountName: 'Claire Dubois',
+        ...NO_LETTER_ADDRESS,
       },
     ])
 
@@ -636,6 +656,17 @@ describe('sendCampaignService — envoi (critères 1, 7, 9)', () => {
       {memberProfileId: PROFILE_A, email: 'jean@example.fr'},
       {memberProfileId: PROFILE_A, email: 'claire@example.fr'},
     ])
+  })
+
+  it('fige pour le courrier les fiches ciblées sans adresse active, jamais un désinscrit (s28, ADR 065)', async () => {
+    await sendCampaignService(sendInput)
+
+    const [campaign, , , letterProfileIds] = vi.mocked(
+      createCampaignWithRecipientsTxnDao
+    ).mock.calls[0]
+    expect(letterProfileIds).toEqual([PROFILE_C])
+    expect(letterProfileIds).not.toContain(PROFILE_D)
+    expect(campaign.withoutEmailCount).toBe(letterProfileIds.length)
   })
 
   it('n’envoie rien lui-même : la livraison est rendue à l’appelant', async () => {
@@ -721,6 +752,7 @@ describe('sendCampaignService — envoi (critères 1, 7, 9)', () => {
         unsubscribed: false,
         currentParcelNumbers: [],
         accountName: null,
+        ...NO_LETTER_ADDRESS,
       },
     ])
 
@@ -780,6 +812,7 @@ describe('sendCampaignService — envoi (critères 1, 7, 9)', () => {
         unsubscribed: false,
         currentParcelNumbers: ['31'],
         accountName: 'Claire Aubert',
+        ...NO_LETTER_ADDRESS,
       },
     ])
 
@@ -818,6 +851,7 @@ const manyTargets = (count: number) =>
     unsubscribed: false,
     currentParcelNumbers: [],
     accountName: null,
+    ...NO_LETTER_ADDRESS,
   }))
 
 const settingsWith = (values: Record<string, unknown>) =>
@@ -2354,6 +2388,7 @@ describe('cible choisie — impayés et groupes (s27, ADR 060)', () => {
         unsubscribed: false,
         currentParcelNumbers: [],
         accountName: 'Claire A.',
+        ...NO_LETTER_ADDRESS,
       },
     ])
     vi.mocked(getRecipientGroupMemberIdsDao).mockResolvedValue([PROFILE_E])
@@ -2382,6 +2417,7 @@ describe('cible choisie — impayés et groupes (s27, ADR 060)', () => {
         unsubscribed: false,
         currentParcelNumbers: [],
         accountName: 'Claire A.',
+        ...NO_LETTER_ADDRESS,
       },
     ])
 
@@ -2405,6 +2441,28 @@ describe('cible choisie — impayés et groupes (s27, ADR 060)', () => {
     expect(frozenOf(1)).toEqual([
       {email: 'claire@example.fr', memberProfileIds: [PROFILE_A, PROFILE_E]},
     ])
+  })
+
+  it('le courrier fige les fiches sans email de la cible choisie, groupe ou impayés (s28, ADR 065)', async () => {
+    await sendCampaignService({...sendInput, target: GROUP})
+    await sendCampaignService({...sendInput, target: UNPAID})
+    vi.mocked(getRecipientGroupMemberIdsDao).mockResolvedValue([PROFILE_B])
+    await sendCampaignService({...sendInput, target: GROUP})
+
+    const lettersOf = (call: number) =>
+      vi.mocked(createCampaignWithRecipientsTxnDao).mock.calls[call][3]
+    expect(lettersOf(0)).toEqual([PROFILE_C])
+    expect(lettersOf(1)).toEqual([PROFILE_C])
+    expect(lettersOf(2)).toEqual([])
+  })
+
+  it('aucune adresse email dans la cible : no_recipient inchangé, rien n’est figé pour le courrier (ADR 065 §5)', async () => {
+    vi.mocked(getRecipientGroupMemberIdsDao).mockResolvedValue([PROFILE_C])
+
+    await expect(
+      sendCampaignService({...sendInput, target: GROUP})
+    ).resolves.toEqual({status: 'no_recipient'})
+    expect(createCampaignWithRecipientsTxnDao).not.toHaveBeenCalled()
   })
 
   it('le plan d’envoi compte les adresses de la cible choisie', async () => {

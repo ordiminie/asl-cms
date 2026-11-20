@@ -33,6 +33,10 @@
  * s55 (ADR 058) : le domicile (`home…`) est l'adresse postale ; les Dubois
  * ont en plus un terrain distinct, Helene Roy un terrain **seul** (sa fiche
  * reste incomplete), et « SCI Les Chenes » porte un nom d'entreprise.
+ *
+ * s28 : Yvette Garnier porte **deux fiches sans email**, meme nom et meme
+ * domicile, une par terrain (parcelles 71 et 72) : le courrier postal les
+ * signale avant la generation, et le bureau choisit de les regrouper ou non.
  */
 export type TestMemberProfile = {
   id: string
@@ -86,6 +90,13 @@ const LEFEVRE_SECOND_ID = 'a1200000-0000-4000-8000-000000000009'
 const LEFEVRE_SCI_ID = 'a1200000-0000-4000-8000-00000000000a'
 const LEFEVRE_EMAIL = 'bernard.lefevre@example.test'
 const FERRAND_EMAIL = 'p.ferrand@techcorp-solutions.test'
+const GARNIER_FIRST_ID = 'a1200000-0000-4000-8000-00000000000b'
+const GARNIER_SECOND_ID = 'a1200000-0000-4000-8000-00000000000c'
+const GARNIER_HOME = {
+  homeAddressLine: '9 route du Moulin',
+  homePostalCode: '33680',
+  homeCity: 'Lacanau',
+} as const
 
 const NO_CONTACT = {
   email: null,
@@ -199,6 +210,20 @@ export const TEST_MEMBER_PROFILES: readonly TestMemberProfile[] = [
     homeAddressLine: '2 chemin des Chênes',
     homePostalCode: '33680',
     homeCity: 'Lacanau',
+  },
+  {
+    ...NO_CONTACT,
+    ...GARNIER_HOME,
+    id: GARNIER_FIRST_ID,
+    organizationSlug: TECHCORP,
+    name: 'Yvette Garnier',
+  },
+  {
+    ...NO_CONTACT,
+    ...GARNIER_HOME,
+    id: GARNIER_SECOND_ID,
+    organizationSlug: TECHCORP,
+    name: 'Yvette Garnier',
   },
   {
     ...NO_CONTACT,
@@ -339,6 +364,22 @@ export const TEST_PARCEL_OWNERSHIPS: readonly TestParcelOwnership[] = [
     parcelNumber: '63',
     memberProfileId: LEFEVRE_SCI_ID,
     startsOn: '2011-04-02',
+    endsOn: null,
+  },
+  {
+    id: 'a1200000-0000-4000-8000-0000000000af',
+    organizationSlug: TECHCORP,
+    parcelNumber: '71',
+    memberProfileId: GARNIER_FIRST_ID,
+    startsOn: '2008-03-01',
+    endsOn: null,
+  },
+  {
+    id: 'a1200000-0000-4000-8000-0000000000b0',
+    organizationSlug: TECHCORP,
+    parcelNumber: '72',
+    memberProfileId: GARNIER_SECOND_ID,
+    startsOn: '2017-09-15',
     endsOn: null,
   },
   {

@@ -2201,6 +2201,22 @@
       "billingAlertEmail": {
         "label": "Adresse des signalements de facture",
         "help": "Reçoit un email quand une facture porte un statut qui n’est dans aucune des deux listes, une seule fois par statut."
+      },
+      "letterAddressOffsetX": {
+        "label": "Décalage horizontal de l’adresse",
+        "help": "Déplace l’adresse des lettres vers la droite (nombre positif) ou vers la gauche (nombre négatif), sans toucher au reste de la lettre. Imprimez la page de calage pour vérifier. Par défaut : 0.",
+        "errors": {
+          "invalidNumber": "Saisissez un nombre entier de millimètres, de -10 à 10.",
+          "outOfRange": "Saisissez un nombre entier de millimètres, de -10 à 10."
+        }
+      },
+      "letterAddressOffsetY": {
+        "label": "Décalage vertical de l’adresse",
+        "help": "Déplace l’adresse des lettres vers le bas (nombre positif) ou vers le haut (nombre négatif), sans toucher au reste de la lettre. Imprimez la page de calage pour vérifier. Par défaut : 0.",
+        "errors": {
+          "invalidNumber": "Saisissez un nombre entier de millimètres, de -10 à 10.",
+          "outOfRange": "Saisissez un nombre entier de millimètres, de -10 à 10."
+        }
       }
     },
     "hues": {
@@ -2217,7 +2233,8 @@
       "messagesPerHour": "messages par heure",
       "sendsPerDay": "envois par jour",
       "attempts": "tentatives",
-      "days": "jours"
+      "days": "jours",
+      "millimeters": "mm"
     },
     "counter": "{count} / {max}",
     "billingProviders": {
@@ -2274,6 +2291,10 @@
       "billing": {
         "title": "Factures",
         "description": "Comment les factures des membres s’affichent dans leur espace, et quels statuts comptent comme impayés."
+      },
+      "letter": {
+        "title": "Courrier",
+        "description": "Le calage de l’adresse sur les lettres envoyées par la poste aux membres sans adresse email. Si l’adresse tombe à côté de la fenêtre de l’enveloppe, corrigez-la ici."
       }
     },
     "submit": "Enregistrer les réglages",
@@ -4449,7 +4470,56 @@
       "paginationLabel": "Pages des destinataires",
       "loadFailed": "La liste des destinataires n’a pas pu être chargée. Rechargez la page."
     },
-    "receivedOutOf": "{received} sur {total}"
+    "receivedOutOf": "{received} sur {total}",
+    "letters": {
+      "pdf": {
+        "subjectLabel": "Objet :",
+        "dateLine": "Le {date}",
+        "footer": "Courrier envoyé par voie postale, faute d’adresse email connue.",
+        "sampleName": "Nom du destinataire",
+        "sampleAddress": "Adresse",
+        "sampleLocality": "Code postal Ville",
+        "calibrationInstruction": "Glissez cette feuille pliée dans une enveloppe à fenêtre : le cadre en tirets doit apparaître entier dans la fenêtre. Décalage appliqué : {x} mm horizontal, {y} mm vertical."
+      },
+      "title": "Courrier postal",
+      "usage": "Les membres sans adresse email reçoivent cette campagne par la poste. Le PDF contient une lettre par page, au même contenu que l’email, prête à glisser dans une enveloppe à fenêtre.",
+      "counter": {
+        "withoutEmail": "Fiches sans adresse email",
+        "withoutHome": "Dont sans domicile",
+        "date": "Date portée sur les lettres"
+      },
+      "homonyms": {
+        "title": "Une même personne semble posséder plusieurs terrains.",
+        "meta": "{count, plural, one {# fiche} other {# fiches}} · {parcelCount, plural, =0 {aucune parcelle} one {parcelle {parcels}} other {parcelles {parcels}}}"
+      },
+      "grouping": {
+        "legend": "Lettres des propriétaires de plusieurs terrains",
+        "perPerson": "Une seule lettre par personne",
+        "perPersonHelp": "Elle cite toutes ses parcelles : « {parcels} ».",
+        "perLand": "Une lettre par terrain",
+        "perLandHelp": "Une lettre par fiche, chacune avec sa parcelle.",
+        "error": "Choisissez une des deux options."
+      },
+      "withoutHome": {
+        "land": "Adressées au terrain, faute de domicile :",
+        "nameOnly": "Sans aucune adresse — nom seul dans la fenêtre :",
+        "parcels": "{count, plural, =0 {sans parcelle} one {parcelle {parcels}} other {parcelles {parcels}}}",
+        "hint": "Complétez le domicile sur la fiche pour que la lettre parte à la bonne adresse."
+      },
+      "download": "Télécharger le PDF du courrier",
+      "preparing": "Préparation du PDF…",
+      "calibration": "Télécharger la page de calage",
+      "calibrationHelp": "Une feuille avec les repères de la fenêtre, à glisser dans une enveloppe avant d’imprimer le lot. Si l’adresse tombe à côté, corrigez le décalage dans <link>Réglages › Courrier</link>.",
+      "note": "Les lettres sont triées par nom, dans l’ordre de mise sous pli. Le PDF n’est pas conservé : vous pouvez le télécharger à nouveau à tout moment.",
+      "none": "Aucun courrier à produire : tous les membres visés par cette campagne ont une adresse email.",
+      "legacy": "Le courrier n’est pas disponible pour cette campagne : elle a été envoyée avant l’ajout du courrier postal. Il le sera pour les suivantes.",
+      "missing": {
+        "title": "Le PDF n’a pas été préparé.",
+        "description": "<link>Choisissez une lettre par personne ou une lettre par terrain.</link> Rien n’a été regroupé."
+      },
+      "error": "Le PDF n’a pas pu être préparé. Rien n’a été envoyé ni modifié. Réessayez dans un instant ; si cela recommence, écrivez à l’équipe technique.",
+      "success": "PDF prêt : {count, plural, one {# lettre} other {# lettres}}, une par page{grouped, select, none {} other { (une seule pour {grouped})}}. Le téléchargement a commencé dans votre navigateur."
+    }
   },
   "RecipientGroupsBureau": {
     "metadata": {

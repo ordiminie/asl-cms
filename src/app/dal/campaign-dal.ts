@@ -2,6 +2,7 @@ import 'server-only'
 
 import {cache} from 'react'
 
+import {getCampaignLetterContextService} from '@/services/facades/campaign-letter-service-facade'
 import {
   canManageCampaignsService,
   getCampaignComposerContextService,
@@ -11,6 +12,7 @@ import {
 } from '@/services/facades/campaign-service-facade'
 import {
   CampaignComposerContextDTO,
+  CampaignLetterContextResult,
   CampaignListPageDTO,
   CampaignReadResult,
   CampaignRecipientFilter,
@@ -67,4 +69,17 @@ export const canManageCurrentCampaignsDal = cache(
     const tenant = await requireCurrentTenantDal()
     return canManageCampaignsService(tenant.id)
   }
+)
+
+/**
+ * La carte « Courrier postal » d'une campagne (s28) : noms et domiciles des
+ * membres, donc par utilisateur, sans cache persistant, derriere le
+ * `<Suspense>` de la page.
+ */
+export const getCampaignLetterContextDal = cache(
+  async (
+    organizationId: string,
+    campaignId: string
+  ): Promise<CampaignLetterContextResult> =>
+    getCampaignLetterContextService(organizationId, campaignId)
 )

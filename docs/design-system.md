@@ -954,6 +954,30 @@ de s21. Aucun ne crée de token ni de composant : ils composent l'existant.
   virement. ». Une seule phrase pour la carte, sous l'introduction : `alert` neutre (`Info`, fond
   `muted`), qui renvoie au bureau par la page Contact. Aucune coordonnée bancaire écrite par le site.
 
+### 3.17 Formes retenues par s28 — le courrier postal d'une campagne
+
+Écarts de la maquette `docs/designs/s28-publipostage-pdf.md`, versés ici par le plan de s28. Aucun ne
+crée de token ni de composant : ils composent l'existant.
+
+- **Carte « Courrier postal »** — dans le détail d'une campagne, après « Destinataires » et avant le
+  « Résumé » : phrase d'usage, compteur `dl` (forme du §3.13 : fiches sans adresse email, dont sans
+  domicile, date portée sur les lettres), homonymes en `alert` `warning` + `AlertTriangle` avec la
+  liste écrite à filet gauche 2 px, fiches sans domicile en `alert` neutre fond `muted` (chaque nom en
+  lien vers sa fiche), puis le bouton `default` « Télécharger le PDF du courrier » et le bouton
+  `outline` « Télécharger la page de calage » (icône `Download` 20 px, 48 px en bureau, pleine largeur
+  56 px empilés sous 640 px). Vide (aucune fiche sans email) ou campagne antérieure au courrier : une
+  `alert` neutre fond `muted`, **sans bouton ni compteur**. Chargement : bouton désactivé « Préparation
+  du PDF… ». Succès : `alert` neutre + `CircleCheck`, pas de toast.
+- **`radio-group` sans valeur par défaut** (gap 7) — permis quand la story interdit de choisir à la
+  place de l'utilisateur (« rien n'est regroupé d'office », s28 critère 2) : aucune option cochée à
+  l'ouverture. Le bouton reste actif ; un clic sans choix affiche le résumé `destructive` (bordure
+  2 px, lien d'ancrage vers le groupe, focus porté sur le résumé), les options en bordure 2 px
+  `destructive` et le message de champ (§3.1, §3.10).
+- **Polices de la lettre** (ADR 066 §3) — corps et adresse en Public Sans Regular (instance du woff2
+  du site) ; en-tête, objet et titres du corps en Source Serif 4 / 600 (le TTF du dépôt) : le moteur
+  PDF ne sait pas embarquer deux instances du même woff2 variable. Le gras écrit par le bureau dans le
+  corps est la Regular au trait épaissi, l'italique une oblique : la police du site n'a pas d'italique.
+
 ---
 
 ## 4 · Le contenu — rendu public des cinq blocs
@@ -1159,6 +1183,18 @@ objet    13 pt / 600
 rattrape pas. Une **page de calage** imprimable (repères de fenêtre en traits fins) est fournie
 avec le premier lot : le bureau la glisse dans une enveloppe réelle avant de lancer 100 pages.
 
+**Page de calage et décalage (s28, ADR 067)** — la page de calage se télécharge **à part du lot**,
+toujours disponible depuis la carte « Courrier postal » : contour de la fenêtre (filet 0,5 pt), cadre
+de l'adresse en tirets (0,5 pt), une adresse d'exemple à sa place réelle, les deux plis en trois, et
+le décalage appliqué écrit en clair. Deux réglages d'association, « Décalage horizontal » et
+« Décalage vertical » de l'adresse (carte « Courrier » des Réglages), en mm entiers de −10 à +10,
+0 par défaut, déplacent **le seul cadre de l'adresse**, sur les lettres et sur la page de calage. Les
+mesures ci-dessus restent des constantes de code (`src/lib/letters/letter-geometry.ts`) : le décalage
+est le moyen de les corriger sans livraison. Bloc à 4 lignes au plus : le libellé d'entreprise est
+omis s'il égale le nom, le complément rejoint la ligne d'adresse (« , complément ») si le bloc
+dépasserait 4 lignes. Une fiche sans domicile reçoit sa lettre au **terrain**, sinon au **nom seul**,
+signalée au bureau avant la génération.
+
 **Noir et blanc — l'information ne passe jamais par la couleur.** Aucun aplat, aucune trame grise
 sous du texte : filets noirs 0,5 pt, cadres 1 pt. Logo en version **monochrome**, testé à 300 dpi.
 Les niveaux de relance se distinguent par l'**objet écrit** (« Deuxième rappel »), pas par un
@@ -1278,7 +1314,10 @@ des composants à improviser. À traiter en `/ks-design` ou `/ks-research` de la
 - **Page de préférences d'envoi** — cible du lien de désinscription. Il doit bien mener quelque
   part : sans cet écran, le pied facultatif de tous les emails est un lien mort. _(s25, s27)_
 - **Écran « préparer l'envoi papier »** — aperçu du lot, nombre de plis, réimpression d'une page
-  isolée, marquage « envoyé le… ». Aucun des 37 composants ne le couvre. _(s28)_
+  isolée, marquage « envoyé le… ». Aucun des 37 composants ne le couvre. _(s28)_ **Partiellement
+  couvert par s28** (§3.17) : la carte « Courrier postal » compose la génération du PDF, le
+  signalement des homonymes et l'état « pas de courrier ». Restent ouverts la réimpression d'une
+  page isolée, le marquage d'envoi, le suivi du courrier et les retours PND (tableau ci-dessous).
 
 ### Les autres
 

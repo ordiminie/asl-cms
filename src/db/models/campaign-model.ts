@@ -256,6 +256,29 @@ export const campaignRecipientProfile = pgTable(
   ]
 )
 
+/**
+ * Les fiches **ciblees sans adresse active**, figees a la creation de la
+ * campagne dans la meme transaction que ses destinataires (s28, ADR 065) : le
+ * courrier postal ne se genere que depuis cet ensemble. Porte son propre
+ * `organization_id` (RLS forcee, sans jointure). Disparait avec la campagne
+ * comme avec la fiche.
+ */
+export const campaignLetterProfile = pgTable(
+  'campaign_letter_profile',
+  {
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organization.id, {onDelete: 'cascade'}),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaign.id, {onDelete: 'cascade'}),
+    memberProfileId: uuid('member_profile_id')
+      .notNull()
+      .references(() => memberProfile.id, {onDelete: 'cascade'}),
+  },
+  (table) => [primaryKey({columns: [table.campaignId, table.memberProfileId]})]
+)
+
 export type CampaignModel = typeof campaign.$inferSelect
 export type AddCampaignModel = typeof campaign.$inferInsert
 export type CampaignRecipientModel = typeof campaignRecipient.$inferSelect

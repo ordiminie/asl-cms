@@ -16,6 +16,7 @@ vi.mock('@/app/dal/association-settings-dal', () => ({
 vi.mock('@/app/dal/campaign-dal', () => ({
   canManageCurrentCampaignsDal: vi.fn(),
   getCampaignDal: vi.fn(),
+  getCampaignLetterContextDal: vi.fn(),
   getCampaignRecipientsDal: vi.fn(),
 }))
 
@@ -24,6 +25,7 @@ import {getAssociationSettingsDal} from '@/app/dal/association-settings-dal'
 import {
   canManageCurrentCampaignsDal,
   getCampaignDal,
+  getCampaignLetterContextDal,
   getCampaignRecipientsDal,
 } from '@/app/dal/campaign-dal'
 import {requireCurrentTenantDal} from '@/app/dal/tenant-dal'
@@ -70,6 +72,7 @@ beforeEach(() => {
       defaultFromKey: null,
     },
   })
+  vi.mocked(getCampaignLetterContextDal).mockResolvedValue({status: 'none'})
   vi.mocked(getCampaignRecipientsDal).mockResolvedValue({
     status: 'found',
     recipients: {
@@ -88,6 +91,32 @@ afterEach(() => {
 })
 
 describe('/bureau/campagnes/[id]', () => {
+  it('montre la carte « Courrier postal », lue pour le tenant du domaine (s28)', async () => {
+    await renderPage()
+
+    expect(getCampaignLetterContextDal).toHaveBeenCalledWith(
+      TENANT_ID,
+      CAMPAIGN_ID
+    )
+    expect(
+      screen.getByRole('heading', {level: 2, name: 'Courrier postal'})
+    ).toBeInTheDocument()
+    expect(document.body).toHaveTextContent(
+      'Aucun courrier à produire : tous les membres visés par cette campagne ont une adresse email.'
+    )
+  })
+
+  it('une lecture du courrier en échec n’empêche pas la campagne de s’afficher (s28)', async () => {
+    vi.mocked(getCampaignLetterContextDal).mockRejectedValue(new Error('panne'))
+
+    await renderPage()
+
+    expect(screen.getAllByText('Anne Arnaud').length).toBeGreaterThan(0)
+    expect(
+      screen.queryByRole('heading', {level: 2, name: 'Courrier postal'})
+    ).toBeNull()
+  })
+
   it('montre la campagne de l’association, « Campagne lancée » si on arrive de l’envoi', async () => {
     await renderPage({envoi: '1'})
 

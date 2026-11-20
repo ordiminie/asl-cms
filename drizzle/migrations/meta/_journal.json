@@ -505,6 +505,20 @@
       "when": 1795168800534,
       "tag": "0071_purple_adam_warlock",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1795186132074,
+      "tag": "0072_flashy_umar",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1795186143882,
+      "tag": "0073_campaign_letter_profile_rls",
+      "breakpoints": true
     }
   ]
 }

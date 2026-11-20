@@ -420,3 +420,57 @@ export type ConfirmUnsubscribeActionResult =
   | {status: 'already'}
   | {status: 'invalid'}
   | {status: 'error'}
+
+/**
+ * Le regroupement des lettres d'homonymes (s28, critere 2, ADR 067 §5) :
+ * choisi par le bureau a la generation, jamais enregistre ni preselectionne.
+ */
+export const CAMPAIGN_LETTER_GROUPINGS = ['per_person', 'per_land'] as const
+export type CampaignLetterGrouping = (typeof CAMPAIGN_LETTER_GROUPINGS)[number]
+
+/** D'ou vient le bloc adresse d'une lettre (ADR 067 §1). */
+export type CampaignLetterAddressSource = 'home' | 'land' | 'name_only'
+
+/** Une fiche citee par la carte du courrier : lien vers la fiche, parcelles. */
+export type CampaignLetterProfileRefDTO = {
+  id: string
+  name: string
+  parcelNumbers: string[]
+}
+
+/** Des fiches de meme nom et meme domicile, signalees avant la generation. */
+export type CampaignLetterHomonymGroupDTO = {
+  name: string
+  /** Le domicile en clair, « ligne, code postal ville ». */
+  homeAddress: string
+  profileCount: number
+  parcelNumbers: string[]
+}
+
+/** Ce que la carte « Courrier postal » montre avant la generation (s28). */
+export type CampaignLetterContextDTO = {
+  /** Jour d'envoi de la campagne, date portee sur les lettres. */
+  sendDate: string
+  withoutEmailCount: number
+  /** Dont sans domicile : adressees au terrain ou au nom seul (ADR 067 §1). */
+  withoutHomeCount: number
+  homonymGroups: CampaignLetterHomonymGroupDTO[]
+  landAddressed: CampaignLetterProfileRefDTO[]
+  nameOnly: CampaignLetterProfileRefDTO[]
+}
+
+/**
+ * Le courrier d'une campagne : introuvable, anterieure a s28 (ADR 065 §4),
+ * sans fiche sans email (critere 5), ou pret.
+ */
+export type CampaignLetterUnavailableStatus = 'not_found' | 'legacy' | 'none'
+
+export type CampaignLetterContextResult =
+  | {status: CampaignLetterUnavailableStatus}
+  | {status: 'ready'; context: CampaignLetterContextDTO}
+
+export type CampaignLettersPdfResult =
+  | {status: CampaignLetterUnavailableStatus}
+  /** Des homonymes existent et le bureau n'a pas choisi (critere 2). */
+  | {status: 'grouping_required'}
+  | {status: 'ready'; pdf: Uint8Array; sendDate: string; letterCount: number}
