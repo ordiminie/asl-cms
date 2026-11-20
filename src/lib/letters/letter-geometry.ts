@@ -54,6 +54,9 @@ export const addressFrameOf = (offset: AddressOffsetMm): RectMm => ({
 
 /** Corps du bloc adresse, en points, sans gras (§6.1). */
 export const ADDRESS_FONT_SIZE_PT = 12
+/** Plancher du bloc adresse : une ligne trop large se reduit jusque-la (§6.1). */
+export const ADDRESS_MIN_FONT_SIZE_PT = 10
+export const ADDRESS_FONT_SIZE_STEP_PT = 0.5
 /** Interligne du bloc : quatre lignes dans les 25 mm du cadre. */
 export const ADDRESS_LINE_HEIGHT_MM = ADDRESS_FRAME_MM.height / 4
 
@@ -67,6 +70,13 @@ export const BODY_Y_MM = SUBJECT_Y_MM + 12
 
 /** Hauteur reservee au pied (filet, phrase postale, mentions) sur la marge basse. */
 export const FOOTER_HEIGHT_MM = 16
+/** Le haut du pied : son filet. */
+export const FOOTER_TOP_MM =
+  A4_MM.height - LETTER_MARGINS_MM.bottom - FOOTER_HEIGHT_MM
+/** Le corps s'arrete 4 mm au-dessus du pied, sur chaque page (§6.1). */
+export const BODY_BOTTOM_MM = FOOTER_TOP_MM - 4
+/** Page de suite : repere a la marge haute, corps 10 mm en dessous (§6.1). */
+export const CONTINUATION_BODY_Y_MM = LETTER_MARGINS_MM.top + 10
 
 /** Corps du texte : 12,5 pt, interligne 1,7, plancher 11 pt (§6.1). */
 export const BODY_FONT_SIZE_PT = 12.5

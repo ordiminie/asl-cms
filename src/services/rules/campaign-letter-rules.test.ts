@@ -107,6 +107,16 @@ describe('campaignChannelsOf — complétude des canaux (critère 6)', () => {
     )
   })
 
+  it('reprend la cible déjà calculée par l’envoi, sans la recalculer (m3)', () => {
+    const rows = [row('a', 'a@x.fr'), row('b', null)]
+    const target = computeCampaignTarget(rows, () => true, 'facultative')
+    const reused = {...target, withoutEmailProfileIds: [], recipients: []}
+
+    expect(campaignChannelsOf(rows, () => true, 'facultative', reused)).toEqual(
+      {emailProfileIds: [], letterProfileIds: [], refusedProfileIds: ['a']}
+    )
+  })
+
   it('une fiche hors cible n’est dans aucun canal', () => {
     const channels = campaignChannelsOf(rows, only('a'), 'facultative')
 

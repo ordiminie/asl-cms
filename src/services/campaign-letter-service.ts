@@ -12,6 +12,7 @@ import {
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
 import {PRODUCT_LOCALE} from '@/lib/helper/locale-helper'
+import {letterAddressFitsWindow} from '@/lib/letters/letter-address-measure.server'
 import {renderCalibrationPdf} from '@/lib/letters/render-calibration-pdf'
 import {renderLettersPdf} from '@/lib/letters/render-letters-pdf'
 
@@ -180,6 +181,9 @@ const letterContextOf = (
     letterAddressLinesOf(profile).source
   const landAddressed = profiles.filter((p) => sourceOf(p) === 'land')
   const nameOnly = profiles.filter((p) => sourceOf(p) === 'name_only')
+  const addressTooWide = profiles.filter(
+    (p) => !letterAddressFitsWindow(letterAddressLinesOf(p).lines)
+  )
   return {
     sendDate,
     withoutEmailCount: profiles.length,
@@ -194,12 +198,14 @@ const letterContextOf = (
     })),
     landAddressed: landAddressed.map(refOf),
     nameOnly: nameOnly.map(refOf),
+    addressTooWide: addressTooWide.map(refOf),
   }
 }
 
 /**
  * La carte « Courrier postal » d'une campagne (s28) : decomptes, homonymes a
- * signaler (critere 2), lettres au terrain ou au nom seul (ADR 067 §1).
+ * signaler (critere 2), lettres au terrain ou au nom seul (ADR 067 §1), et
+ * adresses trop larges pour le cadre de la fenetre (§6.1).
  */
 export const getCampaignLetterContextService = async (
   organizationId: string,
@@ -278,7 +284,7 @@ export const generateCampaignLettersService = async (
     locale: PRODUCT_LOCALE,
     namespace: PDF_NAMESPACE,
   })
-  const pdf = await renderLettersPdf({
+  const rendered = await renderLettersPdf({
     association: {
       name: association.name,
       legalMentions: association.legalMentions,
@@ -292,13 +298,15 @@ export const generateCampaignLettersService = async (
       subjectLabel: t('subjectLabel'),
       dateLine: t('dateLine', {date: formatCampaignDate(frozen.sendDate)}),
       footer: t('footer'),
+      continuation: (values) => t('continuation', values),
     },
   })
   return {
     status: 'ready',
-    pdf,
+    pdf: rendered.pdf,
     sendDate: frozen.sendDate,
     letterCount: letters.length,
+    pageCount: rendered.pageCount,
   }
 }
 

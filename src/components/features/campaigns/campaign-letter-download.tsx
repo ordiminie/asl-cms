@@ -16,6 +16,8 @@ import type {CampaignLetterGrouping} from '@/services/types/domain/campaign-type
 import {
   CAMPAIGN_LETTER_CALIBRATION_PATH,
   campaignLettersPathOf,
+  LETTER_COUNT_HEADER,
+  PAGE_COUNT_HEADER,
 } from './campaign-paths'
 
 type HomonymGroup = {
@@ -27,8 +29,6 @@ type HomonymGroup = {
 type CampaignLetterDownloadProps = {
   campaignId: string
   homonymGroups: readonly HomonymGroup[]
-  /** Les fiches figees pour le courrier : une lettre chacune par terrain. */
-  profileCount: number
 }
 
 type Status =
@@ -36,7 +36,7 @@ type Status =
   | {kind: 'missing'}
   | {kind: 'loading'}
   | {kind: 'error'}
-  | {kind: 'success'; count: number; grouped: string}
+  | {kind: 'success'; count: number; pageCount: number; grouped: string}
 
 const SETTINGS_PATH = '/bureau/reglages'
 const FALLBACK_FILE_NAME = 'courrier.pdf'
@@ -48,6 +48,15 @@ const NAME_LIST_FORMAT = new Intl.ListFormat('fr', {
   style: 'long',
   type: 'conjunction',
 })
+
+/** Un decompte du lot, lu dans l'en-tete de la reponse ; absent : refus. */
+const countOf = (response: Response, header: string): number => {
+  const count = Number.parseInt(response.headers.get(header) ?? '', 10)
+  if (!Number.isInteger(count) || count < 1) {
+    throw new Error(`decompte absent : ${header}`)
+  }
+  return count
+}
 
 const saveBlob = (blob: Blob, fileName: string) => {
   const url = URL.createObjectURL(blob)
@@ -66,7 +75,6 @@ const saveBlob = (blob: Blob, fileName: string) => {
 export function CampaignLetterDownload({
   campaignId,
   homonymGroups,
-  profileCount,
 }: CampaignLetterDownloadProps) {
   const t = useTranslations('CampaignsBureau.letters')
   const [grouping, setGrouping] = useState<CampaignLetterGrouping | null>(null)
@@ -82,11 +90,21 @@ export function CampaignLetterDownload({
     if (missing) summaryRef.current?.focus()
   }, [missing])
 
-  const letterCountOf = (choice: CampaignLetterGrouping | null) =>
-    choice === 'per_person'
-      ? profileCount -
-        homonymGroups.reduce((sum, group) => sum + group.profileCount - 1, 0)
-      : profileCount
+  const perPersonHelp =
+    homonymGroups.length === 1
+      ? t('grouping.perPersonHelp', {
+          parcels: joinParcelNumbers(homonymGroups[0].parcelNumbers),
+        })
+      : t('grouping.perPersonHelpMany', {
+          groups: NAME_LIST_FORMAT.format(
+            homonymGroups.map((group) =>
+              t('grouping.groupParcels', {
+                name: group.name,
+                parcels: joinParcelNumbers(group.parcelNumbers),
+              })
+            )
+          ),
+        })
 
   const onDownload = async () => {
     if (hasHomonyms && !grouping) {
@@ -103,10 +121,13 @@ export function CampaignLetterDownload({
         FILE_NAME_PATTERN.exec(
           response.headers.get('Content-Disposition') ?? ''
         )?.[1] ?? FALLBACK_FILE_NAME
+      const count = countOf(response, LETTER_COUNT_HEADER)
+      const pageCount = countOf(response, PAGE_COUNT_HEADER)
       saveBlob(await response.blob(), fileName)
       setStatus({
         kind: 'success',
-        count: letterCountOf(hasHomonyms ? grouping : null),
+        count,
+        pageCount,
         grouped:
           grouping === 'per_person' && hasHomonyms
             ? NAME_LIST_FORMAT.format(homonymGroups.map((group) => group.name))
@@ -192,11 +213,7 @@ export function CampaignLetterDownload({
                     className="text-muted-foreground text-[15px]"
                   >
                     {value === 'per_person'
-                      ? t('grouping.perPersonHelp', {
-                          parcels: joinParcelNumbers(
-                            homonymGroups[0].parcelNumbers
-                          ),
-                        })
+                      ? perPersonHelp
                       : t('grouping.perLandHelp')}
                   </p>
                 </div>
@@ -255,7 +272,12 @@ export function CampaignLetterDownload({
           <CircleCheck aria-hidden="true" className="text-primary" />
           <AlertDescription className="text-foreground text-[17px]">
             <p>
-              {t('success', {count: status.count, grouped: status.grouped})}
+              {t('success', {
+                count: status.count,
+                pageCount: status.pageCount,
+                paged: status.pageCount > status.count ? 'multi' : 'single',
+                grouped: status.grouped,
+              })}
             </p>
           </AlertDescription>
         </Alert>

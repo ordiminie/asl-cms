@@ -76,3 +76,10 @@ export const campaignLettersPathOf = (
   const path = `/api/campaigns/${encodeURIComponent(id)}/courrier`
   return grouping ? `${path}?lettres=${LETTER_GROUPING_SLUGS[grouping]}` : path
 }
+
+/**
+ * Les decomptes du lot du courrier, en en-tetes de la reponse (s28, §6.1) :
+ * la carte annonce ce que le PDF contient, sans le recalculer.
+ */
+export const LETTER_COUNT_HEADER = 'X-Letter-Count'
+export const PAGE_COUNT_HEADER = 'X-Page-Count'

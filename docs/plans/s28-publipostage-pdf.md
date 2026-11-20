@@ -106,6 +106,30 @@ terrain, sinon au nom seul, signalée ; page de calage téléchargeable à part 
    décalage, §3.x carte courrier et `radio-group` sans défaut, §9 « préparer l'envoi papier »
    partiellement couvert) ; `docs/architecture.md` (ADR 065-067, dépendances).
 
+### Correctifs de la revue (tour 1) — arbitrages du 20/11/2026
+
+10. [x] **C1 — lettre plus longue qu'une page : page de suite propre** (arbitrage). Le corps est borné
+    à `[début du corps, haut du pied − 4 mm]` sur chaque page ; ce qui déborde continue sur une page
+    de suite, créée avec les vraies marges (20/20/15/20 mm), le pied redessiné et un repère en tête
+    « <Nom du destinataire> — suite, page n/N ». Aucun texte du corps sous le haut du pied, aucun
+    texte hors des marges. Chaque lettre commence sur une nouvelle page (lot = suite de lettres, plus
+    « une page par lettre »). Le service connaît le nombre de pages et la carte l'annonce
+    (« N lettres, M pages » quand M > N). Tests `pdfjs-dist` avec un corps ≥ 7 000 caractères :
+    aucun texte du corps sous le haut du pied, marge haute respectée sur chaque page de suite,
+    repère présent, nombre de pages = celui annoncé. L'e2e ne suppose plus `pageCount === letters`.
+    Consigner la règle dans `docs/design-system.md` §6.1 (comble le manque).
+11. [x] **M1 — ligne d'adresse plus large que le cadre** (arbitrage). Chaque ligne est mesurée
+    (`widthOfString`) contre la largeur du cadre (90 mm) : réduction de 12 pt jusqu'à 10 pt au plus
+    petit ; si elle ne tient toujours pas, coupure après une virgule, dans la limite de 4 lignes ;
+    si cela ne suffit pas, la lettre est signalée dans la carte avec un lien vers la fiche, comme les
+    lettres adressées au terrain. Tests : le bord droit de chaque ligne ≤ bord droit du cadre (après
+    décalage), réduction, coupure, signalement. Règle consignée au §6.1.
+12. [x] **Mineurs m1-m4** de `docs/reviews/s28-publipostage-pdf.md`, s'ils restent locaux : aide
+    citant chaque groupe d'homonymes (m1) ; `legacy` distingué des fiches figées toutes supprimées
+    (m2) ; cible non recalculée deux fois (m3) ; compte de lettres pris dans la réponse (m4).
+    m1, m3, m4 faits ; m2 non traité : il ne reste pas local (aucun chemin du produit ne supprime
+    une fiche, et distinguer les deux cas demande un signal en base).
+
 ## Files touched
 
 - `src/services/rules/campaign-letter-rules.ts` (+ test), `src/services/rules/campaign-rules.ts`

@@ -585,7 +585,12 @@ export const sendCampaignService = async (
     )
     if (target.recipients.length === 0) return {status: 'no_recipient'}
 
-    const {letterProfileIds} = campaignChannelsOf(rows, isTargeted, nature)
+    const {letterProfileIds} = campaignChannelsOf(
+      rows,
+      isTargeted,
+      nature,
+      target
+    )
     await lockCampaignScheduleTxnDao(data.organizationId)
     const plan = planCampaignParts(
       target.recipients.length,

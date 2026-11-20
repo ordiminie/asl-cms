@@ -4476,13 +4476,14 @@
         "subjectLabel": "Objet :",
         "dateLine": "Le {date}",
         "footer": "Courrier envoyé par voie postale, faute d’adresse email connue.",
+        "continuation": "{name} — suite, page {page}/{pageCount}",
         "sampleName": "Nom du destinataire",
         "sampleAddress": "Adresse",
         "sampleLocality": "Code postal Ville",
         "calibrationInstruction": "Glissez cette feuille pliée dans une enveloppe à fenêtre : le cadre en tirets doit apparaître entier dans la fenêtre. Décalage appliqué : {x} mm horizontal, {y} mm vertical."
       },
       "title": "Courrier postal",
-      "usage": "Les membres sans adresse email reçoivent cette campagne par la poste. Le PDF contient une lettre par page, au même contenu que l’email, prête à glisser dans une enveloppe à fenêtre.",
+      "usage": "Les membres sans adresse email reçoivent cette campagne par la poste. Le PDF contient une lettre par destinataire, au même contenu que l’email, prête à glisser dans une enveloppe à fenêtre. Chaque lettre commence sur une nouvelle page ; une lettre longue continue sur des pages de suite.",
       "counter": {
         "withoutEmail": "Fiches sans adresse email",
         "withoutHome": "Dont sans domicile",
@@ -4496,6 +4497,8 @@
         "legend": "Lettres des propriétaires de plusieurs terrains",
         "perPerson": "Une seule lettre par personne",
         "perPersonHelp": "Elle cite toutes ses parcelles : « {parcels} ».",
+        "perPersonHelpMany": "Chaque lettre cite toutes les parcelles de la personne : {groups}.",
+        "groupParcels": "{name} « {parcels} »",
         "perLand": "Une lettre par terrain",
         "perLandHelp": "Une lettre par fiche, chacune avec sa parcelle.",
         "error": "Choisissez une des deux options."
@@ -4505,6 +4508,10 @@
         "nameOnly": "Sans aucune adresse — nom seul dans la fenêtre :",
         "parcels": "{count, plural, =0 {sans parcelle} one {parcelle {parcels}} other {parcelles {parcels}}}",
         "hint": "Complétez le domicile sur la fiche pour que la lettre parte à la bonne adresse."
+      },
+      "addressTooWide": {
+        "label": "Adresse trop longue pour la fenêtre de l’enveloppe, même réduite et coupée :",
+        "hint": "Raccourcissez l’adresse sur la fiche pour qu’elle apparaisse entière dans la fenêtre."
       },
       "download": "Télécharger le PDF du courrier",
       "preparing": "Préparation du PDF…",
@@ -4518,7 +4525,7 @@
         "description": "<link>Choisissez une lettre par personne ou une lettre par terrain.</link> Rien n’a été regroupé."
       },
       "error": "Le PDF n’a pas pu être préparé. Rien n’a été envoyé ni modifié. Réessayez dans un instant ; si cela recommence, écrivez à l’équipe technique.",
-      "success": "PDF prêt : {count, plural, one {# lettre} other {# lettres}}, une par page{grouped, select, none {} other { (une seule pour {grouped})}}. Le téléchargement a commencé dans votre navigateur."
+      "success": "PDF prêt : {count, plural, one {# lettre} other {# lettres}}{paged, select, multi {, {pageCount} pages — chaque lettre commence sur une nouvelle page} other {, une par page}}{grouped, select, none {} other { (une seule pour {grouped})}}. Le téléchargement a commencé dans votre navigateur."
     }
   },
   "RecipientGroupsBureau": {

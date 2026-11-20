@@ -25,7 +25,13 @@ vi.mock('../association-settings-service', () => ({
   getAssociationSettingsService: vi.fn(),
 }))
 vi.mock('@/lib/letters/render-letters-pdf', () => ({
-  renderLettersPdf: vi.fn(async () => Buffer.from('%PDF-lettres')),
+  renderLettersPdf: vi.fn(async () => ({
+    pdf: Buffer.from('%PDF-lettres'),
+    pageCount: 5,
+  })),
+}))
+vi.mock('@/lib/letters/letter-address-measure.server', () => ({
+  letterAddressFitsWindow: vi.fn(() => true),
 }))
 vi.mock('@/lib/letters/render-calibration-pdf', () => ({
   renderCalibrationPdf: vi.fn(async () => Buffer.from('%PDF-calage')),
@@ -40,6 +46,7 @@ import {
 } from '@/db/repositories/campaign-repository'
 import {getOrganizationByIdDao} from '@/db/repositories/organization-repository'
 import {withTenant} from '@/db/tenant-scope'
+import {letterAddressFitsWindow} from '@/lib/letters/letter-address-measure.server'
 import {renderCalibrationPdf} from '@/lib/letters/render-calibration-pdf'
 import {renderLettersPdf} from '@/lib/letters/render-letters-pdf'
 import {logger} from '@/lib/logger'
@@ -171,6 +178,7 @@ const translatorMock = (
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(letterAddressFitsWindow).mockImplementation(() => true)
   vi.mocked(getTranslations).mockResolvedValue(translatorMock as never)
   vi.mocked(getOrganizationByIdDao).mockResolvedValue({
     id: ORG_ID,
@@ -278,6 +286,27 @@ describe('[BUREAU] getCampaignLetterContextService', () => {
         ],
         landAddressed: [{id: ROY, name: 'Hélène Roy', parcelNumbers: ['3']}],
         nameOnly: [{id: NOBODY, name: 'Sans Adresse', parcelNumbers: ['8']}],
+        addressTooWide: [],
+      },
+    })
+  })
+
+  it('une adresse qui ne tient pas dans le cadre est signalée, avec la fiche (M1)', async () => {
+    vi.mocked(letterAddressFitsWindow).mockImplementation(
+      (lines) => !lines.includes('12 chemin de la Fourche')
+    )
+
+    const result = await getCampaignLetterContextService(...contextInput)
+
+    expect(letterAddressFitsWindow).toHaveBeenCalledWith([
+      'Hélène Roy',
+      '12 chemin de la Fourche',
+      '07140 Les Vans',
+    ])
+    expect(result).toMatchObject({
+      status: 'ready',
+      context: {
+        addressTooWide: [{id: ROY, name: 'Hélène Roy', parcelNumbers: ['3']}],
       },
     })
   })
@@ -343,6 +372,7 @@ describe('[BUREAU] generateCampaignLettersService', () => {
       status: 'ready',
       sendDate: '2026-11-12',
       letterCount: 3,
+      pageCount: 5,
     })
     expect(
       result.status === 'ready' && Buffer.from(result.pdf).toString()
@@ -386,6 +416,18 @@ describe('[BUREAU] generateCampaignLettersService', () => {
       locale: 'fr',
       namespace: 'CampaignsBureau.letters.pdf',
     })
+  })
+
+  it('le repère des pages de suite est traduit, au nom du destinataire (§6.1)', async () => {
+    await generateCampaignLettersService(...contextInput, 'per_land')
+
+    expect(
+      lettersInput().texts.continuation({
+        name: 'Hélène Roy',
+        page: 2,
+        pageCount: 3,
+      })
+    ).toBe('continuation {"name":"Hélène Roy","page":2,"pageCount":3}')
   })
 
   it('sans homonymes, aucun choix n’est exigé', async () => {

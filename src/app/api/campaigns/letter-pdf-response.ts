@@ -16,12 +16,20 @@ const BASE_HEADERS = {
 export const emptyResponse = (status: number): Response =>
   new Response(null, {status, headers: BASE_HEADERS})
 
-/** Un PDF en piece jointe, sous un nom sans donnee nominative. */
-export const pdfAttachment = (pdf: Uint8Array, fileName: string): Response =>
+/**
+ * Un PDF en piece jointe, sous un nom sans donnee nominative. Des en-tetes
+ * en plus peuvent l'accompagner (decomptes du lot) : jamais un nom.
+ */
+export const pdfAttachment = (
+  pdf: Uint8Array,
+  fileName: string,
+  extraHeaders: Record<string, string> = {}
+): Response =>
   new Response(new Uint8Array(pdf), {
     status: 200,
     headers: {
       ...BASE_HEADERS,
+      ...extraHeaders,
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${fileName}"`,
     },

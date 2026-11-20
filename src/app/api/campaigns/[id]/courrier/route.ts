@@ -1,4 +1,8 @@
 import {getCurrentTenantDal} from '@/app/dal/tenant-dal'
+import {
+  LETTER_COUNT_HEADER,
+  PAGE_COUNT_HEADER,
+} from '@/components/features/campaigns/campaign-paths'
 import {generateCampaignLettersService} from '@/services/facades/campaign-letter-service-facade'
 import type {
   CampaignLetterGrouping,
@@ -66,5 +70,8 @@ export async function GET(
   const result = await generate(tenant.id, id, GROUPING_OF_PARAM[param] ?? null)
   if (result instanceof Response) return result
   if (result.status !== 'ready') return emptyResponse(STATUS_OF[result.status])
-  return pdfAttachment(result.pdf, fileNameOf(result.sendDate))
+  return pdfAttachment(result.pdf, fileNameOf(result.sendDate), {
+    [LETTER_COUNT_HEADER]: String(result.letterCount),
+    [PAGE_COUNT_HEADER]: String(result.pageCount),
+  })
 }

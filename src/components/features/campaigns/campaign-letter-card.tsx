@@ -94,10 +94,12 @@ function ReadyLetters({
           nameOnly={context.nameOnly}
         />
       )}
+      {context.addressTooWide.length > 0 && (
+        <AddressTooWideAlert profiles={context.addressTooWide} />
+      )}
       <CampaignLetterDownload
         campaignId={campaignId}
         homonymGroups={context.homonymGroups}
-        profileCount={context.withoutEmailCount}
       />
       <p className="text-muted-foreground text-[15px]">{t('note')}</p>
     </>
@@ -141,6 +143,31 @@ function HomonymsAlert({
   )
 }
 
+function ProfileLinks({
+  profiles,
+}: {
+  profiles: readonly CampaignLetterProfileRefDTO[]
+}) {
+  const t = useTranslations('CampaignsBureau.letters.withoutHome')
+
+  return (
+    <ul className="mt-1 flex flex-col gap-1">
+      {profiles.map((profile) => (
+        <li key={profile.id}>
+          <Link href={memberProfilePathOf(profile.id)} className="underline">
+            {profile.name}
+          </Link>{' '}
+          {t.rich('parcels', {
+            data,
+            count: profile.parcelNumbers.length,
+            parcels: joinParcelNumbers(profile.parcelNumbers),
+          })}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function WithoutHomeAlert({
   landAddressed,
   nameOnly,
@@ -162,25 +189,30 @@ function WithoutHomeAlert({
           .map(([label, profiles]) => (
             <div key={label}>
               <p>{label}</p>
-              <ul className="mt-1 flex flex-col gap-1">
-                {profiles.map((profile) => (
-                  <li key={profile.id}>
-                    <Link
-                      href={memberProfilePathOf(profile.id)}
-                      className="underline"
-                    >
-                      {profile.name}
-                    </Link>{' '}
-                    {t.rich('parcels', {
-                      data,
-                      count: profile.parcelNumbers.length,
-                      parcels: joinParcelNumbers(profile.parcelNumbers),
-                    })}
-                  </li>
-                ))}
-              </ul>
+              <ProfileLinks profiles={profiles} />
             </div>
           ))}
+        <p>{t('hint')}</p>
+      </AlertDescription>
+    </Alert>
+  )
+}
+
+/** Les lettres dont l'adresse deborderait la fenetre (§6.1) : a corriger. */
+function AddressTooWideAlert({
+  profiles,
+}: {
+  profiles: readonly CampaignLetterProfileRefDTO[]
+}) {
+  const t = useTranslations('CampaignsBureau.letters.addressTooWide')
+
+  return (
+    <Alert role="status" className="bg-muted">
+      <AlertDescription className="text-foreground flex flex-col gap-3 text-[17px]">
+        <div>
+          <p>{t('label')}</p>
+          <ProfileLinks profiles={profiles} />
+        </div>
         <p>{t('hint')}</p>
       </AlertDescription>
     </Alert>

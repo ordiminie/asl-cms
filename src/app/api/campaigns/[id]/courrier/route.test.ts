@@ -46,6 +46,7 @@ beforeEach(() => {
     pdf: new TextEncoder().encode('%PDF-lettres'),
     sendDate: '2026-11-12',
     letterCount: 3,
+    pageCount: 5,
   })
 })
 
@@ -61,6 +62,13 @@ describe('GET /api/campaigns/[id]/courrier — le PDF du courrier (s28)', () => 
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
     expect(await response.text()).toBe('%PDF-lettres')
+  })
+
+  it('annonce le nombre de lettres et de pages du lot rendu (§6.1)', async () => {
+    const response = await call('?lettres=par-personne')
+
+    expect(response.headers.get('X-Letter-Count')).toBe('3')
+    expect(response.headers.get('X-Page-Count')).toBe('5')
   })
 
   it('le tenant vient du domaine appelé, le choix du paramètre', async () => {

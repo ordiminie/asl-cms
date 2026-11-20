@@ -457,6 +457,11 @@ export type CampaignLetterContextDTO = {
   homonymGroups: CampaignLetterHomonymGroupDTO[]
   landAddressed: CampaignLetterProfileRefDTO[]
   nameOnly: CampaignLetterProfileRefDTO[]
+  /**
+   * Adresses qui ne tiennent pas dans le cadre de 90 mm, meme reduites a
+   * 10 pt et coupees apres une virgule (§6.1) : a raccourcir sur la fiche.
+   */
+  addressTooWide: CampaignLetterProfileRefDTO[]
 }
 
 /**
@@ -473,4 +478,14 @@ export type CampaignLettersPdfResult =
   | {status: CampaignLetterUnavailableStatus}
   /** Des homonymes existent et le bureau n'a pas choisi (critere 2). */
   | {status: 'grouping_required'}
-  | {status: 'ready'; pdf: Uint8Array; sendDate: string; letterCount: number}
+  /**
+   * Le lot : chaque lettre commence sur une nouvelle page, une lettre longue
+   * continue sur des pages de suite (§6.1), d'ou `pageCount >= letterCount`.
+   */
+  | {
+      status: 'ready'
+      pdf: Uint8Array
+      sendDate: string
+      letterCount: number
+      pageCount: number
+    }

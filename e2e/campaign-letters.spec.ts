@@ -314,13 +314,14 @@ test.describe('Courrier postal — une lettre par fiche sans email', () => {
       const {letters} = await channelsInDatabase(campaignId)
       expect(letters.size).toBeGreaterThan(1)
 
-      // Critères 1 et 4 : un seul PDF, une page par fiche figée.
+      // Critères 1 et 4 : un seul PDF, une lettre par fiche figée, chacune
+      // sur une nouvelle page ; une lettre longue y ajoute ses pages de suite.
       await card.getByLabel('Une lettre par terrain').check()
       const perLand = await downloadedPdf(bureau, () => download.click())
       expect(perLand.name).toMatch(/^courrier-\d{2}-\d{2}-\d{4}\.pdf$/)
       expect(perLand.name).not.toContain('Garnier')
       expect(perLand.pdf.subarray(0, 5).toString()).toBe('%PDF-')
-      expect(pageCountOf(perLand.pdf)).toBe(letters.size)
+      expect(pageCountOf(perLand.pdf)).toBeGreaterThanOrEqual(letters.size)
       await expect(
         card.getByRole('status').filter({hasText: 'PDF prêt'})
       ).toBeVisible()
@@ -332,7 +333,12 @@ test.describe('Courrier postal — une lettre par fiche sans email', () => {
       expect(perPerson.status()).toBe(200)
       expect(perPerson.headers()['content-type']).toBe('application/pdf')
       expect(perPerson.headers()['cache-control']).toContain('no-store')
-      expect(pageCountOf(await perPerson.body())).toBe(letters.size - 1)
+      expect(perPerson.headers()['x-letter-count']).toBe(
+        String(letters.size - 1)
+      )
+      const perPersonPages = pageCountOf(await perPerson.body())
+      expect(perPersonPages).toBeGreaterThanOrEqual(letters.size - 1)
+      expect(perPerson.headers()['x-page-count']).toBe(String(perPersonPages))
 
       // La page de calage, à part du lot (ADR 067 §4).
       const calibration = await downloadedPdf(bureau, () =>

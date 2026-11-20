@@ -8,6 +8,7 @@ import {
   CampaignTargetPredicate,
   CampaignTargetRow,
   computeCampaignTarget,
+  ComputedCampaignTarget,
   joinParcelNumbers,
   sameAddressRowsOf,
 } from './campaign-rules'
@@ -33,14 +34,19 @@ export type CampaignChannels = {
  * La partition des fiches ciblees (critere 6) : couvertes par un destinataire
  * email (les fiches de son adresse, comme `campaign_recipient_profile`), sans
  * adresse active (le courrier), ou refusees. Les memes lignes et le meme
- * calcul que `computeCampaignTarget` : jamais une seconde definition.
+ * calcul que `computeCampaignTarget` : jamais une seconde definition. L'envoi,
+ * qui vient de calculer la cible, la passe telle quelle (`target`).
  */
 export const campaignChannelsOf = <Row extends CampaignTargetRow>(
   rows: readonly Row[],
   isTargeted: CampaignTargetPredicate = () => true,
-  nature: CampaignNature = DEFAULT_CAMPAIGN_NATURE
+  nature: CampaignNature = DEFAULT_CAMPAIGN_NATURE,
+  target: ComputedCampaignTarget<Row> = computeCampaignTarget(
+    rows,
+    isTargeted,
+    nature
+  )
 ): CampaignChannels => {
-  const target = computeCampaignTarget(rows, isTargeted, nature)
   const covered = new Set(
     target.recipients.flatMap((recipient) =>
       sameAddressRowsOf(rows, recipient, isTargeted).map(
@@ -55,6 +61,8 @@ export const campaignChannelsOf = <Row extends CampaignTargetRow>(
   )
   return {
     emailProfileIds: [...covered],
+    // Garde-fou : une fiche sans ligne d'email n'a aucune adresse active, ce
+    // filtre ne retire rien tant que la cible rend une ligne par adresse.
     letterProfileIds: target.withoutEmailProfileIds.filter(
       (id) => !withEmail.has(id)
     ),

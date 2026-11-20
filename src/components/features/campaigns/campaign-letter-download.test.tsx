@@ -10,14 +10,22 @@ const fetchMock = vi.fn()
 const createObjectURL = vi.fn(() => 'blob:courrier')
 const revokeObjectURL = vi.fn()
 
-const pdfResponse = () =>
+const pdfResponse = (letters = 3, pages = letters) =>
   new Response('%PDF', {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': 'attachment; filename="courrier-12-11-2026.pdf"',
+      'X-Letter-Count': String(letters),
+      'X-Page-Count': String(pages),
     },
   })
+
+const GARNIER = {
+  name: 'Yvette Garnier',
+  profileCount: 2,
+  parcelNumbers: ['71', '72'],
+}
 
 beforeEach(() => {
   fetchMock.mockReset()
@@ -35,22 +43,17 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const renderDownload = (hasHomonyms = true) =>
+const LAURENT = {
+  name: 'Marcel Laurent',
+  profileCount: 2,
+  parcelNumbers: ['14', '27'],
+}
+
+const renderDownload = (hasHomonyms = true, groups = [LAURENT]) =>
   render(
     <CampaignLetterDownload
       campaignId={CAMPAIGN_ID}
-      homonymGroups={
-        hasHomonyms
-          ? [
-              {
-                name: 'Marcel Laurent',
-                profileCount: 2,
-                parcelNumbers: ['14', '27'],
-              },
-            ]
-          : []
-      }
-      profileCount={4}
+      homonymGroups={hasHomonyms ? groups : []}
     />
   )
 
@@ -110,7 +113,61 @@ describe('CampaignLetterDownload — le choix et le téléchargement (s28)', () 
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:courrier')
   })
 
+  it('plusieurs groupes d’homonymes : l’aide cite les parcelles de chacun (m1)', () => {
+    renderDownload(true, [LAURENT, GARNIER])
+
+    expect(
+      screen.getByText(
+        'Chaque lettre cite toutes les parcelles de la personne : Marcel Laurent « 14 et 27 » et Yvette Garnier « 71 et 72 ».'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('le nombre de lettres vient de la réponse, jamais d’un calcul du navigateur (m4)', async () => {
+    fetchMock.mockResolvedValue(pdfResponse(2))
+    renderDownload()
+
+    await userEvent.click(
+      screen.getByLabelText('Une seule lettre par personne')
+    )
+    await userEvent.click(download())
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'PDF prêt : 2 lettres, une par page (une seule pour Marcel Laurent).'
+    )
+  })
+
+  it('une lettre longue : « N lettres, M pages » quand le lot compte plus de pages que de lettres (§6.1)', async () => {
+    fetchMock.mockResolvedValue(pdfResponse(4, 6))
+    renderDownload()
+
+    await userEvent.click(screen.getByLabelText('Une lettre par terrain'))
+    await userEvent.click(download())
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'PDF prêt : 4 lettres, 6 pages — chaque lettre commence sur une nouvelle page. Le téléchargement a commencé dans votre navigateur.'
+    )
+  })
+
+  it('une réponse sans décompte : erreur, aucun compte inventé', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('%PDF', {
+        status: 200,
+        headers: {'Content-Type': 'application/pdf'},
+      })
+    )
+    renderDownload(false)
+
+    await userEvent.click(download())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Le PDF n’a pas pu être préparé.'
+    )
+    expect(createObjectURL).not.toHaveBeenCalled()
+  })
+
   it('une lettre par terrain : une lettre par fiche', async () => {
+    fetchMock.mockResolvedValue(pdfResponse(4))
     renderDownload()
 
     await userEvent.click(screen.getByLabelText('Une lettre par terrain'))

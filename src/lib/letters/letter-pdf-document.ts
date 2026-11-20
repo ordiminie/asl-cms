@@ -1,17 +1,23 @@
 import PDFDocument from 'pdfkit'
 
+import {AddressFit, fitAddressLines} from './letter-address-fit'
 import {LetterFontFiles} from './letter-fonts.server'
 import {
-  ADDRESS_FONT_SIZE_PT,
+  A4_MM,
   ADDRESS_LINE_HEIGHT_MM,
   addressFrameOf,
   AddressOffsetMm,
+  BODY_BOTTOM_MM,
+  CONTINUATION_BODY_Y_MM,
+  LETTER_MARGINS_MM,
   mmToPt,
 } from './letter-geometry'
 
 /**
  * Le document PDF commun aux lettres et a la page de calage (ADR 066) : A4,
- * polices embarquees, aucune page automatique, rendu en memoire.
+ * polices embarquees, rendu en memoire. Les pages restent en memoire jusqu'a
+ * la fin (`bufferPages`) : le repere « suite, page n/N » d'une lettre ne
+ * s'ecrit qu'une fois son nombre de pages connu.
  */
 
 /**
@@ -41,6 +47,7 @@ export const createLetterDocument = (
     size: 'A4',
     margin: 0,
     autoFirstPage: false,
+    bufferPages: true,
     compress: true,
   })
   doc.registerFont(LETTER_FONTS.regular, fonts.sans, SANS_REGULAR_INSTANCE)
@@ -54,17 +61,49 @@ export const addLetterPage = (doc: LetterDocument): void => {
 }
 
 /**
- * Le bloc adresse, dans le cadre decale du reglage (ADR 067 §2-4) : 12 pt,
- * sans gras, une ligne par entree, jamais renvoyee a la ligne.
+ * Une page de lettre (§6.1) : ses marges bornent le corps, de la marge haute
+ * d'une page de suite jusqu'a 4 mm au-dessus du pied. Le corps qui deborde
+ * continue sur une page aux memes marges, jamais sur le pied ni hors marge.
+ */
+export const addLetterBodyPage = (doc: LetterDocument): void => {
+  doc.addPage({
+    size: 'A4',
+    margins: {
+      top: mmToPt(CONTINUATION_BODY_Y_MM),
+      bottom: mmToPt(A4_MM.height - BODY_BOTTOM_MM),
+      left: mmToPt(LETTER_MARGINS_MM.left),
+      right: mmToPt(LETTER_MARGINS_MM.right),
+    },
+  })
+}
+
+/** L'index de la derniere page du document, celle ou le corps s'ecrit. */
+export const lastPageIndexOf = (doc: LetterDocument): number => {
+  const range = doc.bufferedPageRange()
+  return range.start + range.count - 1
+}
+
+/** La largeur d'un texte de l'adresse, mesuree sur la police embarquee. */
+export const addressWidthOf =
+  (doc: LetterDocument) =>
+  (text: string, sizePt: number): number =>
+    doc.font(LETTER_FONTS.regular).fontSize(sizePt).widthOfString(text)
+
+/**
+ * Le bloc adresse, dans le cadre decale du reglage (ADR 067 §2-4) : sans gras,
+ * une ligne par entree, jamais plus large que le cadre (`fitAddressLines`) ;
+ * une adresse qui ne tient pas est dessinee au plancher, et signalee au
+ * bureau avant la generation.
  */
 export const drawAddressBlock = (
   doc: LetterDocument,
   lines: readonly string[],
   offset: AddressOffsetMm
-): void => {
+): AddressFit => {
   const frame = addressFrameOf(offset)
-  doc.font(LETTER_FONTS.regular).fontSize(ADDRESS_FONT_SIZE_PT)
-  lines.forEach((line, index) => {
+  const fit = fitAddressLines(lines, addressWidthOf(doc))
+  doc.font(LETTER_FONTS.regular).fontSize(fit.sizePt)
+  fit.lines.forEach((line, index) => {
     doc.text(
       line,
       mmToPt(frame.x),
@@ -72,6 +111,7 @@ export const drawAddressBlock = (
       {lineBreak: false}
     )
   })
+  return fit
 }
 
 /** Le PDF termine, en memoire : jamais ecrit sur le disque (ADR 066 §5). */

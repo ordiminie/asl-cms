@@ -26,6 +26,7 @@ const contextOf = (
   ],
   landAddressed: [{id: 'roy', name: 'Hélène Roy', parcelNumbers: ['3']}],
   nameOnly: [{id: 'nobody', name: 'Sans Adresse', parcelNumbers: ['8']}],
+  addressTooWide: [],
   ...overrides,
 })
 
@@ -128,6 +129,31 @@ describe('CampaignLetterCard — la carte « Courrier postal » (s28)', () => {
     expect(card()).toHaveTextContent(
       'Complétez le domicile sur la fiche pour que la lettre parte à la bonne adresse.'
     )
+  })
+
+  it('une adresse trop large pour la fenêtre : signalée, le nom en lien vers sa fiche (M1)', () => {
+    renderCard({
+      status: 'ready',
+      context: contextOf({
+        withoutHomeCount: 0,
+        landAddressed: [],
+        nameOnly: [],
+        addressTooWide: [
+          {id: 'sci', name: 'SCI du Domaine', parcelNumbers: ['40']},
+        ],
+      }),
+    })
+
+    expect(card()).toHaveTextContent(
+      'Adresse trop longue pour la fenêtre de l’enveloppe, même réduite et coupée :'
+    )
+    expect(
+      within(card()).getByRole('link', {name: 'SCI du Domaine'})
+    ).toHaveAttribute('href', '/bureau/proprietaires/sci')
+    expect(card()).toHaveTextContent(
+      'Raccourcissez l’adresse sur la fiche pour qu’elle apparaisse entière dans la fenêtre.'
+    )
+    expect(card()).not.toHaveTextContent('Complétez le domicile')
   })
 
   it('aucune fiche sans domicile : pas de liste', () => {

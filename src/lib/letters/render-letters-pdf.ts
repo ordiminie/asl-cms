@@ -10,12 +10,13 @@ import {letterFontFilesOf} from './letter-fonts.server'
 import {
   A4_MM,
   AddressOffsetMm,
+  BODY_BOTTOM_MM,
   BODY_FONT_SIZE_PT,
   BODY_LINE_HEIGHT,
   BODY_MIN_FONT_SIZE_PT,
   BODY_Y_MM,
   DATE_Y_MM,
-  FOOTER_HEIGHT_MM,
+  FOOTER_TOP_MM,
   HEADER_MARK_MM,
   LETTER_MARGINS_MM,
   mmToPt,
@@ -23,9 +24,10 @@ import {
   SUBJECT_Y_MM,
 } from './letter-geometry'
 import {
-  addLetterPage,
+  addLetterBodyPage,
   createLetterDocument,
   drawAddressBlock,
+  lastPageIndexOf,
   LETTER_FONTS,
   LetterDocument,
   pdfBufferOf,
@@ -34,9 +36,10 @@ import {
 import {LetterBlock, letterBodyBlocksOf, LetterRun} from './render-letter-body'
 
 /**
- * Le lot du courrier postal (s28, ADR 066) : un seul PDF, une lettre par page
- * (§6.1), noir et blanc. Les textes fixes (« Objet : », date, pied) viennent
- * de l'appelant, traduits : aucun libelle n'est ecrit ici.
+ * Le lot du courrier postal (s28, ADR 066) : un seul PDF, une suite de
+ * lettres, chacune commencant sur une nouvelle page (§6.1), noir et blanc.
+ * Les textes fixes (« Objet : », date, pied, repere de suite) viennent de
+ * l'appelant, traduits : aucun libelle n'est ecrit ici.
  */
 export type RenderLettersInput = {
   association: {name: string; legalMentions: string | null}
@@ -47,14 +50,25 @@ export type RenderLettersInput = {
   sendDate: string
   letters: readonly CampaignLetter[]
   offset: AddressOffsetMm
-  texts: {subjectLabel: string; dateLine: string; footer: string}
+  texts: {
+    subjectLabel: string
+    dateLine: string
+    footer: string
+    /** Le repere en tete d'une page de suite : « <nom> — suite, page n/N ». */
+    continuation: (values: ContinuationValues) => string
+  }
 }
+
+export type ContinuationValues = {name: string; page: number; pageCount: number}
+
+/** Le lot rendu et son nombre de pages, annonce au bureau (§6.1). */
+export type RenderedLetters = {pdf: Buffer; pageCount: number}
 
 const CONTENT_X_MM = LETTER_MARGINS_MM.left
 const CONTENT_WIDTH_MM =
   A4_MM.width - LETTER_MARGINS_MM.left - LETTER_MARGINS_MM.right
-const FOOTER_TOP_MM = A4_MM.height - LETTER_MARGINS_MM.bottom - FOOTER_HEIGHT_MM
 const HEADER_NAME_SIZE_PT = 14
+const CONTINUATION_SIZE_PT = 10
 const FOOTER_SIZE_PT = 9
 const MENTIONS_SIZE_PT = 8
 const RULE_WIDTH_PT = 0.5
@@ -231,6 +245,55 @@ const drawRuns = (
   })
 }
 
+const lineHeightOf = (
+  doc: LetterDocument,
+  layout: BodyLayout,
+  font: string = LETTER_FONTS.regular,
+  size: number = layout.size
+): number => {
+  doc.font(font).fontSize(size)
+  return doc.currentLineHeight(true) + layout.lineGap
+}
+
+/** Passe a une page de suite si la hauteur demandee ne tient plus. */
+const ensureRoom = (doc: LetterDocument, height: number): void => {
+  if (doc.y + height > doc.page.maxY()) doc.continueOnNewPage()
+}
+
+/**
+ * Le cadre d'une citation, page par page : une citation coupee par une page
+ * de suite garde ses deux bords sur chaque page, son haut sur la premiere et
+ * son bas sur la derniere.
+ */
+const drawQuoteFrame = (
+  doc: LetterDocument,
+  start: {page: number; y: number},
+  end: {page: number; y: number}
+): void => {
+  const left = x(CONTENT_X_MM)
+  const right = left + x(CONTENT_WIDTH_MM)
+  for (let page = start.page; page <= end.page; page++) {
+    doc.switchToPage(page)
+    const top = page === start.page ? start.y : doc.page.margins.top
+    const bottom = page === end.page ? end.y : doc.page.maxY()
+    doc.lineWidth(FRAME_WIDTH_PT)
+    if (start.page === end.page) {
+      doc.rect(left, top, right - left, bottom - top).stroke('black')
+    } else {
+      doc.moveTo(left, top).lineTo(left, bottom).stroke('black')
+      doc.moveTo(right, top).lineTo(right, bottom).stroke('black')
+      if (page === start.page) {
+        doc.moveTo(left, top).lineTo(right, top).stroke('black')
+      }
+      if (page === end.page) {
+        doc.moveTo(left, bottom).lineTo(right, bottom).stroke('black')
+      }
+    }
+  }
+  doc.switchToPage(end.page)
+  doc.lineWidth(STRONG_STROKE_PT)
+}
+
 const drawBlock = (
   doc: LetterDocument,
   block: LetterBlock,
@@ -239,19 +302,27 @@ const drawBlock = (
   const left = x(CONTENT_X_MM)
   const width = x(CONTENT_WIDTH_MM)
   if (block.kind === 'paragraph') {
+    ensureRoom(doc, lineHeightOf(doc, layout))
     drawRuns(doc, block.runs, left, doc.y, width, layout)
   } else if (block.kind === 'heading') {
+    const size = headingSizeOf(block.level, layout.size)
+    ensureRoom(
+      doc,
+      lineHeightOf(doc, layout, LETTER_FONTS.serif, size) +
+        lineHeightOf(doc, layout)
+    )
     drawRuns(
       doc,
       block.runs,
       left,
       doc.y,
       width,
-      {...layout, size: headingSizeOf(block.level, layout.size)},
+      {...layout, size},
       LETTER_FONTS.serif
     )
   } else if (block.kind === 'list') {
     block.items.forEach((runs, index) => {
+      ensureRoom(doc, lineHeightOf(doc, layout))
       const top = doc.y
       doc.font(LETTER_FONTS.regular).fontSize(layout.size)
       doc.text(block.ordered ? `${index + 1}.` : '•', left, top, {
@@ -267,9 +338,11 @@ const drawBlock = (
       )
     })
   } else {
-    const top = doc.y
-    doc.y = top + x(QUOTE_PADDING_MM)
+    ensureRoom(doc, lineHeightOf(doc, layout) + 2 * x(QUOTE_PADDING_MM))
+    const start = {page: lastPageIndexOf(doc), y: doc.y}
+    doc.y = start.y + x(QUOTE_PADDING_MM)
     for (const runs of block.paragraphs) {
+      ensureRoom(doc, lineHeightOf(doc, layout))
       drawRuns(
         doc,
         runs,
@@ -279,25 +352,56 @@ const drawBlock = (
         layout
       )
     }
-    const bottom = doc.y + x(QUOTE_PADDING_MM)
-    doc
-      .lineWidth(FRAME_WIDTH_PT)
-      .rect(left, top, width, bottom - top)
-      .stroke('black')
-    doc.y = bottom
+    const end = {page: lastPageIndexOf(doc), y: doc.y + x(QUOTE_PADDING_MM)}
+    drawQuoteFrame(doc, start, end)
+    doc.y = end.y
   }
   doc.y += blockGapOf(layout)
 }
 
+/**
+ * Le corps, borne a `[debut du corps, haut du pied - 4 mm]` par les marges de
+ * la page (`addLetterBodyPage`) : la plus grande taille qui tient sur la
+ * premiere page, sinon le plancher, et ce qui deborde continue sur une page de
+ * suite.
+ */
 const drawBody = (
   doc: LetterDocument,
   blocks: readonly LetterBlock[],
   top: number
 ): void => {
   const start = Math.max(top + x(4), x(BODY_Y_MM))
-  const layout = chooseLayout(doc, blocks, x(FOOTER_TOP_MM - 4) - start)
+  const layout = chooseLayout(doc, blocks, x(BODY_BOTTOM_MM) - start)
   doc.y = start
   for (const block of blocks) drawBlock(doc, block, layout)
+}
+
+const drawContinuationMarker = (doc: LetterDocument, marker: string): void => {
+  doc.font(LETTER_FONTS.regular).fontSize(CONTINUATION_SIZE_PT)
+  doc.fillColor('black')
+  doc.text(marker, x(CONTENT_X_MM), x(LETTER_MARGINS_MM.top), {
+    lineBreak: false,
+  })
+}
+
+/** Pied et repere de chaque page de suite, une fois la lettre entiere ecrite. */
+const drawContinuationPages = (
+  doc: LetterDocument,
+  input: RenderLettersInput,
+  name: string,
+  firstPage: number
+): void => {
+  const lastPage = lastPageIndexOf(doc)
+  const pageCount = lastPage - firstPage + 1
+  for (let page = firstPage + 1; page <= lastPage; page++) {
+    doc.switchToPage(page)
+    drawFooter(doc, input.texts.footer, input.association.legalMentions)
+    drawContinuationMarker(
+      doc,
+      input.texts.continuation({name, page: page - firstPage + 1, pageCount})
+    )
+  }
+  doc.switchToPage(lastPage)
 }
 
 const valuesOf = (
@@ -315,7 +419,8 @@ const drawLetter = (
   letter: CampaignLetter
 ): void => {
   const values = valuesOf(letter, input.sendDate)
-  addLetterPage(doc)
+  addLetterBodyPage(doc)
+  const firstPage = lastPageIndexOf(doc)
   drawFooter(doc, input.texts.footer, input.association.legalMentions)
   drawHeader(doc, input.association.name)
   drawAddressBlock(doc, letter.address.lines, input.offset)
@@ -326,13 +431,20 @@ const drawLetter = (
     `${input.texts.subjectLabel} ${subject}`
   )
   drawBody(doc, letterBodyBlocksOf(input.bodyMarkdown, values), subjectBottom)
+  drawContinuationPages(doc, input, letter.name, firstPage)
 }
 
-/** Le PDF du lot, une page par lettre, dans l'ordre recu (trie par nom). */
-export const renderLettersPdf = (
+/**
+ * Le PDF du lot, dans l'ordre recu (trie par nom) : chaque lettre commence sur
+ * une nouvelle page, et le nombre de pages est rendu avec le fichier.
+ */
+export const renderLettersPdf = async (
   input: RenderLettersInput
-): Promise<Buffer> => {
+): Promise<RenderedLetters> => {
   const doc = createLetterDocument(letterFontFilesOf())
+  // Une page de suite repart de l'etat graphique par defaut : le trait du gras.
+  doc.on('pageAdded', () => doc.lineWidth(STRONG_STROKE_PT))
   for (const letter of input.letters) drawLetter(doc, input, letter)
-  return pdfBufferOf(doc)
+  const pageCount = doc.bufferedPageRange().count
+  return {pdf: await pdfBufferOf(doc), pageCount}
 }

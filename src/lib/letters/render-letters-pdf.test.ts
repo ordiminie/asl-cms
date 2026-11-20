@@ -3,13 +3,27 @@ import {describe, expect, it, vi} from 'vitest'
 
 import type {CampaignLetter} from '@/services/rules/campaign-letter-rules'
 
-import {A4_MM, ADDRESS_FRAME_MM, mmToPt} from './letter-geometry'
+import {
+  A4_MM,
+  ADDRESS_FRAME_MM,
+  FOOTER_TOP_MM,
+  LETTER_MARGINS_MM,
+  mmToPt,
+} from './letter-geometry'
+import {addressFrameOf} from './letter-geometry'
 import {renderCalibrationPdf} from './render-calibration-pdf'
 import {RenderLettersInput, renderLettersPdf} from './render-letters-pdf'
 
 vi.mock('server-only', () => ({}))
 
-type PdfText = {str: string; xMm: number; yMm: number; fontName: string}
+type PdfText = {
+  str: string
+  xMm: number
+  yMm: number
+  widthMm: number
+  sizePt: number
+  fontName: string
+}
 type PdfPage = {widthMm: number; heightMm: number; texts: PdfText[]}
 
 const ptToMm = (pt: number) => pt / mmToPt(1)
@@ -18,7 +32,10 @@ const ptToMm = (pt: number) => pt / mmToPt(1)
  * Relit le PDF produit (ADR 066 §4) : chaque texte avec la position de sa
  * ligne de base, en mm depuis le coin haut gauche de la page.
  */
-const readPdf = async (buffer: Buffer): Promise<PdfPage[]> => {
+const readPdf = async (
+  rendered: Buffer | {pdf: Buffer}
+): Promise<PdfPage[]> => {
+  const buffer = Buffer.isBuffer(rendered) ? rendered : rendered.pdf
   const pdf = await getDocument({data: new Uint8Array(buffer)}).promise
   const pages: PdfPage[] = []
   for (let number = 1; number <= pdf.numPages; number++) {
@@ -32,6 +49,8 @@ const readPdf = async (buffer: Buffer): Promise<PdfPage[]> => {
               str: item.str,
               xMm: ptToMm(item.transform[4]),
               yMm: ptToMm(height - item.transform[5]),
+              widthMm: ptToMm(item.width),
+              sizePt: Math.hypot(item.transform[0], item.transform[1]),
               fontName: item.fontName,
             },
           ]
@@ -75,6 +94,8 @@ const input = (
     subjectLabel: 'Objet :',
     dateLine: 'Le 12 novembre 2026',
     footer: 'Courrier envoyé par voie postale, faute d’adresse email connue.',
+    continuation: ({name, page, pageCount}) =>
+      `${name} — suite, page ${page}/${pageCount}`,
   },
   ...overrides,
 })
@@ -230,6 +251,177 @@ describe('renderLettersPdf — le lot imprimable (critères 1, 3, 4)', () => {
     expect(find(page, 'Courrier envoyé').yMm).toBeLessThanOrEqual(
       A4_MM.height - 20
     )
+  })
+})
+
+describe('renderLettersPdf — une ligne d’adresse plus large que le cadre (M1, §6.1)', () => {
+  const LONG_LINE = 'Lotissement Les Hauts de la Fourche, Bâtiment B, Esc. 3'
+  const WIDE_LINE = 'Résidence du Grand Chêne allée des Tilleuls 77'
+  const addressTexts = (page: PdfPage, offsetYMm = 0) =>
+    page.texts.filter(
+      (text) =>
+        text.yMm >= ADDRESS_FRAME_MM.y + offsetYMm &&
+        text.yMm <= ADDRESS_FRAME_MM.y + offsetYMm + ADDRESS_FRAME_MM.height
+    )
+
+  for (const offset of [
+    {xMm: 0, yMm: 0},
+    {xMm: 3, yMm: -4},
+  ]) {
+    it(`le bord droit de chaque ligne reste dans le cadre (décalage ${offset.xMm}, ${offset.yMm})`, async () => {
+      const lines = ['Marcel Laurent', LONG_LINE, '07140 Les Vans']
+      const [page] = await readPdf(
+        await renderLettersPdf(
+          input({offset, letters: [letter({address: {source: 'home', lines}})]})
+        )
+      )
+
+      const frame = addressFrameOf(offset)
+      const drawn = addressTexts(page, offset.yMm)
+      expect(drawn.length).toBeGreaterThan(0)
+      expect(drawn.length).toBeLessThanOrEqual(4)
+      for (const text of drawn) {
+        expect(text.xMm).toBeCloseTo(frame.x, 3)
+        expect(text.xMm + text.widthMm).toBeLessThanOrEqual(
+          frame.x + frame.width + 0.01
+        )
+      }
+    })
+  }
+
+  it('une ligne un peu trop large : le corps se réduit, la ligne reste entière', async () => {
+    const lines = ['Marcel Laurent', WIDE_LINE, '69003 Lyon']
+    const [page] = await readPdf(
+      await renderLettersPdf(
+        input({letters: [letter({address: {source: 'home', lines}})]})
+      )
+    )
+
+    const wide = find(page, WIDE_LINE)
+    expect(wide.sizePt).toBeLessThan(12)
+    expect(wide.sizePt).toBeGreaterThanOrEqual(10)
+    expect(wide.xMm + wide.widthMm).toBeLessThanOrEqual(
+      ADDRESS_FRAME_MM.x + ADDRESS_FRAME_MM.width + 0.01
+    )
+  })
+
+  it('une ligne bien trop large : coupée après une virgule, 4 lignes au plus', async () => {
+    const lines = ['Marcel Laurent', LONG_LINE, '07140 Les Vans']
+    const [page] = await readPdf(
+      await renderLettersPdf(
+        input({letters: [letter({address: {source: 'home', lines}})]})
+      )
+    )
+
+    const drawn = addressTexts(page).map((text) => text.str)
+    expect(drawn).toHaveLength(4)
+    expect(drawn[0]).toBe('Marcel Laurent')
+    expect(drawn[1]).toMatch(/,$/)
+    expect(`${drawn[1]} ${drawn[2]}`).toBe(LONG_LINE)
+    expect(drawn[3]).toBe('07140 Les Vans')
+  })
+})
+
+describe('renderLettersPdf — une lettre plus longue qu’une page (C1, §6.1)', () => {
+  const FOOTER = 'Courrier envoyé par voie postale'
+  const longBody = () => {
+    const paragraph =
+      'Les travaux de voirie de la parcelle {parcelle} commencent lundi. Merci de laisser le passage libre aux engins, de garer les véhicules hors du chemin et de signaler au bureau toute gêne constatée. '
+    const blocks = ['Bonjour {nom},']
+    for (let index = 0; blocks.join('\n\n').length < 7_500; index++) {
+      blocks.push(
+        index % 4 === 1 ? '## Calendrier' : '',
+        index % 4 === 2 ? '- **lundi** : terrassement\n- *mardi* : enrobé' : '',
+        index % 4 === 3 ? '> Le portail restera ouvert de 8 h à 18 h.' : '',
+        paragraph.repeat(2)
+      )
+    }
+    return blocks.filter(Boolean).join('\n\n')
+  }
+  const longInput = () =>
+    input({
+      bodyMarkdown: longBody(),
+      letters: [
+        letter(),
+        letter({
+          memberProfileIds: ['p2'],
+          name: 'Hélène Roy',
+          address: {source: 'home', lines: ['Hélène Roy', '9 rue Haute']},
+        }),
+      ],
+    })
+
+  it('le corps fait au moins 7 000 caractères', () => {
+    expect(longBody().length).toBeGreaterThanOrEqual(7_000)
+  })
+
+  it('annonce exactement le nombre de pages du PDF, plus d’une page par lettre', async () => {
+    const rendered = await renderLettersPdf(longInput())
+    const pages = await readPdf(rendered)
+
+    expect(rendered.pageCount).toBe(pages.length)
+    expect(pages.length).toBeGreaterThan(2)
+  })
+
+  it('aucun texte du corps sous le haut du pied, sur chaque page', async () => {
+    const pages = await readPdf(await renderLettersPdf(longInput()))
+
+    for (const page of pages) {
+      const belowFooterTop = page.texts.filter(
+        (text) => text.yMm > FOOTER_TOP_MM - 4
+      )
+      expect(belowFooterTop.map((text) => text.str).join(' ')).toMatch(
+        new RegExp(`^${FOOTER}.*SIRET 123 456 789$`)
+      )
+    }
+  })
+
+  it('le pied est redessiné sur chaque page, aucun texte hors des marges', async () => {
+    const pages = await readPdf(await renderLettersPdf(longInput()))
+
+    for (const page of pages) {
+      expect(textOf(page)).toContain(FOOTER)
+      for (const text of page.texts) {
+        expect(text.xMm).toBeGreaterThanOrEqual(LETTER_MARGINS_MM.left - 0.01)
+        expect(text.xMm + text.widthMm).toBeLessThanOrEqual(
+          A4_MM.width - LETTER_MARGINS_MM.right + 0.01
+        )
+        expect(text.yMm).toBeGreaterThan(LETTER_MARGINS_MM.top)
+        expect(text.yMm).toBeLessThanOrEqual(
+          A4_MM.height - LETTER_MARGINS_MM.bottom
+        )
+      }
+    }
+  })
+
+  it('chaque lettre commence sur une nouvelle page ; ses pages de suite portent le repère', async () => {
+    const pages = await readPdf(await renderLettersPdf(longInput()))
+    const firstPages = pages.flatMap((page, index) =>
+      textOf(page).includes('Objet :') ? [index] : []
+    )
+
+    expect(firstPages).toHaveLength(2)
+    expect(firstPages[0]).toBe(0)
+    const [, secondStart] = firstPages
+    expect(textOf(pages[secondStart])).toContain('9 rue Haute')
+    const ownPages = [
+      ['Marcel Laurent', pages.slice(0, secondStart)],
+      ['Hélène Roy', pages.slice(secondStart)],
+    ] as const
+    for (const [name, letterPages] of ownPages) {
+      expect(letterPages.length).toBeGreaterThan(1)
+      letterPages.slice(1).forEach((page, index) => {
+        const marker = find(
+          page,
+          `${name} — suite, page ${index + 2}/${letterPages.length}`
+        )
+        expect(marker.yMm).toBeGreaterThan(LETTER_MARGINS_MM.top)
+        expect(page.texts.every((text) => text.yMm >= marker.yMm - 0.01)).toBe(
+          true
+        )
+        expect(textOf(page)).not.toContain('Objet :')
+      })
+    }
   })
 })
 

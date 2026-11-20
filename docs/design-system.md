@@ -1195,6 +1195,24 @@ omis s'il égale le nom, le complément rejoint la ligne d'adresse (« , complé
 dépasserait 4 lignes. Une fiche sans domicile reçoit sa lettre au **terrain**, sinon au **nom seul**,
 signalée au bureau avant la génération.
 
+**Ligne d'adresse plus large que le cadre (s28, arbitrage du 20/11/2026)** — chaque ligne du bloc
+est mesurée sur la police embarquée contre la largeur du cadre (90 mm) : le corps se réduit de 12 pt
+par demi-point jusqu'à **10 pt au plus petit** ; si une ligne ne tient toujours pas, elle est
+**coupée après une virgule**, la virgule restant en fin de ligne, dans la limite de 4 lignes. Si cela
+ne suffit pas, la lettre est produite au plancher et **signalée dans la carte** avec un lien vers la
+fiche, comme les lettres adressées au terrain : l'adresse est à raccourcir sur la fiche. Le bord droit
+de chaque ligne reste dans le cadre, décalage compris.
+
+**Lettre plus longue qu'une page (s28, arbitrage du 20/11/2026)** — le lot est une **suite de
+lettres**, plus « une page par lettre » : chaque lettre commence sur une nouvelle page. Le corps est
+borné, sur chaque page, de son début jusqu'à **4 mm au-dessus du filet du pied** ; il prend d'abord la
+plus grande taille qui tient sur la première page (12,5 pt, plancher 11 pt), et ce qui déborde encore
+continue sur une **page de suite** : mêmes marges (20/20/15/20 mm), pied redessiné à l'identique,
+repère en tête à la marge haute « <Nom du destinataire> — suite, page n/N » (10 pt), corps 10 mm
+sous le repère. Aucun texte du corps sous le haut du pied, aucun texte hors des marges ; une
+citation coupée garde ses bords sur chaque page. Le nombre de pages est connu à la génération : la
+carte annonce « N lettres, M pages » quand le lot compte plus de pages que de lettres.
+
 **Noir et blanc — l'information ne passe jamais par la couleur.** Aucun aplat, aucune trame grise
 sous du texte : filets noirs 0,5 pt, cadres 1 pt. Logo en version **monochrome**, testé à 300 dpi.
 Les niveaux de relance se distinguent par l'**objet écrit** (« Deuxième rappel »), pas par un
