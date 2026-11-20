@@ -84,8 +84,7 @@ Job « Tests e2e (build de production) » : 2 échecs, 1 instable, 2 non lancés
         Après reclassement », 35 au plus) et garde dans `natureSubjectOf` qui nomme l'objet trop long.
 12. [x] **C2** — `e2e/recipient-groups.spec.ts:438` (s27, existant) : l'envoi au groupe attend 2 messages
         et en reçoit 0 (l. 505-513, 3 essais). Hypothèse à vérifier, pas à présumer : les nouveaux envois
-        e2e de s27b sur TechCorp, en parallèle, épuisent le plafond quotidien de campagnes (s26, défaut
-        100) et reportent la part au lendemain ; ou le seed s27b (modèles statutaires TechCorp) change ce
+        e2e de s27b sur TechCorp, en parallèle, épuisent le plafond quotidien de campagnes (s26, défaut 100) et reportent la part au lendemain ; ou le seed s27b (modèles statutaires TechCorp) change ce
         que ce test suppose. Corriger la cause : isolation des données ou du budget des specs s27b, jamais
         en retirant une assertion de s27.
         **Cause** : le budget d'envoi quotidien (s52, ADR 053 : 300 − 100 = 200 reportables), pas le plafond
