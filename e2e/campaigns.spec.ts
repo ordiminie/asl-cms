@@ -1208,3 +1208,408 @@ test.describe('Campagnes — envoi étalé en parts quotidiennes (s26)', () => {
     }
   })
 })
+
+/**
+ * Nature des envois — s27b, critères 1 à 6 (ADR 064).
+ *
+ * Avec la classification du seed de TechCorp (convocation, facture, relance
+ * statutaires ; message libre et documents après l'AG facultatifs), une
+ * adresse désinscrite reçoit une convocation et pas un message libre, sur les
+ * trois cibles ; le pied de la convocation le dit ; la page de désinscription
+ * liste les envois statutaires ; le SuperAdmin reclasse un modèle et l'envoi
+ * suivant change, sans redéploiement ; le bureau lit la carte sans la changer.
+ *
+ * La spec crée deux fiches (l'une désinscrite), chacune en impayé, réunies
+ * dans un groupe, et les efface à la fin avec ses campagnes. Le plafond
+ * quotidien est relevé le temps de l'essai, et la nature reclassée revient à
+ * sa valeur de seed.
+ */
+const NATURE_MARKER = `s27b-${RUN}`
+const natureSubjectOf = (label: string) => `${label} ${NATURE_MARKER}`
+const NATURE_GROUP = `Groupe nature ${NATURE_MARKER}`
+const NATURE_PARCEL = `N-${RUN}`
+/** Un statut que le seed de TechCorp classe « impayé ». */
+const NATURE_UNPAID_STATUS = 'En attente'
+const NATURE_RAISED_CAP = '100000'
+const POST_ASSEMBLY_NATURE_KEY = 'campaign.nature.post_assembly_documents'
+const SETTINGS_ROUTE = '/bureau/reglages'
+/** SuperAdmin de la plateforme (seed). */
+const SUPER_ADMIN = 'superadmin@gmail.com'
+
+const NATURE_FICHES = {
+  unsubscribed: {
+    name: `Nature désinscrite ${NATURE_MARKER}`,
+    email: `nature-desinscrite-${RUN}@example.test`,
+  },
+  subscribed: {
+    name: `Nature inscrite ${NATURE_MARKER}`,
+    email: `nature-inscrite-${RUN}@example.test`,
+  },
+} as const
+
+const natureFicheIds: Record<keyof typeof NATURE_FICHES, string> = {
+  unsubscribed: '',
+  subscribed: '',
+}
+
+/** Les valeurs d'avant l'essai : `null` si la clé n'existait pas. */
+const previousNatureSettings = new Map<string, string | null>()
+
+const upsertSetting = (
+  client: Client,
+  organizationId: string,
+  key: string,
+  value: string
+) =>
+  client.query(
+    `insert into organization_setting (organization_id, key, value)
+     values ($1, $2, $3)
+     on conflict (organization_id, key) do update set value = $3`,
+    [organizationId, key, value]
+  )
+
+const createNatureFixtures = async () => {
+  const {a} = await tenantIds()
+  await inTenantScope(a, async (client) => {
+    const {rows: parcels} = await client.query<{id: string}>(
+      `insert into parcel (organization_id, number) values ($1, $2) returning id`,
+      [a, NATURE_PARCEL]
+    )
+    for (const key of Object.keys(
+      NATURE_FICHES
+    ) as (keyof typeof NATURE_FICHES)[]) {
+      const fiche = NATURE_FICHES[key]
+      const id = await insertFiche(client, a, fiche.name, fiche.email)
+      natureFicheIds[key] = id
+      await client.query(
+        `insert into member_invoice
+           (organization_id, member_profile_id, parcel_id, source, year, issued_on, due_on, amount_cents, status)
+         values ($1, $2, $3, 'site', 2026, '2026-03-15', '2026-04-15', 4200, $4)`,
+        [a, id, parcels[0].id, NATURE_UNPAID_STATUS]
+      )
+    }
+    await client.query(
+      `update member_profile_email set unsubscribed_at = now()
+        where member_profile_id = $1`,
+      [natureFicheIds.unsubscribed]
+    )
+    const {rows: groups} = await client.query<{id: string}>(
+      `insert into recipient_group (organization_id, name) values ($1, $2) returning id`,
+      [a, NATURE_GROUP]
+    )
+    for (const id of Object.values(natureFicheIds)) {
+      await client.query(
+        `insert into recipient_group_member (organization_id, group_id, member_profile_id)
+         values ($1, $2, $3)`,
+        [a, groups[0].id, id]
+      )
+    }
+    for (const key of [CAP_KEY, POST_ASSEMBLY_NATURE_KEY]) {
+      const current = await client.query<{value: string}>(
+        `select value from organization_setting
+          where organization_id = $1 and key = $2`,
+        [a, key]
+      )
+      previousNatureSettings.set(key, current.rows[0]?.value ?? null)
+    }
+    await upsertSetting(client, a, CAP_KEY, NATURE_RAISED_CAP)
+  })
+}
+
+const cleanUpNatureRun = () =>
+  asMaintenance(async (client) => {
+    await client.query(`delete from campaign where subject like $1`, [
+      `%${NATURE_MARKER}%`,
+    ])
+    await client.query(`delete from recipient_group where name = $1`, [
+      NATURE_GROUP,
+    ])
+    await client.query(
+      `delete from member_invoice where member_profile_id in
+         (select id from member_profile where name like $1)`,
+      [`%${NATURE_MARKER}%`]
+    )
+    await client.query(`delete from member_profile where name like $1`, [
+      `%${NATURE_MARKER}%`,
+    ])
+    await client.query(`delete from parcel where number = $1`, [NATURE_PARCEL])
+  })
+
+const restoreNatureSettings = async () => {
+  const {a} = await tenantIds()
+  await inTenantScope(a, async (client) => {
+    for (const [key, value] of previousNatureSettings) {
+      if (value === null) {
+        await client.query(
+          `delete from organization_setting
+            where organization_id = $1 and key = $2`,
+          [a, key]
+        )
+      } else {
+        await upsertSetting(client, a, key, value)
+      }
+    }
+  })
+  previousNatureSettings.clear()
+}
+
+const natureOfCampaign = async (campaignId: string) => {
+  const {a} = await tenantIds()
+  return inTenantScope(a, async (client) => {
+    const result = await client.query<{nature: string}>(
+      `select nature from campaign where id = $1`,
+      [campaignId]
+    )
+    return result.rows[0]?.nature
+  })
+}
+
+/**
+ * Choisit un modèle et une cible, ouvre l'aperçu, envoie à la cible
+ * annoncée ; rend l'id de la campagne. Un modèle remplit l'objet et le
+ * corps : l'essai remplace l'objet par le sien, marqué ; le message libre
+ * reçoit un corps court.
+ */
+const composeTemplateAndSend = async (
+  page: Page,
+  input: {template: string; target: RegExp; subject: string}
+): Promise<string> => {
+  await page.goto(`${TENANT_A}${NEW_CAMPAIGN_ROUTE}`, {
+    waitUntil: 'networkidle',
+  })
+  await page.getByRole('radio', {name: input.template}).click()
+  await page.getByRole('radio', {name: input.target}).click()
+  if (input.target.source.includes('groupe')) {
+    await page.getByRole('combobox', {name: 'Groupe', exact: true}).click()
+    await page.getByRole('option', {name: new RegExp(NATURE_GROUP)}).click()
+  }
+  await page.getByRole('textbox', {name: /^Objet/}).fill(input.subject)
+  if (input.template === 'Message libre') {
+    await page
+      .getByRole('textbox', {name: 'Message', exact: true})
+      .fill('Bonjour {nom}')
+  }
+  await page.getByRole('button', {name: 'Voir l’aperçu'}).click()
+  await expect(
+    page.getByRole('heading', {level: 1, name: 'Aperçu avant l’envoi'})
+  ).toBeVisible({timeout: 15_000})
+
+  const sendLabel = /^Envoyer à \d+ membres?$/
+  await page.getByRole('button', {name: sendLabel}).click()
+  const dialog = page.getByRole('alertdialog', {name: 'Envoyer la campagne ?'})
+  await dialog.getByRole('button', {name: sendLabel}).click()
+  await page.waitForURL(/\/bureau\/campagnes\/[0-9a-f-]{36}\?envoi=1$/, {
+    timeout: 20_000,
+  })
+  return new URL(page.url()).pathname.split('/').pop() as string
+}
+
+const NATURE_TARGETS = [
+  ['tous', /Tous les membres/],
+  ['impayés', /Les membres en impayé/],
+  ['groupe', /Un groupe/],
+] as const
+
+test.describe('Campagnes — nature des envois (s27b)', () => {
+  test.beforeAll(async () => {
+    await cleanUpNatureRun()
+    await createNatureFixtures()
+  })
+
+  test.afterAll(async () => {
+    try {
+      await cleanUpNatureRun()
+    } finally {
+      await restoreNatureSettings()
+    }
+  })
+
+  test('critères 1, 3 et 4 — une convocation atteint le désinscrit, un message libre non, sur les trois cibles', async ({
+    browser,
+  }) => {
+    test.setTimeout(420_000)
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      for (const [label, target] of NATURE_TARGETS) {
+        const before = outboxFiles()
+        const statutoryId = await composeTemplateAndSend(bureau, {
+          template: 'Convocation à l’AG',
+          target,
+          subject: natureSubjectOf(`Convocation ${label}`),
+        })
+        await expect
+          .poll(
+            () => messagesTo(before, NATURE_FICHES.unsubscribed.email).length,
+            {timeout: 30_000}
+          )
+          .toBe(1)
+        expect(await natureOfCampaign(statutoryId)).toBe('statutaire')
+        const [statutory] = messagesTo(before, NATURE_FICHES.unsubscribed.email)
+        expect(statutory.html).toContain(
+          'Ce message vous parvient même si vous vous êtes désinscrit des campagnes'
+        )
+        expect(statutory.html).toContain(
+          'Ne plus recevoir les campagnes facultatives'
+        )
+        expect(statutory.headers?.['List-Unsubscribe']).toBeTruthy()
+
+        const freeBefore = outboxFiles()
+        const optionalId = await composeTemplateAndSend(bureau, {
+          template: 'Message libre',
+          target,
+          subject: natureSubjectOf(`Message libre ${label}`),
+        })
+        await expect
+          .poll(
+            () => messagesTo(freeBefore, NATURE_FICHES.subscribed.email).length,
+            {timeout: 30_000}
+          )
+          .toBe(1)
+        expect(
+          messagesTo(freeBefore, NATURE_FICHES.unsubscribed.email),
+          `cible « ${label} » : le désinscrit ne reçoit pas le message libre`
+        ).toHaveLength(0)
+        expect(await natureOfCampaign(optionalId)).toBe('facultative')
+      }
+    } finally {
+      await bureau.context().close()
+    }
+  })
+
+  test('critère 5 — la page de désinscription liste les envois statutaires, sans rien écrire', async ({
+    browser,
+  }) => {
+    test.setTimeout(150_000)
+    const before = outboxFiles()
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      await composeTemplateAndSend(bureau, {
+        template: 'Message libre',
+        target: /Un groupe/,
+        subject: natureSubjectOf('Lien de désinscription'),
+      })
+    } finally {
+      await bureau.context().close()
+    }
+    await expect
+      .poll(() => messagesTo(before, NATURE_FICHES.subscribed.email).length, {
+        timeout: 30_000,
+      })
+      .toBe(1)
+    const token = unsubscribeTokenOf(
+      messagesTo(before, NATURE_FICHES.subscribed.email)[0]
+    )
+
+    const visitor = await browser.newContext({locale: 'fr-FR'})
+    try {
+      const page = await visitor.newPage()
+      await page.goto(`${TENANT_A}/desinscription/${token}`, {
+        waitUntil: 'networkidle',
+      })
+      const list = page.getByRole('list', {
+        name: 'Vous continuerez de recevoir, parce que votre appartenance à l’association vous y engage :',
+      })
+      await expect(list).toBeVisible({timeout: 15_000})
+      await expect(list.getByRole('listitem')).toHaveText([
+        'Relance manuelle',
+        'Facture disponible',
+        'Convocation à l’AG',
+      ])
+      expect(await unsubscribeOf(natureFicheIds.subscribed)).toBe(0)
+    } finally {
+      await visitor.close()
+    }
+  })
+
+  test('critère 6 et arbitrage du 20/11 — le bureau lit la nature sans la changer ; le SuperAdmin reclasse, l’envoi suivant change', async ({
+    browser,
+  }) => {
+    test.setTimeout(240_000)
+    const bureau = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      const before = outboxFiles()
+      await composeTemplateAndSend(bureau, {
+        template: 'Documents après l’AG',
+        target: /Un groupe/,
+        subject: natureSubjectOf('Documents avant reclassement'),
+      })
+      await expect
+        .poll(() => messagesTo(before, NATURE_FICHES.subscribed.email).length, {
+          timeout: 30_000,
+        })
+        .toBe(1)
+      expect(messagesTo(before, NATURE_FICHES.unsubscribed.email)).toHaveLength(
+        0
+      )
+
+      await bureau.goto(`${TENANT_A}${SETTINGS_ROUTE}`, {
+        waitUntil: 'networkidle',
+      })
+      await expect(
+        bureau.getByRole('heading', {level: 3, name: 'Nature des envois'})
+      ).toBeVisible({timeout: 15_000})
+      const assembly = bureau.getByRole('radiogroup', {
+        name: /Convocation à l’AG/,
+      })
+      await expect(
+        assembly.getByRole('radio', {
+          name: 'Statutaire — les désinscrits le reçoivent aussi',
+        })
+      ).toBeChecked()
+      await expect(
+        assembly.getByRole('radio', {
+          name: 'Statutaire — les désinscrits le reçoivent aussi',
+        })
+      ).toBeDisabled()
+      await expect(
+        bureau
+          .getByText(
+            'Réglé par l’équipe technique de la plateforme, après avis du conseil RGPD : vous ne pouvez pas le modifier.'
+          )
+          .first()
+      ).toBeVisible()
+    } finally {
+      await bureau.context().close()
+    }
+
+    const admin = await newSession(browser, TENANT_A, SUPER_ADMIN)
+    try {
+      await admin.goto(`${TENANT_A}${SETTINGS_ROUTE}`, {
+        waitUntil: 'networkidle',
+      })
+      await admin
+        .getByRole('radiogroup', {name: /Documents après l’AG/})
+        .getByRole('radio', {
+          name: 'Statutaire — les désinscrits le reçoivent aussi',
+        })
+        .click()
+      await admin
+        .getByRole('button', {name: 'Enregistrer les réglages'})
+        .click()
+      await expect(
+        admin.getByRole('status').filter({hasText: 'Réglages enregistrés.'})
+      ).toBeVisible({timeout: 15_000})
+    } finally {
+      await admin.context().close()
+    }
+
+    const next = await newSession(browser, TENANT_A, OWNER_A)
+    try {
+      const before = outboxFiles()
+      const campaignId = await composeTemplateAndSend(next, {
+        template: 'Documents après l’AG',
+        target: /Un groupe/,
+        subject: natureSubjectOf('Documents après reclassement'),
+      })
+      await expect
+        .poll(
+          () => messagesTo(before, NATURE_FICHES.unsubscribed.email).length,
+          {timeout: 30_000}
+        )
+        .toBe(1)
+      expect(await natureOfCampaign(campaignId)).toBe('statutaire')
+    } finally {
+      await next.context().close()
+    }
+  })
+})

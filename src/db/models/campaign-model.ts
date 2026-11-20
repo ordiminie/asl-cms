@@ -23,6 +23,16 @@ export const campaignStatusEnum = pgEnum('campaign_status', [
   'interrupted',
 ])
 
+/**
+ * La nature d'un envoi (s27b, ADR 064), figee a la creation de la campagne :
+ * reclasser un modele vaut pour la campagne suivante, jamais pour une campagne
+ * en cours. Les valeurs suivent `CAMPAIGN_NATURES` du domaine.
+ */
+export const campaignNatureEnum = pgEnum('campaign_nature', [
+  'facultative',
+  'statutaire',
+])
+
 export const campaignRecipientStatusEnum = pgEnum('campaign_recipient_status', [
   'pending',
   'sent',
@@ -63,6 +73,11 @@ export const campaign = pgTable(
     preheader: text('preheader'),
     bodyMarkdown: text('body_markdown').notNull(),
     templateId: text('template_id'),
+    /**
+     * Nature figee a l'envoi (s27b, ADR 064) : commande la livraison et le
+     * pied de page. `facultative` pour les campagnes anterieures.
+     */
+    nature: campaignNatureEnum('nature').default('facultative').notNull(),
     targetKind: text('target_kind').notNull(),
     /**
      * Groupe vise (s27, ADR 060 §5), `SET NULL` : supprimer le groupe ne
@@ -249,6 +264,7 @@ export type CampaignPartModel = typeof campaignPart.$inferSelect
 export type AddCampaignPartModel = typeof campaignPart.$inferInsert
 export type CampaignPartStatusModel =
   (typeof campaignPartStatusEnum.enumValues)[number]
+export type CampaignNatureModel = (typeof campaignNatureEnum.enumValues)[number]
 export type CampaignStatusModel = (typeof campaignStatusEnum.enumValues)[number]
 export type CampaignRecipientStatusModel =
   (typeof campaignRecipientStatusEnum.enumValues)[number]

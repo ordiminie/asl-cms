@@ -653,6 +653,14 @@ par Google dans la page. »
 Une **carte d'état** peut suivre la carte de sa section, et un texte long peut porter des lignes
 « clé = valeur » (s20 : « Synchronisation Pennylane », « Libellés des statuts ») : voir §3.15.
 
+**Carte « Nature des envois »** (s27b, gap 3 du design) — section du registre `campaign_nature`,
+juste après la carte « Envois », même gabarit que les cartes générées. Un réglage « choix » par type
+d'envoi (`radio-group` à deux options : « Facultatif — les désinscrits ne le reçoivent pas »,
+« Statutaire — les désinscrits le reçoivent aussi ») ; un réglage jamais enregistré dit « Sans choix
+enregistré : facultatif. ». Modifiable par le SuperAdmin seul ; le bureau la lit en lecture seule
+(forme s52), avec l'aide propre « Réglé par l'équipe technique de la plateforme, après avis du
+conseil RGPD : vous ne pouvez pas le modifier. ».
+
 ### 3.2 États — vide, chargement, erreur, succès
 
 | État           | Forme imposée                                                                                                                                                                                                                   |
@@ -894,6 +902,13 @@ et versés ici par le plan de s27. Aucun ne crée de token ni de composant : ils
   au moins une adresse email active, sans adresse email active, filet, total), puis **Adresses**
   (qui recevront la campagne, désinscrites). Le même décompte vaut pour les trois cibles et pour la
   composition d'un groupe.
+- **Nature d'un modèle écrite dans un `radio-group`** (s27b, gap 4 du design) — sous la phrase
+  d'usage de chaque choix du composeur, une ligne `meta` « Envoi statutaire : les membres
+  désinscrits le reçoivent aussi. » ou « Envoi facultatif : les membres désinscrits ne le reçoivent
+  pas. », reliée au choix par `aria-describedby`. Elle se lit, elle ne se change pas : aucun
+  contrôle de nature dans le composeur. Le décompte suit le modèle (`skeleton` pendant la
+  relecture) ; en statutaire, la ligne « Adresses désinscrites » compte celles qui recevront
+  l'envoi, avec la note « Elles reçoivent celle-ci : c'est un envoi statutaire. ».
 
 ### 3.15 Formes retenues par s20 — les factures Pennylane
 
@@ -1053,10 +1068,10 @@ l'association au moment du rendu.
 
 Point structurant, et juridique autant que visuel.
 
-| Nature          | Envois                                                                    | Pied de page                                                                      |
-| --------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **Facultative** | actualité, campagne libre                                                 | **Bouton de désinscription visible** — pas un lien perdu dans une ligne de 12 px  |
-| **Statutaire**  | convocation, mise à disposition de facture, relance, publication après AG | **Pas de désinscription**, mais une phrase qui explique pourquoi l'envoi continue |
+| Nature          | Envois                                              | Pied de page                                                                     |
+| --------------- | --------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Facultative** | actualité, campagne libre, publication après AG     | **Bouton de désinscription visible** — pas un lien perdu dans une ligne de 12 px |
+| **Statutaire**  | convocation, mise à disposition de facture, relance | Une phrase qui explique pourquoi l'envoi continue, **puis le bouton conservé**   |
 
 **Troisième cas — le transactionnel** (lien de connexion, s03) : ni désinscription ni renvoi aux
 préférences, puisque l'envoi répond à une demande de la personne elle-même. Le pied dit **pourquoi
@@ -1074,9 +1089,17 @@ de l'association, pas depuis l'email. C'est une **nature** d'envoi, pas un gabar
 
 **Le ton de la phrase statutaire est décisif** : elle dit _pourquoi_ (« vous êtes propriétaire
 d'une parcelle du domaine »), pas _que c'est comme ça_. **Interdit : « vous ne pouvez pas vous
-désinscrire ».** Le pied statutaire renvoie tout de même vers les préférences, pour que le membre
-voie qu'il a la main sur le reste. Réciproquement, le pied facultatif précise que la
-désinscription « ne prive d'aucune information obligatoire ».
+désinscrire ».** La nature d'un envoi se lit dans les réglages de l'association, par type d'envoi,
+et se fige sur la campagne à l'envoi (s27b, ADR 064).
+
+**Le bouton de désinscription reste sur un envoi statutaire** (s27b, gap 1 du design ; PRD : un
+lien de désinscription sur tout envoi de masse). Il ne désinscrit que des envois facultatifs, et son
+libellé le dit : « Ne plus recevoir les campagnes facultatives ». Il remplace le renvoi à des
+« préférences » qui n'existent pas. Au-dessus du bouton, la phrase statutaire : « Ce message vous
+parvient même si vous vous êtes désinscrit des campagnes : votre appartenance à {association} vous
+engage à en être informé. » Le pied facultatif garde son bouton « Ne plus recevoir ces campagnes »
+et, sur les deux natures, la phrase « Se désinscrire ne vous prive d'aucune information
+obligatoire ». L'URL en clair et l'en-tête `List-Unsubscribe` restent sur les deux natures.
 
 ### 5.5 Les huit envois maquettés
 
@@ -1087,7 +1110,7 @@ désinscription « ne prive d'aucune information obligatoire ».
 | **Convocation à l'AG**     | statutaire     | Date, lieu, modalités de vote en table ; ordre du jour numéroté ; pièces jointes avec poids.                                                                                                                                                                                                          |
 | **Facture disponible**     | statutaire     | **Doublon volontaire assumé** de l'envoi du comptable : le corps dit explicitement « il s'agit bien du même document : cet email ne demande pas un second règlement ».                                                                                                                                |
 | **Relance d'impayé**       | statutaire     | Trois niveaux — 15 j, 45 j, 90 j. Voir ci-dessous.                                                                                                                                                                                                                                                    |
-| **Publication après l'AG** | statutaire     | Liste de documents avec poids ; mention « aussi disponibles en version papier sur demande ».                                                                                                                                                                                                          |
+| **Publication après l'AG** | facultative    | Liste de documents avec poids ; mention « aussi disponibles en version papier sur demande ».                                                                                                                                                                                                          |
 | **Campagne libre**         | facultative    | Même habillage, image facultative dont le texte se passe, pied avec désinscription.                                                                                                                                                                                                                   |
 | **Confirmer une adresse**  | transactionnel | Gabarit du lien magique (s54) : une seule action « Confirmer cette adresse », doublée de l'URL en clair ; qui l'a ajoutée, pour quelle fiche et quelles parcelles, jusqu'à quand. « Sans confirmation, l'adresse ne reçoit rien et ne donne accès à rien. » Pied transactionnel, sans désinscription. |
 

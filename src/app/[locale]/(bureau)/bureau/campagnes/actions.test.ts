@@ -234,6 +234,8 @@ describe('previewCampaignAction', () => {
         profiles: 3,
         recipients: 2,
         unsubscribed: 0,
+        reinstated: 0,
+        nature: 'facultative' as const,
       },
     }
     const plan = {
@@ -254,7 +256,11 @@ describe('previewCampaignAction', () => {
     )
 
     expect(result).toEqual({status: 'ok', preview, plan})
-    expect(previewCampaignPlanService).toHaveBeenCalledWith(TENANT_ID, ALL)
+    expect(previewCampaignPlanService).toHaveBeenCalledWith(
+      TENANT_ID,
+      ALL,
+      'free'
+    )
     expect(previewCampaignService).toHaveBeenCalledWith({
       organizationId: TENANT_ID,
       ...content,
@@ -320,7 +326,11 @@ describe('cible choisie (s27, ADR 060)', () => {
     expect(vi.mocked(previewCampaignService).mock.calls[0][0].target).toEqual(
       group
     )
-    expect(previewCampaignPlanService).toHaveBeenCalledWith(TENANT_ID, group)
+    expect(previewCampaignPlanService).toHaveBeenCalledWith(
+      TENANT_ID,
+      group,
+      'free'
+    )
   })
 
   it('transmet la cible « impayés » sans groupe', async () => {
@@ -382,26 +392,29 @@ describe('cible choisie (s27, ADR 060)', () => {
       profiles: 1,
       recipients: 1,
       unsubscribed: 0,
+      reinstated: 0,
+      nature: 'statutaire' as const,
     }
     vi.mocked(getCampaignComposerContextService).mockResolvedValue({
       counts,
       reachableMembers: [{id: PROFILE_ID, name: 'Claire'}],
     } as never)
 
-    const result = await readCampaignTargetAction({
-      kind: 'group',
-      groupId: GROUP_ID,
-    })
+    const result = await readCampaignTargetAction(
+      {kind: 'group', groupId: GROUP_ID},
+      'general_assembly'
+    )
 
     expect(result).toEqual({
       status: 'ok',
       counts,
       reachableMembers: [{id: PROFILE_ID, name: 'Claire'}],
     })
-    expect(getCampaignComposerContextService).toHaveBeenCalledWith(TENANT_ID, {
-      kind: 'group',
-      groupId: GROUP_ID,
-    })
+    expect(getCampaignComposerContextService).toHaveBeenCalledWith(
+      TENANT_ID,
+      {kind: 'group', groupId: GROUP_ID},
+      'general_assembly'
+    )
   })
 
   it('décompte : factures illisibles → erreur ancrée, sans session → refus', async () => {
@@ -409,7 +422,7 @@ describe('cible choisie (s27, ADR 060)', () => {
       new CampaignTargetUnavailableError()
     )
     await expect(
-      readCampaignTargetAction({kind: 'unpaid_members'})
+      readCampaignTargetAction({kind: 'unpaid_members'}, 'free')
     ).resolves.toEqual({
       status: 'error',
       message: 'CampaignsBureau.errors.unpaidUnavailable',
@@ -417,7 +430,7 @@ describe('cible choisie (s27, ADR 060)', () => {
 
     vi.mocked(requireActionAuth).mockRejectedValue(new AuthorizationError())
     await expect(
-      readCampaignTargetAction({kind: 'all_members'})
+      readCampaignTargetAction({kind: 'all_members'}, 'free')
     ).resolves.toEqual({
       status: 'error',
       message: 'CampaignsBureau.errors.forbidden',

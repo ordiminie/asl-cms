@@ -7,6 +7,11 @@ export type CampaignFooterTexts = {
   legalName: string | null
   legalMentions: string | null
   reason: string
+  /**
+   * Pourquoi un desinscrit recoit cet envoi (s27b, critere 4) ; `null` pour un
+   * envoi facultatif.
+   */
+  statutoryNotice: string | null
   unsubscribeLabel: string
   notice: string
 }
@@ -52,6 +57,7 @@ export const renderCampaignText = ({
       .filter(isFilled)
       .join('\n'),
     footer.reason,
+    ...(footer.statutoryNotice ? [footer.statutoryNotice] : []),
     `${footer.unsubscribeLabel} : ${unsubscribeUrl}`,
     footer.notice,
   ]

@@ -287,7 +287,8 @@ function PostponedAlert({plan}: {plan: CampaignPlanDTO}) {
 /**
  * « Destinataires et plan d'envoi » (ecran 1 de s26) : le decompte, le
  * deja-parti du jour, puis l'envoi unique ou le plan ecrit, une ligne par
- * part, nombres et dates en `data`.
+ * part, nombres et dates en `data`. Un envoi statutaire compte ses
+ * desinscrits parmi ceux qui le recevront (s27b).
  */
 function PlanSection({
   counts,
@@ -306,12 +307,19 @@ function PlanSection({
       className="border-border flex flex-col gap-3 border-t pt-6 text-[17px]"
     >
       <p>
-        {t.rich('recall', {
-          strong,
-          recipients: counts.recipients,
-          withoutEmail: counts.profilesWithoutEmail,
-          unsubscribed: counts.unsubscribed,
-        })}
+        {counts.nature === 'statutaire'
+          ? t.rich('recallStatutory', {
+              strong,
+              recipients: counts.recipients,
+              reinstated: counts.reinstated,
+              withoutEmail: counts.profilesWithoutEmail,
+            })
+          : t.rich('recall', {
+              strong,
+              recipients: counts.recipients,
+              withoutEmail: counts.profilesWithoutEmail,
+              unsubscribed: counts.unsubscribed,
+            })}
       </p>
       {plan === null ? (
         <Skeleton className="h-6 w-72" />

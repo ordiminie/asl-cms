@@ -9,9 +9,11 @@ import {
   CONTACT_EMAIL_SETTING_KEY,
   CONTACT_MESSAGES_PER_HOUR_SETTING_KEY,
   getAccentHue,
+  getCampaignNature,
   getContactMessagesPerHourLimit,
   getDefaultLandAddress,
   getMemberEmailConfirmationDays,
+  getStatutoryTemplateIds,
   MEMBER_EMAIL_CONFIRMATION_DAYS_SETTING_KEY,
   resolveSettings,
   validateSettingsChanges,
@@ -122,5 +124,41 @@ describe('TEST_TENANT_SETTINGS — factures des membres (s19, ADR 059)', () => {
         ].includes(row.key)
       )
     ).toEqual([])
+  })
+})
+
+describe('TEST_TENANT_SETTINGS — nature des envois (s27b, ADR 064)', () => {
+  it('le premier tenant classe convocation, facture et relance statutaires ; post-AG et message libre facultatifs, en valeurs de seed', () => {
+    const settings = settingsOf('techcorp-solutions')
+
+    expect(getStatutoryTemplateIds(settings)).toEqual([
+      'reminder',
+      'invoice',
+      'general_assembly',
+    ])
+    expect(getCampaignNature(settings, 'free')).toBe('facultative')
+    expect(getCampaignNature(settings, 'post_assembly_documents')).toBe(
+      'facultative'
+    )
+    for (const templateId of [
+      'free',
+      'reminder',
+      'invoice',
+      'general_assembly',
+      'post_assembly_documents',
+    ]) {
+      expect(
+        TEST_TENANT_SETTINGS.some(
+          (row) =>
+            row.organizationSlug === 'techcorp-solutions' &&
+            row.key === `campaign.nature.${templateId}`
+        ),
+        templateId
+      ).toBe(true)
+    }
+  })
+
+  it('l’autre tenant ne déclare aucune nature : tout y est facultatif', () => {
+    expect(getStatutoryTemplateIds(settingsOf('marketing-pro'))).toEqual([])
   })
 })

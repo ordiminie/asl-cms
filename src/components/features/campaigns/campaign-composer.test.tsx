@@ -19,6 +19,7 @@ import type {
   CampaignPreviewDTO,
   CampaignTarget,
   CampaignTargetActionResult,
+  CampaignTemplateId,
   PreviewCampaignActionResult,
   SendCampaignActionResult,
 } from '@/services/types/domain/campaign-types'
@@ -60,6 +61,8 @@ const contextOf = (
     profiles: 382,
     recipients: 296,
     unsubscribed: 15,
+    reinstated: 0,
+    nature: 'facultative' as const,
   },
   reachableMembers: [
     {id: PROFILE_A, name: 'Claire Aubert'},
@@ -68,6 +71,13 @@ const contextOf = (
   groups: [
     {id: GROUP_ID, name: 'Riverains du chemin des Crêtes', profileCount: 38},
   ],
+  templateNatures: {
+    free: 'facultative',
+    reminder: 'statutaire',
+    invoice: 'statutaire',
+    general_assembly: 'statutaire',
+    post_assembly_documents: 'facultative',
+  },
   ...overrides,
 })
 
@@ -85,6 +95,8 @@ const previewOf = (
     profiles: 382,
     recipients: 296,
     unsubscribed: 15,
+    reinstated: 0,
+    nature: 'facultative' as const,
   },
   ...overrides,
 })
@@ -121,7 +133,12 @@ let sendAction: ReturnType<
 >
 
 let targetAction: ReturnType<
-  typeof vi.fn<(target: CampaignTarget) => Promise<CampaignTargetActionResult>>
+  typeof vi.fn<
+    (
+      target: CampaignTarget,
+      templateId: CampaignTemplateId
+    ) => Promise<CampaignTargetActionResult>
+  >
 >
 
 const sentFields = (action: {mock: {calls: unknown[][]}}, call = 0) =>
@@ -183,6 +200,8 @@ beforeEach(() => {
       profiles: 38,
       recipients: 33,
       unsubscribed: 2,
+      reinstated: 0,
+      nature: 'facultative' as const,
     },
     reachableMembers: [{id: PROFILE_B, name: 'Paul Renaud'}],
   }))
@@ -366,6 +385,8 @@ describe('CampaignComposer — écran 2 (composer)', () => {
           profiles: 4,
           recipients: 0,
           unsubscribed: 1,
+          reinstated: 0,
+          nature: 'facultative' as const,
         },
         reachableMembers: [],
       })
@@ -843,10 +864,10 @@ describe('CampaignComposer — choix de la cible (s27, écran 1)', () => {
       screen.getByRole('link', {name: 'Gérer les groupes'})
     ).toHaveAttribute('href', '/bureau/groupes')
     await waitFor(() =>
-      expect(targetAction).toHaveBeenCalledWith({
-        kind: 'group',
-        groupId: GROUP_ID,
-      })
+      expect(targetAction).toHaveBeenCalledWith(
+        {kind: 'group', groupId: GROUP_ID},
+        'free'
+      )
     )
     const fiches = within(recipientsCard()).getByRole('group', {
       name: 'Fiches',
@@ -878,6 +899,8 @@ describe('CampaignComposer — choix de la cible (s27, écran 1)', () => {
         profiles: 0,
         recipients: 0,
         unsubscribed: 0,
+        reinstated: 0,
+        nature: 'facultative' as const,
       },
       reachableMembers: [],
     })
@@ -892,7 +915,7 @@ describe('CampaignComposer — choix de la cible (s27, écran 1)', () => {
         'Aucun membre n’est en impayé aujourd’hui. Rien ne peut être envoyé.'
       )
     ).toBeInTheDocument()
-    expect(targetAction).toHaveBeenCalledWith({kind: 'unpaid_members'})
+    expect(targetAction).toHaveBeenCalledWith({kind: 'unpaid_members'}, 'free')
     expect(screen.getByRole('button', {name: 'Voir l’aperçu'})).toBeEnabled()
   })
 
@@ -935,5 +958,157 @@ describe('CampaignComposer — choix de la cible (s27, écran 1)', () => {
 
     expect(sentFields(previewAction).targetKind).toBe('all_members')
     expect(sentFields(previewAction)).not.toHaveProperty('targetGroupId')
+  })
+})
+
+describe('CampaignComposer — nature des envois (s27b, écrans 2 et 3)', () => {
+  const templateGroup = () => screen.getByRole('radiogroup', {name: /modèle/i})
+  const statutoryCounts = {
+    profilesWithEmail: 311,
+    profilesWithoutEmail: 71,
+    profiles: 382,
+    recipients: 311,
+    unsubscribed: 0,
+    reinstated: 15,
+    nature: 'statutaire' as const,
+  }
+
+  it('écrit sous chaque modèle sa nature, lue dans les réglages, sans contrôle pour la changer', () => {
+    renderComposer()
+
+    const statutory =
+      'Envoi statutaire : les membres désinscrits le reçoivent aussi.'
+    const optional =
+      'Envoi facultatif : les membres désinscrits ne le reçoivent pas.'
+    const free = within(templateGroup()).getByRole('radio', {
+      name: /Message libre/,
+    })
+    expect(free).toHaveAccessibleDescription(expect.stringContaining(optional))
+    const assembly = within(templateGroup()).getByRole('radio', {
+      name: /Convocation/,
+    })
+    expect(assembly).toHaveAccessibleDescription(
+      expect.stringContaining(statutory)
+    )
+    expect(within(templateGroup()).getAllByText(statutory)).toHaveLength(3)
+    expect(within(templateGroup()).getAllByText(optional)).toHaveLength(2)
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.queryByRole('radio', {name: /statutaire/i})).toBeNull()
+  })
+
+  it('choisir un modèle statutaire relit le décompte : les désinscrits le reçoivent, et la note le dit', async () => {
+    let settle: (result: CampaignTargetActionResult) => void = () => {}
+    targetAction.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          settle = resolve
+        })
+    )
+    renderComposer()
+
+    await userEvent.click(
+      within(templateGroup()).getByRole('radio', {name: /Convocation/})
+    )
+
+    expect(targetAction).toHaveBeenCalledWith(
+      {kind: 'all_members'},
+      'general_assembly'
+    )
+    expect(
+      recipientsCard().querySelectorAll('[data-slot="skeleton"]').length
+    ).toBeGreaterThan(0)
+    settle({
+      status: 'ok',
+      counts: statutoryCounts,
+      reachableMembers: [{id: PROFILE_A, name: 'Claire Aubert'}],
+    })
+
+    const adresses = within(recipientsCard()).getByRole('group', {
+      name: 'Adresses',
+    })
+    expect(
+      await within(adresses).findByText(
+        'Elles reçoivent celle-ci : c’est un envoi statutaire.'
+      )
+    ).toBeInTheDocument()
+    expect(within(adresses).getByText('311')).toBeInTheDocument()
+    expect(within(adresses).getByText('15')).toBeInTheDocument()
+    expect(
+      within(adresses).queryByText('Elles ne reçoivent pas les campagnes.')
+    ).toBeNull()
+  })
+
+  it('revenir au message libre sur « tous » reprend le décompte initial, sans relecture', async () => {
+    targetAction.mockResolvedValue({
+      status: 'ok',
+      counts: statutoryCounts,
+      reachableMembers: [],
+    })
+    renderComposer()
+
+    await userEvent.click(
+      within(templateGroup()).getByRole('radio', {name: /Convocation/})
+    )
+    await waitFor(() => expect(targetAction).toHaveBeenCalledTimes(1))
+    await userEvent.click(
+      within(templateGroup()).getByRole('radio', {name: /Message libre/})
+    )
+
+    const adresses = within(recipientsCard()).getByRole('group', {
+      name: 'Adresses',
+    })
+    expect(
+      await within(adresses).findByText('Elles ne reçoivent pas les campagnes.')
+    ).toBeInTheDocument()
+    expect(within(adresses).getByText('296')).toBeInTheDocument()
+    expect(targetAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('la cible relue garde le modèle choisi', async () => {
+    targetAction.mockResolvedValue({
+      status: 'ok',
+      counts: statutoryCounts,
+      reachableMembers: [],
+    })
+    renderComposer()
+
+    await userEvent.click(
+      within(templateGroup()).getByRole('radio', {name: /Convocation/})
+    )
+    await userEvent.click(
+      within(
+        screen.getByRole('radiogroup', {name: 'Qui reçoit cette campagne ?'})
+      ).getByRole('radio', {name: /impayé/})
+    )
+
+    await waitFor(() =>
+      expect(targetAction).toHaveBeenLastCalledWith(
+        {kind: 'unpaid_members'},
+        'general_assembly'
+      )
+    )
+  })
+
+  it('aucune nature ne part avec l’aperçu ni avec l’envoi', async () => {
+    renderComposer()
+    await openPreview()
+
+    expect(Object.keys(sentFields(previewAction))).not.toContain('nature')
+  })
+
+  it('aperçu d’un envoi statutaire : le rappel compte les désinscrits parmi ceux qui le recevront', async () => {
+    previewAction.mockResolvedValue({
+      status: 'ok',
+      preview: previewOf({counts: statutoryCounts}),
+      plan: planOf({parts: [{day: '2026-11-12', count: 311}]}),
+    })
+    renderComposer()
+    await openPreview()
+
+    expect(
+      screen.getByRole('region', {name: 'Destinataires et plan d’envoi'})
+    ).toHaveTextContent(
+      '311 membres recevront cette campagne, dont 15 désinscrits (envoi statutaire) · 71 sans email n’en recevront pas.'
+    )
   })
 })

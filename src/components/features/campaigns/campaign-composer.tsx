@@ -49,6 +49,7 @@ import {
   CAMPAIGN_VARIABLES,
   type CampaignComposerContextDTO,
   type CampaignFormField,
+  type CampaignNature,
   type CampaignPlanDTO,
   type CampaignPreviewDTO,
   type CampaignTarget,
@@ -87,8 +88,14 @@ type CampaignComposerProps = {
     state: SendCampaignActionResult | undefined,
     formData: FormData
   ) => Promise<SendCampaignActionResult>
-  /** Relit le decompte d'une autre cible (s27). */
-  targetAction: (target: CampaignTarget) => Promise<CampaignTargetActionResult>
+  /**
+   * Relit le decompte d'une autre cible (s27) ou d'un autre modele : le
+   * modele porte la nature de l'envoi (s27b).
+   */
+  targetAction: (
+    target: CampaignTarget,
+    templateId: CampaignTemplateId
+  ) => Promise<CampaignTargetActionResult>
 }
 
 /** Le decompte de la cible choisie, tel que la carte « Destinataires » le lit. */
@@ -184,9 +191,19 @@ export function CampaignComposer({
   const target: CampaignTarget =
     targetKind === 'group' ? {kind: 'group', groupId} : {kind: targetKind}
 
-  const readTarget = async (next: CampaignTarget) => {
+  /**
+   * Le decompte de la cible pour le modele : celui du contexte vaut pour
+   * « tous » a la meme nature que lui ; sinon il est relu (s27, s27b).
+   */
+  const readTarget = async (
+    next: CampaignTarget,
+    nextTemplateId: CampaignTemplateId
+  ) => {
     const request = ++readingRequest.current
-    if (next.kind === 'all_members') {
+    if (
+      next.kind === 'all_members' &&
+      context.templateNatures[nextTemplateId] === context.counts.nature
+    ) {
       setReading({
         status: 'ok',
         counts: context.counts,
@@ -199,18 +216,33 @@ export function CampaignComposer({
       return
     }
     setReading({status: 'loading'})
-    const result = await targetAction(next)
+    const result = await targetAction(next, nextTemplateId)
     if (request === readingRequest.current) setReading(result)
   }
 
   const chooseTargetKind = (next: CampaignTargetKind) => {
     setTargetKind(next)
-    void readTarget(next === 'group' ? {kind: next, groupId} : {kind: next})
+    void readTarget(
+      next === 'group' ? {kind: next, groupId} : {kind: next},
+      form.getValues('templateId') as CampaignTemplateId
+    )
   }
 
   const chooseGroup = (next: string) => {
     setGroupId(next)
-    void readTarget({kind: 'group', groupId: next})
+    void readTarget(
+      {kind: 'group', groupId: next},
+      form.getValues('templateId') as CampaignTemplateId
+    )
+  }
+
+  /** Le modele change : le decompte suit sa nature (s27b). */
+  const setTemplate = (id: CampaignTemplateId) => {
+    const previous = form.getValues('templateId') as CampaignTemplateId
+    form.setValue('templateId', id)
+    if (context.templateNatures[previous] !== context.templateNatures[id]) {
+      void readTarget(target, id)
+    }
   }
 
   const targetContext: CampaignComposerContextDTO =
@@ -273,7 +305,7 @@ export function CampaignComposer({
 
   const applyModel = (id: ModelId) => {
     const model = templates[id]
-    form.setValue('templateId', id)
+    setTemplate(id)
     form.setValue('subject', model.subject, {shouldValidate: submitFailed})
     form.setValue('preheader', model.preheader, {shouldValidate: submitFailed})
     form.setValue('bodyMarkdown', model.body, {shouldValidate: submitFailed})
@@ -283,7 +315,7 @@ export function CampaignComposer({
   const chooseTemplate = (next: string) => {
     const id = next as CampaignTemplateId
     if (id === 'free') {
-      form.setValue('templateId', id)
+      setTemplate(id)
       setApplied(false)
       return
     }
@@ -364,6 +396,7 @@ export function CampaignComposer({
       >
         <TemplateCard
           value={templateId}
+          natures={context.templateNatures}
           applied={applied && templateId !== 'free'}
           onChange={chooseTemplate}
         />
@@ -566,12 +599,18 @@ function SectionCard({title, children}: {title: string; children: ReactNode}) {
   )
 }
 
+/**
+ * « Modele » : chaque choix dit son usage, puis sa nature lue dans les
+ * reglages (s27b, design system §3.14) — aucun controle pour la changer.
+ */
 function TemplateCard({
   value,
+  natures,
   applied,
   onChange,
 }: {
   value: CampaignTemplateId
+  natures: Record<CampaignTemplateId, CampaignNature>
   applied: boolean
   onChange: (value: string) => void
 }) {
@@ -591,7 +630,7 @@ function TemplateCard({
             <RadioGroupItem
               value={id}
               id={`${fieldId}-${id}`}
-              aria-describedby={`${fieldId}-${id}-usage`}
+              aria-describedby={`${fieldId}-${id}-usage ${fieldId}-${id}-nature`}
               className="mt-1 size-5"
             />
             <div className="flex flex-col">
@@ -603,6 +642,12 @@ function TemplateCard({
                 className="text-muted-foreground text-[15px]"
               >
                 {t(`templateUsages.${id}`)}
+              </p>
+              <p
+                id={`${fieldId}-${id}-nature`}
+                className="text-muted-foreground text-[14px]"
+              >
+                {t(`templateNatures.${natures[id]}`)}
               </p>
             </div>
           </div>
@@ -890,8 +935,11 @@ function TargetReadingView({
     )
   }
   const counts = reading.status === 'ok' ? reading.counts : null
-  const figure = (key: keyof CampaignTargetCountsDTO): ReactNode =>
+  const figure = (
+    key: Exclude<keyof CampaignTargetCountsDTO, 'nature'>
+  ): ReactNode =>
     counts ? counts[key] : <Skeleton className="ml-auto h-6 w-10" />
+  const statutory = counts?.nature === 'statutaire'
 
   return (
     <>
@@ -911,7 +959,13 @@ function TargetReadingView({
         label={t('addresses')}
         rows={[
           [t('recipients'), figure('recipients'), t('recipientsNote')],
-          [t('unsubscribed'), figure('unsubscribed'), t('unsubscribedNote')],
+          statutory
+            ? [t('unsubscribed'), figure('reinstated'), t('reinstatedNote')]
+            : [
+                t('unsubscribed'),
+                figure('unsubscribed'),
+                t('unsubscribedNote'),
+              ],
         ]}
       />
       {counts && counts.recipients === 0 && (

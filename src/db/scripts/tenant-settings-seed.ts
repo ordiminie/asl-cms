@@ -11,6 +11,10 @@
  * Marketing Pro (l'import y laisse le terrain vide). L'objet des factures
  * (s19, ADR 059 §6) est une valeur de seed du premier tenant, a valider avec
  * son bureau ; **aucun statut de facture** n'est livre (amendement du 15/11).
+ * La nature des envois (s27b, ADR 064) est une valeur de seed du premier
+ * tenant (arbitrage du 18/09/2026, a confirmer par le conseil RGPD) :
+ * relance, facture et convocation statutaires ; message libre et documents
+ * apres l'AG facultatifs. Marketing Pro n'en declare aucune.
  */
 export type TestTenantSetting = {
   organizationSlug: string
@@ -48,6 +52,31 @@ export const TEST_TENANT_SETTINGS: readonly TestTenantSetting[] = [
     organizationSlug: 'techcorp-solutions',
     key: 'billing.invoice_subject',
     value: 'Cotisation et eau {année}',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'campaign.nature.free',
+    value: 'facultative',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'campaign.nature.reminder',
+    value: 'statutaire',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'campaign.nature.invoice',
+    value: 'statutaire',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'campaign.nature.general_assembly',
+    value: 'statutaire',
+  },
+  {
+    organizationSlug: 'techcorp-solutions',
+    key: 'campaign.nature.post_assembly_documents',
+    value: 'facultative',
   },
   {
     organizationSlug: 'marketing-pro',

@@ -27,10 +27,16 @@ export const campaignTargetSchema = z.discriminatedUnion('kind', [
   z.object({kind: z.literal('group'), groupId: uuid}),
 ])
 
+/**
+ * Le modele choisi : il porte la nature de l'envoi, lue dans les reglages
+ * (s27b, ADR 064). Aucune nature n'est acceptee en entree.
+ */
+export const campaignTemplateIdSchema = z.enum(CAMPAIGN_TEMPLATE_IDS)
+
 const campaignContentServiceSchema = (subjectMax: number) =>
   z.object({
     organizationId: uuid,
-    templateId: z.enum(CAMPAIGN_TEMPLATE_IDS),
+    templateId: campaignTemplateIdSchema,
     subject: z.string().max(subjectMax).refine(isNotBlank).refine(isSingleLine),
     preheader: z.string().max(CAMPAIGN_PREHEADER_MAX).refine(isSingleLine),
     bodyMarkdown: z.string().max(CAMPAIGN_BODY_MAX).refine(isNotBlank),

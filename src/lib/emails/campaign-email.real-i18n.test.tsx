@@ -6,7 +6,10 @@ import {render} from 'react-email'
 import {describe, expect, it} from 'vitest'
 
 import {findUnknownVariables} from '@/services/rules/campaign-rules'
-import {CAMPAIGN_TEMPLATE_IDS} from '@/services/types/domain/campaign-types'
+import {
+  CAMPAIGN_TEMPLATE_IDS,
+  type CampaignNature,
+} from '@/services/types/domain/campaign-types'
 
 import fr from '../../../messages/fr.json'
 import CampaignMail, {
@@ -46,15 +49,18 @@ const renderMail = async ({
   bodyMarkdown = FREE_BODY,
   heading = 'Peinture du portail',
   association = ASSOCIATION,
+  nature = 'facultative',
 }: {
   bodyMarkdown?: string
   heading?: string
   association?: CampaignEmailAssociation
+  nature?: CampaignNature
 } = {}) => {
   const html = await render(
     await CampaignMail({
       locale: 'fr',
       association,
+      nature,
       heading,
       preheader: 'Merci de laisser le passage libre.',
       bodyHtml: renderCampaignBodyHtml(bodyMarkdown, VALUES),
@@ -209,7 +215,46 @@ describe('CampaignMail — écran E du design s25', () => {
       legalMentions: '4 allée des Pins, 33680 Lacanau\nSIRET 000 000 000 00000',
       reason:
         'Vous recevez cet email parce que vous êtes membre de ASL Les Pins.',
+      statutoryNotice: null,
       unsubscribeLabel: 'Ne plus recevoir ces campagnes',
+      notice: 'Se désinscrire ne vous prive d’aucune information obligatoire.',
+    })
+  })
+
+  it('pied d’un envoi statutaire : il dit pourquoi le désinscrit le reçoit, et le bouton désinscrit des seuls facultatifs (s27b, critère 4)', async () => {
+    const {doc} = await renderMail({nature: 'statutaire'})
+
+    const statutory =
+      'Ce message vous parvient même si vous vous êtes désinscrit des campagnes : votre appartenance à ASL Les Pins vous engage à en être informé.'
+    expect(doc.body.textContent).toContain(statutory)
+    const links = [...doc.querySelectorAll(`a[href="${UNSUBSCRIBE_URL}"]`)]
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Ne plus recevoir les campagnes facultatives',
+      UNSUBSCRIBE_URL,
+    ])
+    expect(doc.body.textContent).toContain(
+      'Se désinscrire ne vous prive d’aucune information obligatoire.'
+    )
+    const text = doc.body.textContent ?? ''
+    expect(text.indexOf(statutory)).toBeLessThan(
+      text.indexOf('Ne plus recevoir les campagnes facultatives')
+    )
+  })
+
+  it('pied d’un envoi facultatif : inchangé, sans phrase statutaire', async () => {
+    const {doc} = await renderMail({nature: 'facultative'})
+
+    expect(doc.body.textContent).not.toContain('Ce message vous parvient')
+    expectCommonDressing(doc)
+  })
+
+  it('les phrases du pied statutaire sont partagées avec la version texte', async () => {
+    await expect(
+      getCampaignFooterTexts('fr', ASSOCIATION, 'statutaire')
+    ).resolves.toMatchObject({
+      statutoryNotice:
+        'Ce message vous parvient même si vous vous êtes désinscrit des campagnes : votre appartenance à ASL Les Pins vous engage à en être informé.',
+      unsubscribeLabel: 'Ne plus recevoir les campagnes facultatives',
       notice: 'Se désinscrire ne vous prive d’aucune information obligatoire.',
     })
   })

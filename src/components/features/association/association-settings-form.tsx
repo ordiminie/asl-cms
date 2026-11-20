@@ -415,6 +415,7 @@ export function AssociationSettingsForm({
                         settings
                       )}
                       readOnly={readOnlyKeys.has(definition.key)}
+                      stored={storedKeys.has(definition.key)}
                       currentValue={savedValues[definition.key] ?? ''}
                       defaultValue={effectiveDefault(
                         definition,
@@ -487,6 +488,8 @@ type SettingFieldProps = {
   disabled: boolean
   /** Reglage reserve au SuperAdmin, lu par le bureau (s52). */
   readOnly?: boolean
+  /** Une valeur est enregistree pour ce reglage. */
+  stored?: boolean
   onChange: (value: string) => void
   onBlur: () => void
 }
@@ -537,10 +540,9 @@ function SettingField(fieldProps: SettingFieldProps) {
     (definition.type === 'email' || definition.type === 'number')
   const showWhenEmpty =
     !error &&
-    definition.type === 'text' &&
     definition.whenEmptyKey !== undefined &&
-    value.trim() === '' &&
-    !extracted
+    ((definition.type === 'text' && value.trim() === '' && !extracted) ||
+      (definition.type === 'choice' && !props.stored && value === defaultValue))
 
   const label = (
     <>
@@ -620,7 +622,9 @@ function SettingField(fieldProps: SettingFieldProps) {
         </p>
       )}
       {props.readOnly && (
-        <p className="text-muted-foreground text-base">{t('superAdminOnly')}</p>
+        <p className="text-muted-foreground text-base">
+          {t(definition.readOnlyHelpKey ?? 'superAdminOnly')}
+        </p>
       )}
       {showDefault && (
         <p className="text-foreground text-base">

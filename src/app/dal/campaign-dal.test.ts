@@ -58,9 +58,11 @@ describe('campaign-dal (s25)', () => {
     )
 
     await expect(getCampaignComposerContextDal(ORG_A)).resolves.toBe(context)
-    expect(getCampaignComposerContextService).toHaveBeenCalledWith(ORG_A, {
-      kind: 'all_members',
-    })
+    expect(getCampaignComposerContextService).toHaveBeenCalledWith(
+      ORG_A,
+      {kind: 'all_members'},
+      'free'
+    )
   })
 
   it('lit une page de l’archive', async () => {
@@ -122,10 +124,12 @@ describe('unsubscribe-dal (s25)', () => {
   it('lit l’état de la page du jeton, dans le tenant passé', async () => {
     vi.mocked(getUnsubscribePageStateService).mockResolvedValue({
       status: 'confirm',
+      statutoryTemplateIds: ['general_assembly'],
     })
 
     await expect(getUnsubscribePageStateDal(ORG_A, TOKEN)).resolves.toEqual({
       status: 'confirm',
+      statutoryTemplateIds: ['general_assembly'],
     })
     expect(getUnsubscribePageStateService).toHaveBeenCalledWith({
       organizationId: ORG_A,

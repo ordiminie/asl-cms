@@ -5,6 +5,7 @@ import {organization, user} from './models/auth-model'
 import * as campaignModels from './models/campaign-model'
 import {
   campaign,
+  campaignNatureEnum,
   campaignPart,
   campaignPartStatusEnum,
   campaignRecipient,
@@ -132,6 +133,7 @@ describe('campaign (ADR 051)', () => {
         'preheader',
         'body_markdown',
         'template_id',
+        'nature',
         'target_kind',
         'target_group_id',
         'target_group_name',
@@ -176,6 +178,17 @@ describe('campaign (ADR 051)', () => {
     expect(t.column('sent_count')?.hasDefault).toBe(true)
     expect(t.column('status')?.getSQLType()).toBe('campaign_status')
     expect(t.column('send_date')?.getSQLType()).toBe('date')
+  })
+
+  it('fige la nature de l’envoi (s27b, ADR 064) : requise, facultative par défaut', () => {
+    expect(campaignNatureEnum.enumName).toBe('campaign_nature')
+    expect([...campaignNatureEnum.enumValues]).toEqual([
+      'facultative',
+      'statutaire',
+    ])
+    expect(t.column('nature')?.notNull).toBe(true)
+    expect(t.column('nature')?.getSQLType()).toBe('campaign_nature')
+    expect(t.column('nature')?.default).toBe('facultative')
   })
 
   it('suit son association (cascade) et garde l’auteur copié (SET NULL)', () => {

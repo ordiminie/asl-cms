@@ -16,6 +16,16 @@ export const CAMPAIGN_TEMPLATE_IDS = [
 ] as const
 export type CampaignTemplateId = (typeof CAMPAIGN_TEMPLATE_IDS)[number]
 
+/**
+ * La nature d'un type d'envoi (s27b, ADR 064) : un envoi `statutaire` atteint
+ * aussi les adresses desinscrites, un envoi `facultative` ne les atteint pas.
+ * Lue dans les reglages du tenant, `facultative` par defaut ; jamais saisie
+ * par le bureau en redigeant.
+ */
+export const CAMPAIGN_NATURES = ['facultative', 'statutaire'] as const
+export type CampaignNature = (typeof CAMPAIGN_NATURES)[number]
+export const DEFAULT_CAMPAIGN_NATURE: CampaignNature = 'facultative'
+
 /** Les variables reconnues, liste fermee de code : `{nom}` `{parcelle}` `{date}`. */
 export const CAMPAIGN_VARIABLES = ['nom', 'parcelle', 'date'] as const
 export type CampaignVariable = (typeof CAMPAIGN_VARIABLES)[number]
@@ -150,6 +160,8 @@ export type CampaignDTO = {
   /** Corps tel qu'ecrit : variables non remplacees. */
   bodyMarkdown: string
   templateId: CampaignTemplateId | null
+  /** Nature figee a l'envoi (s27b, ADR 064). */
+  nature: CampaignNature
   targetKind: CampaignTargetKind
   /** Nom du groupe vise, copie a l'envoi (s27, ADR 060 §5), ou rien. */
   targetGroupName: string | null
@@ -190,8 +202,15 @@ export type CampaignTargetCountsDTO = {
   profiles: number
   /** Adresses qui recevront la campagne. */
   recipients: number
-  /** Adresses desinscrites. */
+  /** Adresses desinscrites, exclues d'un envoi facultatif. */
   unsubscribed: number
+  /**
+   * Adresses desinscrites qui recevront un envoi statutaire (s27b, ADR 064),
+   * comprises dans `recipients`.
+   */
+  reinstated: number
+  /** La nature du modele choisi, lue dans les reglages (s27b). */
+  nature: CampaignNature
 }
 
 /** Un membre joignable, pour choisir l'apercu (« Voir avec un autre membre »). */
@@ -209,6 +228,11 @@ export type CampaignComposerContextDTO = {
   reachableMembers: CampaignPreviewMemberDTO[]
   /** Les groupes de l'association, choix possibles de la cible (s27). */
   groups: CampaignTargetGroupDTO[]
+  /**
+   * La nature de chaque modele, lue dans les reglages (s27b, ADR 064) : le
+   * composeur l'ecrit sous chaque choix, sans permettre de la changer.
+   */
+  templateNatures: Record<CampaignTemplateId, CampaignNature>
 }
 
 /** Un groupe propose comme cible : son nom et son nombre de fiches. */
@@ -339,9 +363,15 @@ export type CampaignReadResult =
 /** Une demande de desinscription : association du domaine appele, jeton. */
 export type UnsubscribeRequestInput = {organizationId: string; token: string}
 
-/** Etat de la page publique de desinscription (ecran 6). */
+/**
+ * Etat de la page publique de desinscription (ecran 6). Un jeton valide
+ * rend aussi les types d'envoi statutaires de l'association (s27b, critere
+ * 5) : ce que le membre continuera de recevoir. Aucune donnee du membre.
+ */
 export type UnsubscribePageState =
-  {status: 'confirm'} | {status: 'already'} | {status: 'invalid'}
+  | {status: 'confirm'; statutoryTemplateIds: CampaignTemplateId[]}
+  | {status: 'already'; statutoryTemplateIds: CampaignTemplateId[]}
+  | {status: 'invalid'}
 
 export type ConfirmUnsubscribeResult =
   {status: 'unsubscribed'} | {status: 'already'} | {status: 'invalid'}

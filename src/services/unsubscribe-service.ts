@@ -10,11 +10,13 @@ import {
 } from '@/db/repositories/member-unsubscribe-repository'
 import {withTenant} from '@/db/tenant-scope'
 
+import {getAssociationSettingsService} from './association-settings-service'
 import {getAuthUser} from './authentication/auth-service'
 import {canPerformAction} from './authorization/action-registry-authorization'
 import {AuthorizationError} from './errors/authorization-error'
 import {ValidationParsedZodError} from './errors/validation-error'
 import {ActionIdConst} from './types/domain/action-registry-types'
+import {getStatutoryTemplateIds} from './types/domain/association-settings-types'
 import {
   ConfirmUnsubscribeResult,
   MemberUnsubscribeDTO,
@@ -60,16 +62,26 @@ const resolveRecipient = async (
   return {...row, memberProfileId: row.memberProfileId}
 }
 
-/** L'etat de la page publique ; **lecture seule**. */
+/**
+ * L'etat de la page publique ; **lecture seule**. Un jeton valide rend aussi
+ * les types d'envoi statutaires de l'association du domaine, lus dans sa
+ * classification (s27b, critere 5) : aucune donnee du membre n'y entre.
+ */
 export const getUnsubscribePageStateService = async (
   input: UnsubscribeRequestInput
 ): Promise<UnsubscribePageState> => {
   const {organizationId, token} = parseRequest(input)
-  return withTenant(organizationId, async () => {
-    const recipient = await resolveRecipient(organizationId, token)
-    if (!recipient) return {status: 'invalid'}
-    return recipient.unsubscribedAt ? {status: 'already'} : {status: 'confirm'}
-  })
+  const recipient = await withTenant(organizationId, () =>
+    resolveRecipient(organizationId, token)
+  )
+  if (!recipient) return {status: 'invalid'}
+
+  const statutoryTemplateIds = getStatutoryTemplateIds(
+    await getAssociationSettingsService(organizationId)
+  )
+  return recipient.unsubscribedAt
+    ? {status: 'already', statutoryTemplateIds}
+    : {status: 'confirm', statutoryTemplateIds}
 }
 
 /**

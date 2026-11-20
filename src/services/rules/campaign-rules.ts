@@ -4,6 +4,7 @@ import {
   CAMPAIGN_VARIABLES,
   CampaignDisplayState,
   CampaignDTO,
+  CampaignNature,
   CampaignPartDisplayState,
   CampaignPartDTO,
   CampaignPartStatus,
@@ -15,6 +16,7 @@ import {
   CampaignTemplateId,
   CampaignVariable,
   CampaignVariableValues,
+  DEFAULT_CAMPAIGN_NATURE,
 } from '../types/domain/campaign-types'
 import {orderMyProfiles} from './my-profiles-order-rules'
 
@@ -96,8 +98,13 @@ export type ComputedCampaignTarget<Row extends CampaignTargetRow> = {
   recipients: (Row & {email: string})[]
   /** Des fiches ciblees sans adresse active. */
   withoutEmail: number
-  /** Des adresses. */
+  /** Des adresses desinscrites, exclues d'un envoi facultatif. */
   unsubscribed: number
+  /**
+   * Des adresses desinscrites reintegrees dans un envoi statutaire (s27b,
+   * ADR 064) : elles sont destinataires.
+   */
+  reinstated: number
   /**
    * Des fiches ciblees avec au moins une adresse active (critere 5 de s27),
    * desinscrites comprises.
@@ -131,11 +138,16 @@ const carrierOf = <Row extends CampaignTargetRow>(group: Row[]): Row =>
  * **puis** filtrees par `isTargeted`. Une adresse est retenue si une de ses
  * fiches est ciblee ; une adresse desinscrite l'est quelle que soit la fiche
  * qui la porte ; la porteuse vient des seules fiches ciblees. Une fiche sans
- * adresse n'est jamais comptee desinscrite. s27b y reintegre les statutaires.
+ * adresse n'est jamais comptee desinscrite.
+ *
+ * s27b (ADR 064) : la nature de l'envoi decide du sort d'une adresse
+ * desinscrite. `facultative` (defaut) : exclue, comptee `unsubscribed` ;
+ * `statutaire` : reintegree, destinataire et comptee `reinstated`.
  */
 export const computeCampaignTarget = <Row extends CampaignTargetRow>(
   rows: readonly Row[],
-  isTargeted: CampaignTargetPredicate = everyProfile
+  isTargeted: CampaignTargetPredicate = everyProfile,
+  nature: CampaignNature = DEFAULT_CAMPAIGN_NATURE
 ): ComputedCampaignTarget<Row> => {
   const groups = new Map<string, (Row & {email: string})[]>()
   const withoutEmailIds = new Set<string>()
@@ -152,32 +164,43 @@ export const computeCampaignTarget = <Row extends CampaignTargetRow>(
 
   const recipients: (Row & {email: string})[] = []
   let unsubscribed = 0
+  let reinstated = 0
   for (const group of groups.values()) {
     const targeted = group.filter((row) => isTargeted(row))
     if (targeted.length === 0) continue
-    if (group.some((row) => row.unsubscribed)) unsubscribed += 1
-    else recipients.push(carrierOf(targeted))
+    const isUnsubscribed = group.some((row) => row.unsubscribed)
+    if (isUnsubscribed && nature !== 'statutaire') {
+      unsubscribed += 1
+      continue
+    }
+    if (isUnsubscribed) reinstated += 1
+    recipients.push(carrierOf(targeted))
   }
   return {
     recipients,
     withoutEmail: withoutEmailIds.size,
     unsubscribed,
+    reinstated,
     profilesWithEmail: withEmailIds.size,
   }
 }
 
 /**
  * Le decompte affiche avant l'envoi (critere 5 de s27) : en fiches d'abord,
- * avec et sans adresse active, puis en adresses destinataires et desinscrites.
+ * avec et sans adresse active, puis en adresses destinataires, desinscrites
+ * exclues et desinscrites reintegrees, avec la nature de l'envoi (s27b).
  */
 export const campaignTargetCountsOf = (
-  target: ComputedCampaignTarget<CampaignTargetRow>
+  target: ComputedCampaignTarget<CampaignTargetRow>,
+  nature: CampaignNature = DEFAULT_CAMPAIGN_NATURE
 ): CampaignTargetCountsDTO => ({
   profilesWithEmail: target.profilesWithEmail,
   profilesWithoutEmail: target.withoutEmail,
   profiles: target.profilesWithEmail + target.withoutEmail,
   recipients: target.recipients.length,
   unsubscribed: target.unsubscribed,
+  reinstated: target.reinstated,
+  nature,
 })
 
 /**
@@ -244,6 +267,7 @@ export type CampaignRow = {
   preheader: string | null
   bodyMarkdown: string
   templateId: string | null
+  nature: CampaignNature
   targetKind: string
   targetGroupId: string | null
   targetGroupName: string | null
@@ -384,6 +408,7 @@ export const toCampaignDto = (
     preheader: row.preheader,
     bodyMarkdown: row.bodyMarkdown,
     templateId: row.templateId as CampaignTemplateId | null,
+    nature: row.nature,
     targetKind: row.targetKind as CampaignTargetKind,
     targetGroupName: row.targetGroupName,
     targetGroupDeleted:

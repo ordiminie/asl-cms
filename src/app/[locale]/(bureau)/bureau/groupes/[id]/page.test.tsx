@@ -59,6 +59,8 @@ beforeEach(() => {
       profiles: 1,
       recipients: 1,
       unsubscribed: 0,
+      reinstated: 0,
+      nature: 'facultative' as const,
     },
   })
 })

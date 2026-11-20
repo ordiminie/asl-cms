@@ -370,6 +370,8 @@ describe('un groupe ouvert — sa composition comptée comme la cible (critère 
         profiles: 2,
         recipients: 1,
         unsubscribed: 0,
+        reinstated: 0,
+        nature: 'facultative',
       },
     })
   })
